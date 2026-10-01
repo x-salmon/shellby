@@ -31,7 +31,8 @@ function normalizeState(raw) {
 
 /**
  * Environment for a Claude Code process that may use your GitHub sign-in:
- * GH_TOKEN for the gh CLI, and a git credential helper (via GIT_CONFIG_*, so
+ * GH_TOKEN for the gh CLI, GITHUB_PERSONAL_ACCESS_TOKEN for the official GitHub
+ * plugin's MCP tools (its .mcp.json reads that variable), and a git credential helper (via GIT_CONFIG_*, so
  * nothing is written to your git config) that answers for github.com only.
  */
 function gitEnv(token, base = process.env) {
@@ -40,6 +41,7 @@ function gitEnv(token, base = process.env) {
   const key = 'credential.https://github.com.helper';
   return {
     GH_TOKEN: token,
+    GITHUB_PERSONAL_ACCESS_TOKEN: token,
     GIT_CONFIG_COUNT: String(n + 2),
     [`GIT_CONFIG_KEY_${n}`]: key,
     [`GIT_CONFIG_VALUE_${n}`]: '', // an empty helper clears the ones before it (for github.com only)

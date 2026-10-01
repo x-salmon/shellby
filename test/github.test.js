@@ -45,6 +45,7 @@ test('git credential helper env answers github.com with the token (and nothing i
   const r = spawnSync('git', ['credential', 'fill'], { input: 'protocol=https\nhost=github.com\n\n', env, encoding: 'utf8' });
   assert.match(r.stdout, /username=x-access-token/);
   assert.match(r.stdout, /password=gho_abc/);
+  assert.equal(gitEnv('gho_abc').GITHUB_PERSONAL_ACCESS_TOKEN, 'gho_abc', 'the GitHub plugin MCP tools read this one');
   assert.equal(gitEnv(null).GH_TOKEN, undefined);
   const offset = gitEnv('t', { GIT_CONFIG_COUNT: '2' });
   assert.equal(offset.GIT_CONFIG_COUNT, '4');

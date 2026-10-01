@@ -118,7 +118,7 @@ async function connect(url) {
     check(await until(ev, "document.getElementById('ghClaude').checked && document.getElementById('ghCode').hidden"), 'Claude access on after approval');
     await ev('SB.newTab()');
     await ev("SB.send('gitenv')");
-    check(await until(ev, "document.body.textContent.includes('gh:yes helpers:2')"), 'new tasks get GH_TOKEN and the git credential helper');
+    check(await until(ev, "document.body.textContent.includes('gh:yes mcp:yes helpers:2')"), 'new tasks get GH_TOKEN, the GitHub plugin token and the git credential helper');
 
     // 6. Sign out.
     await ev("SB.setView('settings')");
