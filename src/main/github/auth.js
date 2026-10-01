@@ -7,7 +7,7 @@ const fs = require('fs');
 
 // Public identifier of Shellby's GitHub OAuth app (not a secret; device flow
 // needs no secret). Dev/test builds may point at a mock GitHub instead.
-const CLIENT_ID = 'Ov23liShellbyPending';
+const CLIENT_ID = 'Ov23liUNwzgYRhQoado8';
 
 const FEATURE_SCOPES = Object.freeze({
   profile: ['read:user'],      // name + avatar
