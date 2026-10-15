@@ -115,18 +115,14 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     check(await until(`!document.querySelector('.pane-head[data-pane="${paneId}"] .pane-files').hidden`), "the copy's pane has a Files button");
     await ev(`document.querySelector('.pane-head[data-pane="${paneId}"] .pane-files').click()`);
     check(await until("SB.state.view === 'viewer' && document.querySelectorAll('#viewerList .vw-row').length > 0"), 'the viewer opens on the copy');
-    // DEBUG (throwaway branch): what the viewer opened on
-    console.log("DBG current", JSON.stringify(await ev("SB.viewer.current()")));
-    console.log("DBG where", JSON.stringify(await ev("document.getElementById('viewerWhere').textContent")));
-    console.log("DBG note", JSON.stringify(await ev("document.getElementById('viewerNote').textContent")));
-    console.log("DBG rows", JSON.stringify(await ev("[...document.querySelectorAll('#viewerList .vw-row')].map(b => b.dataset.path + '|' + b.textContent)")));
-    console.log("DBG tab", JSON.stringify(await ev("(() => { const t = SB.activeTab(); return { id: t.id, cwd: t.cwd, worktree: t.worktree, busy: t.busy }; })()")));
-    console.log("DBG drawer", JSON.stringify(await ev("({ shows: SB.drawerShows?.(), trail: !document.getElementById('trail')?.hidden })")));
-    console.log("DBG repo status", JSON.stringify(git("status", "--porcelain")), JSON.stringify(git("worktree", "list")));
-    for (const w of git("worktree", "list", "--porcelain").split(/\r?\n/).filter(l => l.startsWith("worktree ")).map(l => l.slice(9))) { try { console.log("DBG wt", w, JSON.stringify(execFileSync("git", ["-C", w, "status", "--porcelain", "-b"], { encoding: "utf8" }))); } catch (e) { console.log("DBG wt err", w, e.message); } }
-    await new Promise(r => setTimeout(r, 4000));
-    console.log("DBG current after 4s", JSON.stringify(await ev("SB.viewer.current()")));
     const rows = await ev("[...document.querySelectorAll('#viewerList .vw-row')].map(b => b.dataset.path + ':' + b.querySelector('.vw-st').textContent)");
+    if (JSON.stringify(rows) !== JSON.stringify([`${MADE[0].file}:?`])) { // DEBUG (throwaway branch)
+      const raw = await cdp('Runtime.evaluate', { expression: "[...document.querySelectorAll('#viewerList .vw-row')].map(b => b.dataset.path + ':' + b.querySelector('.vw-st').textContent)", returnByValue: true });
+      console.log('DBG raw', JSON.stringify(raw).slice(0, 1500));
+      for (const [k, x] of Object.entries({ current: 'SB.viewer.current()', view: 'SB.state.view', where: "document.getElementById('viewerWhere').textContent", note: "document.getElementById('viewerNote').textContent", rows: "[...document.querySelectorAll('#viewerList .vw-row')].map(b => b.className + '|' + b.dataset.path + '|' + b.textContent)", tab: '(() => { const t = SB.activeTab(); return { id: t.id, cwd: t.cwd, worktree: t.worktree, busy: t.busy }; })()', drawer: 'SB.drawerShows?.()', toasts: "[...document.querySelectorAll('.toast')].map(t => t.textContent)" })) console.log('DBG', k, JSON.stringify(await ev(x)).slice(0, 1500));
+      for (let i = 0; i < 5; i++) { await wait(1000); console.log('DBG later', i, JSON.stringify(await ev('SB.viewer.current()')).slice(0, 600)); }
+      console.log('DBG ping', JSON.stringify(await cdp('Runtime.evaluate', { expression: '1+1', returnByValue: true })));
+    }
     check(JSON.stringify(rows) === JSON.stringify([`${MADE[0].file}:?`]), `Changes lists the new file as untracked (${rows})`);
     check(/\(from main\)/.test(await ev("document.getElementById('viewerWhere').textContent")), 'the header names the base');
     check(await until(`document.querySelector('#viewerMain .vw-empty p')?.textContent === 'Pick a file to see what changed.' && document.querySelector('#viewerMain .vw-totals')?.textContent === ${JSON.stringify(`1 file · +${MADE[0].words.split('\n').length}`)}`), 'with no file picked, the right panel says so and totals the changes');
