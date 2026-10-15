@@ -113,7 +113,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     // ---- the viewer on it
     const paneId = await ev(`SB.panes.paneWith(SB.state.grid, ${JSON.stringify(copyTab)}).id`);
     check(await until(`!document.querySelector('.pane-head[data-pane="${paneId}"] .pane-files').hidden`), "the copy's pane has a Files button");
-    await ev(`document.querySelector('.pane-head[data-pane="${paneId}"] .pane-files').click()`);
+    const atClick = await ev(`(() => { const g = SB.state.grid.flat().map(p => ({ id: p.id, tabs: p.tabs, active: p.active })); const at = SB.state.activeTab; document.querySelector('.pane-head[data-pane="${paneId}"] .pane-files').click(); return { g, at }; })()`); // DEBUG
     check(await until("SB.state.view === 'viewer' && document.querySelectorAll('#viewerList .vw-row').length > 0"), 'the viewer opens on the copy');
     const rows = await ev("[...document.querySelectorAll('#viewerList .vw-row')].map(b => b.dataset.path + ':' + b.querySelector('.vw-st').textContent)");
     if (JSON.stringify(rows) !== JSON.stringify([`${MADE[0].file}:?`])) { // DEBUG (throwaway branch)
@@ -121,6 +121,12 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
       console.log('DBG raw', JSON.stringify(raw).slice(0, 1500));
       for (const [k, x] of Object.entries({ current: 'SB.viewer.current()', view: 'SB.state.view', where: "document.getElementById('viewerWhere').textContent", note: "document.getElementById('viewerNote').textContent", rows: "[...document.querySelectorAll('#viewerList .vw-row')].map(b => b.className + '|' + b.dataset.path + '|' + b.textContent)", tab: '(() => { const t = SB.activeTab(); return { id: t.id, cwd: t.cwd, worktree: t.worktree, busy: t.busy }; })()', drawer: 'SB.drawerShows?.()', toasts: "[...document.querySelectorAll('.toast')].map(t => t.textContent)" })) console.log('DBG', k, JSON.stringify(await ev(x)).slice(0, 1500));
       for (const [k, x] of Object.entries({ whereDisabled: "document.getElementById('viewerWhere').disabled", tabChanges: "document.getElementById('viewerTabChanges').getAttribute('aria-selected')", tabFiles: "document.getElementById('viewerTabFiles').getAttribute('aria-selected')", rawOpen: `shellby.viewerOpen({ tabId: ${JSON.stringify(copyTab)} })`, rawChanges: "shellby.viewerChanges(SB.viewer.current().id, { uncommittedOnly: false })" })) console.log('DBG', k, JSON.stringify(await ev(x)).slice(0, 1500));
+      console.log('DBG atClick', JSON.stringify(atClick));
+      console.log('DBG ids', JSON.stringify({ copyTab, paneId }));
+      console.log('DBG grid', JSON.stringify(await ev("JSON.parse(JSON.stringify(SB.panes ? state.grid : null))")).slice(0, 1500));
+      console.log('DBG grid2', JSON.stringify(await ev("(SB.state.grid || []).flat().map(p => ({ id: p.id, tabs: p.tabs, active: p.active }))")).slice(0, 1500));
+      console.log('DBG tabs', JSON.stringify(await ev("[...SB.state.tabs.values()].map(t => ({ id: t.id, cwd: t.cwd, wt: !!t.worktree, busy: t.busy }))")).slice(0, 1500));
+      console.log('DBG active', JSON.stringify(await ev("SB.state.activeTab")));
       for (let i = 0; i < 5; i++) { await wait(1000); console.log('DBG later', i, JSON.stringify(await ev('SB.viewer.current()')).slice(0, 600)); }
       console.log('DBG ping', JSON.stringify(await cdp('Runtime.evaluate', { expression: '1+1', returnByValue: true })));
     }
