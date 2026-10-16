@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.88.0: Claude Code installed for you, and a practice folder
+
+### New
+- **Install it for me:** when Claude Code isn't on your PC, the first screen runs Anthropic's official installer for you, then offers the sign-in. No terminal needed.
+- **A practice folder for First steps:** no project to hand? One click makes a tiny one with a typo to fix, and writes your first task for you.
+
+### Fixed
+- While Claude Code compacts a conversation, the line under the box now says "Compacting the conversation…" over a running bar, instead of a plain "Working…". When Claude Code compacts by itself, the line also shows how much of the summary it has written so far.
+
+### Changed
+- The README answers what people ask before installing: tokens, where your code goes, whether you need a terminal, and uninstalling.
+
 ## 0.87.1: A screen opened at startup stays open
 
 ### Fixed
