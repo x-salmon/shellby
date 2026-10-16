@@ -45,6 +45,12 @@
     }
   }
 
+  // The busy line while Claude Code compacts. chars: how much of the summary is
+  // written so far, which it says only for automatic compactions. compact: SB.compact.
+  const compactingLine = (chars, compact) => (chars
+    ? `Compacting the conversation… ${compact(chars)} characters of summary so far`
+    : 'Compacting the conversation…');
+
   // The note at the top of a feed that has dropped its oldest blocks.
   const trimmedLine = n => `${n.toLocaleString()} earlier ${n === 1 ? 'step' : 'steps'} hidden — the full conversation is in History.`;
 
@@ -261,7 +267,7 @@
   }
 
   const api = {
-    files, storySteps, markFor, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
+    files, storySteps, markFor, compactingLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
     decisionVerdict, questionVerdict, resultLabel, diffRows, laneMeta, laneCostTitle, laneFirstLine,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
   };

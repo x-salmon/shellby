@@ -713,6 +713,17 @@ body.calm-deep *, body.calm-deep *::before, body.calm-deep *::after { animation:
   animation: scuttle .5s steps(2) infinite;
 }
 body:not([data-home]) .status-crab { width: 10px; height: 10px; background: var(--coral); }
+/* Compacting: a glint runs along a track under the busy line until it's done.
+   Claude Code never says how far along a typed /compact is, so the bar claims
+   no percentage. Still track, no glint, with reduced motion. */
+.status.compacting { position: relative; }
+.status.compacting::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -5px; height: 2px; border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass), transparent) -70% 0 / 40% 100% no-repeat, var(--glass-dim);
+  animation: compact-glint 1.6s ease-in-out infinite;
+}
+@keyframes compact-glint { to { background-position: 170% 0, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .status.compacting::after { animation: none; background: var(--glass-dim); } }
 @keyframes scuttle { 0% { transform: translateX(0) } 100% { transform: translateX(4px) } }
 .stop-btn {
   display: inline-flex; align-items: center; gap: 6px;

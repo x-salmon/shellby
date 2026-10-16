@@ -12,7 +12,7 @@
 //   "editask <file>" -> asks to Edit (or Write) <file>, with the real tool call, and does it when allowed
 //   "big <tokens>" -> a reply whose call used <tokens> of a 200k window
 //   "mod"        -> a mod's log line, toast and status line, and its slash command (ui_*, commands_changed)
-//   "/compact"   -> compacts the conversation (a compact_boundary, then a result)
+//   "/compact"   -> compacts the conversation (compacting, a compact_boundary, then a result)
 //   "args"       -> replies with the command line it was started with (JSON)
 //   "mcp <tool> <json>" -> calls a tool on the in-app MCP server (see crabmcp.js)
 //                   and replies with its result; "mcp tools" lists them
@@ -506,9 +506,15 @@ function onLine(line) {
     result(true, { modelUsage: { 'claude-sonnet-5-5': { inputTokens: 10, outputTokens: 100, contextWindow: 200000 } } });
     return;
   }
+  // As Claude Code 2.1.299 does it: compacting (with no summary length on a typed
+  // /compact), a while, then null with how it went, the boundary and the result.
   if (content === '/compact') {
-    out({ type: 'system', subtype: 'compact_boundary', session_id: sessionId, compact_metadata: { trigger: 'manual', pre_tokens: 170000 } });
-    result(true);
+    out({ type: 'system', subtype: 'status', status: 'compacting', session_id: sessionId });
+    setTimeout(() => {
+      out({ type: 'system', subtype: 'status', status: null, compact_result: 'success', session_id: sessionId });
+      out({ type: 'system', subtype: 'compact_boundary', session_id: sessionId, compact_metadata: { trigger: 'manual', pre_tokens: 170000 } });
+      result(true);
+    }, Number(process.env.SHELLBY_FAKE_COMPACT_MS || 1500));
     return;
   }
 

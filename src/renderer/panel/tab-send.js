@@ -20,6 +20,7 @@
     const tab = SB.activeTab();
     const busy = !!tab?.busy;
     $('status').hidden = !busy;
+    $('status').classList.toggle('compacting', busy && !!tab.compacting);
     // While Shellby works you can keep typing: Enter queues the message, and
     // Claude reads it at his next step (or when he finishes, if there's none).
     $('sendBtn').title = busy ? 'Queue: Claude reads it at his next step' : 'Send · right-click to try it 2, 3 or 4 ways';

@@ -417,6 +417,21 @@ function nextPromptOf(ev) {
   return text ? [{ kind: 'next', text }] : [];
 }
 
+// Compacting as it happens: Claude Code says 'compacting' when it starts (and
+// every 30 s after), then null with how it went. How much of the summary is
+// written so far comes only with automatic ones, never a typed /compact.
+// Checked against Claude Code 2.1.299.
+function compactingOf(ev) {
+  if (ev.parent_tool_use_id) return [];
+  if (ev.status === 'compacting') {
+    return [{ kind: 'compacting', on: true, chars: Number.isFinite(ev.compact_output_chars) ? ev.compact_output_chars : null }];
+  }
+  if (ev.compact_result) {
+    return [{ kind: 'compacting', on: false, ok: ev.compact_result !== 'failed', error: oneLine(ev.compact_error, 300) || null }];
+  }
+  return [];
+}
+
 // Returns an array of UI items for one parsed stream-json event.
 function toItems(ev) {
   if (!ev || typeof ev !== 'object') return [];
@@ -440,6 +455,7 @@ function toItems(ev) {
         const m = ev.compact_metadata || {};
         return [{ kind: 'compacted', trigger: m.trigger === 'auto' ? 'auto' : 'manual', preTokens: Number.isFinite(m.pre_tokens) ? m.pre_tokens : null }];
       }
+      if (ev.subtype === 'status') return compactingOf(ev);
       if (MOD_UI[ev.subtype]) return modItem(ev);
       // Every command the conversation has now, with what each one does: how a
       // command a mod registers after the session started becomes known.
@@ -546,7 +562,7 @@ const KNOWN = Object.freeze({
   // control_response is read by session/ (answers to Shellby's own requests).
   // stream_event: the reply as it's written (only its words become items); prompt_suggestion: what you might ask next.
   types: new Set(['system', 'assistant', 'user', 'result', 'rate_limit_event', 'control_request', 'control_response', 'stream_event', 'prompt_suggestion']),
-  // init, task_*, compact_boundary, a mod's ui_* and commands_changed become items; the rest is progress chatter.
+  // init, task_*, compact_boundary, a compacting status, a mod's ui_* and commands_changed become items; the rest is progress chatter.
   system: new Set(['init', 'task_started', 'task_progress', 'task_updated', 'task_notification', 'compact_boundary',
     'ui_log', 'ui_toast', 'ui_status', 'commands_changed',
     'hook_started', 'hook_progress', 'hook_response', 'status', 'api_retry', 'thinking_tokens',

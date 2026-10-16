@@ -174,9 +174,10 @@ class SessionManager extends EventEmitter {
   }
 
   onItem(tab, raw) {
-    // The reply as it's written, and what you might ask next, are only for the
-    // panel now: the reply itself is kept when it's done, and a guess goes stale.
-    if (raw.kind === 'partial' || raw.kind === 'next') {
+    // The reply as it's written, what you might ask next, and compacting under
+    // way are only for the panel now: the reply itself is kept when it's done,
+    // a guess goes stale, and the compacted mark follows the compacting.
+    if (raw.kind === 'partial' || raw.kind === 'next' || raw.kind === 'compacting') {
       tab.activeAt = Date.now();
       this.emit('item', tab.id, raw, tab);
       return;

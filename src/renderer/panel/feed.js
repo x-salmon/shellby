@@ -57,6 +57,7 @@
       this.outcome = null;
       this.unread = false;
       this.statusText = 'Working…';
+      this.compacting = null;     // { chars } while Claude Code compacts the conversation (setCompacting)
       this.modStatus = new Map(); // mod name -> its status line ($.ui.status), under the box while this tab shows
       this.draft = '';
       this.attachments = [];
@@ -203,6 +204,13 @@
       if (this.isActive) SB.$('statusText').textContent = text;
     }
 
+    // { chars } while Claude Code compacts the conversation, null once it's done.
+    setCompacting(c) {
+      this.compacting = c;
+      this.setStatus(c ? F.compactingLine(c.chars, SB.compact) : 'Working…');
+      if (this.isActive) SB.$('status').classList.toggle('compacting', !!c);
+    }
+
     // ------------------------------------------------------------ items
     render(item, { replay = false } = {}) {
       SB.trailTake?.(this, item, replay); // where he's been in the files (trail.js)
@@ -218,7 +226,14 @@
       // Wrap, Show all and scroll their code blocks had while being written.
       const liveView = this.live && item.kind === 'text' && !item.sub ? SB.codeView?.([this.live]) : null;
       if (this.live && item.kind !== 'partial' && !item.sub) this.endLive();
+      if (this.compacting && (item.kind === 'compacted' || item.kind === 'result')) this.setCompacting(null);
       switch (item.kind) {
+        // Claude Code compacting the conversation: the busy line says so, over a
+        // bar that runs until it's done (panel.css). The compacted mark stays after.
+        case 'compacting':
+          if (replay) return;
+          this.setCompacting(item.on ? { chars: item.chars } : null);
+          return;
         case 'user':
           // Something you just sent always comes into view, even if you'd scrolled up.
           if (!replay) { this.stuck = true; this.dropCutOff(); }

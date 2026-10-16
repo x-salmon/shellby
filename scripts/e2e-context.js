@@ -7,8 +7,8 @@
 //   3. Past 80% he says it's getting crowded, and the composer offers room
 //      even after "filling up" was waved away
 //   4. The chip's menu: the running total, and the costliest turns, each a
-//      way back to it; "Not now" hides the offer; Compact runs /compact and
-//      empties the meter
+//      way back to it; "Not now" hides the offer; Compact runs /compact, the
+//      busy line says so over its bar, and the meter empties
 //   5. "Start fresh with a summary": a summary turn, then a new conversation
 //      in the same tab that's handed it
 //   6. /clear: the feed and the meter empty, nothing before it to rewind to,
@@ -93,6 +93,8 @@ function connect(url) {
     await ev("SB.$('ctxChip').click()");
     check(await until("!SB.$('ctxMenu').hidden && SB.$('ctxMenu').textContent.includes('Compact') && SB.$('ctxMenu').textContent.includes('Start fresh')"), 'the chip opens Compact and Start fresh');
     await ev("[...SB.$('ctxMenu').querySelectorAll('.menu-item')].find(b => b.textContent.includes('Compact')).click()");
+    check(await until("SB.$('status').classList.contains('compacting') && SB.$('statusText').textContent === 'Compacting the conversation…'"), 'the busy line says it is compacting, over its bar');
+    check(await until("!SB.activeTab().busy && !SB.$('status').classList.contains('compacting')"), 'and the bar goes when it is done');
     check(await until("!SB.activeTab().busy && SB.activeTab().el.textContent.includes('Compacted the conversation (it was 170k tokens)')"), 'Compact runs /compact and the feed marks it');
     check(await until("!SB.activeTab().context && SB.$('ctxChip').hidden && !document.querySelector('.tab.active .tab-ctx')"), 'the meter empties until the next reply');
 
