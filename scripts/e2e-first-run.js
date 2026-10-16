@@ -23,8 +23,8 @@ const { STEPS } = require('../src/main/first-run');
 const { ROOMS } = require('../src/main/rooms');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9437;
-const HOOK_PORT = '47957';
+const PORT = Number(process.env.E2E_CDP_PORT) || 9437;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47957;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const shotsAt = process.argv.indexOf('--shots');
 const SHOTS = shotsAt > 0 ? path.resolve(process.argv[shotsAt + 1]) : path.join(os.tmpdir(), 'shellby-e2e-first-run');

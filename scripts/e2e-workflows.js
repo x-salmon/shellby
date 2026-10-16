@@ -13,8 +13,8 @@ const path = require('path');
 const { templates } = require('../src/main/workflows/templates');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9361;
-const HOOK_PORT = 47997;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47997;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {

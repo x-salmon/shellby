@@ -16,8 +16,8 @@ const { tierShell } = require('../src/main/progression/shells');
 const { ACHIEVEMENTS } = require('../src/main/wardrobe/achievements');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9431;
-const HOOK = 47943;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9431;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47943;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-molt-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

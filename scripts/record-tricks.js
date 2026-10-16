@@ -17,7 +17,7 @@ native.dpiAware(); // physical pixels, like ffmpeg's gdigrab
 
 const ROOT = path.join(__dirname, '..');
 const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
-const PORT = 9371;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
 const FPS = 30;
 const GIF_FPS = 20;
 const GIF_SCALE = 0.75; // GIF pixels per DIP, the same in every clip

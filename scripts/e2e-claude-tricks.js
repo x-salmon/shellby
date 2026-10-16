@@ -13,7 +13,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9367;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const CHANGELOG = `# Changelog
@@ -51,7 +51,7 @@ const CHANGELOG = `# Changelog
     fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, claudeTricksState: { lastSeen: '2.1.288' }, ...settings }));
     return spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
       stdio: 'ignore',
-      env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47993', SHELLBY_CHANGELOG_URL: url },
+      env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47993', SHELLBY_CHANGELOG_URL: url },
     });
   };
   const connect = async () => {

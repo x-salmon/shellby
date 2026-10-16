@@ -14,7 +14,7 @@ const { formatWave } = require('../src/main/github/mail');
 const { TEMPERAMENTS } = require('../src/main/banter');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9361;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 async function connect(url) {
@@ -55,7 +55,7 @@ async function connect(url) {
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
-      ...env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47962', SHELLBY_MOTION_TEST: '1',
+      ...env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47962', SHELLBY_MOTION_TEST: '1',
       SHELLBY_GITHUB_WEB: mock.base, SHELLBY_GITHUB_API: mock.base, SHELLBY_GITHUB_CLIENT_ID: 'e2e-client',
     },
   });

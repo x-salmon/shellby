@@ -12,7 +12,7 @@ const path = require('path');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9391;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9391;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const KEY = 'abcdef012345';
@@ -48,7 +48,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: path.join(base, 'claude'),
-      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47997',
+      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47997',
       SHELLBY_GITHUB_WEB: mock.base, SHELLBY_GITHUB_API: mock.base, SHELLBY_GITHUB_CLIENT_ID: 'e2e-client',
     },
   });

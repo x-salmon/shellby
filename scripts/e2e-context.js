@@ -20,7 +20,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9390;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9390;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function connect(url) {
@@ -38,7 +38,7 @@ function connect(url) {
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ onboarded: true, sounds: false, wander: false }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47987' },
+    env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47987' },
   });
   try {
     let list = [];

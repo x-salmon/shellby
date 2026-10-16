@@ -66,7 +66,7 @@ contextBridge.exposeInMainWorld('shellby', {
   getEditors: invoke('editors:get'), zoom: invoke('panel:zoom'),
   viewerOpen: invoke('viewer:open'), viewerTree: invoke('viewer:tree'), viewerChanges: invoke('viewer:changes'), viewerRead: invoke('viewer:read'), viewerDiff: invoke('viewer:diff'), viewerLocate: invoke('viewer:locate'), viewerBranch: invoke('viewer:branch'), viewerClose: invoke('viewer:close'), viewerPlaces: invoke('viewer:places'), viewerSwitch: invoke('viewer:switch'), viewerStatus: invoke('viewer:status'), onViewerStale: on('viewer:stale'), // the file viewer (main's viewer.js), read-only
   claudeStatus: invoke('claude:status'),
-  claudeLogin: invoke('claude:login'),
+  claudeLogin: invoke('claude:login'), installClaude: invoke('claude:install'), practiceFolder: invoke('first-run:practice'), // onboarding's installer; First steps' practice folder
   claudeLogout: (opts = {}) => ipcRenderer.invoke('claude:logout', { thenSignIn: !!opts.thenSignIn }), // thenSignIn: "Switch account"
   onClaudeStatus: on('claude:status'), // re-checked after the sign-in window closes, or a sign-out
   locateClaude: invoke('claude:locate'), // when the search missed it (unusual install)

@@ -51,6 +51,21 @@
     crab: () => SB.setView('wardrobe'),
   };
 
+  // No project to hand: a tiny practice one (main/practice.js), its first task
+  // already written in the box, so the first thing Claude does is safe and shows a diff.
+  async function practice() {
+    const r = await api.practiceFolder();
+    if (!r?.ok) return SB.toast(r?.error || 'Shellby couldn’t make the practice folder.', { ms: 5000 });
+    await SB.folderChanged(r.folder);
+    const box = $('input');
+    if (box && !box.value.trim()) {
+      box.value = r.task;
+      box.dispatchEvent(new Event('input'));
+      box.focus();
+    }
+  }
+  const EXTRAS = { project: { label: 'Use a practice folder', run: practice } };
+
   function stepRow(s) {
     const now = s.id === view.current;
     const mark = s.state === 'done' ? '✓' : s.state === 'skipped' ? '–' : s.icon;
@@ -62,6 +77,7 @@
         now ? h('p', { class: 'fr-text', text: s.text }) : null,
         now ? h('div', { class: 'fr-actions' },
           ACTIONS[s.id] && s.action ? h('button', { class: 'btn slim-btn fr-go', type: 'button', text: s.action, onclick: ACTIONS[s.id] }) : null,
+          EXTRAS[s.id] ? h('button', { class: 'btn ghost slim-btn fr-extra', type: 'button', text: EXTRAS[s.id].label, onclick: EXTRAS[s.id].run }) : null,
           h('button', { class: 'btn ghost slim-btn fr-skip', type: 'button', text: 'Skip', 'aria-label': `Skip ${s.title}`, onclick: () => skip(s.id) })) : null));
   }
 

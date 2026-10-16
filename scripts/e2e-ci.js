@@ -100,6 +100,44 @@ function reapScript({ rootPid, sinceMs, root = path.join(__dirname, '..') }) {
   ].join('\n');
 }
 
+/**
+ * What a check's runs add up to: 'pass' when every run passed, 'fail' when
+ * none did, 'flaky' when it went both ways on the same code. Pure.
+ */
+function verdict(oks) {
+  if (!oks.length) return 'fail';
+  if (oks.every(Boolean)) return 'pass';
+  return oks.some(Boolean) ? 'flaky' : 'fail';
+}
+
+/** --repeat=N: run each check N times to find flaky ones (1, with none). -> { repeat } | { error }. Pure. */
+function repeatOf(args) {
+  const a = args.find(x => x.startsWith('--repeat'));
+  if (!a) return { repeat: 1 };
+  const m = /^--repeat=(\d+)$/.exec(a);
+  if (!m || +m[1] < 1 || +m[1] > MAX_REPEAT) return { error: `${a}: use --repeat=N, with N from 1 to ${MAX_REPEAT}` };
+  return { repeat: +m[1] };
+}
+const MAX_REPEAT = 20;
+
+// Each check gets ports the OS says are free (E2E_CDP_PORT, E2E_HOOK_PORT,
+// E2E_SPARE_PORT), so two runs at once (two worktrees, two agents) never meet
+// on a check's fixed port. A check run by hand falls back to its own.
+const PORT_ENVS = ['E2E_CDP_PORT', 'E2E_HOOK_PORT', 'E2E_SPARE_PORT'];
+const FREE_PORTS_JS = `const net = require('net');
+const n = ${PORT_ENVS.length};
+const servers = Array.from({ length: n }, () => net.createServer());
+Promise.all(servers.map(s => new Promise((ok, no) => { s.once('error', no); s.listen(0, '127.0.0.1', ok); })))
+  .then(() => { console.log(servers.map(s => s.address().port).join(' ')); servers.forEach(s => s.close()); });`;
+
+/** Distinct free ports, one per PORT_ENVS name, as env. {} when they can't be had (the checks' own ports then). */
+function freePortEnv() {
+  const r = spawnSync(process.execPath, ['-e', FREE_PORTS_JS], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
+  const ports = String(r.stdout || '').trim().split(/\s+/).map(Number);
+  if (ports.length !== PORT_ENVS.length || !ports.every(p => Number.isInteger(p) && p > 0)) return {};
+  return Object.fromEntries(PORT_ENVS.map((k, i) => [k, String(ports[i])]));
+}
+
 /** Stop what a check (its pid, and when it started) left behind. -> how many. */
 function reap(rootPid, sinceMs) {
   if (process.platform !== 'win32' || !Number.isInteger(rootPid)) return 0;
@@ -108,16 +146,22 @@ function reap(rootPid, sinceMs) {
 }
 
 if (require.main !== module) {
-  module.exports = { SUITE, discover, pick, balance, reap, reapScript };
+  module.exports = { SUITE, PORT_ENVS, discover, pick, balance, reap, reapScript, verdict, repeatOf, freePortEnv };
   return;
 }
 
-const picked = pick(SUITE, process.argv.slice(2));
-if (picked.error) {
-  console.error(picked.error);
+const args = process.argv.slice(2);
+const picked = pick(SUITE, args.filter(a => !a.startsWith('--repeat') && !a.startsWith('--report')));
+const repeated = repeatOf(args);
+if (picked.error || repeated.error) {
+  console.error(picked.error || repeated.error);
   process.exit(2);
 }
 const { suite } = picked;
+const { repeat } = repeated;
+// --report=file.json: each check's verdict and runs, for the nightly flaky hunt.
+const reportArg = args.find(a => a.startsWith('--report='));
+const reportFile = reportArg && reportArg.slice('--report='.length);
 
 // Each check launches and kills its own Electron, and Windows takes a moment to
 // let go of the profile, the ports and the GPU cache. Without a gap, a later
@@ -147,7 +191,8 @@ const run = (name, attempt) => {
   const script = path.join(__dirname, `${name}.js`);
   console.log(`\n${'='.repeat(70)}\n  ${name}${attempt > 1 ? `  (attempt ${attempt})` : ''}\n${'='.repeat(70)}`);
   const started = Date.now();
-  const r = spawnSync(process.execPath, [script], { stdio: 'inherit', timeout: TIMEOUT_MS, env: { ...process.env, SHELLBY_E2E: '1' } }); // SHELLBY_E2E: see src/main/test-desktop.js
+  const env = { ...process.env, ...freePortEnv(), SHELLBY_E2E: '1' }; // SHELLBY_E2E: see src/main/test-desktop.js
+  const r = spawnSync(process.execPath, [script], { stdio: 'inherit', timeout: TIMEOUT_MS, env });
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   const ok = !r.error && r.status === 0;
   console.log(`\n--- ${name}: ${ok ? 'PASS' : 'FAIL'} in ${secs}s`);
@@ -156,30 +201,53 @@ const run = (name, attempt) => {
   return { ok, secs, why: r.error ? r.error.message : r.status === null ? `killed (${r.signal})` : `exit ${r.status}` };
 };
 
-const results = [];
-for (const name of suite) {
+/**
+ * One check, once: one retry, reported as such. These drive a real UI, and a
+ * check that only passes on the second go is a problem of its own, but not a
+ * reason to fail the build, and hiding it entirely would be worse than naming it.
+ */
+function once(name) {
   let r = run(name, 1);
-  let flaky = false;
-  // One retry, reported as such: these drive a real UI, and a check that only
-  // passes on the second go is a problem of its own — but not a reason to fail
-  // the build, and hiding it entirely would be worse than naming it.
+  const runs = [r.ok];
   if (!r.ok) {
     settle();
     const again = run(name, 2);
-    if (again.ok) { flaky = true; r = again; }
+    runs.push(again.ok);
+    if (again.ok) r = again;
   }
-  results.push({ name, ...r, flaky });
   settle();
+  return { name, ...r, runs, flaky: verdict(runs) === 'flaky' };
 }
 
+/**
+ * --repeat=N, the flaky hunt: every check runs N times on the same code, with
+ * no retry, so any mix of pass and fail is a flake. Fails if any flaked.
+ */
+function hunt(name) {
+  const all = [];
+  for (let i = 1; i <= repeat; i++) { all.push(run(name, i)); settle(); }
+  const runs = all.map(r => r.ok);
+  const v = verdict(runs);
+  const last = all.findLast(r => !r.ok) || all[all.length - 1];
+  return { name, ...last, ok: v === 'pass', runs, flaky: v === 'flaky' };
+}
+
+const results = suite.map(name => (repeat > 1 ? hunt(name) : once(name)));
+
 console.log(`\n${'='.repeat(70)}`);
+const passes = r => `${r.runs.filter(Boolean).length}/${r.runs.length} passed`;
 for (const r of results) {
-  const mark = r.ok ? (r.flaky ? 'FLAKY' : 'PASS ') : 'FAIL ';
-  console.log(`  ${mark} ${r.name.padEnd(18)} ${r.secs}s${r.ok ? (r.flaky ? '  (failed once, passed on retry)' : '') : `  (${r.why})`}`);
+  const mark = r.flaky ? 'FLAKY' : r.ok ? 'PASS ' : 'FAIL ';
+  const note = r.flaky ? `  (${repeat > 1 ? passes(r) : 'failed once, passed on retry'})` : r.ok ? '' : `  (${r.why})`;
+  console.log(`  ${mark} ${r.name.padEnd(18)} ${r.secs}s${note}`);
 }
 const failed = results.filter(r => !r.ok);
 const flaky = results.filter(r => r.flaky);
 console.log('='.repeat(70));
-if (flaky.length) console.log(`${flaky.length} needed a retry: ${flaky.map(f => f.name).join(', ')}`);
+if (flaky.length) console.log(`${flaky.length} flaky: ${flaky.map(f => `${f.name} (${passes(f)})`).join(', ')}`);
 console.log(failed.length ? `${failed.length} of ${results.length} FAILED: ${failed.map(f => f.name).join(', ')}` : `all ${results.length} passed`);
+if (reportFile) {
+  const report = results.map(r => ({ name: r.name, verdict: r.flaky ? 'flaky' : r.ok ? 'pass' : 'fail', runs: r.runs, why: r.ok ? null : r.why }));
+  fs.writeFileSync(reportFile, JSON.stringify({ repeat, results: report }, null, 2) + '\n');
+}
 process.exit(failed.length ? 1 : 0);

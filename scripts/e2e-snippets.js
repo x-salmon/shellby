@@ -13,8 +13,8 @@ const path = require('path');
 const { STARTERS } = require('../src/main/snippets');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9353;
-const HOOK_PORT = 47997;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47997;
 const TOKEN = 'e2e-snippets-token';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9371;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-e2e-branch-')));
@@ -38,7 +38,7 @@ git('commit', '-qm', 'init');
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: path.join(base, 'claude'),
-      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47993',
+      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47993',
     },
   });
   try {

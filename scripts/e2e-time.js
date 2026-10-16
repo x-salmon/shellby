@@ -10,7 +10,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9351;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9351;
 const INSPECT = 9352;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };

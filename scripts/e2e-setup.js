@@ -11,7 +11,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-const PORT = 9341;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9341;
 const ROOT = path.join(__dirname, '..');
 const electron = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
 const wait = ms => new Promise(r => setTimeout(r, ms));

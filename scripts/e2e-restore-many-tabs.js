@@ -15,15 +15,16 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9366;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9366;
+const INSPECT = Number(process.env.E2E_SPARE_PORT) || PORT + 1;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
   let fails = 0;
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`, `--inspect=${PORT + 1}`], {
+  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`, `--inspect=${INSPECT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47992' },
+    env: { ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47992' },
   });
   try {
     let list = [];
@@ -46,7 +47,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const profAt = process.argv.indexOf('--profile');
     const PROFILE = profAt > 0 ? process.argv[profAt + 1] : null;
     // The main process, over the Node inspector: it moves only the panel this run owns.
-    const mj = await (await fetch('http://127.0.0.1:' + (PORT + 1) + '/json/list')).json();
+    const mj = await (await fetch('http://127.0.0.1:' + INSPECT + '/json/list')).json();
     const mws = new WebSocket(mj[0].webSocketDebuggerUrl);
     await new Promise(r => { mws.onopen = r; });
     let mid = 0; const mp = new Map();

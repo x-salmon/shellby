@@ -17,7 +17,7 @@ const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { FINDS } = require('../src/main/gifts');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9367;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
 const HOTKEY = 'Control+Alt+Shift+F9'; // nothing else on the PC should hold this one
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -54,7 +54,7 @@ async function connect(url) {
     app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
       stdio: 'ignore',
       env: {
-        ...env, SHELLBY_USER_DATA: dir, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47967',
+        ...env, SHELLBY_USER_DATA: dir, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47967',
         SHELLBY_GITHUB_WEB: mock.base, SHELLBY_GITHUB_API: mock.base, SHELLBY_GITHUB_CLIENT_ID: 'e2e-client',
       },
     });

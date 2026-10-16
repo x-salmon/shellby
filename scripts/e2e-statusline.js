@@ -13,8 +13,8 @@ const { COMMAND } = require('../src/main/statusline');
 const { AWARDS } = require('../src/main/progression/xp');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9353;
-const HOOK = 47993;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47993;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const plain = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 

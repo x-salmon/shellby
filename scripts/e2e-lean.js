@@ -55,7 +55,7 @@ async function launch(port, env) {
   // ---- 1. the cache dot and the fresh-start XP, with the fake CLI
   const fake = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
   fs.writeFileSync(path.join(fake, 'settings.json'), JSON.stringify({ onboarded: true, sounds: false, wander: false }));
-  let run = await launch(9391, { SHELLBY_USER_DATA: fake, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47988' });
+  let run = await launch(9391, { SHELLBY_USER_DATA: fake, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47988' });
   try {
     const panel = await cdp((await run.target('panel.html')).webSocketDebuggerUrl);
     await wait(3000);
@@ -98,7 +98,7 @@ async function launch(port, env) {
   fs.mkdirSync(path.join(home, 'rules'), { recursive: true });
   fs.writeFileSync(path.join(home, 'CLAUDE.md'), `# Me\n\n${'Prefer small, focused commits. '.repeat(80)}\n`);
   fs.writeFileSync(path.join(home, 'rules', 'ts.md'), `---\npaths:\n  - "**/*.ts"\n---\n# TypeScript\n\n${'Type the public API. '.repeat(40)}\n`);
-  run = await launch(9392, { SHELLBY_USER_DATA: real, SHELLBY_HOOK_PORT: '47989' });
+  run = await launch(9392, { SHELLBY_USER_DATA: real, SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47989' });
   try {
     const panel = await cdp((await run.target('panel.html')).webSocketDebuggerUrl);
     await poll(panel, '!!window.SB && !!SB.state.version', 20000);

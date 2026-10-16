@@ -32,6 +32,32 @@ all on **your own Pro or Max plan**, on Windows 10 and 11. No API keys, no per-t
 
 **What can it do to my repo without asking?** Only what you've allowed: the default **Ask first** mode asks before every edit and command your own rules don't already permit, and the fenced-off Autonomous mode is never on unless you pick it. A tab can work in its own copy of the repo on its own branch that only merges back when you say so, never with a force-push, and **Undo** puts back every file a turn changed. [Permission modes →](#permission-modes)
 
+**Before you install**
+
+<details>
+<summary><b>Does it use extra tokens?</b></summary>
+
+No. Your tasks go through your own `claude`, so they count against your Pro or Max plan just as they would in a terminal. Shellby only makes a Claude Code call of its own when you turn on a feature that needs one (**Keep warm**, or reading Linear or Jira issues for a project), and each turn shows its tokens and its share of your 5-hour window.
+</details>
+
+<details>
+<summary><b>Does it send my code anywhere?</b></summary>
+
+Only to Anthropic, through Claude Code, the same as in your terminal. Shellby has no servers, no accounts of its own and no telemetry. Sync and crash reports are off until you say yes. The [privacy policy](PRIVACY.md) lists every connection, and [SECURITY.md](SECURITY.md) covers how to report a problem.
+</details>
+
+<details>
+<summary><b>Do I need to open a terminal?</b></summary>
+
+No. If Claude Code isn't on your PC, the first screen offers to install it with Anthropic's official installer, then opens the sign-in in your browser.
+</details>
+
+<details>
+<summary><b>Can I uninstall cleanly?</b></summary>
+
+Yes. The uninstaller asks whether to delete your data (`%APPDATA%\Shellby` and `%LOCALAPPDATA%\Shellby`) as well. Claude Code and your `~/.claude` settings belong to Claude Code, so they stay.
+</details>
+
 ---
 
 ## Get started

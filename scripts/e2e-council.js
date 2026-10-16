@@ -15,7 +15,7 @@ const { savePng } = require('./lib/shot');
 const { DEFAULT_SEATS } = require('../src/main/council/prompts');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9402;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9402;
 const SHOTS = process.argv[2];
 const SEATS = DEFAULT_SEATS.length;
 // The fake CLI's pick (test/fixtures/fake-claude.js) and its one real fact (the other names a file that isn't there).
@@ -31,7 +31,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, stats: { tasksCompleted: 0 }, cwd: project }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47996' },
+    env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47996' },
   });
   try {
     let list = [];

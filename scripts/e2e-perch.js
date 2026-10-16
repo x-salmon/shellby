@@ -21,7 +21,7 @@ const native = require('../src/main/desktop/native-windows');
 native.dpiAware(); // see the same physical pixels the app does
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9367;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-perch-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

@@ -12,7 +12,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9365;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9365;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 // A real PNG made in the page: `w`x`h`, as a File with no path (what a snip is).
@@ -25,7 +25,7 @@ const pngFile = (w, h) => `await new Promise(r => { const c = document.createEle
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47993' },
+    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47993' },
   });
   try {
     let list = [];

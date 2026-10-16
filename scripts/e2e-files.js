@@ -21,8 +21,8 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9427;
-const HOOK_PORT = '48027';
+const PORT = Number(process.env.E2E_CDP_PORT) || 9427;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 48027;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const SHOTS = (() => { const i = process.argv.indexOf('--shots'); return i > 0 ? process.argv[i + 1] : process.env.E2E_SHOTS || null; })();
 if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });

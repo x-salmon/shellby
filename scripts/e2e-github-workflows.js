@@ -6,7 +6,7 @@
 //   node scripts/e2e-github-workflows.js
 const { spawn } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
-const ROOT = path.join(__dirname, '..'), PORT = 9387;
+const ROOT = path.join(__dirname, '..'), PORT = Number(process.env.E2E_CDP_PORT) || 9387;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const view = ({ claude, workflows }) => JSON.stringify({

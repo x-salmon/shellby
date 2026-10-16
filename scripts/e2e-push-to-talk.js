@@ -15,8 +15,8 @@ const path = require('path');
 const koffi = require('koffi');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9371;
-const HOOK = 47991;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47991;
 // Not the default: a Shellby you're running yourself already has Ctrl+Alt+Space.
 const HOTKEY = 'Control+Alt+F10';
 const VK = { CONTROL: 0x11, ALT: 0x12, F10: 0x79 };

@@ -13,7 +13,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9398;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9398;
 const SHOT_TIMEOUT_MS = 10000;   // an unpainted window never answers captureScreenshot
 const CDP_TIMEOUT_MS = 30000;    // the longest any one call to the page may take
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -85,7 +85,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
   const launch = () => spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     // SHELLBY_E2E, as e2e:ci sets it, run alone too: the windows let a person's mouse through (src/main/test-desktop.js).
-    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47960', SHELLBY_E2E: '1' },
+    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47960', SHELLBY_E2E: '1' },
   });
   let app = launch();
   try {

@@ -13,7 +13,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9357;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9357;
 const SKILLS = 200;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

@@ -14,7 +14,7 @@ const CORE_LOOP_LEVEL = 3;
 
 const STEPS = Object.freeze([
   { id: 'welcome', icon: '👋', title: 'Say hello', text: 'You picked how you want him. That one’s done.' },
-  { id: 'project', icon: '📁', title: 'Open a project', text: 'Point him at a folder you work in, so Claude reads the right code.', action: 'Choose a folder' },
+  { id: 'project', icon: '📁', title: 'Open a project', text: 'Point him at a folder you work in, so Claude reads the right code. No project handy? A practice one has a typo to fix.', action: 'Choose a folder' },
   { id: 'message', icon: '💬', title: 'Give Claude a task', text: 'Something small to start: “explain this project” or “fix the typo in the README”.', action: 'Write one' },
   { id: 'result', icon: '🔍', title: 'See what changed', text: 'Open a file he touched to read the diff, line by line.', action: 'Show his changes' },
   { id: 'crab', icon: '🦀', title: 'Meet the crab', text: 'Rub the mouse over him on the desktop to pet him, or try on an outfit.', action: 'Open Outfits' },

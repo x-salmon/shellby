@@ -13,7 +13,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9393;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9393;
 const SHOTS = process.env.SHELLBY_SHOTS || null;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -48,7 +48,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
   const motion = SHOTS ? '--force-prefers-no-reduced-motion' : '--force-prefers-reduced-motion';
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`, motion], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47995', SHELLBY_MOTION_TEST: '1' },
+    env: { ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47995', SHELLBY_MOTION_TEST: '1' },
   });
   try {
     let list = [];

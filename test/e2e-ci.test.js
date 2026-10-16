@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const os = require('os');
-const { SUITE, discover, pick, balance, reap, reapScript } = require('../scripts/e2e-ci');
+const { SUITE, PORT_ENVS, discover, pick, balance, reap, reapScript, verdict, repeatOf, freePortEnv } = require('../scripts/e2e-ci');
 
 test('a script is a check when its first line is a "// ci:" mark, and only then', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-e2e-ci-'));
@@ -101,4 +101,42 @@ test('a leftover that is not this checkout\'s is left alone, even in the tree', 
 
 test('every check in the suite is a script that exists', () => {
   for (const name of SUITE) assert.ok(fs.existsSync(path.join(__dirname, '..', 'scripts', `${name}.js`)), name);
+});
+
+test('a check that passes and fails on the same code is flaky; all one way is a pass or a fail', () => {
+  assert.equal(verdict([true, true, true]), 'pass');
+  assert.equal(verdict([false, false]), 'fail');
+  assert.equal(verdict([true, false, true]), 'flaky');
+  assert.equal(verdict([false, true]), 'flaky');
+  assert.equal(verdict([]), 'fail', 'nothing run is never a pass');
+});
+
+test('--repeat takes a number from 1 to 20, and is 1 without it', () => {
+  assert.deepEqual(repeatOf(['queue']), { repeat: 1 });
+  assert.deepEqual(repeatOf(['--repeat=3']), { repeat: 3 });
+  for (const bad of ['--repeat', '--repeat=0', '--repeat=21', '--repeat=3; calc', '--repeat=x']) assert.ok(repeatOf([bad]).error, bad);
+});
+
+test('each check gets distinct free ports, one per name', () => {
+  const env = freePortEnv();
+  assert.deepEqual(Object.keys(env), PORT_ENVS);
+  const ports = Object.values(env).map(Number);
+  assert.equal(new Set(ports).size, ports.length);
+  for (const p of ports) assert.ok(Number.isInteger(p) && p > 0 && p < 65536, String(p));
+});
+
+// Two runs at once (two worktrees, parallel agents) collided on checks' fixed
+// ports. Every check takes its ports from the runner, falling back to its own
+// only when run by hand.
+test('no check launches the app on a port the runner did not give it', () => {
+  const offenders = [];
+  for (const name of SUITE) {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', `${name}.js`), 'utf8');
+    const lines = src.split('\n');
+    const bad = lines.filter(l => /^const\s+(?:ROOT\s*=[^,]*,\s*)?(PORT|HOOK_PORT|HOOK|CDP)\s*=\s*'?\d+'?\s*;/.test(l)
+      || /SHELLBY_HOOK_PORT:\s*'\d+'/.test(l)
+      || /remote-debugging-port=\d/.test(l));
+    if (bad.length) offenders.push(`${name}: ${bad[0].trim()}`);
+  }
+  assert.deepEqual(offenders, [], 'use Number(process.env.E2E_CDP_PORT) || N, E2E_HOOK_PORT or E2E_SPARE_PORT');
 });

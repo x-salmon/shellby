@@ -21,8 +21,8 @@ const { SHELLS } = require('../src/main/progression/shells');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9361;
-const HOOK = 47996;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47996;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-life-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

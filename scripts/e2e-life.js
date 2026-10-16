@@ -22,8 +22,8 @@ const { FINDS, SETS } = require('../src/main/gifts');
 const { UNLOCKS } = require('../src/main/bond');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9377;
-const HOOK = 47999;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9377;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47999;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-life-'));
 fs.mkdirSync(OUT, { recursive: true });
 const wait = ms => new Promise(r => setTimeout(r, ms));

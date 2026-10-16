@@ -10,7 +10,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9357;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9357;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {

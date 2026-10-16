@@ -13,8 +13,8 @@ const { xpForLevel, xpForMarks, AWARDS } = require('../src/main/progression/xp')
 const { ACHIEVEMENTS } = require('../src/main/wardrobe/achievements');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9403;
-const HOOK = 47919;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9403;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47919;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-marks-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

@@ -9,7 +9,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9351;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9351;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-settings-tabs-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 fs.mkdirSync(OUT, { recursive: true });

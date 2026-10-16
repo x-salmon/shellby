@@ -7,6 +7,8 @@ const os = require('os');
 const path = require('path');
 const attach = require('../attachments');
 const { checkStatus, signInLapsed, run: runCli, verifyClaude } = require('../claude/cli');
+const installer = require('../claude/install');
+const practice = require('../practice');
 const { MODELS } = require('../models');
 const processJob = require('../process-job');
 const snippets = require('../snippets');
@@ -206,6 +208,42 @@ function registerPanelIpc(ipcMain, d) {
     return { ok: true, status: d.claudeStatus };
   });
   ipcMain.handle('claude:login', () => startClaudeLogin());
+  // First steps' practice folder, for someone with no project to hand (practice.js).
+  ipcMain.handle('first-run:practice', () => {
+    try {
+      return { ok: true, folder: practice.ensurePracticeFolder(app.getPath('userData')), task: practice.FIRST_TASK };
+    } catch (e) {
+      d.log.warn('practice folder failed', e.message);
+      return { ok: false, error: 'Shellby couldn’t make the practice folder.' };
+    }
+  });
+  // "Install it for me" (onboarding): Anthropic's own installer, hidden, then
+  // a fresh check. One at a time; a second press waits on the first.
+  /** @type {Promise<{ ok: boolean, error?: string, status?: any }> | null} */
+  let installing = null;
+  ipcMain.handle('claude:install', () => {
+    if (d.CAPTURE || d.FAKE_CLI) return { ok: true, status: require('../capture').FAKE_STATUS };
+    installing ||= runInstaller().finally(() => { installing = null; });
+    return installing;
+  });
+  function runInstaller() {
+    const { exe, args } = installer.installCommand();
+    return new Promise(resolve => {
+      const child = execFile(exe, args, { windowsHide: true, timeout: installer.INSTALL_TIMEOUT_MS, maxBuffer: 4 * 1024 * 1024 }, async (err, _out, stderr) => {
+        if (err) {
+          const error = installer.installFailure({ code: err.code, timedOut: !!err.killed, stderr });
+          d.log.warn('Claude Code install failed', error);
+          return resolve({ ok: false, error, status: d.claudeStatus });
+        }
+        const status = await recheckClaude().catch(() => d.claudeStatus);
+        d.log.info('Claude Code installed', `v${status?.version || '?'}`);
+        resolve(status?.installed
+          ? { ok: true, status }
+          : { ok: false, error: 'The installer finished, but Shellby still can’t find Claude Code. Try Check again, or Find it myself…', status });
+      });
+      child.on('error', e => d.log.warn('Claude Code installer failed to start', e.message));
+    });
+  }
   // Signing out (and "Switch account", which signs straight back in) runs
   // Claude Code's own `auth logout`: the sign-in is Claude Code's, not ours.
   ipcMain.handle('claude:logout', async (_e, { thenSignIn = false } = {}) => {

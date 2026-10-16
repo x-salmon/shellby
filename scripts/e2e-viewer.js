@@ -11,7 +11,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const { PLACES_MS } = require('../src/main/viewer'); // main reuses a repo's menu list this long
-const PORT = 9421;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9421;
 const SHOT_TIMEOUT_MS = 10000;   // an unpainted window never answers captureScreenshot
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const shotsAt = process.argv.indexOf('--shots');
@@ -72,7 +72,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
   }
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: userData, CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47972', SHELLBY_E2E: '1' },
+    env: { ...process.env, SHELLBY_USER_DATA: userData, CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47972', SHELLBY_E2E: '1' },
   });
   try {
     let list = [];
