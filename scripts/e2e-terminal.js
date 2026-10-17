@@ -11,8 +11,8 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9369;
-const HOOK_PORT = 47996;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9369;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47996;
 const SERVER = path.join(ROOT, 'claude-plugin', 'mcp', 'server.js');
 const CLI = path.join(ROOT, 'src', 'cli', 'shellby.js');
 const FIXTURE = path.join(ROOT, 'test', 'fixtures', 'devservers', 'server.js');

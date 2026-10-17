@@ -1,5 +1,197 @@
 # Changelog
 
+## 0.88.0: Claude Code installed for you, and a practice folder
+
+### New
+- **Install it for me:** when Claude Code isn't on your PC, the first screen runs Anthropic's official installer for you, then offers the sign-in. No terminal needed.
+- **A practice folder for First steps:** no project to hand? One click makes a tiny one with a typo to fix, and writes your first task for you.
+
+### Fixed
+- While Claude Code compacts a conversation, the line under the box now says "Compacting the conversation…" over a running bar, instead of a plain "Working…". When Claude Code compacts by itself, the line also shows how much of the summary it has written so far.
+
+### Changed
+- The README answers what people ask before installing: tokens, where your code goes, whether you need a terminal, and uninstalling.
+
+## 0.87.1: A screen opened at startup stays open
+
+### Fixed
+- **A screen you open while Shellby is starting stays open.** Opening Trophies, Outfits or any other screen in the first second or so used to bounce you back to the chat once the panel finished loading. It now stays where you went.
+
+## 0.87.0: All files beside the chat, and Keep warm
+
+### New
+- **All files, beside the chat.** The Trail's drawer is now the File manager, with two tabs on its header line: All files (Ctrl+Shift+F), which it opens on, and Trail. All files shows the whole project of the conversation you're in. Each file has its git mark and +/− since the last commit, and each folder sums up what's under it, so a closed folder still tells you where the work is. As Claude works, files light up purple when read, orange when written and green when a commit lands, and their folders open while they're lit. The branch row shows how far ahead or behind you are and opens the worktree and branch menu.
+- **Pick a file to talk about.** Click a file in All files and a chip above the box says it goes with your messages, so "this" means that file. Claude is told which file it is; nothing is read from it. The × clears it, and typing `@` and a path finds that file in the tree.
+- **Keep warm while you're away.** Before lunch, press the mug in the tab strip. While you're gone, Shellby sends each conversation of 200k tokens or more whose cache is still warm one tiny message just before its hour runs out. Your first message back then reads the conversation from the cache instead of writing it all again. Smaller conversations are left alone: they cost little to write again. It turns itself off when you're back, or after 3 hours, and leaves a dim line in each conversation saying what it did.
+
+### Fixed
+- **An empty Trail no longer slides its header down.** With nothing on it yet, the drawer picked up the welcome screen's spacing and its header sat partway down; it now stays at the top.
+
+### Changed
+- **Trail rows open in the file viewer.** A row's open button, a double-click or Shift+Enter shows the file in the viewer, as a file link in the chat does. Hold Ctrl to open your editor instead.
+
+## 0.86.0: Ultracode, a guided first run, and a steadier client
+
+### New
+- **The Council says what it costs.** Before it sits, the hint by Convene gives a range ("About $0.07–0.39") for the mode, the seats and the read. After, the minutes and Past sessions show what it really cost, added up from every call. If a call didn't say, it reads "at least".
+- **First steps.** Someone new gets a short path on the chat's start screen: open a project, give Claude a task, see what he changed, and say hi to the crab. Each step ticks itself off when you really do it, any of them can be skipped, and × puts the card away until Settings → General → Screens brings it back.
+- **The game opens when you're ready for it.** Finds, Stickers, Crew, the Bugdex, the Council, Us, the Tank, a project's Reef and Review mastery wait until First steps are done or he reaches level 3, then open as you work, each with a card that names the quest chapter teaching it and a "new" on its door until you look.
+- **Show everything now**, in Settings → General → Screens, for anyone who'd rather have every screen at once.
+- **Fix this, on the reef.** Every reef signal that can get better has a Fix this button. It opens a new conversation in that project with a prompt already in the box, naming the files with the most escape hatches or lint problems, the least-covered files, the failing CI checks, the flaky tests, the vulnerable packages or the bug nests, and how to check the fix. Nothing is sent until you press Enter.
+- **Fix the worst.** The Reef card also offers Fix the worst, which picks the signal with the most room to get better. When the next reading shows it improved, it's a new best and a polyp, as always.
+- **Ultracode, from the box.** The Ultracode chip under the box adds the word "ultracode" to what you send in that conversation, so Claude can send out a whole crew of agents in the background. It's off until you turn it on, and the first time he asks first, with a rough idea of what a run costs.
+- **A card for every run.** Its phases, how many agents are running and done, how long it's been going and what it has cost so far (at the least: Claude Code doesn't say the price), with Stop and how it ended. Close the conversation and bring it back, and the card is still there.
+- **The crew walks out.** A run's agents go out as helper crabs, a few at a time, with "+N more" for the rest, and walk home as they finish. What they spend counts on your usage meters.
+
+### Fixed
+- **Nothing he started outlives him.** Quitting now ends every task still running in the background (a one-off Claude Code run, a workflow's MCP server, a sign-in), and the packages a new copy installs are stopped, along with everything npm started, if they take too long or you quit.
+- **Closing a tab mid-turn no longer muddles other tabs' changes.** A conversation closed while it was working kept claiming the files it had touched, so other conversations' diffs and Undo could leave them out.
+- **A copy that can't be made says why.** With no git on the PC he used to say the folder wasn't a repository; and a folder of copies he couldn't write to (no permission, a full disk, too long a path) now gets a sentence instead of silence.
+- **Long conversations stay light.** Helpers that finished long ago are let go instead of piling up for the life of the conversation.
+- **The Council counts on your usage meters.** Its sittings now show up as their own line in who used your 5-hour and weekly windows.
+- **Copy works on long text.** Copy buttons said "Copied" but put nothing on the clipboard when the text ran past 2,000 characters, so long prompts, plans and code blocks never copied. They now copy in full.
+- **Bug nests reach the reef.** Open nests in the Bugdex never showed up on a project's reef. They do now.
+- **A panel full of busy tabs no longer freezes after you minimize it.** With a lot of conversations working at once, the panel used to redraw the whole tab strip for every progress report, fell behind, and stayed frozen (for minutes, in the worst case) while it caught up after you restored or maximized it. It now keeps up with the newest report and skips redrawing tabs that look the same.
+
+### Changed
+- **Screens say what they're for.** While you're new, Outfits, Health and the Logbook carry a line on what they do, and an empty History has a button to start your first conversation.
+- Already using Shellby? Nothing moves or hides for you.
+- **Helpers start folded.** A subagent's lane in the conversation now starts closed, with what it's doing on its one line. It opens by itself only when the helper needs your answer, and one you open stays open when it finishes.
+
+## 0.85.0: The Logbook, levels to 99 and Shellby Wrapped
+
+### New
+- **Bug battles replay the real fix.** The finishing blows now come from what Claude actually did: a new test that proves it lands a Proof Strike, a fix at the cause a Root Cut, a pass on the first re-run First Try, and helpers a Crew Combo. Each catch card gets a fix report with those four marks.
+- **Rematches.** A bug you've caught in a project before comes back stronger, and remembers how it was fixed last time ("Last time: no test"). Win the rematch with a new test and it's Sealed.
+- **Bug nests.** When the same bug turns up three times in a month in one project, it nests there. Catch it and keep it away for 14 days (7 if a test sealed it) to clear the nest. Nests sit at the top of the Bugdex with a ring showing how close each is, plus a rematch history of every bug you've fought more than once.
+- **Good fixes pay off.** A fix with a new test at the root, a fix that stays fixed for 14 days and a cleared nest each earn XP, and count toward trophies that can unlock tank pieces. Nothing is ever taken away.
+- **The Council reads your project before it sits.** Shellby reads the project you're working in first (only reading: he can't change or run anything, never leaves the folder, and stops at $0.30), and lays what he found on the table as numbered cards. Every advisor argues from the same facts and cites them, so "I haven't read the code" is gone. Each fact links to its file and line, and one naming a file that isn't there is left out.
+- **He picks who sits.** For each question Shellby seats the 3 to 5 advisors whose angles matter most, now from a bench of nine: the Tester, the Keeper, the Newcomer and the Counter join the Skeptic, Builder, Guard, Player and Elder. Turn it off under Seats to choose the table yourself.
+- **A decision, not a shrug.** The verdict is sealed **Do it**, **Don't** or **First, this**, with the best case against it and what's still open. Advisors who vote "Depends" name the one condition, and each says what would change their mind.
+- **Put it to work.** **Plan the next steps** opens a conversation in Plan mode with the verdict and its facts, ready for you to read and send. **Answer what's open** has him read the project for what's still open and the council sits again. **Add to Notes** puts the verdict on the project's Notes.
+- **They're held to it.** Tell the council how a verdict went (followed it and it worked, followed it and it didn't, or didn't follow it) and each advisor earns a record on their plaque. The chair weighs the records next time.
+- **Debate is sharper.** Each advisor answers another by name, and the minutes and their vote token show who changed their mind.
+- **Compact long conversations while they're idle.** A new switch in Settings, Claude Code (off unless you turn it on). A conversation of 200K tokens or more that sits quiet for 54 minutes is compacted just before its hour-long prompt cache runs out, so your next message doesn't send all of it again at full price. Claude Code does this in a terminal; now Shellby's tabs can too. It respects `"idleCompaction": false` and `CLAUDE_CODE_IDLE_COMPACT_MIN_TOKENS`, and it's quiet: no toast, phone ping or XP, just a line in the conversation saying so.
+- **The Logbook.** A new first tab on his screen with everything going on in one place: today's bounties, your quest, the tide event, bugs on the loose, your next unlock, your reefs, your review track and your week. Every card opens the screen it comes from, and says what it leads to ("catch it with a test → its nest clears → coral grows"), each line a link. Pin the ones you care about to the top, or fold the rest away.
+- **Ten new quest chapters.** The quest line keeps going after the first four tricks: the reef, the Bugdex, routines and workflows, review, the tank, tide events and more, each chapter teaching one screen and how it feeds the next. They open as he levels up, a tide event opens one early, and a screen you haven't tried in a while gets its chapter sooner. Each finished chapter pays XP. Your progress on the first four carries over as Chapter 1.
+- **Levels 20 to 99 are full of things.** Nearly every level now unlocks something: 12 new shells, 27 tank pieces (an anglerfish lamp, a lighthouse with a turning beam, a kraken arm, a supreme pedestal), 19 effects and ten perks like a fourth daily bounty and two tide-out days a week. A bar under the XP bar counts down to the next one, and **Every level** shows the whole ladder.
+- **Milestone ceremonies.** Levels 20, 30, 40, 60, 70, 80 and 90 take over the panel in the new rank's colour, and 50 and 99 are legendary, with a card to share.
+- **Molt at 99.** If you want, he starts again at level 1 and keeps absolutely everything, for a tier shell of his own and a ring round his level badge. The first twelve are hand-made and wild: lava that flows, an eye that blinks and looks around, a lava lamp, a spinning event horizon, gears that turn, a crown with flames. Every molt after that makes a one-of-a-kind shell of its own.
+- **Reef health per project.** Press **Watch this reef** on a project's page and he keeps an eye on how its code is doing: escape hatches like `ts-ignore` and `any`, lint problems, coverage, CI, flaky tests, vulnerable packages, bug nests and the test count. Only a new best counts, and each one grows a polyp on the project's coral. A worse day never takes anything away; it only turns the coral paler. Counts only, kept on this PC, and Shellby never runs your code to get them. See [Reef health](docs/REEF.md).
+- **Coral in his tank.** Every watched reef grows its own coral, shaped by the project and swaying in the current, on the tray's Plants shelf and in the new Coral list on the Tank page.
+- **Review mastery on Trophies.** Points for really reading Claude's work: a quiz passed on a turn, a review with a comment that says something, and a catch when Claude's next turn rewrites the lines you flagged before anything was pushed. Five tiers, from Tide-pool Reader to Abyssal Auditor, each paying XP, with tank pieces along the way.
+- **Shellby Wrapped.** Every January 2nd (or the first time you use him after it), Shellby shows you the year before in a few slides: your XP and levels, the days you spent together and your longest run, your busiest hour and day, the projects you shipped most, the bugs Claude caught and your nemesis, fixes that held, the reef, review, tide medals, and the pieces you earned for his tank. It ends on a card you can save, copy and post. Missed a year? It waits behind the 🎁 on Trophies. He's keeping the yearbook from today, and this year's fills in what he already knew, so it says "since" when it starts.
+- **Rare tank pieces for your milestones.** Forty new pieces, each earned by a milestone of its own: 10, 100, 250, 500 and 1,000 bugs caught, your first bug nest cleared, rematches won, fixes that held, a perfect tide, every Molt, a thriving reef, each review tier, each year of Wrapped, levels 25, 50, 75 and 99, quest chapters, and 60 and 100-day streaks. Lots of them move: jars bubble, a buoy blinks, a hawk turns its head, snow falls in the globes. They have their own Milestones shelf in the tank, where the ones still to come show as a silhouette with how close you are, and earning one offers to put it straight in.
+
+### Fixed
+- **Streaks don't punish you any more.** Weekends hold your streak (turn that off on the XP card), one missed working day a week is a free 🌊 tide-out, and if a streak does break the bonus eases off 5% a day instead of vanishing.
+
+### Changed
+- **Quick and Debate.** Full is folded into Debate, which is the same plus one round of answering each other.
+- **Mods that can read your attachments say so.** Before you turn one on, the Toolbox now lists "Reads the pictures and documents you attach" for a mod that asks Claude Code for the images and documents on your messages.
+- **Quests live in the Logbook.** The chat's quest card now says which chapter you're on and has a Logbook link, and "See the quest line" opens the Logbook's chapter list.
+- His tank sizes go by the highest level he's ever reached, so they stay his after a Molt.
+
+## 0.84.0: Background sessions, server logs beside the chat, and combining tries
+
+### New
+- **Take one file from the other try.** Comparing two tries now has **Take theirs** on every file, so you can keep this one but use the other's version of a single file. It never overwrites a file you've changed since you compared.
+- **Combine them.** One button asks Claude to read the other try and bring its best parts into this one, then say what it took and why.
+- **See how each try went.** A comparison shows each try's turns, time, last test run and the last thing Claude said, and marks every file as changed here, changed there, or changed by both since they split.
+- **Background sessions.** Claude Code sessions running in the background (`claude --bg`, or /fork in a terminal) show up in Settings → Everywhere. He tells you when one needs input or finishes, by toast and on your phone. Each one has Open (it carries on as a tab here), Logs, Stop, Respawn and Remove.
+- **Review findings as cards.** When Claude reports what a review found, each finding is a card with its file and line as a link, how it goes wrong, and a Fix this button that puts the prompt in the box. Fix all does every one.
+- **Claude can tap you on the shoulder.** When Claude decides something is worth a notification, he says it, a toast pops up if the panel's out of sight, and your phone gets it if you've connected one (Settings → Connections, "Claude asks to let you know something").
+- **Forget Claude's history here.** A project's page can delete what Claude Code keeps for that folder: transcripts, to-dos, file history and memory. Shellby lists exactly what will go before you say yes, and your code isn't touched.
+- **A dev server's log beside the chat.** On a running server's card, **Show beside the chat** opens its log in a pane next to your conversations, so you can watch it while Claude works. It keeps up as the server prints, with Restart, Stop and Open to hand. If the server crashes, the error is right there, and **Ask Claude to fix it…** takes you to its card to send it. The pane's × closes it.
+
+### Fixed
+- **The original can compare with its branches.** A conversation in your own checkout now shows an **other tries** chip once it has been branched, so you can compare and keep one from there too, not only from a branch.
+- **Branches get their packages.** A branch's copy now gets `node_modules` the way a conversation's own copy does, so its tests run straight away.
+- **Shared folders are marked.** When a branch has to share the original's folder, both tabs show ⚠, since each sees the other's changes.
+- **Every other try is listed.** The branch chip no longer stops at seven.
+- Changing the folder in a pane that held only a new, empty conversation no longer folds that pane into the one beside it: the conversation in the new folder opens in the same pane.
+
+### Changed
+- When Claude moves itself into a worktree mid-conversation, the feed says so with its branch, and the conversation's changes are read from the worktree until it leaves.
+
+## 0.83.0: The file viewer
+
+### New
+- **See what a worktree changed, without leaving Shellby.** The Files button on each pane opens that conversation's folder. It lists what changed since its branch began, shows each file's diff with line numbers, and shows any file in colour. The list keeps up while Claude works. Long lines wrap, and a Wrap button in the file's title bar turns that off. The list and the file each sit in their own framed panel, and the list ends with a total of the files and lines changed. The branch chip and the Project page open it too, for your own checkouts and every worktree of a project.
+- **Every worktree and branch, from the viewer's header.** Click the folder's name at the top of the viewer to list the repo's worktrees, with how many files each has changed, and the branches that have work main doesn't. Pick a branch to see what it changed since it left main, each diff, and any file in it. Shellby reads all of it from git and checks nothing out.
+- **File links open in Shellby.** Click a file Claude mentions and it opens in the viewer at that line. Ctrl+click opens your editor, as before.
+- **You can resize the trail.** Drag the line on its left edge, or use the arrow keys on it, and double-click it to go back to the usual width. Shellby remembers the width you leave it at.
+
+### Fixed
+- **The shortcut list (Ctrl+/) shows Ctrl+Shift+R**, which opens Ready to review. It worked before but wasn't listed.
+- The note under the flaky test switch says the list is on the Projects page, where it moved, and Dependency health names `cargo audit`, which is what it runs.
+- When Claude offers phone notifications, it now points you to Settings → Connections, the tab's real name.
+
+## 0.82.0: The trail
+
+### New
+- The Council has a New session button by Past sessions. It clears the table and drops a follow-up, so the next question starts fresh. The last sitting stays in Past sessions.
+- **Suggest an idea from Shellby.** Right-click him → Send feedback now has *Suggest an idea…* next to *Report a problem…*, and both are under Settings → About too. Each one opens a GitHub draft with your version filled in. Nothing is sent until you press submit.
+- **He asks for an idea once.** The first time you two become Buddies, he asks what he should do next. He never asks again.
+- **The trail: watch him crawl through your files.** Press Ctrl+Shift+E (or the footprints in the bar above the chat) and a map opens beside the conversation. It shows only the files Claude has touched. Files he read get footprints, files he changed are dug over with their +/−, and files a search found give off a glint. He walks to each file as he works there, holding his book, pencil or magnifying glass, and his helpers walk their own trails in their lane's colour.
+- **The trail points out what's worth a look.** It tells you when he keeps going back to the same file, when a file changed and the test named after it never ran (Run it), and when he opened a file that can hold passwords, like `.env`. Files outside the project get a section of their own. A change waiting for your OK says so on its row.
+- **Click a file on the trail to see where he did it.** The step lights up in the conversation, with an edit's diff open. Shift+Enter opens the file in your editor, and @ puts it in your message.
+- **Replay every step.** Press play or drag the slider under the trail and he walks the conversation again, one step at a time, with each step lit in the chat as he reaches it. Live brings you back to now. *This turn* shows only what your last message touched, and *All* keeps earlier turns, paler.
+
+### Fixed
+- /btw works in a conversation on another computer. It used to ask this PC's Claude Code, which had never seen that conversation, and said "Claude Code didn't answer". It now asks on the computer the conversation runs on.
+- When /btw can't answer, it says why: a conversation Claude Code can't find, or another computer it can't reach, instead of always suggesting you sign in.
+- The Council no longer squashes flat on a wide panel, with the advisors towering over the table. The hall keeps its shape and sits in the middle.
+- **Replies look right while they're written.** A reply being written kept every line break from its markdown, so it read like plain text and then jumped into shape when it finished. It's laid out as the finished reply is from the first words.
+- **Drawings in a reply line up.** Boxes, trees and mockups Claude draws in box characters now use a font that has every box glyph, and their vertical lines meet. An emoji or symbol inside one takes the columns a terminal would give it, so the right edge stays straight.
+
+### Changed
+- **/bug and /feedback ask "Shellby or Claude Code?"** Before, they always went to Claude Code's issue page.
+
+## 0.81.0: Marks past 99, zoomed panes and named layouts
+
+### New
+- Claude's replies format as they're written, instead of arriving as raw text and jumping into shape at the end.
+- Replies show quotes, nested lists, to-do lists with their boxes ticked, strikethrough, and lists that start at the number Claude gave them.
+- Plain `https://` addresses and file paths like src/main/x.js:42 are links even outside backticks.
+- A step's output has a Copy button, and a long one opens to its full height with Show all. Failed output is tinted red.
+- Code blocks have a Wrap button for long lines, and say "cut off" when a reply ended mid-block.
+- When Claude Code passes on what Claude thought, it sits folded above the reply.
+- **Long code blocks fold.** A code block in a reply that runs past 30 lines shows about two dozen of them and scrolls, so it no longer takes over the conversation. **Show all** in its bar opens it to its full height.
+- Scrolled up in a conversation, a ↓ button in the corner takes you back to the latest, and wears a dot when something new has come in below.
+- **LibreHardwareMonitor updates.** LHM never updates itself, so the copy Shellby set up for your CPU temperature stayed on whatever version it started with. **Sensors** in Health now shows which version you have and says when a newer one is out. **Update it** fills in a Claude task that keeps your LHM settings, updates it and starts it again.
+- **Marks past level 99.** XP keeps counting after the top level: the first mark (★) takes 5,000 XP more, and each one after costs 500 more than the last. The badge shows them as 99★3, the Trophies card counts down to the next, and each one gets a celebration on your desktop and in the panel.
+- **Zoom a pane.** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Enter</kbd>, or the new button on a pane's header, fills the chat with the pane you're in while the others wait, as they were. Press it again, or go to another pane, and they're all back.
+- **Layouts you name.** Split the way you like it, then **Save this layout** from <kbd>Ctrl</kbd>+<kbd>K</kbd> (type "save review" to call it "review"). **Use the "review" layout** puts whatever you have open into that shape, sizes and all, with a new conversation for any pane it's short. Up to twelve.
+- **A project's own layout.** **Make this <project>'s layout** keeps one per project. Go back to that project with the panel in one pane and it's offered: its conversations take a pane each, with new ones in its folder for the rest.
+- **Each pane says how it's doing.** Its header shows the branch its copy is on and how its last checks went, ✓ or ✗, or … while they run.
+- **See what needs you, even twelve panes in.** A pane holding a conversation that wants your OK lights up amber. Zoomed in, the header names it. <kbd>Alt</kbd>+<kbd>J</kbd> goes to the next one waiting, whichever pane it's in.
+- **Swap two panes.** Drag a pane's header onto another pane, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+arrows, and they trade places. The sizes stay where they were.
+
+### Fixed
+- A note's Ask that you go on to have change things now moves into its own copy on a new branch, like any other conversation, instead of editing your checkout.
+- **Code blocks in a reply that's still being written answer every click.** Copy or Wrap pressed while Claude was still writing could do nothing, because the block was drawn again a few times a second. Finished blocks now stay put, and a block's Wrap, Show all and scroll carry on into the finished reply.
+- **A note's Ask or Plan no longer asks about everything afterwards.** Ask still starts in Ask first, and Plan in Plan only. Once Ask has answered, or once you approve the plan, the conversation goes back to your own mode, so Autonomous really is autonomous. Before, the rest of that chat stayed in the starting mode and asked about every step.
+- With conversations side by side, clicking into another pane no longer hides what the first one left running: each pane you're not typing in keeps a line of its background commands and to-do progress, and a click on it brings back the full list with Output and Stop.
+- Signed in to GitHub, the note under "Let Claude tasks push workflows" read "true" or "false" instead of saying what the setting does.
+- A reply being written shows its first words with its bubble again, instead of an empty bubble for a moment.
+- GitHub asks for your OK once. Every GitHub feature can be ticked before you sign in, including letting Claude tasks push, CI workflows, history sync, visiting crabs, the profile card and the PR badge; each still asks its own question when you tick it, and then one approval on github.com covers them all, instead of a fresh code for each one turned on afterwards.
+- **Notifications open conversations in their own window.** Clicking one for a conversation you'd popped out of the panel now brings that window to the front, instead of leaving it behind whatever you were in.
+- **Older notifications still work.** Clicking one later from the Windows notification centre opens what it's about, rather than sometimes doing nothing.
+- **Ctrl+Alt+Enter in the message box no longer sends.** It zooms the pane now.
+- The suggestion above the box (what you might ask next) no longer flashes while other conversations work, and stays hovered: it's only drawn again when Claude Code guesses something new.
+- Suggestions don't slip out from under the pointer when you hover near their edge. The › steps forward instead of the whole button.
+- The start screen's suggestions stay the same while you look at them, instead of reshuffling whenever his look changed (a new song, a sticker, a new shell).
+
+### Changed
+- **Your beach is on the Us page now.** Us opens on your beach, with him sitting beside the newest castle, so his screen has one tab fewer. Click him for a pet, feed him and he chomps right there, and as you get closer he holds up his favourite find and draws hearts in the sand in front of him. Everything the Beach tab had is still there: castles rising as you watch, the strip to look along it, Share a snapshot, and how it grows further down the page.
+- Heading levels in a reply look different from each other, and an opened step shows its whole command.
+- An error the app has no plain words for gets a Copy button.
+- **Moving around in Settings is tidier.** Climbing onto your windows and up the screen's edges now sit under the stroll switch they depend on, and they fade back when strolling is off. Every dropdown lines up in one column. The note about Windows' animation effects only shows when they're actually off and he's staying put.
+- **Notes look tidier.** Your notes sit on one page with a round tick for each, instead of a stack of separate boxes. Long notes wrap at a comfortable width on a wide panel, and Add sits inside the box you type in.
+- **Levels come a little slower.** A finished task now earns 5 XP instead of 10, and passing tests 15 instead of 25. Those two came by the dozen on a busy day and made up most of the XP, so the bigger moments (tricks, deploys, fixes, pushes) count for more of it now. Nobody loses a level they already have.
+- **Dependency health, flaky tests and dependency watch now live under Projects.** They're about how your projects' code is doing, so they sit under your project list instead of under Routines, which is now only about things that run on a schedule. His "flaked 2 times this week" bubble and the dependency watch notification take you straight there.
+
 ## 0.80.0: Twelve panes, each with its own tabs
 
 ### New

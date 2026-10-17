@@ -8,7 +8,7 @@ const fs = require('fs');
 const os = require('os');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9341;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9341;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {

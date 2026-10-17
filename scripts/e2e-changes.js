@@ -13,7 +13,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9371;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 // A git project to work in.
@@ -59,7 +59,7 @@ const ntfy = http.createServer((req, res) => {
   const ntfyPort = ntfy.address().port;
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47991' },
+    env: { ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47991' },
   });
   try {
     let list = [];
@@ -89,7 +89,7 @@ const ntfy = http.createServer((req, res) => {
       const dev = expr => new Promise(r => { const i = ++did; dp.set(i, m => r(m.result?.result?.value)); dws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, awaitPromise: true } })); });
       for (let t = 0; t < 10000 && !(await dev(`document.getElementById('title')?.textContent === ${JSON.stringify(title)} && document.activeElement?.tagName === 'BUTTON'`)); t += 150) await wait(150);
       const seen = await dev("({ message: document.getElementById('message').textContent, focused: document.activeElement?.textContent })");
-      await dev(`[...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}).click()`);
+      await dev(`{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}); setTimeout(() => b.click(), 0); true; }`);
       dws.close();
       return seen;
     };
@@ -156,6 +156,8 @@ const ntfy = http.createServer((req, res) => {
     await ev("SB.send('edit b.txt made in the copy')");
     await idle();
     check(await until("!document.getElementById('branchChip').hidden"), 'the tab shows the branch it works on');
+    // Your checkout's branch shows first; the copy's takes over once the tab list catches up (shared/latest.js).
+    await until("/^add-greeting-/.test(document.getElementById('branchLabel').textContent)");
     const label = await ev("document.getElementById('branchLabel').textContent");
     check(/^add-greeting-[0-9a-f]{6}$/.test(label), `named as Claude suggested (${label})`);
     check(await ev("document.getElementById('folderLabel').textContent").then(t => t.endsWith('proj')), 'the folder chip still shows your project');

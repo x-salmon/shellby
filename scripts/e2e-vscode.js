@@ -14,7 +14,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9384;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9384;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const base = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-e2e-vscode-')));
@@ -40,7 +40,7 @@ fs.mkdirSync(claudeConfig);
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47993' },
+    env: { ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47993' },
   });
   try {
     let list = [];
@@ -113,6 +113,18 @@ fs.mkdirSync(claudeConfig);
     check(await ev(`[...document.querySelectorAll('${FEED} .msg.assistant .mm-wrap svg text')].map(t => t.textContent).join(',')`) === 'Ask,Ok?,Done,yes', 'with its labels as text');
     await shot('2-code', '.feed:not([hidden]) .msg.assistant:last-of-type .code-block');
 
+    const foldAt = await ev('SB.CODE_FOLD_LINES');
+    const longCode = Array.from({ length: foldAt + 10 }, (_, i) => `const v${i} = ${i};`).join('\n');
+    // Words after the fence, so the fake CLI's "(mode=…)" lands outside the block.
+    await ev(`SB.send(${JSON.stringify(`Long:\n\`\`\`js\n${longCode}\n\`\`\`\n\nend`)})`);
+    await idle();
+    const LONG = `[...document.querySelectorAll('${FEED} .msg.assistant .code-block')].pop()`;
+    check(await until(`${LONG}?.querySelector('pre.fold')`), `a block over ${foldAt} lines is folded`);
+    check(await ev(`${LONG}.querySelector('pre').clientHeight < ${LONG}.querySelector('pre').scrollHeight`), 'it scrolls inside its height');
+    await ev(`${LONG}.querySelector('.code-fold').click()`);
+    check(await ev(`${LONG}.querySelector('pre').classList.contains('full') && ${LONG}.querySelector('pre').clientHeight >= ${LONG}.querySelector('pre').scrollHeight`), 'Show all opens it to its full height');
+    check(await ev(`${LONG}.querySelector('.code-fold').textContent === 'Show less'`), 'and the button says Show less');
+
     // ---- 3. Ctrl+Shift+T
     const closedId = await ev('SB.activeTab().id');
     await ev('SB.newTab()');
@@ -170,7 +182,7 @@ fs.mkdirSync(claudeConfig);
       for (let t = 0; t < 10000 && !(await dev("document.querySelectorAll('#actions button').length")); t += 150) await wait(150);
       const detail = await dev("document.body.textContent");
       check(/npm run typecheck/.test(detail), 'it asks first, naming the command');
-      await dev("[...document.querySelectorAll('#actions button')][0].click()");
+      await dev("{ const b = [...document.querySelectorAll('#actions button')][0]; setTimeout(() => b.click(), 0); true; }");
       dws.close();
     } else check(false, 'it asks first, naming the command');
     check(await until("document.querySelector('#problemsList .pb-row')", 30000), 'the typecheck\'s error is listed');

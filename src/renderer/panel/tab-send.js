@@ -9,7 +9,7 @@
   // Theirs, reached when they're called (the files load after this one).
   const renderQueue = () => SB.renderQueue();
   const syncSteers = tab => SB.syncSteers(tab);
-  const queueItem = (text, attachments) => SB.queueItem(text, attachments);
+  const queueItem = (text, attachments, selected) => SB.queueItem(text, attachments, selected);
   const editQueued = (tab, i) => SB.editQueued(tab, i);
   const updateSlash = () => SB.updateSlash();
   const slashKeydown = e => SB.slashKeydown(e);
@@ -20,6 +20,7 @@
     const tab = SB.activeTab();
     const busy = !!tab?.busy;
     $('status').hidden = !busy;
+    $('status').classList.toggle('compacting', busy && !!tab.compacting);
     // While Shellby works you can keep typing: Enter queues the message, and
     // Claude reads it at his next step (or when he finishes, if there's none).
     $('sendBtn').title = busy ? 'Queue: Claude reads it at his next step' : 'Send · right-click to try it 2, 3 or 4 ways';
@@ -32,6 +33,7 @@
     SB.renderNextPrompt?.(tab);
     SB.renderTodos?.(tab); // Claude's to-do list and its background commands (native-strip.js)
     SB.renderJobs?.(tab);
+    SB.renderUltraChip?.(tab); // whether Ultracode is on here (ultracode.js)
     tickClock();
     renderQueue();
   }
@@ -76,9 +78,11 @@
     input.focus();
   };
 
-  // Send to any tab: the active one, or a background tab draining its queue.
-  async function sendNow(tab, text, attachments) {
-    const r = await api.sendTask(tab.id, text, attachments);
+  // Send to any tab: the active one, or a background tab draining its queue. opts: the file picked
+  // in All files when you typed it (files-select.js); a message Shellby composed carries none.
+  // opts.fromQueue: the queue sending it by itself, which isn't you back at the PC (Keep warm).
+  async function sendNow(tab, text, attachments, opts) {
+    const r = await api.sendTask(tab.id, text, attachments, opts);
     if (!r.ok) {
       // Out in a terminal: the way back is one click from the refusal. Not set
       // up (or signed out): the toast takes you to the fix.
@@ -128,9 +132,11 @@
   SB.send = async (text, { force = false } = {}) => {
     const tab = SB.activeTab();
     if (!tab) return false;
+    const typed = text == null; // the box is the user's message; a string from code is Shellby's own and carries no pick
     text = (text ?? input.value).trim();
     if (!text && !tab.attachments.length) return false;
     const attachments = [...tab.attachments];
+    const picked = typed ? SB.treePickOpts?.(tab) : undefined; // as it was when you pressed Enter
     let snippet = null; // its name, counted as a use once the prompt has gone
     // /export, /rewind, ! commands and friends happen here, not in Claude (composer.js).
     if (SB.runLocal?.(text, tab, attachments)) { clearComposer(tab); return true; }
@@ -145,6 +151,13 @@
       if (r && !r.ok) { SB.toast(r.error); return false; }
       if (r?.newTab && !tab.isEmpty) return sendInNewTab(tab, text, r, attachments);
       if (r) { snippet = r.name; text = r.prompt; }
+    }
+    // Ultracode on here (or the word typed): the word goes in, where you can see
+    // it, and the first one in a conversation asks first (ultracode.js).
+    if (SB.ultraWords) {
+      const words = await SB.ultraWords(tab, text);
+      if (words === null) return false;
+      text = words;
     }
     // "Hold big tasks for the reset" (Settings): one that usually takes more than
     // the window has left waits for the reset instead (outlook.js).
@@ -161,13 +174,18 @@
       }
     }
     if (tab.busy) {
-      tab.queue.push(queueItem(text, attachments));
+      tab.queue.push(queueItem(text, attachments, picked?.selected));
       clearComposer(tab);
       syncBusyUi();
       if (snippet) api.snippetUsed(snippet);
       return true;
     }
-    if (!(await sendNow(tab, text, attachments))) return false;
+    // A second Enter while main checks the picked file would send it twice.
+    if (tab.sending) return false;
+    tab.sending = true;
+    let ok;
+    try { ok = await sendNow(tab, text, attachments, picked); } finally { tab.sending = false; }
+    if (!ok) return false;
     clearComposer(tab);
     SB.setView('chat');
     if (snippet) api.snippetUsed(snippet);

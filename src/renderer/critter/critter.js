@@ -82,7 +82,7 @@ function drawSelf() {
   const shell = molt ? molt.shell : outfit.home;
   // Between shells, whatever sits on the shell (a flag, bat wings) has nowhere to go.
   let accessories = molt?.shell === 'none' ? outfit.accessories.filter(a => a.slot !== 'shell') : outfit.accessories;
-  // Dressed for the weather outside (src/main/weather.js): the sou'wester and
+  // Dressed for the weather outside (src/main/weather/index.js): the sou'wester and
   // umbrella go over his own things, and everything below still outranks them.
   const gear = outfit.weather?.accessories || [];
   if (gear.length) accessories = [...accessories.filter(a => !gear.some(g => g.slot === a.slot)), ...gear];
@@ -101,7 +101,7 @@ function drawSelf() {
   spriteHost.replaceChildren(window.ShellbySprite.build(skin, { px, accessories, shell, stickers: stickersFor(shell) }));
 }
 
-// The stickers on his shell (src/main/stickers.js). A molt brings the new
+// The stickers on his shell (src/main/stickers/index.js). A molt brings the new
 // shell's own; one he's about to slap on stays off until his claw gets there.
 function stickersFor(shell) {
   if (shell === 'none') return [];
@@ -113,7 +113,7 @@ function stickersFor(shell) {
 // moment with no shell at all, then the new one drops onto his back.
 let moltTimers = [];
 // The old shell's stickers leave with it; the new one arrives with the ones he
-// carried over (src/main/stickers.js carryOnMolt).
+// carried over (src/main/stickers/index.js carryOnMolt).
 api.onMolt(({ from, to, ms = 5200, fromStickers = [], toStickers = [] }) => {
   moltTimers.forEach(clearTimeout); // a second level-up mid-molt starts over
   const beat = ms / 5;
@@ -135,8 +135,9 @@ api.onMolt(({ from, to, ms = 5200, fromStickers = [], toStickers = [] }) => {
 });
 
 let level = 1;
+let marks = 0; // past level 99 (xp.js)
 function bubbleFor() {
-  if (state === 'levelup') return `LV ${level}`;
+  if (state === 'levelup') return marks ? `★${marks}` : `LV ${level}`;
   if (molt) return molt.bubble;
   if (health && HEALTH_BUBBLE_STATES.has(state)) return health.text;
   if (limit && state === 'sleeping') return `⏳ ${timeLeft(limit.resetsAt)}`;
@@ -219,6 +220,7 @@ api.onState(msg => {
   state = msg.state;
   health = msg.health || null;
   level = msg.level || level;
+  if (Number.isFinite(msg.marks)) marks = msg.marks;
   ciFailing = msg.ci?.failing || 0;
   servers = msg.servers || null;
   limit = msg.limit || null;

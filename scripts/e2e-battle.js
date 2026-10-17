@@ -13,7 +13,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9393;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9393;
 const SHOTS = process.env.SHELLBY_SHOTS || null;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -31,7 +31,13 @@ git('commit', '-qm', 'init');
 const claudeConfig = path.join(base, 'claude');
 fs.mkdirSync(claudeConfig);
 fs.mkdirSync(path.join(base, 'userdata'));
-fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ onboarded: true, wander: false, xp: { byDevice: { legacy: 2750 } } }));
+// One open nest, seeded, for the Nests section at the top of the Bugdex (bugdex/nests.js).
+const DAY = 24 * 60 * 60 * 1000;
+const seedAt = Date.now() - 2 * DAY;
+const NESTS = {
+  'seed|red-snapper': { project: 'seed', species: 'red-snapper', name: 'Seed', seen: [seedAt - 2 * DAY, seedAt - DAY, seedAt], nest: { since: seedAt, count: 3, lastSeenAt: seedAt, lastCaughtAt: seedAt + 1000, sealed: false, generation: 1 }, cleared: [] },
+};
+fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ onboarded: true, wander: false, xp: { byDevice: { legacy: 2750 } }, bugNests: { history: {}, nests: NESTS } }));
 
 (async () => {
   let fails = 0;
@@ -42,7 +48,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
   const motion = SHOTS ? '--force-prefers-no-reduced-motion' : '--force-prefers-reduced-motion';
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`, motion], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47995', SHELLBY_MOTION_TEST: '1' },
+    env: { ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47995', SHELLBY_MOTION_TEST: '1' },
   });
   try {
     let list = [];
@@ -109,15 +115,24 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
     await snap('assist');
     await task('patch app.js fixed');
     await task('suite 0');
+    // The catch waits for main's picture of the code (a git snapshot after the turn), which can land well
+    // after the result on a slow runner: the battle is read once it's over, not after a fixed wait.
+    await until('shellby.getBugBattles().then(l => !!l[0]?.over)', 15000);
     b = await fight();
+    // The finishing blow is the fix report's: app.js changed with nothing silenced, so a Root Cut (bugdex/quality.js).
     const blow = b?.moves.at(-3);
-    check(b?.over === 'caught' && b.moves.slice(-3).map(m => m.fx).join() === 'finish,ko,caught' && blow.move === 'tests' && blow.dmg > 0,
-      `the passing suite is the finishing blow, then it's out and in the jar (${b?.over}, ${blow?.move} ${blow?.fx} ${blow?.dmg})`);
+    check(b?.over === 'caught' && b.moves.slice(-2).map(m => m.fx).join() === 'ko,caught' && blow.move === 'tests' && blow.dmg > 0 && blow.hp === 0,
+      `the passing suite lands the last blow, then it's out and in the jar (${b?.over}, ${blow?.move} ${blow?.fx} ${blow?.dmg})`);
+    // Finishers land in order (battle.js finishersFor): Root Cut, then the helper's Crew Combo. Not first try: it took patches.
+    const finishers = (b?.moves || []).filter(m => m.finisher).map(m => m.finisher).join();
+    check(b?.report?.qualities.rootCause === true && b.report.qualities.proof === false && finishers === 'root,crew',
+      `the fix report picks the finishers: Root Cut, then Crew Combo, no Proof Strike without a new test (${JSON.stringify(b?.report?.qualities)} ${finishers})`);
     if (b?.over !== 'caught') console.log(JSON.stringify({ battles: await ev('shellby.getBugBattles()'), loose: (await ev('shellby.getBugdex()')).loose }).slice(0, 1500));
     if (SHOTS) {
       for (let i = 0; i < 6; i++) { await wait(1400); await snap(`finish-${i}`); }
     }
     check(await until("/IN THE JAR|NEW BUGDEX ENTRY/.test(document.querySelector('.bb-overlay')?.textContent || '')", 30000), 'the screen plays the catch through to the Bugdex entry');
+    check(await until("document.querySelectorAll('.bb-reg .bb-report li.yes').length >= 1 && /FIX REPORT/.test(document.querySelector('.bb-reg .bb-report').textContent)"), 'the entry carries the fix report card');
     const dex = await ev('shellby.getBugdex()');
     check(dex.species.find(s => s.id === 'assertive-lobster')?.state === 'caught', 'and it is in the book');
     const crew = await ev('shellby.getCrew ? shellby.getCrew() : null');
@@ -156,6 +171,9 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
     // ---- 6. the page: the loose row is gone, the badge case is there
     await ev("document.querySelector('.bb-close')?.click(); SB.setView('bugdex')");
     check(await until("document.querySelectorAll('#bdLeague .bd-badge-slot').length === 12"), 'the Bugdex page shows the badge case');
+    const openNests = Object.values(NESTS).filter(n => n.nest).length;
+    check(await until(`!document.getElementById('bdNests').hidden && document.querySelectorAll('#bdNests .bd-nest').length === ${openNests}`), `the Nests section shows the open nest${openNests === 1 ? '' : 's'} (${openNests})`);
+    check(await ev("/to clear/.test(document.querySelector('#bdNests .bd-nest')?.textContent || '')"), 'with the days left to clear it');
     await snap('page');
   } catch (e) {
     console.log(`FAIL  ${e.stack || e.message}`);

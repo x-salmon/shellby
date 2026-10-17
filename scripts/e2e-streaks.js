@@ -12,7 +12,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9356;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9356;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
@@ -32,7 +32,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47989', SHELLBY_NUDGE_TEST: '1' },
+    env: { ...process.env, SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47989', SHELLBY_NUDGE_TEST: '1' },
   });
   try {
     let list = [];

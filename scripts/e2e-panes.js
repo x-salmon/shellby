@@ -13,7 +13,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9398;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9398;
 const SHOT_TIMEOUT_MS = 10000;   // an unpainted window never answers captureScreenshot
 const CDP_TIMEOUT_MS = 30000;    // the longest any one call to the page may take
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -85,7 +85,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
   const launch = () => spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     // SHELLBY_E2E, as e2e:ci sets it, run alone too: the windows let a person's mouse through (src/main/test-desktop.js).
-    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47960', SHELLBY_E2E: '1' },
+    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47960', SHELLBY_E2E: '1' },
   });
   let app = launch();
   try {
@@ -329,6 +329,18 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev(`(() => { SB.state.tabs.get('${C}').draft = 'changed while away'; SB.renderTabStrip(); })()`);
     check(await until(`document.querySelector('.pane[data-tab="${C}"] .pane-standin')?.textContent.includes('changed while away')`), 'a stand-in shows a draft that changed while its pane was out of focus');
 
+    // ---- What a conversation left running stays in sight in its pane out of focus,
+    // and a click on that line brings the whole tray, with Output and Stop, to it.
+    await ev(`SB.activate('${A}')`);
+    await ev(`(() => { SB.state.tabs.get('${C}').jobs = [{ id: 'j1', status: 'running', description: 'npm run watch', startedAt: Date.now() }]; SB.renderTabStrip(); })()`);
+    check(await until(`document.querySelector('.pane[data-tab="${C}"] .pane-tray')?.textContent.includes('1 in the background: npm run watch')`), 'an unfocused pane shows what its conversation has running in the background');
+    check(await ev(`!document.querySelector('.pane[data-tab="${A}"] .pane-tray')`), 'and the focused pane has the full tray instead of the line');
+    const trayOf = id => ev(`(() => { const r = document.querySelector('.pane[data-tab="${id}"] .pane-tray').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    await panel.click(await trayOf(C));
+    check(await until(`SB.state.activeTab === '${C}'`), 'clicking the line focuses its pane');
+    check(await until(`!document.getElementById('jobs').hidden && document.getElementById('jobs').textContent.includes('npm run watch') && !document.querySelector('.pane[data-tab="${C}"] .pane-tray')`), 'and its background tray opens in the box there');
+    await ev(`(() => { SB.state.tabs.get('${C}').jobs = []; SB.syncBusyUi(); })()`);
+
     // ---- Closing the focused pane keeps the box.
     await ev(`SB.activate('${B}')`);
     await ev(`SB.closePane(${PID(B)})`);
@@ -437,7 +449,17 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     const K2 = await ev(`(async () => { const tab = SB.activeTab(); await SB.api.closeTab(tab.id); tab.destroy(); SB.state.tabs.delete(tab.id); SB.state.activeTab = null; return (await SB.newTab()).id; })()`);
     await ev('SB.renderTabStrip()');
     check(await ev(`SB.panes.paneWith(SB.state.grid, '${K2}')?.id === '${kPane}' && SB.state.activeTab === '${K2}' && SB.panes.count(SB.state.grid) === 4`), 'a focused tab taken away under the panes: its replacement opens in the same pane, which stays');
-    await ev(`SB.closeTab('${K2}')`);
+    // A pane whose only tab is blank, and the folder changes: the new tab takes
+    // its place there, rather than the pane closing into the one beside it.
+    const panesBefore = await ev('SB.panes.count(SB.state.grid)');
+    await ev(`(() => { SB.state.grid = SB.panes.place(SB.state.grid, '${K2}', ${PID(K2)}, 'bottom'); SB.renderPanes(); SB.renderTabStrip(); })()`);
+    const kAlone = await ev(PID(K2));
+    check(await ev(`SB.panes.byId(SB.state.grid, '${kAlone}')?.tabs.length === 1 && SB.panes.count(SB.state.grid) === ${panesBefore + 1}`), 'the blank tab sits alone in a pane of its own');
+    await ev(`shellby.setFolder(SB.state.cwd).then(SB.folderChanged)`);
+    check(await until(`!SB.state.tabs.has('${K2}') && SB.panes.byId(SB.state.grid, '${kAlone}')?.tabs.length === 1 && SB.panes.count(SB.state.grid) === ${panesBefore + 1}`), 'a folder change in a pane holding only a blank tab keeps the pane');
+    const K3 = await ev(`SB.panes.byId(SB.state.grid, '${kAlone}').active`);
+    check(await ev(`SB.state.activeTab === '${K3}'`), 'and its new tab has the focus');
+    await ev(`SB.closeTab('${K3}')`);
     await ev(`SB.closeTab('${G1}')`);
 
     // Closing the last tab of the focused bottom pane: the focus goes to the pane above it.
@@ -838,6 +860,11 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
       check(await pop.until(`[...SB.state.tabs.get('${A}').el.querySelectorAll('.msg.assistant')].some(m => m.textContent.includes('echo: hello from its own window'))`), 'a message sent there is answered there');
       await pop.until(`!SB.state.tabs.get('${A}').busy`);
       check(!(await ev(`SB.state.tabs.has('${A}')`)), 'and the panel never grew a copy');
+      // No All files in a window of its own: Ctrl+Shift+F opens the Trail there, and closes it again.
+      await pop.ev("SB.toggleDrawer('files')");
+      check(await pop.until("!document.getElementById('trail').hidden && document.getElementById('drawerTabTrail').getAttribute('aria-selected') === 'true'"), 'Ctrl+Shift+F in its own window opens the Trail');
+      await pop.ev("SB.toggleDrawer('files')");
+      check(await pop.until("document.getElementById('trail').hidden"), 'and a second press closes it');
 
       // Its ×: back in the panel, with the box as it was left.
       await pop.ev(`document.getElementById('input').value = 'typed in the window'`);

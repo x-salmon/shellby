@@ -11,7 +11,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9371;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 // A small git project for the conversation to change, so each turn has a diff.
@@ -34,7 +34,7 @@ function makeRepo() {
   const repo = makeRepo();
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47971' },
+    env: { ...process.env, SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47971' },
   });
   try {
     let list = [];
@@ -113,7 +113,7 @@ function makeRepo() {
       const dev = expr => new Promise(r => { const i = ++did; dp.set(i, m => r(m.result?.result?.value)); dws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true } })); });
       for (let i = 0; i < 40 && !(await dev("document.activeElement?.tagName === 'BUTTON'")); i++) await wait(150);
       check(await dev("document.activeElement.textContent") === 'Cancel', '...with Cancel as the default');
-      await dev("[...document.querySelectorAll('#actions button')].find(b => b.textContent === 'Let ! run commands').click()");
+      await dev("{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === 'Let ! run commands'); setTimeout(() => b.click(), 0); true; }");
       dws.close();
     }
     check(await until("[...SB.activeTab().el.querySelectorAll('.shell-run:not(.pending) .t-result')].some(e => e.textContent.includes('parity-check'))", 20000), '! command output shows in the conversation');

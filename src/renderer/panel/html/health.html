@@ -5,6 +5,7 @@
       <span class="hl-live" id="hlLive"><i></i>live</span>
       <button type="button" class="btn ghost slim-btn" id="hlRecheck" title="Read every sensor again now">Recheck</button>
     </div>
+    <p class="view-lede newcomer-only" id="hlLede">He keeps an eye on your PC while you work: he sweats when it runs hot and gets dizzy when memory fills up. Nothing to set up; this page says why.</p>
 
     <section class="hl-hero" id="hlHero" data-level="ok" aria-live="polite">
       <div class="hl-tank" aria-hidden="true">
@@ -108,6 +109,13 @@
           <button type="button" class="btn" id="hlCheckLhm">I've done it, check again</button>
           <button type="button" class="btn ghost" id="hlGetLhm">Get LibreHardwareMonitor</button>
           <label class="inline-label hl-port">Port <input class="field slim" id="hlPort" type="number" min="1024" max="65535" inputmode="numeric"></label>
+        </div>
+      </div>
+      <div class="hl-lhm-ver" id="hlLhmVer" hidden>
+        <p class="hl-fine" id="hlLhmVerText" aria-live="polite"></p>
+        <div class="row wrap">
+          <button type="button" class="btn primary" id="hlLhmUpdate" hidden title="Fills in a task asking Claude to update LibreHardwareMonitor; nothing runs until you send it">Update it</button>
+          <button type="button" class="btn ghost slim-btn" id="hlLhmCheck" title="Ask GitHub for LibreHardwareMonitor's latest release">Check for updates</button>
         </div>
       </div>
     </details>

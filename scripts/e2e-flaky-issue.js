@@ -12,7 +12,7 @@ const path = require('path');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9391;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9391;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const KEY = 'abcdef012345';
@@ -48,7 +48,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: path.join(base, 'claude'),
-      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47997',
+      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47997',
       SHELLBY_GITHUB_WEB: mock.base, SHELLBY_GITHUB_API: mock.base, SHELLBY_GITHUB_CLIENT_ID: 'e2e-client',
     },
   });
@@ -77,7 +77,9 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({
     const dlg = await connect(d.webSocketDebuggerUrl);
     await until(dlg, "(document.getElementById('title')?.textContent || '').length > 0", 5000);
     const said = await dlg.ev("({ title: document.getElementById('title').textContent, text: document.body.innerText })");
-    await dlg.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(button)}).click()`);
+    // Clicked once this call has answered: the click closes the window, and a page that closes
+    // before replying leaves the call with no answer at all.
+    await dlg.ev(`{ const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(button)}); setTimeout(() => b.click(), 0); true; }`);
     dlg.close();
     // Gone before the next one is looked for: a slow CI box still lists this one
     // as it closes, and a connection to it never answers.
@@ -95,7 +97,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({
     const act = () => panel.ev(`shellby.flakyAct({ key: ${JSON.stringify(KEY)}, id: ${JSON.stringify(TEST)}, action: 'issue' })`);
 
     // ---- 1. signed out: no button, and the action says why
-    await panel.ev("SB.setView('routines')");
+    await panel.ev("SB.setView('projects')");
     check(await until(panel, "document.querySelectorAll('#flakyList li').length === 1"), 'the seeded flaky test is listed');
     check(await buttons() === 'Fix it,Quarantine,Not flaky', `no "File an issue" without GitHub (${await buttons()})`);
     check(/Let Claude tasks push/.test((await act())?.error || ''), 'filing anyway says what to turn on');
@@ -107,7 +109,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({
     check(/Let Claude tasks use your GitHub/.test((await answer('Allow'))?.title || ''), 'Claude access asks first');
     check(await until(panel, "shellby.getGitHub().then(v => v.features.claude.on && v.features.claude.granted)", 15000), 'Claude access on');
     await panel.ev("SB.setView('chat')");
-    await panel.ev("SB.setView('routines')");
+    await panel.ev("SB.setView('projects')");
     await panel.ev('SB.refreshFlaky()');
     check(await until(panel, "[...document.querySelectorAll('#flakyList button')].some(b => b.textContent === 'File an issue')"), `"File an issue" once GitHub can take it (${await buttons()})`);
 

@@ -1,5 +1,5 @@
 // End-to-end check that your friends list, settings and his finds and bond
-// follow you between PCs (sync-prefs.js, friends.js mergeSync, sync-life.js), against the dev app over CDP with a
+// follow you between PCs (sync/prefs.js, friends.js mergeSync, sync/life.js), against the dev app over CDP with a
 // mock GitHub (test/fixtures/mock-github.js). Two isolated profiles stand in
 // for two PCs signed in to the same account, one after the other:
 //   1. PC A, with finds on his shelf and a bond, picks its settings, adds two friends and syncs.
@@ -17,7 +17,7 @@ const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { FINDS } = require('../src/main/gifts');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9367;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
 const HOTKEY = 'Control+Alt+Shift+F9'; // nothing else on the PC should hold this one
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -54,7 +54,7 @@ async function connect(url) {
     app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
       stdio: 'ignore',
       env: {
-        ...env, SHELLBY_USER_DATA: dir, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47967',
+        ...env, SHELLBY_USER_DATA: dir, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47967',
         SHELLBY_GITHUB_WEB: mock.base, SHELLBY_GITHUB_API: mock.base, SHELLBY_GITHUB_CLIENT_ID: 'e2e-client',
       },
     });
@@ -79,7 +79,7 @@ async function connect(url) {
     if (!d) return check(false, 'confirm window for Visiting crabs');
     const dlg = await connect(d.webSocketDebuggerUrl);
     await wait(500);
-    await dlg.ev("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Turn on').click()");
+    await dlg.ev("{ const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Turn on'); setTimeout(() => b.click(), 0); true; }");
     dlg.close();
     await wait(1000);
   }

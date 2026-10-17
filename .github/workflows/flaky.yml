@@ -1,0 +1,63 @@
+name: Flaky hunt
+
+# Every e2e check, three times on the same code with no retry. A check that
+# passes and fails across those runs is flaky, and the shard goes red naming
+# it. CI's own runs retry a failure once and stay green, so a flake that only
+# shows now and then would otherwise go unseen until it bites a release.
+on:
+  schedule:
+    - cron: '17 6 * * *'   # nightly, off the hour
+  workflow_dispatch:
+    inputs:
+      repeat:
+        description: Runs of each check
+        default: '3'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flaky-hunt
+  cancel-in-progress: true
+
+jobs:
+  hunt:
+    name: flaky hunt (${{ matrix.shard }}/6)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    strategy:
+      # Unlike CI, every shard runs to the end: the point is the full list.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      # The input goes through env, never into the command line itself;
+      # e2e-ci.js refuses anything but a number from 1 to 20.
+      - run: npm run e2e:ci -- --shard=${{ matrix.shard }}/6 "--repeat=$env:REPEAT" --report=flaky-${{ matrix.shard }}.json
+        shell: pwsh
+        env:
+          REPEAT: ${{ inputs.repeat || '3' }}
+      - name: Summary
+        if: always()
+        shell: pwsh
+        run: |
+          $file = "flaky-${{ matrix.shard }}.json"
+          if (-not (Test-Path $file)) { "No report: the run stopped before the end." >> $env:GITHUB_STEP_SUMMARY; exit 0 }
+          $r = Get-Content $file -Raw | ConvertFrom-Json
+          $bad = @($r.results | Where-Object { $_.verdict -ne 'pass' })
+          if (-not $bad.Count) { "Shard ${{ matrix.shard }}: every check passed all $($r.repeat) runs." >> $env:GITHUB_STEP_SUMMARY; exit 0 }
+          "| Check | Verdict | Passed |`n|---|---|---|" >> $env:GITHUB_STEP_SUMMARY
+          foreach ($b in $bad) { "| $($b.name) | $($b.verdict) | $(@($b.runs | Where-Object { $_ }).Count)/$($b.runs.Count) |" >> $env:GITHUB_STEP_SUMMARY }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: flaky-${{ matrix.shard }}
+          path: flaky-${{ matrix.shard }}.json
+          if-no-files-found: warn

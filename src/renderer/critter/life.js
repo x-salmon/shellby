@@ -77,7 +77,7 @@
     'sweat': () => [0, 1].map(i => el('i', 'drop', { '--d': `${i * 400}ms`, '--x': `${i * 10}px` })),
     'sparkle': () => ['✦', '✧', '✦', '✧'].map((t, i) => { const s = el('i', 'spark', { '--d': `${i * 260}ms`, '--x': `${(i % 2 ? 1 : -1) * (6 + i * 5)}px`, '--y': `${-4 - (i * 7) % 14}px` }); s.textContent = t; return s; }),
     'hearts': () => ['♥', '♥'].map((t, i) => { const e = el('i', 'love', { '--d': `${i * 320}ms`, '--x': `${i * 10 - 5}px` }); e.textContent = t; return e; }),
-    // A bug scooped into a jar (src/main/bugdex.js): a splash as it drops in,
+    // A bug scooped into a jar (src/main/bugdex/index.js): a splash as it drops in,
     // a puff of sparkles as the cork goes on, and the jar in his claw (critter:hold)
     // settling with one little rock (life.css). A ghost leaves a wisp behind.
     'jar': msg => {

@@ -10,10 +10,11 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const { COMMAND } = require('../src/main/statusline');
+const { AWARDS } = require('../src/main/progression/xp');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9353;
-const HOOK = 47993;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47993;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const plain = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 
@@ -57,8 +58,9 @@ const plain = s => s.replace(/\x1b\[[0-9;]*m/g, '');
     await panel.ev("SB.send('wait 1500 hello')");
     line = await untilLine(/working/);
     check(/🦀💨 Shellby working/.test(line), `working shows in the status line ("${line}")`);
-    line = await untilLine(/\+10 XP/);
-    check(/\+10 XP/.test(line), `finished task shows its "+10 XP" ("${line}")`);
+    const gain = new RegExp(`\\+${AWARDS.task.xp} XP`);
+    line = await untilLine(gain);
+    check(gain.test(line), `finished task shows its "+${AWARDS.task.xp} XP" ("${line}")`);
 
     // 3. An outside session asks for permission.
     const post = b => fetch(`http://127.0.0.1:${HOOK}/v1/hook`, { method: 'POST', headers: { 'X-Shellby': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
@@ -83,7 +85,7 @@ const plain = s => s.replace(/\x1b\[[0-9;]*m/g, '');
     await wait(500);
     const title = await dlg.ev("document.querySelector('h1, h2, .title')?.textContent || ''");
     check(/Add Shellby to Claude Code/.test(title), `dialog: "${title}"`);
-    await dlg.ev("[...document.querySelectorAll('button')].find(b => /Add it/.test(b.textContent)).click()");
+    await dlg.ev("{ const b = [...document.querySelectorAll('button')].find(b => /Add it/.test(b.textContent)); setTimeout(() => b.click(), 0); true; }");
     await wait(1000);
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
     check(settings.statusLine?.command === COMMAND && settings.theme === 'dark', 'statusLine added, other settings kept');

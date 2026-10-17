@@ -41,13 +41,18 @@
       SB.onTurnEnded(tab, item);
       api.listSessions().then(s => { state.sessions = s; });
     }
+    if (item.kind === 'keepwarm') SB.onKeepWarmItem?.(tab, item); // a ping's turn ends with its receipt (keepwarm.js)
     if (item.kind === 'decision' || item.kind === 'result') SB.syncBusyUi();
   });
   api.onTabSteering(({ tabId, ids }) => {
     const tab = state.tabs.get(tabId);
     if (tab && Array.isArray(ids)) SB.onSteering(tab, ids);
   });
-  api.onTabs(summaries => SB.syncTabs(summaries));
+  // Main sends every conversation again each time any one moves; a busy panel handles the newest list once
+  // per pace, not every message (shared/latest.js). The first after a quiet spell still lands at once.
+  const syncTabsSoon = window.ShellbyLatest.latest(summaries => SB.syncTabs(summaries));
+  api.onTabs(syncTabsSoon.offer);
+  SB.dropHeldTabs = syncTabsSoon.cancel;
   api.onTabOpened(({ tabId, entry, items, background, busy = true, draft = '', attachments = [] }) => {
     if (state.popped.has(tabId)) return; // out in a window of its own (tab-panes.js)
     const tab = SB.ensureTab({ id: tabId, title: entry?.title || 'Routine', cwd: entry?.cwd, saved: true, routineId: entry?.routineId, busy, inTerminal: entry?.inTerminal || null });
@@ -160,6 +165,13 @@
     }
     if (demo.usage) SB.applyUsage(demo.usage);
     SB.activate(demo.active || demo.tabs[0].id);
+    // demo.grid: columns of tab ids, one pane each (the split-panes shot).
+    if (demo.grid) {
+      let n = 0;
+      state.grid = demo.grid.map(col => col.map(id => ({ id: `demo-p${++n}`, tabs: [id], active: id })));
+      SB.renderPanes();
+      SB.renderTabStrip();
+    }
     SB.refreshEmptyStates();
     SB.clearCelebrations();
     SB.setView(demo.view || 'chat');
@@ -244,8 +256,13 @@
     else await SB.newTab();
 
     if (b.cutOff?.length) setTimeout(() => SB.toast(window.ShellbyFeedLogic.cutOffToast(b.cutOff), { ms: 9000 }), 1200);
-    SB.setView(SB.needsOnboarding() ? 'onboarding' : b.startView || state.view === 'wardrobe' && 'wardrobe' || 'chat');
+    // Activating a tab above went to the chat; a screen asked for meanwhile is opened again.
+    const asked = SB.askedWhileStarting;
+    SB.starting = false;
+    SB.askedWhileStarting = null;
+    SB.setView(SB.needsOnboarding() ? 'onboarding' : b.startView || asked || state.view === 'wardrobe' && 'wardrobe' || 'chat');
     if (saved) SB.growForPanes(); // more room than the panel's own size: it grows, now or once the chat shows
+    SB.restoreTrail?.(); // the trail open as you left it (trail.js)
     if (b.claudeTricks && !SB.needsOnboarding()) SB.showClaudeTricks(b.claudeTricks); // Claude Code updated: what it can do now
     performance.mark('shellby:panel-ready'); // booted, tabs back: scripts/perf-budget.js times app-ready to here
   })();

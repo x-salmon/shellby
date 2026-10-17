@@ -23,8 +23,8 @@ const { savePng } = require('./lib/shot');
 const ROOT = path.join(__dirname, '..');
 const electron = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
 const args = new Set(process.argv.slice(2));
-const PORT = 9390;
-const HOOK_PORT = '47990';
+const PORT = Number(process.env.E2E_CDP_PORT) || 9390;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47990;
 const STEP_MS = 2600;
 // Moments that aren't idle habits but play the same way (a body class for a beat).
 const MOMENTS = ['pack'];

@@ -66,8 +66,11 @@
       step(1, installed, 'Install Claude Code',
         installed
           ? `Found v${s.version || '?'}${s.picked ? ' where you pointed' : ''}`
-          : ['Run ', h('code', { text: 'npm install -g @anthropic-ai/claude-code' }), ' in a terminal, or use the native installer.'],
-        [h('button', { class: 'btn', type: 'button', onclick: () => api.openExternal('https://docs.claude.com/en/docs/claude-code/setup') }, 'Install guide'),
+          : installing
+            ? 'Installing with Anthropic’s own installer. This takes a minute or two…'
+            : 'Not on this PC yet. Shellby can run Anthropic’s official installer for you, no terminal needed.',
+        [h('button', { class: 'btn primary', type: 'button', disabled: installing, onclick: installClaude }, installing ? 'Installing…' : 'Install it for me'),
+         h('button', { class: 'btn ghost', type: 'button', onclick: () => api.openExternal('https://docs.claude.com/en/docs/claude-code/setup') }, 'Install guide'),
          recheck(),
          // Already installed somewhere Shellby can't guess (portable copy,
          // another drive, a locked-down company image)? Point at it.
@@ -104,6 +107,18 @@
     state.status = await api.claudeStatus();
     renderOnboarding();
     SB.toast(state.status.loggedIn ? 'All set!' : state.status.installed ? 'Not signed in yet.' : 'Claude Code not found yet.');
+  }
+  // No terminal: main runs Anthropic's installer hidden, then checks again.
+  let installing = false;
+  async function installClaude() {
+    installing = true;
+    renderOnboarding();
+    let r;
+    try { r = await api.installClaude(); } catch { r = { ok: false, error: 'The installer couldn’t start.' }; }
+    installing = false;
+    if (r.status) state.status = r.status;
+    renderOnboarding();
+    SB.toast(r.ok ? `Claude Code v${r.status?.version || '?'} is installed. Now sign in.` : r.error, { ms: r.ok ? 4000 : 8000 });
   }
   // The file picker runs the chosen program once to check it really is Claude
   // Code, so the answer to a wrong pick arrives immediately.

@@ -11,7 +11,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9343;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9343;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-health-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

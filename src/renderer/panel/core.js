@@ -11,6 +11,8 @@ const SB = window.SB = {
   // Set in a popped-out conversation's window: the one tab it shows. That
   // window is this same page with the chat alone (main's wiring/popouts.js).
   solo: new URLSearchParams(location.search).get('popout'),
+  // From the page's first script until boot.js has opened its first screen (setView, below).
+  starting: !new URLSearchParams(location.search).get('popout'),
   state: {
     settings: {}, status: {}, skins: [], skin: null, sessions: [], cwd: '', home: '',
     view: 'chat', version: '', packaged: false, updates: null,
@@ -23,7 +25,7 @@ const SB = window.SB = {
     paneSizes: null,      // the panes' sizes: weights by tab id (shared/panes.js)
     panesSaved: false,    // a split layout is in config (tab-panes.js savePanes), so one pane has to clear it
     popped: new Set(),    // tabs out in windows of their own (main's 'tabs' says which)
-    clashes: [],          // copies that changed the same files (clashes.js; src/main/clash.js has the shape)
+    clashes: [],          // copies that changed the same files (clashes.js; src/main/worktrees/clash.js has the shape)
   },
 };
 if (SB.solo) document.body.classList.add('solo');
@@ -333,6 +335,30 @@ SB.renderMarkdownInto = (el, text) => {
   return el;
 };
 
+// A reply still being written, painted again a few times a second. Only the
+// blocks whose markdown changed are redrawn: the rest keep their nodes, so a
+// click on a finished block's Copy isn't lost to the next paint, and the block
+// being written keeps its Wrap, Show all and scroll.
+SB.patchMarkdownInto = (el, text) => {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = SB.md.render(text); // md escapes all input first; see shared/markdown.js
+  const fresh = [...tpl.content.childNodes];
+  const parts = fresh.map(n => (n.nodeType === 1 ? n.outerHTML : n.nodeValue));
+  // A block maps to one child (markdown.js joins them with nothing, enhanceCode swaps
+  // a <pre> for its box); if that ever stops holding, everything is redrawn.
+  const was = el.childNodes.length === el.mdParts?.length ? el.mdParts : [];
+  let same = 0;
+  while (same < parts.length && parts[same] === was[same]) same++;
+  const gone = [...el.childNodes].slice(same);
+  const views = SB.codeView?.(gone);
+  for (const n of gone) n.remove();
+  el.append(...fresh.slice(same));
+  SB.enhanceCode?.(el);
+  el.mdParts = parts;
+  SB.restoreCodeView?.([...el.childNodes].slice(same), views);
+  return el;
+};
+
 // Links are inert <a data-href> (the window blocks navigation and popups), in
 // rendered markdown and in panel.html alike; main only opens https.
 document.addEventListener('click', e => {
@@ -342,17 +368,20 @@ document.addEventListener('click', e => {
 
 // ------------------------------------------------------------------ views
 
-SB.views = {};  // name -> { render?() }
+SB.views = {};  // name -> { render?(), parent?() (where Back goes, when the view knows) }
 
-// Which navigation item a screen lives under (Trophies, Crew, Council, Stickers, Finds, Tank, Us and Beach are
+// Which navigation item a screen lives under (Trophies, Crew, Council, Stickers, Finds, Tank and Us are
 // tabs of the Shellby screen, Routines sits beside Workflows under Automate), and
 // which screens sit one level down, so Back/Esc go up to their parent.
-SB.NAV_SECTION = { shop: 'toolbox', trophies: 'wardrobe', crew: 'wardrobe', council: 'wardrobe', stickers: 'wardrobe', finds: 'wardrobe', tank: 'wardrobe', us: 'wardrobe', beach: 'wardrobe', routines: 'workflows' };
+SB.NAV_SECTION = { shop: 'toolbox', trophies: 'wardrobe', crew: 'wardrobe', council: 'wardrobe', stickers: 'wardrobe', finds: 'wardrobe', tank: 'wardrobe', us: 'wardrobe', routines: 'workflows', viewer: 'chat' };
 SB.PARENT_VIEW = { shop: 'toolbox' };
 SB.homeView = () => (SB.state.settings.crabOnly ? 'health' : 'chat');
 
 SB.setView = view => {
   const s = SB.state;
+  // A screen asked for while the panel starts (you, Ctrl+K, main): its start opens it at the end
+  // instead of the chat (boot.js). The chat itself is what the start goes to anyway.
+  if (SB.starting && view !== 'chat') SB.askedWhileStarting = view;
   // Just-the-crab mode has no chat: Health is home. A popped-out window has nothing but.
   if (view === 'chat' && s.settings.crabOnly) view = 'health';
   if (SB.solo) view = 'chat';
@@ -425,7 +454,7 @@ SB.closeMenus = ({ refocus = false } = {}) => {
 };
 
 document.addEventListener('mousedown', e => {
-  if (!e.target.closest('.popover, .mode-chip, .folder-chip, .ctx-chip, .usage, .tab-all, .tab-review, .slash-menu, .snip-more, .note-more, #input')) SB.closeMenus();
+  if (!e.target.closest('.popover, .mode-chip, .folder-chip, .ctx-chip, .usage, .tab-all, .tab-review, .slash-menu, .snip-more, .note-more, .vw-where, .ft-where, #input')) SB.closeMenus();
 });
 
 // Up/Down walk a menu's items (wrapping round), Home/End jump to either end.

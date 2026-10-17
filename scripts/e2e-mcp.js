@@ -11,8 +11,8 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9367;
-const HOOK_PORT = 47998;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47998;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {

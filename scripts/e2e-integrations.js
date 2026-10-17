@@ -13,9 +13,9 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9376;
-const HOOK = 47996;
-const OBS = 47997;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9376;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47996;
+const OBS = Number(process.env.E2E_SPARE_PORT) || 47997;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-int-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

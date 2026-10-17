@@ -57,6 +57,7 @@
       this.outcome = null;
       this.unread = false;
       this.statusText = 'Working…';
+      this.compacting = null;     // { chars } while Claude Code compacts the conversation (setCompacting)
       this.modStatus = new Map(); // mod name -> its status line ($.ui.status), under the box while this tab shows
       this.draft = '';
       this.attachments = [];
@@ -120,13 +121,23 @@
       e.querySelector('.hotkey-hint').textContent = SB.prettyAccel(state.settings.hotkey) || 'The tray icon';
       // A quest card takes the third suggestion's room.
       // A new install's first tasks lead with a tour of a project, until it's opened once.
+      // Shuffled once per conversation. This runs again whenever his look changes
+      // (a new track, a sticker, a molt): reshuffled each time, the chips swapped
+      // and rose again under the pointer. They're rebuilt only when what they say changes.
       const tour = state.settings.firstTour && !SB.isCrabOnly();
-      const picks = [...SUGGESTIONS].sort(() => Math.random() - 0.5).slice(0, (SB.questCardShows?.() ? 2 : 3) - (tour ? 1 : 0));
-      const chip = (text, onclick, i) => h('button', { class: 'suggestion', type: 'button', style: `animation-delay:${i * 60}ms`, onclick },
-        h('span', { class: 'glyph', text: '›' }), text);
-      e.querySelector('.suggestions').replaceChildren(
-        ...(tour ? [chip('Show me around a project: what it is, how to run it, where to start', firstTour, 0)] : []),
-        ...picks.map((s, i) => chip(s, () => SB.send(s), i + (tour ? 1 : 0))));
+      this.shuffled ||= [...SUGGESTIONS].sort(() => Math.random() - 0.5);
+      const card = SB.firstRunCardShows?.() || SB.questCardShows?.();
+      const picks = this.shuffled.slice(0, (card ? 2 : 3) - (tour ? 1 : 0));
+      const shown = JSON.stringify([tour, picks]);
+      if (shown !== this.shownSuggestions) {
+        this.shownSuggestions = shown;
+        const chip = (text, onclick, i) => h('button', { class: 'suggestion', type: 'button', style: `animation-delay:${i * 60}ms`, onclick },
+          h('span', { class: 'glyph', text: '›' }), text);
+        e.querySelector('.suggestions').replaceChildren(
+          ...(tour ? [chip('Show me around a project: what it is, how to run it, where to start', firstTour, 0)] : []),
+          ...picks.map((s, i) => chip(s, () => SB.send(s), i + (tour ? 1 : 0))));
+      }
+      SB.renderFirstRun?.(e.querySelector('.first-run-card'));
       SB.renderQuestCard?.(e.querySelector('.quest-card'));
       const pinned = state.pinned || [];
       e.querySelector('.pinned-row').hidden = !pinned.length;
@@ -193,14 +204,36 @@
       if (this.isActive) SB.$('statusText').textContent = text;
     }
 
+    // { chars } while Claude Code compacts the conversation, null once it's done.
+    setCompacting(c) {
+      this.compacting = c;
+      this.setStatus(c ? F.compactingLine(c.chars, SB.compact) : 'Working…');
+      if (this.isActive) SB.$('status').classList.toggle('compacting', !!c);
+    }
+
     // ------------------------------------------------------------ items
     render(item, { replay = false } = {}) {
-      // Claude's to-do list moves with its tool calls, replayed or live (native-strip.js draws it).
-      if ((item.kind === 'tool' || item.kind === 'tool_result') && T.apply(this.todos, item) && this.isActive) SB.renderTodos?.(this);
+      SB.trailTake?.(this, item, replay); // where he's been in the files (trail.js)
+      SB.filesTake?.(this, item, replay); // and lit up in All files (files-dock.js)
+      // Claude's to-do list moves with its tool calls, replayed or live (native-strip.js draws it;
+      // an unfocused pane keeps a line of it, tab-panes.js).
+      if ((item.kind === 'tool' || item.kind === 'tool_result') && T.apply(this.todos, item)) {
+        if (this.isActive) SB.renderTodos?.(this);
+        else if (!replay && this.isShown) SB.refreshPaneHeads?.();
+      }
       // The reply as it was being written gives way to whatever comes next on
-      // the main thread: the finished words themselves, usually.
+      // the main thread: the finished words themselves, usually. Those keep the
+      // Wrap, Show all and scroll their code blocks had while being written.
+      const liveView = this.live && item.kind === 'text' && !item.sub ? SB.codeView?.([this.live]) : null;
       if (this.live && item.kind !== 'partial' && !item.sub) this.endLive();
+      if (this.compacting && (item.kind === 'compacted' || item.kind === 'result')) this.setCompacting(null);
       switch (item.kind) {
+        // Claude Code compacting the conversation: the busy line says so, over a
+        // bar that runs until it's done (panel.css). The compacted mark stays after.
+        case 'compacting':
+          if (replay) return;
+          this.setCompacting(item.on ? { chars: item.chars } : null);
+          return;
         case 'user':
           // Something you just sent always comes into view, even if you'd scrolled up.
           if (!replay) { this.stuck = true; this.dropCutOff(); }
@@ -246,7 +279,12 @@
               : 'Safe mode off: your CLAUDE.md, skills, plugins, hooks and MCP servers are back from the next message.'));
         case 'text': {
           const el = SB.linkifyPaths(SB.renderMarkdownInto(h('div', { class: `msg assistant${item.sub ? ' sub' : ''}` }), item.text));
-          return this.append(el, item.parent);
+          // Before append, so its height is final when the feed follows it down;
+          // again after, as a block's scroll only holds once it's on the page.
+          SB.restoreCodeView?.([el], liveView);
+          this.append(el, item.parent);
+          SB.restoreCodeView?.([el], liveView);
+          return el;
         }
         case 'thinking':
           if (!replay && !item.sub) this.setStatus('Thinking…');
@@ -278,6 +316,7 @@
         case 'shots': return SB.renderShots?.(this, item);     // turn-checks.js
         case 'tries': return SB.renderTries?.(this, item, replay); // tries.js
         case 'debug': return SB.renderDebug?.(this, item, replay); // debug-mode.js
+        case 'ultracode': return SB.renderUltracode?.(this, item, replay); // ultracode.js
         // Shellby's own one-line notes: cleared, moved into a copy, from the phone,
         // brought home, pushed, compacted, started fresh, rewound. /clear empties
         // the screen first, as in the terminal: live or replayed, so a
@@ -306,6 +345,7 @@
         case 'shell': return this.renderShell(item, replay);
         case 'error': return this.append(this.troubleBlock(item.trouble, item.text));
         case 'lesson': return SB.renderLesson ? this.append(SB.renderLesson(item)) : undefined; // lessons.js
+        case 'keepwarm': return SB.renderKeepWarm?.(this, item); // keepwarm.js
         // What a mod shows (toolbox-mods.js): always under its own name, so it can't pass for Claude or Shellby.
         case 'modlog': return this.append(h('div', { class: 'home-mark mod-mark' },
           h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: '🧩' }),
@@ -327,7 +367,7 @@
     paintLive() {
       this.liveTimer = null;
       if (!this.live) return;
-      SB.linkifyPaths(SB.renderMarkdownInto(this.live, this.liveText));
+      SB.linkifyPaths(SB.patchMarkdownInto(this.live, this.liveText));
       if (this.stuck && this.isShown) this.scrollToEnd();
     }
 
@@ -349,6 +389,8 @@
       this.lanes.clear();
       this.taskLane.clear();
       this.todos = T.create();
+      this.trail = null; // taken in again from what's replayed next (rewind), or starts over (/clear)
+      SB.trailReset?.(this);
       this.trimmed = 0;
       this.trimmedNotice = null;
       this.shellPending = null;
@@ -505,7 +547,7 @@
           badge ? h('span', { class: `effort-badge effort-${badge.level}`, title: badge.detail, text: badge.text }) : null,
           h('span', { class: 'turn-cost-line', text: cost.line })));
       }
-      // A turn whose process went (main's session.js ended()): its error block is just above.
+      // A turn whose process went (main's session/index.js ended()): its error block is just above.
       if (!item.ok && !item.interrupted && item.error && !item.crashed) this.append(this.troubleBlock(item.trouble, item.error));
       // ...and its helpers went with it.
       if (item.interrupted || item.crashed) for (const lane of this.lanes.values()) if (lane.status === 'running') lane.finish({ ok: false, stopped: true });

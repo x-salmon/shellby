@@ -295,14 +295,17 @@ body:not([data-view="chat"]) .tabstrip { display: none; }
   padding: 10px 12px; border-radius: var(--r);
   border: 1px solid var(--line); background: linear-gradient(var(--reef), rgba(17, 35, 42, .6));
   font-size: var(--fs-13-5); text-align: left;
-  transition: border-color .15s, transform .2s var(--ease-spring), background .15s;
+  transition: border-color .15s, background .15s;
   animation: rise .5s var(--ease-out) backwards;
 }
 .suggestion:nth-child(2) { animation-delay: .06s; }
 .suggestion:nth-child(3) { animation-delay: .12s; }
 .suggestion:nth-child(4) { animation-delay: .18s; }
-.suggestion:hover { border-color: var(--coral); transform: translateX(3px); background: var(--reef-2); }
-.suggestion .glyph { font: 600 var(--fs-13) var(--font-pixel); color: var(--coral); width: 16px; text-align: center; }
+/* The › steps forward, not the button: a button that slid out from under a
+   pointer near its edge lost the hover, slid back, and flickered. */
+.suggestion:hover { border-color: var(--coral); background: var(--reef-2); }
+.suggestion .glyph { font: 600 var(--fs-13) var(--font-pixel); color: var(--coral); width: 16px; text-align: center; transition: transform .2s var(--ease-spring); }
+.suggestion:hover .glyph { transform: translateX(3px); }
 .empty-hint { margin-top: 20px; color: var(--sand-faint); font-size: var(--fs-12); }
 
 /* The next quest (quests.js): a note pinned above the suggestions, amber like a trophy. */
@@ -327,6 +330,27 @@ body:not([data-view="chat"]) .tabstrip { display: none; }
 .quest-how { margin: 4px 0 0; font-size: var(--fs-12); line-height: 1.45; color: var(--sand-dim); }
 .quest-go { margin-top: 8px; }
 @media (prefers-reduced-motion: reduce) { .quest-card { animation: none; } }
+
+/* First steps (first-run.js): the quest card's shape, in the coral of a fresh start. */
+.first-run-card {
+  margin: 0 0 12px; padding: 10px 12px 11px; text-align: left;
+  border-radius: var(--r); border: 1px solid color-mix(in srgb, var(--coral) 30%, transparent); border-left: 3px solid var(--coral);
+  background: linear-gradient(color-mix(in srgb, var(--coral) 7%, transparent), rgba(17, 35, 42, .6));
+  animation: rise .5s var(--ease-out) backwards;
+}
+.first-run-card .fr-eyebrow { color: var(--coral); }
+.first-run-card .quest-pips i.now { background: var(--coral); }
+.fr-steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.fr-step { display: flex; gap: 8px; align-items: flex-start; font-size: var(--fs-12-5); color: var(--sand-dim); }
+.fr-step.now { color: var(--sand); }
+.fr-step.done b, .fr-step.skipped b { font-weight: 500; color: var(--sand-faint); }
+.fr-step.done b { text-decoration: line-through; text-decoration-color: var(--sand-faint); }
+.fr-mark { width: 18px; flex: none; text-align: center; }
+.fr-body { flex: 1; min-width: 0; }
+.fr-step.done .fr-mark { color: #7bd389; }
+.fr-text { margin: 2px 0 0; font-size: var(--fs-12); line-height: 1.45; color: var(--sand-dim); }
+.fr-actions { display: flex; gap: 6px; margin-top: 6px; }
+@media (prefers-reduced-motion: reduce) { .first-run-card { animation: none; } }
 
 /* messages */
 .msg { margin: 0 0 14px; animation: rise .25s var(--ease-out); }
@@ -689,6 +713,17 @@ body.calm-deep *, body.calm-deep *::before, body.calm-deep *::after { animation:
   animation: scuttle .5s steps(2) infinite;
 }
 body:not([data-home]) .status-crab { width: 10px; height: 10px; background: var(--coral); }
+/* Compacting: a glint runs along a track under the busy line until it's done.
+   Claude Code never says how far along a typed /compact is, so the bar claims
+   no percentage. Still track, no glint, with reduced motion. */
+.status.compacting { position: relative; }
+.status.compacting::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -5px; height: 2px; border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass), transparent) -70% 0 / 40% 100% no-repeat, var(--glass-dim);
+  animation: compact-glint 1.6s ease-in-out infinite;
+}
+@keyframes compact-glint { to { background-position: 170% 0, 0 0; } }
+@media (prefers-reduced-motion: reduce) { .status.compacting::after { animation: none; background: var(--glass-dim); } }
 @keyframes scuttle { 0% { transform: translateX(0) } 100% { transform: translateX(4px) } }
 .stop-btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -852,6 +887,18 @@ select.field option { background: var(--reef); }
 /* apps he's been told to stay off: one pill each, ✕ to let him back on */
 .perch-ignore { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 6px; }
 .perch-ignore #perchIgnoreList { display: contents; }
+/* A label and its dropdown per row, the dropdowns lined up in one column. */
+.field-grid { display: grid; grid-template-columns: var(--field-label-w, max-content) auto; justify-content: start; align-items: center; gap: 6px 20px; padding: 4px 0; font-size: var(--fs-13-5); }
+.field-grid .field.slim { min-width: 120px; }
+.field-grid .perch-ignore { grid-column: 1 / -1; margin: 0 0 2px; }
+.sub-toggles.field-grid { padding: 2px 0 2px 10px; margin-top: 2px; }
+/* Wide enough for "Climbing the edges of the screen" under strolling's indent
+   (22px margin, 2px rule, 10px padding), so Pals' dropdown lines up with those. */
+#moveGroup { --field-label-w: 17.5em; }
+#moveGroup .sub-toggles.field-grid { grid-template-columns: calc(var(--field-label-w) - 34px) auto; }
+/* Climbing hangs off strolling: with strolling off the choices stay but go quiet. */
+.sub-toggles.off > label, .sub-toggles.off > select { opacity: .5; }
+.setting-group .move-tip { margin-top: 12px; }
 /* Mischief: its folded line says On in coral once you've let him loose, so it's
    easy to see at a glance that he's allowed to misbehave. */
 .mischief-group.on .fold-state { color: var(--coral); }
@@ -894,6 +941,7 @@ select.field option { background: var(--reef); }
 .history-del { border: 0; background: none; color: var(--sand-faint); padding: 0 12px; border-radius: 0 var(--r) var(--r) 0; }
 .history-del:hover { color: var(--danger); background: rgba(255, 90, 74, .08); }
 .history-empty { text-align: center; color: var(--sand-faint); padding: 30px 0; font-size: var(--fs-13); }
+.history-start { margin-top: 10px; }
 .history-note { text-align: center; }
 .history-tabs { margin-top: 8px; }
 /* Ticked off: quieter, but never so quiet you can't read it (see .h-done for the chip). */

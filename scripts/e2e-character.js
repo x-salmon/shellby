@@ -12,8 +12,8 @@ const { savePng } = require('./lib/shot');
 const { dayKey } = require('../src/main/weekly');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9353;
-const HOOK = 47995;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47995;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-character-'));
 fs.mkdirSync(OUT, { recursive: true });
 const wait = ms => new Promise(r => setTimeout(r, ms));

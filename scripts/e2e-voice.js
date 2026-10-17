@@ -19,8 +19,8 @@ const { savePng } = require('./lib/shot');
 const { BITS } = require('../src/main/voice');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9363;
-const HOOK = 47998;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9363;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47998;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-voice-'));
 fs.mkdirSync(OUT, { recursive: true });
 const wait = ms => new Promise(r => setTimeout(r, ms));

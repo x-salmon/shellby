@@ -113,6 +113,13 @@ test('steerPlan sends everything queued up to the first /command', () => {
   assert.equal(plan.key, 't1|q1,q2');
 });
 
+test('steerPlan stops at a message with a file picked: a steer carries no pick, so it waits for the turn to end', () => {
+  const tab = { busy: true, turnId: 't1', queue: [{ id: 'q1', text: 'a' }, { id: 'q2', text: 'b', selected: 'src/app.js' }, { id: 'q3', text: 'c' }] };
+  const plan = L.steerPlan(tab);
+  assert.deepEqual(plan.items.map(m => m.id), ['q1']);
+  assert.equal(plan.key, 't1|q1');
+});
+
 test('steerPlan sends nothing once no turn is running', () => {
   assert.deepEqual(L.steerPlan({ busy: false, turnId: 't1', queue: [{ id: 'q1', text: 'a' }] }), { live: false, items: [], key: '' });
   assert.deepEqual(L.steerPlan({ busy: true, turnId: null, queue: [{ id: 'q1', text: 'a' }] }), { live: false, items: [], key: '' });
@@ -166,4 +173,21 @@ test('slashCandidates shows at most eight', () => {
   const hits = L.slashCandidates('s', { skills });
   assert.equal(hits.length, 8);
   assert.equal(hits[0].name, 's00');
+});
+
+test('paneTray lists what an unfocused pane has running, and its unfinished to-dos', () => {
+  const jobs = [
+    { status: 'running', description: 'npm test' },
+    { status: 'done', description: 'lint' },
+    { status: 'running', description: 'dev server' },
+  ];
+  const line = L.paneTray(jobs, { total: 7, done: 3 });
+  assert.equal(line.text, '⚙ 2 in the background: npm test, dev server · ▸ 3 of 7 done');
+  assert.match(line.title, /• npm test\n• dev server/);
+});
+
+test('paneTray shows nothing once the jobs are done and the to-dos ticked off', () => {
+  assert.equal(L.paneTray([{ status: 'done', description: 'lint' }], { total: 2, done: 2 }), null);
+  assert.equal(L.paneTray(undefined, null), null);
+  assert.equal(L.paneTray([], { total: 3, done: 1 }).text, '▸ 1 of 3 done');
 });

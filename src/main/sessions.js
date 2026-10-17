@@ -13,7 +13,7 @@ const planPace = require('./plan-pace');
 const mods = require('./mods');
 const todos = require('../renderer/shared/todos');
 
-// What a helper is saying, or was just told, for a few seconds (session.js noteMessage): null when quiet.
+// What a helper is saying, or was just told, for a few seconds (session/crew.js noteMessage): null when quiet.
 function talkOf(c, now = Date.now()) {
   const said = c.said && now - c.said.at < TALK_MS ? c.said : null;
   const heard = c.heard && now - c.heard.at < TALK_MS ? c.heard : null;
@@ -54,8 +54,8 @@ class SessionManager extends EventEmitter {
   // and getEffortPick() true, each one is sized from its first message instead (effort-pick.js).
   // getRemote(cwd) -> how to start Claude Code on another computer when cwd is
   // one of its folders, or null (remote/service.js launch): read at each start.
-  // getFallbackModel() and getChrome() are Settings' (session.js has what they do);
-  // supports(flag): whether the installed Claude Code takes one of session.js's OPTIONAL_FLAGS.
+  // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
+  // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
   constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null }) {
     super();
     Object.assign(this, { getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures });
@@ -80,7 +80,7 @@ class SessionManager extends EventEmitter {
     const session = new ClaudeSession({
       remote: () => this.getRemote(session.cwd), // only ever called once it exists
       // Asked again at each start: Claude Code may move while the tab is open
-      // (session.js). The path found now stands in should it go missing, so
+      // (session/). The path found now stands in should it go missing, so
       // the start fails the usual way (ENOENT, "can't find Claude Code").
       exe: () => this.getExe() || exe, argsPrefix: this.argsPrefix,
       cwd: historyEntry?.cwd || cwd,
@@ -115,7 +115,7 @@ class SessionManager extends EventEmitter {
       // down mid-turn (history.takeCutOff), until a turn here finishes.
       outcome: historyEntry?.lastOutcome === 'cut' ? 'cut' : null,
       unread: false,
-      worktree: historyEntry?.worktree || null, // its own copy of the repo (worktrees.js)
+      worktree: historyEntry?.worktree || null, // its own copy of the repo (worktrees/index.js)
       // A branch of another conversation (branch.js): where it came from, the
       // folders it must keep out of, and what Claude is told before its first
       // message (where it is now). All kept in History so a restart keeps them.
@@ -144,7 +144,11 @@ class SessionManager extends EventEmitter {
     session.inCopy = () => !!tab.worktree;
     session.copyOf = () => tab.worktree?.originalCwd || null;
 
-    session.on('item', item => this.onItem(tab, item));
+    // Keep warm's ping is keepwarm-service.js's business: none of its turn is
+    // saved, shown or counted as a turn of yours; its result settles ping().
+    // Only what the process says: a note made meanwhile (note(), safe mode, the
+    // crab's suggestions) is the tab's as ever. Its usage readings go through.
+    session.on('item', item => (tab.pinging && item.kind !== 'usage' ? this.onPingItem(tab, item) : this.onItem(tab, item)));
     session.on('spend', s => this.emit('spend', tab.id, s, tab));
     session.on('call', c => this.emit('call', tab.id, c, tab));
     session.on('cache', () => this.changed());
@@ -159,6 +163,8 @@ class SessionManager extends EventEmitter {
     session.on('planning', () => this.changed());
     session.on('tool', () => this.changed());
     session.on('exit', () => {
+      // A process stopped mid-ping sends no result (session.js ended), so the ping is settled here.
+      if (tab.pinging) this.settlePing(tab, { ok: false, error: 'its Claude Code process ended', tokens: null, denied: false });
       // Its mods ended with it: their status lines go too (plugin null: all of them).
       this.emit('item', tab.id, { kind: 'modstatus', plugin: null, text: null }, tab);
       this.changed();
@@ -168,14 +174,15 @@ class SessionManager extends EventEmitter {
   }
 
   onItem(tab, raw) {
-    // The reply as it's written, and what you might ask next, are only for the
-    // panel now: the reply itself is kept when it's done, and a guess goes stale.
-    if (raw.kind === 'partial' || raw.kind === 'next') {
+    // The reply as it's written, what you might ask next, and compacting under
+    // way are only for the panel now: the reply itself is kept when it's done,
+    // a guess goes stale, and the compacted mark follows the compacting.
+    if (raw.kind === 'partial' || raw.kind === 'next' || raw.kind === 'compacting') {
       tab.activeAt = Date.now();
       this.emit('item', tab.id, raw, tab);
       return;
     }
-    // A long tool result's tail is only for main to read (flaky.js): it's
+    // A long tool result's tail is only for main to read (flaky/index.js): it's
     // neither saved with the tab nor sent to the panel.
     let { tail, images, ...item } = raw;
     // A tool's pictures are saved apart (tool-pictures.js): the item names them.
@@ -213,9 +220,13 @@ class SessionManager extends EventEmitter {
       const cost = { ...item.cost, share: Number.isFinite(share) ? share : null, ...(helpers ? { helpers } : {}) };
       item.cost = { ...cost, line: turncost.costLine(cost), detail: turncost.costDetail(cost), effortBadge: turncost.effortBadge(cost) };
     }
+    // Shellby's own /compact while the tab sat idle (wiring/idle-compact.js): its mark says so.
+    if (item.kind === 'compacted' && tab.idleCompacting) item = { ...item, trigger: 'idle' };
     if (item.kind === 'result') {
+      // A note's Ask has its answer: whatever you say next is in your mode.
+      if (item.ok && tab.startsIn && tab.startsIn !== 'plan') tab.session.setMode(this.followMode(tab));
       tab.outcome = item.interrupted ? 'stopped' : item.ok ? 'ok' : 'error';
-      tab.unread = true;
+      if (!(tab.idleCompacting && item.ok && !item.interrupted)) tab.unread = true;
       if (tab.saved) {
         this.history.update(tab.id, { lastOutcome: tab.outcome, context: tab.session.context });
         this.history.markTurn?.(tab.id, null);
@@ -253,6 +264,7 @@ class SessionManager extends EventEmitter {
     if (tab.session.busy) throw new Error('Shellby is still working on the last task.');
     if (tab.inTerminal) throw new Error(IN_TERMINAL);
     tab.activeAt = Date.now();
+    tab.idleCompacting = false; // set again by wiring/idle-compact.js when the turn is its /compact
     if (!tab.saved) {
       this.history.create({ id: tab.id, title: tab.named ? tab.title : userItem.title || userItem.text || tab.title, cwd: tab.session.cwd, mode: tab.session.mode, routineId: tab.routineId });
       // A tab that opened in its own copy before its first message (a Next up draft):
@@ -298,7 +310,7 @@ class SessionManager extends EventEmitter {
 
   /**
    * The panel's queue while a turn runs, [{ id, text, attachments }] in order:
-   * it goes to Claude at its next step (session.js steer). Only for the turn it
+   * it goes to Claude at its next step (session/control.js steer). Only for the turn it
    * was queued behind: one the panel has since sent on its own isn't steered
    * in too. What has gone in already this turn stays out, should the panel not
    * have heard yet. -> whether it was taken.
@@ -332,6 +344,7 @@ class SessionManager extends EventEmitter {
   // between turns, not mid-turn, so "just before it" can't be put back. turnOf
   // is the message whose turn it went into, which the panel offers instead.
   takeSteers(tab) {
+    if (tab.pinging) return []; // after the ping, as a turn of its own
     const taken = [];
     for (const m of tab.steers) {
       let content;
@@ -357,7 +370,7 @@ class SessionManager extends EventEmitter {
   }
 
   /**
-   * Safe mode on or off for one conversation (session.js safeMode): its process
+   * Safe mode on or off for one conversation (session/index.js safeMode): its process
    * is let go of now, so the next message starts it the new way, resumed.
    * -> { ok } | { ok: false, error }
    */
@@ -392,8 +405,61 @@ class SessionManager extends EventEmitter {
     if (tab) this.onItem(tab, item);
   }
 
+  /**
+   * Keep warm's ping (keepwarm-service.js): one message through the tab's
+   * running process and nothing else send() does. No History, effort pick,
+   * preamble, decorate or prepareTurn, so the conversation's cached prompt
+   * and its effort stay exactly as they were.
+   * -> a promise of { ok, error, tokens, denied } when its turn ends.
+   */
+  ping(tabId, text) {
+    const tab = this.require(tabId);
+    const s = tab.session;
+    // A process on its way out (a stop asked for, or exited and not yet closed) would drop it unanswered.
+    if (!s.proc || s.stopping || s.proc.exitCode != null || s.busy || s.pending.size || tab.inTerminal || tab.pinging) return Promise.reject(new Error("That conversation can't take a ping now."));
+    return new Promise(resolve => {
+      // growths: put back after, so a one-word reply doesn't slow the "filling up" pace (turncost.js).
+      tab.pinging = { resolve, denied: false, growths: s.growths };
+      try { s.send(text); } catch (err) {
+        tab.pinging = null;
+        resolve({ ok: false, error: err.message, tokens: null, denied: false });
+      }
+    });
+  }
+
+  // An item of a ping's turn: a tool it asks for is refused (nobody's there to
+  // say yes, and a ping uses none), and its result ends the ping.
+  onPingItem(tab, item) {
+    const p = tab.pinging;
+    if (item.kind === 'permission') {
+      p.denied = true;
+      tab.session.respond(item.requestId, 'deny', 'Keep-warm pings use no tools.');
+      return;
+    }
+    if (item.kind !== 'result') return;
+    this.settlePing(tab, { ok: !!item.ok && !p.denied, error: item.error || null, tokens: item.tokens || null, denied: p.denied });
+  }
+
+  settlePing(tab, r) {
+    const p = tab.pinging;
+    tab.pinging = null;
+    tab.session.growths = p.growths;
+    p.resolve(r);
+    this.changed();
+  }
+
+  /** Counts as just used, for stopIdle: Keep warm lets go of the tabs it kept (keepwarm-service.js stop). */
+  touch(tabId) {
+    const tab = this.tabs.get(tabId);
+    if (tab) tab.activeAt = Date.now();
+  }
+
   respond(tabId, requestId, decision, message, answers, via) {
-    return this.tabs.get(tabId)?.session.respond(requestId, decision, message, answers, via) || false;
+    const tab = this.tabs.get(tabId);
+    if (!tab) return false;
+    // A note's Plan, approved: the work goes on in your mode, not Claude Code's default.
+    const planApproved = tab.startsIn === 'plan' && decision !== 'deny' && tab.session.pending.get(requestId)?.toolName === 'ExitPlanMode';
+    return tab.session.respond(requestId, decision, message, answers, via, planApproved ? this.followMode(tab) : null) || false;
   }
 
   interrupt(tabId) { this.tabs.get(tabId)?.session.interrupt(); }
@@ -446,6 +512,8 @@ class SessionManager extends EventEmitter {
     // Closed by hand mid-turn: no result is coming, and it wasn't cut off either.
     // Quitting (kill) leaves the mark, so the next start says what didn't finish.
     if (!kill && tab.saved && tab.session.busy) this.history.markTurn?.(tab.id, null);
+    // A ping in flight would never hear its result once the listeners are gone: settle it here.
+    if (tab.pinging) this.settlePing(tab, { ok: false, error: 'the conversation was closed', tokens: null, denied: false });
     tab.session.removeAllListeners();
     if (kill) tab.session.kill();
     tab.session.close();
@@ -471,14 +539,15 @@ class SessionManager extends EventEmitter {
    * a claude process and a full set of MCP servers (dozens of processes, over a
    * GB) for nothing; the tab stays open, and its next message resumes it. Not a
    * tab that's working, waiting on you, or has something running in the
-   * background. -> the ids of the tabs stopped.
+   * background. keep(id): true for a tab Keep warm still keeps
+   * (keepwarm-service.js isKept). -> the ids of the tabs stopped.
    */
-  stopIdle(idleMs, now = Date.now()) {
+  stopIdle(idleMs, now = Date.now(), keep = () => false) {
     const stopped = [];
     for (const tab of this.tabs.values()) {
       const s = tab.session;
       if (!s.proc || s.busy || s.pending.size || s.runningCrew().length) continue;
-      if (now - tab.activeAt < idleMs) continue;
+      if (now - tab.activeAt < idleMs || keep(tab.id)) continue; // keep: Keep warm still needs its process
       s.stop().catch(() => {});
       stopped.push(tab.id);
     }
@@ -487,6 +556,21 @@ class SessionManager extends EventEmitter {
 
   setMode(mode) {
     for (const tab of this.tabs.values()) if (!tab.pinnedMode) tab.session.setMode(mode);
+  }
+
+  // A note's Ask or Plan (ipc/notes.js) keeps the mode it opened in only to
+  // start: Ask's until its first answer is in, Plan's until you approve the
+  // plan. From then on it's an ordinary conversation, in your mode.
+  modeToStart(tabId) {
+    const tab = this.tabs.get(tabId);
+    if (tab?.pinnedMode) tab.startsIn = tab.session.mode;
+  }
+
+  // Its opening's done: it follows your mode from now on. -> that mode
+  followMode(tab) {
+    tab.startsIn = null;
+    tab.pinnedMode = false;
+    return this.getMode();
   }
 
   // The default changed: the conversations following it follow it now. One
@@ -555,24 +639,28 @@ class SessionManager extends EventEmitter {
 
   // One state for the critter: asking beats working beats idle.
   get aggregate() {
-    let pending = 0, busy = 0, planning = 0, plans = 0;
+    let pending = 0, busy = 0, planning = 0, plans = 0, hiddenCrew = 0;
     const crew = [], tools = [], jobs = [], crewEnded = [];
     const now = Date.now();
     for (const t of this.tabs.values()) {
       pending += t.session.pending.size;
-      if (t.session.busy) { busy++; tools.push({ tool: t.session.tool, toolAt: t.session.toolAt }); }
-      if (t.session.busy && t.session.planning) planning++;
+      // A keep-warm ping is nobody's work: no crab at work, no "running" in the tray, no
+      // Multitasker. What else the tab has going (its jobs, its helpers) still shows.
+      const working = t.session.busy && !t.pinging;
+      if (working) { busy++; tools.push({ tool: t.session.tool, toolAt: t.session.toolAt }); }
+      if (working && t.session.planning) planning++;
       for (const p of t.session.pending.values()) if (p.toolName === 'ExitPlanMode') plans++;
       for (const j of t.session.jobView()) if (j.status === 'running') jobs.push({ ...j, tabId: t.id });
       for (const c of t.session.runningCrew()) {
         crew.push({ id: c.taskId, tabId: t.id, label: c.activity || c.description || c.subagentType || 'helper', type: c.subagentType || 'general-purpose', bubble: talkOf(c) }); // Claude Code's own default
       }
+      hiddenCrew += t.session.hiddenCrew?.() || 0; // an ultracode run's agents past the few out as crabs
       // Helpers that just finished, and how: one that did its job walks home with it, one that failed slumps.
       for (const c of t.session.crew) if (c.endedAt && now - c.endedAt < CREW_ENDED_MS) crewEnded.push({ id: c.taskId, ok: c.status === 'completed' });
     }
     // What the busy tab that moved last is doing, for how the crab works (work-pose.js).
     const latest = workPose.latest(tools);
-    return { state: pending ? 'asking' : (busy || crew.length) ? 'working' : 'idle', pending, busy, crew, crewEnded, jobs, planning, plans, tool: latest?.tool || null, toolAt: latest?.toolAt || null };
+    return { state: pending ? 'asking' : (busy || crew.length) ? 'working' : 'idle', pending, busy, crew, hiddenCrew, crewEnded, jobs, planning, plans, tool: latest?.tool || null, toolAt: latest?.toolAt || null };
   }
 
   changed() {

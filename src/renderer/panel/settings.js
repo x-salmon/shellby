@@ -129,6 +129,7 @@
     $('selfAwareToggle').checked = state.settings.selfAware !== false;
     $('suggestToggle').checked = state.settings.suggestions !== false;
     $('plainCardsToggle').checked = state.settings.plainCards !== false;
+    $('idleCompactToggle').checked = !!state.settings.idleCompact;
     $('suggestToggle').disabled = state.settings.selfAware === false;
     const muted = state.settings.mutedSuggestions || [];
     $('mutedSuggestRow').hidden = !muted.length;
@@ -150,12 +151,17 @@
 
   // Climbing onto windows lives under strolling: with strolling off he stays
   // put, so the choice is shown but can't be changed. Same for the screen's edges.
+  // Reads the switch rather than the setting: with Windows' animation effects off
+  // and nothing chosen yet, he stays put while the setting is still unset.
   function renderPerch() {
     const s = state.settings;
+    const strolls = $('wanderToggle').checked;
+    $('wanderNote').hidden = strolls || !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $('wanderOptions').classList.toggle('off', !strolls);
     $('perchSelect').value = ['off', 'sometimes', 'often'].includes(s.perch) ? s.perch : 'sometimes';
-    $('perchSelect').disabled = s.wander === false;
+    $('perchSelect').disabled = !strolls;
     $('climbSelect').value = ['off', 'sometimes', 'often'].includes(s.climb) ? s.climb : 'sometimes';
-    $('climbSelect').disabled = s.wander === false;
+    $('climbSelect').disabled = !strolls;
     $('colonySelect').value = String(Number.isInteger(s.colony) ? s.colony : 0);
     renderMischief();
     const ignored = Array.isArray(s.perchIgnore) ? s.perchIgnore : [];
@@ -207,7 +213,7 @@
       o.textContent = o.dataset.label + (o.value === 'auto' ? ` (${ed.using || 'default app'})` : o.value !== 'system' && !ed.installed.includes(o.value) ? ' (not installed)' : '');
     }
     $('editorNote').textContent = ed.using
-      ? `File paths in a conversation open in ${ed.using}, at the line. Shift+click shows a file in its folder instead.`
+      ? `File paths in a conversation open in Shellby's viewer. Ctrl+click opens ${ed.using} at the line, and Shift+click shows a file in its folder.`
       : "No VS Code, Cursor or Windsurf found, so file links open in Windows' default app. Anything that would run (a script, an .exe) is shown in its folder instead.";
   }
   $('editorSelect').addEventListener('change', async e => {
@@ -288,6 +294,7 @@
   });
   $('selfAwareToggle').addEventListener('change', async e => { const r = await api.setSettings({ selfAware: e.target.checked }); state.settings = r.settings; renderSettings(); });
   $('plainCardsToggle').addEventListener('change', async e => { const r = await api.setSettings({ plainCards: e.target.checked }); state.settings = r.settings; });
+  $('idleCompactToggle').addEventListener('change', async e => { const r = await api.setSettings({ idleCompact: e.target.checked }); state.settings = r.settings; });
   $('suggestToggle').addEventListener('change', async e => { const r = await api.setSettings({ suggestions: e.target.checked }); state.settings = r.settings; });
   $('unmuteSuggestBtn').addEventListener('click', async () => { state.settings.mutedSuggestions = await api.muteSuggestion(null); renderSettings(); });
   $('loginToggle').addEventListener('change', async e => { const r = await api.setSettings({ openAtLogin: e.target.checked }); state.settings = r.settings; });
@@ -311,6 +318,8 @@
   $('leaveGuardToggle').addEventListener('change', async e => { const r = await api.setSettings({ leaveGuard: e.target.checked }); state.settings = r.settings; });
   $('openSkinsBtn').addEventListener('click', () => api.openSkinsFolder());
   $('reloadSkinsBtn').addEventListener('click', async () => { state.skins = await api.reloadSkins(); renderSkins(); SB.toast(`${state.skins.length} skins loaded`); });
+  $('problemBtn').addEventListener('click', () => api.reportProblem());
+  $('ideaBtn').addEventListener('click', () => api.suggestIdea());
   $('githubBtn').addEventListener('click', () => api.openExternal('https://github.com/x-salmon/shellby'));
   $('dataBtn').addEventListener('click', () => api.openDataFolder());
 

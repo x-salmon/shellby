@@ -11,7 +11,7 @@ const { savePng } = require('./lib/shot');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9358;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9358;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 async function connect(url) {
@@ -40,7 +40,7 @@ async function connect(url) {
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
-      ...env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47963',
+      ...env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47963',
       SHELLBY_GITHUB_WEB: mock.base, SHELLBY_GITHUB_API: mock.base, SHELLBY_GITHUB_CLIENT_ID: 'e2e-client',
     },
   });
@@ -54,7 +54,7 @@ async function connect(url) {
     await wait(500);
     const title = await dlg.ev("document.querySelector('h1, h2, .title')?.textContent || ''");
     check(titleRe.test(title), `asks first: "${title}"`);
-    await dlg.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(button)}).click()`);
+    await dlg.ev(`{ const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(button)}); setTimeout(() => b.click(), 0); true; }`);
     dlg.close();
   }
   try {

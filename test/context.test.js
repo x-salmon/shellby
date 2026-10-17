@@ -62,3 +62,24 @@ test('a compact boundary becomes a transcript item', () => {
     [{ kind: 'compacted', trigger: 'auto', preTokens: 160000 }]);
   assert.deepEqual(toItems({ type: 'system', subtype: 'compact_boundary' }), [{ kind: 'compacted', trigger: 'manual', preTokens: null }]);
 });
+
+test('compacting under way becomes an item, with the summary length only when Claude Code sends it', () => {
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: 'compacting' }), [{ kind: 'compacting', on: true, chars: null }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: 'compacting', compact_output_chars: 4200 }), [{ kind: 'compacting', on: true, chars: 4200 }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: null, compact_result: 'success' }), [{ kind: 'compacting', on: false, ok: true, error: null }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: null, compact_result: 'failed', compact_error: 'prompt too long' }),
+    [{ kind: 'compacting', on: false, ok: false, error: 'prompt too long' }]);
+});
+
+test('other statuses stay progress chatter', () => {
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: 'requesting' }), []);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: null, permissionMode: 'default' }), []);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: 'compacting', parent_tool_use_id: 'tu_1' }), []);
+});
+
+test('the busy line says compacting, and how much summary when it is known', () => {
+  const { compactingLine } = require('../src/renderer/panel/feed-logic');
+  const compact = n => `${n / 1000}k`;
+  assert.equal(compactingLine(null, compact), 'Compacting the conversation…');
+  assert.equal(compactingLine(4200, compact), 'Compacting the conversation… 4.2k characters of summary so far');
+});

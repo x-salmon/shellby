@@ -3,15 +3,15 @@
 // Kept out of main.js, which only wires it up.
 const focus = require('../focus');
 const workmode = require('../workmode');
-const shells = require('../shells');
+const shells = require('../progression/shells');
 const sounds = require('../sounds');
 const statusLine = require('../statusline');
-const streaks = require('../streaks');
+const streaks = require('../progression/streaks');
 const voice = require('../voice');
 const { publicItem } = require('../wardrobe/service');
 const weatherRules = require('../weather');
 const workPose = require('../work-pose');
-const { levelFor } = require('../xp');
+const { levelFor, levelOf } = require('../progression/xp');
 
 /** d: what main shares (main.js `shared`). */
 function wireCritter(d) {
@@ -44,7 +44,7 @@ function wireCritter(d) {
   }
 
   /**
-   * What he puts on by himself for the weather outside (weather.js dress): items
+   * What he puts on by himself for the weather outside (weather/index.js dress): items
    * by slot over his own outfit, an effect instead of his own, and a mood for the
    * renderer. Like the headphones, they don't need unlocking. Null on a plain day.
    */
@@ -65,7 +65,15 @@ function wireCritter(d) {
   // off (no network needed for that); north otherwise, as it always was.
   const seasonsWhere = () => ({ south: weatherRules.isSouth(weatherRules.normalizePlace(d.config?.get('weather')?.place)) });
 
+  // What unlocks are gated on: the level his total XP reaches. A molt never takes
+  // XP away, so this is the highest level ever reached (progression/levels.js everLevel).
   const currentLevel = () => levelFor(d.config?.get('xp')?.total || 0).level;
+  // The level-up bubble's "LV 12" or "★3": the last level-up's, or his own before there's been one (since his last molt).
+  function bubbleLevel() {
+    if (d.levelUpAt != null) return { level: d.levelUpAt, marks: d.levelUpMarks || 0 };
+    const { level, marks } = levelOf(d.config?.get('xp'));
+    return { level, marks };
+  }
   const homesView = () => shells.homesView(d.config.get('home'), currentLevel());
 
   function broadcastSkin() {
@@ -205,10 +213,10 @@ function wireCritter(d) {
       work,
       // Each helper as its crew member: name, level, colour and hat (wiring/crew.js).
       crew: dressCrew(agg.crew.slice(0, d.MAX_CREW_SHOWN)),
-      moreCrew: Math.max(0, agg.crew.length - d.MAX_CREW_SHOWN),
+      moreCrew: Math.max(0, agg.crew.length - d.MAX_CREW_SHOWN) + (own.hiddenCrew || 0), // and an ultracode run's agents kept in (ultracode.js)
       crewEnded: own.crewEnded || [], // how the helpers that just left got on (sessions.js)
       health: d.healthMood,
-      level: d.levelUpAt,
+      ...bubbleLevel(),
       ci: { failing: d.ci?.view().failing || 0 },
       background: agg.background.length,
       // Claude is planning (plan mode, or it switched itself), or has a plan for you to read.
@@ -266,7 +274,7 @@ function wireCritter(d) {
     if (d.CAPTURE || !d.config) return;
     const v = d.xpView();
     const s = {
-      ...d.lastStatus, health: d.healthMood, xp: { level: v.level, title: v.title, progress: v.progress }, lastXp: d.lastXp, now: Date.now(),
+      ...d.lastStatus, health: d.healthMood, xp: { level: v.level, marks: v.marks, title: v.title, progress: v.progress }, lastXp: d.lastXp, now: Date.now(),
       streak: streaks.streakOf(d.config.get('streaks'), Date.now()).current,
       ci: d.ci?.view().failing || 0,
       focus: d.focusState(),

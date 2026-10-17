@@ -16,7 +16,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9367;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const shot = process.argv[2] ? path.resolve(process.argv[2]) : null;
 
@@ -59,7 +59,7 @@ async function cdp(url) {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: profile, CLAUDE_CONFIG_DIR: path.join(base, 'claude'),
-      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47997',
+      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47997',
     },
   });
   let fails = 0;

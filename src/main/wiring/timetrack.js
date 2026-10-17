@@ -1,4 +1,4 @@
-// Time on each project (timetrack.js), and what the Projects page and the
+// Time on each project (timetrack/index.js), and what the Projects page and the
 // Sticker Book show about each one.
 // Kept out of main.js, which only wires it up.
 const { BrowserWindow, Notification, app, clipboard, dialog, nativeImage, net, powerMonitor, safeStorage, shell } = require('electron');
@@ -15,22 +15,22 @@ const gifts = require('../gifts');
 const { projectOf } = require('../gitinfo');
 const { FAKE_SCENARIOS } = require('../health/fake');
 const { HealthService } = require('../health/service');
-const native = require('../native-windows');
+const native = require('../desktop/native-windows');
 const processJob = require('../process-job');
 const recap = require('../recap');
 const shellCmd = require('../shellcmd');
-const shells = require('../shells');
+const shells = require('../progression/shells');
 const stickers = require('../stickers');
-const streaks = require('../streaks');
+const streaks = require('../progression/streaks');
 const timetrack = require('../timetrack');
-const { TimeTracker } = require('../timetrack-service');
-const { TimeSync } = require('../timesync');
-const { markRed } = require('../xp');
+const { TimeTracker } = require('../timetrack/service');
+const { TimeSync } = require('../timetrack/timesync');
+const { markRed } = require('../progression/xp');
 const toast = require('../toast');
 
 /** d: what main shares (main.js `shared`). */
 function wireTimetrack(d) {
-  // ---- time on each project (timetrack.js)
+  // ---- time on each project (timetrack/index.js)
   //
   // The window in front, Claude's work and git's reflogs say which project you're
   // on; the seconds add up per day for timesheets and invoices. Off until you
@@ -63,7 +63,7 @@ function wireTimetrack(d) {
       // Where Claude is working right now: Shellby's busy tabs by folder, and
       // sessions elsewhere by the folder name the plugin sends.
       claudeAt: () => ({
-        dirs: [...(d.manager?.tabs.values() || [])].filter(t => t.session?.busy).map(t => t.worktree?.originalCwd || t.session?.cwd).filter(Boolean),
+        dirs: [...(d.manager?.tabs.values() || [])].filter(t => t.session?.busy && !t.pinging).map(t => t.worktree?.originalCwd || t.session?.cwd).filter(Boolean),
         names: (d.external?.summary.sessions || []).filter(s => s.state === 'working' || s.state === 'asking').map(s => s.project),
       }),
       resolve: dir => projectOf(dir),
@@ -71,7 +71,7 @@ function wireTimetrack(d) {
       panel: () => d.panel,
     });
     if (start) d.timeTracker.start();
-    // Sending days to Toggl, Clockify or Harvest (timesync.js). The token is
+    // Sending days to Toggl, Clockify or Harvest (timetrack/timesync.js). The token is
     // encrypted by Windows like the channel's, and never kept in the clear.
     d.timeSync = new TimeSync({
       config: d.config,
@@ -191,8 +191,8 @@ function wireTimetrack(d) {
   // An edit from the Sticker Book. Only shells he can wear right now can be decorated.
   function editStickers(shell, fn) {
     const id = d.isStr(shell) ? shell : d.shellIdOf(d.stickerService.wornShellObj());
-    const sh = id === stickers.HOME ? null : shells.SHELLS.find(s => s.id === id);
-    if (id !== stickers.HOME && (!sh || !shells.unlockedAt(id, d.currentLevel()))) return { ok: false, error: 'He has to grow into that shell first.', view: stickersView() };
+    const sh = id === stickers.HOME ? null : shells.shellById(id);
+    if (id !== stickers.HOME && (!sh || !shells.unlockedAt(id, d.currentLevel(), d.config.get('home')))) return { ok: false, error: 'He has to grow into that shell first.', view: stickersView() };
     const slots = d.stickerService.shellSpots(d.activeSkin(), sh).slots.length;
     const next = fn(d.config.get('stickers'), id, slots, Date.now());
     d.config.set({ stickers: next });
@@ -210,6 +210,7 @@ function wireTimetrack(d) {
   // Feed the achievement system; unlocks celebrate via the wardrobe 'unlocked' event.
   function stat(event, payload) {
     if (d.CAPTURE) return;
+    d.emitStat?.(event, payload); // d.onStat listeners (wiring/game-hooks.js), each guarded
     try { d.life?.onStat(event, payload); } catch (e) { d.log.warn('life stat failed', e.message); }
     try { d.eventsOnStat?.(event, payload); } catch (e) { d.log.warn('tide event stat failed', e.message); }
     if (!d.wardrobe) return;
@@ -235,7 +236,7 @@ function wireTimetrack(d) {
     // Once the turn's diff is noted: did it just change a file another copy has? (wiring/clashes.js)
     const noted = Promise.resolve(d.endTurn(tabId));
     noted.then(() => d.clashTurnEnded?.(tabId), () => {});
-    // A copy lined up to sort out its clash and come home: maybe it just has (home-line.js).
+    // A copy lined up to sort out its clash and come home: maybe it just has (worktrees/home-line.js).
     noted.catch(() => {}).then(() => d.homeTurnEnded?.(tabId)).catch(err => d.log.info(`home line: ${err.message}`));
     // One of "Try it N ways"' tries: its tests, then its row on the card (wiring/tries.js).
     noted.catch(() => {}).then(() => d.tries?.turnEnded(tabId, item)).catch(err => d.log.info(`tries: ${err.message}`));
@@ -244,6 +245,12 @@ function wireTimetrack(d) {
     // What it cost, for estimates next time (usage/ledger.js). Never worth losing the rest of the turn's end over.
     try { d.usagePlan?.endTurn(tab, item); } catch (err) { d.log.info(`usage plan: ${err.message}`); }
     tab.guardRun = null;
+    // Shellby compacted it while it sat idle (wiring/idle-compact.js): nobody
+    // asked for it, so no toast, phone ping, XP or "finished" anywhere. One that
+    // failed is told like any other failed turn.
+    const idleCompacted = tab.idleCompacting;
+    tab.idleCompacting = false;
+    if (idleCompacted && item.ok && !item.interrupted) return;
     d.noteWorkTime(item.durationMs); // the week's "hours of Claude work", stopped or not
     const fresh = tab.freshWanted;
     tab.freshWanted = false;
@@ -337,6 +344,12 @@ function wireTimetrack(d) {
   // and summed up afterwards. Urgent ones (a task waiting for your OK, a health
   // alert) still come through.
   let toastArt; // undefined until the first notification, null if it couldn't be copied
+  // A Notification that's been garbage-collected never hears its click, so a
+  // toast clicked later from the notification centre did nothing. The latest
+  // ones are kept (not until 'close': a toast that times out is still clickable there).
+  const KEPT_TOASTS = 20;
+  let keptToasts = [];
+  const keep = n => { keptToasts = [...keptToasts, n].slice(-KEPT_TOASTS); };
   // tone picks the banner (toast.TONES); urgent ones default to 'alert'. action
   // adds a button that does what clicking the notification does. pet: a trophy,
   // level or sticker, which Work mode leaves in the panel (workmode.js).
@@ -354,6 +367,7 @@ function wireTimetrack(d) {
     const plain = () => {
       const n = new Notification({ title: title.slice(0, 80), body, icon: d.ICON });
       if (onClick) n.on('click', onClick);
+      keep(n);
       n.show();
     };
     if (toastArt === undefined) toastArt = toast.prepareArt(path.join(d.ROOT, 'assets', 'toast'), path.join(app.getPath('userData'), 'toast-art'));
@@ -362,6 +376,7 @@ function wireTimetrack(d) {
     if (onClick) n.on('click', onClick);
     // If Windows ever turns the Shellby look down, say it plainly instead.
     n.once('failed', (_e, error) => { d.log.info(`themed notification failed: ${error}`); plain(); });
+    keep(n);
     n.show();
   }
 
@@ -372,13 +387,15 @@ function wireTimetrack(d) {
   // A task started by Shellby himself (e.g. "look into why the GPU is hot"): opens
   // in its own tab in the foreground, in the current permission mode. opts.cwd
   // runs it somewhere other than the current folder (a project review).
-  function startTask(prompt, title, { mode = null, cwd = null } = {}) {
+  // opts.copyLater: yours rather than his (a note's Ask): it starts here too,
+  // but moves into a copy if you go on to have it change things.
+  function startTask(prompt, title, { mode = null, cwd = null, copyLater = false } = {}) {
     if (d.config.get('crabOnly') || !d.claudeStatus?.installed || !d.claudeStatus?.loggedIn) return { ok: false, needsClaude: true, error: 'That needs Claude Code: set it up first.' };
     try {
       const tabId = d.randomUUID();
       // His own errands work in your real checkout: a copy would start from the
       // last commit, and "look over my changes" is about what isn't committed yet.
-      openTab({ tabId, title, mode, ...(cwd ? { cwd } : {}) }).noCopy = true;
+      openTab({ tabId, title, mode, ...(cwd ? { cwd } : {}) }).noCopy = !copyLater;
       d.manager.send(tabId, prompt, { kind: 'user', text: prompt, title });
       d.wake();
       d.send(d.panel, 'tab:opened', { tabId, entry: d.history.get(tabId), items: d.history.load(tabId), background: false });
@@ -389,9 +406,10 @@ function wireTimetrack(d) {
   }
 
   // A message of yours into an open tab: what you type (task:send), or one held
-  // for after the usage reset (releaseMessage). Returns { ok, tabId, turnId,
-  // item } or { ok: false, error }.
-  function sendToTab(tabId, text, files) {
+  // for after the usage reset (releaseMessage). note: a line from Shellby that goes
+  // to Claude after it (the file picked in All files) and not into the chat; never after a /command,
+  // which goes as typed. Returns { ok, tabId, turnId, item } or { ok: false, error }.
+  function sendToTab(tabId, text, files, { note = null } = {}) {
     const tab = d.manager.tabs.get(tabId);
     // A folder on another computer needs Claude Code there, not here (remote/service.js).
     const elsewhere = !!tab && !!d.remoteService?.placeOf(tab.session.cwd);
@@ -406,7 +424,8 @@ function wireTimetrack(d) {
       tab.shellRuns = [];
       // !! sends a message that starts with !; Up brings it back as typed, still !!.
       const said = text.startsWith('!!') ? text.slice(1) : text;
-      const turnId = d.manager.send(tabId, composePrompt(ran + said, files), { kind: 'user', text: said, attachments: files, title });
+      const told = note && !said.trimStart().startsWith('/') ? `\n\n${note}` : '';
+      const turnId = d.manager.send(tabId, composePrompt(ran + said + told, files), { kind: 'user', text: said, attachments: files, title });
       d.rememberPrompt(text);
       d.wake();
       return { ok: true, tabId, turnId, item: { kind: 'user', text: said, attachments: files, turnId } };

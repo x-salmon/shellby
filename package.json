@@ -1,7 +1,7 @@
 {
   "name": "shellby",
   "productName": "Shellby",
-  "version": "0.80.0",
+  "version": "0.88.0",
   "description": "A Windows desktop app for Claude Code: parallel tasks on their own branches, undo for any turn and routines, on your own Claude Pro or Max plan. With a pixel hermit crab who does the work.",
   "main": "src/main/main.js",
   "author": "x-salmon",
@@ -46,15 +46,15 @@
     "release:ready": "node scripts/release-guard.js ready --wait"
   },
   "dependencies": {
-    "@sentry/electron": "^8.0.0",
+    "@sentry/electron": "^8.1.0",
     "electron-updater": "^6.8.9",
-    "koffi": "^3.3.2",
+    "koffi": "^3.3.3",
     "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.6.4",
-    "electron": "^44.5.1",
+    "@types/node": "^26.6.5",
+    "electron": "^44.7.0",
     "electron-builder": "^26.15.3",
     "eslint": "^10.12.0",
     "typescript": "^7.0.2"

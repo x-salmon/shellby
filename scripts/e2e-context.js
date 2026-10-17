@@ -7,8 +7,8 @@
 //   3. Past 80% he says it's getting crowded, and the composer offers room
 //      even after "filling up" was waved away
 //   4. The chip's menu: the running total, and the costliest turns, each a
-//      way back to it; "Not now" hides the offer; Compact runs /compact and
-//      empties the meter
+//      way back to it; "Not now" hides the offer; Compact runs /compact, the
+//      busy line says so over its bar, and the meter empties
 //   5. "Start fresh with a summary": a summary turn, then a new conversation
 //      in the same tab that's handed it
 //   6. /clear: the feed and the meter empty, nothing before it to rewind to,
@@ -20,7 +20,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9390;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9390;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function connect(url) {
@@ -38,7 +38,7 @@ function connect(url) {
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ onboarded: true, sounds: false, wander: false }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47987' },
+    env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47987' },
   });
   try {
     let list = [];
@@ -93,6 +93,8 @@ function connect(url) {
     await ev("SB.$('ctxChip').click()");
     check(await until("!SB.$('ctxMenu').hidden && SB.$('ctxMenu').textContent.includes('Compact') && SB.$('ctxMenu').textContent.includes('Start fresh')"), 'the chip opens Compact and Start fresh');
     await ev("[...SB.$('ctxMenu').querySelectorAll('.menu-item')].find(b => b.textContent.includes('Compact')).click()");
+    check(await until("SB.$('status').classList.contains('compacting') && SB.$('statusText').textContent === 'Compacting the conversation…'"), 'the busy line says it is compacting, over its bar');
+    check(await until("!SB.activeTab().busy && !SB.$('status').classList.contains('compacting')"), 'and the bar goes when it is done');
     check(await until("!SB.activeTab().busy && SB.activeTab().el.textContent.includes('Compacted the conversation (it was 170k tokens)')"), 'Compact runs /compact and the feed marks it');
     check(await until("!SB.activeTab().context && SB.$('ctxChip').hidden && !document.querySelector('.tab.active .tab-ctx')"), 'the meter empties until the next reply');
 

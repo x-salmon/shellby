@@ -13,7 +13,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9393;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9393;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 function connect(url) {
@@ -29,7 +29,7 @@ async function run(settings, body) {
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ sounds: false, wander: false, ...settings }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47998', SHELLBY_MOTION_TEST: '1', SHELLBY_FAKE_HEALTH: 'calm' },
+    env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47998', SHELLBY_MOTION_TEST: '1', SHELLBY_FAKE_HEALTH: 'calm' },
   });
   try {
     let list = [];
@@ -83,7 +83,7 @@ const saved = data => JSON.parse(fs.readFileSync(path.join(data, 'settings.json'
       await ev("[...SB.$('xpQuestList').querySelectorAll('.quest-go')].find(b => b.textContent === 'Open the reset queue').click()");
       check(await until("SB.state.view === 'routines' && document.activeElement?.id === 'resetQueueText'"), 'which lands in the reset queue box');
       await ev("SB.api.dev.quest('reset')");
-      check(await until("/Quest line complete/.test(document.querySelector('.celebrate-host')?.textContent || '') || /Quest line complete/.test(document.body.textContent)", 40000), 'finishing all four gets its own card');
+      check(await until("/Chapter 1 complete/.test(document.querySelector('.celebrate-host')?.textContent || '') || /Chapter 1 complete/.test(document.body.textContent)", 40000), 'finishing all four gets its own card');
       check(Object.keys(saved(data)?.done || {}).length === 4, 'all four are saved');
       check(await ev("/all found/.test(SB.$('xpQuestCount').textContent)"), 'Trophies says they are all found');
       await ev("SB.setView('chat')");

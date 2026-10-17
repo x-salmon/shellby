@@ -12,7 +12,7 @@ const { findClaude } = require('../src/main/claude/cli');
 
 const ROOT = path.join(__dirname, '..');
 const CDP = 9348;
-const HOOK_PORT = 47999;
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47999;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {

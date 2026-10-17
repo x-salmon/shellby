@@ -22,8 +22,8 @@ const { FINDS, SETS } = require('../src/main/gifts');
 const { UNLOCKS } = require('../src/main/bond');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9377;
-const HOOK = 47999;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9377;
+const HOOK = Number(process.env.E2E_HOOK_PORT) || 47999;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-life-'));
 fs.mkdirSync(OUT, { recursive: true });
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -137,9 +137,13 @@ async function windows() {
     // (He may have dug something up on his own meanwhile: his idle habits keep going.)
     check(afterDig.finds.total >= 1 && afterDig.finds.finds.find(f => f.id === found)?.owned, 'it is on the shelf');
     check(afterDig.finds.unseen.includes(found), '...marked new');
-    await wait(3500); // credited once he's finished showing it to you
-    check(saved().stats?.findsMade >= 1 && saved().wardrobe?.unlocked?.includes('beachcomber'), 'his first find earns Beachcomber');
-    check((await life()).bond.journal.some(e => e.kind === 'first-find'), 'and goes in the story');
+    // Credited once he's finished showing it to you, then saved: waited for, not a fixed sleep.
+    const credited = () => saved().stats?.findsMade >= 1 && saved().wardrobe?.unlocked?.includes('beachcomber');
+    for (let t = Date.now(); !credited() && Date.now() - t < 15000;) await wait(250);
+    check(credited(), 'his first find earns Beachcomber');
+    let story = false;
+    for (let t = Date.now(); !(story = (await life()).bond.journal.some(e => e.kind === 'first-find')) && Date.now() - t < 5000;) await wait(250);
+    check(story, 'and goes in the story');
     check(await panel.ev("shellby.dev.life({ what: 'dig' }).then(r => r === null)"), 'a second dig straight away finds nothing (the sand needs a rest)');
 
     // ------------------------------------------------------- 4. the Finds and Us pages
@@ -157,6 +161,8 @@ async function windows() {
     await panel.ev("SB.setView('us')");
     check(await until(panel, "document.querySelector('#usHero h3')?.textContent.length > 0", 3000), 'the Us page shows how close you are');
     check(await panel.ev("/Your crab is/.test(document.getElementById('usHero').textContent)"), '...and his temperament');
+    check(await until(panel, "!!document.querySelector('#usHero #bcHits .bc-hit-crab')", 4000), '...on your beach, with him on it to pet');
+    check(await panel.ev("!document.querySelector('[data-goto=\"beach\"]')"), '...and no Beach tab of its own');
     check(await panel.ev("document.querySelectorAll('#usStory li').length >= 2"), '...and your story so far');
     check(await panel.ev(`document.querySelectorAll('#usUnlocks li').length === ${UNLOCKS.length}`), '...and what opens up as you get closer');
     await panel.shot('4-us');

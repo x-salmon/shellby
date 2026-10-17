@@ -65,7 +65,52 @@ test('list: outside git, walks the folder and skips node_modules', async () => {
   }
 });
 
+test('list: cached for a while, unless asked for a fresh one, which is cached in its place', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-files-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'a.js'), '');
+    assert.deepEqual(await list(dir), ['a.js']);
+    fs.mkdirSync(path.join(dir, 'new'));
+    fs.writeFileSync(path.join(dir, 'new', 'b.js'), '');
+    assert.ok(!(await list(dir)).includes('new/b.js'), 'the cached list, made before it');
+    const fresh = await list(dir, { fresh: true });
+    assert.ok(fresh.includes('new/b.js') && fresh.includes('new/'), fresh.join(', '));
+    assert.ok((await list(dir)).includes('new/b.js'), 'and the next plain call has it too');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('list: a folder that is not there lists nothing', async () => {
   assert.deepEqual(await list(path.join(os.tmpdir(), 'shellby-no-such-folder-xyz')), []);
   assert.deepEqual(await list('relative/path'), []);
+});
+
+test('onForget hears every forget, and a listener that throws harms nothing', () => {
+  const { forget, onForget } = require('../src/main/fileindex');
+  const heard = [];
+  onForget(() => { throw new Error('boom'); });
+  onForget(cwd => heard.push(cwd));
+  forget('C:\\somewhere');
+  forget(42);
+  assert.deepEqual(heard, ['C:\\somewhere']);
+});
+
+test('lists past their time are dropped on the next request, not kept until 20 newer folders push them out', async t => {
+  const fileindex = require('../src/main/fileindex');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-fi-cache-'));
+  const dirs = ['a', 'b', 'c'].map(n => { const d = path.join(base, n); fs.mkdirSync(d); fs.writeFileSync(path.join(d, 'x.txt'), ''); return d; });
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  try {
+    const before = fileindex.cachedCount();
+    await list(dirs[0]);
+    await list(dirs[1]);
+    assert.equal(fileindex.cachedCount(), before + 2);
+    t.mock.timers.tick(fileindex.CACHE_MS + 1);
+    await list(dirs[2]);
+    assert.equal(fileindex.cachedCount(), 1, 'only the fresh list is left');
+  } finally {
+    t.mock.timers.reset();
+    fs.rmSync(base, { recursive: true, force: true });
+  }
 });

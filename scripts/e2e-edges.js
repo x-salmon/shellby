@@ -13,10 +13,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
-const climb = require('../src/main/climb');
+const climb = require('../src/main/desktop/climb');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9368;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9368;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-edges-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 

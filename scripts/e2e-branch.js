@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9371;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-e2e-branch-')));
@@ -38,7 +38,7 @@ git('commit', '-qm', 'init');
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: path.join(base, 'claude'),
-      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47993',
+      SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47993',
     },
   });
   try {
@@ -57,7 +57,7 @@ git('commit', '-qm', 'init');
     const idle = () => until('!SB.activeTab().busy', 15000);
     const lastReply = () => ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant')].at(-1)?.textContent || ''");
     const active = () => ev('SB.state.activeTab');
-    const menuClick = label => ev(`(b => { if (b) b.click(); return !!b; })([...SB.$('rewindMenu').querySelectorAll('.menu-item')].find(b => b.textContent.includes(${JSON.stringify(label)}) && !b.disabled))`);
+    const menuClick = label => ev(`(b => { if (b) setTimeout(() => b.click(), 0); return !!b; })([...SB.$('rewindMenu').querySelectorAll('.menu-item')].find(b => b.textContent.includes(${JSON.stringify(label)}) && !b.disabled))`);
     const entry = tabId => ev(`shellby.listSessions().then(l => l.find(s => s.id === ${JSON.stringify(tabId)}) || null)`);
     const read = file => { try { return fs.readFileSync(file, 'utf8').trim(); } catch { return null; } };
     // The confirm window: press one of its buttons.

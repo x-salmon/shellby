@@ -12,7 +12,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9340;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9340;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
@@ -23,7 +23,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ onboarded: true, sounds: false, wander: false, rooms: { tasks: 0, open: [], all: true } }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: '47959' },
+    env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47959' },
   });
   try {
     let list = [];
@@ -87,11 +87,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const top = await ev("document.getElementById('usesTop').textContent");
     check(/^Most: Projects 3/.test(top), `What you use leads with the most opened (${top})`);
     const never = await ev("[...document.querySelectorAll('#usesNever .uses-row b')].map(b => b.textContent)");
-    check(never.includes('Beach') && never.includes('Health') && !never.includes('Projects') && !never.includes('Tank'), `and lists what you haven't opened (${never.join(', ')})`);
-    await ev("[...document.querySelectorAll('#usesNever .uses-row')].find(r => r.querySelector('b').textContent === 'Beach').querySelector('button').click()");
-    check(await ev('SB.state.view') === 'beach', 'Take a look goes there');
+    check(never.includes('Us') && never.includes('Health') && !never.includes('Projects') && !never.includes('Tank'), `and lists what you haven't opened (${never.join(', ')})`);
+    await ev("[...document.querySelectorAll('#usesNever .uses-row')].find(r => r.querySelector('b').textContent === 'Us').querySelector('button').click()");
+    check(await ev('SB.state.view') === 'us', 'Take a look goes there');
     check(/never sent anywhere/.test(await ev("document.getElementById('usesLede').textContent")), 'and it says the count stays on this PC');
-    const sync = require(path.join(ROOT, 'src', 'main', 'sync-prefs.js'));
+    const sync = require(path.join(ROOT, 'src', 'main', 'sync/prefs.js'));
     check(!JSON.stringify(Object.keys(sync.PREFS || {})).includes('featureUse'), 'the count is not one of the settings Sync carries');
   } catch (e) {
     check(false, e.message);

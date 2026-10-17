@@ -103,6 +103,7 @@ function createLife(d) {
       d.stat('bond-level', { n: r.levelUp.index });
       d.awardXp('bond', { label: `You and Shellby: ${r.levelUp.name}` });
       celebrate(BOND_LINES[r.levelUp.index], { eyebrow: 'Closer', icon: r.levelUp.icon, title: r.levelUp.name, text: bond.UNLOCKS.find(u => u.level === r.levelUp.index)?.text || '' });
+      d.askForIdea?.(r.levelUp.index); // once ever, at Buddies (feedback.js)
     }
     if (r.milestone) celebrate(bond.celebrationLine('days', { days: r.milestone }), { eyebrow: 'Together', icon: '🗓️', title: `${r.milestone} days together`, text: 'He counts. Every one of them.' });
     changed();
@@ -388,7 +389,7 @@ function createLife(d) {
 
   const isNight = t => { const h = new Date(t).getHours(); return h >= 20 || h < 6; };
 
-  // A bug Claude fixed, in a jar (bugdex.js): he lunges, corks it and holds it
+  // A bug Claude fixed, in a jar (bugdex/index.js): he lunges, corks it and holds it
   // up. Catches land while he's working, so one waits until he's free; a newer
   // one replaces it, and it goes stale after JAR_WAIT_MS.
   let jarWaiting = null;

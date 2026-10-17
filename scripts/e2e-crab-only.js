@@ -8,7 +8,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const PORT = 9347;
+const PORT = Number(process.env.E2E_CDP_PORT) || 9347;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-crab-only-'));
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
