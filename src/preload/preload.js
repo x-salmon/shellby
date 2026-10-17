@@ -404,6 +404,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onNudge: on('nudge'),
   devCheckNudges: invoke('dev:check-nudges'), // dev builds with SHELLBY_NUDGE_TEST only
   devAway: invoke('dev:away'), // dev builds with SHELLBY_RECAP_TEST only: a fake idle reading
+  devQuit: invoke('dev:quit'), // dev builds with SHELLBY_E2E or SHELLBY_MOTION_TEST only: quit as the tray does
   devUsage: invoke('dev:usage'), // dev builds with SHELLBY_FORECAST_TEST only: a backdated 5-hour reading
   dev: { throw: invoke('dev:throw'), stroll: invoke('dev:stroll'), focusEnd: invoke('dev:focus-end'), critterPos: invoke('dev:critter-pos'), say: invoke('dev:say'), bit: invoke('dev:bit'), temperament: invoke('dev:temperament'), perch: invoke('dev:perch'), perchState: invoke('dev:perch-state'), climb: invoke('dev:climb'), prank: invoke('dev:prank'), edges: invoke('dev:edges'), scene: invoke('dev:scene'), life: invoke('dev:life'), quest: invoke('dev:quest') }, // SHELLBY_MOTION_TEST only
   onNewTabIn: on('tab:new-in'),

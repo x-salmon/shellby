@@ -46,6 +46,18 @@ test('the tabs restored at startup, already in settings, write nothing', () => {
   assert.deepEqual(config.sets, []);
 });
 
+test('quitting closes the tabs without forgetting them, so they come back next start', () => {
+  const { app } = require('electron');
+  const { d, config } = setup({ openTabs: ['a', 'b'] });
+  app.isQuitting = true;
+  try {
+    d.manager.emit('tabs', []); // wiring/quit.js closeAll
+    assert.deepEqual(config.sets, []);
+  } finally {
+    app.isQuitting = false;
+  }
+});
+
 test('a conversation closing has its waiting transcript lines written', () => {
   const { d, flushed } = setup();
   d.manager.emit('tabs', [tab('a'), tab('b')]);

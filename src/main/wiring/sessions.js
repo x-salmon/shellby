@@ -264,13 +264,15 @@ function wireSessions(d) {
     });
     // A summary comes with every token count, context, cache and busy change, and
     // config.set rewrites settings.json in full: the list goes there only when it's different.
+    // Quitting closes every tab on the way out (wiring/quit.js): that's not you
+    // closing them, so the list stays as it was and they come back next start.
     let openTabsSaved = null;
     let openIds = new Set();
     d.manager.on('tabs', summary => {
       d.sendTabs(summary); // the panel and any popped-out windows (wiring/popouts.js)
       d.clashTabsChanged?.(); // a copy opened or closed: look for clashes again (wiring/clashes.js)
       const saved = summary.filter(t => t.saved && !t.routineId && !t.workflowRunId).map(t => t.id);
-      if (!d.CAPTURE) {
+      if (!d.CAPTURE && !app.isQuitting) {
         openTabsSaved ??= JSON.stringify(d.config.get('openTabs') || []);
         const json = JSON.stringify(saved);
         if (json !== openTabsSaved) { openTabsSaved = json; d.config.set({ openTabs: saved }); }

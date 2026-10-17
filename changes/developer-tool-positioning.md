@@ -6,3 +6,7 @@
 ### Removed
 
 - **Snacks and naps.** He no longer gets peckish, sandy, sleepy or mopey, and Feed, Rinse and Tuck in are gone from his menu and the Us page, along with their setting and five trophies. There's nothing to look after now, and none of the XP, levels or bond you've earned goes anywhere.
+
+### Fixed
+
+- **Your tabs come back after a restart.** Quitting from the tray, or restarting to install an update, used to forget the conversations you had open. They reopen where they were now, in the same panes.

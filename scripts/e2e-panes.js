@@ -767,8 +767,14 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     const roomAsLeft = await ev('SB.roomFor(SB.state.grid, SB.state.paneSizes).ok');
     await ev('shellby.maximize()'); // back to its own size, so the restart has to grow it
     await wait(1500); // past the save's 500 ms
+    // A real quit, as the tray or an update does it: quitting closes every tab on
+    // the way out, and they still have to come back.
+    const exited = new Promise(r => app.once('exit', () => r(true)));
+    await ev('shellby.devQuit()');
     panel.ws.close();
-    app.kill();
+    const quitOk = await Promise.race([exited, wait(15000).then(() => false)]);
+    check(quitOk, 'quits the usual way');
+    if (!quitOk) app.kill();
     await wait(1500);
     app = launch();
     let again = [];

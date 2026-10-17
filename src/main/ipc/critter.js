@@ -93,6 +93,12 @@ function registerCritterIpc(ipcMain, d) {
   ipcMain.handle('quests:get', () => d.questsPanelView());
   ipcMain.handle('quests:hide', (_e, hidden) => d.setQuests(quests.setHidden(d.config.get('quests'), hidden === true)));
 
+  // Dev/e2e only: quit the way the tray and an update do (before-quit and all),
+  // so a restart check goes through the same doors a real one does.
+  if (!app.isPackaged && (process.env.SHELLBY_E2E === '1' || process.env.SHELLBY_MOTION_TEST === '1')) {
+    ipcMain.handle('dev:quit', () => { setTimeout(() => app.quit(), 50); return true; });
+  }
+
   // Dev/e2e only: throw him, send him for a stroll, finish a focus session now,
   // make him say something or do one of his idle habits.
   if (!app.isPackaged && process.env.SHELLBY_MOTION_TEST === '1') {
