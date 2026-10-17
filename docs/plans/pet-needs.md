@@ -5,7 +5,9 @@ him. You keep him happy with plankton snacks you earn by getting things done,
 a rinse, a tuck-in, and plain attention. It is built for just-the-crab users
 first and works the same in Claude mode.
 
-> **Status: built.** Where the build differs from the plan below:
+> **Status: removed (2026-10-17).** Shellby went tools-first and dropped his needs: nothing to look after. Kept as a record.
+>
+> **Was: built.** Where the build differs from the plan below:
 > - The runtime lives in `src/main/care.js` (life.js stays glue), not inside life.js.
 > - The daily hello snack comes from `life.newDay()` (source `new-day`), not the
 >   `active` stat: that one fires once at launch, before life exists.

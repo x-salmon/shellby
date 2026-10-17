@@ -37,14 +37,14 @@ all on **your own Pro or Max plan**, on Windows 10 and 11. No API keys, no per-t
 ## Get started
 
 1. **[Download the installer](https://github.com/x-salmon/shellby/releases/latest)** (`Shellby-Setup-x.y.z.exe`) and run it on Windows 10 or 11.
-2. Pick **Crab + Claude Code** (uses your Claude Pro or Max plan), **Work mode** (the same, with your tools first on the bar and a quiet crab), or **Just the crab**: no Claude, no account, still a desk pet who talks, plays and dresses up.
+2. Pick **Claude Code + crab** (uses your Claude Pro or Max plan), **Work mode** (the same tools, first on the bar, and a quiet crab), **Claude Code on another computer** (over ssh), or **Just the crab**: no Claude, no account, still a desk pet who talks, plays and dresses up.
 3. He moves onto your desktop. Click him to open the panel.
 
 Windows may show a SmartScreen warning the first time; [Install](#install) explains it, along with the Claude Code setup.
 
 ## Everything he can do
 
-You start with just him and a chat box. The rest of his shell opens as he works: **History**, **Projects** and **Notes** after his first task, **Health** and the **Toolbox** after his third, **Automate** after his fifth. Can't wait? **More → Show every screen** puts them all on the bar, and [Work mode](docs/DESKTOP.md#work-mode) starts with every one of them.
+Already use Claude Code on this PC? Every tool screen is on the bar from the start: Chat, **History**, **Projects**, **Notes**, **Health**, the **Toolbox** and **Automate**. New to it, you start with him and a chat box, and the rest opens as he works. Either way **More → Show every screen** puts everything on the bar, and his own screens (trophies, finds, the tank) open as you two go.
 
 | | |
 |---|---|
@@ -52,16 +52,7 @@ You start with just him and a chat box. The rest of his shell opens as he works:
 | 🗂️ **[Runs your dev day](#️-he-runs-your-dev-day)** | Every repo and dev server, crash help, flaky tests, time per project |
 | 🌊 **[Gets out more](#-he-gets-out-more)** | Your terminal, your phone, CI on your pull requests, your stream and GitHub |
 | 🔒 **[Keeps you in control](#-you-stay-in-control)** | Permission cards, five modes, a spending guard, nothing leaves your PC |
-
-**And he's good company**
-
-| | |
-|---|---|
-| 🦀 **[Lives on your desktop](#-he-lives-on-your-desktop)** | Behind your windows, a voice of his own, focus guard, usage limits |
-| 💞 **[Just the two of you](#-just-the-two-of-you)** | Gifts he digs up, games, a bond that grows, a tank to decorate, a beach of everything you ship |
-| 🎩 **[Dresses up](#-dress-him-up)** | Outfits, shells and skins you earn, and community packs |
-| 🩺 **[Watches your PC](#-he-watches-your-pc)** | He sweats when the GPU runs hot and gets dizzy when memory's full |
-| 🎪 **[Things to try](#-things-to-try-with-him)** | Throw him, fling him off a window, play fetch, catch him typing along |
+| 🦀 **[And a crab who does the work](#-and-a-crab-who-does-the-work)** | How you see Claude working, plus a desk pet, outfits and PC health if you want them |
 
 ## ⚡ He gets things done with Claude Code
 
@@ -120,6 +111,8 @@ You start with just him and a chat box. The rest of his shell opens as he works:
 - **Notes for later:** jot an idea on a project's Notes, or ask Claude to note it from the chat. **Plan**, **Build** or **Ask** turns one into a conversation, Plan and Build in a copy of their own.
 - **Time on each project:** hours worked out from what he already sees, clients and rates, a PDF or CSV timesheet, and a day at a time to Toggl, Clockify or Harvest when you send it. Off until you turn it on.
 - **Flaky tests** caught and fixed for real, **dependencies** checked weekly with a pull request to bump them, and **Is it safe to leave?** before you lock up or shut down.
+- **He knows your limits:** when you'll hit your 5-hour window, and a message held for after the reset goes by itself.
+- **Run it when my limit resets:** queue heavy tasks ("refactor X", "write tests for Y") on the Routines page, for when the window resets or for tonight. They start by themselves, overnight too, one after another, with the PC kept awake. Each result goes to your phone, and a task that runs out of usage partway carries on after the next reset.
 - **Workflows and routines:** a schedule, a red build, a release or a file landing in a folder starts a list of steps: Claude, commands, web requests, a question for you. [Workflows](docs/WORKFLOWS.md).
 - **Your MCP servers in them:** tick the servers a step may use and Claude files the Linear issue or posts to Slack without stopping to ask, or call one tool directly with no Claude turn at all. Pair it with [n8n](docs/N8N.md) for everything else.
 
@@ -168,124 +161,22 @@ shellby time last-week
 
 ---
 
-That's the work. The rest is what makes him good company.
-
-## 🦀 He lives on your desktop
+## 🦀 And a crab who does the work
 
 <p align="center"><img src="docs/img/lineup-life.png" width="860" alt="Five Shellbys: one saying 'fingers crossed', one in a focus helmet with 18 minutes left, one holding up a red CI sign, one sweating at 83 degrees, and one asleep in his shell"></p>
 
-- **On the wallpaper layer,** behind every window, still there after <kbd>Win</kbd>+<kbd>D</kbd>. He scuttles while Claude works, raises a claw when it needs you, and naps when it's quiet.
-- **A voice and a temperament of his own:** chipper, fussy, cocky or sleepy. *"fingers crossed"* at a test run, *"all green!"* when it passes, *"shipped it"* after a push. He never quotes Claude.
-- **He climbs onto your windows,** rides them when you drag them, and gets flung off when you shake them. He **climbs the sides of your screen** and hangs from the top of it, and sticks to the edge when you throw him at it.
-- **Pals and mischief, if you like:** up to five little crabs of his own to keep him company on the floor, and an opt-in **cheeky crab** mode in which he pinches your cursor, shoves a window, leaves sandy footprints and drags notes onto your desktop.
-- **Work mode, for a quiet crab:** your tools lead the bar, he only speaks up about the work, and the pals, pranks, climbing and confetti take the day off. His needs rest, his progress keeps counting, and turning it off puts every setting back as it was. [More →](docs/DESKTOP.md#work-mode)
-- **He guards your focus** in a little helmet, **listens along** in headphones when music plays, **types along** on a little keyboard while you type, **dresses for the weather** outside (a sou'wester in the rain), and hushes when you're on a call.
-- **He knows your limits:** when you'll hit your 5-hour window, and a message held for after the reset goes by itself.
-- **Run it when my limit resets:** queue heavy tasks ("refactor X", "write tests for Y") on the Routines page, for when the window resets or for tonight. They start by themselves, overnight too, one after another, with the PC kept awake. Each result goes to your phone, and a task that runs out of usage partway carries on after the next reset.
+He's how you see the work without opening anything. He scuttles while Claude works, raises a claw when it needs you, sends a helper crab out for every subagent, holds up a red sign when a build breaks or a dev server crashes, and says *"all green!"* when the tests pass. He lives on the wallpaper layer, behind every window, and there's nothing to look after.
 
-**[Everything he does on his own →](docs/DESKTOP.md)**
+The rest is there if you want it, and none of it needs Claude or an account:
 
-## 💞 Just the two of you
+- **A desk pet with a life of his own:** a voice and a temperament (chipper, fussy, cocky or sleepy), little scenes when nothing's happening, finds he digs up, hide and seek and fetch, a bond that grows, a tank to decorate, and a beach with a sandcastle for every project you ship. [On your desktop →](docs/DESKTOP.md) · [His tank →](docs/TANK.md)
+- **Dress him up:** 168 accessories, 24 effects and 18 crabs, 97 trophies and 99 levels, a sticker for every repo you ship, and the [Bugdex](docs/BUGDEX.md), where every kind of bug Claude fixes is a creature he scoops into a jar. More from other people in the **[community gallery](https://getshellby.com/community/)**. [Outfits, trophies and stickers →](docs/WARDROBE.md)
+- **He watches your PC:** he sweats when the GPU runs hot, gets dizzy when memory's full and overstuffs his shell when a drive fills up, with live vitals, what's hogging it, what starts with Windows and the developer clutter you can clear. [How Health works →](docs/HEALTH.md)
+- **Things to try:** throw him at a title bar and he rides the window, fling him at the edge of the screen and he climbs it, rub the mouse over him to pet him. Pals, typing along and pranks stay off until you turn them on. [All of it →](docs/DESKTOP.md)
 
-<table>
-<tr>
-<td width="50%"><img src="docs/img/screenshot-us.png" alt="The Us page: Best friends, 187 days together, a bar to Inseparable, and a chipper temperament"></td>
-<td width="50%"><img src="docs/img/screenshot-finds.png" alt="The Finds shelf: 20 of 38 finds, a compass showing off, and sets like Beach day and Pirate's hoard"></td>
-</tr>
-</table>
+**Work mode** keeps him to himself: your tools lead the bar, he only speaks up about the work, and the climbing, pals, pranks and confetti take the day off. Turning it off puts every setting back as it was. [Work mode →](docs/DESKTOP.md#work-mode)
 
-None of this needs Claude or an account.
-
-- **Little scenes** when nothing's happening: he pounces on your cursor and misses, builds a sandcastle, gets the hiccups. 24 to catch him in.
-- **Gifts from digging:** sea glass, a lost key, a pearl, once in a long while a gold doubloon. 102 finds in thirteen sets, on a shelf of their own.
-- **He remembers you:** from *New friends* to *Inseparable*, with the story of your moments together (*"You shook him off Excel"*), your birthday, and his.
-- **Hide and seek, fetch,** and friends' crabs who drop by and chat.
-- **A tank to decorate:** a sandcastle, a rock cave, kelp, a treasure chest and the finds he's dug up, arranged where you want them, with him wandering about among it all. Some pieces are gauges in disguise: a tide gauge for your 5-hour window, a thermometer reading your GPU, a chest that glints when a pull request merges. Pieces come from the start, from trophies, from the seasons and from his digging, never from a shop. Decorate with the mouse or the keyboard alone. [More about his tank](docs/TANK.md).
-- **Snacks and naps:** he gets peckish, sandy, sleepy, and a little mopey if you ignore him. Feed him plankton you earn by getting things done. Gentle by design: it never goes below a floor, never drops while you're away, and never costs you anything.
-- **Your beach,** a scene that only grows: a sandcastle for every project you ship (a tower house at 5 ships, a keep at 15, a citadel at 40), the tide coming in with your streak, a line of seaweed where your best one reached, and his finds washed up along it. New castles rise out of the sand while you watch. Drag along it, then share a snapshot of the whole thing.
-
-<p align="center"><img src="docs/img/beach-card.png" width="860" alt="A pixel beach at night: fourteen sandcastles of different sizes with flags and lit windows, finds washed up along a line of seaweed, plots with buckets and spades, and Shellby by the newest castle"></p>
-
-**[More about the two of you →](docs/DESKTOP.md#just-the-two-of-you)**
-
-## 🎩 Dress him up
-
-<p align="center"><img src="docs/img/lineup-sets.png" width="860" alt="Five Shellbys dressed head to tail: a dev desk set with a keycap and rubber duck, a tide pool set with a starfish and kelp, an on-call set with a beacon and fire extinguisher, one listening along with headphones and a boombox, and one in the Golden Conch shell"></p>
-
-- **173 accessories, 24 effects and 18 crabs,** head-to-tail sets, and costumes for every season.
-- **100+ trophies and 99 levels:** outfits unlock as you use him, and he grows into new shells, from a Snail Shell to the Rainbow Nautilus.
-- **A character sheet:** Shipping, Rigour, Craft and Tidiness stats from the work he does, and a class from the highest: Shipper, Tester, Toolsmith, Curator or a dual class. [See](docs/WARDROBE.md#character-sheet)
-- **A sticker for every project you ship,** drawn from the repo itself, going vinyl, holo and foil as you keep shipping.
-- **The Bugdex:** every kind of bug Claude fixes for you is a pixel creature he scoops into a jar. A TypeError is a Shapeshifter Shrimp, ENOENT a hermit crab that lost its shell, a merge conflict a crab with two heads, a flaky test a ghost. 83 to catch in twelve habitats, and seeing one isn't enough: it only counts once it's fixed, and a skipped test or an `@ts-ignore` doesn't fool him. Catch one often enough and it evolves. While one is loose, Claude's work on it plays out as a **bug battle**: its HP drops as failing tests clear, helpers join in, and the fix knocks it out into the jar. Beat each habitat's boss for its badge, then the Deep Four and the champion for the Hall of Fame. [More about the Bugdex and bug battles](docs/BUGDEX.md).
-- **Cards to share:** a crab card of him as he's dressed, and a weekly one every Friday.
-
-<p align="center"><img src="docs/img/week-card.png" width="700" alt="A weekly crab card: Shipped 3 projects, 22 tasks done, a 5-day streak, XP for each day, the top project and three new trophies"></p>
-
-<table>
-<tr>
-<td width="50%"><img src="docs/img/screenshot-wardrobe.png" alt="Shellby's screen: Outfits, with slots for hat, face, neck, claw, shell and effect"></td>
-<td width="50%"><img src="docs/img/screenshot-stickers.png" alt="The Sticker Book: Shellby's shell up close with five stickers on it, and a sticker for each project in foil, holo, vinyl and paper"></td>
-</tr>
-</table>
-
-More hats, effects, colours and voices (a pirate, a grump, another language) from other people in the **[community gallery](https://getshellby.com/community/)**, installed in one click, and you can make your own in Pack Studio.
-
-**[Outfits, trophies, XP and stickers →](docs/WARDROBE.md)**
-
-## 🩺 He watches your PC
-
-<p align="center">
-<img src="docs/img/critter-hot.png" width="150" alt="Shellby sweating and fanning himself with his claw, a speech bubble reading 83 degrees"> <img src="docs/img/critter-dizzy.png" width="150" alt="Shellby with stars circling his eyes because memory is nearly full"> <img src="docs/img/critter-stuffed.png" width="150" alt="Shellby with boxes, papers and a floppy disk jammed into his shell because a drive is full">
-</p>
-
-- **Live vitals:** GPU and CPU temperature and load, VRAM, memory, every drive, drive temperatures, fans and the battery, with sparklines over the last 10 minutes or the last hour. Shellby needs no admin rights, and nothing leaves your PC.
-- **CPU temperature too:** Windows hides it, so he reads it from LibreHardwareMonitor or HWiNFO. **Let Claude set it up** writes the install task for you to read before it runs.
-- **His mood follows your hardware:** he sweats past 80°C, pants under a heat shimmer when it gets scorching, gets dizzy when memory fills up, and overstuffs his shell when a drive is full. He waits out a spike before he reacts, and you set every line yourself.
-- **A heads-up, once:** one Windows notification when something crosses the line, another only if it gets worse, and a log of the last 40 alerts, including when things calmed down.
-- **What's hogging it:** while he's sweating or dizzy, the busiest processes by GPU, CPU or memory, each with an **End task** that asks first and won't touch Windows itself. He owns up to his own share too: *Shellby himself: 1% CPU, 450 MB*.
-- **What starts with Windows:** every startup entry, with a **Switch off** that works like Task Manager's, so switching it back on puts things as they were.
-- **Developer clutter:** what Docker, WSL's virtual disks and the npm, pnpm, pip, Cargo, Gradle and other caches are sitting on. Tens of gigabytes to get back, and he overstuffs his shell over that too.
-- **"Ask Shellby"** about any of it: why it's hot, what's running that you don't need, which startup apps to keep, what's safe to clear. Each one is a Claude task that reports back. He never deletes, kills or switches anything off himself.
-
-<p align="center"><img src="docs/img/screenshot-health.png" width="420" alt="The Health view: Shellby sweating in his tank, 'Running hot: GPU is at 83°C', gauges with sparklines, and drive bars"></p>
-
-**[How Health works →](docs/HEALTH.md)**
-
-## 🎪 Things to try with him
-
-Nobody reads a feature list to find out a crab can be thrown. Have a go.
-
-> **⚙️ Every one of these is a setting.** Turn up the ones you like and switch off any you don't. The pals, the typing and the pranks stay off until you turn them on. Each trick below says where its switch is.
-
-<table>
-<tr>
-<td width="50%" align="center" valign="top"><img src="docs/img/tricks-ride.gif" alt="Shellby hops onto a Notepad title bar, hangs on while the window is dragged, then is shaken off and lands dizzy"><br><sub><b>Throw him at a title bar</b> and he climbs on. Drag the window and he hangs on; shake it and off he goes<br>⚙️ <i>Settings → Shellby → Climbing onto your windows</i></sub></td>
-<td width="50%" align="center" valign="top"><img src="docs/img/tricks-close.gif" alt="Shellby sits on a Notepad window; it closes under him, he hangs in mid-air for a beat, then falls to the floor"><br><sub><b>Close the window</b> under him: a beat in mid-air, a look down, and down he goes<br>⚙️ <i>Settings → Shellby → Climbing onto your windows</i></sub></td>
-</tr>
-<tr>
-<td width="50%" align="center" valign="top"><img src="docs/img/tricks-wall.gif" alt="Shellby is thrown at the left edge of the screen, sticks to it and climbs up"><br><sub><b>Throw him hard</b> at the side of the screen and he sticks to it, then climbs<br>⚙️ <i>Settings → Shellby → Climbing the edges of the screen</i></sub></td>
-<td width="50%" align="center" valign="top"><img src="docs/img/tricks-pals.gif" alt="Shellby is thrown up among his four little pals, who scatter when he lands"><br><sub><b>Pals on the floor</b> keep him company, and scatter when you throw him down among them<br>⚙️ <i>Settings → Shellby → Pals on the floor</i> (off until you pick some)</sub></td>
-</tr>
-<tr>
-<td width="50%" align="center" valign="top"><img src="docs/img/tricks-typing.gif" alt="Text is typed into Notepad while Shellby taps along on a little keyboard, then says new record: 180 wpm"><br><sub><b>Type fast</b> and he taps along on a little keyboard, then tells you how fast that was<br>⚙️ <i>Settings → Around you → Typing along</i> (off until you turn it on)</sub></td>
-<td width="50%" align="center" valign="top"><img src="docs/img/tricks-pounce.gif" alt="Shellby creeps up on the mouse cursor, pounces, misses, and says meant to do that"><br><sub><b>Leave your cursor</b> near him and he pounces on it, and misses<br>⚙️ <i>Settings → Shellby → How much he talks</i> (Quiet stops his little scenes)</sub></td>
-</tr>
-</table>
-
-And a few more:
-
-| Do this | And he... | Switch |
-|---|---|---|
-| **Flick him** while you drag him | tumbles across the screen, bonks off the edges and lands on the taskbar | always on: you started it |
-| **Throw him at the top** of the screen | sticks to it and walks along it upside down, legs swinging | Settings → Shellby → Climbing the edges of the screen |
-| **Rub the mouse** back and forth over him | gets petted, and you two grow a little closer | always on |
-| **Play some music** | puts his headphones on | Settings → Around you → Listening along |
-| **Right-click → Play → Dig for treasure** | digs, and every so often holds up a find: sea glass, a pearl, and very rarely a gold doubloon | only when you ask |
-| **Right-click → Play → Hide and seek** | burrows into the sand and pops up behind one of your windows | only when you ask |
-| **Right-click → Play → Fetch** | waits for you to throw the pebble, scuttles after it and brings it back | only when you ask |
-| **Turn on Mischief** (if you dare) | pinches your cursor, shoves a window and drags notes onto your desktop: *"nice cursor. mine now"* | Settings → Shellby → Mischief (off until you turn it on) |
-
-Want a quieter crab in one click? **Work mode** switches off the climbing, pals and pranks together, and gives you back exactly what you had when you turn it off. **[All of it in detail →](docs/DESKTOP.md)**
+<p align="center"><img src="docs/img/beach-card.png" width="700" alt="A pixel beach at night: fourteen sandcastles of different sizes with flags and lit windows, finds washed up along a line of seaweed, plots with buckets and spades, and Shellby by the newest castle"></p>
 
 ## What's new
 

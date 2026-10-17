@@ -2,6 +2,7 @@
 // conversations' history (history.js), each tidied as it opens.
 // Kept out of main.js, which only wires it up.
 const { app } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const attach = require('../attachments');
 const { setPlanOnly } = require('../claude/cli');
@@ -10,6 +11,11 @@ const { History } = require('../history');
 const rooms = require('../rooms');
 
 const PURGE_EVERY_MS = 24 * 60 * 60 * 1000;
+
+// Someone who already uses Claude Code: it has kept a conversation on this PC.
+function usesClaudeCode(dir) {
+  try { return fs.readdirSync(path.join(dir, 'projects')).length > 0; } catch { return false; }
+}
 
 /** d: what main shares (main.js `shared`). Sets d.config and d.history. */
 function wireProfile(d) {
@@ -23,9 +29,10 @@ function wireProfile(d) {
     // Settings lost with no backup: still someone who was here, so no first-run
     // welcome, and every screen they had stays open.
     if (config.lost) config.set({ onboarded: true });
-    // Rooms are decided once: everything for someone who was already here, one
-    // door at a time for someone new (rooms.js).
-    if (config.get('rooms') == null) config.set({ rooms: rooms.initialRooms(!!config.get('onboarded')) });
+    // Rooms are decided once: everything for someone who was already here, the
+    // tools for someone who already uses Claude Code, one door at a time for
+    // someone new (rooms.js).
+    if (config.get('rooms') == null) config.set({ rooms: rooms.initialRooms(!!config.get('onboarded'), { claudeUser: usesClaudeCode(d.claudeConfigDir()) }) });
     setPlanOnly(config.get('planOnly')); // before anything launches Claude Code
     const history = d.history = new History(path.join(userData, 'sessions'), { onError: (what, err) => log.error(`history: ${what}`, err) });
     // Transcripts orphaned by an older build (which trimmed the index without

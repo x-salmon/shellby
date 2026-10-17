@@ -45,8 +45,10 @@
 
   function renderOnboarding() {
     const s = state.status || {};
-    // Three paths: just the crab (no account), or the Claude Code setup steps,
-    // with a lively crab or Work mode's quiet one (workmode.js).
+    // Four paths: the Claude Code setup steps with a lively crab or Work mode's
+    // quiet one (workmode.js), Claude Code over ssh, or just the crab (no account).
+    // Claude Code already here: Work mode says it's made for you, but stays a choice.
+    $('workPathTag').hidden = !s.installed;
     const path = SB.onboardPath || null;
     $('onboardPaths').querySelectorAll('.path').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.path === path)));
     $('claudeSetup').hidden = !['claude', 'work', 'remote'].includes(path);

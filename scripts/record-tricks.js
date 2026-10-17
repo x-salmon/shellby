@@ -82,7 +82,7 @@ async function typeInto(hwnd, text, kps) {
 
 const settings = extra => ({
   onboarded: true, crabOnly: true, onTop: true, perch: 'off', climb: 'off', chatter: 'chatty',
-  wardrobe: { seasonalAuto: false }, needsOn: false, ...extra, // no snack chatter over the clip
+  wardrobe: { seasonalAuto: false }, ...extra,
 });
 
 const press = vk => { keybdEvent(vk, 0, 0, 0); keybdEvent(vk, 0, KEYUP, 0); };

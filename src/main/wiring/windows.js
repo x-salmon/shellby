@@ -302,8 +302,7 @@ function wireWindows(d) {
         if (d.perching.maybeGoUp()) return;
         if (d.climbing.maybeClimb()) return;
         const home = d.config.get('critterPos');
-        // A bit mopey (needs.js), he doesn't feel much like strolling.
-        if (home && Math.random() < (d.life?.mopey() ? 0.14 : 0.35)) return void d.motion.stroll(home.x - crewExtra());
+        if (home && Math.random() < 0.35) return void d.motion.stroll(home.x - crewExtra());
       }
       if (!voice.hasHabits(d.config.get('chatter')) || Math.random() > d.IDLE_BIT_CHANCE) return;
       // A scene, a habit, maybe a find or a memory (life.js).

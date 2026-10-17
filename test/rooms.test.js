@@ -17,6 +17,16 @@ test('someone who was here before rooms keeps every door open', () => {
   assert.equal(rooms.roomsView(s).next, null);
 });
 
+test('someone new who already uses Claude Code starts with the tool screens open', () => {
+  const s = rooms.initialRooms(false, { claudeUser: true });
+  assert.deepEqual(rooms.openRooms(s), [...rooms.TOOL_ROOMS]);
+  assert.equal(rooms.roomsView(s).all, false, 'his own screens still grow with him');
+  assert.deepEqual(rooms.roomsView(s).next, { id: 'trophies', name: 'Trophies', tasksToGo: 1, in: 'wardrobe' });
+  // The first task announces only what was still closed.
+  assert.deepEqual(rooms.taskDone(s).opened.map(r => r.id), ['trophies']);
+  assert.deepEqual(rooms.initialRooms(true, { claudeUser: true }), rooms.initialRooms(true), 'someone already here keeps everything');
+});
+
 test('an undecided value (null) shows everything rather than hiding screens', () => {
   assert.deepEqual(rooms.openRooms(null), rooms.ROOMS.map(r => r.id));
   assert.deepEqual(rooms.taskDone(null), { state: null, opened: [] });

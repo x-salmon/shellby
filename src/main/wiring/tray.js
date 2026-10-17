@@ -52,7 +52,6 @@ function wireTray(d) {
       modeMenu(),
       focusMenu(),
       playMenu(),
-      ...careMenu(),
       { type: 'separator' },
       ...(agg?.busy ? [{ label: `${agg.busy} task${agg.busy > 1 ? 's' : ''} running`, enabled: false }, { type: 'separator' }] : []),
       updateMenuItem(),
@@ -188,15 +187,6 @@ function wireTray(d) {
   function playMenu() {
     if (!d.playtime || !d.life) return null;
     return { label: 'Play', submenu: [...d.playtime.menuItems(), { type: 'separator' }, d.life.digMenuItem(), { label: 'Finds and memories…', click: () => { d.showPanel({ focusInput: false }); d.send(d.panel, 'panel:view', 'us'); } }] };
-  }
-
-  // Feeding him and the rest of looking after him (care.js). Gone entirely with
-  // Snacks and naps switched off.
-  function careMenu() {
-    const m = d.life?.needsMenu();
-    if (!m) return [];
-    const us = { label: 'How he\'s doing…', click: () => { d.showPanel({ focusInput: false }); d.send(d.panel, 'panel:view', 'us'); } };
-    return [m.feed, { label: 'Care', submenu: [...m.care, { type: 'separator' }, us] }];
   }
 
   // Claude Code, Work mode or just the crab, one click from his menu. The

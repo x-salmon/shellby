@@ -13,10 +13,13 @@ after(() => fs.rmSync(userData, { recursive: true, force: true }));
 installFakeElectron({ userData });
 const { wireProfile } = require('../src/main/wiring/profile');
 
+// Claude Code's own folder, empty unless a test gives it a conversation.
+const claudeDir = path.join(userData, 'claude');
+
 function open() {
   const errors = [];
   const warnings = [];
-  const d = { log: { error: (...a) => errors.push(a), info: () => {}, warn: (...a) => warnings.push(a) } };
+  const d = { log: { error: (...a) => errors.push(a), info: () => {}, warn: (...a) => warnings.push(a) }, claudeConfigDir: () => claudeDir };
   wireProfile(d).openProfile();
   return { d, errors, warnings };
 }
@@ -33,6 +36,21 @@ test('rooms are decided once and kept', () => {
   assert.ok(first != null);
   const { d } = open();
   assert.deepEqual(d.config.get('rooms'), first);
+});
+
+test('someone new who already uses Claude Code starts with the tool screens open', () => {
+  const settings = path.join(userData, 'settings.json');
+  const before = fs.readFileSync(settings, 'utf8');
+  fs.writeFileSync(settings, JSON.stringify({ onboarded: false }));
+  fs.mkdirSync(path.join(claudeDir, 'projects', 'C--code-app'), { recursive: true });
+  try {
+    const rooms = open().d.config.get('rooms');
+    assert.equal(rooms.all, false);
+    assert.ok(rooms.open.includes('projects') && rooms.open.includes('toolbox'), JSON.stringify(rooms));
+  } finally {
+    fs.rmSync(claudeDir, { recursive: true, force: true });
+    fs.writeFileSync(settings, before);
+  }
 });
 
 test('a settings file that could not be read comes back from the backup, and says so', () => {

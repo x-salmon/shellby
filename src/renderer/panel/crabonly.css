@@ -1,6 +1,6 @@
 /* Shellby panel — onboarding paths, "just the crab" mode, and Work mode's switch. */
 
-/* ---------- onboarding: three ways to have Shellby ---------- */
+/* ---------- onboarding: four ways to have Shellby ---------- */
 .paths { display: grid; gap: 9px; margin: 18px 0 10px; }
 .path {
   white-space: normal;
@@ -16,6 +16,8 @@
 .path-title { font: 600 var(--fs-17) var(--font-pixel); }
 .path-sub { font-size: var(--fs-12-5); line-height: 1.45; color: var(--sand-dim); white-space: normal; }
 .path-sub b { color: var(--glass); font-weight: 700; }
+/* On Work mode when Claude Code is already on this PC: a nudge, not a default. */
+.path-tag { margin-left: 6px; padding: 1px 7px; border-radius: 999px; vertical-align: 2px; font: 700 var(--fs-11) var(--font-mono); color: var(--abyss); background: var(--glass); }
 
 /* ---------- just the crab: no chat, no permission modes, no Claude-only views ---------- */
 body.crab-only .tabstrip, body.crab-only .subbar, body.crab-only .mode-chip,

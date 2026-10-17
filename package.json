@@ -2,7 +2,7 @@
   "name": "shellby",
   "productName": "Shellby",
   "version": "0.80.0",
-  "description": "A pixel hermit crab that lives on your Windows desktop and runs Claude Code tasks for you, on your own Claude subscription.",
+  "description": "A Windows desktop app for Claude Code: parallel tasks on their own branches, undo for any turn and routines, on your own Claude Pro or Max plan. With a pixel hermit crab who does the work.",
   "main": "src/main/main.js",
   "author": "x-salmon",
   "license": "GPL-3.0-only",

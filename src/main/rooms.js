@@ -1,8 +1,9 @@
 // Rooms: the panel's screens open one at a time for someone new, so the first
 // thing they meet is the crab and the chat box, not seven buttons. Each finished
 // task opens more of his shell. Anyone who already used Shellby before rooms
-// existed starts with every door open, and "Show every screen" opens the rest at
-// once. Opening a room by hand (Ctrl+K) counts too. Pure: no I/O. See
+// existed starts with every door open, someone who already uses Claude Code
+// starts with the tool screens open (his own still grow with him), and "Show
+// every screen" opens the rest at once. Opening a room by hand (Ctrl+K) counts too. Pure: no I/O. See
 // test/rooms.test.js.
 
 // The order rooms open in, and how many finished tasks open each. Shellby and
@@ -27,6 +28,8 @@ const ROOMS = Object.freeze([
   { id: 'beach', tasks: 8, in: 'wardrobe', name: 'Beach', text: 'A beach that fills in as he grows, day and night.' },
 ]);
 const IDS = new Set(ROOMS.map(r => r.id));
+// The bar's tool screens: open from the start for someone who already uses Claude Code.
+const TOOL_ROOMS = Object.freeze(['history', 'projects', 'notes', 'health', 'toolbox', 'workflows']);
 const ALL = Object.freeze({ tasks: 0, open: [], all: true });
 
 const count = n => Math.max(0, Math.floor(Number(n) || 0));
@@ -41,9 +44,13 @@ function normalizeRooms(v) {
   };
 }
 
-/** The first value: everything for someone who was here before rooms, nothing yet for someone new. */
-function initialRooms(onboarded) {
-  return onboarded ? { ...ALL } : { tasks: 0, open: [], all: false };
+/**
+ * The first value: everything for someone who was here before rooms, the tool
+ * screens for someone new who already uses Claude Code, nothing yet otherwise.
+ */
+function initialRooms(onboarded, { claudeUser = false } = {}) {
+  if (onboarded) return { ...ALL };
+  return { tasks: 0, open: claudeUser ? [...TOOL_ROOMS] : [], all: false };
 }
 
 /** Which rooms are open. */
@@ -87,4 +94,4 @@ function roomsView(v) {
   };
 }
 
-module.exports = { ROOMS, normalizeRooms, initialRooms, openRooms, taskDone, openRoom, openAll, roomsView };
+module.exports = { ROOMS, TOOL_ROOMS, normalizeRooms, initialRooms, openRooms, taskDone, openRoom, openAll, roomsView };

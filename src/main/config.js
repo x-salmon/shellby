@@ -80,8 +80,6 @@ const DEFAULTS = {
   signCommits: false, // a "Shipped-with: Shellby" trailer on Shellby's own bring-home commits (see crab-line.js)
   bond: null,        // how close you are, the days together, the moments he remembers (see bond.js)
   play: null,        // hide and seek and fetch scores (see play.js)
-  needs: null,       // his tummy, shine, pep and cheer, and the snack pantry (see needs.js); this PC only
-  needsOn: true,     // "Snacks and naps": off keeps him content all the time
   scenesSeen: null,  // which of his little scenes he's done (see scenes.js)
   xp: null,          // XP and levels (see xp.js); null -> level 1
   crew: null,        // { members }: one lasting helper crab per agent type, with its record (see crew-roster.js)

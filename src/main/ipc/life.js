@@ -1,5 +1,5 @@
-// His life between tasks: the Us and Finds pages (life.js), looking after him
-// (care.js), games (playtime.js), the homes he moves into, and his XP.
+// His life between tasks: the Us and Finds pages (life.js), games
+// (playtime.js), the homes he moves into, and his XP.
 // Kept out of main.js, which only wires it up.
 const { app, dialog, shell } = require('electron');
 const os = require('os');
@@ -28,12 +28,6 @@ function registerLifeIpc(ipcMain, d) {
     if (kind === 'stop') { d.playtime.stop('aww, ok'); return { ok: true }; }
     return { ok: false, error: 'Unknown game.' };
   });
-  // Looking after him (care.js): the Us page's Feed, Rinse and Tuck in.
-  const careResult = r => ({ ...r, life: d.life?.view() || null });
-  ipcMain.handle('needs:feed', (_e, kind) => (d.life ? careResult(d.life.feed(typeof kind === 'string' ? kind.slice(0, 12) : null)) : { ok: false, error: 'Not ready yet.' }));
-  ipcMain.handle('needs:rinse', () => (d.life ? careResult(d.life.rinse()) : { ok: false, error: 'Not ready yet.' }));
-  ipcMain.handle('needs:tuck', () => (d.life ? careResult(d.life.tuckIn()) : { ok: false, error: 'Not ready yet.' }));
-  ipcMain.on('needs:intro-seen', () => d.life?.needsIntroSeen());
   // The pebble for fetch: its own window and bridge (toy-preload.js), dragged like he is.
   ipcMain.on('toy:drag-start', () => d.playtime?.toyDragStart());
   ipcMain.on('toy:drag-move', () => d.playtime?.toyDragMove()); // follows the real cursor, like he does

@@ -6,8 +6,7 @@
 //   2. Let's go: the chat, a bar that leads with the tools, Shellby's screens last
 //   3. his settings show Work mode's quiet ones; the file keeps yours
 //   4. a pal added in Work mode is Work mode's, not yours
-//   5. his needs rest (the Us page says so)
-//   6. Ctrl+K → Leave Work mode: the usual bar, and everything as it was
+//   5. Ctrl+K → Leave Work mode: the usual bar, and everything as it was
 // No Claude account, no usage.
 //   node scripts/e2e-work-mode.js [screenshotDir]
 const { spawn } = require('child_process');
@@ -99,12 +98,7 @@ async function connect(url) {
     check(s.colony === 3 && s.workOverrides?.colony === 1, 'the pal is kept as Work mode\'s; yours stays 3');
     check(await panel.ev('SB.state.settings.colony') === 1, 'and it shows');
 
-    // 5. His needs rest.
-    await panel.ev("SB.setView('us')");
-    await wait(800);
-    check(await panel.ev("document.getElementById('usNeedsMood').textContent") === 'Resting while you work', 'the Us page: resting while you work');
-
-    // 6. Leave from Ctrl+K.
+    // 5. Leave from Ctrl+K.
     await panel.ev("SB.setView('chat'); SB.openPalette()");
     await panel.ev("(() => { const i = document.getElementById('paletteInput'); i.value = 'leave work'; i.dispatchEvent(new Event('input')); })()");
     await wait(200);

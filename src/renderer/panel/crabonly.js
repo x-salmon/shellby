@@ -63,8 +63,7 @@
     SB.onboardPath = null;
     SB.applyCrabOnly();
     SB.setView('health');
-    const snacks = state.settings.needsOn !== false ? ' Focus sessions and games earn him snacks.' : '';
-    SB.toast(`Just the crab it is! He's on your desktop now; click him any time.${snacks}`, { ms: 6000 });
+    SB.toast(`Just the crab it is! He's on your desktop now; click him any time.`, { ms: 6000 });
   };
 
   $('claudeModeBtn').addEventListener('click', async () => {

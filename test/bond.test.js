@@ -60,23 +60,23 @@ test('firsts are written once; other moments every time', () => {
 });
 
 test('a full journal lets old moments go but never a first, and never writes one twice', () => {
-  let s = b.remember(null, 'first-snack', T0).state;
+  let s = b.remember(null, 'first-fetch', T0).state;
   s = b.remember(s, 'first-pet', T0 + 1).state;
   for (let i = 0; i < b.JOURNAL_MAX + 20; i++) s = b.remember(s, 'shaken', T0 + 10 + i, { app: 'Chrome' }).state;
   assert.equal(s.journal.filter(e => e.kind === 'shaken').length, b.JOURNAL_MAX);
-  const snack = s.journal.find(e => e.kind === 'first-snack');
-  assert.equal(snack?.at, T0, 'his first snack keeps its real day');
-  assert.equal(b.remember(s, 'first-snack', T0 + 9 * DAY).added, false, 'feeding him again isn’t his first snack');
-  assert.equal(s.journal.filter(e => e.kind === 'first-snack').length, 1);
+  const fetch = s.journal.find(e => e.kind === 'first-fetch');
+  assert.equal(fetch?.at, T0, 'his first fetch keeps its real day');
+  assert.equal(b.remember(s, 'first-fetch', T0 + 9 * DAY).added, false, 'playing fetch again isn’t his first');
+  assert.equal(s.journal.filter(e => e.kind === 'first-fetch').length, 1);
 });
 
 test('a first an older journal already lost is still never written twice', () => {
-  // A journal saved before firsts were kept: first-snack was trimmed off, then
+  // A journal saved before firsts were kept: first-fetch was trimmed off, then
   // written again with a later date. The oldest copy is kept, and the set remembers it.
-  const old = { journal: [{ kind: 'first-snack', at: T0 + 5 * DAY }, { kind: 'shaken', at: T0 + DAY }, { kind: 'first-snack', at: T0 }] };
+  const old = { journal: [{ kind: 'first-fetch', at: T0 + 5 * DAY }, { kind: 'shaken', at: T0 + DAY }, { kind: 'first-fetch', at: T0 }] };
   const s = b.normalize(old);
-  assert.deepEqual(s.journal.filter(e => e.kind === 'first-snack').map(e => e.at), [T0]);
-  assert.deepEqual(s.firsts, ['first-snack']);
+  assert.deepEqual(s.journal.filter(e => e.kind === 'first-fetch').map(e => e.at), [T0]);
+  assert.deepEqual(s.firsts, ['first-fetch']);
   // Once it's in the set, it stays there even if the entry is somehow gone.
   const kept = b.normalize({ firsts: ['first-pet', 'shaken', 'nope'], journal: [] });
   assert.deepEqual(kept.firsts, ['first-pet']);

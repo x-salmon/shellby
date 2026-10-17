@@ -222,8 +222,6 @@ function wireCritter(d) {
       sound: soundMix(), // footsteps, bumps and the background play off this (src/renderer/critter/sound.js)
       // Work mode: a celebration is his little hop, no confetti (workmode.js).
       confetti: workmode.behaviourOf(d.config).confetti,
-      // Peckish, sandy, sleepy, mopey (needs.js): only ever while he has nothing better to show.
-      needs: ['idle', 'sleeping'].includes(state) && !d.CAPTURE ? d.life?.needsLook() || null : null,
     });
     d.setCrewSlots(Math.min(agg.crew.length, d.MAX_CREW_SHOWN));
     const was = d.lastStatus;

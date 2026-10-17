@@ -1,7 +1,7 @@
 # Shellby
 
-A pixel hermit crab desktop pet for Windows that also runs Claude Code: Electron,
-plain JS, no renderer framework. The rules for contributors are in
+A Windows desktop app for Claude Code, with a pixel hermit crab who does the work:
+Electron, plain JS, no renderer framework. The rules for contributors are in
 [CONTRIBUTING.md](CONTRIBUTING.md). Every script, the e2e checks and a map of the
 code are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Read those before working
 in an area you haven't touched.

@@ -12,8 +12,8 @@
 //   2. Change one of its settings while it's on (pals, how much he talks) and
 //      your choice wins over Work mode's. It's kept in `workOverrides`, so Work
 //      mode remembers it next time too, and your everyday setting is untouched.
-//   3. Nothing stops counting. XP, trophies, streaks and snacks still come in;
-//      his needs rest instead of dropping, so he's the same crab when you're back.
+//   3. Nothing stops counting. XP, trophies and streaks still come in, so
+//      he's the same crab when you're back.
 
 // What Work mode sets, over your own settings.
 const PRESET = Object.freeze({
@@ -75,7 +75,6 @@ function write(settings, patch) {
 
 /**
  * Everything else Work mode changes, that isn't a setting of its own:
- *   needsRest:  his needs pause instead of dropping (care.js)
  *   dropIns:    friends' crabs may drop in on their own (friends.js); an invite still works
  *   confetti:   bursts on the desktop; off, a celebration is just his little hop
  *   petToasts:  Windows notifications for trophies, level-ups and stickers
@@ -83,7 +82,7 @@ function write(settings, patch) {
  */
 function behaviour(settings) {
   const on = isOn(settings);
-  return { on, needsRest: on, dropIns: !on, confetti: !on, petToasts: !on, dock: on ? DOCK : null };
+  return { on, dropIns: !on, confetti: !on, petToasts: !on, dock: on ? DOCK : null };
 }
 
 /** behaviour() for anything holding a config (or a stand-in with get). */

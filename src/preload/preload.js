@@ -443,8 +443,6 @@ contextBridge.exposeInMainWorld('shellby', {
   onLife: on('life'),
   onLifeFound: on('life:found'),   // he dug up a gift
   onLifeMoment: on('life:moment'), // a day worth marking, a closer bond, a finished set
-  // looking after him (care.js, needs.js): each answers { ok, error?, life }
-  needs: { feed: invoke('needs:feed'), rinse: invoke('needs:rinse'), tuck: invoke('needs:tuck'), introSeen: fire('needs:intro-seen') },
   // the crew: one lasting helper crab per agent type (crew-roster.js)
   getCrew: invoke('crew:get'),
   renameCrew: invoke('crew:rename'),

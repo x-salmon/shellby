@@ -169,20 +169,7 @@
         "noteOff": ["ahora vuelvo", "un momento", "tengo algo para ti"],
         "note": ["para ti", "¡correo!", "¡léela!"],
         "behave": ["vale…", "me portaré bien", "prometido"],
-        "noPrank": ["nada que pellizcar", "ahora no", "luego"],
-        "peckish": ["tengo hambre…", "¿eso es plancton?", "¿un bocadito?"],
-        "sandy": ["tengo arena", "arena por todas partes", "necesito un baño"],
-        "sleepy": ["*bostezo*", "qué sueño…", "¿una siesta?"],
-        "mopey": ["…", "¿hola? ¿estás?", "qué silencio hoy"],
-        "fed": ["ñam ñam ñam", "¡qué rico!", "¡gracias!"],
-        "stuffed": ["estoy lleno", "lo guardo para luego", "luego, quizás"],
-        "pantryEmpty": ["no quedan bocados…", "despensa vacía", "luego será"],
-        "snackEarned": ["¡un bocado!", "ooh, plancton", "uno para luego"],
-        "tide": ["¡la marea trajo comida!", "mira lo que llegó", "¡plancton gratis!"],
-        "rinsed": ["¡limpísimo!", "qué brillo", "ahh, fresquito"],
-        "tuckedIn": ["buenas noches", "cinco minutitos", "a dormir"],
-        "notSleepy": ["¡no tengo sueño!", "bien despierto", "luego, quizás"],
-        "cheered": ["¡ahí estás!", "¡yay, tú!", "te eché de menos"]
+        "noPrank": ["nada que pellizcar", "ahora no", "luego"]
       }
     },
     {
@@ -440,20 +427,7 @@
         "noteOff": ["je reviens", "un instant", "j'ai un truc pour toi"],
         "note": ["pour toi", "du courrier !", "lis-la !"],
         "behave": ["d'accord", "je serai sage", "promis"],
-        "noPrank": ["rien à pincer", "pas maintenant", "plus tard"],
-        "peckish": ["j'ai un petit creux", "à manger ?", "j'ai faim"],
-        "sandy": ["j'ai du sable", "du sable partout", "il me faut un bain"],
-        "sleepy": ["*bâille*", "j'ai sommeil…", "une sieste ?"],
-        "mopey": ["…", "allô ? t'es là ?", "c'est calme aujourd'hui"],
-        "fed": ["miam !", "délicieux", "merci !"],
-        "stuffed": ["je n'ai plus faim", "plus tard", "je suis plein"],
-        "pantryEmpty": ["plus rien à grignoter", "garde-manger vide", "ce sera pour plus tard"],
-        "snackEarned": ["un petit en-cas !", "ooh, du plancton", "un pour plus tard"],
-        "tide": ["la marée a apporté…", "regarde ce qui arrive", "du plancton gratuit !"],
-        "rinsed": ["tout propre !", "ça brille", "ahh, fraîcheur"],
-        "tuckedIn": ["bonne nuit", "fais de beaux rêves", "dodo"],
-        "notSleepy": ["pas sommeil !", "bien réveillé", "plus tard, peut-être"],
-        "cheered": ["te voilà !", "youpi, toi !", "tu m'as manqué"]
+        "noPrank": ["rien à pincer", "pas maintenant", "plus tard"]
       },
       "flavor": {
         "fussy": { "idle": ["quelle poussière"] },
