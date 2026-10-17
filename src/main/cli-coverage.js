@@ -21,7 +21,8 @@ const skip = why => ({ status: 'skip', why });
 const gap = what => ({ status: 'gap', what });
 
 const BG = use('wiring/bg-sessions.js: Settings, Everywhere, Background sessions');
-// Claude Code 2.1.296 doesn't offer the tool with --brief in print mode (checked 2026-10-14), so there's nothing to show yet.
+// Claude Code doesn't offer the tool with --brief in print mode (checked on 2.1.296 and 2.1.302, last 2026-10-17):
+// the account has to be entitled to it (isBriefEntitled, tengu_brief_mode_enabled), so there's nothing to show yet.
 const BRIEF = gap('SendUserMessage (--brief): Claude sends short updates while it works, said by the crab in a bubble. Not offered in print mode yet: build it once a session lists the tool.');
 const TERMINAL_ONLY = 'It drives a terminal UI, which Shellby replaces.';
 
