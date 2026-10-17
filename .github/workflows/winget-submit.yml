@@ -18,6 +18,10 @@ on:
         description: 'Version folder under packaging/winget (e.g. 0.67.0)'
         required: true
 
+# Only the checkout reads the repo; the submission uses WINGET_TOKEN.
+permissions:
+  contents: read
+
 jobs:
   submit:
     runs-on: windows-latest

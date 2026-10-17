@@ -4,10 +4,9 @@ on:
   push:
     tags: ['v*']
 
+# Read-only by default; the one job asks for what it writes.
 permissions:
-  contents: write
-  # SignPath fetches the unsigned exes from this run's artifacts.
-  actions: read
+  contents: read
 
 # One release run per tag. If a tag is moved and pushed again, the run for the
 # old commit is cancelled instead of racing the new one (in 0.21.1 the stale run
@@ -19,6 +18,10 @@ concurrency:
 jobs:
   release:
     runs-on: windows-latest
+    permissions:
+      contents: write # the draft release and its uploads
+      # SignPath fetches the unsigned exes from this run's artifacts.
+      actions: read
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # `secrets` is not one of the contexts allowed in an `if:` expression, so

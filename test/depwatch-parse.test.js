@@ -10,7 +10,9 @@
 //   cargo-audit: cargo-audit in a public repository (syncable-dev/syncable-cli)
 //   govulncheck-module: govulncheck's own test output (golang/vuln, source-module)
 //   go-list-m-u: Go 1.26 in a public repository (holomush/holomush), first 30 modules
-//   uv.lock, pylock.toml: uv 0.10.4, wheel lists dropped
+//   uv.lock, pylock.toml: uv 0.10.4, wheel lists dropped. Saved as *.fixture so
+//     dependency scanners (OpenSSF Scorecard) don't report their stale pins as
+//     this repository's own vulnerabilities.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
@@ -109,8 +111,8 @@ test('pip-audit: skipped packages are left out; no fix published says so', () =>
 });
 
 test('python pins: uv.lock and pylock.toml give the same pins, never the project itself', () => {
-  const uv = py.pinsFrom('uv.lock', fixture('uv.lock'));
-  const pylock = py.pinsFrom('pylock.toml', fixture('pylock.toml'));
+  const uv = py.pinsFrom('uv.lock', fixture('uv.lock.fixture'));
+  const pylock = py.pinsFrom('pylock.toml', fixture('pylock.toml.fixture'));
   assert.deepEqual(uv, pylock);
   assert.ok(uv.some(x => x.name === 'requests' && x.version === '2.19.0'));
   assert.ok(!uv.some(x => x.name === 'dw-uv'), 'the virtual project itself');

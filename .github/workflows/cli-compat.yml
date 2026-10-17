@@ -20,9 +20,9 @@ on:
     - cron: '17 6 * * *'
   workflow_dispatch:
 
+# Read-only by default; the one job asks for what it writes.
 permissions:
-  contents: write # the badges branch
-  issues: write
+  contents: read
 
 concurrency:
   group: cli-compat
@@ -32,6 +32,9 @@ jobs:
   check:
     runs-on: windows-latest
     timeout-minutes: 20
+    permissions:
+      contents: write # the badges branch
+      issues: write
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       # `secrets` can't be read in an `if:`, so this says whether the real turn
