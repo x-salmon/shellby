@@ -158,6 +158,7 @@ const shared = {
   PRIMARY: false, lastRun: null, sentry: null, // crash reports, started below
   captureClock: { now: null }, // screenshot runs can pretend it's Halloween
   today: null,                  // what day it is for seasons and tide events (today.js), set just below
+  deskPreview: null,            // { skin, until }: the Painter's "Try him on the desk" (wiring/painter.js)
   isStr: s => typeof s === 'string' && s.length > 0 && s.length < 10000,
   isFolder: d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } }, // missing or unreadable: not a folder
   send(win, channel, payload) {

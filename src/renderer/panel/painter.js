@@ -13,23 +13,16 @@
 (function () {
   const { h, api, state, $ } = SB;
   const G = window.ShellbyPixelGrid;
-  const WORK = window.ShellbyWorkPoses;
-  const PX = 4;             // the preview's scale: his own size on the desk at Medium
   const DRAFT_MS = 1000;    // a draft is kept this long after the last change
   const MAX_SCALE = 24;     // the canvas never gets chunkier than this
   const GRID_FROM = 8;      // a 1-pixel grid line from this scale up
   const FLASH_MS = 1600;    // "Show me"
   const ITEM_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
-  const SLOT_FOLLOWS = { hat: 'stalks', face: 'stalks', neck: 'body', held: 'claw', shell: 'shell' };
   const SLOTS = [['hat', 'Hat'], ['face', 'Face'], ['neck', 'Neck'], ['held', 'Held'], ['shell', 'On his shell']];
   const MOTIONS = [['fall', 'Falls'], ['rise', 'Rises'], ['float', 'Floats'], ['orbit', 'Circles him'], ['twinkle', 'Twinkles'], ['burst', 'Bursts']];
   const CATEGORIES = [['structure', 'Structure'], ['plant', 'Plant'], ['rock', 'Rock'], ['treasure', 'Treasure'], ['bubbler', 'Bubbler'], ['substrate', 'Floor tile'], ['backdrop', 'Back wall tile']];
   const LAYERS = [['floor', 'On the floor'], ['back', 'Against the glass'], ['float', 'In the water']];
   const DEFAULTS = { skin: {}, accessory: { slot: 'hat' }, effect: { motion: 'fall', count: 10, speed: 1, fps: 4 }, decor: { category: 'structure', layer: 'floor', fps: 2 } };
-  // The moods first, then how he works (src/main/work-pose.js); 'busy' is Working's scuttle.
-  const POSE_LABEL = { idle: 'Idle', working: 'Working', asking: 'Asking', sleeping: 'Sleeping', think: 'Thinking', read: 'Reading', write: 'Editing', run: 'Running', search: 'Searching', web: 'On the web', plan: 'Planning', crew: 'Crew' };
-  const POSES = ['idle', 'working', 'asking', 'sleeping', ...WORK.POSES.filter(p => p !== 'busy')];
-  const KIND_WORD = { skin: 'him', accessory: 'it', effect: 'it', decor: 'it' };
   const START_TEXT = {
     skin: ['Paint a crab', 'Start from one you have and make him yours. Watch him do every pose as you paint, then wear him, or share him with everyone.'],
     accessory: ['Paint an accessory', 'A hat, glasses, something to hold. Up to 16 × 16, tried on your crab as you paint.'],
@@ -45,7 +38,6 @@
   let cur = null;           // the drawing open: a draft (main's painter.js cleanDraft shape)
   let hist = G.history();
   let tool = 'pencil', brush = 1, colour = null, partView = false;
-  let pose = 'idle', wear = false;
   let K = 8;                // css px per cell
   let stroke = null;        // { base, start, last } while the pointer is down
   let hover = null;         // the cell under the pointer
@@ -54,9 +46,6 @@
   let editing = null;       // { ch, base } while a colour picker is open on a swatch
   let adding = null;        // { hex, part } while a new colour is being picked
   let drafts = [], gallery = {}, wishes = [], items = [], news = null;
-  let deskUntil = 0, deskTimer = 0;
-  let fx = null, fxKey = '', decorTimer = 0;
-  let shareOpen = false;
 
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const doc = () => cur.doc;
@@ -70,6 +59,23 @@
   // replaceChildren would write a skipped (null) child out as the text "null".
   const fill = (el, ...kids) => el.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
   const inField = el => !!el?.closest?.('input, textarea, select, [contenteditable="true"]');
+
+  // The preview, and saving and sharing, are files of their own (painter-preview.js,
+  // painter-share.js); this is what they get to see and do of the drawing.
+  const V = SB.paintPreview({
+    cur: () => cur, doc, settings, meta, fill, reduced,
+    commit: (next, o) => commit(next, o), record: before => hist.record(before), afterChange: () => afterChange(), stroking: () => !!stroke,
+  });
+  const T = SB.paintTiles({
+    mode: () => mode, items: () => items, statusOf, contestNow: () => contestNow(), fill,
+    startBlank: o => startBlank(o), startFromSkin: s => startFromSkin(s), startFromItem: it => startFromItem(it), openDraft: d => openDraft(d), throwAway: d => throwAway(d),
+  });
+  const S = SB.paintShare({
+    cur: () => cur, doc, settings, meta, fill, checksNow, login: () => login(), contestNow: k => contestNow(k), statusOf,
+    showMe: c => showMe(c), pendingDraft: () => pendingDraft(),
+    forgetDraft: async id => { clearTimeout(draftTimer); draftTimer = 0; await api.deleteDraft(id).catch(() => {}); drafts = drafts.filter(d => d.id !== id); $('ptKept').textContent = 'Saved'; },
+    shared: r => { gallery = { ...gallery, [r.packId]: { state: 'review', url: r.url, version: r.version } }; renderStatus(); },
+  });
 
   // ------------------------------------------------------------ the start screen
 
@@ -91,13 +97,13 @@
     $('ptStartTitle').textContent = title;
     $('ptStartSub').textContent = sub;
     document.querySelectorAll('#ptModes [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
-    renderContest();
+    T.renderContest();
     // Drafts first: what you were in the middle of.
     const mine = drafts.filter(d => d.mode === mode);
     $('ptDraftsBlock').hidden = !mine.length;
-    fill($('ptDrafts'), ...mine.map(draftTile));
+    fill($('ptDrafts'), ...mine.map(T.draftTile));
     $('ptFromTitle').textContent = mode === 'skin' ? 'Start from' : `Start from (${kindLabel(mode)})`;
-    fill($('ptFrom'), blankTile(), ...(mode === 'skin' ? skinTiles() : itemTiles()));
+    fill($('ptFrom'), T.blankTile(), ...(mode === 'skin' ? T.skinTiles() : T.itemTiles()));
     $('ptWishesBlock').hidden = !wishes.length;
     fill($('ptWishes'), ...wishes.map(w => h('li', {},
       h('span', { class: 'pt-wish-title', text: w.title, title: w.title }),
@@ -115,80 +121,11 @@
     const monthName = new Date(`${month}-01T12:00:00`).toLocaleDateString([], { month: 'long' });
     return { month, monthName, title: c.title || `${monthName} contest`, theme: c.contest.theme || '', body: c.body || '', url: c.url || '' };
   }
-  function renderContest() {
-    const c = contestNow();
-    const box = $('ptContest');
-    box.hidden = !c;
-    if (!c) return;
-    fill(box, 
-      h('span', { 'aria-hidden': 'true', text: '🎨' }),
-      h('span', { class: 'pt-contest-text' }, h('b', { text: c.title }), c.body ? ` ${c.body}` : ''),
-      c.url ? h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: () => api.openExternal(c.url) }, 'Rules') : null,
-      h('button', { type: 'button', class: 'btn slim-btn', onclick: () => startBlank({ name: c.theme ? `${c.theme[0].toUpperCase()}${c.theme.slice(1)} crab` : '' }) }, 'Paint an entry'));
-  }
-
-  // A small picture of a drawing, for its tile.
-  function artOf(m, d) {
-    if (m === 'skin') return SB.Sprite.build(G.toSkin(d, { id: 'x' }), { fit: true, ink: true });
-    return SB.Sprite.grid(G.rows({ ...d, frame: 0 }), d.palette, { ink: m === 'accessory' });
-  }
-
-  function pill(state_) {
-    if (!state_) return null;
-    return h('span', { class: `pt-pill ${state_}`, text: state_ === 'gallery' ? 'In the gallery' : 'In review' });
-  }
-
-  function draftTile(d) {
-    return h('div', { class: 'pt-tile-wrap', style: 'position:relative;display:grid' },
-      h('button', { type: 'button', class: 'pt-tile', dataset: { draft: d.id }, title: `Carry on with ${d.name || 'this drawing'}`, onclick: () => openDraft(d) },
-        h('span', { class: 'pt-art' }, artOf(d.mode, d.doc)),
-        h('span', { class: 'pt-tile-name', text: d.name || 'Untitled' }),
-        h('span', { class: 'pt-tile-meta', text: SB.relTime(d.updatedAt) }),
-        pill(statusOf(d.mode, d.id))),
-      h('button', { type: 'button', class: 'pt-tile-x', title: 'Throw this draft away', 'aria-label': `Throw away the draft of ${d.name || 'Untitled'}`, onclick: () => throwAway(d) }, '✕'));
-  }
-
   async function throwAway(d) {
     await api.deleteDraft(d.id);
     drafts = drafts.filter(x => x.id !== d.id);
     renderStart();
     SB.toast(`Threw away the draft of ${d.name || 'Untitled'}.`, { action: 'Undo', onAction: async () => { await api.saveDraft(d); drafts = await api.painterDrafts(); renderStart(); } });
-  }
-
-  function blankTile() {
-    return h('button', { type: 'button', class: 'pt-tile blank', dataset: { blank: mode }, onclick: () => startBlank() },
-      h('span', { class: 'pt-art big-plus', text: '+' }),
-      h('span', { class: 'pt-tile-name', text: mode === 'skin' ? 'A blank crab' : 'A blank one' }),
-      h('span', { class: 'pt-tile-meta', text: `${G.MODES[mode].start[0]} × ${G.MODES[mode].start[1]}` }));
-  }
-
-  // Every skin you have: built in, your own, and pack skins you've unlocked.
-  // A locked one shows (it's something to earn), but can't be a starting point.
-  function skinTiles() {
-    return state.skins.map(s => {
-      const own = s.source === 'user';
-      return h('button', {
-        type: 'button', class: 'pt-tile', dataset: { skin: s.id }, disabled: s.locked ? true : null,
-        title: s.locked ? `${s.name}: ${s.locked.text || 'locked'}` : own ? `Edit ${s.name}` : `Start from ${s.name}`,
-        onclick: () => startFromSkin(s),
-      },
-      h('span', { class: 'pt-art' }, SB.sprite(s, { plain: true })),
-      h('span', { class: 'pt-tile-name', text: s.name }),
-      h('span', { class: 'pt-tile-meta', text: s.locked ? '🔒 locked' : own ? 'Edit' : 'Start from this one' }),
-      own ? pill(statusOf('skin', s.id)) : null);
-    });
-  }
-
-  function itemTiles() {
-    return items.map(it => h('button', {
-      type: 'button', class: 'pt-tile', dataset: { item: it.key }, disabled: it.locked ? true : null,
-      title: it.locked ? `${it.name}: locked` : it.mine ? `Edit ${it.name}` : `Start from ${it.name}`,
-      onclick: () => startFromItem(it),
-    },
-    h('span', { class: 'pt-art' }, it.item ? (mode === 'effect' ? (() => { const p = SB.Sprite.poster(it.item.sprites); return SB.Sprite.grid(p.pixels, p.palette, { ink: !!it.item.ink }); })() : SB.Sprite.grid(it.item.pixels, it.item.palette, { ink: mode === 'accessory' })) : h('span', { text: '🔒' })),
-    h('span', { class: 'pt-tile-name', text: it.name }),
-    h('span', { class: 'pt-tile-meta', text: it.locked ? '🔒 locked' : it.mine ? 'Edit' : 'Start from this one' }),
-    it.mine ? pill(statusOf(mode, it.key.split('/').pop())) : null));
   }
 
   // ------------------------------------------------------------ starting a drawing
@@ -199,12 +136,12 @@
   function begin(d) {
     cur = { onPurpose: [], settings: {}, wish: null, basedOn: '', saved: false, guide: false, description: '', ...d };
     hist = G.history();
-    stroke = null; flash = null; editing = null; adding = null; shareOpen = false;
+    stroke = null; flash = null; editing = null; adding = null;
+    S.close();
     tool = 'pencil';
     const pal = Object.keys(cur.doc.palette);
     colour = pal[0] || null;
-    pose = 'idle';
-    $('ptShare').hidden = true;
+    V.reset();
     openEditor();
   }
 
@@ -271,8 +208,8 @@
     $('ptDesc').value = cur.description;
     $('ptName').placeholder = mode === 'skin' ? 'Name him' : 'Name it';
     renderEditor();
-    resetPreviewFx();
-    renderPreview();
+    V.resetPreviewFx();
+    V.renderPreview();
     $('ptName').focus({ preventScroll: true });
   }
 
@@ -306,12 +243,12 @@
     sizeCanvas();
     paint();
     renderChecks();
-    renderPoses();
+    V.renderPoses();
   }
 
   function renderStatus() {
     const s = statusOf(cur.mode, cur.id);
-    fill($('ptStatus'), ...[pill(s)].filter(Boolean));
+    fill($('ptStatus'), ...[T.pill(s)].filter(Boolean));
     $('ptCredit').hidden = !cur.basedOn;
     if (cur.basedOn) $('ptCredit').textContent = `Based on the gallery pack ${cur.basedOn}: it says so when you share it (CC BY 4.0 asks for the credit).`;
     $('ptWishNote').hidden = !cur.wish;
@@ -340,8 +277,8 @@
     cur.settings = { ...cur.settings, [key]: value };
     keep();
     if (key === 'category') renderSettings();
-    resetPreviewFx();
-    renderPreview();
+    V.resetPreviewFx();
+    V.renderPreview();
   }
 
   function renderFrames() {
@@ -350,7 +287,7 @@
     box.hidden = m.frames < 2;
     if (m.frames < 2) return;
     const d = doc();
-    fill(box, 
+    fill(box,
       h('span', { text: 'Pictures' }),
       ...d.frames.map((_, i) => h('button', { type: 'button', class: 'pt-frame', 'aria-pressed': String(i === d.frame), title: `Picture ${i + 1}`, onclick: () => commit(G.showFrame(d, i), { record: false }) }, String(i + 1))),
       d.frames.length < m.frames ? h('button', { type: 'button', class: 'pt-frame', title: 'Add a picture, a copy of this one', 'aria-label': 'Add a picture', onclick: () => commit(G.addFrame(doc())) }, '+') : null,
@@ -371,7 +308,7 @@
     }, h('i', { style: ch === G.EMPTY ? null : `background:${hex}` }), ch === G.EMPTY ? 'none' : part ? G.PART_LABEL[part] : '');
     const pal = Object.entries(d.palette);
     const full = pal.length >= m.palette;
-    fill($('ptPalette'), 
+    fill($('ptPalette'),
       swatch(G.EMPTY, null, null),
       ...pal.map(([ch, hex]) => swatch(ch, hex, m.parts ? d.parts[ch] || null : null)),
       full ? null : h('button', { type: 'button', class: 'pt-swatch add', title: `Add a colour (up to ${m.palette})`, 'aria-label': 'Add a colour', onclick: startAdding }, '+'));
@@ -389,7 +326,7 @@
     const m = G.MODES[cur.mode];
     const d = doc();
     if (adding) {
-      fill(box, 
+      fill(box,
         h('span', { text: 'New colour' }),
         h('input', { type: 'color', value: adding.hex, 'aria-label': 'Colour', oninput: e => { adding.hex = e.target.value; } }),
         m.parts ? h('span', { text: 'moves with' }) : null,
@@ -400,7 +337,7 @@
     }
     if (!colour || colour === G.EMPTY || !d.palette[colour]) { fill(box, ); return; }
     const inUse = G.used(d).has(colour);
-    fill(box, 
+    fill(box,
       h('input', {
         type: 'color', value: d.palette[colour], 'aria-label': 'Change this colour',
         oninput: e => { editing ||= { ch: colour, base: doc() }; commit(G.setColour(doc(), editing.ch, e.target.value), { record: false, quiet: true }); },
@@ -590,7 +527,7 @@
   function setDoc(next) {
     if (!next || next === doc()) return;
     cur.doc = next;
-    renderPreview();
+    V.renderPreview();
   }
 
   /** One change: recorded for undo (unless record is false), kept as a draft, everything redrawn. */
@@ -598,7 +535,7 @@
     if (!next || next === doc()) return false;
     if (record) hist.record(doc());
     cur.doc = next;
-    if (quiet) { paint(); renderPreview(); keep(); return true; }
+    if (quiet) { paint(); V.renderPreview(); keep(); return true; }
     afterChange();
     return true;
   }
@@ -606,7 +543,7 @@
   function afterChange() {
     keep();
     renderEditor();
-    renderPreview();
+    V.renderPreview();
   }
 
   function undo() { const back = hist.undo(doc()); if (back) { cur.doc = back; afterChange(); } }
@@ -667,7 +604,7 @@
   function showMe(c) {
     flash = { cells: c.cells, until: performance.now() + FLASH_MS };
     paint();
-    if (c.id === 'anchors') { wear = true; $('ptWear').checked = true; renderPreview(); }
+    if (c.id === 'anchors') V.wearOutfit();
   }
 
   function onPurpose(id) {
@@ -675,323 +612,8 @@
     cur.onPurpose = on ? cur.onPurpose.filter(x => x !== id) : [...cur.onPurpose, id];
     keep();
     renderChecks();
-    if (shareOpen) renderShare();
+    if (S.open) S.renderShare();
   }
-
-  // ------------------------------------------------------------ the preview
-
-  function stageClass() {
-    const working = WORK.POSES.includes(pose) && pose !== 'busy';
-    const st = working ? 'working' : pose;
-    return `pt-stage crab-anim state-${st}${working ? ` work-${pose}` : ''}`;
-  }
-
-  function renderPoses() {
-    if (cur.mode === 'decor' || cur.mode === 'effect') return;
-    fill($('ptPoses'), ...POSES.map(p => h('button', {
-      type: 'button', role: 'radio', 'aria-checked': String(p === pose), dataset: { pose: p },
-      onclick: () => { pose = p; renderPoses(); renderPreview(); if (reduced()) playOnce(); },
-    }, POSE_LABEL[p])));
-  }
-
-  // What he wears in the preview: his outfit when asked (and an accessory being painted).
-  function previewLook() {
-    const look = wear && (cur.mode === 'skin' || cur.mode === 'accessory') ? SB.outfitLook?.() || { accessories: [] } : { accessories: [], shell: null, effect: null };
-    let accessories = look.accessories || [];
-    if (cur.mode === 'accessory') {
-      const s = settings();
-      const item = { ...G.toItem(doc(), meta(), s), anchor: SB.Sprite.SLOT_ANCHOR[s.slot], follows: SLOT_FOLLOWS[s.slot] };
-      accessories = [...accessories.filter(a => a.slot !== s.slot), item];
-    }
-    const held = WORK.ITEMS[pose];
-    if (held) accessories = [...accessories.filter(a => a.slot !== 'held'), held];
-    return { accessories, shell: wear ? look.shell : null, effect: look.effect || null };
-  }
-
-  function renderPreview() {
-    if (!cur) return;
-    const stage = $('ptStage');
-    const host = $('ptCrab');
-    clearInterval(decorTimer);
-    if (cur.mode === 'decor') {
-      stage.className = 'pt-stage';
-      fill(host, decorPreview());
-      return;
-    }
-    stage.className = stageClass();
-    const skin = cur.mode === 'skin' ? G.toSkin(doc(), meta()) : state.skin;
-    if (!skin) return;
-    const look = previewLook();
-    const svg = SB.Sprite.build(skin, { px: PX, accessories: look.accessories, shell: look.shell || undefined });
-    fill(host, svg);
-    if (cur.mode === 'skin' && wear) host.append(anchorDots());
-    const help = cur.mode === 'skin' && wear;
-    $('ptAnchorHelp').hidden = !help;
-    $('ptAnchorReset').hidden = !doc().anchors;
-    const effect = cur.mode === 'effect' ? effectItem() : look.effect;
-    const key = effect ? JSON.stringify(effect) : '';
-    if (key !== fxKey && !stroke) {
-      fxKey = key;
-      fxOn()?.set(effect || null);
-      if (effect?.motion === 'burst') fx?.burst(effect); // a burst only plays when asked
-    }
-  }
-
-  function effectItem() {
-    const it = G.toItem(doc(), meta(), settings());
-    return { ...it, key: 'painter-preview', ink: false, fps: it.fps || 0 };
-  }
-  function fxOn() {
-    fx ||= window.ShellbyFx?.mount($('ptFx'), null, { px: 3 });
-    return fx;
-  }
-  function resetPreviewFx() { fxKey = ''; fx?.set(null); }
-
-  // A piece of decor beside him for size, its pictures taking turns.
-  function decorPreview() {
-    const d = doc();
-    const s = settings();
-    const pics = d.frames.map(rows => SB.Sprite.grid(rows, d.palette, { px: PX }));
-    const box = h('div', { class: 'pt-decor-piece' }, h('span', {}, pics[d.frame]), state.skin ? SB.Sprite.build(state.skin, { px: 2 }) : null);
-    if (pics.length > 1 && !reduced()) {
-      let i = d.frame;
-      decorTimer = setInterval(() => { i = (i + 1) % pics.length; box.firstChild.replaceChildren(pics[i]); }, 1000 / Math.max(1, s.fps || 2));
-    }
-    return box;
-  }
-
-  // His five anchors as dots you drag (snapped to whole pixels, inside -16..48).
-  function anchorDots() {
-    const layer = h('div', { class: 'pt-anchors' });
-    const all = G.effectiveAnchors(doc());
-    for (const name of G.ANCHOR_NAMES) {
-      const [x, y] = all[name];
-      const dot = h('button', {
-        type: 'button', class: 'pt-anchor', dataset: { anchor: name, label: G.ANCHOR_LABEL[name] },
-        'aria-label': `${G.ANCHOR_LABEL[name]} at ${x}, ${y}. Arrow keys move it.`,
-        style: `left:${(x + 0.5) * PX}px;top:${(y + 0.5) * PX}px`,
-      });
-      dot.addEventListener('pointerdown', e => dragAnchor(e, name, dot));
-      dot.addEventListener('keydown', e => {
-        const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-        if (!step) return;
-        e.preventDefault();
-        const [ax, ay] = G.effectiveAnchors(doc())[name];
-        if (commit(G.setAnchor(doc(), name, ax + step[0], ay + step[1]))) $('ptCrab').querySelector(`[data-anchor="${name}"]`)?.focus();
-      });
-      layer.append(dot);
-    }
-    return layer;
-  }
-
-  function dragAnchor(e, name, dot) {
-    e.preventDefault();
-    const base = doc();
-    const stage = $('ptStage');
-    stage.classList.add('pt-holding');
-    dot.classList.add('dragging');
-    dot.setPointerCapture(e.pointerId);
-    const svg = $('ptCrab').querySelector('svg');
-    const move = ev => {
-      const r = svg.getBoundingClientRect();
-      const next = G.setAnchor(doc(), name, Math.floor((ev.clientX - r.left) / PX), Math.floor((ev.clientY - r.top) / PX));
-      if (next === doc()) return;
-      cur.doc = next;
-      const [x, y] = next.anchors[name];
-      dot.style.left = `${(x + 0.5) * PX}px`;
-      dot.style.top = `${(y + 0.5) * PX}px`;
-    };
-    const up = () => {
-      dot.removeEventListener('pointermove', move);
-      dot.removeEventListener('pointerup', up);
-      dot.removeEventListener('pointercancel', up);
-      stage.classList.remove('pt-holding');
-      if (doc() !== base) { hist.record(base); afterChange(); }
-    };
-    dot.addEventListener('pointermove', move);
-    dot.addEventListener('pointerup', up);
-    dot.addEventListener('pointercancel', up);
-  }
-
-  $('ptWear').addEventListener('change', e => { wear = e.target.checked; resetPreviewFx(); renderPreview(); });
-  $('ptAnchorReset').addEventListener('click', () => commit(G.resetAnchors(doc())));
-
-  // With motion turned down, a pose holds still; this plays its moves once, by
-  // script (the reduced-motion rule only stops CSS animations). The moves come
-  // from crab-anim.css itself, so they're the same ones he does on the desk.
-  function playOnce() {
-    const sheet = [...document.styleSheets].find(s => /crab-anim\.css$/.test(s.href || ''));
-    if (!sheet) return;
-    let rules;
-    try { rules = [...sheet.cssRules]; } catch { return; }
-    const keyframes = new Map(rules.filter(r => r.constructor?.name === 'CSSKeyframesRule').map(r => [r.name, r]));
-    const animated = rules.filter(r => r.selectorText && r.style?.animationName);
-    const stage = $('ptStage');
-    const secs = v => (/ms$/.test(v) ? parseFloat(v) : parseFloat(v) * 1000) || 0;
-    for (const el of [$('ptCrab'), ...stage.querySelectorAll('.part')]) {
-      const rule = animated.filter(r => { try { return el.matches(r.selectorText); } catch { return false; } }).pop();
-      const name = rule?.style.animationName.split(',')[0].trim();
-      const kf = name && keyframes.get(name);
-      if (!kf) continue;
-      const easing = rule.style.animationTimingFunction.split(/,(?![^(]*\))/)[0].trim() || 'ease';
-      const frames = [];
-      for (const k of kf.cssRules) {
-        for (const at of k.keyText.split(',')) {
-          const t = at.trim();
-          const f = { offset: t === 'from' ? 0 : t === 'to' ? 1 : parseFloat(t) / 100, easing };
-          if (k.style.transform) f.transform = k.style.transform;
-          if (k.style.opacity) f.opacity = k.style.opacity;
-          frames.push(f);
-        }
-      }
-      frames.sort((a, b) => a.offset - b.offset);
-      const count = Number(rule.style.animationIterationCount);
-      try {
-        el.animate(frames, { duration: secs(rule.style.animationDuration.split(',')[0]), delay: secs(rule.style.animationDelay.split(',')[0]), iterations: Number.isFinite(count) ? Math.min(count, 3) : 2, direction: rule.style.animationDirection.split(',')[0] || 'normal' });
-      } catch { /* a keyframe the browser won't take: that part holds still */ }
-    }
-  }
-  $('ptPlayOnce').addEventListener('click', playOnce);
-
-  // ------------------------------------------------------------ on the desk
-
-  async function deskToggle() {
-    if (deskUntil > Date.now()) { await api.previewSkin(null); deskUntil = 0; renderDesk(); return; }
-    const r = await api.previewSkin(G.toSkin(doc(), meta())).catch(() => null);
-    if (!r?.ok) return SB.toast(r?.error || "Couldn't put it on him.");
-    deskUntil = r.until;
-    renderDesk();
-  }
-  function renderDesk() {
-    clearTimeout(deskTimer);
-    const left = Math.ceil((deskUntil - Date.now()) / 1000);
-    $('ptDesk').textContent = left > 0 ? `On the desk… ${left}s (take it off)` : 'Try him on the desk';
-    $('ptDesk').setAttribute('aria-pressed', String(left > 0));
-    if (left > 0) deskTimer = setTimeout(renderDesk, 1000);
-  }
-  $('ptDesk').addEventListener('click', deskToggle);
-
-  // ------------------------------------------------------------ saving
-
-  /** Save it (a skin to the skins folder, anything else as a pack of yours). -> true when saved. */
-  async function save({ andWear = false } = {}) {
-    if (!cur) return false;
-    const list = checksNow();
-    const block = list.find(c => c.blocks === 'save');
-    if (block) { if (block.cells.length) showMe(block); SB.toast(block.text); return false; }
-    if (!cur.name.trim()) { $('ptName').focus(); SB.toast(cur.mode === 'skin' ? 'Give him a name first.' : 'Give it a name first.'); return false; }
-    const r = cur.mode === 'skin'
-      ? await api.saveSkin(G.toSkin(doc(), meta()), { replace: cur.saved }).catch(() => null)
-      : await api.saveItem(cur.mode, G.toItem(doc(), meta(), settings()), { replace: cur.saved }).catch(() => null);
-    if (!r?.ok) { SB.toast(r?.error || "Couldn't save it."); return false; }
-    cur.saved = true;
-    clearTimeout(draftTimer); draftTimer = 0;
-    await api.deleteDraft(cur.id).catch(() => {});
-    drafts = drafts.filter(d => d.id !== cur.id);
-    $('ptKept').textContent = 'Saved';
-    if (r.skins) { state.skins = r.skins; SB.renderSkins?.(); }
-    if (andWear) await wearIt(r);
-    else SB.toast(cur.mode === 'skin' ? `Saved ${cur.name}. He's in Settings → Look, and under Colors.` : `Saved ${cur.name}. It's in the Wardrobe${cur.mode === 'decor' ? ' and his tank\'s tray' : ''}.`, { ms: 5000 });
-    if (cur.mode === 'skin' && !cur.author.trim()) SB.toast('Saved. Add who made him before you share him.', { ms: 5000 });
-    return true;
-  }
-
-  async function wearIt(r) {
-    if (cur.mode === 'skin') {
-      const s = await api.setSettings({ skin: r.id });
-      state.settings = s.settings;
-      SB.toast(`He's wearing ${cur.name}.`);
-      return;
-    }
-    const patch = cur.mode === 'effect' ? { effect: r.key } : { [settings().slot]: r.key };
-    const w = await api.setOutfit(patch).catch(() => null);
-    if (w?.view) SB.applyWardrobe?.(w.view);
-    SB.toast(w?.ok === false ? w.error : `He's wearing ${cur.name}.`);
-  }
-
-  $('ptSave').addEventListener('click', () => save());
-  $('ptSaveWear').addEventListener('click', () => save({ andWear: true }));
-
-  // ------------------------------------------------------------ sharing
-
-  function renderShare() {
-    const box = $('ptShare');
-    box.hidden = !shareOpen;
-    if (!shareOpen) return;
-    const list = checksNow();
-    const blockers = list.filter(c => c.blocks === 'share' || c.blocks === 'save');
-    const word = KIND_WORD[cur.mode];
-    const contest = contestNow(cur.mode);
-    const listed = statusOf(cur.mode, cur.id) === 'gallery';
-    const close = h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: () => { shareOpen = false; renderShare(); } }, 'Close');
-    if (!SB.canPublish?.()) {
-      fill(box, 
-        h('h4', { text: 'Share it with everyone' }),
-        h('p', { text: state.github?.signedIn
-          ? 'Sharing opens a pull request to the community gallery from your GitHub account. Turn on "Publish Wardrobe packs" in Settings → GitHub, and Share does it in one click.'
-          : 'Sharing opens a pull request to the community gallery from your GitHub account. Sign in to GitHub in Settings and turn on "Publish Wardrobe packs", and Share does it in one click.' }),
-        h('p', { text: 'Or save it as a pack file and open the pull request yourself (docs/ADDONS.md says how).' }),
-        h('div', { class: 'row' },
-          h('button', { type: 'button', class: 'btn slim-btn', onclick: () => { shareOpen = false; renderShare(); SB.setView('settings'); setTimeout(() => SB.$('githubGroup')?.scrollIntoView({ block: 'start' }), 80); } }, 'Set up GitHub'),
-          h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: saveAFile }, 'Save a file'),
-          listed ? h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: copyCode }, 'Copy outfit code') : null,
-          close));
-      return;
-    }
-    const check = contest ? h('input', { type: 'checkbox', id: 'ptContestBox', checked: true }) : null;
-    fill(box, 
-      h('h4', { text: `Share ${word} with everyone` }),
-      h('p', { text: `Opens a pull request to the community gallery as @${state.github.login}. Once it's reviewed and merged, anyone can add ${word} to their Shellby. Shared under CC BY 4.0, credited to "${cur.author || state.github.login}".` }),
-      blockers.length ? h('div', {}, h('p', { text: 'First:' }), h('ul', {}, blockers.map(c => h('li', { text: c.text })))) : null,
-      cur.wish ? h('p', { text: `For pack wish #${cur.wish.number} (${cur.wish.title}): the pull request says so, and Shellby offers to tell the wish.` }) : null,
-      contest ? h('label', { class: 'toggle' }, check, h('span', { class: 'switch' }), `Enter the ${contest.monthName} contest${contest.theme ? ` (${contest.theme})` : ''}`) : null,
-      h('div', { class: 'row' },
-        h('button', { type: 'button', class: 'btn primary slim-btn', id: 'ptShareGo', disabled: blockers.length ? true : null, onclick: e => shareNow(e.currentTarget, contest && check.checked ? contest.month : null) }, cur.saved && !pendingDraft() ? 'Share' : 'Save and share'),
-        h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: saveAFile }, 'Save a file'),
-        listed ? h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: copyCode }, 'Copy outfit code') : null,
-        close));
-  }
-
-  async function shareNow(btn, contestMonth) {
-    btn.disabled = true;
-    btn.textContent = 'Sharing…';
-    try {
-      if (!cur.saved || pendingDraft()) { if (!(await save())) return; }
-      const r = await api.sharePainted(cur.mode, cur.id, { contest: contestMonth, wish: cur.wish?.number || null }).catch(() => null);
-      if (r?.ok) {
-        shareOpen = false;
-        gallery = { ...gallery, [r.packId]: { state: 'review', url: r.url, version: r.version } };
-        renderShare();
-        renderStatus();
-        SB.toast(`Pull request opened for ${cur.name}. The gallery's Pack check reviews it next.${r.contestUrl ? ' Your contest entry is open in the browser: add the card and post it.' : ''}`, { action: 'View', onAction: () => api.openExternal(r.url), ms: 9000 });
-      } else if (r?.needsGitHub) renderShare();
-      else if (!r?.canceled) SB.toast(r?.error || "Couldn't share it.", { ms: 7000 });
-    } finally {
-      if (btn.isConnected) { btn.disabled = false; renderShare(); }
-    }
-  }
-
-  async function saveAFile() {
-    if (!cur.saved || pendingDraft()) { if (!(await save())) return; }
-    const r = await api.exportPainted(cur.mode, cur.id).catch(() => null);
-    if (r?.ok) SB.toast('Saved the pack file. Open a pull request with it to github.com/x-salmon/shellby-packs.', { ms: 7000 });
-    else if (!r?.canceled) SB.toast(r?.error || "Couldn't save the file.");
-  }
-
-  async function copyCode() {
-    const r = await api.paintedCode(cur.mode, cur.id).catch(() => null);
-    if (!r?.ok) return SB.toast("It isn't in the gallery yet.");
-    await navigator.clipboard.writeText(r.code).catch(() => {});
-    SB.toast(`Copied ${r.code}. Anyone with Shellby can wear him from it.`);
-  }
-
-  $('ptShareBtn').addEventListener('click', () => { shareOpen = !shareOpen; renderShare(); });
-
-  // A picture to post: the moment card for a skin (moment-card.js draws it).
-  $('ptCard').addEventListener('click', async () => {
-    const skin = G.toSkin(doc(), meta());
-    try { await SB.momentCard?.share('skin', { skin, name: cur.name || 'My crab', author: cur.author || login() }); } catch { SB.toast("Couldn't make the picture."); }
-  });
 
   // ------------------------------------------------------------ the menu, resize and the rest
 
@@ -1034,8 +656,7 @@
   async function back() {
     if (pendingDraft()) await flushDraft();
     cur = null;
-    resetPreviewFx();
-    clearInterval(decorTimer);
+    V.stop();
     await open();
   }
   $('ptBack').addEventListener('click', back);
@@ -1065,7 +686,7 @@
 
   async function open() {
     await refresh();
-    if (cur) { openEditor(); renderShare(); return; }
+    if (cur) { openEditor(); S.renderShare(); return; }
     renderStart();
   }
 
@@ -1078,8 +699,8 @@
     if (s) startFromSkin(s);
   }
 
-  api.onNews?.(n => { news = n; if (state.view === 'paint' && !cur) renderContest(); });
-  api.onSkin?.(() => { guideSkin = null; if (state.view === 'paint' && cur && cur.mode !== 'skin') renderPreview(); });
+  api.onNews?.(n => { news = n; if (state.view === 'paint' && !cur) T.renderContest(); });
+  api.onSkin?.(() => { guideSkin = null; if (state.view === 'paint' && cur && cur.mode !== 'skin') V.renderPreview(); });
   window.addEventListener('pagehide', () => { if (pendingDraft()) flushDraft(); });
   new ResizeObserver(() => { if (state.view === 'paint' && cur) { sizeCanvas(); paint(); } }).observe($('ptCanvasWrap'));
 

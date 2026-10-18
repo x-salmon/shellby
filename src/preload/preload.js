@@ -316,22 +316,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onUnlocked: on('wardrobe:unlocked'),
   onCollected: on('wardrobe:collected'),
   onPackInstalled: on('wardrobe:installed'), // result of an "Add to Shellby" gallery link
-
-  // the Painter (src/main/wiring/painter.js): what you paint, checked again in main
-  saveSkin: (skin, opts) => ipcRenderer.invoke('skins:save', skin, opts),
-  readSkin: invoke('skins:read'),
-  previewSkin: invoke('skins:preview'),   // on the desktop crab for a minute; null ends it
-  painterDrafts: invoke('painter:drafts'),
-  saveDraft: invoke('painter:draft-save'),
-  deleteDraft: invoke('painter:draft-delete'),
-  packWishes: invoke('painter:wishes'),
-  painterItems: invoke('painter:items'),
-  saveItem: (kind, item, opts) => ipcRenderer.invoke('painter:save-item', kind, item, opts),
-  sharePainted: (kind, id, opts) => ipcRenderer.invoke('painter:share', kind, id, opts),
-  painterGallery: invoke('painter:gallery'),
-  exportPainted: (kind, id) => ipcRenderer.invoke('painter:export', kind, id),
-  paintedCode: (kind, id) => ipcRenderer.invoke('painter:code', kind, id),
-  openPackStudio: fire('painter:studio'),
+  saveSkin: invoke('skins:save'), readSkin: invoke('skins:read'), previewSkin: invoke('skins:preview'), painterDrafts: invoke('painter:drafts'), saveDraft: invoke('painter:draft-save'), deleteDraft: invoke('painter:draft-delete'), packWishes: invoke('painter:wishes'), painterItems: invoke('painter:items'), saveItem: invoke('painter:save-item'), sharePainted: invoke('painter:share'), painterGallery: invoke('painter:gallery'), exportPainted: invoke('painter:export'), paintedCode: invoke('painter:code'), openPackStudio: fire('painter:studio'), // the Painter (wiring/painter.js), all checked again in main; previewSkin(null) takes it off the desktop crab
 
   // Claude Code status line
   resetCritterPosition: fire('critter:reset-position'),
