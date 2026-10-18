@@ -156,7 +156,8 @@ body[data-view="trophies"] .view-trophies { display: block; overflow-y: auto; pa
 .trophy-bar { position: relative; height: 5px; margin-top: 6px; border-radius: 3px; background: var(--reef-3); overflow: hidden; }
 .trophy-bar span { display: block; height: 100%; background: var(--glass); transform-origin: left; }
 .trophy-bar em { position: absolute; right: 0; top: -15px; font: var(--fs-10) var(--font-mono); font-style: normal; color: var(--sand-faint); }
-.trophy-rewards { display: flex; gap: 4px; }
+.trophy-rewards { display: flex; gap: 4px; align-items: center; }
+.trophy-share { width: 30px; height: 30px; font-size: var(--fs-13); }
 .reward { width: 34px; height: 30px; display: grid; place-items: center; border-radius: var(--r-sm); background: var(--abyss); }
 .reward svg { max-width: 26px; max-height: 22px; width: auto; height: 22px; }
 .trophy:not(.done) .reward svg { filter: grayscale(1) brightness(.6); }

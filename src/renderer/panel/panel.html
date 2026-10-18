@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src blob:; base-uri 'none'; form-action 'none'">
 <title>Shellby</title>
 <link rel="stylesheet" href="../shared/tokens.css">
 <link rel="stylesheet" href="../shared/fonts.css">
@@ -1257,6 +1257,7 @@
         </div>
         <div class="tk-tools">
           <button type="button" class="btn primary slim-btn" id="tkDecorate">Decorate</button>
+          <button type="button" class="btn ghost slim-btn share-icon" id="tkCard" data-share-card data-kind="tank" title="Share a picture of his tank" aria-label="Share a picture of his tank">📸</button>
           <button type="button" class="btn ghost slim-btn" id="tkUndo" hidden title="Undo (Ctrl+Z)">Undo</button>
           <button type="button" class="btn ghost slim-btn" id="tkRedo" hidden title="Redo (Ctrl+Y)">Redo</button>
           <button type="button" class="btn ghost slim-btn" id="tkCancel" hidden>Cancel</button>
@@ -1771,6 +1772,8 @@
         <p class="muted small">Once a day Shellby reads a small file from the community gallery's site, with nothing about you in the request. What's on shows as a quiet card on the Us page and on About, never as a notification. Off fetches nothing.</p>
         <label class="toggle"><input type="checkbox" id="surprisesToggle"><span class="switch"></span>Small surprises for real wins: a critical hit, a clean landing</label>
         <p class="muted small">Now and then, when one turn takes failing tests all the way to green, or a copy comes home with its checks green on the first try, he makes a little fuss. Rare on purpose, and only for the real thing: never for being quick, and never when tests were skipped or deleted to get there. Clean landings need <button type="button" class="link-btn inline" data-jump-setting="checkEachTurnToggle">Run the tests after a turn</button>, on the Claude tab.</p>
+        <label class="toggle"><input type="checkbox" id="shareButtonsToggle"><span class="switch"></span>Share buttons on celebrations</label>
+        <p class="muted small">A 📸 on a trophy, a level, a molt or a rare catch makes a card of that moment to post. Nothing is shared until you press it, and he never asks. Off hides them; every trophy's card stays on the Trophies page.</p>
       </section>
 
       <details class="setting-group setting-fold mischief-group" id="mischiefGroup" data-nav="Mischief" data-fold-on="mischiefPranks">
@@ -2557,6 +2560,7 @@
       <ul class="molt-tiers" id="moltTiers" aria-label="Tier shells"></ul>
       <div class="molt-actions">
         <button type="button" class="btn primary" id="moltGo">Molt</button>
+        <button type="button" class="btn" id="moltShare" data-share-moment hidden>📸 Share</button>
         <button type="button" class="btn ghost" id="moltLater">Not yet</button>
       </div>
     </div>
@@ -2695,14 +2699,25 @@
           <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
       </div>
+      <div class="card-tools" id="cardTools" hidden>
+        <div class="seg card-sizes" id="cardSizes" role="radiogroup" aria-label="Card size">
+          <button type="button" role="radio" data-size="wide" aria-checked="true" title="1200×630: X, Bluesky and LinkedIn">Wide <small>X, Bluesky</small></button>
+          <button type="button" role="radio" data-size="square" aria-checked="false" title="1080×1080: Discord, Mastodon and Instagram">Square <small>Discord, Instagram</small></button>
+        </div>
+        <button type="button" class="btn slim-btn card-clip" id="cardClip" hidden title="A four-second video of the moment, for a post">🎞 Clip</button>
+      </div>
       <img id="cardImg" class="card-img" alt="Your Shellby card: your crab as he's dressed now, with your trophies and task count">
-      <p class="card-note">Copied to your clipboard and saved as <b id="cardPath"></b>. Paste it into a post:</p>
+      <video id="cardVideo" class="card-img card-video" muted loop playsinline hidden></video>
+      <p class="card-note"><span id="cardLead">Copied to your clipboard and saved as</span> <b id="cardPath"></b>. <span id="cardTail">Paste it into a post:</span></p>
       <div class="row wrap">
         <button type="button" class="btn primary" id="cardX">Post on X</button>
         <button type="button" class="btn primary" id="cardBsky">Post on Bluesky</button>
+        <button type="button" class="btn primary" id="cardDiscord" hidden>Post to Discord</button>
         <button type="button" class="btn" id="cardCopy">Copy again</button>
+        <button type="button" class="btn" id="cardAlt">Copy alt text</button>
         <button type="button" class="btn ghost" id="cardReveal">Show file</button>
       </div>
+      <p class="card-hint" id="cardHint" role="status" aria-live="polite"></p>
     </div>
   </div>
 
@@ -2924,6 +2939,7 @@
 <script src="health-hogs.js"></script>
 <script src="card.js"></script>
 <script src="moment-card.js"></script>
+<script src="moment-clip.js"></script>
 <script src="sparkle.js"></script>
 <script src="beach-paint.js"></script>
 <script src="beach.js"></script>

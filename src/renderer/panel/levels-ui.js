@@ -115,7 +115,7 @@
           e.shell ? h('button', { type: 'button', class: 'btn primary', onclick: async () => { await api.wearHome(e.shell.id); closeCeremony(); } }, 'Wear it now') : null,
           hasDecor ? h('button', { type: 'button', class: 'btn', onclick: () => { closeCeremony(); SB.setView('tank'); } }, 'Put it in the tank') : null,
           e.canMolt && SB.openMolt ? h('button', { type: 'button', class: 'btn', onclick: () => { closeCeremony(); SB.openMolt(); } }, '🐚 Molt…') : null,
-          legend ? h('button', { type: 'button', class: 'btn ghost', onclick: () => { closeCeremony(); SB.crabCard?.share(); } }, '📸 Share') : null,
+          SB.shareButtons?.() !== false ? h('button', { type: 'button', class: 'btn ghost lv-cer-share', onclick: () => { closeCeremony(); SB.momentCard?.share('level', e); } }, '📸 Share') : null,
           h('button', { type: 'button', class: 'btn ghost', onclick: closeCeremony }, 'Lovely'))));
     sheet.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); closeCeremony(); } });
     document.body.append(sheet);

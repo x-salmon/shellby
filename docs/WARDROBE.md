@@ -97,7 +97,7 @@ His **class** comes from his highest stat: 🚢 **Shipper**, 🧪 **Tester**, �
 
 <p align="center"><img src="img/crab-card.png" width="600" alt="A Shellby crab card: Shellby in a wizard hat with a coffee mug and sparkles, his title, tasks done, trophies and helper crabs sent"></p>
 
-**📸 Share** on Shellby's screen makes a card with Shellby as he's dressed, your best trophy, task count and trophy shelf. It's copied to your clipboard and saved to `Pictures\Shellby`. Sharing one earns a trophy too.
+**📸 Share** on Shellby's screen makes a card with Shellby as he's dressed, your best trophy, task count and trophy shelf. It's copied to your clipboard and saved to `Pictures\Shellby`. Sharing one earns a trophy too. Every other card (a trophy, a level, a molt, a streak…), the sizes and clips are in [CARDS.md](CARDS.md).
 
 ## Community wardrobe
 

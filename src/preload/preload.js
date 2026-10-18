@@ -685,7 +685,7 @@ contextBridge.exposeInMainWorld('shellby', {
   // shareable crab card
   saveCard: invoke('card:save'),
   copyCard: invoke('card:copy'),
-  revealCard: fire('card:reveal'),
+  revealCard: fire('card:reveal'), postCardToDiscord: invoke('card:post-discord'), // post: (the path card:save gave, the words)
 
   // updates
   checkUpdates: invoke('updates:check'),

@@ -24,10 +24,10 @@
       eyebrow: `✨ A sparkly ${what}`, title: r.name, sub: `${r.kind === 'bug' ? 'Fixed by Claude, jarred' : 'Dug up'} ${day(r.at)}`, art: { pixels: r.pixels, palette: r.palette },
       accent: '#fff1a8', glints: true,
       stats: [['odds', `1/${r.odds}`], [r.kind === 'bug' ? 'bugs before it' : 'finds before it', r.after.toLocaleString()], ['his level', `Lv ${r.level}`]],
+      say: { bug: r.kind === 'bug', name: r.name, odds: r.odds, after: r.after },
     }, {
       title: `A sparkly ${r.name}`,
       alt: `A sparkly ${r.name}, 1 in ${r.odds}, drawn big on a starry card`,
-      post: `✨ My Shellby just ${r.kind === 'bug' ? 'jarred' : 'dug up'} a SPARKLY ${r.name}. 1 in ${r.odds}, after ${r.after.toLocaleString()} ${r.kind === 'bug' ? 'bugs' : 'finds'}. A pixel hermit crab that runs Claude Code on my desktop.`,
     });
   }
 

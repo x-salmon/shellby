@@ -103,6 +103,7 @@
     $('leaveGuardToggle').checked = state.settings.leaveGuard !== false;
     $('flakyToggle').checked = state.settings.flakyTests !== false;
     $('surprisesToggle').checked = state.settings.surprises !== false;
+    $('shareButtonsToggle').checked = state.settings.shareButtons !== false;
     $('tideEventsToggle').checked = state.settings.tideEvents !== false;
     $('communityNewsToggle').checked = state.settings.communityNews !== false;
     $('catchBugsToggle').checked = state.settings.catchBugs !== false;
@@ -279,6 +280,7 @@
   $('soundsToggle').addEventListener('change', async e => { const r = await api.setSettings({ sounds: e.target.checked }); state.settings = r.settings; });
   $('soundFxToggle').addEventListener('change', async e => { const r = await api.setSettings({ soundFx: e.target.checked }); state.settings = r.settings; });
   $('surprisesToggle').addEventListener('change', async e => { const r = await api.setSettings({ surprises: e.target.checked }); state.settings = r.settings; });
+  $('shareButtonsToggle').addEventListener('change', async e => { const r = await api.setSettings({ shareButtons: e.target.checked }); state.settings = r.settings; });
   $('signCommitsToggle').addEventListener('change', async e => { const r = await api.setSettings({ signCommits: e.target.checked }); state.settings = r.settings; });
   $('tideEventsToggle').addEventListener('change', async e => { const r = await api.setSettings({ tideEvents: e.target.checked }); state.settings = r.settings; SB.tide?.refresh(); });
   $('communityNewsToggle').addEventListener('change', async e => { const r = await api.setSettings({ communityNews: e.target.checked }); state.settings = r.settings; SB.news?.refresh(); });

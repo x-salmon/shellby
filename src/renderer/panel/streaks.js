@@ -26,8 +26,25 @@
     badge.setAttribute('aria-label', words.label);
   }
 
+  // A streak reaching one of these is a moment with a card of its own (moment-card.js).
+  const STREAK_MARKS = [7, 30, 100, 365];
+  const STREAK_WAIT_MS = 1500; // the trophy for it may be on its way: one celebration, not two
+  function celebrateStreak(before, v) {
+    const days = v.current;
+    if (!Number.isInteger(before) || !(days > before) || !STREAK_MARKS.includes(days)) return;
+    setTimeout(() => {
+      if (SB.celebrated?.(c => c.card?.kind === 'streak' && c.card.m?.days === days)) return;
+      SB.celebrate({
+        eyebrow: 'Streak', icon: '🔥', title: `${days} days in a row`,
+        text: days >= 100 ? 'A task done every one of them. That’s some tide.' : 'A task done every one of them. Keep the tide coming in.',
+        card: { kind: 'streak', m: { days } },
+      });
+    }, STREAK_WAIT_MS);
+  }
+
   function render(v) {
     if (!v) return;
+    celebrateStreak(state.streaks?.current, v);
     state.streaks = v;
     if (state.view === 'trophies') renderBadge(v);
     if (state.view !== 'time') return;

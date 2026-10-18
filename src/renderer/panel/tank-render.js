@@ -72,6 +72,7 @@
 
   function renderTools({ edit, history, future, item }) {
     $('tkDecorate').hidden = edit;
+    $('tkCard').hidden = edit;
     for (const id of ['tkUndo', 'tkRedo', 'tkCancel', 'tkDone']) $(id).hidden = !edit;
     $('tkUndo').disabled = !history.length;
     $('tkRedo').disabled = !future.length;

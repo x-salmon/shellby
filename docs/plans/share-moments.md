@@ -1,6 +1,6 @@
 # Moments worth sharing: a card for every one, in every size
 
-> Status: **plan.** Nothing here is built yet.
+> Status: **built.** What shipped is in [CARDS.md](../CARDS.md); the open questions at the end are still open.
 
 The card kit is already good. `card.js` (`SB.cardKit`) draws 1200×630 cards on
 a canvas; `present()` saves the PNG to `Pictures\Shellby`, copies it, and

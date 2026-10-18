@@ -7,7 +7,7 @@
 (function () {
   const { h, api, state, $ } = SB;
   const K = SB.cardKit;
-  const { W, H, C } = K;
+  const { H, C } = K;
   const MAX_TROPHY_CHIPS = 8;
   const DAY_LETTER =['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const fmt = n => Number(n || 0).toLocaleString();
@@ -257,20 +257,24 @@
     });
   }
 
-  async function render() {
+  /** The week card, size 'wide' or 'square' (his tank across the top, the week under it). */
+  async function render(cardSize = 'wide') {
     await K.loadFonts();
     SB.applyStickers?.(await api.getStickers());
     const w = await api.getWeek();
     // A project kept off the calling card stays off this one too.
     const shipped = withArt(w).filter(p => !p.hidden);
-    const { canvas, ctx } = K.newCanvas();
+    const sq = cardSize === 'square';
+    const { canvas, ctx, w: CW } = K.newCanvas(cardSize);
     K.drawWater(ctx);
-    await K.drawTank(ctx, shipped.filter(p => p.art));
+    await K.drawTank(ctx, shipped.filter(p => p.art), sq ? K.SQUARE_TANK : K.TANK);
     // Below the crab's feet, over the sand and the gap under the tank. Every stat
     // is Claude Code work, so just the crab leaves it off.
-    if (w.character && !state.settings.crabOnly) drawSheet(ctx, w.character, 64, 486, 438, 72);
+    if (w.character && !state.settings.crabOnly) drawSheet(ctx, w.character, sq ? 240 : 64, sq ? 404 : 486, sq ? 600 : 438, 72);
 
-    const x0 = 568, right = W - 56, colW = right - x0;
+    // The week's column: on a square card, the same rows moved down under the tank.
+    const x0 = sq ? 56 : 568, right = CW - 56, colW = right - x0;
+    if (sq) ctx.translate(0, K.SQUARE_DROP);
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = C.coral;
     ctx.font = '600 15px "Martian Mono"';
@@ -422,7 +426,7 @@
   }
 
   const share = () => K.present({
-    kind: 'week', draw: render, buttons: '[data-share-week]', post: postText,
+    kind: 'week', draw: render, buttons: '[data-share-week]', post: postText, sizes: ['wide', 'square'],
     title: 'Your week', alt: 'Your week with Shellby: what your plan bought you (hours of Claude work, tasks finished, fixes that held, the weekly limit used), your streak, his character sheet (class and Shipping, Rigour, Craft and Tidiness stats), your top project, new trophies, what you shipped, the week\'s work (routines that ran while you were away, pull requests, builds fixed, branches brought home) and XP for the last seven days',
   });
 

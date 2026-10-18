@@ -15,6 +15,7 @@
   const CEREMONY_MS = 2600;
   let view = null;
   let lastFocus = null;
+  let molted = null; // the molt just played, for its card: { was, now, count, badge }
 
   const sheet = () => $('moltSheet');
   const open = () => !!sheet() && !sheet().hidden;
@@ -40,6 +41,8 @@
       : `${fmt(v.xpTo99)} XP to level 99, then the ${next.name} is his. Molting is never required: staying at 99 earns ★ marks.`;
     $('moltGo').disabled = !v.canMolt || !!v.busy;
     $('moltGo').textContent = v.canMolt ? `🐚 Molt ${v.nextBadge?.text || ''}`.trim() : 'Molt at level 99';
+    // Once he's molted, the sheet keeps a card of it until it closes.
+    $('moltShare').hidden = !molted || SB.shareButtons?.() === false;
     renderTiers(v);
   }
 
@@ -90,6 +93,7 @@
     $('moltEyebrow').textContent = 'He molted!';
     $('moltText').textContent = 'Level 1 again, with everything he had. Every level from here is the climb to his next tier shell.';
     $('moltGo').disabled = true;
+    molted = { was, now: r.view.current, count: r.view.count, badge: r.view.badge?.text || null };
     setTimeout(() => { stage.classList.remove('molting'); render(r.view); }, CEREMONY_MS);
   }
 
@@ -106,6 +110,7 @@
 
   function close() {
     if (!open()) return;
+    molted = null;
     sheet().hidden = true;
     document.body.classList.remove('molt-open');
     lastFocus?.focus?.();
@@ -114,6 +119,7 @@
   $('moltClose')?.addEventListener('click', close);
   $('moltLater')?.addEventListener('click', close);
   $('moltGo')?.addEventListener('click', go);
+  $('moltShare')?.addEventListener('click', () => { if (molted) SB.momentCard?.share('molt', molted); });
   sheet()?.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
   sheet()?.addEventListener('click', e => { if (e.target === sheet()) close(); });
 

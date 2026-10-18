@@ -340,7 +340,12 @@
         a.claim ? h('div', { class: 'trophy-desc trophy-claim', text: a.claim }) : null,
         a.done ? null : h('div', { class: 'trophy-bar' }, h('span', { style: `transform:scaleX(${Math.min(1, a.current / a.goal)})` }), h('em', { text: `${a.current}/${a.goal}` }))),
       h('div', { class: 'trophy-rewards' }, a.rewards.map(r => h('span', { class: 'reward', title: r.name },
-        r.sprites ? SB.Sprite.grid(bigSprite(r).pixels, bigSprite(r).palette, { ink: !!r.ink }) : SB.Sprite.grid(r.pixels, r.palette, { ink: true })))))));
+        r.sprites ? SB.Sprite.grid(bigSprite(r).pixels, bigSprite(r).palette, { ink: !!r.ink }) : SB.Sprite.grid(r.pixels, r.palette, { ink: true }))),
+        // Every trophy you have keeps its card here, whatever the celebrations show.
+        a.done ? h('button', {
+          type: 'button', class: 'icon-btn trophy-share', dataset: { shareMoment: '1' }, title: `Share a card of ${a.name}`, 'aria-label': `Share a card of ${a.name}`,
+          onclick: () => SB.momentCard?.share(...trophyCard({ achievement: a, rewards: a.rewards })),
+        }, '📸') : null))));
   }
 
   // ------------------------------------------------------------ wiring
@@ -395,8 +400,12 @@
   }, true);
 
   // ------------------------------------------------------------ celebrations
+  // The streak trophies are a streak's card (moment-card.js), with the days they're for.
+  const STREAK_TROPHIES = { 'on-a-roll': 7, unstoppable: 30, 'hundred-tides': 100 };
+  const trophyCard = e => (STREAK_TROPHIES[e.achievement.id] ? ['streak', { days: STREAK_TROPHIES[e.achievement.id] }] : ['trophy', e]);
   SB.onUnlocked = e => {
-    SB.celebrate({ icon: e.achievement.icon, title: e.achievement.name, text: e.achievement.description, rewards: e.rewards });
+    const [kind, m] = trophyCard(e);
+    SB.celebrate({ icon: e.achievement.icon, title: e.achievement.name, text: e.achievement.description, rewards: e.rewards, card: { kind, m } });
   };
   // Result of a one-click install from the community gallery (main already
   // broadcast the refreshed wardrobe view on success).

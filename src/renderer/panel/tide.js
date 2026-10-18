@@ -104,18 +104,25 @@
       art(m, 4), h('span', { text: `${m.emoji} ${m.year}` }))));
   }
 
-  function shareMedal(m) {
+  // The medal's card, as a celebration carries it ({ kind, m, opts }).
+  function medalCard(m) {
     const name = m.name.endsWith(String(m.year)) ? m.name : `${m.name} ${m.year}`;
-    SB.momentCard.share('medal', {
-      eyebrow: `${m.emoji} Tide event medal`, title: name, sub: 'Every goal, while it was on.',
-      art: { pixels: m.medal?.pixels || m.pixels, palette: m.medal?.palette || m.palette }, accent: '#ffc15e', glints: true,
-      badge: 'Only this year’s, for good',
-      stats: (m.goals || []).length ? [['goals', `${m.goals.length}/${m.goals.length}`], ['days to spare', String(m.daysLeft ?? 0)]] : [],
-    }, {
-      title: `${name} medal`,
-      alt: `The ${name} medal, a pixel emblem on a starry card`,
-      post: `${m.emoji} Finished ${name} with my Shellby. Every goal, while it was on. A pixel hermit crab that runs Claude Code on my desktop.`,
-    });
+    return {
+      kind: 'medal',
+      m: {
+        eyebrow: `${m.emoji} Tide event medal`, title: name, sub: 'Every goal, while it was on.',
+        art: { pixels: m.medal?.pixels || m.pixels, palette: m.medal?.palette || m.palette }, accent: '#ffc15e', glints: true,
+        badge: 'Only this year’s, for good',
+        stats: (m.goals || []).length ? [['goals', `${m.goals.length}/${m.goals.length}`], ['days to spare', String(m.daysLeft ?? 0)]] : [],
+        say: { emoji: m.emoji, name },
+      },
+      opts: { title: `${name} medal`, alt: `The ${name} medal, a pixel emblem on a starry card` },
+    };
+  }
+
+  function shareMedal(m) {
+    const c = medalCard(m);
+    return SB.momentCard.share(c.kind, c.m, c.opts);
   }
 
   function apply(v) {
@@ -132,7 +139,7 @@
       eyebrow: 'Tide event finished', icon: m.emoji, title: m.name,
       text: 'Every goal, while it was on. This year’s medal is yours, and its trophy too.',
       rewards: m.pixels ? [{ name: `${m.name} medal`, pixels: m.pixels, palette: m.palette, kind: 'medal' }] : [],
-      action: { label: '📸 Share the medal', run: () => shareMedal(m) },
+      card: medalCard(m),
     });
   });
 

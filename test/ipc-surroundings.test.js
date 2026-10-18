@@ -11,20 +11,21 @@ const { installFakeElectron, createFakeIpc, fakeConfig, recorder, isStr } = requ
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-surroundings-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
 const electron = installFakeElectron({ userData: path.join(root, 'userData'), pictures: path.join(root, 'Pictures') });
-const { registerSurroundingsIpc, MAX_COPY_CHARS } = require('../src/main/ipc/surroundings');
+const { registerSurroundingsIpc, MAX_COPY_CHARS, CARD_KINDS, CLIP_MAX_BYTES } = require('../src/main/ipc/surroundings');
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const CARD_MAX_BYTES = 64;
 const png = (extra = 8) => new Uint8Array(Buffer.concat([PNG_SIGNATURE, Buffer.alloc(extra, 1)]));
 
-function setup() {
+function setup(extra = {}, initial = {}) {
   const ipc = createFakeIpc();
-  const config = fakeConfig();
+  const config = fakeConfig(initial);
   const rec = recorder();
   const d = {
     config, isStr, PNG_SIGNATURE, CARD_MAX_BYTES,
     log: { warn: rec.fn('log.warn') },
     stat: rec.fn('stat'),
+    questDone: rec.fn('questDone'),
     health: {
       view: () => ({ view: true }),
       setSettings: rec.fn('health.setSettings', p => p),
@@ -46,8 +47,9 @@ function setup() {
     presenceView: () => ({ discord: config.get('discord') }),
     presence: { start: rec.fn('presence.start'), stop: rec.fn('presence.stop') },
     updatePresence: rec.fn('updatePresence'),
+    ...extra,
   };
-  registerSurroundingsIpc(ipc.ipcMain, d);
+  registerSurroundingsIpc(ipc.ipcMain, d, { fetchImpl: extra.fetchImpl });
   return { ipc, config, rec };
 }
 
@@ -121,7 +123,7 @@ test('card:save writes the PNG under Pictures/Shellby, copies it, and card:revea
   assert.deepEqual([...fs.readFileSync(saved)], [...png()]);
   const [items] = electron.callsOf('clipboard.write').slice(writesBefore)[0];
   assert.deepEqual(items[0].types, ['image/png'], 'copied as a PNG ClipboardItem (Electron 44 clipboard)');
-  assert.deepEqual(rec.of('stat'), [['card-shared']]);
+  assert.deepEqual(rec.of('stat'), [['card-shared'], ['card-shared:week']]);
 
   ipc.send('card:reveal');
   assert.equal(revealed().at(-1), saved);
@@ -133,6 +135,169 @@ test('card:save names an unknown kind "card" rather than putting the renderer\'s
   const r = await ipc.invoke('card:save', png(), '..\\..\\evil');
 
   assert.match(path.basename(r.name), /^shellby-card-/);
+});
+
+test('card:save names each card after its kind, and the tank card finishes "Share the tank"', async () => {
+  const { ipc, rec } = setup();
+
+  for (const kind of CARD_KINDS) {
+    const r = await ipc.invoke('card:save', png(), kind);
+    assert.match(path.basename(r.name), new RegExp(`^shellby-${kind}-\\d{8}-\\d{6}\\.png$`), kind);
+  }
+  assert.deepEqual(rec.of('questDone'), [['tank-share']]);
+});
+
+test('card:save puts a square card\'s size in its name, and the same card again in another size isn\'t another share', async () => {
+  const { ipc, rec } = setup();
+
+  const wide = await ipc.invoke('card:save', png(), 'trophy', { size: 'wide' });
+  const square = await ipc.invoke('card:save', png(), 'trophy', { size: 'square', again: true });
+  const odd = await ipc.invoke('card:save', png(), 'trophy', { size: '../../x' });
+
+  assert.match(path.basename(wide.name), /^shellby-trophy-\d{8}-\d{6}\.png$/);
+  assert.match(path.basename(square.name), /^shellby-trophy-square-\d{8}-\d{6}\.png$/);
+  assert.match(path.basename(odd.name), /^shellby-trophy-\d{8}-\d{6}\.png$/, 'an unknown size is just wide');
+  assert.deepEqual(rec.of('stat'), [['card-shared'], ['card-shared:trophy'], ['card-shared'], ['card-shared:trophy']]);
+});
+
+// ---- a moment's clip: MP4 or WebM, checked by its magic number and size, never on the clipboard
+const mp4 = (n = 64) => new Uint8Array(Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypisom'), Buffer.alloc(n, 2)]));
+const webm = (n = 64) => new Uint8Array(Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(n, 3)]));
+
+test('card:save keeps a clip as the container it is, and never puts it on the clipboard', async () => {
+  const { ipc } = setup();
+  const writesBefore = electron.callsOf('clipboard.write').length;
+
+  const a = await ipc.invoke('card:save', mp4(), 'shiny', { video: 'mp4', again: true });
+  const b = await ipc.invoke('card:save', webm(), 'molt', { video: 'webm', size: 'square', again: true });
+
+  assert.equal(a.ok, true);
+  assert.equal(a.video, true);
+  assert.equal(a.copied, undefined, 'not copied, not "couldn\'t copy" either');
+  assert.match(path.basename(a.name), /^shellby-shiny-\d{8}-\d{6}\.mp4$/);
+  assert.match(path.basename(b.name), /^shellby-molt-square-\d{8}-\d{6}\.webm$/);
+  assert.deepEqual([...fs.readFileSync(b.path)], [...webm()]);
+  assert.equal(electron.callsOf('clipboard.write').length, writesBefore);
+});
+
+test('card:save refuses a clip that isn\'t the container it says, or is too big', async () => {
+  const { ipc } = setup();
+  for (const [bytes, video] of [[webm(), 'mp4'], [mp4(), 'webm'], [png(), 'mp4'], [mp4(CLIP_MAX_BYTES), 'mp4'], [new Uint8Array(8), 'webm'], ['ftyp', 'mp4']]) {
+    const r = await ipc.invoke('card:save', bytes, 'shiny', { video });
+    assert.equal(r.ok, false, `${video}: ${bytes.length}`);
+  }
+  // A video type it doesn't know is a picture, and an MP4 isn't one.
+  assert.equal((await ipc.invoke('card:save', mp4(), 'shiny', { video: 'gif' })).ok, false);
+});
+
+// ---- Post to Discord: the webhook your notifications use, a saved card, never a ping.
+const WEBHOOK = 'https://discord.com/api/webhooks/123/abc-token';
+const DISCORD = { channels: { provider: 'discord', target: WEBHOOK, enabled: true } };
+// A fake fetch: the webhook's own GET answers with its name; a POST answers `post`.
+function fakeDiscord(post = { ok: true, status: 200 }) {
+  const sent = [];
+  const fetchImpl = async (url, opts = {}) => {
+    if (!opts.method) return { ok: true, json: async () => ({ name: 'shellby-wins' }) };
+    sent.push({ url, opts });
+    return { ok: post.ok, status: post.status, headers: { get: () => null }, text: async () => post.body || '' };
+  };
+  return { sent, fetchImpl };
+}
+
+test('card:save offers Post to Discord only when a Discord webhook is set up', async () => {
+  assert.equal((await setup().ipc.invoke('card:save', png(), 'crab')).discord, false);
+  assert.equal((await setup({}, { channels: { provider: 'ntfy', target: 'shellby-abc' } }).ipc.invoke('card:save', png(), 'crab')).discord, false);
+  const r = await setup({}, DISCORD).ipc.invoke('card:save', png(), 'crab');
+  assert.equal(r.discord, true);
+  assert.equal(path.dirname(r.path), path.join(root, 'Pictures', 'Shellby'), 'and says where the card is, for the post');
+});
+
+test('card:post-discord sends only a card Shellby saved, from Pictures/Shellby', async () => {
+  const net = fakeDiscord();
+  const { ipc, rec } = setup({ fetchImpl: net.fetchImpl, askOnce: async () => 0 }, DISCORD);
+  const saved = await ipc.invoke('card:save', png(), 'trophy');
+  const outside = path.join(root, 'shellby-trophy-20260101-120000.png');
+  fs.writeFileSync(outside, Buffer.from(png()));
+  const notACard = path.join(root, 'Pictures', 'Shellby', 'notes.png');
+  fs.writeFileSync(notACard, Buffer.from(png()));
+
+  for (const bad of [outside, notACard, path.join(path.dirname(saved.path), '..', '..', 'shellby-trophy-20260101-120000.png'),
+    path.join(path.dirname(saved.path), 'shellby-trophy-19990101-000000.png'), 'C:\\Windows\\win.ini', '', null, 42, { path: saved.path }]) {
+    const r = await ipc.invoke('card:post-discord', bad, 'hi');
+    assert.equal(r.ok, false, String(bad));
+  }
+  assert.equal(net.sent.length, 0, 'nothing went anywhere');
+  assert.deepEqual(rec.of('log.warn'), []);
+});
+
+test('card:post-discord uploads the file with its words and no mentions, and asks once per webhook', async () => {
+  const net = fakeDiscord();
+  const asked = [];
+  const { ipc, config } = setup({ fetchImpl: net.fetchImpl, askOnce: async spec => { asked.push(spec); return 0; } }, DISCORD);
+  const saved = await ipc.invoke('card:save', png(), 'molt', { size: 'square' });
+
+  assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, '🐚 Shellby just molted @everyone #Shellby'), { ok: true });
+  assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, 'again'), { ok: true });
+
+  assert.equal(asked.length, 1, 'asked before the first post only');
+  assert.match(asked[0].title, /shellby-wins/, 'naming the webhook');
+  assert.equal(net.sent.length, 2);
+  const { url, opts } = net.sent[0];
+  assert.equal(url, `${WEBHOOK}?wait=true`);
+  const payload = JSON.parse(opts.body.get('payload_json'));
+  assert.deepEqual(payload.allowed_mentions, { parse: [] }, 'never a ping, @everyone or not');
+  assert.equal(payload.content, '🐚 Shellby just molted @everyone #Shellby');
+  const file = opts.body.get('files[0]');
+  assert.equal(file.name, path.basename(saved.path));
+  assert.equal(file.type, 'image/png');
+  assert.deepEqual([...new Uint8Array(await file.arrayBuffer())], [...png()]);
+  assert.match(config.get('cardDiscordOk'), /^[0-9a-f]{16}$/, 'the yes is kept, as a hash and not the webhook again');
+
+  // A new webhook asks again.
+  config.set({ channels: { ...DISCORD.channels, target: 'https://discord.com/api/webhooks/456/other' } });
+  await ipc.invoke('card:post-discord', saved.path, 'x');
+  assert.equal(asked.length, 2);
+});
+
+test('card:post-discord: Cancel sends nothing, and a webhook\'s error is shown in its own words', async () => {
+  const net = fakeDiscord({ ok: false, status: 404, body: '{"message": "Unknown Webhook", "code": 10015}' });
+  let answer = 1;
+  const { ipc } = setup({ fetchImpl: net.fetchImpl, askOnce: async () => answer }, DISCORD);
+  const saved = await ipc.invoke('card:save', png(), 'streak');
+
+  assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, 'x'), { ok: false, canceled: true });
+  assert.equal(net.sent.length, 0);
+
+  answer = 0;
+  const r = await ipc.invoke('card:post-discord', saved.path, 'x');
+  assert.deepEqual(r, { ok: false, error: 'Discord said no: Unknown Webhook.' });
+
+  const quiet = fakeDiscord({ ok: false, status: 429, body: '<html>too many</html>' });
+  const again = setup({ fetchImpl: quiet.fetchImpl, askOnce: async () => 0 }, DISCORD);
+  const card = await again.ipc.invoke('card:save', png(), 'streak');
+  assert.equal((await again.ipc.invoke('card:post-discord', card.path, 'x')).error, 'Discord said too many, too fast.');
+});
+
+test('card:post-discord uploads a clip as a video', async () => {
+  const net = fakeDiscord();
+  const { ipc } = setup({ fetchImpl: net.fetchImpl, askOnce: async () => 0 }, DISCORD);
+  const saved = await ipc.invoke('card:save', mp4(), 'molt', { video: 'mp4', again: true });
+  assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, 'x'), { ok: true });
+  assert.equal(net.sent[0].opts.body.get('files[0]').type, 'video/mp4');
+});
+
+test('card:post-discord with no Discord webhook says where to set one up', async () => {
+  const { ipc } = setup({ askOnce: async () => 0 });
+  const saved = await ipc.invoke('card:save', png(), 'crab');
+  assert.match((await ipc.invoke('card:post-discord', saved.path, 'x')).error, /Settings → Connections/);
+});
+
+test('every moment card has a file name of its own (moment-card.js MOMENT_KINDS)', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'panel', 'moment-card.js'), 'utf8');
+  const moments = JSON.parse(/const MOMENT_KINDS = Object\.freeze\((\[[^\]]+\])\)/.exec(src)[1].replace(/'/g, '"'));
+  assert.ok(moments.length > 4);
+  for (const kind of moments) assert.ok(CARD_KINDS.includes(kind), kind);
+  for (const kind of ['crab', 'tank', 'week', 'wrapped', 'beach']) assert.ok(CARD_KINDS.includes(kind), kind);
 });
 
 test('card:save still reports the save when the clipboard is busy', async () => {

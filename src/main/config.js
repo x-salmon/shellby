@@ -119,6 +119,7 @@ const DEFAULTS = {
   weekly: null,       // what happened each day, for the week-in-review card (see weekly.js); this PC only
   flakyTests: true,   // spot tests that fail and then pass on the same code (see flaky/index.js)
   surprises: true,    // now and then a fanfare for a real outcome: a critical hit, a clean landing (see surprises.js)
+  shareButtons: true, // a 📸 on celebrations, for the moment's own card (moment-card.js); off, cards stay on Trophies
   crits: null,        // the surprises' luck: when the last one was, misses since, how many (see surprises.js); this PC only
   catchBugs: true,    // the Bugdex: catch each kind of bug Claude fixes (see bugdex/index.js)
   bugBattles: true,   // ...and show Claude's work on each one as a battle (see bugdex/battle.js)
@@ -206,6 +207,7 @@ const DEFAULTS = {
   clashWarnings: true, // say when two copies (or a copy and your checkout) change the same file (wiring/clashes.js)
   channelSecret: null, // the channel's token, encrypted by Windows (never in the clear)
   channelsConfirmed: null, // the destination you said yes to in the confirm window; nothing goes anywhere else (main.js channelPlace)
+  cardDiscordOk: null, // the Discord webhook you said cards may go to (a hash of it): asked once each (ipc/surroundings.js)
   crashReports: 'ask',        // ask | always | never: whether crash reports go to Sentry (crash-report.js)
   crashReportDecisions: [],   // [{ until, send }]: each Send / Don't send answer and what it covered
   ideaAsked: false,           // he's asked for an idea once, at Buddies (feedback.js); never again

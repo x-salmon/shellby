@@ -4,6 +4,7 @@
 // music, typing, the weather, the shellby command and the crab card.
 // Kept out of main.js, which only wires it up.
 const { app, clipboard, ClipboardItem, nativeImage, shell } = require('electron');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const channels = require('../channels');
@@ -13,11 +14,25 @@ const { OpenRgbClient } = require('../rgb');
 // to tens of thousands of characters; this only stops something absurd.
 const MAX_COPY_CHARS = 1_000_000;
 
+// What a card may be called after: anything else is just a card. The moments are
+// moment-card.js's MOMENT_KINDS (a test keeps the two lists together).
+const CARD_KINDS = Object.freeze(['crab', 'tank', 'week', 'wrapped', 'wrapped-friends', 'beach',
+  'shiny', 'medal', 'board', 'egg', 'trophy', 'level', 'molt', 'sticker', 'catch', 'streak', 'skin']);
+// A card's file name as card:save makes it: the only files card:post-discord will send.
+const CARD_FILE = /^shellby-[a-z]+(?:-[a-z]+)*-\d{8}-\d{6}\.(?:png|mp4|webm)$/;
+// A moment's clip (moment-clip.js): four seconds of canvas, far under this.
+const CLIP_MAX_BYTES = 5 * 1024 * 1024;
+const EBML = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]);
+// Is it the container it says it is? MP4 has 'ftyp' at byte 4, WebM starts with EBML's magic.
+const isClip = (buf, ext) => buf.length > 12 && buf.length <= CLIP_MAX_BYTES
+  && (ext === 'mp4' ? buf.subarray(4, 8).toString('latin1') === 'ftyp' : buf.subarray(0, 4).equals(EBML));
+
 /**
  * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
+ * @param {{ fetchImpl?: any }} [net]  tests stand in for the network (Post to Discord)
  */
-function registerSurroundingsIpc(ipcMain, d) {
+function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   // ---- Claude Code sessions elsewhere
   ipcMain.on('clipboard:text', (_e, text) => { if (typeof text === 'string' && text.length > 0 && text.length <= MAX_COPY_CHARS) clipboard.writeText(text).catch(e => d.log.warn("couldn't copy text", e?.message)); });
   ipcMain.handle('external:get', () => d.externalView());
@@ -88,7 +103,7 @@ function registerSurroundingsIpc(ipcMain, d) {
   ipcMain.handle('channels:test', async () => {
     const built = channels.buildRequest(d.channelSettings(), d.channelSecret,
       { kind: 'done', project: 'Shellby', tools: 0, seconds: 0, at: Date.now() });
-    if (built.error) return { ok: false, error: built.error };
+    if (!built.request) return { ok: false, error: built.error };
     // Even a test only goes somewhere you've said yes to.
     if (!(await d.confirmChannelPlace({ testing: true }))) return { ok: false, error: 'Not sent: that destination isn\'t confirmed.' };
     const r = await channels.deliver(built.request);
@@ -205,10 +220,12 @@ function registerSurroundingsIpc(ipcMain, d) {
   // picks the path itself, saves it and puts it on the clipboard.
   /** @type {string | null} */
   let lastCard = null;
-  // What a card may be called after: anything else is just a card. Moments are moment-card.js's.
-  const CARD_KINDS = new Set(['week', 'beach', 'shiny', 'medal', 'board', 'egg']);
+  const kinds = new Set(CARD_KINDS);
   // Isolated dev/test runs keep cards in their throwaway profile and never touch the clipboard.
   const isolated = !app.isPackaged && !!process.env.SHELLBY_USER_DATA;
+  const cardsDir = () => path.join(isolated ? app.getPath('userData') : app.getPath('pictures'), 'Shellby');
+  // The Discord webhook your notifications use, if there is one: the share sheet offers Post to Discord.
+  const discordUrl = () => channels.discordWebhook(d.config.get('channels'));
   const cardImage = bytes => {
     const buf = Buffer.from(bytes instanceof Uint8Array ? bytes : []);
     const isPng = buf.length > 8 && buf.length <= d.CARD_MAX_BYTES && buf.subarray(0, 8).equals(d.PNG_SIGNATURE);
@@ -223,32 +240,86 @@ function registerSurroundingsIpc(ipcMain, d) {
       return true;
     } catch (e) { d.log.warn("couldn't copy a crab card", e?.message); return false; }
   };
-  ipcMain.handle('card:save', async (_e, bytes, kind) => {
-    const card = cardImage(bytes);
-    if (!card) return { ok: false, error: "That card didn't come out right." };
+  // opts: { size: 'wide' | 'square' (in the name when square), again: the same
+  // card in another size, saved but not counted as another share, video: 'mp4'
+  // or 'webm' for a moment's clip, checked to be that container and saved
+  // as it (video can't go on the clipboard) }.
+  ipcMain.handle('card:save', async (_e, bytes, kind, opts) => {
+    const video = opts?.video === 'mp4' || opts?.video === 'webm' ? opts.video : null;
+    const raw = Buffer.from(bytes instanceof Uint8Array ? bytes : []);
+    const card = video ? (isClip(raw, video) ? { buf: raw } : null) : cardImage(bytes);
+    if (!card) return { ok: false, error: video ? "That clip didn't come out right." : "That card didn't come out right." };
+    const square = opts?.size === 'square';
     try {
-      const dir = path.join(isolated ? app.getPath('userData') : app.getPath('pictures'), 'Shellby');
+      const dir = cardsDir();
       fs.mkdirSync(dir, { recursive: true });
       const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
-      lastCard = path.join(dir, `shellby-${CARD_KINDS.has(kind) ? kind : 'card'}-${stamp}.png`);
+      lastCard = path.join(dir, `shellby-${kinds.has(kind) ? kind : 'card'}${square ? '-square' : ''}-${stamp}.${video || 'png'}`);
       fs.writeFileSync(lastCard, card.buf);
     } catch (e) {
       d.log.warn("couldn't save a crab card", e?.message);
       return { ok: false, error: "Couldn't save the card to Pictures." };
     }
-    d.stat('card-shared');
-    d.cardSaved?.(kind); // a Wrapped card in Wrapped week: that year's trim (wiring/yearbook.js)
+    // Show-Off's one stat, and beside it which kind of card it was (card-shared:<kind>).
+    if (opts?.again !== true) { d.stat('card-shared'); d.stat(`card-shared:${kinds.has(kind) ? kind : 'card'}`); d.cardSaved?.(kind); } // cardSaved: a Wrapped card in Wrapped week, that year's trim (wiring/yearbook.js)
+    if (kind === 'tank') d.questDone?.('tank-share'); // the Tank's 📸: "Share the tank"
+    const where = { name: path.join('Pictures', 'Shellby', path.basename(lastCard)), path: lastCard, discord: !!discordUrl() };
+    if (video) return { ok: true, video: true, ...where };
     // The file is the save; the clipboard is a bonus. Another app holding the
     // clipboard (clipboard history, a screenshot tool) mustn't turn a saved
     // card into a "couldn't save" — the sheet's Copy button can try again.
     const copied = await copyCard(card.buf);
-    return { ok: true, copied, name: path.join('Pictures', 'Shellby', path.basename(lastCard)) };
+    return { ok: true, copied, ...where };
   });
   ipcMain.handle('card:copy', async (_e, bytes) => {
     const card = cardImage(bytes);
     return { ok: !!card && await copyCard(card.buf) };
   });
-  ipcMain.on('card:reveal', () => { if (lastCard && fs.existsSync(lastCard)) shell.showItemInFolder(lastCard); });
+  // A card Shellby saved (the sheet's picture or its clip), else the last one saved.
+  const savedCard = file => {
+    const full = typeof file === 'string' && file.length < 1024 ? path.resolve(file) : null;
+    return full && path.dirname(full) === cardsDir() && CARD_FILE.test(path.basename(full)) && fs.existsSync(full) ? full : null;
+  };
+  ipcMain.on('card:reveal', (_e, file) => {
+    const shown = savedCard(file) || lastCard;
+    if (shown && fs.existsSync(shown)) shell.showItemInFolder(shown);
+  });
+
+  // ---- a saved card, posted to your Discord webhook (channels/index.js cardUpload).
+  // The panel names a file card:save made (never sends bytes of its own); asked
+  // once per webhook, in Shellby's own confirm window, before the first post.
+  const webhookId = url => crypto.createHash('sha256').update(url).digest('hex').slice(0, 16);
+  async function webhookName(url) {
+    try {
+      const r = await (fetchImpl || fetch)(url, { redirect: 'error', signal: AbortSignal.timeout(5000) });
+      const name = r.ok ? (await r.json())?.name : null;
+      return typeof name === 'string' && name.trim() ? name.trim().slice(0, 60) : null;
+    } catch { return null; }
+  }
+  ipcMain.handle('card:post-discord', async (_e, file, text) => {
+    const url = discordUrl();
+    if (!url) return { ok: false, error: 'Set up Discord under Settings → Connections first.' };
+    const full = savedCard(file);
+    if (!full) return { ok: false, error: "That isn't a card Shellby saved." };
+    if (d.config.get('cardDiscordOk') !== webhookId(url)) {
+      const name = await webhookName(url);
+      const response = await d.askOnce?.({
+        icon: '📸', title: name ? `Post your cards to “${name}”?` : 'Post your cards to Discord?',
+        message: 'Post to Discord sends the card you made, with its words, to the Discord webhook your notifications use.',
+        detail: 'Only when you press it, never by itself, and it never pings anyone.',
+        buttons: [{ label: 'Post', style: 'primary' }, { label: 'Cancel' }], defaultId: 0, cancelId: 1,
+      });
+      if (response !== 0) return { ok: false, canceled: true };
+      d.config.set({ cardDiscordOk: webhookId(url) });
+    }
+    let bytes;
+    try { bytes = new Uint8Array(fs.readFileSync(full)); } catch { return { ok: false, error: "Couldn't read the card." }; }
+    const built = channels.cardUpload(d.config.get('channels'), { name: path.basename(full), bytes, text: typeof text === 'string' ? text : '' });
+    if (!built.request) return { ok: false, error: built.error };
+    const r = await channels.deliver(built.request, { fetchImpl, timeoutMs: 20000 });
+    if (!r.ok) { d.log.warn("couldn't post a card to Discord", r.error); return { ok: false, error: channels.cardPostError(r) }; }
+    return { ok: true };
+  });
 
   // ---- misc
   ipcMain.on('open-external', (_e, url) => {
@@ -259,4 +330,4 @@ function registerSurroundingsIpc(ipcMain, d) {
   ipcMain.on('open-data-folder', () => shell.openPath(app.getPath('userData')));
 }
 
-module.exports = { registerSurroundingsIpc, MAX_COPY_CHARS };
+module.exports = { registerSurroundingsIpc, MAX_COPY_CHARS, CARD_KINDS, CLIP_MAX_BYTES };

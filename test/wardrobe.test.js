@@ -374,6 +374,24 @@ test('achievements: every event updates the right stat without mutating', () => 
   assert.notEqual(ach.recordStat(s0, 'made-up'), s0);
   assert.deepEqual(s0, ach.emptyStats());
 });
+test('achievements: each kind of card shared is counted beside card-shared, for variety', () => {
+  let s = ach.recordStat(null, 'card-shared');
+  for (const e of ['card-shared:crab', 'card-shared:trophy', 'card-shared:crab', 'card-shared:wrapped-friends']) s = ach.recordStat(s, e);
+  assert.equal(s.cardsShared, 1, 'Show-Off counts card-shared only');
+  assert.deepEqual(s.cardsByKind, { crab: 2, trophy: 1, 'wrapped-friends': 1 });
+  assert.equal(ach.statValue(s, 'cardKinds'), 3);
+  for (const bad of ['card-shared:', 'card-shared:../x', 'card-shared:Crab', `card-shared:${'a'.repeat(30)}`]) {
+    assert.deepEqual(ach.recordStat(s, bad).cardsByKind, s.cardsByKind, bad);
+  }
+  // From disk: junk dropped, the rest kept.
+  assert.deepEqual(ach.normalizeStats({ cardsByKind: { crab: 2, 'x y': 1, egg: -1, medal: 'lots', board: 1.5 } }).cardsByKind, { crab: 2, board: 1 });
+  assert.deepEqual(ach.normalizeStats({ cardsByKind: [1, 2] }).cardsByKind, {});
+  // At most 40 kinds.
+  let many = ach.emptyStats();
+  for (let i = 0; i < 50; i++) many = ach.recordStat(many, `card-shared:k${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`);
+  assert.equal(Object.keys(many.cardsByKind).length, 40);
+});
+
 test('achievements: shipyard events count, and streak and level keep their high-water mark', () => {
   const s0 = Object.freeze(ach.emptyStats());
   const cases = [

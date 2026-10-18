@@ -76,6 +76,15 @@ test('sync merge only adds progress; outfit and skin follow the newer change', (
   assert.deepEqual(merge(m, a), merge(a, m), 'order does not matter');
 });
 
+test('sync merge keeps the most of each kind of card shared', () => {
+  const a = { stats: { cardsShared: 3, cardsByKind: { crab: 2, trophy: 1 } } };
+  const b = { stats: { cardsShared: 2, cardsByKind: { crab: 1, wrapped: 1 } } };
+  const m = merge(a, b);
+  assert.deepEqual(m.stats.cardsByKind, { crab: 2, trophy: 1, wrapped: 1 });
+  assert.equal(m.stats.cardsShared, 3);
+  assert.deepEqual(merge(b, a).stats.cardsByKind, m.stats.cardsByKind, 'order does not matter');
+});
+
 test('sync: two PCs meet in one private gist', async () => {
   const mock = await startMockGitHub();
   try {
