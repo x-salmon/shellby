@@ -206,7 +206,7 @@ function registerSurroundingsIpc(ipcMain, d) {
   /** @type {string | null} */
   let lastCard = null;
   // What a card may be called after: anything else is just a card. Moments are moment-card.js's.
-  const CARD_KINDS = new Set(['week', 'beach', 'shiny', 'medal', 'board', 'egg']);
+  const CARD_KINDS = new Set(['crab', 'tank', 'week', 'wrapped', 'beach', 'shiny', 'medal', 'board', 'egg']);
   // Isolated dev/test runs keep cards in their throwaway profile and never touch the clipboard.
   const isolated = !app.isPackaged && !!process.env.SHELLBY_USER_DATA;
   const cardImage = bytes => {
@@ -237,6 +237,7 @@ function registerSurroundingsIpc(ipcMain, d) {
       return { ok: false, error: "Couldn't save the card to Pictures." };
     }
     d.stat('card-shared');
+    if (kind === 'tank') d.questDone?.('tank-share'); // the Tank's 📸: "Share the tank"
     // The file is the save; the clipboard is a bonus. Another app holding the
     // clipboard (clipboard history, a screenshot tool) mustn't turn a saved
     // card into a "couldn't save" — the sheet's Copy button can try again.

@@ -7,6 +7,8 @@
   const K = SB.cardKit;
   const { W, H, C } = K;
   const HEX = /^#[0-9a-f]{6}$/i;
+  // Every kind of moment card, in the order the e2e check draws them (main names the file after it).
+  const MOMENT_KINDS = Object.freeze(['shiny', 'medal', 'board', 'egg']);
 
   /** Pixel art (gifts.js format) on the canvas, each pixel `px` square. */
   function drawPixels(ctx, pixels, palette, x, y, px) {
@@ -93,5 +95,5 @@
     return K.present({ kind, draw: () => draw(m), title, alt, post: () => post, buttons: '[data-share-moment]' });
   }
 
-  SB.momentCard = { draw, share, drawPixels };
+  SB.momentCard = { MOMENT_KINDS, draw, share, drawPixels };
 })();

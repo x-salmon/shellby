@@ -82,7 +82,7 @@ What these services do with your data is up to them, under their own policies: [
 - **`%LOCALAPPDATA%\Shellby`:** the `shellby` command.
 - **Your repositories:** each turn's before and after, kept under Shellby's own private git refs (`refs/shellby/turns/`, never a branch or the stash) so Undo and Rewind work, for the newest 200 turns per project.
 - **`~\.ssh`:** only when you add a new computer under **Other computers**: its `Host` block goes at the end of `config` (your file as it was is kept beside it once, as `config.before-shellby`), and **Sign in with my password** makes a key (`id_ed25519`) if you have none.
-- **`Pictures\Shellby`:** crab and week cards you save. Chat exports go where you choose to save them.
+- **`Pictures\Shellby`:** the cards you make: your crab, his tank, your week, your Wrapped year, the beach, and a card for a moment (a trophy, a sparkly find, a medal…). A card shows your crab as he's dressed, his level, numbers (tasks, trophies, XP, streaks), bug, find and sticker art, and never your code or anything from a conversation. Project names appear only on the week card, and a project you hide in the Sticker Book is on none of them. A card is only saved when you press 📸, and only leaves your PC when you paste or post it. Chat exports go where you choose to save them.
 - **Secrets are encrypted** with Windows' data protection, tied to your Windows account: your GitHub sign-in, your notification service's token, the passphrase for starting tasks from your phone over ntfy, your time tracker's and Sentry's tokens, the Stream Deck plugin's token, and workflow secrets. If Windows can't encrypt them, Shellby won't store them.
 
 ### Deleting your data

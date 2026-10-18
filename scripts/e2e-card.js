@@ -1,8 +1,9 @@
-// ci: the crab card: Share, the preview, the 1200x630 PNG, the Show-Off trophy
+// ci: the crab card: Share, the preview, the 1200x630 PNG, the Show-Off trophy, every moment card
 // End-to-end check of the shareable crab card against the dev app over CDP
 // (throwaway profile: the card is saved inside it and the clipboard is left alone).
 // Dresses Shellby, clicks "Share" in the Wardrobe, and checks the preview, the saved
-// PNG (1200x630) and the Show-Off trophy.
+// PNG (1200x630) and the Show-Off trophy. Then every moment card (moment-card.js
+// MOMENT_KINDS), the beach and the Tank's 📸, each by the size in its saved PNG.
 //   node scripts/e2e-card.js [out.png]
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -12,6 +13,18 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9346;
 const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// A moment for each kind of moment card, as its caller would pass it. A kind
+// moment-card.js lists with nothing here fails, so a new card gets checked.
+const ART = { pixels: ['..aaaa..', '.abbbba.', 'abbccbba', 'abccccba', 'abbccbba', '.abbbba.', '..aaaa..'], palette: { a: '#ffc15e', b: '#ff7a5c', c: '#fff1a8' } };
+const MOMENTS = {
+  shiny: { eyebrow: '✨ A sparkly find', title: 'Sea Glass', sub: 'Dug up today', art: ART, accent: '#fff1a8', glints: true, stats: [['odds', '1/512'], ['finds before it', '40'], ['his level', 'Lv 12']] },
+  medal: { eyebrow: '🎃 Tide event medal', title: 'The Haunting 2026', sub: 'Every goal, while it was on.', art: ART, accent: '#ffc15e', glints: true, badge: 'Only this year’s, for good', stats: [['goals', '4/4'], ['days to spare', '3']] },
+  board: { eyebrow: "🫙 The friends' board · October", title: 'Top crab!', sub: '🥇 me: 12   🥈 @octocat: 9', art: ART, accent: '#ffc15e', stats: [['bugs this month', 12], ['crabs on the board', 2]] },
+  egg: { eyebrow: '🥚 An egg, for you', title: 'Hatch my crab’s egg', sub: 'EGG-1234-ABCD', art: ART, accent: '#ffb3c6', glints: true, badge: 'Get Shellby, then paste the code', stats: [['to hatch it', 'paste the code']] },
+};
+// PNG width and height from its IHDR chunk.
+const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
 
 (async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
@@ -51,7 +64,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(img.w === 1200 && img.h === 630, `preview is 1200x630 (${img.w}x${img.h})`);
 
     const dir = path.join(profile, 'Shellby');
-    const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /^shellby-card-.*\.png$/.test(f)) : [];
+    const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /^shellby-crab-.*\.png$/.test(f)) : [];
     check(files.length === 1, `card saved in the test profile (${files.join(', ') || 'none'})`);
     if (files[0]) {
       const buf = fs.readFileSync(path.join(dir, files[0]));
@@ -61,7 +74,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       console.log(`card: ${out}`);
     }
     const note = await ev("document.getElementById('cardPath').textContent");
-    check(/^Pictures[\\/]Shellby[\\/]shellby-card-/.test(note), `note names the file (${note})`);
+    check(/^Pictures[\\/]Shellby[\\/]shellby-crab-/.test(note), `note names the file (${note})`);
 
     await wait(600);
     const trophy = await ev("(SB.state.wardrobe.achievements.find(a => a.id === 'show-off') || {}).done");
@@ -74,6 +87,30 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev("document.getElementById('cardClose').click()");
     await wait(300);
     check(await ev("document.getElementById('cardSheet').hidden"), 'close hides the sheet');
+
+    // Every moment card, saved as shellby-<kind>-*.png at 1200x630.
+    const savedAs = kind => (fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.startsWith(`shellby-${kind}-`) && f.endsWith('.png')) : []);
+    const kinds = await ev('SB.momentCard.MOMENT_KINDS.slice()');
+    check(Array.isArray(kinds) && kinds.length > 0, `moment-card.js lists its kinds (${(kinds || []).join(', ')})`);
+    for (const kind of kinds || []) {
+      const m = MOMENTS[kind];
+      if (!m) { check(false, `a ${kind} moment to draw (add one to MOMENTS)`); continue; }
+      const before = savedAs(kind).length;
+      await ev(`SB.momentCard.share(${JSON.stringify(kind)}, ${JSON.stringify(m)}, { title: 'A ${kind} card', alt: 'A ${kind} card', post: 'A ${kind} card' }).then(() => true)`);
+      const files = savedAs(kind);
+      const size = files.length > before ? ihdr(fs.readFileSync(path.join(dir, files[files.length - 1]))) : null;
+      check(size?.w === 1200 && size?.h === 630, `the ${kind} card is a 1200x630 PNG (${size ? `${size.w}x${size.h}` : 'not saved'})`);
+      await ev("document.getElementById('cardClose').click()");
+    }
+
+    // The beach: as big as his beach needs, so the saved PNG is checked against the picture drawn.
+    const beachBefore = savedAs('beach').length;
+    const beachDrawn = await ev('SB.beachCard.render().then(r => ({ w: r.canvas.width, h: r.canvas.height }))');
+    await ev('SB.beachCard.share().then(() => true)');
+    const beachFiles = savedAs('beach');
+    const beach = beachFiles.length > beachBefore ? ihdr(fs.readFileSync(path.join(dir, beachFiles[beachFiles.length - 1]))) : null;
+    check(beach && beach.w === beachDrawn?.w && beach.h === beachDrawn?.h && beach.h > 120, `the beach card is the beach as drawn (${beach ? `${beach.w}x${beach.h}` : 'not saved'})`);
+    await ev("document.getElementById('cardClose').click()");
 
     // His tank (tank.js): plain sand while it's empty, the real tank once there's something in it.
     const tankBox = "(r => { const d = r.canvas.getContext('2d').getImageData(48, 48, 470, 470).data; let s = 0; for (let i = 0; i < d.length; i += 97) s = (s * 31 + d[i]) >>> 0; return { n: r.data.tankPieces, s }; })";
@@ -90,6 +127,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // The profile card only shows it once you choose (Tank → On your cards).
     await ev("SB.setView('tank')");
     await wait(1200);
+    // The Tank's 📸 makes his tank card, and that's the "Share the tank" quest.
+    check(await ev("!!document.querySelector('#tankView #tkCard:not([hidden])')"), 'the Tank has a 📸');
+    await ev("document.getElementById('tkCard').click()");
+    let tankCard = [];
+    for (let i = 0; i < 30 && !tankCard.length; i++) { tankCard = savedAs('tank'); if (!tankCard.length) await wait(200); }
+    const tankSize = tankCard[0] ? ihdr(fs.readFileSync(path.join(dir, tankCard[0]))) : null;
+    check(tankSize?.w === 1200 && tankSize?.h === 630, `the Tank's 📸 saves his tank card (${tankCard[0] || 'none'})`);
+    check(await ev("document.getElementById('cardTitle').textContent") === 'His tank card', 'the sheet calls it his tank card');
+    await ev("document.getElementById('cardClose').click()");
     check(!(await ev("SB.profileCard.build().includes('id=\"tkw\"')")), 'the profile card keeps it off until you choose');
     await ev("document.getElementById('tkShare').click()");
     const svgOk = async () => ev("(s => s.includes('id=\"tkw\"') && s.length < 256 * 1024 && !/<(image|use|script|foreignObject)\\b|href=/.test(s))(SB.profileCard.build())");

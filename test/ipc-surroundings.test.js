@@ -25,6 +25,7 @@ function setup() {
     config, isStr, PNG_SIGNATURE, CARD_MAX_BYTES,
     log: { warn: rec.fn('log.warn') },
     stat: rec.fn('stat'),
+    questDone: rec.fn('questDone'),
     health: {
       view: () => ({ view: true }),
       setSettings: rec.fn('health.setSettings', p => p),
@@ -133,6 +134,16 @@ test('card:save names an unknown kind "card" rather than putting the renderer\'s
   const r = await ipc.invoke('card:save', png(), '..\\..\\evil');
 
   assert.match(path.basename(r.name), /^shellby-card-/);
+});
+
+test('card:save names each card after its kind, and the tank card finishes "Share the tank"', async () => {
+  const { ipc, rec } = setup();
+
+  for (const kind of ['crab', 'tank', 'week', 'wrapped', 'beach', 'shiny', 'medal', 'board', 'egg']) {
+    const r = await ipc.invoke('card:save', png(), kind);
+    assert.match(path.basename(r.name), new RegExp(`^shellby-${kind}-\\d{8}-\\d{6}\\.png$`), kind);
+  }
+  assert.deepEqual(rec.of('questDone'), [['tank-share']]);
 });
 
 test('card:save still reports the save when the clipboard is busy', async () => {

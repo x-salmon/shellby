@@ -390,16 +390,19 @@
     }
   }
 
-  const share = () => present({
-    kind: 'crab', draw: render, buttons: '[data-share-card]', post: postText,
-    title: 'Your crab card', alt: "Your Shellby card: your crab as he's dressed now, with your trophies and task count",
+  // kind 'tank': the same card from the Tank's 📸, saved as his tank card (the "Share the tank" quest).
+  const share = ({ kind = 'crab' } = {}) => present({
+    kind, draw: render, buttons: '[data-share-card]', post: postText,
+    title: kind === 'tank' ? 'His tank card' : 'Your crab card',
+    alt: kind === 'tank' ? "Your Shellby card: his tank with him in it as he's dressed now, with your trophies and task count"
+      : "Your Shellby card: your crab as he's dressed now, with your trophies and task count",
   });
 
   function close() {
     sheet.hidden = true;
   }
 
-  document.querySelectorAll('[data-share-card]').forEach(b => b.addEventListener('click', share));
+  document.querySelectorAll('[data-share-card]').forEach(b => b.addEventListener('click', () => share({ kind: b.dataset.kind })));
   $('cardClose').addEventListener('click', close);
   sheet.addEventListener('click', e => { if (e.target === sheet) close(); });
   sheet.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
