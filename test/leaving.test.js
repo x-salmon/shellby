@@ -153,8 +153,10 @@ test('a repo with no remote has nowhere to push, so its commits are not "unpushe
     r.g(r.dir, 'remote', 'remove', 'origin');
     commit(r, 'b.txt', 'b\n');
     const [p] = await leaving.check([r.dir]);
+    assert.equal(p.ok, true, 'git read the repo (an unreadable one has unpushed: null too)');
     assert.equal(p.unpushed, null);
-    assert.equal(leaving.verdict([p]).safe, true);
+    const v = leaving.verdict([p]);
+    assert.equal(v.safe, true, v.lines.join('; '));
   } finally { r.done(); }
 });
 

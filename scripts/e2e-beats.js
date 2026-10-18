@@ -112,6 +112,7 @@ async function connect(url, dir) {
     // ---------------------------------------------- 3. done with the tool
     await hook({ ...session, hook_event_name: 'PostToolUse', tool_name: last });
     check(await until(has('work-think'), 5000), 'between tools, he thinks again');
+    await until(`!${has('tool-swap')}`, 1000, 50); // the claw puts the tool back first, as between tools above
     check(await heldItem() === own, '...with the tool put away and his own things back');
     // A tool with no pose of its own: his scuttle, all steps framecap can read.
     await hook({ ...session, hook_event_name: 'PreToolUse', tool_name: 'TidePoke', tool_input: {} });
