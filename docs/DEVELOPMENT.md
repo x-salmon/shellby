@@ -168,7 +168,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/e2e-wrapped.js [out.png]` | Shellby Wrapped (docs/WRAPPED.md): a seeded year, nothing on January 1st, the sheet opening by itself on the 2nd, every slide in order, the card as a 1200×630 PNG, the year marked shown with Year One's snowglobe earned, and every milestone piece on the tank's Milestones shelf |
 | `node scripts/e2e-sound.js` | His sounds with the fake CLI, through WebAudio into a muted output: all off by default with no audio device opened, a ta-da when effects go on, a throw's bump and landing, a walk's scuttle, the background changing from surf to rock pool, silence on guard or a call and back after, unknown settings refused, and with animations off the bumps quiet but the background playing |
 | `node scripts/e2e-outside.js [folder]` | The world outside his window in just-the-crab mode: rain gear and rain, off again with the weather switch, the little keyboard tapping along as you type (F24, a key no app uses; he hears the real keyboard too, so leave it alone), and a real Open-Meteo town search and weather check. Needs the network, so not in `e2e:ci`. Screenshots go in `[folder]` |
-| `node scripts/e2e-beats.js` | How he moves between moods and how he works, fed real hook events: the crouch before work, thinking between tools, a pose and a held thing for each tool (scroll, pencil, wrench, magnifying glass, spyglass, checklist, a wave), the scuttle for a tool with no pose, every loop on him one framecap can read, a question that gets a claw tap after 20 s and a nod when answered, the breath after a turn, and a nap he nods off into in stages and wakes from eyes first |
+| `node scripts/e2e-beats.js` | How he moves between moods and how he works, fed real hook events: the crouch before work, thinking between tools, a pose and a held thing for each tool (scroll, pencil, wrench, magnifying glass, spyglass, checklist, a wave, a recipe book, a tin-can phone) and for what a shell command runs (a stopwatch for tests, an envelope for a commit, a crate for an install, a hammer for a build), the scuttle for a tool with no pose, every loop on him one framecap can read, a question that gets a claw tap after 20 s and a nod when answered, the breath after a turn, and a nap he nods off into in stages and wakes from eyes first |
 | `node scripts/e2e-voice.js` | His voice and his little habits with the fake CLI: Quiet says nothing at all, Normal puts words in his bubble (and clears them), the bubble never clips or resizes his window, he remarks on a test run and a push, each idle habit plays, he keeps quiet on guard, a health warning outranks him, and he's the same crab after a restart |
 | `node scripts/e2e-push-to-talk.js` | Push-to-talk, pressing the real hotkey through Windows with a recording in place of the microphone: the Settings switch, a tap still opens and closes the panel, a hold shows *listening…* and puts the words in the box after what's typed (not sent), and switched off a hold is just a tap |
 | `node scripts/e2e-updates.js` | The update button with a scripted updater (`SHELLBY_FAKE_UPDATE=1`, `=fail` or `=current`): the download and its progress, "Restart and update" and the dot on the gear, the toast, the route the tray and the notification take, and a failed check offering another go |
@@ -339,6 +339,12 @@ the work is in drawing fewer frames, not cheaper ones:
   tick. `leg` and `snap` had no 100% and the working "..." in his bubble jumped
   sixteen times a lap, so the scuttle drew all 12 frames a second.
   e2e-beats checks that every loop on him is readable.
+- **A paused CSS animation outlives its rule.** Chromium never cancels a CSS
+  animation the API has paused when its class goes away, so before framecap
+  ended them itself, a cut-short move played on under the next one (the work
+  hop under the idle breathe), drawing frames all the while. framecap cancels
+  one whose name has left its element's `animation` list, or whose element has
+  started a fresh one by that name.
 - **The work beat.** Everything he does while he works (the scuttle, every
   .work-<pose> in critter.css, the helpers, the "...") steps on 166 ms, a hair under
   two ticks. Steps of different loops then fall on the same ticks, so the

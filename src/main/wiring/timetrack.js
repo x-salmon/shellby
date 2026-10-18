@@ -297,7 +297,12 @@ function wireTimetrack(d) {
     if (!inWorkflow && !item.interrupted) {
       d.workflows?.event('task', { title: tab.title, outcome: item.ok ? 'ok' : 'error', folder: tab.worktree?.originalCwd || tab.session?.cwd || '', error: item.error || null });
     }
-    if (!item.interrupted) d.flashState(item.ok ? 'success' : 'error');
+    if (!item.interrupted) {
+      // Misses in a row on this conversation: green after a few is a comeback (flourish.js).
+      const missesBefore = tab.missesInRow || 0;
+      tab.missesInRow = item.ok ? 0 : missesBefore + 1;
+      d.flashState(item.ok ? 'success' : 'error', undefined, { durationMs: item.durationMs || 0, missesBefore });
+    }
     if (item.ok && !item.interrupted) {
       const fx = d.outfit().effect;
       if (fx?.motion === 'burst') d.send(d.critter, 'critter:burst', fx);

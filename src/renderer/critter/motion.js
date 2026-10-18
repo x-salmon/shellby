@@ -7,7 +7,7 @@
 // moves the window (src/main/desktop/motion.js, perching.js); this is how he looks
 // while it does: one body class per beat, all of it in critter.css.
 const MOTION_FLAGS = [
-  'flying', 'fly-left', 'fly-fall', 'fly-fling', 'fly-pop', 'landed', 'walking', 'walk-left',
+  'flying', 'fly-left', 'fly-fall', 'fly-fling', 'fly-pop', 'landed', 'landed-hard', 'walking', 'walk-left', 'walk-fast',
   'eyeing', 'crouch', 'hopping', 'hop-flip', 'cling', 'scramble', 'coyote', 'wheee', 'windy', 'hauling',
 ];
 const FLY_STYLES = new Set(['fall', 'fling', 'pop']); // 'tumble' is the plain throw
@@ -15,6 +15,7 @@ const DIZZY_MS = 2600;
 const WHEEE_MS = 1800;
 const BOUNCE_HARD = 2500;  // DIP/s: a bump this fast or faster is as loud as a bump gets
 const AMBLE = 38;          // DIP/s: his walking pace when a walk doesn't say (motion.js STROLL_SPEED)
+const HURRY = AMBLE * 2;   // DIP/s: this fast or faster and the amble is a run (fetch, a dash home)
 let landedTimer = null;
 let dizzyTimer = null;
 let wheeeTimer = null;
@@ -107,7 +108,12 @@ api.onMotion(msg => {
     if (FLY_STYLES.has(msg.style)) flags.add(`fly-${msg.style}`);
     setDir(vx);
   }
-  if (kind === 'walking') { flags.add('walking'); if (msg.dir < 0) flags.add('walk-left'); setDir(msg.dir); }
+  if (kind === 'walking') {
+    flags.add('walking');
+    if (msg.dir < 0) flags.add('walk-left');
+    if ((msg.speed || AMBLE) >= HURRY) flags.add('walk-fast');
+    setDir(msg.dir);
+  }
   // Mischief: walking backwards, hauling a note in by its corner (src/main/pranks.js).
   if (kind === 'hauling') { flags.add('walking'); flags.add('hauling'); setDir(msg.dir); }
   // 'still' (a pause on a wall) is just the absence of all the above.
@@ -122,8 +128,10 @@ api.onMotion(msg => {
   }
   if (kind === 'landed') {
     flags.add('landed');
-    puff();
-    landedTimer = setTimeout(() => { flags.delete('landed'); paintBody(); }, 700);
+    // A landing hard enough to leave him dizzy is a splat first: flat out, legs splayed.
+    if (msg.dizzy) flags.add('landed-hard');
+    puff(msg.dizzy ? 11 : 7);
+    landedTimer = setTimeout(() => { flags.delete('landed'); flags.delete('landed-hard'); paintBody(); }, msg.dizzy ? 900 : 700);
     if (msg.dizzy) dizzy();
     window.ShellbySound.cue('land', { strength: msg.dizzy ? 1 : 0.4 });
   }
