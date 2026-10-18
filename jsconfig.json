@@ -23,6 +23,7 @@
     "src/main/ipc/**/*.js",
     "src/main/flaky/**/*.js",
     "src/main/remote/**/*.js",
+    "src/main/pocket/**/*.js",
     "src/main/backlog/**/*.js",
     "src/main/bugdex/**/*.js",
     "src/main/depwatch/**/*.js",

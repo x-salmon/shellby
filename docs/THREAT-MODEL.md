@@ -27,6 +27,7 @@ Found a hole? [Report it privately](https://github.com/x-salmon/shellby/security
 | **Web pages** | Requests from your browser | To reach the local plugin listener |
 | **Other people's content** | Friends' calling cards, community packs, plugin marketplaces | To get pixels, markup or code onto your PC |
 | **Someone with your phone token** | Your Telegram bot or ntfy topic | To start tasks remotely |
+| **Someone on your tailnet** | A device signed in to your Tailscale network, or a paired phone | To see your conversations, answer prompts or start tasks |
 | **A compromised renderer** | One window's JavaScript | To reach IPC it shouldn't, or click its own confirmations |
 
 Out of scope: other programs already running as you (they can reach any local
@@ -76,6 +77,7 @@ and Autonomous mode, which skips prompts by design.
 | Workflows → commands | Outside data turning into code | Values passed as environment variables, never spliced into command text, plus host and path checks | `src/main/workflows/` |
 | Secrets → output | Tokens leaking into logs or prompts | Encrypted by Windows, kept out of prompts, redacted from run logs | `src/main/secret-gate.js` |
 | Phone → tasks | Stolen token starting work | Off by default, sender-bound, Ask first only, rate limits, no `!` or `/` | `src/main/channels/phone-tasks.js` |
+| Tailnet → phone app | Another tailnet user, a web page in the phone's browser, the open internet, or a pairing aimed at your network | Off by default, confirmed in the confirmation window; `127.0.0.1` only, behind Tailscale's `serve` and never Funnel (checked every minute); `Host` must be loopback or this PC's `.ts.net` name; `Tailscale-User-Login` must be the login it was turned on with, Funnel requests refused; an `Origin` must be its own; a device token from an eight-character code shown only at the desk (five tries, five minutes, once), kept as a hash; Allow and Deny only and nothing `deskOnlyReason` flags, tasks in Ask first with the phone tasks' limits, replies only where the phone started; the app from a fixed file table with a strict CSP, text only on screen; push encrypted (RFC 8291) to Apple's, Google's, Mozilla's or Microsoft's push service only | `src/main/pocket/`, `src/main/wiring/pocket.js`, `src/renderer/pocket/` |
 | Billing | Silently using an API key | **Always use my Claude plan** strips provider variables | `src/main/clipath.js`, `src/main/handoff.js` |
 
 ## When you change something here

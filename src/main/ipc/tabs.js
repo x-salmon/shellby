@@ -201,14 +201,17 @@ function registerTabsIpc(ipcMain, d) {
   });
 
   // ---- what a turn changed
-  ipcMain.handle('changes:diff', (_e, raw) => {
+  ipcMain.handle('changes:diff', (_e, raw) => diffChanges(raw));
+  // Also the phone's (wiring/pocket.js): one way to read a turn's diff.
+  function diffChanges(raw) {
     const ref = d.changeRef(raw);
     if (!ref) return { error: "That isn't a change from this conversation." };
     // Once part of a file has been taken back, its diff shows what's left.
     const items = ref.file ? d.history.load(ref.tabId) : [];
     const partly = items.some(i => i?.kind === 'undone-hunk' && i.after === ref.after && i.before === ref.before && i.file === ref.file);
     return changes.patchFor(partly ? effectiveAfter(items, ref) : ref);
-  });
+  }
+  d.diffChanges = diffChanges;
   // Take back one hunk of one file: main re-reads the diff and checks the
   // hunk's header still matches what the panel showed (changes.undoHunk).
   ipcMain.handle('changes:undo-hunk', async (_e, raw) => {
@@ -268,7 +271,9 @@ function registerTabsIpc(ipcMain, d) {
     }
     return { right: r.right, answer: r.answer, why: r.why, done: r.done, score: r.score };
   });
-  ipcMain.handle('changes:undo', async (_e, raw) => {
+  ipcMain.handle('changes:undo', (_e, raw) => undoChanges(raw));
+  // Also the phone's (wiring/pocket.js): one way to undo a turn.
+  async function undoChanges(raw) {
     const ref = d.changeRef(raw);
     if (!ref) return { ok: false, error: "That isn't a change from this conversation." };
     if (ref.retired) return { ok: false, error: 'That copy has been tidied away, and its work is in your checkout now. Undo it there with git.' };
@@ -283,7 +288,8 @@ function registerTabsIpc(ipcMain, d) {
       d.noteCorrection?.(ref.tabId, lesson); // a correction: twice in one place and he offers a rule (corrections.js)
     }
     return r;
-  });
+  }
+  d.undoChanges = undoChanges;
   // Undo to here: the files back to a checkpoint before one step of a turn (wiring/step-undo.js).
   ipcMain.handle('changes:undo-step', (_e, raw) => d.stepUndo.undoStep(raw));
   // The project's own tests, on demand, whatever the setting says (wiring/checks.js).

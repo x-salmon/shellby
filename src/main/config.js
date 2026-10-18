@@ -186,6 +186,9 @@ const DEFAULTS = {
   streamDeck: null,   // { enabled }: Allow, Deny, Stop, Bring it home and Ready to review on a Stream Deck (see deck.js)
   streamDeckToken: null, // the Stream Deck plugin's way in, encrypted by Windows (wiring/deck.js)
   streamDeckAdded: false, // the plugin has been handed to Stream Deck's installer at least once
+  pocket: null,        // { enabled, login, dnsName, servedPort, notify }: Shellby on your phone, over your tailnet (wiring/pocket.js)
+  pocketDevices: [],   // the paired phones: names, hashes of their tokens, push subscriptions (pocket/pairing.js)
+  pocketVapid: null,   // the key push notifications to them are signed with, encrypted by Windows (pocket/push.js)
   rgb: null,          // { enabled, port }: his mood on the desk lighting (see rgb.js)
   rgbSaved: null,     // [{ id, name, saved }]: each device's own mode before Shellby painted it, put back on switching off
   discord: null,      // { enabled, task }: his level and what he's up to on your Discord profile (see discord.js); off until you turn it on

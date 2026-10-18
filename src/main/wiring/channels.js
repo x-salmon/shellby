@@ -92,6 +92,8 @@ function wireChannels(d) {
    */
   function tellChannel(event, onSent = () => {}, { always = false } = {}) {
     if (!d.config) return false;
+    // The phone app (wiring/pocket.js) has its own settings for which events buzz it.
+    try { d.pocketNotify?.(event, { always }); } catch (err) { d.log.info(`pocket push: ${err.message}`); }
     const settings = channelSettings();
     if (!channels.shouldSend(event, settings, { focused: focus.guarding(d.config.get('focus'), Date.now()), always })) return false;
     if (!channelConfirmed(settings)) { d.log.info('channel: destination not confirmed, nothing sent'); return false; }
@@ -112,7 +114,8 @@ function wireChannels(d) {
   // A permission prompt goes to the phone, with Allow / Deny on it when you've
   // said it may and the prompt is one the phone is allowed to answer (channels/replies.js).
   function askOnPhone(tabId, item, tab) {
-    const event = { kind: 'asking', project: tab.title, message: `${item.label || ''} ${item.detail || ''}`.trim() };
+    // tabId: where the phone app's notification opens (channels ignore it).
+    const event = { kind: 'asking', project: tab.title, message: `${item.label || ''} ${item.detail || ''}`.trim(), tabId };
     // A task the phone started always asks there: it's where you are.
     const opts = { always: !!tab.fromPhone };
     const settings = channelSettings();

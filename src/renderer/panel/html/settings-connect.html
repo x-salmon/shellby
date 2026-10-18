@@ -59,6 +59,40 @@
         </div>
       </section>
 
+      <section class="setting-group" id="pocketGroup" data-nav="On your phone">
+        <h3>Shellby on your phone</h3>
+        <p class="small muted ext-lede">Your conversations live on your phone, over your own tailnet: what he's doing, what he's waiting on you for, and what's ready to review. Answer Allow or Deny, start a task, or bring a copy home from the sofa. It needs <b>Tailscale</b> on this PC and on your phone, and nothing goes through a server of ours.</p>
+        <ul class="rc-steps pocket-steps" id="pocketSteps"></ul>
+        <label class="toggle"><input type="checkbox" id="pocketEnabled"><span class="switch"></span>Put Shellby on my phone</label>
+        <p class="small ext-status" id="pocketStatus" aria-live="polite"></p>
+        <div class="pocket-body" id="pocketBody" hidden>
+          <div class="ch-qr" id="pocketQr" hidden>
+            <canvas id="pocketQrCanvas" role="img" aria-label="QR code with Shellby's address on your tailnet"></canvas>
+            <ol class="small">
+              <li>Scan this with your phone's camera and open the link in <b>Safari</b> (or Chrome on Android).</li>
+              <li>Share → <b>Add to Home Screen</b>, then open Shellby from there.</li>
+              <li>Press <b>Pair a phone</b> below and type the code it shows.</li>
+            </ol>
+          </div>
+          <div class="cmd-row" id="pocketUrlRow" hidden><code id="pocketUrl">—</code><button type="button" class="btn ghost slim-btn" data-copy="pocketUrl">Copy</button></div>
+          <div class="row wrap">
+            <button type="button" class="btn slim-btn" id="pocketPair">Pair a phone</button>
+            <div class="pocket-code" id="pocketCode" hidden>
+              <code id="pocketCodeText" aria-label="Pairing code"></code>
+              <span class="small muted" id="pocketCodeHint"></span>
+            </div>
+          </div>
+          <ul class="pocket-devices" id="pocketDevices" aria-label="Paired phones"></ul>
+          <p class="small muted">Which notifications it gets:</p>
+          <div class="ch-events" id="pocketEvents"></div>
+          <label class="toggle"><input type="checkbox" id="pocketWhileFocused"><span class="switch"></span>Send them even while he's guarding my focus</label>
+          <div class="row wrap">
+            <button type="button" class="btn ghost slim-btn" id="pocketTest">Send a test</button>
+            <p class="small ext-status" id="pocketTestStatus" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+
       <section class="setting-group" id="githubGroup" data-nav="GitHub">
         <h3>GitHub</h3>
         <div class="gh-account" id="ghAccount" hidden>
