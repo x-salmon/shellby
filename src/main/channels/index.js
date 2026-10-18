@@ -380,6 +380,8 @@ const RETRY_DEFAULT_MS = 3000;    // when the server is busy and doesn't say how
  * answer, so a busy server (429, 5xx) gets one more go after the wait it asks
  * for, up to 30 s.
  *   -> { ok: true } | { ok: false, error, status?, retryAfterMs? }
+ * @param {{ url: string, method: string, headers: any, body: any }} request
+ * @param {{ retry?: boolean, wait?: (ms: number) => Promise<any>, timeoutMs?: number, fetchImpl?: any }} [opts]
  */
 async function deliver(request, { retry = false, wait = ms => new Promise(r => setTimeout(r, ms)), ...opts } = {}) {
   const first = await deliverOnce(request, opts);
@@ -441,6 +443,49 @@ async function deliverOnce(request, { timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl 
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ------------------------------------------------------------------ a card for Discord
+
+const CARD_TYPES = Object.freeze({ '.png': 'image/png', '.mp4': 'video/mp4', '.webm': 'video/webm' });
+const DISCORD_CONTENT_MAX = 2000; // Discord's own limit on a message
+
+/** The Discord webhook your notifications use, or null when there isn't one set up. */
+function discordWebhook(settings) {
+  const s = normalizeChannelSettings(settings);
+  return s.provider === 'discord' && !checkSettings(s) ? s.target : null;
+}
+
+/**
+ * A card you saved, posted to your Discord webhook as a file upload: the
+ * picture (or clip) and the post's words, and never a ping (allowed_mentions,
+ * the same rule the notifications follow).
+ *   card: { name, bytes, text } -> { request } | { error }
+ */
+function cardUpload(settings, card) {
+  const url = discordWebhook(settings);
+  if (!url) return { error: 'Set up Discord under Settings → Connections first.' };
+  const type = CARD_TYPES[(/\.[a-z0-9]+$/i.exec(card?.name || '') || [''])[0].toLowerCase()];
+  if (!type || !(card.bytes instanceof Uint8Array) || !card.bytes.length) return { error: "That isn't a card." };
+  const form = new FormData();
+  form.append('payload_json', JSON.stringify({
+    content: clip(card.text, DISCORD_CONTENT_MAX),
+    allowed_mentions: { parse: [] },
+    attachments: [{ id: 0, filename: card.name }],
+  }));
+  form.append('files[0]', new Blob([card.bytes], { type }), card.name);
+  const target = clip(url, 300);
+  return { request: { url: `${target}${target.includes('?') ? '&' : '?'}wait=true`, method: 'POST', headers: {}, body: form } };
+}
+
+/**
+ * What went wrong posting a card, in words: Discord's own message when it gave
+ * one ("Unknown Webhook", "Request entity too large"), which never quotes the
+ * webhook back, else the plain reading of the status.
+ */
+function cardPostError(result) {
+  const said = /"message"\s*:\s*"([^"\\]{1,120})"/.exec(String(result?.error || ''))?.[1];
+  return said ? `Discord said no: ${said}.` : plainDeliveryError(result, 'discord');
 }
 
 // ------------------------------------------------------------------ how it's going
@@ -549,4 +594,5 @@ module.exports = {
   buildRequest, deliver, view, ntfyUrl, ntfyReplyUrl, ntfyActions, telegramMarkup, localOrHttps, duration,
   randomTopic, chatFromUpdates, findTelegramChat, REPLY_PROVIDERS, replyProblem,
   DeliveryLog, plainDeliveryError, FAILS_BEFORE_TOAST, RETRY_CAP_MS,
+  discordWebhook, cardUpload, cardPostError,
 };

@@ -685,6 +685,7 @@ contextBridge.exposeInMainWorld('shellby', {
   saveCard: invoke('card:save'),
   copyCard: invoke('card:copy'),
   revealCard: fire('card:reveal'),
+  postCardToDiscord: invoke('card:post-discord'), // (the path card:save gave, the post's words)
 
   // updates
   checkUpdates: invoke('updates:check'),

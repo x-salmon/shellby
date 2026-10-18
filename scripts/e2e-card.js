@@ -41,10 +41,13 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
 
 (async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
-  // One sticker, for its card: a project shipped six times, so a vinyl one.
+  // One sticker, for its card: a project shipped six times, so a vinyl one. And a Discord
+  // webhook set up for notifications but switched off, so the sheet offers Post to Discord
+  // (never pressed here: nothing leaves the PC).
   const shipped = Date.now() - 86400000;
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({
     stickers: { card: 'names', projects: { abcdefabcdef: { name: 'tide-pool', firstShipAt: shipped, lastShipAt: shipped, ships: 6 } } },
+    channels: { provider: 'discord', target: 'https://discord.com/api/webhooks/1/e2e', enabled: false },
   }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47961' } });
   let fails = 0;
@@ -93,6 +96,11 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     }
     const note = await ev("document.getElementById('cardPath').textContent");
     check(/^Pictures[\\/]Shellby[\\/]shellby-crab-/.test(note), `note names the file (${note})`);
+    // Getting it into a post: Discord offered with a webhook set up, the alt text a click away.
+    check(await ev("!document.getElementById('cardDiscord').hidden"), 'Post to Discord is offered (a Discord webhook is set up)');
+    check(/alt text/.test(await ev("document.getElementById('cardHint').textContent")), 'the hint says X and Bluesky take the alt text');
+    await ev("document.getElementById('cardAlt').click()");
+    check(/^Alt text copied/.test(await ev("document.getElementById('cardHint').textContent")), 'Copy alt text says so');
 
     await wait(600);
     const trophy = await ev("(SB.state.wardrobe.achievements.find(a => a.id === 'show-off') || {}).done");

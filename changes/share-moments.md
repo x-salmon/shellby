@@ -2,6 +2,8 @@
 - **A card for every big moment.** A trophy, a level (every fifth, and every new rank), a molt, a new sticker or one going up a tier, a rare or legendary catch, and a streak of 7, 30, 100 or 365 days each get a card of their own. The 📸 on the celebration makes that card, not the crab card: the trophy big with its reward, him with his level's ribbon, the shell he left on the shelf beside his new one, and so on, with the numbers that go with it.
 - **Every trophy keeps its card.** Done trophies on the Trophies page have a 📸 too.
 - **Wide or Square.** The share sheet has a size switch above the picture: Wide (1200×630) for X, Bluesky and LinkedIn, and Square (1080×1080) for Discord, Mastodon and Instagram. Every moment card, the crab card, the week and Wrapped come in both, and Shellby remembers which you picked for each kind of card.
+- **The picture reaches the post.** After **Post on X** or **Post on Bluesky** opens your browser, the sheet says your card is on the clipboard and to press Ctrl+V in the post (and copies it again first if the first copy didn't take). **Copy alt text** copies the card's description, for the image description X and Bluesky ask for.
+- **Post to Discord.** If you've set up a Discord webhook for phone notifications, the share sheet has **Post to Discord**: the card goes to that channel as a picture, with its words and never a ping. It asks once per webhook before the first post.
 - **Posts that say what happened.** Each card's post names the moment in his voice ("Shellby just molted into the Barnacle Shell 🦀"), then #Shellby and the link.
 
 ### Fixed

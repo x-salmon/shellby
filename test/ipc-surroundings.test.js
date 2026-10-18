@@ -17,9 +17,9 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 const CARD_MAX_BYTES = 64;
 const png = (extra = 8) => new Uint8Array(Buffer.concat([PNG_SIGNATURE, Buffer.alloc(extra, 1)]));
 
-function setup() {
+function setup(extra = {}, initial = {}) {
   const ipc = createFakeIpc();
-  const config = fakeConfig();
+  const config = fakeConfig(initial);
   const rec = recorder();
   const d = {
     config, isStr, PNG_SIGNATURE, CARD_MAX_BYTES,
@@ -47,6 +47,7 @@ function setup() {
     presenceView: () => ({ discord: config.get('discord') }),
     presence: { start: rec.fn('presence.start'), stop: rec.fn('presence.stop') },
     updatePresence: rec.fn('updatePresence'),
+    ...extra,
   };
   registerSurroundingsIpc(ipc.ipcMain, d);
   return { ipc, config, rec };
@@ -157,6 +158,100 @@ test('card:save puts a square card\'s size in its name, and the same card again 
   assert.match(path.basename(square.name), /^shellby-trophy-square-\d{8}-\d{6}\.png$/);
   assert.match(path.basename(odd.name), /^shellby-trophy-\d{8}-\d{6}\.png$/, 'an unknown size is just wide');
   assert.deepEqual(rec.of('stat'), [['card-shared'], ['card-shared']]);
+});
+
+// ---- Post to Discord: the webhook your notifications use, a saved card, never a ping.
+const WEBHOOK = 'https://discord.com/api/webhooks/123/abc-token';
+const DISCORD = { channels: { provider: 'discord', target: WEBHOOK, enabled: true } };
+// A fake fetch: the webhook's own GET answers with its name; a POST answers `post`.
+function fakeDiscord(post = { ok: true, status: 200 }) {
+  const sent = [];
+  const fetchImpl = async (url, opts = {}) => {
+    if (!opts.method) return { ok: true, json: async () => ({ name: 'shellby-wins' }) };
+    sent.push({ url, opts });
+    return { ok: post.ok, status: post.status, headers: { get: () => null }, text: async () => post.body || '' };
+  };
+  return { sent, fetchImpl };
+}
+
+test('card:save offers Post to Discord only when a Discord webhook is set up', async () => {
+  assert.equal((await setup().ipc.invoke('card:save', png(), 'crab')).discord, false);
+  assert.equal((await setup({}, { channels: { provider: 'ntfy', target: 'shellby-abc' } }).ipc.invoke('card:save', png(), 'crab')).discord, false);
+  const r = await setup({}, DISCORD).ipc.invoke('card:save', png(), 'crab');
+  assert.equal(r.discord, true);
+  assert.equal(path.dirname(r.path), path.join(root, 'Pictures', 'Shellby'), 'and says where the card is, for the post');
+});
+
+test('card:post-discord sends only a card Shellby saved, from Pictures/Shellby', async () => {
+  const net = fakeDiscord();
+  const { ipc, rec } = setup({ fetchImpl: net.fetchImpl, askOnce: async () => 0 }, DISCORD);
+  const saved = await ipc.invoke('card:save', png(), 'trophy');
+  const outside = path.join(root, 'shellby-trophy-20260101-120000.png');
+  fs.writeFileSync(outside, Buffer.from(png()));
+  const notACard = path.join(root, 'Pictures', 'Shellby', 'notes.png');
+  fs.writeFileSync(notACard, Buffer.from(png()));
+
+  for (const bad of [outside, notACard, path.join(path.dirname(saved.path), '..', '..', 'shellby-trophy-20260101-120000.png'),
+    path.join(path.dirname(saved.path), 'shellby-trophy-19990101-000000.png'), 'C:\\Windows\\win.ini', '', null, 42, { path: saved.path }]) {
+    const r = await ipc.invoke('card:post-discord', bad, 'hi');
+    assert.equal(r.ok, false, String(bad));
+  }
+  assert.equal(net.sent.length, 0, 'nothing went anywhere');
+  assert.deepEqual(rec.of('log.warn'), []);
+});
+
+test('card:post-discord uploads the file with its words and no mentions, and asks once per webhook', async () => {
+  const net = fakeDiscord();
+  const asked = [];
+  const { ipc, config } = setup({ fetchImpl: net.fetchImpl, askOnce: async spec => { asked.push(spec); return 0; } }, DISCORD);
+  const saved = await ipc.invoke('card:save', png(), 'molt', { size: 'square' });
+
+  assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, '🐚 Shellby just molted @everyone #Shellby'), { ok: true });
+  assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, 'again'), { ok: true });
+
+  assert.equal(asked.length, 1, 'asked before the first post only');
+  assert.match(asked[0].title, /shellby-wins/, 'naming the webhook');
+  assert.equal(net.sent.length, 2);
+  const { url, opts } = net.sent[0];
+  assert.equal(url, `${WEBHOOK}?wait=true`);
+  const payload = JSON.parse(opts.body.get('payload_json'));
+  assert.deepEqual(payload.allowed_mentions, { parse: [] }, 'never a ping, @everyone or not');
+  assert.equal(payload.content, '🐚 Shellby just molted @everyone #Shellby');
+  const file = opts.body.get('files[0]');
+  assert.equal(file.name, path.basename(saved.path));
+  assert.equal(file.type, 'image/png');
+  assert.deepEqual([...new Uint8Array(await file.arrayBuffer())], [...png()]);
+  assert.match(config.get('cardDiscordOk'), /^[0-9a-f]{16}$/, 'the yes is kept, as a hash and not the webhook again');
+
+  // A new webhook asks again.
+  config.set({ channels: { ...DISCORD.channels, target: 'https://discord.com/api/webhooks/456/other' } });
+  await ipc.invoke('card:post-discord', saved.path, 'x');
+  assert.equal(asked.length, 2);
+});
+
+test('card:post-discord: Cancel sends nothing, and a webhook\'s error is shown in its own words', async () => {
+  const net = fakeDiscord({ ok: false, status: 404, body: '{"message": "Unknown Webhook", "code": 10015}' });
+  let answer = 1;
+  const { ipc } = setup({ fetchImpl: net.fetchImpl, askOnce: async () => answer }, DISCORD);
+  const saved = await ipc.invoke('card:save', png(), 'streak');
+
+  assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, 'x'), { ok: false, canceled: true });
+  assert.equal(net.sent.length, 0);
+
+  answer = 0;
+  const r = await ipc.invoke('card:post-discord', saved.path, 'x');
+  assert.deepEqual(r, { ok: false, error: 'Discord said no: Unknown Webhook.' });
+
+  const quiet = fakeDiscord({ ok: false, status: 429, body: '<html>too many</html>' });
+  const again = setup({ fetchImpl: quiet.fetchImpl, askOnce: async () => 0 }, DISCORD);
+  const card = await again.ipc.invoke('card:save', png(), 'streak');
+  assert.equal((await again.ipc.invoke('card:post-discord', card.path, 'x')).error, 'Discord said too many, too fast.');
+});
+
+test('card:post-discord with no Discord webhook says where to set one up', async () => {
+  const { ipc } = setup({ askOnce: async () => 0 });
+  const saved = await ipc.invoke('card:save', png(), 'crab');
+  assert.match((await ipc.invoke('card:post-discord', saved.path, 'x')).error, /Settings → Connections/);
 });
 
 test('every moment card has a file name of its own (moment-card.js MOMENT_KINDS)', () => {

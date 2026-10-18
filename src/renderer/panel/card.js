@@ -376,7 +376,9 @@
   // ------------------------------------------------------------ share flow
 
   const sheet = $('cardSheet');
+  const HINT_MS = 10000;
   let last = null;
+  let hintTimer = null;
   let showing = null; // what the sheet shows: { spec, size }, so the size switch can draw it again
 
   // The size you last picked for a kind of card (this PC's own), Wide until you pick.
@@ -418,12 +420,14 @@
       const r = await api.saveCard(bytes, kind, { size, again });
       if (!r?.ok) return SB.toast(r?.error || "Couldn't save the card.");
       // data: URL, not blob: (the panel's CSP only allows 'self' and data: images).
-      last = { url: canvas.toDataURL('image/png'), bytes, post: post(data) };
+      last = { url: canvas.toDataURL('image/png'), bytes, post: post(data), alt, path: r.path, copied: r.copied !== false, discord: !!r.discord };
       showing = { spec: { ...spec, sizes }, size };
       $('cardTitle').textContent = title;
       $('cardImg').alt = alt;
       $('cardImg').src = last.url;
       $('cardPath').textContent = r.name;
+      $('cardDiscord').hidden = !last.discord;
+      hint();
       renderSizes();
       sheet.hidden = false;
       if (!again) $('cardCopy').focus();
@@ -455,6 +459,32 @@
   function close() {
     sheet.hidden = true;
     showing = null;
+    clearTimeout(hintTimer);
+  }
+
+  // The line under the buttons: how to get the picture into a post. `now`, for
+  // ten seconds after a post opened in the browser: the one thing left to do.
+  function hint(now) {
+    clearTimeout(hintTimer);
+    const el = $('cardHint');
+    el.classList.toggle('now', !!now);
+    el.textContent = now || (last?.discord
+      ? 'X and Bluesky let you add the alt text when you attach the picture.'
+      : 'For Discord: Copy again, then paste it in Discord. X and Bluesky let you add the alt text when you attach the picture.');
+    if (now) hintTimer = setTimeout(() => hint(), HINT_MS);
+  }
+
+  // Before a post opens: the card on the clipboard, copied again if the first copy didn't take.
+  async function readyToPaste() {
+    if (!last.copied) last.copied = !!(await api.copyCard(last.bytes))?.ok;
+    return last.copied;
+  }
+
+  async function postOn(url) {
+    if (!last) return;
+    const copied = await readyToPaste();
+    api.openExternal(url);
+    hint(copied ? 'Your card is on the clipboard: press Ctrl+V in the post.' : "Couldn't copy it: Show file, then drag it into your post.");
   }
 
   document.querySelectorAll('[data-share-card]').forEach(b => b.addEventListener('click', () => share({ kind: b.dataset.kind })));
@@ -464,18 +494,31 @@
   $('cardCopy').addEventListener('click', async () => {
     if (!last) return;
     const r = await api.copyCard(last.bytes);
+    last.copied = !!r?.ok;
     SB.toast(r?.ok ? 'Copied. Paste it anywhere.' : "Couldn't copy the card.");
+  });
+  // The words a screen reader says for it: X and Bluesky take them when you attach the picture.
+  $('cardAlt').addEventListener('click', () => {
+    if (!last?.alt) return;
+    api.copyText(last.alt);
+    hint('Alt text copied: paste it in the image description when you attach the card.');
+  });
+  $('cardDiscord').addEventListener('click', async () => {
+    if (!last?.path) return;
+    const btn = $('cardDiscord');
+    btn.disabled = true;
+    try {
+      const r = await api.postCardToDiscord(last.path, withLink(last.post));
+      if (r?.ok) SB.toast('Posted to Discord.');
+      else if (!r?.canceled) SB.toast(r?.error || "Couldn't post it to Discord.", { ms: 6000 });
+    } finally { btn.disabled = false; }
   });
   $('cardReveal').addEventListener('click', () => api.revealCard());
   $('cardSizes').addEventListener('click', e => { const b = e.target.closest('[data-size]'); if (b) switchSize(b.dataset.size); });
   // A moment card's post already ends with the link (moment-card.js postFor); the others get it here.
   const withLink = text => (text.includes(REPO) ? text : `${text} ${REPO}`);
-  $('cardX').addEventListener('click', () => {
-    if (last) api.openExternal(`https://x.com/intent/post?text=${encodeURIComponent(withLink(last.post))}`);
-  });
-  $('cardBsky').addEventListener('click', () => {
-    if (last) api.openExternal(`https://bsky.app/intent/compose?text=${encodeURIComponent(withLink(last.post))}`);
-  });
+  $('cardX').addEventListener('click', () => last && postOn(`https://x.com/intent/post?text=${encodeURIComponent(withLink(last.post))}`));
+  $('cardBsky').addEventListener('click', () => last && postOn(`https://bsky.app/intent/compose?text=${encodeURIComponent(withLink(last.post))}`));
 
   SB.crabCard = { render, share };
   SB.cardKit = { W, H, C, SIZES, TANK, SQUARE_TANK, SQUARE_DROP, svgImage, roundRect, fitText, loadFonts, newCanvas, drawWater, drawTank, drawTiles, drawFooter, present };

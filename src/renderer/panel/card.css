@@ -29,6 +29,8 @@
 .card-note { margin: 10px 0 10px; font-size: var(--fs-12-5); color: var(--sand-dim); }
 .card-note b { color: var(--sand); font-weight: 700; overflow-wrap: anywhere; }
 .card-box .row.wrap { gap: 8px; }
+.card-hint { margin: 10px 0 0; min-height: 1.4em; font-size: var(--fs-12); color: var(--sand-faint); }
+.card-hint.now { color: var(--glass); font-weight: 700; }
 [data-share-card]:disabled { opacity: .5; cursor: progress; }
 
 /* ================================================================ trophy unlock card */
