@@ -25,7 +25,8 @@
 .card-img.square { aspect-ratio: 1; width: auto; max-width: 100%; height: min(52vh, 528px); margin: 0 auto; }
 .card-video { object-fit: contain; }
 .card-tools { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
-.card-sizes { flex: 1; }
+.card-sizes { flex: 1; min-width: 0; }
+.card-sizes button { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-clip { flex: none; height: 36px; }
 .card-box.clipping #cardReveal { order: -1; } /* a clip can't be pasted: Show file comes first */
 .card-sizes button[aria-checked="true"] { background: var(--reef-2); color: var(--sand); box-shadow: 0 1px 0 rgba(0, 0, 0, .3); }

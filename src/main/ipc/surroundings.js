@@ -30,8 +30,9 @@ const isClip = (buf, ext) => buf.length > 12 && buf.length <= CLIP_MAX_BYTES
 /**
  * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
+ * @param {{ fetchImpl?: any }} [net]  tests stand in for the network (Post to Discord)
  */
-function registerSurroundingsIpc(ipcMain, d) {
+function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   // ---- Claude Code sessions elsewhere
   ipcMain.on('clipboard:text', (_e, text) => { if (typeof text === 'string' && text.length > 0 && text.length <= MAX_COPY_CHARS) clipboard.writeText(text).catch(e => d.log.warn("couldn't copy text", e?.message)); });
   ipcMain.handle('external:get', () => d.externalView());
@@ -290,7 +291,7 @@ function registerSurroundingsIpc(ipcMain, d) {
   const webhookId = url => crypto.createHash('sha256').update(url).digest('hex').slice(0, 16);
   async function webhookName(url) {
     try {
-      const r = await (d.fetchImpl || fetch)(url, { redirect: 'error', signal: AbortSignal.timeout(5000) });
+      const r = await (fetchImpl || fetch)(url, { redirect: 'error', signal: AbortSignal.timeout(5000) });
       const name = r.ok ? (await r.json())?.name : null;
       return typeof name === 'string' && name.trim() ? name.trim().slice(0, 60) : null;
     } catch { return null; }
@@ -315,7 +316,7 @@ function registerSurroundingsIpc(ipcMain, d) {
     try { bytes = new Uint8Array(fs.readFileSync(full)); } catch { return { ok: false, error: "Couldn't read the card." }; }
     const built = channels.cardUpload(d.config.get('channels'), { name: path.basename(full), bytes, text: typeof text === 'string' ? text : '' });
     if (!built.request) return { ok: false, error: built.error };
-    const r = await channels.deliver(built.request, { fetchImpl: d.fetchImpl, timeoutMs: 20000 });
+    const r = await channels.deliver(built.request, { fetchImpl, timeoutMs: 20000 });
     if (!r.ok) { d.log.warn("couldn't post a card to Discord", r.error); return { ok: false, error: channels.cardPostError(r) }; }
     return { ok: true };
   });

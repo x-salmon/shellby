@@ -49,7 +49,7 @@ function setup(extra = {}, initial = {}) {
     updatePresence: rec.fn('updatePresence'),
     ...extra,
   };
-  registerSurroundingsIpc(ipc.ipcMain, d);
+  registerSurroundingsIpc(ipc.ipcMain, d, { fetchImpl: extra.fetchImpl });
   return { ipc, config, rec };
 }
 
