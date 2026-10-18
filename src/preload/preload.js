@@ -508,6 +508,11 @@ contextBridge.exposeInMainWorld('shellby', {
   getEvents: invoke('events:get'),
   onEvents: on('events'),
   onEventFinished: on('events:finished'),
+  // community news (news.js): { on, items, contest }, closing a card, and the Made by list (credits.js)
+  getNews: invoke('news:get'),
+  dismissNews: invoke('news:dismiss'),
+  onNews: on('news'),
+  getCredits: invoke('credits:get'),
   onSparkle: on('sparkle:reveal'),
   // swaps with friends and crab eggs (swaps.js, eggs.js)
   getSocial: invoke('social:get'),

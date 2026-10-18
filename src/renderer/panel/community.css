@@ -1,0 +1,52 @@
+/* Shellby — the community: news cards (news.js), the Made by list (credits.js)
+   and Wrapped week (wrapped-week.js, wrapped.js's friends' slide).
+   Tokens come from panel.css. News is meant to be quiet: dim, small, one card. */
+
+/* ---------------------------------------------------------------- news */
+.nw-box { margin: 0 0 14px; }
+.nw-card {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px 10px 14px; border-radius: 12px;
+  background: var(--reef); border: 1px solid var(--line-soft);
+  color: var(--sand-dim);
+}
+.nw-text { flex: 1; min-width: 0; }
+.nw-eyebrow { margin: 0; font: 600 var(--fs-10)/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sand-faint); }
+.nw-title { margin: 3px 0 0; font-size: var(--fs-13); font-weight: 600; color: var(--sand); }
+.nw-body { margin: 3px 0 0; font-size: var(--fs-12); }
+.nw-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.nw-actions:empty { display: none; }
+.nw-close { flex: none; opacity: .7; }
+.nw-close:hover, .nw-close:focus-visible { opacity: 1; }
+.nw-winner .nw-eyebrow, .nw-contest .nw-eyebrow { color: var(--amber); }
+
+/* ---------------------------------------------------------------- Made by (About) */
+.mb-groups { display: grid; gap: 12px; margin: 8px 0 0; }
+.mb-group h4 { margin: 0 0 6px; font-size: var(--fs-12); color: var(--sand-dim); }
+.mb-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.mb-list .link-btn { padding: 2px 8px; border-radius: 999px; background: var(--reef); font-size: var(--fs-12); }
+.mb-list .me .link-btn { box-shadow: inset 0 0 0 1px var(--glass); }
+.mb-note { margin: 2px 0 0; font-size: var(--fs-10-5); color: var(--sand-faint); }
+
+/* ---------------------------------------------------------------- Wrapped week */
+.ww-banner { margin: 0 0 14px; }
+.ww-card {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--amber) 14%, var(--reef)) 0%, var(--reef) 70%);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+}
+.ww-emoji { font-size: 26px; line-height: 1; }
+.ww-text { flex: 1; min-width: 180px; }
+.ww-text h3 { margin: 0; font: 400 var(--fs-16)/1.2 var(--font-pixel); color: var(--sand); }
+.ww-text p { margin: 3px 0 0; font-size: var(--fs-12); color: var(--sand-dim); }
+
+/* The friends' slide: you and up to five friends, side by side. */
+.wr-friends { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.wr-friend { display: grid; justify-items: center; gap: 4px; padding: 8px 6px; border-radius: 12px; background: rgba(0, 0, 0, .22); text-align: center; }
+.wr-friend.me { box-shadow: inset 0 0 0 1px var(--glass); }
+.wr-friend b { font-size: var(--fs-12); color: var(--sand); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.wr-friend small { display: block; font: var(--fs-10-5) var(--font-mono); color: var(--sand-dim); }
+.wr-supers { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-12); color: var(--sand-dim); }
+.wr-supers b { color: var(--sand); }
+.wr-share-year { margin-top: 10px; }

@@ -157,6 +157,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/e2e-work-mode.js` | A brand-new user with a lively crab picks Work mode: the Claude setup, a bar that leads with the tools, Work mode's quiet settings on show while the file keeps theirs, a pal added in Work mode kept as its own, and Ctrl+K → Leave Work mode putting everything back |
 | `node scripts/e2e-card.js` | The crab card: Share, preview, a 1200×630 PNG in the test profile, the Show-Off trophy, junk bytes refused, his tank painted on it, and on the profile card only once you share it |
 | `node scripts/e2e-tides.js [folder]` | Tide events with the day pinned inside The Haunting (`SHELLBY_TODAY`): the Us page's banner (countdown, goals, its bug and finds, the medal), the event bug out now in the Bugdex, its finds on the shelf, the sparkly reveal (odds, the keyboard on Share), the shiny and medal cards as 1200×630 PNGs, and the switch hiding it all. Screenshots go in `[folder]` |
+| `node scripts/e2e-news.js [folder]` | Community news from `test/fixtures/news.json` through `SHELLBY_NEWS_URL`, on November 5th 2026: the contest's card on the Us page and on About, the current contest for the Painter, a link off the allowed sites never shown, ✕ showing the next (the winner, with Get it) and staying closed after a restart with no second fetch, and the switch off taking it all down |
 | `node scripts/e2e-shellby-life.js` | Shellby's own life with the fake CLI and a mock GitHub: a level-up molts him into the Snail Shell (every beat, the Homes tab), petting, a throw that lands, an idle stroll, a focus session (helmet, countdown, XP, break), CI on a pull request going red, then fixed, then a review request, and a usage limit that's reached and then resets |
 | `node scripts/e2e-life.js [folder]` | His life between tasks, with the fake CLI in just-the-crab mode: awake while you're at your PC with his eyes on the cursor, every little scene, a dig turning up a gift for the shelf, the Finds and Us pages, your day (a game ending, a call hushing him), your birthday, hide and seek, and fetch. Screenshots go in `[folder]` |
 | `node scripts/e2e-ultracode.js` | Ultracode with the fake CLI: the chip under the box off and on with its warning, the confirm window before the first run (Cancel keeps the message in the box), the word on the end of what's sent, the run's card (phases, agents, the clock, the cost at the least, a few helper crabs and "+N more", how it ended), Stop, and both cards back when the conversation is reopened. `E2E_SHOTS=<dir>` saves screenshots |
@@ -215,6 +216,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_FAKE_HEALTH=<scenario>` | wiring/timetrack.js, health/fake.js | Dev only. Scripted sensors: `calm`, `hot`, `scorching` and the rest in health/fake.js. Makes it a test run |
 | `SHELLBY_FOREGROUND=1` | wiring/panel.js | Dev only. The panel opens in front and takes focus, as in a packaged build (a dev run opens it behind) |
 | `SHELLBY_REGISTRY_URL=<url>` | main.js | Dev only. Another community registry |
+| `SHELLBY_NEWS_URL=<url>` | main.js | Dev and tests only, refused when packaged. The community news feed to read instead of the gallery's `news.json` (e2e-news serves `test/fixtures/news.json`) |
 | `SHELLBY_CHANGELOG_URL=<url>` | main.js | Dev only. Another Claude Code changelog for new tricks (e2e-claude-tricks) |
 | `SHELLBY_GITHUB_CLIENT_ID`, `SHELLBY_GITHUB_API`, `SHELLBY_GITHUB_WEB` | wiring/github.js | Dev only. Point sign-in and the API at a mock GitHub (`test/fixtures/mock-github.js`) |
 | `SHELLBY_DISCORD_CLIENT_ID=<id>` | discord.js | Any build. Another Discord application for Rich Presence |
@@ -521,7 +523,10 @@ src/main/        Electron main process
   channels/        telling you when you're away: index.js, messages.js (what a phone notification says), replies.js
                    (answering from your phone), phone-tasks.js (starting a task from it)
   events.js        tide events (pure): six short named runs inside the seasons, their goals, medals, boosts and the bug that comes along;
-                   wiring/events.js counts every stat toward them, says when one starts or ends, and gives the medal (docs/plans/viral.md)
+                   wiring/events.js counts every stat toward them, says when one starts or ends, and gives the medal (docs/plans/viral.md);
+                   one-off years, each event's colour for the panel, and Molt Day, his birthday (docs/TIDES.md)
+  news.js          the community news feed (pure): checks the gallery's news.json item by item and picks what's current;
+                   wiring/news.js fetches it once a day through registry.js and keeps the last good copy (docs/COMMUNITY.md)
   today.js         the app's one calendar: captureClock for screenshots, SHELLBY_TODAY for dev and test runs, the real day otherwise
   board.js         the friends' board (pure): you and friends who share their Bugdex, ranked by this month's catches
   gifts/           index.js (finds from digging, pure: rarities, sets, sparkly ones, the shelf); portraits/ holds the big

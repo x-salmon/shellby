@@ -57,6 +57,7 @@ const { registerCrewIpc } = require('./crew');
 const { registerNativeIpc } = require('./native');
 const { registerGameIpc } = require('./game');
 const { registerReleasesIpc } = require('../projects/releases-ipc');
+const { registerNewsIpc } = require('./news');
 
 /**
  * electronIpcMain: Electron's own. d: what main shares (main.js `shared`);
@@ -243,6 +244,7 @@ function registerIpc(electronIpcMain, d) {
   registerNativeIpc(ipcMain, d);
   registerGameIpc(ipcMain, d); // the game screens' one bridge (game-hub.js)
   registerReleasesIpc(ipcMain, d);
+  registerNewsIpc(ipcMain, d); // community news and the Made by list
 }
 
 module.exports = { registerIpc };

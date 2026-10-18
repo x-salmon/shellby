@@ -104,6 +104,7 @@
     $('flakyToggle').checked = state.settings.flakyTests !== false;
     $('surprisesToggle').checked = state.settings.surprises !== false;
     $('tideEventsToggle').checked = state.settings.tideEvents !== false;
+    $('communityNewsToggle').checked = state.settings.communityNews !== false;
     $('catchBugsToggle').checked = state.settings.catchBugs !== false;
     $('bugBattlesToggle').checked = state.settings.bugBattles !== false;
     $('bugFollowerToggle').checked = state.settings.bugFollower !== false;
@@ -280,6 +281,7 @@
   $('surprisesToggle').addEventListener('change', async e => { const r = await api.setSettings({ surprises: e.target.checked }); state.settings = r.settings; });
   $('signCommitsToggle').addEventListener('change', async e => { const r = await api.setSettings({ signCommits: e.target.checked }); state.settings = r.settings; });
   $('tideEventsToggle').addEventListener('change', async e => { const r = await api.setSettings({ tideEvents: e.target.checked }); state.settings = r.settings; SB.tide?.refresh(); });
+  $('communityNewsToggle').addEventListener('change', async e => { const r = await api.setSettings({ communityNews: e.target.checked }); state.settings = r.settings; SB.news?.refresh(); });
   $('ambientSelect').addEventListener('change', async e => { const r = await api.setSettings({ ambient: e.target.value }); state.settings = r.settings; });
   $('soundVolumeSelect').addEventListener('change', async e => { const r = await api.setSettings({ soundVolume: Number(e.target.value) }); state.settings = r.settings; });
   // Turning it on starts Windows' recognizer first, which can take a second or two.

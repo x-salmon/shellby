@@ -86,6 +86,10 @@ const DEFAULTS = {
   swaps: null,       // swaps with friends: offers out and in, and the last few done (see swaps.js)
   eggs: null,        // crab eggs: the ones he laid, the one you hatched, your clutch (see eggs.js)
   tideEvents: true,  // tide events on: their banner, goals, bugs and finds (see events.js)
+  communityNews: true, // fetch the gallery's news feed once a day: contests, winners, events (see news.js); off fetches nothing
+  news: null,        // { feed, fetchedAt, triedAt, seen }: the last good feed and the items you closed (see news.js); seen is synced
+  shareWrapped: false, // during Wrapped week, put last year's numbers on your calling card for friends (see yearbook.js wrappedForCard)
+  credits: null,     // { login, checkedAt, index }: what the signed-in GitHub login was credited for (see credits.js)
   signCommits: false, // a "Shipped-with: Shellby" trailer on Shellby's own bring-home commits (see crab-line.js)
   bond: null,        // how close you are, the days together, the moments he remembers (see bond.js)
   play: null,        // hide and seek and fetch scores (see play.js)
