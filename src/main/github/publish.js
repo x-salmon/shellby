@@ -11,6 +11,16 @@ const canonical = json => JSON.stringify(json);
 const packText = json => `${JSON.stringify(json, null, 2)}\n`;
 const enc = s => s.split('/').map(encodeURIComponent).join('/');
 
+/**
+ * A pack's own words (its name, author, description: anyone's, a pack wish's
+ * title among them) made plain text for the Markdown Shellby writes: no
+ * formatting, links or headings of their own, and no @mention that pings
+ * someone (a zero-width joiner after each @).
+ */
+const mdText = v => String(v ?? '').replace(/[\\`*_[\]()#>~<|!]/g, '\\$&').replace(/@/g, '@\u200d');
+// The same for a title, where GitHub draws only `code` and a backslash would show: no code, no mention.
+const titleText = v => String(v ?? '').replace(/`/g, "'").replace(/@/g, '@\u200d');
+
 /** The published pack.json on the default branch, or null. */
 async function publishedPack(gh, upstream, id, ref) {
   try {
@@ -68,6 +78,7 @@ async function publishPack(gh, { login, pack, forLine = '', upstream = UPSTREAM,
     await gh.post(`/repos/${enc(target)}/git/refs`, { ref: `refs/heads/${branch}`, sha: baseSha });
   }
   const update = !!existing;
+  const name = mdText(pack.name);
   await gh.put(`/repos/${enc(target)}/contents/packs/${encodeURIComponent(id)}/pack.json`, {
     message: `${update ? 'Update' : 'Add'} pack: ${pack.name} v${pack.version}`,
     content: b64(packText(pack)),
@@ -75,12 +86,12 @@ async function publishPack(gh, { login, pack, forLine = '', upstream = UPSTREAM,
     ...(existing?.sha ? { sha: existing.sha } : {}),
   });
   const pr = await gh.post(`/repos/${enc(upstream)}/pulls`, {
-    title: `${update ? 'Update' : 'Add'} pack: ${pack.name} v${pack.version}`,
+    title: `${update ? 'Update' : 'Add'} pack: ${titleText(pack.name)} v${pack.version}`,
     head: own ? branch : `${target.split('/')[0]}:${branch}`,
     base,
     body: [
-      `${update ? 'Updates' : 'Adds'} **${pack.name}** (\`${id}\`) v${pack.version} by ${pack.author}.`,
-      pack.description ? `\n> ${String(pack.description).slice(0, 300)}` : '',
+      `${update ? 'Updates' : 'Adds'} **${name}** (\`${id}\`) v${pack.version} by ${mdText(pack.author)}.`,
+      pack.description ? `\n> ${mdText(String(pack.description).slice(0, 300).replace(/\s+/g, ' '))}` : '',
       pack.contest ? `\nAn entry for the ${pack.contest} crab contest.` : '',
       /^For [\w.-]+\/[\w.-]+#\d+$/.test(forLine) ? `\n${forLine}` : '',
       '\nPublished from the Shellby app. I agree to publish this pack under CC BY 4.0.',
@@ -90,4 +101,4 @@ async function publishPack(gh, { login, pack, forLine = '', upstream = UPSTREAM,
   return { ok: true, url: pr.html_url, number: pr.number, update };
 }
 
-module.exports = { publishPack, packText, UPSTREAM };
+module.exports = { publishPack, packText, mdText, titleText, UPSTREAM };

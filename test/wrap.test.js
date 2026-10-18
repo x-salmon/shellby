@@ -83,6 +83,33 @@ test('an accessory, an effect and a piece of decor wrap cleanly too', () => {
   clean(wrap.wrapItem('decor', rock, { login: 'crabfan', contest: '2026-12' }));
 });
 
+test('only the fields a pack and its item have go in, and a pack is at most 512 KB', () => {
+  const cap = { id: 'cap', name: 'Cap', slot: 'hat', pivot: [1, 1], palette: { a: '#111111' }, pixels: ['aaa', '.a.'], evil: 'x'.repeat(4096), author: 'me' };
+  const acc = wrap.wrapItem('accessory', cap, { login: 'crabfan' });
+  assert.deepEqual(Object.keys(acc.accessories[0]).sort(), ['id', 'name', 'palette', 'pivot', 'pixels', 'slot']);
+  const s = wrap.wrapSkin({ ...skin, onClick: 'x', parts: { ...skin.parts, z: 'x'.repeat(1000) } });
+  assert.equal(s.skins[0].onClick, undefined);
+  assert.equal(s.skins[0].parts.z, undefined, 'a part that isn\'t one is left out, not carried along');
+  clean(s);
+  const flake = { id: 'flake', name: 'Flake', motion: 'fall', sprites: [{ palette: { s: '#ffffff' }, pixels: ['s'], junk: 1 }] };
+  assert.deepEqual(Object.keys(wrap.wrapItem('effect', flake).effects[0].sprites[0]), ['palette', 'pixels']);
+  // packFile: whoever built the pack, it's written as a wrap and no more.
+  const file = wrap.packFile({ ...acc, extra: { big: 'x'.repeat(100) }, accessories: [{ ...acc.accessories[0], junk: 1 }] });
+  assert.equal(file.pack.extra, undefined);
+  assert.equal(file.pack.accessories[0].junk, undefined);
+  assert.equal(file.text, JSON.stringify(file.pack, null, 2));
+  assert.match(wrap.packFile({ ...acc, accessories: [{ ...acc.accessories[0], pixels: ['a'.repeat(600 * 1024)] }] }).error, /512 KB/);
+  assert.ok(wrap.packFile({ ...acc, accessories: [] }).error, 'one thing, wrapped');
+  assert.ok(wrap.packFile(null).error);
+});
+
+test('a wish\'s title in the contest post is plain text, and pings nobody', () => {
+  const url = new URL(wrap.contestEntryUrl({ name: '**Win** @everyone [x](y)', packId: 'skin-a', month: '2026-11', prUrl: 'https://github.com/x-salmon/shellby-packs/pull/7' }));
+  assert.ok(!url.searchParams.get('title').includes('@everyone'));
+  const body = url.searchParams.get('body');
+  assert.ok(body.includes('**\\*\\*Win\\*\\* @\u200deveryone \\[x\\]\\(y\\)**'), body);
+});
+
 test('the contest discussion link is prefilled, and only on github.com', () => {
   const url = new URL(wrap.contestEntryUrl({ name: 'Frosty', packId: 'skin-frosty-k3x9', month: '2026-11', prUrl: 'https://github.com/x-salmon/shellby-packs/pull/7' }));
   assert.equal(url.origin + url.pathname, 'https://github.com/x-salmon/shellby/discussions/new');

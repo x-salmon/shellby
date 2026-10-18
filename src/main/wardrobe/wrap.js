@@ -5,7 +5,9 @@
 // A pack is named for what's in it: skin-<id>, acc-<id>, fx-<id> or decor-<id>.
 // Its version is 1.0.0 the first time, then the gallery's version with the
 // patch number raised, so sharing again after a change is an update, not a clash.
-const { VERSION_RE, PACK_ID_RE, CONTEST_RE } = require('./catalog');
+const { VERSION_RE, PACK_ID_RE, CONTEST_RE, MAX_FILE_BYTES } = require('./catalog');
+const { validate: validateSkin } = require('../skins');
+const { mdText, titleText } = require('../github/publish');
 
 const KINDS = {
   skin: { field: 'skins', prefix: 'skin' },
@@ -34,6 +36,32 @@ function nextVersion(prev) {
 }
 
 const text = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const pick = (o, keys) => Object.fromEntries(keys.filter(k => isObj(o) && o[k] !== undefined).map(k => [k, o[k]]));
+
+// The fields an item of each kind may carry: what catalog.js validatePack reads,
+// and nothing else, so a panel's extra fields never reach the disk or the gallery.
+const ITEM_FIELDS = {
+  accessory: ['id', 'name', 'description', 'rarity', 'slot', 'anchor', 'follows', 'pivot', 'palette', 'pixels', 'unlock'],
+  effect: ['id', 'name', 'description', 'rarity', 'motion', 'count', 'speed', 'ink', 'fps', 'sprites', 'unlock'],
+  decor: ['id', 'name', 'description', 'rarity', 'category', 'layer', 'palette', 'pixels', 'frames', 'fps', 'spots', 'unlock'],
+};
+
+/** One item trimmed to its kind's fields (a skin to what skins.js keeps), or null. */
+function itemFields(kind, item) {
+  if (!isObj(item)) return null;
+  if (kind === 'skin') {
+    const { skin } = validateSkin(item);
+    if (!skin) return null;
+    const { description, ...rest } = skin;
+    return { ...rest, id: item.id, ...(description ? { description } : {}), ...(item.unlock !== undefined ? { unlock: item.unlock } : {}) };
+  }
+  if (!ITEM_FIELDS[kind]) return null;
+  const out = pick(item, ITEM_FIELDS[kind]);
+  if (Array.isArray(out.sprites)) out.sprites = out.sprites.map(sp => pick(sp, ['palette', 'pixels', 'frames']));
+  if (Array.isArray(out.spots)) out.spots = out.spots.map(sp => pick(sp, ['kind', 'at']));
+  return out;
+}
 
 /**
  * Wrap one item in a pack.
@@ -51,7 +79,8 @@ function wrapItem(kind, item, { login = '', prev = null, contest = null } = {}) 
   const name = text(item.name, 60) || item.id;
   const author = text(item.author, 60) || text(login, 60) || 'unknown';
   const description = text(item.description, 240);
-  const entry = { ...item };
+  const entry = itemFields(kind, item);
+  if (!entry) return null;
   if (kind === 'skin') {
     entry.name = text(item.name, 40) || item.id;
     entry.author = author.slice(0, 40);
@@ -69,6 +98,28 @@ function wrapItem(kind, item, { login = '', prev = null, contest = null } = {}) 
   };
 }
 
+/**
+ * A wrap as it's written and published: the pack's own fields and its one
+ * item's, nothing more (wrapItem's shape, checked again whoever built it), and
+ * no bigger than a pack may be. -> { pack, text } | { error }
+ */
+function packFile(pack) {
+  const k = isObj(pack) && Object.values(KINDS).find(x => Array.isArray(pack[x.field]));
+  const kind = k && Object.keys(KINDS).find(n => KINDS[n] === k);
+  const item = kind && pack[k.field].length === 1 ? itemFields(kind, pack[k.field][0]) : null;
+  if (!item) return { error: 'it isn’t one thing wrapped as a pack' };
+  const out = {
+    format: pack.format, id: pack.id, name: pack.name, author: pack.author,
+    ...(pack.description ? { description: pack.description } : {}),
+    version: pack.version,
+    ...(pack.contest ? { contest: pack.contest } : {}),
+    [k.field]: [item],
+  };
+  const body = JSON.stringify(out, null, 2);
+  if (Buffer.byteLength(body) > MAX_FILE_BYTES) return { error: `it’s too big for a pack (${MAX_FILE_BYTES / 1024} KB at most)` };
+  return { pack: out, text: body };
+}
+
 /** wrapItem for a skin: the helper Share uses (docs/plans/crab-painter.md §5). */
 const wrapSkin = (skin, opts) => wrapItem('skin', skin, opts);
 
@@ -79,18 +130,18 @@ const wrapSkin = (skin, opts) => wrapItem('skin', skin, opts);
  */
 function contestEntryUrl({ name, packId, month, prUrl }) {
   const body = [
-    `My entry for the ${month} crab contest: **${name}**.`,
+    `My entry for the ${month} crab contest: **${mdText(name)}**.`,
     '',
     `Pull request: ${prUrl}`,
     `Add it to Shellby once it's in the gallery: shellby://install?pack=${packId}`,
     '',
     '<!-- A line about it, and drop the picture from 📸 Card here. -->',
   ].join('\n');
-  const q = new URLSearchParams({ category: 'contest-entries', title: name, body });
+  const q = new URLSearchParams({ category: 'contest-entries', title: titleText(name), body });
   return `${DISCUSSIONS}?${q.toString()}`;
 }
 
 /** The line a pull request carries for a pack made from a wish: "For x-salmon/shellby#12". */
 const wishLine = number => (Number.isInteger(number) && number > 0 ? `For ${GALLERY_REPO}#${number}` : '');
 
-module.exports = { KINDS, GALLERY_REPO, packIdFor, nextVersion, wrapItem, wrapSkin, contestEntryUrl, wishLine };
+module.exports = { KINDS, GALLERY_REPO, packIdFor, nextVersion, wrapItem, wrapSkin, packFile, contestEntryUrl, wishLine };

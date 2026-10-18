@@ -115,6 +115,7 @@ const DEFAULTS = {
   tankTidy: null,     // whether he tidies his finds, and what he moved last (tank/tidy.js): per PC, never synced     // which of his tank's live decor is on (tank/gauges.js): per PC, never synced
   tank: null,         // his tank: its size, floor and back glass, and where each piece stands (see tank/index.js)
   painterShares: null, // { packId: { kind, id, version, url, at, listed, contest? } }: what you shared from the Painter, and whether the gallery has it yet (wiring/painter.js); this PC only
+  painterPacks: null,  // { packId: true }: the packs the Painter wrote on this PC, the only ones it writes over (wiring/painter.js)
   tankLife: null,     // his life in it: what he uses most, sets shown, the biggest tank (see tank/life.js); this PC only
   checkups: null,     // each project's last dependency audit and outdated check (see checkup.js); this PC only
   weekly: null,       // what happened each day, for the week-in-review card (see weekly.js); this PC only

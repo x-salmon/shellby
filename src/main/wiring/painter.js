@@ -109,10 +109,21 @@ function wirePainter(d) {
 
   // ------------------------------------------------------------ accessories, effects, decor
 
+  const record = key => (d.config.get(key) && typeof d.config.get(key) === 'object' ? d.config.get(key) : {});
+  const shares = () => record('painterShares');
+  // A pack the Painter wrote on this PC (saved or shared from here): the only
+  // kind it writes over. One from the gallery with the same id is someone else's.
+  const painterMade = packId => Object.hasOwn(record('painterPacks'), packId) || Object.hasOwn(shares(), packId);
+
   // Your own things, saved from the Painter as a pack each (wrap.js): written
-  // straight in, since you made them. Refuses an id a built-in pack has, and a
-  // pack of yours the Painter didn't make.
-  function writeOwnPack(pack, { replace = false } = {}) {
+  // straight in, since you made them. Only the wrap's own fields go to disk
+  // (wrap.packFile), at most a pack's 512 KB. Refuses an id a built-in pack has,
+  // and writing over a pack the Painter didn't make.
+  // -> { ok, pack, text, dest } to write with installOwnPack | { ok: false, error }
+  function ownPackFile(raw, { replace = false } = {}) {
+    const file = wrap.packFile(raw);
+    if (!file.pack) return { ok: false, error: `It has a problem: ${file.error}` };
+    const pack = file.pack;
     const { pack: p, errors, warnings } = validatePack(pack, { ...known, source: 'user' });
     if (!p) return { ok: false, error: `It has a problem: ${errors[0]}` };
     if (warnings.length) return { ok: false, error: `It has a problem: ${warnings[0]}` };
@@ -121,16 +132,29 @@ function wirePainter(d) {
     if (w.catalog.packs.some(x => x.source === 'builtin' && x.id === pack.id)) return { ok: false, error: 'That id belongs to a built-in pack.' };
     const dest = packPath(w.userDir, pack.id);
     if (!dest) return { ok: false, error: 'That name can’t be a pack id.' };
-    if (fs.existsSync(dest) && !replace) return { ok: false, error: 'You already have a pack with that id.' };
+    if (fs.existsSync(dest)) {
+      if (!replace) return { ok: false, error: 'You already have a pack with that id.' };
+      if (!painterMade(pack.id)) return { ok: false, error: `You have a pack called “${pack.id}” the Painter didn’t make (one from the gallery?), so it won’t write over it. Give yours another name.` };
+    }
+    return { ok: true, pack, text: file.text, dest };
+  }
+
+  function installOwnPack({ pack, text, dest }) {
     try {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       const tmp = `${dest}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify(pack, null, 2));
+      fs.writeFileSync(tmp, text);
       fs.renameSync(tmp, dest);
     } catch (e) { return { ok: false, error: `Couldn't save it: ${e.code || e.message}` }; }
-    w.load();
-    w.emit('changed');
+    if (!painterMade(pack.id)) d.config.set({ painterPacks: { ...record('painterPacks'), [pack.id]: true } });
+    d.wardrobe.load();
+    d.wardrobe.emit('changed');
     return { ok: true, packId: pack.id };
+  }
+
+  function writeOwnPack(raw, opts) {
+    const file = ownPackFile(raw, opts);
+    return file.ok ? installOwnPack(file) : file;
   }
 
   const installedVersion = packId => d.wardrobe?.catalog.packs.find(p => p.id === packId && p.source === 'user')?.version || null;
@@ -204,6 +228,7 @@ function wirePainter(d) {
     const packId = wrap.packIdFor(kind, id);
     const file = packId && d.wardrobe ? packPath(d.wardrobe.userDir, packId) : null;
     if (!field || !file || !fs.existsSync(file)) return { error: 'Save it first, then share it.' };
+    if (!painterMade(packId)) return { error: 'That pack wasn’t made in the Painter on this PC, so it can’t be shared from here.' };
     try {
       const json = JSON.parse(fs.readFileSync(file, 'utf8'));
       const item = (json[field] || []).find(x => x.id === id);
@@ -212,12 +237,12 @@ function wirePainter(d) {
     } catch { return { error: "Couldn't read its pack." }; }
   }
 
-  const shares = () => (d.config.get('painterShares') && typeof d.config.get('painterShares') === 'object' ? d.config.get('painterShares') : {});
-
   /**
-   * Share to the gallery: wrap it in a pack (wrap.js), install that pack (so
-   * it's one of yours, which is what publishing takes, replacing an earlier
-   * wrap), then the usual confirm and pull request (confirmAndPublishPack).
+   * Share to the gallery: wrap it in a pack (wrap.js), the usual confirm and
+   * pull request (confirmAndPublishPack), and only then install the wrap as a
+   * pack of yours (replacing an earlier wrap), so a Cancel changes nothing.
+   * A pack id the gallery has from someone else is refused: yours needs
+   * another name, never an update to theirs.
    * opts: { contest: 'YYYY-MM' to enter it, wish: the pack wish's number }.
    * -> confirmAndPublishPack's answer, plus { packId, version, commented, contestUrl }
    */
@@ -228,14 +253,23 @@ function wirePainter(d) {
     const packId = wrap.packIdFor(kind, id);
     if (!packId) return { ok: false, error: 'That name can’t be a pack id.' };
     const index = await fetchRegistryIndex({ baseUrl: d.registryUrl() });
-    const prev = index.ok ? index.packs.find(p => p.id === packId) || null : null;
+    if (!index.ok) return { ok: false, error: 'Couldn’t reach the gallery to check the name is free. Try again in a moment.' };
+    const prev = index.packs.find(p => p.id === packId) || null;
     const login = d.github.view().login || '';
+    const by = typeof prev?.by === 'string' ? prev.by : '';
+    if (prev && !Object.hasOwn(shares(), packId) && !(by && login && by.toLowerCase() === login.toLowerCase())) {
+      const whose = /^[\w-]{1,39}$/.test(by) ? ` (@${by}’s)` : '';
+      return { ok: false, taken: true, error: `The gallery already has a “${packId}” that isn’t yours${whose}. Rename yours (Save as with another name) and share that.` };
+    }
     const pack = wrap.wrapItem(kind, got.item, { login, prev, contest });
-    const installed = writeOwnPack(pack, { replace: true });
-    if (!installed.ok) return installed;
+    const file = pack ? ownPackFile(pack, { replace: true }) : { ok: false, error: 'That name can’t be a pack id.' };
+    if (!file.ok) return file;
     const number = Number.isInteger(wish) && wish > 0 ? wish : null;
-    const r = await d.confirmAndPublishPack(packId, { forLine: wrap.wishLine(number) });
+    const r = await d.confirmAndPublishPack(packId, { forLine: wrap.wishLine(number), pack: file.pack, update: prev ? prev.version : null });
     if (!r.ok) return { ...r, packId };
+    // Yours now, on this PC too. The pull request is open whatever happens here.
+    const installed = installOwnPack(file);
+    if (!installed.ok) d.log?.warn('shared, but could not install the wrap', installed.error);
     d.config.set({ painterShares: { ...shares(), [packId]: { kind, id, version: pack.version, url: r.url, at: Date.now(), listed: false, ...(pack.contest ? { contest: pack.contest } : {}) } } });
     let contestUrl = null;
     if (pack.contest) {
@@ -254,7 +288,7 @@ function wirePainter(d) {
       title: 'Tell the wish you made it?',
       message: `Comment on ${wrap.GALLERY_REPO}#${number} with a link to "${name}", as @${d.github.view().login}`,
       detail: 'Whoever wished for it gets a notification. The maintainer closes the wish once your pack is in the gallery.',
-      buttons: [{ label: 'Comment', style: 'primary' }, { label: 'Not now' }], defaultId: 0, cancelId: 1,
+      buttons: [{ label: 'Comment', style: 'primary' }, { label: 'Not now' }], defaultId: 1, cancelId: 1,
     });
     if (response !== 0) return false;
     try {

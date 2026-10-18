@@ -27,7 +27,7 @@ function setup({ github = null, config = fakeConfig(), registry = null } = {}) {
   const skinsDir = path.join(base, 'skins');
   const wardrobeDir = path.join(base, 'wardrobe');
   fs.mkdirSync(skinsDir);
-  const calls = { broadcastWardrobe: 0, broadcastSkin: 0, published: [], asked: [], opened: [] };
+  const calls = { broadcastWardrobe: 0, broadcastSkin: 0, published: [], asked: [], specs: [], opened: [], publishAnswer: 'yes' };
   const wardrobe = {
     userDir: wardrobeDir,
     catalog: loadCatalog({ builtinDir: path.join(ROOT, 'src', 'wardrobe'), userDir: wardrobeDir, knownAchievements: KNOWN_ACHIEVEMENTS, knownSeasons: KNOWN_SEASONS }),
@@ -44,8 +44,12 @@ function setup({ github = null, config = fakeConfig(), registry = null } = {}) {
     broadcastSkin: () => { calls.broadcastSkin++; },
     registryUrl: () => registry || 'http://127.0.0.1:9/',
     githubEndpoints: () => ({ api: 'http://127.0.0.1:9' }),
-    askOnce: async spec => { calls.asked.push(spec.title); return 0; },
-    confirmAndPublishPack: async (packId, opts) => { calls.published.push({ packId, opts, json: JSON.parse(fs.readFileSync(path.join(wardrobeDir, `${packId}.json`), 'utf8')) }); return { ok: true, url: 'https://github.com/x-salmon/shellby-packs/pull/7', number: 7 }; },
+    askOnce: async spec => { calls.asked.push(spec.title); calls.specs.push(spec); return 0; },
+    // wiring/github.js's: handed the wrap itself; what's on disk when it asks is noted.
+    confirmAndPublishPack: async (packId, opts) => {
+      calls.published.push({ packId, opts, json: opts.pack, onDiskWhenAsked: fs.existsSync(path.join(wardrobeDir, `${packId}.json`)) ? fs.readFileSync(path.join(wardrobeDir, `${packId}.json`), 'utf8') : null });
+      return calls.publishAnswer === 'yes' ? { ok: true, url: 'https://github.com/x-salmon/shellby-packs/pull/7', number: 7 } : { ok: false, canceled: true };
+    },
     log: { warn: () => {} },
   };
   Object.assign(d, wirePainter(d));
@@ -177,9 +181,9 @@ test('an accessory saves as a pack of your own, and lists as yours', async () =>
 test('share: wrapped, installed, published with the wish line, the contest page opened and the wish told', async () => {
   const github = { can: f => f === 'publish', view: () => ({ login: 'crabfan' }), gh: () => ({ post: async (p, body) => { github.posted.push([p, body]); return {}; } }), posted: [] };
   const config = fakeConfig();
-  const { ipc, calls } = setup({ github, config });
+  const { ipc, calls, wardrobeDir } = setup({ github, config });
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify({ format: 1, packs: [{ id: 'skin-frosty-k3x9', version: '1.0.2', by: 'crabfan' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+  globalThis.fetch = async () => new Response(JSON.stringify({ format: 1, packs: [{ id: 'skin-frosty-k3x9', version: '1.0.2', by: 'crabFan' }] }), { status: 200, headers: { 'content-type': 'application/json' } });
   try {
     assert.equal((await ipc.invoke('painter:share', 'skin', 'frosty-k3x9')).ok, false, 'saved first');
     await ipc.invoke('skins:save', mine());
@@ -191,6 +195,11 @@ test('share: wrapped, installed, published with the wish line, the contest page 
     assert.equal(pub.opts.forLine, 'For x-salmon/shellby#12');
     assert.equal(pub.json.contest, '2026-11');
     assert.equal(pub.json.skins[0].id, 'frosty-k3x9');
+    assert.equal(pub.opts.update, '1.0.2', 'an update of your own pack says so, with the version it has now');
+    assert.equal(pub.onDiskWhenAsked, null, 'nothing written before the yes');
+    assert.ok(fs.existsSync(path.join(wardrobeDir, 'skin-frosty-k3x9.json')), 'installed once the pull request is open');
+    const wishSpec = calls.specs.find(s => s.title === 'Tell the wish you made it?');
+    assert.equal(wishSpec.defaultId, wishSpec.cancelId, 'Not now by default');
     assert.match(electron.callsOf('shell.openExternal').at(-1)[0], /discussions\/new\?category=contest-entries/);
     assert.deepEqual(calls.asked, ['Tell the wish you made it?']);
     assert.equal(github.posted[0][0], '/repos/x-salmon/shellby/issues/12/comments');
@@ -208,6 +217,82 @@ test('share: wrapped, installed, published with the wish line, the contest page 
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+// The registry answers with these packs for a share test.
+async function withRegistry(packs, fn) {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ format: 1, packs }), { status: 200, headers: { 'content-type': 'application/json' } });
+  try { return await fn(); } finally { globalThis.fetch = realFetch; }
+}
+const signedIn = () => ({ can: f => f === 'publish', view: () => ({ login: 'crabfan' }), gh: () => ({ post: async () => ({}) }) });
+const galleryPack = over => ({ format: 1, id: 'skin-frosty-k3x9', name: 'Theirs', author: 'pal', version: '1.0.5', skins: [{ ...classic, id: 'frosty-k3x9', name: 'Theirs' }], ...over });
+
+test('share: Cancel writes nothing, and never touches a gallery pack installed under that id', async () => {
+  const { ipc, calls, wardrobeDir, d } = setup({ github: signedIn() });
+  calls.publishAnswer = 'no';
+  await ipc.invoke('skins:save', mine());
+  await withRegistry([], async () => {
+    const r = await ipc.invoke('painter:share', 'skin', 'frosty-k3x9');
+    assert.equal(r.canceled, true);
+    assert.equal(calls.published.length, 1);
+    assert.equal(fs.existsSync(path.join(wardrobeDir, 'skin-frosty-k3x9.json')), false, 'Cancel: nothing installed');
+    // Someone's gallery pack with that id, installed: never written over, asked or not.
+    fs.mkdirSync(wardrobeDir, { recursive: true });
+    const theirs = JSON.stringify(galleryPack());
+    fs.writeFileSync(path.join(wardrobeDir, 'skin-frosty-k3x9.json'), theirs);
+    d.wardrobe.load();
+    calls.publishAnswer = 'yes';
+    const again = await ipc.invoke('painter:share', 'skin', 'frosty-k3x9');
+    assert.equal(again.ok, false);
+    assert.match(again.error, /didn’t make/);
+    assert.equal(calls.published.length, 1, 'not even asked');
+    assert.equal(fs.readFileSync(path.join(wardrobeDir, 'skin-frosty-k3x9.json'), 'utf8'), theirs);
+  });
+});
+
+test('share: an id someone else has in the gallery is refused, yours (by login or shared here) is an update', async () => {
+  const { ipc, calls, wardrobeDir } = setup({ github: signedIn() });
+  await ipc.invoke('skins:save', mine());
+  for (const entry of [{ id: 'skin-frosty-k3x9', version: '1.0.5', by: 'pal' }, { id: 'skin-frosty-k3x9', version: '1.0.5' }]) {
+    const r = await withRegistry([entry], () => ipc.invoke('painter:share', 'skin', 'frosty-k3x9'));
+    assert.equal(r.ok, false);
+    assert.equal(r.taken, true);
+    assert.match(r.error, /isn’t yours.*Rename/);
+  }
+  assert.deepEqual(calls.published, [], 'never asked, never published over theirs');
+  assert.equal(fs.existsSync(path.join(wardrobeDir, 'skin-frosty-k3x9.json')), false);
+  // Offline: no way to tell whose the name is, so not now.
+  assert.match((await ipc.invoke('painter:share', 'skin', 'frosty-k3x9')).error, /Couldn’t reach the gallery/);
+
+  // Shared from this PC before: yours, even with no `by` in the registry.
+  const config = fakeConfig({ painterShares: { 'skin-frosty-k3x9': { kind: 'skin', id: 'frosty-k3x9', version: '1.0.5', url: 'u', at: 1, listed: true } } });
+  const mineHere = setup({ github: signedIn(), config });
+  await mineHere.ipc.invoke('skins:save', mine());
+  const r = await withRegistry([{ id: 'skin-frosty-k3x9', version: '1.0.5', by: 'old-login' }], () => mineHere.ipc.invoke('painter:share', 'skin', 'frosty-k3x9'));
+  assert.equal(r.ok, true, r.error);
+  assert.equal(r.version, '1.0.6');
+  assert.equal(mineHere.calls.published[0].opts.update, '1.0.5');
+});
+
+test('save-item: never writes over a pack the Painter didn\'t make, and writes only the item\'s own fields', async () => {
+  const { ipc, wardrobeDir, d } = setup();
+  const cap = { id: 'cap-aaaa', name: 'Cap', slot: 'hat', pivot: [1, 1], palette: { a: '#111111' }, pixels: ['aaa', '.a.'] };
+  fs.mkdirSync(wardrobeDir, { recursive: true });
+  const theirs = JSON.stringify({ format: 1, id: 'acc-cap-aaaa', name: 'Their cap', author: 'pal', version: '2.0.0', accessories: [{ ...cap, name: 'Their cap' }] });
+  fs.writeFileSync(path.join(wardrobeDir, 'acc-cap-aaaa.json'), theirs);
+  d.wardrobe.load();
+  const r = await ipc.invoke('painter:save-item', 'accessory', cap, { replace: true });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /didn’t make/);
+  assert.equal(fs.readFileSync(path.join(wardrobeDir, 'acc-cap-aaaa.json'), 'utf8'), theirs);
+
+  const ok = await ipc.invoke('painter:save-item', 'accessory', { ...cap, id: 'brim-bbbb', evil: 'x'.repeat(100000), onLoad: 'alert(1)' });
+  assert.equal(ok.ok, true, ok.error);
+  const written = JSON.parse(fs.readFileSync(path.join(wardrobeDir, 'acc-brim-bbbb.json'), 'utf8'));
+  assert.equal(written.accessories[0].evil, undefined);
+  assert.equal(written.accessories[0].onLoad, undefined);
+  assert.equal((await ipc.invoke('painter:save-item', 'accessory', { ...cap, id: 'brim-bbbb', name: 'Brim 2' }, { replace: true })).ok, true, 'your own, written over when asked');
 });
 
 test('share without GitHub explains, and asks for nothing', async () => {

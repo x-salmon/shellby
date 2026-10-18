@@ -212,6 +212,22 @@ test('publish: the gallery owner branches in the repo itself; same version needs
   } finally { await mock.close(); }
 });
 
+test('publish: a pack\'s own words are plain text in the pull request, and never ping anyone', async () => {
+  const mock = await startMockGitHub();
+  try {
+    const gh = new GitHubApi({ token: mock.state.token, api: mock.base });
+    const evil = { ...PACK, name: '**Free** [hats](https://evil.example) @everyone `x`', author: '@x-salmon', description: '# Big\n> quote @someone' };
+    assert.equal((await publishPack(gh, { login: 'crabfan', pack: evil, now: 5, sleep: async () => {} })).ok, true);
+    const pr = mock.state.pulls[0];
+    assert.ok(!/(^|[^\\])\*\*Free/.test(pr.body) && pr.body.includes('\\*\\*Free\\*\\*'), 'no bold of its own');
+    assert.ok(pr.body.includes('\\[hats\\]\\(https://evil.example\\)'), 'no link of its own');
+    assert.ok(!/@(everyone|x-salmon|someone)/.test(pr.body), 'no @mention in the body');
+    assert.ok(!/@(everyone)/.test(pr.title) && !pr.title.includes('`'), 'nor in the title, and no code there');
+    assert.ok(!/\n# Big/.test(pr.body) && pr.body.includes('\\# Big'), 'no heading of its own');
+    assert.match(pr.body, /\*\*\\\*\\\*Free/, "Shellby's own bold is still bold");
+  } finally { await mock.close(); }
+});
+
 test('service: device-flow sign-in, profile, features, widening and sign-out', async () => {
   const mock = await startMockGitHub();
   const dir = tmp();

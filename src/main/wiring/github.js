@@ -527,25 +527,36 @@ function wireGithub(d) {
     return true;
   }
 
-  // opts.forLine: the pack wish it answers, for the pull request (the Painter's Share, wiring/painter.js).
-  async function confirmAndPublishPack(packId, { forLine = '' } = {}) {
+  // The Painter's Share (wiring/painter.js) passes opts: forLine, the pack wish it
+  // answers, for the pull request; pack, the wrap to publish (written to your
+  // packs only once this is a yes and the pull request is open, never before);
+  // update, the gallery's version when it's an update of your own pack.
+  async function confirmAndPublishPack(packId, { forLine = '', pack: given = null, update = null } = {}) {
     if (!d.github?.can('publish')) return { ok: false, error: 'Turn on "Publish Wardrobe packs" in Settings → GitHub first.' };
-    const p = d.wardrobe.catalog.packs.find(x => x.id === packId && x.source === 'user');
-    if (!p?.file) return { ok: false, error: "That pack isn't one of yours." };
-    let json;
-    try { json = JSON.parse(fs.readFileSync(p.file, 'utf8')); } catch { return { ok: false, error: "Couldn't read that pack's file." }; }
+    let json = given;
+    if (given) {
+      if (given.id !== packId) return { ok: false, error: "That pack isn't one of yours." };
+    } else {
+      const p = d.wardrobe.catalog.packs.find(x => x.id === packId && x.source === 'user');
+      if (!p?.file) return { ok: false, error: "That pack isn't one of yours." };
+      try { json = JSON.parse(fs.readFileSync(p.file, 'utf8')); } catch { return { ok: false, error: "Couldn't read that pack's file." }; }
+    }
     const { pack, errors, warnings } = validatePack(json, { source: 'user', knownAchievements: KNOWN_ACHIEVEMENTS, knownSeasons: KNOWN_SEASONS });
     if (!pack) return { ok: false, error: `The pack has problems: ${errors[0]}` };
     if (warnings.length) return { ok: false, error: `The gallery needs every item to work. Fix this first: ${warnings[0]}` };
     if (d.wardrobe.catalog.packs.some(x => x.source === 'builtin' && x.id === pack.id)) return { ok: false, error: 'That id belongs to a built-in pack.' };
     const login = d.github.view().login;
+    const updating = typeof update === 'string' && /^\d+\.\d+\.\d+$/.test(update);
+    const credit = `Packs are published under CC BY 4.0, credited to "${pack.author}".`;
     const response = await d.askOnce({
       icon: '🎁',
-      title: 'Publish to the gallery?',
-      message: `"${pack.name}" v${pack.version} by ${pack.author}, as @${login}`,
-      detail: `This opens a public pull request on github.com/${PACKS_REPO}. Once it's reviewed and merged, anyone can add your pack from the gallery.\n\nPacks are published under CC BY 4.0, credited to "${pack.author}".`,
+      title: updating ? 'Update it in the gallery?' : 'Publish to the gallery?',
+      message: updating ? `"${pack.name}" v${update} → v${pack.version} by ${pack.author}, as @${login}` : `"${pack.name}" v${pack.version} by ${pack.author}, as @${login}`,
+      detail: updating
+        ? `This opens a public pull request on github.com/${PACKS_REPO} updating your pack, v${update} in the gallery now. Once it's reviewed and merged, everyone who has it gets the new one.\n\n${credit}`
+        : `This opens a public pull request on github.com/${PACKS_REPO}. Once it's reviewed and merged, anyone can add your pack from the gallery.\n\n${credit}`,
       note: 'Original art only: no copyrighted characters, logos or brands. Keep it friendly.',
-      buttons: [{ label: 'Publish', style: 'primary' }, { label: 'Cancel' }], defaultId: 1, cancelId: 1,
+      buttons: [{ label: updating ? 'Update' : 'Publish', style: 'primary' }, { label: 'Cancel' }], defaultId: 1, cancelId: 1,
     });
     if (response === null) return { ok: false, canceled: true, busy: true };
     if (response !== 0) return { ok: false, canceled: true };

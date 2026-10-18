@@ -55,7 +55,9 @@ packs** on (Settings → GitHub). It wraps your skin in a pack of its own
 (`skin-<id>`), checks it the way the gallery's Pack check will, and shows the
 same confirm window as any pack you publish. Afterwards the skin says **In
 review** until the gallery lists it, then **In the gallery**. Sharing again
-after a change is an update (the version goes up by itself).
+after a change is an update (the version goes up by itself, and the confirm
+window says **Update**). If the gallery already has a pack with that name from
+someone else, Share says so: save yours under another name and share that.
 
 - Made from a [pack wish](https://github.com/x-salmon/shellby/issues?q=is%3Aopen+label%3A%22pack+wish%22)?
   The Painter lists a few open ones with **Make this**. The pull request says
