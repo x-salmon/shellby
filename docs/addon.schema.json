@@ -90,6 +90,14 @@
         {
           "type": "object", "required": ["level"], "additionalProperties": false,
           "properties": { "level": { "type": "integer", "minimum": 2, "maximum": 99 } }
+        },
+        {
+          "description": "Turns up while a built-in tide event or party is on, and is yours to keep after. With a year, only that year's run.",
+          "type": "object", "required": ["event"], "additionalProperties": false,
+          "properties": {
+            "event": { "enum": ["harvest", "haunting", "frostbite", "penpal", "spring-clean", "low-tide", "molt-day"] },
+            "year": { "type": "integer", "minimum": 2026, "maximum": 2100 }
+          }
         }
       ]
     },

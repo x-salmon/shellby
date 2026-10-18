@@ -181,6 +181,31 @@ test('community packs install, are namespaced, and can be removed', () => {
   assert.equal(w.effectiveOutfit().hat, null); // removed item drops off the outfit
 });
 
+test('event items turn up while their event is on, are kept after, and a year\'s own only that year', () => {
+  const { w, clock } = make(d(2027, 9, 29));
+  const hat = w.item('molt-day-hat-1');
+  assert.deepEqual(hat.unlock, { event: 'molt-day', year: 2027 });
+  assert.equal(w.isUnlocked(hat), false);
+  const lock = w.lockInfo(hat);
+  assert.equal(lock.reason, 'event');
+  assert.equal(new Date(lock.back).getDate(), 30, 'back tomorrow');
+  clock.now = d(2027, 9, 30);
+  assert.deepEqual(w.collectSeasonals(), ['molt-day-hat-1']);
+  clock.now = d(2028, 9, 30);
+  assert.ok(w.isUnlocked(hat), 'kept');
+  const late = make(d(2028, 9, 30)).w;
+  assert.equal(late.isUnlocked(late.item('molt-day-hat-1')), false, '2027\'s hat never comes back');
+  assert.equal(late.lockInfo(late.item('molt-day-hat-1')).back, null);
+});
+
+test('event items wait while tide events are off', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-wd-'));
+  const w = new Wardrobe({ config: new Config(dir), builtinDir: BUILTIN, userDir: path.join(dir, 'packs'), now: () => d(2027, 9, 30), eventsOn: () => false });
+  w.load();
+  assert.equal(w.isUnlocked(w.item('molt-day-hat-1')), false);
+  assert.ok(!w.data.collected.includes('molt-day-hat-1'));
+});
+
 test('season windows: end date handles the new-year wrap', () => {
   const winter = SEASONS.find(s => s.id === 'winter');
   assert.equal(windowEnd(winter, d(2026, 12, 20)).getFullYear(), 2027);

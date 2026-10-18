@@ -1,7 +1,8 @@
 // Tide events (events.js), wired up: every stat Shellby records also counts
 // toward the event going on; the first look at a run says it's started; the
 // last day with goals left says so once; finishing it is a medal, the event's
-// trophy (and its reward item) and XP. The panel's banner reads eventsView().
+// trophy (and its reward item) and XP. Molt Day, his birthday, gets a line and
+// confetti on the day. The panel's banner reads eventsView().
 // See docs/plans/viral.md §1.
 const events = require('../events');
 const gifts = require('../gifts');
@@ -98,9 +99,24 @@ function wireEvents(d) {
     d.send(d.panel, 'panel:view', 'us');
   }
 
+  // Molt Day: a line on the desktop and confetti, once on the day, and this year's
+  // party hat collected (wardrobe/service.js, unlock: { event }). Never a notification.
+  function partyTick() {
+    const r = events.announceParty(state(), today(), where());
+    if (!r.say) return;
+    save(r.state);
+    d.log.info(`events: ${r.ev.id} today`);
+    d.speak('milestone', { force: true, text: `${r.ev.emoji} ${r.line}`.slice(0, 24) });
+    d.send(d.critter, 'critter:burst', d.outfit().confetti);
+    d.wardrobe?.collectSeasonals();
+    d.broadcastWardrobe?.();
+    push();
+  }
+
   // Hourly and at boot: has one started, or is it the last day?
   function eventsTick() {
     if (!on()) return;
+    partyTick();
     const r = events.announce(state(), today(), where());
     if (!r.say) { remark(); return; }
     save(r.state);

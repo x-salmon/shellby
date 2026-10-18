@@ -38,6 +38,11 @@
       const back = l.back ? new Date(l.back).toLocaleDateString([], { month: 'long', day: 'numeric' }) : 'next season';
       return `🔒 ${l.text}, back ${back}`;
     }
+    // A tide event's or a party's own (unlock: { event }): back when it is, or never for a one-off that's been.
+    if (l.reason === 'event') {
+      return l.back ? `🔒 ${l.text}, back ${new Date(l.back).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}` : `🔒 ${l.text}, missed`;
+    }
+    if (l.reason === 'credit') return `🔒 ${l.text}`;
     return '🔒 Locked';
   }
 
@@ -120,7 +125,7 @@
     h('span', { class: 'wd-art' }, art),
     h('span', { class: 'wd-name', text: item.name }),
     item.isNew && !locked ? h('span', { class: 'new-pill', text: 'new' }) : null,
-    locked ? h('span', { class: 'wd-lock', 'aria-hidden': 'true', text: locked.reason === 'season' ? '⏳' : '🔒' }) : null,
+    locked ? h('span', { class: 'wd-lock', 'aria-hidden': 'true', text: locked.reason === 'season' || locked.reason === 'event' ? '⏳' : '🔒' }) : null,
     locked?.reason === 'achievement' ? h('span', { class: 'wd-progress' }, h('span', { style: `transform:scaleX(${Math.min(1, locked.current / locked.goal)})` })) : null);
   }
 

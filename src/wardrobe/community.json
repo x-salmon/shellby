@@ -1,0 +1,32 @@
+{
+  "$schema": "https://github.com/x-salmon/shellby/blob/main/docs/addon.schema.json",
+  "format": 1,
+  "id": "community",
+  "name": "Community",
+  "author": "x-salmon",
+  "version": "1.0.0",
+  "description": "Molt Day hats, and what you get for making Shellby with everyone else.",
+  "homepage": "https://github.com/x-salmon/shellby",
+  "accessories": [
+    {
+      "id": "molt-day-hat-1",
+      "name": "Molt Day Hat (1)",
+      "description": "He turned 1 on September 30th, 2027, and you were there.",
+      "slot": "hat",
+      "pivot": [4, 7],
+      "rarity": "epic",
+      "palette": { "w": "#fff4e4", "P": "#ff7aa2", "q": "#ffb3c6", "p": "#c93a8a", "y": "#ffd166", "Y": "#e0913f" },
+      "pixels": [
+        "....w....",
+        "....q....",
+        "...qPp...",
+        "...PwP...",
+        "..PwwPp..",
+        "..PPwPp..",
+        ".PPPwPPp.",
+        "yPPwwwPpY"
+      ],
+      "unlock": { "event": "molt-day", "year": 2027 }
+    }
+  ]
+}

@@ -12,6 +12,16 @@
 // Pure: no I/O, no clock, no randomness (callers pass the date). Windows are
 // local time, inclusive, like the seasons'. The `nature` ones follow their
 // season south of the equator ({ south: true }). See test/events.test.js.
+//
+// An entry with `year: 2027` is a one-off: it only runs that year. Its
+// `colour` tints its banner, and the renderer reads every event's id, name,
+// emoji and colour from view().all, so adding one never touches the panel
+// (docs/TIDES.md has the checklist).
+//
+// Parties (PARTIES) are one day a year with no goals, bug, finds or medal:
+// Molt Day, his birthday. They sit beside the tide events rather than among
+// them, so one can fall inside a tide event (Spring Clean, south of the
+// equator, runs over September 30th) without taking its goals away.
 
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_RUNS = 24;               // past events remembered (four years of six)
@@ -23,7 +33,7 @@ const freeze = o => Object.freeze(o);
 // Medals are 7×7 emblems (the badge format in bugdex/species.js).
 const EVENTS = freeze([
   {
-    id: 'harvest', name: 'Harvest Moon', emoji: '🌾', season: 'autumn', nature: true, start: [10, 1], end: [10, 9],
+    id: 'harvest', name: 'Harvest Moon', emoji: '🌾', colour: '#e9a23b', season: 'autumn', nature: true, start: [10, 1], end: [10, 9],
     lines: ['first try or bust', 'the moon’s up!', 'harvest time!', 'ship it, reap it'],
     blurb: 'The nights draw in and everything you ship is worth more.',
     twist: 'Every catch pays half again in XP.',
@@ -39,7 +49,7 @@ const EVENTS = freeze([
     medal: { palette: { a: '#e9a23b', b: '#ffe8a3', c: '#7f5539' }, pixels: ['..aaa..', '.abbba.', 'abcbcba', 'abbcbba', 'abcbcba', '.abbba.', '..aaa..'] },
   },
   {
-    id: 'haunting', name: 'The Haunting', emoji: '🎃', season: 'halloween', start: [10, 24], end: [11, 1],
+    id: 'haunting', name: 'The Haunting', emoji: '🎃', colour: '#ff9f1c', season: 'halloween', start: [10, 24], end: [11, 1],
     lines: ['did you hear that?', 'the wreck is glowing', 'spooky bugs about', 'working late? good'],
     blurb: 'Something is moving in the wreck. Bugs fixed after dark don\'t come alone.',
     twist: 'Ghosts caught in the Haunted Wreck are twice as likely to sparkle.',
@@ -55,7 +65,7 @@ const EVENTS = freeze([
     medal: { palette: { a: '#ff9f1c', b: '#2b2d42', c: '#57cc99' }, pixels: ['...c...', '.aaaaa.', 'aabaaba', 'aaaaaaa', 'abababa', '.abbba.', '..aaa..'] },
   },
   {
-    id: 'frostbite', name: 'Frostbite', emoji: '❄️', season: 'winter', start: [12, 18], end: [1, 1],
+    id: 'frostbite', name: 'Frostbite', emoji: '❄️', colour: '#8ecae6', season: 'winter', start: [12, 18], end: [1, 1],
     lines: ['brr. bugs are slow', 'ice on the tide pool', 'keep busy, stay warm', 'cold claws!'],
     blurb: 'The tide pools are freezing over. Busy days bring something up from the ice.',
     twist: 'Snow piles up on his shell a little with every catch.',
@@ -71,7 +81,7 @@ const EVENTS = freeze([
     medal: { palette: { a: '#8ecae6', b: '#e0fbfc', c: '#ffffff' }, pixels: ['a..a..a', '.a.a.a.', '..bab..', 'aaacaaa', '..bab..', '.a.a.a.', 'a..a..a'] },
   },
   {
-    id: 'penpal', name: 'Pen Pal Week', emoji: '💌', season: 'valentine', start: [2, 9], end: [2, 15],
+    id: 'penpal', name: 'Pen Pal Week', emoji: '💌', colour: '#ff5d8f', season: 'valentine', start: [2, 9], end: [2, 15],
     lines: ['send a helper!', 'wave at someone!', 'two claws are better', 'write back!'],
     blurb: 'Nobody fixes bugs alone this week. Send a helper, wave at a friend.',
     twist: 'Swaps between friends count double toward the trophies.',
@@ -87,7 +97,7 @@ const EVENTS = freeze([
     medal: { palette: { a: '#ff5d8f', b: '#ffb3c6', c: '#ffffff' }, pixels: ['.......', '.aa.aa.', 'abbabba', 'abcbbba', '.abbba.', '..aba..', '...a...'] },
   },
   {
-    id: 'spring-clean', name: 'Spring Clean', emoji: '🌸', season: 'spring', nature: true, start: [3, 22], end: [4, 2],
+    id: 'spring-clean', name: 'Spring Clean', emoji: '🌸', colour: '#ffb3c6', season: 'spring', nature: true, start: [3, 22], end: [4, 2],
     lines: ['delete something!', 'dusty in here', 'less code, more crab', 'out with the old!'],
     blurb: 'Out with the old. The best fixes this week take code away.',
     twist: 'Something lives in the code you delete.',
@@ -103,7 +113,7 @@ const EVENTS = freeze([
     medal: { palette: { a: '#ffb3c6', b: '#fff0f3', c: '#ffd166' }, pixels: ['...a...', '..aba..', 'aaacaaa', 'abcccba', 'aaacaaa', '..aba..', '...a...'] },
   },
   {
-    id: 'low-tide', name: 'Low Tide', emoji: '🌊', season: 'summer', nature: true, start: [7, 10], end: [7, 21],
+    id: 'low-tide', name: 'Low Tide', emoji: '🌊', colour: '#4ea8de', season: 'summer', nature: true, start: [7, 10], end: [7, 21],
     lines: ['the sea went out!', 'so much to dig up', 'sparkly sand today', 'low tide! go dig!'],
     blurb: 'The sea\'s gone out further than anyone remembers. Everything\'s washing up.',
     twist: 'He digs twice as often, and finds are twice as likely to sparkle.',
@@ -119,7 +129,7 @@ const EVENTS = freeze([
     medal: { palette: { a: '#4ea8de', b: '#caf0f8', c: '#ffd166' }, pixels: ['..ccc..', '.ccccc.', '..ccc..', '.......', 'a.a.a.a', '.b.b.b.', 'aaaaaaa'] },
   },
 ].map(e => freeze({
-  nature: false, ...e,
+  nature: false, year: null, ...e,
   start: freeze([...e.start]), end: freeze([...e.end]),
   finds: freeze([...e.finds]),
   lines: freeze([...(e.lines || [])]),
@@ -128,9 +138,25 @@ const EVENTS = freeze([
   medal: freeze({ palette: freeze({ ...e.medal.palette }), pixels: freeze([...e.medal.pixels]) }),
 })));
 
+// Molt Day: Shellby's birthday, September 30th (v0.1.0 was tagged on 2026-09-30).
+// Every year, with his age on a party hat that anyone who opens Shellby that
+// day keeps: one hat a year in src/wardrobe/molt-day.json, each
+// `unlock: { event: 'molt-day', year }`, so a year's hat only turns up that year.
+const PARTIES = freeze([
+  { id: 'molt-day', name: 'Molt Day', emoji: '🎂', colour: '#ff7aa2', start: [9, 30], end: [9, 30], born: 2026 },
+].map(p => freeze({ nature: false, year: null, ...p, start: freeze([...p.start]), end: freeze([...p.end]) })));
+
+/** How old he is at a party's run (Molt Day), 1 on the first. */
+const ageAt = (party, year) => (party?.born ? year - party.born : 0);
+/** What he says on the day, short enough for his bubble. */
+const partyLine = (party, year) => `i’m ${ageAt(party, year)} today!!`;
+
 const BY_ID = new Map(EVENTS.map(e => [e.id, e]));
-const eventById = id => BY_ID.get(id) || null;
-const KNOWN_EVENTS = new Set(BY_ID.keys());
+const PARTY_BY_ID = new Map(PARTIES.map(p => [p.id, p]));
+/** A tide event or a party by id, or null. */
+const eventById = id => BY_ID.get(id) || PARTY_BY_ID.get(id) || null;
+// Every id a pack may name in `unlock: { event }` (wardrobe/catalog.js).
+const KNOWN_EVENTS = new Set([...BY_ID.keys(), ...PARTY_BY_ID.keys()]);
 
 // ------------------------------------------------------------------ the calendar
 
@@ -148,8 +174,9 @@ const validDate = d => (d instanceof Date && !Number.isNaN(d.getTime()) ? d : nu
 const startOf = (year, [m, d]) => new Date(year, m - 1, d);
 const endOf = (year, [m, d]) => new Date(year, m - 1, d, 23, 59, 59, 999);
 
-/** The run of `ev` that starts in `year`: { start, end, year, key }. */
+/** The run of `ev` that starts in `year`: { start, end, year, key }, or null for a one-off's other years. */
 function runIn(ev, year, opts) {
+  if (ev.year && ev.year !== year) return null;
   const [a, b] = datesOf(ev, opts);
   const wraps = md(a) > md(b);
   return { start: startOf(year, a), end: endOf(wraps ? year + 1 : year, b), year, key: `${ev.id}@${year}` };
@@ -161,12 +188,12 @@ function runAt(ev, date, opts = {}) {
   if (!d || !ev) return null;
   for (const y of [d.getFullYear() - 1, d.getFullYear()]) {
     const r = runIn(ev, y, opts);
-    if (d >= r.start && d <= r.end) return r;
+    if (r && d >= r.start && d <= r.end) return r;
   }
   return null;
 }
 
-/** The next run of `ev` that starts after `date` (or the one going on). */
+/** The next run of `ev` that starts after `date` (or the one going on); null once a one-off is over. */
 function nextRun(ev, date, opts = {}) {
   const d = validDate(date);
   if (!d || !ev) return null;
@@ -174,33 +201,39 @@ function nextRun(ev, date, opts = {}) {
   if (now) return now;
   for (const y of [d.getFullYear(), d.getFullYear() + 1]) {
     const r = runIn(ev, y, opts);
-    if (r.start > d) return r;
+    if (r && r.start > d) return r;
   }
   return null;
 }
 
 /** The event on at `date`, with its run, or null. Events never overlap. */
-function activeEvent(date, opts = {}) {
-  for (const ev of EVENTS) {
+function activeEvent(date, opts = {}, list = EVENTS) {
+  for (const ev of list) {
     const run = runAt(ev, date, opts);
     if (run) return { ev, run };
   }
   return null;
 }
 
+/** The party on at `date` (Molt Day), with its run, or null. */
+const partyAt = (date, opts = {}) => activeEvent(date, opts, PARTIES);
+
 /** The next event to start after `date` (not the one going on). */
-function upcoming(date, opts = {}) {
+function upcoming(date, opts = {}, list = EVENTS) {
   const d = validDate(date);
   if (!d) return null;
   let best = null;
-  for (const ev of EVENTS) {
+  for (const ev of list) {
     for (const y of [d.getFullYear(), d.getFullYear() + 1]) {
       const r = runIn(ev, y, opts);
-      if (r.start > d && (!best || r.start < best.run.start)) { best = { ev, run: r }; break; }
+      if (r && r.start > d && (!best || r.start < best.run.start)) { best = { ev, run: r }; break; }
     }
   }
   return best;
 }
+
+/** Is the tide event or party `id` on at `date`? (Event-limited pack items, wardrobe/service.js.) */
+const isOn = (id, date, opts = {}, year = null) => { const r = runAt(eventById(id), date, opts); return !!r && (!year || r.year === year); };
 
 /** What the event going on changes: { xp, dig, swaps, shiny(habitat) }. All 1 with nothing on. */
 function boostsAt(date, opts = {}) {
@@ -262,7 +295,9 @@ function normalize(raw) {
   }
   const kept = Object.entries(runs).sort((a, b) => (a[1].started || a[1].doneAt) - (b[1].started || b[1].doneAt)).slice(-MAX_RUNS);
   const medals = [...new Set((Array.isArray(r.medals) ? r.medals : []).filter(k => typeof k === 'string' && RUN_RE.test(k) && BY_ID.has(RUN_RE.exec(k)[1])))].sort();
-  return { runs: Object.fromEntries(kept), medals };
+  // The parties he's already made a fuss about: once each, on any PC.
+  const parties = [...new Set((Array.isArray(r.parties) ? r.parties : []).filter(k => typeof k === 'string' && RUN_RE.test(k) && PARTY_BY_ID.has(RUN_RE.exec(k)[1])))].sort().slice(-MAX_RUNS);
+  return { runs: Object.fromEntries(kept), medals, parties };
 }
 
 const goalDone = (run, g) => (run.goals[g.id] || 0) >= g.goal;
@@ -332,6 +367,17 @@ function announce(stateIn, date, opts = {}) {
   return { state, say: null, ev };
 }
 
+/**
+ * A party (Molt Day) is said once, on the day. Returns the marked state.
+ * -> { state, say: 'party' | null, ev }
+ */
+function announceParty(stateIn, date, opts = {}) {
+  const state = normalize(stateIn);
+  const a = partyAt(date, opts);
+  if (!a || state.parties.includes(a.run.key)) return { state, say: null, ev: a ? a.ev : null, line: null };
+  return { state: normalize({ ...state, parties: [...state.parties, a.run.key] }), say: 'party', ev: a.ev, line: partyLine(a.ev, a.run.year) };
+}
+
 // ------------------------------------------------------------------ the view
 
 /** "3 days left", "ends tonight", "starts in 5 days". */
@@ -369,7 +415,7 @@ function view(stateIn, date, opts = {}, extra = {}) {
     const { ev, run: r } = a;
     const run = state.runs[r.key] ? cleanRun(state.runs[r.key], ev) : cleanRun(null, ev);
     active = {
-      id: ev.id, key: r.key, name: ev.name, emoji: ev.emoji, year: r.year, blurb: ev.blurb, twist: ev.twist,
+      id: ev.id, key: r.key, name: ev.name, emoji: ev.emoji, colour: ev.colour, year: r.year, blurb: ev.blurb, twist: ev.twist,
       startsAt: r.start.getTime(), endsAt: r.end.getTime(), left: timeLeft(r.end.getTime(), t), lastDay: r.end.getTime() - t < DAY,
       daysLeft: Math.max(0, Math.ceil((r.end.getTime() - t) / DAY)),
       goals: ev.goals.map(g => ({ id: g.id, text: g.text, n: run.goals[g.id] || 0, goal: g.goal, done: goalDone(run, g) })),
@@ -381,11 +427,22 @@ function view(stateIn, date, opts = {}, extra = {}) {
     };
   }
   const up = upcoming(d, opts);
+  const p = partyAt(d, opts);
   return {
     active,
-    next: up ? { id: up.ev.id, name: up.ev.name, emoji: up.ev.emoji, startsAt: up.run.start.getTime(), when: startsIn(up.run.start.getTime(), t) } : null,
+    next: up ? { id: up.ev.id, name: up.ev.name, emoji: up.ev.emoji, colour: up.ev.colour, startsAt: up.run.start.getTime(), when: startsIn(up.run.start.getTime(), t) } : null,
+    party: p ? {
+      id: p.ev.id, key: p.run.key, name: p.ev.name, emoji: p.ev.emoji, colour: p.ev.colour, year: p.run.year, age: ageAt(p.ev, p.run.year),
+      blurb: `Shellby is ${ageAt(p.ev, p.run.year)} today. Anyone who opens Shellby today keeps this year’s party hat.`,
+    } : null,
     medals: state.medals.map(medalOf).filter(Boolean).sort((x, y) => y.year - x.year || (x.id < y.id ? -1 : 1)),
+    all: catalog(),
   };
+}
+
+/** Every tide event and party, as the renderer names and tints them: [{ id, name, emoji, colour }]. */
+function catalog() {
+  return [...EVENTS, ...PARTIES].map(e => ({ id: e.id, name: e.name, emoji: e.emoji, colour: e.colour }));
 }
 
 /** When the event's bug or finds come back, for a book or shelf that's missing them: a Date or null. */
@@ -420,7 +477,7 @@ function merge(aIn, bIn) {
     runs[key] = run;
   }
   const medals = [...new Set([...a.medals, ...b.medals, ...Object.entries(runs).filter(([, r]) => r.doneAt).map(([k]) => k)])];
-  return normalize({ runs, medals });
+  return normalize({ runs, medals, parties: [...a.parties, ...b.parties] });
 }
 
 /** Medal keys as a public card carries them, cleaned: ['haunting@2026']. */
@@ -429,6 +486,6 @@ function cleanMedals(raw) {
 }
 
 module.exports = {
-  EVENTS, KNOWN_EVENTS, eventById, datesOf, runAt, nextRun, activeEvent, upcoming, boostsAt, bugComesAlong,
-  normalize, record, announce, view, timeLeft, backOn, medalOf, cleanMedals, merge,
+  EVENTS, PARTIES, KNOWN_EVENTS, eventById, datesOf, runIn, runAt, nextRun, activeEvent, partyAt, upcoming, isOn, boostsAt, bugComesAlong,
+  normalize, record, announce, announceParty, ageAt, partyLine, view, catalog, timeLeft, backOn, medalOf, cleanMedals, merge,
 };

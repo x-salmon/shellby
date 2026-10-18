@@ -462,6 +462,26 @@ test('addon schema is valid JSON and mirrors the validator enums', () => {
   assert.equal(d.itemId.pattern, catalog.ITEM_ID_RE.source);
   assert.deepEqual(d.unlock.oneOf[1].properties.achievement.enum, [...ach.KNOWN_ACHIEVEMENTS]);
   assert.deepEqual(d.unlock.oneOf[2].properties.season.enum, [...seasons.KNOWN_SEASONS]);
+  assert.deepEqual(d.unlock.oneOf.find(o => o.properties.event).properties.event.enum, [...require('../src/main/events').KNOWN_EVENTS]);
+});
+
+test('wardrobe: unlock { event } takes built-in tide events and parties only, with an optional year', () => {
+  const accessories = [
+    hat({ id: 'a', unlock: { event: 'haunting' } }),
+    hat({ id: 'b', unlock: { event: 'molt-day', year: 2027 } }),
+    hat({ id: 'c', unlock: { event: 'halloween' } }),
+    hat({ id: 'd', unlock: { event: 'haunting', year: 1999 } }),
+    hat({ id: 'e', unlock: { event: 'haunting', season: 'halloween' } }),
+    hat({ id: 'f', unlock: { year: 2027 } }),
+  ];
+  const { pack: p, warnings } = validatePack(pack({ accessories, effects: [], skins: [] }), known);
+  assert.deepEqual(p.accessories.map(a => [a.id, a.unlock]), [['a', { event: 'haunting' }], ['b', { event: 'molt-day', year: 2027 }]]);
+  assert.ok(warnings.includes('skipped accessory c: unknown event "halloween"'));
+  assert.ok(warnings.some(w => /accessory d: unlock.year/.test(w)));
+  assert.ok(warnings.some(w => /accessory e: unlock must have exactly one/.test(w)));
+  assert.ok(warnings.some(w => /accessory f: unknown unlock type/.test(w)));
+  const own = validatePack(pack({ accessories: [hat({ unlock: { event: 'mine' } })], effects: [], skins: [] }), { ...known, knownEvents: new Set(['mine']) });
+  assert.deepEqual(own.pack.accessories[0].unlock, { event: 'mine' }, 'knownEvents can be passed, like knownSeasons');
 });
 
 // ---- tank decor

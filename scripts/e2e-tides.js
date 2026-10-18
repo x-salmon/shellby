@@ -60,6 +60,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(/days left|ends tonight/.test(banner?.left || ''), `with a countdown (${banner?.left})`);
     check(banner?.goals === haunting.goals.length, `and every goal (${banner?.goals})`);
     check(banner?.extras === 1 + haunting.finds.length + 1, `its bug, its ${haunting.finds.length} finds and the medal (${banner?.extras})`);
+    const tint = await ev(`document.querySelector('[data-ev-banner="us"] .ev-card').style.getPropertyValue('--ev')`);
+    check(tint === haunting.colour, `tinted with its own colour, from main (${tint})`);
     await shot('tides-us');
 
     // ---- the Bugdex: the event's bug, out now

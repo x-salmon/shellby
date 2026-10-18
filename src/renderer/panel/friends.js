@@ -4,8 +4,8 @@
 (function () {
   const { h, api, $ } = SB;
   let view = null;
-  // Tide events' emoji, for the medals on a friend's row (src/main/events.js).
-  const MEDAL_EMOJI = { harvest: '🌾', haunting: '🎃', frostbite: '❄️', penpal: '💌', 'spring-clean': '🌸', 'low-tide': '🌊' };
+  // A tide event's emoji, for the medals on a friend's row, from main's list (tide.js, src/main/events.js view().all).
+  const medalEmoji = id => SB.tide?.emojiOf(id) || '🏅';
 
   const crab = look => {
     const svg = window.ShellbySprite.build(look.skin, { px: 2, accessories: look.accessories || [], shell: look.shell || undefined, stickers: look.stickers || [], fit: true });
@@ -95,7 +95,7 @@
     }, 'Peek at their tank') : null;
     if (open) fillPeek(region, f);
     const swap = SB.social?.swapFor(f) || null;
-    const medals = (f.card?.medals || []).slice(-6).map(k => k.split('@')).map(([id, y]) => `${MEDAL_EMOJI[id] || '🏅'}${y.slice(2)}`).join(' ');
+    const medals = (f.card?.medals || []).slice(-6).map(k => k.split('@')).map(([id, y]) => `${medalEmoji(id)}${y.slice(2)}`).join(' ');
     return h('li', { class: 'fr-friend' },
       f.look ? crab(f.look) : h('span', { class: 'fr-crab fr-crab-none', 'aria-hidden': 'true', text: '?' }),
       h('div', { class: 'fr-who' }, h('b', { text: `@${f.login}` }), h('span', { class: 'small muted', text: status }), medals ? h('span', { class: 'small fr-medals', title: 'Tide event medals', text: medals }) : null),

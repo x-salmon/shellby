@@ -1,5 +1,6 @@
 /* Shellby — tide events (tide.js) and the sparkly reveal (sparkle.js).
-   Tokens come from panel.css. Each event tints the banner with its own colour. */
+   Tokens come from panel.css. Each event tints the banner with its own colour,
+   which tide.js sets as --ev from main's list (events.js `colour`). */
 
 /* ---------------------------------------------------------------- the banner */
 .ev-banner { margin: 0 0 14px; }
@@ -12,12 +13,8 @@
   box-shadow: 0 0 0 1px rgba(0, 0, 0, .2), 0 10px 28px -18px var(--ev);
 }
 .ev-card.compact { padding: 10px 14px; }
-.ev-harvest { --ev: #e9a23b; }
-.ev-haunting { --ev: #ff9f1c; }
-.ev-frostbite { --ev: #8ecae6; }
-.ev-penpal { --ev: #ff5d8f; }
-.ev-spring-clean { --ev: #ffb3c6; }
-.ev-low-tide { --ev: #4ea8de; }
+.ev-card + .ev-card, .ev-card + .ev-next { margin-top: 10px; }
+.ev-party-row { margin-top: 10px; }
 .ev-card.finished { border-color: color-mix(in srgb, var(--amber) 60%, transparent); }
 
 .ev-head { display: flex; align-items: center; gap: 12px; }
