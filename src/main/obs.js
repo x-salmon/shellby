@@ -50,6 +50,8 @@ function routeTable(srcDir, assetsDir) {
     '/shared/tokens.css': path.join(srcDir, 'renderer', 'shared', 'tokens.css'),
     '/shared/health.css': path.join(srcDir, 'renderer', 'shared', 'health.css'),
     '/shared/health-fx.js': path.join(srcDir, 'renderer', 'shared', 'health-fx.js'),
+    // his moods and work poses, shared with the panel (critter.css builds on them)
+    '/shared/crab-anim.css': path.join(srcDir, 'renderer', 'shared', 'crab-anim.css'),
     '/critter/critter.css': path.join(srcDir, 'renderer', 'critter', 'critter.css'),
     // what he holds while he works (critter.js uses the same on the desktop)
     '/shared/workposes.js': path.join(srcDir, 'renderer', 'shared', 'workposes.js'),

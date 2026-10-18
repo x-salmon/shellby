@@ -18,7 +18,7 @@ body.bit-squint .part-stalks { animation: none; }
 
 /* creeps up on it, low and slow */
 body.bit-creep.state-idle #sprite, body.bit-creep #sprite { animation: creep 1.6s ease-in-out forwards; transform-origin: 50% 100%; }
-body.bit-creep [class*="part-legs"] { animation: leg .12s steps(1) infinite; }
+body.bit-creep [class*="part-legs"] { animation: crab-leg .12s steps(1) infinite; }
 body.bit-creep .part-eyes { transform: scaleY(.6); }
 @keyframes creep { 0% { transform: scale(1, .92); } 100% { transform: translateX(calc(var(--dir) * 8px)) scale(1.04, .86); } }
 
@@ -60,7 +60,7 @@ body.bit-hold .part-stalks { animation: none; }
 
 /* blowing bubbles: claw to his mouth */
 body.bit-blow .part-claw { animation: none; transform: rotate(-48deg) translate(-2px, -3px); }
-body.bit-blow.state-idle #sprite, body.bit-blow #sprite { animation: breathe 1.4s ease-in-out infinite; }
+body.bit-blow.state-idle #sprite, body.bit-blow #sprite { animation: crab-breathe 1.4s ease-in-out infinite; }
 
 /* nodding off... */
 body.bit-nod.state-idle #sprite, body.bit-nod #sprite { animation: nod 1.8s ease-in forwards; transform-origin: 50% 100%; }
@@ -76,7 +76,7 @@ body.bit-jolt .part-claw { transform: rotate(-55deg); }
 
 /* bicep curls */
 body.bit-curl .part-claw { animation: curl .65s ease-in-out infinite; }
-body.bit-curl.state-idle #sprite, body.bit-curl #sprite { animation: hop .65s ease-in-out infinite; }
+body.bit-curl.state-idle #sprite, body.bit-curl #sprite { animation: crab-hop .65s ease-in-out infinite; }
 body.bit-curl .part-eyes { transform: scaleY(.6); }
 @keyframes curl { 0%, 100% { transform: rotate(10deg); } 50% { transform: rotate(-72deg) translateY(-2px); } }
 
@@ -184,7 +184,7 @@ body.bit-peekaboo.state-idle #sprite, body.bit-peekaboo #sprite { animation: jum
 body.bit-peekaboo .part-claw { animation: wave .25s ease-in-out infinite; }
 
 /* on a call: the "shh" sign stays up (critter.js) and he keeps very still */
-.on-call.state-idle #sprite { animation: breathe 5s steps(1) infinite; } /* stepped: eased, it drew every tick of a whole call */
+.on-call.state-idle #sprite { animation: crab-breathe 5s steps(1) infinite; } /* stepped: eased, it drew every tick of a whole call */
 .on-call.state-idle #bubble { background: var(--glass); }
 .on-call.state-idle #bubble::after { border-top-color: var(--glass); }
 

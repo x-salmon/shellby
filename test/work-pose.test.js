@@ -18,13 +18,13 @@ test('each tool has its pose, and between tools he thinks', () => {
   assert.equal(poseOf('constructor'), 'busy', 'no prototype names');
 });
 
-test('every pose the renderer knows has a rule in critter.css', () => {
+test('every pose the renderer knows has a rule in the shared crab animations', () => {
   const fs = require('fs');
-  const css = fs.readFileSync(require.resolve('../src/renderer/critter/critter.css'), 'utf8');
+  const css = fs.readFileSync(require.resolve('../src/renderer/shared/crab-anim.css'), 'utf8');
   const shared = require('../src/renderer/shared/workposes');
   assert.deepEqual([...shared.POSES].sort(), [...POSES].sort(), 'the renderer knows every pose main sends, and no others');
   for (const p of POSES) {
-    if (p !== 'busy') assert.ok(css.includes(`body.work-${p} `), `critter.css draws ${p}`);
+    if (p !== 'busy') assert.ok(css.includes(`:is(body, :where(.crab-anim)).work-${p} `), `crab-anim.css draws ${p}`);
   }
 });
 

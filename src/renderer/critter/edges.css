@@ -25,7 +25,7 @@
 
 /* Just stuck to it after a throw: legs scrabbling for a hold. */
 body.bit-grip #sprite { transform-origin: 50% 100%; animation: grip-on .9s cubic-bezier(.3, 1.4, .5, 1); }
-body.bit-grip [class*="part-legs"] { animation: leg .07s steps(1) infinite; }
+body.bit-grip [class*="part-legs"] { animation: crab-leg .07s steps(1) infinite; }
 body.bit-grip .part-eyes { animation: none; transform: scaleY(1.4); }
 body.bit-grip .part-stalks { animation: none; }
 @keyframes grip-on { 0% { transform: scale(1.25, .7); } 40% { transform: scale(.94, 1.06); } }
@@ -48,7 +48,7 @@ body.bit-pinch .part-stalks { animation: none; }
 
 /* Braced against the window he's on, shoving it along. */
 body.bit-shove #sprite { transform-origin: 50% 100%; animation: shove 1.2s cubic-bezier(.4, 0, .3, 1); }
-body.bit-shove [class*="part-legs"] { animation: leg .1s steps(1) infinite; }
+body.bit-shove [class*="part-legs"] { animation: crab-leg .1s steps(1) infinite; }
 body.bit-shove .part-claw { transform: rotate(-12deg) translateX(3px); }
 body.bit-shove .part-eyes { animation: none; transform: scaleY(.3); }
 body.bit-shove .part-stalks { animation: none; }

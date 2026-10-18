@@ -37,7 +37,7 @@ body.rubbed #crab .part-stalks { animation: none; }
 
 /* ...and rubbed enough, rolls right over with his legs in the air */
 body.belly #crab #sprite { transform-origin: 50% 65%; animation: belly 2.6s cubic-bezier(.35, 1.2, .5, 1) both; }
-body.belly #crab [class*="part-legs"] { animation: leg .1s steps(1) infinite; }
+body.belly #crab [class*="part-legs"] { animation: crab-leg .1s steps(1) infinite; }
 body.belly #crab .part-eyes { animation: none; transform: scaleY(.25); }
 body.belly #crab .part-stalks { animation: none; }
 body.belly #crab .part-claw { animation: wave .3s ease-in-out infinite; }
@@ -157,7 +157,7 @@ body.bit-yawn #crab .part-claw { animation: yawn-claw 2.4s ease-in-out; }
 
 /* catches a leg on nothing, pitches forward, picks himself up */
 body.bit-trip.state-idle #crab #sprite, body.bit-trip #crab #sprite { transform-origin: 70% 100%; animation: trip 1.6s cubic-bezier(.3, 1.2, .5, 1); }
-body.bit-trip #crab [class*="part-legs"] { animation: leg .07s steps(1) 6; }
+body.bit-trip #crab [class*="part-legs"] { animation: crab-leg .07s steps(1) 6; }
 body.bit-trip #crab .part-eyes { animation: trip-eyes 1.6s steps(1); }
 body.bit-trip #crab .part-stalks { animation: none; }
 body.bit-trip #crab .part-claw { animation: trip-claw 1.6s ease-out; }
@@ -179,7 +179,7 @@ body.bit-stuck.state-idle #crab #sprite, body.bit-stuck #crab #sprite { transfor
 body.bit-stuck #crab .part-claw { animation: stuck-claw 2.2s ease-in-out; }
 body.bit-stuck #crab .part-eyes { animation: stuck-eyes 2.2s steps(1); }
 body.bit-stuck #crab .part-stalks { animation: none; }
-body.bit-stuck #crab [class*="part-legs"] { animation: leg .09s steps(1) 14; }
+body.bit-stuck #crab [class*="part-legs"] { animation: crab-leg .09s steps(1) 14; }
 @keyframes stuck {
   0%, 12% { transform: none; }
   20% { transform: translateX(calc(var(--dir) * -2px)) rotate(calc(var(--dir) * -4deg)); }

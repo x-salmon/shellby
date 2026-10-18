@@ -67,7 +67,7 @@
     const svg = SB.Sprite.build(skin, { accessories: renderedAccessories(outfit), shell, stickers, fit: false });
     $('wdCrab').replaceChildren(svg);
     const stage = $('wdStage');
-    stage.className = `stage state-${mood}`;
+    stage.className = `stage crab-anim state-${mood}`; // his own moves (shared/crab-anim.css)
     const effect = outfit.effect && w?.effects.find(e => e.key === outfit.effect);
     if (!stageFx) stageFx = window.ShellbyFx.mount($('wdFx'), null, { px: 4 });
     stageFx.set(effect || null); // locked effects can still be previewed
