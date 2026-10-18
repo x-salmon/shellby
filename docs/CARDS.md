@@ -61,10 +61,11 @@ share.
   take), and the sheet says to press Ctrl+V.
 - **Copy alt text** copies the card's description, for the image description
   X and Bluesky ask for.
-- **Post to Discord**, when you've set up a Discord webhook for phone
-  notifications: main uploads the saved file (never bytes from the panel) with
-  its words and `allowed_mentions: { parse: [] }`, after asking once per
-  webhook.
+- **Post to Discord**, when a Discord webhook is switched on and confirmed for
+  phone notifications: main uploads a file card:save wrote (a checked PNG or
+  clip, never a path the panel picks) with its words and
+  `allowed_mentions: { parse: [] }`, after asking once per webhook URL
+  (Cancel by default).
 
 Each post is in his voice, names the moment, and ends with `#Shellby` and the
 link (`POST_TEXT`, always under 200 characters).

@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { EVENT_NAMES } = require('../src/main/channels');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9346;
@@ -42,12 +43,15 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
 (async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
   // One sticker, for its card: a project shipped six times, so a vinyl one. And a Discord
-  // webhook set up for notifications but switched off, so the sheet offers Post to Discord
+  // webhook set up for notifications, on and confirmed (as wiring/channels.js channelPlace
+  // writes it) but with every event off, so the sheet offers Post to Discord
   // (never pressed here: nothing leaves the PC).
   const shipped = Date.now() - 86400000;
+  const webhook = 'https://discord.com/api/webhooks/1/e2e';
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({
     stickers: { card: 'names', projects: { abcdefabcdef: { name: 'tide-pool', firstShipAt: shipped, lastShipAt: shipped, ships: 6 } } },
-    channels: { provider: 'discord', target: 'https://discord.com/api/webhooks/1/e2e', enabled: false },
+    channels: { provider: 'discord', target: webhook, enabled: true, events: Object.fromEntries(EVENT_NAMES.map(e => [e, false])) },
+    channelsConfirmed: `discord|${webhook}|tell|`,
   }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47961' } });
   let fails = 0;

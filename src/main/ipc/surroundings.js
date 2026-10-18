@@ -23,9 +23,23 @@ const CARD_FILE = /^shellby-[a-z]+(?:-[a-z]+)*-\d{8}-\d{6}\.(?:png|mp4|webm)$/;
 // A moment's clip (moment-clip.js): four seconds of canvas, far under this.
 const CLIP_MAX_BYTES = 5 * 1024 * 1024;
 const EBML = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]);
-// Is it the container it says it is? MP4 has 'ftyp' at byte 4, WebM starts with EBML's magic.
-const isClip = (buf, ext) => buf.length > 12 && buf.length <= CLIP_MAX_BYTES
-  && (ext === 'mp4' ? buf.subarray(4, 8).toString('latin1') === 'ftyp' : buf.subarray(0, 4).equals(EBML));
+const DOC_TYPE = Buffer.from([0x42, 0x82]); // EBML's DocType element
+// The brands an MP4 that MediaRecorder (or anything ordinary) writes opens with.
+const MP4_BRANDS = new Set(['isom', 'iso2', 'iso4', 'iso5', 'iso6', 'mp41', 'mp42', 'avc1', 'dash', 'M4V ', 'mp4v']);
+// A WebM: EBML's magic, then a DocType of "webm" in its header (a one-byte size, as MediaRecorder writes it).
+function isWebm(buf) {
+  if (!buf.subarray(0, 4).equals(EBML)) return false;
+  const at = buf.subarray(0, 64).indexOf(DOC_TYPE, 4);
+  return at > 0 && buf[at + 2] === 0x84 && buf.subarray(at + 3, at + 7).toString('latin1') === 'webm';
+}
+// An MP4: an ftyp box first, as long as it says and inside the file, with a brand we know.
+function isMp4(buf) {
+  const size = buf.readUInt32BE(0);
+  return buf.subarray(4, 8).toString('latin1') === 'ftyp' && size >= 16 && size <= buf.length
+    && MP4_BRANDS.has(buf.subarray(8, 12).toString('latin1'));
+}
+// Is it plausibly the container it says it is? Not a full parse: enough that it's a clip, not any bytes at all.
+const isClip = (buf, ext) => buf.length > 16 && buf.length <= CLIP_MAX_BYTES && (ext === 'mp4' ? isMp4(buf) : isWebm(buf));
 
 /**
  * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
@@ -224,8 +238,9 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   // Isolated dev/test runs keep cards in their throwaway profile and never touch the clipboard.
   const isolated = !app.isPackaged && !!process.env.SHELLBY_USER_DATA;
   const cardsDir = () => path.join(isolated ? app.getPath('userData') : app.getPath('pictures'), 'Shellby');
-  // The Discord webhook your notifications use, if there is one: the share sheet offers Post to Discord.
-  const discordUrl = () => channels.discordWebhook(d.config.get('channels'));
+  // The Discord webhook your notifications use, if there is one and it's switched
+  // on and confirmed (wiring/channels.js confirmChannelPlace): the share sheet offers Post to Discord.
+  const discordUrl = () => channels.discordWebhook(d.config.get('channels'), { confirmed: d.channelConfirmed?.() === true });
   const cardImage = bytes => {
     const buf = Buffer.from(bytes instanceof Uint8Array ? bytes : []);
     const isPng = buf.length > 8 && buf.length <= d.CARD_MAX_BYTES && buf.subarray(0, 8).equals(d.PNG_SIGNATURE);
@@ -286,9 +301,19 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   });
 
   // ---- a saved card, posted to your Discord webhook (channels/index.js cardUpload).
-  // The panel names a file card:save made (never sends bytes of its own); asked
-  // once per webhook, in Shellby's own confirm window, before the first post.
+  // The panel names a file card:save made (the bytes came from the panel then,
+  // checked to be a PNG or a clip); only to a Discord channel that's switched on
+  // and confirmed for notifications; asked once per exact webhook URL, in
+  // Shellby's own confirm window, Cancel by default, before the first post.
   const webhookId = url => crypto.createHash('sha256').update(url).digest('hex').slice(0, 16);
+  // Where it goes, in words the webhook didn't choose: its host and its id.
+  const webhookPlace = url => {
+    try {
+      const u = new URL(url);
+      const id = /^\/api\/webhooks\/(\d{1,25})\//.exec(u.pathname)?.[1];
+      return `${u.host}${id ? `, webhook ${id}` : ''}`;
+    } catch { return 'Discord'; }
+  };
   async function webhookName(url) {
     try {
       const r = await (fetchImpl || fetch)(url, { redirect: 'error', signal: AbortSignal.timeout(5000) });
@@ -305,16 +330,16 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
       const name = await webhookName(url);
       const response = await d.askOnce?.({
         icon: '📸', title: name ? `Post your cards to “${name}”?` : 'Post your cards to Discord?',
-        message: 'Post to Discord sends the card you made, with its words, to the Discord webhook your notifications use.',
-        detail: 'Only when you press it, never by itself, and it never pings anyone.',
-        buttons: [{ label: 'Post', style: 'primary' }, { label: 'Cancel' }], defaultId: 0, cancelId: 1,
+        message: `Post to Discord sends the card you made, with its words, to the Discord webhook your notifications use (${webhookPlace(url)}).`,
+        detail: 'Only when you press it, never by itself, and it never pings anyone. The name above is the one the webhook gave itself.',
+        buttons: [{ label: 'Post', style: 'primary' }, { label: 'Cancel' }], defaultId: 1, cancelId: 1,
       });
       if (response !== 0) return { ok: false, canceled: true };
       d.config.set({ cardDiscordOk: webhookId(url) });
     }
     let bytes;
     try { bytes = new Uint8Array(fs.readFileSync(full)); } catch { return { ok: false, error: "Couldn't read the card." }; }
-    const built = channels.cardUpload(d.config.get('channels'), { name: path.basename(full), bytes, text: typeof text === 'string' ? text : '' });
+    const built = channels.cardUpload(d.config.get('channels'), { name: path.basename(full), bytes, text: typeof text === 'string' ? text : '' }, { confirmed: d.channelConfirmed?.() === true });
     if (!built.request) return { ok: false, error: built.error };
     const r = await channels.deliver(built.request, { fetchImpl, timeoutMs: 20000 });
     if (!r.ok) { d.log.warn("couldn't post a card to Discord", r.error); return { ok: false, error: channels.cardPostError(r) }; }

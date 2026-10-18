@@ -450,20 +450,24 @@ async function deliverOnce(request, { timeoutMs = DEFAULT_TIMEOUT_MS, fetchImpl 
 const CARD_TYPES = Object.freeze({ '.png': 'image/png', '.mp4': 'video/mp4', '.webm': 'video/webm' });
 const DISCORD_CONTENT_MAX = 2000; // Discord's own limit on a message
 
-/** The Discord webhook your notifications use, or null when there isn't one set up. */
-function discordWebhook(settings) {
+/**
+ * The Discord webhook your notifications use, or null when there isn't one set
+ * up, it's switched off, or it isn't confirmed. confirmed: wiring/channels.js
+ * channelConfirmed(), your yes to exactly this place in the confirm window.
+ */
+function discordWebhook(settings, { confirmed = false } = {}) {
   const s = normalizeChannelSettings(settings);
-  return s.provider === 'discord' && !checkSettings(s) ? s.target : null;
+  return s.provider === 'discord' && s.enabled && confirmed === true && !checkSettings(s) ? s.target : null;
 }
 
 /**
  * A card you saved, posted to your Discord webhook as a file upload: the
  * picture (or clip) and the post's words, and never a ping (allowed_mentions,
  * the same rule the notifications follow).
- *   card: { name, bytes, text } -> { request } | { error }
+ *   card: { name, bytes, text }, { confirmed } -> { request } | { error }
  */
-function cardUpload(settings, card) {
-  const url = discordWebhook(settings);
+function cardUpload(settings, card, { confirmed = false } = {}) {
+  const url = discordWebhook(settings, { confirmed });
   if (!url) return { error: 'Set up Discord under Settings → Connections first.' };
   const type = CARD_TYPES[(/\.[a-z0-9]+$/i.exec(card?.name || '') || [''])[0].toLowerCase()];
   if (!type || !(card.bytes instanceof Uint8Array) || !card.bytes.length) return { error: "That isn't a card." };

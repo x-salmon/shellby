@@ -47,6 +47,8 @@ function setup(extra = {}, initial = {}) {
     presenceView: () => ({ discord: config.get('discord') }),
     presence: { start: rec.fn('presence.start'), stop: rec.fn('presence.stop') },
     updatePresence: rec.fn('updatePresence'),
+    // wiring/channels.js channelConfirmed: a yes for the destination now set.
+    channelConfirmed: () => config.get('channelsConfirmed') === `${config.get('channels')?.provider}|${config.get('channels')?.target}`,
     ...extra,
   };
   registerSurroundingsIpc(ipc.ipcMain, d, { fetchImpl: extra.fetchImpl });
@@ -162,7 +164,8 @@ test('card:save puts a square card\'s size in its name, and the same card again 
 
 // ---- a moment's clip: MP4 or WebM, checked by its magic number and size, never on the clipboard
 const mp4 = (n = 64) => new Uint8Array(Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypisom'), Buffer.alloc(n, 2)]));
-const webm = (n = 64) => new Uint8Array(Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(n, 3)]));
+// An EBML header with DocType "webm", as MediaRecorder writes it.
+const webm = (n = 64) => new Uint8Array(Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x9f, 0x42, 0x86, 0x81, 0x01, 0x42, 0x82, 0x84]), Buffer.from('webm'), Buffer.alloc(n, 3)]));
 
 test('card:save keeps a clip as the container it is, and never puts it on the clipboard', async () => {
   const { ipc } = setup();
@@ -188,11 +191,19 @@ test('card:save refuses a clip that isn\'t the container it says, or is too big'
   }
   // A video type it doesn't know is a picture, and an MP4 isn't one.
   assert.equal((await ipc.invoke('card:save', mp4(), 'shiny', { video: 'gif' })).ok, false);
+  // Only the magic isn't enough: a WebM names its DocType, an MP4's ftyp box has a brand we know and fits.
+  const bare = new Uint8Array(Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(64, 3)]));
+  const matroska = new Uint8Array(Buffer.from(webm()).toString('latin1').replace('webm', 'mkv!').split('').map(c => c.charCodeAt(0)));
+  const brand = new Uint8Array(Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypzzzz'), Buffer.alloc(64, 2)]));
+  const long = new Uint8Array(Buffer.concat([Buffer.from([0, 0, 0x10, 0]), Buffer.from('ftypisom'), Buffer.alloc(64, 2)]));
+  for (const [bytes, video] of [[bare, 'webm'], [matroska, 'webm'], [brand, 'mp4'], [long, 'mp4']]) {
+    assert.equal((await ipc.invoke('card:save', bytes, 'molt', { video })).ok, false, `${video} ${Buffer.from(bytes).subarray(0, 16).toString('hex')}`);
+  }
 });
 
 // ---- Post to Discord: the webhook your notifications use, a saved card, never a ping.
 const WEBHOOK = 'https://discord.com/api/webhooks/123/abc-token';
-const DISCORD = { channels: { provider: 'discord', target: WEBHOOK, enabled: true } };
+const DISCORD = { channels: { provider: 'discord', target: WEBHOOK, enabled: true }, channelsConfirmed: `discord|${WEBHOOK}` };
 // A fake fetch: the webhook's own GET answers with its name; a POST answers `post`.
 function fakeDiscord(post = { ok: true, status: 200 }) {
   const sent = [];
@@ -241,6 +252,8 @@ test('card:post-discord uploads the file with its words and no mentions, and ask
 
   assert.equal(asked.length, 1, 'asked before the first post only');
   assert.match(asked[0].title, /shellby-wins/, 'naming the webhook');
+  assert.match(asked[0].message, /discord\.com, webhook 123\b/, 'and where it really goes: its host and id, not only the name it chose');
+  assert.equal(asked[0].defaultId, asked[0].cancelId, 'Cancel by default');
   assert.equal(net.sent.length, 2);
   const { url, opts } = net.sent[0];
   assert.equal(url, `${WEBHOOK}?wait=true`);
@@ -253,8 +266,9 @@ test('card:post-discord uploads the file with its words and no mentions, and ask
   assert.deepEqual([...new Uint8Array(await file.arrayBuffer())], [...png()]);
   assert.match(config.get('cardDiscordOk'), /^[0-9a-f]{16}$/, 'the yes is kept, as a hash and not the webhook again');
 
-  // A new webhook asks again.
-  config.set({ channels: { ...DISCORD.channels, target: 'https://discord.com/api/webhooks/456/other' } });
+  // A new webhook asks again (once notifications are confirmed for it too).
+  const other = 'https://discord.com/api/webhooks/456/other';
+  config.set({ channels: { ...DISCORD.channels, target: other }, channelsConfirmed: `discord|${other}` });
   await ipc.invoke('card:post-discord', saved.path, 'x');
   assert.equal(asked.length, 2);
 });
@@ -284,6 +298,23 @@ test('card:post-discord uploads a clip as a video', async () => {
   const saved = await ipc.invoke('card:save', mp4(), 'molt', { video: 'mp4', again: true });
   assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, 'x'), { ok: true });
   assert.equal(net.sent[0].opts.body.get('files[0]').type, 'video/mp4');
+});
+
+test('card:post-discord only uses a Discord channel that is switched on and confirmed for notifications', async () => {
+  const attacker = 'https://discord.com/api/webhooks/999/attacker';
+  for (const initial of [
+    { channels: { ...DISCORD.channels, enabled: false }, channelsConfirmed: DISCORD.channelsConfirmed }, // switched off
+    { channels: { ...DISCORD.channels, target: attacker }, channelsConfirmed: DISCORD.channelsConfirmed }, // never confirmed
+    { channels: { ...DISCORD.channels, target: attacker, enabled: false }, channelsConfirmed: '' }, // a no in the confirm window
+  ]) {
+    const net = fakeDiscord();
+    const asked = [];
+    const { ipc } = setup({ fetchImpl: net.fetchImpl, askOnce: async spec => { asked.push(spec); return 0; } }, initial);
+    const saved = await ipc.invoke('card:save', png(), 'crab');
+    assert.equal(saved.discord, false, 'not offered');
+    assert.match((await ipc.invoke('card:post-discord', saved.path, 'x')).error, /Settings → Connections/);
+    assert.equal(net.sent.length + asked.length, 0, 'nothing asked, nothing sent');
+  }
 });
 
 test('card:post-discord with no Discord webhook says where to set one up', async () => {
