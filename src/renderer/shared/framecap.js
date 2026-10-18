@@ -19,6 +19,12 @@
 // animation something else paused (animation-play-state, a script) is left
 // alone: it was never this clock's.
 //
+// Chromium never cancels a CSS animation the API has paused when its rule goes
+// away: take the class off and it plays on, on top of whatever comes next (his
+// work hop bobbing under the idle breathe, a cut-short jump through an oof). So
+// the clock ends one itself once its name has left its element's animation
+// list, or its element has started a fresh one by that name.
+//
 // `filter` picks which animations the clock takes. The panel is opaque but just
 // as costly behind a game, and it is clicked and hovered: it hands over only the
 // loops (`loops`), so a hover or a tab sliding in still runs at the screen's rate.
@@ -103,10 +109,23 @@
     return info.live.some(([a, b]) => a < hi && b > lo) || info.jumps.some(j => j !== x.p && j >= lo && j <= hi); // a step right where it's drawn is already showing
   }
 
-  // cap(doc, { fps, filter, setInterval, clearInterval, now }) -> { stop() }
+  // Which element (and pseudo-element) a CSS animation runs on, as a key, or
+  // null for anything that isn't one (a script's animation, a transition).
+  const ownerOf = a => (typeof a.animationName === 'string' && a.effect?.target ? a.effect.target : null);
+
+  // cap(doc, { fps, filter, setInterval, clearInterval, now, styleOf }) -> { stop() }
+  // styleOf(element, pseudo) -> its computed style (getComputedStyle by default).
   function cap(doc, opts = {}) {
     const fps = opts.fps || DEFAULT_FPS;
     const filter = opts.filter || (() => true);
+    const styleOf = opts.styleOf || ((el, pseudo) => doc.defaultView?.getComputedStyle?.(el, pseudo || null));
+    // A rule only goes away when a class or a style changes, so the held
+    // animations are only checked on a tick after one has (every tick where
+    // there's no MutationObserver to say).
+    let restyled = true;
+    const Observer = doc.defaultView?.MutationObserver;
+    const watching = !!(Observer && doc.documentElement);
+    if (watching) new Observer(() => { restyled = true; }).observe(doc.documentElement, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
     const every = opts.setInterval || setInterval;
     const cancel = opts.clearInterval || clearInterval;
     const now = opts.now || (() => performance.now());
@@ -114,11 +133,47 @@
     const held = new WeakMap();
     let last = now();
 
+    // Is a held CSS animation still its element's? Its name is still in the
+    // element's animation list, and no newer one by that name has started there.
+    function stillOwned(a, fresh, lists) {
+      const el = ownerOf(a);
+      if (!el) return true;
+      const pseudo = a.effect.pseudoElement || '';
+      if (fresh.get(el)?.has(`${pseudo}|${a.animationName}`)) return false;
+      let names = lists.get(el)?.get(pseudo);
+      if (!names) {
+        let style = null;
+        try { style = styleOf(el, pseudo); } catch { /* not ours to judge */ }
+        if (!style || typeof style.animationName !== 'string') return true;
+        names = new Set(style.animationName.split(',').map(s => s.trim()));
+        if (!lists.has(el)) lists.set(el, new Map());
+        lists.get(el).set(pseudo, names);
+      }
+      return names.has(a.animationName);
+    }
+
     function tick() {
       const t = now();
       const dt = t - last;
       last = t;
-      for (const a of doc.getAnimations()) {
+      const all = doc.getAnimations();
+      const judge = restyled || !watching;
+      restyled = false;
+      // CSS animations just started, by element: they replace a held one of the same name.
+      const fresh = new Map();
+      for (const a of judge ? all : []) {
+        const el = a.playState === 'running' && ownerOf(a);
+        if (!el) continue;
+        if (!fresh.has(el)) fresh.set(el, new Set());
+        fresh.get(el).add(`${a.effect.pseudoElement || ''}|${a.animationName}`);
+      }
+      const lists = new Map(); // element -> pseudo -> its animation names, read once a tick
+      for (const a of all) {
+        if (judge && a.playState === 'paused' && held.has(a) && !stillOwned(a, fresh, lists)) {
+          held.delete(a);
+          a.cancel();
+          continue;
+        }
         if (a.playState === 'running' && filter(a)) {
           // Just started, by CSS or a script: from here on it's ours.
           a.pause();

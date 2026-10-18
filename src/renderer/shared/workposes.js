@@ -11,10 +11,18 @@
     read: held([0, 3], { b: '#a0693a', w: '#fff4e4', k: '#8d99ae' }, ['bbbbbb', '.wwww.', '.wkkw.', '.wwww.', '.wkkw.', 'bbbbbb']),
     write: held([1, 4], { e: '#ff8fa3', y: '#ffd23f', t: '#e9c89a', g: '#2b2d42' }, ['....ee', '...yye', '..yyy.', '.yyy..', 'tty...', 'gt....']),
     run: held([1, 4], { s: '#cfd8dc', d: '#8d99ae' }, ['...s.s', '...dsd', '..sd..', '.sd...', 'sd....', 'd.....']),
+    test: held([2, 5], { b: '#ffd23f', k: '#4a4e69', w: '#fff4e4', r: '#ef476f' }, ['..b..', '.kkk.', 'kwwwk', 'kwrrk', 'kwwwk', '.kkk.']),
+    git: held([0, 4], { w: '#fff4e4', k: '#8d99ae', R: '#ef476f' }, ['wwwwwRR', 'kwwwkRR', 'wkwkwww', 'wwkwwww', 'wwwwwww']),
+    install: held([0, 2], { d: '#7a4a24', l: '#c98b4f' }, ['dddddd', 'dlllld', 'dddddd', 'dlllld', 'dddddd']),
+    build: held([2, 5], { k: '#8d99ae', K: '#4a4e69', b: '#a0693a' }, ['kkkkK', 'kkkkK', '..b..', '..b..', '..b..', '..b..']),
     search: held([0, 5], { k: '#4a4e69', g: '#7fd6c2', w: '#e9fff7', b: '#a0693a' }, ['..kkk.', '.kgggk', '.kgwgk', '.kgggk', '.bkkk.', 'bb....']),
     web: held([1, 1], { y: '#ffd23f', Y: '#c9a227', g: '#7fd6c2' }, ['..YYYY.', 'Yyyyyyg', '..YYYY.']),
     plan: held([0, 4], { K: '#4a4e69', b: '#a0693a', w: '#fff4e4', g: '#06d6a0', k: '#8d99ae' }, ['.KKK.', 'bwwwb', 'bgkkb', 'bwwwb', 'bgkkb', 'bbbbb']),
     crew: null, // a wave: his claw is free
+    skill: held([3, 3], { w: '#fff4e4', k: '#8d99ae', b: '#a0693a', r: '#06d6a0' }, ['www.www', 'wkw.wkw', 'wwwbwww', 'rrrrrrr']),
+    talk: null, // his claw is free to make his point
+    compact: held([2, 4], { w: '#fff4e4', k: '#8d99ae' }, ['.ww..', 'wkwww', 'wwkw.', '.wwkw', '..ww.']),
+    mcp: held([1, 4], { g: '#8d99ae', G: '#cfd8dc', s: '#e9c89a' }, ['ggg..s', 'gGg.s.', 'gGgs..', 'gGg...', 'ggg...']),
     busy: null, // the scuttle he always had
   };
   const POSES = Object.keys(ITEMS);

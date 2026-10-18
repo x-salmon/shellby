@@ -15,6 +15,7 @@ const { troubleOf, remoteTroubleOf } = require('../trouble');
 const remoteSsh = require('../remote/ssh');
 const ctx = require('../context');
 const planPace = require('../plan-pace');
+const workPose = require('../work-pose');
 const eff = require('../efficiency');
 const { claudeEnv } = require('../claude/cli');
 const { annotatePermission } = require('../safety');
@@ -172,8 +173,10 @@ class ClaudeSession extends Base {
     this.steered = [];
     this.openTools = new Set();
     // The main thread's newest tool call while it runs, null between tools, and
-    // when that last changed: which way the crab works (work-pose.js).
+    // when that last changed: which way the crab works (work-pose.js). toolKind
+    // is what sort of command a shell call runs (tests, a commit...), else null.
     this.tool = null;
+    this.toolKind = null;
     this.toolAt = null;
     this.interrupting = false;
     // While an edit's file is being read (placeEdit), what came after it waits
@@ -506,6 +509,7 @@ class ClaudeSession extends Base {
     this.busy = b;
     this.busySince = b ? Date.now() : null;
     this.tool = null;
+    this.toolKind = null;
     this.toolAt = null;
     this.emit('busy', b);
   }
@@ -555,15 +559,17 @@ class ClaudeSession extends Base {
     if (!Array.isArray(content)) return;
     if (event.type === 'assistant') this.trackPlan(content);
     for (const b of content) {
-      if (event.type === 'assistant' && b.type === 'tool_use') { this.openTools.add(b.id); this.setTool(b.name); }
+      if (event.type === 'assistant' && b.type === 'tool_use') { this.openTools.add(b.id); this.setTool(b.name, b.input); }
       if (event.type === 'user' && b.type === 'tool_result') { this.openTools.delete(b.tool_use_id); if (!this.openTools.size) this.setTool(null); }
     }
   }
 
-  setTool(name) {
+  setTool(name, input = null) {
     const tool = typeof name === 'string' ? name.slice(0, 80) : null;
-    if (tool === this.tool) return;
+    const kind = workPose.kindOf(tool, input);
+    if (tool === this.tool && kind === this.toolKind) return;
     this.tool = tool;
+    this.toolKind = kind;
     this.toolAt = Date.now();
     this.emit('tool', tool);
   }

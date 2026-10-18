@@ -32,6 +32,7 @@ let say = null;      // { text, occasion, until }: what he's saying (src/main/vo
 let onCall = false;  // you're on a call: he holds up his "shh" sign (src/main/surroundings.js)
 let planning = false; // Claude is planning, not changing anything yet (plan mode)
 let planReady = false; // ...and has a plan for you to read
+let flourish = null;  // how he takes a finished turn (src/main/flourish.js): null is his usual hop or oof
 // Things a scene or a game puts on him for a moment, by slot (src/renderer/critter/life.js).
 const overrides = new Map();
 // What he works with while Claude uses a tool, a scroll or a wrench (see
@@ -176,7 +177,7 @@ let stillNow = false; // calm from main (locked, covered, nobody at the desk): s
 const WORK = window.ShellbyWorkPoses;
 const SWAP_MS = 332; // into his shell for the next thing, and back out (two steps of the work beat)
 // The claw dipping for the next tool is part of the pose, not something that takes it over.
-const SHARES_BODY = f => f.startsWith('weather-') || f.startsWith('surface-') || f === 'on-perch' || f === 'tool-swap';
+const SHARES_BODY = f => f.startsWith('weather-') || f.startsWith('surface-') || f === 'on-perch' || f === 'tool-swap' || f === 'cursor-near';
 let swapTimers = [];
 const poses = WORK.holder((shown, was) => {
   const item = shown ? WORK.ITEMS[shown] : null;
@@ -208,6 +209,7 @@ function paintBody() {
     molt?.cls, dropping ? 'dropping' : '', ciFailing && state !== 'sleeping' ? 'ci-red' : '',
     focusing ? `focus-${focusing.phase}` : '', limit ? 'limited' : '', saying() ? 'saying' : '', onCall ? 'on-call' : '',
     planning && state === 'working' ? 'planning' : '', planReady && state === 'asking' ? 'plan-ready' : '',
+    flourish && (state === 'success' || state === 'error') ? `flourish-${flourish}` : '',
     poseClass(dropping),
     stillNow ? 'calm-deep' : '', // kept through every repaint, or the next state push would wake him
     ...flags,
@@ -228,6 +230,7 @@ api.onState(msg => {
   onCall = !!msg.call;
   planning = !!msg.planning;
   planReady = !!msg.plan;
+  flourish = typeof msg.flourish === 'string' && /^[a-z]{1,16}$/.test(msg.flourish) ? msg.flourish : null;
   confetti = msg.confetti !== false;
   window.ShellbySound.setMix(msg.sound);
   const wasGuarding = focusing?.phase === 'focus';

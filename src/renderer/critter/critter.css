@@ -279,6 +279,95 @@ body.work-crew .part-eyes, body.work-crew .part-stalks { transform: translateX(-
   50% { transform: rotate(-20deg); } 75% { transform: rotate(-34deg); }
 }
 
+/* tests, lint or a typecheck: a stopwatch up to his eyes, puffed up holding
+   his breath, a foot tapping, and a blink before he lets it out */
+body.work-test #sprite { transform-origin: 50% 100%; animation: test-hold 2.656s steps(1) infinite; }
+body.work-test .part-claw { transform: rotate(-36deg) translate(0, -2px); }
+body.work-test .part-legs-a { animation: test-tap .664s steps(1) infinite; }
+body.work-test .part-eyes { animation: test-eyes 2.656s steps(1) infinite; }
+body.work-test .part-stalks { animation: test-stalks 2.656s steps(1) infinite; }
+@keyframes test-hold { 0%, 100% { transform: scale(1.03, 1.02); } 87.5% { transform: none; } 93.75% { transform: scale(1.03, 1.02); } }
+@keyframes test-tap { 0%, 100% { transform: none; } 50% { transform: translateY(-1px); } }
+@keyframes test-stalks { 0%, 100% { transform: translate(-1px, -1px); } }
+@keyframes test-eyes {
+  0%, 100% { transform: translate(-1px, -1px); } 87.5% { transform: translate(-1px, -1px) scaleY(.2); }
+  93.75% { transform: translate(-1px, -1px); }
+}
+
+/* a commit, a push, a merge: the envelope sealed, then up with the claw and
+   down with the stamp, and he bobs with the thump */
+body.work-git #sprite { animation: git-bob 1.328s steps(1) infinite; }
+body.work-git .part-claw { animation: git-stamp 1.328s steps(1) infinite; }
+body.work-git .part-eyes, body.work-git .part-stalks { transform: translateY(1px); }
+@keyframes git-stamp {
+  0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(-34deg) translateY(-2px); }
+  62.5% { transform: rotate(-36deg) translateY(-3px); } 75% { transform: rotate(4deg) translateY(1px); } 87.5% { transform: rotate(-4deg); }
+}
+@keyframes git-bob { 0%, 100% { transform: none; } 75% { transform: translateY(1px) scale(1.03, .97); } 87.5% { transform: none; } }
+
+/* installing packages: leant back hauling a crate too big for him, legs
+   scrabbling, eyes screwed up, and a jerk forward each time it gives */
+body.work-install #sprite { transform-origin: 50% 100%; animation: install-heave 1.328s steps(1) infinite; }
+body.work-install .part-claw { animation: install-tug 1.328s steps(1) infinite; }
+body.work-install [class*="part-legs"] { animation: leg .332s steps(1) infinite; }
+body.work-install .part-eyes { transform: scaleY(.6); }
+@keyframes install-heave { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(-7deg) translateX(-1px); } 62.5% { transform: rotate(-2deg) translateX(1px); } }
+@keyframes install-tug { 0%, 100% { transform: rotate(6deg) translateY(1px); } 50% { transform: rotate(-4deg) translateX(-1px); } 62.5% { transform: rotate(8deg) translate(1px, 1px); } }
+
+/* a build: hammer up, and down, eyes on the nail */
+body.work-build #sprite { animation: run-bob .664s steps(1) infinite; }
+body.work-build .part-claw { animation: build-hammer .664s steps(1) infinite; }
+body.work-build .part-eyes { transform: translateY(1px) scaleY(.75); }
+body.work-build .part-stalks { transform: translateY(1px); }
+@keyframes build-hammer {
+  0%, 100% { transform: rotate(-50deg) translateY(-2px); } 25% { transform: rotate(-58deg) translateY(-3px); }
+  50% { transform: rotate(10deg) translateY(1px); } 75% { transform: rotate(-20deg) translateY(-1px); }
+}
+
+/* a skill: thumbing through his little recipe book, reading down the page,
+   a look up to take it in, and the page turned */
+body.work-skill #sprite { transform-origin: 50% 100%; transform: rotate(2deg); }
+body.work-skill .part-claw { animation: skill-flip 2.656s steps(1) infinite; }
+body.work-skill .part-eyes, body.work-skill .part-stalks { animation: skill-eyes 2.656s steps(1) infinite; }
+@keyframes skill-flip { 0%, 100% { transform: rotate(-14deg); } 75% { transform: rotate(-24deg) translate(1px, -1px); } 81.25% { transform: rotate(-6deg); } 87.5% { transform: rotate(-14deg); } }
+@keyframes skill-eyes { 0%, 100% { transform: translateY(1px); } 37.5% { transform: translate(1px, 1px); } 75% { transform: translateY(-1px); } 87.5% { transform: translateY(1px); } }
+
+/* an MCP server's tool: a tin-can phone to his ear, listening with a blink,
+   then down to his mouth to say his piece, bobbing as he talks */
+body.work-mcp #sprite { transform-origin: 50% 100%; animation: mcp-lean 2.656s steps(1) infinite; }
+body.work-mcp .part-claw { animation: mcp-can 2.656s steps(1) infinite; }
+body.work-mcp .part-eyes { animation: mcp-eyes 2.656s steps(1) infinite; }
+body.work-mcp .part-stalks { animation: mcp-stalks 2.656s steps(1) infinite; }
+@keyframes mcp-can { 0%, 100% { transform: rotate(-56deg) translate(-1px, -3px); } 50% { transform: rotate(-30deg) translateY(-1px); } }
+@keyframes mcp-lean { 0%, 100% { transform: rotate(-3deg); } 50% { transform: none; } 62.5% { transform: translateY(1px); } 75% { transform: none; } 87.5% { transform: translateY(1px); } }
+@keyframes mcp-stalks { 0%, 100% { transform: translateX(-1px); } 50% { transform: none; } }
+@keyframes mcp-eyes { 0%, 100% { transform: translateX(-1px); } 12.5% { transform: translateX(-1px) scaleY(.2); } 18.75% { transform: translateX(-1px); } 50% { transform: none; } }
+
+/* words of the reply coming out, between tools: chattering away, his claw
+   going as he makes his point, a nod on it */
+body.work-talk #sprite { transform-origin: 50% 100%; animation: talk-nod 1.328s steps(1) infinite; }
+body.work-talk .part-claw { animation: talk-claw .664s steps(1) infinite; }
+body.work-talk .part-eyes, body.work-talk .part-stalks { animation: talk-eyes 2.656s steps(1) infinite; }
+@keyframes talk-nod { 0%, 100% { transform: none; } 25% { transform: translateY(-1px); } 50% { transform: none; } 75% { transform: rotate(2deg); } }
+@keyframes talk-claw {
+  0%, 100% { transform: rotate(-12deg); } 25% { transform: rotate(-30deg) translate(1px, -1px); }
+  50% { transform: rotate(-20deg); } 75% { transform: rotate(-36deg) translateY(-1px); }
+}
+@keyframes talk-eyes { 0%, 100% { transform: none; } 50% { transform: translateX(1px); } 87.5% { transform: translateX(1px) scaleY(.2); } 93.75% { transform: translateX(1px); } }
+
+/* the conversation being compacted: a wad of old pages up, over and stuffed
+   into his shell, a squash to make it fit, and back for the next */
+body.work-compact #sprite { transform-origin: 50% 100%; animation: compact-squash 1.328s steps(1) infinite; }
+body.work-compact .part-claw { animation: compact-stuff 1.328s steps(1) infinite; }
+body.work-compact .part-eyes { animation: compact-eyes 1.328s steps(1) infinite; }
+body.work-compact .part-stalks { animation: none; }
+@keyframes compact-stuff {
+  0%, 100% { transform: rotate(-20deg) translateY(-1px); } 25% { transform: rotate(6deg) translate(-1px, -2px); }
+  50% { transform: rotate(34deg) translate(-3px, 1px); } 62.5% { transform: rotate(30deg) translate(-3px, 2px); } 75% { transform: none; }
+}
+@keyframes compact-squash { 0%, 100% { transform: none; } 62.5% { transform: scale(1.04, .95); } 75% { transform: none; } }
+@keyframes compact-eyes { 0%, 100% { transform: none; } 50%, 62.5% { transform: scaleY(.3); } 75% { transform: none; } }
+
 /* from one tool to the next: the claw dips into his shell, and comes out with it */
 body.tool-swap #crab .part-claw { animation: swap-claw .332s steps(1); }
 body.tool-swap #crab .part-eyes, body.tool-swap #crab .part-stalks { animation: none; transform: translateX(-1px); }
@@ -295,6 +384,81 @@ body.tool-swap #crab .part-eyes, body.tool-swap #crab .part-stalks { animation: 
 .state-error #sprite { transform-origin: 50% 100%; animation: oof .9s ease-out; }
 .state-error .part-eyes { animation: oof-eyes .9s steps(1); }
 .state-error .part-stalks { animation: none; }
+
+/* ---------- how he takes it: a flourish instead of the usual hop or oof (src/main/flourish.js) ----------
+   One-shots, like the hop and the oof they stand in for. */
+/* a long turn done: a big jump with a spin, both claws up */
+.state-success.flourish-big #sprite { transform-origin: 50% 60%; animation: big-jump 1.1s cubic-bezier(.3,1.4,.5,1) 2; }
+.state-success.flourish-big .part-claw { animation: big-claw 1.1s steps(1) 2; }
+.state-success.flourish-big #shadow { animation: shadow-jump 1.1s cubic-bezier(.3,1.4,.5,1) 2; }
+@keyframes big-jump {
+  0%, 100% { transform: none; } 10% { transform: translateY(3px) scale(1.12, .84); }
+  30% { transform: translateY(-12px) scale(.94, 1.08) rotate(calc(var(--dir, 1) * 120deg)); }
+  50% { transform: translateY(-18px) rotate(calc(var(--dir, 1) * 270deg)); }
+  72% { transform: translateY(-4px) rotate(calc(var(--dir, 1) * 360deg)); }
+  84% { transform: translateY(2px) scale(1.1, .88) rotate(calc(var(--dir, 1) * 360deg)); }
+}
+@keyframes big-claw { 0%, 100% { transform: none; } 20%, 80% { transform: rotate(-60deg) translateY(-2px); } }
+
+/* green at last after a few misses: slumps with relief, a breath, then a hop */
+.state-success.flourish-phew #sprite { transform-origin: 50% 100%; animation: phew 2.4s ease-in-out 1; }
+.state-success.flourish-phew .part-eyes { animation: phew-eyes 2.4s steps(1) 1; }
+.state-success.flourish-phew .part-stalks { animation: none; }
+.state-success.flourish-phew .part-claw { animation: flop-claw 2.4s ease-in-out 1; }
+.state-success.flourish-phew #shadow { animation: none; }
+@keyframes phew {
+  0% { transform: none; } 20%, 45% { transform: rotate(-8deg) translateY(2px) scale(1.06, .9); }
+  55% { transform: scale(1.04, 1.08); } 68% { transform: translateY(-8px); } 80% { transform: translateY(1px) scale(1.08, .9); } 100% { transform: none; }
+}
+@keyframes phew-eyes { 0%, 100% { transform: none; } 15% { transform: scaleY(.1); } 50% { transform: none; } }
+
+/* a little shuffle, side to side, claw going */
+.state-success.flourish-dance #sprite { transform-origin: 50% 100%; animation: dance .6s steps(4) 3; }
+.state-success.flourish-dance .part-claw { animation: wave .3s steps(2) 6; }
+.state-success.flourish-dance [class*="part-legs"] { animation: leg .3s steps(1) 6; }
+.state-success.flourish-dance #shadow { animation: none; }
+
+/* a hop with a twirl */
+.state-success.flourish-spin #sprite { transform-origin: 50% 60%; animation: hop-flip .8s cubic-bezier(.3,1.2,.5,1) 1, jump .7s .8s cubic-bezier(.3,1.6,.5,1) 1; }
+
+/* a claw pump and a firm nod */
+.state-success.flourish-pump #sprite { transform-origin: 50% 100%; animation: pump-nod .5s ease-out 3; }
+.state-success.flourish-pump .part-claw { animation: pump-claw .5s ease-out 3; }
+.state-success.flourish-pump #shadow { animation: none; }
+@keyframes pump-nod { 0%, 100% { transform: none; } 40% { transform: translateY(1px) rotate(3deg); } }
+@keyframes pump-claw { 0%, 100% { transform: rotate(-20deg); } 30% { transform: rotate(-70deg) translateY(-3px); } 55% { transform: rotate(-10deg) translateY(1px); } }
+
+/* a claw over his eyes, a slow shake of the head */
+.state-error.flourish-facepalm #sprite { transform-origin: 50% 100%; animation: facepalm 2s ease-in-out 1; }
+.state-error.flourish-facepalm .part-claw { animation: facepalm-claw 2s ease-in-out 1; }
+.state-error.flourish-facepalm .part-eyes { animation: facepalm-eyes 2s steps(1) 1; }
+.state-error.flourish-facepalm .part-stalks { animation: none; }
+@keyframes facepalm { 0%, 100% { transform: none; } 20% { transform: translateY(1px) rotate(4deg); } 45% { transform: translateY(1px) rotate(-3deg); } 70% { transform: translateY(1px) rotate(3deg); } }
+@keyframes facepalm-claw { 0%, 100% { transform: none; } 15%, 80% { transform: rotate(-58deg) translate(-2px, -3px); } }
+@keyframes facepalm-eyes { 0%, 100% { transform: none; } 12%, 85% { transform: scaleY(.15); } }
+
+/* a stamp and a shake of the shell */
+.state-error.flourish-huff #sprite { transform-origin: 50% 100%; animation: huff .9s ease-out 1, shake .3s .9s ease-in-out 2; }
+.state-error.flourish-huff [class*="part-legs"] { animation: huff-stamp .3s steps(1) 3; }
+.state-error.flourish-huff .part-eyes { transform: scaleY(.6); }
+@keyframes huff { 0%, 100% { transform: none; } 25% { transform: scale(1.06, .92); } 50% { transform: translateY(-2px); } 75% { transform: scale(1.06, .92); } }
+@keyframes huff-stamp { 0%, 100% { transform: none; } 50% { transform: translateY(-2px); } }
+
+/* sags right down, eyes half shut, and slowly back up */
+.state-error.flourish-slump #sprite { transform-origin: 50% 100%; animation: slump 2.6s ease-in-out 1; }
+.state-error.flourish-slump .part-eyes { animation: slump-eyes 2.6s steps(1) 1; }
+.state-error.flourish-slump .part-stalks { animation: slump-stalks 2.6s steps(1) 1; }
+.state-error.flourish-slump .part-claw { animation: flop-claw 2.6s ease-in-out 1; }
+@keyframes slump { 0%, 100% { transform: none; } 25%, 70% { transform: translateY(2px) scale(1.08, .86); } }
+@keyframes slump-eyes { 0%, 100% { transform: none; } 20%, 75% { transform: scaleY(.45) translateY(1px); } }
+@keyframes slump-stalks { 0%, 100% { transform: none; } 20%, 75% { transform: translateY(1px); } }
+
+/* claw out, a tilt of the head: these things happen */
+.state-error.flourish-shrug #sprite { transform-origin: 50% 100%; animation: shrug 1.6s ease-in-out 1; }
+.state-error.flourish-shrug .part-claw { animation: shrug-claw 1.6s ease-in-out 1; }
+.state-error.flourish-shrug .part-eyes, .state-error.flourish-shrug .part-stalks { animation: none; }
+@keyframes shrug { 0%, 100% { transform: none; } 25%, 65% { transform: rotate(-5deg) translateY(-1px); } }
+@keyframes shrug-claw { 0%, 100% { transform: none; } 25%, 65% { transform: rotate(-38deg) translate(2px, -2px); } }
 
 /* ---------- sleeping: tuck everything into the shell ---------- */
 .state-sleeping .part-body, .state-sleeping .part-claw, .state-sleeping .part-eyes,
@@ -540,6 +704,18 @@ body.surprise-landing .part-claw { animation: wave .4s ease-in-out .9s 3; }
 .landed #sprite { animation: squash .6s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes tumble { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes squash { 0% { transform: scale(1.25, .7) translateY(3px); } 60% { transform: scale(.95, 1.06); } 100% { transform: none; } }
+/* a landing hard enough to leave him dizzy: a splat, flat out with his legs
+   splayed and eyes screwed shut, then he peels himself up (the stars follow).
+   body.: it outranks .dizzy's wobble, which starts at the same moment. */
+body.landed-hard #sprite { transform-origin: 50% 100%; animation: splat .9s cubic-bezier(.3, 1.4, .5, 1); }
+body.landed-hard .part-legs-a { animation: splay-a .9s ease-out; }
+body.landed-hard .part-legs-b { animation: splay-b .9s ease-out; }
+body.landed-hard .part-eyes { animation: none; transform: scaleY(.15); }
+body.landed-hard .part-stalks { animation: none; }
+body.landed-hard .part-claw { animation: splay-a .9s ease-out; }
+@keyframes splat { 0%, 30% { transform: scale(1.4, .55) translateY(4px); } 65% { transform: scale(.92, 1.1); } 100% { transform: none; } }
+@keyframes splay-a { 0%, 30% { transform: translateX(-2px) rotate(-12deg); } 100% { transform: none; } }
+@keyframes splay-b { 0%, 30% { transform: translateX(2px) rotate(12deg); } 100% { transform: none; } }
 
 /* ---------- strolling: a sideways amble ---------- */
 /* a lean back before the first step, then the amble */
@@ -548,6 +724,18 @@ body.surprise-landing .part-claw { animation: wave .4s ease-in-out .9s 3; }
 .walking .part-legs-a { animation: leg .25s steps(1) infinite; }
 .walking .part-legs-b { animation: leg .25s steps(1) infinite reverse; }
 .walking .part-eyes, .walking .part-stalks { animation: look 2s steps(1) infinite; }
+/* in a hurry (fetch, a dash home): leant into it, legs a blur, eyes on where he's going */
+.walk-fast #sprite { animation: set-off .16s ease-out, run-lean .26s ease-in-out .16s infinite; }
+.walk-fast .part-legs-a { animation: leg .13s steps(1) infinite; }
+.walk-fast .part-legs-b { animation: leg .13s steps(1) infinite reverse; }
+.walk-fast .part-eyes, .walk-fast .part-stalks { animation: none; transform: translateX(calc(var(--dir) * 1px)); }
+@keyframes run-lean { 0%, 100% { transform: rotate(calc(var(--dir) * 5deg)); } 50% { transform: rotate(calc(var(--dir) * 5deg)) translateY(-2px); } }
+/* past your cursor: up on his toes, slow and careful, eyes on it */
+.walking.cursor-near:not(.walk-fast):not(.hauling):not([class*="surface-"]) #sprite { animation: tiptoe-walk .6s ease-in-out infinite; }
+.walking.cursor-near:not(.walk-fast):not(.hauling):not([class*="surface-"]) [class*="part-legs"] { animation: leg .3s steps(1) infinite; transform: translateY(-1px); }
+.walking.cursor-near:not(.walk-fast):not(.hauling):not([class*="surface-"]) .part-eyes { animation: none; transform: scaleY(.7); }
+.walking.cursor-near:not(.walk-fast):not(.hauling):not([class*="surface-"]) .part-stalks { animation: none; }
+@keyframes tiptoe-walk { 0%, 100% { transform: translateY(-2px) scale(.97, 1.05); } 50% { transform: translateY(-3px) scale(.97, 1.05); } }
 
 /* ---------- CI is red on one of your pull requests: worried, holding up a sign ---------- */
 /* The sign is a held accessory (see CI_SIGN in critter.js), so it shares the
