@@ -95,7 +95,7 @@
   const postText = v => {
     const tile = (card, label) => card?.tiles?.find(t => t[0] === label)?.[1];
     const xp = tile(v.card, 'XP'), days = tile(v.card, 'days together');
-    return `My ${v.year} with Shellby 🦀 ${xp ? `${xp} XP` : ''}${days ? `, ${days} days together` : ''}. A pixel hermit crab that runs Claude Code on my desktop. #Shellby`;
+    return `My ${v.year} with Shellby 🦀 ${xp ? `${xp} XP` : ''}${days ? `, ${days} days together` : ''}. A pixel hermit crab that runs Claude Code on my desktop. #ShellbyWrapped`;
   };
 
   /** Draw it, save it and show the share sheet. */
@@ -114,9 +114,9 @@
    */
   async function drawFriends(v, sl) {
     await K.loadFonts();
-    const { canvas, ctx } = K.newCanvas();
+    const { canvas, ctx, w } = K.newCanvas();
     K.drawWater(ctx);
-    const left = 56, right = W - 56;
+    const left = 56, right = w - 56;
     ctx.fillStyle = C.amber;
     ctx.fillText(K.fitText(ctx, `SHELLBY WRAPPED ${v.year} · WITH FRIENDS`, right - left, '600 22px "Martian Mono"'), left, 78);
     ctx.fillStyle = C.sand;
@@ -154,7 +154,7 @@
       kind: 'wrapped-friends', draw: () => drawFriends(v, sl), buttons: '[data-wrapped-card]',
       title: `Shellby Wrapped ${v.year}, with friends`,
       alt: `You and ${n} friend${n === 1 ? '' : 's'} side by side: days together, XP and bugs in ${v.year}`,
-      post: () => `My ${v.year} with Shellby, next to ${n === 1 ? 'a friend\'s' : `${n} friends'`} 🦀 A pixel hermit crab that runs Claude Code on our desktops. #Shellby`,
+      post: () => `My ${v.year} with Shellby, next to ${n === 1 ? 'a friend\'s' : `${n} friends'`} 🦀 A pixel hermit crab that runs Claude Code on our desktops. #ShellbyWrapped`,
     });
   }
 
