@@ -20,6 +20,9 @@
 .nw-close:hover, .nw-close:focus-visible { opacity: 1; }
 .nw-winner .nw-eyebrow, .nw-contest .nw-eyebrow { color: var(--amber); }
 
+/* A crab contest winner's skin tile (wardrobe.js wonLine). */
+.wd-won { font-size: var(--fs-10); line-height: 1.2; text-align: center; color: var(--amber); }
+
 /* ---------------------------------------------------------------- Made by (About) */
 .mb-groups { display: grid; gap: 12px; margin: 8px 0 0; }
 .mb-group h4 { margin: 0 0 6px; font-size: var(--fs-12); color: var(--sand-dim); }

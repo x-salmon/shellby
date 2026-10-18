@@ -92,6 +92,14 @@
   const bubble = line => h('span', { class: 'wd-bubble', text: line || '…' });
 
   // ------------------------------------------------------------ grid
+  // "🏆 by crabfan, November 2026": a skin that won a crab contest, as it ships built in.
+  function wonLine(item) {
+    const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(item?.won || '');
+    if (!m) return null;
+    const month = new Date(Number(m[1]), Number(m[2]) - 1, 15).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return `🏆 by ${item.author || 'someone'}, ${month}`;
+  }
+
   function tile(item) {
     const isSkin = slot === 'skin';
     const key = isSkin ? item.id : item.key;
@@ -102,7 +110,8 @@
     else if (isSkin) art = SB.sprite(item, { plain: true });
     else if (item.sprites) { const sp = bigSprite(item); art = SB.Sprite.grid(sp.pixels, sp.palette, { ink: !!item.ink }); }
     else art = SB.Sprite.grid(item.pixels, item.palette, { ink: true }); // lined like he wears it
-    const tipLines = [item.name, item.description, item.sample ? quoted(item.sample) : null, locked ? lockText(locked) : null, item.rarity && item.rarity !== 'common' ? RARITY[item.rarity] : null].filter(Boolean);
+    const trophy = wonLine(item); // a crab contest winner (src/wardrobe/contest.json)
+    const tipLines = [item.name, trophy, item.description, item.sample ? quoted(item.sample) : null, locked ? lockText(locked) : null, item.rarity && item.rarity !== 'common' ? RARITY[item.rarity] : null].filter(Boolean);
     // Hovering (or tabbing to) a new item is looking at it: the pill fades out.
     const look = e => {
       tryOn = { slot, key };
@@ -124,6 +133,7 @@
     },
     h('span', { class: 'wd-art' }, art),
     h('span', { class: 'wd-name', text: item.name }),
+    trophy ? h('span', { class: 'wd-won', text: trophy }) : null,
     item.isNew && !locked ? h('span', { class: 'new-pill', text: 'new' }) : null,
     locked ? h('span', { class: 'wd-lock', 'aria-hidden': 'true', text: locked.reason === 'season' || locked.reason === 'event' ? '⏳' : '🔒' }) : null,
     locked?.reason === 'achievement' ? h('span', { class: 'wd-progress' }, h('span', { style: `transform:scaleX(${Math.min(1, locked.current / locked.goal)})` })) : null);

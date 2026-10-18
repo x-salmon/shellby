@@ -43,6 +43,8 @@
     "dist": "electron-builder --win",
     "release": "electron-builder --win --publish always",
     "release:cut": "node scripts/release-cut.js",
+    "contest:tally": "node scripts/contest-tally.js",
+    "contest:ship": "node scripts/contest-ship.js",
     "release:ready": "node scripts/release-guard.js ready --wait"
   },
   "dependencies": {

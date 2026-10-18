@@ -192,7 +192,7 @@ function checkFrames(frames, pixels, max) {
   return null;
 }
 
-function validatePackSkin(raw, known) {
+function validatePackSkin(raw, known, pack) {
   const { skin, errors } = validateSkin(raw, undefined);
   if (!skin) return { error: errors.join('; ') };
   if (raw.anchors !== undefined && !isObj(raw.anchors)) return { error: 'anchors must be an object' };
@@ -206,7 +206,10 @@ function validatePackSkin(raw, known) {
   }
   const [unlock, ue] = checkUnlock(raw.unlock, known);
   if (ue) return { error: ue };
-  return { item: { ...skin, unlock, anchors } };
+  // A crab contest winner (src/wardrobe/contest.json): its tile says whose and which month.
+  // Only a built-in pack can say so; anywhere else it's ignored.
+  const won = pack?.source === 'builtin' && typeof raw.won === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw.won) ? raw.won : null;
+  return { item: { ...skin, unlock, anchors, ...(won ? { won } : {}) } };
 }
 
 function validateVoice(raw, known) {

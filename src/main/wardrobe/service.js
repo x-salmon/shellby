@@ -446,6 +446,8 @@ function publicItem(item) {
   if (!item) return null;
   const { key, id, packId, name, description, slot, anchor, follows, pivot, palette, pixels, rarity, unlock, source, motion, count, speed, sprites } = item;
   const out = { key, id, packId, name, description, rarity, unlock, source };
+  // A crab contest winner's skin (src/wardrobe/contest.json): whose, and which month.
+  if (item.won) Object.assign(out, { won: item.won, author: item.author });
   if (item.category) return { ...out, kind: 'decor', category: item.category, layer: item.layer, palette: { ...palette }, pixels: [...pixels], frames: item.frames.map(f => [...f]), fps: item.fps, spots: item.spots.map(s => ({ kind: s.kind, at: [...s.at] })) };
   if (pixels) Object.assign(out, { slot, anchor, follows, pivot, palette: { ...palette }, pixels: [...pixels] });
   if (sprites) {

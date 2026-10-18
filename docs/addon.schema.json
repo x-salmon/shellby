@@ -157,6 +157,7 @@
         "name": { "type": "string", "maxLength": 40 },
         "author": { "type": "string", "maxLength": 40 },
         "description": { "type": "string", "maxLength": 120 },
+        "won": { "description": "Built-in packs only (src/wardrobe/contest.json): the crab contest this skin won, YYYY-MM. Elsewhere it's ignored.", "type": "string", "pattern": "^\\d{4}-(0[1-9]|1[0-2])$" },
         "palette": {
           "type": "object",
           "minProperties": 1,
