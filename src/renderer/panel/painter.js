@@ -216,9 +216,9 @@
   function renderEditor() {
     if (!cur) return;
     const m = G.MODES[cur.mode];
-    document.querySelectorAll('#ptTools [data-tool]').forEach(b => {
-      b.hidden = b.dataset.tool === 'pivot' && cur.mode !== 'accessory';
-      b.setAttribute('aria-checked', String(b.dataset.tool === tool));
+    document.querySelectorAll('#ptTools [data-pt-tool]').forEach(b => {
+      b.hidden = b.dataset.ptTool === 'pivot' && cur.mode !== 'accessory';
+      b.setAttribute('aria-checked', String(b.dataset.ptTool === tool));
     });
     document.querySelectorAll('#ptTools [data-brush]').forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.brush) === brush)));
     $('ptUndo').disabled = !hist.canUndo;
@@ -235,7 +235,7 @@
     $('ptDesk').hidden = cur.mode !== 'skin';
     $('ptPoses').hidden = cur.mode === 'decor' || cur.mode === 'effect';
     $('ptPlayOnce').hidden = !reduced() || cur.mode === 'decor' || cur.mode === 'effect';
-    canvas.dataset.tool = tool;
+    canvas.dataset.ptTool = tool;
     renderStatus();
     renderSettings();
     renderFrames();
@@ -640,7 +640,7 @@
     if (t === 'pencil' && colour === G.EMPTY) colour = Object.keys(doc().palette)[0] || null;
     renderEditor();
   }
-  document.querySelectorAll('#ptTools [data-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  document.querySelectorAll('#ptTools [data-pt-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.ptTool)));
   document.querySelectorAll('#ptTools [data-brush]').forEach(b => b.addEventListener('click', () => { brush = Number(b.dataset.brush); renderEditor(); }));
   $('ptUndo').addEventListener('click', undo);
   $('ptRedo').addEventListener('click', redo);

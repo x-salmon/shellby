@@ -86,9 +86,9 @@ body[data-view="paint"] .view-paint { display: block; overflow-y: auto; padding:
   border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--abyss); user-select: none;
 }
 .pt-canvas { display: block; image-rendering: pixelated; touch-action: none; cursor: crosshair; box-shadow: 0 0 0 1px var(--line); }
-.pt-canvas[data-tool="move"] { cursor: move; }
-.pt-canvas[data-tool="picker"] { cursor: copy; }
-.pt-canvas[data-tool="fill"] { cursor: cell; }
+.pt-canvas[data-pt-tool="move"] { cursor: move; }
+.pt-canvas[data-pt-tool="picker"] { cursor: copy; }
+.pt-canvas[data-pt-tool="fill"] { cursor: cell; }
 
 .pt-frames { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 .pt-frames > span { font: 700 var(--fs-10-5) var(--font-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--sand-faint); margin-right: 2px; }
