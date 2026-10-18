@@ -1,11 +1,12 @@
-// ci: the crab's moods and work poses move exactly as recorded, now that the panel shares his animations (shared/crab-anim.css)
+// ci: the crab's moods, work poses and flourishes move exactly as recorded, now that the panel shares his animations (shared/crab-anim.css)
 // End-to-end check that the desktop crab moves the same in every mood and work
 // pose as the recorded baseline (test/fixtures/crab-anim.json). His part
 // animations live in src/renderer/shared/crab-anim.css, shared with the
 // panel's Painter and Wardrobe, so a change there must never move him.
 //
 // For each set of body classes (idle, working, every work pose, asking,
-// sleeping, and the moods around them that share his parts) it reads, for
+// success and error with each flourish, sleeping, and the moods, habits and
+// scene bits around them that share his parts) it reads, for
 // him, his sprite, his shadow and each part of him: the resting transform,
 // opacity and pivot, and every animation on it (keyframes, duration, delay,
 // easing, iterations, direction, fill). Those decide every frame he can draw,
@@ -24,6 +25,9 @@ const os = require('os');
 const path = require('path');
 const { capturePng } = require('./lib/shot');
 const { POSES } = require('../src/main/work-pose');
+const { NAMES: FLOURISHES } = require('../src/main/flourish');
+const { BITS } = require('../src/main/voice');
+const { SCENE_BITS } = require('../src/main/scenes');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9411;
@@ -37,14 +41,19 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
 // Every mood and pose the shared stylesheet draws, and the moods around them
 // that move the same parts (so a rule that changed places in the cascade shows up).
-const LOOKS = [
+// Each flourish (src/main/flourish.js) is tried on a win and on a miss, since
+// it only plays on its own; his habits and scene bits share keyframes with him.
+const LOOKS = [...new Set([
   'state-idle', 'state-working', ...POSES.filter(p => p !== 'busy').map(p => `state-working work-${p}`),
   'state-working tool-swap work-read', 'state-asking', 'state-success', 'state-error', 'state-sleeping',
+  ...FLOURISHES.flatMap(f => [`state-success flourish-${f}`, `state-error flourish-${f}`]),
   'state-learned', 'state-unlocked', 'state-levelup', 'state-petted', 'state-cheer', 'state-refreshed',
-  'state-idle walking', 'state-idle flying', 'state-idle landed', 'state-working dropping', 'state-idle ci-red',
+  'state-idle walking', 'state-idle walking walk-fast', 'state-idle walking cursor-near',
+  'state-idle flying', 'state-idle landed', 'state-idle landed landed-hard', 'state-working dropping', 'state-idle ci-red',
   'state-idle focus-focus', 'state-idle focus-break', 'state-idle molt-out', 'state-idle molt-bare', 'state-idle molt-in',
-  'state-idle tossing', 'state-idle bit-dig', 'state-idle bit-peek', 'state-working planning', 'state-sleeping limited',
-];
+  'state-idle tossing', ...[...BITS, ...SCENE_BITS].map(b => `state-idle bit-${b}`), 'state-idle on-call',
+  'state-working planning', 'state-sleeping limited',
+])];
 const MOMENTS = [0.1, 0.45, 1.2]; // seconds into every animation, for the screenshots
 
 async function connect(url) {
