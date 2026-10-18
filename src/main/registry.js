@@ -246,4 +246,38 @@ async function fetchRegistryCatalog({ baseUrl = REGISTRY_URL, fetchImpl = global
   }
 }
 
-module.exports = { REGISTRY_URL, PROTOCOL, parseDeepLink, findDeepLink, fetchRegistryPack, fetchRegistryCatalog, isUnderBase, normalizeBase };
+/**
+ * The gallery's index.json as a list of what's in it, for the Painter: which
+ * of your shared packs are in, and at what version (so the next share is the
+ * next version). `by`, `contest` and `winner` are optional on each entry and
+ * only kept when they're the right shape. Never throws.
+ * @returns {Promise<{ ok: boolean, packs?: [{ id, version, name, by?, contest?, winner? }], errors: string[] }>}
+ */
+async function fetchRegistryIndex({ baseUrl = REGISTRY_URL, fetchImpl = globalThis.fetch, timeoutMs = 15000 } = {}) {
+  const fail = msg => ({ ok: false, errors: [msg] });
+  const base = normalizeBase(baseUrl);
+  if (!base || typeof fetchImpl !== 'function') return fail('The Shellby community registry is unavailable.');
+  try {
+    const raw = await fetchBytes(new URL('index.json', base).href, { fetchImpl, timeoutMs, base, maxBytes: MAX_INDEX_BYTES, what: 'registry index' });
+    const index = JSON.parse(raw.toString('utf8').replace(/^﻿/, ''));
+    if (!isObj(index) || index.format !== INDEX_FORMAT || !Array.isArray(index.packs)) return fail("The Shellby community registry is in a format this version of Shellby doesn't understand.");
+    const packs = [];
+    for (const p of index.packs.slice(0, 2000)) {
+      if (!isObj(p) || !PACK_ID_RE.test(p.id)) continue;
+      packs.push({
+        id: p.id,
+        version: typeof p.version === 'string' && /^\d+\.\d+\.\d+$/.test(p.version) ? p.version : '',
+        name: typeof p.name === 'string' ? p.name.replace(/[\u0000-\u001f]+/g, ' ').slice(0, 60) : p.id,
+        ...(typeof p.by === 'string' && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/.test(p.by) ? { by: p.by } : {}),
+        ...(typeof p.contest === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(p.contest) ? { contest: p.contest } : {}),
+        ...(p.winner === true ? { winner: true } : {}),
+      });
+    }
+    return { ok: true, packs, errors: [] };
+  } catch (e) {
+    if (e instanceof FetchError) return fail(e.message);
+    return fail("Couldn't read the registry index. Try again later.");
+  }
+}
+
+module.exports = { REGISTRY_URL, PROTOCOL, parseDeepLink, findDeepLink, fetchRegistryPack, fetchRegistryCatalog, fetchRegistryIndex, isUnderBase, normalizeBase };

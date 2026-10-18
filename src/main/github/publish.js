@@ -38,10 +38,11 @@ async function ensureFork(gh, upstream, { sleep, waitMs = FORK_WAIT_MS }) {
 }
 
 /**
- * Open the pull request. pack: the validated pack JSON (as on disk).
+ * Open the pull request. pack: the validated pack JSON (as on disk). forLine:
+ * a line naming the pack wish it answers ("For x-salmon/shellby#12", wrap.js wishLine).
  * Returns { ok, url, number, update } or { ok: false, error, same?/needsBump? }.
  */
-async function publishPack(gh, { login, pack, upstream = UPSTREAM, now = Date.now(), sleep = ms => new Promise(r => setTimeout(r, ms)) }) {
+async function publishPack(gh, { login, pack, forLine = '', upstream = UPSTREAM, now = Date.now(), sleep = ms => new Promise(r => setTimeout(r, ms)) }) {
   const id = pack.id;
   const repo = await gh.get(`/repos/${enc(upstream)}`);
   const base = repo.default_branch || 'main';
@@ -80,6 +81,8 @@ async function publishPack(gh, { login, pack, upstream = UPSTREAM, now = Date.no
     body: [
       `${update ? 'Updates' : 'Adds'} **${pack.name}** (\`${id}\`) v${pack.version} by ${pack.author}.`,
       pack.description ? `\n> ${String(pack.description).slice(0, 300)}` : '',
+      pack.contest ? `\nAn entry for the ${pack.contest} crab contest.` : '',
+      /^For [\w.-]+\/[\w.-]+#\d+$/.test(forLine) ? `\n${forLine}` : '',
       '\nPublished from the Shellby app. I agree to publish this pack under CC BY 4.0.',
     ].join('\n'),
     maintainer_can_modify: true,
