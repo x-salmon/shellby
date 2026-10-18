@@ -37,3 +37,19 @@
 
 .rc-ask-box { max-width: 380px; display: flex; flex-direction: column; gap: 8px; }
 .rc-ask-box #rcAskLede { overflow-wrap: anywhere; white-space: pre-line; }
+
+/* Settings → On your phone (settings-pocket.js): its steps reuse the ones above. */
+.pocket-steps { margin-bottom: 10px; }
+.pocket-body { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.pocket-code { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pocket-code code {
+  font: 600 20px/1 var(--font-mono); font-stretch: 90%; letter-spacing: .14em; padding: 8px 12px;
+  background: var(--abyss); border: 1px solid var(--glass); border-radius: var(--r-sm); color: var(--sand);
+}
+.pocket-devices { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pocket-devices:empty { display: none; }
+.pocket-device { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--reef); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.pocket-device-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pocket-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--sand-faint-deco); }
+.pocket-dot.on { background: var(--glass); box-shadow: 0 0 6px var(--glass); }
+.pocket-device .btn.danger { border-color: var(--coral); color: var(--coral); }

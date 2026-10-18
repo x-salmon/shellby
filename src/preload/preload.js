@@ -651,6 +651,7 @@ contextBridge.exposeInMainWorld('shellby', {
   addToStreamDeck: invoke('deck:add'),
   onDeck: on('deck'),
   onDeckPress: on('deck:press'), // { what: 'home' | 'review', tabId? }: a key that needs the panel
+  getPocket: invoke('pocket:get'), setPocket: invoke('pocket:set'), newPocketCode: invoke('pocket:pair'), forgetPocketDevice: invoke('pocket:forget'), testPocketPush: invoke('pocket:test'), onPocket: on('pocket'), // Shellby on your phone, over your tailnet (wiring/pocket.js)
 
   // his mood on the desk lighting
   getRgb: invoke('rgb:get'),

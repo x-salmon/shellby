@@ -84,6 +84,18 @@ export default [
     rules: RULES,
   },
   {
+    // The phone app (pocket/) runs in a phone's browser, not Electron: it keeps
+    // its token in its own storage, follows the hash for its screens and asks
+    // for notifications. Its service worker has a worker's globals instead.
+    files: ['src/renderer/pocket/**/*.js'],
+    ignores: ['src/renderer/pocket/sw.js'],
+    languageOptions: { globals: { ...BROWSER_GLOBALS, localStorage: 'readonly', history: 'readonly', Notification: 'readonly', atob: 'readonly', TextDecoderStream: 'readonly', Buffer: 'readonly', module: 'writable' } },
+  },
+  {
+    files: ['src/renderer/pocket/sw.js'],
+    languageOptions: { globals: { self: 'readonly', caches: 'readonly', fetch: 'readonly', URL: 'readonly', Response: 'readonly', AbortSignal: 'readonly', Promise: 'readonly' } },
+  },
+  {
     // Test files and the e2e drivers evaluate renderer code as strings; the
     // names inside those strings are not theirs to resolve.
     files: ['test/**/*.js', 'scripts/**/*.js'],
