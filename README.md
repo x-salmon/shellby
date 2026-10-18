@@ -354,6 +354,7 @@ Skins, packs, bug reports and PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTIN
 - **First time?** Pick a [good first issue](https://github.com/x-salmon/shellby/labels/good%20first%20issue) or a [pack wish](https://github.com/x-salmon/shellby/labels/pack%20wish).
 - **Made a pack?** Share it in the [community gallery](https://getshellby.com/community/) ([how](docs/ADDONS.md#publishing-to-the-community-gallery)).
 - **Questions or show-and-tell:** [Discussions](https://github.com/x-salmon/shellby/discussions).
+- **The monthly crab contest, community news and credits:** [docs/COMMUNITY.md](docs/COMMUNITY.md). Winning skins ship in Shellby for everyone, and everyone who makes something is on the **Made by** list.
 - **Reviewing security?** Start with the [threat model](docs/THREAT-MODEL.md).
 
 Everyone here follows the [Code of Conduct](CODE_OF_CONDUCT.md).

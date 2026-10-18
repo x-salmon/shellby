@@ -529,6 +529,8 @@ src/main/        Electron main process
                    one-off years, each event's colour for the panel, and Molt Day, his birthday (docs/TIDES.md)
   news.js          the community news feed (pure): checks the gallery's news.json item by item and picks what's current;
                    wiring/news.js fetches it once a day through registry.js and keeps the last good copy (docs/COMMUNITY.md)
+  credits.js       who made Shellby (pure): src/community/credits.json, About → Made by, and what the signed-in GitHub
+                   login is credited for (the contributor trophies); release:cut and contest:ship add to it (docs/COMMUNITY.md)
   today.js         the app's one calendar: captureClock for screenshots, SHELLBY_TODAY for dev and test runs, the real day otherwise
   board.js         the friends' board (pure): you and friends who share their Bugdex, ranked by this month's catches
   gifts/           index.js (finds from digging, pure: rarities, sets, sparkly ones, the shelf); portraits/ holds the big
