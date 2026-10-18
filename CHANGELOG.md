@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.90.0: A crab you paint, and Shellby on your phone
+
+### New
+- **Community news.** Crab contests, their winners and community events now show as one quiet card at the top of the Us page and on About, with ✕ to put it away for good. A winning pack has **Get it**. Shellby reads the gallery's news once a day and asks nothing else; **Settings → Shellby → Community news** turns it off.
+- **Wrapped week.** From January 2nd to 8th, a 🎁 banner on the Us page and Trophies says how many friends have shared their year. Tick **Show my year to friends** on the card and your numbers (never a project) go on your calling card for the week; a new slide then puts you and up to five friends side by side, with a card of its own. Share your Wrapped card that week for the 🎆 Wrapped Week 2026 trim.
+- **Made by.** Settings → About → **Made by** lists everyone who has made Shellby: contest winners, the people behind the gallery's packs, and everyone with a merged pull request, each a link to their GitHub profile.
+- **Trophies for making Shellby.** 🪸 Reef Builder (a pack in the gallery) brings a coral crown, 🔧 Shipwright (a merged pull request) a tiny wrench, 🏆 Contest Champion a golden shell trim, and 🎨 Contestant a paint splat. They go by the GitHub account you're signed in with, so sign in to claim them.
+- **🎂 Molt Day.** Shellby's birthday is September 30th. On the day he says so on the desktop, the Us page says how old he is, and anyone who opens Shellby keeps that year's party hat with his age on it.
+- **Event-limited packs.** A pack item can now turn up only during a tide event, like a Haunting outfit, and stay yours after (`"unlock": { "event": "haunting" }`).
+- **The Crab Painter.** A 🎨 Paint tab on Shellby's screen: start from any crab you have (or a blank one), paint him pixel by pixel, and watch him do every mood and work pose in your colours as you go. Each colour knows the part it moves with, so his claw waves without any JSON. Save him, wear him, or try him on your desk for a minute first. Drafts are kept as you paint.
+- **Share what you paint.** One click sends your crab to the community gallery as a pull request from your GitHub account, and he says **In review** until he's in, then **In the gallery**. The Painter also lists a few open pack wishes to make, and enters the monthly crab contest when one is on.
+- **Paint accessories, effects and tank decor too.** Hats up to 16 × 16 tried on your crab as you paint, sparkles and snow up to 8 × 8, and decor for his tank up to 32 × 32, with up to four pictures to flip between.
+- **Who made each skin.** Settings → Look says who made each one, and your own have **Edit**.
+- **He works the way the command does.** A shell command no longer always gets the wrench: tests, lint and typechecks get a stopwatch held up while he holds his breath, a commit or a push gets an envelope sealed and stamped, installing packages has him hauling a crate that's too big for him, and a build is a hammer. A skill is a little recipe book, and an MCP server's tool is a tin-can phone to his ear.
+- **He talks while Claude writes.** While a reply comes in between tools, he chatters along with his claw going, instead of tapping his chin.
+- **Compacting has a look of its own.** While Claude Code compacts a conversation, he stuffs old pages into his shell and squashes them down to fit.
+- **Not the same hop every time.** A finished task gets a dance, a twirl or a claw pump depending on his temperament, and a miss might get a facepalm, a huff, a slump or a shrug. A long task done gets a big spinning jump, and going green after a few misses in a row gets a slump of relief and then a hop.
+- **Six new little scenes.** He goes fishing (and catches a sock), builds a snowman in winter, reads in bed at night, flies a kite, tries on a shell that's far too roomy, and drums along when music's playing.
+- **More life on the move.** A hard landing is a splat, flat out with his legs splayed, before the dizzy stars. When he's in a hurry (fetch, a dash home) he leans into a run, and he tiptoes when he walks past your cursor.
+- **Shellby on your phone.** Your conversations on your phone, live, served by your own PC over your Tailscale network: what he's doing, what's waiting on you and what's ready to review, with the real crab at the top. Answer Allow or Deny from the beach, start a task in any project (always in Ask first, in its own copy), read a turn's diff file by file, Undo it or Bring it home, and see what's queued for the reset. Notifications come straight from your PC, encrypted, and a tap opens the right card. Add it to your Home Screen and pair it with a code from **Settings → Connections → On your phone**. No account of ours, no server in the middle, and only your own Tailscale login gets in. [How it works](docs/PHONE.md)
+- **A card for every big moment.** A trophy, a level (every fifth, and every new rank), a molt, a new sticker or one going up a tier, a rare or legendary catch, and a streak of 7, 30, 100 or 365 days each get a card of their own. The 📸 on the celebration makes that card, not the crab card: the trophy big with its reward, him with his level's ribbon, the shell he left on the shelf beside his new one, and so on, with the numbers that go with it.
+- **Every trophy keeps its card.** Done trophies on the Trophies page have a 📸 too.
+- **Wide or Square.** The share sheet has a size switch above the picture: Wide (1200×630) for X, Bluesky and LinkedIn, and Square (1080×1080) for Discord, Mastodon and Instagram. Every moment card, the crab card, the week and Wrapped come in both, and Shellby remembers which you picked for each kind of card.
+- **The picture reaches the post.** After **Post on X** or **Post on Bluesky** opens your browser, the sheet says your card is on the clipboard and to press Ctrl+V in the post (and copies it again first if the first copy didn't take). **Copy alt text** copies the card's description, for the image description X and Bluesky ask for.
+- **Post to Discord.** If a Discord webhook is switched on for phone notifications, the share sheet has **Post to Discord**: the card goes to that channel as a picture, with its words and never a ping. It asks once per webhook before the first post.
+- **Moments that move.** A sparkly find and a molt have **🎞 Clip** beside the size switch: a four-second video of the card, the sparkly art turning over and a glint sweeping across it, or the old shell sliding off and the new one dropping on. It's saved beside the card as an MP4 (X, Bluesky and Discord all take it). Video can't go on the clipboard, so the sheet puts **Show file** first; with motion turned down, the preview waits on its first frame for you to press play.
+- **Share buttons on celebrations**, in Settings → Shellby. Off hides every 📸 on celebrations; a trophy's card stays on the Trophies page. Nothing new pops up to ask you to share: the 📸 is only ever on the moment itself.
+- **Posts that say what happened.** Each card's post names the moment in his voice ("Shellby just molted into the Barnacle Shell 🦀"), then #Shellby and the link.
+
+### Fixed
+- **Moves that were cut short stopped playing on underneath.** When a move was interrupted (a task ending mid-scuttle, an error in the middle of a jump), it used to keep running under whatever came next, so he could keep bobbing after work and wobble through an "oof". Now each move stops when the next one starts. That also saves the frames the leftovers used to cost.
+- **The week card keeps hidden projects hidden.** Its Top project row could name a project you'd kept off your cards in the Sticker Book. It now skips to the next project, or says "Nothing yet".
+- **The Tank has its 📸.** The "Share the tank" quest pointed at a Share button the Tank didn't have. It's in the Tank's header now, and makes the crab card with his tank in it.
+- **Every card is named after what it shows.** The crab card and the Wrapped card were saved as `shellby-card-….png`; they're `shellby-crab-…` and `shellby-wrapped-…` now, like the rest.
+
+### Changed
+- **The Wardrobe's preview moves like the real thing.** Its moods now play the desktop crab's own animations instead of simplified copies.
+
 ## 0.89.0: Tools first, and your tabs come back
 
 ### Fixed
