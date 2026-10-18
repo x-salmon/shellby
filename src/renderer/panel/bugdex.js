@@ -169,10 +169,10 @@
       sub: top.join('   '), accent: '#ffc15e', glints: me?.place === 1,
       art: dex().species.find(s => s.id === dex().favourite && s.state === 'caught') || null,
       stats: [['bugs this month', me?.value ?? 0], ['crabs on the board', rows.length]],
+      say: { month: b.month, place: me?.place || 0, of: rows.length, bugs: me?.value || 0 },
     }, {
       title: `The friends' board, ${b.month}`,
       alt: `The friends' board for ${b.month}: ${top.join(', ')}`,
-      post: `🦀 ${b.month} on the friends' board: ${me ? `${SB.ordinal(me.place)} of ${rows.length}` : ''}, with ${plural(me?.value || 0, 'bug')} Claude fixed and my Shellby jarred.`,
     });
   }
 
@@ -465,6 +465,7 @@
         eyebrow: c.rarity === 'legendary' ? 'Legendary catch' : 'Rare catch', icon: '🫙', title: c.name,
         text: 'New to the Bugdex. Claude fixed it, so it’s in a jar.',
         action: { label: 'See it in the Bugdex', run: open },
+        card: { kind: 'catch', m: c },
       });
       return;
     }

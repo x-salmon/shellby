@@ -56,6 +56,7 @@ function makeReward({ d, view, names, openPage }) {
     const v = view().species.find(x => x.id === e.species);
     const card = {
       id: sp.id, name: v?.name || sp.name, rarity: sp.rarity, isNew: r.isNew, forms: r.forms, evolved: r.evolved, stage: r.stage, completed: habitats.map(h => h.name), pixels: v?.pixels || sp.pixels, palette: v?.palette || sp.palette,
+      habitat: HABITATS.find(h => h.id === sp.habitat)?.name || null, // where it lives, for its card
       badge: r.badge ? HABITATS.find(h => h.id === r.badge).badge.name : null, league: r.league, fame: r.fame,
       battle: e.source ? lifecycle.encId(e) : null, // the battle screen plays the catch out itself
     };

@@ -412,11 +412,13 @@
     SB.toast(r?.ok ? 'Copied. Paste it anywhere.' : "Couldn't copy the card.");
   });
   $('cardReveal').addEventListener('click', () => api.revealCard());
+  // A moment card's post already ends with the link (moment-card.js postFor); the others get it here.
+  const withLink = text => (text.includes(REPO) ? text : `${text} ${REPO}`);
   $('cardX').addEventListener('click', () => {
-    if (last) api.openExternal(`https://x.com/intent/post?text=${encodeURIComponent(last.post)}&url=${encodeURIComponent(REPO)}`);
+    if (last) api.openExternal(`https://x.com/intent/post?text=${encodeURIComponent(withLink(last.post))}`);
   });
   $('cardBsky').addEventListener('click', () => {
-    if (last) api.openExternal(`https://bsky.app/intent/compose?text=${encodeURIComponent(`${last.post} ${REPO}`)}`);
+    if (last) api.openExternal(`https://bsky.app/intent/compose?text=${encodeURIComponent(withLink(last.post))}`);
   });
 
   SB.crabCard = { render, share };

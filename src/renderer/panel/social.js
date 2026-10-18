@@ -129,9 +129,9 @@
       eyebrow: '🥚 An egg, for you', title: 'Hatch my crab’s egg', sub: e.code, art: { pixels: e.pixels, palette: e.palette },
       accent: '#ffb3c6', glints: true, badge: 'Get Shellby, then paste the code',
       stats: [['to hatch it', 'paste the code'], ['where', 'his Us page']],
+      say: { code: e.code },
     }, {
       title: 'Your egg card', alt: `A crab egg with its code, ${e.code}`,
-      post: `🥚 My Shellby laid an egg. First to hatch it gets a baby crab: install Shellby and paste ${e.code}`,
     });
   }
 
@@ -204,10 +204,14 @@
       eyebrow: b.by ? 'Your egg hatched!' : 'Hatched!', icon: '🐣', title: b.name,
       text: b.by ? `@${b.by} hatched it. You’re friends now, and ${b.name} is in your clutch.` : `From @${b.from}’s egg.${b.gift ? ` They sent a ${b.gift.toLowerCase()} along with it.` : ''} You’re friends now.`,
       rewards: [{ name: b.name, pixels: b.pixels, palette: b.palette, kind: 'baby' }],
-      action: { label: '📸 Share', run: () => SB.momentCard.share('egg', {
-        eyebrow: '🐣 Hatched', title: b.name, sub: b.by ? `Hatched by @${b.by}` : `From @${b.from}’s egg`, art: { pixels: b.pixels, palette: b.palette },
-        accent: '#ffb3c6', glints: true, stats: [],
-      }, { title: `${b.name} hatched`, alt: `${b.name}, a baby crab`, post: `🐣 ${b.name} hatched! ${b.by ? `@${b.by} hatched my Shellby’s egg.` : `I hatched @${b.from}’s Shellby egg.`}` }) },
+      card: {
+        kind: 'egg',
+        m: {
+          eyebrow: '🐣 Hatched', title: b.name, sub: b.by ? `Hatched by @${b.by}` : `From @${b.from}’s egg`, art: { pixels: b.pixels, palette: b.palette },
+          accent: '#ffb3c6', glints: true, stats: [], say: { baby: b.name, by: b.by, from: b.from },
+        },
+        opts: { title: `${b.name} hatched`, alt: `${b.name}, a baby crab` },
+      },
     });
   });
 

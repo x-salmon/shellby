@@ -176,6 +176,8 @@
 
   api.onXp(apply);
   api.onXpBounty(b => SB.toast(`🎯 ${b.id === 'all' ? "All of today's bounties" : `Bounty done: ${b.text}`} · +${b.xp} XP`, { ms: 4000 }));
+  // A level worth a card of its own: every fifth, and every one that starts a new rank.
+  const levelCard = e => (!e.marks && (e.level % 5 === 0 || (e.unlocks || []).some(u => u.kind === 'rank')) ? { kind: 'level', m: e } : undefined);
   // A milestone level (levels.js milestone: 20, 30 … 99) gets the full ceremony (levels-ui.js).
   api.onLevelUp(e => (e.milestone && e.milestone.tier !== 'minor' && SB.levelCeremony ? SB.levelCeremony(e) : SB.celebrate(e.marks && !e.shell ? {
     eyebrow: 'New mark', icon: '★', title: `★${e.marks} · ${e.title}`,
@@ -185,6 +187,7 @@
     text: [e.shell ? `He outgrew his shell and moved into a ${e.shell.name}. Swap homes any time in Outfits → Homes.` : e.text, e.unlocked].filter(Boolean).join(' '),
     rewards: e.shell ? [e.shell] : [],
     action: e.canMolt && SB.openMolt ? { label: '🐚 Molt…', run: () => SB.openMolt() } : undefined,
+    card: levelCard(e),
   })));
   api.onXpClass(c => SB.celebrate({
     eyebrow: 'New class', icon: c.icon, title: c.name,

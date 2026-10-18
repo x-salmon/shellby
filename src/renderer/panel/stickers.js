@@ -320,12 +320,18 @@
         : `${p.shells.length ? 'You shipped it, so he slapped its sticker on his shell.' : 'You shipped it. Its sticker is in the Sticker Book.'} He’s building its castle on the beach too, and it grows as you ship it again.`,
       rewards: [{ name: p.name, pixels: p.art.pixels, palette: p.art.palette, kind: 'sticker' }],
       action: { label: 'Open Sticker Book', run: () => { selected = p.id; SB.setView('stickers'); } },
+      // Your own sticker's card (a friend's swap is theirs to show off).
+      card: p.from ? undefined : { kind: 'sticker', m: { id: p.id } },
     });
   });
   api.onStickerNews(n => {
     if (!n) return;
     const text = n.tier ? `${n.name} went ${n.tier.name.toLowerCase()} ✨ and its castle on the beach grew` : n.pressed ? `${n.name} shipped again: its sticker is pressed back down` : `${n.marks.map(m => `${m.icon} ${m.name}`).join(', ')} on ${n.name}`;
-    SB.toast(text, { action: 'Sticker Book', ms: 5000, onAction: () => { selected = n.id; SB.setView('stickers'); } });
+    // A tier up is a sticker card's moment too, unless it's one you keep off your cards.
+    const card = n.tier && !projectOf(n.id)?.hidden && SB.momentCard;
+    SB.toast(text, card
+      ? { action: '📸 Share', ms: 6000, onAction: () => SB.momentCard.share('sticker', { id: n.id }) }
+      : { action: 'Sticker Book', ms: 5000, onAction: () => { selected = n.id; SB.setView('stickers'); } });
   });
 
   // Fresh on the way in: a new skin or a molt since last time moves the spots.

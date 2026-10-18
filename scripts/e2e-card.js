@@ -22,12 +22,30 @@ const MOMENTS = {
   medal: { eyebrow: '🎃 Tide event medal', title: 'The Haunting 2026', sub: 'Every goal, while it was on.', art: ART, accent: '#ffc15e', glints: true, badge: 'Only this year’s, for good', stats: [['goals', '4/4'], ['days to spare', '3']] },
   board: { eyebrow: "🫙 The friends' board · October", title: 'Top crab!', sub: '🥇 me: 12   🥈 @octocat: 9', art: ART, accent: '#ffc15e', stats: [['bugs this month', 12], ['crabs on the board', 2]] },
   egg: { eyebrow: '🥚 An egg, for you', title: 'Hatch my crab’s egg', sub: 'EGG-1234-ABCD', art: ART, accent: '#ffb3c6', glints: true, badge: 'Get Shellby, then paste the code', stats: [['to hatch it', 'paste the code']] },
+  // The rest are built from what their celebration hands over (moment-card.js FROM).
+  trophy: { achievement: { id: 'show-off', name: 'Show-Off', icon: '📸', description: 'Share your crab card' }, rewards: [{ name: 'Pearls', ...ART }] },
+  level: { level: 25, title: 'Reef Warden', rank: { name: 'Coral', color: '#ff7a5c' } },
+  molt: { was: { name: 'Snail Shell', ...ART }, now: { name: 'Barnacle Shell', ...ART }, count: 1, badge: 'I' },
+  catch: { id: 'nullfish', name: 'Nullfish', rarity: 'legendary', pixels: ART.pixels, palette: ART.palette, habitat: 'The Shallows' },
+  streak: { days: 30 },
+};
+// Moments that need the page's own data: JS evaluated there.
+const PAGE_MOMENTS = {
+  // The sticker seeded in the profile (below).
+  sticker: "({ id: 'abcdefabcdef' })",
+  // The Painter's call (crab-painter.md): the skin he's in now.
+  skin: "({ skin: SB.state.skin, name: 'Classic', author: 'Shellby' })",
 };
 // PNG width and height from its IHDR chunk.
 const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
 
 (async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
+  // One sticker, for its card: a project shipped six times, so a vinyl one.
+  const shipped = Date.now() - 86400000;
+  fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({
+    stickers: { card: 'names', projects: { abcdefabcdef: { name: 'tide-pool', firstShipAt: shipped, lastShipAt: shipped, ships: 6 } } },
+  }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47961' } });
   let fails = 0;
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
@@ -93,10 +111,10 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     const kinds = await ev('SB.momentCard.MOMENT_KINDS.slice()');
     check(Array.isArray(kinds) && kinds.length > 0, `moment-card.js lists its kinds (${(kinds || []).join(', ')})`);
     for (const kind of kinds || []) {
-      const m = MOMENTS[kind];
+      const m = PAGE_MOMENTS[kind] || (MOMENTS[kind] && JSON.stringify(MOMENTS[kind]));
       if (!m) { check(false, `a ${kind} moment to draw (add one to MOMENTS)`); continue; }
       const before = savedAs(kind).length;
-      await ev(`SB.momentCard.share(${JSON.stringify(kind)}, ${JSON.stringify(m)}, { title: 'A ${kind} card', alt: 'A ${kind} card', post: 'A ${kind} card' }).then(() => true)`);
+      await ev(`SB.momentCard.share(${JSON.stringify(kind)}, ${m}).then(() => true)`);
       const files = savedAs(kind);
       const size = files.length > before ? ihdr(fs.readFileSync(path.join(dir, files[files.length - 1]))) : null;
       check(size?.w === 1200 && size?.h === 630, `the ${kind} card is a 1200x630 PNG (${size ? `${size.w}x${size.h}` : 'not saved'})`);

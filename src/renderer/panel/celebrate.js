@@ -1,12 +1,16 @@
 /* Shellby panel — the trophy unlock card. A queue of celebrations, shown one at
    a time above the composer: medallion, trophy name and description, pixel
    previews of the rewards, and "Wear it" / "Share" actions. Closing a card
-   yourself (not letting it time out) counts as having seen its rewards. */
+   yourself (not letting it time out) counts as having seen its rewards.
+   A celebration that brings its moment (card: { kind, m, opts }) shares that
+   moment's own card (moment-card.js); one without shares the crab card. */
 'use strict';
 (function () {
   const { h, api } = SB;
   const SHOW_MS = 9000;
+  const RECENT_MS = 2 * 60 * 1000;
   const queue = [];
+  const recent = []; // [{ c, at }]: the last few shown, so two paths to one moment show it once
   let current = null;
 
   const host = h('div', { class: 'celebrate-host', 'aria-live': 'polite' });
@@ -38,13 +42,19 @@
         h('div', { class: 'cel-actions' },
           wearable.length ? h('button', { class: 'btn primary slim-btn', type: 'button', onclick: () => wear(wearable) }, wearable.length > 1 ? 'Wear them' : 'Wear it') : null,
           c.action ? h('button', { class: 'btn primary slim-btn', type: 'button', onclick: () => { close(); c.action.run(); } }, c.action.label) : null,
-          h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => { close(); SB.crabCard?.share(); } }, '📸 Share'),
+          h('button', { class: 'btn ghost slim-btn cel-share', type: 'button', onclick: () => { close(); shareOf(c); } }, '📸 Share'),
           h('button', { class: 'btn ghost slim-btn cel-all', type: 'button', onclick: dismissAll }))),
       h('button', { class: 'cel-close icon-btn', type: 'button', 'aria-label': 'Dismiss', onclick: close },
         SB.icon('M4.5 4.5l7 7M11.5 4.5l-7 7', { width: 1.5 })),
       h('div', { class: 'cel-timer', 'aria-hidden': 'true' }));
     el.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
     return el;
+  }
+
+  // Its moment's card, or the crab card.
+  function shareOf(c) {
+    if (c.card?.kind && SB.momentCard) return SB.momentCard.share(c.card.kind, c.card.m, c.card.opts);
+    return SB.crabCard?.share();
   }
 
   // Rewards are wardrobe items (key) or homes (id).
@@ -70,6 +80,8 @@
   function show() {
     if (current || !queue.length) return;
     const c = queue.shift();
+    recent.push({ c, at: Date.now() });
+    if (recent.length > 20) recent.shift();
     const el = card(c);
     el.style.setProperty('--show-ms', `${SHOW_MS}ms`);
     host.replaceChildren(el);
@@ -105,8 +117,10 @@
     setTimeout(() => { el.remove(); if (!queue.length) document.body.classList.remove('celebrating'); show(); }, 220);
   }
 
-  /** c: { icon, title, text, rewards: [public items], eyebrow?, action?: { label, run } } */
+  /** c: { icon, title, text, rewards: [public items], eyebrow?, action?: { label, run }, card?: { kind, m, opts } } */
   SB.celebrate = c => { queue.push(c); show(); syncMore(); };
+  // Is a celebration like this one showing, waiting, or shown in the last couple of minutes?
+  SB.celebrated = pred => (current && pred(current.c)) || queue.some(pred) || recent.some(r => Date.now() - r.at < RECENT_MS && pred(r.c));
   // Drop any showing or queued cards at once (used by the scripted screenshots).
   SB.clearCelebrations = () => {
     queue.length = 0;

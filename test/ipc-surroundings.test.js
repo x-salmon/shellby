@@ -11,7 +11,7 @@ const { installFakeElectron, createFakeIpc, fakeConfig, recorder, isStr } = requ
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-surroundings-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
 const electron = installFakeElectron({ userData: path.join(root, 'userData'), pictures: path.join(root, 'Pictures') });
-const { registerSurroundingsIpc, MAX_COPY_CHARS } = require('../src/main/ipc/surroundings');
+const { registerSurroundingsIpc, MAX_COPY_CHARS, CARD_KINDS } = require('../src/main/ipc/surroundings');
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const CARD_MAX_BYTES = 64;
@@ -139,11 +139,19 @@ test('card:save names an unknown kind "card" rather than putting the renderer\'s
 test('card:save names each card after its kind, and the tank card finishes "Share the tank"', async () => {
   const { ipc, rec } = setup();
 
-  for (const kind of ['crab', 'tank', 'week', 'wrapped', 'beach', 'shiny', 'medal', 'board', 'egg']) {
+  for (const kind of CARD_KINDS) {
     const r = await ipc.invoke('card:save', png(), kind);
     assert.match(path.basename(r.name), new RegExp(`^shellby-${kind}-\\d{8}-\\d{6}\\.png$`), kind);
   }
   assert.deepEqual(rec.of('questDone'), [['tank-share']]);
+});
+
+test('every moment card has a file name of its own (moment-card.js MOMENT_KINDS)', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'panel', 'moment-card.js'), 'utf8');
+  const moments = JSON.parse(/const MOMENT_KINDS = Object\.freeze\((\[[^\]]+\])\)/.exec(src)[1].replace(/'/g, '"'));
+  assert.ok(moments.length > 4);
+  for (const kind of moments) assert.ok(CARD_KINDS.includes(kind), kind);
+  for (const kind of ['crab', 'tank', 'week', 'wrapped', 'beach']) assert.ok(CARD_KINDS.includes(kind), kind);
 });
 
 test('card:save still reports the save when the clipboard is busy', async () => {
