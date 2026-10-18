@@ -136,8 +136,8 @@
           run: () => confirmSheet({
             title: 'Bring it home?', text: `Merges ${t.copy.branch} into ${t.copy.base}. Never a force-push: your checkout keeps its history.`, yes: 'Bring it home',
             then: async () => {
-              const r = await act('home', { tabId });
-              if (r.ok) { celebrate(t.title); toast(r.merged ? `Home in ${r.base || t.copy.base}${r.commits ? `, ${L.plural(r.commits, 'commit')}` : ''}.` : 'Nothing new to bring home.', { tone: 'ok', ms: 4200 }); } else if (r.red) confirmSheet({ title: 'His checks are red', text: `${r.error} Bring it home anyway?`, yes: 'Bring it home anyway', danger: true, then: () => act('home', { tabId, force: true }, { okText: 'Brought home.' }) });
+              const r = await act('home', { tabId }, { timeoutMs: 600000 });
+              if (r.ok) { celebrate(t.title); toast(r.merged ? `Home in ${r.base || t.copy.base}${r.commits ? `, ${L.plural(r.commits, 'commit')}` : ''}.` : 'Nothing new to bring home.', { tone: 'ok', ms: 4200 }); } else if (r.red) confirmSheet({ title: 'His checks are red', text: `${r.error} Bring it home anyway?`, yes: 'Bring it home anyway', danger: true, then: () => act('home', { tabId, force: true }, { okText: 'Brought home.', timeoutMs: 600000 }) });
             },
           }),
         }) : actButton({ label: 'Looks good', cls: 'go', iconName: 'check', run: () => act('reviewed', { tabId, after: t.ready.after }, { okText: 'Marked as looked at.' }) });

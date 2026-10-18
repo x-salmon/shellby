@@ -92,6 +92,13 @@ function parseServe(raw, { port, dnsName }) {
   // never one of ours, so it counts as exposed, like Funnel.
   const tcp = j.TCP && typeof j.TCP === 'object' ? j.TCP : {};
   for (const cfg of Object.values(tcp)) if (cfg && ours(cfg.TCPForward, port)) out.funnel = true;
+  // A `tailscale serve` or `funnel` left running in a terminal keeps its own config per session.
+  const fg = j.Foreground && typeof j.Foreground === 'object' ? Object.values(j.Foreground) : [];
+  for (const cfg of fg) {
+    const inner = parseServe(cfg, { port, dnsName });
+    if (inner.funnel || inner.httpsPort) out.funnel = out.funnel || inner.funnel || !!(cfg?.AllowFunnel && Object.values(cfg.AllowFunnel).some(Boolean));
+    if (inner.httpsPort && !out.httpsPort) { out.httpsPort = inner.httpsPort; out.url = inner.url; }
+  }
   return out;
 }
 

@@ -46,6 +46,11 @@ test('serve: Funnel on our address, or a raw TCP forward to us, counts as expose
   assert.equal(ts.parseServe({ TCP: { 5000: { TCPForward: '127.0.0.1:47916' } } }, { port: 47916 }).funnel, true);
 });
 
+test('serve: a serve or Funnel left running in a terminal is seen too', () => {
+  const fg = { Foreground: { abc: { Web: { 'desk-pc.tail4e2b.ts.net:443': { Handlers: { '/': { Proxy: 'http://127.0.0.1:47916' } } } }, AllowFunnel: { 'desk-pc.tail4e2b.ts.net:443': true } } } };
+  assert.equal(ts.parseServe(fg, { port: 47916, dnsName: 'desk-pc.tail4e2b.ts.net' }).funnel, true);
+});
+
 test('serve: 443 taken by something else means another port is asked for', () => {
   const serve = { Web: { 'desk-pc.tail4e2b.ts.net:443': { Handlers: { '/': { Proxy: 'http://127.0.0.1:3000' } } } } };
   const s = ts.parseServe(serve, { port: 47916, dnsName: 'desk-pc.tail4e2b.ts.net' });

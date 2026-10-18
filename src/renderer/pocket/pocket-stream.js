@@ -39,7 +39,8 @@
     return data && typeof data === 'object' ? data : { ok: false, error: `Your PC said ${res.status}.` };
   }
 
-  const post = (name, body = {}) => call('POST', name, body);
+  // timeoutMs: starting a task makes a copy of the repo, and Bring it home can run the tests first.
+  const post = (name, body = {}, opts) => call('POST', name, body, opts);
   const get = (name, query = {}) => call('GET', `${name}?${new URLSearchParams(query)}`);
 
   /**
@@ -70,6 +71,8 @@
       const mine = new AbortController();
       ctrl = mine;
       const q = tab ? `?tab=${encodeURIComponent(tab)}` : '';
+      // From now, the watchdog counts: a PC asleep mid-handshake never answers at all.
+      lastByte = Date.now();
       let res;
       try {
         res = await fetch(`${API}/events${q}`, { headers: { Authorization: `Bearer ${token()}`, Accept: 'text/event-stream' }, cache: 'no-store', credentials: 'omit', signal: mine.signal });
@@ -105,7 +108,7 @@
     // A connection a sleeping phone left half-open never says it's gone: if no
     // ping has come for a while, it's dead, and a new one starts.
     const watchdog = setInterval(() => {
-      if (alive && Date.now() - lastByte > STALE_MS) { setLive(false); open(); }
+      if (!stopped && ctrl && Date.now() - lastByte > STALE_MS) { setLive(false); attempt = 0; open(); }
     }, 5000);
 
     const now = () => { attempt = 0; open(); };

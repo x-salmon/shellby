@@ -108,9 +108,12 @@ function wirePocket(d) {
 
   // ---- Tailscale
 
-  async function refreshTailscale() {
-    if (checking) return checking;
-    checking = (async () => {
+  // fresh: a look that starts now, after any already on its way (which may have
+  // begun before serve was turned on or off).
+  async function refreshTailscale({ fresh = false } = {}) {
+    if (checking && !fresh) return checking;
+    const before = checking || Promise.resolve();
+    const mine = before.catch(() => {}).then(async () => {
       ts = await tailscale.status();
       const port = d.pocket?.port || DEFAULT_PORT;
       serve = ts.state === 'running' && ts.dnsName ? await tailscale.serveStatus({ port, dnsName: ts.dnsName }) : { httpsPort: 0, url: '', funnel: false, taken: [] };
@@ -121,8 +124,9 @@ function wirePocket(d) {
         d.log.warn('pocket: funnel is on for our address, stopped');
       }
       return ts;
-    })().finally(() => { checking = null; });
-    return checking;
+    }).finally(() => { if (checking === mine) checking = null; });
+    checking = mine;
+    return mine;
   }
 
   const place = () => ({ dnsName: ts.dnsName || settings().dnsName, httpsPort: serve.httpsPort || settings().servedPort || 443 });
@@ -278,15 +282,20 @@ function wirePocket(d) {
   const no = error => ({ ok: false, error });
   const str = (v, n = 200) => (typeof v === 'string' && v.length > 0 && v.length <= n ? v : null);
 
-  const mine = new Set(); // tabs the phone started: they count towards "3 at once"
+  // "3 at once" counts every task a phone started, from this app or from
+  // Telegram or ntfy, working or waiting on you, plus any on their way to starting.
+  let starting = 0;
   function openCount() {
-    for (const id of mine) {
-      const tab = d.manager?.tabs.get(id);
-      if (!tab || (!d.manager.isBusy(id) && !tab.session.pending.size)) mine.delete(id);
+    let n = starting;
+    for (const [id, tab] of d.manager?.tabs || []) {
+      if ((tab.fromPocket || tab.fromPhone) && (d.manager.isBusy(id) || tab.session.pending.size)) n++;
     }
-    return mine.size;
+    return n;
   }
   let starts = [];
+  // A task the phone sent again (its answer was slow, so it tried once more) is the same task.
+  const sent = new Map(); // key -> the promise of its answer
+  const KEY = /^[A-Za-z0-9_-]{8,64}$/;
 
   async function onAction(device, name, body) {
     if (!settings().enabled) return no('Shellby on your phone is off.');
@@ -315,7 +324,18 @@ function wirePocket(d) {
     return d.answerPermission(tabId, requestId, decision, { via: 'pocket' }) ? ok() : no('That was already answered.');
   }
 
-  async function task({ project, text }) {
+  function task(body) {
+    const key = typeof body?.key === 'string' && KEY.test(body.key) ? body.key : null;
+    if (key && sent.has(key)) return sent.get(key);
+    const answer = startTask(body);
+    if (key) {
+      sent.set(key, answer);
+      while (sent.size > 50) sent.delete(sent.keys().next().value);
+    }
+    return answer;
+  }
+
+  async function startTask({ project, text }) {
     const prompt = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!prompt) return no('Say what you want done first.');
     if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
@@ -336,10 +356,15 @@ function wirePocket(d) {
       return ok({ held: true, atText: held.atText });
     }
     const title = pt.titleFor(prompt);
-    let r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: pt.MODE });
-    if (!r.ok && r.noCopy) r = d.startTask(prompt, title, { mode: pt.MODE, cwd: target.key });
+    // Its place is kept while the copy is made, so two at once can't both slip under the cap.
+    starting++;
+    let r;
+    try {
+      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: pt.MODE });
+      if (!r.ok && r.noCopy) r = d.startTask(prompt, title, { mode: pt.MODE, cwd: target.key });
+      if (r.ok) adopt(r.tabId);
+    } finally { starting--; }
     if (!r.ok) return no(r.error || "Couldn't start it.");
-    adopt(r.tabId);
     d.log.info('pocket: started a task in', target.name);
     pushView();
     return ok({ tabId: r.tabId });
@@ -348,7 +373,6 @@ function wirePocket(d) {
   function adopt(tabId) {
     const tab = d.manager.tabs.get(tabId);
     if (tab) tab.fromPocket = true;
-    mine.add(tabId);
     d.manager.note(tabId, { kind: 'phone' });
     d.history.update(tabId, { fromPhone: true });
   }
@@ -357,13 +381,13 @@ function wirePocket(d) {
     const tab = str(tabId) && d.manager.tabs.get(tabId);
     if (!tab) return no('That conversation has closed.');
     if (!(tab.fromPocket || tab.fromPhone)) return no('Reply to that one at the desk: only conversations your phone started take replies from it.');
+    if (tab.inTerminal) return no("It's in a terminal on your PC now. Reply there.");
     const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!said) return no('Type something first.');
     if (/^[/!]/.test(said)) return no('Commands that start with / or ! only run at the desk.');
     if (d.manager.isBusy(tabId)) return no("He's still on it. Wait for this turn to end, or stop it.");
     const r = d.sendToTab(tabId, said, []);
     if (!r.ok) return no(r.error);
-    mine.add(tabId);
     // The desk's panel draws a message it didn't send itself from this.
     d.send(d.tabWindow?.(tabId) || d.panel, 'tab:sent', { tabId, item: r.item });
     lastTurn.set(tabId, r.turnId);
@@ -486,11 +510,12 @@ function wirePocket(d) {
       if (built.error) { d.log.info(`pocket push: ${built.error}`); continue; }
       push.sendPush(built).then(r => {
         if (r.gone) {
-          // The phone dropped it (notifications turned off, app removed): forget it, quietly.
-          saveDevices(devices().map(x => (x.id === dv.id ? { ...x, push: null } : x)));
+          // The phone dropped it (notifications turned off, app removed): forget it, quietly,
+          // unless it subscribed again while this was on its way.
+          saveDevices(devices().map(x => (x.id === dv.id && x.push?.endpoint === dv.push.endpoint ? { ...x, push: null } : x)));
           d.send(d.panel, 'pocket', pocketViewNow());
         } else if (!r.ok) d.log.info(`pocket push: ${r.error || r.status}`);
-      });
+      }).catch(err => d.log.info(`pocket push: ${err.message}`));
     }
     return true;
   }
@@ -521,6 +546,7 @@ function wirePocket(d) {
 
   async function start() {
     problem = null;
+    vapidKeys(); // the phone needs the key to turn notifications on, after a restart too
     await listen();
     if (d.pocket.status !== 'listening') return;
     // Our port behind Tailscale's https, unless it already is.
@@ -534,7 +560,7 @@ function wirePocket(d) {
         problem = { text: `Tailscale didn't put Shellby on your tailnet: ${r.error}`, link: r.link || null, linkText: r.link ? 'Turn on Serve' : null };
         d.log.warn('pocket: serve failed', r.error);
       } else save({ servedPort: httpsPort });
-      await refreshTailscale();
+      await refreshTailscale({ fresh: true });
     }
     if (serve.funnel) {
       d.pocket.stop();
@@ -557,14 +583,23 @@ function wirePocket(d) {
     clearInterval(ticker);
     watcher = ticker = null;
     d.pocket?.stop();
+    await takeServeBack();
+  }
+
+  // Only what Shellby asked Tailscale for itself, and only while it still points
+  // at us. When Tailscale can't be asked (stopped, signed out), servedPort is
+  // kept, and the next start of Shellby takes it back.
+  async function takeServeBack() {
     const s = settings();
-    // Only what Shellby asked for itself, and only while it still points at us.
-    if (s.servedPort && serve.httpsPort === s.servedPort) {
+    if (!s.servedPort) return;
+    await refreshTailscale({ fresh: true }).catch(() => {});
+    if (ts.state !== 'running') { d.log.info('pocket: Tailscale is not running, so serve is taken back later'); return; }
+    if (serve.httpsPort === s.servedPort) {
       const r = await tailscale.serveOff({ httpsPort: s.servedPort });
-      if (!r.ok) d.log.warn('pocket: serve off failed', r.error);
+      if (!r.ok) { d.log.warn('pocket: serve off failed', r.error); return; }
     }
     save({ servedPort: 0 });
-    await refreshTailscale().catch(() => {});
+    await refreshTailscale({ fresh: true }).catch(() => {});
   }
 
   async function setPocket(patch = {}) {
@@ -694,6 +729,9 @@ function wirePocket(d) {
     if (settings().enabled) {
       // Back on after a restart: Tailscale first, so the address and the login are known.
       refreshTailscale().then(() => start()).catch(err => d.log.warn('pocket: could not start', err.message));
+    } else if (settings().servedPort) {
+      // Turned off while Tailscale couldn't be asked: take the serve back now.
+      takeServeBack().catch(err => d.log.warn('pocket: could not take serve back', err.message));
     }
   }
 

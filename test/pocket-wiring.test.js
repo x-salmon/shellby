@@ -163,6 +163,21 @@ test('Funnel on our address stops it at once', async () => {
   } finally { stop(w); }
 });
 
+test('turned off while Tailscale is down, the serve is taken back when it can be', async () => {
+  const w = await turnedOn();
+  w.tailscale.state.state = 'stopped';
+  await w.d.setPocket({ enabled: false });
+  assert.equal(w.tailscale.calls.filter(c => c[0] === 'serveOff').length, 0);
+  assert.equal(w.d.config.get('pocket').servedPort, 443, 'kept, to take back later');
+});
+
+test('a conversation sent to a terminal takes no reply from the phone', async () => {
+  const w = await paired({ tabs: [tabOf('t', { fromPocket: true, inTerminal: true })] });
+  try {
+    assert.match((await w.d.pocket.onAction(w.device, 'reply', { tabId: 't', text: 'hi' })).error, /terminal/);
+  } finally { stop(w); }
+});
+
 test('turning it off stops the server and takes back only the serve it made', async () => {
   const w = await turnedOn();
   await w.d.setPocket({ enabled: false });
@@ -244,6 +259,21 @@ test('a task from the phone runs in Ask first, in its own copy, in a project She
     assert.deepEqual(opts, { mode: 'ask' });
     assert.equal(w.d.manager.tabs.get('new1').fromPocket, true);
     assert.deepEqual(w.of('note')[0], ['new1', { kind: 'phone' }]);
+  } finally { stop(w); }
+});
+
+test('a task sent twice with the same key starts once, and Telegram’s phone tasks count towards three at once', async () => {
+  const busy = id => tabOf(id, { fromPhone: true, session: { pending: new Map(), mode: 'ask', cwd: PROJECT, busy: true } });
+  const w = await paired({ tabs: [busy('p1'), busy('p2')] });
+  try {
+    const body = { project: PROJECT, text: 'once only', key: 'abcdefgh12' };
+    const [a, b] = await Promise.all([w.d.pocket.onAction(w.device, 'task', body), w.d.pocket.onAction(w.device, 'task', body)]);
+    assert.deepEqual(a, b);
+    assert.equal(w.of('startTaskInCopy').length, 1);
+    // p1, p2 and the new one: the fourth waits.
+    w.d.manager.tabs.get('new1').session.busy = true;
+    const r = await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: 'one more' });
+    assert.equal(r.ok, false);
   } finally { stop(w); }
 });
 

@@ -96,6 +96,16 @@ test('through Tailscale, only the login it was turned on with gets in, and Funne
   } finally { server.stop(); }
 });
 
+test('a proxied request is a tailnet one, whatever Host it claims', async () => {
+  const { server, port } = await boot();
+  try {
+    // A tagged device through serve: the phone's own Host kept, no login, the proxy's headers added.
+    assert.equal((await request(port, { headers: { 'X-Forwarded-For': '100.64.0.9' } })).status, 403);
+    assert.equal((await request(port, { headers: { 'X-Forwarded-Proto': 'https' } })).status, 403);
+    assert.equal((await request(port, { headers: { 'X-Forwarded-For': '100.64.0.9', 'Tailscale-User-Login': 'me@example.com' } })).status, 200);
+  } finally { server.stop(); }
+});
+
 test('with no owner yet, nothing comes in through Tailscale', async () => {
   const { server, port } = await boot({ ownerLogin: () => '' });
   try {

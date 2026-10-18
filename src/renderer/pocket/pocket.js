@@ -77,8 +77,8 @@
     return b;
   }
 
-  async function act(name, body, { okText = null, failText = null } = {}) {
-    const r = await N.post(name, body);
+  async function act(name, body, { okText = null, failText = null, timeoutMs } = {}) {
+    const r = await N.post(name, body, timeoutMs ? { timeoutMs } : undefined);
     if (r.unpaired) { unpaired('This phone was forgotten on your PC.'); return r; }
     if (r.ok) { if (okText) toast(okText, { tone: 'ok' }); buzz(8); } else toast(r.error || failText || 'That didn’t work.', { tone: 'warn', ms: 4800 });
     return r;
@@ -396,14 +396,18 @@
       })));
       drawChips();
       const lim = S.view?.limits;
+      // One key per task, kept until it's started: sent again after a slow answer, it's the same task.
+      let key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
       const send = actButton({
         label: 'Send him off', cls: 'go big',
         run: async () => {
           const said = text.value.trim();
           if (!said) { text.focus(); toast('Say what you want done first.'); return; }
           if (!picked) { toast('Pick a project first.'); return; }
-          const r = await act('task', { project: picked, text: said });
+          const r = await act('task', { project: picked, text: said, key }, { timeoutMs: 180000 });
+          if (r.offline) { toast('Still waiting for your PC. Send it again: it won’t start twice.', { ms: 5200 }); return; }
           if (!r.ok) return;
+          key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
           N.store.set('shellby.pocket.draft', null);
           close();
           if (r.held) toast(`At your limit, so it waits for the reset and starts at ${r.atText}.`, { ms: 5200 });

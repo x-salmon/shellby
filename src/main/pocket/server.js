@@ -31,7 +31,7 @@ const { EventEmitter } = require('events');
 
 const DEFAULT_PORT = 47916;          // next door to the Stream Deck keys
 const API = '/pocket/v1';
-const MAX_CLIENTS = 12;              // a few phones, each with a stale stream or two while iOS reconnects
+const MAX_CLIENTS = 24;              // a few phones, each with a stale stream or two while iOS reconnects
 const MAX_PER_DEVICE = 4;
 const MAX_BODY = 16 * 1024;          // a task is 4,000 characters at most
 const KEEPALIVE_MS = 15000;          // phones and proxies drop a quiet stream sooner than desktops do
@@ -229,7 +229,12 @@ class PocketServer extends EventEmitter {
     // From the open internet through Funnel: never.
     if (req.headers['tailscale-funnel-request'] != null) return { no: 403 };
     const login = req.headers['tailscale-user-login'];
-    const tailnet = tsHost || login != null;
+    // A proxied request is a tailnet one, whatever Host it claims: Tailscale's
+    // serve keeps the phone's Host as sent and adds the X-Forwarded headers, and
+    // a tagged device gets no login header at all. Only a request straight from
+    // this PC has none of them.
+    const proxied = Object.keys(req.headers).some(h => h.startsWith('x-forwarded-') || h.startsWith('tailscale-') || h === 'forwarded' || h === 'via');
+    const tailnet = tsHost || proxied;
     if (tailnet) {
       const owner = lower(this.ownerLogin?.());
       if (!owner || lower(login) !== owner) return { no: 403 };
