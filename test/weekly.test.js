@@ -170,6 +170,28 @@ test('the top project: most tasks finished, else the busiest one shipped', () =>
   assert.equal(Object.keys(recordWork(null, at(0), 'x'.repeat(90)).days[dayKey(at(0))].work)[0].length, 60);
 });
 
+test('the top project skips one you keep off your cards, then falls back to the next', () => {
+  let s = recordWork(null, at(1), 'shellby');
+  s = recordWork(s, at(1), 'shellby');
+  s = recordWork(s, at(0), 'rack-builder');
+  let st = stickers.recordShip(null, { id: A.id, name: A.name }, 'ship', at(2)).state;
+  st = stickers.recordShip(st, { id: B.id, name: B.name }, 'ship', at(2)).state;
+  const hideA = stickers.normalize(stickers.setHidden(st, A.id, true, at(0)));
+  // shellby had the most tasks, but it's hidden: the next one takes its place.
+  assert.deepEqual(weekSummary(s, FRI, { stickers: stickers.normalize(st) }).topProject, { name: 'shellby', tasks: 2 });
+  assert.deepEqual(weekSummary(s, FRI, { stickers: hideA }).topProject, { name: 'rack-builder', tasks: 1 });
+  // Passed in by name too, for a project with no sticker.
+  assert.deepEqual(weekSummary(s, FRI, { hidden: ['shellby'] }).topProject, { name: 'rack-builder', tasks: 1 });
+  // Every project hidden: nothing, not the hidden one.
+  const hideBoth = stickers.normalize(stickers.setHidden(stickers.setHidden(st, A.id, true, at(0)), B.id, true, at(0)));
+  assert.equal(weekSummary(s, FRI, { stickers: hideBoth }).topProject, null);
+  // No tasks: the busiest shipped one that isn't hidden.
+  let ships = recordDay(null, at(1), 'ship', A);
+  ships = recordDay(ships, at(1), 'ship', B);
+  assert.deepEqual(weekSummary(ships, FRI, { stickers: hideA }).topProject, { name: 'rack-builder', tasks: 0 });
+  assert.equal(weekSummary(ships, FRI, { stickers: hideBoth }).topProject, null);
+});
+
 test('new trophies: each counted once, in the order earned', () => {
   const owl = { id: 'night-owl', name: 'Night Owl', icon: '🦉' };
   let s = recordTrophy(null, at(3), owl);

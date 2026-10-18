@@ -267,17 +267,29 @@ function planOf(s, cur, prev, tasks, usage, now) {
 }
 
 // The repo with the most tasks finished; failing that, the busiest one shipped.
-function topProjectOf(work, shipped) {
-  const [name, tasks] = [...work].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] || [];
+// A project you keep off your cards (hidden: its sticker's id or name) is
+// passed over for the next one, so the card never names it.
+function topProjectOf(work, shipped, hidden = new Set()) {
+  const [name, tasks] = [...work].filter(([n]) => !hidden.has(n))
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] || [];
   if (name) return { name, tasks };
-  return shipped[0] ? { name: shipped[0].name, tasks: 0 } : null;
+  const ship = shipped.find(p => !hidden.has(p.id) && !hidden.has(p.name));
+  return ship ? { name: ship.name, tasks: 0 } : null;
+}
+
+// The projects kept off your cards: each hidden sticker's id and name, plus any passed in.
+function hiddenOf(stickers, extra) {
+  const out = new Set(extra || []);
+  for (const p of Object.values(stickers?.projects || {})) if (p?.hidden) { out.add(p.id); out.add(p.name); }
+  return out;
 }
 
 /**
  * The last seven days (today included) and the seven before, for the card.
  *   streak: { current, longest } (progression/streaks.js); level: levelFor() (progression/xp.js)
+ *   hidden: project names or ids to keep off it, on top of the stickers you've hidden
  */
-function weekSummary(stateIn, now, { xp = null, stickers = null, streak = null, level = null, usage = null } = {}) {
+function weekSummary(stateIn, now, { xp = null, stickers = null, streak = null, level = null, usage = null, hidden = null } = {}) {
   const s = normalizeWeekly(stateIn);
   const today = startOfDay(now);
   const from = addDays(today, -(WEEK - 1)), to = addDays(today, 1);
@@ -307,7 +319,7 @@ function weekSummary(stateIn, now, { xp = null, stickers = null, streak = null, 
     activeDays: days.filter(d => d.xp > 0 || d.shipped > 0).length,
     days,
     shipped,
-    topProject: topProjectOf(cur.work, shipped),
+    topProject: topProjectOf(cur.work, shipped, hiddenOf(stickers, hidden)),
     trophies: cur.trophies,
     counts: {
       projects: shipped.length, ships: ships(cur), deploys: t.deploy, releases: t.release, merges: t.merge,
