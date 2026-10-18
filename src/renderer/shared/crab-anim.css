@@ -1,0 +1,215 @@
+/* How he moves in each mood and work pose: idle, working (the scuttle), each
+   .work-<pose> (src/main/work-pose.js), asking, success and error, sleeping.
+   One set of animations for every crab Shellby draws in full: the desktop crab
+   and the OBS overlay (loaded right before critter.css), and the panel's
+   Painter preview and Wardrobe stage.
+
+   In the crab's window the root is <body> and his parts sit in #sprite with
+   #shadow under him. Anywhere else, an element with .crab-anim plays <body>
+   (it carries the state-* and work-* classes), .crab-sprite plays #sprite and
+   .crab-shadow plays #shadow. :is() and :where() keep every selector's
+   specificity exactly what it was in critter.css, so the crab window's cascade,
+   and so every frame he draws, is unchanged (scripts/e2e-crab-anim.js checks).
+   Keyframe names the panel also uses for something else are crab-*. */
+
+/* Outside his own window: what critter.css gives his parts there, and his pixel size. */
+.crab-anim { --px: 4px; }
+.crab-anim .part { transform-box: fill-box; transform-origin: center; transition: transform .35s cubic-bezier(.3,1.4,.5,1), opacity .3s; }
+.crab-anim .part-eyes { transform-origin: bottom; }
+.crab-anim .part-claw { transform-origin: 0% 50%; }
+
+/* ---------- idle: breathe, blink, a glance about, the odd claw snap ---------- */
+/* Each picture he shows costs a presented frame of a transparent window, all
+   day (shared/framecap.js only moves what changes), so idle is pixel-art
+   frames: the breathe is two (up, down), a blink two, the snap-snap four, and
+   the snap comes round every 18 s. His eyes run on 24 s with the blinks
+   spaced unevenly (one of them double) and a glance each way, so the loop
+   doesn't read as a metronome. About one frame a second in all. */
+.state-idle :is(#sprite, :where(.crab-sprite)) { animation: crab-breathe 4.4s steps(1) infinite; }
+.state-idle .part-eyes { animation: idle-eyes 24s steps(1) infinite; }
+.state-idle .part-stalks { animation: idle-glance 24s steps(1) infinite; }
+.state-idle .part-claw { animation: snap-idle 18s steps(1) infinite; }
+
+/* ---------- working: scuttle in place ----------
+   On the work beat (166 ms, a hair under two framecap ticks), like his tool
+   poses in beats.css: every loop steps on it, so the hop, the legs and the
+   claw land on the same frames and the whole scuttle draws six a second. */
+.state-working :is(#sprite, :where(.crab-sprite)) { animation: crab-hop .664s steps(1) infinite; }
+.state-working .part-legs-a { animation: crab-leg .332s steps(1) infinite; }
+.state-working .part-legs-b { animation: crab-leg .332s steps(1) infinite reverse; }
+.state-working .part-claw { animation: snap .664s steps(1) infinite; }
+.state-working .part-eyes, .state-working .part-stalks { animation: look 1.992s steps(1) infinite; }
+.state-working :is(#shadow, :where(.crab-shadow)) { animation: shadow-hop .664s steps(1) infinite; }
+
+/* ---------- working the way Claude is (src/main/work-pose.js, critter.js "how he works") ----------
+   One class per pose; 'busy' is the scuttle above. Most poses have something
+   in his claw (shared/workposes.js). Every loop steps on the work beat (166 ms,
+   like the scuttle), so a pose draws no more than the scuttle and usually far
+   less (see "The work beat" in docs/DEVELOPMENT.md). What a pose doesn't move
+   holds still. */
+:is(body, :where(.crab-anim))[class*=" work-"] :is(#sprite, :where(.crab-sprite)), :is(body, :where(.crab-anim))[class*=" work-"] [class*="part-legs"], :is(body, :where(.crab-anim))[class*=" work-"] .part-eyes,
+:is(body, :where(.crab-anim))[class*=" work-"] .part-stalks, :is(body, :where(.crab-anim))[class*=" work-"] .part-claw, :is(body, :where(.crab-anim))[class*=" work-"] :is(#shadow, :where(.crab-shadow)) { animation: none; }
+
+/* thinking (between tools): claw to his chin, tap-tap, eyes up and about */
+:is(body, :where(.crab-anim)).work-think :is(#sprite, :where(.crab-sprite)) { animation: crab-breathe 2.324s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-think .part-claw { animation: think-tap 1.66s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-think .part-eyes, :is(body, :where(.crab-anim)).work-think .part-stalks { animation: think-eyes 3.32s steps(1) infinite; }
+@keyframes think-tap {
+  0%, 40%, 60%, 100% { transform: rotate(-40deg) translate(-1px, -2px); }
+  50%, 70% { transform: rotate(-30deg) translate(-1px, -2px); }
+  80% { transform: rotate(-40deg) translate(-1px, -2px); }
+}
+@keyframes think-eyes { 0%, 100% { transform: translateY(-1px); } 45% { transform: translate(1px, -1px); } 75% { transform: translate(-1px, -1px); } }
+
+/* reading: leant in over a scroll, eyes squinting along a line and dropping to
+   the next, and a page turned every few seconds */
+:is(body, :where(.crab-anim)).work-read :is(#sprite, :where(.crab-sprite)) { transform-origin: 50% 100%; transform: rotate(3deg) translateY(1px); }
+:is(body, :where(.crab-anim)).work-read .part-claw { animation: read-claw 3.984s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-read .part-eyes { animation: read-squint 1.992s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-read .part-stalks { animation: read-scan 1.992s steps(1) infinite; }
+@keyframes read-claw {
+  0%, 100% { transform: rotate(-10deg) translateY(-1px); }
+  91.667% { transform: rotate(-26deg) translate(1px, -2px); }
+  95.833% { transform: rotate(-10deg) translateY(-1px); }
+}
+@keyframes read-scan {
+  0% { transform: translate(-1px, 0); } 16.667% { transform: translate(0, 0); } 33.333% { transform: translate(1px, 0); }
+  50% { transform: translate(-1px, 1px); } 66.667% { transform: translate(0, 1px); } 83.333%, 100% { transform: translate(1px, 1px); }
+}
+@keyframes read-squint {
+  0% { transform: translate(-1px, 0) scaleY(.7); } 16.667% { transform: scaleY(.7); } 33.333% { transform: translate(1px, 0) scaleY(.7); }
+  50% { transform: translate(-1px, 1px) scaleY(.7); } 66.667% { transform: translate(0, 1px) scaleY(.7); } 83.333%, 100% { transform: translate(1px, 1px) scaleY(.7); }
+}
+
+/* editing: eyes down on the work, a pencil scribbling, a bob with the strokes,
+   and a look up now and then to think */
+:is(body, :where(.crab-anim)).work-write :is(#sprite, :where(.crab-sprite)) { animation: write-bob .664s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-write .part-claw { animation: scribble .664s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-write .part-eyes { animation: write-eyes 2.656s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-write .part-stalks { animation: write-look 2.656s steps(1) infinite; }
+@keyframes scribble {
+  0%, 100% { transform: rotate(10deg) translateY(1px); } 25% { transform: rotate(-6deg); }
+  50% { transform: rotate(14deg) translate(1px, 1px); } 75% { transform: rotate(-4deg); }
+}
+@keyframes write-bob { 0%, 100% { transform: none; } 50% { transform: translateY(1px); } }
+@keyframes write-eyes { 0%, 100% { transform: translateY(1px) scaleY(.8); } 75% { transform: translateY(-1px); } 87.5% { transform: translateY(1px) scaleY(.8); } }
+@keyframes write-look { 0%, 100% { transform: translateY(1px); } 75% { transform: translateY(-1px); } 87.5% { transform: translateY(1px); } }
+
+/* a command running: he digs in and turns a wrench, eyes narrowed */
+:is(body, :where(.crab-anim)).work-run :is(#sprite, :where(.crab-sprite)) { animation: run-bob .664s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-run .part-claw { animation: crank .664s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-run [class*="part-legs"] { animation: crab-leg .332s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-run .part-eyes { transform: scaleY(.75); }
+@keyframes crank {
+  0%, 100% { transform: rotate(-10deg); }
+  25% { transform: rotate(-30deg) translateY(-1px); }
+  50% { transform: rotate(-46deg) translate(1px, -1px); }
+  75% { transform: rotate(-30deg) translateY(-1px); }
+}
+@keyframes run-bob { 0%, 100% { transform: none; } 50% { transform: translateY(1px); } }
+
+/* searching: stalks up, swivelling from one side to the other, a magnifying glass held up */
+:is(body, :where(.crab-anim)).work-search :is(#sprite, :where(.crab-sprite)) { transform-origin: 50% 100%; animation: search-turn 1.992s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-search .part-claw { transform: rotate(-30deg) translate(1px, -1px); }
+:is(body, :where(.crab-anim)).work-search .part-eyes, :is(body, :where(.crab-anim)).work-search .part-stalks { animation: search-look 1.992s steps(1) infinite; }
+@keyframes search-turn { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes search-look {
+  0%, 100% { transform: translate(-2px, -1px); } 25% { transform: translate(-1px, -1px); }
+  50% { transform: translate(2px, -1px); } 75% { transform: translate(1px, -1px); }
+}
+
+/* on the web: up on his toes, a spyglass to his eye, gazing a long way off */
+:is(body, :where(.crab-anim)).work-web :is(#sprite, :where(.crab-sprite)) { transform-origin: 50% 100%; animation: tiptoe 2.324s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-web .part-claw { transform: rotate(-52deg) translate(-1px, -2px); }
+:is(body, :where(.crab-anim)).work-web .part-eyes, :is(body, :where(.crab-anim)).work-web .part-stalks { animation: far-look 4.648s steps(1) infinite; }
+@keyframes tiptoe { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(-5deg) translateY(-1px) scale(1, 1.04); } }
+@keyframes far-look { 0%, 100% { transform: translate(1px, -2px); } 57.143% { transform: translate(2px, -2px); } }
+
+/* a plan or a to-do list: ticking off a checklist, with a pleased blink at each tick */
+:is(body, :where(.crab-anim)).work-plan .part-claw { animation: plan-claw 1.328s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-plan .part-eyes { animation: plan-eyes 1.328s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-plan .part-stalks { animation: none; transform: translateY(1px); }
+@keyframes plan-claw { 0%, 100% { transform: rotate(-18deg); } 75% { transform: rotate(-28deg) translateY(-1px); } 87.5% { transform: rotate(-18deg); } }
+@keyframes plan-eyes { 0%, 100% { transform: translateY(1px); } 75% { transform: translateY(1px) scaleY(.2); } 87.5% { transform: translateY(1px); } }
+
+/* a subagent on the job: waving the helpers on from his left, a spring in his step */
+:is(body, :where(.crab-anim)).work-crew :is(#sprite, :where(.crab-sprite)) { animation: run-bob .664s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-crew .part-claw { animation: wave-on .664s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-crew [class*="part-legs"] { animation: crab-leg .332s steps(1) infinite; }
+:is(body, :where(.crab-anim)).work-crew .part-eyes, :is(body, :where(.crab-anim)).work-crew .part-stalks { transform: translateX(-1px); }
+@keyframes wave-on {
+  0%, 100% { transform: rotate(-20deg); } 25% { transform: rotate(-42deg) translateY(-1px); }
+  50% { transform: rotate(-20deg); } 75% { transform: rotate(-34deg); }
+}
+
+
+/* ---------- asking: claw up, waiting on you ---------- */
+.state-asking :is(#sprite, :where(.crab-sprite)) { animation: sway 1.328s steps(1) infinite; }
+.state-asking .part-claw { transform: rotate(-35deg) translate(1px, -2px); }
+
+/* ---------- success / error ---------- */
+.state-success :is(#sprite, :where(.crab-sprite)) { animation: jump .7s cubic-bezier(.3,1.6,.5,1) 2; }
+.state-success :is(#shadow, :where(.crab-shadow)), .state-learned :is(#shadow, :where(.crab-shadow)) { animation: shadow-jump .7s cubic-bezier(.3,1.6,.5,1) 2; }
+.state-unlocked :is(#shadow, :where(.crab-shadow)), .state-levelup :is(#shadow, :where(.crab-shadow)) { animation: shadow-jump .7s cubic-bezier(.3,1.6,.5,1) 3; }
+.state-error :is(#sprite, :where(.crab-sprite)) { transform-origin: 50% 100%; animation: oof .9s ease-out; }
+.state-error .part-eyes { animation: oof-eyes .9s steps(1); }
+.state-error .part-stalks { animation: none; }
+
+/* ---------- sleeping: tuck everything into the shell ---------- */
+.state-sleeping .part-body, .state-sleeping .part-claw, .state-sleeping .part-eyes,
+.state-sleeping .part-stalks, .state-sleeping [class*="part-legs"] {
+  transform: translateX(calc(var(--px) * -1.4)) scale(.55); opacity: 0;
+}
+.state-sleeping .part-shell { animation: snooze 4s ease-in-out infinite; transform-origin: 50% 100%; }
+
+@keyframes crab-breathe { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-2px) } }
+/* 24 s: blinks at 3 s, 10.8 s (a double) and 20.4 s; a glance right at 7.2 s and left at 15 s */
+@keyframes idle-eyes {
+  0%, 100% { transform: none }
+  12.5% { transform: scaleY(.1) } 13.194% { transform: none }
+  30% { transform: translateX(1px) } 37.5% { transform: none }
+  45% { transform: scaleY(.1) } 45.694% { transform: none } 46.528% { transform: scaleY(.1) } 47.222% { transform: none }
+  62.5% { transform: translateX(-1px) } 66.667% { transform: translate(-1px, -1px) } 70.833% { transform: none }
+  85% { transform: scaleY(.1) } 85.694% { transform: none }
+}
+@keyframes idle-glance {
+  0%, 100% { transform: none }
+  30% { transform: translateX(1px) } 37.5% { transform: none }
+  62.5% { transform: translateX(-1px) } 66.667% { transform: translate(-1px, -1px) } 70.833% { transform: none }
+}
+@keyframes snap-idle { 0%,94%,100% { transform: none } 95.5%,98.5% { transform: rotate(-18deg) } 97% { transform: none } }
+@keyframes crab-hop { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
+/* leg and snap only ever step (steps(1)), so 100% repeats 50%: the same picture, but
+   with an end keyframe shared/framecap.js can read and skip the ticks between steps. */
+@keyframes crab-leg { 0% { transform: translateY(0) } 50%, 100% { transform: translateY(-1px) translateX(1px) } }
+@keyframes snap { 0% { transform: none } 50%, 100% { transform: rotate(-20deg) } }
+@keyframes look { 0%,100% { transform: translateX(0) } 33% { transform: translateX(1px) } 66% { transform: translateX(-1px) } }
+@keyframes sway { 0%,100% { transform: rotate(-2deg) } 50% { transform: rotate(2deg) } }
+/* crouch to spring, stretch going up, round at the top, squash on the way back down */
+@keyframes jump {
+  0%,100% { transform: translateY(0) }
+  12% { transform: translateY(3px) scale(1.1, .86) }
+  28% { transform: translateY(-9px) scale(.94, 1.08) }
+  42% { transform: translateY(-14px) scale(1.02, .98) }
+  80% { transform: translateY(3px) scale(1.08, .9) }
+}
+/* an error: a flinch and an "oof", then he shakes it off (never a sulk) */
+@keyframes oof {
+  0%,100% { transform: none }
+  14% { transform: translateY(2px) scale(1.08, .88) }
+  34% { transform: translateY(1px) rotate(-4deg) }
+  52% { transform: translateX(2px) rotate(3deg) }
+  68% { transform: translateX(-2px) rotate(-2deg) }
+  84% { transform: translateX(1px) }
+}
+@keyframes oof-eyes { 0%,100% { transform: none } 10%, 45% { transform: scaleY(.2) } }
+@keyframes snooze { 0%,100% { transform: rotate(0) } 50% { transform: rotate(-3deg) } }
+/* His shadow answers his feet: smaller while he's up, wider as he lands. */
+@keyframes shadow-hop { 0%, 100% { transform: translateX(-50%) } 50% { transform: translateX(-50%) scale(.85) } }
+@keyframes shadow-jump {
+  0%,100% { transform: translateX(-50%) }
+  12% { transform: translateX(-50%) scale(1.12, 1) }
+  28% { transform: translateX(-50%) scale(.8) }
+  42% { transform: translateX(-50%) scale(.65); opacity: .6 }
+  80% { transform: translateX(-50%) scale(1.1, 1) }
+}

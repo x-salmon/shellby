@@ -54,28 +54,8 @@ body[data-view="trophies"] .view-trophies { display: block; overflow-y: auto; pa
 .stage-fx { position: absolute; left: 50%; top: 0; bottom: 0; width: 240px; transform: translateX(-50%); z-index: 3; --orbit-r: 104px; }
 .stage-caption { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font: 600 var(--fs-11) var(--font-mono); color: var(--sand-faint); z-index: 4; padding: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* preview moods (mirrors the desktop critter's animations) */
-.stage .part { transition: transform .35s var(--ease-spring), opacity .3s; }
-.stage.state-idle .stage-crab svg { animation: st-breathe 3.2s ease-in-out infinite; }
-.stage.state-idle .part-eyes:not(.acc) { animation: st-blink 5s steps(1) infinite; }
-.stage.state-working .stage-crab svg { animation: st-hop .42s ease-in-out infinite; }
-.stage.state-working .part-legs-a { animation: st-leg .21s steps(1) infinite; }
-.stage.state-working .part-legs-b { animation: st-leg .21s steps(1) infinite reverse; }
-.stage.state-working .part-claw { animation: st-snap .42s steps(1) infinite; }
-.stage.state-working .part-stalks, .stage.state-working .part-eyes { animation: st-look 1.6s steps(1) infinite; }
-.stage.state-asking .stage-crab svg { animation: st-sway 1.2s ease-in-out infinite; }
-.stage.state-asking .part-claw { transform: rotate(-35deg) translate(1px, -2px); }
-.stage.state-sleeping .part-body, .stage.state-sleeping .part-claw, .stage.state-sleeping .part-eyes,
-.stage.state-sleeping .part-stalks, .stage.state-sleeping [class*="part-legs"] { transform: translateX(-1.4px) scale(.55); opacity: 0; }
-.stage.state-sleeping .part-shell { animation: st-snooze 4s ease-in-out infinite; }
-@keyframes st-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-@keyframes st-blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
-@keyframes st-hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes st-leg { 0% { transform: translateY(0); } 50% { transform: translate(1px, -1px); } }
-@keyframes st-snap { 0% { transform: none; } 50% { transform: rotate(-20deg); } }
-@keyframes st-look { 0%, 100% { transform: translateX(0); } 33% { transform: translateX(1px); } 66% { transform: translateX(-1px); } }
-@keyframes st-sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
-@keyframes st-snooze { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-3deg); } }
+/* The preview moods are his own animations, from ../shared/crab-anim.css:
+   the stage is .crab-anim (its state-* class is the mood), #wdCrab .crab-sprite. */
 
 .stage-moods { display: flex; gap: 4px; justify-content: center; margin: 8px 0 12px; }
 .mood {

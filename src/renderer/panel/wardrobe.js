@@ -58,6 +58,17 @@
     return ['shell', 'neck', 'hat', 'face', 'held'].map(s => outfit[s] && w.accessories.find(a => a.key === outfit[s])).filter(Boolean);
   }
 
+  // What he's wearing now, as the Painter's "Wear your outfit" puts it on a drawing:
+  // his accessories, the shell he lives in and his effect.
+  SB.outfitLook = () => {
+    const outfit = wd()?.outfit || {};
+    return {
+      accessories: renderedAccessories(outfit),
+      shell: state.outfit?.home || null,
+      effect: (outfit.effect && wd()?.effects.find(e => e.key === outfit.effect)) || null,
+    };
+  };
+
   // An effect is shown by its most detailed sprite (a snowflake, not a lone pixel).
   const bigSprite = fx => SB.Sprite.poster(fx.sprites);
 
@@ -72,7 +83,7 @@
     const svg = SB.Sprite.build(skin, { accessories: renderedAccessories(outfit), shell, stickers, fit: false });
     $('wdCrab').replaceChildren(svg);
     const stage = $('wdStage');
-    stage.className = `stage state-${mood}`;
+    stage.className = `stage crab-anim state-${mood}`; // his own moves (shared/crab-anim.css)
     const effect = outfit.effect && w?.effects.find(e => e.key === outfit.effect);
     if (!stageFx) stageFx = window.ShellbyFx.mount($('wdFx'), null, { px: 4 });
     stageFx.set(effect || null); // locked effects can still be previewed
@@ -231,6 +242,7 @@
   }
 
   const canPublish = () => { const g = state.github; return !!(g?.signedIn && g.features.publish.on && g.features.publish.granted); };
+  SB.canPublish = canPublish; // the Painter's Share too
   async function publish(p, btn) {
     btn.disabled = true;
     btn.textContent = 'Publishing…';

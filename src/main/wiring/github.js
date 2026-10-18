@@ -527,7 +527,8 @@ function wireGithub(d) {
     return true;
   }
 
-  async function confirmAndPublishPack(packId) {
+  // opts.forLine: the pack wish it answers, for the pull request (the Painter's Share, wiring/painter.js).
+  async function confirmAndPublishPack(packId, { forLine = '' } = {}) {
     if (!d.github?.can('publish')) return { ok: false, error: 'Turn on "Publish Wardrobe packs" in Settings → GitHub first.' };
     const p = d.wardrobe.catalog.packs.find(x => x.id === packId && x.source === 'user');
     if (!p?.file) return { ok: false, error: "That pack isn't one of yours." };
@@ -549,7 +550,7 @@ function wireGithub(d) {
     if (response === null) return { ok: false, canceled: true, busy: true };
     if (response !== 0) return { ok: false, canceled: true };
     try {
-      return await publishPack(d.github.gh(), { login, pack: json });
+      return await publishPack(d.github.gh(), { login, pack: json, forLine });
     } catch (e) {
       console.warn('[shellby] publish failed:', e.message);
       return { ok: false, error: e.status === 401 ? 'GitHub signed Shellby out. Sign in again in Settings.' : `GitHub said: ${String(e.message).slice(0, 200)}` };

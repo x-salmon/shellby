@@ -20,7 +20,7 @@ body.typing #crab.tap.tap-b .part-legs-a { transform: none; }
 body.typing #crab.tap.tap-b .part-legs-b { transform: translateY(-1px); }
 
 /* fast: he bobs along to keep up */
-body.typing-fast #sprite { animation: hop .26s ease-in-out infinite; }
+body.typing-fast #sprite { animation: crab-hop .26s ease-in-out infinite; }
 
 /* a real burst: eyes wide, stalks up, and a sparkle over his head */
 body.impressed .part-eyes { transform: scale(1.25) translateY(-1px); transform-box: fill-box; transform-origin: 50% 50%; }

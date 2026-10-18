@@ -316,6 +316,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onUnlocked: on('wardrobe:unlocked'),
   onCollected: on('wardrobe:collected'),
   onPackInstalled: on('wardrobe:installed'), // result of an "Add to Shellby" gallery link
+  saveSkin: invoke('skins:save'), readSkin: invoke('skins:read'), previewSkin: invoke('skins:preview'), painterDrafts: invoke('painter:drafts'), saveDraft: invoke('painter:draft-save'), deleteDraft: invoke('painter:draft-delete'), packWishes: invoke('painter:wishes'), painterItems: invoke('painter:items'), saveItem: invoke('painter:save-item'), sharePainted: invoke('painter:share'), painterGallery: invoke('painter:gallery'), exportPainted: invoke('painter:export'), paintedCode: invoke('painter:code'), openPackStudio: fire('painter:studio'), // the Painter (wiring/painter.js), all checked again in main; previewSkin(null) takes it off the desktop crab
 
   // Claude Code status line
   resetCritterPosition: fire('critter:reset-position'),
@@ -682,8 +683,7 @@ contextBridge.exposeInMainWorld('shellby', {
   removeCli: invoke('cli:remove'),
   revealCli: fire('cli:reveal'),
 
-  // shareable crab card
-  saveCard: invoke('card:save'),
+  saveCard: invoke('card:save'), // shareable cards (card.js, moment-card.js): save, copy, show, post to Discord
   copyCard: invoke('card:copy'),
   revealCard: fire('card:reveal'), postCardToDiscord: invoke('card:post-discord'), // post: (the path card:save gave, the words)
 

@@ -2,7 +2,9 @@
 // people's public ones and comments too, for visiting crabs), just
 // enough of the repos API for publishing a pack (fork, ref, contents, pulls),
 // your open pull requests with their CI (search, pulls, check runs), and
-// issues filed on repositories of your own (add them to state.repos).
+// issues filed on repositories of your own (add them to state.repos), and the
+// open pack wishes on x-salmon/shellby (state.wishes; public, like GitHub's)
+// with the comments posted on them (state.comments).
 //   const gh = await startMockGitHub({ login: 'crabfan' }); ... gh.approve(); ... await gh.close();
 const http = require('http');
 
@@ -13,6 +15,8 @@ async function startMockGitHub({ login = 'crabfan', autoApprove = false } = {}) 
     forks: new Set(), pulls: [], requests: [], nextGist: 1, nextComment: 1,
     // Your own repositories (full name -> { private }), and issues filed on them.
     repos: new Map(), issues: [],
+    // Open "pack wish" issues (the Painter reads them signed out) and comments posted on them.
+    wishes: [], comments: [],
     // Your open pull requests and the ones waiting for your review (see setCi()).
     ci: { prs: [], reviews: [] },
   };
@@ -39,7 +43,17 @@ async function startMockGitHub({ login = 'crabfan', autoApprove = false } = {}) 
       }
 
       // ---- api
+      // Public, as on GitHub: the open pack wishes, read without signing in.
+      if (req.method === 'GET' && p === '/repos/x-salmon/shellby/issues') {
+        const label = url.searchParams.get('labels');
+        return send(200, state.wishes.filter(w => !label || (w.labels || ['pack wish']).includes(label)));
+      }
       if (!authed) return send(401, { message: 'Bad credentials' });
+      const wishComment = p.match(/^\/repos\/x-salmon\/shellby\/issues\/(\d+)\/comments$/);
+      if (wishComment && req.method === 'POST') {
+        state.comments.push({ number: Number(wishComment[1]), body: json.body, by: state.login });
+        return send(201, { id: state.comments.length });
+      }
       if (req.method === 'GET' && p === '/user') return send(200, { login: state.login, name: 'Crab Fan', avatar_url: 'https://example.invalid/a.png' }, { 'x-oauth-scopes': state.requestedScope.split(' ').join(', ') });
 
       // Gists a test put in by hand belong to you.

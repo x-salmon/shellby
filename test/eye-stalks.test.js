@@ -1,4 +1,4 @@
-// His eyes sit on their stalks (src/renderer/critter/*.css). Idle, working and
+// His eyes sit on their stalks (src/renderer/critter/*.css, shared/crab-anim.css). Idle, working and
 // walking, the stalks glance about with the eyes on a loop of their own, so a
 // pose that takes the eyes' animation over (a squint, a yawn, wide eyes) has to
 // take the stalks' too, or the stalks glance off on their own and the eyes float
@@ -11,8 +11,20 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..', 'src', 'renderer');
 const SHEETS = [
   ...fs.readdirSync(path.join(ROOT, 'critter')).filter(f => f.endsWith('.css')).map(f => path.join('critter', f)),
+  path.join('shared', 'crab-anim.css'),
   path.join('floor', 'floor.css'),
 ];
+// A selector list split at its own commas, not those inside :is() or :where().
+function selectors(list) {
+  const out = [];
+  let depth = 0, cur = '';
+  for (const ch of list) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (ch === ',' && !depth) { out.push(cur.trim()); cur = ''; } else cur += ch;
+  }
+  return [...out, cur.trim()];
+}
 
 // Every rule and keyframes block in the sheets, comments out.
 function parse() {
@@ -22,7 +34,7 @@ function parse() {
     const css = fs.readFileSync(path.join(ROOT, sheet), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     for (const m of css.matchAll(KEYFRAMES)) keyframes[m[1]] = [...m[2].matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(f => [f[1].trim(), f[2]]);
     for (const m of css.replace(KEYFRAMES, '').matchAll(/([^{}@]+)\{([^{}]*)\}/g)) {
-      for (const sel of m[1].split(',')) rules.push({ sheet, sel: sel.trim(), body: m[2] });
+      for (const sel of selectors(m[1])) rules.push({ sheet, sel, body: m[2] });
     }
   }
   return { rules, keyframes };

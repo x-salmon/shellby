@@ -271,11 +271,12 @@ async function fetchRegistryNews({ baseUrl = REGISTRY_URL, url = null, fetchImpl
 }
 
 /**
- * The registry index's pack entries, for who made what (credits.js): each
- * { id, by, contest, winner } as far as the index says. `by` (the GitHub login
+ * The registry index's pack entries: who made what (credits.js), and which of
+ * your shared packs are in and at what version (the Painter). Each
+ * { id, version, name, by, contest, winner } as far as the index says. `by` (the GitHub login
  * of the PR that added it), `contest` ('YYYY-MM') and `winner` are optional,
  * and only kept when they're well formed. Never throws.
- * @returns {Promise<{ ok: boolean, packs?: [{ id, name, by, contest, winner }], errors: string[] }>}
+ * @returns {Promise<{ ok: boolean, packs?: [{ id, version, name, by, contest, winner }], errors: string[] }>}
  */
 async function fetchRegistryIndex({ baseUrl = REGISTRY_URL, fetchImpl = globalThis.fetch, timeoutMs = 15000 } = {}) {
   const fail = msg => ({ ok: false, errors: [msg] });
@@ -294,11 +295,12 @@ async function fetchRegistryIndex({ baseUrl = REGISTRY_URL, fetchImpl = globalTh
 
 const LOGIN_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
-/** One index entry's who-and-when, cleaned: { id, name, by, contest, winner } or null. */
+/** One index entry, cleaned: { id, version, name, by, contest, winner } or null. */
 function indexEntry(p) {
   if (!isObj(p) || typeof p.id !== 'string' || !PACK_ID_RE.test(p.id)) return null;
   return {
     id: p.id,
+    version: typeof p.version === 'string' && /^\d+\.\d+\.\d+$/.test(p.version) ? p.version : '',
     name: typeof p.name === 'string' ? p.name.replace(/[\u0000-\u001f]+/g, ' ').slice(0, 60) : p.id,
     by: typeof p.by === 'string' && LOGIN_RE.test(p.by) ? p.by : null,
     contest: typeof p.contest === 'string' && MONTH_RE.test(p.contest) ? p.contest : null,

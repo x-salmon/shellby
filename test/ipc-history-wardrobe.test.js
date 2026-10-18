@@ -235,7 +235,10 @@ test('Wardrobe: removing a pack says whether it went, and Undo brings it back', 
 test('Wardrobe: every channel main used to register is still registered', () => {
   const { ipc } = wardrobeSetup();
   assert.deepEqual(ipc.channels().sort(), [
-    'external:clear-background', 'skins:open-folder', 'skins:reload',
+    'external:clear-background',
+    'painter:code', 'painter:draft-delete', 'painter:draft-save', 'painter:drafts', 'painter:export', 'painter:gallery',
+    'painter:items', 'painter:save-item', 'painter:share', 'painter:studio', 'painter:wishes',
+    'skins:open-folder', 'skins:preview', 'skins:read', 'skins:reload', 'skins:save',
     'wardrobe:code', 'wardrobe:code-preview', 'wardrobe:code-wear', 'wardrobe:install', 'wardrobe:install-registry',
     'wardrobe:open-folder', 'wardrobe:options', 'wardrobe:randomize', 'wardrobe:remove-pack', 'wardrobe:restore-pack', 'wardrobe:seen',
     'wardrobe:set-outfit', 'wardrobe:set-voice', 'wardrobe:view', 'wardrobe:wear-season',

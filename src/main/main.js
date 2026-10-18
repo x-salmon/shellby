@@ -54,6 +54,7 @@ const { wireFocus } = require('./wiring/focus');
 const { wireSnippets } = require('./wiring/snippets');
 const { wireProjects } = require('./wiring/projects');
 const { wirePacks } = require('./wiring/packs');
+const { wirePainter } = require('./wiring/painter');
 const { wireStartFrom } = require('./wiring/startfrom');
 const { wireBacklog } = require('./wiring/backlog');
 const { wireSentry } = require('./wiring/sentry');
@@ -159,6 +160,7 @@ const shared = {
   PRIMARY: false, lastRun: null, sentry: null, // crash reports, started below
   captureClock: { now: null }, // screenshot runs can pretend it's Halloween
   today: null,                  // what day it is for seasons and tide events (today.js), set just below
+  deskPreview: null,            // { skin, until }: the Painter's "Try him on the desk" (wiring/painter.js)
   isStr: s => typeof s === 'string' && s.length > 0 && s.length < 10000,
   isFolder: d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } }, // missing or unreadable: not a folder
   send(win, channel, payload) {
@@ -353,6 +355,7 @@ const { advanceFocus } = share(wireFocus(shared));
 share(wireSnippets(shared));
 const { createDepWatch, createProjects, createWorkflows } = share(wireProjects(shared));
 const { onDeepLink } = share(wirePacks(shared));
+share(wirePainter(shared)); // the Painter: saving, trying on, drafts, pack wishes and sharing what you paint
 share(wireStartFrom(shared));
 share(wireSentry(shared)); // new production errors on Next up, once Sentry is connected
 share(wireBacklog(shared)); // Next up on each project's page (docs/plans/next-up.md)

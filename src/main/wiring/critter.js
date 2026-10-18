@@ -9,6 +9,7 @@ const statusLine = require('../statusline');
 const streaks = require('../progression/streaks');
 const voice = require('../voice');
 const { publicItem } = require('../wardrobe/service');
+const { packIdFor } = require('../wardrobe/wrap');
 const weatherRules = require('../weather');
 const workPose = require('../work-pose');
 const { levelFor, levelOf } = require('../progression/xp');
@@ -19,7 +20,11 @@ function wireCritter(d) {
 
   // Built-in/user skins plus wardrobe pack skins (which can be locked).
   function allSkins() {
-    const packSkins = d.wardrobe ? d.wardrobe.catalog.skins.map(s => ({ ...s, id: s.key, locked: d.wardrobe.lockInfo(s) })) : [];
+    // A skin you painted and shared is also in a pack of its own (skin-<id>,
+    // wardrobe/wrap.js) so it can be published: it shows once, as your own.
+    const own = new Set(d.skins.filter(s => s.source === 'user').map(s => s.id));
+    const wrapped = s => { const id = s.id.split('/').pop(); return s.source === 'user' && own.has(id) && s.packId === packIdFor('skin', id); };
+    const packSkins = d.wardrobe ? d.wardrobe.catalog.skins.filter(s => !wrapped(s)).map(s => ({ ...s, id: s.key, locked: d.wardrobe.lockInfo(s) })) : [];
     return [...d.skins, ...packSkins];
   }
 
@@ -79,7 +84,10 @@ function wireCritter(d) {
   function broadcastSkin() {
     const skin = activeSkin();
     const o = outfit();
-    d.send(d.critter, 'critter:skin', { skin, px: d.px(), helperWidth: d.helperWidth(), outfit: o });
+    // The Painter's "Try him on the desk" (wiring/painter.js): the crab wears
+    // the drawing for a minute; the panel and everything else keep your skin.
+    const trying = d.deskPreview?.until > Date.now() ? d.deskPreview.skin : null;
+    d.send(d.critter, 'critter:skin', { skin: trying || skin, px: d.px(), helperWidth: d.helperWidth(), outfit: o, ...(trying ? { preview: true } : {}) });
     d.bugdex?.sendBuddy(); // his favourite catch, at his new size
     d.send(d.panel, 'skin', { skin, outfit: o });
     d.floor?.reskin(); // his pals are his colours, his size

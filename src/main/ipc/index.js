@@ -17,7 +17,6 @@ const { createModsService } = require('../mods-service');
 const parity = require('../parity');
 const { createSkillRemover } = require('../skillremove');
 const { createToolBatch } = require('../toolbatch');
-const { loadSkins } = require('../skins');
 const stickers = require('../stickers');
 const teamIpcModule = require('../team-ipc');
 const voice = require('../voice');
@@ -177,7 +176,13 @@ function registerIpc(electronIpcMain, d) {
     builtinSkins: () => d.skins.map(s => ({ id: s.id, name: s.name })),
     allSkins: d.allSkins, activeSkin: d.activeSkin, config, voice, confirmAndInstallPackText: d.confirmAndInstallPackText, installFromRegistry: d.installFromRegistry,
     registryUrl: d.registryUrl, broadcastSkin: d.broadcastSkin, userSkinsDir: d.userSkinsDir,
-    reloadSkins: () => { d.skins = loadSkins(d.userSkinsDir()); d.wardrobe?.load(); d.broadcastWardrobe(); return d.allSkins(); },
+    reloadSkins: d.reloadSkins,
+    // the Painter (wiring/painter.js)
+    painter: {
+      readSkin: d.painterReadSkin, saveSkin: d.painterSaveSkin, preview: d.painterPreview, saveItem: d.painterSaveItem, items: d.painterItems,
+      drafts: d.painterDrafts, saveDraft: d.painterSaveDraft, deleteDraft: d.painterDeleteDraft, wishes: d.painterWishes,
+      share: d.painterShare, gallery: d.painterGallery, exportPack: d.painterExport, code: d.painterCode, studio: d.painterStudio,
+    },
     clearBackground: () => { d.external?.clearBackground(); return d.externalView(); },
     pickPackFile: async () => {
       const r = await dialog.showOpenDialog(d.panel, { title: 'Install a Shellby wardrobe pack', filters: [{ name: 'Shellby pack', extensions: ['json'] }], properties: ['openFile'] });

@@ -26,6 +26,8 @@ const NOT_A_CODE = "That doesn't look like an outfit code.";
  *   registryUrl()
  *   broadcastSkin()
  *   openPath(p), userSkinsDir()
+ *   painter: { readSkin, saveSkin, preview, saveItem, items, drafts, saveDraft, deleteDraft,
+ *              wishes, share, gallery, exportPack, code, studio }   wiring/painter.js
  * }
  * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
  * @param d
@@ -90,7 +92,38 @@ function registerWardrobeIpc(ipcMain, d) {
   ipcMain.handle('wardrobe:install-registry', (_e, packId) => (isStr(packId) && PACK_ID.test(packId) ? d.installFromRegistry(packId) : { ok: false }));
   ipcMain.on('wardrobe:open-folder', () => { fs.mkdirSync(W().userDir, { recursive: true }); d.openPath(W().userDir); });
   ipcMain.on('skins:open-folder', () => d.openPath(d.userSkinsDir()));
+
+  // ---- the Painter (wiring/painter.js does the work; everything is checked there again)
+  const P = d.painter || {};
+  const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+  const kindOk = k => PAINT_KINDS.includes(k);
+  const idOk = id => typeof id === 'string' && SKIN_ID.test(id);
+  // Save: { ok, id, warnings }. Strict checks, a fresh id or your own, written atomically, then a reload.
+  ipcMain.handle('skins:save', (_e, skin, opts) => (isObj(skin) && idOk(skin.id) ? P.saveSkin(skin, { replace: opts?.replace === true }) : { ok: false, error: 'That isn’t a skin.' }));
+  // A skin to start from or edit: { ok, skin, source, basedOn? }. Locked pack skins are refused.
+  ipcMain.handle('skins:read', (_e, id) => (isStr(id) && id.length <= 81 ? P.readSkin(id) : { ok: false }));
+  // The desktop crab wears it for a minute (null: back to his own now).
+  ipcMain.handle('skins:preview', (_e, skin) => (skin === null || isObj(skin) ? P.preview(skin) : { ok: false }));
+  ipcMain.handle('painter:drafts', () => P.drafts());
+  ipcMain.handle('painter:draft-save', (_e, draft) => (isObj(draft) ? P.saveDraft(draft) : { ok: false }));
+  ipcMain.handle('painter:draft-delete', (_e, id) => (idOk(id) ? P.deleteDraft(id) : false));
+  ipcMain.handle('painter:wishes', (_e, kind) => (kind == null || kindOk(kind) ? P.wishes(kind || null) : []));
+  ipcMain.handle('painter:items', (_e, kind) => (kindOk(kind) && kind !== 'skin' ? P.items(kind) : []));
+  ipcMain.handle('painter:save-item', (_e, kind, item, opts) => (kindOk(kind) && kind !== 'skin' && isObj(item) && idOk(item.id) ? P.saveItem(kind, item, { replace: opts?.replace === true }) : { ok: false, error: 'That isn’t something the Painter saves.' }));
+  ipcMain.handle('painter:share', (_e, kind, id, opts) => {
+    if (!kindOk(kind) || !idOk(id)) return { ok: false };
+    const contest = typeof opts?.contest === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(opts.contest) ? opts.contest : null;
+    const wish = Number.isInteger(opts?.wish) && opts.wish > 0 ? opts.wish : null;
+    return P.share(kind, id, { contest, wish });
+  });
+  ipcMain.handle('painter:gallery', () => P.gallery());
+  ipcMain.handle('painter:export', (_e, kind, id) => (kindOk(kind) && idOk(id) ? P.exportPack(kind, id) : { ok: false }));
+  ipcMain.handle('painter:code', (_e, kind, id) => (kindOk(kind) && idOk(id) ? P.code(kind, id) : { ok: false }));
+  ipcMain.on('painter:studio', () => P.studio());
 }
+
+const PAINT_KINDS = ['skin', 'accessory', 'effect', 'decor'];
+const SKIN_ID = /^[\w-]{1,40}$/;
 
 /**
  * A pack file's text, or why not. Only .json files on this PC under the size
