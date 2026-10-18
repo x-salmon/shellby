@@ -16,6 +16,7 @@ const MAX_DRAFT_BYTES = 256 * 1024;
 const MAX_DRAFTS = 60;
 const HEX = /^#[0-9a-f]{6}$/i;
 const WISH_TTL_MS = 24 * 3600 * 1000;
+const MAX_WISHES_BYTES = 2 * 1024 * 1024; // fifty issues, their bodies too: far under
 const WISH_REPO = 'x-salmon/shellby';
 // The issue form's "What kind?" answers (.github/ISSUE_TEMPLATE/pack_wish.yml) -> Painter modes.
 const WISH_KINDS = { 'Shell or skin': 'skin', 'Accessory or outfit': 'accessory', Effect: 'effect', 'Tank decor': 'decor' };
@@ -86,20 +87,35 @@ function writeAtomic(file, text) {
   fs.renameSync(tmp, file);
 }
 
-/** Every draft in the folder, newest first. Unreadable ones are skipped. */
-function listDrafts(dir) {
-  let files;
-  try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')); } catch { return []; }
+// The draft files by name, newest first (by when each was last written).
+function draftFiles(dir) {
+  let names;
+  try { names = fs.readdirSync(dir).filter(f => f.endsWith('.json') && draftPath(dir, f.slice(0, -5))); } catch { return []; }
   const out = [];
-  for (const f of files) {
+  for (const f of names) {
     try {
-      const file = path.join(dir, f);
-      if (fs.statSync(file).size > MAX_DRAFT_BYTES) continue;
-      const d = cleanDraft(JSON.parse(fs.readFileSync(file, 'utf8')));
+      const st = fs.statSync(path.join(dir, f));
+      if (st.isFile()) out.push({ f, at: st.mtimeMs, size: st.size });
+    } catch { /* gone since */ }
+  }
+  return out.sort((a, b) => b.at - a.at);
+}
+
+/**
+ * The newest drafts in the folder, newest first, at most MAX_DRAFTS read:
+ * the rest (only ever there by hand, since saveDraft stops at that many) are
+ * never opened. Unreadable ones are skipped.
+ */
+function listDrafts(dir) {
+  const out = [];
+  for (const { f, size } of draftFiles(dir).slice(0, MAX_DRAFTS)) {
+    if (size > MAX_DRAFT_BYTES) continue;
+    try {
+      const d = cleanDraft(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
       if (d && `${d.id}.json` === f) out.push(d);
     } catch { /* a half-written or hand-edited file: not a draft */ }
   }
-  return out.sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_DRAFTS);
+  return out.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 /** -> { ok, draft } | { ok: false, error } */
@@ -108,7 +124,9 @@ function saveDraft(dir, raw, now = Date.now()) {
   if (!d) return { ok: false, error: "That isn't a drawing Shellby can keep." };
   const text = JSON.stringify(d);
   if (Buffer.byteLength(text) > MAX_DRAFT_BYTES) return { ok: false, error: 'That drawing is too big to keep.' };
-  try { writeAtomic(draftPath(dir, d.id), text); } catch { return { ok: false, error: "Couldn't keep the draft." }; }
+  const file = draftPath(dir, d.id);
+  if (!fs.existsSync(file) && draftFiles(dir).length >= MAX_DRAFTS) return { ok: false, full: true, error: `That's ${MAX_DRAFTS} drafts already. Save or delete one to keep another.` };
+  try { writeAtomic(file, text); } catch { return { ok: false, error: "Couldn't keep the draft." }; }
   return { ok: true, draft: d };
 }
 
@@ -149,6 +167,35 @@ function cleanWishes(list) {
 }
 
 /**
+ * A response's body as text, stopping (and throwing) once it's past max bytes,
+ * so a huge answer is never read whole. Over a stated Content-Length, it isn't read at all.
+ */
+async function readCapped(res, max, ctrl) {
+  const declared = Number(res.headers?.get?.('content-length'));
+  if (Number.isFinite(declared) && declared > max) throw new Error('too big');
+  if (!res.body?.getReader) {
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > max) throw new Error('too big');
+    return buf.toString('utf8');
+  }
+  const reader = res.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      reader.cancel().catch(() => {});
+      ctrl?.abort();
+      throw new Error('too big');
+    }
+    chunks.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+/**
  * Open pack wishes from GitHub, never throwing. cache: { at, wishes } from
  * before; a fresh one (under a day old) is used as it is, and a failed fetch
  * (offline, rate-limited) keeps it. -> { wishes, at, fresh }
@@ -162,8 +209,7 @@ async function fetchWishes({ api = 'https://api.github.com', fetchImpl = globalT
     const url = `${api.replace(/\/+$/, '')}/repos/${WISH_REPO}/issues?labels=${encodeURIComponent('pack wish')}&state=open&per_page=50&sort=created&direction=desc`;
     const res = await fetchImpl(url, { signal: ctrl.signal, headers: { accept: 'application/vnd.github+json' } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    if (text.length > 2 * 1024 * 1024) throw new Error('too big');
+    const text = await readCapped(res, MAX_WISHES_BYTES, ctrl);
     return { wishes: parseWishes(JSON.parse(text)), at: now, fresh: true };
   } catch {
     return kept ? { ...kept, fresh: false } : { wishes: [], at: 0, fresh: false };
@@ -172,4 +218,4 @@ async function fetchWishes({ api = 'https://api.github.com', fetchImpl = globalT
   }
 }
 
-module.exports = { DRAFT_ID, MAX_DRAFT_BYTES, WISH_TTL_MS, WISH_KINDS, WISH_REPO, draftPath, cleanDoc, cleanDraft, listDrafts, saveDraft, deleteDraft, wishKind, parseWishes, cleanWishes, fetchWishes };
+module.exports = { DRAFT_ID, MAX_DRAFT_BYTES, MAX_DRAFTS, MAX_WISHES_BYTES, WISH_TTL_MS, WISH_KINDS, WISH_REPO, draftPath, cleanDoc, cleanDraft, listDrafts, saveDraft, deleteDraft, wishKind, parseWishes, cleanWishes, fetchWishes };

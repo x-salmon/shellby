@@ -563,7 +563,7 @@
     if (r?.ok) {
       $('ptKept').textContent = 'Draft kept';
       drafts = [r.draft, ...drafts.filter(d => d.id !== r.draft.id)];
-    }
+    } else if (r?.full) $('ptKept').textContent = r.error; // too many drafts: say so where "Draft kept" goes
   }
   const pendingDraft = () => draftTimer !== 0;
 

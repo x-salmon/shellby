@@ -62,3 +62,49 @@ test('a draft is trimmed to what a draft is', () => {
   assert.equal(painter.cleanDoc({ ...G.blank(), palette: { '.': '#000000', a: 'red', b: '#00FF00' } }).palette.b, '#00FF00');
   assert.deepEqual(Object.keys(painter.cleanDoc({ ...G.blank(), palette: { '.': '#000000', a: 'red', b: '#00ff00' } }).palette), ['b']);
 });
+
+test('drafts: at most MAX_DRAFTS kept, and listing never opens more than that', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-drafts-'));
+  try {
+    const doc = G.blank('decor', 3, 2);
+    for (let i = 0; i < painter.MAX_DRAFTS; i++) assert.equal(painter.saveDraft(dir, { id: `d-${i}`, doc }, 1000 + i).ok, true);
+    const full = painter.saveDraft(dir, { id: 'one-more', doc });
+    assert.equal(full.ok, false);
+    assert.equal(full.full, true);
+    assert.match(full.error, new RegExp(`${painter.MAX_DRAFTS} drafts`));
+    assert.equal(fs.existsSync(path.join(dir, 'one-more.json')), false);
+    assert.equal(painter.saveDraft(dir, { id: 'd-0', doc, name: 'still yours' }).ok, true, 'one already there still saves');
+    // More by hand than saving makes: the oldest are never read.
+    const old = new Date(0);
+    for (let i = 0; i < 5; i++) {
+      const f = path.join(dir, `hand-${i}.json`);
+      fs.writeFileSync(f, JSON.stringify({ id: `hand-${i}`, doc }));
+      fs.utimesSync(f, old, old);
+    }
+    const read = [];
+    const realRead = fs.readFileSync;
+    fs.readFileSync = (f, ...rest) => { read.push(path.basename(String(f))); return realRead(f, ...rest); };
+    let list;
+    try { list = painter.listDrafts(dir); } finally { fs.readFileSync = realRead; }
+    assert.equal(list.length, painter.MAX_DRAFTS);
+    assert.equal(read.length, painter.MAX_DRAFTS);
+    assert.ok(!read.some(f => f.startsWith('hand-')), 'the old ones by hand are left unread');
+    assert.equal(list[0].id, 'd-0', 'newest first');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('wishes: an answer past the cap is never read whole, and keeps what was there', async () => {
+  let pulled = 0;
+  const huge = async () => new Response(new globalThis.ReadableStream({
+    pull(c) { pulled++; c.enqueue(new Uint8Array(256 * 1024).fill(32)); if (pulled > 100) c.close(); },
+  }), { status: 200 });
+  const kept = [{ number: 2, title: 'ok', kind: 'decor' }];
+  const r = await painter.fetchWishes({ fetchImpl: huge, cache: { at: 0, wishes: kept }, now: painter.WISH_TTL_MS + 5 });
+  assert.deepEqual(r.wishes.map(w => w.number), [2]);
+  assert.ok(pulled * 256 * 1024 <= painter.MAX_WISHES_BYTES + 512 * 1024, `stopped near the cap (${pulled} chunks)`);
+  const said = async () => new Response('[]', { status: 200, headers: { 'content-length': String(painter.MAX_WISHES_BYTES + 1) } });
+  assert.deepEqual((await painter.fetchWishes({ fetchImpl: said })).wishes, [], 'a stated length past the cap: not read at all');
+});
