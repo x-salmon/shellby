@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src blob:; base-uri 'none'; form-action 'none'">
 <title>Shellby</title>
 <link rel="stylesheet" href="../shared/tokens.css">
 <link rel="stylesheet" href="../shared/fonts.css">
@@ -331,12 +331,16 @@
           <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
       </div>
-      <div class="seg card-sizes" id="cardSizes" role="radiogroup" aria-label="Card size" hidden>
-        <button type="button" role="radio" data-size="wide" aria-checked="true" title="1200×630: X, Bluesky and LinkedIn">Wide <small>X, Bluesky</small></button>
-        <button type="button" role="radio" data-size="square" aria-checked="false" title="1080×1080: Discord, Mastodon and Instagram">Square <small>Discord, Instagram</small></button>
+      <div class="card-tools" id="cardTools" hidden>
+        <div class="seg card-sizes" id="cardSizes" role="radiogroup" aria-label="Card size">
+          <button type="button" role="radio" data-size="wide" aria-checked="true" title="1200×630: X, Bluesky and LinkedIn">Wide <small>X, Bluesky</small></button>
+          <button type="button" role="radio" data-size="square" aria-checked="false" title="1080×1080: Discord, Mastodon and Instagram">Square <small>Discord, Instagram</small></button>
+        </div>
+        <button type="button" class="btn slim-btn card-clip" id="cardClip" hidden title="A four-second video of the moment, for a post">🎞 Clip</button>
       </div>
       <img id="cardImg" class="card-img" alt="Your Shellby card: your crab as he's dressed now, with your trophies and task count">
-      <p class="card-note">Copied to your clipboard and saved as <b id="cardPath"></b>. Paste it into a post:</p>
+      <video id="cardVideo" class="card-img card-video" muted loop playsinline hidden></video>
+      <p class="card-note"><span id="cardLead">Copied to your clipboard and saved as</span> <b id="cardPath"></b>. <span id="cardTail">Paste it into a post:</span></p>
       <div class="row wrap">
         <button type="button" class="btn primary" id="cardX">Post on X</button>
         <button type="button" class="btn primary" id="cardBsky">Post on Bluesky</button>
@@ -567,6 +571,7 @@
 <script src="health-hogs.js"></script>
 <script src="card.js"></script>
 <script src="moment-card.js"></script>
+<script src="moment-clip.js"></script>
 <script src="sparkle.js"></script>
 <script src="beach-paint.js"></script>
 <script src="beach.js"></script>

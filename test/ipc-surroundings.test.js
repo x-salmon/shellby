@@ -11,7 +11,7 @@ const { installFakeElectron, createFakeIpc, fakeConfig, recorder, isStr } = requ
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-surroundings-'));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
 const electron = installFakeElectron({ userData: path.join(root, 'userData'), pictures: path.join(root, 'Pictures') });
-const { registerSurroundingsIpc, MAX_COPY_CHARS, CARD_KINDS } = require('../src/main/ipc/surroundings');
+const { registerSurroundingsIpc, MAX_COPY_CHARS, CARD_KINDS, CLIP_MAX_BYTES } = require('../src/main/ipc/surroundings');
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const CARD_MAX_BYTES = 64;
@@ -160,6 +160,36 @@ test('card:save puts a square card\'s size in its name, and the same card again 
   assert.deepEqual(rec.of('stat'), [['card-shared'], ['card-shared']]);
 });
 
+// ---- a moment's clip: MP4 or WebM, checked by its magic number and size, never on the clipboard
+const mp4 = (n = 64) => new Uint8Array(Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from('ftypisom'), Buffer.alloc(n, 2)]));
+const webm = (n = 64) => new Uint8Array(Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(n, 3)]));
+
+test('card:save keeps a clip as the container it is, and never puts it on the clipboard', async () => {
+  const { ipc } = setup();
+  const writesBefore = electron.callsOf('clipboard.write').length;
+
+  const a = await ipc.invoke('card:save', mp4(), 'shiny', { video: 'mp4', again: true });
+  const b = await ipc.invoke('card:save', webm(), 'molt', { video: 'webm', size: 'square', again: true });
+
+  assert.equal(a.ok, true);
+  assert.equal(a.video, true);
+  assert.equal(a.copied, undefined, 'not copied, not "couldn\'t copy" either');
+  assert.match(path.basename(a.name), /^shellby-shiny-\d{8}-\d{6}\.mp4$/);
+  assert.match(path.basename(b.name), /^shellby-molt-square-\d{8}-\d{6}\.webm$/);
+  assert.deepEqual([...fs.readFileSync(b.path)], [...webm()]);
+  assert.equal(electron.callsOf('clipboard.write').length, writesBefore);
+});
+
+test('card:save refuses a clip that isn\'t the container it says, or is too big', async () => {
+  const { ipc } = setup();
+  for (const [bytes, video] of [[webm(), 'mp4'], [mp4(), 'webm'], [png(), 'mp4'], [mp4(CLIP_MAX_BYTES), 'mp4'], [new Uint8Array(8), 'webm'], ['ftyp', 'mp4']]) {
+    const r = await ipc.invoke('card:save', bytes, 'shiny', { video });
+    assert.equal(r.ok, false, `${video}: ${bytes.length}`);
+  }
+  // A video type it doesn't know is a picture, and an MP4 isn't one.
+  assert.equal((await ipc.invoke('card:save', mp4(), 'shiny', { video: 'gif' })).ok, false);
+});
+
 // ---- Post to Discord: the webhook your notifications use, a saved card, never a ping.
 const WEBHOOK = 'https://discord.com/api/webhooks/123/abc-token';
 const DISCORD = { channels: { provider: 'discord', target: WEBHOOK, enabled: true } };
@@ -246,6 +276,14 @@ test('card:post-discord: Cancel sends nothing, and a webhook\'s error is shown i
   const again = setup({ fetchImpl: quiet.fetchImpl, askOnce: async () => 0 }, DISCORD);
   const card = await again.ipc.invoke('card:save', png(), 'streak');
   assert.equal((await again.ipc.invoke('card:post-discord', card.path, 'x')).error, 'Discord said too many, too fast.');
+});
+
+test('card:post-discord uploads a clip as a video', async () => {
+  const net = fakeDiscord();
+  const { ipc } = setup({ fetchImpl: net.fetchImpl, askOnce: async () => 0 }, DISCORD);
+  const saved = await ipc.invoke('card:save', mp4(), 'molt', { video: 'mp4', again: true });
+  assert.deepEqual(await ipc.invoke('card:post-discord', saved.path, 'x'), { ok: true });
+  assert.equal(net.sent[0].opts.body.get('files[0]').type, 'video/mp4');
 });
 
 test('card:post-discord with no Discord webhook says where to set one up', async () => {

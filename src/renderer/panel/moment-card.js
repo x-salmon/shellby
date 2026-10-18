@@ -512,6 +512,8 @@
     const moment = built.m;
     return K.present({
       kind, draw: size => draw(moment, size), buttons: '[data-share-moment]', sizes: ['wide', 'square'], size: opts.size,
+      // The sparkly reveal and the molt move: 🎞 Clip records them (moment-clip.js).
+      clip: SB.momentClip?.has(kind) ? size => SB.momentClip.record(kind, moment, size) : null,
       title: opts.title || built.title || moment.title, alt: opts.alt || built.alt || moment.title,
       post: () => opts.post || postFor(kind, moment.say),
     });

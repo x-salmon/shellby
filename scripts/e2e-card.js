@@ -134,7 +134,37 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
       await ev("document.querySelector('#cardSizes [data-size=\"wide\"]').click()"); // back to Wide for next time
       await newest(kind, 'wide', savedAs(kind, 'wide').length);
     };
+    // 🎞 Clip: four seconds recorded, saved beside the card as MP4 (or WebM where Chromium can't make
+    // MP4), checked by its container's magic number and a duration the page can read.
+    const clipOf = async kind => {
+      const clips = () => (fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.startsWith(`shellby-${kind}-`) && /\.(mp4|webm)$/.test(f)) : []);
+      const type = await ev('SB.momentClip.pickType()?.[1] || null');
+      check(type === 'mp4', `this Chromium records MP4 (${type})`);
+      await ev("document.getElementById('cardClip').click()");
+      let file = null;
+      for (let i = 0; i < 60 && !file; i++) { file = clips()[0] || null; if (!file) await wait(250); }
+      await wait(300);
+      const buf = file ? fs.readFileSync(path.join(dir, file)) : Buffer.alloc(0);
+      const magic = file?.endsWith('.mp4') ? buf.subarray(4, 8).toString('latin1') === 'ftyp' : buf.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+      check(!!file && magic && buf.length < 5 * 1024 * 1024, `the ${kind} clip is saved as a real ${type} (${file || 'none'}, ${buf.length} bytes)`);
+      const duration = await ev(`(async () => {
+        const v = document.getElementById('cardVideo');
+        if (v.hidden || !v.src) return null;
+        const t = document.createElement('video'); t.muted = true; t.src = v.src;
+        await new Promise((r, j) => { t.onloadedmetadata = r; t.onerror = j; });
+        if (!Number.isFinite(t.duration)) { t.currentTime = 1e6; await new Promise(r => { t.ondurationchange = r; setTimeout(r, 3000); }); }
+        return t.duration;
+      })()`);
+      check(duration > 2 && duration < 8, `the clip plays in the sheet, about four seconds long (${duration})`);
+      const parts = await ev("JSON.stringify([document.getElementById('cardImg').hidden, document.getElementById('cardCopy').hidden, document.querySelector('#cardSheet .card-box').className])");
+      check(parts === JSON.stringify([true, true, 'card-box clipping']), `a clip: no Copy, Show file first (${parts})`);
+      check(await ev("(v => v.controls === matchMedia('(prefers-reduced-motion: reduce)').matches)(document.getElementById('cardVideo'))"), 'with motion turned down the clip waits for its play button, otherwise it plays');
+      await ev("document.getElementById('cardClip').click()"); // 🖼 Picture: back to the card
+      check(await ev("!document.getElementById('cardImg').hidden && document.getElementById('cardVideo').hidden"), '🖼 Picture goes back to the card');
+    };
+
     await bothSizes('crab', 'the crab card');
+    check(await ev("document.getElementById('cardClip').hidden"), 'the crab card has no clip');
     // How many cards he's counted as shared (Show-Off's stat), from the profile's settings once written.
     const shares = async () => { await wait(1200); try { return JSON.parse(fs.readFileSync(path.join(profile, 'settings.json'), 'utf8')).stats?.cardsShared ?? 0; } catch { return null; } };
     const sharesBefore = await shares();
@@ -143,8 +173,10 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     await wait(300);
     check(await ev("document.getElementById('cardSheet').hidden"), 'close hides the sheet');
 
-    // Every moment card, in both sizes.
+    // Every moment card, in both sizes; 🎞 Clip on the ones that move (moment-clip.js CLIP_KINDS), and one clip made.
     const kinds = await ev('SB.momentCard.MOMENT_KINDS.slice()');
+    const clipKinds = await ev('SB.momentClip.CLIP_KINDS.slice()');
+    let clipped = false;
     check(Array.isArray(kinds) && kinds.length > 0, `moment-card.js lists its kinds (${(kinds || []).join(', ')})`);
     for (const kind of kinds || []) {
       const m = PAGE_MOMENTS[kind] || (MOMENTS[kind] && JSON.stringify(MOMENTS[kind]));
@@ -154,6 +186,12 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
       const size = await newest(kind, 'wide', before);
       check(size?.w === 1200 && size?.h === 630, `the ${kind} card is a 1200x630 PNG (${showSize(size)})`);
       await bothSizes(kind, `the ${kind} card`);
+      const offersClip = await ev("!document.getElementById('cardClip').hidden");
+      check(offersClip === clipKinds.includes(kind), `the ${kind} card ${clipKinds.includes(kind) ? 'offers' : "doesn't offer"} 🎞 Clip`);
+      if (offersClip && !clipped) {
+        clipped = true;
+        await clipOf(kind);
+      }
       await ev("document.getElementById('cardClose').click()");
     }
     // A size switch draws the card again but isn't another share.

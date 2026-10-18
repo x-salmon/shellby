@@ -388,7 +388,8 @@
 
   const postText = d => `Meet my Shellby 🦀 ${d.tasks} task${d.tasks === 1 ? '' : 's'} done and ${d.trophies}/${d.trophiesAll} trophies. A pixel hermit crab that runs Claude Code on my desktop.${d.code ? ` Wear my look: ${d.code}` : ''}`;
 
-  // The size switch above the preview: only for a card that comes in more than one size.
+  // The size switch above the preview, for a card that comes in more than one
+  // size, and 🎞 Clip beside it for a moment that moves.
   function renderSizes() {
     const sizes = showing?.spec.sizes || ['wide'];
     $('cardSizes').hidden = sizes.length < 2;
@@ -396,18 +397,24 @@
       b.hidden = !sizes.includes(b.dataset.size);
       b.setAttribute('aria-checked', String(b.dataset.size === showing?.size));
     }
-    $('cardImg').classList.toggle('square', showing?.size === 'square');
+    $('cardClip').hidden = !showing?.spec.clip;
+    $('cardClip').textContent = clip ? '🖼 Picture' : '🎞 Clip';
+    $('cardClip').setAttribute('aria-pressed', String(!!clip));
+    $('cardTools').hidden = $('cardSizes').hidden && $('cardClip').hidden;
+    for (const el of [$('cardImg'), $('cardVideo')]) el.classList.toggle('square', showing?.size === 'square');
   }
 
   /**
    * Draw a card, save it (main copies it to the clipboard too) and show it in
    * the share sheet. spec: { kind, draw: size => { canvas, data }, title, alt,
    * post: data => text, buttons: selector of the buttons to disable meanwhile,
-   * sizes: the sizes it comes in (default ['wide']), size: one to use this time }.
+   * sizes: the sizes it comes in (default ['wide']), size: one to use this time,
+   * clip: size => { bytes, ext, blob } for a moment that moves (moment-clip.js) }.
    * The size you pick is remembered per kind. again: the same card in another
    * size, which main saves but doesn't count as another share.
    */
   async function present(spec, { again = false } = {}) {
+    showPicture();
     const { kind, draw, title, alt, post, buttons } = spec;
     const sizes = spec.sizes?.length ? spec.sizes.filter(s => SIZES[s]) : ['wide'];
     const size = sizes.includes(spec.size) ? spec.size : pickedSize(kind, sizes);
@@ -420,7 +427,7 @@
       const r = await api.saveCard(bytes, kind, { size, again });
       if (!r?.ok) return SB.toast(r?.error || "Couldn't save the card.");
       // data: URL, not blob: (the panel's CSP only allows 'self' and data: images).
-      last = { url: canvas.toDataURL('image/png'), bytes, post: post(data), alt, path: r.path, copied: r.copied !== false, discord: !!r.discord };
+      last = { url: canvas.toDataURL('image/png'), bytes, post: post(data), alt, name: r.name, path: r.path, copied: r.copied !== false, discord: !!r.discord };
       showing = { spec: { ...spec, sizes }, size };
       $('cardTitle').textContent = title;
       $('cardImg').alt = alt;
@@ -456,8 +463,75 @@
       : "Your Shellby card: your crab as he's dressed now, with your trophies and task count",
   });
 
+  // ---- a moment that moves: its clip in the preview, saved beside the card
+  const box = sheet.querySelector('.card-box');
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let clip = null; // { url, path, name } while the sheet shows the clip
+
+  async function makeClip() {
+    if (!showing?.spec.clip || !last) return;
+    if (clip) { showPicture(); renderSizes(); return; }
+    const btn = $('cardClip');
+    btn.disabled = true;
+    btn.textContent = '🎞 Recording…';
+    try {
+      const c = await showing.spec.clip(showing.size);
+      const r = await api.saveCard(c.bytes, showing.spec.kind, { size: showing.size, video: c.ext, again: true });
+      if (!r?.ok) { SB.toast(r?.error || "Couldn't save the clip."); return; }
+      clip = { url: URL.createObjectURL(c.blob), path: r.path, name: r.name };
+      showClip();
+    } catch (e) {
+      console.warn('[shellby] clip failed', e);
+      SB.toast("Couldn't make the clip.");
+    } finally {
+      btn.disabled = false;
+      renderSizes();
+    }
+  }
+
+  // The clip in the preview: playing on a loop, or, with motion turned down,
+  // its first frame and a play button. It can't be pasted, so Show file leads.
+  function showClip() {
+    const v = $('cardVideo'), still = reduced();
+    v.src = clip.url;
+    v.controls = still;
+    v.autoplay = !still;
+    v.setAttribute('aria-label', `A clip: ${last?.alt || 'the card, moving'}`);
+    v.hidden = false;
+    $('cardImg').hidden = true;
+    if (!still) v.play().catch(() => {});
+    $('cardLead').textContent = 'Saved as';
+    $('cardPath').textContent = clip.name;
+    $('cardTail').textContent = "A clip can't go on the clipboard: Show file, then drag it into your post.";
+    box.classList.add('clipping');
+    $('cardCopy').hidden = true;
+    $('cardReveal').classList.add('primary');
+    $('cardReveal').classList.remove('ghost');
+    $('cardReveal').focus();
+    hint();
+  }
+
+  // Back to the picture (and the clip let go).
+  function showPicture() {
+    const v = $('cardVideo');
+    v.pause();
+    v.removeAttribute('src');
+    v.hidden = true;
+    if (clip) URL.revokeObjectURL(clip.url);
+    clip = null;
+    $('cardImg').hidden = false;
+    $('cardLead').textContent = 'Copied to your clipboard and saved as';
+    if (last) $('cardPath').textContent = last.name;
+    $('cardTail').textContent = 'Paste it into a post:';
+    box.classList.remove('clipping');
+    $('cardCopy').hidden = false;
+    $('cardReveal').classList.remove('primary');
+    $('cardReveal').classList.add('ghost');
+  }
+
   function close() {
     sheet.hidden = true;
+    showPicture();
     showing = null;
     clearTimeout(hintTimer);
   }
@@ -468,9 +542,11 @@
     clearTimeout(hintTimer);
     const el = $('cardHint');
     el.classList.toggle('now', !!now);
-    el.textContent = now || (last?.discord
-      ? 'X and Bluesky let you add the alt text when you attach the picture.'
-      : 'For Discord: Copy again, then paste it in Discord. X and Bluesky let you add the alt text when you attach the picture.');
+    el.textContent = now || (clip
+      ? 'X and Bluesky take MP4 clips, and Discord takes both kinds.'
+      : last?.discord
+        ? 'X and Bluesky let you add the alt text when you attach the picture.'
+        : 'For Discord: Copy again, then paste it in Discord. X and Bluesky let you add the alt text when you attach the picture.');
     if (now) hintTimer = setTimeout(() => hint(), HINT_MS);
   }
 
@@ -482,6 +558,13 @@
 
   async function postOn(url) {
     if (!last) return;
+    if (clip) {
+      // A clip goes in by hand: the post opens, and so does the folder it's in.
+      api.openExternal(url);
+      api.revealCard(clip.path);
+      hint('Drag the clip from the folder into your post.');
+      return;
+    }
     const copied = await readyToPaste();
     api.openExternal(url);
     hint(copied ? 'Your card is on the clipboard: press Ctrl+V in the post.' : "Couldn't copy it: Show file, then drag it into your post.");
@@ -508,13 +591,14 @@
     const btn = $('cardDiscord');
     btn.disabled = true;
     try {
-      const r = await api.postCardToDiscord(last.path, withLink(last.post));
+      const r = await api.postCardToDiscord(clip ? clip.path : last.path, withLink(last.post));
       if (r?.ok) SB.toast('Posted to Discord.');
       else if (!r?.canceled) SB.toast(r?.error || "Couldn't post it to Discord.", { ms: 6000 });
     } finally { btn.disabled = false; }
   });
-  $('cardReveal').addEventListener('click', () => api.revealCard());
+  $('cardReveal').addEventListener('click', () => api.revealCard(clip ? clip.path : last?.path));
   $('cardSizes').addEventListener('click', e => { const b = e.target.closest('[data-size]'); if (b) switchSize(b.dataset.size); });
+  $('cardClip').addEventListener('click', makeClip);
   // A moment card's post already ends with the link (moment-card.js postFor); the others get it here.
   const withLink = text => (text.includes(REPO) ? text : `${text} ${REPO}`);
   $('cardX').addEventListener('click', () => last && postOn(`https://x.com/intent/post?text=${encodeURIComponent(withLink(last.post))}`));

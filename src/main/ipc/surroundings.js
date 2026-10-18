@@ -16,10 +16,16 @@ const MAX_COPY_CHARS = 1_000_000;
 
 // What a card may be called after: anything else is just a card. The moments are
 // moment-card.js's MOMENT_KINDS (a test keeps the two lists together).
-const CARD_KINDS = Object.freeze(['crab', 'tank', 'week', 'wrapped', 'beach',
+const CARD_KINDS = Object.freeze(['crab', 'tank', 'week', 'wrapped', 'wrapped-friends', 'beach',
   'shiny', 'medal', 'board', 'egg', 'trophy', 'level', 'molt', 'sticker', 'catch', 'streak', 'skin']);
 // A card's file name as card:save makes it: the only files card:post-discord will send.
-const CARD_FILE = /^shellby-[a-z]+(?:-square)?-\d{8}-\d{6}\.(?:png|mp4|webm)$/;
+const CARD_FILE = /^shellby-[a-z]+(?:-[a-z]+)*-\d{8}-\d{6}\.(?:png|mp4|webm)$/;
+// A moment's clip (moment-clip.js): four seconds of canvas, far under this.
+const CLIP_MAX_BYTES = 5 * 1024 * 1024;
+const EBML = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]);
+// Is it the container it says it is? MP4 has 'ftyp' at byte 4, WebM starts with EBML's magic.
+const isClip = (buf, ext) => buf.length > 12 && buf.length <= CLIP_MAX_BYTES
+  && (ext === 'mp4' ? buf.subarray(4, 8).toString('latin1') === 'ftyp' : buf.subarray(0, 4).equals(EBML));
 
 /**
  * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
@@ -234,16 +240,20 @@ function registerSurroundingsIpc(ipcMain, d) {
     } catch (e) { d.log.warn("couldn't copy a crab card", e?.message); return false; }
   };
   // opts: { size: 'wide' | 'square' (in the name when square), again: the same
-  // card in another size, saved but not counted as another share }.
+  // card in another size, saved but not counted as another share, video: 'mp4'
+  // or 'webm' for a moment's clip, checked to be that container and saved
+  // as it (video can't go on the clipboard) }.
   ipcMain.handle('card:save', async (_e, bytes, kind, opts) => {
-    const card = cardImage(bytes);
-    if (!card) return { ok: false, error: "That card didn't come out right." };
+    const video = opts?.video === 'mp4' || opts?.video === 'webm' ? opts.video : null;
+    const raw = Buffer.from(bytes instanceof Uint8Array ? bytes : []);
+    const card = video ? (isClip(raw, video) ? { buf: raw } : null) : cardImage(bytes);
+    if (!card) return { ok: false, error: video ? "That clip didn't come out right." : "That card didn't come out right." };
     const square = opts?.size === 'square';
     try {
       const dir = cardsDir();
       fs.mkdirSync(dir, { recursive: true });
       const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
-      lastCard = path.join(dir, `shellby-${kinds.has(kind) ? kind : 'card'}${square ? '-square' : ''}-${stamp}.png`);
+      lastCard = path.join(dir, `shellby-${kinds.has(kind) ? kind : 'card'}${square ? '-square' : ''}-${stamp}.${video || 'png'}`);
       fs.writeFileSync(lastCard, card.buf);
     } catch (e) {
       d.log.warn("couldn't save a crab card", e?.message);
@@ -251,17 +261,27 @@ function registerSurroundingsIpc(ipcMain, d) {
     }
     if (opts?.again !== true) d.stat('card-shared');
     if (kind === 'tank') d.questDone?.('tank-share'); // the Tank's 📸: "Share the tank"
+    const where = { name: path.join('Pictures', 'Shellby', path.basename(lastCard)), path: lastCard, discord: !!discordUrl() };
+    if (video) return { ok: true, video: true, ...where };
     // The file is the save; the clipboard is a bonus. Another app holding the
     // clipboard (clipboard history, a screenshot tool) mustn't turn a saved
     // card into a "couldn't save" — the sheet's Copy button can try again.
     const copied = await copyCard(card.buf);
-    return { ok: true, copied, name: path.join('Pictures', 'Shellby', path.basename(lastCard)), path: lastCard, discord: !!discordUrl() };
+    return { ok: true, copied, ...where };
   });
   ipcMain.handle('card:copy', async (_e, bytes) => {
     const card = cardImage(bytes);
     return { ok: !!card && await copyCard(card.buf) };
   });
-  ipcMain.on('card:reveal', () => { if (lastCard && fs.existsSync(lastCard)) shell.showItemInFolder(lastCard); });
+  // A card Shellby saved (the sheet's picture or its clip), else the last one saved.
+  const savedCard = file => {
+    const full = typeof file === 'string' && file.length < 1024 ? path.resolve(file) : null;
+    return full && path.dirname(full) === cardsDir() && CARD_FILE.test(path.basename(full)) && fs.existsSync(full) ? full : null;
+  };
+  ipcMain.on('card:reveal', (_e, file) => {
+    const shown = savedCard(file) || lastCard;
+    if (shown && fs.existsSync(shown)) shell.showItemInFolder(shown);
+  });
 
   // ---- a saved card, posted to your Discord webhook (channels/index.js cardUpload).
   // The panel names a file card:save made (never sends bytes of its own); asked
@@ -277,10 +297,8 @@ function registerSurroundingsIpc(ipcMain, d) {
   ipcMain.handle('card:post-discord', async (_e, file, text) => {
     const url = discordUrl();
     if (!url) return { ok: false, error: 'Set up Discord under Settings → Connections first.' };
-    const full = typeof file === 'string' && file.length < 1024 ? path.resolve(file) : null;
-    if (!full || path.dirname(full) !== cardsDir() || !CARD_FILE.test(path.basename(full)) || !fs.existsSync(full)) {
-      return { ok: false, error: "That isn't a card Shellby saved." };
-    }
+    const full = savedCard(file);
+    if (!full) return { ok: false, error: "That isn't a card Shellby saved." };
     if (d.config.get('cardDiscordOk') !== webhookId(url)) {
       const name = await webhookName(url);
       const response = await d.askOnce?.({
@@ -310,4 +328,4 @@ function registerSurroundingsIpc(ipcMain, d) {
   ipcMain.on('open-data-folder', () => shell.openPath(app.getPath('userData')));
 }
 
-module.exports = { registerSurroundingsIpc, MAX_COPY_CHARS, CARD_KINDS };
+module.exports = { registerSurroundingsIpc, MAX_COPY_CHARS, CARD_KINDS, CLIP_MAX_BYTES };
