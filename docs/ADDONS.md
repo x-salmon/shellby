@@ -8,6 +8,8 @@ A wardrobe pack is **one JSON file** that adds things Shellby can wear or show:
 - **Voices**: new ways for him to talk, like a pirate, a grump, or another language. See [Voices](#voices).
 - **Scenes**: little stories he acts out in beats, like building a sandcastle that crumbles. See [Scenes](#scenes).
 
+Painting a single skin, accessory, effect or piece of tank decor? The **Painter** (Shellby's screen → **🎨 Paint**, see [SKINS.md](SKINS.md)) makes the pack for you, checks it and can share it to the gallery in one click. This file is the format underneath, for packs with several things in them (or the web [Pack Studio](https://getshellby.com/community/studio/)).
+
 Packs hold **data only**: pixels, colours, short lines of text and a few settings. There is no code, scripting, HTML or links that run. Shellby checks every pack when it loads, so a broken pack can't break the app. The strict rules are in [`addon.schema.json`](addon.schema.json), and editors like VS Code can use that file to check your pack as you type.
 
 ## Try it in 5 minutes
@@ -57,6 +59,7 @@ If something is wrong, the Wardrobe lists the pack with its warnings, for exampl
   "version": "1.0.0",              // major.minor.patch
   "description": "…",              // optional, up to 240 chars
   "homepage": "https://…",         // optional, must start with https://, up to 200 chars
+  "contest": "2026-11",            // optional: the monthly crab contest it's an entry for, as YYYY-MM
   "accessories": [],               // up to 200
   "effects": [],                   // up to 50
   "skins": [],                     // up to 50
@@ -67,7 +70,7 @@ If something is wrong, the Wardrobe lists the pack with its warnings, for exampl
 ```
 
 - If `format`, `id`, `name`, `author` or `version` is wrong, **the whole pack is rejected**.
-- A bad `description` or `homepage` is dropped with a warning.
+- A bad `description`, `homepage` or `contest` is dropped with a warning.
 - A bad item is **skipped** with a warning, and the rest of the pack still loads.
 - If two items of the same kind share an id, the first one is kept.
 - Fields Shellby doesn't recognise are ignored.
@@ -222,7 +225,7 @@ Keep sprites small. Up to 5×5 reads best, 7×7 for the one big piece in a set, 
 
 ## Skins
 
-Skins use the [SKINS.md](SKINS.md) format and add two optional fields:
+Skins use the [SKINS.md](SKINS.md) format (up to 32 colours) and add two optional fields:
 
 ```jsonc
 {
@@ -237,7 +240,7 @@ Skins use the [SKINS.md](SKINS.md) format and add two optional fields:
 }
 ```
 
-Each anchor value is `[x, y]` with integers from −16 to 48. If your crab has the classic shape, leave out `anchors`.
+Each anchor value is `[x, y]` with integers from −16 to 48. If your crab has the classic shape, leave out `anchors`. A skin painted from someone else's gallery skin can say so with `"basedOn": "<their pack id>"`, the credit CC BY 4.0 asks for (the Painter adds it for you).
 
 ## Voices
 
@@ -407,13 +410,17 @@ Use `rarity` to say how special an item is. It changes how the item is shown in 
 
 ## Publishing to the community gallery
 
-Want other people to find your pack? Submit it to the community gallery:
+Want other people to find your pack? Submit it to the community gallery. There are two ways, and both end in the same pull request:
 
-1. Open a pull request to [x-salmon/shellby-packs](https://github.com/x-salmon/shellby-packs) that adds your pack file. Its [CONTRIBUTING.md](https://github.com/x-salmon/shellby-packs/blob/main/CONTRIBUTING.md) explains where the file goes and what reviewers look for.
-2. Your pack must pass the same validation as the app (and the stricter [`addon.schema.json`](addon.schema.json) check), and follow the [rules for shared packs](#rules-for-shared-packs) below.
-3. Once it's merged, your pack appears in the gallery at [getshellby.com/community](https://getshellby.com/community/) with an **Add to Shellby** button. (The app itself still takes the list of packs, and each pack's checksum, only from the gallery's index at `https://x-salmon.github.io/shellby-packs/index.json`.) Anyone running Shellby 0.4.0 or later can install it in one click (they still see Shellby's confirmation dialog first).
+- **From the app.** Sign in to GitHub in Settings → GitHub and turn on **Publish Wardrobe packs**. Your own packs then have a **Publish** button in the Wardrobe's packs section, and the Painter has **Share** for anything you paint there. Shellby checks the pack the way the gallery will, shows you what goes out in a confirm window (the pack, your name, CC BY 4.0), then forks [x-salmon/shellby-packs](https://github.com/x-salmon/shellby-packs) on your account and opens the pull request. If the gallery already has that exact version, it says so instead; raise `version` and publish again (the Painter raises it for you).
+- **By hand.** Open a pull request to [x-salmon/shellby-packs](https://github.com/x-salmon/shellby-packs) that adds your pack file. Its [CONTRIBUTING.md](https://github.com/x-salmon/shellby-packs/blob/main/CONTRIBUTING.md) explains where the file goes and what reviewers look for. The Painter's **Save a file** gives you the pack for this when you'd rather not sign in.
 
-To ship an update, bump `version` and open another pull request. Keep the same `id` so it replaces the old copy.
+Either way:
+
+1. Your pack must pass the same validation as the app (and the stricter [`addon.schema.json`](addon.schema.json) check), and follow the [rules for shared packs](#rules-for-shared-packs) below.
+2. Once it's merged, your pack appears in the gallery at [getshellby.com/community](https://getshellby.com/community/) with an **Add to Shellby** button. (The app itself still takes the list of packs, and each pack's checksum, only from the gallery's index at `https://x-salmon.github.io/shellby-packs/index.json`.) Anyone running Shellby 0.4.0 or later can install it in one click (they still see Shellby's confirmation dialog first).
+
+To ship an update, bump `version` and publish (or open another pull request) again. Keep the same `id` so it replaces the old copy.
 
 ## Rules for shared packs
 
