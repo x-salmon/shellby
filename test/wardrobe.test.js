@@ -181,7 +181,7 @@ test('wardrobe: __proto__ keys cannot pollute prototypes', () => {
 test('wardrobe: unknown fields are stripped', () => {
   const { pack: p } = validatePack(pack({ evil: 1, accessories: [hat({ onClick: 'alert(1)', script: 'x' })], effects: [fx({ sprites: [{ palette: { b: '#000000' }, pixels: ['b'], extra: 1 }] })], decor: [{ id: 'rock', name: 'Rock', category: 'rock', palette: { r: '#888888' }, pixels: ['r'], onClick: 'alert(1)', spots: [{ kind: 'sit', at: [0, 0], extra: 1 }] }] }), known);
   assert.equal(p.evil, undefined);
-  assert.deepEqual(Object.keys(p).sort(), ['accessories', 'author', 'decor', 'description', 'effects', 'homepage', 'id', 'name', 'scenes', 'skins', 'source', 'version', 'voices']);
+  assert.deepEqual(Object.keys(p).sort(), ['accessories', 'author', 'contest', 'decor', 'description', 'effects', 'homepage', 'id', 'name', 'scenes', 'skins', 'source', 'version', 'voices']);
   assert.deepEqual(Object.keys(p.accessories[0]).sort(),
     ['anchor', 'description', 'follows', 'id', 'key', 'name', 'packId', 'palette', 'pivot', 'pixels', 'rarity', 'slot', 'source', 'unlock']);
   assert.deepEqual(Object.keys(p.effects[0]).sort(),
@@ -190,6 +190,15 @@ test('wardrobe: unknown fields are stripped', () => {
   assert.deepEqual(Object.keys(p.decor[0]).sort(),
     ['category', 'description', 'fps', 'frames', 'id', 'key', 'layer', 'name', 'packId', 'palette', 'pixels', 'rarity', 'source', 'spots', 'unlock']);
   assert.deepEqual(Object.keys(p.decor[0].spots[0]).sort(), ['at', 'kind']);
+});
+test('wardrobe: a contest entry names its month, and nothing else', () => {
+  assert.equal(validatePack(pack({ contest: '2026-11' }), known).pack.contest, '2026-11');
+  assert.equal(validatePack(pack(), known).pack.contest, '', 'not an entry');
+  for (const bad of ['2026-13', '2026-1', 'November', '2026-11-01', 202611, null]) {
+    const { pack: p, warnings } = validatePack(pack({ contest: bad }), known);
+    assert.equal(p.contest, '', `${JSON.stringify(bad)} is dropped`);
+    assert.deepEqual(warnings, ['ignored contest: must be a month as YYYY-MM'], 'and said so, the pack still loads');
+  }
 });
 test('wardrobe: duplicate item ids keep the first; lists are capped', () => {
   const { pack: p, warnings } = validatePack(pack({ accessories: [hat({ name: 'First' }), hat({ name: 'Second' })] }), known);

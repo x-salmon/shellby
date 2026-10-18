@@ -15,6 +15,7 @@
     "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
     "description": { "type": "string", "maxLength": 240 },
     "homepage": { "type": "string", "format": "uri", "pattern": "^https://\\S+$", "maxLength": 200 },
+    "contest": { "description": "The monthly crab contest this pack is an entry for, as YYYY-MM.", "type": "string", "pattern": "^\\d{4}-(0[1-9]|1[0-2])$" },
     "accessories": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/accessory" } },
     "effects": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/effect" } },
     "skins": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/skin" } },
@@ -150,9 +151,11 @@
         "author": { "type": "string", "maxLength": 40 },
         "description": { "type": "string", "maxLength": 120 },
         "palette": {
+          "description": "One character → one #rrggbb colour, up to 32. '.' is reserved for transparency.",
           "type": "object",
           "minProperties": 1,
-          "propertyNames": { "minLength": 1, "maxLength": 1 },
+          "maxProperties": 32,
+          "propertyNames": { "minLength": 1, "maxLength": 1, "not": { "const": "." } },
           "additionalProperties": { "$ref": "#/$defs/hex" }
         },
         "parts": {
@@ -165,6 +168,7 @@
           "items": { "type": "string", "maxLength": 40 }
         },
         "unlock": { "$ref": "#/$defs/unlock" },
+        "basedOn": { "description": "The gallery pack this skin was painted from, credited as \"based on\" (CC BY 4.0 asks for it).", "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,39}$" },
         "anchors": {
           "type": "object",
           "additionalProperties": false,

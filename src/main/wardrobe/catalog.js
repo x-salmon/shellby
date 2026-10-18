@@ -16,6 +16,8 @@ const MAX_FILE_BYTES = 512 * 1024;
 const PACK_ID_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const ITEM_ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const VERSION_RE = /^\d+\.\d+\.\d+$/;
+// A monthly crab contest entry names its month (docs/plans/community-events.md §3).
+const CONTEST_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const HEX = /^#[0-9a-f]{6}$/i;
 
 const SLOTS = ['hat', 'face', 'neck', 'held', 'shell'];
@@ -302,10 +304,15 @@ function validatePack(json, { source = 'user', knownAchievements = new Set(), kn
     if (isHttpsUrl(json.homepage)) homepage = json.homepage;
     else warnings.push('ignored homepage: must be an https:// URL of at most 200 characters');
   }
+  let contest = '';
+  if (json.contest !== undefined) {
+    if (typeof json.contest === 'string' && CONTEST_RE.test(json.contest)) contest = json.contest;
+    else warnings.push('ignored contest: must be a month as YYYY-MM');
+  }
 
   const pack = {
     id: json.id, name: json.name, author: json.author, version: json.version,
-    description, homepage, source,
+    description, homepage, contest, source,
     accessories: [], effects: [], skins: [], voices: [], scenes: [], decor: [],
   };
   const keyOf = id => (source === 'builtin' ? id : `${pack.id}/${id}`);
@@ -417,7 +424,7 @@ function loadCatalog({ builtinDir, userDir, knownAchievements = new Set(), known
       }
       packs.push({
         id: pack.id, name: pack.name, author: pack.author, version: pack.version,
-        description: pack.description, homepage: pack.homepage, source, file,
+        description: pack.description, homepage: pack.homepage, contest: pack.contest, source, file,
         counts: { accessories: pack.accessories.length, effects: pack.effects.length, skins: pack.skins.length, voices: pack.voices.length, scenes: pack.scenes.length, decor: pack.decor.length },
         warnings: packWarnings,
       });
@@ -510,7 +517,7 @@ function restorePack(packId, userDir) {
 
 module.exports = {
   validatePack, loadCatalog, installPack, removePack, restorePack, emptyTrash, TRASH_DAYS,
-  FORMAT, MAX_FILE_BYTES, PACK_ID_RE, ITEM_ID_RE, VERSION_RE,
+  FORMAT, MAX_FILE_BYTES, PACK_ID_RE, ITEM_ID_RE, VERSION_RE, CONTEST_RE, packPath,
   SLOTS, ANCHORS, FOLLOWS, MOTIONS, RARITIES, SLOT_ANCHOR, SLOT_FOLLOWS, DEFAULT_ANCHORS, LIMITS,
   DECOR_CATEGORIES, DECOR_LAYERS, STYLE_CATEGORIES, SPOT_KINDS,
 };
