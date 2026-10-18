@@ -43,9 +43,11 @@ const windowKey = (season, date) => `${season.id}@${windowStart(season, date).ge
 class Wardrobe extends EventEmitter {
   // canUnlockAll: whether "Unlock everything" is on offer (locked until it's sold).
   // eventsOn: whether tide events are on at all (Settings, crab-only mode): event-limited items only turn up then.
-  constructor({ config, builtinDir, userDir, now = () => new Date(), south = () => false, canUnlockAll = () => false, eventsOn = () => true }) {
+  // signedIn: whether a GitHub login is known, for the trophies only it can claim (credits.js).
+  // contestWins: the months you've won a crab contest, ['YYYY-MM'], for Contest Champion's line.
+  constructor({ config, builtinDir, userDir, now = () => new Date(), south = () => false, canUnlockAll = () => false, eventsOn = () => true, signedIn = () => true, contestWins = () => [] }) {
     super();
-    Object.assign(this, { config, builtinDir, userDir, now, south, canUnlockAll, eventsOn });
+    Object.assign(this, { config, builtinDir, userDir, now, south, canUnlockAll, eventsOn, signedIn, contestWins });
     this.everLevelSeen = null; // the everLevel the last setEverLevel saw: what "new" is measured from
     this.catalog = { accessories: new Map(), effects: new Map(), skins: [], voices: new Map(), scenes: new Map(), decor: new Map(), packs: [], errors: [] };
   }
@@ -116,6 +118,7 @@ class Wardrobe extends EventEmitter {
     const u = item.unlock;
     if (u.achievement) {
       const a = progress(stats, new Set(d.unlocked)).find(p => p.id === u.achievement);
+      if (a?.claim === 'github' && !this.signedIn()) return { reason: 'credit', achievement: u.achievement, text: `${a.name}: sign in to GitHub to claim` };
       return { reason: 'achievement', achievement: u.achievement, text: a ? `${a.name}: ${a.description}` : 'Earn an achievement', current: a?.current ?? 0, goal: a?.goal ?? 1 };
     }
     if (u.level) return { reason: 'level', level: u.level, text: `Reach level ${u.level}`, current: this.everLevel, goal: u.level };
@@ -388,6 +391,17 @@ class Wardrobe extends EventEmitter {
     return [...this.catalog.decor.values()].map(item => ({ ...publicItem(item), locked: this.lockInfo(item, d, stats), isNew: d.newItems.includes(item.key) }));
   }
 
+  // A contributor trophy (credits.js): locked without a sign-in it says how to claim it;
+  // Contest Champion, once won, says which months, stamped like a medal.
+  claimLine(p) {
+    const out = { claim: !p.done && p.claim === 'github' && !this.signedIn() ? 'Sign in to GitHub to claim' : null };
+    if (p.id === 'contest-champion' && p.done) {
+      const won = (this.contestWins() || []).filter(m => /^\d{4}-(0[1-9]|1[0-2])$/.test(m)).map(m => new Date(Number(m.slice(0, 4)), Number(m.slice(5)) - 1, 15).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+      if (won.length) out.description = `Won the ${won.join(', ')} crab contest${won.length > 1 ? 's' : ''}`;
+    }
+    return out;
+  }
+
   // Everything the Wardrobe screen shows.
   view() {
     const d = this.data;
@@ -405,7 +419,11 @@ class Wardrobe extends EventEmitter {
       voices: [...this.catalog.voices.values()].map(decorate),
       voice: this.activeVoice(d)?.key || null,
       skins: this.catalog.skins.map(decorate),
-      achievements: progress(stats, new Set(d.unlocked)).map(p => ({ ...p, rewards: p.rewards.map(k => this.item(k)).filter(Boolean).map(publicItem) })),
+      achievements: progress(stats, new Set(d.unlocked)).map(p => ({
+        ...p,
+        ...this.claimLine(p),
+        rewards: p.rewards.map(k => this.item(k)).filter(Boolean).map(publicItem),
+      })),
       packs: this.catalog.packs.map(p => ({ id: p.id, name: p.name, author: p.author, version: p.version, description: p.description, source: p.source, counts: p.counts, warnings: (p.warnings || []).length })),
       errors: this.catalog.errors,
       totals: {

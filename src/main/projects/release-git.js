@@ -233,8 +233,9 @@ function putBack(kept) {
 }
 
 /**
- * Cut a release. opts: { version, title, notes, head, push }
+ * Cut a release. opts: { version, title, notes, head, push, extra? }
  *   head: the commit the draft was read at; a clone that has moved since isn't released.
+ *   extra: [{ name, text }], more files the release commit writes (Shellby's credits.json)
  * deps: { git, env?(), now?() }
  * -> { ok: true, version, tag, commit, pushed, pushError? } | { ok: false, error, stale? }
  */
@@ -280,6 +281,16 @@ async function cutRelease(root, opts, deps) {
     }
     // A CHANGELOG entry you (or Claude) already wrote goes in as it is.
     if (state.changelog.exists || kept.some(k => k.file === clFile)) files.push(state.changelog.name);
+    // Other files the caller's release writes (Shellby's own credits, scripts/release-cut.js):
+    // { name, text }, a path inside the repository that isn't a link.
+    for (const x of Array.isArray(opts.extra) ? opts.extra : []) {
+      const rel = String(x?.name || '').replace(/\\/g, '/');
+      const file = path.join(root, ...rel.split('/'));
+      if (!rel || rel.startsWith('/') || rel.split('/').includes('..') || typeof x.text !== 'string' || isLink(file)) { putBack(kept); return fail(`Can't write ${rel || 'that file'} in a release.`); }
+      if (readText(file) === x.text) continue;
+      writeKeeping(file, x.text, kept);
+      files.push(rel);
+    }
     // The change notes are in the entry now (or in the one you wrote), so this release uses them up.
     for (const name of state.notes) {
       const file = path.join(root, ...name.split('/'));

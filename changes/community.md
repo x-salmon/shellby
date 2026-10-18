@@ -1,4 +1,6 @@
 ### New
 - **Community news.** Crab contests, their winners and community events now show as one quiet card at the top of the Us page and on About, with ✕ to put it away for good. A winning pack has **Get it**. Shellby reads the gallery's news once a day and asks nothing else; **Settings → Shellby → Community news** turns it off.
+- **Made by.** Settings → About → **Made by** lists everyone who has made Shellby: contest winners, the people behind the gallery's packs, and everyone with a merged pull request, each a link to their GitHub profile.
+- **Trophies for making Shellby.** 🪸 Reef Builder (a pack in the gallery) brings a coral crown, 🔧 Shipwright (a merged pull request) a tiny wrench, 🏆 Contest Champion a golden shell trim, and 🎨 Contestant a paint splat. They go by the GitHub account you're signed in with, so sign in to claim them.
 - **🎂 Molt Day.** Shellby's birthday is September 30th. On the day he says so on the desktop, the Us page says how old he is, and anyone who opens Shellby keeps that year's party hat with his age on it.
 - **Event-limited packs.** A pack item can now turn up only during a tide event, like a Haunting outfit, and stay yours after (`"unlock": { "event": "haunting" }`).

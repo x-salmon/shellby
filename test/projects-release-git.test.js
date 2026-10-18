@@ -119,6 +119,27 @@ test('change notes are the draft, call for their bump, and a release uses them u
   } finally { t.done(); }
 });
 
+test('a release can write more files of its own (Shellby\'s credits), never outside the repository', async () => {
+  const t = setup();
+  try {
+    t.work('a.txt', 'fix: one');
+    fs.mkdirSync(path.join(t.dir, 'src', 'community'), { recursive: true });
+    fs.writeFileSync(path.join(t.dir, 'src', 'community', 'credits.json'), '{"people":[]}\n');
+    t.g(t.dir, 'add', '-A');
+    t.g(t.dir, 'commit', '-qm', 'chore: credits');
+    let s = await rg.readRelease(t.dir, deps);
+    const bad = await rg.cutRelease(t.dir, { version: '0.1.1', title: 'x', notes: '- One.', head: s.head, push: false, extra: [{ name: '../escape.json', text: '{}' }] }, deps);
+    assert.equal(bad.ok, false);
+    assert.ok(!fs.existsSync(path.join(t.dir, '..', 'escape.json')));
+    assert.equal(t.g(t.dir, 'status', '--porcelain'), '', 'nothing left half-written');
+    s = await rg.readRelease(t.dir, deps);
+    const r = await rg.cutRelease(t.dir, { version: '0.1.1', title: 'One', notes: '- One.', head: s.head, push: false, extra: [{ name: 'src/community/credits.json', text: '{"people":[{"login":"octo"}]}\n' }] }, deps);
+    assert.equal(r.ok, true, r.error);
+    assert.match(t.g(t.dir, 'show', '--stat', '--format=', 'HEAD'), /src\/community\/credits\.json/);
+    assert.equal(t.g(t.dir, 'status', '--porcelain'), '');
+  } finally { t.done(); }
+});
+
 test('a note not committed yet stays out of the release, and an entry too long to keep whole is refused', async () => {
   const t = setup();
   try {

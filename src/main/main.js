@@ -80,6 +80,7 @@ const { wireStepUndo } = require('./wiring/step-undo');
 const { wireNative } = require('./wiring/native');
 const { wireEvents } = require('./wiring/events');
 const { wireNews } = require('./wiring/news');
+const { wireCredits } = require('./wiring/credits');
 const { wireSocial } = require('./wiring/social');
 const { makeToday } = require('./today');
 const { wireQuit } = require('./wiring/quit');
@@ -378,6 +379,7 @@ share(wireStepUndo(shared)); // a checkpoint before each step that changes files
 share({ native: wireNative(shared) }); // the crab noticing Claude's own to-dos, background commands, memories and skills
 const { eventsTick } = share(wireEvents(shared)); // tide events: a week or so with its own bug, finds, goals and medal
 const { startNews } = share(wireNews(shared)); // the gallery's news feed: contests, winners, events, once a day
+const { startCredits } = share(wireCredits(shared)); // About → Made by, and the trophies for making Shellby
 // The gamification overhaul (docs/GAMIFICATION-PLAN.md): levels, molting, the reef, review mastery,
 // bug nests, the Logbook and the yearbook, each registering its views with d.gameHub.
 for (const wire of [wireLevels, wireMolting, wireReef, wireReview, wireNests, wireLogbook, wireYearbook]) share(wire(shared));
@@ -459,6 +461,7 @@ app.whenReady().then(() => {
   createIssues();
   createFriends();
   startNews();
+  startCredits();
   startSocial();
   shared.channelSecret = loadChannelSecret();
   // Set up before destinations needed confirming (0.46.1): what you already

@@ -2444,6 +2444,13 @@
           <button type="button" class="btn ghost" id="ideaBtn">Suggest an idea</button>
           <button type="button" class="btn ghost" id="githubBtn">GitHub</button>
           <button type="button" class="btn ghost" id="dataBtn">Data folder</button>
+          <button type="button" class="btn ghost" id="madeByBtn" aria-expanded="false" aria-controls="madeBy">Made by</button>
+        </div>
+        <!-- Made by (credits.js, src/community/credits.json): everyone who has made Shellby -->
+        <div class="made-by" id="madeBy" hidden>
+          <p class="small muted">Everyone who has made Shellby: contest winners, the people behind the gallery's packs, and everyone with a merged pull request. Each name opens their GitHub profile.</p>
+          <div class="mb-groups" id="madeByGroups"></div>
+          <p class="small muted" id="madeByMine" hidden></p>
         </div>
         <p class="muted small">Shellby is an independent open-source project. It is not affiliated with or endorsed by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic, PBC.</p>
       </section>
@@ -2929,6 +2936,7 @@
 <script src="celebrate.js"></script>
 <script src="tide.js"></script>
 <script src="news.js"></script>
+<script src="credits.js"></script>
 <script src="recap.js"></script>
 <script src="claude-tricks.js"></script>
 <script src="outlook.js"></script>

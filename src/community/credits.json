@@ -1,0 +1,7 @@
+{
+  "format": 1,
+  "note": "Everyone who has made Shellby. Filled by npm run release:cut and npm run contest:ship; nobody is ever taken off. See docs/COMMUNITY.md.",
+  "people": [
+    { "login": "x-salmon", "for": ["code"], "packs": [] }
+  ]
+}

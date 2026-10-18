@@ -27,6 +27,85 @@
         "yPPwwwPpY"
       ],
       "unlock": { "event": "molt-day", "year": 2027 }
+    },
+    {
+      "id": "coral-crown",
+      "name": "Coral Crown",
+      "description": "For a pack of yours in the community gallery. The reef grows because of you.",
+      "slot": "hat",
+      "pivot": [3, 3],
+      "rarity": "epic",
+      "palette": { "c": "#ff7a5c", "p": "#ffb3a7", "d": "#c4473a", "w": "#fff4e4" },
+      "pixels": [
+        "c..p..c",
+        "cp.c.pc",
+        "ccdcdcc",
+        "dwdddwd"
+      ],
+      "unlock": { "achievement": "reef-builder" }
+    },
+    {
+      "id": "tiny-wrench",
+      "name": "Tiny Wrench",
+      "description": "For a pull request merged into Shellby. He's been tightening things ever since.",
+      "slot": "held",
+      "pivot": [1, 3],
+      "rarity": "epic",
+      "palette": { "s": "#c4ccd9", "S": "#8b98ab", "g": "#e9a23b" },
+      "pixels": [
+        "s.s",
+        "sSs",
+        ".S.",
+        ".g."
+      ],
+      "unlock": { "achievement": "shipwright" }
+    },
+    {
+      "id": "golden-shell-trim",
+      "name": "Golden Shell Trim",
+      "description": "For a crab contest win, stamped like a medal. Your skin ships with Shellby.",
+      "slot": "shell",
+      "pivot": [3, 2],
+      "rarity": "legendary",
+      "palette": { "y": "#f2c14e", "Y": "#fff3b0", "o": "#b8862b", "r": "#c93a3a" },
+      "pixels": [
+        ".yYyYy.",
+        "yoyrYoy",
+        ".ooooo."
+      ],
+      "unlock": { "achievement": "contest-champion" }
+    },
+    {
+      "id": "wrapped-week-2026",
+      "name": "Wrapped Week 2026",
+      "description": "Confetti from Wrapped week 2026, for sharing your year. A year's trim never comes back.",
+      "slot": "shell",
+      "pivot": [3, 2],
+      "rarity": "rare",
+      "palette": { "a": "#ff5ea8", "b": "#4ea8de", "c": "#ffd166", "g": "#6fbf4a", "w": "#fff4e4" },
+      "pixels": [
+        "a.c.b.g",
+        ".wawbw.",
+        "cbgacbg"
+      ],
+      "unlock": { "achievement": "wrapped-week-2026" }
+    }
+  ],
+  "effects": [
+    {
+      "id": "paint-splat",
+      "name": "Paint Splat",
+      "description": "For entering a crab contest. Some of it got on him.",
+      "motion": "float",
+      "count": 6,
+      "speed": 0.6,
+      "rarity": "rare",
+      "unlock": { "achievement": "contestant" },
+      "sprites": [
+        { "palette": { "r": "#ff5d8f", "R": "#c93a6a" }, "pixels": [".r.", "rRr", ".r."] },
+        { "palette": { "b": "#4ea8de" }, "pixels": ["b.b", ".b.", "b.b"] },
+        { "palette": { "y": "#ffd166", "g": "#6fbf4a" }, "pixels": ["yy", "yg"] }
+      ]
     }
   ]
 }
