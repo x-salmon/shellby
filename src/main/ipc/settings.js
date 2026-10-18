@@ -142,6 +142,7 @@ function registerSettingsIpc(ipcMain, d) {
     if (allowed.autonomousAcknowledged === false) delete allowed.autonomousAcknowledged; // can't be un-acknowledged silently either
     if ('critterScale' in allowed) allowed.critterScale = [0.75, 1, 1.5, 2].includes(allowed.critterScale) ? allowed.critterScale : 1;
     if ('model' in allowed && !isModel(allowed.model)) delete allowed.model;
+    if ('shareButtons' in patch) allowed.shareButtons = !!patch.shareButtons; // 📸 on celebrations (share-moments.md)
     if ('fallbackModel' in allowed && !isModel(allowed.fallbackModel)) delete allowed.fallbackModel;
     if ('effort' in allowed && allowed.effort !== '' && !EFFORTS.includes(allowed.effort)) delete allowed.effort;
     if ('outputStyle' in allowed) allowed.outputStyle = outputStyles.clean(allowed.outputStyle);

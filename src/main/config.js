@@ -115,6 +115,7 @@ const DEFAULTS = {
   weekly: null,       // what happened each day, for the week-in-review card (see weekly.js); this PC only
   flakyTests: true,   // spot tests that fail and then pass on the same code (see flaky/index.js)
   surprises: true,    // now and then a fanfare for a real outcome: a critical hit, a clean landing (see surprises.js)
+  shareButtons: true, // a 📸 on celebrations, for the moment's own card (moment-card.js); off, cards stay on Trophies
   crits: null,        // the surprises' luck: when the last one was, misses since, how many (see surprises.js); this PC only
   catchBugs: true,    // the Bugdex: catch each kind of bug Claude fixes (see bugdex/index.js)
   bugBattles: true,   // ...and show Claude's work on each one as a battle (see bugdex/battle.js)

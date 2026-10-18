@@ -328,7 +328,7 @@
     if (!n) return;
     const text = n.tier ? `${n.name} went ${n.tier.name.toLowerCase()} ✨ and its castle on the beach grew` : n.pressed ? `${n.name} shipped again: its sticker is pressed back down` : `${n.marks.map(m => `${m.icon} ${m.name}`).join(', ')} on ${n.name}`;
     // A tier up is a sticker card's moment too, unless it's one you keep off your cards.
-    const card = n.tier && !projectOf(n.id)?.hidden && SB.momentCard;
+    const card = n.tier && !projectOf(n.id)?.hidden && SB.momentCard && SB.shareButtons?.() !== false;
     SB.toast(text, card
       ? { action: '📸 Share', ms: 6000, onAction: () => SB.momentCard.share('sticker', { id: n.id }) }
       : { action: 'Sticker Book', ms: 5000, onAction: () => { selected = n.id; SB.setView('stickers'); } });

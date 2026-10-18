@@ -5,6 +5,7 @@
 - **The picture reaches the post.** After **Post on X** or **Post on Bluesky** opens your browser, the sheet says your card is on the clipboard and to press Ctrl+V in the post (and copies it again first if the first copy didn't take). **Copy alt text** copies the card's description, for the image description X and Bluesky ask for.
 - **Post to Discord.** If you've set up a Discord webhook for phone notifications, the share sheet has **Post to Discord**: the card goes to that channel as a picture, with its words and never a ping. It asks once per webhook before the first post.
 - **Moments that move.** A sparkly find and a molt have **🎞 Clip** beside the size switch: a four-second video of the card, the sparkly art turning over and a glint sweeping across it, or the old shell sliding off and the new one dropping on. It's saved beside the card as an MP4 (X, Bluesky and Discord all take it). Video can't go on the clipboard, so the sheet puts **Show file** first; with motion turned down, the preview waits on its first frame for you to press play.
+- **Share buttons on celebrations**, in Settings → Shellby. Off hides every 📸 on celebrations; a trophy's card stays on the Trophies page. Nothing new pops up to ask you to share: the 📸 is only ever on the moment itself.
 - **Posts that say what happened.** Each card's post names the moment in his voice ("Shellby just molted into the Barnacle Shell 🦀"), then #Shellby and the link.
 
 ### Fixed

@@ -123,7 +123,7 @@ test('card:save writes the PNG under Pictures/Shellby, copies it, and card:revea
   assert.deepEqual([...fs.readFileSync(saved)], [...png()]);
   const [items] = electron.callsOf('clipboard.write').slice(writesBefore)[0];
   assert.deepEqual(items[0].types, ['image/png'], 'copied as a PNG ClipboardItem (Electron 44 clipboard)');
-  assert.deepEqual(rec.of('stat'), [['card-shared']]);
+  assert.deepEqual(rec.of('stat'), [['card-shared'], ['card-shared:week']]);
 
   ipc.send('card:reveal');
   assert.equal(revealed().at(-1), saved);
@@ -157,7 +157,7 @@ test('card:save puts a square card\'s size in its name, and the same card again 
   assert.match(path.basename(wide.name), /^shellby-trophy-\d{8}-\d{6}\.png$/);
   assert.match(path.basename(square.name), /^shellby-trophy-square-\d{8}-\d{6}\.png$/);
   assert.match(path.basename(odd.name), /^shellby-trophy-\d{8}-\d{6}\.png$/, 'an unknown size is just wide');
-  assert.deepEqual(rec.of('stat'), [['card-shared'], ['card-shared']]);
+  assert.deepEqual(rec.of('stat'), [['card-shared'], ['card-shared:trophy'], ['card-shared'], ['card-shared:trophy']]);
 });
 
 // ---- a moment's clip: MP4 or WebM, checked by its magic number and size, never on the clipboard

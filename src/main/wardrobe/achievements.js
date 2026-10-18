@@ -278,11 +278,24 @@ const MAXIMA = {
   molted: 'molts', 'ever-level': 'everLevel', 'chapter-done': 'chaptersDone', 'wrapped-seen': 'wrappedYears',
 };
 
+// card-shared:<kind> (ipc/surroundings.js card:save): each kind of card shared, counted
+// beside the one card-shared stat, so a trophy can ask for variety. A kind is a short word.
+const CARD_KIND_RE = /^[a-z]+(?:-[a-z]+)*$/;
+const MAX_CARD_KINDS = 40;
+
 function emptyStats() {
   const s = {};
   for (const k of COUNTERS) s[k] = 0;
   s.activeDays = [];
+  s.cardsByKind = {};
   return s;
+}
+
+/** { kind: count } kept to known-shaped kinds with a count, at most MAX_CARD_KINDS of them. */
+function cleanCardKinds(raw) {
+  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  return Object.fromEntries(Object.entries(src).filter(([k, n]) => k.length <= 24 && CARD_KIND_RE.test(k) && count(n) > 0)
+    .slice(0, MAX_CARD_KINDS).map(([k, n]) => [k, count(n)]));
 }
 
 const count = v => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
@@ -300,6 +313,7 @@ function normalizeStats(raw) {
   const s = emptyStats();
   for (const k of COUNTERS) s[k] = count(Object.prototype.hasOwnProperty.call(src, k) ? src[k] : 0);
   s.activeDays = cleanDays(src.activeDays);
+  s.cardsByKind = cleanCardKinds(src.cardsByKind);
   return s;
 }
 
@@ -322,6 +336,11 @@ function recordStat(stats, event, payload = {}, now = new Date()) {
     markActive();
   } else if (event === 'active') {
     markActive();
+  } else if (typeof event === 'string' && event.startsWith('card-shared:')) {
+    const kind = event.slice('card-shared:'.length);
+    if (kind.length <= 24 && CARD_KIND_RE.test(kind) && (kind in s.cardsByKind || Object.keys(s.cardsByKind).length < MAX_CARD_KINDS)) {
+      s.cardsByKind = { ...s.cardsByKind, [kind]: (s.cardsByKind[kind] || 0) + 1 };
+    }
   } else if (Object.prototype.hasOwnProperty.call(INCREMENTS, event)) {
     s[INCREMENTS[event]] += 1;
   } else if (Object.prototype.hasOwnProperty.call(MAXIMA, event)) {
@@ -334,6 +353,8 @@ function recordStat(stats, event, payload = {}, now = new Date()) {
 /** Numeric value of a stat (activeDays → number of days). */
 function statValue(stats, stat) {
   if (stat === 'activeDays') return Array.isArray(stats && stats.activeDays) ? stats.activeDays.length : 0;
+  // How many kinds of card have been shared, for a trophy that asks for variety.
+  if (stat === 'cardKinds') return Object.keys(cleanCardKinds(stats && stats.cardsByKind)).length;
   return count(stats && stats[stat]);
 }
 

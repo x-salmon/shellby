@@ -64,6 +64,7 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
     const send = (method, params = {}) => new Promise(r => { const i = ++id; p.set(i, m => r(m.result)); ws.send(JSON.stringify({ id: i, method, params })); });
     const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }))?.result?.value;
+    const until = async (expr, ms = 6000) => { for (let t = 0; t < ms; t += 200) { if (await ev(expr)) return true; await wait(200); } return false; };
     await wait(3000);
 
     // Dress him up first.
@@ -197,6 +198,21 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     // A size switch draws the card again but isn't another share.
     const sharesAfter = await shares();
     check(sharesAfter - sharesBefore === kinds.length, `each moment counts once for Show-Off, whatever its sizes (${sharesAfter - sharesBefore} of ${kinds.length})`);
+
+    // A celebration's 📸 makes its moment's card; Settings → Share buttons on celebrations off hides it,
+    // and a trophy's card stays on the Trophies page.
+    const streakBefore = savedAs('streak').length;
+    await ev("SB.clearCelebrations(); SB.celebrate({ eyebrow: 'Streak', icon: '🔥', title: '7 days in a row', card: { kind: 'streak', m: { days: 7 } } })");
+    check(await until("!!document.querySelector('.celebrate .cel-share')"), 'a celebration has its 📸');
+    await ev("document.querySelector('.celebrate .cel-share').click()");
+    const fromCel = await newest('streak', 'wide', streakBefore);
+    check(fromCel?.w === 1200, `and it makes the streak card, not the crab card (${showSize(fromCel)})`);
+    await ev("document.getElementById('cardClose').click()");
+    await ev("shellby.setSettings({ shareButtons: false }).then(r => { SB.state.settings = r.settings; SB.clearCelebrations(); SB.celebrate({ title: 'Quiet', card: { kind: 'streak', m: { days: 7 } } }); })");
+    check(await until("!!document.querySelector('.celebrate')") && !(await ev("!!document.querySelector('.celebrate .cel-share')")), 'with Share buttons off, no 📸 on a celebration');
+    await ev("SB.clearCelebrations(); SB.setView('trophies')");
+    check(await until("!!document.querySelector('#trophyList .trophy.done .trophy-share')"), 'but a trophy you have keeps its 📸 on Trophies');
+    await ev("shellby.setSettings({ shareButtons: true }).then(r => { SB.state.settings = r.settings; })");
 
     // The week and Wrapped cards come in both sizes too.
     for (const [kind, call] of [['week', 'SB.weekCard.share()'], ['wrapped', "SB.wrappedCard.share({ year: 2026, card: { tiles: [['XP', '12,345'], ['days together', '120'], ['tasks', '300']] } })"]]) {

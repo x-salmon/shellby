@@ -171,4 +171,9 @@ test('every moment in the table is handed over by the place that celebrates it',
   has('streaks.js', /card: \{ kind: 'streak', m: \{ days \} \}/, 'a streak');
   has('celebrate.js', /SB\.momentCard\.share\(c\.card\.kind, c\.card\.m, c\.card\.opts\)/, 'the 📸 shares the moment');
   has('celebrate.js', /return SB\.crabCard\?\.share\(\);/, 'and the crab card without one');
+  // Settings → Shellby → Share buttons on celebrations, off: no 📸 anywhere a celebration shows one.
+  has('celebrate.js', /SB\.shareButtons\(\) \? h\('button', \{ class: 'btn ghost slim-btn cel-share'/, 'the celebration card');
+  has('levels-ui.js', /SB\.shareButtons\?\.\(\) !== false \? h\('button'/, 'the level ceremony');
+  has('molt.js', /SB\.shareButtons\?\.\(\) === false/, 'the Molt sheet');
+  has('stickers.js', /SB\.shareButtons\?\.\(\) !== false/, 'a sticker tier up');
 });

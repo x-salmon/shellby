@@ -259,7 +259,8 @@ function registerSurroundingsIpc(ipcMain, d) {
       d.log.warn("couldn't save a crab card", e?.message);
       return { ok: false, error: "Couldn't save the card to Pictures." };
     }
-    if (opts?.again !== true) d.stat('card-shared');
+    // Show-Off's one stat, and beside it which kind of card it was (card-shared:<kind>).
+    if (opts?.again !== true) { d.stat('card-shared'); d.stat(`card-shared:${kinds.has(kind) ? kind : 'card'}`); }
     if (kind === 'tank') d.questDone?.('tank-share'); // the Tank's 📸: "Share the tank"
     const where = { name: path.join('Pictures', 'Shellby', path.basename(lastCard)), path: lastCard, discord: !!discordUrl() };
     if (video) return { ok: true, video: true, ...where };

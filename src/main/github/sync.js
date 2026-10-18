@@ -111,7 +111,12 @@ function merge(aIn, bIn) {
   const a = clean(aIn), b = clean(bIn);
   const union = (x, y) => [...new Set([...x, ...y])];
   const stats = {};
-  for (const k of Object.keys(a.stats)) stats[k] = k === 'activeDays' ? union(a.stats.activeDays, b.stats.activeDays) : Math.max(a.stats[k], b.stats[k] || 0);
+  const maxEach = (x, y) => Object.fromEntries([...new Set([...Object.keys(x), ...Object.keys(y)])].map(k => [k, Math.max(x[k] || 0, y[k] || 0)]));
+  for (const k of Object.keys(a.stats)) {
+    stats[k] = k === 'activeDays' ? union(a.stats.activeDays, b.stats.activeDays)
+      : k === 'cardsByKind' ? maxEach(a.stats.cardsByKind, b.stats.cardsByKind || {}) // each kind of card shared, its own count
+        : Math.max(a.stats[k], b.stats[k] || 0);
+  }
   const seen = new Set();
   const counts = mergeXpCounts(a.xp, b.xp);
   const log = [...a.xp.log, ...b.xp.log].sort((x, y) => y.at - x.at).filter(e => { const k = `${e.at}|${e.kind}|${e.label}`; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 40);

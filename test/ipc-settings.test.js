@@ -97,6 +97,15 @@ test('settings:set coerces flags to booleans and clamps size and colony', async 
   assert.equal(config.get('colony'), 5, 'a non-integer keeps the colony it had');
 });
 
+test('settings:set takes Share buttons on celebrations as a flag', async () => {
+  const { ipc, config } = setup();
+
+  await ipc.invoke('settings:set', { shareButtons: 0 });
+  assert.equal(config.get('shareButtons'), false);
+  await ipc.invoke('settings:set', { shareButtons: 'yes' });
+  assert.equal(config.get('shareButtons'), true);
+});
+
 test('settings:set refuses a locked or unknown skin', async () => {
   const { ipc, config } = setup();
 

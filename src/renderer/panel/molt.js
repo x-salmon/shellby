@@ -42,7 +42,7 @@
     $('moltGo').disabled = !v.canMolt || !!v.busy;
     $('moltGo').textContent = v.canMolt ? `🐚 Molt ${v.nextBadge?.text || ''}`.trim() : 'Molt at level 99';
     // Once he's molted, the sheet keeps a card of it until it closes.
-    $('moltShare').hidden = !molted;
+    $('moltShare').hidden = !molted || SB.shareButtons?.() === false;
     renderTiers(v);
   }
 
