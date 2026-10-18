@@ -87,8 +87,8 @@ function wirePainter(d) {
     if (block) return { ok: false, error: block.text };
     const out = G.toSkin(doc, { id: raw.id, name: raw.name, author: raw.author, description: raw.description, basedOn: skin.basedOn });
     try { writeSkin(d.userSkinsDir(), out); } catch (e) { return { ok: false, error: `Couldn't save it: ${e.code || e.message}` }; }
-    reloadSkins();
-    return { ok: true, id: out.id, warnings: list.filter(c => c.level !== 'block').map(c => c.text) };
+    const skins = reloadSkins();
+    return { ok: true, id: out.id, warnings: list.filter(c => c.level !== 'block').map(c => c.text), skins };
   }
 
   // ------------------------------------------------------------ on the desk

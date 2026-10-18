@@ -53,6 +53,17 @@
     return ['shell', 'neck', 'hat', 'face', 'held'].map(s => outfit[s] && w.accessories.find(a => a.key === outfit[s])).filter(Boolean);
   }
 
+  // What he's wearing now, as the Painter's "Wear your outfit" puts it on a drawing:
+  // his accessories, the shell he lives in and his effect.
+  SB.outfitLook = () => {
+    const outfit = wd()?.outfit || {};
+    return {
+      accessories: renderedAccessories(outfit),
+      shell: state.outfit?.home || null,
+      effect: (outfit.effect && wd()?.effects.find(e => e.key === outfit.effect)) || null,
+    };
+  };
+
   // An effect is shown by its most detailed sprite (a snowflake, not a lone pixel).
   const bigSprite = fx => SB.Sprite.poster(fx.sprites);
 
@@ -216,6 +227,7 @@
   }
 
   const canPublish = () => { const g = state.github; return !!(g?.signedIn && g.features.publish.on && g.features.publish.granted); };
+  SB.canPublish = canPublish; // the Painter's Share too
   async function publish(p, btn) {
     btn.disabled = true;
     btn.textContent = 'Publishing…';

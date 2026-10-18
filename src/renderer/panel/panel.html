@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="../shared/effects.css">
 <link rel="stylesheet" href="../shared/crab-anim.css">
 <link rel="stylesheet" href="wardrobe.css">
+<link rel="stylesheet" href="painter.css">
 <link rel="stylesheet" href="stickers.css">
 <link rel="stylesheet" href="together.css">
 <link rel="stylesheet" href="bugdex.css">
@@ -664,6 +665,7 @@
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" aria-current="page" data-goto="wardrobe">Outfits <span class="n" id="wdCount"></span></button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" data-goto="crew">Crew</button>
         <button type="button" data-goto="council">Council</button>
@@ -729,6 +731,137 @@
       <ul class="pack-list" id="packList"></ul>
     </section>
   </main>
+  <!-- ====================== PAINT: the Crab Painter (painter.js, shared/pixel-grid.js, src/main/wiring/painter.js) ====================== -->
+  <main class="view view-paint" id="paintView">
+    <div class="view-head">
+      <h2 class="sr-only">Painter</h2>
+      <nav class="seg shellby-tabs" aria-label="Shellby">
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" aria-current="page" data-goto="paint">🎨 Paint</button>
+        <button type="button" data-goto="trophies">Trophies</button>
+        <button type="button" data-goto="crew">Crew</button>
+        <button type="button" data-goto="council">Council</button>
+        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
+        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
+        <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
+        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
+        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+      </nav>
+      <button type="button" class="btn ghost slim-btn" id="ptMenuBtn" aria-haspopup="menu" title="More" aria-label="More painting options">⋯</button>
+    </div>
+
+    <!-- What to paint: your drafts, a crab you have, a blank one, or someone's wish. -->
+    <section class="pt-start" id="ptStart" aria-labelledby="ptStartTitle">
+      <div class="pt-start-head">
+        <div>
+          <h3 id="ptStartTitle">Paint a crab</h3>
+          <p class="pt-sub" id="ptStartSub">Start from one you have and make him yours. Watch him do every pose as you paint, then wear him, or share him with everyone.</p>
+        </div>
+        <div class="seg pt-modes" id="ptModes" role="tablist" aria-label="What to paint" data-roving>
+          <button type="button" role="tab" data-mode="skin" aria-selected="true">Crab</button>
+          <button type="button" role="tab" data-mode="accessory" aria-selected="false">Accessory</button>
+          <button type="button" role="tab" data-mode="effect" aria-selected="false">Effect</button>
+          <button type="button" role="tab" data-mode="decor" aria-selected="false">Tank decor</button>
+        </div>
+      </div>
+      <div class="pt-contest" id="ptContest" hidden></div>
+      <div class="pt-block" id="ptDraftsBlock" hidden>
+        <h4>Carry on</h4>
+        <div class="pt-grid" id="ptDrafts"></div>
+      </div>
+      <div class="pt-block">
+        <h4 id="ptFromTitle">Start from</h4>
+        <div class="pt-grid" id="ptFrom"></div>
+      </div>
+      <div class="pt-block" id="ptWishesBlock" hidden>
+        <h4>Pack wishes</h4>
+        <p class="pt-sub">Things people would love someone to make.</p>
+        <ul class="pt-wishes" id="ptWishes"></ul>
+      </div>
+    </section>
+
+    <!-- Painting: the grid, its tools and palette on the left, him moving on the right. -->
+    <section class="pt-editor" id="ptEditor" hidden aria-label="Painting">
+      <div class="pt-bar">
+        <button type="button" class="btn ghost slim-btn" id="ptBack" title="Back to everything you can paint (your drawing is kept)">← All</button>
+        <input type="text" class="field slim pt-name" id="ptName" maxlength="40" placeholder="Name him" aria-label="Name" spellcheck="false">
+        <span class="pt-kept" id="ptKept" aria-live="polite"></span>
+        <span class="pt-status" id="ptStatus"></span>
+        <div class="pt-actions">
+          <button type="button" class="btn ghost slim-btn share-icon" id="ptCard" title="A picture of him to post" aria-label="A picture of him to post" hidden>📸</button>
+          <button type="button" class="btn ghost slim-btn" id="ptShareBtn">Share</button>
+          <button type="button" class="btn ghost slim-btn" id="ptSave">Save</button>
+          <button type="button" class="btn primary slim-btn" id="ptSaveWear">Save and wear</button>
+        </div>
+      </div>
+
+      <div class="pt-share" id="ptShare" hidden></div>
+
+      <div class="pt-work">
+        <div class="pt-left">
+          <div class="pt-tools" id="ptTools" role="toolbar" aria-label="Tools">
+            <div class="pt-toolset" role="radiogroup" aria-label="Tool">
+              <button type="button" role="radio" data-tool="pencil" title="Pencil (B)" aria-label="Pencil">✏️</button>
+              <button type="button" role="radio" data-tool="eraser" title="Eraser (E)" aria-label="Eraser">🧽</button>
+              <button type="button" role="radio" data-tool="fill" title="Fill (G)" aria-label="Fill">🪣</button>
+              <button type="button" role="radio" data-tool="picker" title="Eyedropper (I, or right-click)" aria-label="Eyedropper">💧</button>
+              <button type="button" role="radio" data-tool="line" title="Line (L)" aria-label="Line">📏</button>
+              <button type="button" role="radio" data-tool="move" title="Move the whole drawing (M, then drag or the arrow keys)" aria-label="Move">✥</button>
+              <button type="button" role="radio" data-tool="pivot" title="Pivot: the pixel that sits on its spot (P)" aria-label="Pivot" hidden>⊕</button>
+            </div>
+            <div class="pt-toolset" role="radiogroup" aria-label="Brush">
+              <button type="button" role="radio" data-brush="1" title="1-pixel brush ([)" aria-label="1-pixel brush">1</button>
+              <button type="button" role="radio" data-brush="2" title="2-pixel brush (])" aria-label="2-pixel brush">2</button>
+            </div>
+            <div class="pt-toolset">
+              <button type="button" id="ptUndo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+              <button type="button" id="ptRedo" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+            </div>
+            <div class="pt-toolset">
+              <button type="button" id="ptResizeBtn" aria-haspopup="menu" title="Add or trim a row or column">⤢ <span id="ptSize"></span></button>
+              <button type="button" id="ptPartView" aria-pressed="false" title="Colour each pixel by the part it moves with">Parts</button>
+              <button type="button" id="ptGuide" aria-pressed="false" title="Classic's outline, faintly behind your drawing">Guide</button>
+            </div>
+          </div>
+          <div class="pt-canvas-wrap" id="ptCanvasWrap">
+            <canvas class="pt-canvas" id="ptCanvas" role="img" aria-label="Your drawing"></canvas>
+          </div>
+          <div class="pt-frames" id="ptFrames" hidden></div>
+          <ul class="pt-checks" id="ptChecks" aria-live="polite" aria-label="Checks"></ul>
+        </div>
+
+        <div class="pt-right">
+          <div class="pt-palette-wrap">
+            <div class="pt-palette" id="ptPalette" role="listbox" aria-label="Colours"></div>
+            <div class="pt-swatch-edit" id="ptSwatchEdit"></div>
+          </div>
+          <div class="pt-preview">
+            <div class="pt-stage crab-anim state-idle" id="ptStage" aria-label="Him, moving" role="img">
+              <div class="pt-fx" id="ptFx" aria-hidden="true"></div>
+              <div class="pt-crab crab-sprite" id="ptCrab" aria-hidden="true"></div>
+              <div class="crab-shadow pt-shadow" aria-hidden="true"></div>
+            </div>
+            <div class="pt-poses" id="ptPoses" role="radiogroup" aria-label="Pose"></div>
+            <div class="pt-preview-tools">
+              <button type="button" class="btn ghost slim-btn" id="ptPlayOnce" hidden>▶ Play once</button>
+              <label class="toggle pt-wear" id="ptWearRow"><input type="checkbox" id="ptWear"><span class="switch"></span>Wear your outfit</label>
+              <button type="button" class="btn ghost slim-btn" id="ptDesk" title="He wears it on your desktop for a minute, then his own colours again">Try him on the desk</button>
+            </div>
+            <p class="pt-anchor-help" id="ptAnchorHelp" hidden>Drag a dot to where his <b>head</b>, <b>face</b>, <b>neck</b>, <b>claw</b> tip and <b>shell top</b> are, so hats sit right. <button type="button" class="link-btn" id="ptAnchorReset">Put them back</button></p>
+          </div>
+          <div class="pt-details" id="ptDetails">
+            <label class="field-label">Who made it <input type="text" class="field slim" id="ptAuthor" maxlength="40" placeholder="Your name" spellcheck="false"></label>
+            <label class="field-label">About it <input type="text" class="field slim" id="ptDesc" maxlength="120" placeholder="A line about him (optional)"></label>
+            <div class="pt-settings" id="ptSettings"></div>
+            <p class="pt-sub pt-credit" id="ptCredit" hidden></p>
+            <p class="pt-sub pt-wish" id="ptWishNote" hidden></p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="popover" id="ptMenu" role="menu" hidden></div>
+  </main>
 
   <!-- ====================== TROPHIES ====================== -->
   <main class="view view-trophies" id="trophiesView">
@@ -736,6 +869,7 @@
       <h2 class="sr-only">Trophies and XP</h2>
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" aria-current="page" data-goto="trophies">Trophies <span class="n" id="trophyCount"></span></button>
         <button type="button" data-goto="crew">Crew</button>
         <button type="button" data-goto="council">Council</button>
@@ -851,6 +985,7 @@
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" aria-current="page" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" data-goto="crew">Crew</button>
         <button type="button" data-goto="council">Council</button>
@@ -876,6 +1011,7 @@
       <h2 class="sr-only">Crew</h2>
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" aria-current="page" data-goto="crew">Crew <span class="n" id="crewCount"></span></button>
         <button type="button" data-goto="council">Council</button>
@@ -905,6 +1041,7 @@
       <h2 class="sr-only">Council</h2>
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" data-goto="crew">Crew</button>
         <button type="button" aria-current="page" data-goto="council">Council</button>
@@ -980,6 +1117,7 @@
       <h2 class="sr-only">Sticker Book</h2>
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" data-goto="crew">Crew</button>
         <button type="button" data-goto="council">Council</button>
@@ -1033,6 +1171,7 @@
       <h2 class="sr-only">Finds</h2>
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" data-goto="crew">Crew</button>
         <button type="button" data-goto="council">Council</button>
@@ -1067,6 +1206,7 @@
       <h2 class="sr-only">Bugdex</h2>
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" data-goto="council">Council</button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
@@ -1121,6 +1261,7 @@
       <h2 class="sr-only">You and Shellby</h2>
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" data-goto="crew">Crew</button>
         <button type="button" data-goto="council">Council</button>
@@ -1232,6 +1373,7 @@
       <h2 class="sr-only">His tank</h2>
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies</button>
         <button type="button" data-goto="crew">Crew</button>
         <button type="button" data-goto="council">Council</button>
@@ -2893,6 +3035,8 @@
 <script src="history.js"></script>
 <script src="onboarding.js"></script>
 <script src="wardrobe.js"></script>
+<script src="../shared/pixel-grid.js"></script>
+<script src="painter.js"></script>
 <script src="stickers.js"></script>
 <script src="crew.js"></script>
 <script src="council-minutes.js"></script>

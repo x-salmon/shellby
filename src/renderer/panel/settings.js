@@ -27,16 +27,28 @@
 
   // ------------------------------------------------------------ settings
 
+  // Each skin says who made it; your own have Edit (the Painter) and, once
+  // shared, whether the gallery has them yet.
   function renderSkins() {
-    $('skinGrid').replaceChildren(...state.skins.map(s => h('button', {
-      type: 'button', class: `skin${s.locked ? ' locked' : ''}`, role: 'radio', 'aria-checked': String(s.id === state.skin?.id),
-      title: s.locked ? `${s.name}: ${s.locked.text}` : s.description || s.name,
-      onclick: async () => {
-        if (s.locked) return SB.toast(`${s.name} is a ${s.locked.text.toLowerCase()}`);
-        const r = await api.setSettings({ skin: s.id });
-        state.settings = r.settings;
-      },
-    }, SB.sprite(s, { plain: true }), h('span', {}, s.name), s.locked ? h('small', { text: '🔒 seasonal' }) : s.source === 'user' ? h('small', { text: 'custom' }) : null)));
+    const by = s => (s.author && s.author !== 'unknown' ? `by ${s.author}` : '');
+    $('skinGrid').replaceChildren(...state.skins.map(s => {
+      const own = s.source === 'user';
+      const shared = own ? SB.painter?.statusOf('skin', s.id) : null;
+      const tile = h('button', {
+        type: 'button', class: `skin${s.locked ? ' locked' : ''}`, role: 'radio', 'aria-checked': String(s.id === state.skin?.id),
+        title: [s.locked ? `${s.name}: ${s.locked.text}` : s.description || s.name, by(s)].filter(Boolean).join('\n'),
+        onclick: async () => {
+          if (s.locked) return SB.toast(`${s.name} is a ${s.locked.text.toLowerCase()}`);
+          const r = await api.setSettings({ skin: s.id });
+          state.settings = r.settings;
+        },
+      }, SB.sprite(s, { plain: true }), h('span', {}, s.name),
+      s.locked ? h('small', { text: '🔒 seasonal' }) : by(s) ? h('small', { class: 'skin-by', text: by(s) }) : own ? h('small', { text: 'custom' }) : null,
+      shared ? h('small', { class: `skin-shared ${shared}`, text: shared === 'gallery' ? 'In the gallery' : 'In review' }) : null);
+      if (!own) return tile;
+      return h('div', { class: 'skin-cell' }, tile,
+        h('button', { type: 'button', class: 'skin-edit', title: `Edit ${s.name} in the Painter`, 'aria-label': `Edit ${s.name}`, onclick: () => SB.painter?.edit(s.id) }, 'Edit'));
+    }));
   }
   SB.renderSkins = renderSkins;
 
