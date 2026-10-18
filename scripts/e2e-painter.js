@@ -27,6 +27,7 @@ const os = require('os');
 const fs = require('fs');
 const { savePng } = require('./lib/shot');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
+const { POSES } = require('../src/main/work-pose');
 
 const PORT = Number(process.env.E2E_CDP_PORT) || 9412;
 const HOOK = Number(process.env.E2E_HOOK_PORT) || 48112;
@@ -179,7 +180,9 @@ async function quit(app, ms = 20000) {
 
     // ---------------------------------------------------------------- 3. seeing him move
     console.log('seeing him move');
-    check(await panel.ev("document.querySelectorAll('#ptPoses button').length") === 12, 'pose chips: four moods and eight ways of working');
+    const ways = POSES.filter(p => p !== 'busy').length; // 'busy' is Working's own scuttle
+    const chips = await panel.ev("[...document.querySelectorAll('#ptPoses button')].map(b => b.textContent.trim())");
+    check(chips.length === 4 + ways && chips.every(Boolean), `pose chips: four moods and ${ways} ways of working, each named (got ${JSON.stringify(chips)})`);
     await panel.ev("document.querySelector('#ptPoses [data-pose=\"read\"]').click()");
     check(await panel.ev("document.getElementById('ptStage').classList.contains('state-working') && document.getElementById('ptStage').classList.contains('work-read')"), 'Reading: his work-read moves, from the same stylesheet as the desk');
     check(await panel.ev("!!document.querySelector('#ptCrab .acc-held')"), '...with the scroll in his claw');

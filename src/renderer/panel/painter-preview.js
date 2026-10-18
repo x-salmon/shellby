@@ -11,7 +11,8 @@
   const PX = 4; // his own size on the desk at Medium
   const SLOT_FOLLOWS = { hat: 'stalks', face: 'stalks', neck: 'body', held: 'claw', shell: 'shell' };
   // The moods first, then how he works (src/main/work-pose.js); 'busy' is Working's scuttle.
-  const POSE_LABEL = { idle: 'Idle', working: 'Working', asking: 'Asking', sleeping: 'Sleeping', think: 'Thinking', read: 'Reading', write: 'Editing', run: 'Running', search: 'Searching', web: 'On the web', plan: 'Planning', crew: 'Crew' };
+  const POSE_LABEL = { idle: 'Idle', working: 'Working', asking: 'Asking', sleeping: 'Sleeping', think: 'Thinking', read: 'Reading', write: 'Editing', run: 'Running', search: 'Searching', web: 'On the web', plan: 'Planning', crew: 'Crew',
+    test: 'Testing', git: 'Committing', install: 'Installing', build: 'Building', skill: 'Skill', mcp: 'MCP tool', talk: 'Talking', compact: 'Compacting' };
   const POSES = ['idle', 'working', 'asking', 'sleeping', ...WORK.POSES.filter(p => p !== 'busy')];
 
   /**
