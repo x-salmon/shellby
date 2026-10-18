@@ -82,7 +82,7 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     check(img.w === 1200 && img.h === 630, `preview is 1200x630 (${img.w}x${img.h})`);
 
     const dir = path.join(profile, 'Shellby');
-    const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /^shellby-crab-.*\.png$/.test(f)) : [];
+    const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => /^shellby-crab-\d.*\.png$/.test(f)) : [];
     check(files.length === 1, `card saved in the test profile (${files.join(', ') || 'none'})`);
     if (files[0]) {
       const buf = fs.readFileSync(path.join(dir, files[0]));
@@ -102,12 +102,40 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     const bad = await ev("shellby.saveCard(new Uint8Array([1, 2, 3])).then(r => r.ok)");
     check(bad === false, 'non-PNG bytes are refused');
 
+    // Wide (shellby-<kind>-<stamp>.png, 1200x630) or Square (shellby-<kind>-square-<stamp>.png, 1080x1080).
+    const savedAs = (kind, size = 'wide') => (fs.existsSync(dir) ? fs.readdirSync(dir)
+      .filter(f => f.startsWith(`shellby-${kind}-${size === 'square' ? 'square-' : ''}`) && /-\d{8}-\d{6}\.png$/.test(f) && (size === 'square' || !f.includes('-square-'))) : []);
+    const newest = async (kind, size, before) => {
+      for (let i = 0; i < 40; i++) {
+        const files = savedAs(kind, size);
+        const buf = files.length > before ? fs.readFileSync(path.join(dir, files[files.length - 1])) : null;
+        if (buf?.length >= 24) return ihdr(buf); // not while main is still writing it
+        await wait(150);
+      }
+      return null;
+    };
+    const showSize = s => (s ? `${s.w}x${s.h}` : 'not saved');
+    // The sheet's size switch: Square draws and saves it again at 1080x1080, and stays picked for that kind.
+    const bothSizes = async (kind, label) => {
+      const before = savedAs(kind, 'square').length;
+      const offered = await ev("!document.getElementById('cardSizes').hidden");
+      await ev("document.querySelector('#cardSizes [data-size=\"square\"]').click()");
+      const sq = await newest(kind, 'square', before);
+      check(offered && sq?.w === 1080 && sq?.h === 1080, `${label}, Square from the switch, is a 1080x1080 PNG (${showSize(sq)})`);
+      check(await ev("document.querySelector('#cardSizes [data-size=\"square\"]').getAttribute('aria-checked') === 'true' && document.getElementById('cardImg').classList.contains('square')"), `${label}: the switch and the preview say Square`);
+      await ev("document.querySelector('#cardSizes [data-size=\"wide\"]').click()"); // back to Wide for next time
+      await newest(kind, 'wide', savedAs(kind, 'wide').length);
+    };
+    await bothSizes('crab', 'the crab card');
+    // How many cards he's counted as shared (Show-Off's stat), from the profile's settings once written.
+    const shares = async () => { await wait(1200); try { return JSON.parse(fs.readFileSync(path.join(profile, 'settings.json'), 'utf8')).stats?.cardsShared ?? 0; } catch { return null; } };
+    const sharesBefore = await shares();
+
     await ev("document.getElementById('cardClose').click()");
     await wait(300);
     check(await ev("document.getElementById('cardSheet').hidden"), 'close hides the sheet');
 
-    // Every moment card, saved as shellby-<kind>-*.png at 1200x630.
-    const savedAs = kind => (fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.startsWith(`shellby-${kind}-`) && f.endsWith('.png')) : []);
+    // Every moment card, in both sizes.
     const kinds = await ev('SB.momentCard.MOMENT_KINDS.slice()');
     check(Array.isArray(kinds) && kinds.length > 0, `moment-card.js lists its kinds (${(kinds || []).join(', ')})`);
     for (const kind of kinds || []) {
@@ -115,9 +143,22 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
       if (!m) { check(false, `a ${kind} moment to draw (add one to MOMENTS)`); continue; }
       const before = savedAs(kind).length;
       await ev(`SB.momentCard.share(${JSON.stringify(kind)}, ${m}).then(() => true)`);
-      const files = savedAs(kind);
-      const size = files.length > before ? ihdr(fs.readFileSync(path.join(dir, files[files.length - 1]))) : null;
-      check(size?.w === 1200 && size?.h === 630, `the ${kind} card is a 1200x630 PNG (${size ? `${size.w}x${size.h}` : 'not saved'})`);
+      const size = await newest(kind, 'wide', before);
+      check(size?.w === 1200 && size?.h === 630, `the ${kind} card is a 1200x630 PNG (${showSize(size)})`);
+      await bothSizes(kind, `the ${kind} card`);
+      await ev("document.getElementById('cardClose').click()");
+    }
+    // A size switch draws the card again but isn't another share.
+    const sharesAfter = await shares();
+    check(sharesAfter - sharesBefore === kinds.length, `each moment counts once for Show-Off, whatever its sizes (${sharesAfter - sharesBefore} of ${kinds.length})`);
+
+    // The week and Wrapped cards come in both sizes too.
+    for (const [kind, call] of [['week', 'SB.weekCard.share()'], ['wrapped', "SB.wrappedCard.share({ year: 2026, card: { tiles: [['XP', '12,345'], ['days together', '120'], ['tasks', '300']] } })"]]) {
+      const before = savedAs(kind).length;
+      await ev(`${call}.then(() => true)`);
+      const size = await newest(kind, 'wide', before);
+      check(size?.w === 1200 && size?.h === 630, `the ${kind} card is a 1200x630 PNG (${showSize(size)})`);
+      await bothSizes(kind, `the ${kind} card`);
       await ev("document.getElementById('cardClose').click()");
     }
 

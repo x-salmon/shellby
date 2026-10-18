@@ -6,7 +6,7 @@
 'use strict';
 (function () {
   const K = SB.cardKit;
-  const { W, H, C } = K;
+  const { C } = K;
   const HEX = /^#[0-9a-f]{6}$/i;
   const GOLD = '#f2c14e';
   const TILE_COLOURS = [C.amber, C.glass, C.coral, '#9a6ad0', '#6fbf4a', '#4a8fe0'];
@@ -24,8 +24,10 @@
     }));
   }
 
-  // The card-foil perk (level 77): a gold edge with a sheen across it.
+  // The card-foil perk (level 77): a gold edge with a sheen across it, whatever the size.
   function drawFoil(ctx) {
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     const g = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, '#b8862b');
     g.addColorStop(0.45, '#fff3b0');
@@ -37,14 +39,16 @@
     ctx.stroke();
   }
 
-  /** Draw a year (the 'wrapped' game view for one year). */
-  async function draw(v) {
+  /** Draw a year (the 'wrapped' game view for one year), size 'wide' or 'square' (the year under his tank). */
+  async function draw(v, size = 'wide') {
     await K.loadFonts();
-    const { canvas, ctx } = K.newCanvas();
+    const sq = size === 'square';
+    const { canvas, ctx, w: CW } = K.newCanvas(size);
     K.drawWater(ctx);
-    await K.drawTank(ctx, []);
+    await K.drawTank(ctx, [], sq ? K.SQUARE_TANK : K.TANK);
 
-    const tx = 560, right = W - 56, card = v.card || {};
+    const tx = sq ? 56 : 560, right = CW - 56, card = v.card || {};
+    if (sq) ctx.translate(0, K.SQUARE_DROP);
     ctx.fillStyle = C.amber;
     ctx.fillText(K.fitText(ctx, 'SHELLBY WRAPPED', 340, '600 22px "Martian Mono"'), tx, 96);
     ctx.fillStyle = C.sand;
@@ -97,7 +101,7 @@
   /** Draw it, save it and show the share sheet. */
   function share(v) {
     return K.present({
-      kind: 'wrapped', draw: () => draw(v), post: postText, buttons: '[data-wrapped-card]',
+      kind: 'wrapped', draw: size => draw(v, size), post: postText, buttons: '[data-wrapped-card]', sizes: ['wide', 'square'],
       title: `Shellby Wrapped ${v.year}`,
       alt: `Your Shellby Wrapped ${v.year} card: your crab in his tank, with the year's biggest numbers`,
     });

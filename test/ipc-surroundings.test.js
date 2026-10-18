@@ -146,6 +146,19 @@ test('card:save names each card after its kind, and the tank card finishes "Shar
   assert.deepEqual(rec.of('questDone'), [['tank-share']]);
 });
 
+test('card:save puts a square card\'s size in its name, and the same card again in another size isn\'t another share', async () => {
+  const { ipc, rec } = setup();
+
+  const wide = await ipc.invoke('card:save', png(), 'trophy', { size: 'wide' });
+  const square = await ipc.invoke('card:save', png(), 'trophy', { size: 'square', again: true });
+  const odd = await ipc.invoke('card:save', png(), 'trophy', { size: '../../x' });
+
+  assert.match(path.basename(wide.name), /^shellby-trophy-\d{8}-\d{6}\.png$/);
+  assert.match(path.basename(square.name), /^shellby-trophy-square-\d{8}-\d{6}\.png$/);
+  assert.match(path.basename(odd.name), /^shellby-trophy-\d{8}-\d{6}\.png$/, 'an unknown size is just wide');
+  assert.deepEqual(rec.of('stat'), [['card-shared'], ['card-shared']]);
+});
+
 test('every moment card has a file name of its own (moment-card.js MOMENT_KINDS)', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'panel', 'moment-card.js'), 'utf8');
   const moments = JSON.parse(/const MOMENT_KINDS = Object\.freeze\((\[[^\]]+\])\)/.exec(src)[1].replace(/'/g, '"'));

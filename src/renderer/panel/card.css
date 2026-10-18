@@ -22,6 +22,10 @@
   border: 1px solid var(--line-soft); background: var(--abyss);
   image-rendering: auto;
 }
+.card-img.square { aspect-ratio: 1; width: auto; max-width: 100%; height: min(52vh, 528px); margin: 0 auto; }
+.card-sizes { margin-bottom: 10px; }
+.card-sizes button[aria-checked="true"] { background: var(--reef-2); color: var(--sand); box-shadow: 0 1px 0 rgba(0, 0, 0, .3); }
+.card-sizes small { font-weight: 500; color: var(--sand-faint); margin-left: 4px; }
 .card-note { margin: 10px 0 10px; font-size: var(--fs-12-5); color: var(--sand-dim); }
 .card-note b { color: var(--sand); font-weight: 700; overflow-wrap: anywhere; }
 .card-box .row.wrap { gap: 8px; }

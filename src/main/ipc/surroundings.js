@@ -227,20 +227,23 @@ function registerSurroundingsIpc(ipcMain, d) {
       return true;
     } catch (e) { d.log.warn("couldn't copy a crab card", e?.message); return false; }
   };
-  ipcMain.handle('card:save', async (_e, bytes, kind) => {
+  // opts: { size: 'wide' | 'square' (in the name when square), again: the same
+  // card in another size, saved but not counted as another share }.
+  ipcMain.handle('card:save', async (_e, bytes, kind, opts) => {
     const card = cardImage(bytes);
     if (!card) return { ok: false, error: "That card didn't come out right." };
+    const square = opts?.size === 'square';
     try {
       const dir = path.join(isolated ? app.getPath('userData') : app.getPath('pictures'), 'Shellby');
       fs.mkdirSync(dir, { recursive: true });
       const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
-      lastCard = path.join(dir, `shellby-${kinds.has(kind) ? kind : 'card'}-${stamp}.png`);
+      lastCard = path.join(dir, `shellby-${kinds.has(kind) ? kind : 'card'}${square ? '-square' : ''}-${stamp}.png`);
       fs.writeFileSync(lastCard, card.buf);
     } catch (e) {
       d.log.warn("couldn't save a crab card", e?.message);
       return { ok: false, error: "Couldn't save the card to Pictures." };
     }
-    d.stat('card-shared');
+    if (opts?.again !== true) d.stat('card-shared');
     if (kind === 'tank') d.questDone?.('tank-share'); // the Tank's 📸: "Share the tank"
     // The file is the save; the clipboard is a bonus. Another app holding the
     // clipboard (clipboard history, a screenshot tool) mustn't turn a saved

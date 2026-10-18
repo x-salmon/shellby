@@ -1,10 +1,21 @@
-/* Shellby panel — the shareable crab card: a 1200x630 PNG of Shellby as he's
-   dressed right now, with trophies and task count. Drawn on a canvas from the
-   same pixel data as everything else; main saves it and copies it to the clipboard. */
+/* Shellby panel — the shareable crab card: a PNG of Shellby as he's dressed
+   right now, with trophies and task count, Wide (1200x630) or Square
+   (1080x1080). Drawn on a canvas from the same pixel data as everything else;
+   main saves it and copies it to the clipboard. Also the kit every other card
+   is drawn with (SB.cardKit), and the share sheet they all end in (present). */
 'use strict';
 (function () {
   const { api, state, $ } = SB;
   const W = 1200, H = 630;
+  // Wide suits X, Bluesky and LinkedIn; Square suits Discord, Mastodon and Instagram.
+  const SIZES = Object.freeze({
+    wide: Object.freeze({ w: W, h: H, label: 'Wide', for: 'X, Bluesky' }),
+    square: Object.freeze({ w: 1080, h: 1080, label: 'Square', for: 'Discord, Instagram' }),
+  });
+  // The tank's box on a wide card, and how far a square card moves the words down under it.
+  const TANK = Object.freeze({ x: 48, y: 48, w: 470, h: 470 });
+  const SQUARE_TANK = Object.freeze({ x: 56, y: 40, w: 968, h: 400 });
+  const SQUARE_DROP = 430;
   const C = {
     abyss: '#061316', reef: '#11232a', line: '#214049', sand: '#f3e6cc', sandDim: '#b3a892',
     sandFaint: '#7d7566', glass: '#7fd6c2', coral: '#ff7a5c', amber: '#ffc15e',
@@ -85,28 +96,31 @@
   const loadFonts = () => Promise.all(['64px "Pixelify Sans"', '600 15px "Martian Mono"', '20px "Atkinson Hyperlegible"', '700 20px "Atkinson Hyperlegible"']
     .map(f => document.fonts.load(f).catch(() => null)));
 
-  function newCanvas() {
+  /** A card's canvas: size 'wide' (the default) or 'square'. -> { canvas, ctx, w, h } */
+  function newCanvas(size = 'wide') {
+    const { w, h } = SIZES[size] || SIZES.wide;
     const canvas = document.createElement('canvas');
-    canvas.width = W;
-    canvas.height = H;
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    return { canvas, ctx };
+    return { canvas, ctx, w, h };
   }
 
-  // Water: deep gradient with two soft lights, like the panel.
+  // Water: deep gradient with two soft lights, like the panel. Any size: it reads the canvas.
   function drawWater(ctx) {
-    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
     bg.addColorStop(0, '#0f3039');
     bg.addColorStop(1, C.abyss);
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-    for (const [x, y, r, col] of [[180, 120, 420, 'rgba(127,214,194,.10)'], [1100, 640, 460, 'rgba(255,122,92,.08)']]) {
+    ctx.fillRect(0, 0, w, h);
+    for (const [x, y, r, col] of [[180, 120, 420, 'rgba(127,214,194,.10)'], [w - 100, h + 10, 460, 'rgba(255,122,92,.08)']]) {
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, col);
       g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(0, 0, w, h);
     }
   }
 
@@ -167,12 +181,11 @@
   // What's in his tank, or null when it's empty (or can't be had).
   const decorated = () => (api.getTank ? api.getTank().then(v => (v?.pieces?.length ? v : null), () => null) : Promise.resolve(null));
 
-  // Shellby's tank on the left: his decorated tank (or plain sand) with the
-  // crab as dressed now, his effect around him, and up to five stickers
-  // ({ art: { palette, pixels } }) on the glass. Returns how many pieces of
-  // decor are in the picture.
-  async function drawTank(ctx, glassStickers) {
-    const tank = { x: 48, y: 48, w: 470, h: 470 };
+  // Shellby's tank on the left (or across the top of a square card, tank:
+  // SQUARE_TANK): his decorated tank (or plain sand) with the crab as dressed
+  // now, his effect around him, and up to five stickers ({ art: { palette,
+  // pixels } }) on the glass. Returns how many pieces of decor are in the picture.
+  async function drawTank(ctx, glassStickers, tank = TANK) {
     const v = await decorated();
     ctx.save();
     roundRect(ctx, tank.x, tank.y, tank.w, tank.h, 26);
@@ -238,43 +251,51 @@
     });
   }
 
+  // The footer along the bottom, whatever the card's size. The tagline goes
+  // beside the link only when it fits whole.
   async function drawFooter(ctx) {
-    const right = W - 56;
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    const right = w - 56;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = 'rgba(6,19,22,.85)';
-    ctx.fillRect(0, H - 64, W, 64);
+    ctx.fillRect(0, h - 64, w, 64);
     ctx.fillStyle = 'rgba(127,214,194,.18)';
-    ctx.fillRect(0, H - 64, W, 1);
+    ctx.fillRect(0, h - 64, w, 1);
     const mini = await svgImage(SB.sprite(state.skin, { plain: true }), 22 * 2, 13 * 2);
-    ctx.drawImage(mini, 48, H - 45);
+    ctx.drawImage(mini, 48, h - 45);
     ctx.fillStyle = C.sand;
     ctx.font = '600 24px "Pixelify Sans"';
-    ctx.fillText('Shellby', 104, H - 23);
-    ctx.fillStyle = C.sandDim;
-    ctx.font = '17px "Atkinson Hyperlegible"';
-    ctx.fillText('the pixel hermit crab that runs Claude Code on your desktop', 210, H - 25);
+    ctx.fillText('Shellby', 104, h - 23);
     ctx.fillStyle = C.glass;
     ctx.font = '600 15px "Martian Mono"';
     ctx.textAlign = 'right';
-    ctx.fillText('github.com/x-salmon/shellby', right, H - 25);
+    ctx.fillText('github.com/x-salmon/shellby', right, h - 25);
+    const linkW = ctx.measureText('github.com/x-salmon/shellby').width;
     ctx.textAlign = 'left';
+    ctx.fillStyle = C.sandDim;
+    const tagline = fitText(ctx, 'the pixel hermit crab that runs Claude Code on your desktop', right - linkW - 32 - 210, '17px "Atkinson Hyperlegible"');
+    if (!tagline.endsWith('…')) ctx.fillText(tagline, 210, h - 25);
   }
 
   // ------------------------------------------------------------ the crab card
 
-  async function render() {
+  /** The crab card, size 'wide' or 'square' (his tank across the top, the words under it). */
+  async function render(cardSize = 'wide') {
     await loadFonts();
     // Fresh numbers: the panel's wardrobe view only refreshes when something unlocks.
     SB.applyWardrobe(await api.wardrobeView());
     SB.applyStickers?.(await api.getStickers());
     if (!SB.outfitCode?.()) await new Promise(r => setTimeout(r, 50));
     const d = cardData();
-    const { canvas, ctx } = newCanvas();
+    const sq = cardSize === 'square';
+    const { canvas, ctx, w: CW } = newCanvas(cardSize);
     drawWater(ctx);
     // His tank, with his best stickers on the glass.
-    d.tankPieces = await drawTank(ctx, d.stickers);
+    d.tankPieces = await drawTank(ctx, d.stickers, sq ? SQUARE_TANK : TANK);
 
-    // ---- right column
-    const x0 = 568, right = W - 56, colW = right - x0;
+    // ---- right column (on a square card, under the tank: the same rows, moved down)
+    const x0 = sq ? 56 : 568, right = CW - 56, colW = right - x0;
+    if (sq) ctx.translate(0, SQUARE_DROP);
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = C.coral;
     ctx.font = '600 15px "Martian Mono"';
@@ -356,31 +377,56 @@
 
   const sheet = $('cardSheet');
   let last = null;
+  let showing = null; // what the sheet shows: { spec, size }, so the size switch can draw it again
+
+  // The size you last picked for a kind of card (this PC's own), Wide until you pick.
+  const sizeKey = kind => `shellby.cardSize.${kind}`;
+  const pickedSize = (kind, sizes) => { const s = SB.pref(sizeKey(kind)); return sizes.includes(s) ? s : sizes[0]; };
+  const rememberSize = (kind, size) => SB.pref.set(sizeKey(kind), size);
 
   const postText = d => `Meet my Shellby 🦀 ${d.tasks} task${d.tasks === 1 ? '' : 's'} done and ${d.trophies}/${d.trophiesAll} trophies. A pixel hermit crab that runs Claude Code on my desktop.${d.code ? ` Wear my look: ${d.code}` : ''}`;
 
+  // The size switch above the preview: only for a card that comes in more than one size.
+  function renderSizes() {
+    const sizes = showing?.spec.sizes || ['wide'];
+    $('cardSizes').hidden = sizes.length < 2;
+    for (const b of document.querySelectorAll('#cardSizes [data-size]')) {
+      b.hidden = !sizes.includes(b.dataset.size);
+      b.setAttribute('aria-checked', String(b.dataset.size === showing?.size));
+    }
+    $('cardImg').classList.toggle('square', showing?.size === 'square');
+  }
+
   /**
    * Draw a card, save it (main copies it to the clipboard too) and show it in
-   * the share sheet. spec: { kind, draw: () => { canvas, data }, title, alt,
-   * post: data => text, buttons: selector of the buttons to disable meanwhile }.
+   * the share sheet. spec: { kind, draw: size => { canvas, data }, title, alt,
+   * post: data => text, buttons: selector of the buttons to disable meanwhile,
+   * sizes: the sizes it comes in (default ['wide']), size: one to use this time }.
+   * The size you pick is remembered per kind. again: the same card in another
+   * size, which main saves but doesn't count as another share.
    */
-  async function present({ kind, draw, title, alt, post, buttons }) {
-    const btns = document.querySelectorAll(buttons);
+  async function present(spec, { again = false } = {}) {
+    const { kind, draw, title, alt, post, buttons } = spec;
+    const sizes = spec.sizes?.length ? spec.sizes.filter(s => SIZES[s]) : ['wide'];
+    const size = sizes.includes(spec.size) ? spec.size : pickedSize(kind, sizes);
+    const btns = document.querySelectorAll(`${buttons}, #cardSizes button`);
     btns.forEach(b => { b.disabled = true; });
     try {
-      const { canvas, data } = await draw();
+      const { canvas, data } = await draw(size);
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       const bytes = new Uint8Array(await blob.arrayBuffer());
-      const r = await api.saveCard(bytes, kind);
+      const r = await api.saveCard(bytes, kind, { size, again });
       if (!r?.ok) return SB.toast(r?.error || "Couldn't save the card.");
       // data: URL, not blob: (the panel's CSP only allows 'self' and data: images).
       last = { url: canvas.toDataURL('image/png'), bytes, post: post(data) };
+      showing = { spec: { ...spec, sizes }, size };
       $('cardTitle').textContent = title;
       $('cardImg').alt = alt;
       $('cardImg').src = last.url;
       $('cardPath').textContent = r.name;
+      renderSizes();
       sheet.hidden = false;
-      $('cardCopy').focus();
+      if (!again) $('cardCopy').focus();
       if (r.copied === false) SB.toast("Saved, but another app is holding the clipboard. Try Copy in a moment.");
     } catch (e) {
       console.warn('[shellby] card failed', e);
@@ -390,9 +436,17 @@
     }
   }
 
+  // Another size: drawn and saved again, and remembered for this kind of card.
+  async function switchSize(size) {
+    if (!showing || size === showing.size || !showing.spec.sizes.includes(size)) return;
+    rememberSize(showing.spec.kind, size);
+    await present({ ...showing.spec, size }, { again: true });
+    document.querySelector(`#cardSizes [data-size="${size}"]`)?.focus();
+  }
+
   // kind 'tank': the same card from the Tank's 📸, saved as his tank card (the "Share the tank" quest).
   const share = ({ kind = 'crab' } = {}) => present({
-    kind, draw: render, buttons: '[data-share-card]', post: postText,
+    kind, draw: render, buttons: '[data-share-card]', post: postText, sizes: ['wide', 'square'],
     title: kind === 'tank' ? 'His tank card' : 'Your crab card',
     alt: kind === 'tank' ? "Your Shellby card: his tank with him in it as he's dressed now, with your trophies and task count"
       : "Your Shellby card: your crab as he's dressed now, with your trophies and task count",
@@ -400,6 +454,7 @@
 
   function close() {
     sheet.hidden = true;
+    showing = null;
   }
 
   document.querySelectorAll('[data-share-card]').forEach(b => b.addEventListener('click', () => share({ kind: b.dataset.kind })));
@@ -412,6 +467,7 @@
     SB.toast(r?.ok ? 'Copied. Paste it anywhere.' : "Couldn't copy the card.");
   });
   $('cardReveal').addEventListener('click', () => api.revealCard());
+  $('cardSizes').addEventListener('click', e => { const b = e.target.closest('[data-size]'); if (b) switchSize(b.dataset.size); });
   // A moment card's post already ends with the link (moment-card.js postFor); the others get it here.
   const withLink = text => (text.includes(REPO) ? text : `${text} ${REPO}`);
   $('cardX').addEventListener('click', () => {
@@ -422,5 +478,5 @@
   });
 
   SB.crabCard = { render, share };
-  SB.cardKit = { W, H, C, svgImage, roundRect, fitText, loadFonts, newCanvas, drawWater, drawTank, drawTiles, drawFooter, present };
+  SB.cardKit = { W, H, C, SIZES, TANK, SQUARE_TANK, SQUARE_DROP, svgImage, roundRect, fitText, loadFonts, newCanvas, drawWater, drawTank, drawTiles, drawFooter, present };
 })();

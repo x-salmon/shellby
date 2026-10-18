@@ -92,13 +92,15 @@
     return { img: await K.svgImage(svg, w, h), w, h };
   }
 
-  // A starfield of little four-point glints, placed the same way every time.
-  function drawGlints(ctx, accent, n = 34) {
+  // A starfield of little four-point glints, placed the same way every time,
+  // never in the card's quiet box (where its words are).
+  function drawGlints(ctx, accent, quiet, n = 34) {
+    const w = ctx.canvas.width, h = ctx.canvas.height;
     let seed = 7;
     const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-    for (let i = 0; i < n; i++) {
-      const x = rnd() * W, y = rnd() * (H - 80), s = 2 + Math.floor(rnd() * 3);
-      if (x > 500 && x < W - 30 && y > 90 && y < 500) continue; // never over the words
+    for (let i = 0; i < n * (w * h) / (W * H); i++) {
+      const x = rnd() * w, y = rnd() * (h - 80), s = 2 + Math.floor(rnd() * 3);
+      if (x > quiet.x0 && x < quiet.x1 && y > quiet.y0 && y < quiet.y1) continue;
       ctx.fillStyle = i % 3 ? 'rgba(255,255,255,.55)' : accent;
       ctx.fillRect(x, y - s, s / 2 + 1, s * 2 + 1);
       ctx.fillRect(x - s, y, s * 2 + 1, s / 2 + 1);
@@ -138,66 +140,87 @@
     });
   }
 
-  // Where things go on the card.
-  const LAYOUT = {
-    art: { x: 70, y: 70, w: 380, h: 380 },
-    text: { x: 520, eyebrow: 130, title: 210, sub: 258, badge: 286, tiles: 360, tileH: 128 },
-  };
+  // Where things go on each size of card. Wide: the art at the left, the words
+  // and a row of tiles at the right. Square: the art on top (about 60% of it),
+  // then the words centred, then the tiles two to a row.
+  const LAYOUTS = Object.freeze({
+    wide: {
+      art: { x: 70, y: 70, w: 380, h: 380 }, align: 'left', x: 520, maxW: 620,
+      eyebrow: 130, title: 210, sub: 258, badge: 286,
+      tiles: { x: 520, y: 360, w: 620, h: 128, perRow: 4 }, quiet: { x0: 500, x1: W - 30, y0: 90, y1: 500 },
+    },
+    square: {
+      art: { x: 300, y: 44, w: 480, h: 480 }, align: 'center', x: 540, maxW: 936,
+      eyebrow: 632, title: 700, sub: 744, badge: 540,
+      tiles: { x: 72, y: 774, w: 936, h: 100, perRow: 2 }, quiet: { x0: 40, x1: 1040, y0: 590, y1: 1000 },
+    },
+  });
 
-  /** The art in its box: a painter of its own (m.paint), or pixel art (m.art). */
-  async function drawArt(ctx, m, box) {
-    if (typeof m.paint === 'function') return m.paint(ctx, box);
+  /** The art in its box: a painter of its own (m.paint), or pixel art (m.art). t: a clip's frame (0..1). */
+  async function drawArt(ctx, m, box, t) {
+    if (typeof m.paint === 'function') return m.paint(ctx, box, t);
     if (!m.art?.pixels?.length) return null;
     const px = scaleFor(m.art.pixels, Math.min(box.w, box.h) * 0.78);
     const { w, h } = artSize(m.art);
     return drawPixels(ctx, m.art.pixels, m.art.palette, box.x + (box.w - w * px) / 2, box.y + (box.h - h * px) / 2, px);
   }
 
+  // Up to four tiles, as many to a row as the layout takes.
+  function drawTileRows(ctx, m, T, accent) {
+    const gap = 12;
+    const list = m.poses?.length ? m.poses.slice(0, 4) : (m.stats || []).slice(0, 4).map(([label, value]) => [String(value), label, accent]);
+    const rows = Math.ceil(list.length / T.perRow);
+    for (let r = 0; r < rows; r++) {
+      const row = list.slice(r * T.perRow, (r + 1) * T.perRow);
+      const y = T.y + r * (T.h + gap);
+      if (m.poses?.length) drawPictureTiles(ctx, row, T.x, T.w, y, T.h, accent);
+      else K.drawTiles(ctx, row, T.x, T.w, y, T.h);
+    }
+  }
+
   /**
-   * Draw a moment.
-   *   m: { eyebrow, title, sub, art: { pixels, palette } | paint: (ctx, box) => Promise,
+   * Draw a moment, size 'wide' (1200x630) or 'square' (1080x1080).
+   *   m: { eyebrow, title, sub, art: { pixels, palette } | paint: (ctx, box, t) => Promise,
    *        accent, stats: [[label, value]] | poses: [{ label, img, w, h }], glints, badge }
+   *   art: false leaves the art out (a clip draws it on each frame: moment-clip.js)
+   * -> { canvas, data, box (where the art goes), accent }
    */
-  async function draw(m) {
+  async function draw(m, size = 'wide', { art = true } = {}) {
     await K.loadFonts();
-    const { canvas, ctx } = K.newCanvas();
+    const L = LAYOUTS[size] || LAYOUTS.wide;
+    const { canvas, ctx } = K.newCanvas(size);
     K.drawWater(ctx);
     const accent = HEX.test(m.accent || '') ? m.accent : C.amber;
-    if (m.glints) drawGlints(ctx, accent);
+    if (m.glints) drawGlints(ctx, accent, L.quiet);
 
-    // The art, big, on a soft halo at the left.
-    const box = LAYOUT.art;
-    drawHalo(ctx, box, accent);
-    await drawArt(ctx, m, box);
+    // The art, big, on a soft halo.
+    drawHalo(ctx, L.art, accent);
+    if (art) await drawArt(ctx, m, L.art);
 
-    // The words, at the right.
-    const L = LAYOUT.text, tx = L.x, maxW = W - tx - 60;
+    // The words.
+    ctx.textAlign = L.align;
     ctx.fillStyle = accent;
-    ctx.font = '600 22px "Martian Mono"';
-    ctx.fillText(K.fitText(ctx, (m.eyebrow || '').toUpperCase(), maxW, '600 22px "Martian Mono"'), tx, L.eyebrow);
+    ctx.fillText(K.fitText(ctx, (m.eyebrow || '').toUpperCase(), L.maxW, '600 22px "Martian Mono"'), L.x, L.eyebrow);
     ctx.fillStyle = C.sand;
-    ctx.fillText(K.fitText(ctx, m.title || '', maxW, '64px "Pixelify Sans"'), tx, L.title);
+    ctx.fillText(K.fitText(ctx, m.title || '', L.maxW, '64px "Pixelify Sans"'), L.x, L.title);
     if (m.sub) {
       ctx.fillStyle = C.sandDim;
-      ctx.fillText(K.fitText(ctx, m.sub, maxW, '24px "Atkinson Hyperlegible"'), tx, L.sub);
+      ctx.fillText(K.fitText(ctx, m.sub, L.maxW, '24px "Atkinson Hyperlegible"'), L.x, L.sub);
     }
+    ctx.textAlign = 'left';
     if (m.badge) {
       ctx.font = '700 20px "Atkinson Hyperlegible"';
       const bw = ctx.measureText(m.badge).width + 32;
-      K.roundRect(ctx, tx, L.badge, bw, 40, 20);
+      const bx = L.align === 'center' ? L.x - bw / 2 : L.x;
+      K.roundRect(ctx, bx, L.badge, bw, 40, 20);
       ctx.fillStyle = `${accent}33`;
       ctx.fill();
       ctx.fillStyle = accent;
-      ctx.fillText(m.badge, tx + 16, L.badge + 27);
+      ctx.fillText(m.badge, bx + 16, L.badge + 27);
     }
-    // Up to four stats (or pictures) in a row of tiles.
-    if (m.poses?.length) drawPictureTiles(ctx, m.poses.slice(0, 4), tx, maxW, L.tiles, L.tileH, accent);
-    else {
-      const stats = (m.stats || []).slice(0, 4);
-      if (stats.length) K.drawTiles(ctx, stats.map(([label, value]) => [String(value), label, accent]), tx, maxW, L.tiles, L.tileH);
-    }
+    drawTileRows(ctx, m, L.tiles, accent);
     await K.drawFooter(ctx);
-    return { canvas, data: m };
+    return { canvas, data: m, box: L.art, accent };
   }
 
   // ------------------------------------------------------------ the new moments, from what the panel has
@@ -478,7 +501,7 @@
    * Draw it, save it and show the share sheet.
    *   kind: one of MOMENT_KINDS (main names the file after it)
    *   m: the moment as drawn, or for a kind built here (FROM), what its celebration has
-   *   opts: { title, alt, post } to say more than the defaults
+   *   opts: { title, alt, post } to say more than the defaults; size: 'wide' or 'square' this time
    */
   async function share(kind, m, opts = {}) {
     let built = { m, title: opts.title, alt: opts.alt };
@@ -488,7 +511,7 @@
     }
     const moment = built.m;
     return K.present({
-      kind, draw: () => draw(moment), buttons: '[data-share-moment]',
+      kind, draw: size => draw(moment, size), buttons: '[data-share-moment]', sizes: ['wide', 'square'], size: opts.size,
       title: opts.title || built.title || moment.title, alt: opts.alt || built.alt || moment.title,
       post: () => opts.post || postFor(kind, moment.say),
     });
@@ -497,5 +520,5 @@
   /** Could this kind be made from this event? (A celebration shows its 📸 only when so.) */
   const can = (kind, e) => MOMENT_KINDS.includes(kind) && (!FROM[kind] || kind === 'skin' || !!FROM[kind](e));
 
-  SB.momentCard = { MOMENT_KINDS, POST_TEXT, POSES, FROM, draw, share, can, postFor, posed, drawPixels };
+  SB.momentCard = { MOMENT_KINDS, POST_TEXT, POSES, FROM, LAYOUTS, draw, drawArt, share, can, postFor, posed, drawPixels };
 })();
