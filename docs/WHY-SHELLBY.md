@@ -126,6 +126,21 @@ Shellby automates the official Claude Code CLI you installed and signed in to yo
 </details>
 
 <details>
+<summary><b>Isn't Keep warm just pinging to beat a timer?</b></summary>
+
+It pings, yes, but it lowers the load rather than adding to it. Claude Code keeps each conversation in a cache for an hour. After that, your next message writes the whole conversation into the cache again, a few hundred thousand tokens on a long one. Keep warm sends one tiny message just before the hour runs out, so the cache is read instead of rewritten. At Anthropic's published API prices, a one-hour cache write costs 2x the input rate and a read 0.1x, so three hours of pings costs less than one cold rewrite. That's less work for Anthropic's servers as well as less of your limit.
+
+It's kept small on purpose:
+
+- **Off until you press it.** It turns itself off when you're back, when you send a message, or after 3 hours, whichever comes first. A forgotten button can't ping all night.
+- **Only where it pays.** Only conversations of 200k tokens or more with a warm cache get pinged, one at a time, about once an hour each.
+- **One fixed message,** sent through the conversation's own Claude Code: "Reply with the single word: warm. Use no tools." Nothing runs and nothing in your project changes.
+- **It counts against your plan** like any other message. Each ping leaves a dim line in the conversation ("Kept warm 12:55 · read 214k from cache"), and what it spent shows in your usage.
+
+How a cache read weighs against a plan's limits isn't published, so the saving on your limit is our reading of the API prices, not a promise. The details are in [the Keep warm design](plans/keep-warm.md).
+</details>
+
+<details>
 <summary><b>What does it send, and where?</b></summary>
 
 Nothing goes to Shellby: it has no servers and no telemetry. The [privacy policy](../PRIVACY.md) lists every connection.
