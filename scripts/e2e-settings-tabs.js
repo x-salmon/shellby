@@ -46,13 +46,13 @@ async function launch(profile) {
   return { app, send, ev };
 }
 
-const TABS = {
-  shellby: ['Look', 'Moving around', 'Personality', 'Sound', 'Games', 'Mischief'],
-  around: ['Music', 'Typing along', 'Weather', 'Desk lighting', 'Discord', 'On a stream', 'Stream Deck'],
-  claude: ['Claude Code', 'Mode', 'Model', 'Usage limit', 'Folder', 'Copies', 'Checks', 'Dev servers', 'Editor', 'Everywhere'],
-  connect: ['Elsewhere', 'GitHub', 'GitLab', 'Other computers'],
-  general: ['System', 'Notifications', 'Shortcut', 'Screens', 'What you use', 'About'],
-};
+// What each tab holds, from the panel's own pieces: the tabs in settings.html's
+// order, and each one's sections (their data-nav, as the jumps and Ctrl+K use
+// them) in settings-<tab>.html's order. The checks are that the app shows just those.
+const HTML = path.join(ROOT, 'src', 'renderer', 'panel', 'html');
+const read = f => fs.readFileSync(path.join(HTML, f), 'utf8');
+const TABS = Object.fromEntries([...read('settings.html').matchAll(/role="tab" id="setTab-([a-z]+)"/g)].map(([, tab]) =>
+  [tab, [...read(`settings-${tab}.html`).matchAll(/<[a-z]+ class="setting-group\b[^>]*\bdata-nav="([^"]+)"/g)].map(m => m[1])]));
 
 (async () => {
   let fails = 0;
@@ -100,7 +100,8 @@ const TABS = {
     await wait(300);
     const all = Object.values(TABS).flat();
     const every = await panel.ev("[...document.querySelectorAll('#settingsView .setting-group[data-nav]')].map(g => g.dataset.nav)");
-    check(every.length === all.length && all.every(n => every.includes(n)), 'every section lives on exactly one tab');
+    check(new Set(all).size === all.length && every.length === all.length && all.every(n => every.includes(n)),
+      `every section lives on exactly one tab (${all.length} in ${Object.keys(TABS).length} tabs; the page has ${every.length})`);
 
     // keyboard: from General, Right wraps to Shellby, End goes to General
     await panel.ev("document.getElementById('setTab-general').focus()");
