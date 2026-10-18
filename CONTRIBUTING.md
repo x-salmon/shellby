@@ -19,6 +19,8 @@ npm run typecheck
 
 **Looking for a first task?** Try an issue labelled [good first issue](https://github.com/x-salmon/shellby/labels/good%20first%20issue), or make a pack: they're data only, and [docs/ADDONS.md](docs/ADDONS.md) walks you through it. Questions go in [Discussions](https://github.com/x-salmon/shellby/discussions). Everyone here follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
+**Credit and the crab contest.** Everyone with a merged pull request or a pack in the gallery goes on About → **Made by** and gets a trophy and an item in the app, claimed by signing in to GitHub. Each month there's a crab contest whose winning skin ships with Shellby. How it all runs is in [docs/COMMUNITY.md](docs/COMMUNITY.md).
+
 Every end-to-end and maintenance script, and a map of the code, is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Guidelines
@@ -59,6 +61,8 @@ contributing: [TRADEMARK.md](TRADEMARK.md).
 ## Releasing (maintainers)
 
 Branches don't bump the version or edit the top of the CHANGELOG. They add a note in [changes/](changes/README.md), which the release gathers up.
+
+A crab contest winner goes in with `npm run contest:ship -- <pack-id> YYYY-MM` on a branch before the cut, and the cut itself adds the release's pull request authors and the gallery's pack makers to `src/community/credits.json` (`--no-credits` skips it). See [docs/COMMUNITY.md](docs/COMMUNITY.md).
 
 1. Merge into `main`, push it, and let CI run on it. Merging several branches is where they break each other: CI checks them together before anything is cut.
 2. Run `npm run release:cut -- X.Y.Z "Title" --wait` (`--dry-run` first to read the entry). It refuses while `main` has unpushed commits, waits for CI on `main` and stops at the first red job. Once CI is green, it writes the notes into a `## X.Y.Z: Title` section of `CHANGELOG.md`, deletes them, bumps `package.json` and the lock, and commits and tags on this PC. Edit the entry, `git commit --amend` and move the tag onto it (`git tag -fa vX.Y.Z -m "X.Y.Z: Title"`) if it needs it.

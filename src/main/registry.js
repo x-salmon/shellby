@@ -246,4 +246,67 @@ async function fetchRegistryCatalog({ baseUrl = REGISTRY_URL, fetchImpl = global
   }
 }
 
-module.exports = { REGISTRY_URL, PROTOCOL, parseDeepLink, findDeepLink, fetchRegistryPack, fetchRegistryCatalog, isUnderBase, normalizeBase };
+/**
+ * The community news feed (news.js), from beside the index: `news.json` under
+ * the registry, or a dev/test feed's own address (SHELLBY_NEWS_URL, main.js
+ * refuses it when packaged). The same fetch as everything here: a timeout, a
+ * 64 KB cap and no redirect off the site. Never throws.
+ * @returns {Promise<{ ok: boolean, text?: string, errors: string[] }>}
+ */
+async function fetchRegistryNews({ baseUrl = REGISTRY_URL, url = null, fetchImpl = globalThis.fetch, timeoutMs = 15000, maxBytes = 64 * 1024 } = {}) {
+  const fail = msg => ({ ok: false, errors: [msg] });
+  let feedUrl, base;
+  try {
+    feedUrl = url ? new URL(url) : new URL('news.json', normalizeBase(baseUrl) || undefined);
+    base = normalizeBase(new URL('.', feedUrl).href);
+  } catch { return fail('The community news address is misconfigured.'); }
+  if (!base || !isUnderBase(feedUrl.href, base) || typeof fetchImpl !== 'function') return fail('The community news address is misconfigured.');
+  try {
+    const raw = await fetchBytes(feedUrl.href, { fetchImpl, timeoutMs, base, maxBytes, what: 'community news' });
+    return { ok: true, text: raw.toString('utf8'), errors: [] };
+  } catch (e) {
+    if (e instanceof FetchError) return fail(e.message);
+    return fail("Couldn't read the community news. Try again later.");
+  }
+}
+
+/**
+ * The registry index's pack entries, for who made what (credits.js): each
+ * { id, by, contest, winner } as far as the index says. `by` (the GitHub login
+ * of the PR that added it), `contest` ('YYYY-MM') and `winner` are optional,
+ * and only kept when they're well formed. Never throws.
+ * @returns {Promise<{ ok: boolean, packs?: [{ id, name, by, contest, winner }], errors: string[] }>}
+ */
+async function fetchRegistryIndex({ baseUrl = REGISTRY_URL, fetchImpl = globalThis.fetch, timeoutMs = 15000 } = {}) {
+  const fail = msg => ({ ok: false, errors: [msg] });
+  const base = normalizeBase(baseUrl);
+  if (!base || typeof fetchImpl !== 'function') return fail('The Shellby community registry is unavailable.');
+  try {
+    const raw = await fetchBytes(new URL('index.json', base).href, { fetchImpl, timeoutMs, base, maxBytes: MAX_INDEX_BYTES, what: 'registry index' });
+    const index = JSON.parse(raw.toString('utf8').replace(/^﻿/, ''));
+    if (!isObj(index) || index.format !== INDEX_FORMAT || !Array.isArray(index.packs)) return fail("The Shellby community registry is in a format this version of Shellby doesn't understand.");
+    return { ok: true, packs: index.packs.slice(0, 2000).map(indexEntry).filter(Boolean), errors: [] };
+  } catch (e) {
+    if (e instanceof FetchError) return fail(e.message);
+    return fail("Couldn't read the Shellby community registry. Try again later.");
+  }
+}
+
+const LOGIN_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+/** One index entry's who-and-when, cleaned: { id, name, by, contest, winner } or null. */
+function indexEntry(p) {
+  if (!isObj(p) || typeof p.id !== 'string' || !PACK_ID_RE.test(p.id)) return null;
+  return {
+    id: p.id,
+    name: typeof p.name === 'string' ? p.name.replace(/[\u0000-\u001f]+/g, ' ').slice(0, 60) : p.id,
+    by: typeof p.by === 'string' && LOGIN_RE.test(p.by) ? p.by : null,
+    contest: typeof p.contest === 'string' && MONTH_RE.test(p.contest) ? p.contest : null,
+    winner: p.winner === true,
+  };
+}
+
+module.exports = {
+  REGISTRY_URL, PROTOCOL, parseDeepLink, findDeepLink, fetchRegistryPack, fetchRegistryCatalog, fetchRegistryNews, fetchRegistryIndex, indexEntry,
+  isUnderBase, normalizeBase,
+};

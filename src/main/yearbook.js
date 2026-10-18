@@ -232,6 +232,71 @@ function markShown(state, year) {
   return { ...s, shown: [...s.shown, key].sort() };
 }
 
+// ------------------------------------------------------------------ Wrapped week
+
+const WEEK_LAST_DAY = 8; // January 2nd to 8th: the week after Wrapped opens
+const MAX_FRIENDS_SHOWN = 5;
+const SPECIES_RE = /^[a-z0-9][a-z0-9-]{0,40}$/;
+
+/**
+ * Wrapped week: January 2nd to 8th, local, for the year just ended. The time
+ * to compare and share (docs/WRAPPED.md). Outside it, null.
+ * -> { year, from, until, dayOf } (from/until: local midnights as ms; dayOf: 1-7)
+ */
+function wrappedWeek(now = new Date()) {
+  const d = asDate(now);
+  if (Number.isNaN(d.getTime()) || d.getMonth() !== 0 || d.getDate() < SHOW_DAY || d.getDate() > WEEK_LAST_DAY) return null;
+  const y = d.getFullYear();
+  return { year: y - 1, from: new Date(y, 0, SHOW_DAY).getTime(), until: new Date(y, 0, WEEK_LAST_DAY, 23, 59, 59, 999).getTime(), dayOf: d.getDate() - SHOW_DAY + 1 };
+}
+
+/**
+ * Your year as it goes on your calling card (Show my year to friends, off by
+ * default): numbers and a species id only, never a project name, as the
+ * Wrapped card itself. Null when there's no Wrapped for that year.
+ */
+function forCard(state, year) {
+  const s = normalize(state);
+  const y = s.years[String(year)];
+  if (!y || y.days.length < MIN_ACTIVE_DAYS) return null;
+  const sum = summary(s, year);
+  return cleanCardWrapped({ year: Number(year), xp: sum.xp, days: sum.activeDays, levels: sum.levelsGained, bugs: sum.catches, nemesis: sum.nemesis?.id || null });
+}
+
+/** A friend's card's `wrapped`, cleaned (github/card.js): anything else is null. */
+function cleanCardWrapped(raw) {
+  if (!isObj(raw)) return null;
+  const year = Number.isInteger(raw.year) && raw.year >= 2026 && raw.year <= 2100 ? raw.year : null;
+  if (!year) return null;
+  const n = v => (Number.isFinite(v) && v > 0 ? Math.min(MAX_COUNT, Math.floor(v)) : 0);
+  return { year, xp: n(raw.xp), days: Math.min(366, n(raw.days)), levels: Math.min(99, n(raw.levels)), bugs: n(raw.bugs), nemesis: typeof raw.nemesis === 'string' && SPECIES_RE.test(raw.nemesis) ? raw.nemesis : null };
+}
+
+/**
+ * The friends' slide (after the card, only in Wrapped week, only with friends
+ * who shared that year): you and up to five of them side by side, and a few
+ * superlatives. A card from another year counts as nothing.
+ *   me: forCard's for you; friends: [{ login, wrapped }] (their cards')
+ * -> { people: [{ login, me, xp, days, levels, bugs, nemesis }], supers: [{ what, login, n }] } | null
+ */
+function friendsYears(me, friends, year) {
+  const theirs = (Array.isArray(friends) ? friends : [])
+    .map(f => ({ login: f?.login, w: cleanCardWrapped(f?.wrapped) }))
+    .filter(f => typeof f.login === 'string' && f.w && f.w.year === Number(year))
+    .sort((a, b) => b.w.days - a.w.days || b.w.xp - a.w.xp || (a.login.toLowerCase() < b.login.toLowerCase() ? -1 : 1))
+    .slice(0, MAX_FRIENDS_SHOWN);
+  if (!theirs.length) return null;
+  const mine = cleanCardWrapped(me);
+  const row = (login, w, isMe) => ({ login, me: isMe, xp: w.xp, days: w.days, levels: w.levels, bugs: w.bugs, nemesis: w.nemesis });
+  const people = [...(mine && mine.year === Number(year) ? [row('you', mine, true)] : []), ...theirs.map(f => row(f.login, f.w, false))];
+  const best = (key, what) => {
+    const top = [...people].sort((a, b) => b[key] - a[key])[0];
+    return top && top[key] > 0 && people.filter(p => p[key] === top[key]).length === 1 ? { what, login: top.me ? 'You' : top.login, n: top[key] } : null;
+  };
+  const supers = [best('days', 'Most days together'), best('xp', 'Most XP'), best('bugs', 'Most bugs caught'), best('levels', 'Most levels climbed')].filter(Boolean);
+  return { people, supers };
+}
+
 // ------------------------------------------------------------------ backfill
 
 /**
@@ -330,4 +395,5 @@ function summary(state, year) {
 module.exports = {
   KEEP_YEARS, MIN_ACTIVE_DAYS, SHOW_DAY, STAT_COUNTS, STAT_MAXIMA,
   normalize, note, available, wrappedDue, markShown, backfill, summary, longestRun, opensAt,
+  wrappedWeek, forCard, cleanCardWrapped, friendsYears,
 };

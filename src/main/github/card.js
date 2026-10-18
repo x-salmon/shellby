@@ -6,7 +6,9 @@
 // names (stickers/index.js forCard), and never the projects you've hidden. His tank
 // is on it only if you share it, as built-in decor ids and where they stand (tank/share.js).
 // So is his Bugdex: which kinds of bug you've caught and how many badges, never
-// counts, projects or errors (bugdex/index.js shared).
+// counts, projects or errors (bugdex/index.js shared). During Wrapped week, and
+// only with Show my year to friends on, last year's numbers and nemesis
+// (yearbook.js forCard): never a project name.
 // A friend's card is somebody else's file, so it is always cleaned before use,
 // and only believed when the gist really belongs to that friend.
 const { findGist } = require('./gists');
@@ -16,6 +18,7 @@ const { cleanShared } = require('../bugdex');
 const { cleanCardSwap } = require('../swaps');
 const { cleanCardEggs } = require('../eggs');
 const { cleanMedals } = require('../events');
+const { cleanCardWrapped } = require('../yearbook');
 
 const CARD_FILE = 'shellby-card.json';
 const FORMAT = 1;
@@ -53,12 +56,14 @@ function cleanCard(raw) {
     swap: r.swap ? cleanCardSwap(r.swap) : null,
     eggs: cleanCardEggs(r.eggs),
     medals: cleanMedals(r.medals),
+    // Last year's numbers during Wrapped week, if they chose to show them (yearbook.js forCard).
+    wrapped: cleanCardWrapped(r.wrapped),
     updatedAt: Number.isFinite(r.updatedAt) && r.updatedAt > 0 ? r.updatedAt : 0,
   };
 }
 
 /** Just the look, for "did anything change since we last published?" */
-const lookOf = card => { const c = cleanCard(card); return JSON.stringify([c.login, c.skin, c.home, c.level, c.outfit, c.stickers, c.temperament, c.find, c.tank, c.bugdex, c.swap, c.eggs, c.medals]); };
+const lookOf = card => { const c = cleanCard(card); return JSON.stringify([c.login, c.skin, c.home, c.level, c.outfit, c.stickers, c.temperament, c.find, c.tank, c.bugdex, c.swap, c.eggs, c.medals, c.wrapped]); };
 
 const content = card => JSON.stringify({ ...cleanCard(card), note: "Shellby calling card: how this crab looks (and his tank, if shared), so friends' crabs can visit. Turn off Visiting crabs in Shellby to delete it." }, null, 1);
 

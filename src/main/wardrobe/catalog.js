@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { validate: validateSkin } = require('../skins');
 const { voiceContent, sceneContent } = require('./dialogue');
+const { KNOWN_EVENTS } = require('../events');
 
 const FORMAT = 1;
 const MAX_FILE_BYTES = 512 * 1024;
@@ -88,7 +89,13 @@ function checkUnlock(u, known) {
   if (u === undefined) return [{ default: true }, null];
   if (!isObj(u)) return [null, 'unlock must be an object'];
   const keys = Object.keys(u);
-  if (keys.length !== 1) return [null, 'unlock must have exactly one of default, achievement, season, level'];
+  // A year may go with an event: that year's run only (Molt Day's hat with his age on it).
+  if (hasOwn(u, 'event') && hasOwn(u, 'year') && keys.length === 2) {
+    if (typeof u.event !== 'string' || !known.events.has(u.event)) return [null, `unknown event ${q(u.event)}`];
+    if (!isInt(u.year, 2026, 2100)) return [null, 'unlock.year must be a year 2026–2100'];
+    return [{ event: u.event, year: u.year }, null];
+  }
+  if (keys.length !== 1) return [null, 'unlock must have exactly one of default, achievement, season, event, level'];
   if (hasOwn(u, 'default')) return u.default === true ? [{ default: true }, null] : [null, 'unlock.default must be true'];
   if (hasOwn(u, 'achievement')) {
     if (typeof u.achievement !== 'string' || !known.achievements.has(u.achievement)) return [null, `unknown achievement ${q(u.achievement)}`];
@@ -97,6 +104,11 @@ function checkUnlock(u, known) {
   if (hasOwn(u, 'season')) {
     if (typeof u.season !== 'string' || !known.seasons.has(u.season)) return [null, `unknown season ${q(u.season)}`];
     return [{ season: u.season }, null];
+  }
+  // A built-in tide event or party (events.js): it turns up while that's on, and is yours to keep after.
+  if (hasOwn(u, 'event')) {
+    if (typeof u.event !== 'string' || !known.events.has(u.event)) return [null, `unknown event ${q(u.event)}`];
+    return [{ event: u.event }, null];
   }
   // A level reached (progression/levels.js): the highest ever, so a molt never takes it back.
   if (hasOwn(u, 'level')) {
@@ -180,7 +192,7 @@ function checkFrames(frames, pixels, max) {
   return null;
 }
 
-function validatePackSkin(raw, known) {
+function validatePackSkin(raw, known, pack) {
   const { skin, errors } = validateSkin(raw, undefined);
   if (!skin) return { error: errors.join('; ') };
   if (raw.anchors !== undefined && !isObj(raw.anchors)) return { error: 'anchors must be an object' };
@@ -194,7 +206,10 @@ function validatePackSkin(raw, known) {
   }
   const [unlock, ue] = checkUnlock(raw.unlock, known);
   if (ue) return { error: ue };
-  return { item: { ...skin, unlock, anchors } };
+  // A crab contest winner (src/wardrobe/contest.json): its tile says whose and which month.
+  // Only a built-in pack can say so; anywhere else it's ignored.
+  const won = pack?.source === 'builtin' && typeof raw.won === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw.won) ? raw.won : null;
+  return { item: { ...skin, unlock, anchors, ...(won ? { won } : {}) } };
 }
 
 function validateVoice(raw, known) {
@@ -278,10 +293,10 @@ const KINDS = [
  * Validate and normalize one pack. Never throws.
  * @returns {{ pack: object|null, errors: string[], warnings: string[] }}
  */
-function validatePack(json, { source = 'user', knownAchievements = new Set(), knownSeasons = new Set() } = {}) {
+function validatePack(json, { source = 'user', knownAchievements = new Set(), knownSeasons = new Set(), knownEvents = KNOWN_EVENTS } = {}) {
   const errors = [];
   const warnings = [];
-  const known = { achievements: knownAchievements, seasons: knownSeasons };
+  const known = { achievements: knownAchievements, seasons: knownSeasons, events: knownEvents };
   if (!isObj(json)) return { pack: null, errors: ['pack is not an object'], warnings };
 
   if (json.format !== FORMAT) errors.push(`unsupported format ${q(json.format)} (expected ${FORMAT})`);
@@ -366,7 +381,7 @@ function listJson(dir) {
 /**
  * Load the built-in pack(s) then every user pack. Missing dirs are fine.
  */
-function loadCatalog({ builtinDir, userDir, knownAchievements = new Set(), knownSeasons = new Set() } = {}) {
+function loadCatalog({ builtinDir, userDir, knownAchievements = new Set(), knownSeasons = new Set(), knownEvents = KNOWN_EVENTS } = {}) {
   const accessories = new Map();
   const effects = new Map();
   const voices = new Map();
@@ -384,7 +399,7 @@ function loadCatalog({ builtinDir, userDir, knownAchievements = new Set(), known
       const file = path.join(dir, f);
       const { json, error } = readPackFile(file);
       if (error) { errors.push(`${f}: ${error}`); continue; }
-      const { pack, errors: errs, warnings } = validatePack(json, { source, knownAchievements, knownSeasons });
+      const { pack, errors: errs, warnings } = validatePack(json, { source, knownAchievements, knownSeasons, knownEvents });
       if (!pack) { errors.push(`${f}: ${errs.join('; ')}`); continue; }
       if (builtinIds.has(pack.id)) { errors.push(`${f}: id reserved (${pack.id})`); continue; }
       if (source === 'user' && userIds.has(pack.id)) {

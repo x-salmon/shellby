@@ -84,6 +84,8 @@ test('a commit that only cuts a release counts its parent CI', () => {
   const f = (filename, status = 'modified', extra = {}) => ({ filename, status, ...extra });
   assert.equal(g.releaseOnly([f('package.json'), f('package-lock.json'), f('CHANGELOG.md'), f('changes/feat-x.md', 'removed')]), true);
   assert.equal(g.releaseOnly([f('CHANGELOG.md', 'added')]), true, 'the first release starts the CHANGELOG');
+  assert.equal(g.releaseOnly([f('package.json'), f('src/community/credits.json')]), true, 'release:cut adds to the credits');
+  assert.equal(g.releaseOnly([f('src/community/credits.json', 'removed')]), false);
   assert.equal(g.releaseOnly([f('package.json'), f('src/main/main.js')]), false);
   assert.equal(g.releaseOnly([f('changes/README.md')]), false, 'the notes README is not a note');
   assert.equal(g.releaseOnly([f('changes/foo.md', 'renamed', { previous_filename: 'src/foo.js' })]), false, 'a rename hides what went');

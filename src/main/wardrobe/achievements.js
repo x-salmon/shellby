@@ -157,7 +157,16 @@ const ACHIEVEMENTS = Object.freeze([
   { id: 'ships-log', name: 'Ship\'s Log', icon: '📖', description: 'Open the Logbook 30 times', stat: 'logbookViews', goal: 30, rewards: ['logbook-lectern'] },
   { id: 'keeper-of-the-light', name: 'Keeper of the Light', icon: '💡', description: 'Keep a 60-day streak going', stat: 'longestStreak', goal: 60, rewards: ['streak-lighthouse'] },
   { id: 'hundred-tides', name: 'Hundred Tides', icon: '🛎️', description: 'Keep a 100-day streak going', stat: 'longestStreak', goal: 100, rewards: ['tide-bell-100'], hidden: true },
-].map(a => Object.freeze({ hidden: false, ...a, rewards: Object.freeze(a.rewards) })));
+  // Making Shellby with everyone else (src/main/credits.js): unlocked when the GitHub
+  // login you're signed in with is credited for it (src/community/credits.json, or
+  // the gallery's index for packs). `claim: 'github'`: locked, they say to sign in.
+  { id: 'reef-builder', name: 'Reef Builder', icon: '🪸', description: 'Get a pack of yours into the community gallery', stat: 'creditPacks', goal: 1, rewards: ['coral-crown'], claim: 'github' },
+  { id: 'shipwright', name: 'Shipwright', icon: '🔧', description: 'Get a pull request merged into Shellby', stat: 'creditCode', goal: 1, rewards: ['tiny-wrench'], claim: 'github' },
+  { id: 'contest-champion', name: 'Contest Champion', icon: '🏆', description: 'Win a monthly crab contest', stat: 'contestWins', goal: 1, rewards: ['golden-shell-trim'], claim: 'github' },
+  { id: 'contestant', name: 'Contestant', icon: '🎨', description: 'Enter a monthly crab contest with a pack in the gallery', stat: 'contestEntries', goal: 1, rewards: ['paint-splat'], claim: 'github' },
+  // Wrapped week (yearbook.js wrappedWeek): share that year's card during the week. A year's never comes back.
+  { id: 'wrapped-week-2026', name: 'Wrapped Week 2026', icon: '🎆', description: 'Share your 2026 Wrapped card during Wrapped week, January 2nd to 8th 2027', stat: 'wrappedWeek2026', goal: 1, rewards: ['wrapped-week-2026'] },
+].map(a => Object.freeze({ hidden: false, claim: null, ...a, rewards: Object.freeze(a.rewards) })));
 
 const KNOWN_ACHIEVEMENTS = new Set(ACHIEVEMENTS.map(a => a.id));
 
@@ -176,6 +185,8 @@ const COUNTERS = [
   // The gamification overhaul (docs/GAMIFICATION-PLAN.md section 1.4).
   'nestsCleared', 'rematchesWon', 'cleanFixes', 'fixesHeld', 'bugsCaughtTotal', 'reefBests', 'reefThriving',
   'reviewTier', 'reviewCaught', 'quizStreak', 'molts', 'everLevel', 'chaptersDone', 'tidePerfect', 'wrappedYears', 'logbookViews',
+  // The community (docs/plans/community-events.md §4, §5).
+  'creditPacks', 'creditCode', 'contestWins', 'contestEntries', 'wrappedWeek2026',
 ];
 const MAX_DAYS = 400;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -254,6 +265,8 @@ const INCREMENTS = {
   'review-caught': 'reviewCaught',
   'tide-perfect': 'tidePerfect',
   'logbook-opened': 'logbookViews',
+  // Your Wrapped card shared during Wrapped week (wiring/yearbook.js), one stat a year.
+  'wrapped-week-2026': 'wrappedWeek2026',
 };
 // "Keep the high-water mark" events: payload { n }.
 const MAXIMA = {
@@ -276,6 +289,9 @@ const MAXIMA = {
   // tier, the best quiz streak, molts, the highest level ever reached, chapters done, Wrapped years.
   'bugs-caught-total': 'bugsCaughtTotal', 'reef-thriving': 'reefThriving', 'review-tier': 'reviewTier', 'quiz-streak': 'quizStreak',
   molted: 'molts', 'ever-level': 'everLevel', 'chapter-done': 'chaptersDone', 'wrapped-seen': 'wrappedYears',
+  // What your GitHub login is credited for (wiring/credits.js): packs in the gallery,
+  // merged pull requests, contest wins and contest entries.
+  'credit-packs': 'creditPacks', 'credit-code': 'creditCode', 'contest-wins': 'contestWins', 'contest-entries': 'contestEntries',
 };
 
 function emptyStats() {
@@ -358,6 +374,7 @@ function progress(stats, unlocked = new Set()) {
       done,
       rewards: [...a.rewards],
       hidden: a.hidden,
+      claim: a.claim,
     };
   });
 }

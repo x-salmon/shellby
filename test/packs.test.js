@@ -24,7 +24,8 @@ test('packs: every built-in pack passes the loader and the schema', () => {
 });
 
 test('packs: every pack contributes at least one item', () => {
-  for (const r of reports) {
+  // contest.json holds the crab contest winners, and waits empty for its first (scripts/contest-ship.js).
+  for (const r of reports.filter(x => x.file !== 'contest.json')) {
     const total = Object.values(r.counts).reduce((n, c) => n + c, 0);
     assert.ok(total > 0, `${r.file} loaded no items`);
   }

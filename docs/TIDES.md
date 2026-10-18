@@ -26,6 +26,30 @@ South of the equator (the town you picked for the weather), Harvest Moon, Spring
 
 Switch: **Settings → Shellby → Games → Tide events**.
 
+### 🎂 Molt Day
+
+Shellby's birthday is **September 30th**, the day his first version came out in 2026. On the day he says so on the desktop, throws some confetti, and a banner on the Us page says how old he is. Anyone who opens Shellby that day keeps that year's **party hat**, with his age on it. There are no goals and no medal: being there is the point. Each year's hat only turns up on its own Molt Day, so a missed one stays missed. It follows the Tide events switch.
+
+Molt Day isn't a tide event. It sits beside them, so south of the equator, where Spring Clean runs over September 30th, both are on at once and Spring Clean's goals keep counting.
+
+### One-offs and event-limited packs
+
+An event in `src/main/events.js` may have `year: 2027`: it only runs that year, never comes back, and its bug's card doesn't say when it's back. One-offs mustn't overlap another event in their year, north or south (`test/events.test.js` checks).
+
+A pack item can be **event-limited** with `"unlock": { "event": "haunting" }`: it turns up while that event is on and is yours to keep after, the way seasonal items are. Any built-in event id works (`molt-day` too). `"year": 2027` beside it narrows it to that year's run. See [ADDONS.md](ADDONS.md).
+
+### Adding an event
+
+1. **`src/main/events.js`**: an `EVENTS` entry with its id, name, emoji, `colour` (`#rrggbb`, its banner's tint), season, dates, four lines, blurb, twist, four goals (one of them `event-bug`), its bug, two finds, trophy, boosts and a 7×7 medal. A one-off gets `year`. Then a `case` in `bugComesAlong` for how its bug comes along.
+2. **`src/main/bugdex/species.js`**: its bug, with `event: '<id>'` and no habitat.
+3. **`src/main/gifts/index.js`**: its two finds, `set: 'tides'` and `event: '<id>'`, and its name in `EVENT_NAMES`.
+4. **`src/main/wardrobe/achievements.js`**: its trophy (`stat: 'events<Name>'`), the stat in `COUNTERS`, and `'event-done-<id>'` in `INCREMENTS`.
+5. **`src/wardrobe/tide-chest.json`**: the trophy's reward, a tank piece with `unlock: { achievement }`.
+6. **`docs/addon.schema.json`**: the id in the `unlock.event` enum (a test checks it matches `KNOWN_EVENTS`).
+7. **This page**: a row in the table.
+
+The panel reads every event's name, emoji and colour from main, so nothing in `src/renderer` changes (a test fails if an event id turns up there).
+
 ## Sparklies
 
 Now and then a find he digs up comes up **sparkly**: the same find, in colours you'll rarely see. It's 1 in 128 (1 in 64 at Low Tide). Bugs have always had a 1 in 64 shiny form (1 in 32 at Low Tide, and for the Wreck's ghosts at The Haunting), and they get the same moment now.

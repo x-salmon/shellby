@@ -79,6 +79,8 @@ const { wireSurprises } = require('./wiring/surprises');
 const { wireStepUndo } = require('./wiring/step-undo');
 const { wireNative } = require('./wiring/native');
 const { wireEvents } = require('./wiring/events');
+const { wireNews } = require('./wiring/news');
+const { wireCredits } = require('./wiring/credits');
 const { wireSocial } = require('./wiring/social');
 const { makeToday } = require('./today');
 const { wireQuit } = require('./wiring/quit');
@@ -166,6 +168,8 @@ const shared = {
   claudeSettings: () => (ISOLATED ? path.join(app.getPath('userData'), 'claude-settings.json') : statusLine.settingsPath()),
   // The community registry. Only dev builds may point elsewhere (for testing).
   registryUrl: () => (!app.isPackaged && process.env.SHELLBY_REGISTRY_URL) || REGISTRY_URL,
+  // The community news feed: beside the registry's index, or a fixture in dev and test runs (e2e-news).
+  newsUrl: () => (!app.isPackaged && process.env.SHELLBY_NEWS_URL) || null,
   // Claude Code's changelog, for new tricks: dev builds may serve their own (e2e-claude-tricks).
   changelogUrl: () => (!app.isPackaged && process.env.SHELLBY_CHANGELOG_URL) || null,
   // A CLI the user pointed at by hand, when the usual places didn't have it.
@@ -374,6 +378,8 @@ share({ surprises: wireSurprises(shared) }); // crit hits and clean landings, no
 share(wireStepUndo(shared)); // a checkpoint before each step that changes files: Undo to here
 share({ native: wireNative(shared) }); // the crab noticing Claude's own to-dos, background commands, memories and skills
 const { eventsTick } = share(wireEvents(shared)); // tide events: a week or so with its own bug, finds, goals and medal
+const { startNews } = share(wireNews(shared)); // the gallery's news feed: contests, winners, events, once a day
+const { startCredits } = share(wireCredits(shared)); // About → Made by, and the trophies for making Shellby
 // The gamification overhaul (docs/GAMIFICATION-PLAN.md): levels, molting, the reef, review mastery,
 // bug nests, the Logbook and the yearbook, each registering its views with d.gameHub.
 for (const wire of [wireLevels, wireMolting, wireReef, wireReview, wireNests, wireLogbook, wireYearbook]) share(wire(shared));
@@ -454,6 +460,8 @@ app.whenReady().then(() => {
   createCi();
   createIssues();
   createFriends();
+  startNews();
+  startCredits();
   startSocial();
   shared.channelSecret = loadChannelSecret();
   // Set up before destinations needed confirming (0.46.1): what you already

@@ -122,9 +122,13 @@ function checkCiRuns(runs, sha, jobs = []) {
 const RED = new Set(['failure', 'timed_out']);
 
 // What `release:cut` writes in a release commit: the version, the CHANGELOG, and
-// the change notes it gathered (and removed). Nothing CI tests differently.
+// the change notes it gathered (and removed), and the credits it added to.
+// Nothing CI tests differently.
 const PACKAGE_FILES = new Set(['package.json', 'package-lock.json']);
 const NOTE = /^changes\/(?!README\.md$)[^/]+\.md$/;
+// The people credited for it (src/main/credits.js), which release:cut adds to:
+// data only, checked by test/credits.test.js on every commit CI runs.
+const CREDITS = 'src/community/credits.json';
 // The commits API lists this many files at most: a list that long may hide more.
 const API_FILES_MAX = 300;
 
@@ -132,6 +136,7 @@ const API_FILES_MAX = 300;
 function releaseFile({ filename, status } = {}) {
   if (PACKAGE_FILES.has(filename)) return status === 'modified'; // and only its version (onlyVersionChanged)
   if (filename === 'CHANGELOG.md') return status === 'modified' || status === 'added';
+  if (filename === CREDITS) return status === 'modified';
   return NOTE.test(String(filename)) && (status === 'removed' || status === 'modified');
 }
 

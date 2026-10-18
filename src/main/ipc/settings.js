@@ -62,6 +62,8 @@ function registerSettingsIpc(ipcMain, d) {
     // Always: what's waiting on an answer goes now. Never: it's dropped from the disk now.
     if (allowed.crashReports === 'always' || allowed.crashReports === 'never') d.drainCrashQueue();
     if ('forecast' in allowed) d.sendOutlook();
+    if ('communityNews' in allowed) d.newsSettingChanged?.(); // on fetches if there's nothing yet; off takes the cards down
+    if ('shareWrapped' in allowed) d.friends?.republish?.().catch(() => {}); // your year on your calling card, or off it
     if ('clashWarnings' in allowed) d.refreshClashes?.(); // off clears the markers; on looks straight away
     if ('effort' in allowed) d.manager.setEffort(allowed.effort);
     if ('planOnly' in allowed) setPlanOnly(allowed.planOnly);
@@ -104,7 +106,7 @@ function registerSettingsIpc(ipcMain, d) {
 
   ipcMain.handle('settings:set', async (_e, patch = {}) => {
     const allowed = {};
-    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'claudeInChrome', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'editor', 'claudeTricks', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings']) {
+    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'claudeInChrome', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'editor', 'claudeTricks', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped']) {
       if (k in patch) allowed[k] = patch[k];
     }
     // Turning on Autonomous for the first time needs a confirmation that renderer
@@ -145,7 +147,7 @@ function registerSettingsIpc(ipcMain, d) {
     if ('fallbackModel' in allowed && !isModel(allowed.fallbackModel)) delete allowed.fallbackModel;
     if ('effort' in allowed && allowed.effort !== '' && !EFFORTS.includes(allowed.effort)) delete allowed.effort;
     if ('outputStyle' in allowed) allowed.outputStyle = outputStyles.clean(allowed.outputStyle);
-    for (const k of ['openAtLogin', 'notifications', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'sounds', 'soundFx', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effortPick', 'claudeInChrome', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'turnShots', 'spendGuard', 'holdBigTasks', 'selfAware', 'suggestions', 'claudeTricks', 'attachWhatISaw', 'plainCards', 'sshAgent']) if (k in allowed) allowed[k] = !!allowed[k];
+    for (const k of ['openAtLogin', 'notifications', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'sounds', 'soundFx', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effortPick', 'claudeInChrome', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'turnShots', 'spendGuard', 'holdBigTasks', 'selfAware', 'suggestions', 'claudeTricks', 'attachWhatISaw', 'plainCards', 'sshAgent', 'communityNews', 'shareWrapped']) if (k in allowed) allowed[k] = !!allowed[k];
     if ('checkTimeoutMin' in allowed && !TIMEOUTS_MIN.includes(allowed.checkTimeoutMin)) delete allowed.checkTimeoutMin;
     if ('keybindings' in allowed) allowed.keybindings = shortcuts.sanitizeOverrides(allowed.keybindings);
     if ('spendReserve' in allowed && !guard.RESERVES.includes(allowed.spendReserve)) delete allowed.spendReserve;

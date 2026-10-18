@@ -8,9 +8,19 @@
   const { h, api, state, $ } = SB;
   const HOUR = 3600000;
 
+  const HEX = /^#[0-9a-f]{6}$/i;
+
   const ev = () => state.events;
   const art = (a, px) => (a?.pixels?.length && a.palette ? SB.Sprite.grid(a.pixels, a.palette, { px }) : null);
   const dayOf = t => new Date(t).toLocaleDateString([], { day: 'numeric', month: 'long' });
+  // Each event's own colour, from main's list (events.js `colour`): the banner's --ev.
+  const tint = c => (HEX.test(c || '') ? `--ev:${c}` : null);
+
+  // Every event's name, emoji and colour, from main (events.js view().all): the
+  // Bugdex and the friends list name events through these, never a copy of their own.
+  const known = id => (ev()?.all || []).find(e => e.id === id) || null;
+  const named = id => { const e = known(id); return e ? `${e.emoji} ${e.name}` : null; };
+  const emojiOf = id => known(id)?.emoji || null;
 
   function goalRow(g) {
     return h('li', { class: `ev-goal${g.done ? ' done' : ''}` },
@@ -25,7 +35,7 @@
   function banner(a, { compact = false } = {}) {
     const done = a.goals.filter(g => g.done).length;
     const urgent = a.lastDay && !a.done;
-    return h('div', { class: `ev-card ev-${a.id}${a.done ? ' finished' : ''}${compact ? ' compact' : ''}` },
+    return h('div', { class: `ev-card${a.done ? ' finished' : ''}${compact ? ' compact' : ''}`, dataset: { event: a.id }, style: tint(a.colour) },
       h('div', { class: 'ev-head' },
         h('span', { class: 'ev-emoji', 'aria-hidden': 'true', text: a.emoji }),
         h('div', { class: 'ev-titles' },
@@ -54,18 +64,32 @@
     return h('p', { class: 'ev-next' }, h('span', { 'aria-hidden': 'true', text: `${n.emoji} ` }), `Next tide event: `, h('b', { text: n.name }), `, ${n.when}.`);
   }
 
+  // Molt Day: his birthday, one day, with this year's party hat to keep.
+  function partyCard(p, { compact = false } = {}) {
+    return h('div', { class: `ev-card ev-party${compact ? ' compact' : ''}`, dataset: { event: p.id }, style: tint(p.colour) },
+      h('div', { class: 'ev-head' },
+        h('span', { class: 'ev-emoji', 'aria-hidden': 'true', text: p.emoji }),
+        h('div', { class: 'ev-titles' },
+          h('p', { class: 'ev-eyebrow', text: 'Today only' }),
+          h('h3', { text: `${p.name} ${p.year}` }),
+          compact ? null : h('p', { class: 'ev-blurb', text: p.blurb })),
+        h('span', { class: 'ev-left', text: `He's ${p.age}!` })),
+      compact ? null : h('div', { class: 'row wrap ev-party-row' },
+        h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: () => SB.setView('wardrobe') }, 'Try on the hat')));
+  }
+
   function render() {
     const v = ev();
     for (const box of document.querySelectorAll('[data-ev-banner]')) {
       const where = box.dataset.evBanner; // 'us' shows it all; the rest a line
       if (!v || !v.on) { box.hidden = true; box.replaceChildren(); continue; }
-      if (v.active) {
-        box.hidden = false;
-        box.replaceChildren(banner(v.active, { compact: where !== 'us' }));
-      } else if (where === 'us' && v.next) {
-        box.hidden = false;
-        box.replaceChildren(nextLine(v.next));
-      } else { box.hidden = true; box.replaceChildren(); }
+      const compact = where !== 'us';
+      const parts = [];
+      if (v.party) parts.push(partyCard(v.party, { compact }));
+      if (v.active) parts.push(banner(v.active, { compact }));
+      else if (where === 'us' && v.next) parts.push(nextLine(v.next));
+      box.hidden = !parts.length;
+      box.replaceChildren(...parts);
     }
     renderMedals(v);
   }
@@ -116,5 +140,5 @@
   // The countdown moves on by itself: a look every hour while the panel's up.
   setInterval(() => { if (!document.hidden) api.getEvents().then(apply).catch(() => {}); }, HOUR);
   api.getEvents().then(apply).catch(() => {});
-  SB.tide = { render, shareMedal, refresh: () => api.getEvents().then(apply).catch(() => {}) };
+  SB.tide = { render, shareMedal, named, emojiOf, refresh: () => api.getEvents().then(apply).catch(() => {}) };
 })();

@@ -1,0 +1,50 @@
+{
+  "format": 1,
+  "items": [
+    {
+      "id": "contest-2026-11",
+      "kind": "contest",
+      "title": "November contest: Frozen crabs",
+      "body": "Paint a crab who just came in from the cold. Entries until the 21st.",
+      "url": "https://github.com/x-salmon/shellby/discussions/categories/crab-contest",
+      "from": "2026-11-01",
+      "until": "2026-11-21",
+      "contest": { "month": "2026-11", "theme": "frozen", "kinds": ["skin"] }
+    },
+    {
+      "id": "winner-2026-10",
+      "kind": "winner",
+      "title": "October's winner: Spooky Shell",
+      "body": "Haunted, and by a long way the most upvoted.",
+      "url": "https://github.com/x-salmon/shellby/discussions/120",
+      "from": "2026-11-01",
+      "until": "2026-11-30",
+      "pack": "tiny-hats"
+    },
+    {
+      "id": "note-hello",
+      "kind": "note",
+      "title": "Hello from the reef",
+      "body": "Community news lives here now.",
+      "from": "2026-10-01",
+      "until": "2026-12-31"
+    },
+    {
+      "id": "elsewhere",
+      "kind": "note",
+      "title": "A link somewhere else",
+      "url": "https://example.com/phish",
+      "from": "2026-11-01",
+      "until": "2026-11-30"
+    },
+    {
+      "id": "wrapped-2026",
+      "kind": "event",
+      "title": "Wrapped week: show your year",
+      "body": "Post your Wrapped card in Discussions.",
+      "url": "https://github.com/x-salmon/shellby/discussions/130",
+      "from": "2027-01-02",
+      "until": "2027-01-08"
+    }
+  ]
+}

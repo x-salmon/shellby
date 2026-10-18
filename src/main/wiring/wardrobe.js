@@ -27,6 +27,11 @@ function wireWardrobe(d) {
       south: () => d.seasonsWhere().south,
       // "Unlock everything" is held back for a paid tier; dev runs (e2e, screenshots) keep it.
       canUnlockAll: () => !app.isPackaged,
+      // Event-limited items (unlock: { event }) turn up only while tide events are on (wiring/events.js).
+      eventsOn: () => !config.get('crabOnly') && config.get('tideEvents') !== false,
+      // The contributor trophies (wiring/credits.js): only a GitHub sign-in can claim them.
+      signedIn: () => !!d.github?.signedIn,
+      contestWins: () => d.myCredits?.()?.wins || [],
     });
     wardrobe.load();
     wardrobe.on('changed', d.broadcastWardrobe);

@@ -27,8 +27,8 @@
     'first-try': ['🎯', 'First try'], swift: ['⚡', 'Swift'], golden: ['✦', 'Golden'], nocturnal: ['☾', 'Nocturnal'],
     spectral: ['👻', 'Spectral'], shiny: ['✨', 'Shiny'], 'for-good': ['🛡', 'For good'],
   };
-  // The tide events' names (src/main/events.js EVENTS: the renderer can't require main files).
-  const EVENTS = { harvest: '🌾 Harvest Moon', haunting: '🎃 The Haunting', frostbite: '❄️ Frostbite', penpal: '💌 Pen Pal Week', 'spring-clean': '🌸 Spring Clean', 'low-tide': '🌊 Low Tide' };
+  // A tide event's name, from main's list (tide.js, src/main/events.js view().all).
+  const eventName = id => SB.tide?.named(id) || null;
   const LANGS = { js: 'JS', ts: 'TypeScript', py: 'Python', rust: 'Rust', go: 'Go', jvm: 'JVM', cs: 'C#', rb: 'Ruby', php: 'PHP', git: 'Git', ci: 'CI' };
   const STAGE_NAMES = ['', 'I', 'II', 'III', 'Master'];
 
@@ -222,7 +222,7 @@
     if (s.state === 'unknown') return `${num(s.no)}, not seen yet. ${s.blurb}`;
     if (s.state === 'seen') return `${num(s.no)} ${s.name}, seen but not caught yet. ${s.blurb}`;
     if (s.state === 'reported') return `${num(s.no)} ${s.name}, reported by a friend. ${s.blurb}`;
-    if (s.state === 'event') return `${num(s.no)} ${s.name}, out now for ${EVENTS[s.event] || 'a tide event'}. ${s.blurb}`;
+    if (s.state === 'event') return `${num(s.no)} ${s.name}, out now for ${eventName(s.event) || 'a tide event'}. ${s.blurb}`;
     const forms = (s.forms || []).map(f => FORMS[f]?.[1]).filter(Boolean);
     return `${num(s.no)} ${s.name}, ${s.rarityLabel}, caught ${times(s.caught)}${forms.length ? `, ${forms.join(', ')}` : ''}${s.isNew ? ', new' : ''}`;
   }
@@ -270,7 +270,7 @@
       return `${from.filter(Boolean).join(' · ')}. You haven’t met one yet.`;
     }
     if (s.state === 'seen') return `Seen ${times(s.seenCount || 1)}${s.seenAt ? ` · last spotted ${ago(s.seenAt)}` : ''} · not caught yet`;
-    if (s.state === 'event') return `Only while ${EVENTS[s.event] || 'its tide event'} is on, and only along with a real fix.`;
+    if (s.state === 'event') return `Only while ${eventName(s.event) || 'its tide event'} is on, and only along with a real fix.`;
     if (s.state !== 'caught') return null;
     return [
       s.first ? `First caught ${day(s.first)}${s.firstProject ? ` in ${s.firstProject}` : ''}` : null,
@@ -309,7 +309,7 @@
       h('div', { class: 'fd-big' }, hasArt(s) ? art(s, 110) : unknownArt()),
       h('div', { class: 'fd-info' },
         h('p', { class: 'fd-rarity-line bd-where' },
-          [num(s.no), where?.name || (s.event ? EVENTS[s.event] : null), caught ? s.rarityLabel : s.state === 'seen' ? 'Seen' : s.state === 'event' ? 'Out now' : null].filter(Boolean).join(' · '),
+          [num(s.no), where?.name || (s.event ? eventName(s.event) : null), caught ? s.rarityLabel : s.state === 'seen' ? 'Seen' : s.state === 'event' ? 'Out now' : null].filter(Boolean).join(' · '),
           s.state !== 'unknown' && s.typeLabel ? h('span', { class: 'bd-type', style: HEX.test(s.typeColor) ? `--type:${s.typeColor}` : null, text: s.typeLabel }) : null),
         h('h3', { text: s.state === 'unknown' ? 'Not seen yet' : s.name }),
         nextLine(s),
@@ -331,7 +331,7 @@
     if (s.state === 'unknown') return null;
     if (s.event) {
       const back = s.back && !s.eventOn ? ` Back ${new Date(s.back).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}.` : '';
-      return h('p', { class: 'bd-rank-line event' }, h('span', { class: 'bd-event-tag', text: 'Tide event bug' }), ` From ${EVENTS[s.event] || 'a tide event'}.${back}`);
+      return h('p', { class: 'bd-rank-line event' }, h('span', { class: 'bd-event-tag', text: 'Tide event bug' }), ` From ${eventName(s.event) || 'a tide event'}.${back}`);
     }
     if (s.league === 'champion') return h('p', { class: 'bd-rank-line champion', text: '★ The champion. Beat it with every badge and the Deep Four to make the Hall of Fame.' });
     if (s.league) return h('p', { class: 'bd-rank-line elite', text: '♛ One of the Deep Four, the hardest bugs in the sea.' });

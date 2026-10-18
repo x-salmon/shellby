@@ -34,6 +34,8 @@ key community packs get. Two packs in here must therefore never use the same ite
 | `shipyard.json` | 13 accessories | Rewards for the work XP already pays for: deploys, green tests, flaky fixes, issue → PR, clean audits, tidying the toolbox, fresh starts, streaks and level 10. |
 | `bug-hunter.json` | 8 accessories, 1 decor | Rewards for the Bugdex trophies (`src/main/bugdex/index.js`): first catch, kinds caught, a finished habitat, 100 catches, golden, ghostly and legendary bugs. The ghost jar is earned, not seasonal. |
 | `tank-decor.json` | 35 decor | Castles, plants, rocks and treasures for his tank. Most are his from the start; the rest are earned along the way. |
+| `contest.json` | every crab contest winner's skin | Added by `npm run contest:ship` (docs/COMMUNITY.md), one a month, open to everyone. Empty until the first winner. |
+| `community.json` | Molt Day hats, contributor rewards | A party hat for each Molt Day (`unlock: { event: 'molt-day', year }`), and what you get for a pack in the gallery, a merged PR, a contest win or entry, and Wrapped week (`docs/COMMUNITY.md`). |
 | `tide-chest.json` | 1 accessory, 1 effect, 8 decor | Rewards for the tide events (one piece each), sparklies, crab eggs and swaps (`src/main/events.js`, `eggs.js`, `swaps.js`). |
 | `voices.json` | 8 voices, 10 scenes | Example dialogue: Pirate, Grumpy, Robo, Surfer, Royal, Cowboy, plus Español and Français (whole languages, so they use `fallback: "quiet"`). Each has scenes that only play in that voice. The formatter skips it to keep each occasion on one line. |
 

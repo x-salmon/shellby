@@ -20,6 +20,7 @@ const tankShare = require('../tank/share');
 const tankLayouts = require('../tank/layouts');
 const friends = require('../friends');
 const events = require('../events');
+const newsFeed = require('../news');
 const prefs = require('../sync/prefs');
 const life = require('../sync/life');
 const plans = require('../sync/plans');
@@ -58,6 +59,8 @@ function snapshot(get, data = {}, now = Date.now()) {
     friends: friends.syncable(get('friends')),
     // Tide events: goals and medals follow you between PCs (events.js merge).
     events: events.normalize(get('events')),
+    // Community news cards you closed (news.js): closed on one PC, closed on all.
+    news: { seen: newsFeed.normalize(get('news')).seen },
     prefs: prefs.snapshot(data, stamps.prefs),
     life: life.snapshot(get, xp.device, stamps.life, now),
     plans: plans.snapshot(data, stamps.plans),
@@ -97,6 +100,7 @@ function clean(raw) {
     // Who's on the list and who you removed: no cards, visits or waves.
     friends: friends.syncable(r.friends),
     events: events.normalize(r.events),
+    news: { seen: newsFeed.cleanSeen(r.news?.seen) },
     // Personal settings only, each with when it last changed.
     prefs: prefs.clean(r.prefs),
     // Finds, the bond, games, quests and scenes: each PC's share of the counts.
@@ -135,6 +139,7 @@ function merge(aIn, bIn) {
     tankLayouts: tankLayouts.merge(a.tankLayouts, b.tankLayouts),
     friends: friends.mergeSync(a.friends, b.friends),
     events: events.merge(a.events, b.events),
+    news: { seen: newsFeed.mergeSeen(a.news.seen, b.news.seen) },
     prefs: prefs.merge(a.prefs, b.prefs),
     life: life.merge(a.life, b.life),
     plans: plans.merge(a.plans, b.plans),
@@ -168,6 +173,8 @@ function patchFor(merged, get, data = {}) {
   if (merged.skin) patch.skin = merged.skin;
   const ev = events.merge(get('events'), merged.events);
   if (JSON.stringify(ev) !== JSON.stringify(events.normalize(get('events')))) patch.events = ev;
+  const seen = newsFeed.mergeSeen(newsFeed.normalize(get('news')).seen, merged.news.seen);
+  if (JSON.stringify(seen) !== JSON.stringify(newsFeed.normalize(get('news')).seen)) patch.news = { ...(get('news') || {}), seen };
   if (JSON.stringify(friends.syncable(get('friends'))) !== JSON.stringify(merged.friends)) patch.friends = friends.applySync(get('friends'), merged.friends);
   // A PC in Autonomous stays in it (sync/prefs.js heldBack).
   const p = prefs.apply(prefs.snapshot(data, (get('syncStamps') || {}).prefs), merged.prefs, prefs.heldBack(data));

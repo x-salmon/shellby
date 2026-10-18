@@ -55,6 +55,8 @@
       <section class="setting-group about" data-nav="About">
         <h3>About</h3>
         <dl class="facts" id="facts"></dl>
+        <!-- Community news (news.js): the same card as on the Us page -->
+        <div class="nw-box" data-news="about" hidden aria-label="Community news"></div>
         <div class="update" id="updateRow" hidden>
           <div class="update-head">
             <p class="small ext-status" id="updateStatus"></p>
@@ -93,6 +95,13 @@
           <button type="button" class="btn ghost" id="ideaBtn">Suggest an idea</button>
           <button type="button" class="btn ghost" id="githubBtn">GitHub</button>
           <button type="button" class="btn ghost" id="dataBtn">Data folder</button>
+          <button type="button" class="btn ghost" id="madeByBtn" aria-expanded="false" aria-controls="madeBy">Made by</button>
+        </div>
+        <!-- Made by (credits.js, src/community/credits.json): everyone who has made Shellby -->
+        <div class="made-by" id="madeBy" hidden>
+          <p class="small muted">Everyone who has made Shellby: contest winners, the people behind the gallery's packs, and everyone with a merged pull request. Each name opens their GitHub profile.</p>
+          <div class="mb-groups" id="madeByGroups"></div>
+          <p class="small muted" id="madeByMine" hidden></p>
         </div>
         <p class="muted small">Shellby is an independent open-source project. It is not affiliated with or endorsed by Anthropic. "Claude" and "Claude Code" are trademarks of Anthropic, PBC.</p>
       </section>

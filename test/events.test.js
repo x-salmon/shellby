@@ -175,3 +175,82 @@ test('each event has four lines of his own, short enough for his bubble', () => 
     for (const l of e.lines) assert.ok(l.length <= 24, `${e.id}: ${l}`);
   }
 });
+
+// ------------------------------------------------------------------ one-offs, colours, parties (docs/plans/community-events.md §6)
+
+test('every event and party has its own colour, and the renderer reads them from view().all', () => {
+  for (const e of [...ev.EVENTS, ...ev.PARTIES]) assert.match(e.colour, /^#[0-9a-f]{6}$/i, e.id);
+  const all = ev.view(null, at(2026, 6, 1)).all;
+  assert.deepEqual(all.map(e => e.id), [...ev.EVENTS, ...ev.PARTIES].map(e => e.id));
+  assert.ok(all.every(e => e.name && e.emoji && e.colour));
+  assert.equal(ev.view(null, at(2026, 10, 28)).active.colour, ev.eventById('haunting').colour);
+});
+
+test('no copy of the event list is left in the renderer', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const root = path.join(__dirname, '..', 'src', 'renderer');
+  const files = [];
+  const walk = dir => { for (const f of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, f.name); if (f.isDirectory()) walk(p); else if (/\.(js|css|html)$/.test(f.name) && f.name !== 'panel.html') files.push(p); } };
+  walk(root);
+  for (const e of [...ev.EVENTS, ...ev.PARTIES]) {
+    const named = new RegExp(`['"\`]${e.id}['"\`]|\\.ev-${e.id}\\b`);
+    for (const f of files) assert.ok(!named.test(fs.readFileSync(f, 'utf8')), `${path.relative(root, f)} names ${e.id}: read it from main's list instead`);
+  }
+});
+
+test('a one-off runs only in its year, and is never back once it has been', () => {
+  const finale = { id: 'finale', year: 2027, start: [11, 20], end: [11, 22], nature: false };
+  assert.ok(ev.runAt(finale, at(2027, 11, 21)));
+  assert.equal(ev.runAt(finale, at(2026, 11, 21)), null, 'not the year before');
+  assert.equal(ev.runAt(finale, at(2028, 11, 21)), null, 'nor after');
+  assert.equal(ev.nextRun(finale, at(2026, 1, 1)).year, 2027);
+  assert.equal(ev.nextRun(finale, at(2027, 12, 1)), null, 'no "back next November"');
+  assert.equal(ev.activeEvent(at(2027, 11, 21), {}, [finale]).run.key, 'finale@2027');
+  assert.equal(ev.activeEvent(at(2028, 11, 21), {}, [finale]), null);
+});
+
+test('one-offs never overlap anything in their year, north or south', () => {
+  for (const o of ev.EVENTS.filter(e => e.year)) {
+    for (const south of [false, true]) {
+      for (let t = at(o.year, 1, 1).getTime(); t < at(o.year + 1, 1, 1).getTime(); t += 24 * 3600e3) {
+        const d = new Date(t);
+        if (!ev.runAt(o, d, { south })) continue;
+        const others = ev.EVENTS.filter(e => e !== o && ev.runAt(e, d, { south }));
+        assert.deepEqual(others.map(e => e.id), [], `${o.id} on ${d.toDateString()}`);
+      }
+    }
+  }
+});
+
+test('Molt Day is September 30th every year, his age counted from 2026', () => {
+  const md = ev.eventById('molt-day');
+  assert.ok(ev.KNOWN_EVENTS.has('molt-day'), 'a pack may name it in unlock: { event }');
+  assert.equal(ev.partyAt(at(2027, 9, 29)), null);
+  assert.equal(ev.partyAt(at(2027, 9, 30, 0)).run.key, 'molt-day@2027');
+  assert.equal(ev.partyAt(at(2027, 10, 1)), null);
+  assert.equal(ev.ageAt(md, 2027), 1);
+  assert.equal(ev.ageAt(md, 2030), 4);
+  assert.ok(ev.partyLine(md, 2027).length <= 21, 'fits his bubble with the emoji');
+  const v = ev.view(null, at(2027, 9, 30));
+  assert.equal(v.party.age, 1);
+  assert.equal(v.active, null, 'a party is not a tide event: no goals, no medal');
+  assert.equal(ev.view(null, at(2027, 9, 30), { south: true }).active?.id, 'spring-clean', 'south, Spring Clean goes on beside it');
+  assert.ok(ev.isOn('molt-day', at(2027, 9, 30), {}, 2027));
+  assert.ok(!ev.isOn('molt-day', at(2028, 9, 30), {}, 2027), 'a year\'s hat only that year');
+});
+
+test('Molt Day is said once a year, on any PC', () => {
+  let r = ev.announceParty(null, at(2027, 9, 30, 9));
+  assert.equal(r.say, 'party');
+  assert.match(r.line, /1 today/);
+  r = ev.announceParty(r.state, at(2027, 9, 30, 15));
+  assert.equal(r.say, null);
+  assert.equal(ev.announceParty(null, at(2027, 6, 1)).say, null);
+  const other = ev.announceParty(null, at(2028, 9, 30)).state;
+  const m = ev.merge(r.state, other);
+  assert.deepEqual(m.parties, ['molt-day@2027', 'molt-day@2028']);
+  assert.deepEqual(m.medals, [], 'no medal for a party');
+  assert.equal(ev.announceParty(m, at(2028, 9, 30, 20)).say, null);
+  assert.deepEqual(ev.normalize({ parties: ['molt-day@2027', 'haunting@2026', 'x', 7] }).parties, ['molt-day@2027']);
+});

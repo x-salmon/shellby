@@ -36,6 +36,16 @@ The slides move on by themselves every few seconds. With motion turned down (Win
 
 It's saved to **Pictures → Shellby** and copied to your clipboard, the same as the crab card, with buttons to post it to X or Bluesky. Making one counts for the **Show-Off** trophy.
 
+## Wrapped week (January 2nd to 8th)
+
+Wrapped still opens on January 2nd. The week after is the time to compare and share.
+
+- **The banner.** All week, the Us page and Trophies show a 🎁 **Wrapped week: share your year** banner with **Open Wrapped** and how many of your friends have shared theirs.
+- **Show my year to friends.** A tick on the card slide, off by default. While it's on, during the week only, your calling card carries last year's XP, days together, levels gained, bugs caught and your nemesis's species. Numbers and a bug, never a project name. A card from another year counts as nothing.
+- **You and your friends.** With friends (Visiting crabs) who've shared theirs, a slide after the card shows you and up to five of them side by side: days together, XP and bugs, each one's nemesis, and who did most ("Most days together: Pip"). **📸 Make a card of us** saves it as a picture.
+- **🎆 Wrapped Week 2026.** Share your Wrapped card during the week and a confetti shell trim with the year on it is yours. Like a medal, a year's trim never comes back.
+- **A thread.** The community news card links to a "Show your Wrapped" post in Discussions, where people post their cards themselves.
+
 ## Trophies and tank pieces
 
 Opening a Wrapped counts towards the **Year One**, **Year Two**, **Year Three** and **Year Five** trophies, each with a rare piece for his tank: three snowglobes (the snow falls) and a Time Capsule. See [TANK.md](TANK.md#milestones).
@@ -46,14 +56,15 @@ Shellby started keeping a yearbook in this version. For the year it arrived in, 
 
 ## Privacy
 
-The yearbook stays on this PC. It never syncs and nothing in it goes on your calling card or profile card. It keeps counts, not details: project names (for the top 3), bug species, trophy and piece ids, and per-day XP. Ten years are kept. The card shows numbers and a bug, never a project name.
+The yearbook stays on this PC. It never syncs, and nothing in it goes on your calling card or profile card unless you tick **Show my year to friends**, and then only during Wrapped week and only the five numbers and the nemesis above. It keeps counts, not details: project names (for the top 3), bug species, trophy and piece ids, and per-day XP. Ten years are kept. The card shows numbers and a bug, never a project name.
 
 ## For developers
 
 - `src/main/yearbook.js` (pure, `config.yearbook`): `note(state, event, payload, now)` records one moment (`xp` from `d.onAward`, `stat` from `d.onStat`, `trophy` from the wardrobe's `unlocked` event, `tideout`), `available` and `wrappedDue` decide what opens (Jan 2 local, 3+ active days, newest unseen first), `markShown`, `backfill` (once, marks the year `partial` with its `since` day) and `summary` (streaks, busiest day, hour and weekday, nemesis, top projects). Levels, medals and molts arrive as running totals, so `last` carries the previous total and a year counts only the rise; a Molt's drop back to level 1 is a new start, not a loss. Covered in `test/yearbook.test.js`.
 - `src/main/yearbook-slides.js` (pure): `slides(summary, ctx)` and `cardTiles(summary)`.
 - `src/main/wiring/yearbook.js`: listens on the game hooks (`wiring/game-hooks.js`), backfills on the first note, checks 20 s after launch and hourly, and pushes `game` `{ what: 'wrapped', view, event: 'due' }`. Game views: `wrapped` (`get()` is `{ due, available }`, `get(year)` the slides and card; `act('shown', { year })` marks it and emits `wrapped-seen` with the number of years seen; `act('share')`) and `yearbook` (for the Logbook: `{ due, available, current }`). In a test run (`SHELLBY_E2E=1` and the like, `src/main/test-desktop.js`), `act('dev-clock', { at })` moves its clock and `act('dev-seed', { year })` fills a year; both are refused otherwise.
+- Wrapped week: `yearbook.wrappedWeek(today)` (Jan 2–8 local, `{ year, from, until, dayOf }` or null), `forCard(state, year)` and `cleanCardWrapped` (the calling card's `wrapped`, cleaned in `github/card.js`), and `friendsYears(me, friends, year)` for the slide. The wiring reads the day from `d.today()` (so `SHELLBY_TODAY` works) unless `dev-clock` moved it, adds `week` to `get()`, appends the `friends` slide in the week, gives `d.wrappedForCard()` to the calling card, and turns a Wrapped card saved that week (`card:save` → `d.cardSaved`, or the `card-shared:wrapped` stat) into the `wrapped-week-<year>` stat.
 - Perk levels are constants in the wiring (`DEEP_CUTS_LEVEL = 88`, `FOIL_LEVEL = 77`), read against `d.everLevel()`.
 - Renderer: `html/wrapped.html` (a card-sheet), `wrapped.js` (slides, the 🎁 on Trophies, opening on `onGame` and once on load), `wrapped-card.js` (`SB.wrappedCard.draw` / `share`, through `SB.cardKit`), `wrapped.css`.
 - Not yet: the reef slide's "biggest improvement" (`ctx.reef`) waits for `reef.js` to keep a history of readings, and tide-out days need `streaks.js` to report them (`note('tideout')`).
-- **End-to-end check:** `node scripts/e2e-wrapped.js` seeds a year, sets the clock to January 1st (nothing) and 2nd (the sheet opens), steps through every slide, makes the card PNG, checks the year is shown and Year One's snowglobe is earned, and that the tank's Milestones shelf has every piece.
+- **End-to-end check:** `node scripts/e2e-wrapped.js` seeds a year, sets the clock to January 1st (nothing) and 2nd (the sheet opens), steps through every slide, makes the card PNG, checks the year is shown and Year One's snowglobe is earned, and that the tank's Milestones shelf has every piece. Then, on January 4th 2027 (`SHELLBY_TODAY`) with fixture friends' cards: the week's banner and its count, the friends' slide after the card and its PNG, and the Wrapped Week trim for sharing the Wrapped card.

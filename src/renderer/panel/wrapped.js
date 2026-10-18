@@ -14,6 +14,7 @@
   const sheet = $('wrappedSheet');
   let view = null;      // the year on show (game view 'wrapped', with a year)
   let years = [];       // every year with a Wrapped, newest first
+  let week = null;      // Wrapped week, January 2nd to 8th: { year, dayOf, friendsShared, sharing, open }, else null
   let at = 0;
   let timer = null;
 
@@ -63,8 +64,61 @@
       parts.push(h('div', { class: 'row wrap wr-card-row' },
         h('button', { type: 'button', class: 'btn primary', 'data-wrapped-card': '', onclick: shareCard }, '📸 Make the card'),
         h('button', { type: 'button', class: 'btn ghost', onclick: () => SB.setView('tank') }, 'See his tank')));
+      // Wrapped week: your year on your calling card for friends (numbers and a bug, never a project).
+      if (week && week.year === view.year) parts.push(shareYearTick());
     }
+    if (sl.id === 'friends') parts.push(...friendsBody(sl));
     return parts;
+  }
+
+  // ------------------------------------------------------------ Wrapped week (January 2nd to 8th)
+
+  function shareYearTick() {
+    const box = h('input', { type: 'checkbox', id: 'wrappedShareYear', checked: SB.state.settings?.shareWrapped === true });
+    box.addEventListener('change', async () => {
+      const r = await api.setSettings({ shareWrapped: box.checked }).catch(() => null);
+      if (r?.settings) SB.state.settings = r.settings;
+      refreshYears();
+    });
+    return h('div', { class: 'wr-share-year' },
+      h('label', { class: 'toggle' }, box, h('span', { class: 'switch' }), 'Show my year to friends'),
+      h('p', { class: 'small muted', text: 'Until January 8th, your calling card carries this year\'s XP, days together, levels, bugs and nemesis, so friends with Visiting crabs see you side by side. Never a project name.' }));
+  }
+
+  // You and up to five friends who shared, side by side, and who did most.
+  function friendsBody(sl) {
+    const n = v => Number(v || 0).toLocaleString();
+    return [
+      h('ul', { class: 'wr-friends', 'aria-label': 'You and your friends' }, ...sl.people.map(p => h('li', { class: `wr-friend${p.me ? ' me' : ''}` },
+        p.nemesis?.art ? h('span', { 'aria-hidden': 'true', title: `Nemesis: ${p.nemesis.name}` }, pixelArt(p.nemesis.art, 40)) : null,
+        h('b', { text: p.me ? 'You' : `@${p.login}` }),
+        h('small', { text: `${n(p.days)} days` }), h('small', { text: `${n(p.xp)} XP` }), h('small', { text: `${n(p.bugs)} bugs` })))),
+      sl.supers?.length ? h('ul', { class: 'wr-supers' }, ...sl.supers.map(s => h('li', {}, `${s.what}: `, h('b', { text: s.login })))) : null,
+      h('div', { class: 'row wrap wr-card-row' },
+        h('button', { type: 'button', class: 'btn primary', 'data-wrapped-card': '', onclick: () => shareFriends(sl) }, '📸 Make a card of us')),
+    ];
+  }
+
+  function shareFriends(sl) {
+    if (!view || !SB.wrappedCard?.shareFriends) return;
+    stopAuto();
+    sheet.hidden = true;
+    SB.wrappedCard.shareFriends(view, sl);
+  }
+
+  // The 🎁 banner on the Us page and Trophies, all week.
+  function renderWeek() {
+    for (const box of document.querySelectorAll('[data-wrapped-week]')) {
+      if (!week) { box.hidden = true; box.replaceChildren(); continue; }
+      const friends = week.friendsShared ? `${week.friendsShared} friend${week.friendsShared === 1 ? ' has' : 's have'} shared theirs` : 'Show yours to friends from the card';
+      box.hidden = false;
+      box.replaceChildren(h('div', { class: 'ww-card' },
+        h('span', { class: 'ww-emoji', 'aria-hidden': 'true', text: '🎁' }),
+        h('div', { class: 'ww-text' },
+          h('h3', { text: 'Wrapped week: share your year' }),
+          h('p', { text: `${week.year} with Shellby, until January 8th. ${friends}.` })),
+        week.open ? h('button', { type: 'button', class: 'btn primary slim-btn', dataset: { openWrapped: String(week.year) }, onclick: () => open(week.year) }, 'Open Wrapped') : null));
+    }
   }
 
   function render() {
@@ -106,7 +160,9 @@
   async function refreshYears() {
     const list = await api.getGame('wrapped').catch(() => null);
     years = list?.available || [];
+    week = list?.week || null;
     trophiesButton();
+    renderWeek();
     return list;
   }
 
@@ -177,6 +233,8 @@
   api.onGame?.(msg => { if (msg?.what === 'wrapped' && msg.event === 'due') open(msg.view?.due); });
   // ...and the panel asks once when it loads, in case that was before it was listening.
   refreshYears().then(list => { if (list?.due != null) open(list.due); });
+  // Wrapped week comes and goes, and friends share theirs as it goes on: a look every hour.
+  setInterval(() => { if (!document.hidden) refreshYears(); }, 60 * 60 * 1000);
 
-  SB.wrapped = { open, close };
+  SB.wrapped = { open, close, refresh: refreshYears };
 })();

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://github.com/x-salmon/shellby/blob/main/docs/addon.schema.json",
+  "format": 1,
+  "id": "crab-contest",
+  "name": "Crab Contest Winners",
+  "author": "the Shellby community",
+  "version": "1.0.0",
+  "description": "Every monthly crab contest's winning skin, open to everyone. Added by npm run contest:ship (docs/COMMUNITY.md).",
+  "homepage": "https://github.com/x-salmon/shellby/discussions",
+  "skins": []
+}
