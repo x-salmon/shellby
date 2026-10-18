@@ -135,7 +135,9 @@ async function quit(app, ms = 20000) {
     check(await panel.ev('document.querySelectorAll(\'.shellby-tabs [data-goto="paint"]\').length === document.querySelectorAll(\'.shellby-tabs\').length'), 'every row of his screen has 🎨 Paint');
     await panel.ev("document.querySelector('#wardrobeView .shellby-tabs [data-goto=\"paint\"]').click()");
     await until("SB.state.view === 'paint' && !document.getElementById('ptStart').hidden", 'the Painter');
-    check(await panel.ev("!!document.querySelector('#ptFrom [data-skin=\"classic\"]') && !!document.querySelector('#ptFrom [data-blank=\"skin\"]')"), 'Start from: classic, and a blank crab');
+    // The tiles come from main (skins, drafts, wishes), a moment after the screen.
+    await until("!!document.querySelector('#ptFrom [data-skin=\"classic\"]') && !!document.querySelector('#ptFrom [data-blank=\"skin\"]')", 'Start from: classic, and a blank crab');
+    check(true, 'Start from: classic, and a blank crab');
     check(await panel.ev("[...document.querySelectorAll('#ptFrom [data-skin]')].filter(b => b.disabled).every(b => /locked/.test(b.textContent))"), 'a locked skin shows, but can\'t be a starting point');
     await until("document.querySelectorAll('#ptWishes li').length === 1", 'the pack wishes');
     check(await panel.ev("document.querySelector('#ptWishes li').textContent.includes('A lighthouse keeper crab')"), 'a crab wish, its "Pack wish:" taken off (the accessory one waits on the Accessory tab)');
@@ -255,7 +257,11 @@ async function quit(app, ms = 20000) {
       mock.approve();
       await panel.ev("SB.setView('settings')");
       await wait(400);
-      await panel.ev("document.getElementById('ghPublish').click(); document.getElementById('ghSignIn').click()");
+      // Ticked before signing in, publishing joins what the sign-in asks for once main
+      // has said yes (github.js), so sign in only after the tick has taken.
+      await panel.ev("document.getElementById('ghPublish').click()");
+      await until("document.getElementById('ghPublish').checked", 'publishing ticked for the sign-in');
+      await panel.ev("document.getElementById('ghSignIn').click()");
       await until("SB.state.github?.signedIn && SB.canPublish()", 'signed in to the mock GitHub with publishing on', 20000);
       await panel.ev(`SB.painter.edit(${JSON.stringify(id)})`);
       await until(`SB.painter.current()?.id === ${JSON.stringify(id)}`, 'back in the Painter');
@@ -302,6 +308,11 @@ async function quit(app, ms = 20000) {
     await panel.mouse('mouseReleased', lx, ly);
     await panel.ev("document.getElementById('ptAuthor').value = 'Crab Fan'; document.getElementById('ptAuthor').dispatchEvent(new Event('input'))");
     if (canSign) {
+      // One pixel on a blank crab: no eyes, no legs, hats floating. Each warning stops
+      // Share until it's marked as meant, as you would for a crab drawn that way.
+      check(await panel.ev(`(() => { for (let i = 0; i < 20; i++) {
+        const b = [...document.querySelectorAll('#ptChecks .pt-check.warning .link-btn')].find(x => x.textContent === 'That’s on purpose');
+        if (!b) return true; b.click(); } return false; })()`), 'its warnings marked as on purpose');
       await panel.ev("document.getElementById('ptShareBtn').click()");
       await until("!!document.getElementById('ptShareGo') && !document.getElementById('ptShareGo').disabled", 'the share sheet for the wish');
       await panel.ev("document.getElementById('ptShareGo').click()");
