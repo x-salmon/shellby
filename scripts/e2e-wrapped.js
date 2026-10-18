@@ -1,4 +1,4 @@
-// ci: Shellby Wrapped: due on January 2nd, the slides, the card PNG, milestone pieces in the tray
+// ci: Shellby Wrapped: due on January 2nd, the slides, the card PNG, milestone pieces in the tray, and Wrapped week with friends
 // End-to-end check of Shellby Wrapped (docs/WRAPPED.md) against the dev app over CDP,
 // on a throwaway profile. Fills a year through the e2e-only dev-seed action, moves
 // main's clock to New Year's Day (nothing yet) and then January 2nd (the sheet opens
@@ -18,6 +18,97 @@ const YEAR = 2026;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // Counts come from source, never hardcoded.
 const MILESTONES = require('../src/wardrobe/milestones.json').decor;
+
+// Wrapped week (docs/plans/community-events.md §5): January 4th 2027 (SHELLBY_TODAY)
+// with two friends whose calling cards carry their 2026 (and one whose card is from
+// 2025, which counts as nothing). The 🎁 banner on the Us page counts them, the
+// friends' slide follows the card with you and them side by side, its card saves,
+// and sharing the Wrapped card that week brings the Wrapped Week 2026 trim.
+const FRIENDS = [
+  { login: 'pip', wrapped: { year: YEAR, xp: 4200, days: 180, levels: 9, bugs: 61, nemesis: 'off-by-one-octopus' } },
+  { login: 'reefbuddy', wrapped: { year: YEAR, xp: 900, days: 40, levels: 2, bugs: 7, nemesis: 'nullfish' } },
+  { login: 'lastyear', wrapped: { year: YEAR - 1, xp: 99999, days: 365, levels: 50, bugs: 999, nemesis: 'nullfish' } },
+];
+async function wrappedWeek(check) {
+  let fails = 0; // what threw; check() counts its own
+  const ok = check;
+  const profile = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')));
+  const card = f => ({ login: f.login, skin: 'classic', level: 12, outfit: {}, wrapped: f.wrapped });
+  fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({
+    onboarded: true, wander: false,
+    friends: { list: FRIENDS.map((f, i) => ({ login: f.login, cardId: `gist${i}`, card: card(f), addedAt: 1, checkedAt: Date.now() })) },
+  }));
+  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+    stdio: 'ignore',
+    env: { ...process.env, SHELLBY_E2E: '1', SHELLBY_TODAY: `${YEAR + 1}-01-04`, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '48067' },
+  });
+  try {
+    let list = [];
+    for (let i = 0; i < 40 && !list.some(t => t.url.endsWith('panel.html')); i++) {
+      try { list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); } catch { /* starting */ }
+      await wait(500);
+    }
+    const ws = new WebSocket(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
+    await new Promise(r => { ws.onopen = r; });
+    let id = 0; const p = new Map();
+    ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
+    const send = (method, params = {}) => new Promise(r => { const i = ++id; p.set(i, m => r(m.result)); ws.send(JSON.stringify({ id: i, method, params })); });
+    const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }))?.result?.value;
+    const until = async (expr, ms = 8000) => { for (let t = 0; t < ms; t += 200) { if (await ev(expr)) return true; await wait(200); } return false; };
+    await until('!!window.SB && !!SB.wrapped');
+    await ev(`shellby.gameAct('wrapped', 'dev-seed', { year: ${YEAR} })`);
+    const shared = FRIENDS.filter(f => f.wrapped.year === YEAR);
+
+    // The banner: Wrapped week, with how many friends shared.
+    const v = await ev(`SB.wrapped.refresh()`);
+    ok(v?.week?.year === YEAR && v.week.friendsShared === shared.length, `Wrapped week ${YEAR}, ${shared.length} friends shared (${JSON.stringify(v?.week)})`);
+    await ev(`SB.wrapped.close(); SB.setView('us')`);
+    await wait(400);
+    const banner = await ev(`(b => b && !b.hidden && b.textContent)(document.querySelector('[data-wrapped-week="us"]'))`);
+    ok(/Wrapped week/.test(banner || '') && banner.includes(`${shared.length} friends have shared`), `the Us page's banner (${banner})`);
+    ok(await ev(`!document.querySelector('[data-wrapped-week="trophies"]').hidden`), 'and on Trophies');
+
+    // The slides: the friends' one after the card.
+    const view = await ev(`shellby.getGame('wrapped', ${YEAR})`);
+    const ids = view.slides.map(s => s.id);
+    ok(ids.at(-1) === 'friends' && ids.at(-2) === 'card', `the friends' slide follows the card (${ids.slice(-2).join(', ')})`);
+    const fr = view.slides.at(-1);
+    ok(fr.people.length === shared.length + 1 && fr.people[0].me, `you and the ${shared.length} who shared that year (${fr.people.map(x => x.login).join(', ')})`);
+    ok(fr.supers.some(s => s.what === 'Most days together' && s.login === 'pip'), 'with who did most');
+    ok(fr.people.filter(x => !x.me).every(x => x.nemesis?.art?.pixels?.length), "each friend's nemesis portrait");
+    await ev(`document.querySelector('[data-open-wrapped]').click()`);
+    ok(await until("!document.getElementById('wrappedSheet').hidden"), 'Open Wrapped opens it');
+    for (let i = 0; i < ids.length - 1; i++) { await ev("document.getElementById('wrappedNext').click()"); await wait(80); }
+    ok((await ev("document.querySelectorAll('#wrappedSlide .wr-friend').length")) === shared.length + 1, 'the slide shows everyone side by side');
+    await savePng(send, path.join(os.tmpdir(), 'shellby-wrapped-friends.png'));
+
+    // Its card, and the card slide's own share: the year's trim.
+    const pngs = () => { const dir = path.join(profile, 'Shellby'); return fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.png')) : []; };
+    await ev("document.querySelector('#wrappedSlide [data-wrapped-card]').click()");
+    ok(await until("!document.getElementById('cardSheet').hidden"), "the friends' card opens in the share sheet");
+    ok((await ev("(i => i.naturalWidth + 'x' + i.naturalHeight)(document.getElementById('cardImg'))")) === '1200x630', 'a 1200x630 card');
+    ok(pngs().length === 1, `saved (${pngs().join(', ')})`);
+    await ev("document.getElementById('cardClose').click()");
+    const before = await ev(`shellby.wardrobeView().then(w => w.achievements.find(a => a.id === 'wrapped-week-${YEAR}')?.done)`);
+    ok(before === false, 'the Wrapped Week trim waits for the Wrapped card itself');
+    await ev(`SB.wrapped.open(${YEAR})`);
+    await until("!document.getElementById('wrappedSheet').hidden");
+    for (let i = 0; i < ids.length - 2; i++) { await ev("document.getElementById('wrappedNext').click()"); await wait(80); }
+    ok(await ev("!!document.getElementById('wrappedShareYear')"), "the card slide has Show my year to friends");
+    await ev("document.querySelector('#wrappedSlide [data-wrapped-card]').click()");
+    await until("!document.getElementById('cardSheet').hidden");
+    ok(await until("shellby.wardrobeView().then(w => w.achievements.find(a => a.id === 'wrapped-week-" + YEAR + "')?.done)"), `sharing the Wrapped card this week earns Wrapped Week ${YEAR}`);
+    ws.close();
+  } catch (e) {
+    console.log('FAIL ', e?.stack || e);
+    fails++;
+  } finally {
+    app.kill();
+    await wait(800);
+    try { fs.rmSync(profile, { recursive: true, force: true }); } catch { /* still held */ }
+  }
+  return fails;
+}
 
 (async () => {
   const profile = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')));
@@ -122,6 +213,8 @@ const MILESTONES = require('../src/wardrobe/milestones.json').decor;
     await wait(800);
     try { fs.rmSync(profile, { recursive: true, force: true }); } catch { /* still held */ }
   }
+  const threw = await wrappedWeek(check); // after the await: check() has counted its own by then
+  fails += threw;
   console.log(fails ? `${fails} check(s) failed` : 'all good');
   process.exit(fails ? 1 : 0);
 })();

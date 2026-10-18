@@ -103,5 +103,56 @@
     });
   }
 
-  SB.wrappedCard = { draw, share };
+  /**
+   * You and your friends' years, side by side (Wrapped week's friends' slide):
+   * a column each with the nemesis, days together, XP and bugs, and the
+   * superlatives underneath. Numbers only, as their cards carry them.
+   */
+  async function drawFriends(v, sl) {
+    await K.loadFonts();
+    const { canvas, ctx } = K.newCanvas();
+    K.drawWater(ctx);
+    const left = 56, right = W - 56;
+    ctx.fillStyle = C.amber;
+    ctx.fillText(K.fitText(ctx, `SHELLBY WRAPPED ${v.year} · WITH FRIENDS`, right - left, '600 22px "Martian Mono"'), left, 78);
+    ctx.fillStyle = C.sand;
+    ctx.fillText(K.fitText(ctx, 'Our year with our crabs', right - left, '56px "Pixelify Sans"'), left, 142);
+    const people = (sl.people || []).slice(0, 6);
+    const gap = 16, cw = (right - left - gap * (people.length - 1)) / Math.max(1, people.length), top = 176, ch = 300;
+    people.forEach((p, i) => {
+      const x = left + i * (cw + gap);
+      K.roundRect(ctx, x, top, cw, ch, 18);
+      ctx.fillStyle = p.me ? 'rgba(127,214,194,.16)' : 'rgba(17,35,42,.85)';
+      ctx.fill();
+      if (p.nemesis?.art) drawArt(ctx, p.nemesis.art, x + (cw - 84) / 2, top + 18, 84);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = C.sand;
+      ctx.fillText(K.fitText(ctx, p.me ? 'You' : `@${p.login}`, cw - 20, '700 22px "Atkinson Hyperlegible"'), x + cw / 2, top + 140);
+      [[`${Number(p.days || 0).toLocaleString()}`, 'days', C.glass], [`${Number(p.xp || 0).toLocaleString()}`, 'XP', C.amber], [`${Number(p.bugs || 0).toLocaleString()}`, 'bugs', C.coral]].forEach(([n, label, col], j) => {
+        ctx.fillStyle = col;
+        ctx.fillText(K.fitText(ctx, n, cw - 20, '30px "Pixelify Sans"'), x + cw / 2, top + 186 + j * 40);
+        ctx.fillStyle = C.sandDim;
+        ctx.fillText(K.fitText(ctx, label, cw - 20, '600 13px "Martian Mono"'), x + cw / 2, top + 202 + j * 40);
+      });
+      ctx.textAlign = 'left';
+    });
+    ctx.fillStyle = C.sandDim;
+    const supers = (sl.supers || []).slice(0, 3).map(s => `${s.what}: ${s.login}`).join('   ·   ');
+    if (supers) ctx.fillText(K.fitText(ctx, supers, right - left, '20px "Atkinson Hyperlegible"'), left, top + ch + 40);
+    await K.drawFooter(ctx);
+    return { canvas, data: { v, sl } };
+  }
+
+  /** Draw the friends' card (kind wrapped-friends), save it and show the share sheet. */
+  function shareFriends(v, sl) {
+    const n = (sl.people || []).filter(p => !p.me).length;
+    return K.present({
+      kind: 'wrapped-friends', draw: () => drawFriends(v, sl), buttons: '[data-wrapped-card]',
+      title: `Shellby Wrapped ${v.year}, with friends`,
+      alt: `You and ${n} friend${n === 1 ? '' : 's'} side by side: days together, XP and bugs in ${v.year}`,
+      post: () => `My ${v.year} with Shellby, next to ${n === 1 ? 'a friend\'s' : `${n} friends'`} 🦀 A pixel hermit crab that runs Claude Code on our desktops. #ShellbyWrapped`,
+    });
+  }
+
+  SB.wrappedCard = { draw, share, drawFriends, shareFriends };
 })();

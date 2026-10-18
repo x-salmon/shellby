@@ -237,6 +237,7 @@ function registerSurroundingsIpc(ipcMain, d) {
       return { ok: false, error: "Couldn't save the card to Pictures." };
     }
     d.stat('card-shared');
+    d.cardSaved?.(kind); // a Wrapped card in Wrapped week: that year's trim (wiring/yearbook.js)
     // The file is the save; the clipboard is a bonus. Another app holding the
     // clipboard (clipboard history, a screenshot tool) mustn't turn a saved
     // card into a "couldn't save" — the sheet's Copy button can try again.

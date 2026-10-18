@@ -250,3 +250,46 @@ test('the card has six tiles, XP and days first, then the biggest of the rest', 
   assert.ok(tiles.length <= 6);
   assert.ok(tiles.every(([, v]) => typeof v === 'string'));
 });
+
+// ------------------------------------------------------------------ Wrapped week (docs/plans/community-events.md §5)
+
+test('Wrapped week is January 2nd to 8th, local, for the year just ended', () => {
+  assert.equal(Y.wrappedWeek(at(2027, 1, 1, 23)), null, 'New Year\'s Day: not yet');
+  assert.equal(Y.wrappedWeek(at(2027, 1, 2, 0)).year, 2026);
+  assert.equal(Y.wrappedWeek(at(2027, 1, 2, 0)).dayOf, 1);
+  assert.equal(Y.wrappedWeek(at(2027, 1, 8, 23)).dayOf, 7);
+  assert.equal(Y.wrappedWeek(at(2027, 1, 9, 0)), null, 'over on the 9th');
+  assert.equal(Y.wrappedWeek(at(2027, 2, 4)), null);
+  assert.equal(Y.wrappedWeek(new Date(NaN)), null);
+});
+
+test('your year on a calling card: numbers and a species id, never a project; junk cleaned', () => {
+  let s = yearWith(2026, 5);
+  s = Y.note(s, 'xp', { kind: 'ship', gained: 120, project: 'secret-project' }, at(2026, 4, 2));
+  s = Y.note(s, 'stat', stat('bug-caught', { species: 'nullfish' }), at(2026, 4, 3));
+  const card = Y.forCard(s, 2026);
+  assert.deepEqual(Object.keys(card).sort(), ['bugs', 'days', 'levels', 'nemesis', 'xp', 'year']);
+  assert.equal(card.nemesis, 'nullfish');
+  assert.ok(!JSON.stringify(card).includes('secret-project'));
+  assert.equal(Y.forCard(yearWith(2026, 2), 2026), null, 'no Wrapped, nothing to share');
+  assert.deepEqual(Y.cleanCardWrapped({ year: 2026, xp: -3, days: 9999, levels: 'x', bugs: 4.7, nemesis: '<img>', extra: 'project' }), { year: 2026, xp: 0, days: 366, levels: 0, bugs: 4, nemesis: null });
+  for (const bad of [null, 'x', { year: 1999 }, { year: '2026' }]) assert.equal(Y.cleanCardWrapped(bad), null);
+  const { cleanCard } = require('../src/main/github/card');
+  assert.deepEqual(cleanCard({ wrapped: { year: 2026, xp: 10, projects: ['x'] } }).wrapped, { year: 2026, xp: 10, days: 0, levels: 0, bugs: 0, nemesis: null });
+  assert.equal(cleanCard({}).wrapped, null);
+});
+
+test('the friends\' slide: you and up to five who shared that year, and who did most', () => {
+  const me = { year: 2026, xp: 900, days: 40, levels: 3, bugs: 12, nemesis: 'nullfish' };
+  const f = (login, w) => ({ login, wrapped: w });
+  const v = Y.friendsYears(me, [
+    f('pip', { year: 2026, xp: 500, days: 80, levels: 2, bugs: 3 }),
+    f('old', { year: 2025, xp: 99999, days: 300 }),
+    f('nope', null),
+    ...['a', 'b', 'c', 'd', 'e'].map((l, i) => f(l, { year: 2026, xp: i, days: i, levels: 0, bugs: 0 })),
+  ], 2026);
+  assert.deepEqual(v.people.map(p => p.login), ['you', 'pip', 'e', 'd', 'c', 'b'], 'a card from another year counts as nothing; five friends at most');
+  assert.ok(v.people[0].me);
+  assert.deepEqual(v.supers.map(s => [s.what, s.login]), [['Most days together', 'pip'], ['Most XP', 'You'], ['Most bugs caught', 'You'], ['Most levels climbed', 'You']]);
+  assert.equal(Y.friendsYears(me, [f('old', { year: 2025, xp: 1, days: 1 })], 2026), null, 'nobody shared: no slide');
+});

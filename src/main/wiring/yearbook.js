@@ -13,6 +13,7 @@ const { speciesById } = require('../bugdex/species');
 const streaks = require('../progression/streaks');
 const { normalizeXp } = require('../progression/xp');
 const { normalizeStats } = require('../wardrobe/achievements');
+const friends = require('../friends');
 const { isTestRun } = require('../test-desktop');
 
 const FIRST_CHECK_MS = 20 * 1000;      // after launch: the panel has had time to load
@@ -26,7 +27,8 @@ const YEAR_RE = /^\d{4}$/;
 function wireYearbook(d) {
   const testRun = isTestRun(process.env, app.isPackaged);
   let clockOffset = 0; // e2e only: dev-clock moves "now" to a January 2nd
-  const now = () => new Date(Date.now() + clockOffset);
+  // The app's day (today.js: SHELLBY_TODAY in dev and test runs), unless dev-clock moved it.
+  const now = () => (clockOffset ? new Date(Date.now() + clockOffset) : d.today ? d.today() : new Date());
 
   const read = () => yearbook.normalize(d.config?.get('yearbook'));
   const write = next => {
@@ -111,8 +113,55 @@ function wireYearbook(d) {
   const level = () => d.everLevel?.() || 1;
   const listView = () => {
     const s = backfillOnce();
-    return { due: yearbook.wrappedDue(s, now()), available: yearbook.available(s, now()) };
+    return { due: yearbook.wrappedDue(s, now()), available: yearbook.available(s, now()), week: weekView(s) };
   };
+
+  // ---------------------------------------------------------------- Wrapped week (January 2nd to 8th)
+
+  // Friends' cards with that year on them (github/card.js cleans `wrapped`).
+  const friendsWith = year => friends.normalize(d.config?.get('friends')).list
+    .filter(f => f.card?.wrapped?.year === Number(year)).map(f => ({ login: f.login, wrapped: f.card.wrapped }));
+
+  /** The banner's: { year, dayOf, friendsShared, sharing, open } in Wrapped week, else null. */
+  function weekView(s = read()) {
+    const w = yearbook.wrappedWeek(now());
+    if (!w || d.CAPTURE) return null;
+    return {
+      year: w.year, dayOf: w.dayOf, friendsShared: friendsWith(w.year).length,
+      sharing: d.config?.get('shareWrapped') === true,
+      open: yearbook.available(s, now()).some(a => a.year === w.year),
+    };
+  }
+
+  /** Your year for your calling card: only in Wrapped week, and only with Show my year to friends on. */
+  function wrappedForCard() {
+    const w = yearbook.wrappedWeek(now());
+    if (!w || d.config?.get('shareWrapped') !== true) return null;
+    return yearbook.forCard(read(), w.year);
+  }
+
+  // The friends' slide: you and up to five friends who shared, with the nemesis portraits.
+  function friendsSlide(year) {
+    const w = yearbook.wrappedWeek(now());
+    if (!w || w.year !== Number(year)) return null;
+    const v = yearbook.friendsYears(yearbook.forCard(read(), year), friendsWith(year), year);
+    if (!v) return null;
+    const portrait = id => { const sp = id && speciesById(id); return sp ? { name: sp.name, art: { pixels: [...sp.pixels], palette: { ...sp.palette } } } : null; };
+    return {
+      id: 'friends', eyebrow: `Wrapped week · ${year}`, title: 'You and your friends',
+      people: v.people.map(p => ({ ...p, nemesis: p.me ? (p.nemesis ? { name: speciesById(p.nemesis)?.name || p.nemesis, art: bugArt(p.nemesis) } : null) : portrait(p.nemesis) })),
+      supers: v.supers,
+    };
+  }
+
+  // A Wrapped card shared during the week: that year's limited trim (wardrobe/achievements.js
+  // `wrapped-week-<year>`). Through card:save (ipc/surroundings.js), or its card-shared:wrapped stat.
+  function cardSaved(kind) {
+    const w = yearbook.wrappedWeek(now());
+    if (kind !== 'wrapped' || !w) return;
+    d.stat?.(`wrapped-week-${w.year}`);
+  }
+  d.onStat?.(event => { if (event === 'card-shared:wrapped') cardSaved('wrapped'); });
 
   // The nemesis as the Bugdex draws it, for the slide and the card.
   function bugArt(id) {
@@ -147,6 +196,8 @@ function wireYearbook(d) {
       reef: null, // the reef's biggest improvement, once reef/index.js keeps a history of readings
     }).map(sl => (sl.id === 'bugdex' && sl.nemesis ? { ...sl, nemesis: { ...sl.nemesis, art: bugArt(sl.nemesis.id) } } : sl))
       .map(sl => (sl.id === 'pieces' ? { ...sl, pieces: sl.pieces.slice(0, 12).map(p => ({ ...p, art: decorArt(p.key) })) } : sl));
+    const together = friendsSlide(key);
+    if (together) list.push(together); // after the card, only in Wrapped week with friends who shared
     return {
       year: sum.year, since: sum.since, partial: sum.partial, shown: s.shown.includes(key),
       slides: list,
@@ -223,7 +274,7 @@ function wireYearbook(d) {
   setTimeout(checkDue, FIRST_CHECK_MS).unref?.();
   setInterval(checkDue, CHECK_EVERY_MS).unref?.();
 
-  return { yearbookNote: note, wrappedCheck: checkDue };
+  return { yearbookNote: note, wrappedCheck: checkDue, wrappedForCard, wrappedWeekView: () => weekView(), cardSaved };
 }
 
 module.exports = { wireYearbook };

@@ -297,6 +297,7 @@ function wireGithub(d) {
           swap: swaps.forCard(d.config.get('finds')), // spare finds, and what you're after (swaps.js)
           eggs: eggs.forCard(d.config.get('eggs'), d.github.view().login), // hashes only: the code is what hatches one
           medals: events.normalize(d.config.get('events')).medals,
+          wrapped: d.wrappedForCard?.() || null, // Wrapped week only, and only if you show your year (wiring/yearbook.js)
         };
       },
       sharesTank: () => !!tankShare.forCard(d.config.get('tank')), // a visit then counts for House Guest
