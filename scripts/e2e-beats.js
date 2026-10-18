@@ -9,7 +9,8 @@
 //      only draws when the picture changes
 //   3. done with a tool, he thinks again
 //   4. a question: he perks up, taps a claw when it waits, nods when answered
-//   5. the turn ends and he lets out a breath
+//   5. the turn ends and he lets out a breath, and nothing of his work plays on
+//      under it (shared/framecap.js ends a move whose rule has gone)
 //   6. he nods off in stages, and wakes eyes first
 //   node scripts/e2e-beats.js [screenshotDir]
 const { spawn } = require('child_process');
@@ -90,13 +91,17 @@ async function connect(url, dir) {
     check((await unreadable()).length === 0, `thinking is all steps framecap can read (${await unreadable()})`);
 
     // ---------------------------------------------- 2. a pose for each tool
-    const TOOLS = [['Read', 'read', true], ['Edit', 'write', true], ['Bash', 'run', true], ['Grep', 'search', true], ['WebSearch', 'web', true], ['TodoWrite', 'plan', true], ['Task', 'crew', false]];
+    // A shell command's pose follows what it runs (work-pose.js kindOf).
+    const TOOLS = [['Read', 'read', true], ['Edit', 'write', true], ['Bash', 'run', true], ['Bash', 'test', true, 'npm test'],
+      ['Bash', 'git', true, 'git commit -m tide'], ['Bash', 'install', true, 'npm install'], ['Bash', 'build', true, 'npm run build'],
+      ['Grep', 'search', true], ['WebSearch', 'web', true], ['TodoWrite', 'plan', true], ['Task', 'crew', false], ['Skill', 'skill', true],
+      ['mcp__tide__poke', 'mcp', true]];
     let last = null;
-    for (const [tool, pose, holds] of TOOLS) {
+    for (const [tool, pose, holds, command] of TOOLS) {
       if (last) await hook({ ...session, hook_event_name: 'PostToolUse', tool_name: last });
-      await hook({ ...session, hook_event_name: 'PreToolUse', tool_name: tool, tool_input: {} });
+      await hook({ ...session, hook_event_name: 'PreToolUse', tool_name: tool, tool_input: command ? { command } : {} });
       last = tool;
-      check(await until(has(`work-${pose}`), 4000, 60), `${tool}: his ${pose} pose`);
+      check(await until(has(`work-${pose}`), 4000, 60), `${tool}${command ? ` (${command})` : ''}: his ${pose} pose`);
       await until(`!${has('tool-swap')}`, 1000, 50);
       check((await heldItem() !== own) === holds, `${tool}: ${holds ? 'the tool in his claw' : 'his own claw (and whatever he carries) to wave with'}`);
       const bad = await unreadable();
@@ -109,11 +114,11 @@ async function connect(url, dir) {
     check(await until(has('work-think'), 5000), 'between tools, he thinks again');
     check(await heldItem() === own, '...with the tool put away and his own things back');
     // A tool with no pose of its own: his scuttle, all steps framecap can read.
-    await hook({ ...session, hook_event_name: 'PreToolUse', tool_name: 'mcp__tide__poke', tool_input: {} });
+    await hook({ ...session, hook_event_name: 'PreToolUse', tool_name: 'TidePoke', tool_input: {} });
     check(await until(`${has('state-working')} && ![...document.body.classList].some(c => c.startsWith('work-'))`, 5000), 'a tool with no pose of its own: his scuttle');
     await critter.shot('1-scuttle');
     check((await unreadable()).length === 0, `the scuttle is all steps framecap can read (${await unreadable()})`);
-    await hook({ ...session, hook_event_name: 'PostToolUse', tool_name: 'mcp__tide__poke' });
+    await hook({ ...session, hook_event_name: 'PostToolUse', tool_name: 'TidePoke' });
 
     // ---------------------------------------------- 4. a question
     await hook({ ...session, hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'rm -rf build' } });
@@ -133,6 +138,12 @@ async function connect(url, dir) {
     // ---------------------------------------------- 6. a nap
     await until(has('state-idle'), 8000);
     await wait(1500);
+    // Every animation on him is one a rule still asks for: none left over from work.
+    const stale = await critter.ev(`document.getAnimations()
+      .filter(a => a.animationName && a.effect?.target?.closest?.('#self'))
+      .filter(a => !getComputedStyle(a.effect.target, a.effect.pseudoElement || null).animationName.split(',').map(s => s.trim()).includes(a.animationName))
+      .map(a => a.animationName)`);
+    check(stale.length === 0, `back to idle, nothing of his work plays on (${stale})`);
     check(await panel.ev("shellby.dev.life({ what: 'nap', ms: 4000 })"), 'he takes a nap');
     check(await until(has('dozing'), 3000, 40), 'he nods off in stages (dozing)');
     const early = { legs: await out('part-legs-a'), eyes: await critter.ev("getComputedStyle(document.querySelector('#sprite .part-eyes')).animationName") };

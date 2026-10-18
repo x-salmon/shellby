@@ -8,6 +8,7 @@ const sounds = require('../sounds');
 const statusLine = require('../statusline');
 const streaks = require('../progression/streaks');
 const voice = require('../voice');
+const flourish = require('../flourish');
 const { publicItem } = require('../wardrobe/service');
 const { packIdFor } = require('../wardrobe/wrap');
 const weatherRules = require('../weather');
@@ -103,8 +104,11 @@ function wireCritter(d) {
     if (d.wardrobe) d.send(d.panel, 'wardrobe', d.wardrobe.view());
   }
 
-  function flashState(state, ms = 7000) {
-    d.flash = { state, until: Date.now() + ms };
+  // turn: { durationMs, missesBefore } for a finished turn, so how he takes it
+  // can follow how it went (flourish.js).
+  function flashState(state, ms = 7000, turn = null) {
+    const temperament = d.config ? voice.temperamentOf(voice.normalize(d.config.get('voice')).seed) : null;
+    d.flash = { state, until: Date.now() + ms, flourish: flourish.pick(state, { temperament, ...turn }) };
     // Every mood he already had, now with something to say. A trick he taught
     // himself and a new trophy are rare enough to jump the cooldowns; 'levelup'
     // and the molt have no lines at all, because the bubble is already busy
@@ -214,7 +218,7 @@ function wireCritter(d) {
     // How he works: reading, editing, running a command... (work-pose.js), from
     // whichever of your tabs and outside sessions moved last. The OBS overlay
     // shows the same (lastStatus below).
-    const work = state === 'working' ? workPose.poseOf(workPose.latest([own, ext])?.tool) : null;
+    const work = state === 'working' ? workPose.poseNow(workPose.latest([own, ext]), { compacting: own.compacting, talking: own.talking }) : null;
     d.send(d.critter, 'critter:state', {
       state,
       busy: agg.busy,
@@ -234,6 +238,8 @@ function wireCritter(d) {
       focus: d.focusState(),
       limit: limited ? { resetsAt: limited.resetsAt } : null,
       say: d.said,
+      // How he takes a finished turn, while its mood is up (flourish.js); null is his usual move.
+      flourish: d.flash && d.flash.state === state && d.flash.until > Date.now() ? d.flash.flourish || null : null,
       call: !!d.life?.onCall(), // you're on a call: he holds up his "shh" sign
       sound: soundMix(), // footsteps, bumps and the background play off this (src/renderer/critter/sound.js)
       // Work mode: a celebration is his little hop, no confetti (workmode.js).

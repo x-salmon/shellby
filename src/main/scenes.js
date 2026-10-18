@@ -11,15 +11,16 @@
 const MAX_LINE = 24; // voice.js MAX_LINE
 
 // Props the renderer knows how to draw (src/renderer/critter/life.js).
-const PROPS = Object.freeze(['castle', 'castle-fall', 'bubbles', 'fly', 'shooting-star', 'juggle', 'heart', 'achoo', 'zz', 'notes', 'sweat']);
+const PROPS = Object.freeze(['castle', 'castle-fall', 'bubbles', 'fly', 'shooting-star', 'juggle', 'heart', 'achoo', 'zz', 'notes', 'sweat',
+  'snowman', 'kite', 'bigshell', 'ripple']);
 // Things he can hold or wear for a scene. 'find' is his favourite find (gifts/index.js).
-const HOLDS = Object.freeze(['find', 'coffee', 'pebble', 'mic']);
+const HOLDS = Object.freeze(['find', 'coffee', 'pebble', 'mic', 'rod', 'sock', 'book']);
 const WEARS = Object.freeze(['shades']);
 // Animations the scenes use, beyond his everyday habits (voice.js BITS).
 const SCENE_BITS = Object.freeze([
   'dig', 'polish', 'peek', 'stretch', 'flop', 'squint', 'creep', 'pounce', 'nose', 'sneeze', 'sniff', 'hic', 'hold',
   'blow', 'nod', 'jolt', 'curl', 'admire', 'rock', 'bow', 'swat', 'jab', 'gaze', 'juggle', 'bonk', 'present', 'lean',
-  'sip', 'boogie', 'hide', 'boo', 'shiver', 'wave', 'count',
+  'sip', 'boogie', 'hide', 'boo', 'shiver', 'wave', 'count', 'cast', 'angle', 'reel', 'tuck', 'kite', 'drum',
 ]);
 
 const T = ['chipper', 'fussy', 'cocky', 'sleepy'];
@@ -195,6 +196,50 @@ const SCENES = Object.freeze([
     id: 'shiver', name: 'Shivers', when: { season: 'winter' }, beats: [
       { bit: 'shiver', ms: 2400, say: 'brrr' },
       { bit: 'stretch', ms: 1300, say: { any: 'cosy now', sleepy: 'hibernate?' } },
+    ],
+  },
+  {
+    id: 'fishing', name: 'Goes fishing', who: ['sleepy', 'chipper'], beats: [
+      { bit: 'cast', ms: 1100, hold: 'rod', say: 'and… cast!' },
+      { bit: 'angle', ms: 2600, hold: 'rod', prop: 'ripple', say: { any: 'any minute now', sleepy: 'zz… fish…', fussy: 'patience.' } },
+      { bit: 'reel', ms: 1400, hold: 'rod', say: 'a bite!' },
+      { bit: 'present', ms: 1700, hold: 'sock', say: { any: '…a sock', cocky: 'trophy catch', fussy: 'whose sock is this', chipper: 'a sock! cosy!' } },
+    ],
+  },
+  {
+    id: 'snowman', name: 'Builds a snowman', when: { season: 'winter' }, beats: [
+      { bit: 'dig', ms: 1700, say: { any: 'rolling…', fussy: 'round. ROUND.' } },
+      { bit: 'admire', ms: 2200, prop: 'snowman', say: { any: 'meet Frosty', cocky: 'my best work', fussy: 'the nose is crooked' } },
+      { bit: 'shiver', ms: 1300, prop: 'snowman', say: 'brrr' },
+    ],
+  },
+  {
+    id: 'bedtime', name: 'Reads in bed', who: ['sleepy', 'fussy'], when: { night: true }, beats: [
+      { bit: 'tuck', ms: 2600, hold: 'book', say: { any: 'one more chapter', fussy: 'a fine book', sleepy: 'one more page…' } },
+      { bit: 'tuck', ms: 2000, hold: 'book' },
+      { bit: 'nod', ms: 1800, hold: 'book', prop: 'zz', say: 'zz…' },
+    ],
+  },
+  {
+    id: 'kite', name: 'Flies a kite', who: ['chipper'], when: { day: true }, beats: [
+      { bit: 'kite', ms: 2600, prop: 'kite', say: { any: 'up it goes!', sleepy: 'go on, kite' } },
+      { bit: 'kite', ms: 2200, prop: 'kite', say: { any: 'look at it go', fussy: 'mind the trees', cocky: 'highest one yet' } },
+      { bit: 'jolt', ms: 800, say: { any: 'whoa, gust!', cocky: 'all part of it' } },
+    ],
+  },
+  {
+    id: 'shellshop', name: 'Tries a bigger shell', beats: [
+      { bit: 'squint', ms: 1300, prop: 'bigshell', say: 'ooh, a shell' },
+      { bit: 'peek', ms: 1500, prop: 'bigshell', say: { any: 'roomy…', fussy: 'echoes a bit' } },
+      { bit: 'sniff', ms: 1200, prop: 'bigshell', say: { any: 'too big', cocky: 'mine is better', fussy: 'draughty', sleepy: 'too much to carry' } },
+      { bit: 'admire', ms: 1400, say: { any: 'home sweet home', chipper: 'love my shell' } },
+    ],
+  },
+  {
+    id: 'drums', name: 'Drums along', who: ['chipper', 'cocky'], when: { music: true }, beats: [
+      { bit: 'drum', ms: 2600, prop: 'notes', say: '♪ ba-dum ♪' },
+      { bit: 'drum', ms: 1800, prop: 'notes' },
+      { bit: 'bow', ms: 1100, say: { any: 'ba-dum tss!', cocky: 'nailed the solo', sleepy: 'that was nice' } },
     ],
   },
   {

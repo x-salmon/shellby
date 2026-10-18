@@ -180,6 +180,47 @@
     return { text: '', tone: '' };
   }
 
+  // Shellby on your phone (wiring/pocket.js view): the steps to get there, each
+  // ok, todo or bad, with a link when Tailscale's own page is where it's fixed.
+  function pocketSteps(v) {
+    const t = v.tailscale || {};
+    const steps = [];
+    const running = t.installed && t.state === 'running' && !!t.dnsName;
+    steps.push(t.installed === false
+      ? { state: 'bad', text: "Tailscale isn't on this PC yet.", link: v.setup?.link || null, linkText: 'Get Tailscale' }
+      : running ? { state: 'ok', text: `Tailscale is on: ${t.dnsName}` }
+        : { state: t.installed == null ? 'busy' : 'bad', text: t.installed == null ? 'Looking for Tailscale…' : (v.setup?.text || "Tailscale isn't connected. Open it and sign in.") });
+    steps.push(!running ? { state: 'todo', text: 'HTTPS certificates for your tailnet.' }
+      : t.https ? { state: 'ok', text: 'HTTPS certificates are on.' }
+        : { state: 'bad', text: 'Turn on HTTPS certificates for your tailnet: your phone needs them to install the app.', link: v.setup?.link || null, linkText: 'Open the DNS page' });
+    const serving = v.enabled && v.server?.status === 'listening' && !!v.url;
+    steps.push(v.problem ? { state: 'bad', text: v.problem.text, link: v.problem.link || null, linkText: v.problem.linkText || 'Open it' }
+      : serving ? { state: 'ok', text: `On your tailnet at ${v.url.replace(/^https:\/\//, '').replace(/\/$/, '')}` }
+        : { state: 'todo', text: 'Shellby on your tailnet.' });
+    const n = (v.devices || []).length;
+    steps.push(n ? { state: 'ok', text: n === 1 ? `${v.devices[0].name} is paired.` : `${n} phones are paired.` } : { state: 'todo', text: 'A phone paired.' });
+    return steps;
+  }
+
+  // The line under the switch.
+  function pocketStatus(v) {
+    if (v.error) return { text: v.error, tone: 'warn' };
+    if (!v.enabled) return { text: '', tone: '' };
+    if (v.server?.status === 'busy') return { text: `Another app is using port ${v.server.port}.`, tone: 'warn' };
+    if (v.server?.status !== 'listening') return { text: v.problem ? '' : 'Starting…', tone: '' };
+    const live = v.server.connected;
+    if (live) return { text: live === 1 ? 'Your phone is looking now.' : `${live} phones are looking now.`, tone: 'ok' };
+    return { text: (v.devices || []).length ? 'Waiting for your phone.' : 'Pair a phone to begin.', tone: '' };
+  }
+
+  // How long a pairing code has left, in plain words.
+  function pocketCodeHint(code, now = Date.now()) {
+    if (!code) return '';
+    const s = Math.max(0, Math.round((code.expiresAt - now) / 1000));
+    const left = s >= 60 ? `${Math.ceil(s / 60)} min` : `${s}s`;
+    return `Type it into Shellby on your phone. ${left} left${code.triesLeft < 5 ? `, ${code.triesLeft} ${code.triesLeft === 1 ? 'try' : 'tries'} left` : ''}.`;
+  }
+
   function weatherStatus(v, now = Date.now()) {
     if (!v.place) return { text: 'Find your town to begin.', tone: '' };
     if (v.reading) return { text: `${v.summary} in ${v.label}, checked ${minutesAgo(v.reading.at, now)}.`, tone: 'ok' };
@@ -190,7 +231,7 @@
   const api = {
     accelerator, BILLING_GUARD, billingState, planLabel, claudeUpdateTitle, claudeUpdateNote, updateStatus, updateButton,
     sessionState, externalStatus, cliStatus, obsStatus, deckStatus, rgbStatus, discordStatus, nowPlayingStatus, typingStatus, minutesAgo, weatherStatus,
-    phoneStatus,
+    phoneStatus, pocketSteps, pocketStatus, pocketCodeHint,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbySettingsText = api;

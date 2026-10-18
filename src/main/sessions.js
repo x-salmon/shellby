@@ -34,6 +34,9 @@ function todoGlance(list) {
 // is where routines and workflows start recycling old tabs to make room.
 const MAX_TABS = 32;
 const CREW_ENDED_MS = 4000; // how long a finished helper's outcome rides along to the crab window
+// He talks along while a reply is written (work-pose.js 'talk') until it has
+// been this quiet: the reply's 50 ms batches never reach the crab one by one.
+const TALK_QUIET_MS = 700;
 const IN_TERMINAL = 'This conversation is carrying on in a terminal. Close it there (/exit), then choose Pick it up here.';
 const TAB_ID = /^[\w-]{1,64}$/;
 // An agent's name as Claude Code lists it ("reviewer", "plugin:reviewer"), or ''.
@@ -153,7 +156,8 @@ class SessionManager extends EventEmitter {
     session.on('call', c => this.emit('call', tab.id, c, tab));
     session.on('cache', () => this.changed());
     session.on('context', (now, before) => { this.emit('context', tab.id, now, before, tab); this.changed(); });
-    session.on('busy', () => this.changed());
+    // A turn's end puts down the talking and the compacting with it.
+    session.on('busy', b => { if (!b) this.hush(tab); this.changed(); });
     session.on('tokens', () => this.changed());
     session.on('plan', () => this.changed());
     session.on('crew', () => this.changed());
@@ -179,6 +183,8 @@ class SessionManager extends EventEmitter {
     // a guess goes stale, and the compacted mark follows the compacting.
     if (raw.kind === 'partial' || raw.kind === 'next' || raw.kind === 'compacting') {
       tab.activeAt = Date.now();
+      if (raw.kind === 'partial') this.talked(tab);
+      if (raw.kind === 'compacting' && tab.compacting !== !!raw.on) { tab.compacting = !!raw.on; this.changed(); }
       this.emit('item', tab.id, raw, tab);
       return;
     }
@@ -220,6 +226,7 @@ class SessionManager extends EventEmitter {
       const cost = { ...item.cost, share: Number.isFinite(share) ? share : null, ...(helpers ? { helpers } : {}) };
       item.cost = { ...cost, line: turncost.costLine(cost), detail: turncost.costDetail(cost), effortBadge: turncost.effortBadge(cost) };
     }
+    if (item.kind === 'compacted' && tab.compacting) { tab.compacting = false; this.changed(); }
     // Shellby's own /compact while the tab sat idle (wiring/idle-compact.js): its mark says so.
     if (item.kind === 'compacted' && tab.idleCompacting) item = { ...item, trigger: 'idle' };
     if (item.kind === 'result') {
@@ -505,10 +512,26 @@ class SessionManager extends EventEmitter {
     return true;
   }
 
+  // Words of the reply arrived: he talks along, until they stop for a moment.
+  talked(tab) {
+    clearTimeout(tab.talkTimer);
+    tab.talkTimer = setTimeout(() => { tab.talkTimer = null; tab.talking = false; this.changed(); }, TALK_QUIET_MS);
+    tab.talkTimer.unref?.();
+    if (!tab.talking) { tab.talking = true; this.changed(); }
+  }
+
+  hush(tab) {
+    clearTimeout(tab.talkTimer);
+    tab.talkTimer = null;
+    tab.talking = false;
+    tab.compacting = false;
+  }
+
   // kill: end the process tree now instead of letting it wind down (quitting).
   close(tabId, { kill = false } = {}) {
     const tab = this.tabs.get(tabId);
     if (!tab) return;
+    this.hush(tab);
     // Closed by hand mid-turn: no result is coming, and it wasn't cut off either.
     // Quitting (kill) leaves the mark, so the next start says what didn't finish.
     if (!kill && tab.saved && tab.session.busy) this.history.markTurn?.(tab.id, null);
@@ -639,7 +662,7 @@ class SessionManager extends EventEmitter {
 
   // One state for the critter: asking beats working beats idle.
   get aggregate() {
-    let pending = 0, busy = 0, planning = 0, plans = 0, hiddenCrew = 0;
+    let pending = 0, busy = 0, planning = 0, plans = 0, hiddenCrew = 0, compacting = 0, talking = 0;
     const crew = [], tools = [], jobs = [], crewEnded = [];
     const now = Date.now();
     for (const t of this.tabs.values()) {
@@ -647,7 +670,12 @@ class SessionManager extends EventEmitter {
       // A keep-warm ping is nobody's work: no crab at work, no "running" in the tray, no
       // Multitasker. What else the tab has going (its jobs, its helpers) still shows.
       const working = t.session.busy && !t.pinging;
-      if (working) { busy++; tools.push({ tool: t.session.tool, toolAt: t.session.toolAt }); }
+      if (working) {
+        busy++;
+        tools.push({ tool: t.session.tool, toolAt: t.session.toolAt, kind: t.session.toolKind });
+        if (t.compacting) compacting++;
+        if (t.talking && !t.session.tool) talking++; // words between tools, not a tool's own chatter
+      }
       if (working && t.session.planning) planning++;
       for (const p of t.session.pending.values()) if (p.toolName === 'ExitPlanMode') plans++;
       for (const j of t.session.jobView()) if (j.status === 'running') jobs.push({ ...j, tabId: t.id });
@@ -660,7 +688,7 @@ class SessionManager extends EventEmitter {
     }
     // What the busy tab that moved last is doing, for how the crab works (work-pose.js).
     const latest = workPose.latest(tools);
-    return { state: pending ? 'asking' : (busy || crew.length) ? 'working' : 'idle', pending, busy, crew, hiddenCrew, crewEnded, jobs, planning, plans, tool: latest?.tool || null, toolAt: latest?.toolAt || null };
+    return { state: pending ? 'asking' : (busy || crew.length) ? 'working' : 'idle', pending, busy, crew, hiddenCrew, crewEnded, jobs, planning, plans, tool: latest?.tool || null, kind: latest?.kind || null, toolAt: latest?.toolAt || null, compacting: compacting > 0, talking: talking > 0 };
   }
 
   changed() {

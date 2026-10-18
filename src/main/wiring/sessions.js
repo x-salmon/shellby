@@ -63,7 +63,7 @@ function wireSessions(d) {
     d.sayText?.(text, 'claude-notify');
     const title = tab?.title || 'a conversation';
     if (!(d.panel?.isVisible() && d.panel?.isFocused())) d.notify?.(`Claude, in ${title}`, text.slice(0, 200), () => d.showPanel({ tabId }));
-    d.tellChannel?.({ kind: 'claude', project: tab?.title, body: text });
+    d.tellChannel?.({ kind: 'claude', project: tab?.title, body: text, tabId });
   }
 
   // Claude Code moving the conversation into a worktree of its own

@@ -174,6 +174,7 @@ shellby time last-week
 </table>
 
 - **📱 Your phone:** a permission prompt, a finished run or a red build can reach it. ntfy is one QR scan, and Telegram finds your chat by itself. Answer Allow or Deny from it if you like.
+- **🦀 Shellby on your phone:** the whole thing as an app on your phone, served by your own PC over [Tailscale](https://tailscale.com): every conversation live, Allow and Deny, new tasks, diffs, Undo and Bring it home, with notifications that open the right card. No account of ours, no server in the middle. **[Shellby on your phone →](docs/PHONE.md)**
 - **🎥 On stream:** an OBS browser source on a transparent background. **💡 On your desk:** OpenRGB lighting that follows his mood. **🎛️ On a Stream Deck:** Allow, Deny, Stop, Bring it home and Ready to review as hardware keys, each showing what's waiting. **🎮 On Discord:** his level and what he's up to on your profile.
 - **✅ CI on your pull requests:** a ✗ sign when a build goes red, a dance when it's fixed, and **Fix this build** to hand Claude the failing log.
 - **Sync and visiting crabs,** with an optional GitHub sign-in that only asks for what you turn on.
@@ -325,10 +326,11 @@ Everything stays on your PC. Conversation history lives in `%APPDATA%\Shellby\se
 - Claude Code talking to Anthropic, and the updater checking GitHub Releases.
 - GitHub, only if you sign in: your profile, the sync gist, pack pull requests, the CI status of your pull requests, with Visiting crabs on, your public calling card and your friends' cards, with Profile card on, the public gist holding your profile card picture, and with Built with Shellby on, the public `shellby-badge` repository holding his picture and the badge at the bottom of pull requests your tabs open.
 - Phone notifications, only if you turn them on, straight to the service you picked (ntfy, Pushover, Telegram, Discord, Slack or your own endpoint).
+- Shellby on your phone, only if you turn it on: your PC serves the app to your own phone over your tailnet, and its notifications go encrypted through your phone's push service (Apple's, Google's, Mozilla's or Microsoft's), which can't read them.
 - The npm registry once a day, to say when a newer Claude Code is out (**Leave it to me** in **Settings → About** stops it).
 - Crash reports to Sentry, only when you say so: he asks first, and **Settings → About → Crash reports** changes it.
 - Things you ask for: ssh to the computers you add under **Other computers**, community packs, plugins and MCP servers, `git` fetches and pushes, workflow web requests, and the weekly dependency check (npm, pnpm, Yarn, pip-audit, cargo-audit and Go's, whichever your projects use).
-- Things that never leave your PC: the time tracker (it reads the title of the window in front to tell which project you're in, keeps only the project, the day and the minutes, and never syncs them; a day goes to Toggl, Clockify or Harvest only when you send it), push-to-talk audio (Windows' offline speech recognizer hears it, and the microphone is only open while you hold the shortcut), your PC's health readings, OpenRGB, the OBS overlay, the Stream Deck keys (behind a token only the plugin has), and the port the `shellby` command and the plugin use — all on `127.0.0.1`.
+- Things that never leave your PC: the time tracker (it reads the title of the window in front to tell which project you're in, keeps only the project, the day and the minutes, and never syncs them; a day goes to Toggl, Clockify or Harvest only when you send it), push-to-talk audio (Windows' offline speech recognizer hears it, and the microphone is only open while you hold the shortcut), your PC's health readings, OpenRGB, the OBS overlay, the Stream Deck keys (behind a token only the plugin has), the phone app's port (Tailscale is what reaches it, for your login only), and the port the `shellby` command and the plugin use — all on `127.0.0.1`.
 
 See [SECURITY.md](SECURITY.md) for the renderer sandboxing details.
 

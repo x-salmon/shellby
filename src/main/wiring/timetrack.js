@@ -297,7 +297,12 @@ function wireTimetrack(d) {
     if (!inWorkflow && !item.interrupted) {
       d.workflows?.event('task', { title: tab.title, outcome: item.ok ? 'ok' : 'error', folder: tab.worktree?.originalCwd || tab.session?.cwd || '', error: item.error || null });
     }
-    if (!item.interrupted) d.flashState(item.ok ? 'success' : 'error');
+    if (!item.interrupted) {
+      // Misses in a row on this conversation: green after a few is a comeback (flourish.js).
+      const missesBefore = tab.missesInRow || 0;
+      tab.missesInRow = item.ok ? 0 : missesBefore + 1;
+      d.flashState(item.ok ? 'success' : 'error', undefined, { durationMs: item.durationMs || 0, missesBefore });
+    }
     if (item.ok && !item.interrupted) {
       const fx = d.outfit().effect;
       if (fx?.motion === 'burst') d.send(d.critter, 'critter:burst', fx);
@@ -308,7 +313,7 @@ function wireTimetrack(d) {
     }
     if (!item.interrupted && !inWorkflow && !waiting) {
       // A task your phone started always says so there, whatever you ticked.
-      d.tellChannel({ kind: 'done', project: tab.title, tools: item.tools, seconds: Math.round((item.durationMs || 0) / 1000) }, undefined, { always: !!tab.fromPhone });
+      d.tellChannel({ kind: 'done', project: tab.title, tools: item.tools, seconds: Math.round((item.durationMs || 0) / 1000), tabId }, undefined, { always: !!tab.fromPhone });
     }
     if (item.interrupted || inWorkflow || (d.panel.isVisible() && d.panel.isFocused())) return;
     const secs = Math.round((item.durationMs || 0) / 1000);

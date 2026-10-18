@@ -178,3 +178,61 @@ test('loops is false for an animation without timing', () => {
   assert.equal(loops({}), false);
   assert.equal(loops({ effect: null }), false);
 });
+
+// A CSS animation on an element whose animation list says what's declared now.
+function cssAnim(el, name, opts) {
+  const a = anim(opts);
+  a.animationName = name;
+  a.effect.target = el;
+  a.cancel = () => { a.playState = 'idle'; a.cancelled = true; };
+  return a;
+}
+
+function cssRig(animations, styles) {
+  let clock = 0, ticker = null;
+  const doc = { getAnimations: () => animations.filter(a => a.playState !== 'finished' && a.playState !== 'idle') };
+  cap(doc, { setInterval: fn => { ticker = fn; return 1; }, clearInterval: () => {}, now: () => clock, styleOf: el => ({ animationName: styles.get(el) }) });
+  return { advance(ms) { clock += ms; ticker?.(); } };
+}
+
+test('a held CSS animation whose rule has gone is cancelled, not left playing under the next one', () => {
+  const sprite = {}, legs = {};
+  const hop = cssAnim(sprite, 'hop'), leg = cssAnim(legs, 'leg');
+  const styles = new Map([[sprite, 'hop'], [legs, 'leg, snap']]);
+  const r = cssRig([hop, leg], styles);
+  r.advance(80);
+  r.advance(80);
+  assert.equal(hop.playState, 'paused');
+  styles.set(sprite, 'breathe'); // working -> idle: the class that ran it is gone
+  r.advance(80);
+  assert.equal(hop.cancelled, true, 'the hop ends with its rule');
+  assert.equal(leg.cancelled, undefined, 'one still in its list plays on');
+  assert.equal(leg.currentTime, 160);
+  styles.set(legs, 'none');
+  r.advance(80);
+  assert.equal(leg.cancelled, true, 'animation: none ends it too');
+});
+
+test('a fresh animation by the same name on the same element replaces the held one', () => {
+  const sprite = {};
+  const old = cssAnim(sprite, 'jump', { endTime: 1400, iterations: 2 });
+  const list = [old];
+  const r = cssRig(list, new Map([[sprite, 'jump']]));
+  r.advance(80);
+  r.advance(80);
+  const again = cssAnim(sprite, 'jump', { endTime: 1400, iterations: 2 });
+  list.push(again); // the class came off and back on between two ticks
+  r.advance(80);
+  assert.equal(old.cancelled, true);
+  assert.equal(again.playState, 'paused', 'the new one is the clock\'s now');
+});
+
+test('script animations and transitions are never judged by a rule', () => {
+  const a = anim();
+  a.cancel = () => { a.cancelled = true; };
+  const r = cssRig([a], new Map());
+  r.advance(80);
+  r.advance(80);
+  assert.equal(a.cancelled, undefined);
+  assert.equal(a.currentTime, 80);
+});

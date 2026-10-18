@@ -36,6 +36,7 @@ function wireQuit(d) {
     d.repeating.forEach(clearInterval);
     d.remote?.shutdown();
     d.deck?.stop();
+    d.pocket?.stop(); // Tailscale keeps serving the address; it answers again when Shellby is back
     d.dictation?.stop();
     d.media?.stop(); // its PowerShell loop never reads stdin, so it won't notice we've gone
     d.history?.flush(); // transcript lines and index changes still waiting (history/index.js)

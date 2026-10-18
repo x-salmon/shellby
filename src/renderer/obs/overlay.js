@@ -25,7 +25,7 @@
   let state = 'idle';
 
   // How he works, held long enough to read, like the desktop crab
-  // (shared/workposes.js; the moves are .work-<pose> in critter.css).
+  // (shared/workposes.js; the moves are .work-<pose> in shared/crab-anim.css).
   const W = window.ShellbyWorkPoses;
   const poses = W.holder(() => { draw(); paint(); });
 

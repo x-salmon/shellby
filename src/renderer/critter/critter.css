@@ -164,6 +164,7 @@ html, body {
 body.tool-swap #crab .part-claw { animation: swap-claw .332s steps(1); }
 body.tool-swap #crab .part-eyes, body.tool-swap #crab .part-stalks { animation: none; transform: translateX(-1px); }
 @keyframes swap-claw { 0% { transform: rotate(18deg) translate(-1px, 1px); } 50%, 100% { transform: rotate(34deg) translate(-3px, 1px); } }
+
 /* ---------- drag-over: "drop it!" ---------- */
 .dropping #sprite { animation: none; transform: translateY(-3px) scale(1.06); transition: transform .2s; }
 .dropping .part-claw { transform: rotate(-25deg); }
@@ -225,8 +226,7 @@ body.tool-swap #crab .part-eyes, body.tool-swap #crab .part-stalks { animation: 
 
 @keyframes perk { 40% { transform: translateY(-4px) } }
 @keyframes blink { 0%,95%,100% { transform: scaleY(1) } 97% { transform: scaleY(.1) } }
-@keyframes wave { 50% { transform: rotate(-30deg) } }
-@keyframes shake { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-4px) } 75% { transform: translateX(4px) } }
+/* wave, shake, dance, flop-claw and hop-flip are in ../shared/crab-anim.css: his flourishes use them too */
 @keyframes float { 0% { transform: translate(0, 0); opacity: 0 } 20% { opacity: 1 } 100% { transform: translate(10px, -30px); opacity: 0 } }
 @keyframes pulse { 50% { transform: scale(1.12) } }
 @keyframes ask-pulse { 0%, 100% { transform: none } 50% { transform: scale(1.12) } }
@@ -350,6 +350,18 @@ body.surprise-landing .part-claw { animation: wave .4s ease-in-out .9s 3; }
 .landed #sprite { animation: squash .6s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes tumble { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes squash { 0% { transform: scale(1.25, .7) translateY(3px); } 60% { transform: scale(.95, 1.06); } 100% { transform: none; } }
+/* a landing hard enough to leave him dizzy: a splat, flat out with his legs
+   splayed and eyes screwed shut, then he peels himself up (the stars follow).
+   body.: it outranks .dizzy's wobble, which starts at the same moment. */
+body.landed-hard #sprite { transform-origin: 50% 100%; animation: splat .9s cubic-bezier(.3, 1.4, .5, 1); }
+body.landed-hard .part-legs-a { animation: splay-a .9s ease-out; }
+body.landed-hard .part-legs-b { animation: splay-b .9s ease-out; }
+body.landed-hard .part-eyes { animation: none; transform: scaleY(.15); }
+body.landed-hard .part-stalks { animation: none; }
+body.landed-hard .part-claw { animation: splay-a .9s ease-out; }
+@keyframes splat { 0%, 30% { transform: scale(1.4, .55) translateY(4px); } 65% { transform: scale(.92, 1.1); } 100% { transform: none; } }
+@keyframes splay-a { 0%, 30% { transform: translateX(-2px) rotate(-12deg); } 100% { transform: none; } }
+@keyframes splay-b { 0%, 30% { transform: translateX(2px) rotate(12deg); } 100% { transform: none; } }
 
 /* ---------- strolling: a sideways amble ---------- */
 /* a lean back before the first step, then the amble */
@@ -358,6 +370,18 @@ body.surprise-landing .part-claw { animation: wave .4s ease-in-out .9s 3; }
 .walking .part-legs-a { animation: crab-leg .25s steps(1) infinite; }
 .walking .part-legs-b { animation: crab-leg .25s steps(1) infinite reverse; }
 .walking .part-eyes, .walking .part-stalks { animation: look 2s steps(1) infinite; }
+/* in a hurry (fetch, a dash home): leant into it, legs a blur, eyes on where he's going */
+.walk-fast #sprite { animation: set-off .16s ease-out, run-lean .26s ease-in-out .16s infinite; }
+.walk-fast .part-legs-a { animation: crab-leg .13s steps(1) infinite; }
+.walk-fast .part-legs-b { animation: crab-leg .13s steps(1) infinite reverse; }
+.walk-fast .part-eyes, .walk-fast .part-stalks { animation: none; transform: translateX(calc(var(--dir) * 1px)); }
+@keyframes run-lean { 0%, 100% { transform: rotate(calc(var(--dir) * 5deg)); } 50% { transform: rotate(calc(var(--dir) * 5deg)) translateY(-2px); } }
+/* past your cursor: up on his toes, slow and careful, eyes on it */
+.walking.cursor-near:not(.walk-fast):not(.hauling):not([class*="surface-"]) #sprite { animation: tiptoe-walk .6s ease-in-out infinite; }
+.walking.cursor-near:not(.walk-fast):not(.hauling):not([class*="surface-"]) [class*="part-legs"] { animation: crab-leg .3s steps(1) infinite; transform: translateY(-1px); }
+.walking.cursor-near:not(.walk-fast):not(.hauling):not([class*="surface-"]) .part-eyes { animation: none; transform: scaleY(.7); }
+.walking.cursor-near:not(.walk-fast):not(.hauling):not([class*="surface-"]) .part-stalks { animation: none; }
+@keyframes tiptoe-walk { 0%, 100% { transform: translateY(-2px) scale(.97, 1.05); } 50% { transform: translateY(-3px) scale(.97, 1.05); } }
 
 /* ---------- CI is red on one of your pull requests: worried, holding up a sign ---------- */
 /* The sign is a held accessory (see CI_SIGN in critter.js), so it shares the
@@ -400,7 +424,6 @@ body.surprise-landing .part-claw { animation: wave .4s ease-in-out .9s 3; }
 .state-cheer [class*="part-legs"] { animation: crab-leg .14s steps(1) infinite; }
 .state-cheer #bubble { background: #2dc653; color: #fff; font-size: var(--fs-12); animation: pulse .5s ease-in-out 6; }
 .state-cheer #bubble::after { border-top-color: #2dc653; }
-@keyframes dance { 0%, 100% { transform: rotate(-6deg) translateY(0); } 25% { transform: rotate(0) translateY(-6px); } 50% { transform: rotate(6deg) translateY(0); } 75% { transform: rotate(0) translateY(-6px); } }
 
 /* ---------- focus: helmet on, standing guard; then a little break ---------- */
 .focus-focus.state-idle #sprite { animation: guard 2.4s ease-in-out infinite; }
@@ -521,7 +544,6 @@ body.bit-flop .part-stalks { animation: none; }
 body.bit-flop .part-claw { animation: flop-claw 2.6s ease-in-out; }
 @keyframes flop { 0%, 100% { transform: none; } 25%, 75% { transform: rotate(-9deg) translateY(2px); } }
 @keyframes flop-eyes { 0%, 100% { transform: scaleY(1); } 20%, 80% { transform: scaleY(.1); } }
-@keyframes flop-claw { 0%, 100% { transform: none; } 25%, 75% { transform: rotate(14deg) translateY(2px); } }
 
 /* ================================================================ up on your windows
    Every beat of a perch (src/main/perching.js), in the order you see them:
@@ -574,12 +596,7 @@ body.bit-flop .part-claw { animation: flop-claw 2.6s ease-in-out; }
   82% { transform: scale(.95, 1.08) rotate(calc(var(--dir) * 7deg)); }
   100% { transform: scale(.88, 1.14) rotate(calc(var(--dir) * 4deg)); }
 }
-@keyframes hop-flip {
-  0% { transform: scale(.8, 1.32) rotate(0deg); }
-  14% { transform: scale(.95, 1.05) rotate(calc(var(--dir) * -20deg)); }
-  72% { transform: scale(.92, .92) rotate(calc(var(--dir) * 360deg)); }
-  100% { transform: scale(.9, 1.12) rotate(calc(var(--dir) * 360deg)); }
-}
+/* hop-flip is in ../shared/crab-anim.css (a won turn's twirl is one too) */
 
 /* touchdown: the squash is the throw's own (.landed), plus a puff of dust */
 #dust { position: absolute; left: 50%; bottom: 16px; width: 0; height: 0; pointer-events: none; }

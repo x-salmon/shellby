@@ -147,6 +147,19 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   ipcMain.handle('deck:set', (_e, patch) => d.setDeck(patch && typeof patch === 'object' ? patch : {}));
   ipcMain.handle('deck:add', () => d.addToStreamDeck());
 
+  // ---- Shellby on your phone (wiring/pocket.js): turning it on asks in the
+  // confirmation window; the panel only ever names a phone to forget by its id.
+  ipcMain.handle('pocket:get', () => d.pocketView());
+  ipcMain.handle('pocket:set', (_e, patch) => {
+    const p = patch && typeof patch === 'object' ? patch : {};
+    if (p.enabled === true || p.enabled === false) return d.setPocket({ enabled: p.enabled });
+    if (p.notify && typeof p.notify === 'object') return d.setPocket({ notify: p.notify });
+    return d.pocketView();
+  });
+  ipcMain.handle('pocket:pair', () => d.newPocketCode());
+  ipcMain.handle('pocket:forget', (_e, id) => d.forgetPocketDevice(typeof id === 'string' ? id.slice(0, 40) : ''));
+  ipcMain.handle('pocket:test', () => d.testPocketPush());
+
   // ---- the desk lighting (rgb.js)
   ipcMain.handle('rgb:get', () => d.rgbView());
   ipcMain.handle('rgb:set', (_e, patch) => {

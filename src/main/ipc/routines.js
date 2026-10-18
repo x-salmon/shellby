@@ -128,7 +128,9 @@ function registerRoutinesIpc(ipcMain, d) {
     return d.holdForReset({ kind: 'message', tabId: tab.id, cwd: tab.session.cwd, title: tab.title, text, attachments: files });
   }
   // Answers with what was held, so a message can go back in the box to edit.
-  ipcMain.handle('held:cancel', (_e, id) => {
+  ipcMain.handle('held:cancel', (_e, id) => cancelHeld(id));
+  // Also the phone's Queue (wiring/pocket.js).
+  function cancelHeld(id) {
     const list = d.heldList();
     const h = d.isStr(id) && list.find(x => x.id === id);
     if (!h) return { ok: false };
@@ -136,7 +138,8 @@ function registerRoutinesIpc(ipcMain, d) {
     // A queued task that's running now stops too; its conversation stays.
     if (h.kind === 'task' && h.tabId && d.queueWaits.has(h.tabId)) d.manager.interrupt(h.tabId);
     return { ok: true, item: h };
-  });
+  }
+  d.cancelHeld = cancelHeld;
   ipcMain.handle('held:keepAwake', (_e, on) => {
     d.config.set({ queueKeepAwake: on === true });
     d.syncKeepAwake();

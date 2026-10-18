@@ -24,8 +24,8 @@ function clock() {
 
 test('what he holds: each item is a held thing with its pinch on it and a colour for every pixel', () => {
   assert.deepEqual([...W.POSES].sort(), [...POSES].sort());
-  for (const pose of ['read', 'write', 'run', 'search', 'web', 'plan']) assert.ok(W.ITEMS[pose], `${pose} has something in his claw`);
-  for (const pose of ['think', 'crew', 'busy']) assert.equal(W.ITEMS[pose], null, `${pose} leaves his claw free`);
+  for (const pose of ['read', 'write', 'run', 'test', 'git', 'install', 'build', 'search', 'web', 'plan', 'skill', 'mcp', 'compact']) assert.ok(W.ITEMS[pose], `${pose} has something in his claw`);
+  for (const pose of ['think', 'crew', 'talk', 'busy']) assert.equal(W.ITEMS[pose], null, `${pose} leaves his claw free`);
   for (const [pose, item] of Object.entries(W.ITEMS)) {
     if (!item) continue;
     assert.equal(item.slot, 'held', pose);

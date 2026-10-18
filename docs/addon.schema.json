@@ -266,13 +266,15 @@
           "enum": [
             "dig", "polish", "peek", "stretch", "flop", "squint", "creep", "pounce", "nose", "sneeze", "sniff", "hic", "hold",
             "blow", "nod", "jolt", "curl", "admire", "rock", "bow", "swat", "jab", "gaze", "juggle", "bonk", "present", "lean",
-            "sip", "boogie", "hide", "boo", "shiver", "wave", "count"
+            "sip", "boogie", "hide", "boo", "shiver", "wave", "count",
+            "cast", "angle", "reel", "tuck", "kite", "drum"
           ]
         },
         "ms": { "type": "integer", "minimum": 500, "maximum": 5000 },
         "say": { "$ref": "#/$defs/say" },
-        "prop": { "enum": ["castle", "castle-fall", "bubbles", "fly", "shooting-star", "juggle", "heart", "achoo", "zz", "notes", "sweat"] },
-        "hold": { "enum": ["find", "coffee", "pebble", "mic"] },
+        "prop": { "enum": ["castle", "castle-fall", "bubbles", "fly", "shooting-star", "juggle", "heart", "achoo", "zz", "notes", "sweat",
+          "snowman", "kite", "bigshell", "ripple"] },
+        "hold": { "enum": ["find", "coffee", "pebble", "mic", "rod", "sock", "book"] },
         "wear": { "enum": ["shades"] }
       }
     },

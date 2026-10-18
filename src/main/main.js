@@ -46,6 +46,7 @@ const { wireCrabApi } = require('./wiring/crab-api');
 const { wireChannels } = require('./wiring/channels');
 const { wireDeck } = require('./wiring/deck');
 const { wirePhoneTasks } = require('./wiring/phone-tasks');
+const { wirePocket } = require('./wiring/pocket');
 const { wireSurroundings } = require('./wiring/surroundings');
 const { wireToolbox } = require('./wiring/toolbox');
 const { wireGithub } = require('./wiring/github');
@@ -220,6 +221,11 @@ const shared = {
   lean: null,                      // Lean Shell: the prompt cache, setup weight and idle tools (lean.js)
   obsServer: null, rgbClient: null, presence: null, media: null, remote: null, channelSecret: null,
   deck: null, deckShown: null,     // the Stream Deck keys, and the conversation they follow (see deck.js)
+  pocket: null,                    // Shellby on your phone: its server (pocket/server.js, wiring/pocket.js)
+  tailscaleCli: null,              // tests hand in a fake Tailscale CLI (pocket/tailscale.js)
+  diffChanges: null, undoChanges: null, // a turn's diff and its undo, set by ipc/tabs.js: the phone uses them too
+  bringTabHome: null,              // Bring it home, set by ipc/repo.js
+  cancelHeld: null,                // taking one out of the reset queue, set by ipc/routines.js
   dictation: null, ptt: null,      // push-to-talk: hold the hotkey and say the task (see dictation.js)
   motion: null,                    // throws and strolls (see desktop/motion.js)
   perching: null,                  // up on your windows (see desktop/perching.js)
@@ -345,6 +351,7 @@ const { createCrabApi } = share(wireCrabApi(shared));
 const { channelPlace, channelSettings, confirmChannelPlace, createObs, createRemote, loadChannelSecret } = share(wireChannels(shared));
 const { createPhoneTasks } = share(wirePhoneTasks(shared));
 const { createDeck } = share(wireDeck(shared));
+const { createPocket } = share(wirePocket(shared)); // Shellby on your phone, over your tailnet (pocket/)
 const {
   createDictation, createLifeAndPlay, createMedia, createPresence, createRgb, createTypingAlong, createWeather, ensureOpenRgb, rgbSettings,
 } = share(wireSurroundings(shared));
@@ -478,6 +485,7 @@ app.whenReady().then(() => {
   confirmChannelPlace().catch(e => log.warn('channel confirm failed', e.message));
   createObs();
   createDeck(); // the Stream Deck keys, if they're on
+  createPocket(); // Shellby on your phone, if it's on
   createRgb();
   if (rgbSettings().enabled) ensureOpenRgb().catch(err => log.warn('OpenRGB could not be started', err?.message)); // lighting on: start OpenRGB if it isn't running
   createWeather();

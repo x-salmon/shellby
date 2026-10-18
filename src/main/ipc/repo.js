@@ -51,6 +51,7 @@ function registerRepoIpc(ipcMain, d) {
   // you can carry on and bring it home again. finish: also tidy the copy away
   // (the tab closes; the conversation stays in History).
   ipcMain.handle('worktree:home', (_e, tabId, opts) => bringTabHome(tabId, opts));
+  d.bringTabHome = bringTabHome; // the phone's Bring it home goes the same way (wiring/pocket.js)
   // Red checks: nothing merged, and what failed, for the panel to offer "anyway" or "fix them".
   const redResult = (gate, w) => ({
     ok: false, red: true, checks: gate.checks, fix: gate.fix, base: w.base, branch: w.branch,
