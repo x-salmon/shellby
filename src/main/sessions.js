@@ -199,6 +199,15 @@ class SessionManager extends EventEmitter {
       try { ids = this.savePictures(tab.id, item.id, images) || []; } catch { /* no pictures, the step still shows */ }
       if (ids.length) item.pictures = ids;
     }
+    // Pictures the conversation holds, for the note when they pile up (turncost.js
+    // pictureNote): a helper's stay in its own context. A new start has none.
+    // Counted from when this run of Shellby opened the tab: a reopened conversation's
+    // older pictures aren't, so the note can come late but never wrongly.
+    if (images?.length && !item.sub) tab.pictures = (tab.pictures || 0) + images.length;
+    if (item.kind === 'compacted' || item.kind === 'fresh' || item.kind === 'cleared') {
+      tab.pictures = 0;
+      tab.picturesNoted = false;
+    }
     // A mod's lines and toasts, within its budget: one that says something on
     // every step would bury the conversation and its history (mods.js).
     if (item.kind === 'modlog' || item.kind === 'modtoast') {
@@ -226,9 +235,11 @@ class SessionManager extends EventEmitter {
         return { ...x, share: Number.isFinite(s) ? s : null, shareText: turncost.shareText(s) };
       });
       const cost = { ...item.cost, share: Number.isFinite(share) ? share : null, ...(helpers ? { helpers } : {}) };
-      // A warm cache it missed, and helpers that outspent it (once a conversation): notes under the cost.
-      const notes = turncost.turnNotes(cost, { helpers: !tab.helpersNoted });
+      // A warm cache it missed, and helpers that outspent it or pictures piling up
+      // (each once a conversation): notes under the cost.
+      const notes = turncost.turnNotes(cost, { helpers: !tab.helpersNoted, pictures: tab.picturesNoted ? 0 : tab.pictures || 0 });
       if (notes.some(n => n.kind === 'helpers')) tab.helpersNoted = true;
+      if (notes.some(n => n.kind === 'pictures')) tab.picturesNoted = true;
       item.cost = { ...cost, line: turncost.costLine(cost), detail: turncost.costDetail(cost), effortBadge: turncost.effortBadge(cost), ...(notes.length ? { notes } : {}) };
     }
     if (item.kind === 'compacted' && tab.compacting) { tab.compacting = false; this.changed(); }
@@ -313,6 +324,7 @@ class SessionManager extends EventEmitter {
       tab.preambleSent = true;
     }
     if (this.decorate) prompt = this.decorate(tab, prompt);
+    tab.pictures = (tab.pictures || 0) + turncost.picturesIn(prompt);
     this.maybePickEffort(tab, userItem);
     tab.session.send(prompt, this.prepareTurn?.(tab) || null);
     // On disk at once, so a power cut mid-turn still leaves it marked unfinished.
@@ -365,7 +377,10 @@ class SessionManager extends EventEmitter {
       taken.push({ content, item: { kind: 'user', text: m.text, attachments: m.attachments, steerId: m.id, turnOf: tab.turnId || null } });
     }
     tab.steers = tab.steers.slice(taken.length);
-    for (const t of taken) tab.steeredIds.add(t.item.steerId);
+    for (const t of taken) {
+      tab.steeredIds.add(t.item.steerId);
+      tab.pictures = (tab.pictures || 0) + turncost.picturesIn(t.content);
+    }
     if (taken.length) this.emit('steering', tab.id, taken.map(t => t.item.steerId));
     return taken;
   }

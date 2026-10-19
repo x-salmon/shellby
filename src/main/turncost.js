@@ -11,8 +11,8 @@
 //
 // Also when to nudge before a conversation gets crowded: the pace it's been
 // filling at says how many turns like the last few it has left. And the notes
-// under a turn's cost: a warm cache it missed (cachebreak.js), and helpers
-// that spent more than the conversation itself.
+// under a turn's cost: a warm cache it missed (cachebreak.js), helpers that
+// spent more than the conversation itself, and pictures piling up in it.
 // Pure functions: no Electron, no I/O — see test/turncost.test.js.
 
 const { CROWDED_PCT } = require('./context');
@@ -24,6 +24,8 @@ const SOON_TURNS = 2;
 const RECENT_TURNS = 3;  // the pace is the average growth of the last few turns
 const TOP_TURNS = 3;     // the costliest turns the context menu lists
 const HEAVY_HELPERS = 30000; // tokens: helpers past this, and past the turn's own, get a note
+const PICTURE_TOKENS = 1500; // a picture at the size Claude reads it (about 1.15 MP, at 750 pixels a token)
+const PILED_PICTURES = 5;    // pictures in one conversation before they're worth a word
 
 const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
 const USAGE_FIELDS = ['input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens', 'output_tokens'];
@@ -107,16 +109,34 @@ function helperNote(cost) {
   return `${who} spent ${compact(t.tokens)} of this turn's ${compact(cost.tokens)} tokens. Each one starts with an empty context and reads for itself, so a narrower brief (what to look at, what to bring back) or fewer helpers usually costs less.`;
 }
 
+/** The pictures in what Shellby sends Claude: a prompt's image blocks (a plain string has none). */
+function picturesIn(content) {
+  return Array.isArray(content) ? content.filter(b => b?.type === 'image').length : 0;
+}
+
 /**
- * The notes under a turn's cost: [{ kind, text }]. helpers: false once a
- * conversation has had its helpers note, so it's said once, not every turn.
+ * PILED_PICTURES or more in one conversation: each is sent again with every
+ * message after it, and a fresh start keeps the words but not them. A sentence, or null.
  */
-function turnNotes(cost, { helpers = true } = {}) {
+function pictureNote(count) {
+  if (!(Number.isFinite(count) && count >= PILED_PICTURES)) return null;
+  return `This conversation holds ${count} pictures, about ${compact(count * PICTURE_TOKENS)} tokens, and each is sent again with every message. Starting fresh with a summary carries on with what was said and leaves the pictures behind.`;
+}
+
+/**
+ * The notes under a turn's cost: [{ kind, text, action? }], where action names
+ * a button the panel offers ('helper-model', 'fresh'). helpers: false once a
+ * conversation has had its helpers note, so it's said once, not every turn;
+ * pictures: how many the conversation holds, or 0 once that's been said.
+ */
+function turnNotes(cost, { helpers = true, pictures = 0 } = {}) {
   if (!cost) return [];
   const heavy = helpers ? helperNote(cost) : null;
+  const piled = pictureNote(pictures);
   return [
     cost.cacheBreak ? { kind: 'cache-break', text: breakText(cost.cacheBreak) } : null,
-    heavy ? { kind: 'helpers', text: heavy } : null,
+    heavy ? { kind: 'helpers', text: heavy, action: 'helper-model' } : null,
+    piled ? { kind: 'pictures', text: piled, action: 'fresh' } : null,
   ].filter(n => n !== null);
 }
 
@@ -272,7 +292,7 @@ function nudge(context, growths) {
 }
 
 module.exports = {
-  mergeUsage, tokensOf, windowShare, turnCost, helperCosts, helpersTotal, helperNote, turnNotes, compact, shareText, costLine, costDetail, effortBadge,
+  mergeUsage, tokensOf, windowShare, turnCost, helperCosts, helpersTotal, helperNote, picturesIn, pictureNote, turnNotes, compact, shareText, costLine, costDetail, effortBadge,
   turnsOf, topTurns, tabTotal, addGrowth, turnsLeft, nudge,
-  SOON_PCT, SOON_TURNS, RECENT_TURNS, TOP_TURNS, HEAVY_HELPERS,
+  SOON_PCT, SOON_TURNS, RECENT_TURNS, TOP_TURNS, HEAVY_HELPERS, PICTURE_TOKENS, PILED_PICTURES,
 };

@@ -2,7 +2,7 @@
    first word and where it goes, how much of Claude's input came from the prompt
    cache (and a word when today's falls well short), Claude Code's own count of
    lines, edits and commits, the files Claude keeps coming back to, the
-   commands whose output fills its context, and the
+   commands whose output fills its context, the hooks that add to it, and the
    plugins, MCP servers and your own skills that sit idle. Nothing here touches a prompt, the model
    or what Claude reads: turning a plugin off only affects new conversations and
    is one click to undo, and "Suggest a trim" and "Ask Claude" only draft a
@@ -99,6 +99,7 @@
     memory: { label: 'CLAUDE.md and rules', cls: 'is-memory' },
     plugins: { label: "plugins (Claude Code's estimate)", cls: 'is-plugins' },
     skills: { label: "your skills' listings", cls: 'is-skills' },
+    hooks: { label: 'what start hooks add', cls: 'is-hooks' },
     rest: { label: "Claude Code's own prompt and tools, and MCP servers you added", cls: 'is-rest' },
   };
 
@@ -173,6 +174,7 @@
       rep.totals.plugins ? `plugins ${tok(rep.totals.plugins)} (Claude Code's estimate)` : null,
       rep.totals.memory ? `CLAUDE.md and rules ${tok(rep.totals.memory)}` : null,
       rep.totals.skills ? `your skills' names and descriptions ${tok(rep.totals.skills)}` : null,
+      rep.totals.hooks ? `what your start hooks add ${tok(rep.totals.hooks)}` : null,
       'plus Claude Code\'s own prompt and tools',
     ].filter(Boolean);
     const c = rep.cache.week;
@@ -332,6 +334,35 @@
         h('p', { class: 'tool-desc', text: `ran ${r.runs}× in ${r.sessions} conversations, ${tok(r.total)} in all` })));
   }
 
+  // ------------------------------------------------------------ hooks that add to the conversation
+
+  // When each kind of hook adds what it prints (main's usage/hookctx.js).
+  const WHEN = {
+    SessionStart: 'as each conversation starts',
+    UserPromptSubmit: 'with every message you send',
+    PreToolUse: 'before a tool runs',
+    PostToolUse: 'after a tool runs',
+    PostToolUseFailure: 'after a tool fails',
+    SubagentStart: 'as each helper starts',
+  };
+  const when = r => WHEN[r.event] || r.event;
+
+  const HOOKS_ASK = rows => [
+    "These Claude Code hooks add text to my conversations (counted from Claude Code's transcripts on this PC). Whatever a hook adds stays in the conversation and is sent again with every message after it:",
+    ...rows.map(r => `- ${r.name} (${r.event}): about ${r.tokens} tokens ${when(r)}, ${r.runs} runs in ${r.sessions} conversations`),
+    '',
+    'Find where each hook is set up (~/.claude/settings.json, the project\'s .claude/settings.json, or a plugin\'s hooks), read what it prints, and suggest how it could add less and still do its job: shorter text, printing only when something changed, moving standing instructions into CLAUDE.md or a rule that loads only where it applies, or turning off one I may not need. Do not edit anything. For each suggestion, say what to change and roughly how many tokens it saves per conversation.',
+  ].join('\n');
+
+  function hookRow(r) {
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' },
+          h('code', { text: r.name }),
+          h('span', { class: 'src-pill', title: 'What one run adds to the conversation, on average', text: `${tok(r.tokens)} a run` })),
+        h('p', { class: 'tool-desc', text: `adds it ${when(r)} · ran ${r.runs}× in ${r.sessions} conversations, ${tok(r.perConversation)} a conversation` })));
+  }
+
   // ------------------------------------------------------------ the tab
 
   function render(q) {
@@ -367,6 +398,11 @@
       h('span', { text: `Commands whose output fills the context here (last ${rep.hot.days} days)` }),
       h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
         onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: LOUD_ASK(rep.hot.loud) }); } }, 'Ask Claude')) : null;
+    const hooks = (rep.hot?.hooks || []).filter(r => match(r.name));
+    const hooksLabel = hooks.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
+      h('span', { text: `Hooks that add to the conversation (last ${rep.hot.days} days)` }),
+      h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
+        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: HOOKS_ASK(rep.hot.hooks) }); } }, 'Ask Claude')) : null;
     const hotLabel = hot.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
       h('span', { text: `Files Claude keeps coming back to here (last ${rep.hot.days} days)` }),
       h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
@@ -377,6 +413,7 @@
       skills.length ? label(`Your skills, commands and agents (${tok(rep.totals.skills || 0)} in every conversation)`) : null, ...skills.map(t => skillRow(t, rep)),
       memory.length ? label('CLAUDE.md and rules, every conversation') : null, ...memory.map(memoryRow),
       onDemand.length ? label(`Rules for matching files only (${tok(rep.totals.memoryOnDemand)} in all)`) : null, ...onDemand.map(memoryRow),
+      hooksLabel, ...hooks.map(hookRow),
       hotLabel, ...hot.map(hotRow),
       loudLabel, ...noisy.map(loudRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),

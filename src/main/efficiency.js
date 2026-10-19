@@ -328,7 +328,7 @@ function loadsOnDemand(head, scope = 'user-rule') {
 
 /**
  * Where the setup weight goes: CLAUDE.md and rules, plugins (Claude Code's own
- * estimate), your skills' listings, and the rest (Claude Code's prompt and
+ * estimate), your skills' listings, what start hooks add (usage/hookctx.js), and the rest (Claude Code's prompt and
  * tools, and MCP servers you added), which is what's left of the measured
  * whole. The parts are estimates and the setup may have been measured in
  * another project, so when they add up to more than it, the rest is 0.
@@ -340,6 +340,7 @@ function contextBudget(setup, totals) {
     { key: 'memory', tokens: num(totals.memory) },
     { key: 'plugins', tokens: num(totals.plugins) },
     { key: 'skills', tokens: num(totals.skills) },
+    { key: 'hooks', tokens: num(totals.hooks) },
   ].filter(p => p.tokens);
   const known = parts.reduce((n, p) => n + p.tokens, 0);
   return { total: setup.tokens, share: setup.tokens / CONTEXT_WINDOW, parts, rest: Math.max(0, setup.tokens - known) };
@@ -356,9 +357,10 @@ function contextBudget(setup, totals) {
  * transcripts. Something counts as idle only once the transcripts cover
  * IDLE_MS, so a fresh install never calls everything idle. mine: your own
  * skills, commands and agents (not a plugin's), each with addedAt from its file,
- * and uses: how many times each key was used (usagescan.totalUses).
+ * and uses: how many times each key was used (usagescan.totalUses). hookStart: what
+ * start hooks add before your first word, from the transcripts (usage/hookctx.js).
  */
-function leanReport({ plugins = [], mcp = [], mcpSeen = {}, tools = null, mine = [], memory = [], used = {}, uses = {}, watchedSince = null, setups = {}, projectKey = null, days = {}, now }) {
+function leanReport({ plugins = [], mcp = [], mcpSeen = {}, tools = null, mine = [], memory = [], used = {}, uses = {}, hookStart = 0, watchedSince = null, setups = {}, projectKey = null, days = {}, now }) {
   const watched = Number.isFinite(watchedSince) && now - watchedSince >= IDLE_MS;
   // Something added (or turned back on) lately hasn't had the chance to be used
   // yet, and something with no known start can't be judged at all.
@@ -414,6 +416,7 @@ function leanReport({ plugins = [], mcp = [], mcpSeen = {}, tools = null, mine =
     memory: sum(memoryRows.filter(r => !r.onDemand)),
     memoryOnDemand: sum(memoryRows.filter(r => r.onDemand)),
     skills: sum(skillRows, r => r.listTokens),
+    hooks: num(hookStart),
     idleCount: pluginRows.filter(r => r.idle).length + mcpRows.filter(r => r.idle).length + skillRows.filter(r => r.idle).length,
   };
 

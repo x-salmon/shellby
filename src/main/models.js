@@ -26,4 +26,17 @@ const MODELS = [
 // '' means "let Claude Code pick", which is always allowed.
 const isModel = id => id === '' || MODELS.some(m => m.id === id);
 
-module.exports = { MODELS, isModel };
+const HELPER_ENV = 'CLAUDE_CODE_SUBAGENT_MODEL';
+
+/**
+ * The variable that runs helpers (subagents) on another model, for the
+ * conversations Shellby starts: {} for none, or when it's already set on this
+ * PC, which is yours to keep. Claude Code applies it only to helpers that don't
+ * name a model of their own (CLAUDE_CODE_SUBAGENT_MODEL_FORCE is for all of them).
+ */
+function helperEnv(model, env = process.env) {
+  if (!model || !isModel(model) || env[HELPER_ENV]) return {};
+  return { [HELPER_ENV]: model };
+}
+
+module.exports = { MODELS, isModel, helperEnv, HELPER_ENV };

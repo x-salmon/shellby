@@ -73,6 +73,13 @@
         </div>
         <p class="muted small">When the model is overloaded or unavailable, Claude Code can carry on with another one instead of failing the turn. Applies to new conversations.</p>
         <div class="row">
+          <label class="inline-label" for="helperModelSelect">Helpers</label>
+          <select id="helperModelSelect" class="field slim">
+            <option value="">Same as the conversation</option>
+          </select>
+        </div>
+        <p class="muted small">The helpers Claude sends out to search, read and review each start with an empty context and read for themselves, so they often spend more than the conversation. Sonnet does that work for much less of your plan. Helpers that name a model of their own keep it. Applies to new conversations.</p>
+        <div class="row">
           <label class="inline-label" for="styleSelect">Output style</label>
           <select id="styleSelect" class="field slim">
             <option value="">Default</option>

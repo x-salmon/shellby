@@ -532,6 +532,7 @@ body:not(.newcomer) .newcomer-only { display: none; }
 .lean-seg.is-memory, .lean-key.is-memory { background: var(--amber); }
 .lean-seg.is-plugins, .lean-key.is-plugins { background: var(--coral); }
 .lean-seg.is-skills, .lean-key.is-skills { background: var(--glass); }
+.lean-seg.is-hooks, .lean-key.is-hooks { background: var(--done); }
 .lean-seg.is-rest, .lean-key.is-rest { background: var(--sand-faint-deco); }
 .lean-warn { font-size: var(--fs-12-5); color: var(--amber); }
 .lean-telemetry { align-items: center; }

@@ -271,3 +271,16 @@ test('helpers that outspend the turn get a note, once a conversation', () => {
   assert.deepEqual(tc.turnNotes(heavy, { helpers: false }), [], 'already said in this conversation');
   assert.deepEqual(tc.turnNotes(null), []);
 });
+
+test('pictures piling up in a conversation get a note with a fresh start, once', () => {
+  assert.equal(tc.picturesIn([{ type: 'image' }, { type: 'image' }, { type: 'text', text: 'look' }]), 2);
+  assert.equal(tc.picturesIn('just words'), 0);
+  assert.equal(tc.picturesIn(null), 0);
+  assert.equal(tc.pictureNote(tc.PILED_PICTURES - 1), null, 'a few are fine');
+  assert.match(tc.pictureNote(6), /^This conversation holds 6 pictures, about 9k tokens, and each is sent again with every message\./);
+  const cost = { tokens: 1000 };
+  assert.deepEqual(tc.turnNotes(cost, { pictures: 6 }).map(n => [n.kind, n.action]), [['pictures', 'fresh']]);
+  assert.deepEqual(tc.turnNotes(cost, { pictures: 0 }), [], 'already said, or none');
+  const heavy = { tokens: 150000, helpers: [{ id: 'a', tokens: 120000 }] };
+  assert.equal(tc.turnNotes(heavy)[0].action, 'helper-model', "the helpers' note offers Sonnet for them");
+});

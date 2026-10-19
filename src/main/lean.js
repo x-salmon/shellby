@@ -254,7 +254,7 @@ function createLean(deps) {
     last = eff.leanReport({
       plugins, mcp, mcpSeen: mcpSeen(mcp, now), tools: pluginTools(plugins), mine: mine(deps.toolbox()?.current), uses: totalUses(u.counts),
       memory: deps.memory().map(m => (m.exists ? { ...m, onDemand: eff.loadsOnDemand(head(m.path), m.scope) } : m)),
-      used: u.used, watchedSince: u.from, setups, projectKey: deps.currentProject(), days, now,
+      used: u.used, hookStart: hotRows?.hookStart || 0, watchedSince: u.from, setups, projectKey: deps.currentProject(), days, now,
     });
     return { ok: true, ...last, breaks: cachebreak.breakSummary(breaks, now), hot: hotRows, telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
   }

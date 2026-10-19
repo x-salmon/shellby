@@ -72,6 +72,13 @@
       ...groups.map(g => h('optgroup', { label: g }, models.filter(m => m.group === g).map(m => h('option', { value: m.id, text: `Switch to ${m.label}` })))),
     );
     $('fallbackSelect').value = models.some(m => m.id === fallback) ? fallback : '';
+    // ...and for the helpers (main's models.js helperEnv).
+    const helper = state.settings.helperModel || '';
+    $('helperModelSelect').replaceChildren(
+      h('option', { value: '', text: 'Same as the conversation' }),
+      ...groups.map(g => h('optgroup', { label: g }, models.filter(m => m.group === g).map(m => h('option', { value: m.id, text: m.label })))),
+    );
+    $('helperModelSelect').value = models.some(m => m.id === helper) ? helper : '';
   }
 
   // Claude Code's own styles plus any in an output-styles folder (src/main/outputstyles.js).
@@ -246,6 +253,7 @@
   });
   $('modelSelect').addEventListener('change', async e => { const r = await api.setSettings({ model: e.target.value }); state.settings = r.settings; SB.toast('Model applies to new conversations.'); });
   $('fallbackSelect').addEventListener('change', async e => { const r = await api.setSettings({ fallbackModel: e.target.value }); state.settings = r.settings; SB.toast('Applies to new conversations.'); });
+  $('helperModelSelect').addEventListener('change', async e => { const r = await api.setSettings({ helperModel: e.target.value }); state.settings = r.settings; SB.toast('Applies to new conversations.'); });
   $('chromeToggle').addEventListener('change', async e => { const r = await api.setSettings({ claudeInChrome: e.target.checked }); state.settings = r.settings; SB.toast('Applies to new conversations.'); });
   $('wanderToggle').addEventListener('change', async e => { const r = await api.setSettings({ wander: e.target.checked }); state.settings = r.settings; renderPerch(); });
   $('onTopToggle').addEventListener('change', async e => { const r = await api.setSettings({ onTop: e.target.checked }); state.settings = r.settings; });
