@@ -13,7 +13,7 @@
 // Pure: wiring/pocket.js gathers the inputs.
 const path = require('path');
 const { standing } = require('../../renderer/panel/tab-sort');
-const { appDeskOnlyReason } = require('../channels/replies');
+const { appDeskOnlyReason, PLAN_MAX: MAX_PLAN } = require('../channels/replies');
 const { normalizeQuiet } = require('./quiet');
 const { normalizeRights } = require('./rights');
 
@@ -24,7 +24,6 @@ const MAX_TEXT = 8000;          // Claude's reply, per item
 const MAX_FILES = 60;
 const MAX_PROJECTS = 60;
 const MAX_QUESTIONS = 4;
-const MAX_PLAN = 30000;
 const STANDINGS = ['asking', 'review', 'finished', 'working', 'quiet'];
 
 const clip = (s, n) => {

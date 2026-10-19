@@ -388,7 +388,8 @@ function wirePocket(d) {
 
   async function startTask({ project, text, mode, photos }) {
     const runAs = modeOf(mode);
-    const prompt = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
+    if (modeBlocked(runAs)) return no(AUTONOMOUS_OFF);
+    const prompt =pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!prompt) return no('Say what you want done first.');
     if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
     const target = projects().find(p => p.key === project);
@@ -426,6 +427,9 @@ function wirePocket(d) {
 
   // What the phone picked, from the desk's own list; anything else is Ask (pt.MODE).
   const modeOf = m => (PHONE_MODES.includes(m) ? m : pt.MODE);
+  // Autonomous only once it's been turned on at the desk, as for routines and held tasks.
+  const AUTONOMOUS_OFF = 'Turn on Autonomous in Settings on your PC first.';
+  const modeBlocked = m => m === 'autonomous' && !d.config.get('autonomousAcknowledged');
 
   function adopt(tabId) {
     const tab = d.manager.tabs.get(tabId);
@@ -444,6 +448,7 @@ function wirePocket(d) {
     if (d.manager.isBusy(tabId)) return no("He's still on it. Wait for this turn to end, or stop it.");
     // The mode the phone picked, or Ask: kept when the desk's mode changes.
     const runAs = modeOf(mode);
+    if (modeBlocked(runAs)) return no(AUTONOMOUS_OFF);
     if (tab.session.mode !== runAs) tab.session.setMode(runAs);
     tab.pinnedMode = true;
     const r = d.sendToTab(tabId, said, []);
