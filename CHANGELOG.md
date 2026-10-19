@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.93.0: Your phone keeps up
+
+### New
+- Phone replies can carry pictures, mid-turn too, and /compact, /context and /goal now work from the phone.
+- A conversation's Options on the phone rename it, set its effort, or close it.
+- More → History on the phone opens a conversation you closed, where it left off.
+
+### Fixed
+- **A conversation no longer sits stuck on a prompt only the desk can allow.** The phone's card now has a Deny button, so you can turn it down and let Claude carry on without it. Allowing it still waits for the desk.
+- A new task from your phone starts in the mode your PC is in, Autonomous included, instead of Ask first every time.
+- A phone task that waits for your usage reset keeps the mode you picked for it, instead of dropping back to Ask first.
+- **Tapping a notification on your phone takes you to it.** If the app was already open, a tap could leave you on whatever screen you were on, and an iPhone could open the beach instead. Now you land in that conversation, with its question in view.
+- Your phone can send a message while Shellby is working. It joins the conversation's queue, as one typed at the desk does: he reads it at his next step, or as soon as the turn ends.
+
+### Changed
+- **A prompt the phone can't answer looks like one.** It says "One for the desk" instead of "Can I do this?", gives the reason first, and shows only the start of a long command, so a card with no Allow button no longer reads as broken.
+
 ## 0.92.0: Your phone does more
 
 ### New

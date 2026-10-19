@@ -137,6 +137,18 @@
     drain(tab);
   };
 
+  // A reply from your phone while he worked (wiring/pocket.js): queued as if typed
+  // here, with the pictures it carries. Should this turn have ended meanwhile,
+  // drain sends it at once.
+  api.onTabQueue(({ tabId, text, files } = {}) => {
+    const tab = state.tabs.get(tabId);
+    const pictures = Array.isArray(files) ? files.filter(f => typeof f === 'string' && f) : [];
+    if (!tab || typeof text !== 'string' || (!text && !pictures.length)) return;
+    tab.queue.push(queueItem(text, pictures));
+    if (tab.isActive) syncBusyUi(); else syncSteers(tab);
+    drain(tab);
+  });
+
   // Text going back into a tab's box, after whatever's there: at once for the
   // tab on screen (true), into its draft for one in the background.
   function handBack(tab, text, files = []) {

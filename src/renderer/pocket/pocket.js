@@ -140,36 +140,19 @@
     card.append(h('div', { class: 'ask-head' },
       D.crab({ px: 1.6, state: 'asking', label: '' }),
       h('div', { class: 'ask-what' },
-        h('p', { class: 'ask-title', text: p.plan ? 'Here’s my plan' : p.question ? 'I’ve a question' : p.helper ? 'A helper wants to do this' : 'Can I do this?' }),
+        h('p', { class: 'ask-title', text: p.deskOnly ? 'One for the desk' : p.plan ? 'Here’s my plan' : p.question ? 'I’ve a question' : p.helper ? 'A helper wants to do this' : 'Can I do this?' }),
         h('p', { class: 'ask-where', text: p.helper ? `${p.title} · ${p.helper}` : p.title }))));
+    // Why it can't be answered here comes first: no buttons below would otherwise read as broken.
+    if (p.deskOnly) card.append(h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: p.deskOnly })));
     card.append(h('p', { class: 'ask-plain', text: p.question || p.plan || p.ask || [p.label, p.detail].filter(Boolean).join(' ') }));
     const pv = p.preview;
-    if (pv?.kind === 'command') card.append(h('pre', { class: 'cmd', text: pv.command }));
+    // The desk shows it in full, so here a glimpse is enough.
+    if (pv?.kind === 'command') card.append(h('pre', { class: `cmd${p.deskOnly ? ' peek' : ''}`, text: pv.command }));
     else if (pv?.kind === 'edit' && !compact) card.append(editPreview(pv));
     else if (pv?.kind === 'write' && !compact) card.append(h('div', { class: 'cmd-file', text: shortPath(pv.file) }), h('pre', { class: 'cmd write', text: pv.content }));
     else if (pv?.kind === 'url') card.append(h('pre', { class: 'cmd', text: pv.url }));
     else if (pv?.file) card.append(h('div', { class: 'cmd-file', text: shortPath(pv.file) }));
     for (const w of p.warnings || []) card.append(h('p', { class: 'flag' }, icon('warn'), h('span', { text: `Heads up: ${w}` })));
-    if (p.deskOnly) {
-      card.append(h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: p.deskOnly })));
-      if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
-      return card;
-    }
-    // A phone that may only look sees the prompt, and no way to answer it.
-    if (!canAct()) {
-      card.append(lookOnly());
-      if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
-      return card;
-    }
-    // In a sheet: the beach redraws its cards as things change, and a half-picked answer mustn't go.
-    if (p.questions) {
-      card.append(h('button', { type: 'button', class: 'btn go big', text: p.questions.length > 1 ? 'Answer them' : 'Answer it', onclick: () => openSheet(questionSheet(p, after)) }));
-      return card;
-    }
-    if (p.planText) {
-      card.append(h('button', { type: 'button', class: 'btn go big', text: 'Read the plan', onclick: () => openSheet(planSheet(p, after)) }));
-      return card;
-    }
     const answer = decision => actButton({
       label: decision === 'always' ? p.always : decision === 'allow' ? (sending === 'allow' ? 'Allowing…' : 'Allow') : (sending === 'deny' ? 'Denying…' : 'Deny'),
       cls: decision === 'allow' ? 'allow big' : decision === 'always' ? 'always' : 'big',
@@ -182,6 +165,27 @@
         if (r.ok) after?.();
       },
     });
+    // A phone that may only look sees the prompt, and no way to answer it.
+    if (!canAct()) {
+      card.append(lookOnly());
+      if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
+      return card;
+    }
+    // Only the desk can say yes, but a no from here lets the conversation get on without it.
+    if (p.deskOnly) {
+      card.append(h('div', { class: 'btns' }, answer('deny'),
+        inTab ? null : h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) })));
+      return card;
+    }
+    // In a sheet: the beach redraws its cards as things change, and a half-picked answer mustn't go.
+    if (p.questions) {
+      card.append(h('button', { type: 'button', class: 'btn go big', text: p.questions.length > 1 ? 'Answer them' : 'Answer it', onclick: () => openSheet(questionSheet(p, after)) }));
+      return card;
+    }
+    if (p.planText) {
+      card.append(h('button', { type: 'button', class: 'btn go big', text: 'Read the plan', onclick: () => openSheet(planSheet(p, after)) }));
+      return card;
+    }
     card.append(h('div', { class: 'btns' }, answer('deny'), answer('allow')));
     if (p.always) card.append(answer('always'));
     if (compact && (pv?.kind === 'edit' || pv?.kind === 'write')) {
@@ -298,12 +302,12 @@
   }
 
   // One conversation and what its turns changed live in pocket-tab.js; the checks card on it comes from pocket-find.js.
-  const { tabScreen, diffScreen, transcript } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, canAct, lookOnly, checksCard: (...a) => Find.checksCard(...a) });
+  const { tabScreen, diffScreen, transcript } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, voiceButton, canAct, lookOnly, checksCard: (...a) => Find.checksCard(...a) });
   const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet, canAct, lookOnly });
   // Search, history, a closed conversation, the whole branch, and what happened while you were away.
   const Find = window.PocketFind({ S, L, D, N, h, icon, live, go, act, actButton, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded: More.loaded, transcript, shortPath });
   // One prompt from its notification, and the quiet hours card (pocket-phone.js).
-  const { promptScreen, quietCard } = window.PocketPhone({ S, D, h, icon, live, tabOf, go, toast, act, topbar, offlineBanner, promptCard, canAct });
+  const { promptScreen, quietCard, pushState, turnOnPush, turnOffPush } = window.PocketPhone({ S, L, D, h, ios, standalone, icon, live, tabOf, go, toast, act, topbar, offlineBanner, promptCard, canAct });
 
   // ---------------------------------------------------------------- the queue
 
@@ -337,54 +341,6 @@
   }
 
   // ---------------------------------------------------------------- this phone
-
-  async function pushState() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return { can: false, why: ios && !standalone() ? 'Add Shellby to your Home Screen first: iPhones only send notifications to apps there.' : 'This browser can’t get notifications.' };
-    if (Notification.permission === 'denied') return { can: false, why: 'Notifications are turned off for Shellby. Turn them on in your phone’s Settings.' };
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      return { can: true, on: !!sub && Notification.permission === 'granted' };
-    } catch {
-      return { can: false, why: 'Notifications aren’t ready yet. Try again in a moment.' };
-    }
-  }
-
-  async function turnOnPush() {
-    const key = S.view?.pushKey;
-    if (!key) { toast("Your PC can't send notifications yet.", { tone: 'warn' }); return false; }
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { toast('Notifications stay off. You can turn them on later here.', { ms: 4000 }); return false; }
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
-      if (sub && !sameKey(sub, key)) { await sub.unsubscribe(); sub = null; }
-      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: L.keyBytes(key) });
-      const r = await act('push', { subscription: sub.toJSON() });
-      if (r.ok) toast("Notifications are on. He'll buzz when he needs you.", { tone: 'ok' });
-      return r.ok;
-    } catch (err) {
-      toast(`Notifications didn't turn on: ${err.message || err}`, { tone: 'warn', ms: 5000 });
-      return false;
-    }
-  }
-
-  function sameKey(sub, key) {
-    try {
-      const have = new Uint8Array(sub.options?.applicationServerKey || []);
-      const want = L.keyBytes(key);
-      return have.length === want.length && have.every((b, i) => b === want[i]);
-    } catch { return true; }
-  }
-
-  async function turnOffPush() {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      await sub?.unsubscribe();
-    } catch { /* already gone */ }
-    await act('push', { subscription: null }, { okText: 'Notifications are off.' });
-  }
 
   function phoneScreen() {
     const scroll = h('div', { class: 'scroll' });
@@ -467,7 +423,8 @@
         onclick: () => { picked = p.key; N.store.set('shellby.pocket.project', picked); drawChips(); },
       })));
       drawChips();
-      const mode = modePicker(N.store.get(MODE_KEY));
+      // The desk's mode, as a task typed there gets; the last pick here when the PC doesn't say.
+      const mode = modePicker(S.view?.mode || N.store.get(MODE_KEY));
       mode.addEventListener('change', () => N.store.set(MODE_KEY, mode.value));
       const lim = S.view?.limits;
       // Pictures for the task: each goes to the PC as it's picked, and the task names them.
@@ -659,9 +616,10 @@
     else if (r.name === 'routines') show(More.routinesScreen());
     else if (r.name === 'notes') show(More.notesScreen());
     else if (r.name === 'wardrobe') show(More.wardrobeScreen());
+    else if (r.name === 'history') show(More.historyScreen());
     else if (r.name === 'files') show(More.filesScreen(r.tabId, r.path));
     else if (r.name === 'find') show(Find.findScreen());
-    else if (r.name === 'history') show(Find.historyScreen());
+    else if (r.name === 'project-history') show(Find.historyScreen());
     else if (r.name === 'past') show(Find.pastScreen(r.id));
     else if (r.name === 'branch') show(Find.branchScreen(r.tabId));
     else if (r.name === 'phone') show(phoneScreen());
@@ -760,11 +718,31 @@
 
   window.addEventListener('hashchange', mount);
 
-  // A notification tapped while the app was open: the service worker says where to go.
+  // A notification tapped: the service worker says where to go, and keeps it a
+  // moment too, for a message the phone dropped or an iPhone that opened the start page.
+  const TAPPED = 'shellby-pocket-tapped';
+  async function takeTap() {
+    try {
+      const kept = await window.caches.open(TAPPED);
+      const res = await kept.match('/__tapped');
+      if (!res) return null;
+      await kept.delete('/__tapped');
+      return L.tappedHash(await res.json(), Date.now());
+    } catch { return null; }
+  }
+  async function followTap(hash) {
+    const to = hash || await takeTap();
+    // Already there (the message and the kept copy both came, or it opened at that URL): no redraw.
+    if (to && N.token() && location.hash !== to) go(to);
+  }
   navigator.serviceWorker?.addEventListener('message', e => {
-    const to = e.data?.open;
-    if (typeof to === 'string' && to.startsWith('/#/')) go(to.slice(1));
+    const to = typeof e.data?.open === 'string' ? L.tappedHash({ url: e.data.open, at: Date.now() }, Date.now()) : null;
+    if (!to) return;
+    takeTap(); // the kept copy is spent, so coming back later doesn't go there again
+    followTap(to);
   });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') followTap(); });
+  window.addEventListener('pageshow', e => { if (e.persisted) followTap(); });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { /* no offline shell, still works */ });
 
@@ -774,5 +752,5 @@
     try { const r = await fetch('/skin.json', { cache: 'no-cache' }); if (r.ok) D.setSkin(await r.json()); } catch { /* a plain crab will do */ }
   }
 
-  firstSkin().finally(() => { if (N.token()) start(); else show(pairScreen()); });
+  firstSkin().finally(() => { if (N.token()) start(); else show(pairScreen()); followTap(); });
 })();

@@ -5,6 +5,12 @@
    live from the PC. */
 'use strict';
 const CACHE = 'shellby-pocket-3';
+// A tap, kept for a moment: a phone can drop a message to an app it has
+// paused, and an iPhone may open the start page instead of the URL. The app
+// looks here whenever it comes to the front (pocket.js).
+const TAPPED = 'shellby-pocket-tapped';
+const TAPPED_KEY = '/__tapped';
+
 const SHELL = [
   '/', '/pocket.css', '/pocket.js', '/pocket-logic.js', '/pocket-stream.js', '/pocket-draw.js', '/pocket-tab.js', '/pocket-more.js', '/pocket-bits.js', '/pocket-find.js', '/pocket-phone.js', '/manifest.webmanifest',
   '/shared/sprite.js', '/shared/tokens.css', '/shared/fonts.css',
@@ -17,7 +23,7 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== TAPPED).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
 // The PC first, so an update to Shellby reaches the phone; the copy here when it's asleep.
@@ -62,15 +68,22 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = e.notification.data?.url || '/';
+  const asked = e.notification.data?.url;
+  const url = typeof asked === 'string' && asked.startsWith('/') && new URL(asked, self.location.origin).origin === self.location.origin ? asked : '/';
   e.waitUntil((async () => {
-    const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const app = open.find(c => new URL(c.url).origin === self.location.origin);
+    try {
+      const kept = await caches.open(TAPPED);
+      await kept.put(TAPPED_KEY, new Response(JSON.stringify({ url, at: Date.now() }), { headers: { 'content-type': 'application/json' } }));
+    } catch { /* the message below still goes */ }
+    const open = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .filter(c => new URL(c.url).origin === self.location.origin);
+    // The one you were looking at, if there's more than one.
+    const app = open.find(c => c.focused) || open.find(c => c.visibilityState === 'visible') || open[0];
     if (app) {
-      await app.focus();
+      try { await app.focus(); } catch { /* not allowed here: the app still finds the tap when it shows */ }
       app.postMessage({ open: url });
       return;
     }
-    await self.clients.openWindow(url);
+    try { await self.clients.openWindow(url); } catch { /* nothing to open */ }
   })());
 });

@@ -4,7 +4,7 @@
 //
 //   find        past conversations by their title, your first prompt and Claude's
 //               last word, ranked as the desk's own search ranks (history/search.js)
-//   history     one project's conversations, newest first; the phone groups them by day
+//   project-history  one project's conversations, newest first; the phone groups them by day
 //   past        a closed conversation's transcript, read-only (an open one is live, #/tab)
 //   away        what happened since the phone last looked: finished, waiting on you, spent
 //   checks      a conversation's last checks, command by command, with the tail of what failed
@@ -317,7 +317,7 @@ function createPocketReview(d, { projects, prompts, reply, maxText = 4000, now =
     return ok({ ...head, patch: patch.slice(0, MAX_PATCH), truncated: !!p.truncated || patch.length > MAX_PATCH });
   }
 
-  const actions = { find, history, past, away, checks: checksOf, 'checks-fix': fixChecks, branch };
+  const actions = { find, 'project-history': history, past, away, checks: checksOf, 'checks-fix': fixChecks, branch };
   return { actions };
 }
 

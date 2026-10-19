@@ -66,6 +66,7 @@
           focusCard(),
           link('#/routines', 'queue', 'Routines and workflows', 'Run one now, or turn a routine on or off.'),
           link('#/notes', 'note', 'Notes', 'Jot an idea down for a project.'),
+          link('#/history', 'history', 'History', 'Pick up a conversation you closed.'),
           link('#/wardrobe', 'shirt', 'Wardrobe', 'Dress him up, or give him a pat.'));
       }
       update();
@@ -213,6 +214,27 @@
       });
     }
 
-    return { moreScreen, routinesScreen, notesScreen, wardrobeScreen, filesScreen, loaded };
+    // ---------------------------------------------------------------- history
+
+    // Conversations closed on the PC or here: one opens again, where it left off.
+    function historyScreen() {
+      return loaded({
+        title: 'History', name: 'history',
+        draw: d => {
+          if (!d.list.length) return [h('div', { class: 'empty' }, h('p', { text: 'Nothing closed yet. Conversations you close show up here.' }))];
+          return d.list.map(e => h('button', {
+            type: 'button', class: 'card link-card history-row',
+            onclick: async () => {
+              const r = await act('resume', { id: e.id });
+              if (r.ok) go(`#/tab/${encodeURIComponent(r.tabId)}`);
+            },
+          },
+          h('span', { class: 'card-t' }, h('span', { class: 'card-title', text: e.title }), icon('chevron')),
+          h('span', { class: 'card-m', text: [e.folder, e.at ? L.ago(e.at) : ''].filter(Boolean).join(' · ') })));
+        },
+      });
+    }
+
+    return { moreScreen, routinesScreen, notesScreen, wardrobeScreen, filesScreen, historyScreen, loaded };
   };
 })(window);

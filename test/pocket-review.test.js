@@ -82,19 +82,19 @@ test('a project’s history is its own conversations, newest first, a page at a 
     entry('elsewhere', { cwd: OTHER, updatedAt: NOW }),
   ];
   const { x } = reviewFor({ entries, tabs: [tab('new')] });
-  const r = x.actions.history({ project: PROJECT });
+  const r = x.actions['project-history']({ project: PROJECT });
   assert.deepEqual(r.entries.map(e => e.id), ['new', 'copy', 'old']);
   assert.equal(r.entries[0].open, true);
   assert.equal(r.entries[1].copy, true);
   assert.equal(r.entries[1].folder, 'shellby');
   assert.ok(!JSON.stringify(r).includes('AppData'));
-  assert.deepEqual(x.actions.history({}).entries.map(e => e.id), ['elsewhere', 'new', 'copy', 'old']);
-  assert.equal(x.actions.history({ project: 'C:\\nope' }).ok, false);
+  assert.deepEqual(x.actions['project-history']({}).entries.map(e => e.id), ['elsewhere', 'new', 'copy', 'old']);
+  assert.equal(x.actions['project-history']({ project: 'C:\\nope' }).ok, false);
   const many = Array.from({ length: 35 }, (_, i) => entry(`e${i}`, { updatedAt: NOW - i }));
-  const paged = reviewFor({ entries: many }).x.actions.history({ project: PROJECT });
+  const paged = reviewFor({ entries: many }).x.actions['project-history']({ project: PROJECT });
   assert.equal(paged.entries.length, 30);
   assert.equal(paged.more, true);
-  assert.equal(reviewFor({ entries: many }).x.actions.history({ project: PROJECT, page: 1 }).entries.length, 5);
+  assert.equal(reviewFor({ entries: many }).x.actions['project-history']({ project: PROJECT, page: 1 }).entries.length, 5);
 });
 
 test('a closed conversation comes back read-only as phone items; an open one is sent to its live screen', () => {

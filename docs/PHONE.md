@@ -46,7 +46,7 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **See everything** is on a conversation in its own copy: the whole branch against the commit it started from, which is exactly what Bring it home would bring, uncommitted work included. It's the same viewer as See the changes, file by file, and no bigger than a phone can read.
 
-**Search**, on the beach, looks through every conversation in History across every project: titles, what you asked for first and what Claude said he'd done, ranked as the desk's own search ranks. **History** beside it lists one project's conversations (or all of them) by day, newest first, thirty at a time. Tapping a closed conversation opens it read-only, from History; an open one opens live.
+**Search**, on the beach, looks through every conversation in History across every project: titles, what you asked for first and what Claude said he'd done, ranked as the desk's own search ranks. **History** beside it lists one project's conversations (or all of them) by day, newest first, thirty at a time. Tapping a closed conversation shows it read-only, with **Open it again** to carry on (as **More → History** does); an open one opens live.
 
 **While you were away.** Open the app after ten minutes or more and a card at the top of the beach says what happened meanwhile: "2 finished, 1 hit a problem, 1 waiting on you, 4% of your window spent", with a tap to each. It's worked out from the time the phone last looked, which it keeps to itself, and it goes when you dismiss it.
 

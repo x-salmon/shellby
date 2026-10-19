@@ -5,7 +5,7 @@
 // On, it serves 127.0.0.1:47916 and Tailscale serves that on your tailnet.
 //
 // The phone does what the desk does, through the same functions, under the
-// phone's rules (docs/PHONE.md): nothing deskOnlyReason flags, tasks in the mode
+// phone's rules (docs/PHONE.md): nothing deskOnlyReason flags but a Deny, tasks in the mode
 // picked at most 10 an hour and 3 at once, and nothing at all from a phone set
 // to read-only at the desk (pocket/rights.js).
 const { app, safeStorage } = require('electron');
@@ -28,7 +28,9 @@ const { createPocketExtras } = require('../pocket/extras');
 const { createPocketNotices } = require('../pocket/notices');
 const { createPocketReview } = require('../pocket/review');
 const quiet = require('../pocket/quiet');
+const { createPocketDevices } = require('../pocket/devices');
 const rights = require('../pocket/rights');
+const { createPocketTalk } = require('../pocket/talk');
 
 const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
 const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
@@ -78,7 +80,7 @@ function wirePocket(d) {
   const review = createPocketReview(d, {
     projects: () => projects(),
     prompts: () => waitingPrompts(),
-    reply: body => reply(body),
+    reply: body => talk.actions.reply(body), // talk is made further down; called only later
     maxText: pt.MAX_TEXT,
   });
 
@@ -206,7 +208,10 @@ function wirePocket(d) {
   function extras() {
     const out = {};
     for (const [id, tab] of d.manager?.tabs || []) {
-      out[id] = { mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !tab.inTerminal, checksRunning: d.checksRunning?.(id) || null };
+      out[id] = {
+        mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !tab.inTerminal,
+        effort: tab.session.effort || '', checksRunning: d.checksRunning?.(id) || null,
+      };
     }
     return out;
   }
@@ -247,6 +252,7 @@ function wirePocket(d) {
       limits: { perHour: pt.MAX_STARTS_PER_HOUR, atOnce: pt.MAX_OPEN, open: openCount() },
       pushKey: vapid?.publicKey || null,
       allow: settings().allow,
+      mode: d.config.get('mode'),
       focus: d.focusState?.() || null,
       guard: guard.settingsOf(k => d.config.get(k)),
       quiet: settings().quiet,
@@ -333,7 +339,6 @@ function wirePocket(d) {
     switch (name) {
       case 'answer': return answer(body);
       case 'task': return task(body);
-      case 'reply': return reply(body);
       case 'stop': return stop(body);
       case 'undo': return undo(body);
       case 'home': return home(body);
@@ -343,6 +348,7 @@ function wirePocket(d) {
       case 'forget': return forget(device.id, 'You forgot this phone.');
       case 'quiet': return setQuiet(body);
       default: {
+        if (Object.prototype.hasOwnProperty.call(talk.actions, name)) return talk.actions[name](body || {});
         const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
         const fn = own(extra.actions, name) ? extra.actions[name] : own(review.actions, name) ? review.actions[name] : null;
         if (!fn) return no('unknown');
@@ -358,8 +364,9 @@ function wirePocket(d) {
     const pendingItem = d.manager.tabs.get(tabId)?.session.pending.get(requestId);
     if (!pendingItem) return no('That was already answered.');
     if (decision === 'always' && (!pendingItem.suggestions?.length || ['AskUserQuestion', 'ExitPlanMode'].includes(pendingItem.toolName))) return no('That one has no always-allow. Allow it this once.');
+    // A no is always safe, so a desk-only prompt can still be turned down here: otherwise it holds the conversation until you're back.
     const why = appDeskOnlyReason(pendingItem);
-    if (why) return no(why);
+    if (why && decision !== 'deny') return no(why);
     const extra = answerExtra(pendingItem, { decision, answers, notes, read, mayWrite: mayWriteTo(d.manager.tabs.get(tabId)) });
     if (extra.error) return no(extra.error);
     d.log.info(`pocket: ${decision} for ${pendingItem.toolName}`);
@@ -433,27 +440,27 @@ function wirePocket(d) {
     d.history.update(tabId, { fromPhone: true });
   }
 
-  function reply({ tabId, text, mode }) {
-    const tab = str(tabId) && d.manager.tabs.get(tabId);
-    if (!tab) return no('That conversation has closed.');
-    if (tab.inTerminal) return no("It's in a terminal on your PC now. Reply there.");
-    const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
-    if (!said) return no('Type something first.');
-    if (/^[/!]/.test(said)) return no('Commands that start with / or ! only run at the desk.');
-    if (d.manager.isBusy(tabId)) return no("He's still on it. Wait for this turn to end, or stop it.");
-    // The mode the phone picked, or Ask: kept when the desk's mode changes.
-    const runAs = modeOf(mode);
-    if (modeBlocked(runAs)) return no(AUTONOMOUS_OFF);
-    if (tab.session.mode !== runAs) tab.session.setMode(runAs);
-    tab.pinnedMode = true;
-    const r = d.sendToTab(tabId, said, []);
-    if (!r.ok) return no(r.error);
-    // The desk's panel draws a message it didn't send itself from this.
-    d.send(d.tabWindow?.(tabId) || d.panel, 'tab:sent', { tabId, item: r.item });
-    lastTurn.set(tabId, r.turnId);
-    d.pocket?.item(tabId, view.phoneItem(r.item));
-    return ok({ turnId: r.turnId });
-  }
+  // A reply, one into the desk's queue mid-turn, and the conversation's name,
+  // effort, closing and History (pocket/talk.js).
+  const talk = createPocketTalk(d, {
+    modeOf,
+    blocked: m => (modeBlocked(m) ? AUTONOMOUS_OFF : ''),
+    takePhotos: ids => extra.takePhotos(ids),
+    // Mid-turn: into the desk's own queue (tab-queue.js), which hands it to Claude
+    // at his next step or sends it once the turn ends. The panel keeps the only
+    // list main steers from, so it goes there rather than in beside it.
+    queue(tabId, text, files) {
+      const win = d.tabWindow?.(tabId) || d.panel;
+      d.send(win, 'tab:queue', { tabId, text, ...(files.length ? { files } : {}) });
+    },
+    onSent(tabId, r) {
+      // The desk's panel draws a message it didn't send itself from this.
+      d.send(d.tabWindow?.(tabId) || d.panel, 'tab:sent', { tabId, item: r.item });
+      lastTurn.set(tabId, r.turnId);
+      d.pocket?.item(tabId, view.phoneItem(r.item));
+    },
+    pushView: () => pushView(),
+  });
 
   function stop({ tabId }) {
     if (!str(tabId) || !d.manager.isBusy(tabId)) return no("He's not working on that one.");
@@ -510,41 +517,12 @@ function wirePocket(d) {
     return ok();
   }
 
-  function setPush(device, { subscription }) {
-    if (subscription == null) {
-      saveDevices(devices().map(dv => (dv.id === device.id ? { ...dv, push: null } : dv)));
-      d.send(d.panel, 'pocket', pocketViewNow());
-      return ok({ push: false });
-    }
-    if (!vapidKeys()) return no("Windows can't keep the notification key safe on this PC, so notifications are off.");
-    const sub = push.normalizeSubscription(subscription);
-    if (!sub) return no("That browser's push service isn't one Shellby knows.");
-    saveDevices(devices().map(dv => (dv.id === device.id ? { ...dv, push: sub } : dv)));
-    d.send(d.panel, 'pocket', pocketViewNow());
-    return ok({ push: true });
-  }
-
-  // Quiet hours, from the phone or from Settings: the same check at the door (pocket/quiet.js).
-  function setQuiet(patch) {
-    const r = quiet.checkQuiet(patch, settings().quiet);
-    if (r.error) return no(r.error);
-    save({ quiet: r.quiet });
-    lastView = '';
-    pushView();
-    d.send(d.panel, 'pocket', pocketViewNow());
-    return ok({ quiet: r.quiet });
-  }
-
-  // One phone's rights, from Settings. Its streams get the view again, with the new level on it.
-  function setDeviceRights({ id, rights: level }) {
-    const list = pairing.setRights(devices(), typeof id === 'string' ? id : '', level);
-    if (!list) return no('That phone has already gone.');
-    saveDevices(list);
-    d.log.info(`pocket: ${list.find(dv => dv.id === id).name} is ${level === 'readonly' ? 'read-only' : 'full'} now`);
-    lastView = '';
-    pushView();
-    return ok();
-  }
+  // Its push subscription, the quiet hours and a phone's rights (pocket/devices.js).
+  const { setPush, setQuiet, setDeviceRights } = createPocketDevices(d, {
+    devices, saveDevices, settings, save, vapidKeys,
+    changed: () => d.send(d.panel, 'pocket', pocketViewNow()),
+    resend: () => { lastView = ''; pushView(); },
+  });
 
   function forget(deviceId, reason = 'This phone was forgotten.') {
     const list = devices();

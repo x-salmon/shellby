@@ -397,8 +397,18 @@
       const dir = String(hash).endsWith('/') || !rest.length;
       return { name: 'files', tabId: parts[1], path: rest.join('/') + (dir && rest.length ? '/' : '') };
     }
-    if (['queue', 'phone', 'new', 'more', 'routines', 'notes', 'wardrobe', 'find', 'history'].includes(parts[0])) return { name: parts[0] };
+    if (['queue', 'phone', 'new', 'more', 'routines', 'notes', 'wardrobe', 'find', 'history', 'project-history'].includes(parts[0])) return { name: parts[0] };
     return { name: 'beach' };
+  }
+
+  const TAP_FRESH_MS = 2 * 60 * 1000;
+  const TAP_SKEW_MS = 5000;
+
+  /** Where a notification tapped a moment ago goes ('#/…'), as the service worker kept it; null when it's stale or not this app's. */
+  function tappedHash(tap, now) {
+    if (!tap || typeof tap.url !== 'string' || !Number.isFinite(tap.at) || now - tap.at > TAP_FRESH_MS || tap.at - now > TAP_SKEW_MS) return null;
+    if (tap.url === '/') return '#/';
+    return tap.url.startsWith('/#/') ? tap.url.slice(1) : null;
   }
 
   /** An iPhone or iPad's Safari (where only a Home Screen app keeps its storage and gets push). */
@@ -422,7 +432,7 @@
 
   const api = {
     STANDING, ago, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
-    markdown, modeLabel, parsePatch, plural, route, sections, sseParser, tokens,
+    markdown, modeLabel, parsePatch, plural, route, sections, sseParser, tappedHash, tokens,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PocketLogic = api;

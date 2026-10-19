@@ -94,12 +94,25 @@ test('the hash says which screen, and anything odd is the beach', () => {
   assert.deepEqual(L.route('#/past/../x'), { name: 'beach' });
   assert.deepEqual(L.route('#/find'), { name: 'find' });
   assert.deepEqual(L.route('#/history'), { name: 'history' });
+  assert.deepEqual(L.route('#/project-history'), { name: 'project-history' });
   assert.deepEqual(L.route('#/prompt/t1/req-9'), { name: 'prompt', tabId: 't1', requestId: 'req-9' });
   assert.deepEqual(L.route('#/prompt/t1'), { name: 'beach' });
   assert.deepEqual(L.route('#/prompt/t1/a%20b'), { name: 'beach' });
   assert.deepEqual(L.route('#/tab/../../x'), { name: 'beach' });
   assert.deepEqual(L.route('#/tab/%E0%A4%A'), { name: 'beach' });
   assert.deepEqual(L.route(''), { name: 'beach' });
+});
+
+test('a tapped notification leads to its screen only while the tap is fresh', () => {
+  const now = 1_000_000;
+  assert.equal(L.tappedHash({ url: '/#/tab/t1', at: now - 5000 }, now), '#/tab/t1');
+  assert.equal(L.tappedHash({ url: '/', at: now }, now), '#/');
+  assert.equal(L.tappedHash({ url: '/#/tab/t1', at: now - 10 * 60 * 1000 }, now), null);
+  assert.equal(L.tappedHash({ url: 'https://elsewhere.example/#/tab/t1', at: now }, now), null);
+  assert.equal(L.tappedHash({ url: '//elsewhere.example/', at: now }, now), null);
+  assert.equal(L.tappedHash({ url: '/#/tab/t1', at: now + 60 * 1000 }, now), null);
+  assert.equal(L.tappedHash({ url: '/#/tab/t1' }, now), null);
+  assert.equal(L.tappedHash(null, now), null);
 });
 
 test('the beach leads with what needs you, then what’s working, then what’s ready', () => {

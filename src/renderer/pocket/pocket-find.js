@@ -2,7 +2,7 @@
 
      the beach's Search box, and the "While you were away" card
      #/find              past conversations, by title, your first prompt and Claude's summary
-     #/history           one project's conversations, grouped by day, newest first
+     #/project-history           one project's conversations, grouped by day, newest first
      #/past/<id>         a closed conversation, read-only, from History
      #/branch/<id>       a copy's whole branch against where it started
      the checks card on a conversation, with Fix it
@@ -36,7 +36,7 @@
       input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
       return h('div', { class: 'find-row' }, input,
         h('button', { type: 'button', class: 'btn slim', 'aria-label': 'Search', onclick: run }, icon('find')),
-        h('a', { class: 'btn slim ghost', href: '#/history', 'aria-label': 'History' }, icon('clock')));
+        h('a', { class: 'btn slim ghost', href: '#/project-history', 'aria-label': 'History' }, icon('clock')));
     }
 
     /** "While you were away: 2 finished, 1 waiting on you…", with a tap to each, until it's dismissed. */
@@ -127,12 +127,12 @@
       const known = S.view?.projects || [];
       if (project && !known.some(p => p.key === project)) project = '';
       return loaded({
-        title: 'History', active: 'beach', back: '#/', backLabel: 'Beach', name: 'history', body: { project: project || undefined, page: 0 },
+        title: 'History', active: 'beach', back: '#/', backLabel: 'Beach', name: 'project-history', body: { project: project || undefined, page: 0 },
         draw: d => {
           const chips = h('div', { class: 'projects', role: 'radiogroup', 'aria-label': 'Which project' },
             ...[{ key: '', name: 'Everything' }, ...known].map(p => h('button', {
               type: 'button', role: 'radio', 'aria-checked': p.key === project ? 'true' : 'false', class: `proj${p.key === project ? ' on' : ''}`, text: p.name,
-              onclick: () => { N.store.set(HISTORY_KEY, p.key || null); go('#/history'); },
+              onclick: () => { N.store.set(HISTORY_KEY, p.key || null); go('#/project-history'); },
             })));
           const parts = [chips];
           if (!d.entries.length) parts.push(h('div', { class: 'empty' }, h('p', { text: project ? 'Nothing in History for this project yet.' : 'Nothing in History yet.' })));
@@ -150,7 +150,7 @@
 
     function pastScreen(id) {
       return loaded({
-        title: 'From History', active: 'beach', back: '#/history', backLabel: 'History', name: 'past', body: { id },
+        title: 'From History', active: 'beach', back: '#/project-history', backLabel: 'History', name: 'past', body: { id },
         draw: d => {
           // Open on the PC after all: it's live, so that screen has it.
           if (d.open) { setTimeout(() => go(`#/tab/${encodeURIComponent(id)}`), 0); return []; }
@@ -158,7 +158,8 @@
           const head = h('div', { class: 'tab-head' }, h('h2', { class: 'tab-title', text: e.title }),
             h('div', { class: 'chips' }, e.folder ? h('span', { class: 'pill dim', text: e.folder }) : null, outcomePill(e), e.copy ? h('span', { class: 'pill dim', text: 'own copy' }) : null,
               h('span', { class: 'pill dim', text: `${L.dayLabel(e.at)} ${L.clock(e.at)}` })),
-            h('p', { class: 'muted small', text: 'Closed on your PC. Open it there to carry on.' }));
+            h('p', { class: 'muted small', text: 'Closed. Open it again to carry on where it left off.' }),
+            actButton({ label: 'Open it again', cls: 'go', run: async () => { const r = await act('resume', { id }); if (r.ok) go(`#/tab/${encodeURIComponent(r.tabId)}`); } }));
           const nodes = transcript(d.items, { tabId: id, readOnly: true });
           return [head, h('div', { class: 'feed' }, ...(nodes.length ? nodes : [h('p', { class: 'muted pad', text: 'Nothing said yet.' })]))];
         },

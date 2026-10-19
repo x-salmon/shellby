@@ -58,6 +58,7 @@ function phoneTab(t, extra = {}) {
     mode: extra.mode || null,
     fromPhone: !!extra.fromPhone,
     canReply: !!extra.canReply,
+    effort: typeof extra.effort === 'string' ? line(extra.effort, 10) : '',
   };
 }
 
@@ -172,12 +173,12 @@ function phoneHeld(h) {
  *   crab:     { state, work, say, crew: [{ label, type }] }
  *   extras:   tabId -> { mode, fromPhone, canReply, checksRunning }
  *   outlook:  usage/service.js outlookView()
- *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey
+ *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey, mode (the desk's)
  *   rights:   this phone's level (pocket/rights.js): the app hides what it can't use
  *   quiet:    the quiet hours (pocket/quiet.js), shown and set on the Phone screen
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -197,6 +198,7 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     prompts: prompts.slice(0, 20).map(p => phonePrompt(p, titleOf)),
     usage: { ...phoneUsage(lastUsage, outlook, now), ...usageDetail(lastUsage, outlook, guard, now) },
     focus: phoneFocus(focus, now),
+    mode: line(mode, 20) || null, // the desk's mode: where a new task's picker starts
     allow: allow ? { push: !!allow.push, files: !!allow.files } : { push: false, files: false },
     rights: normalizeRights(rights),
     quiet: normalizeQuiet(quiet),

@@ -45,9 +45,11 @@ const ACTIONS = [
   'focus', 'routines', 'routine-run', 'routine-toggle', 'workflow-run', 'notes', 'note-add', 'note-tick',
   'wardrobe', 'wear', 'pet', 'files', 'file',
   // pocket/review.js
-  'find', 'history', 'past', 'away', 'checks', 'checks-fix', 'branch',
+  'find', 'project-history', 'past', 'away', 'checks', 'checks-fix', 'branch',
   // pocket/quiet.js
   'quiet',
+  // pocket/talk.js
+  'rename', 'effort', 'close', 'history', 'resume',
 ];
 const MAX_UPLOAD = 6 * 1024 * 1024; // a photo for a task, made smaller on the phone first
 const UPLOAD_TYPES = ['image/jpeg', 'image/png'];

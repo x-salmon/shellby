@@ -3,7 +3,7 @@
    the quiet hours card. pocket.js hands in what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketPhone = ({ S, D, h, icon, live, tabOf, go, toast, act, topbar, offlineBanner, promptCard, canAct }) => {
+  root.PocketPhone = ({ S, L, D, h, ios, standalone, icon, live, tabOf, go, toast, act, topbar, offlineBanner, promptCard, canAct }) => {
     // ---------------------------------------------------------------- one prompt, from its notification
 
     // An iPhone puts no buttons on a web app's notification, so a tap opens
@@ -70,6 +70,56 @@
       return box;
     }
 
-    return { promptScreen, quietCard };
+    // ---------------------------------------------------------------- notifications on this phone
+
+    async function pushState() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return { can: false, why: ios && !standalone() ? 'Add Shellby to your Home Screen first: iPhones only send notifications to apps there.' : 'This browser can’t get notifications.' };
+      if (Notification.permission === 'denied') return { can: false, why: 'Notifications are turned off for Shellby. Turn them on in your phone’s Settings.' };
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        return { can: true, on: !!sub && Notification.permission === 'granted' };
+      } catch {
+        return { can: false, why: 'Notifications aren’t ready yet. Try again in a moment.' };
+      }
+    }
+
+    async function turnOnPush() {
+      const key = S.view?.pushKey;
+      if (!key) { toast("Your PC can't send notifications yet.", { tone: 'warn' }); return false; }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { toast('Notifications stay off. You can turn them on later here.', { ms: 4000 }); return false; }
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (sub && !sameKey(sub, key)) { await sub.unsubscribe(); sub = null; }
+        if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: L.keyBytes(key) });
+        const r = await act('push', { subscription: sub.toJSON() });
+        if (r.ok) toast("Notifications are on. He'll buzz when he needs you.", { tone: 'ok' });
+        return r.ok;
+      } catch (err) {
+        toast(`Notifications didn't turn on: ${err.message || err}`, { tone: 'warn', ms: 5000 });
+        return false;
+      }
+    }
+
+    function sameKey(sub, key) {
+      try {
+        const have = new Uint8Array(sub.options?.applicationServerKey || []);
+        const want = L.keyBytes(key);
+        return have.length === want.length && have.every((b, i) => b === want[i]);
+      } catch { return true; }
+    }
+
+    async function turnOffPush() {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        await sub?.unsubscribe();
+      } catch { /* already gone */ }
+      await act('push', { subscription: null }, { okText: 'Notifications are off.' });
+    }
+
+      return { promptScreen, quietCard, pushState, turnOnPush, turnOffPush };
   };
 })(window);
