@@ -43,6 +43,8 @@ const ACTIONS = [
   // pocket/extras.js
   'focus', 'routines', 'routine-run', 'routine-toggle', 'workflow-run', 'notes', 'note-add', 'note-tick',
   'wardrobe', 'wear', 'pet', 'files', 'file',
+  // pocket/review.js
+  'find', 'history', 'past', 'away', 'checks', 'checks-fix', 'branch',
 ];
 const MAX_UPLOAD = 6 * 1024 * 1024; // a photo for a task, made smaller on the phone first
 const UPLOAD_TYPES = ['image/jpeg', 'image/png'];
@@ -79,6 +81,7 @@ function routeTable(srcDir, assetsDir) {
     '/pocket-tab.js': app('pocket-tab.js'),
     '/pocket-more.js': app('pocket-more.js'),
     '/pocket-bits.js': app('pocket-bits.js'),
+    '/pocket-find.js': app('pocket-find.js'),
     '/sw.js': app('sw.js'),
     '/manifest.webmanifest': app('manifest.webmanifest'),
     // He's on the pairing screen before the PC has said which skin he wears.

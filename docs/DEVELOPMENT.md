@@ -509,8 +509,10 @@ src/main/        Electron main process
                    file table, the event stream, the actions, and every check on who's asking), pairing.js (codes and device
                    tokens, kept as hashes), tailscale.js (reading `tailscale status` and `serve status`, serving our port; pure
                    parsing), push.js (Web Push on Node's crypto: RFC 8291 encryption, a VAPID JWT, the push services allowed),
-                   view.js (pure: what the phone is told, and a transcript cut down to phone items); wiring/pocket.js ties it in
-                   and decides what each phone action may do
+                   view.js (pure: what the phone is told, and a transcript cut down to phone items), extras.js (focus, routines,
+                   notes, the wardrobe, files and photos), review.js (search and history from History, a closed conversation
+                   read-only, "while you were away", a conversation's checks with Fix it, and a copy's whole branch against
+                   where it started); wiring/pocket.js ties it in and decides what each phone action may do
   handoff.js       a conversation to a terminal and back (pure): the launch command per shell, ids, folders
   btw.js           /btw side questions: a tool-less -p on a fork of the conversation that saves nothing
   council/         The Council: the advisors, the chair and their schemas (prompts.js), reading the project first and picking who sits with a read-only -p (look.js), quick/debate sittings as tool-less -p calls (run.js), project context (context.js), the last sittings, their outcomes and each advisor's record (store.js)
@@ -655,7 +657,9 @@ src/renderer/    critter + panel UIs (plain HTML/CSS/JS, no framework)
                    (pure, with node:test coverage: the stream, a transcript folded for drawing, markdown as plain runs, a diff,
                    the beach's words) · pocket-stream (the token, the reconnecting stream, the API) · pocket-draw (elements from
                    text only, the crab from shared/sprite.js, a diff) · pocket (the beach, the queue, this phone, pairing, sheets)
-                   · pocket-tab (one conversation and a turn's diff) · sw.js (the offline shell, push and taps on notifications)
+                   · pocket-tab (one conversation and a turn's diff) · pocket-more (focus, routines, notes, the wardrobe, files)
+                   · pocket-find (search, a project's history, a closed conversation, the whole branch, the checks card, the
+                   "while you were away" card) · sw.js (the offline shell, push and taps on notifications)
   dialog/          the themed confirmation window, isolated: the panel can't script it, and main takes an answer only from it
   floor/           the floor beside him (src/main/desktop/floor.js): his pals and footprints; colony-brain.js decides what the pals do (pure)
   note/            a note he hauled onto your screen (src/main/pranks.js); a click crumples it up

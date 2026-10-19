@@ -246,7 +246,12 @@ function wireChecks(d) {
     return { status: r.none ? 'none' : r.declined ? 'declined' : 'cancelled' };
   }
 
-  return { checksOn, afterTurnChecks: afterTurn, runChecksFor: runFor, findProblems, checkTry, gateHome, checkCopy, cancelChecks: cancel, cancelAllChecks: cancelAll };
+  // For anything that shows a run as it stands (the phone, wiring/pocket.js): the
+  // run going now, if any, and the last verdict in full, commands and all.
+  const checksRunning = tabId => { const r = running.get(tabId); return r ? { after: r.after } : null; };
+  const lastVerdict = tabId => verdicts.get(tabId) || null;
+
+  return { checksOn, afterTurnChecks: afterTurn, runChecksFor: runFor, findProblems, checkTry, gateHome, checkCopy, cancelChecks: cancel, cancelAllChecks: cancelAll, checksRunning, lastVerdict };
 }
 
 module.exports = { wireChecks };

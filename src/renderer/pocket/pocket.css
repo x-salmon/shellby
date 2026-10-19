@@ -511,6 +511,39 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
 .usage-row { margin: 10px 0 4px; }
 .usage-row.warn { color: var(--amber); }
 
+/* Search and history, while you were away, checks with Fix it, the whole branch */
+.find-row { display: flex; gap: 8px; align-items: center; }
+.find-row .btn.slim { min-height: 44px; align-self: auto; padding: 0 12px; }
+.find-in { flex: 1; min-width: 0; min-height: 44px; padding: 0 14px; border-radius: 22px; background: var(--reef); border: 1px solid var(--line); font-size: 16px; appearance: none; }
+.find-in:focus { outline: none; border-color: rgba(127, 214, 194, .6); }
+.find-results { display: grid; gap: 10px; }
+.find-more { justify-self: center; }
+.hist-row { cursor: pointer; font: inherit; }
+.snippet { font-size: 13px; color: var(--sand-dim); overflow-wrap: anywhere; padding-left: 10px; border-left: 2px solid var(--line); }
+.snippet.you { border-left-color: var(--coral); }
+.away { border-color: rgba(127, 214, 194, .35); background: linear-gradient(180deg, rgba(127, 214, 194, .08), var(--reef) 60%); }
+.away .card-t .card-title { color: var(--glass); }
+.away-x { width: 36px; height: 36px; margin: -6px -8px -6px 0; border: 0; border-radius: 50%; background: none; color: var(--sand-dim); font-size: 22px; line-height: 1; cursor: pointer; }
+.away-line { margin: 0; font-size: 15px; }
+.away-rows { display: grid; gap: 2px; }
+.away-row { display: flex; gap: 10px; align-items: center; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--sand); text-align: left; cursor: pointer; border-radius: 8px; }
+.away-row:active { background: var(--reef-2); }
+.away-row .tool-g { width: 16px; text-align: center; }
+.away-row .tool-g.err { color: var(--danger); }
+.away-row .tool-g.ask { color: var(--amber); }
+.away-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.checks-card { margin-top: 8px; }
+.checks-card.pass { border-color: rgba(127, 214, 194, .35); }
+.checks-card.pass .tool-g { color: var(--glass); }
+.checks-card.fail, .checks-card.error, .checks-card.timeout { border-color: rgba(255, 122, 92, .4); }
+.checks-card.fail .tool-g, .checks-card.error .tool-g { color: var(--danger); }
+.checks-card.timeout .tool-g { color: var(--amber); }
+.checks-card.running .tool-g { display: inline-block; animation: spin 1.2s steps(8) infinite; color: var(--glass); }
+.checks-body { display: grid; gap: 8px; }
+.check-cmd { display: grid; gap: 6px; }
+.check-cmd .cmd-file { margin: 0; color: #ffc2bb; }
+.cmd.tail { max-height: 180px; font-size: 11.5px; color: var(--sand-dim); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .sheet, .sheet.in { transition: none; }

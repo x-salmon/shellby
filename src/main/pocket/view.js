@@ -49,7 +49,8 @@ function phoneTab(t, extra = {}) {
     outcome: t.outcome || null, unread: !!t.unread,
     copy: t.worktree ? { branch: line(t.worktree.branch, 120), base: line(t.worktree.base, 120) } : null,
     ready,
-    checks: t.checks ? { status: line(t.checks.status, 20), after: line(t.checks.after, 80) } : null,
+    // Its last checks, and whether a run is going now (wiring/checks.js): the phone shows them on the conversation.
+    checks: t.checks || extra.checksRunning ? { status: extra.checksRunning ? 'running' : line(t.checks.status, 20), after: line(extra.checksRunning?.after ?? t.checks?.after, 80) || null } : null,
     todos: t.todos ? { total: t.todos.total || 0, done: t.todos.done || 0, current: line(t.todos.current, 140) || null } : null,
     tokens: num(t.turnTokens),
     planning: !!t.planning,
@@ -168,7 +169,7 @@ function phoneHeld(h) {
  *   tabs:     sessions.js summary
  *   prompts:  waiting prompts, oldest first, each with its tabId
  *   crab:     { state, work, say, crew: [{ label, type }] }
- *   extras:   tabId -> { mode, fromPhone, canReply }
+ *   extras:   tabId -> { mode, fromPhone, canReply, checksRunning }
  *   outlook:  usage/service.js outlookView()
  *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey
  */

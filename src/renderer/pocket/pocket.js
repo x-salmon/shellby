@@ -6,6 +6,7 @@
      #/queue         what's waiting for the usage reset
      #/phone         this phone: notifications, and forgetting it
      #/more …        focus, routines, notes, the wardrobe and files (pocket-more.js)
+     #/find …        search, a project's history, a closed conversation, a whole branch (pocket-find.js)
 
    Everything comes from one stream (pocket-stream.js). Each screen is mounted
    once per visit and told when the view changes, so a half-typed reply or the
@@ -31,6 +32,8 @@
     answering: new Map(),    // requestId -> 'allow' | 'deny' while it's on its way
     outcomes: new Map(),     // tabId -> standing last seen, for the celebration
     celebrate: null,         // { until, title }
+    away: null,              // what happened while the phone was away (pocket-find.js), until dismissed
+    findQuery: '',
     screen: null,
     sheet: null,
     installSkipped: false,
@@ -251,7 +254,7 @@
       el.replaceChild(topbar(), el.firstChild);
       el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
       if (!v) { scroll.replaceChildren(h('div', { class: 'loading' }, D.crab({ px: 4, state: 'working' }), h('p', { text: 'Finding your PC…' }))); return; }
-      const parts = [tide(v)];
+      const parts = [tide(v), Find.awayCard(), Find.searchRow()];
       const prompts = v.prompts || [];
       if (prompts.length) {
         parts.push(h('h3', { class: 'sect asking' }, h('i'), h('span', { text: 'Waiting on you' }), h('b', { text: prompts.length })));
@@ -276,9 +279,11 @@
     return { el, update, title: 'Shellby' };
   }
 
-  // One conversation and what its turns changed live in pocket-tab.js.
-  const { tabScreen, diffScreen } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn });
+  // One conversation and what its turns changed live in pocket-tab.js; the checks card on it comes from pocket-find.js.
+  const { tabScreen, diffScreen, transcript } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, checksCard: (...a) => Find.checksCard(...a) });
   const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet });
+  // Search, history, a closed conversation, the whole branch, and what happened while you were away.
+  const Find = window.PocketFind({ S, L, D, N, h, icon, live, go, act, actButton, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded: More.loaded, transcript, shortPath });
 
   // ---------------------------------------------------------------- the queue
 
@@ -619,7 +624,7 @@
       return;
     }
     if (r.name === 'tab') { show(tabScreen(r.tabId)); stream.watch(r.tabId); return; }
-    stream.watch(r.name === 'diff' ? r.tabId : null);
+    stream.watch(r.name === 'diff' || r.name === 'branch' ? r.tabId : null);
     if (r.name === 'diff') show(diffScreen(r.tabId, r.after));
     else if (r.name === 'queue') show(queueScreen());
     else if (r.name === 'more') show(More.moreScreen());
@@ -627,6 +632,10 @@
     else if (r.name === 'notes') show(More.notesScreen());
     else if (r.name === 'wardrobe') show(More.wardrobeScreen());
     else if (r.name === 'files') show(More.filesScreen(r.tabId, r.path));
+    else if (r.name === 'find') show(Find.findScreen());
+    else if (r.name === 'history') show(Find.historyScreen());
+    else if (r.name === 'past') show(Find.pastScreen(r.id));
+    else if (r.name === 'branch') show(Find.branchScreen(r.tabId));
     else if (r.name === 'phone') show(phoneScreen());
     else show(beachScreen());
   }
@@ -684,6 +693,7 @@
         noticeLandings(prev, v);
         tidyNotifications(v);
         if (S.screen?.update) refresh(); else mount();
+        Find.onView();
       },
       items({ tabId, items }) {
         S.feeds.set(tabId, { items: items || [], loaded: true });

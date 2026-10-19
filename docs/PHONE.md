@@ -42,6 +42,14 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **A conversation** opens live: Claude's reply as he writes it, each tool he runs, his helpers in their own lanes, the to-do list, and what each turn cost. **Stop** ends a turn. When a turn changed files, **See the changes** shows the diff file by file, wrapped to fit, and **Undo turn** and **Bring it home** do what they do at the desk, with the same checks gate and a confirmation on the phone first.
 
+**Its checks** sit under the title: passed, failed or running, as the desk last ran them. A failed one shows the tail of what each command said, and **Fix it** sends that back to Claude as a reply, in the mode you pick. It follows the reply's rules: not while he's working, not while a prompt is waiting, and not for a conversation that's gone to a terminal.
+
+**See everything** is on a conversation in its own copy: the whole branch against the commit it started from, which is exactly what Bring it home would bring, uncommitted work included. It's the same viewer as See the changes, file by file, and no bigger than a phone can read.
+
+**Search**, on the beach, looks through every conversation in History across every project: titles, what you asked for first and what Claude said he'd done, ranked as the desk's own search ranks. **History** beside it lists one project's conversations (or all of them) by day, newest first, thirty at a time. Tapping a closed conversation opens it read-only, from History; an open one opens live.
+
+**While you were away.** Open the app after ten minutes or more and a card at the top of the beach says what happened meanwhile: "2 finished, 1 hit a problem, 1 waiting on you, 4% of your window spent", with a tap to each. It's worked out from the time the phone last looked, which it keeps to itself, and it goes when you dismiss it.
+
 **New task** starts one in any project Shellby knows: the folder you're working in, the ones open in a conversation, and every one he's seen you work in. Tasks from your phone follow the same rules as [phone tasks over Telegram or ntfy](CONNECTIONS.md#-your-phone):
 
 - They run in the mode you pick (Ask first unless you change it: Smart, Auto-edit, Plan only or Autonomous), in their own copy when the folder is a git repository.

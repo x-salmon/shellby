@@ -89,6 +89,11 @@ test('the hash says which screen, and anything odd is the beach', () => {
   assert.deepEqual(L.route('#/tab/abc-1'), { name: 'tab', tabId: 'abc-1' });
   assert.deepEqual(L.route('#/diff/t1/a1b2'), { name: 'diff', tabId: 't1', after: 'a1b2' });
   assert.deepEqual(L.route('#/queue'), { name: 'queue' });
+  assert.deepEqual(L.route('#/branch/t1'), { name: 'branch', tabId: 't1' });
+  assert.deepEqual(L.route('#/past/abc-1'), { name: 'past', id: 'abc-1' });
+  assert.deepEqual(L.route('#/past/../x'), { name: 'beach' });
+  assert.deepEqual(L.route('#/find'), { name: 'find' });
+  assert.deepEqual(L.route('#/history'), { name: 'history' });
   assert.deepEqual(L.route('#/tab/../../x'), { name: 'beach' });
   assert.deepEqual(L.route('#/tab/%E0%A4%A'), { name: 'beach' });
   assert.deepEqual(L.route(''), { name: 'beach' });
@@ -116,6 +121,21 @@ test('words: durations, tokens, a typed code', () => {
   assert.equal(L.isIos('Mozilla/5.0 (Macintosh)', 5), true);
   assert.equal(L.isIos('Mozilla/5.0 (Linux; Android 15)'), false);
   assert.deepEqual([...L.keyBytes('AQID')], [1, 2, 3]);
+});
+
+test('history groups by the day it was worked on, newest first, and the away card sums itself up', () => {
+  const now = new Date(2026, 9, 19, 12).getTime(); // a Monday
+  const day = 864e5;
+  assert.equal(L.dayLabel(now - 3600e3, now), 'Today');
+  assert.equal(L.dayLabel(now - day, now), 'Yesterday');
+  assert.equal(L.dayLabel(now - 3 * day, now), 'Friday');
+  assert.equal(L.dayLabel(now - 10 * day, now), '9 Oct');
+  assert.equal(L.dayLabel(now - 400 * day, now), '14 Sep 2025');
+  const groups = L.byDay([{ id: 'a', at: now - day }, { id: 'b', at: now - 1000 }, { id: 'c', at: now - day - 3600e3 }], now);
+  assert.deepEqual(groups.map(g => [g.label, g.entries.map(e => e.id)]), [['Today', ['b']], ['Yesterday', ['a', 'c']]]);
+  assert.equal(L.awayLine({ finished: [1, 2], trouble: [], waiting: [1], share: 4.2 }), '2 finished, 1 waiting on you, 4% of your window spent');
+  assert.equal(L.awayLine({ finished: [], trouble: [1], waiting: [], share: 0, tokens: 2300 }), '1 hit a problem, 2.3k tokens spent');
+  assert.equal(L.awayLine({ finished: [], trouble: [], waiting: [], share: 0.4 }), '<1% of your window spent');
 });
 
 const base = { tailscale: { installed: true, state: 'running', dnsName: 'pc.tail.ts.net', https: true }, enabled: true, server: { status: 'listening', connected: 0 }, url: 'https://pc.tail.ts.net/', devices: [], problem: null };

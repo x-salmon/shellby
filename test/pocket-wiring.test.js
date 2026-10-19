@@ -72,7 +72,7 @@ function wired({ tailscale = fakeTailscale(), tabs = [], items = {} } = {}) {
   const d = {
     ROOT, config: fakeConfig(), manager, panel: {}, tailscaleCli: tailscale,
     log: { info() {}, warn() {} },
-    history: { load: id => items[id] || [], update: note('history.update') },
+    history: { load: id => items[id] || [], update: note('history.update'), list: () => [], get: () => null, file: id => path.join(__dirname, 'nowhere', `${id}.jsonl`) },
     send: note('send'), notify: note('notify'), wake() {}, dialogLook: () => ({}), showPanel() {},
     isFolder: () => true, knownProjects: () => [{ key: PROJECT, name: 'shellby' }],
     answerPermission: (...a) => { rec.push(['answerPermission', ...a]); return true; },
@@ -409,6 +409,32 @@ test('bring it home, stop, reviewed and the queue go through the desk’s own co
     assert.equal((await w.d.pocket.onAction(w.device, 'reviewed', { tabId: 't1', after: 'a1' })).ok, true);
     assert.equal((await w.d.pocket.onAction(w.device, 'cancel-held', { id: 'h1' })).ok, true);
     assert.equal((await w.d.pocket.onAction(w.device, 'cancel-held', { id: 'h2' })).ok, false);
+  } finally { stop(w); }
+});
+
+test('looking back from the phone goes through pocket/review.js, and Fix it keeps the reply’s rules', async () => {
+  const modes = [];
+  const t = tabOf('t1', { session: { pending: new Map(), mode: 'ask', cwd: PROJECT, busy: false, setMode(m) { this.mode = m; modes.push(m); } } });
+  const term = tabOf('term', { inTerminal: true });
+  const red = { kind: 'checks', status: 'fail', after: 'a1', commands: [{ cmd: 'npm test', ok: false, failed: ['x'], tail: 'boom' }] };
+  const w = await paired({ tabs: [t, term], items: { t1: [red], term: [red] } });
+  try {
+    const act = (name, body) => w.d.pocket.onAction(w.device, name, body);
+    assert.equal((await act('history', {})).ok, true);
+    assert.equal((await act('checks', { tabId: 't1' })).status, 'fail');
+    assert.match((await act('checks-fix', { tabId: 'term' })).error, /terminal/);
+    t.session.busy = true;
+    assert.match((await act('checks-fix', { tabId: 't1' })).error, /still on it/);
+    t.session.busy = false;
+    const r = await act('checks-fix', { tabId: 't1', mode: 'smart' });
+    assert.equal(r.ok, true);
+    assert.deepEqual(modes, ['smart']);
+    const [[tabId, text]] = w.of('sendToTab');
+    assert.equal(tabId, 't1');
+    assert.match(text, /`npm test` failed: x/);
+    // The checks' state rides the view.
+    w.d.checksRunning = id => (id === 't1' ? { after: 'a1' } : null);
+    assert.deepEqual(w.d.pocket.onOpen(w.device, { tab: null }).view.tabs.find(x => x.id === 't1').checks, { status: 'running', after: 'a1' });
   } finally { stop(w); }
 });
 
