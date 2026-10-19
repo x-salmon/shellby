@@ -40,7 +40,9 @@ function oversized(t, { declared }) {
       host: '127.0.0.1', port: t.port(), path: '/v1/metrics', method: 'POST',
       headers: { authorization: `Bearer ${t.token()}`, 'content-type': 'application/json', ...(declared ? { 'content-length': size } : {}) },
     }, res => { res.resume(); resolve(res.statusCode); req.destroy(); });
-    req.on('error', e => resolve(/ECONNRESET|EPIPE|ECONNABORTED/.test(e.code) ? 'cut off' : e.message));
+    // Windows names the cut differently from run to run (ECONNRESET, EPIPE, a
+    // write ECANCELED on CI), so any of them counts. Refused means no receiver at all.
+    req.on('error', e => resolve(e.code === 'ECONNREFUSED' ? e.message : 'cut off'));
     const chunk = Buffer.alloc(64 * 1024, 0x20);
     let sent = 0;
     const more = () => {
