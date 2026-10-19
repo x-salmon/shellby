@@ -241,6 +241,7 @@ function wirePocket(d) {
       limits: { perHour: pt.MAX_STARTS_PER_HOUR, atOnce: pt.MAX_OPEN, open: openCount() },
       pushKey: vapid?.publicKey || null,
       allow: settings().allow,
+      mode: d.config.get('mode'),
       focus: d.focusState?.() || null,
       guard: guard.settingsOf(k => d.config.get(k)),
       now: Date.now(),
