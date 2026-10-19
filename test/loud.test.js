@@ -92,3 +92,13 @@ test('quietSavings: shortened runs against the same command run in full', () => 
   assert.equal(loud.quietSavings(loud.tallyLoud(new Map(), [{ key: 'git log', chars: 9 }])), null);
   assert.equal(t.get('npm test').runs, 1, 'shortened runs stay out of the loud list');
 });
+
+test('MCP calls tally by tool name, in a list of their own', () => {
+  const call = JSON.stringify({ message: { content: [{ type: 'tool_use', id: 'm1', name: 'mcp__github__list_issues', input: { repo: 'x' } }] } });
+  assert.deepEqual(loud.shellCallsIn(call), [{ id: 'm1', key: 'mcp__github__list_issues', mcp: true }]);
+  const big = { chars: loud.LOUD_TOKENS * 4 * 2 };
+  let t = loud.tallyLoud(new Map(), [{ key: 'mcp__github__list_issues', ...big }, { key: 'npm test', ...big }]);
+  t = loud.tallyLoud(t, [{ key: 'mcp__github__list_issues', ...big }, { key: 'npm test', ...big }]);
+  assert.deepEqual(loud.loudest(t).map(r => r.key), ['npm test']);
+  assert.deepEqual(loud.loudest(t, { mcp: true }).map(r => r.key), ['mcp__github__list_issues']);
+});

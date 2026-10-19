@@ -344,6 +344,25 @@
         h('p', { class: 'tool-desc', text: `ran ${r.runs}× in ${r.sessions} conversations, ${tok(r.total)} in all` })));
   }
 
+  // MCP tools whose results fill the context (main's usage/loud.js, keyed by tool name).
+  const MCP_ASK = rows => [
+    "These MCP tools put the most into Claude Code's context in this project (counted from its transcripts on this PC). Whatever a tool returns stays in the conversation and is sent again with every message after it:",
+    ...rows.map(r => `- ${r.key}: about ${r.tokens} tokens a call, ${r.runs} calls in ${r.sessions} conversations`),
+    '',
+    'Look at how each is used here and suggest how Claude could get what it needs with less coming back: arguments that narrow or page the results (fewer fields, a smaller page, a filter), a cheaper tool or CLI for the same job, or a line in CLAUDE.md saying how to call them. Do not edit anything. For each suggestion, say what to change and roughly how many tokens a call it saves.',
+  ].join('\n');
+
+  const toolName = key => key.replace(/^mcp__/, '').replace(/__/, ' · ');
+
+  function mcpLoudRow(r) {
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' },
+          h('code', { text: toolName(r.key), title: r.key }),
+          h('span', { class: 'src-pill', title: 'What one call puts in the conversation, on average', text: `${tok(r.tokens)} a call` })),
+        h('p', { class: 'tool-desc', text: `called ${r.runs}× in ${r.sessions} conversations, ${tok(r.total)} in all` })));
+  }
+
   // What the quiet-output hook saved (main's usage/loud.js quietSavings).
   function quietRow(hot) {
     const q = hot?.quieted;
@@ -434,6 +453,11 @@
         onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: LOUD_ASK(rep.hot.loud) }); } }, 'Ask Claude'),
       h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'A ready-made hook that keeps the end of test runs and shortens plain git logs. You see it and confirm it before it is added.',
         onclick: () => SB.toolboxHooks.openRecipe(rep.quietRecipe || 'quiet-output') }, 'Shorten with a hook')) : null;
+    const mcpLoud = (rep.hot?.loudMcp || []).filter(r => match(r.key));
+    const mcpLoudLabel = mcpLoud.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
+      h('span', { text: `MCP tools whose results fill the context here (last ${rep.hot.days} days)` }),
+      h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
+        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: MCP_ASK(rep.hot.loudMcp) }); } }, 'Ask Claude')) : null;
     const hooks = (rep.hot?.hooks || []).filter(r => match(r.name));
     const hooksLabel = hooks.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
       h('span', { text: `Hooks that add to the conversation (last ${rep.hot.days} days)` }),
@@ -453,6 +477,7 @@
       hotLabel, ...hot.map(hotRow),
       loudLabel, ...noisy.map(loudRow),
       quietRow(rep.hot),
+      mcpLoudLabel, ...mcpLoud.map(mcpLoudRow),
       branches.length ? label('What each branch cost here (last 7 days)') : null, ...branches.map(branchRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),
     ].filter(Boolean);

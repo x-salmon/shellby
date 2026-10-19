@@ -171,7 +171,7 @@ async function readTranscript(file) {
  * The hottest files in the project at cwd over the last LOOKBACK_MS, and its
  * loudest commands and the hooks that add the most: { files: [{ rel, reads,
  * edits, sessions, tokens }], loud: [{ key, runs, sessions, tokens, total }],
- * quieted (what the quiet-output hook saved: { runs, tokens } or null),
+ * loudMcp (the same for MCP tools, keyed by tool name), quieted (what the quiet-output hook saved: { runs, tokens } or null),
  * hooks: [{ event, name, runs, sessions, tokens, perConversation }], hookStart
  * (what start hooks add, all of them), sessions, days }.
  * A subagent's transcript counts with the conversation that ran it.
@@ -208,7 +208,7 @@ async function scanHotFiles({ configDir, cwd, now = Date.now(), maxBytes = MAX_B
     try { return fs.statSync(full).size; } catch { return null; }
   };
   const sessions = new Set([...bySession.keys(), ...outputsBySession.keys(), ...hooksBySession.keys()]).size;
-  return { files: hottest(tally, sizeOf), loud: loud.loudest(noisy), quieted: loud.quietSavings(noisy), hooks: hookctx.heaviestHooks(added), hookStart: hookctx.startTokens(added), sessions, days: Math.round(LOOKBACK_MS / (24 * 60 * 60 * 1000)) };
+  return { files: hottest(tally, sizeOf), loud: loud.loudest(noisy), loudMcp: loud.loudest(noisy, { mcp: true }), quieted: loud.quietSavings(noisy), hooks: hookctx.heaviestHooks(added), hookStart: hookctx.startTokens(added), sessions, days: Math.round(LOOKBACK_MS / (24 * 60 * 60 * 1000)) };
 }
 
 module.exports = { scanHotFiles, folderOf, isProjectFolder, relativeTo, rootIn, touchesIn, sessionOf, tallyTranscript, hottest, MIN_SESSIONS };

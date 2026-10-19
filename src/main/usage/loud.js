@@ -14,7 +14,8 @@ const TOP = 8;
 const CHARS_PER_TOKEN = 4;
 const KEY_CHARS = 80;
 const SHELLS = new Set(['Bash', 'PowerShell']);
-const SHELL_TOOL = /"name":"(?:Bash|PowerShell)"/;
+const SHELL_TOOL = /"name":"(?:Bash|PowerShell|mcp__)/;
+const MCP_NAME = /^mcp__[\w.-]{1,120}$/;
 
 // Programs whose first word after them says what ran ("git log", "cargo test").
 const SUBCOMMANDS = new Set(['npm', 'pnpm', 'yarn', 'bun', 'npx', 'git', 'gh', 'glab', 'cargo', 'go', 'dotnet', 'docker', 'kubectl', 'pip', 'uv', 'poetry', 'make', 'deno', 'mvn', 'gradle']);
@@ -68,7 +69,7 @@ function commandKey(command) {
   return key && !/[\u0000-\u001f\u007f]/.test(key) ? key : null;
 }
 
-/** The shell calls in one transcript line: [{ id, key }], or null. */
+/** The shell and MCP calls in one transcript line: [{ id, key, mcp? }], or null. An MCP call's key is its tool's name. */
 function shellCallsIn(line) {
   if (typeof line !== 'string' || !line.includes('"tool_use"') || !SHELL_TOOL.test(line)) return null;
   let ev;
@@ -77,7 +78,9 @@ function shellCallsIn(line) {
   if (!Array.isArray(content)) return null;
   const out = [];
   for (const b of content) {
-    if (b?.type !== 'tool_use' || !SHELLS.has(b.name) || typeof b.id !== 'string') continue;
+    if (b?.type !== 'tool_use' || typeof b.id !== 'string') continue;
+    if (typeof b.name === 'string' && MCP_NAME.test(b.name)) { out.push({ id: b.id, key: b.name, mcp: true }); continue; }
+    if (!SHELLS.has(b.name)) continue;
     const key = commandKey(b.input?.command);
     if (key) out.push({ id: b.id, key });
   }
@@ -166,13 +169,15 @@ function quietSavings(tally) {
 }
 
 /**
- * The commands worth a word: in MIN_SESSIONS or more conversations, with
- * LOUD_TOKENS or more a run on average, the most output in all first.
- * -> [{ key, runs, sessions, tokens (a run, on average), total }]
+ * The commands (or, with mcp, the MCP tools) worth a word: in MIN_SESSIONS
+ * or more conversations, with LOUD_TOKENS or more a run on average, the most
+ * output in all first. -> [{ key, runs, sessions, tokens (a run, on average), total }]
  * @param {Map<string, { key: string, runs: number, chars: number, sessions: number }>} tally
+ * @param {{ mcp?: boolean }} [opts]
  */
-function loudest(tally) {
+function loudest(tally, { mcp = false } = {}) {
   return [...tally.values()]
+    .filter(t => t.key.startsWith('mcp__') === mcp)
     .map(t => ({ ...t, tokens: Math.round(t.chars / Math.max(1, t.runs) / CHARS_PER_TOKEN), total: Math.round(t.chars / CHARS_PER_TOKEN) }))
     .filter(t => t.sessions >= MIN_SESSIONS && t.tokens >= LOUD_TOKENS)
     .sort((a, b) => (b.total - a.total) || a.key.localeCompare(b.key))
