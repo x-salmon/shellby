@@ -17,6 +17,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { scratchTmp } = require('./lib/scratch-tmp');
 
 const CI_MARK = /^\/\/ ci: \S/;
 
@@ -191,13 +192,15 @@ const run = (name, attempt) => {
   const script = path.join(__dirname, `${name}.js`);
   console.log(`\n${'='.repeat(70)}\n  ${name}${attempt > 1 ? `  (attempt ${attempt})` : ''}\n${'='.repeat(70)}`);
   const started = Date.now();
-  const env = { ...process.env, ...freePortEnv(), SHELLBY_E2E: '1' }; // SHELLBY_E2E: see src/main/test-desktop.js
+  const tmp = scratchTmp('shellby-e2e-');
+  const env = { ...process.env, ...freePortEnv(), ...tmp.env, SHELLBY_E2E: '1' }; // SHELLBY_E2E: see src/main/test-desktop.js
   const r = spawnSync(process.execPath, [script], { stdio: 'inherit', timeout: TIMEOUT_MS, env });
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   const ok = !r.error && r.status === 0;
   console.log(`\n--- ${name}: ${ok ? 'PASS' : 'FAIL'} in ${secs}s`);
   const left = reap(r.pid, started);
   if (left) console.log(`--- ${name} left ${left} process${left === 1 ? '' : 'es'} running; stopped them`);
+  tmp.remove(); // after the reap: a leftover Electron holds files in it
   return { ok, secs, why: r.error ? r.error.message : r.status === null ? `killed (${r.signal})` : `exit ${r.status}` };
 };
 
