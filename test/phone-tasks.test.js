@@ -110,6 +110,7 @@ test('passphrases are long, readable, and compared whole', () => {
   const a = pt.newPassphrase();
   assert.match(a, pt.PASSPHRASE);
   assert.notEqual(a, pt.newPassphrase());
+  assert.equal(pt.newPassphrase(max => max - 1), '9999-9999-9999-9999');
   assert.equal(pt.samePassphrase(a, a), true);
   assert.equal(pt.samePassphrase(a, a.toUpperCase()), false);
   assert.equal(pt.samePassphrase('', ''), false);

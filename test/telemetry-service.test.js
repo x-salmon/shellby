@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 const { createTelemetry } = require('../src/main/telemetry-service');
@@ -26,6 +27,35 @@ const EXPORT = JSON.stringify({ resourceMetrics: [{ scopeMetrics: [{ metrics: [
 const post = (t, { auth = `Bearer ${t.token()}`, body = EXPORT, url = '/v1/metrics', type = 'application/json', extra = {} } = {}) =>
   fetch(`http://127.0.0.1:${t.port()}${url}`, { method: 'POST', headers: { authorization: auth, 'content-type': type, ...extra }, body });
 
+// An upload past the limit. The receiver answers 413 and cuts the connection off
+// rather than read the rest, and Windows drops unread data when a connection is
+// reset, so the 413 often never reaches the sender (fetch threw on CI). Either
+// way it's refused: resolves to the status, or to 'cut off' on a reset.
+// declared: say the size up front (refused from the header); otherwise it's
+// streamed without one and refused once it grows past the limit.
+function oversized(t, { declared }) {
+  const size = 5 * 1024 * 1024;
+  return new Promise(resolve => {
+    const req = http.request({
+      host: '127.0.0.1', port: t.port(), path: '/v1/metrics', method: 'POST',
+      headers: { authorization: `Bearer ${t.token()}`, 'content-type': 'application/json', ...(declared ? { 'content-length': size } : {}) },
+    }, res => { res.resume(); resolve(res.statusCode); req.destroy(); });
+    // Windows names the cut differently from run to run (ECONNRESET, EPIPE, a
+    // write ECANCELED on CI), so any of them counts. Refused means no receiver at all.
+    req.on('error', e => resolve(e.code === 'ECONNREFUSED' ? e.message : 'cut off'));
+    const chunk = Buffer.alloc(64 * 1024, 0x20);
+    let sent = 0;
+    const more = () => {
+      while (sent < size && !req.destroyed) {
+        sent += chunk.length;
+        if (!req.write(chunk)) return req.once('drain', more);
+      }
+      if (!req.destroyed) req.end();
+    };
+    more();
+  });
+}
+
 test('takes an export with the token, and the summary counts it', async () => {
   const t = await started();
   try {
@@ -43,8 +73,13 @@ test('turns away a wrong token, another path and a body that is not JSON', async
     assert.equal((await post(t, { type: 'application/x-protobuf' })).status, 415);
     assert.equal((await post(t, { body: '{not json' })).status, 400);
     assert.equal((await post(t, { extra: { origin: 'https://evil.example' } })).status, 403, 'a browser');
-    assert.equal((await post(t, { body: ' '.repeat(5 * 1024 * 1024) })).status, 413);
+    const refused = [413, 'cut off'];
+    const big = await oversized(t, { declared: true });
+    assert.ok(refused.includes(big), `too big by its own account: refused (got ${big})`);
+    const streamed = await oversized(t, { declared: false });
+    assert.ok(refused.includes(streamed), `too big as it streams in: refused (got ${streamed})`);
     assert.equal(t.summary(), null, 'nothing counted');
+    assert.equal((await post(t)).status, 200, 'and it still takes a real export after');
   } finally { t.stop(); }
 });
 

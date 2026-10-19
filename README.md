@@ -109,7 +109,8 @@ Already use Claude Code on this PC? The tool screens are on the bar from the sta
 - **Learns from your corrections:** correct Claude the same way twice and he offers to add it to `CLAUDE.md` as a rule.
 
 **See what it costs**
-- Every turn shows its tokens and its share of your 5-hour window, and **Lean Shell** shows what each new conversation carries before you type.
+- Every turn shows its tokens and its share of your 5-hour window, and **Lean Shell** shows what each new conversation carries before you type, plus the files, commands and hooks that keep filling it. [What it covers](docs/CLAUDE-CODE.md#lean-shell-more-out-of-your-plan)
+- **Spend less on helpers and small asks:** run the helpers Claude sends out on Sonnet, start a quick question on Sonnet, and get a word before a cold cache or a pile of screenshots makes a message expensive.
 - **Keep warm while you're away:** press the mug in the tab strip before lunch. Each conversation of 200k tokens or more gets one tiny message just before its cache's hour runs out, so your first message back reads the conversation from the cache instead of writing it all again. It turns itself off when you're back, or after 3 hours.
 
 **Work your way**
@@ -213,6 +214,12 @@ The rest is there if you want it, and none of it needs Claude or an account:
 <tr>
 <td width="33%" valign="top">
 
+**🪶 A leaner Claude** · 0.91<br>
+<sub>The Lean tab now shows the files, commands and hooks that fill your conversations, why a cache missed, and Claude Code's own count of lines and commits. Helpers can run on Sonnet, and every release is code-signed. [See](CHANGELOG.md#0910-a-leaner-claude-and-a-signed-shellby)</sub>
+
+</td>
+<td width="33%" valign="top">
+
 **🎨 The Crab Painter** · 0.90<br>
 <sub>A 🎨 Paint tab on his screen: paint him pixel by pixel and watch him do every mood and pose in your colours. Hats, effects and tank decor too, and one click sends what you paint to the community gallery. [See](CHANGELOG.md#0900-a-crab-you-paint-and-shellby-on-your-phone)</sub>
 
@@ -223,14 +230,14 @@ The rest is there if you want it, and none of it needs Claude or an account:
 <sub>Your conversations live on your phone, served by your own PC over your Tailscale network. Answer Allow or Deny, start a task, read a diff and Bring it home, with no account of ours and no server in the middle. [How](docs/PHONE.md)</sub>
 
 </td>
+</tr>
+<tr>
 <td width="33%" valign="top">
 
 **⚡ Ultracode** · 0.86<br>
 <sub>The Ultracode chip under the box lets Claude send out a whole crew of agents in the background, with a card for every run and its agents walking out as helper crabs. [See](CHANGELOG.md#0860-ultracode-a-guided-first-run-and-a-steadier-client)</sub>
 
 </td>
-</tr>
-<tr>
 <td width="33%" valign="top">
 
 **📂 All files, beside the chat** · 0.87<br>
@@ -243,16 +250,10 @@ The rest is there if you want it, and none of it needs Claude or an account:
 <sub>Everything going on in one place on his screen, and nearly every level from 20 to 99 unlocks something: shells, tank pieces, effects and perks. [See](CHANGELOG.md#0850-the-logbook-levels-to-99-and-shellby-wrapped)</sub>
 
 </td>
-<td width="33%" valign="top">
-
-**🪸 Reef health** · 0.85<br>
-<sub>Press <b>Watch this reef</b> on a project's page and he keeps an eye on lint, coverage, CI, flaky tests and more. Every new best grows the project's coral, and a worse day never takes anything away. [How](docs/REEF.md)</sub>
-
-</td>
 </tr>
 </table>
 
-<sub>And before that: Claude Code installed for you, a Council that reads your project first, Shellby Wrapped, background sessions, combining tries, the file viewer, the trail, marks past 99, twelve panes, code in colour, the Outline and Problems, <code>/debug</code>, routines that follow you, the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
+<sub>And before that: reef health, Claude Code installed for you, a Council that reads your project first, Shellby Wrapped, background sessions, combining tries, the file viewer, the trail, marks past 99, twelve panes, code in colour, the Outline and Problems, <code>/debug</code>, routines that follow you, the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
 
 ## Install
 

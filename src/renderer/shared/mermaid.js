@@ -19,11 +19,13 @@
   const defaultMeasure = s => Math.ceil(String(s).length * charWidth);
 
   // A label's text: quotes off, <br> as a new line, other tags and entities out.
+  // Plain text only: mermaid-draw.js sets it with textContent. &amp; goes last,
+  // so "&amp;lt;" reads "&lt;" rather than being decoded twice into "<".
   function cleanLabel(s) {
     let t = String(s ?? '').trim();
     if (/^".*"$/s.test(t)) t = t.slice(1, -1);
     t = t.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[a-z][^>]*>/gi, '')
-      .replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Math.min(+n, 0x10ffff)))
+      .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Math.min(+n, 0x10ffff))).replace(/&amp;/g, '&')
       .replace(/^`(.*)`$/s, '$1').replace(/\*\*(.+?)\*\*/g, '$1');
     return t.split('\n').map(l => l.trim()).join('\n').slice(0, 300);
   }

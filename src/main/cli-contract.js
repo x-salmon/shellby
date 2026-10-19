@@ -171,7 +171,7 @@ function badgeFor(report, previous = null) {
  */
 function summaryOf(report) {
   const mark = c => (c.skipped ? 'skipped' : c.ok ? 'ok' : '**FAIL**');
-  const rows = (report?.checks || []).map(c => `| ${mark(c)} | ${c.name} | ${String(c.detail ?? '').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ').slice(0, 300)} |`);
+  const rows = (report?.checks || []).map(c => `| ${mark(c)} | ${c.name} | ${String(c.detail ?? '').replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ').slice(0, 300)} |`);
   const unknown = report?.unknown || [];
   return [
     `**Claude Code ${report?.version || '(version unknown)'}**: ${report?.ok ? 'works with Shellby' : 'something Shellby relies on changed'}.`,

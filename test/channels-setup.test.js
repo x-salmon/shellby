@@ -15,8 +15,11 @@ test('randomTopic is a valid ntfy topic, hard to guess and easy to read', () => 
   assert.equal(new Set(Array.from({ length: 200 }, () => randomTopic())).size, 200);
 });
 
-test('randomTopic maps every byte into the alphabet', () => {
-  assert.equal(randomTopic(Buffer.from([0, 255, 30, 31])), 'shellby-ah9a');
+test('randomTopic draws each character evenly from the whole alphabet', () => {
+  const seen = [];
+  assert.equal(randomTopic(max => { seen.push(max); return 0; }), 'shellby-aaaaaaaaaaaaaa');
+  assert.deepEqual(new Set(seen), new Set([31]), 'asks for one of 31 characters each time, not a byte');
+  assert.equal(randomTopic(max => max - 1), 'shellby-99999999999999');
 });
 
 test('the view carries a subscribe link for ntfy only', () => {

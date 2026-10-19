@@ -14,7 +14,7 @@
 // Pure: the wiring (wiring/phone-tasks.js) does the starting and the talking.
 const crypto = require('crypto');
 const path = require('path');
-const { ntfyUrl, REPLY_PROVIDERS } = require('./index');
+const { ntfyUrl, randomChars, REPLY_PROVIDERS } = require('./index');
 
 const MAX_TEXT = 4000;                 // a task, not a document
 const MAX_AGE_MS = 10 * 60 * 1000;     // older than this, it was meant for a PC that was off
@@ -89,8 +89,8 @@ function ntfyTasksUrl(target) {
 }
 
 /** A passphrase nobody will guess (~79 bits), easy to read off a screen: "k7mp-2qax-...". */
-function newPassphrase(bytes = crypto.randomBytes(PASS_GROUPS * PASS_GROUP_LEN)) {
-  const chars = [...bytes].map(b => PASS_ALPHABET[b % PASS_ALPHABET.length]).join('');
+function newPassphrase(randomInt = crypto.randomInt) {
+  const chars = randomChars(PASS_GROUPS * PASS_GROUP_LEN, PASS_ALPHABET, randomInt);
   return /** @type {RegExpMatchArray} */ (chars.match(new RegExp(`.{${PASS_GROUP_LEN}}`, 'g'))).join('-');
 }
 

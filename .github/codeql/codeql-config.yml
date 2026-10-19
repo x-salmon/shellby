@@ -1,0 +1,18 @@
+name: Shellby CodeQL config
+
+# Tests and dev scripts never ship. The e2e scripts drive the app over CDP
+# with dynamic method calls on purpose, which drowns the real findings.
+paths-ignore:
+  - test/**
+  - scripts/**
+
+query-filters:
+  # Check-then-use on files in the user's own profile (Shellby's data folder,
+  # ~/.claude, their repos). Anyone who can swap those files between the check
+  # and the read can already change them outright.
+  - exclude:
+      id: js/file-system-race
+  # Shellby runs on Windows only, where os.tmpdir() is the user's own
+  # %LOCALAPPDATA%\Temp, not a folder shared with other accounts.
+  - exclude:
+      id: js/insecure-temporary-file

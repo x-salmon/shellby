@@ -247,9 +247,17 @@ const escapeMarkdown = s => String(s).replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, c => 
 // Lowercase letters and digits that can't be misread off a phone (no 0/o, 1/l/i).
 const TOPIC_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 
+/**
+ * `count` characters drawn evenly from `alphabet`. crypto.randomInt rejects the
+ * values a plain `byte % length` would favour (31 letters don't divide 256).
+ */
+function randomChars(count, alphabet, randomInt = crypto.randomInt) {
+  return Array.from({ length: count }, () => alphabet[randomInt(alphabet.length)]).join('');
+}
+
 /** An ntfy.sh topic nobody will guess (~69 bits): knowing the topic is all it takes to read it. */
-function randomTopic(bytes = crypto.randomBytes(14)) {
-  return `shellby-${[...bytes].map(b => TOPIC_ALPHABET[b % TOPIC_ALPHABET.length]).join('')}`;
+function randomTopic(randomInt = crypto.randomInt) {
+  return `shellby-${randomChars(14, TOPIC_ALPHABET, randomInt)}`;
 }
 
 /**
@@ -596,7 +604,7 @@ module.exports = {
   PROVIDERS, PROVIDER_NAMES, EVENTS, EVENT_NAMES, PRIORITIES, CHANNEL_DEFAULTS,
   normalizeChannelSettings, checkSettings, shouldSend, composeMessage,
   buildRequest, deliver, view, ntfyUrl, ntfyReplyUrl, ntfyActions, telegramMarkup, localOrHttps, duration,
-  randomTopic, chatFromUpdates, findTelegramChat, REPLY_PROVIDERS, replyProblem,
+  randomChars, randomTopic, chatFromUpdates, findTelegramChat, REPLY_PROVIDERS, replyProblem,
   DeliveryLog, plainDeliveryError, FAILS_BEFORE_TOAST, RETRY_CAP_MS,
   discordWebhook, cardUpload, cardPostError,
 };

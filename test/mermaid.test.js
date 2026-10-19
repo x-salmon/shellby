@@ -49,6 +49,11 @@ test('subgraphs, quoted labels, <br> and comments', () => {
   assert.equal(g.nodes[0].label, 'Say "hi"\ntwice');
 });
 
+test('an escaped entity in a label is decoded once, not twice', () => {
+  const g = M.parse('flowchart TD\n a["&amp;lt;b&amp;gt; &amp;amp; &lt;i&gt;"] --> b');
+  assert.equal(g.nodes[0].label, '&lt;b&gt; &amp; <i>');
+});
+
 test('a state diagram: start and end dots, labelled transitions', () => {
   const s = M.layout(M.parse('stateDiagram-v2\n [*] --> Idle\n Idle --> Busy : start\n Busy --> Idle : done\n Busy --> [*]'));
   assert.deepEqual(s.nodes.map(n => n.shape), ['start', 'round', 'round', 'end']);
