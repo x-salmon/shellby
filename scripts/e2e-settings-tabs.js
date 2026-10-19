@@ -120,13 +120,19 @@ const TABS = Object.fromEntries([...read('settings.html').matchAll(/role="tab" i
 
     // a jump by name (the tray's update item) switches tab and scrolls there
     await panel.ev("document.getElementById('setTab-shellby').click(); SB.setView('chat'); SB.jumpToSettingByName('GitHub')");
-    await wait(1200);
-    check(await selected(panel) === 'connect', 'jumping to GitHub opens the Connections tab');
-    check(await panel.ev(`(() => {
+    // With motion on, the jump scrolls smoothly on the next frame, and a window
+    // kept off-screen for e2e gets few frames: it took 2.7 s to land once, past a
+    // fixed wait. So wait for it to arrive at the top (block: 'start'), up to 8 s.
+    const githubAt = () => panel.ev(`(() => {
       const r = document.getElementById('githubGroup').getBoundingClientRect();
       const v = document.getElementById('settingsView').getBoundingClientRect();
-      return r.top >= v.top - 1 && r.top < v.bottom;
-    })()`), 'and GitHub is on screen');
+      return { group: Math.round(r.top), view: [Math.round(v.top), Math.round(v.bottom)] };
+    })()`);
+    const atTop = g => g.group >= g.view[0] - 1 && g.group < g.view[0] + (g.view[1] - g.view[0]) / 3;
+    let github = await githubAt();
+    for (let i = 0; i < 40 && !atTop(github); i++) { await wait(200); github = await githubAt(); }
+    check(await selected(panel) === 'connect', 'jumping to GitHub opens the Connections tab');
+    check(atTop(github), `and GitHub scrolls to the top of the view (its top at ${github.group}, the view ${github.view.join('–')})`);
 
     // the palette still finds every section, wherever it lives
     const pal = await panel.ev("(SB.openPalette(), [...document.querySelectorAll('#paletteList .pal-title')].map(e => e.textContent))");
