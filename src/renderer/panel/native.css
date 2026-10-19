@@ -214,9 +214,18 @@
 @media (prefers-reduced-motion: reduce) { .goal-pin, .next-chip { animation: none; } }
 
 /* Ultracode (ultracode.js): the chip under the box, its line above it, and a run's card in the feed */
-.ultra-chip { margin-right: auto; padding: 0 7px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--sand-faint); font: inherit; font-size: var(--fs-11); line-height: 18px; cursor: pointer; }
-.ultra-chip:hover, .ultra-chip:focus-visible { color: var(--sand); border-color: var(--sand-faint); }
-.ultra-chip.on { color: var(--abyss); background: var(--amber); border-color: var(--amber); }
+.ultra-chip {
+  display: inline-flex; align-items: center; gap: 5px; flex: none; margin: -2px auto -2px 0;
+  height: 22px; padding: 0 9px 0 7px; border: 1px solid var(--line); border-radius: 99px;
+  background: var(--ink); color: var(--sand-dim); font: inherit; font-size: var(--fs-11); font-weight: 600; cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s;
+}
+.ultra-chip svg { width: 8px; height: 11px; flex: none; opacity: .55; transition: opacity .12s, filter .12s; }
+.ultra-chip:hover { border-color: var(--glass); color: var(--sand); }
+.ultra-chip:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
+.ultra-chip.on { border-color: color-mix(in srgb, var(--amber) 70%, transparent); background: color-mix(in srgb, var(--amber) 14%, var(--ink)); color: var(--sand); }
+.ultra-chip.on svg { color: var(--amber); opacity: 1; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--amber) 60%, transparent)); }
+.ultra-chip.on:hover { border-color: var(--amber); }
 .ultra-note { margin: 0 0 8px; padding: 4px 10px; border-radius: var(--r-sm); background: var(--reef); border: 1px solid var(--line); border-left: 2px solid var(--amber); font-size: var(--fs-12); color: var(--sand-dim); }
 .ultra-card { margin: 6px 0 14px 16px; padding: 8px 11px 9px; border: 1px solid var(--line-soft); border-left: 2px solid var(--amber); border-radius: var(--r-sm); background: var(--ink); font-size: var(--fs-12); color: var(--sand-dim); }
 .ultra-card.status-completed { border-left-color: var(--glass); }

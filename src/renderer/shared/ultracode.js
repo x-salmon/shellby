@@ -7,6 +7,9 @@
   const KEYWORD = 'ultracode';
   // Claude Code matches it as a word: not inside another word, a path or a flag.
   const WORD = /(^|[^\w/\\.?-])ultracode(?![\w-])/i;
+  const EVERY_WORD = new RegExp(WORD.source.replace('ultracode', '(ultra)(code)'), 'gi');
+  // An invisible word joiner: "ultra" and "code" read as one word to Claude, but not to the keyword match.
+  const JOINER = String.fromCharCode(0x2060);
 
   // What weights (spend.js weightOf) are in dollars: Haiku's rate of 1 is $1 per
   // million input tokens.
@@ -29,6 +32,9 @@
     if (!t || hasKeyword(t)) return t;
     return `${t}\n\n${KEYWORD}`;
   }
+
+  /** The message as sent with Ultracode off: the word kept, but no longer the keyword. */
+  const withoutKeyword = text => (typeof text === 'string' ? text.replace(EVERY_WORD, `$1$2${JOINER}$3`) : '');
 
   const rateOf = model => (RATES.find(([re]) => re.test(model || '')) || [null, DEFAULT_RATE])[1];
 
@@ -65,7 +71,7 @@
     return cost.exact ? money(cost.usd) : `at least ${money(cost.usd)}`;
   }
 
-  const api = { KEYWORD, hasKeyword, withKeyword, rateOf, floorUsd, weightOfTokens, expect, money, costText, USD_PER_WEIGHT, CHEAPEST_SHARE };
+  const api = { KEYWORD, hasKeyword, withKeyword, withoutKeyword, rateOf, floorUsd, weightOfTokens, expect, money, costText, USD_PER_WEIGHT, CHEAPEST_SHARE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyUltracode = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -54,8 +54,11 @@ No real run was made: one costs many agents' worth of tokens.
 - **The usage meters** get the run's tokens weighted as input, until real
   usage for it arrives; from then on that's what counts. What was estimated
   before it stays counted, so such a run can count a little twice.
-- **The word typed by hand** opts a turn in too, chip or no chip, so it asks
-  first the same way. A `/command` or `!` command never gets the word added.
+- **The chip is the only switch.** Claude Code would act on the word typed in
+  a message too, so with the chip off Shellby puts an invisible word joiner
+  (U+2060) between "ultra" and "code": the message reads the same and talking
+  about Ultracode starts no run. A `/command` or `!` command is sent as typed
+  and never gets the word added.
 - **Phases** only show once an agent in them has started: `meta.phases` is in
   the script, which Shellby doesn't parse.
 - **Resume** isn't offered. A run lives inside its Claude Code process, so it

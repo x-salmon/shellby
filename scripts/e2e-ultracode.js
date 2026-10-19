@@ -82,6 +82,15 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev("SB.$('ultraChip').click()");
     check(await ev("SB.$('ultraChip').getAttribute('aria-pressed') === 'true' && !SB.$('ultraNote').hidden"), 'on, it says so');
     check(/many agents/.test(await ev("SB.$('ultraNote').textContent")), 'the warning says it can use many agents and tokens');
+    await ev("SB.$('ultraChip').click()");
+    check(await ev("SB.$('ultraChip').getAttribute('aria-pressed') === 'false' && SB.$('ultraNote').hidden"), 'off again, the warning goes');
+    // The send waits on the confirm window, so a message in the feed means none was asked.
+    await type('Is ultracode worth it?');
+    check(await until("[...SB.activeTab().el.querySelectorAll('.msg.user')].some(e => /Is ultra\\W?code worth it\\?$/.test(e.textContent.trim()))"), 'off, the word typed in a message sends at once, with no ask');
+    check(!(await targets()).some(x => x.url.endsWith('dialog.html')), 'and no confirm window');
+    check(await until('!SB.activeTab().busy'), 'and starts no run');
+    check(await ev("SB.activeTab().el.querySelectorAll('.ultra-card').length === 0"), 'no run card either');
+    await ev("SB.$('ultraChip').click()");
 
     // 2. The ask before the first one.
     await type('Audit the repo');

@@ -27,6 +27,17 @@ test('the keyword is a word, not part of a path, a flag or another word', () => 
   assert.equal(words.hasKeyword(null), false);
 });
 
+test('with Ultracode off, the word typed stays in the message but is no longer the keyword', () => {
+  const joiner = String.fromCharCode(0x2060);
+  const sent = words.withoutKeyword('Make the ultracode button nicer. Ultracode, ultracode!');
+  assert.equal(words.hasKeyword(sent), false);
+  assert.equal(sent, `Make the ultra${joiner}code button nicer. Ultra${joiner}code, ultra${joiner}code!`);
+  assert.equal(sent.split(joiner).join(''), 'Make the ultracode button nicer. Ultracode, ultracode!', 'reads the same');
+  assert.equal(words.withoutKeyword('ultracode'), `ultra${joiner}code`, 'at the very start too');
+  assert.equal(words.withoutKeyword('see docs/ultracode.md and ultracoder'), 'see docs/ultracode.md and ultracoder', 'what was never the keyword is left alone');
+  assert.equal(words.withoutKeyword(null), '');
+});
+
 test('only a local_workflow task is a run; later events are known by the task id', () => {
   const s = U.create();
   assert.equal(U.isRun({ kind: 'task', taskId: 'a1', taskType: 'local_agent' }, s), false);

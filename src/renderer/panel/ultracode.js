@@ -36,11 +36,12 @@
   });
 
   // -> the words to send, or null when you said no in the confirm window.
-  // The word typed with the chip off asks too: Claude Code acts on it all the same.
+  // The chip is the only switch: with it off, the word typed in a message is
+  // made into one Claude Code doesn't act on, so talking about it starts no run.
   SB.ultraWords = async (tab, text) => {
     // A /command or a ! command takes no word on the end: it would become its argument.
     if (/^[/!]/.test(text)) return text;
-    if (!tab.ultracode && !U.hasKeyword(text)) return text;
+    if (!tab.ultracode) return U.withoutKeyword(text);
     if (!tab.ultracodeOk) {
       // A second Enter while the confirm window is up would ask twice.
       if (tab.ultracodeAsking) return null;
@@ -53,7 +54,7 @@
       }
       tab.ultracodeOk = true;
     }
-    return tab.ultracode ? U.withKeyword(text) : text;
+    return U.withKeyword(text);
   };
 
   // ------------------------------------------------------------ the card
