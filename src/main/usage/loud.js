@@ -25,6 +25,7 @@ const INTERPRETERS = new Set(['node', 'python', 'python3', 'py', 'pwsh', 'powers
 const INLINE = new Set(['-e', '-c', '-p', '--eval', '--print', '-command', '-encodedcommand']);
 
 const LEADING = [
+  /^set\s+-o\s+pipefail\s*;\s*/i,                            // the quiet-output hook's rewrite (hooks/recipes.js)
   /^cd\s+("[^"]*"|'[^']*'|\S+)\s*(&&|;)\s*/i,                  // cd somewhere && …
   /^(set-location|push-location|pushd)\s+("[^"]*"|'[^']*'|\S+)\s*(&&|;)\s*/i,
   /^\$env:\w+\s*=\s*("[^"]*"|'[^']*'|\S+)\s*;\s*/i,            // $env:X='1'; …
@@ -112,19 +113,56 @@ function resultsIn(line, pending) {
   return out.length ? out : null;
 }
 
+// What the quiet-output hook (hooks/recipes.js) prints when it shortens a command.
+const QUIETED = ['2>&1 | tail -n 60', 'git log --oneline -n 30'];
+
+/**
+ * Did the quiet-output hook shorten a command in this transcript line? Its
+ * run is recorded between the call and its result, so the call still waiting
+ * for its result is the one it shortened.
+ */
+function rewroteIn(line) {
+  if (typeof line !== 'string' || !line.includes('"hook_success"') || !line.includes('updatedInput')) return false;
+  let ev;
+  try { ev = JSON.parse(line); } catch { return false; }
+  const out = ev?.attachment?.stdout;
+  return ev?.attachment?.hookEvent === 'PreToolUse' && typeof out === 'string' && out.includes('"updatedInput"') && QUIETED.some(q => out.includes(q));
+}
+
+const charsOf = chars => (Number.isFinite(chars) && chars > 0 ? chars : 0);
+
 /**
  * Add one conversation's shell results to the tally (Map key -> { key, runs,
- * chars, sessions }). Returns a new tally.
+ * chars, sessions, quietRuns, quietChars }). A run the hook shortened
+ * (quiet) counts apart, for what it saved. Returns a new tally.
  */
 function tallyLoud(tally, outputs) {
   const next = new Map(tally);
   const seen = new Set();
-  for (const { key, chars } of outputs) {
-    const t = next.get(key) || { key, runs: 0, chars: 0, sessions: 0 };
-    next.set(key, { ...t, runs: t.runs + 1, chars: t.chars + (Number.isFinite(chars) && chars > 0 ? chars : 0), sessions: t.sessions + (seen.has(key) ? 0 : 1) });
+  for (const { key, chars, quiet } of outputs) {
+    const t = next.get(key) || { key, runs: 0, chars: 0, sessions: 0, quietRuns: 0, quietChars: 0 };
+    next.set(key, quiet
+      ? { ...t, quietRuns: (t.quietRuns || 0) + 1, quietChars: (t.quietChars || 0) + charsOf(chars) }
+      : { ...t, runs: t.runs + 1, chars: t.chars + charsOf(chars), sessions: t.sessions + (seen.has(key) ? 0 : 1) });
     seen.add(key);
   }
   return next;
+}
+
+/**
+ * What the quiet-output hook saved: { runs, tokens }, or null when it hasn't
+ * run. A shortened run saved what that command's full runs put in, on average,
+ * less what it did put in; a command never seen in full adds to runs only.
+ * @param {Map<string, { runs: number, chars: number, quietRuns?: number, quietChars?: number }>} tally
+ */
+function quietSavings(tally) {
+  let runs = 0, chars = 0;
+  for (const t of tally.values()) {
+    if (!t.quietRuns) continue;
+    runs += t.quietRuns;
+    if (t.runs) chars += t.quietRuns * Math.max(0, t.chars / t.runs - t.quietChars / t.quietRuns);
+  }
+  return runs ? { runs, tokens: Math.round(chars / CHARS_PER_TOKEN) } : null;
 }
 
 /**
@@ -142,4 +180,4 @@ function loudest(tally) {
     .map(({ key, runs, sessions, tokens, total }) => ({ key, runs, sessions, tokens, total }));
 }
 
-module.exports = { commandKey, shellCallsIn, resultsIn, textChars, tallyLoud, loudest, LOUD_TOKENS, MIN_SESSIONS };
+module.exports = { commandKey, shellCallsIn, resultsIn, rewroteIn, textChars, tallyLoud, quietSavings, loudest, LOUD_TOKENS, MIN_SESSIONS };

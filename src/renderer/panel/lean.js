@@ -344,6 +344,17 @@
         h('p', { class: 'tool-desc', text: `ran ${r.runs}× in ${r.sessions} conversations, ${tok(r.total)} in all` })));
   }
 
+  // What the quiet-output hook saved (main's usage/loud.js quietSavings).
+  function quietRow(hot) {
+    const q = hot?.quieted;
+    if (!q?.runs) return null;
+    const saved = q.tokens ? `, about ${tok(q.tokens)} kept out of the conversation` : '';
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' }, h('code', { text: 'Keep long command output short' }), h('span', { class: 'src-pill', text: 'hook' })),
+        h('p', { class: 'tool-desc', title: 'Each shortened run, against what the same command put in when it ran in full', text: `shortened ${q.runs} run${q.runs === 1 ? '' : 's'} in the last ${hot.days} days${saved}` })));
+  }
+
   // ------------------------------------------------------------ hooks that add to the conversation
 
   // When each kind of hook adds what it prints (main's usage/hookctx.js).
@@ -441,6 +452,7 @@
       hooksLabel, ...hooks.map(hookRow),
       hotLabel, ...hot.map(hotRow),
       loudLabel, ...noisy.map(loudRow),
+      quietRow(rep.hot),
       branches.length ? label('What each branch cost here (last 7 days)') : null, ...branches.map(branchRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),
     ].filter(Boolean);
