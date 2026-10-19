@@ -149,6 +149,7 @@ function headBranch(dir) {
         const m = /^gitdir:\s*(.+)$/m.exec(fs.readFileSync(dotgit, 'utf8'));
         if (!m) return null;
         gitDir = path.resolve(at, m[1].trim());
+        if (!okDir(gitDir)) return null; // the file is the repo's to write: never a network share
       }
       const ref = /^ref:\s*refs\/heads\/(.+)$/m.exec(fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8'));
       return ref ? ref[1].trim().slice(0, 200) : null;

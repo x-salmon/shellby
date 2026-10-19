@@ -154,11 +154,11 @@ test('Keep long command output short: shortens test runs and plain git logs, lea
     assert.equal(res.code, 0, input.command);
     return res.stdout.trim() ? JSON.parse(res.stdout).hookSpecificOutput.updatedInput : null;
   };
-  assert.deepEqual(await rewritten({ command: 'npm test' }), { command: 'npm test 2>&1 | tail -n 60' });
-  assert.deepEqual(await rewritten({ command: 'npm run e2e:ci -- queue', timeout: 600000 }), { command: 'npm run e2e:ci -- queue 2>&1 | tail -n 60', timeout: 600000 });
+  assert.deepEqual(await rewritten({ command: 'npm test' }), { command: 'set -o pipefail; npm test 2>&1 | tail -n 60' });
+  assert.deepEqual(await rewritten({ command: 'npm run e2e:ci -- queue', timeout: 600000 }), { command: 'set -o pipefail; npm run e2e:ci -- queue 2>&1 | tail -n 60', timeout: 600000 });
   assert.deepEqual(await rewritten({ command: 'git log src/a.js' }), { command: 'git log --oneline -n 30 src/a.js' });
-  assert.deepEqual(await rewritten({ command: 'pytest -k "name with space"' }), { command: 'pytest -k "name with space" 2>&1 | tail -n 60' });
-  assert.deepEqual(await rewritten({ command: 'npm test -- C:\\proj\\a.test.js', description: 'says "command": here' }), { command: 'npm test -- C:\\proj\\a.test.js 2>&1 | tail -n 60' });
+  assert.deepEqual(await rewritten({ command: 'pytest -k "name with space"' }), { command: 'set -o pipefail; pytest -k "name with space" 2>&1 | tail -n 60' });
+  assert.deepEqual(await rewritten({ command: 'npm test -- C:\\proj\\a.test.js', description: 'says "command": here' }), { command: 'set -o pipefail; npm test -- C:\\proj\\a.test.js 2>&1 | tail -n 60' });
   for (const command of ['git log --oneline', 'git log -5', 'npm test | tail -5', 'npm test > out.txt', 'git status', 'npm test && git push', 'cd a; npm test']) {
     assert.equal(await rewritten({ command }), null, command);
   }
