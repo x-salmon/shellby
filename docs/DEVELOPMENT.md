@@ -512,7 +512,10 @@ src/main/        Electron main process
                    view.js (pure: what the phone is told, and a transcript cut down to phone items), extras.js (focus, routines,
                    notes, the wardrobe, files and photos), review.js (search and history from History, a closed conversation
                    read-only, "while you were away", a conversation's checks with Fix it, and a copy's whole branch against
-                   where it started); wiring/pocket.js ties it in and decides what each phone action may do
+                   where it started), rights.js (pure: a phone's level, full or read-only, and the one allowlist a read-only
+                   one may call), quiet.js (pure: the quiet hours window in the PC's local time, checked at the door),
+                   notices.js (push notifications, with the deep link a tap opens), answers.js (pure: what goes with a
+                   question's or a plan's answer); wiring/pocket.js ties it in and decides what each phone action may do
   handoff.js       a conversation to a terminal and back (pure): the launch command per shell, ids, folders
   btw.js           /btw side questions: a tool-less -p on a fork of the conversation that saves nothing
   council/         The Council: the advisors, the chair and their schemas (prompts.js), reading the project first and picking who sits with a read-only -p (look.js), quick/debate sittings as tool-less -p calls (run.js), project context (context.js), the last sittings, their outcomes and each advisor's record (store.js)
@@ -659,7 +662,8 @@ src/renderer/    critter + panel UIs (plain HTML/CSS/JS, no framework)
                    text only, the crab from shared/sprite.js, a diff) · pocket (the beach, the queue, this phone, pairing, sheets)
                    · pocket-tab (one conversation and a turn's diff) · pocket-more (focus, routines, notes, the wardrobe, files)
                    · pocket-find (search, a project's history, a closed conversation, the whole branch, the checks card, the
-                   "while you were away" card) · sw.js (the offline shell, push and taps on notifications)
+                   "while you were away" card) · pocket-phone (one prompt from its notification, the quiet hours card)
+                   · sw.js (the offline shell, push and taps on notifications)
   dialog/          the themed confirmation window, isolated: the panel can't script it, and main takes an answer only from it
   floor/           the floor beside him (src/main/desktop/floor.js): his pals and footprints; colony-brain.js decides what the pals do (pure)
   note/            a note he hauled onto your screen (src/main/pranks.js); a click crumples it up

@@ -53,6 +53,7 @@
     share: 'M8 2v8M5 4.5 8 1.5l3 3M3.5 7v6.5h9V7',
     find: 'M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9ZM10.5 10.5 14 14',
     clock: 'M2.5 8a5.5 5.5 0 1 1 1.6 3.9M2.5 12V8.5H6M8 5v3l2 1.5',
+    moon: 'M9.5 2.5a5.5 5.5 0 1 0 4 9.5A6 6 0 0 1 9.5 2.5Z',
   };
   function icon(name, cls = '') {
     const s = document.createElementNS(SVG, 'svg');

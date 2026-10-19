@@ -1,7 +1,8 @@
 /* Shellby panel — Settings: On your phone. Shellby's phone app over your
    tailnet (wiring/pocket.js): the steps to get there, the switch (which asks
    in the confirmation window), the address as a QR code, pairing a phone with
-   a code from this screen, the phones paired, and which notifications they get.
+   a code from this screen, the phones paired (each with its rights), which
+   notifications they get, and the quiet hours.
    settings-text.js decides what each step and status line says. */
 'use strict';
 (function () {
@@ -31,6 +32,24 @@
   }
 
   const ago = at => (at ? T.minutesAgo(at) : 'never');
+  const RIGHTS_LABEL = { full: 'Full', readonly: 'Read only' };
+
+  // What this phone may do (pocket/rights.js): full, or looking only.
+  function rightsPick(dv) {
+    const sel = h('select', { class: 'field slim pocket-rights', 'aria-label': `What ${dv.name} may do` },
+      ...(view?.rightsLevels || Object.keys(RIGHTS_LABEL)).map(r => h('option', { value: r, text: RIGHTS_LABEL[r] || r })));
+    sel.value = dv.rights || 'full';
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      try {
+        const v = await api.setPocket({ device: { id: dv.id, rights: sel.value } });
+        render(v);
+        if (v.error) SB.toast(v.error, { ms: 5000 });
+        else SB.toast(sel.value === 'readonly' ? `${dv.name} can only look now.` : `${dv.name} can do everything again.`, { ms: 4000 });
+      } finally { sel.disabled = false; }
+    });
+    return sel;
+  }
 
   function deviceRow(dv) {
     const sure = forgetting.has(dv.id);
@@ -39,6 +58,7 @@
       h('span', { class: 'pocket-device-name' },
         h('b', { text: dv.name }),
         h('span', { class: 'small muted', text: ` · ${dv.recent ? 'looking now' : `seen ${ago(dv.lastSeenAt)}`}${dv.push ? ' · notifications on' : ''}` })),
+      rightsPick(dv),
       h('button', {
         type: 'button', class: `btn ghost slim-btn${sure ? ' danger' : ''}`, text: sure ? 'Forget it?' : 'Forget',
         'aria-label': sure ? `Forget ${dv.name}: press again to be sure` : `Forget ${dv.name}`,
@@ -106,6 +126,12 @@
     }
     $('pocketWhileFocused').checked = !!n.whileFocused;
     $('pocketWorking').checked = !!n.working;
+    const q = v.quiet || {};
+    $('pocketQuiet').checked = !!q.enabled;
+    $('pocketQuietRow').hidden = !q.enabled;
+    // Not while a time is being typed: the PC answers each change with the view.
+    if (document.activeElement !== $('pocketQuietFrom')) $('pocketQuietFrom').value = q.from || '22:00';
+    if (document.activeElement !== $('pocketQuietTo')) $('pocketQuietTo').value = q.to || '07:00';
     for (const el of $('pocketAllow').querySelectorAll('input[data-allow]')) el.checked = !!v.allow?.[el.dataset.allow];
     $('pocketTest').disabled = !(v.devices || []).some(dv => dv.push);
   }
@@ -130,6 +156,15 @@
   });
   $('pocketWhileFocused').addEventListener('change', async e => render(await api.setPocket({ notify: { whileFocused: e.target.checked } })));
   $('pocketWorking').addEventListener('change', async e => render(await api.setPocket({ notify: { working: e.target.checked } })));
+  // Quiet hours: the switch, and each time as it's changed (a bad one is said and put back).
+  async function setQuiet(patch) {
+    const v = await api.setPocket({ quiet: patch });
+    render(v);
+    if (v.error) SB.toast(v.error, { ms: 5000 });
+  }
+  $('pocketQuiet').addEventListener('change', e => setQuiet({ enabled: e.target.checked }));
+  $('pocketQuietFrom').addEventListener('change', e => { if (e.target.value) setQuiet({ from: e.target.value }); });
+  $('pocketQuietTo').addEventListener('change', e => { if (e.target.value) setQuiet({ to: e.target.value }); });
   $('pocketAllow').addEventListener('change', async e => {
     const key = e.target.dataset.allow;
     if (key) render(await api.setPocket({ allow: { [key]: e.target.checked } }));

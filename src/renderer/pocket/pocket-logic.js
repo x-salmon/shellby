@@ -379,13 +379,15 @@
   // ---------------------------------------------------------------- the phone
 
   /**
-   * Where the app is: #/, #/tab/<id>, #/diff/<id>/<after>, #/branch/<id>, #/past/<id>, #/files/<id>/<path>,
-   * #/queue, #/phone, #/new, #/find, #/history, #/more and its screens.
+   * Where the app is: #/, #/tab/<id>, #/prompt/<id>/<requestId>, #/diff/<id>/<after>, #/branch/<id>, #/past/<id>,
+   * #/files/<id>/<path>, #/queue, #/phone, #/new, #/find, #/history, #/more and its screens.
    */
   function route(hash) {
     const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch { return ''; } });
     const ok = s => /^[\w-]{1,100}$/.test(s || '');
     if (parts[0] === 'tab' && ok(parts[1])) return { name: 'tab', tabId: parts[1] };
+    // One permission prompt, from a tap on its notification: the PC says whether it's still waiting.
+    if (parts[0] === 'prompt' && ok(parts[1]) && ok(parts[2])) return { name: 'prompt', tabId: parts[1], requestId: parts[2] };
     if (parts[0] === 'diff' && ok(parts[1]) && ok(parts[2])) return { name: 'diff', tabId: parts[1], after: parts[2] };
     if (parts[0] === 'branch' && ok(parts[1])) return { name: 'branch', tabId: parts[1] };
     if (parts[0] === 'past' && ok(parts[1])) return { name: 'past', id: parts[1] };

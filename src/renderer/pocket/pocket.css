@@ -543,6 +543,22 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
 .check-cmd { display: grid; gap: 6px; }
 .check-cmd .cmd-file { margin: 0; color: #ffc2bb; }
 .cmd.tail { max-height: 180px; font-size: 11.5px; color: var(--sand-dim); }
+/* One prompt on its own, from a tap on its notification: the card, and the buttons big enough for a thumb in the dark */
+.prompt-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 12px var(--gutter) calc(var(--safe-b) + 20px); overflow-y: auto; }
+.prompt-body .ask { animation: none; }
+.prompt-body .ask-plain { font-size: 18px; }
+.prompt-body .btns .btn.big { min-height: 62px; font-size: 18px; }
+.prompt-body .btn.always { min-height: var(--tap); }
+.prompt-gone { padding: 20px 8px; }
+.prompt-gone .tide-title { margin: 0; }
+.prompt-gone .btn { width: 100%; }
+
+/* Quiet hours, on the Phone screen */
+.time-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.time-field { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--sand-dim); }
+.time-in { min-height: var(--tap); padding: 0 12px; border-radius: 12px; background: var(--reef-2); border: 1px solid var(--line); color: var(--sand); font: inherit; font-variant-numeric: tabular-nums; }
+.time-in:disabled { opacity: .5; }
+.fine.left { text-align: left; margin: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

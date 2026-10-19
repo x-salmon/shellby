@@ -2362,6 +2362,12 @@
           <div class="ch-events" id="pocketEvents"></div>
           <label class="toggle"><input type="checkbox" id="pocketWhileFocused"><span class="switch"></span>Send them even while he's guarding my focus</label>
           <label class="toggle"><input type="checkbox" id="pocketWorking"><span class="switch"></span>A quiet "working on it" notification while a task from the phone runs</label>
+          <label class="toggle"><input type="checkbox" id="pocketQuiet"><span class="switch"></span>Quiet hours: hold them back overnight (a permission prompt still arrives, quietly, so the badge counts it)</label>
+          <div class="row wrap pocket-quiet" id="pocketQuietRow" hidden>
+            <label class="field-label"><span>From</span><input class="field slim" type="time" id="pocketQuietFrom" value="22:00"></label>
+            <label class="field-label"><span>To</span><input class="field slim" type="time" id="pocketQuietTo" value="07:00"></label>
+            <span class="small muted">In this PC's time. The phone's <b>Phone</b> screen sets it too.</span>
+          </div>
           <p class="small muted">What else a paired phone may do:</p>
           <div class="ch-events" id="pocketAllow">
             <label class="toggle"><input type="checkbox" data-allow="files"><span class="switch"></span>Read a conversation's files (read-only; .env files, keys and the like stay here)</label>

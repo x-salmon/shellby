@@ -12,6 +12,7 @@
 //     most 10 an hour and 3 at once, held for the reset at the limit.
 //   - Replies only into conversations the phone started, which are Ask first too.
 //   - Undo and Bring it home through the desk's own code, with its checks gate.
+//   - A phone set to read-only at the desk (pocket/rights.js) does none of it.
 const { app, safeStorage } = require('electron');
 const path = require('path');
 const attach = require('../attachments');
@@ -27,18 +28,18 @@ const push = require('../pocket/push');
 const { PocketServer, DEFAULT_PORT } = require('../pocket/server');
 const { createTailscale, pickHttpsPort } = require('../pocket/tailscale');
 const view = require('../pocket/view');
+const { answerExtra } = require('../pocket/answers');
 const { createPocketExtras } = require('../pocket/extras');
 const { createPocketNotices } = require('../pocket/notices');
 const { createPocketReview } = require('../pocket/review');
+const quiet = require('../pocket/quiet');
+const rights = require('../pocket/rights');
 
 const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
 const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
 const SEEN_SAVE_MS = 5 * 60 * 1000;  // "last seen" goes to disk this often at most
 const TAILSCALE_URL = 'https://tailscale.com/download/windows';
 const HTTPS_URL = 'https://login.tailscale.com/admin/dns';
-// As the desk's Skip says it (feed-asks.js).
-const SKIPPED_QUESTION = "The user skipped the question. Continue with your best judgement, or ask in plain text if you're stuck.";
-
 // The phone app's notifications start as the phone channels do: the same events, on by the same defaults.
 const NOTIFY_DEFAULTS = { enabled: true, events: Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.default])), minSeconds: 60, whileFocused: false, working: false };
 const EVENT_LABELS = Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.label]));
@@ -101,11 +102,14 @@ function wirePocket(d) {
       dnsName: typeof r.dnsName === 'string' ? r.dnsName : '',
       servedPort: Number.isInteger(r.servedPort) ? r.servedPort : 0, // the https port Shellby asked serve for, to take back
       notify,
+      quiet: quiet.normalizeQuiet(r.quiet),
     };
   }
   const save = patch => d.config.set({ pocket: { ...d.config.get('pocket'), ...patch } });
   const devices = () => pairing.normalizeDevices(d.config.get('pocketDevices'));
   const saveDevices = list => d.config.set({ pocketDevices: list });
+  // A phone's rights as they are now: a stream's device record is from when it opened.
+  const rightsOf = deviceId => rights.rightsOf(devices().find(dv => dv.id === deviceId));
 
   // ---- the key push messages are signed with: made once, encrypted by Windows
 
@@ -250,12 +254,16 @@ function wirePocket(d) {
       allow: settings().allow,
       focus: d.focusState?.() || null,
       guard: guard.settingsOf(k => d.config.get(k)),
+      quiet: settings().quiet,
       now: Date.now(),
     });
   }
 
+  // The same view, with this phone's own rights on it (the app hides what it can't use).
+  const viewFor = (v, device) => ({ ...v, rights: rightsOf(device.id) });
+
   function onOpen(device, { tab }) {
-    const out = { view: currentView() };
+    const out = { view: viewFor(currentView(), device) };
     if (tab && d.manager?.tabs.has(tab)) {
       out.items = view.phoneItems(d.history.load(tab));
       lastTurn.set(tab, d.manager.tabs.get(tab).turnId || null);
@@ -274,7 +282,7 @@ function wirePocket(d) {
       const said = JSON.stringify({ ...v, at: 0 });
       if (said === lastView) return;
       lastView = said;
-      d.pocket.broadcast(v);
+      d.pocket.broadcast(v, viewFor);
       badge(v.prompts.length);
     }, 120);
   }
@@ -323,6 +331,10 @@ function wirePocket(d) {
 
   async function onAction(device, name, body) {
     if (!settings().enabled) return no('Shellby on your phone is off.');
+    // A read-only phone may look, and little else (pocket/rights.js): checked
+    // on the phone's record as it is now, not as it was when it connected.
+    const why = rights.refuse(devices().find(dv => dv.id === device.id), name);
+    if (why) return no(why);
     switch (name) {
       case 'answer': return answer(body);
       case 'task': return task(body);
@@ -334,6 +346,7 @@ function wirePocket(d) {
       case 'cancel-held': return cancelHeld(body);
       case 'push': return setPush(device, body);
       case 'forget': return forget(device.id, 'You forgot this phone.');
+      case 'quiet': return setQuiet(body);
       default: {
         const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
         const fn = own(extra.actions, name) ? extra.actions[name] : own(review.actions, name) ? review.actions[name] : null;
@@ -358,34 +371,9 @@ function wirePocket(d) {
     return d.answerPermission(tabId, requestId, decision, { via: 'pocket', ...extra }) ? ok() : no('That was already answered.');
   }
 
-  // A question needs an answer to each of its questions; a plan is only approved
-  // once the phone says it was read to the end, and a no carries your notes.
   // Your own words into a conversation (a typed answer, notes on a plan) go
-  // only where a reply could: anywhere but a terminal.
+  // only where a reply could: anywhere but a terminal (pocket/answers.js).
   const mayWriteTo = tab => !tab?.inTerminal;
-
-  function answerExtra(item, { decision, answers, notes, read, mayWrite }) {
-    if (item.toolName === 'AskUserQuestion') {
-      if (decision === 'deny') return { message: SKIPPED_QUESTION };
-      const asked = (item.input?.questions || []).map(q => q?.question).filter(q => typeof q === 'string');
-      const given = answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {};
-      const clean = Object.fromEntries(asked.map(q => [q, typeof given[q] === 'string' ? given[q].trim().slice(0, 2000) : '']));
-      if (!asked.length || Object.values(clean).some(a => !a)) return { error: 'Answer each question first.' };
-      if (!mayWrite) {
-        // Only the options offered, then: a typed answer to a desk conversation is a reply.
-        const offered = q => new Set(((item.input.questions || []).find(x => x?.question === q)?.options || []).map(o => o?.label));
-        if (Object.entries(clean).some(([q, a]) => a.split(', ').some(part => !offered(q).has(part)))) return { error: 'Pick from the options: typed answers to this one go from the desk.' };
-      }
-      return { answers: clean };
-    }
-    if (item.toolName === 'ExitPlanMode') {
-      if (decision === 'allow') return read === true ? {} : { error: 'Read the plan to the end first.' };
-      const said = typeof notes === 'string' ? notes.trim().slice(0, 2000) : '';
-      if (said && !mayWrite) return { error: 'Notes on this plan go from the desk. Send it back without them, or write them there.' };
-      return said ? { message: `The user read your plan and wants it revised before anything changes. Their notes:\n${said}` } : {};
-    }
-    return {};
-  }
 
   function task(body) {
     const key = typeof body?.key === 'string' && KEY.test(body.key) ? body.key : null;
@@ -536,6 +524,28 @@ function wirePocket(d) {
     return ok({ push: true });
   }
 
+  // Quiet hours, from the phone or from Settings: the same check at the door (pocket/quiet.js).
+  function setQuiet(patch) {
+    const r = quiet.checkQuiet(patch, settings().quiet);
+    if (r.error) return no(r.error);
+    save({ quiet: r.quiet });
+    lastView = '';
+    pushView();
+    d.send(d.panel, 'pocket', pocketViewNow());
+    return ok({ quiet: r.quiet });
+  }
+
+  // One phone's rights, from Settings. Its streams get the view again, with the new level on it.
+  function setDeviceRights({ id, rights: level }) {
+    const list = pairing.setRights(devices(), typeof id === 'string' ? id : '', level);
+    if (!list) return no('That phone has already gone.');
+    saveDevices(list);
+    d.log.info(`pocket: ${list.find(dv => dv.id === id).name} is ${level === 'readonly' ? 'read-only' : 'full'} now`);
+    lastView = '';
+    pushView();
+    return ok();
+  }
+
   function forget(deviceId, reason = 'This phone was forgotten.') {
     const list = devices();
     const gone = list.find(dv => dv.id === deviceId);
@@ -654,6 +664,14 @@ function wirePocket(d) {
       save({ notify: n });
       return pocketView();
     }
+    if (patch.quiet && typeof patch.quiet === 'object') {
+      const r = setQuiet(patch.quiet);
+      return r.ok ? pocketView() : { ...(await pocketView()), error: r.error };
+    }
+    if (patch.device && typeof patch.device === 'object') {
+      const r = setDeviceRights(patch.device);
+      return r.ok ? pocketView() : { ...(await pocketView()), error: r.error };
+    }
     if (patch.enabled === true) return enable();
     return pocketView();
   }
@@ -727,6 +745,8 @@ function wirePocket(d) {
       devices: pairing.devicesView(devices(), now),
       notify: s.notify,
       allow: s.allow,
+      quiet: s.quiet,
+      rightsLevels: rights.RIGHTS,
       eventLabels: EVENT_LABELS,
       canEncrypt: safeStorage.isEncryptionAvailable(),
     };
@@ -746,7 +766,11 @@ function wirePocket(d) {
       ownerLogin: () => settings().login,
       findDevice,
       onPair, onOpen, onAction, onDiff,
-      onUpload: (_device, bytes) => (settings().enabled ? extra.savePhoto(bytes) : no('Shellby on your phone is off.')),
+      onUpload: (device, bytes) => {
+        if (!settings().enabled) return no('Shellby on your phone is off.');
+        const why = rights.refuseUpload(devices().find(dv => dv.id === device.id));
+        return why ? no(why) : extra.savePhoto(bytes);
+      },
     });
     d.pocket.on('seen', onSeen);
     d.pocket.on('status', () => {

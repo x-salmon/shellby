@@ -14,6 +14,8 @@
 const path = require('path');
 const { standing } = require('../../renderer/panel/tab-sort');
 const { appDeskOnlyReason } = require('../channels/replies');
+const { normalizeQuiet } = require('./quiet');
+const { normalizeRights } = require('./rights');
 
 const VERSION = 1;
 const MAX_TABS = 40;
@@ -172,9 +174,11 @@ function phoneHeld(h) {
  *   extras:   tabId -> { mode, fromPhone, canReply, checksRunning }
  *   outlook:  usage/service.js outlookView()
  *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey
+ *   rights:   this phone's level (pocket/rights.js): the app hides what it can't use
+ *   quiet:    the quiet hours (pocket/quiet.js), shown and set on the Phone screen
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -195,6 +199,8 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     usage: { ...phoneUsage(lastUsage, outlook, now), ...usageDetail(lastUsage, outlook, guard, now) },
     focus: phoneFocus(focus, now),
     allow: allow ? { push: !!allow.push, files: !!allow.files } : { push: false, files: false },
+    rights: normalizeRights(rights),
+    quiet: normalizeQuiet(quiet),
     held: (held || []).slice(0, 20).map(phoneHeld),
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),
     skin: skin || null,

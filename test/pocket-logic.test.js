@@ -94,6 +94,9 @@ test('the hash says which screen, and anything odd is the beach', () => {
   assert.deepEqual(L.route('#/past/../x'), { name: 'beach' });
   assert.deepEqual(L.route('#/find'), { name: 'find' });
   assert.deepEqual(L.route('#/history'), { name: 'history' });
+  assert.deepEqual(L.route('#/prompt/t1/req-9'), { name: 'prompt', tabId: 't1', requestId: 'req-9' });
+  assert.deepEqual(L.route('#/prompt/t1'), { name: 'beach' });
+  assert.deepEqual(L.route('#/prompt/t1/a%20b'), { name: 'beach' });
   assert.deepEqual(L.route('#/tab/../../x'), { name: 'beach' });
   assert.deepEqual(L.route('#/tab/%E0%A4%A'), { name: 'beach' });
   assert.deepEqual(L.route(''), { name: 'beach' });
