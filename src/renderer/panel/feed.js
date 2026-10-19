@@ -309,7 +309,7 @@
         case 'decision': return this.markDecision(item);
         case 'result':
           if (!replay && this.isActive) SB.announce(item.interrupted ? 'Claude stopped' : item.ok ? 'Claude finished' : 'Claude ended with an error');
-          return this.renderResult(item);
+          return this.renderResult(item, replay);
         case 'changes': return this.renderChanges(item);
         case 'undone': return this.markUndone(item);
         case 'checks': return SB.renderChecks?.(this, item);   // turn-checks.js
@@ -527,7 +527,7 @@
       lane.update(item, replay);
     }
 
-    renderResult(item) {
+    renderResult(item, replay = false) {
       for (const el of this.tools.values()) if (el.classList.contains('pending')) el.classList.replace('pending', item.ok ? 'ok' : 'err');
       const { label, waiting } = F.resultLabel(item);
       // A reply you might want to take somewhere else: a new tab that remembers
@@ -546,13 +546,32 @@
         this.append(h('div', { class: 'turn-cost', title: cost.detail || null, dataset: turnId ? { turn: turnId } : {} },
           badge ? h('span', { class: `effort-badge effort-${badge.level}`, title: badge.detail, text: badge.text }) : null,
           h('span', { class: 'turn-cost-line', text: cost.line })));
-        // A warm cache it missed, helpers that outspent it (turncost.js turnNotes).
-        for (const n of cost.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note', text: n.text }));
+        // A warm cache it missed, helpers that outspent it, pictures piling up (turncost.js turnNotes).
+        // A reopened conversation's old notes keep their words but not their buttons:
+        // a fresh start offered before an earlier one would throw away this one.
+        for (const n of cost.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note' }, h('span', { text: n.text }), replay ? null : this.noteAction(n.action)));
       }
       // A turn whose process went (main's session/index.js ended()): its error block is just above.
       if (!item.ok && !item.interrupted && item.error && !item.crashed) this.append(this.troubleBlock(item.trouble, item.error));
       // ...and its helpers went with it.
       if (item.interrupted || item.crashed) for (const lane of this.lanes.values()) if (lane.status === 'running') lane.finish({ ok: false, stopped: true });
+    }
+
+    // The button on a note under a turn's cost, or null: helpers on Sonnet until
+    // a helpers' model is chosen (Settings → Claude Code → Model), or a fresh start.
+    noteAction(action) {
+      if (action === 'helper-model' && !state.settings?.helperModel) {
+        return h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Helpers that name no model of their own run on Sonnet in new conversations. Change it in Settings → Claude Code → Model.',
+          onclick: async e => {
+            const r = await api.setSettings({ helperModel: 'sonnet' }).catch(() => null);
+            if (!r?.settings) return SB.toast("Couldn't change that.");
+            state.settings = r.settings;
+            e.target.remove();
+            SB.toast('New conversations run their helpers on Sonnet.');
+          } }, 'Run helpers on Sonnet');
+      }
+      if (action === 'fresh') return h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => SB.startFresh(this) }, 'Start fresh with a summary');
+      return null;
     }
 
     destroy() {

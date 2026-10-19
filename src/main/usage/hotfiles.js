@@ -3,13 +3,14 @@
 // too. A file read in conversation after conversation is often worth a line in
 // CLAUDE.md (what's in it, where things live) or a split, so Claude reads less
 // to find the same thing. The same read finds the commands whose output fills
-// the context (loud.js). Read-only, async, line by line; only lines with a
+// the context (loud.js), and the hooks that add to it (hookctx.js). Read-only, async, line by line; only lines with a
 // file or shell tool's call (or a result one is waiting for) are parsed, and
 // nothing is kept on disk.
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const loud = require('./loud');
+const hookctx = require('./hookctx');
 
 const LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_BYTES = 256 * 1024 * 1024;   // per scan, newest transcripts first
@@ -139,11 +140,12 @@ async function listJsonl(dir, since, depth, out) {
   return out;
 }
 
-// One transcript's file touches and shell results: { touches, outputs }.
+// One transcript's file touches, shell results and hooks' additions: { touches, outputs, hooks }.
 async function readTranscript(file) {
   const lines = readline.createInterface({ input: fs.createReadStream(file, { encoding: 'utf8' }), crlfDelay: Infinity });
   const touches = [];
   const outputs = [];
+  const hooks = [];
   const pending = new Map(); // shell call id -> its command's key, until its result comes
   /** @type {string | null} */
   let root = null;
@@ -156,14 +158,18 @@ async function readTranscript(file) {
       pending.delete(r.id);
       outputs.push(r);
     }
+    const added = hookctx.hookContextIn(line);
+    if (added) hooks.push(added);
   }
-  return { touches, outputs };
+  return { touches, outputs, hooks };
 }
 
 /**
  * The hottest files in the project at cwd over the last LOOKBACK_MS, and its
- * loudest commands: { files: [{ rel, reads, edits, sessions, tokens }],
- * loud: [{ key, runs, sessions, tokens, total }], sessions, days }.
+ * loudest commands and the hooks that add the most: { files: [{ rel, reads,
+ * edits, sessions, tokens }], loud: [{ key, runs, sessions, tokens, total }],
+ * hooks: [{ event, name, runs, sessions, tokens, perConversation }], hookStart
+ * (what start hooks add, all of them), sessions, days }.
  * A subagent's transcript counts with the conversation that ran it.
  */
 async function scanHotFiles({ configDir, cwd, now = Date.now(), maxBytes = MAX_BYTES }) {
@@ -176,26 +182,29 @@ async function scanHotFiles({ configDir, cwd, now = Date.now(), maxBytes = MAX_B
   files.sort((a, b) => b.mtimeMs - a.mtimeMs);
   const bySession = new Map();
   const outputsBySession = new Map();
+  const hooksBySession = new Map();
   let bytes = 0;
   for (const f of files) {
     if (bytes + f.size > maxBytes) break;
     bytes += f.size;
     try {
-      const { touches, outputs } = await readTranscript(f.file);
+      const { touches, outputs, hooks } = await readTranscript(f.file);
       const session = sessionOf(f.file);
       if (touches.length) bySession.set(session, [...(bySession.get(session) || []), ...touches]);
       if (outputs.length) outputsBySession.set(session, [...(outputsBySession.get(session) || []), ...outputs]);
+      if (hooks.length) hooksBySession.set(session, [...(hooksBySession.get(session) || []), ...hooks]);
     } catch { /* unreadable: leave it out */ }
   }
   const tally = [...bySession.values()].reduce(tallyTranscript, new Map());
   const noisy = [...outputsBySession.values()].reduce(loud.tallyLoud, new Map());
+  const added = [...hooksBySession.values()].reduce(hookctx.tallyHooks, new Map());
   const sizeOf = rel => {
     const full = path.resolve(cwd, rel);
     if (relativeTo(full, cwd) === null) return null;
     try { return fs.statSync(full).size; } catch { return null; }
   };
-  const sessions = new Set([...bySession.keys(), ...outputsBySession.keys()]).size;
-  return { files: hottest(tally, sizeOf), loud: loud.loudest(noisy), sessions, days: Math.round(LOOKBACK_MS / (24 * 60 * 60 * 1000)) };
+  const sessions = new Set([...bySession.keys(), ...outputsBySession.keys(), ...hooksBySession.keys()]).size;
+  return { files: hottest(tally, sizeOf), loud: loud.loudest(noisy), hooks: hookctx.heaviestHooks(added), hookStart: hookctx.startTokens(added), sessions, days: Math.round(LOOKBACK_MS / (24 * 60 * 60 * 1000)) };
 }
 
 module.exports = { scanHotFiles, folderOf, isProjectFolder, relativeTo, rootIn, touchesIn, sessionOf, tallyTranscript, hottest, MIN_SESSIONS };

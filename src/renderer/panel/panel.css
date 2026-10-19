@@ -664,6 +664,8 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
 }
 .turn-note:not(:has(+ .turn-note)) { margin-bottom: 18px; }
 .turn-note.is-cache-break { color: var(--amber); }
+/* Its way out (feed.js noteAction), on a line of its own under the words. */
+.turn-note > .btn { display: block; margin: 6px auto 0; }
 /* ---------------------------------------------------------------- idle cost
    An open panel spends most of a core on animation (scripts/idle-cost.js), and
    most of that while nobody is watching. `calm` (the window isn't focused)
