@@ -127,18 +127,20 @@
     card.append(h('div', { class: 'ask-head' },
       D.crab({ px: 1.6, state: 'asking', label: '' }),
       h('div', { class: 'ask-what' },
-        h('p', { class: 'ask-title', text: p.plan ? 'Here’s my plan' : p.question ? 'I’ve a question' : p.helper ? 'A helper wants to do this' : 'Can I do this?' }),
+        h('p', { class: 'ask-title', text: p.deskOnly ? 'One for the desk' : p.plan ? 'Here’s my plan' : p.question ? 'I’ve a question' : p.helper ? 'A helper wants to do this' : 'Can I do this?' }),
         h('p', { class: 'ask-where', text: p.helper ? `${p.title} · ${p.helper}` : p.title }))));
+    // Why it can't be answered here comes first: no buttons below would otherwise read as broken.
+    if (p.deskOnly) card.append(h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: p.deskOnly })));
     card.append(h('p', { class: 'ask-plain', text: p.question || p.plan || p.ask || [p.label, p.detail].filter(Boolean).join(' ') }));
     const pv = p.preview;
-    if (pv?.kind === 'command') card.append(h('pre', { class: 'cmd', text: pv.command }));
+    // The desk shows it in full, so here a glimpse is enough.
+    if (pv?.kind === 'command') card.append(h('pre', { class: `cmd${p.deskOnly ? ' peek' : ''}`, text: pv.command }));
     else if (pv?.kind === 'edit' && !compact) card.append(editPreview(pv));
     else if (pv?.kind === 'write' && !compact) card.append(h('div', { class: 'cmd-file', text: shortPath(pv.file) }), h('pre', { class: 'cmd write', text: pv.content }));
     else if (pv?.kind === 'url') card.append(h('pre', { class: 'cmd', text: pv.url }));
     else if (pv?.file) card.append(h('div', { class: 'cmd-file', text: shortPath(pv.file) }));
     for (const w of p.warnings || []) card.append(h('p', { class: 'flag' }, icon('warn'), h('span', { text: `Heads up: ${w}` })));
     if (p.deskOnly) {
-      card.append(h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: p.deskOnly })));
       if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
       return card;
     }
