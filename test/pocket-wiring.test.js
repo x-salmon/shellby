@@ -340,6 +340,8 @@ test('a task from the phone runs in Ask first, in its own copy, in a project She
     assert.deepEqual(opts, { mode: 'ask' });
     assert.equal(w.d.manager.tabs.get('new1').fromPocket, true);
     assert.deepEqual(w.of('note')[0], ['new1', { kind: 'phone' }]);
+    assert.match((await act({ project: PROJECT, text: 'On its own', mode: 'autonomous' })).error, /Turn on Autonomous/);
+    w.d.config.set({ autonomousAcknowledged: true });
     await act({ project: PROJECT, text: 'Again, on its own', mode: 'autonomous' });
     await act({ project: PROJECT, text: 'And a made-up mode', mode: 'sudo' });
     assert.deepEqual(w.of('startTaskInCopy').map(c => c[3]), [{ mode: 'ask' }, { mode: 'autonomous' }, { mode: 'ask' }]);
@@ -384,6 +386,8 @@ test('replies go to any conversation, in the mode the phone picked (Ask if none)
     assert.equal(desk.pinnedMode, true, 'the desk mode no longer lifts it');
     assert.equal((await act({ tabId: 'desk', text: 'go on', mode: 'acceptEdits' })).ok, true);
     assert.deepEqual(modes, ['ask', 'acceptEdits']);
+    assert.match((await act({ tabId: 'desk', text: 'all yours', mode: 'autonomous' })).error, /Turn on Autonomous/);
+    assert.deepEqual(modes, ['ask', 'acceptEdits'], 'not until Autonomous is on at the desk');
     // Mid-turn it joins the desk's queue, and the running turn keeps its mode.
     desk.session.busy = true;
     assert.deepEqual(await act({ tabId: 'desk', text: 'and the docs', mode: 'plan' }), { ok: true, queued: true });

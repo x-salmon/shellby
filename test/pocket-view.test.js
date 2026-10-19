@@ -119,6 +119,13 @@ test('questions come with their options, and a plan in full, for the phone to an
   assert.match(view.prompts[2].deskOnly, /hooks/);
 });
 
+test('a plan too long to show in full goes to the desk', () => {
+  const { PLAN_MAX } = require('../src/main/channels/replies');
+  const prompts = [{ tabId: 't1', requestId: 'p', toolName: 'ExitPlanMode', plan: 'x'.repeat(PLAN_MAX + 1) }];
+  const view = v.phoneView({ tabs: [tab()], prompts });
+  assert.match(view.prompts[0].deskOnly, /too long/);
+});
+
 test('the usage view has the week, the guard and focus', () => {
   const now = Date.UTC(2026, 9, 19, 12);
   const view = v.phoneView({
