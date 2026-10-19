@@ -608,9 +608,10 @@
     renderList(q);
   }
 
-  // Straight to a recipe's form from elsewhere (Lean's loud commands): the list if it isn't loaded yet.
-  function openRecipe(id) {
-    const r = (state.setup?.recipes || []).find(x => x.id === id);
+  // Straight to a recipe's form from elsewhere (Lean's loud commands, which may hand
+  // over one made for the project): the list if it isn't loaded yet.
+  function openRecipe(idOrRecipe) {
+    const r = typeof idOrRecipe === 'object' ? idOrRecipe : (state.setup?.recipes || []).find(x => x.id === idOrRecipe);
     if (r) ed = { step: 'form', entry: null, recipe: r, error: '' };
     SB.showToolbox('hook');
   }

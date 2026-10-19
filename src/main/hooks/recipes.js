@@ -16,6 +16,14 @@ const { NO_TESTS_RE } = require('../depwatch');
 // "file_path": "…" out of the JSON on stdin (the first one).
 const FILE_PATH = 'grep -oE "\\"file_path\\": *\\"[^\\"]*\\"" | head -n1';
 
+// The runs quiet-output keeps the end of (an ERE alternation), and the kinds of
+// a project's loud commands it may add to them (quietOutputFor): builds and
+// test runs, whose end says what happened. Not a `git diff` or a `cat`, whose
+// start matters as much as their end.
+const HOOK_COMMAND_MAX = 1000; // claude/setup.js MAX_COMMAND (it requires this file, so not from there)
+const QUIET_RUNS ='npm (run )?test|npm run (test|e2e)[a-z0-9:_-]*|npx (jest|vitest|mocha)|pytest|cargo test|go test';
+const BUILDISH = /^(?:(?:npm|pnpm|yarn|bun) run [\w:-]+|(?:cargo|go|dotnet) (?:build|test|check)|(?:make|gradle|mvn|deno) [\w:-]+|node scripts\/[\w/-]+\.[cm]?js)$/;
+
 const RECIPES = [
   {
     id: 'sound-done', group: 'notify', icon: '🔔',
@@ -86,7 +94,7 @@ const RECIPES = [
     // The command stays JSON-escaped from stdin to stdout, so nothing is decoded.
     // updatedInput replaces all of the call's input: its timeout goes along, and
     // one run in the background is left alone.
-    command: String.raw`bash -c 'j=$(cat); printf %s "$j" | grep -qE "\"run_in_background\": *true" && exit 0; c=$(printf %s "$j" | sed -E "s/[\\\\][\\\\]/\x02/g; s/[\\\\]\"/\x01/g" | sed -nE "s/.*\"command\": *\"([^\"]*)\".*/\1/p" | head -n1 | sed -E "s/\x02/\x02\x02/g; s/\x01/\x02\"/g" | tr "\002" "\134"); case "$c" in ""|*"|"*|*">"*|*"<"*|*"&"*|*";"*|*"\\n"*) exit 0;; esac; t=$(printf %s "$j" | grep -oE "\"timeout\": *[0-9]+" | head -n1); if printf %s "$c" | grep -qE "^git log( |$)"; then printf %s "$c" | grep -qE "(^| )(-n|-[0-9]+|--oneline|--max-count[= ]?[0-9]*|--format[= ].*|--pretty[= ].*|-p|--patch|--stat)( |$)" && exit 0; n="git log --oneline -n 30${'$'}{c#git log}"; elif printf %s "$c" | grep -qE "^(npm (run )?test|npm run (test|e2e)[a-z0-9:_-]*|npx (jest|vitest|mocha)|pytest|cargo test|go test)( |$)"; then n="set -o pipefail; $c 2>&1 | tail -n 60"; else exit 0; fi; printf "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"updatedInput\":{\"command\":\"%s\"%s}}}" "$n" "${'$'}{t:+,$t}"'`,
+    command: String.raw`bash -c 'j=$(cat); printf %s "$j" | grep -qE "\"run_in_background\": *true" && exit 0; c=$(printf %s "$j" | sed -E "s/[\\\\][\\\\]/\x02/g; s/[\\\\]\"/\x01/g" | sed -nE "s/.*\"command\": *\"([^\"]*)\".*/\1/p" | head -n1 | sed -E "s/\x02/\x02\x02/g; s/\x01/\x02\"/g" | tr "\002" "\134"); case "$c" in ""|*["|<>&;"]*|*"\\n"*) exit 0;; esac; t=$(printf %s "$j" | grep -oE "\"timeout\": *[0-9]+" | head -n1); if printf %s "$c" | grep -qE "^git log( |$)"; then printf %s "$c" | grep -qE " (-[0-9np]|--(oneline|max-count|format|pretty|patch|stat))" && exit 0; n="git log --oneline -n 30${'$'}{c#git log}"; elif printf %s "$c" | grep -qE "^(${QUIET_RUNS})( |$)"; then n="set -o pipefail; $c 2>&1 | tail -n 60"; else exit 0; fi; printf "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"updatedInput\":{\"command\":\"%s\"%s}}}" "$n" "${'$'}{t:+,$t}"'`,
     sample: { tool_name: 'Bash', tool_input: { command: 'git log', description: 'Show history' } },
   },
   {
@@ -105,6 +113,29 @@ const RECIPES = [
     command: "bash -c 'echo \"Reminder: keep changes small, and run the tests before saying something works.\"'",
   },
 ];
+
+/**
+ * quiet-output with this project's own loud commands added (usage/loud.js
+ * keys, from the Lean tab), or null when none of them is a build or test run
+ * it doesn't already cover. Its blurb names what it adds.
+ */
+function quietOutputFor(keys) {
+  const base = RECIPES.find(r => r.id === 'quiet-output');
+  const covered = new RegExp(`^(${QUIET_RUNS})( |$)`);
+  const extra = [...new Set((Array.isArray(keys) ? keys : []).filter(k => typeof k === 'string' && BUILDISH.test(k) && !covered.test(k)))];
+  if (!base) return null;
+  // Loudest first, as many as fit in a hook's command (claude/setup.js MAX_COMMAND).
+  const added = [];
+  let command = base.command;
+  for (const k of extra) {
+    const next = base.command.replace(`^(${QUIET_RUNS})( |$)`, `^(${[QUIET_RUNS, ...added, k].map(x => x.replace(/\./g, '[.]')).join('|')})( |$)`);
+    if (next.length > HOOK_COMMAND_MAX) break;
+    added.push(k);
+    command = next;
+  }
+  if (!added.length) return null;
+  return { ...base, command, blurb: `${base.blurb} This one also keeps the end of ${added.join(', ')}, the loudest runs here.` };
+}
 
 const GROUPS = [
   { id: 'notify', title: 'Get a nudge' },
@@ -160,4 +191,4 @@ function describeHook(row) {
   return { summary: describeCommand(row?.command), icon: null, recipe: null };
 }
 
-module.exports = { RECIPES, GROUPS, describeHook, describeCommand };
+module.exports = { RECIPES, GROUPS, describeHook, describeCommand, quietOutputFor };

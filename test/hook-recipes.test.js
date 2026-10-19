@@ -164,3 +164,17 @@ test('Keep long command output short: shortens test runs and plain git logs, lea
   }
   assert.equal(await rewritten({ command: 'npm test', run_in_background: true }), null);
 });
+
+test('quietOutputFor: adds a project\'s loud build and test runs, nothing else', needsBash, async () => {
+  const { quietOutputFor } = require('../src/main/hooks/recipes');
+  assert.equal(quietOutputFor(['git diff', 'cat', 'npm test']), null, 'nothing new it may add');
+  const r = quietOutputFor(['npm run e2e:ci', 'npm run build', 'node scripts/check.js', 'git diff']);
+  assert.match(r.blurb, /npm run build, node scripts\/check\.js/);
+  assert.doesNotMatch(r.blurb, /git diff/);
+  const v = validateHook({ event: r.event, matcher: r.matcher, command: r.command, timeout: '' });
+  assert.equal(v.error, undefined);
+  const res = await run(r, pre('Bash', { command: 'npm run build -- --verbose' }));
+  assert.equal(JSON.parse(res.stdout).hookSpecificOutput.updatedInput.command, 'set -o pipefail; npm run build -- --verbose 2>&1 | tail -n 60');
+  const plain = await run(r, pre('Bash', { command: 'npm run buildx' }));
+  assert.equal(plain.stdout.trim(), '');
+});
