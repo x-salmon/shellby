@@ -9,6 +9,8 @@ const workPose = require('./work-pose');
 const { cleanTitle } = require('./history');
 const review = require('./review-inbox');
 const turncost = require('./turncost');
+const turnwatch = require('./turnwatch');
+const { classify } = require('./usage/ledger');
 const { isModel } = require('./models');
 const planPace = require('./plan-pace');
 const mods = require('./mods');
@@ -207,7 +209,10 @@ class SessionManager extends EventEmitter {
     if (item.kind === 'compacted' || item.kind === 'fresh' || item.kind === 'cleared') {
       tab.pictures = 0;
       tab.picturesNoted = false;
+      tab.watchSaid = { ...tab.watchSaid, compact: false };
     }
+    // What the turn did that its notes speak of (turnwatch.js).
+    tab.turnWatch = turnwatch.seeItem(tab.turnWatch, item);
     // A mod's lines and toasts, within its budget: one that says something on
     // every step would bury the conversation and its history (mods.js).
     if (item.kind === 'modlog' || item.kind === 'modtoast') {
@@ -240,6 +245,10 @@ class SessionManager extends EventEmitter {
       const notes = turncost.turnNotes(cost, { helpers: !tab.helpersNoted, pictures: tab.picturesNoted ? 0 : tab.pictures || 0 });
       if (notes.some(n => n.kind === 'helpers')) tab.helpersNoted = true;
       if (notes.some(n => n.kind === 'pictures')) tab.picturesNoted = true;
+      // A big whole-file read, a long helper brief, a commit worth compacting after, a small job thought hard on.
+      const watched = turnwatch.watchNotes(tab.turnWatch, { cost, category: tab.turnCategory, said: tab.watchSaid, compact: turncost.compact });
+      tab.watchSaid = turnwatch.markSaid(tab.watchSaid, watched);
+      notes.push(...watched);
       item.cost = { ...cost, line: turncost.costLine(cost), detail: turncost.costDetail(cost), effortBadge: turncost.effortBadge(cost), ...(notes.length ? { notes } : {}) };
     }
     if (item.kind === 'compacted' && tab.compacting) { tab.compacting = false; this.changed(); }
@@ -315,6 +324,8 @@ class SessionManager extends EventEmitter {
     tab.turnFrom = { routine: userItem.routine || null, workflow: userItem.workflow || null, queued: userItem.queued || null };
     // What was asked, for its category in the per-turn ledger (usage/ledger.js). Read once as the turn starts.
     tab.turnText = typeof userItem.text === 'string' ? userItem.text : '';
+    tab.turnCategory = classify(tab.turnText);
+    tab.turnWatch = turnwatch.startTurn();
     tab.outcome = null;
     // The note goes with the first real message (a /command must still start
     // with its slash), and is only forgotten once Claude has started with it:

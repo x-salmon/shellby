@@ -558,7 +558,7 @@
     }
 
     // The button on a note under a turn's cost, or null: helpers on Sonnet until
-    // a helpers' model is chosen (Settings → Claude Code → Model), or a fresh start.
+    // a helpers' model is chosen (Settings → Claude Code → Model), a fresh start, or a compact.
     noteAction(action) {
       if (action === 'helper-model' && !state.settings?.helperModel) {
         return h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Helpers that name no model of their own run on Sonnet in new conversations. Change it in Settings → Claude Code → Model.',
@@ -571,6 +571,7 @@
           } }, 'Run helpers on Sonnet');
       }
       if (action === 'fresh') return h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => SB.startFresh(this) }, 'Start fresh with a summary');
+      if (action === 'compact') return h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => SB.compactTab(this) }, 'Compact now');
       return null;
     }
 

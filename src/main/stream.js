@@ -5,6 +5,7 @@ const { clean } = require('./mods');
 const { editsOf } = require('../renderer/shared/diff');
 const plainWords = require('./plain-words');
 const { headlessReply } = require('./cli-commands');
+const { toolFacts } = require('./turnwatch');
 
 const MAX_RESULT_CHARS = 8000;
 
@@ -260,7 +261,8 @@ function worktreeOf(r) {
 
 function toolItem(b, sub) {
   const input = b.input || {};
-  const item = { kind: 'tool', id: b.id, name: b.name, ...describeTool(b.name, input), ...sub };
+  // What the turn's notes need from its input (turnwatch.js): a whole-file read, a helper's brief, a commit.
+  const item = { kind: 'tool', id: b.id, name: b.name, ...describeTool(b.name, input), ...toolFacts(b.name, input), ...sub };
   if (b.name === 'ExitPlanMode') item.plan = input.plan;
   if (b.name === 'ReportFindings') {
     const findings = findingsOf(input);
@@ -487,7 +489,7 @@ function toItems(ev) {
         const full = resultText(b.content);
         const item = {
           kind: 'tool_result', id: b.tool_use_id, isError: !!b.is_error,
-          text: truncate(full, MAX_RESULT_CHARS), ...sub,
+          text: truncate(full, MAX_RESULT_CHARS), chars: full.length, ...sub,
         };
         // Test runners print their failures last: main reads the end of a
         // long result for the flaky test detective (flaky/index.js), then drops it.
