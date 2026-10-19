@@ -5,6 +5,7 @@
      #/diff/<id>/<a> what one of its turns changed, file by file
      #/queue         what's waiting for the usage reset
      #/phone         this phone: notifications, and forgetting it
+     #/more …        focus, routines, notes, the wardrobe and files (pocket-more.js)
 
    Everything comes from one stream (pocket-stream.js). Each screen is mounted
    once per visit and told when the view changes, so a half-typed reply or the
@@ -84,6 +85,9 @@
     return r;
   }
 
+  // Questions and plans, usage, sharing a moment, and speaking or snapping a task (pocket-bits.js).
+  const { questionSheet, planSheet, usageDetail, shareTurn, voiceButton, photoButton } = window.PocketBits({ S, L, D, N, h, icon, toast, buzz, act, actButton });
+
   // ---------------------------------------------------------------- the frame
 
   function topbar({ back = null, backLabel = 'Beach', title = null, right = null } = {}) {
@@ -104,6 +108,7 @@
     return h('nav', { class: 'dock', 'aria-label': 'Screens' },
       item('beach', 'Beach', 'beach', '#/', S.view?.prompts?.length || 0),
       item('queue', 'Queue', 'queue', '#/queue', held),
+      item('more', 'More', 'more', '#/more'),
       item('phone', 'Phone', 'phone', '#/phone'));
   }
 
@@ -135,6 +140,15 @@
     if (p.deskOnly) {
       card.append(h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: p.deskOnly })));
       card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
+      return card;
+    }
+    // In a sheet: the beach redraws its cards as things change, and a half-picked answer mustn't go.
+    if (p.questions) {
+      card.append(h('button', { type: 'button', class: 'btn go big', text: p.questions.length > 1 ? 'Answer them' : 'Answer it', onclick: () => openSheet(questionSheet(p)) }));
+      return card;
+    }
+    if (p.planText) {
+      card.append(h('button', { type: 'button', class: 'btn go big', text: 'Read the plan', onclick: () => openSheet(planSheet(p)) }));
       return card;
     }
     const answer = decision => actButton({
@@ -213,10 +227,17 @@
       h('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': u.pct, 'aria-label': 'Your 5-hour usage window' }, h('i', { class: `w${Math.min(100, Math.round(u.pct / 5) * 5)} ${u.pct >= 85 ? 'hot' : u.pct >= 60 ? 'warm' : ''}` })))
       : u.limit ? h('p', { class: 'tide-limit', text: `At your ${u.limit.name || 'usage'} limit. Back at ${u.limit.at}.` }) : null;
     return h('section', { class: `tide${cel ? ' cheer' : ''}`, 'aria-label': 'What Shellby is doing' },
-      h('div', { class: 'tide-crab' }, D.crab({ px: 4, state, label: `Shellby, ${state}` }), said ? h('span', { class: `bubble ${state}`, text: said }) : null),
+      h('button', { type: 'button', class: 'tide-crab', 'aria-label': `Shellby, ${state}. Give him a pat`, onclick: patHim }, D.crab({ px: 4, state, label: '' }), said ? h('span', { class: `bubble ${state}`, text: said }) : null),
       h('div', { class: 'tide-words' }, h('h2', { class: 'tide-title', text: cel ? 'Nailed it' : head.title }), h('p', { class: 'tide-sub', text: cel ? cel.title : head.sub })),
       meter,
       view?.usage?.warning ? h('p', { class: 'tide-warn', text: view.usage.warning }) : null);
+  }
+
+  // A pat from the beach: he feels it on your desktop (pocket/extras.js pet).
+  async function patHim() {
+    if (!live()) return;
+    const r = await N.post('pet', {});
+    if (r.ok && !r.again) { buzz([6, 40, 6]); celebrate('He loved that.'); }
   }
 
   function beachScreen() {
@@ -255,7 +276,8 @@
   }
 
   // One conversation and what its turns changed live in pocket-tab.js.
-  const { tabScreen, diffScreen } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath });
+  const { tabScreen, diffScreen } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, shareTurn });
+  const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet });
 
   // ---------------------------------------------------------------- the queue
 
@@ -272,7 +294,8 @@
         u.limit ? h('p', {}, h('b', { text: 'At your usage limit.' }), ` He's back at ${u.limit.at}, and this queue starts by itself then.`)
           : u.pct != null ? h('p', {}, h('b', { text: `${u.pct}% of your 5-hour window used.` }), u.resetsAt ? ` It resets at ${L.clock(u.resetsAt)}.` : '')
             : h('p', { class: 'muted', text: 'No reading of your usage window yet.' }),
-        u.pct != null ? h('div', { class: 'bar' }, h('i', { class: `w${Math.min(100, Math.round(u.pct / 5) * 5)} ${u.pct >= 85 ? 'hot' : u.pct >= 60 ? 'warm' : ''}` })) : null));
+        u.pct != null ? h('div', { class: 'bar' }, h('i', { class: `w${Math.min(100, Math.round(u.pct / 5) * 5)} ${u.pct >= 85 ? 'hot' : u.pct >= 60 ? 'warm' : ''}` })) : null,
+        ...usageDetail(u)));
       const held = v?.held || [];
       if (!held.length) parts.push(h('div', { class: 'empty' }, h('p', { text: 'Nothing waiting for the reset. A task you start from here at your limit waits in this list, and starts by itself.' })));
       for (const x of held) {
@@ -360,9 +383,13 @@
         h('div', { class: 'card' },
           h('div', { class: 'card-t' }, h('span', { class: 'card-title' }, icon('shield'), ' What this phone can do')),
           h('ul', { class: 'plain' },
-            h('li', { text: 'Allow or Deny a prompt. Always allow, plans, questions and anything the card warns about wait for the desk.' }),
+            h('li', { text: 'Allow or Deny a prompt, answer a question, or approve a plan once you’ve read it. Always allow and anything the card warns about wait for the desk.' }),
             h('li', { text: 'Start a task. It runs in Ask first, in its own copy when the folder is a repo.' }),
-            h('li', { text: 'Stop a turn, undo one, or bring a copy home.' }))),
+            h('li', { text: 'Stop a turn, undo one, or bring a copy home.' }),
+            h('li', { text: 'Run a routine, guard your focus, add a note, or dress him up.' }),
+            S.view?.allow?.replyDesk ? h('li', { text: 'Reply to desk conversations in Ask first.' }) : null,
+            S.view?.allow?.files ? h('li', { text: 'Read a conversation’s files.' }) : null,
+            S.view?.allow?.push ? h('li', { text: 'Push after bringing a copy home.' }) : null)),
         h('button', { type: 'button', class: 'btn danger-ghost', text: 'Forget this phone', onclick: () => confirmSheet({ title: 'Forget this phone?', text: 'It stops seeing Shellby straight away. To use it again, pair it with a new code from your PC.', yes: 'Forget it', danger: true, then: async () => { await turnOffPush().catch(() => {}); await N.post('forget'); unpaired('This phone is forgotten. Pair it again any time.'); } }) }),
         h('p', { class: 'fine', text: 'Shellby on your phone · served by your PC' }));
       drawPush();
@@ -396,6 +423,9 @@
       })));
       drawChips();
       const lim = S.view?.limits;
+      // Pictures for the task: each goes to the PC as it's picked, and the task names them.
+      const photos = [];
+      const strip = h('div', { class: 'photo-strip', 'aria-label': 'Pictures' });
       // One key per task, kept until it's started: sent again after a slow answer, it's the same task.
       let key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
       const send = actButton({
@@ -404,11 +434,13 @@
           const said = text.value.trim();
           if (!said) { text.focus(); toast('Say what you want done first.'); return; }
           if (!picked) { toast('Pick a project first.'); return; }
-          const r = await act('task', { project: picked, text: said, key }, { timeoutMs: 180000 });
+          if (photos.some(p => !p.id)) { toast('A picture is still on its way. One moment.'); return; }
+          const r = await act('task', { project: picked, text: said, key, photos: photos.map(p => p.id) }, { timeoutMs: 180000 });
           if (r.offline) { toast('Still waiting for your PC. Send it again: it won’t start twice.', { ms: 5200 }); return; }
           if (!r.ok) return;
           key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
           N.store.set('shellby.pocket.draft', null);
+          photos.length = 0;
           close();
           if (r.held) toast(`At your limit, so it waits for the reset and starts at ${r.atText}.`, { ms: 5200 });
           else { toast('Claws out. He’s on it.', { tone: 'ok' }); if (r.tabId) go(`#/tab/${encodeURIComponent(r.tabId)}`); }
@@ -418,6 +450,8 @@
         h('h2', { class: 'sheet-title', text: 'What should I do?' }),
         projects.length ? chips : h('p', { class: 'warn', text: 'Shellby doesn’t know any projects yet. Open one on your PC first.' }),
         text,
+        h('div', { class: 'task-tools' }, voiceButton(text), photoButton(photos, strip)),
+        strip,
         h('p', { class: 'rule' }, icon('shield'), h('span', { text: `Runs in Ask first, in its own copy when it can, so every edit and command comes back to you.${lim ? ` ${lim.open} of ${lim.atOnce} phone tasks open.` : ''}` })),
         send);
       setTimeout(() => text.focus(), 260);
@@ -425,6 +459,7 @@
     } };
   }
 
+  // Speak the task: the phone's own speech recognition, when it has one. The words land in the box to check.
   // ---------------------------------------------------------------- sheets
 
   function openSheet(spec) {
@@ -571,6 +606,11 @@
     stream.watch(r.name === 'diff' ? r.tabId : null);
     if (r.name === 'diff') show(diffScreen(r.tabId, r.after));
     else if (r.name === 'queue') show(queueScreen());
+    else if (r.name === 'more') show(More.moreScreen());
+    else if (r.name === 'routines') show(More.routinesScreen());
+    else if (r.name === 'notes') show(More.notesScreen());
+    else if (r.name === 'wardrobe') show(More.wardrobeScreen());
+    else if (r.name === 'files') show(More.filesScreen(r.tabId, r.path));
     else if (r.name === 'phone') show(phoneScreen());
     else show(beachScreen());
   }
@@ -606,7 +646,12 @@
     try {
       const reg = await navigator.serviceWorker?.getRegistration();
       const open = new Set((view.prompts || []).map(p => `ask-${p.tabId}`));
-      for (const note of (await reg?.getNotifications()) || []) if (note.tag?.startsWith('ask-') && !open.has(note.tag)) note.close();
+      const busy = new Set((view.tabs || []).filter(t => t.busy).map(t => `tab-${t.id}`));
+      for (const note of (await reg?.getNotifications()) || []) {
+        if (note.tag?.startsWith('ask-') && !open.has(note.tag)) note.close();
+        // A "working on it" left from a turn that ended without a "done" (stopped, say).
+        else if (note.tag?.startsWith('tab-') && note.silent && !busy.has(note.tag)) note.close();
+      }
     } catch { /* nothing to tidy */ }
   }
 

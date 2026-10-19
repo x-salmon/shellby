@@ -72,6 +72,18 @@
     return Number.isFinite(d.getTime()) ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : '';
   };
 
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  /** A time in the coming week: "at 14:30" today, "tomorrow at 09:00", else "on Friday at 18:00". */
+  function day(at, now = Date.now()) {
+    const d = new Date(at), n = new Date(now);
+    if (!Number.isFinite(d.getTime())) return '';
+    const start = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const days = Math.round((start(d) - start(n)) / 86400000);
+    if (days === 0) return `at ${clock(at)}`;
+    if (days === 1) return `tomorrow at ${clock(at)}`;
+    return `on ${DAYS[d.getDay()]} at ${clock(at)}`;
+  }
+
   function tokens(n) {
     if (!Number.isFinite(n) || n <= 0) return '';
     if (n < 1000) return `${n} tokens`;
@@ -331,13 +343,19 @@
 
   // ---------------------------------------------------------------- the phone
 
-  /** Where the app is: #/, #/tab/<id>, #/diff/<id>/<after>, #/queue, #/phone, #/new. */
+  /** Where the app is: #/, #/tab/<id>, #/diff/<id>/<after>, #/files/<id>/<path>, #/queue, #/phone, #/new, #/more and its screens. */
   function route(hash) {
     const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch { return ''; } });
     const ok = s => /^[\w-]{1,100}$/.test(s || '');
     if (parts[0] === 'tab' && ok(parts[1])) return { name: 'tab', tabId: parts[1] };
     if (parts[0] === 'diff' && ok(parts[1]) && ok(parts[2])) return { name: 'diff', tabId: parts[1], after: parts[2] };
-    if (['queue', 'phone', 'new'].includes(parts[0])) return { name: parts[0] };
+    // A file or folder inside a conversation's folder: the PC checks the path, this only carries it.
+    if (parts[0] === 'files' && ok(parts[1])) {
+      const rest = parts.slice(2);
+      const dir = String(hash).endsWith('/') || !rest.length;
+      return { name: 'files', tabId: parts[1], path: rest.join('/') + (dir && rest.length ? '/' : '') };
+    }
+    if (['queue', 'phone', 'new', 'more', 'routines', 'notes', 'wardrobe'].includes(parts[0])) return { name: parts[0] };
     return { name: 'beach' };
   }
 
@@ -361,7 +379,7 @@
   }
 
   const api = {
-    STANDING, ago, backoff, clock, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
+    STANDING, ago, backoff, clock, day, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
     markdown, modeLabel, parsePatch, plural, route, sections, sseParser, tokens,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

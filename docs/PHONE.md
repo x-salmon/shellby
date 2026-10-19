@@ -34,11 +34,12 @@ Settings walks you through it a step at a time, ticking each one off as it works
 **A permission prompt** shows as a card with the plain sentence, the command (or the edit, line by line), and any warning the desk card would show. **Allow** and **Deny** answer it straight from the beach. Like answering from a notification, some prompts are only ever answered at the desk:
 
 - **Always allow**, which would change Claude Code's settings
-- plans and questions, which deserve reading in full
 - a command too long to read on a phone
 - running a file Claude wrote this session, or changing Claude Code's own setup
 
-Those say why they wait for the desk (*"It has a question for you: answer it at the desk."*), with **See the conversation** to open it.
+Those say why they wait for the desk (*"It is too long to read on a phone: check it at the desk."*), with **See the conversation** to open it.
+
+**Questions and plans** open in a sheet. A question shows its options as buttons, with a box for your own answer, and **Skip** lets him carry on with his best judgement. A plan shows in full, and **Approve** stays shut until you've scrolled to the end. **Keep planning** sends your notes back with it.
 
 **A conversation** opens live: Claude's reply as he writes it, each tool he runs, his helpers in their own lanes, the to-do list, and what each turn cost. **Stop** ends a turn. When a turn changed files, **See the changes** shows the diff file by file, wrapped to fit, and **Undo turn** and **Bring it home** do what they do at the desk, with the same checks gate and a confirmation on the phone first.
 
@@ -47,9 +48,24 @@ Those say why they wait for the desk (*"It has a question for you: answer it at 
 - They always run in **Ask first**, whatever mode you use at the desk, in their own copy when the folder is a git repository, so every edit and command comes back to you.
 - At most 10 start an hour and 3 at once. At your usage limit, or past what the spending guard keeps for you, a task waits for the reset and says when it'll start.
 - `!` commands, Claude Code's `/` commands, modes and settings never come from the phone.
-- You can reply to a conversation your phone started. Conversations started at the desk take replies at the desk.
+- You can reply to a conversation your phone started. Conversations started at the desk take replies at the desk, unless you allow them in Settings, and then only while they're in Ask first.
+- **Speak** fills the box using your phone's own dictation, and **Picture** adds up to four photos. They're shrunk to a JPEG on the phone first and kept on the PC like a pasted picture.
 
-**Queue** is what's waiting for the usage reset, with **Take it out** for each one. **Phone** has notifications, what this phone can do, and **Forget this phone**.
+**Queue** is what's waiting for the usage reset, with **Take it out** for each one, under your 5-hour and weekly windows, your pace, and what the spending guard keeps back.
+
+**More** has Guard my focus (15, 25 or 50 minutes), **Routines** (Run now, and on or off; workflows that need no inputs run too), **Notes** for each project, and the **Wardrobe**. Tap him on the beach for a pat. A finished conversation has **Share**, which sends a picture of him and what landed through your phone's share sheet.
+
+**Phone** has notifications, what this phone can do, and **Forget this phone**.
+
+### What you can allow
+
+Settings → On your phone has three more things a paired phone may do, each off until you turn it on:
+
+- **Reply to conversations started here**, while they're in Ask first.
+- **Read a conversation's files**, read-only. `.git`, `node_modules`, `.env` files, keys and other likely secrets are never shown, and nothing outside the conversation's folder is.
+- **Push after bringing a copy home**, with the secret scan and the question about other people's commits on your PC first.
+
+There's also a quiet **"working on it"** notification for tasks the phone started, which the "done" replaces. iPhones show it like any other notification; on Android it sits silently.
 
 **When the PC sleeps** the app keeps what it last knew, says how old it is ("This is how things were at 09:12"), and comes back by itself the moment the PC answers.
 

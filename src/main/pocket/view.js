@@ -13,7 +13,7 @@
 // Pure: wiring/pocket.js gathers the inputs.
 const path = require('path');
 const { standing } = require('../../renderer/panel/tab-sort');
-const { deskOnlyReason } = require('../channels/replies');
+const { appDeskOnlyReason } = require('../channels/replies');
 
 const VERSION = 1;
 const MAX_TABS = 40;
@@ -21,6 +21,8 @@ const MAX_ITEMS = 300;          // a transcript's tail, when the phone opens it
 const MAX_TEXT = 8000;          // Claude's reply, per item
 const MAX_FILES = 60;
 const MAX_PROJECTS = 60;
+const MAX_QUESTIONS = 4;
+const MAX_PLAN = 30000;
 const STANDINGS = ['asking', 'review', 'finished', 'working', 'quiet'];
 
 const clip = (s, n) => {
@@ -72,9 +74,20 @@ function preview(p) {
   return null;
 }
 
+/** Claude's questions, options and all, as the desk's question card shows them. */
+function phoneQuestions(p) {
+  if (p.toolName !== 'AskUserQuestion' || !Array.isArray(p.input?.questions)) return null;
+  return p.input.questions.slice(0, MAX_QUESTIONS).map(q => ({
+    question: clip(q?.question, 500),
+    header: line(q?.header, 40) || null,
+    multiSelect: !!q?.multiSelect,
+    options: (Array.isArray(q?.options) ? q.options : []).slice(0, 8).map(o => ({ label: clip(o?.label, 200), description: line(o?.description, 300) || null })),
+  }));
+}
+
 /** A permission prompt waiting on you. deskOnly: why the phone may only look (channels/replies.js). */
 function phonePrompt(p, titleOf) {
-  const deskOnly = deskOnlyReason(p);
+  const deskOnly = appDeskOnlyReason(p);
   return {
     tabId: p.tabId,
     requestId: line(p.requestId, 100),
@@ -88,6 +101,9 @@ function phonePrompt(p, titleOf) {
     preview: preview(p),
     question: p.toolName === 'AskUserQuestion' ? line(p.questions?.[0]?.question, 300) : null,
     plan: p.toolName === 'ExitPlanMode' ? line(p.planSummary, 120) || 'A plan' : null,
+    questions: phoneQuestions(p),
+    // The whole plan, to be read before it's approved (the phone keeps Approve shut until you reach the end).
+    planText: p.toolName === 'ExitPlanMode' ? clip(p.plan ?? p.input?.plan, MAX_PLAN) || null : null,
     deskOnly,
   };
 }
@@ -102,6 +118,30 @@ function phoneUsage(lastUsage, outlook, now) {
     limit: outlook?.limit ? { name: line(outlook.limit.name, 40), resetsAt: num(outlook.limit.resetsAt), at: line(outlook.limit.at, 20) } : null,
     warning: outlook?.warning ? line(outlook.warning.text, 200) : null,
   };
+}
+
+/**
+ * The rest of the Usage screen: the weekly window, the pace, and what the
+ * spending guard keeps back of the 5-hour one (guard.js settingsOf).
+ */
+function usageDetail(lastUsage, outlook, guard, now) {
+  const s = lastUsage?.sevenDay;
+  const weekResets = num(s?.resetsAt);
+  const live = weekResets == null || weekResets > now;
+  const pace = outlook?.pace;
+  return {
+    weekPct: live && Number.isFinite(s?.pct) ? Math.max(0, Math.min(100, Math.round(s.pct))) : null,
+    weekResetsAt: live ? weekResets : null,
+    pace: pace && Number.isFinite(pace.pct) ? { perHour: num(pace.perHour), hitText: line(pace.hitText, 60) || null, warn: !!pace.warn } : null,
+    guard: guard?.on ? { reserve: num(guard.reserve) || 0, ceiling: 100 - (num(guard.reserve) || 0) } : null,
+    readAt: num(lastUsage?.at),
+  };
+}
+
+/** Guard my focus, as the phone shows it and starts it. */
+function phoneFocus(f, now) {
+  if (!f?.phase || !num(f.endsAt) || f.endsAt <= now) return { phase: null, endsAt: null, minutes: null };
+  return { phase: f.phase === 'break' ? 'break' : 'focus', endsAt: f.endsAt, minutes: num(f.minutes) };
 }
 
 function phoneHeld(h) {
@@ -120,7 +160,7 @@ function phoneHeld(h) {
  *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -138,7 +178,9 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     } : { state: 'idle', work: null, say: null, crew: [] },
     tabs: sorted,
     prompts: prompts.slice(0, 20).map(p => phonePrompt(p, titleOf)),
-    usage: phoneUsage(lastUsage, outlook, now),
+    usage: { ...phoneUsage(lastUsage, outlook, now), ...usageDetail(lastUsage, outlook, guard, now) },
+    focus: phoneFocus(focus, now),
+    allow: allow ? { replyDesk: !!allow.replyDesk, push: !!allow.push, files: !!allow.files } : { replyDesk: false, push: false, files: false },
     held: (held || []).slice(0, 20).map(phoneHeld),
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),
     skin: skin || null,

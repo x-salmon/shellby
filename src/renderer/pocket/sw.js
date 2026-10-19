@@ -4,9 +4,9 @@
    tapped. It never touches /pocket/v1: what Shellby is doing always comes
    live from the PC. */
 'use strict';
-const CACHE = 'shellby-pocket-1';
+const CACHE = 'shellby-pocket-2';
 const SHELL = [
-  '/', '/pocket.css', '/pocket.js', '/pocket-logic.js', '/pocket-stream.js', '/pocket-draw.js', '/pocket-tab.js', '/manifest.webmanifest',
+  '/', '/pocket.css', '/pocket.js', '/pocket-logic.js', '/pocket-stream.js', '/pocket-draw.js', '/pocket-tab.js', '/pocket-more.js', '/pocket-bits.js', '/manifest.webmanifest',
   '/shared/sprite.js', '/shared/tokens.css', '/shared/fonts.css',
   '/assets/fonts/PixelifySans.ttf', '/assets/fonts/AtkinsonHyperlegible-Regular.ttf', '/assets/fonts/AtkinsonHyperlegible-Bold.ttf', '/assets/fonts/MartianMono.ttf',
   '/icons/icon-192.png', '/icons/badge-96.png', '/skin.json',
@@ -49,7 +49,9 @@ self.addEventListener('push', e => {
     await self.registration.showNotification(String(m.title || 'Shellby').slice(0, 120), {
       body: String(m.body || '').slice(0, 600),
       tag,
-      renotify: tag.startsWith('ask-'),
+      // "Working on it" sits quietly; the "done" that replaces it (same tag) buzzes.
+      silent: m.silent === true,
+      renotify: tag.startsWith('ask-') || (tag.startsWith('tab-') && m.silent !== true),
       icon: '/icons/icon-192.png',
       badge: '/icons/badge-96.png',
       timestamp: Number.isFinite(m.at) ? m.at : Date.now(),

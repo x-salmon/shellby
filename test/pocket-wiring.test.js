@@ -242,6 +242,85 @@ test('Allow and Deny from the phone, never Always allow, and nothing the card wo
   } finally { stop(w); }
 });
 
+test('a question is answered from the phone with an answer to each question, or skipped', async () => {
+  const t = tabOf('t1', { fromPocket: true });
+  const desk = tabOf('desk');
+  const questions = [{ question: 'Which DB?', options: [{ label: 'Postgres' }] }, { question: 'Tests?', options: [] }];
+  t.session.pending.set('q1', { requestId: 'q1', toolName: 'AskUserQuestion', input: { questions } });
+  t.session.pending.set('q2', { requestId: 'q2', toolName: 'AskUserQuestion', input: { questions } });
+  desk.session.pending.set('q3', { requestId: 'q3', toolName: 'AskUserQuestion', input: { questions } });
+  const w = await paired({ tabs: [t, desk] });
+  try {
+    const act = body => w.d.pocket.onAction(w.device, 'answer', body);
+    // A desk conversation takes only the options offered: typed words are a reply.
+    assert.match((await act({ tabId: 'desk', requestId: 'q3', decision: 'allow', answers: { 'Which DB?': 'Postgres', 'Tests?': 'yes' } })).error, /Pick from the options/);
+    assert.match((await act({ tabId: 't1', requestId: 'q1', decision: 'allow', answers: { 'Which DB?': 'Postgres' } })).error, /each question/);
+    assert.equal((await act({ tabId: 't1', requestId: 'q1', decision: 'allow', answers: { 'Which DB?': 'Postgres', 'Tests?': ' yes ', 'Other?': 'x' } })).ok, true);
+    assert.equal((await act({ tabId: 't1', requestId: 'q2', decision: 'deny' })).ok, true);
+    const [first, second] = w.of('answerPermission');
+    assert.deepEqual(first, ['t1', 'q1', 'allow', { via: 'pocket', answers: { 'Which DB?': 'Postgres', 'Tests?': 'yes' } }]);
+    assert.match(second[3].message, /skipped/);
+  } finally { stop(w); }
+});
+
+test('a plan is approved from the phone only once it was read, and a no carries the notes', async () => {
+  const t = tabOf('t1');
+  t.session.pending.set('p1', { requestId: 'p1', toolName: 'ExitPlanMode', plan: '1. Do it', input: { plan: '1. Do it' } });
+  t.session.pending.set('p2', { requestId: 'p2', toolName: 'ExitPlanMode', plan: '1. Do it', input: { plan: '1. Do it' } });
+  t.session.pending.set('p3', { requestId: 'p3', toolName: 'ExitPlanMode', input: {} });
+  t.fromPocket = true;
+  const desk = tabOf('desk');
+  desk.session.pending.set('p4', { requestId: 'p4', toolName: 'ExitPlanMode', plan: '1. Do it' });
+  const w = await paired({ tabs: [t, desk] });
+  try {
+    const act = body => w.d.pocket.onAction(w.device, 'answer', body);
+    assert.match((await act({ tabId: 'desk', requestId: 'p4', decision: 'deny', notes: 'Hmm' })).error, /from the desk/);
+    assert.match((await act({ tabId: 't1', requestId: 'p1', decision: 'allow' })).error, /to the end/);
+    assert.equal((await act({ tabId: 't1', requestId: 'p1', decision: 'allow', read: true })).ok, true);
+    assert.equal((await act({ tabId: 't1', requestId: 'p2', decision: 'deny', notes: 'Smaller steps' })).ok, true);
+    assert.match((await act({ tabId: 't1', requestId: 'p3', decision: 'allow', read: true })).error, /at the desk/);
+    const calls = w.of('answerPermission');
+    assert.deepEqual(calls[0], ['t1', 'p1', 'allow', { via: 'pocket' }]);
+    assert.match(calls[1][3].message, /Smaller steps/);
+  } finally { stop(w); }
+});
+
+test('desk conversations take phone replies only when allowed, and only in Ask first', async () => {
+  const desk = tabOf('desk');
+  const auto = tabOf('auto');
+  auto.session.mode = 'smart';
+  const w = await paired({ tabs: [desk, auto] });
+  try {
+    const act = body => w.d.pocket.onAction(w.device, 'reply', body);
+    assert.match((await act({ tabId: 'desk', text: 'hi' })).error, /at the desk/);
+    await w.d.setPocket({ allow: { replyDesk: true } });
+    assert.equal((await act({ tabId: 'desk', text: 'hi' })).ok, true);
+    assert.match((await act({ tabId: 'auto', text: 'hi' })).error, /Ask first/);
+  } finally { stop(w); }
+});
+
+test('home and push from the phone waits for Settings to allow pushing', async () => {
+  const w = await paired({ tabs: [tabOf('t1')] });
+  try {
+    const act = body => w.d.pocket.onAction(w.device, 'home', body);
+    assert.match((await act({ tabId: 't1', push: true })).error, /Pushing from your phone is off/);
+    assert.equal(w.of('bringTabHome').length, 0);
+    await w.d.setPocket({ allow: { push: true } });
+    assert.equal((await act({ tabId: 't1', push: true })).ok, true);
+    assert.deepEqual(w.of('bringTabHome')[0], ['t1', { force: false, push: true }]);
+  } finally { stop(w); }
+});
+
+test('a task names only photos the phone sent, each used once', async () => {
+  const w = await paired();
+  try {
+    const r = await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: 'Fix this', photos: ['made-up'] });
+    assert.equal(r.ok, true);
+    const [, , , opts] = w.of('startTaskInCopy')[0];
+    assert.equal(opts.attachments, undefined);
+  } finally { stop(w); }
+});
+
 test('a task from the phone runs in Ask first, in its own copy, in a project Shellby knows', async () => {
   const w = await paired();
   try {

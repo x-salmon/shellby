@@ -15,30 +15,37 @@
 const { app, safeStorage } = require('electron');
 const path = require('path');
 const attach = require('../attachments');
-const channels = require('../channels');
 const confirm = require('../confirm');
-const focus = require('../focus');
 const guard = require('../guard');
 const pt = require('../channels/phone-tasks');
-const { deskOnlyReason } = require('../channels/replies');
-const { EVENTS, composeMessage } = require('../channels/messages');
+const { appDeskOnlyReason } = require('../channels/replies');
+const { EVENTS } = require('../channels/messages');
 const { qrRows } = require('../qr');
 const pairing = require('../pocket/pairing');
 const push = require('../pocket/push');
 const { PocketServer, DEFAULT_PORT } = require('../pocket/server');
 const { createTailscale, pickHttpsPort } = require('../pocket/tailscale');
 const view = require('../pocket/view');
+const { createPocketExtras } = require('../pocket/extras');
+const { createPocketNotices } = require('../pocket/notices');
 
 const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
 const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
 const SEEN_SAVE_MS = 5 * 60 * 1000;  // "last seen" goes to disk this often at most
-const PUSH_SUBJECT = 'https://getshellby.com/';
 const TAILSCALE_URL = 'https://tailscale.com/download/windows';
 const HTTPS_URL = 'https://login.tailscale.com/admin/dns';
+// As the desk's Skip says it (feed-asks.js).
+const SKIPPED_QUESTION = "The user skipped the question. Continue with your best judgement, or ask in plain text if you're stuck.";
 
 // The phone app's notifications start as the phone channels do: the same events, on by the same defaults.
-const NOTIFY_DEFAULTS = { enabled: true, events: Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.default])), minSeconds: 60, whileFocused: false };
+const NOTIFY_DEFAULTS = { enabled: true, events: Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.default])), minSeconds: 60, whileFocused: false, working: false };
 const EVENT_LABELS = Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.label]));
+// Off until you tick them in Settings → On your phone:
+//   replyDesk: reply to a conversation started at the desk, while it's in Ask first
+//   push:      push a conversation's branch after bringing it home
+//   files:     read a conversation's files, read-only
+const ALLOW_KEYS = ['replyDesk', 'push', 'files'];
+const REPLY_MODES = ['ask', 'plan']; // Ask first, and Plan-only (which changes nothing)
 
 // Another port for a dev run beside an installed Shellby, or 0 for whichever is free (the tests).
 function portFromEnv(raw) {
@@ -66,6 +73,11 @@ function wirePocket(d) {
   let ticker = null;
   let lastView = '';
   const lastTurn = new Map(); // watched tab -> the turn whose message the phone has
+  // Focus, routines, notes, the wardrobe, files and photos (pocket/extras.js).
+  const extra = createPocketExtras(d, {
+    allowed: key => !!settings().allow[key],
+    tabRoot: id => { const tab = id && d.manager?.tabs.get(id); return tab?.session?.cwd || null; },
+  });
 
   // ---- settings
 
@@ -73,8 +85,11 @@ function wirePocket(d) {
     const r = d.config.get('pocket') || {};
     const notify = { ...NOTIFY_DEFAULTS, ...(r.notify && typeof r.notify === 'object' ? r.notify : {}) };
     notify.events = { ...NOTIFY_DEFAULTS.events, ...(r.notify?.events || {}) };
+    const allow = r.allow && typeof r.allow === 'object' ? r.allow : {};
     return {
       enabled: r.enabled === true,
+      // What the phone may do beyond the usual, each one turned on at the desk.
+      allow: Object.fromEntries(ALLOW_KEYS.map(k => [k, allow[k] === true])),
       login: typeof r.login === 'string' ? r.login : '',
       dnsName: typeof r.dnsName === 'string' ? r.dnsName : '',
       servedPort: Number.isInteger(r.servedPort) ? r.servedPort : 0, // the https port Shellby asked serve for, to take back
@@ -185,10 +200,20 @@ function wirePocket(d) {
   function extras() {
     const out = {};
     for (const [id, tab] of d.manager?.tabs || []) {
-      const mine = !!(tab.fromPocket || tab.fromPhone);
-      out[id] = { mode: tab.session.mode || null, fromPhone: mine, canReply: mine && !tab.inTerminal };
+      out[id] = { mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !replyRefusal(tab) };
     }
     return out;
+  }
+
+  // Why the phone can't reply to this conversation, or null. One the phone
+  // started always takes replies; one from the desk only when you've allowed
+  // it, and only while it's in Ask first, so every edit still comes back to you.
+  function replyRefusal(tab) {
+    if (tab.inTerminal) return "It's in a terminal on your PC now. Reply there.";
+    if (tab.fromPocket || tab.fromPhone) return null;
+    if (!settings().allow.replyDesk) return 'Reply to that one at the desk: only conversations your phone started take replies from it.';
+    if (!REPLY_MODES.includes(tab.session.mode)) return 'It’s not in Ask first, so replies to it come from the desk.';
+    return null;
   }
 
   function projects() {
@@ -226,6 +251,9 @@ function wirePocket(d) {
       skin: d.activeSkin?.() || null,
       limits: { perHour: pt.MAX_STARTS_PER_HOUR, atOnce: pt.MAX_OPEN, open: openCount() },
       pushKey: vapid?.publicKey || null,
+      allow: settings().allow,
+      focus: d.focusState?.() || null,
+      guard: guard.settingsOf(k => d.config.get(k)),
       now: Date.now(),
     });
   }
@@ -310,18 +338,58 @@ function wirePocket(d) {
       case 'cancel-held': return cancelHeld(body);
       case 'push': return setPush(device, body);
       case 'forget': return forget(device.id, 'You forgot this phone.');
-      default: return no('unknown');
+      default: {
+        const fn = Object.prototype.hasOwnProperty.call(extra.actions, name) ? extra.actions[name] : null;
+        if (!fn) return no('unknown');
+        const r = await fn(body);
+        if (r.ok && ['focus', 'routine-toggle'].includes(name)) pushView();
+        return r;
+      }
     }
   }
 
-  function answer({ tabId, requestId, decision }) {
+  function answer({ tabId, requestId, decision, answers, notes, read }) {
     if (!str(tabId) || !str(requestId) || !['allow', 'deny'].includes(decision)) return no('That answer is not one the phone can give.');
     const pendingItem = d.manager.tabs.get(tabId)?.session.pending.get(requestId);
     if (!pendingItem) return no('That was already answered.');
-    const why = deskOnlyReason(pendingItem);
+    const why = appDeskOnlyReason(pendingItem);
     if (why) return no(why);
+    const extra = answerExtra(pendingItem, { decision, answers, notes, read, mayWrite: mayWriteTo(d.manager.tabs.get(tabId)) });
+    if (extra.error) return no(extra.error);
     d.log.info(`pocket: ${decision} for ${pendingItem.toolName}`);
-    return d.answerPermission(tabId, requestId, decision, { via: 'pocket' }) ? ok() : no('That was already answered.');
+    return d.answerPermission(tabId, requestId, decision, { via: 'pocket', ...extra }) ? ok() : no('That was already answered.');
+  }
+
+  // A question needs an answer to each of its questions; a plan is only approved
+  // once the phone says it was read to the end, and a no carries your notes.
+  // Your own words into a conversation (a typed answer, notes on a plan) go
+  // only where a reply could: one the phone started, or a desk one you allowed.
+  function mayWriteTo(tab) {
+    if (tab.fromPocket || tab.fromPhone) return true;
+    return settings().allow.replyDesk && REPLY_MODES.includes(tab.session.mode);
+  }
+
+  function answerExtra(item, { decision, answers, notes, read, mayWrite }) {
+    if (item.toolName === 'AskUserQuestion') {
+      if (decision === 'deny') return { message: SKIPPED_QUESTION };
+      const asked = (item.input?.questions || []).map(q => q?.question).filter(q => typeof q === 'string');
+      const given = answers && typeof answers === 'object' && !Array.isArray(answers) ? answers : {};
+      const clean = Object.fromEntries(asked.map(q => [q, typeof given[q] === 'string' ? given[q].trim().slice(0, 2000) : '']));
+      if (!asked.length || Object.values(clean).some(a => !a)) return { error: 'Answer each question first.' };
+      if (!mayWrite) {
+        // Only the options offered, then: a typed answer to a desk conversation is a reply.
+        const offered = q => new Set(((item.input.questions || []).find(x => x?.question === q)?.options || []).map(o => o?.label));
+        if (Object.entries(clean).some(([q, a]) => a.split(', ').some(part => !offered(q).has(part)))) return { error: 'Pick from the options: typed answers to this one go from the desk.' };
+      }
+      return { answers: clean };
+    }
+    if (item.toolName === 'ExitPlanMode') {
+      if (decision === 'allow') return read === true ? {} : { error: 'Read the plan to the end first.' };
+      const said = typeof notes === 'string' ? notes.trim().slice(0, 2000) : '';
+      if (said && !mayWrite) return { error: 'Notes on this plan go from the desk. Send it back without them, or write them there.' };
+      return said ? { message: `The user read your plan and wants it revised before anything changes. Their notes:\n${said}` } : {};
+    }
+    return {};
   }
 
   function task(body) {
@@ -335,7 +403,7 @@ function wirePocket(d) {
     return answer;
   }
 
-  async function startTask({ project, text }) {
+  async function startTask({ project, text, photos }) {
     const prompt = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!prompt) return no('Say what you want done first.');
     if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
@@ -356,12 +424,14 @@ function wirePocket(d) {
       return ok({ held: true, atText: held.atText });
     }
     const title = pt.titleFor(prompt);
+    // Pictures the phone sent first (POST /upload), each used once.
+    const files = extra.takePhotos(photos);
     // Its place is kept while the copy is made, so two at once can't both slip under the cap.
     starting++;
     let r;
     try {
-      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: pt.MODE });
-      if (!r.ok && r.noCopy) r = d.startTask(prompt, title, { mode: pt.MODE, cwd: target.key });
+      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: pt.MODE, ...(files.length ? { attachments: () => files } : {}) });
+      if (!r.ok && r.noCopy) r = d.startTask(files.length && d.composePrompt ? d.composePrompt(prompt, files) : prompt, title, { mode: pt.MODE, cwd: target.key });
       if (r.ok) adopt(r.tabId);
     } finally { starting--; }
     if (!r.ok) return no(r.error || "Couldn't start it.");
@@ -380,8 +450,8 @@ function wirePocket(d) {
   function reply({ tabId, text }) {
     const tab = str(tabId) && d.manager.tabs.get(tabId);
     if (!tab) return no('That conversation has closed.');
-    if (!(tab.fromPocket || tab.fromPhone)) return no('Reply to that one at the desk: only conversations your phone started take replies from it.');
-    if (tab.inTerminal) return no("It's in a terminal on your PC now. Reply there.");
+    const refused = replyRefusal(tab);
+    if (refused) return no(refused);
     const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!said) return no('Type something first.');
     if (/^[/!]/.test(said)) return no('Commands that start with / or ! only run at the desk.');
@@ -425,11 +495,16 @@ function wirePocket(d) {
     return ok({ patch: patch.slice(0, 200000), truncated: !!r?.truncated || patch.length > 200000 });
   }
 
-  async function home({ tabId, force }) {
+  // push: and push the branch it lands on, when Settings allows it. The desk's
+  // own checks go first (the secret scan, other people's commits), as at the desk.
+  async function home({ tabId, force, push: andPush }) {
     if (!str(tabId)) return no('That conversation has closed.');
-    const r = await d.bringTabHome(tabId, { force: force === true });
+    if (andPush === true && !settings().allow.push) return no('Pushing from your phone is off. Turn it on in Settings → On your phone.');
+    if (andPush === true && force === true) return no('Red checks and a push together only happen at the desk.');
+    const r = await d.bringTabHome(tabId, { force: force === true, ...(andPush === true ? { push: true } : {}) });
     if (r.red) return { ok: false, red: true, error: r.error };
-    return r.ok ? ok({ merged: !!r.merged, commits: r.commits || 0, base: r.base || null }) : no(r.error || "Couldn't bring it home.");
+    const pushed = r.push;
+    return r.ok ? ok({ merged: !!r.merged, commits: r.commits || 0, base: r.base || null, ...(andPush === true ? { pushed: !!pushed?.ok, pushError: pushed && !pushed.ok ? String(pushed.error || '') : null } : {}) }) : no(r.error || "Couldn't bring it home.");
   }
 
   function reviewed({ tabId, after }) {
@@ -470,68 +545,12 @@ function wirePocket(d) {
     return ok();
   }
 
-  // ---- push notifications
+  // ---- push notifications (pocket/notices.js)
 
-  // The app icon's count: the prompts waiting. Only sent with a notification,
-  // since a push that shows nothing is one iOS stops allowing.
-  let promptsWaiting = 0;
-  function badge(n) { promptsWaiting = n; }
-
-  /**
-   * One event from tellChannel (wiring/channels.js), to every paired phone that
-   * asked for notifications. Its own settings, the same rules: Guard my focus,
-   * the quick-task cut-off, and "always" for what the phone itself started.
-   */
-  function notify(event, { always = false } = {}) {
-    const s = settings();
-    if (!s.enabled || !d.config) return false;
-    const targets = devices().filter(dv => dv.push);
-    if (!targets.length) return false;
-    const tab = event?.tabId ? d.manager?.tabs.get(event.tabId) : null;
-    const forced = always || !!tab?.fromPocket;
-    if (!channels.shouldSend(event, s.notify, { focused: focus.guarding(d.config.get('focus'), Date.now()), always: forced })) return false;
-    const keys = vapidKeys();
-    if (!keys) return false;
-    const m = composeMessage(event);
-    const prompts = event.kind === 'asking' ? Math.max(promptsWaiting, waitingPrompts().length) : waitingPrompts().length;
-    const payload = {
-      title: m.title, body: m.body,
-      tag: event.tabId ? `${event.kind === 'asking' ? 'ask' : 'tab'}-${event.tabId}` : `shellby-${event.kind}`,
-      url: event.tabId ? `/#/tab/${encodeURIComponent(event.tabId)}` : '/',
-      badge: prompts,
-      at: Date.now(),
-    };
-    for (const dv of targets) {
-      const built = push.buildPushRequest(dv.push, payload, {
-        keys, subject: PUSH_SUBJECT,
-        ttl: event.kind === 'asking' ? 30 * 60 : 6 * 3600,
-        urgency: m.priority === 'high' ? 'high' : 'normal',
-      });
-      if (built.error) { d.log.info(`pocket push: ${built.error}`); continue; }
-      push.sendPush(built).then(r => {
-        if (r.gone) {
-          // The phone dropped it (notifications turned off, app removed): forget it, quietly,
-          // unless it subscribed again while this was on its way.
-          saveDevices(devices().map(x => (x.id === dv.id && x.push?.endpoint === dv.push.endpoint ? { ...x, push: null } : x)));
-          d.send(d.panel, 'pocket', pocketViewNow());
-        } else if (!r.ok) d.log.info(`pocket push: ${r.error || r.status}`);
-      }).catch(err => d.log.info(`pocket push: ${err.message}`));
-    }
-    return true;
-  }
-
-  async function testPush() {
-    const targets = devices().filter(dv => dv.push);
-    if (!targets.length) return no('No paired phone has notifications on yet. Turn them on in the app.');
-    const keys = vapidKeys();
-    if (!keys) return no("Windows can't keep the notification key safe on this PC.");
-    const results = await Promise.all(targets.map(dv => {
-      const built = push.buildPushRequest(dv.push, { title: 'Shellby', body: "That's me, on your phone. 🦀", tag: 'shellby-test', url: '/', badge: waitingPrompts().length }, { keys, subject: PUSH_SUBJECT, ttl: 600 });
-      return built.error ? { ok: false, error: built.error } : push.sendPush(built);
-    }));
-    const bad = results.find(r => !r.ok);
-    return bad ? no(bad.gone ? 'That phone has turned notifications off.' : `It didn't go: ${bad.error || bad.status}`) : ok();
-  }
+  const { notify, noticeWork, testPush, badge } = createPocketNotices(d, {
+    settings, devices, saveDevices, vapidKeys, waitingPrompts,
+    changed: () => d.send(d.panel, 'pocket', pocketViewNow()),
+  });
 
   // ---- on and off (the panel asks; the confirmation window decides)
 
@@ -609,11 +628,19 @@ function wirePocket(d) {
       await stopServing();
       return pocketView();
     }
+    if (patch.allow && typeof patch.allow === 'object') {
+      const next = { ...settings().allow };
+      for (const k of ALLOW_KEYS) if (k in patch.allow) next[k] = patch.allow[k] === true;
+      save({ allow: next });
+      pushView();
+      return pocketView();
+    }
     if (patch.notify && typeof patch.notify === 'object') {
       const s = settings();
       const n = { ...s.notify };
       if ('enabled' in patch.notify) n.enabled = !!patch.notify.enabled;
       if ('whileFocused' in patch.notify) n.whileFocused = !!patch.notify.whileFocused;
+      if ('working' in patch.notify) n.working = !!patch.notify.working;
       if (patch.notify.events && typeof patch.notify.events === 'object') {
         n.events = { ...n.events };
         for (const k of Object.keys(NOTIFY_DEFAULTS.events)) if (k in patch.notify.events) n.events[k] = !!patch.notify.events[k];
@@ -641,8 +668,8 @@ function wirePocket(d) {
       title: 'Put Shellby on your phone?',
       message: `Over your tailnet, at ${ts.dnsName}, for ${who}`.slice(0, 200),
       detail: [
-        'A phone you pair can see your conversations as they happen, answer Allow or Deny, start tasks, stop a turn, undo a turn and bring a copy home.',
-        'Tasks from the phone always run in Ask first, so every edit and command still waits for your yes. Always allow, plans, questions and anything the card would warn you about stay at the desk.',
+        'A phone you pair can see your conversations as they happen, answer Allow or Deny, answer questions, approve plans, start tasks and routines, stop a turn, undo a turn and bring a copy home.',
+        'Tasks from the phone always run in Ask first, so every edit and command still waits for your yes. Always allow and anything the card would warn you about stay at the desk.',
         `Only devices signed in to Tailscale as ${who} can reach it, and each phone needs a code from this screen to pair.`,
       ].join('\n\n'),
       note: 'Only say yes if you set this up yourself.',
@@ -697,6 +724,7 @@ function wirePocket(d) {
       code: open ? { text: pairing.showCode(open.code), expiresAt: open.expiresAt, triesLeft: pairing.CODE_TRIES - open.tries } : null,
       devices: pairing.devicesView(devices(), now),
       notify: s.notify,
+      allow: s.allow,
       eventLabels: EVENT_LABELS,
       canEncrypt: safeStorage.isEncryptionAvailable(),
     };
@@ -716,6 +744,7 @@ function wirePocket(d) {
       ownerLogin: () => settings().login,
       findDevice,
       onPair, onOpen, onAction, onDiff,
+      onUpload: (_device, bytes) => (settings().enabled ? extra.savePhoto(bytes) : no('Shellby on your phone is off.')),
     });
     d.pocket.on('seen', onSeen);
     d.pocket.on('status', () => {
@@ -723,7 +752,7 @@ function wirePocket(d) {
       pushView();
       d.send(d.panel, 'pocket', pocketViewNow());
     });
-    d.manager.on('tabs', () => { pushView(); newTurns(); });
+    d.manager.on('tabs', () => { pushView(); newTurns(); noticeWork(); });
     d.manager.on('aggregate', pushView);
     d.manager.on('item', onItem);
     if (settings().enabled) {

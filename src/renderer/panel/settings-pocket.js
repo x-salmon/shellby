@@ -105,6 +105,8 @@
         h('span', { class: 'switch' }), label)));
     }
     $('pocketWhileFocused').checked = !!n.whileFocused;
+    $('pocketWorking').checked = !!n.working;
+    for (const el of $('pocketAllow').querySelectorAll('input[data-allow]')) el.checked = !!v.allow?.[el.dataset.allow];
     $('pocketTest').disabled = !(v.devices || []).some(dv => dv.push);
   }
 
@@ -127,6 +129,11 @@
     if (key) render(await api.setPocket({ notify: { events: { [key]: e.target.checked } } }));
   });
   $('pocketWhileFocused').addEventListener('change', async e => render(await api.setPocket({ notify: { whileFocused: e.target.checked } })));
+  $('pocketWorking').addEventListener('change', async e => render(await api.setPocket({ notify: { working: e.target.checked } })));
+  $('pocketAllow').addEventListener('change', async e => {
+    const key = e.target.dataset.allow;
+    if (key) render(await api.setPocket({ allow: { [key]: e.target.checked } }));
+  });
   $('pocketTest').addEventListener('click', async e => {
     e.target.disabled = true;
     $('pocketTestStatus').textContent = 'Sending…';

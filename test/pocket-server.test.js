@@ -166,6 +166,18 @@ test('actions are JSON, small, and only the known ones', async () => {
   } finally { server.stop(); }
 });
 
+test('a photo upload is a JPEG or PNG, paired, and handed over as bytes', async () => {
+  const got = [];
+  const { server, port } = await boot({ onUpload: (device, bytes) => { got.push(bytes.length); return { ok: true, id: 'p1' }; } });
+  try {
+    const jpeg = { ...auth, 'Content-Type': 'image/jpeg' };
+    assert.deepEqual((await request(port, { method: 'POST', url: `${API}/upload`, headers: jpeg, body: 'abcd' })).json, { ok: true, id: 'p1' });
+    assert.deepEqual(got, [4]);
+    assert.equal((await request(port, { method: 'POST', url: `${API}/upload`, headers: { ...auth, 'Content-Type': 'image/gif' }, body: 'abcd' })).status, 415);
+    assert.equal((await request(port, { method: 'POST', url: `${API}/upload`, headers: { 'Content-Type': 'image/jpeg' }, body: 'abcd' })).status, 401);
+  } finally { server.stop(); }
+});
+
 test('a diff names a conversation and a turn, nothing else', async () => {
   const { server, port, calls } = await boot();
   try {

@@ -43,6 +43,21 @@
   const post = (name, body = {}, opts) => call('POST', name, body, opts);
   const get = (name, query = {}) => call('GET', `${name}?${new URLSearchParams(query)}`);
 
+  /** A picture for a new task, as its own bytes. -> { ok, id } */
+  async function upload(blob, { timeoutMs = 60000 } = {}) {
+    const headers = { Accept: 'application/json', 'Content-Type': blob.type || 'image/jpeg' };
+    const t = token();
+    if (t) headers.Authorization = `Bearer ${t}`;
+    let res;
+    try {
+      res = await fetch(`${API}/upload`, { method: 'POST', headers, body: blob, cache: 'no-store', credentials: 'omit', signal: AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined });
+    } catch {
+      return { ok: false, offline: true, error: "Couldn't reach your PC." };
+    }
+    if (res.status === 401) return { ok: false, unpaired: true, error: 'This phone isn’t paired any more.' };
+    try { return await res.json(); } catch { return { ok: false, error: `Your PC said ${res.status}.` }; }
+  }
+
   /**
    * The live stream. handlers: { view(v), items({ tabId, items }), item({ tabId, item }),
    * bye({ reason }), live(on), unpaired() }. watch(tabId) reopens it for that conversation.
@@ -126,5 +141,5 @@
     };
   }
 
-  root.PocketNet = { API, TOKEN_KEY, call, createStream, get, post, setToken, store, token };
+  root.PocketNet = { API, TOKEN_KEY, call, createStream, get, post, setToken, store, token, upload };
 })(window);

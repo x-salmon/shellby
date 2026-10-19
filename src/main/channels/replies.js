@@ -60,6 +60,20 @@ function deskOnlyReason(item) {
   return null;
 }
 
+/**
+ * The phone app (pocket/) shows a question's options and a plan in full, so
+ * those two are its to answer; everything else stays as deskOnlyReason says.
+ */
+function appDeskOnlyReason(item) {
+  if (!['AskUserQuestion', 'ExitPlanMode'].includes(item?.toolName)) return deskOnlyReason(item);
+  if (item.runsCreated?.length) return 'It runs a file Claude wrote this session: check it at the desk.';
+  if (item.selfConfig) return `It changes ${item.selfConfig}: check it at the desk.`;
+  if (item.toolName === 'AskUserQuestion' && !Array.isArray(item.input?.questions)) return 'It has a question for you: answer it at the desk.';
+  // Nothing to read means nothing to approve from here.
+  if (item.toolName === 'ExitPlanMode' && !String(item.plan ?? item.input?.plan ?? '').trim()) return 'It has a plan for you to read: approve it at the desk.';
+  return null;
+}
+
 /** One line of ntfy's JSON stream -> { nonce, decision } | null. */
 function parseNtfyMessage(msg) {
   if (!msg || msg.event !== 'message' || typeof msg.message !== 'string') return null;
@@ -422,6 +436,6 @@ class RemoteAnswers {
 }
 
 module.exports = {
-  RemoteAnswers, supportsReplies, newNonce, deskOnlyReason,
+  RemoteAnswers, supportsReplies, newNonce, deskOnlyReason, appDeskOnlyReason,
   parseNtfyMessage, parseTelegramCallback, NONCE, TTL_MS, PHONE_MAX, INBOX_POLL_MS, MAX_BACKOFF_MS,
 };

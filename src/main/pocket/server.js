@@ -38,7 +38,14 @@ const KEEPALIVE_MS = 15000;          // phones and proxies drop a quiet stream s
 const PAIR_PER_HOUR = 30;            // the code takes five tries; this keeps a flood out of the log
 const ACTIONS_PER_MINUTE = 120;
 
-const ACTIONS = ['answer', 'task', 'reply', 'stop', 'undo', 'home', 'reviewed', 'cancel-held', 'push', 'forget'];
+const ACTIONS = [
+  'answer', 'task', 'reply', 'stop', 'undo', 'home', 'reviewed', 'cancel-held', 'push', 'forget',
+  // pocket/extras.js
+  'focus', 'routines', 'routine-run', 'routine-toggle', 'workflow-run', 'notes', 'note-add', 'note-tick',
+  'wardrobe', 'wear', 'pet', 'files', 'file',
+];
+const MAX_UPLOAD = 6 * 1024 * 1024; // a photo for a task, made smaller on the phone first
+const UPLOAD_TYPES = ['image/jpeg', 'image/png'];
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -54,7 +61,7 @@ const TYPES = {
 // The page may run its own scripts and styles, talk to this server, and
 // nothing else: no inline script, no other host, no framing.
 const CSP = [
-  "default-src 'none'", "script-src 'self'", "style-src 'self'", "font-src 'self'", "img-src 'self' data:",
+  "default-src 'none'", "script-src 'self'", "style-src 'self'", "font-src 'self'", "img-src 'self' data: blob:",
   "connect-src 'self'", "manifest-src 'self'", "worker-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join('; ');
 
@@ -70,6 +77,8 @@ function routeTable(srcDir, assetsDir) {
     '/pocket-stream.js': app('pocket-stream.js'),
     '/pocket-draw.js': app('pocket-draw.js'),
     '/pocket-tab.js': app('pocket-tab.js'),
+    '/pocket-more.js': app('pocket-more.js'),
+    '/pocket-bits.js': app('pocket-bits.js'),
     '/sw.js': app('sw.js'),
     '/manifest.webmanifest': app('manifest.webmanifest'),
     // He's on the pairing screen before the PC has said which skin he wears.
@@ -109,8 +118,9 @@ class PocketServer extends EventEmitter {
    * onOpen(device, { tab }) -> { view, items? }: the first thing a stream is sent
    * onAction(device, action, body) -> Promise<{ ok, ... }>
    * onDiff(device, { tab, after, file }) -> Promise<{ ok, patch } | { ok: false, error }>
+   * onUpload(device, bytes) -> { ok, id } | { ok: false, error }: a photo for a new task
    */
-  constructor({ srcDir, assetsDir, port = DEFAULT_PORT, getPlace, ownerLogin, findDevice, onPair, onOpen, onAction, onDiff, now = Date.now }) {
+  constructor({ srcDir, assetsDir, port = DEFAULT_PORT, getPlace, ownerLogin, findDevice, onPair, onOpen, onAction, onDiff, onUpload, now = Date.now }) {
     super();
     this.routes = routeTable(srcDir, assetsDir);
     this.port = port;
@@ -121,6 +131,7 @@ class PocketServer extends EventEmitter {
     this.onOpen = onOpen;
     this.onAction = onAction;
     this.onDiff = onDiff;
+    this.onUpload = onUpload;
     this.now = now;
     this.server = null;
     this.clients = new Set();      // { res, device, tab }
@@ -269,6 +280,7 @@ class PocketServer extends EventEmitter {
 
     if (name === 'events' && req.method === 'GET') { this.subscribe(req, res, device, url.searchParams.get('tab')); return; }
     if (name === 'diff' && req.method === 'GET') { this.diff(res, device, url.searchParams); return; }
+    if (name === 'upload' && req.method === 'POST') { this.upload(req, res, device); return; }
     if (ACTIONS.includes(name) && req.method === 'POST') { this.action(req, res, device, name); return; }
     json(res, 404, { ok: false, error: 'unknown' });
   }
@@ -354,6 +366,28 @@ class PocketServer extends EventEmitter {
     });
   }
 
+  /** A picture, as its own bytes (not JSON), capped: the phone shrinks it to a JPEG first. */
+  upload(req, res, device) {
+    if (!this.allowed(device)) { json(res, 429, { ok: false, error: 'slow down' }); return; }
+    const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    if (!UPLOAD_TYPES.includes(type)) { json(res, 415, { ok: false, error: 'Send a JPEG or PNG.' }); return; }
+    const chunks = [];
+    let size = 0;
+    let over = false;
+    req.on('data', chunk => {
+      if (over) return;
+      size += chunk.length;
+      if (size > MAX_UPLOAD) { over = true; json(res, 413, { ok: false, error: 'That picture is too big.' }); req.destroy(); return; }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (over) return;
+      let r;
+      try { r = this.onUpload?.(device, Buffer.concat(chunks)); } catch { r = { ok: false, error: 'failed' }; }
+      json(res, 200, r && typeof r === 'object' ? r : { ok: false });
+    });
+  }
+
   action(req, res, device, name) {
     if (!this.allowed(device)) { json(res, 429, { ok: false, error: 'slow down' }); return; }
     readJson(req, res, async msg => {
@@ -391,4 +425,4 @@ function readJson(req, res, then) {
   });
 }
 
-module.exports = { ACTIONS, API, CSP, DEFAULT_PORT, MAX_BODY, MAX_CLIENTS, MAX_PER_DEVICE, PocketServer, TYPES, routeTable };
+module.exports = { ACTIONS, API, CSP, DEFAULT_PORT, MAX_BODY, MAX_UPLOAD, MAX_CLIENTS, MAX_PER_DEVICE, PocketServer, TYPES, routeTable };

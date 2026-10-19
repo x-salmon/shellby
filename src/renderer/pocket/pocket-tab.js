@@ -4,7 +4,7 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath }) => {
+  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, shareTurn }) => {
     // ---------------------------------------------------------------- one conversation
 
     function tabScreen(tabId) {
@@ -44,7 +44,10 @@
         if (t.copy) chips.push(h('span', { class: 'pill', text: 'own copy' }), h('span', { class: 'pill dim mono', text: t.copy.branch }));
         else if (t.folder) chips.push(h('span', { class: 'pill dim', text: t.folder }));
         if (t.fromPhone) chips.push(h('span', { class: 'pill dim', text: '📱 from your phone' }));
-        header.replaceChildren(h('h2', { class: 'tab-title', text: t.title }), h('div', { class: 'chips' }, ...chips));
+        const tools = [];
+        if (S.view?.allow?.files) tools.push(h('a', { class: 'btn ghost slim', href: `#/files/${encodeURIComponent(tabId)}/` }, icon('folder'), h('span', { class: 'btn-label', text: 'Files' })));
+        if (['review', 'finished'].includes(t.standing) && t.outcome !== 'error') tools.push(h('button', { type: 'button', class: 'btn ghost slim', onclick: () => shareTurn(t) }, icon('share'), h('span', { class: 'btn-label', text: 'Share' })));
+        header.replaceChildren(h('h2', { class: 'tab-title', text: t.title }), h('div', { class: 'chips' }, ...chips), tools.length ? h('div', { class: 'tab-tools' }, ...tools) : '');
       }
 
       // Each reply's elements are kept between redraws, by where it is and what it says:
@@ -121,7 +124,7 @@
         if (reviewing) parts.push(reviewBar(t));
         if (!t.busy && !t.pending) {
           if (t.canReply) parts.push(replyRow);
-          else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: 'Reply to this one at the desk. Your phone replies to the conversations it started.' }));
+          else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: S.view?.allow?.replyDesk ? 'Reply to this one at the desk: it isn’t in Ask first.' : 'Reply to this one at the desk. Your phone replies to the conversations it started, and to desk ones in Ask first if you allow it in Settings → On your phone.' }));
         }
         foot.replaceChildren(...parts);
       }
@@ -143,7 +146,25 @@
         }) : actButton({ label: 'Looks good', cls: 'go', iconName: 'check', run: () => act('reviewed', { tabId, after: t.ready.after }, { okText: 'Marked as looked at.' }) });
         return h('div', { class: 'review-bar' },
           h('a', { class: 'btn ghost', href: `#/diff/${encodeURIComponent(tabId)}/${encodeURIComponent(t.ready.after)}` }, icon('files'), h('span', { text: 'Changes' }), h('span', { class: 'add', text: `+${t.ready.added}` }), h('span', { class: 'del', text: `−${t.ready.removed}` })),
-          undo, home);
+          undo, home, pushHome(t));
+      }
+
+      // Bring it home and push, when Settings allows the phone to push. The desk's
+      // secret scan and its question about other people's commits still come first.
+      function pushHome(t) {
+        if (!t.copy || !S.view?.allow?.push) return null;
+        return actButton({
+          label: 'Home and push', cls: 'ghost', iconName: 'send',
+          run: () => confirmSheet({
+            title: 'Bring it home and push?', text: `Merges ${t.copy.branch} into ${t.copy.base}, then pushes ${t.copy.base}. If your PC needs to ask you something first, it asks there.`, yes: 'Home and push',
+            then: async () => {
+              const r = await act('home', { tabId, push: true }, { timeoutMs: 600000 });
+              if (!r.ok) return;
+              celebrate(t.title);
+              toast(r.pushed ? `Home in ${r.base || t.copy.base}, and pushed.` : `Home in ${r.base || t.copy.base}, but the push didn’t go${r.pushError ? `: ${r.pushError}` : '.'}`, { tone: r.pushed ? 'ok' : 'warn', ms: 6000 });
+            },
+          }),
+        });
       }
 
       function update() {

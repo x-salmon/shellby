@@ -154,6 +154,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     const p = patch && typeof patch === 'object' ? patch : {};
     if (p.enabled === true || p.enabled === false) return d.setPocket({ enabled: p.enabled });
     if (p.notify && typeof p.notify === 'object') return d.setPocket({ notify: p.notify });
+    if (p.allow && typeof p.allow === 'object') return d.setPocket({ allow: p.allow });
     return d.pocketView();
   });
   ipcMain.handle('pocket:pair', () => d.newPocketCode());

@@ -99,3 +99,29 @@ test('long text is clipped and one-liners lose their control characters', () => 
   assert.equal(v.line('a\u0007b\n\nc', 10), 'a b c');
   assert.equal(v.phoneItems(Array.from({ length: 500 }, () => ({ kind: 'text', text: 'x' }))).length, v.MAX_ITEMS);
 });
+
+test('questions come with their options, and a plan in full, for the phone to answer', () => {
+  const prompts = [
+    { tabId: 't1', requestId: 'q', toolName: 'AskUserQuestion', input: { questions: [{ question: 'Which?', header: 'DB', multiSelect: true, options: [{ label: 'A', description: 'first' }] }] } },
+    { tabId: 't1', requestId: 'p', toolName: 'ExitPlanMode', plan: '# Plan\n1. Go', planSummary: '1 step' },
+    { tabId: 't1', requestId: 's', toolName: 'ExitPlanMode', plan: 'x', selfConfig: 'your hooks' },
+  ];
+  const view = v.phoneView({ tabs: [tab()], prompts });
+  assert.equal(view.prompts[0].deskOnly, null);
+  assert.deepEqual(view.prompts[0].questions, [{ question: 'Which?', header: 'DB', multiSelect: true, options: [{ label: 'A', description: 'first' }] }]);
+  assert.equal(view.prompts[1].deskOnly, null);
+  assert.equal(view.prompts[1].planText, '# Plan\n1. Go');
+  assert.match(view.prompts[2].deskOnly, /hooks/);
+});
+
+test('the usage view has the week, the guard and focus', () => {
+  const now = Date.UTC(2026, 9, 19, 12);
+  const view = v.phoneView({
+    lastUsage: { fiveHour: { pct: 40, resetsAt: now + 3600e3 }, sevenDay: { pct: 61.4, resetsAt: now + 86400e3 }, at: now - 1000 },
+    guard: { on: true, reserve: 25 }, focus: { phase: 'focus', endsAt: now + 60e3, minutes: 25 }, now,
+  });
+  assert.equal(view.usage.weekPct, 61);
+  assert.deepEqual(view.usage.guard, { reserve: 25, ceiling: 75 });
+  assert.equal(view.focus.phase, 'focus');
+  assert.deepEqual(view.allow, { replyDesk: false, push: false, files: false });
+});
