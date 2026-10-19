@@ -1,18 +1,13 @@
 // Shellby on your phone (pocket/): the server, Tailscale, pairing, push, and
 // what each tap on the phone does. Kept out of main.js, which only wires it up.
 //
-// Off until you turn it on in Settings → On your phone, which asks in the
-// confirmation window. On, it serves 127.0.0.1:47916 and asks Tailscale to
-// serve that on your tailnet; off, it stops both.
+// Off until turned on in Settings → On your phone (the confirmation window asks).
+// On, it serves 127.0.0.1:47916 and Tailscale serves that on your tailnet.
 //
 // The phone does what the desk does, through the same functions, under the
-// phone's rules (the same ones the notifications follow):
-//   - Allow and Deny only; never Always allow, and nothing deskOnlyReason flags.
-//   - New tasks in Ask first, in their own copy when the folder is a repo, at
-//     most 10 an hour and 3 at once, held for the reset at the limit.
-//   - Replies only into conversations the phone started, which are Ask first too.
-//   - Undo and Bring it home through the desk's own code, with its checks gate.
-//   - A phone set to read-only at the desk (pocket/rights.js) does none of it.
+// phone's rules (docs/PHONE.md): nothing deskOnlyReason flags, tasks in the mode
+// picked at most 10 an hour and 3 at once, and nothing at all from a phone set
+// to read-only at the desk (pocket/rights.js).
 const { app, safeStorage } = require('electron');
 const path = require('path');
 const attach = require('../attachments');
