@@ -12,6 +12,8 @@ const { loadSkins } = require('./skins');
 const { clampToDisplays } = require('./desktop/placement');
 const { REGISTRY_URL, PROTOCOL, findDeepLink } = require('./registry');
 const { withDevice } = require('./progression/xp');
+const { sweepTmp } = require('./tmp-sweep');
+const TMP_SWEEP_DELAY_MS = 60 * 1000;
 const statusLine = require('./statusline');
 const { Log } = require('./log');
 const crashReport = require('./crash-report');
@@ -407,6 +409,7 @@ app.whenReady().then(() => {
   if (!CAPTURE && !config.get('xp')?.device) config.set({ xp: withDevice(config.get('xp'), randomUUID()) });
   awardXp('day');
   every(() => { shared.wardrobe.collectSeasonals(); broadcastWardrobe(); eventsTick(); }, HOUR_MS);
+  setTimeout(() => { sweepTmp(); }, TMP_SWEEP_DELAY_MS).unref(); // old temp leftovers, once he's up
   shared.skins = loadSkins(userSkinsDir());
 
   // Renderers never need camera, mic, geolocation etc.

@@ -35,10 +35,18 @@ const MAX_PATCH = 400 * 1024;                   // one file's diff, as text
 // A snapshot taken only to look (the file viewer) runs none of the repo's own
 // hooks: git add and write-tree write the temporary index, and post-index-change would fire.
 // A -c before the subcommand, so any git takes it (GIT_CONFIG_COUNT would need 2.31).
+// A folder of this run's own, unguessable, so nobody can put a hook in it; removed on exit
+// (tmp-sweep.js removes one a crash left).
 let noHooksDir = null;
 const noHooks = () => {
-  try { noHooksDir = noHooksDir && fs.existsSync(noHooksDir) ? noHooksDir : fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-no-hooks-')); } catch { /* git finds no hooks in a folder that isn't there either */ }
-  return ['-c', `core.hooksPath=${noHooksDir || path.join(os.tmpdir(), 'shellby-no-hooks')}`];
+  try {
+    if (!noHooksDir || !fs.existsSync(noHooksDir)) {
+      noHooksDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-no-hooks-'));
+      const dir = noHooksDir;
+      process.once('exit', () => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* the sweep gets it */ } });
+    }
+  } catch { /* git finds no hooks in a folder that isn't there either */ }
+  return ['-c', `core.hooksPath=${noHooksDir || path.join(os.tmpdir(), `shellby-no-hooks-${process.pid}-gone`)}`];
 };
 
 // A look only (the file viewer) fetches nothing. In a partial clone, or a repo whose own config says
