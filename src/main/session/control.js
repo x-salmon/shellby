@@ -56,7 +56,7 @@ const control = {
     this.pending.clear();
   },
 
-  interrupt() {
+  interrupt(killMs = INTERRUPT_KILL_MS) {
     if (this.busy && this.waiting) {
       // Claude never saw it, so there's nothing to interrupt: the turn just ends.
       this.waiting = null;
@@ -69,8 +69,11 @@ const control = {
     for (const id of [...this.pending.keys()]) this.respond(id, 'deny', 'Interrupted by the user.');
     this.write({ type: 'control_request', request_id: randomUUID(), request: { subtype: 'interrupt' } });
     // If the CLI doesn't wind down promptly, kill it; the session can be resumed.
+    // Only this turn: once it has ended, the next message runs in the same
+    // process, and killing that one would read as a crash.
     const proc = this.proc;
-    setTimeout(() => { if (this.proc === proc && this.busy) this.kill(); }, INTERRUPT_KILL_MS);
+    const turn = this.turn;
+    setTimeout(() => { if (this.proc === proc && this.busy && this.turn === turn) this.kill(); }, killMs);
   },
 
   /**

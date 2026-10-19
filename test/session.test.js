@@ -120,6 +120,23 @@ test('interrupt stops a running turn and marks the result as interrupted', async
   s.close();
 });
 
+test('a message sent soon after a Stop is not killed by that Stop', async () => {
+  const { s, items } = makeSession();
+  const KILL_MS = 300;
+  s.send('slow task');
+  await waitFor(s, i => i.kind === 'tool');
+  s.interrupt(KILL_MS);
+  await waitFor(s, i => i.kind === 'result');
+  const exits = [];
+  s.on('exit', c => exits.push(c));
+  s.send('slow again'); // same process, still running when the Stop's kill comes due
+  await new Promise(r => setTimeout(r, KILL_MS * 2));
+  assert.deepEqual(exits, [], 'the process lives on');
+  assert.equal(s.busy, true, 'the new turn is still running');
+  assert.equal(items.filter(i => i.kind === 'error').length, 0, 'no "stopped partway through that turn"');
+  s.close();
+});
+
 test('mode switches mid-session reach the CLI', async () => {
   const { s, items } = makeSession();
   s.send('a');
