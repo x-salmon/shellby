@@ -224,13 +224,14 @@ const recent = (times, now) => (Array.isArray(times) ? times.filter(t => Number.
 /**
  * May another task start? -> { ok: true } | { ok: false, reply }.
  *   starts: when phone tasks started (ms); open: phone tasks still working or waiting on you
+ *   maxOpen, perHour: the phone app (paired to this PC) allows more than a chat channel
  */
-function startGate({ starts = [], open = 0, now = Date.now() } = {}) {
-  if (open >= MAX_OPEN) return { ok: false, reply: `${MAX_OPEN} tasks from your phone are already going. Let one finish first.` };
+function startGate({ starts = [], open = 0, now = Date.now(), maxOpen = MAX_OPEN, perHour = MAX_STARTS_PER_HOUR } = {}) {
+  if (open >= maxOpen) return { ok: false, reply: `${maxOpen} tasks from your phone are already going. Let one finish first.` };
   const last = recent(starts, now);
-  if (last.length >= MAX_STARTS_PER_HOUR) {
+  if (last.length >= perHour) {
     const mins = Math.max(1, Math.ceil((Math.min(...last) + HOUR_MS - now) / 60000));
-    return { ok: false, reply: `That's ${MAX_STARTS_PER_HOUR} tasks from your phone this hour, the most there can be. Try again in ${mins} minute${mins === 1 ? '' : 's'}.` };
+    return { ok: false, reply: `That's ${perHour} tasks from your phone this hour, the most there can be. Try again in ${mins} minute${mins === 1 ? '' : 's'}.` };
   }
   return { ok: true };
 }

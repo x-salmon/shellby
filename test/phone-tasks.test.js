@@ -207,6 +207,14 @@ test('at most ten an hour, and the count rolls off', () => {
   assert.equal(pt.startGate({ starts: ['x', NaN, NOW + 1e9], now: NOW }).ok, true, 'junk never counts');
 });
 
+test('the phone app can pass its own, roomier limits', () => {
+  assert.equal(pt.startGate({ open: pt.MAX_OPEN, now: NOW, maxOpen: 10 }).ok, true);
+  const full = pt.startGate({ open: 10, now: NOW, maxOpen: 10 });
+  assert.match(full.reply, /^10 tasks/);
+  const starts = Array.from({ length: pt.MAX_STARTS_PER_HOUR }, () => NOW - 1000);
+  assert.equal(pt.startGate({ starts, now: NOW, perHour: 30 }).ok, true);
+});
+
 test('a flood of messages is dropped past the hourly cap', () => {
   const seen = Array.from({ length: pt.MAX_MESSAGES_PER_HOUR }, () => NOW - 1000);
   assert.equal(pt.messageGate(seen, NOW), false);
