@@ -488,14 +488,34 @@ function onLine(line) {
   // "orphans <n>" -> starts n long-lived processes through cmd, which exits at
   // once and leaves them with no parent (how uvx leaves serena's python), then
   // answers with their count. "orphans-crash <n>" does the same and dies mid-turn.
+  // Either waits until every orphan is running (each drops a file named for this
+  // CLI's pid and its own): on a loaded PC a fixed wait crashed before they'd
+  // started, so there was nothing left for the test to see ended. The files go
+  // in one shared folder the test clears (no-orphans.test.js), since a CLI ended
+  // mid-wait can't tidy up after itself.
   if (content.startsWith('orphans')) {
     const n = parseInt(content.split(' ')[1], 10) || 1;
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const ORPHANS_START_MS = 15000; // past this, answer with however many started
+    const marks = path.join(os.tmpdir(), 'shellby-fake-orphans');
+    fs.mkdirSync(marks, { recursive: true });
+    const mine = `${process.pid}-`;
+    const orphan = `require('fs').writeFileSync(require('path').join(process.argv[1], '${mine}' + process.pid), '');setInterval(function () {}, 1000)`;
     for (let i = 0; i < n; i++) {
-      const cmd = `/d /s /c "start "" /b "${process.execPath}" -e "setInterval(function () {}, 1000)""`;
+      const cmd = `/d /s /c "start "" /b "${process.execPath}" -e "${orphan}" "${marks}""`;
       require('child_process').spawn(process.env.ComSpec || 'cmd.exe', [cmd], { stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true });
     }
-    if (content.startsWith('orphans-crash')) { setTimeout(() => process.exit(3), 500); return; }
-    setTimeout(() => { text(`orphans: ${n}`); result(true); }, 500);
+    const started = Date.now();
+    const wait = setInterval(() => {
+      let count = 0;
+      try { count = fs.readdirSync(marks).filter(f => f.startsWith(mine)).length; } catch { /* not yet */ }
+      if (count < n && Date.now() - started < ORPHANS_START_MS) return;
+      clearInterval(wait);
+      for (const f of fs.readdirSync(marks).filter(x => x.startsWith(mine))) try { fs.rmSync(path.join(marks, f), { force: true }); } catch { /* the test clears it */ }
+      if (content.startsWith('orphans-crash')) process.exit(3);
+      text(`orphans: ${count}`);
+      result(true);
+    }, 50);
     return;
   }
 

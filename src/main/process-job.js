@@ -142,6 +142,21 @@ function members(job) {
   }
 }
 
+/** The processes still in a job with their program's name: [{ pid, name }] ('' when it can't be read). */
+function namedMembers(job) {
+  const a = load();
+  if (!a) return [];
+  return members(job).map(pid => {
+    let h = 0;
+    try {
+      h = a.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+      return { pid, name: h ? exeName(a, h) : '' };
+    } catch { return { pid, name: '' }; } finally {
+      if (h) try { a.CloseHandle(h); } catch { /* ignore */ }
+    }
+  });
+}
+
 /**
  * End every process still in the job except the user's own apps (KEEP), then
  * let the job go. Synchronous, so it can run while Shellby quits. Safe to call
@@ -262,4 +277,4 @@ function sweepAll() {
 
 const available = () => !!load();
 
-module.exports = { adopt, sweep, sweepAll, members, ownedPids, available, giveWay, givingWay: givingWayNow, shareOf, KEEP, GAME_CPU_PERCENT, MIN_JOB_PERCENT };
+module.exports = { adopt, sweep, sweepAll, members, namedMembers, ownedPids, available, giveWay, givingWay: givingWayNow, shareOf, KEEP, GAME_CPU_PERCENT, MIN_JOB_PERCENT };
