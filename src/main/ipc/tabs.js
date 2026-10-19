@@ -126,6 +126,11 @@ function registerTabsIpc(ipcMain, d) {
     try { d.isStr(tabId) && d.manager.setTabEffort(tabId, effort); return { ok: true }; } catch (err) { return { ok: false, error: err.message }; }
   });
 
+  // A model of its own for a conversation that hasn't started yet (outlook.js "Use Sonnet for this one").
+  ipcMain.handle('tab:model', (_e, { tabId, model } = {}) => {
+    try { return d.isStr(tabId) && d.isStr(model) ? d.manager.setTabModel(tabId, model) : { ok: false, error: 'Which conversation?' }; } catch (err) { return { ok: false, error: err.message }; }
+  });
+
   // fromQueue: the panel's queue sending what you left behind a turn, by itself.
   ipcMain.handle('task:send', async (_e, { tabId, text, attachments, selected, fromQueue } = {}) => {
     text = String(text || '').trim().slice(0, d.PANEL_MAX_TEXT);

@@ -21,13 +21,13 @@ test('a call: cache reads, writes and fresh input, and how long its cache lasts'
     input_tokens: 12, cache_creation_input_tokens: 300, cache_read_input_tokens: 9000, output_tokens: 50,
     cache_creation: { ephemeral_1h_input_tokens: 300, ephemeral_5m_input_tokens: 0 },
   }));
-  assert.deepEqual(c, { messageId: 'm1', main: true, ttlMs: H, input: 12, write: 300, read: 9000 });
+  assert.deepEqual(c, { messageId: 'm1', main: true, ttlMs: H, model: 'claude-opus-5-5', input: 12, write: 300, read: 9000 });
   assert.equal(eff.callFrom(assistant('m2', { cache_creation: { ephemeral_5m_input_tokens: 5 } })).ttlMs, 5 * MIN);
   assert.equal(eff.callFrom(assistant('m3', { input_tokens: 1 })).ttlMs, null, "a call that wrote nothing doesn't say");
   assert.equal(eff.callFrom(assistant('m4', { input_tokens: 1 }, { parent_tool_use_id: 'toolu_1' })).main, false);
   assert.equal(eff.callFrom({ type: 'user' }), null);
   assert.equal(eff.callFrom(assistant('m5', null)), null);
-  assert.deepEqual(eff.callFrom(assistant('m6', { input_tokens: -3, cache_read_input_tokens: 'lots' })), { messageId: 'm6', main: true, ttlMs: null, input: 0, write: 0, read: 0 });
+  assert.deepEqual(eff.callFrom(assistant('m6', { input_tokens: -3, cache_read_input_tokens: 'lots' })), { messageId: 'm6', main: true, ttlMs: null, model: 'claude-opus-5-5', input: 0, write: 0, read: 0 });
 });
 
 test('the daily ledger adds up calls and keeps three weeks', () => {
@@ -106,6 +106,27 @@ test('a session reports each call once, its cache, and a new conversation\'s set
   ]);
   assert.equal(caches.length, 2, "once per call, and a subagent's call doesn't touch the conversation's cache");
   assert.equal(s.cache.ttlMs, H, 'the hour-long write is remembered for later calls');
+});
+
+test('a session catches a warm cache that missed, on the turn and the call, and only once a call', () => {
+  const s = new ClaudeSession({ exe: process.execPath, cwd: os.tmpdir(), mode: 'ask', resumeId: 'abc' });
+  const calls = [];
+  s.on('call', c => calls.push(c));
+  const big = { input_tokens: 3, cache_read_input_tokens: 140000 };
+  s.countCall(assistant('m1', big));
+  s.measure(assistant('m1', big));             // the conversation holds ~140k
+  s.turn = { usages: new Map(), helpers: new Map(), weight: 0, tokens: 0 };
+  s.resumedProc = true;                        // what start() notes when it picks a conversation up again
+  const missed = { input_tokens: 3, cache_creation_input_tokens: 140500, cache_read_input_tokens: 0, cache_creation: { ephemeral_1h_input_tokens: 140500 } };
+  s.countCall(assistant('m2', missed));
+  s.countCall(assistant('m2', { ...missed, output_tokens: 40 })); // a later block of the same call
+  assert.deepEqual(calls[1].broke, { tokens: 140503, cause: 'resume' });
+  assert.equal(calls.length, 2, 'said once: the later block only adds output');
+  assert.deepEqual(s.turn.cacheBreak, { tokens: 140503, cause: 'resume' });
+  assert.equal(s.resumedProc, false, 'only the first call after a start');
+  s.measure(assistant('m2', missed));
+  s.countCall(assistant('m3', { input_tokens: 2, cache_read_input_tokens: 140600 }));
+  assert.equal(calls[2].broke, undefined, 'the next call read it back');
 });
 
 test('a session with a conversation already going measures no setup', () => {

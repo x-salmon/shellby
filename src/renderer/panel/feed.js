@@ -546,6 +546,8 @@
         this.append(h('div', { class: 'turn-cost', title: cost.detail || null, dataset: turnId ? { turn: turnId } : {} },
           badge ? h('span', { class: `effort-badge effort-${badge.level}`, title: badge.detail, text: badge.text }) : null,
           h('span', { class: 'turn-cost-line', text: cost.line })));
+        // A warm cache it missed, helpers that outspent it (turncost.js turnNotes).
+        for (const n of cost.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note', text: n.text }));
       }
       // A turn whose process went (main's session/index.js ended()): its error block is just above.
       if (!item.ok && !item.interrupted && item.error && !item.crashed) this.append(this.troubleBlock(item.trouble, item.error));

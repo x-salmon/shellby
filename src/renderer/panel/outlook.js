@@ -1,13 +1,16 @@
 /* Shellby panel — the usage forecast and "after the reset": the banner above
    the box, held messages alongside the queued ones, and Ctrl+Shift+Enter to
    hold what you've typed. Main works out the forecast and does the holding
-   and sending (src/main/forecast.js, held.js); this only shows it. */
+   and sending (src/main/forecast.js, held.js); this only shows it. The same
+   banner carries two quieter tips while you type: a cold cache this message
+   would pay for, and Sonnet for a conversation that hasn't started. */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
   const input = $('input');
   let dismissed = null; // the reset whose warning you closed: it stays closed for that window
   let dismissedEstimate = null; // the tab whose "this usually takes…" you closed, until its box empties
+  let dismissedTip = null;      // the tab whose tip you closed, until its box empties
 
   SB.applyOutlook = o => {
     state.outlook = o || null;
@@ -28,16 +31,20 @@
     const tab = SB.activeTab();
     const big = liveEstimate();
     renderCostHint(big);
-    // At the limit beats an estimate that this message would go over, which beats a warning.
+    // At the limit beats an estimate that this message would go over, which beats
+    // a warning, which beats a tip. A warning you closed lets a tip through.
+    const warned = W.noteFor(o);
+    const tip = tipFor(big);
     const note = !o?.limit && big?.over && dismissedEstimate !== big.tabId
-      ? { text: overText(big), key: null, cls: 'warning', estimate: true } : W.noteFor(o);
-    const show = !!note && !!tab && (note.estimate || dismissed !== note.key) && !SB.isCrabOnly?.();
+      ? { text: overText(big), key: null, cls: 'warning', estimate: true }
+      : warned && dismissed !== warned.key ? warned : tip;
+    const show = !!note && !!tab && (note.estimate || note.tip || dismissed !== note.key) && !SB.isCrabOnly?.();
     box.hidden = !show;
     if (!show) { box.replaceChildren(); return; }
     box.className = `outlook ${note.cls}`;
     const typed = !!input.value.trim() || tab.attachments.length > 0;
     const queued = tab.queue.length;
-    const actions = note.estimate ? [
+    const actions = note.tip ? note.actions : note.estimate ? [
       // A prompt, never a block: Enter still sends, and so does this.
       h('button', { class: 'btn slim-btn ghost', type: 'button', onclick: () => SB.send(undefined, { force: true }) }, 'Send anyway'),
       o?.resetAt ? h('button', { class: 'btn slim-btn', type: 'button', title: 'Ctrl+Shift+Enter', onclick: holdTyped }, 'Send after the reset') : null,
@@ -48,8 +55,8 @@
     box.replaceChildren(...[
       SB.icon(SB.ICONS.clock, { width: 1.4 }),
       h('span', { class: 'outlook-text', text: note.text }),
-      note.estimate
-        ? h('button', { class: 'queue-x icon-btn', type: 'button', 'aria-label': 'Hide this for this message', title: 'Hide this for this message', onclick: () => { dismissedEstimate = big.tabId; renderOutlook(); } },
+      note.estimate || note.tip
+        ? h('button', { class: 'queue-x icon-btn', type: 'button', 'aria-label': 'Hide this for this message', title: 'Hide this for this message', onclick: () => { if (note.tip) dismissedTip = big.tabId; else dismissedEstimate = big.tabId; renderOutlook(); } },
           SB.icon('M4.5 4.5l7 7M11.5 4.5l-7 7', { width: 1.5 }))
         : h('button', { class: 'queue-x icon-btn', type: 'button', 'aria-label': 'Hide until the reset', title: 'Hide until the reset', onclick: () => { dismissed = note.key; renderOutlook(); } },
         SB.icon('M4.5 4.5l7 7M11.5 4.5l-7 7', { width: 1.5 })),
@@ -101,9 +108,54 @@
     return `This usually takes about ${pctText(e.pct)} and you've ${pctText(e.left)} left ${until}.`;
   }
 
+  // ------------------------------------------------------------ tips (src/main/cachebreak.js, usage/ledger.js)
+
+  // A short message into a big conversation whose cache went cold sends all of
+  // it again: one that doesn't need the conversation costs far less in a new tab.
+  // Else, a conversation not started yet, on a top model, for a kind of ask
+  // that usually suits Sonnet. Either way Enter still sends as it is.
+  function tipFor(e) {
+    if (!e || dismissedTip === e.tabId) return null;
+    const tab = SB.activeTab();
+    // Not with files attached: a new tab would leave them behind.
+    if (e.cold && !tab?.attachments.length) {
+      return {
+        tip: true, cls: 'tip', key: null,
+        text: `This conversation's cache went cold ${SB.relTime(e.cold.coldSince)}, so sending this pays for its ~${SB.compact(e.cold.tokens)} tokens again in full. If it doesn't need this conversation, a new tab costs far less.`,
+        actions: [h('button', { class: 'btn slim-btn', type: 'button', onclick: () => askInNewTab(tab) }, 'Ask in a new tab')],
+      };
+    }
+    if (e.suggest) {
+      const kind = KIND_NOUN[e.category] || 'tasks';
+      return {
+        tip: true, cls: 'tip', key: null,
+        text: `${kind[0].toUpperCase()}${kind.slice(1)} like this usually take about ${pctText(e.suggest.pct)} of your window on this model${e.suggest.measured ? `, and ${pctText(e.suggest.cheaper)} on Sonnet for you` : `; Sonnet usually costs about ${pctText(e.suggest.cheaper)}`}.`,
+        actions: [h('button', { class: 'btn slim-btn', type: 'button', title: 'This conversation starts on Sonnet. Others keep the model in Settings.', onclick: () => useSonnet(tab) }, 'Start this one on Sonnet')],
+      };
+    }
+    return null;
+  }
+
+  // What's in the box goes to a new tab in the same folder, and leaves this one.
+  function askInNewTab(tab) {
+    if (!tab) return;
+    const text = input.value;
+    SB.clearComposer(tab);
+    SB.newTabIn({ cwd: tab.cwd, draft: text });
+  }
+
+  async function useSonnet(tab) {
+    if (!tab) return;
+    const r = await api.setTabModel(tab.id, 'sonnet').catch(() => null);
+    if (!r?.ok) return SB.toast(r?.error || "Couldn't change its model.", { ms: 6000 });
+    dismissedTip = tab.id;
+    SB.toast('This conversation starts on Sonnet.');
+    renderOutlook();
+  }
+
   function renderCostHint(e = liveEstimate()) {
     const el = $('costHint');
-    const show = !!e && !e.over && !SB.isCrabOnly?.();
+    const show = !!e && e.basis !== 'none' && !e.over && !SB.isCrabOnly?.();
     el.hidden = !show;
     if (!show) { el.textContent = ''; el.removeAttribute('title'); return; }
     el.textContent = `usually about ${pctText(e.pct)} of your window`;
@@ -114,6 +166,7 @@
     clearTimeout(estTimer);
     if (!estimable(typedNow())) {
       dismissedEstimate = null; // the next message gets its own heads-up
+      dismissedTip = null;
       if (state.estimate) { state.estimate = null; renderOutlook(); }
       return;
     }
@@ -126,6 +179,7 @@
     clearTimeout(estTimer);
     estSeq++;
     dismissedEstimate = null;
+    dismissedTip = null;
     if (!state.estimate) return;
     state.estimate = null;
     renderOutlook();
@@ -138,7 +192,7 @@
     if (!tab || !estimable(text) || SB.isCrabOnly?.()) return;
     const r = await api.estimateUsage({ tabId: tab.id, text }).catch(() => null);
     if (seq !== estSeq) return; // you've typed on since
-    state.estimate = r && r.basis !== 'none' ? { ...r, tabId: tab.id, text } : null;
+    state.estimate = r && (r.basis !== 'none' || r.cold || r.suggest) ? { ...r, tabId: tab.id, text } : null;
     renderOutlook();
   }
 

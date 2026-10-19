@@ -199,6 +199,7 @@ class ClaudeSession extends Base {
     this.calls = new Map();        // message id -> token counts already reported as 'call'
     this.cache = null;             // { at, ttlMs }: when this conversation last touched the prompt cache
     this.setupChars = null;        // a new conversation's first prompt, in characters, until its first call is measured
+    this.resumedProc = false;      // started again on an existing conversation, until its first call (cachebreak.js)
     // What the running turn has cost so far: { usages: message id -> usage, weight,
     // before: context tokens when it began }. Its result carries it (turncost.js).
     this.turn = null;
@@ -233,6 +234,7 @@ class ClaudeSession extends Base {
         cwd: this.cwd, env: { ...claudeEnv(), ...crabEnv, ...this.extraEnv() }, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
       });
     this.proc = proc;
+    this.resumedProc = !!this.sessionId; // its first call is where a changed setup misses the cache (cachebreak.js)
     // The remote end reads its MCP config from the first line, before Claude Code starts.
     if (remote && this.mcpConfig) this.proc.stdin.write(JSON.stringify(this.fullMcpConfig()) + '\n');
     // Everything Claude starts joins this job, so ending the conversation can

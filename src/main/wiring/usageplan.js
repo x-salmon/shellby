@@ -3,6 +3,7 @@
 // type it. Kept out of main.js, which only wires it up. Nothing here leaves
 // the PC, and the prompt itself is never kept, only its category.
 const guard = require('../guard');
+const { coldResend } = require('../cachebreak');
 const usageLedger = require('../usage/ledger');
 
 const SAVE_DELAY_MS = 5000;   // turns end in bursts (a workflow's steps); one write when they settle
@@ -91,7 +92,10 @@ function wireUsagePlan(d) {
    * What a message usually costs, for the composer: the estimate (usageLedger.js)
    * plus whether it would cross the line and whether to hold it for you.
    * -> { pct, low, high, samples, basis, category, project, over, line, nowPct,
-   *      left, guardOn, resetsAt, hold }
+   *      left, guardOn, resetsAt, hold, cold, suggest }
+   * cold: a short message into a big conversation whose cache has gone cold
+   * (cachebreak.js coldResend); suggest: Sonnet for a conversation that hasn't
+   * started, when this kind of ask usually suits it (ledger.js modelSuggestion).
    */
   function estimateFor(tabId, text) {
     const now = Date.now();
@@ -107,6 +111,9 @@ function wireUsagePlan(d) {
       ...est, category, project: src.project,
       over: advice.over, line: advice.line, nowPct: advice.now, left: advice.left, guardOn: settings.on, resetsAt: advice.resetsAt,
       hold: usageLedger.shouldHold({ enabled: d.config.get('holdBigTasks') === true, estimate: est, advice, kind }),
+      cold: tab && kind === 'tab' ? coldResend({ cache: tab.session?.cache, tokens: tab.session?.context?.tokens, text, now }) : null,
+      suggest: tab && kind === 'tab' && !tab.session?.proc && !tab.session?.sessionId && !tab.ownModel
+        ? usageLedger.modelSuggestion(rows(), { pk: src.pk, category, model, now }) : null,
     };
   }
 

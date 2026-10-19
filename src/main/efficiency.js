@@ -59,7 +59,7 @@ function callFrom(ev) {
   const cc = u.cache_creation && typeof u.cache_creation === 'object' ? u.cache_creation : {};
   const ttlMs = num(cc.ephemeral_1h_input_tokens) ? HOUR : num(cc.ephemeral_5m_input_tokens) ? 5 * MIN : null;
   return {
-    messageId: m.id, main: !ev.parent_tool_use_id, ttlMs,
+    messageId: m.id, main: !ev.parent_tool_use_id, ttlMs, model: typeof m.model === 'string' ? m.model : '',
     input: num(u.input_tokens), write: num(u.cache_creation_input_tokens), read: num(u.cache_read_input_tokens),
   };
 }

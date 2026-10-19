@@ -656,6 +656,14 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
   font: 500 var(--fs-10-5) var(--font-mono); font-stretch: 88%; border-radius: var(--r-sm);
 }
 .turn-cost.flash { background: var(--reef-2); color: var(--sand); }
+/* A note under it (turncost.js turnNotes): what cost more than it needed to, and why. */
+.turn-cost:has(+ .turn-note) { margin-bottom: 4px; }
+.turn-note {
+  margin: 0 auto 4px; max-width: 52ch; text-align: center; text-wrap: pretty;
+  color: var(--sand-dim); font-size: var(--fs-11); line-height: 1.4;
+}
+.turn-note:not(:has(+ .turn-note)) { margin-bottom: 18px; }
+.turn-note.is-cache-break { color: var(--amber); }
 /* ---------------------------------------------------------------- idle cost
    An open panel spends most of a core on animation (scripts/idle-cost.js), and
    most of that while nobody is watching. `calm` (the window isn't focused)

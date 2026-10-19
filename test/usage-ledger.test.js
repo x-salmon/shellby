@@ -224,3 +224,18 @@ test('routineSuggestion stays quiet for big runs, lighter models, or too few run
   assert.equal(tc.routineSuggestion(small.slice(0, 2), { id: 'r1', model: 'opus' }, '', NOW), null);
   assert.equal(tc.routineSuggestion(small, { id: 'other', model: 'opus' }, '', NOW), null);
 });
+
+test('a small question on a top model suggests Sonnet for a conversation about to start', () => {
+  const L = require('../src/main/usage/ledger');
+  const now = Date.now();
+  const row = (category, model, pctRise, ago = 1000) => ({ at: now - ago, pk: 'c:/shop', category, model, weight: 10, pctRise });
+  const ledger = [row('question', 'claude-opus-5-5', 2), row('question', 'claude-opus-5-5', 2), row('question', 'claude-opus-5-5', 2), row('fix', 'claude-opus-5-5', 9), row('fix', 'claude-opus-5-5', 9), row('fix', 'claude-opus-5-5', 9)];
+  assert.deepEqual(L.modelSuggestion(ledger, { pk: 'c:/shop', category: 'question', model: 'claude-opus-5-5', now }), { model: 'sonnet', pct: 2, cheaper: 1.2, measured: false });
+  assert.equal(L.modelSuggestion(ledger, { pk: 'c:/shop', category: 'fix', model: 'opus', now }), null, 'fixes keep their model');
+  assert.equal(L.modelSuggestion(ledger, { pk: 'c:/shop', category: 'question', model: 'sonnet', now }), null, 'already on Sonnet');
+  assert.ok(L.modelSuggestion(ledger, { pk: 'c:/shop', category: 'question', model: '', now }), "'' is Claude Code's own pick, usually the top model");
+  const big = ledger.map(r => (r.category === 'question' ? { ...r, pctRise: 8 } : r));
+  assert.equal(L.modelSuggestion(big, { pk: 'c:/shop', category: 'question', model: 'opus', now }), null, 'big questions keep their model');
+  const both = [...ledger, row('question', 'claude-sonnet-5-5', 0.5), row('question', 'claude-sonnet-5-5', 0.5), row('question', 'claude-sonnet-5-5', 0.5)];
+  assert.deepEqual(L.modelSuggestion(both, { pk: 'c:/shop', category: 'question', model: 'opus', now }), { model: 'sonnet', pct: 2, cheaper: 0.5, measured: true }, 'your own Sonnet questions, when there are enough');
+});

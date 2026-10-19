@@ -1,7 +1,8 @@
 /* Shellby panel — Toolbox → Lean: what every new conversation carries before your
    first word and where it goes, how much of Claude's input came from the prompt
    cache (and a word when today's falls well short), Claude Code's own count of
-   lines, edits and commits, the files Claude keeps coming back to, and the
+   lines, edits and commits, the files Claude keeps coming back to, the
+   commands whose output fills its context, and the
    plugins, MCP servers and your own skills that sit idle. Nothing here touches a prompt, the model
    or what Claude reads: turning a plugin off only affects new conversations and
    is one click to undo, and "Suggest a trim" and "Ask Claude" only draft a
@@ -148,6 +149,18 @@
     return h('div', { class: 'mcp-bar lean-telemetry' }, h('span', { class: 'lean-cache', text }), toggle);
   }
 
+  // Warm caches that missed this week (main's cachebreak.js), and what came before them.
+  function breaksText(b) {
+    const times = n => (n === 1 ? 'once' : `${n} times`);
+    const why = [
+      b.resume ? `${b.resume} right after a conversation's process started again` : null,
+      b.model ? `${b.model} on a fallback model` : null,
+      b.other ? `${b.other} for reasons Shellby can't see` : null,
+    ].filter(Boolean).join(', ');
+    return `This week the cache missed ${times(b.count)} while it should still have held, sending ${tok(b.tokens)} at full price: ${why}.`
+      + (b.resume ? " A restart misses when CLAUDE.md, a plugin or an MCP server changed meanwhile. If yours follow quiet spells, Keep warm (the mug above the tabs) holds the process while you're away." : '');
+  }
+
   function summary(rep) {
     const s = rep.setup;
     const head = s
@@ -178,6 +191,7 @@
       h('p', { class: 'muted small', text: `That includes ${parts.join(', ')}. While the cache is warm it costs a tenth, but it always takes room in the context window, and it's paid in full whenever the cache goes cold.` }),
       h('p', { class: 'lean-cache', text: cacheLine }),
       drop ? h('p', { class: 'lean-warn', role: 'status', text: `Only ${pct(drop.today)} of today's input came from the cache, against ${pct(drop.usual)} most days. That's usual after a change to CLAUDE.md, a plugin or an MCP server (the cached start no longer matches), or long gaps between messages.` }) : null,
+      rep.breaks ? h('p', { class: 'lean-warn', text: breaksText(rep.breaks) }) : null,
       telemetryBlock(rep),
       h('div', { class: 'mcp-bar' },
         h('span', { class: 'muted small', text: rep.watched
@@ -300,6 +314,24 @@
         h('p', { class: 'tool-desc', text: used })));
   }
 
+  // ------------------------------------------------------------ loud commands
+
+  const LOUD_ASK = rows => [
+    "These commands put the most output into Claude Code's context in this project (counted from its transcripts on this PC). Everything a command prints stays in the conversation and is sent again with every message after it:",
+    ...rows.map(r => `- ${r.key}: about ${r.tokens} tokens a run, ${r.runs} runs in ${r.sessions} conversations`),
+    '',
+    'Look at how each is used here (package.json scripts, CLAUDE.md, the tools themselves) and suggest how Claude could run them with less output and still see what it needs: a quieter flag or reporter, piping through tail or a filter that keeps the failures, a script that prints only a summary, or a line in CLAUDE.md saying how to run them. Do not edit anything. For each suggestion, say what to change and roughly how many tokens a run it saves.',
+  ].join('\n');
+
+  function loudRow(r) {
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' },
+          h('code', { text: r.key }),
+          h('span', { class: 'src-pill', title: 'What one run puts in the conversation, on average', text: `${tok(r.tokens)} a run` })),
+        h('p', { class: 'tool-desc', text: `ran ${r.runs}× in ${r.sessions} conversations, ${tok(r.total)} in all` })));
+  }
+
   // ------------------------------------------------------------ the tab
 
   function render(q) {
@@ -330,6 +362,11 @@
     const memory = rep.memory.filter(m => match(m.path) && !m.onDemand);
     const onDemand = rep.memory.filter(m => match(m.path) && m.onDemand);
     const hot = (rep.hot?.files || []).filter(r => match(r.rel));
+    const noisy = (rep.hot?.loud || []).filter(r => match(r.key));
+    const loudLabel = noisy.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
+      h('span', { text: `Commands whose output fills the context here (last ${rep.hot.days} days)` }),
+      h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
+        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: LOUD_ASK(rep.hot.loud) }); } }, 'Ask Claude')) : null;
     const hotLabel = hot.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
       h('span', { text: `Files Claude keeps coming back to here (last ${rep.hot.days} days)` }),
       h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
@@ -341,6 +378,7 @@
       memory.length ? label('CLAUDE.md and rules, every conversation') : null, ...memory.map(memoryRow),
       onDemand.length ? label(`Rules for matching files only (${tok(rep.totals.memoryOnDemand)} in all)`) : null, ...onDemand.map(memoryRow),
       hotLabel, ...hot.map(hotRow),
+      loudLabel, ...noisy.map(loudRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),
     ].filter(Boolean);
     list.replaceChildren(...(rows.length ? rows : [h('li', { class: 'history-empty', text: q ? 'No matches.' : 'Nothing loads into every conversation besides Claude Code itself.' })]));
