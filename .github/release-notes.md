@@ -4,7 +4,7 @@
 
 Existing installs update themselves.
 
-> Builds aren't code-signed yet. If Windows SmartScreen appears, click **More info → Run anyway**. These files are built by GitHub Actions from this tag.
+> Builds are code-signed by **Jacob Barford**. If Windows SmartScreen still appears (it can for new releases), check the publisher and click **More info → Run anyway**. These files are built by GitHub Actions from this tag.
 
 See [CHANGELOG.md](https://github.com/x-salmon/shellby/blob/main/CHANGELOG.md) for what's new.
 

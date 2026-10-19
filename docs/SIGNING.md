@@ -1,6 +1,6 @@
 # Code signing
 
-Unsigned Windows apps get the SmartScreen "Windows protected your PC" warning. Shellby's release workflow signs every build automatically once a signing account is connected. It uses [Azure Artifact Signing](#current-azure-artifact-signing) (about $10/month), and also supports [SignPath Foundation](#later-signpath-foundation-free) (free for open source, but it needs a project with some exposure first). Until signing is set up, releases are unsigned and still publish `SHA256SUMS.txt` so people can verify downloads.
+Unsigned Windows apps get the SmartScreen "Windows protected your PC" warning. Shellby's release workflow signs every build automatically once a signing account is connected. It uses [Azure Artifact Signing](#current-azure-artifact-signing) (about $10/month), and also supports [SignPath Foundation](#later-signpath-foundation-free) (free for open source, but it needs a project with some exposure first). Releases are signed with Azure as **Jacob Barford** (account `shellby-signing`, certificate profile `shellby-release`), and still publish `SHA256SUMS.txt` so people can verify downloads.
 
 ## What signing does (and doesn't)
 
@@ -34,7 +34,7 @@ The alternative is a regular OV certificate from a CA, which costs roughly $200â
    | Variable | `AZURE_SIGN_PUBLISHER` | The publisher name exactly as on the certificate (your validated legal name) |
 
 6. **Tag a release.** The workflow notices the credentials, signs the installer, the portable exe and the app inside, and checks that the installer and the portable exe are validly signed by `AZURE_SIGN_PUBLISHER` before publishing.
-7. **Then tidy up the wording.** Drop the "not signed yet" notes from the README's install section and [.github/release-notes.md](../.github/release-notes.md), and the "being set up" note in the README's code signing policy.
+7. **Then tidy up the wording.** Drop any "not signed yet" notes from the README's install section, [.github/release-notes.md](../.github/release-notes.md) and the README's code signing policy, and name the publisher there.
 
 Without these settings the workflow builds unsigned and prints a warning. Auto-update keeps working across the switch from unsigned to signed builds.
 

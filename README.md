@@ -277,9 +277,9 @@ scoop install shellby/shellby
 
 or `winget install x-salmon.Shellby`, once Microsoft's review of the package finishes. Scoop keeps him up to date with `scoop update shellby` (the in-app updater stands aside); a winget install updates itself like the regular installer.
 
-> **"Windows protected your PC"?** That's Microsoft SmartScreen. It warns about any app that isn't code-signed or that few people have downloaded yet, and Shellby releases aren't signed yet.
+> **"Windows protected your PC"?** That's Microsoft SmartScreen. It warns about any app that few people have downloaded yet, even a signed one. Shellby is signed by **Jacob Barford** (see [Code signing policy](#code-signing-policy)), and the warning fades as more people install it.
 >
-> - **To install anyway:** click **More info → Run anyway**.
+> - **To install anyway:** click **More info → Run anyway**. The publisher shown should be Jacob Barford.
 > - **To check you got the real file:** every release is built by [GitHub Actions](https://github.com/x-salmon/shellby/actions/workflows/release.yml) from the tagged commit, and each one lists SHA-256 checksums in `SHA256SUMS.txt`. Compare them with `Get-FileHash .\Shellby-Setup-x.y.z.exe`, or build from source (below).
 
 **Updating:** the installed version updates itself. He checks GitHub Releases, downloads in the background, and puts a dot on the ⚙ gear when an update is ready. Click **Restart and update** in **Settings → About**, or **Update to x.y.z and restart** in the tray menu, or just quit and it installs on the way out. Your settings live in `%APPDATA%\Shellby`, so they carry over. The portable build can't update itself: download the new `Shellby-Portable-x.y.z.exe` from [Releases](https://github.com/x-salmon/shellby/releases/latest) and replace the old one.
@@ -337,9 +337,7 @@ See [SECURITY.md](SECURITY.md) for the renderer sandboxing details.
 
 ## Code signing policy
 
-Releases will be signed with [Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/), under the maintainer's verified name.
-
-> Signing is being set up. Until the first signed release, releases are unsigned (see [Install](#install)). The rest of this section describes how signed releases will work.
+Releases are signed with [Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/), under the maintainer's verified name, **Jacob Barford**. Releases before the first signed one were unsigned.
 
 Only Shellby's own files are signed, and only when GitHub Actions builds them from a tagged commit in this repository ([release workflow](.github/workflows/release.yml)). The signing key stays in Microsoft's hardware and is never on a PC. Before publishing, the workflow checks that every exe is validly signed by the expected publisher. Before building, it checks that the publisher will match the last release's, so installed copies keep updating. How it works: [docs/SIGNING.md](docs/SIGNING.md).
 
