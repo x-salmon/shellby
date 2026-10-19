@@ -220,8 +220,12 @@ ul.plain li::marker { color: var(--coral); }
 .cmd-file { font: 600 12px var(--font-mono); font-stretch: 87%; color: var(--sand-dim); word-break: break-all; }
 .flag { margin: 0; display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 9px; background: rgba(255, 193, 94, .09); border: 1px solid rgba(255, 193, 94, .28); color: var(--amber); font-size: 13.5px; }
 .flag .ic { width: 15px; height: 15px; margin-top: 2px; }
-.desk-only { margin: 0; display: flex; gap: 8px; color: var(--sand-dim); font-size: 14px; }
-.desk-only .ic { color: var(--amber); margin-top: 2px; }
+.desk-only {
+  margin: 0; display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 9px;
+  background: rgba(255, 193, 94, .07); border: 1px solid rgba(255, 193, 94, .22); color: var(--sand); font-size: 14px;
+}
+.desk-only .ic { width: 15px; height: 15px; color: var(--amber); margin-top: 2px; flex: none; }
+.cmd.peek { max-height: 5.4em; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent); mask-image: linear-gradient(180deg, #000 55%, transparent); }
 .edit-pv { display: grid; gap: 6px; }
 @keyframes ask-in { from { transform: translateY(10px) scale(.98); opacity: 0; } }
 
