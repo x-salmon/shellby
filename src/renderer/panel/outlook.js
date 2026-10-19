@@ -85,7 +85,8 @@
     refactor: 'refactors', docs: 'docs tasks', tidy: 'tidy-ups', other: 'tasks',
   };
   const typedNow = () => input.value.trim();
-  const estimable = t => t.length >= EST_MIN_CHARS && !t.startsWith('!') && !t.startsWith('/');
+  // A /model switch is looked at too: it can throw a warm cache away.
+  const estimable = t => /^\/model\s+\S/i.test(t) || (t.length >= EST_MIN_CHARS && !t.startsWith('!') && !t.startsWith('/'));
 
   // The estimate, while it's still about what's in the box of the tab on screen.
   function liveEstimate() {
@@ -117,6 +118,14 @@
   function tipFor(e) {
     if (!e || dismissedTip === e.tabId) return null;
     const tab = SB.activeTab();
+    // A model switch mid-conversation: each model has a cache of its own.
+    if (e.rebuild) {
+      return {
+        tip: true, cls: 'tip', key: null,
+        text: `Each model keeps a cache of its own, so after this switch the next message sends this conversation's ~${SB.compact(e.rebuild.tokens)} tokens again at full price. A new tab on that model starts cheaper if this one isn't needed.`,
+        actions: [h('button', { class: 'btn slim-btn', type: 'button', title: 'The switch goes to a new tab in this folder, which starts on that model.', onclick: () => askInNewTab(tab) }, 'Switch in a new tab')],
+      };
+    }
     // Not with files attached: a new tab would leave them behind.
     if (e.cold && !tab?.attachments.length) {
       return {
@@ -192,7 +201,7 @@
     if (!tab || !estimable(text) || SB.isCrabOnly?.()) return;
     const r = await api.estimateUsage({ tabId: tab.id, text }).catch(() => null);
     if (seq !== estSeq) return; // you've typed on since
-    state.estimate = r && (r.basis !== 'none' || r.cold || r.suggest) ? { ...r, tabId: tab.id, text } : null;
+    state.estimate = r && (r.basis !== 'none' || r.rebuild || r.cold || r.suggest) ? { ...r, tabId: tab.id, text } : null;
     renderOutlook();
   }
 

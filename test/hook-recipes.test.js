@@ -146,3 +146,35 @@ test('the sample for a recipe is the case it is about', () => {
   assert.equal(samplePayload(recipe('guard-git'), 'C:\\proj').tool_input.command, 'git push --force origin main');
   assert.equal(samplePayload(recipe('guard-secrets'), '/proj').tool_input.file_path, '/proj/.env');
 });
+
+test('Keep long command output short: shortens test runs and plain git logs, leaves the rest', needsBash, async () => {
+  const r = recipe('quiet-output');
+  const rewritten = async input => {
+    const res = await run(r, pre('Bash', input));
+    assert.equal(res.code, 0, input.command);
+    return res.stdout.trim() ? JSON.parse(res.stdout).hookSpecificOutput.updatedInput : null;
+  };
+  assert.deepEqual(await rewritten({ command: 'npm test' }), { command: 'set -o pipefail; npm test 2>&1 | tail -n 60' });
+  assert.deepEqual(await rewritten({ command: 'npm run e2e:ci -- queue', timeout: 600000 }), { command: 'set -o pipefail; npm run e2e:ci -- queue 2>&1 | tail -n 60', timeout: 600000 });
+  assert.deepEqual(await rewritten({ command: 'git log src/a.js' }), { command: 'git log --oneline -n 30 src/a.js' });
+  assert.deepEqual(await rewritten({ command: 'pytest -k "name with space"' }), { command: 'set -o pipefail; pytest -k "name with space" 2>&1 | tail -n 60' });
+  assert.deepEqual(await rewritten({ command: 'npm test -- C:\\proj\\a.test.js', description: 'says "command": here' }), { command: 'set -o pipefail; npm test -- C:\\proj\\a.test.js 2>&1 | tail -n 60' });
+  for (const command of ['git log --oneline', 'git log -5', 'npm test | tail -5', 'npm test > out.txt', 'git status', 'npm test && git push', 'cd a; npm test']) {
+    assert.equal(await rewritten({ command }), null, command);
+  }
+  assert.equal(await rewritten({ command: 'npm test', run_in_background: true }), null);
+});
+
+test('quietOutputFor: adds a project\'s loud build and test runs, nothing else', needsBash, async () => {
+  const { quietOutputFor } = require('../src/main/hooks/recipes');
+  assert.equal(quietOutputFor(['git diff', 'cat', 'npm test']), null, 'nothing new it may add');
+  const r = quietOutputFor(['npm run e2e:ci', 'npm run build', 'node scripts/check.js', 'git diff']);
+  assert.match(r.blurb, /npm run build, node scripts\/check\.js/);
+  assert.doesNotMatch(r.blurb, /git diff/);
+  const v = validateHook({ event: r.event, matcher: r.matcher, command: r.command, timeout: '' });
+  assert.equal(v.error, undefined);
+  const res = await run(r, pre('Bash', { command: 'npm run build -- --verbose' }));
+  assert.equal(JSON.parse(res.stdout).hookSpecificOutput.updatedInput.command, 'set -o pipefail; npm run build -- --verbose 2>&1 | tail -n 60');
+  const plain = await run(r, pre('Bash', { command: 'npm run buildx' }));
+  assert.equal(plain.stdout.trim(), '');
+});

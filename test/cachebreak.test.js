@@ -56,3 +56,13 @@ test('a short message into a big conversation gone cold would send it all again'
   assert.equal(cb.coldResend({ cache: cold, tokens: 140000, text: 'x'.repeat(300), now: NOW }), null, 'a real new task, not a quick follow-up');
   assert.equal(cb.coldResend({ cache: null, tokens: 140000, text: 'hi', now: NOW }), null);
 });
+
+test('modelSwitch: a /model switch into a big conversation with a warm cache', () => {
+  const now = 1_000_000;
+  const cache = { at: now - 1000, ttlMs: 300000 };
+  assert.deepStrictEqual(cb.modelSwitch({ cache, tokens: 80000, text: '/model sonnet', now }), { tokens: 80000 });
+  assert.strictEqual(cb.modelSwitch({ cache, tokens: 80000, text: 'use the model', now }), null);
+  assert.strictEqual(cb.modelSwitch({ cache, tokens: 1000, text: '/model sonnet', now }), null);
+  assert.strictEqual(cb.modelSwitch({ cache: { at: now - 400000, ttlMs: 300000 }, tokens: 80000, text: '/model sonnet', now }), null);
+  assert.strictEqual(cb.modelSwitch({ cache: null, tokens: 80000, text: '/model opus', now }), null);
+});

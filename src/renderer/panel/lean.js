@@ -2,7 +2,8 @@
    first word and where it goes, how much of Claude's input came from the prompt
    cache (and a word when today's falls well short), Claude Code's own count of
    lines, edits and commits, the files Claude keeps coming back to, the
-   commands whose output fills its context, the hooks that add to it, and the
+   commands whose output fills its context, the hooks that add to it, what
+   each branch cost this week, and the
    plugins, MCP servers and your own skills that sit idle. Nothing here touches a prompt, the model
    or what Claude reads: turning a plugin off only affects new conversations and
    is one click to undo, and "Suggest a trim" and "Ask Claude" only draft a
@@ -283,15 +284,24 @@
     + 'Suggest a shorter version that keeps everything you could not work out from the code or the project itself: commands, conventions, gotchas, preferences and rules. '
     + 'Only drop what is repeated, out of date, or obvious from the code. Do not edit the file. Show me the proposed version as a diff, and for each removal say what it was and why it is safe to drop.';
 
+  // A rule for something this project doesn't use (main's rulefit.js): load it only where it applies.
+  const MISFIT_ASK = m => `My Claude Code rule file at ${m.path} is written for ${m.misfit}, but it loads into every conversation, including this project, which doesn't use ${m.misfit}. `
+    + `Suggest how to make it load only where it applies: a paths: list in its frontmatter (globs for the ${m.misfit} files it's about), or moving it into the projects that use ${m.misfit}. `
+    + 'Keep every rule in it. Do not edit anything; show me the change as a diff.';
+
   function memoryRow(m) {
-    return h('li', { class: 'tool-row' },
+    const misfit = m.misfit && !m.onDemand;
+    return h('li', { class: `tool-row${misfit ? ' is-idle' : ''}` },
       h('div', { class: 'tool-main' },
         h('div', { class: 'tool-name' },
           h('code', { text: SB.basename(m.path) }),
+          misfit ? h('span', { class: 'idle-pill', title: `Written for ${m.misfit}, which nothing at this project's root uses`, text: `${m.misfit}, not used here` }) : null,
           h('span', { class: 'src-pill', text: tok(m.tokens) })),
         h('p', { class: 'tool-desc', text: m.onDemand ? `Only when Claude works on matching files · ${m.path}` : m.path, title: m.path })),
       h('div', { class: 'tool-actions' },
-        m.tokens >= TRIM_FROM ? h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude proposes a diff; nothing changes until you say so.',
+        misfit ? h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude proposes a diff; nothing changes until you say so.',
+          onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: MISFIT_ASK(m) }); } }, 'Load only where it applies') : null,
+        !misfit && m.tokens >= TRIM_FROM ? h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude proposes a diff; nothing changes until you say so.',
           onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: TRIM_ASK(m) }); } }, 'Suggest a trim') : null,
         h('button', { class: 'icon-btn', type: 'button', title: 'Show file', 'aria-label': 'Show file', onclick: () => api.revealSetupFile(m.path) },
           SB.icon(SB.ICONS.folder, { width: 1.3 }))));
@@ -334,6 +344,36 @@
         h('p', { class: 'tool-desc', text: `ran ${r.runs}× in ${r.sessions} conversations, ${tok(r.total)} in all` })));
   }
 
+  // MCP tools whose results fill the context (main's usage/loud.js, keyed by tool name).
+  const MCP_ASK = rows => [
+    "These MCP tools put the most into Claude Code's context in this project (counted from its transcripts on this PC). Whatever a tool returns stays in the conversation and is sent again with every message after it:",
+    ...rows.map(r => `- ${r.key}: about ${r.tokens} tokens a call, ${r.runs} calls in ${r.sessions} conversations`),
+    '',
+    'Look at how each is used here and suggest how Claude could get what it needs with less coming back: arguments that narrow or page the results (fewer fields, a smaller page, a filter), a cheaper tool or CLI for the same job, or a line in CLAUDE.md saying how to call them. Do not edit anything. For each suggestion, say what to change and roughly how many tokens a call it saves.',
+  ].join('\n');
+
+  const toolName = key => key.replace(/^mcp__/, '').replace(/__/, ' · ');
+
+  function mcpLoudRow(r) {
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' },
+          h('code', { text: toolName(r.key), title: r.key }),
+          h('span', { class: 'src-pill', title: 'What one call puts in the conversation, on average', text: `${tok(r.tokens)} a call` })),
+        h('p', { class: 'tool-desc', text: `called ${r.runs}× in ${r.sessions} conversations, ${tok(r.total)} in all` })));
+  }
+
+  // What the quiet-output hook saved (main's usage/loud.js quietSavings).
+  function quietRow(hot) {
+    const q = hot?.quieted;
+    if (!q?.runs) return null;
+    const saved = q.tokens ? `, about ${tok(q.tokens)} kept out of the conversation` : '';
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' }, h('code', { text: 'Keep long command output short' }), h('span', { class: 'src-pill', text: 'hook' })),
+        h('p', { class: 'tool-desc', title: 'Each shortened run, against what the same command put in when it ran in full', text: `shortened ${q.runs} run${q.runs === 1 ? '' : 's'} in the last ${hot.days} days${saved}` })));
+  }
+
   // ------------------------------------------------------------ hooks that add to the conversation
 
   // When each kind of hook adds what it prints (main's usage/hookctx.js).
@@ -361,6 +401,17 @@
           h('code', { text: r.name }),
           h('span', { class: 'src-pill', title: 'What one run adds to the conversation, on average', text: `${tok(r.tokens)} a run` })),
         h('p', { class: 'tool-desc', text: `adds it ${when(r)} · ran ${r.runs}× in ${r.sessions} conversations, ${tok(r.perConversation)} a conversation` })));
+  }
+
+  // ------------------------------------------------------------ what each branch cost (main's usage/ledger.js byBranch)
+
+  function branchRow(b) {
+    const parts = [`${b.turns} turn${b.turns === 1 ? '' : 's'}`, Number.isFinite(b.share) ? `${pct(b.share)} of what Shellby spent here` : null,
+      Number.isFinite(b.pctRise) && b.pctRise >= 1 ? `about ${Math.round(b.pctRise)}% of your 5-hour windows` : null];
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' }, h('code', { text: b.branch })),
+        h('p', { class: 'tool-desc', text: parts.filter(Boolean).join(' · ') })));
   }
 
   // ------------------------------------------------------------ the tab
@@ -393,11 +444,20 @@
     const memory = rep.memory.filter(m => match(m.path) && !m.onDemand);
     const onDemand = rep.memory.filter(m => match(m.path) && m.onDemand);
     const hot = (rep.hot?.files || []).filter(r => match(r.rel));
+    // Only worth a list when there's more than one to compare.
+    const branches = (rep.branches || []).length > 1 ? rep.branches.filter(b => match(b.branch)) : [];
     const noisy = (rep.hot?.loud || []).filter(r => match(r.key));
     const loudLabel = noisy.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
       h('span', { text: `Commands whose output fills the context here (last ${rep.hot.days} days)` }),
       h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
-        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: LOUD_ASK(rep.hot.loud) }); } }, 'Ask Claude')) : null;
+        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: LOUD_ASK(rep.hot.loud) }); } }, 'Ask Claude'),
+      h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'A ready-made hook that keeps the end of test runs and shortens plain git logs. You see it and confirm it before it is added.',
+        onclick: () => SB.toolboxHooks.openRecipe(rep.quietRecipe || 'quiet-output') }, 'Shorten with a hook')) : null;
+    const mcpLoud = (rep.hot?.loudMcp || []).filter(r => match(r.key));
+    const mcpLoudLabel = mcpLoud.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
+      h('span', { text: `MCP tools whose results fill the context here (last ${rep.hot.days} days)` }),
+      h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
+        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: MCP_ASK(rep.hot.loudMcp) }); } }, 'Ask Claude')) : null;
     const hooks = (rep.hot?.hooks || []).filter(r => match(r.name));
     const hooksLabel = hooks.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
       h('span', { text: `Hooks that add to the conversation (last ${rep.hot.days} days)` }),
@@ -416,6 +476,9 @@
       hooksLabel, ...hooks.map(hookRow),
       hotLabel, ...hot.map(hotRow),
       loudLabel, ...noisy.map(loudRow),
+      quietRow(rep.hot),
+      mcpLoudLabel, ...mcpLoud.map(mcpLoudRow),
+      branches.length ? label('What each branch cost here (last 7 days)') : null, ...branches.map(branchRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),
     ].filter(Boolean);
     list.replaceChildren(...(rows.length ? rows : [h('li', { class: 'history-empty', text: q ? 'No matches.' : 'Nothing loads into every conversation besides Claude Code itself.' })]));

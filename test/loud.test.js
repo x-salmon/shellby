@@ -72,3 +72,33 @@ test("the hot-files scan brings this project's loud commands with it", async () 
   assert.equal(r.sessions, 2, 'conversations with only shell calls count too');
   fs.rmSync(home, { recursive: true, force: true });
 });
+
+test('rewroteIn: the quiet-output hook shortening a command', () => {
+  const hook = stdout => JSON.stringify({ type: 'attachment', attachment: { type: 'hook_success', hookEvent: 'PreToolUse', command: "bash -c 'x'", stdout } });
+  assert.equal(loud.rewroteIn(hook('{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"set -o pipefail; npm test 2>&1 | tail -n 60"}}}')), true);
+  assert.equal(loud.rewroteIn(hook('{"hookSpecificOutput":{"updatedInput":{"command":"something else"}}}')), false);
+  assert.equal(loud.rewroteIn('not json "hook_success" updatedInput'), false);
+});
+
+test('commandKey sees through the hook\'s pipefail', () => {
+  assert.equal(loud.commandKey('set -o pipefail; npm test 2>&1 | tail -n 60'), 'npm test');
+});
+
+test('quietSavings: shortened runs against the same command run in full', () => {
+  let t = loud.tallyLoud(new Map(), [{ key: 'npm test', chars: 40000 }, { key: 'npm test', chars: 40000, quiet: true }]);
+  t = loud.tallyLoud(t, [{ key: 'npm test', chars: 4000, quiet: true }, { key: 'pytest', chars: 100, quiet: true }]);
+  // npm test: full 40000 a run; shortened 22000 on average, two runs -> 36000 chars saved.
+  assert.deepEqual(loud.quietSavings(t), { runs: 3, tokens: 9000 });
+  assert.equal(loud.quietSavings(loud.tallyLoud(new Map(), [{ key: 'git log', chars: 9 }])), null);
+  assert.equal(t.get('npm test').runs, 1, 'shortened runs stay out of the loud list');
+});
+
+test('MCP calls tally by tool name, in a list of their own', () => {
+  const call = JSON.stringify({ message: { content: [{ type: 'tool_use', id: 'm1', name: 'mcp__github__list_issues', input: { repo: 'x' } }] } });
+  assert.deepEqual(loud.shellCallsIn(call), [{ id: 'm1', key: 'mcp__github__list_issues', mcp: true }]);
+  const big = { chars: loud.LOUD_TOKENS * 4 * 2 };
+  let t = loud.tallyLoud(new Map(), [{ key: 'mcp__github__list_issues', ...big }, { key: 'npm test', ...big }]);
+  t = loud.tallyLoud(t, [{ key: 'mcp__github__list_issues', ...big }, { key: 'npm test', ...big }]);
+  assert.deepEqual(loud.loudest(t).map(r => r.key), ['npm test']);
+  assert.deepEqual(loud.loudest(t, { mcp: true }).map(r => r.key), ['mcp__github__list_issues']);
+});

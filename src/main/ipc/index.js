@@ -97,6 +97,13 @@ function registerIpc(electronIpcMain, d) {
     memory: () => claudeSetup.scanMemory(d.setupWhere()),
     projectOf: tab => { const s = d.spendSource(tab); return s.pk ? { key: s.pk, name: s.project } : null; },
     currentProject: () => path.resolve(d.currentCwd()).toLowerCase(),
+    // A copy's turns are kept under the project it was copied from (spendSource), so look there.
+    branchCosts: () => {
+      const cwd = d.setupWhere().cwd;
+      const key = cwd ? path.resolve(cwd).toLowerCase() : '';
+      const copy = key && [...(d.manager?.tabs.values() || [])].find(t => t.worktree?.originalCwd && [t.worktree.cwd, t.worktree.path, t.session?.cwd].some(p => p && path.resolve(p).toLowerCase() === key));
+      return d.usagePlan?.branchCosts(copy ? copy.worktree.originalCwd : cwd) || [];
+    },
   });
   lean.register(ipcMain);
   createSkillRemover({

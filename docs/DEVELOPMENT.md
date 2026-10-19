@@ -519,7 +519,8 @@ src/main/        Electron main process
                    and what a shell command means), levels.js (levels 1 to 99 and their unlocks), streaks.js (streaks and nudges,
                    pure), shells.js, shells-extra.js, shells-molt.js and shell-gen.js (the shells he grows into), molting.js
                    (the prestige at 99), character.js (the character sheet)
-  gitinfo.js       tiny git lookups for streaks and stickers: a folder's repo, its last commit, what a shipped project is
+  gitinfo.js       tiny git lookups for streaks and stickers: a folder's repo, its last commit, what a shipped project is,
+                   the branch it has checked out (for what each branch cost)
   quests/          the quest line: index.js (quests in chapters, each done the first time the real thing succeeds) and
                    chapters.js (the chapters, data only)
   reef/            reef health (docs/REEF.md): index.js (a coral per watched project, grown by new bests), signals.js
@@ -540,8 +541,12 @@ src/main/        Electron main process
   forecast.js      the 5-hour window's pace (pure): when it fills, and whether that's worth a warning
   turncost.js      what a turn and a tab cost (pure): tokens, share of the 5-hour window, the costliest turns, the crowded nudge, the effort and thinking badge,
                    and the notes under a turn's cost (a cache break, helpers that outspent it, pictures piling up)
+  turnwatch.js     what a turn did that's worth a note under its cost (pure): a big whole-file read, a re-read of an unchanged
+                   file, a long helper brief, many checks on a background job, long replies in an explaining style, a commit with
+                   the context well filled (compact now, with the commit's subject as the focus), hard thinking on a small job
+  rulefit.js       rule files written for a language or framework the project shows none of (the Lean tab's misfit pill)
   cachebreak.js    a warm prompt cache that missed (pure): caught per call, put down to a restart or a model change, kept per day
-                   for the Lean tab; and a short message about to pay for a cold one (the composer's tip)
+                   for the Lean tab; a short message about to pay for a cold one, and a /model switch about to throw a warm one away (the composer's tips)
   jobs.js          commands and Monitor watches Claude left running in the background (pure): the tray above the box and the crab's badge
   ultracode.js     ultracode runs (Claude Code's Workflow tool, docs/ULTRACODE.md): the run's card and its agents as helper crabs
   automemory.js    Claude Code's auto memory for a project: listing it, fixing one, forgetting one (Toolbox → Setup → Memory), and noticing a new one
@@ -553,10 +558,10 @@ src/main/        Electron main process
                    crabmcp.js serves the crab's tools (say, celebrate, wear, status, note, suggest) to Shellby's own conversations
   usage/           index.js (the usage meter without a prompt: a short-lived `claude -p` asked for its /usage data),
                    ledger.js (what each turn cost, pure: the per-turn ledger, a prompt's kind of ask, and the estimate the
-                   composer shows, and Sonnet for a small ask in a conversation not started yet; wiring/usageplan.js brackets each turn
+                   composer shows, Sonnet for a small ask in a conversation not started yet, and what each branch cost; wiring/usageplan.js brackets each turn
                    and answers usage:estimate), scan.js (what Claude Code used lately, from its transcripts), hotfiles.js (the files Claude keeps
-                   coming back to in a project, from the same transcripts), loud.js (the commands whose output fills the
-                   context, from the same read), hookctx.js (the hooks that add to it, from the same read) and service.js
+                   coming back to in a project, from the same transcripts), loud.js (the commands and MCP tools whose output fills the
+                   context, from the same read, and what the quiet-output hook saved), hookctx.js (the hooks that add to it, from the same read) and service.js
   telemetry.js     Claude Code's own OpenTelemetry metrics (pure): reading an OTLP JSON export, the per-day ledger, the env
                    that points a conversation at Shellby; telemetry-service.js is the loopback receiver
   notes.js         Notes (pure): a list per project and a General one, their limits

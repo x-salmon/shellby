@@ -92,6 +92,7 @@ function normalizeRow(r) {
     size: SIZES.includes(r.size) ? r.size : 's',
     kind: KINDS.includes(r.kind) ? r.kind : 'tab',
     rid: typeof r.rid === 'string' && /^[\w-]{1,64}$/.test(r.rid) ? r.rid : null,
+    branch: clip(r.branch, 200) || null,
     weight: Math.round(weight),
     pctRise,
     durationMs: num(r.durationMs),
@@ -112,6 +113,33 @@ function record(ledger, row, now) {
   const kept = (Array.isArray(ledger) ? ledger : []).filter(r => now - r.at < KEEP_MS);
   const clean = normalizeRow({ ...row, at: now });
   return (clean ? [...kept, clean] : kept).slice(-MAX_ROWS);
+}
+
+const BRANCH_DAYS = 7;
+const TOP_BRANCHES = 6;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * What each branch of one project cost over the last BRANCH_DAYS: [{ branch,
+ * weight, turns, pctRise (null with no readings), share (of the project's
+ * spend) }], costliest first. Turns from before branches were kept, or on no
+ * branch, are left out.
+ */
+function byBranch(rows, { pk, now, days = BRANCH_DAYS, top = TOP_BRANCHES }) {
+  const key = String(pk || '').toLowerCase();
+  if (!key) return [];
+  const mine = (Array.isArray(rows) ? rows : []).filter(r => r.pk === key && now - r.at < days * DAY_MS);
+  const total = mine.reduce((n, r) => n + r.weight, 0);
+  const by = new Map();
+  for (const r of mine) {
+    if (!r.branch) continue;
+    const b = by.get(r.branch) || { branch: r.branch, weight: 0, turns: 0, pctRise: null };
+    by.set(r.branch, { ...b, weight: b.weight + r.weight, turns: b.turns + 1, pctRise: r.pctRise === null ? b.pctRise : (b.pctRise || 0) + r.pctRise });
+  }
+  return [...by.values()]
+    .map(b => ({ ...b, share: total ? b.weight / total : null }))
+    .sort((a, b) => b.weight - a.weight || a.branch.localeCompare(b.branch))
+    .slice(0, top);
 }
 
 /**
@@ -252,6 +280,6 @@ function modelSuggestion(ledger, { pk = null, category = 'other', model = '', no
 }
 
 module.exports = {
-  classify, sizeOf, modelFamily, normalize, normalizeRow, record, riseOf, ratioOf, estimate, advise, shouldHold,
+  classify, sizeOf, modelFamily, normalize, normalizeRow, record, byBranch, riseOf, ratioOf, estimate, advise, shouldHold,
   routineSuggestion, modelSuggestion, quantile, CATEGORIES, KEEP_MS, MAX_ROWS, MIN_SAMPLES, SMALL_RUN_PCT,
 };

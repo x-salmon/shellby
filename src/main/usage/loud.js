@@ -14,7 +14,8 @@ const TOP = 8;
 const CHARS_PER_TOKEN = 4;
 const KEY_CHARS = 80;
 const SHELLS = new Set(['Bash', 'PowerShell']);
-const SHELL_TOOL = /"name":"(?:Bash|PowerShell)"/;
+const SHELL_TOOL = /"name":"(?:Bash|PowerShell|mcp__)/;
+const MCP_NAME = /^mcp__[\w.-]{1,120}$/;
 
 // Programs whose first word after them says what ran ("git log", "cargo test").
 const SUBCOMMANDS = new Set(['npm', 'pnpm', 'yarn', 'bun', 'npx', 'git', 'gh', 'glab', 'cargo', 'go', 'dotnet', 'docker', 'kubectl', 'pip', 'uv', 'poetry', 'make', 'deno', 'mvn', 'gradle']);
@@ -25,6 +26,7 @@ const INTERPRETERS = new Set(['node', 'python', 'python3', 'py', 'pwsh', 'powers
 const INLINE = new Set(['-e', '-c', '-p', '--eval', '--print', '-command', '-encodedcommand']);
 
 const LEADING = [
+  /^set\s+-o\s+pipefail\s*;\s*/i,                            // the quiet-output hook's rewrite (hooks/recipes.js)
   /^cd\s+("[^"]*"|'[^']*'|\S+)\s*(&&|;)\s*/i,                  // cd somewhere && …
   /^(set-location|push-location|pushd)\s+("[^"]*"|'[^']*'|\S+)\s*(&&|;)\s*/i,
   /^\$env:\w+\s*=\s*("[^"]*"|'[^']*'|\S+)\s*;\s*/i,            // $env:X='1'; …
@@ -67,7 +69,7 @@ function commandKey(command) {
   return key && !/[\u0000-\u001f\u007f]/.test(key) ? key : null;
 }
 
-/** The shell calls in one transcript line: [{ id, key }], or null. */
+/** The shell and MCP calls in one transcript line: [{ id, key, mcp? }], or null. An MCP call's key is its tool's name. */
 function shellCallsIn(line) {
   if (typeof line !== 'string' || !line.includes('"tool_use"') || !SHELL_TOOL.test(line)) return null;
   let ev;
@@ -76,7 +78,9 @@ function shellCallsIn(line) {
   if (!Array.isArray(content)) return null;
   const out = [];
   for (const b of content) {
-    if (b?.type !== 'tool_use' || !SHELLS.has(b.name) || typeof b.id !== 'string') continue;
+    if (b?.type !== 'tool_use' || typeof b.id !== 'string') continue;
+    if (typeof b.name === 'string' && MCP_NAME.test(b.name)) { out.push({ id: b.id, key: b.name, mcp: true }); continue; }
+    if (!SHELLS.has(b.name)) continue;
     const key = commandKey(b.input?.command);
     if (key) out.push({ id: b.id, key });
   }
@@ -112,29 +116,73 @@ function resultsIn(line, pending) {
   return out.length ? out : null;
 }
 
+// What the quiet-output hook (hooks/recipes.js) prints when it shortens a command.
+const QUIETED = ['2>&1 | tail -n 60', 'git log --oneline -n 30'];
+
+/**
+ * Did the quiet-output hook shorten a command in this transcript line? The
+ * call's id when the line names it, true when it doesn't (then the call still
+ * waiting for its result is the one: the hook runs between the two), false
+ * for anything else.
+ * @returns {string | boolean}
+ */
+function rewroteIn(line) {
+  if (typeof line !== 'string' || !line.includes('"hook_success"') || !line.includes('updatedInput')) return false;
+  let ev;
+  try { ev = JSON.parse(line); } catch { return false; }
+  const a = ev?.attachment;
+  const out = a?.stdout;
+  if (a?.hookEvent !== 'PreToolUse' || typeof out !== 'string' || !out.includes('"updatedInput"') || !QUIETED.some(q => out.includes(q))) return false;
+  const id = a.toolUseID ?? ev.toolUseID;
+  return typeof id === 'string' && id ? id : true;
+}
+
+const charsOf = chars => (Number.isFinite(chars) && chars > 0 ? chars : 0);
+
 /**
  * Add one conversation's shell results to the tally (Map key -> { key, runs,
- * chars, sessions }). Returns a new tally.
+ * chars, sessions, quietRuns, quietChars }). A run the hook shortened
+ * (quiet) counts apart, for what it saved. Returns a new tally.
  */
 function tallyLoud(tally, outputs) {
   const next = new Map(tally);
   const seen = new Set();
-  for (const { key, chars } of outputs) {
-    const t = next.get(key) || { key, runs: 0, chars: 0, sessions: 0 };
-    next.set(key, { ...t, runs: t.runs + 1, chars: t.chars + (Number.isFinite(chars) && chars > 0 ? chars : 0), sessions: t.sessions + (seen.has(key) ? 0 : 1) });
+  for (const { key, chars, quiet } of outputs) {
+    const t = next.get(key) || { key, runs: 0, chars: 0, sessions: 0, quietRuns: 0, quietChars: 0 };
+    next.set(key, quiet
+      ? { ...t, quietRuns: (t.quietRuns || 0) + 1, quietChars: (t.quietChars || 0) + charsOf(chars) }
+      : { ...t, runs: t.runs + 1, chars: t.chars + charsOf(chars), sessions: t.sessions + (seen.has(key) ? 0 : 1) });
     seen.add(key);
   }
   return next;
 }
 
 /**
- * The commands worth a word: in MIN_SESSIONS or more conversations, with
- * LOUD_TOKENS or more a run on average, the most output in all first.
- * -> [{ key, runs, sessions, tokens (a run, on average), total }]
- * @param {Map<string, { key: string, runs: number, chars: number, sessions: number }>} tally
+ * What the quiet-output hook saved: { runs, tokens }, or null when it hasn't
+ * run. A shortened run saved what that command's full runs put in, on average,
+ * less what it did put in; a command never seen in full adds to runs only.
+ * @param {Map<string, { runs: number, chars: number, quietRuns?: number, quietChars?: number }>} tally
  */
-function loudest(tally) {
+function quietSavings(tally) {
+  let runs = 0, chars = 0;
+  for (const t of tally.values()) {
+    if (!t.quietRuns) continue;
+    runs += t.quietRuns;
+    if (t.runs) chars += t.quietRuns * Math.max(0, t.chars / t.runs - (t.quietChars || 0) / t.quietRuns);
+  }
+  return runs ? { runs, tokens: Math.round(chars / CHARS_PER_TOKEN) } : null;
+}
+
+/**
+ * The commands (or, with mcp, the MCP tools) worth a word: in MIN_SESSIONS
+ * or more conversations, with LOUD_TOKENS or more a run on average, the most
+ * output in all first. -> [{ key, runs, sessions, tokens (a run, on average), total }]
+ * @param {Map<string, { key: string, runs: number, chars: number, sessions: number }>} tally
+ * @param {{ mcp?: boolean }} [opts]
+ */
+function loudest(tally, { mcp = false } = {}) {
   return [...tally.values()]
+    .filter(t => t.key.startsWith('mcp__') === mcp)
     .map(t => ({ ...t, tokens: Math.round(t.chars / Math.max(1, t.runs) / CHARS_PER_TOKEN), total: Math.round(t.chars / CHARS_PER_TOKEN) }))
     .filter(t => t.sessions >= MIN_SESSIONS && t.tokens >= LOUD_TOKENS)
     .sort((a, b) => (b.total - a.total) || a.key.localeCompare(b.key))
@@ -142,4 +190,4 @@ function loudest(tally) {
     .map(({ key, runs, sessions, tokens, total }) => ({ key, runs, sessions, tokens, total }));
 }
 
-module.exports = { commandKey, shellCallsIn, resultsIn, textChars, tallyLoud, loudest, LOUD_TOKENS, MIN_SESSIONS };
+module.exports = { commandKey, shellCallsIn, resultsIn, rewroteIn, textChars, tallyLoud, quietSavings, loudest, LOUD_TOKENS, MIN_SESSIONS };

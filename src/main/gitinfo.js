@@ -130,4 +130,35 @@ async function userName() {
   return (await git(['config', '--global', '--get', 'user.name'])) || '';
 }
 
-module.exports = { repoOf, lastCommitAt, projectOf, trackedFiles, stickerFile, commitsBetween, headLogs, userName, gitDate };
+const HEAD_UP = 8;            // folders up from a working directory to look for .git
+
+/**
+ * The branch checked out where dir is, read from .git/HEAD (a worktree's .git
+ * file names its own), with no git run: it's asked at the end of every turn.
+ * null for a detached HEAD, or no repo.
+ */
+function headBranch(dir) {
+  if (!okDir(dir)) return null;
+  let at = path.resolve(dir);
+  for (let i = 0; i < HEAD_UP; i++) {
+    const dotgit = path.join(at, '.git');
+    try {
+      const st = fs.statSync(dotgit);
+      let gitDir = dotgit;
+      if (st.isFile()) {
+        const m = /^gitdir:\s*(.+)$/m.exec(fs.readFileSync(dotgit, 'utf8'));
+        if (!m) return null;
+        gitDir = path.resolve(at, m[1].trim());
+        if (!okDir(gitDir)) return null; // the file is the repo's to write: never a network share
+      }
+      const ref = /^ref:\s*refs\/heads\/(.+)$/m.exec(fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8'));
+      return ref ? ref[1].trim().slice(0, 200) : null;
+    } catch { /* not here: one folder up */ }
+    const up = path.dirname(at);
+    if (up === at) return null;
+    at = up;
+  }
+  return null;
+}
+
+module.exports = { headBranch, repoOf, lastCommitAt, projectOf, trackedFiles, stickerFile, commitsBetween, headLogs, userName, gitDate };

@@ -17,8 +17,21 @@ const FAKE = path.join(__dirname, 'fixtures', 'fake-claude.js');
 const ORPHANS = 2;
 
 const alive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+// Pids a test started and hasn't yet seen end, for the safety net in after().
+// One seen ending is dropped at once: Windows hands pids out again, and by the
+// end of the file a stale one can be another test file's process (they run in
+// parallel), which after() would then kill.
 const seenPids = new Set();
-after(() => { for (const pid of seenPids) if (alive(pid)) try { process.kill(pid); } catch { /* gone */ } });
+async function allEnd(pids, ms) {
+  const ended = await until(() => !pids.some(alive), ms);
+  for (const pid of pids) if (!alive(pid)) seenPids.delete(pid);
+  return ended;
+}
+after(() => {
+  for (const pid of seenPids) if (alive(pid)) try { process.kill(pid); } catch { /* gone */ }
+  // Where the fake CLI's orphans say they've started (fixtures/fake-claude.js).
+  fs.rmSync(path.join(os.tmpdir(), 'shellby-fake-orphans'), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+});
 
 async function until(cond, ms = 10000) {
   const end = Date.now() + ms;
@@ -37,10 +50,13 @@ function makeManager() {
   return { mgr, seen };
 }
 
-// The node orphans in a tab's job, once they've all started (conhosts come and go).
+// The node orphans in a tab's job, once they've all started. By name: the cmd.exe
+// that starts each one exits at once and conhosts come and go, so two of any
+// process isn't two orphans (counting those made "they outlive the turn" flaky
+// under load, when the cmds were in the job before the orphans were).
 async function orphansOf(session) {
   let pids = [];
-  const nodes = () => processJob.members(session.job).filter(pid => pid !== session.proc?.pid);
+  const nodes = () => processJob.namedMembers(session.job).filter(m => m.name === 'node.exe' && m.pid !== session.proc?.pid).map(m => m.pid);
   assert.ok(await until(() => (pids = nodes()).length >= ORPHANS), `the orphans start (${pids.length})`);
   for (const pid of pids) seenPids.add(pid);
   return pids;
@@ -57,22 +73,21 @@ async function tabWithOrphans(prompt = `orphans ${ORPHANS}`) {
 test('closing a tab ends what its conversation left running', { skip }, async () => {
   const { mgr, seen, pids } = await tabWithOrphans();
   assert.ok(await until(() => seen.some(i => i.kind === 'result')), 'the turn ends');
-  // (A conhost among them can come and go on its own: count what's still there.)
   assert.ok(pids.filter(alive).length >= ORPHANS, 'they outlive the turn');
   mgr.close('t1');
-  assert.ok(await until(() => !pids.some(alive)), 'nothing is left running');
+  assert.ok(await allEnd(pids), 'nothing is left running');
 });
 
 test('quitting (closeAll with kill) ends every tab\'s processes at once', { skip }, async () => {
   const { mgr, pids } = await tabWithOrphans();
   mgr.closeAll({ kill: true });
-  assert.ok(await until(() => !pids.some(alive), 3000), 'nothing is left running');
+  assert.ok(await allEnd(pids, 3000), 'nothing is left running');
 });
 
 test('a CLI that crashes mid-turn takes what it started with it', { skip }, async () => {
   const { mgr, pids } = await tabWithOrphans(`orphans-crash ${ORPHANS}`);
   try {
-    assert.ok(await until(() => !pids.some(alive)), 'nothing is left running');
+    assert.ok(await allEnd(pids), 'nothing is left running');
   } finally { mgr.closeAll({ kill: true }); }
 });
 
@@ -84,7 +99,7 @@ test('the quit-time sweep ends a one-off run nobody ended', { skip }, async () =
   for (const pid of pids) seenPids.add(pid);
   const ended = processJob.sweepAll();
   assert.ok(ended.includes('node.exe'), `it is ended (${ended})`);
-  assert.ok(await until(() => !pids.some(alive)), 'nothing is left running');
+  assert.ok(await allEnd(pids), 'nothing is left running');
   assert.deepEqual([...processJob.ownedPids()], [], 'no job is left open');
   await running;
 });
@@ -99,5 +114,5 @@ test('an install in a new copy that runs too long is ended, tree and all', { ski
   assert.ok(await until(() => (pids = [...processJob.ownedPids()].filter(p => !before.has(p))).length >= 2), `npm and its child run in a job (${pids.length})`);
   for (const pid of pids) seenPids.add(pid);
   assert.deepEqual(await done, { ok: false, error: 'npm took too long' });
-  assert.ok(await until(() => !pids.some(alive)), 'nothing is left running');
+  assert.ok(await allEnd(pids), 'nothing is left running');
 });
