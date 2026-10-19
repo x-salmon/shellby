@@ -54,7 +54,20 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **More** has Guard my focus (15, 25 or 50 minutes), **Routines** (Run now, and on or off; workflows that need no inputs run too), **Notes** for each project, and the **Wardrobe**. Tap him on the beach for a pat. A finished conversation has **Share**, which sends a picture of him and what landed through your phone's share sheet.
 
-**Phone** has notifications, what this phone can do, and **Forget this phone**.
+**Phone** has notifications, **Quiet hours**, what this phone can do, and **Forget this phone**.
+
+### Several phones, each with its own rights
+
+Every paired phone gets a level in Settings → On your phone, beside its **Forget** button:
+
+- **Full** is everything above. It's what a phone has when you pair it, and what every phone paired before this had.
+- **Read only** sees everything (the beach, every conversation as it happens, what changed, the queue, routines, notes) and changes nothing: it can't answer a prompt, start a task, reply, stop a turn, undo one, bring a copy home, push, run a routine, change your focus or dress him up. It can still turn its own notifications on or off, and forget itself.
+
+The level is checked on your PC for every call, not just hidden on the phone, so a tablet on the kitchen counter can watch without being able to say yes. Changing it takes effect at once, on a phone that's open too.
+
+### Quiet hours
+
+On the phone's **Phone** screen, or in Settings → On your phone: on or off, and from when to when, in your PC's own time (22:00 to 07:00 crosses midnight as you'd expect). During quiet hours nothing buzzes: a permission prompt still arrives, quietly, so the app icon's badge counts it and the card is a tap away in the morning; a finished task, the usage limit and the rest aren't sent at all, as when he's guarding your focus. One schedule covers every phone paired with that PC.
 
 ### What you can allow
 
@@ -72,10 +85,10 @@ There's also a quiet **"working on it"** notification for tasks the phone starte
 Notifications come from your PC, encrypted, through your phone's own push service (Apple's, Google's, Mozilla's or Microsoft's, whichever your browser uses). Only your phone can read them. They follow the same rules as the other phone notifications:
 
 - **The events you pick:** he needs permission, a task finished, the usage limit, a queued task, a red build and the rest.
-- **Guard my focus** holds them back, unless you say otherwise.
+- **Guard my focus** holds them back, unless you say otherwise. **Quiet hours** hold them back overnight, except a permission prompt, which comes quietly.
 - **A four-second task doesn't buzz you.** A task the phone started always says when it's done.
 
-Tap one and the app opens on that conversation. On an iPhone there are no buttons on a web app's notification, so the card is a tap away instead. The app icon's badge counts the prompts waiting.
+Tap one and the app opens on that conversation. On an iPhone there are no buttons on a web app's notification, so a tap on **"He needs you"** opens straight onto that one prompt instead: the plain sentence, the command or the edit, and big **Allow** and **Deny** (and **Always allow** when the desk would offer it). Answer it and you're back on the beach. If it was answered at the desk meanwhile, or is one that waits for the desk, the screen says so. The app icon's badge counts the prompts waiting.
 
 ## Security, in short
 
@@ -85,6 +98,7 @@ This is the one feature that lets another device drive Claude Code on your PC, s
 - **Only your Tailscale login gets in.** Tailscale tells Shellby who each request is from, and anyone else on a shared tailnet is turned away. **Funnel** (which puts an address on the open internet) is never turned on, and if it's ever on for this address, Shellby stops serving.
 - **Each phone needs a code from your PC's screen** to pair, and keeps a token only it has. Shellby keeps a hash of it, never the token, and **Forget** in Settings ends that phone's access at once.
 - **The phone's rules:** Allow, Deny and the desk's always-allow, the mode you pick, limits on how many, and everything the desk card would warn about stays at the desk.
+- **Each phone's rights** are checked on your PC on every call: a read-only phone is refused anything but looking, its own notifications and forgetting itself, whatever its app asks for.
 
 The details are in [SECURITY.md](../SECURITY.md#shellby-on-your-phone).
 

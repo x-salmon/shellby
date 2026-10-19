@@ -509,7 +509,10 @@ src/main/        Electron main process
                    file table, the event stream, the actions, and every check on who's asking), pairing.js (codes and device
                    tokens, kept as hashes), tailscale.js (reading `tailscale status` and `serve status`, serving our port; pure
                    parsing), push.js (Web Push on Node's crypto: RFC 8291 encryption, a VAPID JWT, the push services allowed),
-                   view.js (pure: what the phone is told, and a transcript cut down to phone items); wiring/pocket.js ties it in
+                   view.js (pure: what the phone is told, and a transcript cut down to phone items), rights.js (pure: a phone's
+                   level, full or read-only, and the one allowlist a read-only one may call), quiet.js (pure: the quiet hours
+                   window in the PC's local time, checked at the door), notices.js (push notifications, with the deep link a
+                   tap opens), answers.js (pure: what goes with a question's or a plan's answer); wiring/pocket.js ties it in
                    and decides what each phone action may do
   handoff.js       a conversation to a terminal and back (pure): the launch command per shell, ids, folders
   btw.js           /btw side questions: a tool-less -p on a fork of the conversation that saves nothing
@@ -655,7 +658,8 @@ src/renderer/    critter + panel UIs (plain HTML/CSS/JS, no framework)
                    (pure, with node:test coverage: the stream, a transcript folded for drawing, markdown as plain runs, a diff,
                    the beach's words) · pocket-stream (the token, the reconnecting stream, the API) · pocket-draw (elements from
                    text only, the crab from shared/sprite.js, a diff) · pocket (the beach, the queue, this phone, pairing, sheets)
-                   · pocket-tab (one conversation and a turn's diff) · sw.js (the offline shell, push and taps on notifications)
+                   · pocket-tab (one conversation and a turn's diff) · pocket-phone (one prompt from its notification, the quiet
+                   hours card) · sw.js (the offline shell, push and taps on notifications)
   dialog/          the themed confirmation window, isolated: the panel can't script it, and main takes an answer only from it
   floor/           the floor beside him (src/main/desktop/floor.js): his pals and footprints; colony-brain.js decides what the pals do (pure)
   note/            a note he hauled onto your screen (src/main/pranks.js); a click crumples it up

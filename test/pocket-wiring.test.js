@@ -441,6 +441,13 @@ test('a phone that turned notifications on gets them, encrypted, by the settings
     assert.equal(plain.url, '/#/tab/t2');
     assert.equal(plain.tag, 'ask-t2');
     assert.match(plain.title, /needs you/);
+    assert.equal(plain.silent, undefined);
+    // A prompt with its request named opens straight onto it; no token rides along.
+    assert.equal(w.d.pocketNotify({ kind: 'asking', project: 'Tab t2', message: 'Run npm test', tabId: 't2', requestId: 'r-7' }), true);
+    await new Promise(r => setTimeout(r, 20));
+    const deep = JSON.parse(push.decrypt({ body: sent[1].opts.body, p256dhPrivate: ecdh.getPrivateKey(), auth: sub.keys.auth }).toString());
+    assert.equal(deep.url, '/#/prompt/t2/r-7');
+    assert.ok(!JSON.stringify(deep).includes(w.token));
 
     // A quick task isn't news, unless the phone started it.
     assert.equal(w.d.pocketNotify({ kind: 'done', project: 'Tab t2', seconds: 4, tabId: 't2' }), false);
@@ -449,6 +456,70 @@ test('a phone that turned notifications on gets them, encrypted, by the settings
     await w.d.setPocket({ notify: { events: { asking: false } } });
     assert.equal(w.d.pocketNotify({ kind: 'asking', project: 'Tab t2', tabId: 't2' }), false);
   } finally { globalThis.fetch = before; stop(w); }
+});
+
+test('quiet hours hold every push but a permission prompt, which comes quietly', async () => {
+  const w = await paired({ tabs: [tabOf('t1', { fromPocket: true }), tabOf('t2')] });
+  const sent = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => { sent.push({ url, opts }); return { ok: true, status: 201, text: async () => '' }; };
+  try {
+    const { sub, ecdh } = fakeSubscription();
+    await w.d.pocket.onAction(w.device, 'push', { subscription: sub });
+    // A window that holds right now, whatever the clock says: from an hour ago to an hour from now.
+    const hhmm = d => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const from = hhmm(new Date(Date.now() - 60 * 60 * 1000)), to = hhmm(new Date(Date.now() + 60 * 60 * 1000));
+    assert.match((await w.d.setPocket({ quiet: { from: 'late' } })).error, /hours and minutes/);
+    const v = await w.d.setPocket({ quiet: { enabled: true, from, to } });
+    assert.deepEqual(v.quiet, { enabled: true, from, to });
+    assert.equal(w.d.pocketNotify({ kind: 'done', project: 'Tab t2', seconds: 500, tabId: 't2' }), false, 'held');
+    assert.equal(w.d.pocketNotify({ kind: 'done', project: 'Tab t1', seconds: 4, tabId: 't1' }), false, 'held, though the phone started it');
+    assert.equal(w.d.pocketNotify({ kind: 'limit' }), false);
+    assert.equal(w.d.pocketNotify({ kind: 'asking', project: 'Tab t2', message: 'Run npm test', tabId: 't2' }), true);
+    await new Promise(r => setTimeout(r, 20));
+    assert.equal(sent.length, 1);
+    const plain = JSON.parse(push.decrypt({ body: sent[0].opts.body, p256dhPrivate: ecdh.getPrivateKey(), auth: sub.keys.auth }).toString());
+    assert.equal(plain.silent, true);
+    assert.equal(plain.badge, 0);
+    // The phone sees the schedule, and can turn it off itself.
+    assert.deepEqual(w.d.pocket.onOpen(w.device, { tab: null }).view.quiet, { enabled: true, from, to });
+    assert.equal((await w.d.pocket.onAction(w.device, 'quiet', { enabled: false })).ok, true);
+    assert.equal((await w.d.pocket.onAction(w.device, 'quiet', { to: from })).error, 'Pick two different times.');
+    assert.equal(w.d.pocketNotify({ kind: 'limit' }), true);
+  } finally { globalThis.fetch = before; stop(w); }
+});
+
+test('a phone set to read-only at the desk may look, and nothing else', async () => {
+  const t = tabOf('t1');
+  t.session.pending.set('r1', { requestId: 'r1', toolName: 'Bash', input: { command: 'npm test' } });
+  t.session.busy = true;
+  const w = await paired({ tabs: [t], items: { t1: [{ kind: 'changes', root: PROJECT, before: 'b0', after: 'a1', files: [{ path: 'src/a.js' }] }] } });
+  try {
+    assert.equal(w.d.pocketViewNow().devices[0].rights, 'full');
+    assert.equal(w.d.pocket.onOpen(w.device, { tab: null }).view.rights, 'full');
+    assert.match((await w.d.setPocket({ device: { id: 'nobody', rights: 'readonly' } })).error, /already gone/);
+    assert.match((await w.d.setPocket({ device: { id: w.device.id, rights: 'root' } })).error, /already gone/);
+    const v = await w.d.setPocket({ device: { id: w.device.id, rights: 'readonly' } });
+    assert.equal(v.devices[0].rights, 'readonly');
+    assert.equal(w.d.config.get('pocketDevices')[0].rights, 'readonly');
+    // The stream opened before the change still gets the view with the new level on it.
+    assert.equal(w.d.pocket.onOpen(w.device, { tab: null }).view.rights, 'readonly');
+    const act = (name, body) => w.d.pocket.onAction(w.device, name, body);
+    for (const [name, body] of [['answer', { tabId: 't1', requestId: 'r1', decision: 'allow' }], ['task', { project: PROJECT, text: 'do it' }], ['reply', { tabId: 't1', text: 'hi' }], ['stop', { tabId: 't1' }], ['undo', { tabId: 't1', after: 'a1' }], ['home', { tabId: 't1' }], ['focus', { minutes: 25 }], ['quiet', { enabled: true }]]) {
+      assert.match((await act(name, body)).error, /only look/, name);
+    }
+    assert.equal(w.of('answerPermission').length, 0);
+    assert.equal(w.of('interrupt').length, 0);
+    assert.equal(w.of('startTaskInCopy').length, 0);
+    assert.match(w.d.pocket.onUpload(w.device, Buffer.alloc(10)).error, /only look/);
+    // Looking is fine: the diff, and the lists past the beach.
+    assert.equal((await w.d.pocket.onDiff(w.device, { tab: 't1', after: 'a1', file: 'src/a.js' })).ok, true);
+    assert.equal((await act('routines', {})).ok, true);
+    // Its own notifications, and leaving.
+    assert.equal((await act('push', { subscription: null })).ok, true);
+    assert.equal((await act('forget', {})).ok, true);
+    assert.equal(w.d.pocketViewNow().devices.length, 0);
+  } finally { stop(w); }
 });
 
 test('a subscription the push service says is gone is forgotten', async () => {

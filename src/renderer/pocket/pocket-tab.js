@@ -4,7 +4,7 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn }) => {
+  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, canAct, lookOnly }) => {
     // ---------------------------------------------------------------- one conversation
 
     function tabScreen(tabId) {
@@ -116,14 +116,16 @@
         const parts = [];
         const prompts = (S.view?.prompts || []).filter(p => p.tabId === tabId);
         asks.replaceChildren(...prompts.map(p => promptCard(p, { inTab: true })));
+        const may = canAct();
         if (t.busy) {
           const doing = h('div', { class: 'working-line' }, D.crab({ px: 1.5, state: 'working', label: '' }), h('span', { class: 'doing', text: L.doingLine(t) }),
             t.busySince ? h('span', { class: 'mono since', dataset: { since: t.busySince }, text: L.duration((Date.now() - t.busySince) / 1000) }) : null);
-          parts.push(h('div', { class: 'foot-row' }, doing, stop));
+          parts.push(h('div', { class: 'foot-row' }, doing, may ? stop : null));
         }
         const reviewing = t.ready && !t.busy && !t.pending;
-        if (reviewing) parts.push(reviewBar(t));
-        if (!t.busy && !t.pending) {
+        // A phone that may only look gets the line instead of the buttons.
+        if (reviewing) parts.push(may ? reviewBar(t) : lookOnly());
+        if (!t.busy && !t.pending && may) {
           if (t.canReply) parts.push(replyRow);
           else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
         }

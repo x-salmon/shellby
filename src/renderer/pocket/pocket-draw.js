@@ -51,6 +51,7 @@
     mic: 'M8 1.5a2 2 0 0 0-2 2V8a2 2 0 0 0 4 0V3.5a2 2 0 0 0-2-2ZM4 7.5a4 4 0 0 0 8 0M8 11.5v3',
     camera: 'M2 5h3l1-1.5h4L11 5h3v8H2zM8 6.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z',
     share: 'M8 2v8M5 4.5 8 1.5l3 3M3.5 7v6.5h9V7',
+    moon: 'M9.5 2.5a5.5 5.5 0 1 0 4 9.5A6 6 0 0 1 9.5 2.5Z',
   };
   function icon(name, cls = '') {
     const s = document.createElementNS(SVG, 'svg');
