@@ -17,7 +17,21 @@ const HIGH_EFFORTS = new Set(['high', 'xhigh', 'max']);
 const SMALL_JOBS = new Set(['tidy', 'docs']);
 const HELPERS = new Set(['Agent', 'Task']);
 const SHELLS = new Set(['Bash', 'PowerShell']);
-const COMMIT = /\bgit\s+(?:-[Cc]\s+\S+\s+|-\S+\s+)*commit\b/;
+const COMMAND_CHARS = 2000;     // enough to find a commit in, short enough to split cheaply
+const GIT = new Set(['git', 'git.exe']);
+
+/** Does a shell command run `git … commit`? Split into words, not a regex, so a long command can't backtrack. */
+function commits(command) {
+  const words = command.slice(0, COMMAND_CHARS).split(/[\s;&|()"']+/);
+  for (let i = 0; i < words.length; i++) {
+    if (!GIT.has(words[i].split(/[\\/]/).pop().toLowerCase())) continue;
+    // Past git's own options to its subcommand: -C and -c take a value.
+    let j = i + 1;
+    while (j < words.length && words[j].startsWith('-')) j += /^-[Cc]$/.test(words[j]) ? 2 : 1;
+    if (words[j] === 'commit') return true;
+  }
+  return false;
+}
 
 const tokensOf = chars => Math.round((Number.isFinite(chars) && chars > 0 ? chars : 0) / CHARS_PER_TOKEN);
 
@@ -35,7 +49,7 @@ function toolFacts(name, input) {
   const i = input && typeof input === 'object' ? input : {};
   if (name === 'Read') return i.offset == null && i.limit == null && i.pages == null ? { wholeRead: true } : {};
   if (HELPERS.has(name) && typeof i.prompt === 'string') return { briefChars: i.prompt.length };
-  if (SHELLS.has(name) && typeof i.command === 'string' && COMMIT.test(i.command)) return { commits: true };
+  if (SHELLS.has(name) && typeof i.command === 'string' && commits(i.command)) return { commits: true };
   return {};
 }
 

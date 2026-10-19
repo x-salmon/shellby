@@ -18,7 +18,7 @@
 // Kept per day like the cache ledger (efficiency.js), for the Lean tab. And
 // before a cold cache is paid for: a short message into a big conversation
 // whose cache has gone cold sends all of it again (coldResend), when a new tab
-// might have done.
+// might have done. And before a /model switch throws a warm cache away (modelSwitch).
 // Pure: callers pass `now` (test/cachebreak.test.js).
 
 const BREAK_MIN = 20000;   // tokens: a smaller re-send isn't worth a word
@@ -95,6 +95,19 @@ function coldResend({ cache, tokens, text, now }) {
   return { tokens: Math.round(tokens), coldSince: until };
 }
 
+const MODEL_COMMAND = /^\/model\s+\S/i;
+
+/**
+ * Would this message switch a big conversation's model while its cache is
+ * still warm? Each model has a cache of its own, so the next message sends
+ * everything again at full price. -> { tokens } or null.
+ */
+function modelSwitch({ cache, tokens, text, now }) {
+  if (!MODEL_COMMAND.test(String(text || '').trim()) || num(tokens) < BREAK_MIN) return null;
+  if (!cache || !Number.isFinite(cache.at) || now >= cache.at + num(cache.ttlMs)) return null; // cold already: nothing to lose
+  return { tokens: Math.round(tokens) };
+}
+
 /** What a turn's break says beside its cost: one sentence, by cause. */
 function breakText(brk) {
   const n = Math.round(num(brk?.tokens) / 1000);
@@ -104,4 +117,4 @@ function breakText(brk) {
   return `${sent} Less came back from the cache than the conversation holds; Shellby can't see why.`;
 }
 
-module.exports = { cacheBreak, coldResend, COLD_MIN, normalizeBreaks, recordBreak, breakSummary, breakText, BREAK_MIN, READ_SHARE, CAUSES };
+module.exports = { cacheBreak, coldResend, modelSwitch, COLD_MIN, normalizeBreaks, recordBreak, breakSummary, breakText, BREAK_MIN, READ_SHARE, CAUSES };

@@ -3,7 +3,7 @@
 // type it. Kept out of main.js, which only wires it up. Nothing here leaves
 // the PC, and the prompt itself is never kept, only its category.
 const guard = require('../guard');
-const { coldResend } = require('../cachebreak');
+const { coldResend, modelSwitch } = require('../cachebreak');
 const usageLedger = require('../usage/ledger');
 
 const SAVE_DELAY_MS = 5000;   // turns end in bursts (a workflow's steps); one write when they settle
@@ -92,7 +92,8 @@ function wireUsagePlan(d) {
    * What a message usually costs, for the composer: the estimate (usageLedger.js)
    * plus whether it would cross the line and whether to hold it for you.
    * -> { pct, low, high, samples, basis, category, project, over, line, nowPct,
-   *      left, guardOn, resetsAt, hold, cold, suggest }
+   *      left, guardOn, resetsAt, hold, cold, suggest }, or for a /command only { rebuild }
+   * rebuild: a /model switch that throws a warm cache away (cachebreak.js modelSwitch);
    * cold: a short message into a big conversation whose cache has gone cold
    * (cachebreak.js coldResend); suggest: Sonnet for a conversation that hasn't
    * started, when this kind of ask usually suits it (ledger.js modelSuggestion).
@@ -101,6 +102,10 @@ function wireUsagePlan(d) {
     const now = Date.now();
     const tab = tabId ? d.manager?.tabs.get(tabId) : null;
     const src = tab ? d.spendSource(tab) : d.projectKeyOf(d.currentCwd());
+    // A /command isn't a task to estimate: only whether it throws a warm cache away.
+    if (String(text || '').trim().startsWith('/')) {
+      return { basis: 'none', samples: 0, over: false, hold: false, rebuild: tab ? modelSwitch({ cache: tab.session?.cache, tokens: tab.session?.context?.tokens, text, now }) : null, cold: null, suggest: null };
+    }
     const model = tab?.session?.lastModel || tab?.session?.model || d.config.get('model') || '';
     const category = usageLedger.classify(text);
     const est = usageLedger.estimate(rows(), { pk: src.pk, category, model, now });
