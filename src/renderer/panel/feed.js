@@ -549,7 +549,7 @@
         // A warm cache it missed, helpers that outspent it, pictures piling up (turncost.js turnNotes).
         // A reopened conversation's old notes keep their words but not their buttons:
         // a fresh start offered before an earlier one would throw away this one.
-        for (const n of cost.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note' }, h('span', { text: n.text }), replay ? null : this.noteAction(n.action)));
+        for (const n of cost.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note' }, h('span', { text: n.text }), replay ? null : this.noteAction(n.action, n)));
       }
       // A turn whose process went (main's session/index.js ended()): its error block is just above.
       if (!item.ok && !item.interrupted && item.error && !item.crashed) this.append(this.troubleBlock(item.trouble, item.error));
@@ -559,7 +559,7 @@
 
     // The button on a note under a turn's cost, or null: helpers on Sonnet until
     // a helpers' model is chosen (Settings → Claude Code → Model), a fresh start, or a compact.
-    noteAction(action) {
+    noteAction(action, note = {}) {
       if (action === 'helper-model' && !state.settings?.helperModel) {
         return h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Helpers that name no model of their own run on Sonnet in new conversations. Change it in Settings → Claude Code → Model.',
           onclick: async e => {
@@ -581,7 +581,7 @@
             SB.toast('New conversations use the Default style.');
           } }, 'Use the Default style');
       }
-      if (action === 'compact') return h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => SB.compactTab(this) }, 'Compact now');
+      if (action === 'compact') return h('button', { class: 'btn ghost slim-btn', type: 'button', title: note.focus ? `Sends /compact ${note.focus}` : null, onclick: () => SB.compactTab(this, note.focus || '') }, 'Compact now');
       return null;
     }
 

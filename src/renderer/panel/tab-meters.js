@@ -68,11 +68,12 @@
   // The cache dot cools on its own between replies.
   setInterval(() => { if (SB.activeTab()?.cache && !document.hidden) syncContextUi(); }, 20000);
 
-  // Claude Code's own /compact: it sums the conversation up in place and carries on.
-  function compact(tab) {
+  // Claude Code's own /compact: it sums the conversation up in place and carries on,
+  // with what to keep when there's a focus (a note's, main's turnwatch.js).
+  function compact(tab, focus = '') {
     if (tab.busy) return SB.toast('Let him finish first.');
     SB.activate(tab.id);
-    SB.send('/compact');
+    SB.send(focus ? `/compact ${focus}` : '/compact');
   }
 
   // Claude writes a handoff summary, then the tab starts a new conversation with it.

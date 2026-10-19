@@ -156,7 +156,9 @@ async function readTranscript(file) {
     const hit = touchesIn(line, root);
     if (hit) touches.push(...hit);
     for (const c of loud.shellCallsIn(line) || []) { pending.set(c.id, c.key); lastCall = c.id; }
-    if (lastCall && pending.has(lastCall) && loud.rewroteIn(line)) quiet.add(lastCall);
+    const rewrote = loud.rewroteIn(line);
+    const shortened = typeof rewrote === 'string' ? rewrote : rewrote ? lastCall : null;
+    if (shortened && pending.has(shortened)) quiet.add(shortened);
     for (const r of loud.resultsIn(line, pending) || []) {
       pending.delete(r.id);
       outputs.push(quiet.delete(r.id) ? { ...r, quiet: true } : r);

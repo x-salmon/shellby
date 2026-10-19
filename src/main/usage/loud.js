@@ -120,16 +120,21 @@ function resultsIn(line, pending) {
 const QUIETED = ['2>&1 | tail -n 60', 'git log --oneline -n 30'];
 
 /**
- * Did the quiet-output hook shorten a command in this transcript line? Its
- * run is recorded between the call and its result, so the call still waiting
- * for its result is the one it shortened.
+ * Did the quiet-output hook shorten a command in this transcript line? The
+ * call's id when the line names it, true when it doesn't (then the call still
+ * waiting for its result is the one: the hook runs between the two), false
+ * for anything else.
+ * @returns {string | boolean}
  */
 function rewroteIn(line) {
   if (typeof line !== 'string' || !line.includes('"hook_success"') || !line.includes('updatedInput')) return false;
   let ev;
   try { ev = JSON.parse(line); } catch { return false; }
-  const out = ev?.attachment?.stdout;
-  return ev?.attachment?.hookEvent === 'PreToolUse' && typeof out === 'string' && out.includes('"updatedInput"') && QUIETED.some(q => out.includes(q));
+  const a = ev?.attachment;
+  const out = a?.stdout;
+  if (a?.hookEvent !== 'PreToolUse' || typeof out !== 'string' || !out.includes('"updatedInput"') || !QUIETED.some(q => out.includes(q))) return false;
+  const id = a.toolUseID ?? ev.toolUseID;
+  return typeof id === 'string' && id ? id : true;
 }
 
 const charsOf = chars => (Number.isFinite(chars) && chars > 0 ? chars : 0);
@@ -163,7 +168,7 @@ function quietSavings(tally) {
   for (const t of tally.values()) {
     if (!t.quietRuns) continue;
     runs += t.quietRuns;
-    if (t.runs) chars += t.quietRuns * Math.max(0, t.chars / t.runs - t.quietChars / t.quietRuns);
+    if (t.runs) chars += t.quietRuns * Math.max(0, t.chars / t.runs - (t.quietChars || 0) / t.quietRuns);
   }
   return runs ? { runs, tokens: Math.round(chars / CHARS_PER_TOKEN) } : null;
 }

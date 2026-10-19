@@ -10,7 +10,7 @@ test('toolFacts: a whole read, a helper brief, a commit', () => {
   assert.deepStrictEqual(tw.toolFacts('Bash', { command: 'git checkout main' }), { changesFiles: true });
   assert.deepStrictEqual(tw.toolFacts('Read', { file_path: 'a.js', offset: 10, limit: 50 }), {});
   assert.deepStrictEqual(tw.toolFacts('Agent', { prompt: 'abcd' }), { briefChars: 4 });
-  assert.deepStrictEqual(tw.toolFacts('Bash', { command: 'git add -A && git commit -m "x"' }), { commits: true });
+  assert.deepStrictEqual(tw.toolFacts('Bash', { command: 'git add -A && git commit -m "x"' }), { commits: true, commitSubject: 'x' });
   assert.deepStrictEqual(tw.toolFacts('Bash', { command: 'git -C repo commit -m x' }), { commits: true });
   assert.deepStrictEqual(tw.toolFacts('Bash', { command: 'git log' }), {});
   assert.deepStrictEqual(tw.toolFacts('Edit', null), {});

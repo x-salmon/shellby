@@ -25,11 +25,29 @@ const INSIGHT = '★ Insight';     // the Explanatory style's notes, however it 
 const TEACHING_STYLES = /^(explanatory|learning)$/i;
 const REREAD_TOKENS = 2000;     // a re-read this big is worth a word (Claude Code's own "unchanged" stub is far smaller)
 const PATH_CHARS = 500;
+const MAX_FILES = 500;          // files remembered as read and unchanged: the oldest go first
 const EDITS = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit']);
 // Shell commands that can change files under Claude's feet: after one, no earlier read is known to be current.
 const CHANGES_FILES = /\bgit\s+(?:checkout|switch|reset|stash|pull|merge|rebase|apply|restore|cherry-pick)\b|\bsed\s+-i|--fix\b|--write\b|\b(?:mv|cp|rm)\s/;
 const COMMAND_CHARS = 2000;     // enough to find a commit in, short enough to split cheaply
 const GIT = new Set(['git', 'git.exe']);
+
+const SUBJECT_CHARS = 120;
+
+/**
+ * The first line of a commit's message from its -m, or null: a quoted one, or
+ * the heredoc Claude usually writes (-m "$(cat <<'EOF' … EOF)").
+ */
+function commitSubject(command) {
+  const text = command.slice(0, COMMAND_CHARS);
+  // The heredoc first: its message can hold quotes of its own. Then "…" (escaped quotes and all), or '…'.
+  const m = /\s-m\s+"\$\(cat\s+<<-?\s*'?(\w+)'?\s*\n([\s\S]*?)\n\s*\1/.exec(text) || /\s-m\s+(")((?:\\.|[^"\\])*)"/.exec(text) || /\s-m\s+(')([^']*)'/.exec(text);
+  if (!m) return null;
+  const lines = m[2].split('\n').map(l => l.trim()).filter(Boolean);
+  const first = /^\$\(cat\s+<</.test(lines[0] || '') ? lines[1] : lines[0];
+  const clean = (first || '').replace(/\\"/g, '"').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, SUBJECT_CHARS);
+  return clean || null;
+}
 
 /** Does a shell command run `git … commit`? Split into words, not a regex, so a long command can't backtrack. */
 function commits(command) {
@@ -51,7 +69,7 @@ const tokensOf = chars => Math.round((Number.isFinite(chars) && chars > 0 ? char
  * the conversation and not changed since (files) carry over from prev.
  */
 function startTurn(prev) {
-  return { reads: {}, bigRead: 0, brief: 0, committed: false, reread: null, wrote: 0, insight: false, polls: 0, files: prev?.files || {} };
+  return { reads: {}, bigRead: 0, brief: 0, committed: false, subject: null, reread: null, wrote: 0, insight: false, polls: 0, files: prev?.files || {} };
 }
 
 const pathKey = p => String(p).replace(/\\/g, '/').toLowerCase();
@@ -67,7 +85,8 @@ function toolFacts(name, input) {
   if (EDITS.has(name) && typeof (i.file_path ?? i.notebook_path) === 'string') return { editPath: String(i.file_path ?? i.notebook_path).slice(0, PATH_CHARS) };
   if (HELPERS.has(name) && typeof i.prompt === 'string') return { briefChars: i.prompt.length };
   if (SHELLS.has(name) && typeof i.command === 'string') {
-    const facts = { ...(commits(i.command) ? { commits: true } : {}), ...(CHANGES_FILES.test(i.command.slice(0, COMMAND_CHARS)) ? { changesFiles: true } : {}) };
+    const subject = commits(i.command) ? commitSubject(i.command) : null;
+    const facts = { ...(commits(i.command) ? { commits: true, ...(subject ? { commitSubject: subject } : {}) } : {}), ...(CHANGES_FILES.test(i.command.slice(0, COMMAND_CHARS)) ? { changesFiles: true } : {}) };
     return facts;
   }
   return {};
@@ -79,7 +98,14 @@ function toolFacts(name, input) {
  */
 function seeItem(watch, item) {
   const w = watch || startTurn();
-  if (!item || item.sub) return w;
+  if (!item) return w;
+  // A helper's steps stay in its own context, but what it changes is changed for everyone.
+  if (item.sub) {
+    if (item.kind !== 'tool' || !(typeof item.editPath === 'string' || item.changesFiles)) return w;
+    if (item.changesFiles) return { ...w, files: {} };
+    const { [pathKey(item.editPath)]: _, ...files } = w.files || {};
+    return { ...w, files };
+  }
   if (item.kind === 'text' && typeof item.text === 'string') {
     return { ...w, wrote: (w.wrote || 0) + item.text.length, insight: w.insight || item.text.includes(INSIGHT) };
   }
@@ -91,7 +117,7 @@ function seeItem(watch, item) {
       const { [pathKey(item.editPath)]: _, ...files } = w.files || {};
       return { ...w, files };
     }
-    if (item.commits || item.changesFiles) return { ...w, committed: w.committed || !!item.commits, files: item.changesFiles ? {} : w.files };
+    if (item.commits || item.changesFiles) return { ...w, committed: w.committed || !!item.commits, subject: typeof item.commitSubject === 'string' ? item.commitSubject : w.subject, files: item.changesFiles ? {} : w.files };
     return w;
   }
   if (item.kind === 'tool_result' && w.reads[item.id]) {
@@ -101,7 +127,7 @@ function seeItem(watch, item) {
     const key = read.path ? pathKey(read.path) : null;
     // Read whole before, and nothing has changed it since: the same text again.
     const again = key && w.files?.[key] && tokens >= REREAD_TOKENS && tokens > (w.reread?.tokens || 0) ? { path: read.path, tokens } : w.reread;
-    return { ...w, reads, bigRead: Math.max(w.bigRead, tokens), reread: again, files: key ? { ...w.files, [key]: true } : w.files };
+    return { ...w, reads, bigRead: Math.max(w.bigRead, tokens), reread: again, files: key ? remember(w.files, key) : w.files };
   }
   return w;
 }
@@ -128,10 +154,18 @@ function watchNotes(watch, { cost, category = '', said = {}, style = '', compact
     !said.brief && watch.brief >= LONG_BRIEF
       ? { kind: 'brief', text: `A helper went off with a brief of about ${compact(watch.brief)} tokens. It reads the code for itself, so a brief that says what to look at and what to bring back, without pasting what it can read, costs less.` } : null,
     !said.compact && watch.committed && Number.isFinite(pct) && pct >= COMPACT_PCT
-      ? { kind: 'compact', text: `That's committed, with the conversation ${pct}% full. A good moment to compact: the work is saved, so a summary loses little and every message after it sends less.`, action: 'compact' } : null,
+      ? { kind: 'compact', text: `That's committed, with the conversation ${pct}% full. A good moment to compact: the work is saved, so a summary loses little and every message after it sends less.`, action: 'compact', ...(watch.subject ? { focus: `Keep what's needed to carry on after "${watch.subject}": decisions, open threads and next steps. Drop the work that commit finished.` } : {}) } : null,
     !said.effort && HIGH_EFFORTS.has(cost.effort) && SMALL_JOBS.has(category) && Number.isFinite(cost.thinking) && cost.thinking >= HARD_THINKING
       ? { kind: 'effort', text: `Claude thought for ${compact(cost.thinking)} tokens on a small job at ${cost.effort} effort. Medium or low on the effort chip usually does a tidy-up just as well.` } : null,
   ].filter(n => n !== null);
+}
+
+// A file read and current, kept newest last and no more than MAX_FILES of them.
+function remember(files, key) {
+  const { [key]: _, ...rest } = files || {};
+  const keys = Object.keys(rest);
+  const kept = keys.length >= MAX_FILES ? Object.fromEntries(keys.slice(keys.length - MAX_FILES + 1).map(k => [k, true])) : rest;
+  return { ...kept, [key]: true };
 }
 
 const shortPath = p => String(p || 'a file').split(/[\\/]/).slice(-2).join('/');
@@ -142,4 +176,4 @@ function markSaid(said, notes) {
   return (notes || []).reduce((s, n) => (kinds[n.kind] ? { ...s, [kinds[n.kind]]: true } : s), { ...(said || {}) });
 }
 
-module.exports = { startTurn, toolFacts, seeItem, watchNotes, markSaid, MANY_POLLS, WORDY_TOKENS, REREAD_TOKENS, BIG_READ, LONG_BRIEF, COMPACT_PCT, HARD_THINKING };
+module.exports = { commitSubject, startTurn, toolFacts, seeItem, watchNotes, markSaid, MANY_POLLS, WORDY_TOKENS, REREAD_TOKENS, BIG_READ, LONG_BRIEF, COMPACT_PCT, HARD_THINKING };
