@@ -52,7 +52,7 @@ const DEFAULTS = {
   yearbook: null,      // the year so far, for Wrapped (yearbook.js)
   logbook: null,       // what the Logbook has shown (logbook.js)
   unlockSeen: null,    // the last level unlock the panel showed (progression/levels.js)
-  reopenAfterUpdate: false, // "Update and restart" was pressed: the new version opens the panel when it boots
+  reopenAfterUpdate: false, // "Update and restart" was pressed: { version, at }; that version opens the panel when it boots (updates.js)
   crabOnly: false,
   claudeElsewhere: false, // Claude Code only on another computer, over ssh: first run asks for one there, not here (onboarding.js)
   workMode: false,   // the tools up front and a quiet crab, laid over your own settings (see workmode.js)
