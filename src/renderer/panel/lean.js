@@ -2,7 +2,8 @@
    first word and where it goes, how much of Claude's input came from the prompt
    cache (and a word when today's falls well short), Claude Code's own count of
    lines, edits and commits, the files Claude keeps coming back to, the
-   commands whose output fills its context, the hooks that add to it, and the
+   commands whose output fills its context, the hooks that add to it, what
+   each branch cost this week, and the
    plugins, MCP servers and your own skills that sit idle. Nothing here touches a prompt, the model
    or what Claude reads: turning a plugin off only affects new conversations and
    is one click to undo, and "Suggest a trim" and "Ask Claude" only draft a
@@ -372,6 +373,17 @@
         h('p', { class: 'tool-desc', text: `adds it ${when(r)} · ran ${r.runs}× in ${r.sessions} conversations, ${tok(r.perConversation)} a conversation` })));
   }
 
+  // ------------------------------------------------------------ what each branch cost (main's usage/ledger.js byBranch)
+
+  function branchRow(b) {
+    const parts = [`${b.turns} turn${b.turns === 1 ? '' : 's'}`, Number.isFinite(b.share) ? `${pct(b.share)} of what Shellby spent here` : null,
+      Number.isFinite(b.pctRise) && b.pctRise >= 1 ? `about ${Math.round(b.pctRise)}% of your 5-hour windows` : null];
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' }, h('code', { text: b.branch })),
+        h('p', { class: 'tool-desc', text: parts.filter(Boolean).join(' · ') })));
+  }
+
   // ------------------------------------------------------------ the tab
 
   function render(q) {
@@ -402,6 +414,8 @@
     const memory = rep.memory.filter(m => match(m.path) && !m.onDemand);
     const onDemand = rep.memory.filter(m => match(m.path) && m.onDemand);
     const hot = (rep.hot?.files || []).filter(r => match(r.rel));
+    // Only worth a list when there's more than one to compare.
+    const branches = (rep.branches || []).length > 1 ? rep.branches.filter(b => match(b.branch)) : [];
     const noisy = (rep.hot?.loud || []).filter(r => match(r.key));
     const loudLabel = noisy.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
       h('span', { text: `Commands whose output fills the context here (last ${rep.hot.days} days)` }),
@@ -427,6 +441,7 @@
       hooksLabel, ...hooks.map(hookRow),
       hotLabel, ...hot.map(hotRow),
       loudLabel, ...noisy.map(loudRow),
+      branches.length ? label('What each branch cost here (last 7 days)') : null, ...branches.map(branchRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),
     ].filter(Boolean);
     list.replaceChildren(...(rows.length ? rows : [h('li', { class: 'history-empty', text: q ? 'No matches.' : 'Nothing loads into every conversation besides Claude Code itself.' })]));

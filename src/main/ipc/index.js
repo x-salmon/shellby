@@ -97,6 +97,7 @@ function registerIpc(electronIpcMain, d) {
     memory: () => claudeSetup.scanMemory(d.setupWhere()),
     projectOf: tab => { const s = d.spendSource(tab); return s.pk ? { key: s.pk, name: s.project } : null; },
     currentProject: () => path.resolve(d.currentCwd()).toLowerCase(),
+    branchCosts: () => d.usagePlan?.branchCosts(d.setupWhere().cwd) || [],
   });
   lean.register(ipcMain);
   createSkillRemover({

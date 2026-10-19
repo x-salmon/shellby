@@ -260,7 +260,7 @@ function createLean(deps) {
       memory: deps.memory().map(m => (m.exists ? { ...m, onDemand: eff.loadsOnDemand(head(m.path), m.scope), misfit: rulefit.misfit(m.path, signals) } : m)),
       used: u.used, hookStart: hotRows?.hookStart || 0, watchedSince: u.from, setups, projectKey: deps.currentProject(), days, now,
     });
-    return { ok: true, ...last, breaks: cachebreak.breakSummary(breaks, now), hot: hotRows, telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
+    return { ok: true, ...last, breaks: cachebreak.breakSummary(breaks, now), hot: hotRows, branches: deps.branchCosts?.() || [], telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
   }
 
   // XP for turning off something that sat idle, once per thing ever, so turning

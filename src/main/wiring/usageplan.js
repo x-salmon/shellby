@@ -5,6 +5,7 @@
 const guard = require('../guard');
 const { coldResend, modelSwitch } = require('../cachebreak');
 const usageLedger = require('../usage/ledger');
+const { headBranch } = require('../gitinfo');
 
 const SAVE_DELAY_MS = 5000;   // turns end in bursts (a workflow's steps); one write when they settle
 
@@ -64,6 +65,8 @@ function wireUsagePlan(d) {
     const src = d.spendSource(tab);
     ledger = usageLedger.record(rows(), {
       pk: src.pk, project: src.project, kind: src.kind, rid: tab.routineId || null,
+      // The branch the work was on: a copy's own, Claude's worktree's, or what the folder has checked out.
+      branch: tab.worktree?.branch || tab.claudeWorktree?.branch || headBranch(tab.session?.cwd),
       model: tab.session?.lastModel || tab.session?.model || d.config.get('model') || '',
       category: t.category, size: t.size,
       weight: t.weight, pctRise: t.sawUsage ? t.rise : null,
@@ -127,7 +130,12 @@ function wireUsagePlan(d) {
     return usageLedger.routineSuggestion(rows(), routine, d.config.get('model') || '', Date.now());
   }
 
-  return { beginTurn, onSpend, onUsage, endTurn, save, clear, estimateFor, routineSuggestion };
+  /** What each branch of the project at cwd cost this week (ledger.js byBranch), for the Lean tab. */
+  function branchCosts(cwd) {
+    return cwd ? usageLedger.byBranch(rows(), { pk: d.projectKeyOf(cwd).pk, now: Date.now() }) : [];
+  }
+
+  return { beginTurn, onSpend, onUsage, endTurn, save, clear, estimateFor, routineSuggestion, branchCosts };
 }
 
 module.exports = { wireUsagePlan };
