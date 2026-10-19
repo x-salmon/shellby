@@ -91,6 +91,7 @@ const DEFAULTS = {
   news: null,        // { feed, fetchedAt, triedAt, seen }: the last good feed and the items you closed (see news.js); seen is synced
   shareWrapped: false, // during Wrapped week, put last year's numbers on your calling card for friends (see yearbook.js wrappedForCard)
   credits: null,     // { login, checkedAt, index }: what the signed-in GitHub login was credited for (see credits.js)
+  sponsor: null,     // { login, checkedAt, sponsoring }: whether that login sponsors Shellby, as GitHub last said (see github/sponsor.js)
   signCommits: false, // a "Shipped-with: Shellby" trailer on Shellby's own bring-home commits (see crab-line.js)
   bond: null,        // how close you are, the days together, the moments he remembers (see bond.js)
   play: null,        // hide and seek and fetch scores (see play.js)

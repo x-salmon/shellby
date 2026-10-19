@@ -345,6 +345,7 @@
   $('problemBtn').addEventListener('click', () => api.reportProblem());
   $('ideaBtn').addEventListener('click', () => api.suggestIdea());
   $('githubBtn').addEventListener('click', () => api.openExternal('https://github.com/x-salmon/shellby'));
+  $('sponsorBtn').addEventListener('click', () => api.openExternal('https://github.com/sponsors/x-salmon'));
   $('dataBtn').addEventListener('click', () => api.openDataFolder());
 
   // hotkey recorder

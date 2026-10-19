@@ -43,7 +43,7 @@ No. Your tasks go through your own `claude`, so they count against your Pro or M
 <details>
 <summary><b>Does it send my code anywhere?</b></summary>
 
-Only to Anthropic, through Claude Code, the same as in your terminal. Shellby has no servers, no accounts of its own and no telemetry. Sync and crash reports are off until you say yes. The [privacy policy](PRIVACY.md) lists every connection, and [SECURITY.md](SECURITY.md) covers how to report a problem.
+Only to Anthropic, through Claude Code, the same as in your terminal. Shellby has no accounts of its own and no telemetry, and no servers of its own except one public sponsors' crabs ask for a signed badge. Sync and crash reports are off until you say yes. The [privacy policy](PRIVACY.md) lists every connection, and [SECURITY.md](SECURITY.md) covers how to report a problem.
 </details>
 
 <details>
@@ -321,14 +321,14 @@ With Node 22 or newer: `git clone`, `npm install`, `npm run setup`, `npm start`.
 
 ## Privacy
 
-Everything stays on your PC. Conversation history lives in `%APPDATA%\Shellby\sessions`, and Shellby has no telemetry and no servers. The [privacy policy](PRIVACY.md) lists every connection he makes and what goes over it. In short:
+Everything stays on your PC. Conversation history lives in `%APPDATA%\Shellby\sessions`, and Shellby has no telemetry and no servers of its own, bar one for public sponsors (below). The [privacy policy](PRIVACY.md) lists every connection he makes and what goes over it. In short:
 
 - Claude Code talking to Anthropic, and the updater checking GitHub Releases.
 - GitHub, only if you sign in: your profile, the sync gist, pack pull requests, the CI status of your pull requests, with Visiting crabs on, your public calling card and your friends' cards, with Profile card on, the public gist holding your profile card picture, and with Built with Shellby on, the public `shellby-badge` repository holding his picture and the badge at the bottom of pull requests your tabs open.
 - Phone notifications, only if you turn them on, straight to the service you picked (ntfy, Pushover, Telegram, Discord, Slack or your own endpoint).
 - Shellby on your phone, only if you turn it on: your PC serves the app to your own phone over your tailnet, and its notifications go encrypted through your phone's push service (Apple's, Google's, Mozilla's or Microsoft's), which can't read them.
 - The npm registry once a day, to say when a newer Claude Code is out (**Leave it to me** in **Settings → About** stops it).
-- The community gallery once a day, for its news of contests, winners and events, and while you're signed in to GitHub, its list of packs, to see whether you've earned a trophy for making Shellby. Nothing about you goes with either (**Community news** in **Settings → Shellby → Games** stops both).
+- The community gallery once a day, for its news of contests, winners and events, and while you're signed in to GitHub, its list of packs, to see whether you've earned a trophy for making Shellby. Nothing about you goes with either (**Community news** in **Settings → Shellby → Games** stops both). While you're signed in, GitHub is also asked once a day whether you sponsor Shellby, for the 🏮 Patron trophy. If you sponsor publicly, your GitHub username goes to getshellby.com for a signed proof that lets friends' crabs show your lantern.
 - Crash reports to Sentry, only when you say so: he asks first, and **Settings → About → Crash reports** changes it.
 - Things you ask for: ssh to the computers you add under **Other computers**, community packs, plugins and MCP servers, `git` fetches and pushes, workflow web requests, and the weekly dependency check (npm, pnpm, Yarn, pip-audit, cargo-audit and Go's, whichever your projects use).
 - Things that never leave your PC: the time tracker (it reads the title of the window in front to tell which project you're in, keeps only the project, the day and the minutes, and never syncs them; a day goes to Toggl, Clockify or Harvest only when you send it), push-to-talk audio (Windows' offline speech recognizer hears it, and the microphone is only open while you hold the shortcut), your PC's health readings, OpenRGB, the OBS overlay, the Stream Deck keys (behind a token only the plugin has), the phone app's port (Tailscale is what reaches it, for your login only), the port the `shellby` command and the plugin use, and Claude Code's own metrics (lines, accepted edits and commits, never prompts), which the conversations Shellby starts send to Shellby instead of anywhere else — all on `127.0.0.1`.
@@ -359,6 +359,8 @@ Skins, packs, bug reports and PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTIN
 - **Questions or show-and-tell:** [Discussions](https://github.com/x-salmon/shellby/discussions).
 - **The monthly crab contest, community news and credits:** [docs/COMMUNITY.md](docs/COMMUNITY.md). Winning skins ship in Shellby for everyone, and everyone who makes something is on the **Made by** list.
 - **Reviewing security?** Start with the [threat model](docs/THREAT-MODEL.md).
+
+Shellby is free and made in spare time. If he saves you some, you can [sponsor him on GitHub](https://github.com/sponsors/x-salmon): every tier has its own reward in Shellby. 🦐 Krill ($3 a month) lights an anglerfish lantern over his head, 🪼 Lanternfish ($7) adds glowing plankton that circle him, 🐚 Pearl Diver ($15) a clam for his tank that opens on a shining pearl, and 🐋 Leviathan ($40) turns him into **The Abyss**, a deep-sea crab lit from within. Give once instead and 🍾 Message in a Bottle ($10) or 💰 Sunken Treasure ($50, with a sunken galleon) are yours to keep.
 
 Everyone here follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
