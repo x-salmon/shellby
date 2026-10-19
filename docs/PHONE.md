@@ -31,9 +31,8 @@ Settings walks you through it a step at a time, ticking each one off as it works
 
 **The beach** is everything at a glance, in the same order as the desk's tabs: what's waiting on you first, then what's ready to review, then what's finished, working and quiet. Shellby himself sits at the top, the real crab in the skin you chose, doing what he's doing on your desktop, with your 5-hour usage window under him.
 
-**A permission prompt** shows as a card with the plain sentence, the command (or the edit, line by line), and any warning the desk card would show. **Allow** and **Deny** answer it straight from the beach. Like answering from a notification, some prompts are only ever answered at the desk:
+**A permission prompt** shows as a card with the plain sentence, the command (or the edit, line by line), and any warning the desk card would show. **Allow** and **Deny** answer it straight from the beach, and when the desk card offers **Allow all edits** or **Always allow**, so does the phone. Like answering from a notification, some prompts are only ever answered at the desk:
 
-- **Always allow**, which would change Claude Code's settings
 - a command too long to read on a phone
 - running a file Claude wrote this session, or changing Claude Code's own setup
 
@@ -45,10 +44,10 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **New task** starts one in any project Shellby knows: the folder you're working in, the ones open in a conversation, and every one he's seen you work in. Tasks from your phone follow the same rules as [phone tasks over Telegram or ntfy](CONNECTIONS.md#-your-phone):
 
-- They always run in **Ask first**, whatever mode you use at the desk, in their own copy when the folder is a git repository, so every edit and command comes back to you.
+- They run in the mode you pick (Ask first unless you change it: Smart, Auto-edit, Plan only or Autonomous), in their own copy when the folder is a git repository.
 - At most 10 start an hour and 3 at once. At your usage limit, or past what the spending guard keeps for you, a task waits for the reset and says when it'll start.
-- `!` commands, Claude Code's `/` commands, modes and settings never come from the phone.
-- You can reply to a conversation your phone started. Conversations started at the desk take replies at the desk, unless you allow them in Settings, and then only while they're in Ask first.
+- `!` commands, Claude Code's `/` commands and settings never come from the phone.
+- You can reply to any conversation, in the mode you pick under the reply box. The conversation keeps that mode until you change it at the desk.
 - **Speak** fills the box using your phone's own dictation, and **Picture** adds up to four photos. They're shrunk to a JPEG on the phone first and kept on the PC like a pasted picture.
 
 **Queue** is what's waiting for the usage reset, with **Take it out** for each one, under your 5-hour and weekly windows, your pace, and what the spending guard keeps back.
@@ -59,9 +58,8 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 ### What you can allow
 
-Settings → On your phone has three more things a paired phone may do, each off until you turn it on:
+Settings → On your phone has two more things a paired phone may do, each off until you turn it on:
 
-- **Reply to conversations started here**, while they're in Ask first.
 - **Read a conversation's files**, read-only. `.git`, `node_modules`, `.env` files, keys and other likely secrets are never shown, and nothing outside the conversation's folder is.
 - **Push after bringing a copy home**, with the secret scan and the question about other people's commits on your PC first.
 
@@ -86,7 +84,7 @@ This is the one feature that lets another device drive Claude Code on your PC, s
 - **Shellby listens on `127.0.0.1:47916` only.** Nothing on your Wi-Fi can reach it. Only Tailscale's `serve` can, and only for devices on your tailnet.
 - **Only your Tailscale login gets in.** Tailscale tells Shellby who each request is from, and anyone else on a shared tailnet is turned away. **Funnel** (which puts an address on the open internet) is never turned on, and if it's ever on for this address, Shellby stops serving.
 - **Each phone needs a code from your PC's screen** to pair, and keeps a token only it has. Shellby keeps a hash of it, never the token, and **Forget** in Settings ends that phone's access at once.
-- **The phone's rules:** Allow and Deny only, Ask first for its tasks, limits on how many, and everything the desk card would warn about stays at the desk.
+- **The phone's rules:** Allow, Deny and the desk's always-allow, the mode you pick, limits on how many, and everything the desk card would warn about stays at the desk.
 
 The details are in [SECURITY.md](../SECURITY.md#shellby-on-your-phone).
 

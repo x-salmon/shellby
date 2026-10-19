@@ -60,10 +60,17 @@ function registerPanelIpc(ipcMain, d) {
   ipcMain.handle('app:bootstrap', async () => {
     d.claudeStatus = d.CAPTURE || d.FAKE_CLI ? require('../capture').FAKE_STATUS : await checkStatus({ configured: d.claudePath() });
     // Restore the tabs that were open last time (idle until you send something).
+    // The list isn't saved tab by tab meanwhile (wiring/sessions.js): a run
+    // killed halfway through (the old version, by an installer) would cut it short.
     if (!d.CAPTURE && !d.manager.tabs.size) {
-      for (const id of d.config.get('openTabs') || []) {
-        const entry = d.history.get(id);
-        if (entry) { try { d.openTab({ tabId: id, historyEntry: entry }); } catch { /* limit reached */ } }
+      d.restoringTabs = true;
+      try {
+        for (const id of d.config.get('openTabs') || []) {
+          const entry = d.history.get(id);
+          if (entry) { try { d.openTab({ tabId: id, historyEntry: entry }); } catch { /* limit reached */ } }
+        }
+      } finally {
+        d.restoringTabs = false;
       }
       // A message held for the reset keeps its tab open, so it can still be
       // seen and cancelled (one typed into a tab never sent anything isn't in openTabs).

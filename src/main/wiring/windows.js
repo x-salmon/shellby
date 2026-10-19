@@ -49,6 +49,7 @@ function wireWindows(d) {
   // cut him loose from his effects. So every move sets the size too, and any size
   // Windows imposes afterwards (WM_DPICHANGED) is put back.
   function placeCritter(x, y) {
+    if (!d.critter || d.critter.isDestroyed()) return; // a walk's last step, landing after quitting closed him
     d.critter.setBounds({ x: Math.round(x), y: Math.round(y), ...critterSize() });
     keepCritterSize();
   }

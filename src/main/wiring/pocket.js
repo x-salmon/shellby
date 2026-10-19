@@ -20,6 +20,7 @@ const guard = require('../guard');
 const pt = require('../channels/phone-tasks');
 const { appDeskOnlyReason } = require('../channels/replies');
 const { EVENTS } = require('../channels/messages');
+const { MODES: PHONE_MODES } = require('../config');
 const { qrRows } = require('../qr');
 const pairing = require('../pocket/pairing');
 const push = require('../pocket/push');
@@ -41,11 +42,9 @@ const SKIPPED_QUESTION = "The user skipped the question. Continue with your best
 const NOTIFY_DEFAULTS = { enabled: true, events: Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.default])), minSeconds: 60, whileFocused: false, working: false };
 const EVENT_LABELS = Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.label]));
 // Off until you tick them in Settings → On your phone:
-//   replyDesk: reply to a conversation started at the desk, while it's in Ask first
 //   push:      push a conversation's branch after bringing it home
 //   files:     read a conversation's files, read-only
-const ALLOW_KEYS = ['replyDesk', 'push', 'files'];
-const REPLY_MODES = ['ask', 'plan']; // Ask first, and Plan-only (which changes nothing)
+const ALLOW_KEYS = ['push', 'files'];
 
 // Another port for a dev run beside an installed Shellby, or 0 for whichever is free (the tests).
 function portFromEnv(raw) {
@@ -200,20 +199,9 @@ function wirePocket(d) {
   function extras() {
     const out = {};
     for (const [id, tab] of d.manager?.tabs || []) {
-      out[id] = { mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !replyRefusal(tab) };
+      out[id] = { mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !tab.inTerminal };
     }
     return out;
-  }
-
-  // Why the phone can't reply to this conversation, or null. One the phone
-  // started always takes replies; one from the desk only when you've allowed
-  // it, and only while it's in Ask first, so every edit still comes back to you.
-  function replyRefusal(tab) {
-    if (tab.inTerminal) return "It's in a terminal on your PC now. Reply there.";
-    if (tab.fromPocket || tab.fromPhone) return null;
-    if (!settings().allow.replyDesk) return 'Reply to that one at the desk: only conversations your phone started take replies from it.';
-    if (!REPLY_MODES.includes(tab.session.mode)) return 'It’s not in Ask first, so replies to it come from the desk.';
-    return null;
   }
 
   function projects() {
@@ -349,9 +337,10 @@ function wirePocket(d) {
   }
 
   function answer({ tabId, requestId, decision, answers, notes, read }) {
-    if (!str(tabId) || !str(requestId) || !['allow', 'deny'].includes(decision)) return no('That answer is not one the phone can give.');
+    if (!str(tabId) || !str(requestId) || !['allow', 'always', 'deny'].includes(decision)) return no('That answer is not one the phone can give.');
     const pendingItem = d.manager.tabs.get(tabId)?.session.pending.get(requestId);
     if (!pendingItem) return no('That was already answered.');
+    if (decision === 'always' && (!pendingItem.suggestions?.length || ['AskUserQuestion', 'ExitPlanMode'].includes(pendingItem.toolName))) return no('That one has no always-allow. Allow it this once.');
     const why = appDeskOnlyReason(pendingItem);
     if (why) return no(why);
     const extra = answerExtra(pendingItem, { decision, answers, notes, read, mayWrite: mayWriteTo(d.manager.tabs.get(tabId)) });
@@ -363,11 +352,8 @@ function wirePocket(d) {
   // A question needs an answer to each of its questions; a plan is only approved
   // once the phone says it was read to the end, and a no carries your notes.
   // Your own words into a conversation (a typed answer, notes on a plan) go
-  // only where a reply could: one the phone started, or a desk one you allowed.
-  function mayWriteTo(tab) {
-    if (tab.fromPocket || tab.fromPhone) return true;
-    return settings().allow.replyDesk && REPLY_MODES.includes(tab.session.mode);
-  }
+  // only where a reply could: anywhere but a terminal.
+  const mayWriteTo = tab => !tab?.inTerminal;
 
   function answerExtra(item, { decision, answers, notes, read, mayWrite }) {
     if (item.toolName === 'AskUserQuestion') {
@@ -403,7 +389,8 @@ function wirePocket(d) {
     return answer;
   }
 
-  async function startTask({ project, text, photos }) {
+  async function startTask({ project, text, mode, photos }) {
+    const runAs = modeOf(mode);
     const prompt = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!prompt) return no('Say what you want done first.');
     if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
@@ -417,7 +404,7 @@ function wirePocket(d) {
     const w = d.usageService?.limitWait();
     const usage = d.config.get('lastUsage');
     if (w || guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), usage, now)) {
-      const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: pt.MODE, fromPhone: true });
+      const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: runAs, fromPhone: true });
       if (!held.ok) return no(`Couldn't queue it: ${held.error}`);
       d.sendOutlook?.();
       pushView();
@@ -430,8 +417,8 @@ function wirePocket(d) {
     starting++;
     let r;
     try {
-      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: pt.MODE, ...(files.length ? { attachments: () => files } : {}) });
-      if (!r.ok && r.noCopy) r = d.startTask(files.length && d.composePrompt ? d.composePrompt(prompt, files) : prompt, title, { mode: pt.MODE, cwd: target.key });
+      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: runAs, ...(files.length ? { attachments: () => files } : {}) });
+      if (!r.ok && r.noCopy) r = d.startTask(files.length && d.composePrompt ? d.composePrompt(prompt, files) : prompt, title, { mode: runAs, cwd: target.key });
       if (r.ok) adopt(r.tabId);
     } finally { starting--; }
     if (!r.ok) return no(r.error || "Couldn't start it.");
@@ -440,6 +427,9 @@ function wirePocket(d) {
     return ok({ tabId: r.tabId });
   }
 
+  // What the phone picked, from the desk's own list; anything else is Ask (pt.MODE).
+  const modeOf = m => (PHONE_MODES.includes(m) ? m : pt.MODE);
+
   function adopt(tabId) {
     const tab = d.manager.tabs.get(tabId);
     if (tab) tab.fromPocket = true;
@@ -447,15 +437,18 @@ function wirePocket(d) {
     d.history.update(tabId, { fromPhone: true });
   }
 
-  function reply({ tabId, text }) {
+  function reply({ tabId, text, mode }) {
     const tab = str(tabId) && d.manager.tabs.get(tabId);
     if (!tab) return no('That conversation has closed.');
-    const refused = replyRefusal(tab);
-    if (refused) return no(refused);
+    if (tab.inTerminal) return no("It's in a terminal on your PC now. Reply there.");
     const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!said) return no('Type something first.');
     if (/^[/!]/.test(said)) return no('Commands that start with / or ! only run at the desk.');
     if (d.manager.isBusy(tabId)) return no("He's still on it. Wait for this turn to end, or stop it.");
+    // The mode the phone picked, or Ask: kept when the desk's mode changes.
+    const runAs = modeOf(mode);
+    if (tab.session.mode !== runAs) tab.session.setMode(runAs);
+    tab.pinnedMode = true;
     const r = d.sendToTab(tabId, said, []);
     if (!r.ok) return no(r.error);
     // The desk's panel draws a message it didn't send itself from this.

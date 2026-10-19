@@ -68,6 +68,7 @@ function requiredAssets(version) {
     `Shellby-Setup-${version}.exe.blockmap`,
     `Shellby-Portable-${version}.exe`,
     'SHA256SUMS.txt',
+    `Shellby-${version}.intoto.jsonl`,
   ];
 }
 

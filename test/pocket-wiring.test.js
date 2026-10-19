@@ -227,9 +227,10 @@ test('no code without it on, and a forgotten phone is gone from the list and its
   } finally { stop(w); }
 });
 
-test('Allow and Deny from the phone, never Always allow, and nothing the card would flag', async () => {
+test('Allow, Deny and Always allow (when Claude Code offers one) from the phone, and nothing the card would flag', async () => {
   const t = tabOf('t1');
   t.session.pending.set('r1', { requestId: 'r1', toolName: 'Bash', input: { command: 'npm test' } });
+  t.session.pending.set('r3', { requestId: 'r3', toolName: 'Edit', input: {}, suggestions: [{ type: 'setMode', mode: 'acceptEdits' }] });
   t.session.pending.set('r2', { requestId: 'r2', toolName: 'ExitPlanMode', input: {} });
   const w = await paired({ tabs: [t] });
   try {
@@ -238,13 +239,14 @@ test('Allow and Deny from the phone, never Always allow, and nothing the card wo
     assert.equal((await act({ tabId: 't1', requestId: 'r2', decision: 'allow' })).ok, false);
     assert.equal((await act({ tabId: 't1', requestId: 'nope', decision: 'allow' })).ok, false);
     assert.equal((await act({ tabId: 't1', requestId: 'r1', decision: 'allow' })).ok, true);
-    assert.deepEqual(w.of('answerPermission'), [['t1', 'r1', 'allow', { via: 'pocket' }]]);
+    assert.equal((await act({ tabId: 't1', requestId: 'r3', decision: 'always' })).ok, true);
+    assert.deepEqual(w.of('answerPermission'), [['t1', 'r1', 'allow', { via: 'pocket' }], ['t1', 'r3', 'always', { via: 'pocket' }]]);
   } finally { stop(w); }
 });
 
 test('a question is answered from the phone with an answer to each question, or skipped', async () => {
   const t = tabOf('t1', { fromPocket: true });
-  const desk = tabOf('desk');
+  const desk = tabOf('desk', { inTerminal: true });
   const questions = [{ question: 'Which DB?', options: [{ label: 'Postgres' }] }, { question: 'Tests?', options: [] }];
   t.session.pending.set('q1', { requestId: 'q1', toolName: 'AskUserQuestion', input: { questions } });
   t.session.pending.set('q2', { requestId: 'q2', toolName: 'AskUserQuestion', input: { questions } });
@@ -252,7 +254,7 @@ test('a question is answered from the phone with an answer to each question, or 
   const w = await paired({ tabs: [t, desk] });
   try {
     const act = body => w.d.pocket.onAction(w.device, 'answer', body);
-    // A desk conversation takes only the options offered: typed words are a reply.
+    // One in a terminal takes only the options offered: typed words are a reply, and replies go there.
     assert.match((await act({ tabId: 'desk', requestId: 'q3', decision: 'allow', answers: { 'Which DB?': 'Postgres', 'Tests?': 'yes' } })).error, /Pick from the options/);
     assert.match((await act({ tabId: 't1', requestId: 'q1', decision: 'allow', answers: { 'Which DB?': 'Postgres' } })).error, /each question/);
     assert.equal((await act({ tabId: 't1', requestId: 'q1', decision: 'allow', answers: { 'Which DB?': 'Postgres', 'Tests?': ' yes ', 'Other?': 'x' } })).ok, true);
@@ -269,7 +271,7 @@ test('a plan is approved from the phone only once it was read, and a no carries 
   t.session.pending.set('p2', { requestId: 'p2', toolName: 'ExitPlanMode', plan: '1. Do it', input: { plan: '1. Do it' } });
   t.session.pending.set('p3', { requestId: 'p3', toolName: 'ExitPlanMode', input: {} });
   t.fromPocket = true;
-  const desk = tabOf('desk');
+  const desk = tabOf('desk', { inTerminal: true });
   desk.session.pending.set('p4', { requestId: 'p4', toolName: 'ExitPlanMode', plan: '1. Do it' });
   const w = await paired({ tabs: [t, desk] });
   try {
@@ -282,20 +284,6 @@ test('a plan is approved from the phone only once it was read, and a no carries 
     const calls = w.of('answerPermission');
     assert.deepEqual(calls[0], ['t1', 'p1', 'allow', { via: 'pocket' }]);
     assert.match(calls[1][3].message, /Smaller steps/);
-  } finally { stop(w); }
-});
-
-test('desk conversations take phone replies only when allowed, and only in Ask first', async () => {
-  const desk = tabOf('desk');
-  const auto = tabOf('auto');
-  auto.session.mode = 'smart';
-  const w = await paired({ tabs: [desk, auto] });
-  try {
-    const act = body => w.d.pocket.onAction(w.device, 'reply', body);
-    assert.match((await act({ tabId: 'desk', text: 'hi' })).error, /at the desk/);
-    await w.d.setPocket({ allow: { replyDesk: true } });
-    assert.equal((await act({ tabId: 'desk', text: 'hi' })).ok, true);
-    assert.match((await act({ tabId: 'auto', text: 'hi' })).error, /Ask first/);
   } finally { stop(w); }
 });
 
@@ -338,6 +326,9 @@ test('a task from the phone runs in Ask first, in its own copy, in a project She
     assert.deepEqual(opts, { mode: 'ask' });
     assert.equal(w.d.manager.tabs.get('new1').fromPocket, true);
     assert.deepEqual(w.of('note')[0], ['new1', { kind: 'phone' }]);
+    await act({ project: PROJECT, text: 'Again, on its own', mode: 'autonomous' });
+    await act({ project: PROJECT, text: 'And a made-up mode', mode: 'sudo' });
+    assert.deepEqual(w.of('startTaskInCopy').map(c => c[3]), [{ mode: 'ask' }, { mode: 'autonomous' }, { mode: 'ask' }]);
   } finally { stop(w); }
 });
 
@@ -367,18 +358,23 @@ test('at the usage limit a phone task waits for the reset', async () => {
   } finally { stop(w); }
 });
 
-test('replies go only to conversations the phone started, and not mid-turn', async () => {
-  const desk = tabOf('desk');
+test('replies go to any conversation, not mid-turn, in the mode the phone picked (Ask if none)', async () => {
+  const modes = [];
+  const desk = tabOf('desk', { session: { pending: new Map(), mode: 'bypass', cwd: PROJECT, busy: false, setMode(m) { this.mode = m; modes.push(m); } } });
   const mine = tabOf('mine', { fromPocket: true });
   const w = await paired({ tabs: [desk, mine] });
   try {
     const act = body => w.d.pocket.onAction(w.device, 'reply', body);
-    assert.match((await act({ tabId: 'desk', text: 'hi' })).error, /at the desk/);
+    assert.equal((await act({ tabId: 'desk', text: 'hi' })).ok, true);
+    assert.deepEqual(modes, ['ask']);
+    assert.equal(desk.pinnedMode, true, 'the desk mode no longer lifts it');
+    assert.equal((await act({ tabId: 'desk', text: 'go on', mode: 'acceptEdits' })).ok, true);
+    assert.deepEqual(modes, ['ask', 'acceptEdits']);
     mine.session.busy = true;
     assert.match((await act({ tabId: 'mine', text: 'hi' })).error, /still on it/);
     mine.session.busy = false;
     assert.equal((await act({ tabId: 'mine', text: 'carry on' })).ok, true);
-    assert.deepEqual(w.of('sendToTab'), [['mine', 'carry on']]);
+    assert.deepEqual(w.of('sendToTab'), [['desk', 'hi'], ['desk', 'go on'], ['mine', 'carry on']]);
     // The desk's panel hears about a message it didn't send.
     assert.ok(w.of('send').some(([, channel]) => channel === 'tab:sent'));
   } finally { stop(w); }

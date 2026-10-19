@@ -5,7 +5,7 @@
   "name": "Community",
   "author": "x-salmon",
   "version": "1.0.0",
-  "description": "Molt Day hats, and what you get for making Shellby with everyone else.",
+  "description": "Molt Day hats, and what you get for making and supporting Shellby with everyone else.",
   "homepage": "https://github.com/x-salmon/shellby",
   "accessories": [
     {
@@ -76,6 +76,27 @@
       "unlock": { "achievement": "contest-champion" }
     },
     {
+      "id": "anglers-lantern",
+      "name": "Angler's Lantern",
+      "description": "For sponsoring Shellby. A light from the deep, so he never works in the dark. Thank you.",
+      "slot": "hat",
+      "pivot": [2, 8],
+      "rarity": "legendary",
+      "palette": { "k": "#7d8fb8", "K": "#a9d8e8", "Y": "#e9ffb5", "w": "#ffffff", "g": "#5ce1e6", "h": "#1f7f96", "D": "#2b3a5c" },
+      "pixels": [
+        "..kkkkK.....",
+        "..k....K....",
+        "..k....K....",
+        "..k...hgh...",
+        "..k..hgYgh..",
+        "..k.hgYwYgh.",
+        "..k..hgYgh..",
+        ".DkD..hgh...",
+        "DwDwD..h...."
+      ],
+      "unlock": { "achievement": "patron" }
+    },
+    {
       "id": "wrapped-week-2026",
       "name": "Wrapped Week 2026",
       "description": "Confetti from Wrapped week 2026, for sharing your year. A year's trim never comes back.",
@@ -89,9 +110,43 @@
         "cbgacbg"
       ],
       "unlock": { "achievement": "wrapped-week-2026" }
+    },
+    {
+      "id": "message-in-a-bottle",
+      "name": "Message in a Bottle",
+      "description": "For a one-time sponsorship. A thank-you, rolled up inside. He reads it now and then.",
+      "slot": "held",
+      "pivot": [1, 5],
+      "rarity": "legendary",
+      "palette": { "c": "#a0703a", "g": "#7fd6c2", "G": "#4fa898", "w": "#e6fff8", "p": "#f4e3b5" },
+      "pixels": [
+        "..c.",
+        ".gG.",
+        "gwpG",
+        "gpwG",
+        "gwpG",
+        ".GG."
+      ],
+      "unlock": { "achievement": "message-in-a-bottle" }
     }
   ],
   "effects": [
+    {
+      "id": "bioluminescence",
+      "name": "Bioluminescence",
+      "description": "For Lanternfish sponsors. Plankton from the deep circle him, glowing softly in time.",
+      "motion": "orbit",
+      "count": 10,
+      "speed": 0.5,
+      "fps": 4,
+      "rarity": "legendary",
+      "unlock": { "achievement": "lanternfish" },
+      "sprites": [
+        { "palette": { "c": "#5ce1e6", "C": "#e9ffff" }, "pixels": [".c.", "cCc", ".c."], "frames": [["...", ".c.", "..."], ["c.c", ".C.", "c.c"]] },
+        { "palette": { "v": "#b48cff", "V": "#efe3ff" }, "pixels": ["vV", "Vv"], "frames": [["V.", ".V"], [".v", "v."]] },
+        { "palette": { "y": "#c8ff8a", "Y": "#f7ffe0" }, "pixels": ["y"], "frames": [["Y"], ["y"]] }
+      ]
+    },
     {
       "id": "paint-splat",
       "name": "Paint Splat",
@@ -106,6 +161,119 @@
         { "palette": { "b": "#4ea8de" }, "pixels": ["b.b", ".b.", "b.b"] },
         { "palette": { "y": "#ffd166", "g": "#6fbf4a" }, "pixels": ["yy", "yg"] }
       ]
+    }
+  ],
+  "decor": [
+    {
+      "id": "abyssal-clam",
+      "name": "Abyssal Clam",
+      "category": "treasure",
+      "layer": "floor",
+      "rarity": "legendary",
+      "description": "For Pearl Diver sponsors. It breathes open and shut, and the pearl inside lights the tank.",
+      "palette": { "l": "#a993d1", "s": "#6d5a8f", "S": "#3f3360", "g": "#5ce1e6", "m": "#d97aa8", "p": "#f4f9ff", "P": "#bfe9ff" },
+      "pixels": [
+        ".............",
+        ".............",
+        "....lllll....",
+        "..lsSsSsSsl..",
+        ".lsSsSsSsSsl.",
+        ".lllllllllll.",
+        "..SsSsSsSsS.."
+      ],
+      "frames": [
+        [
+          ".............",
+          "....lllll....",
+          "..lsSsSsSsl..",
+          ".lsSsSsSsSsl.",
+          ".lgggggggggl.",
+          ".lmmmgPgmmml.",
+          "..SsSsSsSsS.."
+        ],
+        [
+          "....lllll....",
+          "..lsSsSsSsl..",
+          ".lsSsSsSsSsl.",
+          ".l.g..g..g.l.",
+          ".lmmgpPpgmml.",
+          ".lmmmpppmmml.",
+          "..SsSsSsSsS.."
+        ]
+      ],
+      "fps": 1,
+      "spots": [
+        { "kind": "sit", "at": [6, -1] },
+        { "kind": "open", "at": [6, 4] }
+      ],
+      "unlock": { "achievement": "pearl-diver" }
+    },
+    {
+      "id": "sunken-galleon",
+      "name": "Sunken Galleon",
+      "category": "structure",
+      "layer": "floor",
+      "rarity": "legendary",
+      "description": "For a one-time sponsorship. A wreck on the sand, gold spilling from its hold, and a hiding place he loves.",
+      "palette": { "k": "#4a3420", "S": "#cfc6ad", "w": "#7a5230", "W": "#5e3b1a", "o": "#1b2a3a", "y": "#ffd23f", "Y": "#fff3b0" },
+      "pixels": [
+        "........k...............",
+        "........kSS.............",
+        "........kSSS............",
+        "........kSS......k......",
+        "........k........kS.....",
+        "..wwwwwwkwwwwwwwwkww....",
+        ".wWWWWWWWWWWWWWWWWWWw...",
+        ".wWoWWWoWWWoWWWyyWWWw...",
+        "..wWWWWWWWWWWWyYyYWw.y..",
+        "...wwwwwwwwwwyYyyYyyYyy."
+      ],
+      "frames": [
+        [
+          "........k...............",
+          "........kSS.............",
+          "........kSSS............",
+          "........kSS......k......",
+          "........k........kS.....",
+          "..wwwwwwkwwwwwwwwkww....",
+          ".wWWWWWWWWWWWWWWWWWWw...",
+          ".wWoWWWoWWWoWWWYYWWWw...",
+          "..wWWWWWWWWWWWYyYyWw.Y..",
+          "...wwwwwwwwwwYyYYyYYyYY."
+        ]
+      ],
+      "fps": 2,
+      "spots": [
+        { "kind": "hide", "at": [8, 7] },
+        { "kind": "sit", "at": [12, 4] }
+      ],
+      "unlock": { "achievement": "sunken-treasure" }
+    }
+  ],
+  "skins": [
+    {
+      "id": "abyss",
+      "name": "The Abyss",
+      "author": "Shellby",
+      "description": "For Leviathan sponsors. A crab from the deep, his shell lit from within.",
+      "palette": { "S": "#0b1530", "s": "#1d3a6e", "h": "#5ce1e6", "b": "#5b46a8", "B": "#3a2a78", "c": "#6a55c4", "C": "#3f2f8a", "k": "#3a2a78", "e": "#0b0f24", "w": "#e9ffb5", "l": "#2c2066", "m": "#13284f", "g": "#2a9db0", "H": "#e9ffb5", "p": "#8f74e0", "d": "#2c2066", "q": "#b9a6ff" },
+      "parts": { "S": "shell", "s": "shell", "h": "shell", "m": "shell", "g": "shell", "H": "shell", "b": "body", "B": "body", "p": "body", "d": "body", "c": "claw", "C": "claw", "q": "claw", "k": "stalks", "e": "eyes", "w": "eyes", "l": "legs" },
+      "pixels": [
+        "......mmmS...ww.ww....",
+        "....mmgggSS..we.we....",
+        "...mggHhhgsS..k..k....",
+        "..mghhSSSshsS.k..k....",
+        "..mghSggsSshSbppppb...",
+        ".mghSghhsSsgSBpbbbbb..",
+        ".SshSshSsSsgSBbbbbB.qc",
+        ".SsgSssSSsgmSBbbbBcqcC",
+        ".SssgSSssggmSBbbbBccC.",
+        "..SsshhggsmSdBbbbBBC..",
+        "...SSsssmmSddBBBBB....",
+        "....SSSSSS..ll.ll.ll..",
+        "...........l..l..l...."
+      ],
+      "unlock": { "achievement": "leviathan" }
     }
   ]
 }

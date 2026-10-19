@@ -123,5 +123,16 @@ test('the usage view has the week, the guard and focus', () => {
   assert.equal(view.usage.weekPct, 61);
   assert.deepEqual(view.usage.guard, { reserve: 25, ceiling: 75 });
   assert.equal(view.focus.phase, 'focus');
-  assert.deepEqual(view.allow, { replyDesk: false, push: false, files: false });
+  assert.deepEqual(view.allow, { push: false, files: false });
+});
+
+test('a prompt carries the desk’s always-allow label, never on one only the desk may answer', () => {
+  const edit = v.phonePrompt({ tabId: 't', requestId: 'r', toolName: 'Edit', suggestions: [{ type: 'setMode', mode: 'acceptEdits' }] }, () => 'T');
+  assert.equal(edit.always, 'Allow all edits');
+  const rule = v.phonePrompt({ tabId: 't', requestId: 'r', toolName: 'Bash', input: { command: 'npm test' }, suggestions: [{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'npm test' }] }] }, () => 'T');
+  assert.equal(rule.always, 'Always allow Bash(npm test)');
+  assert.equal(v.phonePrompt({ tabId: 't', requestId: 'r', toolName: 'Bash' }, () => 'T').always, null);
+  const plan = v.phonePrompt({ tabId: 't', requestId: 'r', toolName: 'ExitPlanMode', suggestions: [{ type: 'setMode', mode: 'acceptEdits' }] }, () => 'T');
+  assert.ok(plan.deskOnly);
+  assert.equal(plan.always, null);
 });

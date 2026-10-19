@@ -157,7 +157,7 @@ class Updates extends EventEmitter {
   /** Install now: the installer runs silently and Shellby comes back on the new version. */
   install() {
     if (!this.updater || this.state !== 'ready') return false;
-    if (this.prepare) this.prepare();
+    if (this.prepare) this.prepare(this.offered);
     this.updater.quitAndInstall(true, true);
     return true;
   }
@@ -223,6 +223,23 @@ function trayLabel(view) {
   return 'Check for updates';
 }
 
+// Past this, an "Update and restart" that never arrived is forgotten.
+const REOPEN_WAIT_MS = 10 * 60 * 1000;
+
+/**
+ * What a boot does with settings' `reopenAfterUpdate`: { version, at } from
+ * "Update and restart" (true from versions before it named one). The old
+ * version can start once more while the installer is still running, then be
+ * killed by it: only the version being installed opens the panel and clears it.
+ * -> { open, clear }
+ */
+function reopenAfterUpdate(flag, version, now = Date.now()) {
+  if (!flag) return { open: false, clear: false };
+  if (typeof flag !== 'object' || !flag.version || flag.version === version) return { open: true, clear: true };
+  const stale = !(now - flag.at < REOPEN_WAIT_MS);
+  return { open: false, clear: stale };
+}
+
 /**
  * A scripted stand-in for electron-updater, so a dev run can walk the whole
  * sequence (offer → download → ready, or a failure) without cutting a release:
@@ -248,4 +265,4 @@ function fakeUpdater({ version = '99.0.0', mode = 'ok', step = 600 } = {}) {
   return u;
 }
 
-module.exports = { Updates, trayLabel, fakeUpdater, installedBy, plainError, EVERY, RETRY_AFTER };
+module.exports = { Updates, trayLabel, fakeUpdater, installedBy, plainError, reopenAfterUpdate, EVERY, RETRY_AFTER, REOPEN_WAIT_MS };

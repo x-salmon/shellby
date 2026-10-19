@@ -350,6 +350,7 @@
         h('div', { class: 'trophy-name' }, a.name, a.done ? h('span', { class: 'trophy-check', text: '✓' }) : null),
         h('div', { class: 'trophy-desc', text: a.description }),
         a.claim ? h('div', { class: 'trophy-desc trophy-claim', text: a.claim }) : null,
+        a.link?.url ? h('button', { type: 'button', class: 'link-btn trophy-link', onclick: () => api.openExternal(a.link.url) }, a.link.text) : null,
         a.done ? null : h('div', { class: 'trophy-bar' }, h('span', { style: `transform:scaleX(${Math.min(1, a.current / a.goal)})` }), h('em', { text: `${a.current}/${a.goal}` }))),
       h('div', { class: 'trophy-rewards' }, a.rewards.map(r => h('span', { class: 'reward', title: r.name },
         r.sprites ? SB.Sprite.grid(bigSprite(r).pixels, bigSprite(r).palette, { ink: !!r.ink }) : SB.Sprite.grid(r.pixels, r.palette, { ink: true }))),

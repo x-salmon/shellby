@@ -85,9 +85,20 @@ function phoneQuestions(p) {
   }));
 }
 
+/** The desk's "always" button for Claude Code's first suggestion (panel/feed-logic.js suggestionLabel), or null. */
+function alwaysLabel(s) {
+  if (!s || typeof s !== 'object') return null;
+  if (s.type === 'setMode') return s.mode === 'acceptEdits' ? 'Allow all edits' : `Switch to ${line(s.mode, 20)}`;
+  const r = s.type === 'addRules' ? s.rules?.[0] : null;
+  if (r) return line(r.ruleContent ? `Always allow ${r.toolName}(${r.ruleContent.length > 24 ? r.ruleContent.slice(0, 22) + '…' : r.ruleContent})` : `Always allow ${r.toolName}`, 60);
+  if (s.type === 'addDirectories') return 'Always allow this folder';
+  return 'Always allow';
+}
+
 /** A permission prompt waiting on you. deskOnly: why the phone may only look (channels/replies.js). */
 function phonePrompt(p, titleOf) {
   const deskOnly = appDeskOnlyReason(p);
+  const suggestion = Array.isArray(p.suggestions) ? p.suggestions[0] : null;
   return {
     tabId: p.tabId,
     requestId: line(p.requestId, 100),
@@ -105,6 +116,8 @@ function phonePrompt(p, titleOf) {
     // The whole plan, to be read before it's approved (the phone keeps Approve shut until you reach the end).
     planText: p.toolName === 'ExitPlanMode' ? clip(p.plan ?? p.input?.plan, MAX_PLAN) || null : null,
     deskOnly,
+    // Questions and plans are answered on their own sheets: no always-allow there.
+    always: deskOnly || ['AskUserQuestion', 'ExitPlanMode'].includes(p.toolName) ? null : alwaysLabel(suggestion),
   };
 }
 
@@ -180,7 +193,7 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     prompts: prompts.slice(0, 20).map(p => phonePrompt(p, titleOf)),
     usage: { ...phoneUsage(lastUsage, outlook, now), ...usageDetail(lastUsage, outlook, guard, now) },
     focus: phoneFocus(focus, now),
-    allow: allow ? { replyDesk: !!allow.replyDesk, push: !!allow.push, files: !!allow.files } : { replyDesk: false, push: false, files: false },
+    allow: allow ? { push: !!allow.push, files: !!allow.files } : { push: false, files: false },
     held: (held || []).slice(0, 20).map(phoneHeld),
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),
     skin: skin || null,

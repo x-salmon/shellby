@@ -1,6 +1,5 @@
 ### New
 - **Questions and plans, answered from your phone.** Tap an option (or type your own) to answer Claude's questions, and read a plan in full before you approve it. Approve stays shut until you've scrolled to the end, and **Keep planning** sends your notes back.
-- **Reply to desk conversations from your phone.** Turn it on in Settings → On your phone. It only works while the conversation is in Ask first, so every edit still comes back to you.
 - **More on the phone.** A new **More** screen runs a routine or workflow now, turns routines on or off, starts or stops Guard my focus, jots a note on a project's list, and dresses him up. Tap him on the beach for a pat.
 - **The week on the Queue screen.** Your weekly window, the pace you're going at and what the spending guard keeps back sit under the 5-hour meter.
 - **Speak or snap a task.** New task on the phone takes dictation and up to four pictures, shrunk on the phone before they're sent.

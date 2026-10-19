@@ -133,6 +133,7 @@ body[data-view="trophies"] .view-trophies { display: block; overflow-y: auto; pa
 .trophy-name { font-weight: 700; font-size: var(--fs-13-5); display: flex; gap: 6px; align-items: center; }
 .trophy-check { color: #ffc93c; }
 .trophy-desc { font-size: var(--fs-12-5); color: var(--sand-dim); }
+.trophy-link { margin-top: 2px; font-size: var(--fs-12-5); }
 .trophy-bar { position: relative; height: 5px; margin-top: 6px; border-radius: 3px; background: var(--reef-3); overflow: hidden; }
 .trophy-bar span { display: block; height: 100%; background: var(--glass); transform-origin: left; }
 .trophy-bar em { position: absolute; right: 0; top: -15px; font: var(--fs-10) var(--font-mono); font-style: normal; color: var(--sand-faint); }

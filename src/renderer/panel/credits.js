@@ -20,11 +20,13 @@
       h('h4', { text: g.title }),
       h('ul', { class: 'mb-list' }, ...g.people.map(person)))));
     const m = v?.mine;
-    const yours = m && [m.wins.length ? `🏆 ${m.wins.join(', ')}` : null, m.packs ? `🪸 ${m.packs === 1 ? 'a pack' : `${m.packs} packs`} in the gallery` : null, m.code ? '🔧 code' : null].filter(Boolean);
+    const yours = m && [m.wins.length ? `🏆 ${m.wins.join(', ')}` : null, m.packs ? `🪸 ${m.packs === 1 ? 'a pack' : `${m.packs} packs`} in the gallery` : null, m.code ? '🔧 code' : null, m.sponsor ? '🏮 sponsoring' : null].filter(Boolean);
     $('madeByMine').hidden = !v;
     $('madeByMine').textContent = !v?.signedIn
       ? 'Made something for Shellby? Sign in to GitHub (Settings → GitHub) and its trophies are yours.'
-      : yours?.length ? `You're in here, @${m.login}: ${yours.join(' · ')}. Thank you.` : `Nothing under @${m?.login} yet. A pack in the gallery or a merged pull request puts you here.`;
+      : (yours?.length ? `You're in here, @${m.login}: ${yours.join(' · ')}. Thank you.` : `Nothing under @${m?.login} yet. A pack in the gallery, a merged pull request or sponsoring Shellby puts you here.`)
+        // A private sponsorship stays private: friends' crabs can't check it, so they don't show the lantern.
+        + (m?.sponsor && !m.shown ? " Your sponsorship is private, so only you see the lantern. Make it public on GitHub and friends' crabs will show it too." : '');
   }
 
   async function toggle() {

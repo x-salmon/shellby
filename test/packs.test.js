@@ -65,8 +65,9 @@ test('packs: pack ids are unique and none shadows another', () => {
 //   gate but no reward entry  → the item unlocks with no notification and no "new" badge
 //   reward entry but no gate  → the celebration claims you unlocked something you always had
 test('packs: achievement gates and reward lists agree both ways', () => {
-  const { accessories, effects, decor } = catalog();
-  const items = [...accessories.values(), ...effects.values(), ...decor.values()];
+  const { accessories, effects, decor, skins } = catalog();
+  // Skins can be a reward too (🐋 Leviathan's The Abyss); only gated ones are anyone's.
+  const items = [...accessories.values(), ...effects.values(), ...decor.values(), ...skins.filter(s => s.unlock?.achievement)];
   const rewardOf = new Map();
   for (const a of ACHIEVEMENTS) for (const key of a.rewards) rewardOf.set(key, a.id);
 

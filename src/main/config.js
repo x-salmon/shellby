@@ -52,7 +52,7 @@ const DEFAULTS = {
   yearbook: null,      // the year so far, for Wrapped (yearbook.js)
   logbook: null,       // what the Logbook has shown (logbook.js)
   unlockSeen: null,    // the last level unlock the panel showed (progression/levels.js)
-  reopenAfterUpdate: false, // "Update and restart" was pressed: the new version opens the panel when it boots
+  reopenAfterUpdate: false, // "Update and restart" was pressed: { version, at }; that version opens the panel when it boots (updates.js)
   crabOnly: false,
   claudeElsewhere: false, // Claude Code only on another computer, over ssh: first run asks for one there, not here (onboarding.js)
   workMode: false,   // the tools up front and a quiet crab, laid over your own settings (see workmode.js)
@@ -91,6 +91,7 @@ const DEFAULTS = {
   news: null,        // { feed, fetchedAt, triedAt, seen }: the last good feed and the items you closed (see news.js); seen is synced
   shareWrapped: false, // during Wrapped week, put last year's numbers on your calling card for friends (see yearbook.js wrappedForCard)
   credits: null,     // { login, checkedAt, index }: what the signed-in GitHub login was credited for (see credits.js)
+  sponsor: null,     // { login, checkedAt, sponsoring }: whether that login sponsors Shellby, as GitHub last said (see github/sponsor.js)
   signCommits: false, // a "Shipped-with: Shellby" trailer on Shellby's own bring-home commits (see crab-line.js)
   bond: null,        // how close you are, the days together, the moments he remembers (see bond.js)
   play: null,        // hide and seek and fetch scores (see play.js)

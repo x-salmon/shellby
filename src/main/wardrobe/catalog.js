@@ -385,6 +385,27 @@ function listJson(dir) {
   try { return fs.readdirSync(dir).filter(f => f.toLowerCase().endsWith('.json')).sort(); } catch { return []; }
 }
 
+// Supporter art (Patron of the Deep, src/main/patron.js) can't be lifted into a pack of
+// your own to wear without sponsoring. A picture's shape is its pixels with the palette
+// letters renamed in order of first use, so recolouring it is still the same shape.
+// Pictures under MIN_RESERVED_PIXELS painted pixels (a dot of plankton) are too common to claim.
+const { PATRON_ACHIEVEMENT_IDS: RESERVED_ACHIEVEMENTS } = require('../patron');
+const MIN_RESERVED_PIXELS = 9;
+function shapeOf(rows) {
+  const names = new Map();
+  let painted = 0;
+  const text = rows.map(r => [...r].map(ch => {
+    if (ch === '.') return '.';
+    painted += 1;
+    if (!names.has(ch)) names.set(ch, String.fromCharCode(97 + names.size));
+    return names.get(ch);
+  }).join('')).join('/');
+  return painted >= MIN_RESERVED_PIXELS ? text : null;
+}
+/** Every picture in an item: its pixels and frames, or each sprite's. */
+const picturesOf = item => (Array.isArray(item.sprites) ? item.sprites : [item])
+  .flatMap(p => [p.pixels, ...(Array.isArray(p.frames) ? p.frames : [])]).filter(Array.isArray);
+
 /**
  * Load the built-in pack(s) then every user pack. Missing dirs are fine.
  */
@@ -400,6 +421,7 @@ function loadCatalog({ builtinDir, userDir, knownAchievements = new Set(), known
   const errors = [];
   const builtinIds = new Set();
   const userIds = new Map(); // id -> file that claimed it
+  const reserved = new Set(); // shapeOf() of the built-in supporter art
 
   for (const [dir, source] of [[builtinDir, 'builtin'], [userDir, 'user']]) {
     for (const f of listJson(dir)) {
@@ -417,7 +439,10 @@ function loadCatalog({ builtinDir, userDir, knownAchievements = new Set(), known
 
       const packWarnings = [...warnings];
       const add = (map, item, label) => {
+        const shapes = picturesOf(item).map(shapeOf).filter(Boolean);
+        if (source === 'builtin' && RESERVED_ACHIEVEMENTS.has(item.unlock?.achievement)) shapes.forEach(x => reserved.add(x));
         if (map.has(item.key)) packWarnings.push(`skipped ${label} ${item.id}: key ${item.key} already taken`);
+        else if (source !== 'builtin' && shapes.some(x => reserved.has(x))) packWarnings.push(`skipped ${label} ${item.id}: that's a supporter item, earned by sponsoring Shellby`);
         else map.set(item.key, item);
       };
       for (const a of pack.accessories) add(accessories, a, 'accessory');

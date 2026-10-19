@@ -91,3 +91,14 @@ test('a usage reading goes to every window, popped-out conversations too', () =>
   d.manager.emit('item', 'a', { kind: 'usage', fiveHour: { pct: 40 } }, { title: 'one' });
   assert.deepEqual(everywhere.map(s => s.channel), ['usage']);
 });
+
+test('tabs reopening at startup are saved once they are all back, not one by one', () => {
+  const { d, config } = setup({ openTabs: ['a', 'b', 'c'] });
+  d.restoringTabs = true; // ipc/panel.js bootstrap
+  d.manager.emit('tabs', [tab('a')]);
+  d.manager.emit('tabs', [tab('a'), tab('b')]);
+  assert.deepEqual(config.sets, [], 'killed here, the list would still hold all three');
+  d.restoringTabs = false;
+  d.manager.emit('tabs', [tab('a'), tab('b'), tab('c')]);
+  assert.deepEqual(config.sets, []);
+});
