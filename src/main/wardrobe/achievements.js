@@ -164,9 +164,18 @@ const ACHIEVEMENTS = Object.freeze([
   { id: 'shipwright', name: 'Shipwright', icon: '🔧', description: 'Get a pull request merged into Shellby', stat: 'creditCode', goal: 1, rewards: ['tiny-wrench'], claim: 'github' },
   { id: 'contest-champion', name: 'Contest Champion', icon: '🏆', description: 'Win a monthly crab contest', stat: 'contestWins', goal: 1, rewards: ['golden-shell-trim'], claim: 'github' },
   { id: 'contestant', name: 'Contestant', icon: '🎨', description: 'Enter a monthly crab contest with a pack in the gallery', stat: 'contestEntries', goal: 1, rewards: ['paint-splat'], claim: 'github' },
+  // Sponsoring Shellby on GitHub (github/sponsor.js, patron.js): one trophy for each sponsor tier.
+  // patronRank climbs the monthly tiers (any sponsorship 1, $7 2, $15 3, $40 4); patronGifts
+  // the one-time ones ($10 1, $50 2). Only ever from a proof, never from config (patron.js).
+  { id: 'patron', name: 'Patron of the Deep', icon: '🏮', description: 'Sponsor Shellby on GitHub, any tier', stat: 'patronRank', goal: 1, rewards: ['anglers-lantern'], claim: 'github', link: { url: 'https://github.com/sponsors/x-salmon', text: 'Sponsor on GitHub' } },
+  { id: 'lanternfish', name: 'Lanternfish', icon: '🪼', description: 'Sponsor Shellby at $7 a month or more', stat: 'patronRank', goal: 2, rewards: ['bioluminescence'], claim: 'github', link: { url: 'https://github.com/sponsors/x-salmon', text: 'Sponsor on GitHub' } },
+  { id: 'pearl-diver', name: 'Pearl Diver', icon: '🐚', description: 'Sponsor Shellby at $15 a month or more, or $50 once', stat: 'patronRank', goal: 3, rewards: ['abyssal-clam'], claim: 'github', link: { url: 'https://github.com/sponsors/x-salmon', text: 'Sponsor on GitHub' } },
+  { id: 'leviathan', name: 'Leviathan', icon: '🐋', description: 'Sponsor Shellby at $40 a month or more', stat: 'patronRank', goal: 4, rewards: ['abyss'], claim: 'github', link: { url: 'https://github.com/sponsors/x-salmon', text: 'Sponsor on GitHub' } },
+  { id: 'message-in-a-bottle', name: 'Message in a Bottle', icon: '🍾', description: 'Sponsor Shellby once, $10 or more', stat: 'patronGifts', goal: 1, rewards: ['message-in-a-bottle'], claim: 'github', link: { url: 'https://github.com/sponsors/x-salmon', text: 'Sponsor on GitHub' } },
+  { id: 'sunken-treasure', name: 'Sunken Treasure', icon: '💰', description: 'Sponsor Shellby once, $50 or more', stat: 'patronGifts', goal: 2, rewards: ['sunken-galleon'], claim: 'github', link: { url: 'https://github.com/sponsors/x-salmon', text: 'Sponsor on GitHub' } },
   // Wrapped week (yearbook.js wrappedWeek): share that year's card during the week. A year's never comes back.
   { id: 'wrapped-week-2026', name: 'Wrapped Week 2026', icon: '🎆', description: 'Share your 2026 Wrapped card during Wrapped week, January 2nd to 8th 2027', stat: 'wrappedWeek2026', goal: 1, rewards: ['wrapped-week-2026'] },
-].map(a => Object.freeze({ hidden: false, claim: null, ...a, rewards: Object.freeze(a.rewards) })));
+].map(a => Object.freeze({ hidden: false, claim: null, link: null, ...a, rewards: Object.freeze(a.rewards) })));
 
 const KNOWN_ACHIEVEMENTS = new Set(ACHIEVEMENTS.map(a => a.id));
 
@@ -186,7 +195,7 @@ const COUNTERS = [
   'nestsCleared', 'rematchesWon', 'cleanFixes', 'fixesHeld', 'bugsCaughtTotal', 'reefBests', 'reefThriving',
   'reviewTier', 'reviewCaught', 'quizStreak', 'molts', 'everLevel', 'chaptersDone', 'tidePerfect', 'wrappedYears', 'logbookViews',
   // The community (docs/plans/community-events.md §4, §5).
-  'creditPacks', 'creditCode', 'contestWins', 'contestEntries', 'wrappedWeek2026',
+  'creditPacks', 'creditCode', 'contestWins', 'contestEntries', 'wrappedWeek2026', 'patronRank', 'patronGifts',
 ];
 const MAX_DAYS = 400;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -290,8 +299,9 @@ const MAXIMA = {
   'bugs-caught-total': 'bugsCaughtTotal', 'reef-thriving': 'reefThriving', 'review-tier': 'reviewTier', 'quiz-streak': 'quizStreak',
   molted: 'molts', 'ever-level': 'everLevel', 'chapter-done': 'chaptersDone', 'wrapped-seen': 'wrappedYears',
   // What your GitHub login is credited for (wiring/credits.js): packs in the gallery,
-  // merged pull requests, contest wins and contest entries.
+  // merged pull requests, contest wins and contest entries; and sponsoring on GitHub.
   'credit-packs': 'creditPacks', 'credit-code': 'creditCode', 'contest-wins': 'contestWins', 'contest-entries': 'contestEntries',
+  'patron-rank': 'patronRank', 'patron-gifts': 'patronGifts',
 };
 
 // card-shared:<kind> (ipc/surroundings.js card:save): each kind of card shared, counted
@@ -396,6 +406,8 @@ function progress(stats, unlocked = new Set()) {
       rewards: [...a.rewards],
       hidden: a.hidden,
       claim: a.claim,
+      // Where to go to earn it (🏮 Patron's Sponsor page), while it isn't yours.
+      link: done ? null : a.link,
     };
   });
 }

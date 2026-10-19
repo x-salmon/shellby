@@ -7,6 +7,7 @@ const { ACHIEVEMENTS, KNOWN_ACHIEVEMENTS, normalizeStats, recordStat, evaluate, 
 const { encodeOutfit, decodeOutfit, resolveEntries } = require('./codes');
 const { everLevel } = require('../progression/levels');
 const tideEvents = require('../events');
+const { allowsAchievement, maskStats } = require('../patron');
 
 const SLOTS = ['hat', 'face', 'neck', 'held', 'shell', 'effect'];
 const EMPTY_OUTFIT = Object.freeze({ hat: null, face: null, neck: null, held: null, shell: null, effect: null });
@@ -45,9 +46,11 @@ class Wardrobe extends EventEmitter {
   // eventsOn: whether tide events are on at all (Settings, crab-only mode): event-limited items only turn up then.
   // signedIn: whether a GitHub login is known, for the trophies only it can claim (credits.js).
   // contestWins: the months you've won a crab contest, ['YYYY-MM'], for Contest Champion's line.
-  constructor({ config, builtinDir, userDir, now = () => new Date(), south = () => false, canUnlockAll = () => false, eventsOn = () => true, signedIn = () => true, contestWins = () => [] }) {
+  // patron: the sponsor perks proven on this PC ({ rank, gifts } or null; patron.js, sealed by the
+  // OS). The sponsor trophies never come from config alone, which anyone can edit: past what's proven, they're taken back out.
+  constructor({ config, builtinDir, userDir, now = () => new Date(), south = () => false, canUnlockAll = () => false, eventsOn = () => true, signedIn = () => true, contestWins = () => [], patron = () => null }) {
     super();
-    Object.assign(this, { config, builtinDir, userDir, now, south, canUnlockAll, eventsOn, signedIn, contestWins });
+    Object.assign(this, { config, builtinDir, userDir, now, south, canUnlockAll, eventsOn, signedIn, contestWins, patron });
     this.everLevelSeen = null; // the everLevel the last setEverLevel saw: what "new" is measured from
     this.catalog = { accessories: new Map(), effects: new Map(), skins: [], voices: new Map(), scenes: new Map(), decor: new Map(), packs: [], errors: [] };
   }
@@ -58,15 +61,28 @@ class Wardrobe extends EventEmitter {
     const d = { ...DEFAULTS, ...raw };
     d.outfit = { ...EMPTY_OUTFIT, ...(raw.outfit || {}) };
     for (const k of ['unlocked', 'collected', 'newItems']) d[k] = Array.isArray(raw[k]) ? raw[k].filter(x => typeof x === 'string') : [];
+    const perks = this.patron();
+    d.unlocked = d.unlocked.filter(id => allowsAchievement(perks, id));
     d.seasonOverrides = raw.seasonOverrides && typeof raw.seasonOverrides === 'object' ? { ...raw.seasonOverrides } : {};
     d.voice = typeof raw.voice === 'string' ? raw.voice : null;
     d.unlockAll = raw.unlockAll === true && !!this.canUnlockAll();
     return d;
   }
-  save(patch) { this.config.set({ wardrobe: { ...this.data, ...patch } }); }
+  save(patch) {
+    // Sponsor trophies hidden right now (signed in as another account) are kept as
+    // they were, for when that account is back: \`data\` only leaves them out of view.
+    const raw = this.config.get('wardrobe')?.unlocked;
+    const perks = this.patron();
+    const hidden = (Array.isArray(raw) ? raw : []).filter(id => typeof id === 'string' && !allowsAchievement(perks, id));
+    const next = { ...this.data, ...patch };
+    this.config.set({ wardrobe: { ...next, unlocked: [...new Set([...next.unlocked, ...hidden])] } });
+  }
   // Where you are, for the seasons: south of the equator, spring comes in September.
   where() { return { south: !!this.south() }; }
-  get stats() { return normalizeStats(this.config.get('stats')); }
+  get stats() {
+    const s = normalizeStats(this.config.get('stats'));
+    return maskStats(s, this.patron());
+  }
   // The highest level he has ever reached (progression/levels.js): what { level } unlocks read. A molt never lowers it.
   get everLevel() { return everLevel(this.config.get('xp')); }
 
@@ -321,8 +337,11 @@ class Wardrobe extends EventEmitter {
 
   // ------------------------------------------------------------ stats + achievements
   record(event, payload = {}) {
-    const before = this.stats;
-    const stats = recordStat(before, event, payload, this.now());
+    // As saved, not as shown: the sponsor stats are shown as proven (get stats), so a
+    // proven rank only counts as news the first time it's saved.
+    const before = normalizeStats(this.config.get('stats'));
+    // The sponsor trophies only from a proof (patron.js), whoever records the stat.
+    const stats = maskStats(recordStat(this.stats, event, payload, this.now()), this.patron());
     if (JSON.stringify(stats) === JSON.stringify(before)) return [];
     this.config.set({ stats });
     const d = this.data;

@@ -1,9 +1,10 @@
 // The Wardrobe at boot (wardrobe/service.js): loaded, its unlocks celebrated,
 // and on its first run, credited with what history shows you've done already.
 // Kept out of main.js, which only wires it up; its channels are ipc/wardrobe.js.
-const { app } = require('electron');
+const { app, safeStorage } = require('electron');
 const path = require('path');
 const { Wardrobe } = require('../wardrobe/service');
+const patron = require('../patron');
 const weekly = require('../weekly');
 
 const dayOf = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -21,6 +22,8 @@ function pastUsage(history) {
 function wireWardrobe(d) {
   function createWardrobe() {
     const { config } = d;
+    // The sponsor perks proven on this PC (patron.js); wiring/credits.js uses the same one.
+    d.patronPerks = patron.perksOnThisPc(config, () => safeStorage, () => (d.github?.signedIn ? d.github.view().login : null));
     const wardrobe = d.wardrobe = new Wardrobe({
       config, builtinDir: path.join(__dirname, '..', '..', 'wardrobe'), userDir: path.join(app.getPath('userData'), 'wardrobe'),
       now: () => (d.today ? d.today() : new Date()),
@@ -32,6 +35,9 @@ function wireWardrobe(d) {
       // The contributor trophies (wiring/credits.js): only a GitHub sign-in can claim them.
       signedIn: () => !!d.github?.signedIn,
       contestWins: () => d.myCredits?.()?.wins || [],
+      // The sponsor trophies (patron.js): proven on this PC, never from config alone.
+      // Read here, not from wiring/credits.js, which is wired later: a moment without it would award them again.
+      patron: d.patronPerks,
     });
     wardrobe.load();
     wardrobe.on('changed', d.broadcastWardrobe);

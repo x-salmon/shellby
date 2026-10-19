@@ -580,7 +580,7 @@ test('built-in pack validates cleanly and provides every reward and season outfi
   const accessories = all.accessories;
   const effects = all.effects;
   for (const a of ach.ACHIEVEMENTS) {
-    for (const r of a.rewards) assert.ok(accessories.has(r) || effects.has(r) || all.decor.has(r), `${a.id} reward ${r} missing from the built-in packs`);
+    for (const r of a.rewards) assert.ok(accessories.has(r) || effects.has(r) || all.decor.has(r) || all.skins.some(s => s.key === r), `${a.id} reward ${r} missing from the built-in packs`);
   }
   for (const s of seasons.SEASONS) {
     for (const [slot, key] of Object.entries(s.outfit)) {

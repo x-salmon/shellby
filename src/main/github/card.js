@@ -9,6 +9,8 @@
 // counts, projects or errors (bugdex/index.js shared). During Wrapped week, and
 // only with Show my year to friends on, last year's numbers and nemesis
 // (yearbook.js forCard): never a project name.
+// A public sponsor's signed proof rides along (patron.js): the patron items their
+// proof doesn't reach, for the account that owns the card, come off their crab and out of their tank.
 // A friend's card is somebody else's file, so it is always cleaned before use,
 // and only believed when the gist really belongs to that friend.
 const { findGist } = require('./gists');
@@ -19,6 +21,7 @@ const { cleanCardSwap } = require('../swaps');
 const { cleanCardEggs } = require('../eggs');
 const { cleanMedals } = require('../events');
 const { cleanCardWrapped } = require('../yearbook');
+const patron = require('../patron');
 
 const CARD_FILE = 'shellby-card.json';
 const FORMAT = 1;
@@ -34,15 +37,24 @@ const FIND_RE = /^[a-z0-9-]{1,40}$/;                           // a gifts/index.
 const key = v => (typeof v === 'string' && KEY_RE.test(v) ? v : null);
 const sameLogin = (a, b) => typeof a === 'string' && typeof b === 'string' && a.toLowerCase() === b.toLowerCase();
 
-/** Tolerate anything (a friend's card especially). */
-function cleanCard(raw) {
+/**
+ * Tolerate anything (a friend's card especially). own: it's yours, on its way
+ * out, so the patron proof is passed along as it is: friends check it when they read it.
+ */
+function cleanCard(raw, { own = false } = {}) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const outfit = {};
   for (const s of SLOTS) outfit[s] = key(r.outfit?.[s]);
   const level = Number.isFinite(r.level) ? Math.min(99, Math.max(1, Math.floor(r.level))) : 1;
-  return {
+  const login = typeof r.login === 'string' && LOGIN_RE.test(r.login) ? r.login : null;
+  // The GitHub account that owns the gist, by number (cardFromGist): a patron proof must be for it.
+  const ownerId = Number.isSafeInteger(r.ownerId) && r.ownerId > 0 ? r.ownerId : null;
+  const checked = !own && login && ownerId ? patron.verifyProof(r.patron, { login, id: ownerId }) : null;
+  const proof = own ? (typeof r.patron === 'string' && patron.PROOF_RE.test(r.patron) ? r.patron : null) : checked ? r.patron : null;
+  const look = {
     format: FORMAT,
-    login: typeof r.login === 'string' && LOGIN_RE.test(r.login) ? r.login : null,
+    login,
+    ownerId,
     skin: key(r.skin),
     home: typeof r.home === 'string' && SHELL_RE.test(r.home) ? r.home : null,
     level,
@@ -58,14 +70,17 @@ function cleanCard(raw) {
     medals: cleanMedals(r.medals),
     // Last year's numbers during Wrapped week, if they chose to show them (yearbook.js forCard).
     wrapped: cleanCardWrapped(r.wrapped),
+    // 🏮 Patron of the Deep, signed by getshellby.com for this login (patron.js).
+    patron: proof,
     updatedAt: Number.isFinite(r.updatedAt) && r.updatedAt > 0 ? r.updatedAt : 0,
   };
+  return own ? look : patron.withoutUnproven(look, checked);
 }
 
 /** Just the look, for "did anything change since we last published?" */
-const lookOf = card => { const c = cleanCard(card); return JSON.stringify([c.login, c.skin, c.home, c.level, c.outfit, c.stickers, c.temperament, c.find, c.tank, c.bugdex, c.swap, c.eggs, c.medals, c.wrapped]); };
+const lookOf = card => { const c = cleanCard(card, { own: true }); return JSON.stringify([c.login, c.skin, c.home, c.level, c.outfit, c.stickers, c.temperament, c.find, c.tank, c.bugdex, c.swap, c.eggs, c.medals, c.wrapped, c.patron]); };
 
-const content = card => JSON.stringify({ ...cleanCard(card), note: "Shellby calling card: how this crab looks (and his tank, if shared), so friends' crabs can visit. Turn off Visiting crabs in Shellby to delete it." }, null, 1);
+const content = card => JSON.stringify({ ...cleanCard(card, { own: true }), ownerId: undefined, note: "Shellby calling card: how this crab looks (and his tank, if shared), so friends' crabs can visit. Turn off Visiting crabs in Shellby to delete it." }, null, 1);
 
 /** Create or update your card; returns its gist id. */
 async function publishCard(gh, card, knownId) {
@@ -93,8 +108,10 @@ function cardFromGist(g, login) {
   if (!f || f.truncated || f.size > MAX_BYTES || typeof f.content !== 'string') return null;
   let raw;
   try { raw = JSON.parse(f.content); } catch { return null; }
-  // The owner is who GitHub says it is, whatever the file claims.
-  return { id: g.id, card: { ...cleanCard(raw), login: g.owner.login } };
+  // The owner is who GitHub says it is, whatever the file claims: and it's the
+  // owner, by account number, a patron proof must be for, so nobody else's can be borrowed.
+  const card = cleanCard({ ...(raw && typeof raw === 'object' ? raw : {}), login: g.owner.login, ownerId: g.owner.id });
+  return { id: g.id, card: { ...card, login: g.owner.login } };
 }
 
 /**
