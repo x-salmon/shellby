@@ -116,7 +116,7 @@
 
   // ---------------------------------------------------------------- prompts
 
-  function promptCard(p, { compact = false } = {}) {
+  function promptCard(p, { compact = false, inTab = false } = {}) {
     const sending = S.answering.get(p.requestId);
     const card = h('article', { class: `ask${p.deskOnly ? ' desk' : ''}${sending ? ' sending' : ''}`, 'aria-label': `${p.title}: ${p.ask || p.label}` });
     card.append(h('div', { class: 'ask-head' },
@@ -134,7 +134,7 @@
     for (const w of p.warnings || []) card.append(h('p', { class: 'flag' }, icon('warn'), h('span', { text: `Heads up: ${w}` })));
     if (p.deskOnly) {
       card.append(h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: p.deskOnly })));
-      card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
+      if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
       return card;
     }
     const answer = decision => actButton({
@@ -490,7 +490,7 @@
           h('li', {}, 'Tap ', h('b', { text: 'Share' }), ' in Safari’s toolbar.'),
           h('li', {}, 'Choose ', h('b', { text: 'Add to Home Screen' }), '.'),
           h('li', {}, 'Open ', h('b', { text: 'Shellby' }), ' from your Home Screen and pair it there.')),
-        h('button', { type: 'button', class: 'link', text: 'Use it in Safari instead', onclick: () => { S.installSkipped = true; mount(); } }))), update() {} };
+        h('button', { type: 'button', class: 'link', text: 'Skip this and pair here in Safari', onclick: () => { S.installSkipped = true; mount(); } }))), update() {} };
     }
     const input = h('input', {
       class: 'code-in', id: 'pairCode', type: 'text', inputmode: 'text', autocapitalize: 'characters', autocomplete: 'one-time-code', autocorrect: 'off', spellcheck: 'false',

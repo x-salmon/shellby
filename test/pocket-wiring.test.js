@@ -288,18 +288,21 @@ test('at the usage limit a phone task waits for the reset', async () => {
   } finally { stop(w); }
 });
 
-test('replies go only to conversations the phone started, and not mid-turn', async () => {
-  const desk = tabOf('desk');
+test('replies go to any conversation, not mid-turn, and a desk one is switched to ask first', async () => {
+  const modes = [];
+  const desk = tabOf('desk', { session: { pending: new Map(), mode: 'bypass', cwd: PROJECT, busy: false, setMode(m) { this.mode = m; modes.push(m); } } });
   const mine = tabOf('mine', { fromPocket: true });
   const w = await paired({ tabs: [desk, mine] });
   try {
     const act = body => w.d.pocket.onAction(w.device, 'reply', body);
-    assert.match((await act({ tabId: 'desk', text: 'hi' })).error, /at the desk/);
+    assert.equal((await act({ tabId: 'desk', text: 'hi' })).ok, true);
+    assert.deepEqual(modes, ['ask']);
+    assert.equal(desk.pinnedMode, true, 'the desk mode no longer lifts it');
     mine.session.busy = true;
     assert.match((await act({ tabId: 'mine', text: 'hi' })).error, /still on it/);
     mine.session.busy = false;
     assert.equal((await act({ tabId: 'mine', text: 'carry on' })).ok, true);
-    assert.deepEqual(w.of('sendToTab'), [['mine', 'carry on']]);
+    assert.deepEqual(w.of('sendToTab'), [['desk', 'hi'], ['mine', 'carry on']]);
     // The desk's panel hears about a message it didn't send.
     assert.ok(w.of('send').some(([, channel]) => channel === 'tab:sent'));
   } finally { stop(w); }

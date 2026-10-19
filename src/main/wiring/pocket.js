@@ -186,7 +186,7 @@ function wirePocket(d) {
     const out = {};
     for (const [id, tab] of d.manager?.tabs || []) {
       const mine = !!(tab.fromPocket || tab.fromPhone);
-      out[id] = { mode: tab.session.mode || null, fromPhone: mine, canReply: mine && !tab.inTerminal };
+      out[id] = { mode: tab.session.mode || null, fromPhone: mine, canReply: !tab.inTerminal };
     }
     return out;
   }
@@ -380,12 +380,15 @@ function wirePocket(d) {
   function reply({ tabId, text }) {
     const tab = str(tabId) && d.manager.tabs.get(tabId);
     if (!tab) return no('That conversation has closed.');
-    if (!(tab.fromPocket || tab.fromPhone)) return no('Reply to that one at the desk: only conversations your phone started take replies from it.');
     if (tab.inTerminal) return no("It's in a terminal on your PC now. Reply there.");
     const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!said) return no('Type something first.');
     if (/^[/!]/.test(said)) return no('Commands that start with / or ! only run at the desk.');
     if (d.manager.isBusy(tabId)) return no("He's still on it. Wait for this turn to end, or stop it.");
+    // A desk conversation the phone speaks into asks before every tool from then on,
+    // and stays that way when the desk's mode changes: a phone in the wrong hands gets no more.
+    if (tab.session.mode !== pt.MODE) tab.session.setMode(pt.MODE);
+    tab.pinnedMode = true;
     const r = d.sendToTab(tabId, said, []);
     if (!r.ok) return no(r.error);
     // The desk's panel draws a message it didn't send itself from this.

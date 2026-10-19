@@ -196,7 +196,7 @@ ul.plain li::marker { color: var(--coral); }
 
 /* ---------------------------------------------------------------- the ask */
 .ask {
-  display: grid; gap: 10px; padding: 14px; border-radius: 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 16px;
   background: linear-gradient(180deg, rgba(255, 122, 92, .10), rgba(17, 35, 42, .95) 40%), var(--reef);
   border: 1px solid rgba(255, 122, 92, .5);
   box-shadow: 0 10px 28px rgba(0, 0, 0, .35), 0 0 0 4px rgba(255, 122, 92, .05);

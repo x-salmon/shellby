@@ -47,7 +47,7 @@ Those say why they wait for the desk (*"It has a question for you: answer it at 
 - They always run in **Ask first**, whatever mode you use at the desk, in their own copy when the folder is a git repository, so every edit and command comes back to you.
 - At most 10 start an hour and 3 at once. At your usage limit, or past what the spending guard keeps for you, a task waits for the reset and says when it'll start.
 - `!` commands, Claude Code's `/` commands, modes and settings never come from the phone.
-- You can reply to a conversation your phone started. Conversations started at the desk take replies at the desk.
+- You can reply to any conversation. One started at the desk switches to asking before every tool once your phone replies to it.
 
 **Queue** is what's waiting for the usage reset, with **Take it out** for each one. **Phone** has notifications, what this phone can do, and **Forget this phone**.
 

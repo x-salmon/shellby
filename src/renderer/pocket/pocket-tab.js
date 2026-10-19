@@ -111,7 +111,7 @@
       function drawFoot(t) {
         const parts = [];
         const prompts = (S.view?.prompts || []).filter(p => p.tabId === tabId);
-        asks.replaceChildren(...prompts.map(p => promptCard(p)));
+        asks.replaceChildren(...prompts.map(p => promptCard(p, { inTab: true })));
         if (t.busy) {
           const doing = h('div', { class: 'working-line' }, D.crab({ px: 1.5, state: 'working', label: '' }), h('span', { class: 'doing', text: L.doingLine(t) }),
             t.busySince ? h('span', { class: 'mono since', dataset: { since: t.busySince }, text: L.duration((Date.now() - t.busySince) / 1000) }) : null);
@@ -121,7 +121,7 @@
         if (reviewing) parts.push(reviewBar(t));
         if (!t.busy && !t.pending) {
           if (t.canReply) parts.push(replyRow);
-          else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: 'Reply to this one at the desk. Your phone replies to the conversations it started.' }));
+          else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
         }
         foot.replaceChildren(...parts);
       }
