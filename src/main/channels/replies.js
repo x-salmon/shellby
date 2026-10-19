@@ -48,6 +48,8 @@ function newNonce(bytes = crypto.randomBytes(16)) {
 // Past this, the notification can't show the whole command, and nobody should
 // approve the half they can see.
 const PHONE_MAX = 300;
+// The longest plan the phone app shows in full: approving a longer one would approve unread text.
+const PLAN_MAX = 30000;
 
 function deskOnlyReason(item) {
   if (!item || typeof item !== 'object') return 'Answer it at the desk.';
@@ -70,7 +72,9 @@ function appDeskOnlyReason(item) {
   if (item.selfConfig) return `It changes ${item.selfConfig}: check it at the desk.`;
   if (item.toolName === 'AskUserQuestion' && !Array.isArray(item.input?.questions)) return 'It has a question for you: answer it at the desk.';
   // Nothing to read means nothing to approve from here.
-  if (item.toolName === 'ExitPlanMode' && !String(item.plan ?? item.input?.plan ?? '').trim()) return 'It has a plan for you to read: approve it at the desk.';
+  const plan = String(item.plan ?? item.input?.plan ?? '');
+  if (item.toolName === 'ExitPlanMode' && !plan.trim()) return 'It has a plan for you to read: approve it at the desk.';
+  if (item.toolName === 'ExitPlanMode' && plan.length > PLAN_MAX) return 'The plan is too long to read on a phone: approve it at the desk.';
   return null;
 }
 
@@ -437,5 +441,5 @@ class RemoteAnswers {
 
 module.exports = {
   RemoteAnswers, supportsReplies, newNonce, deskOnlyReason, appDeskOnlyReason,
-  parseNtfyMessage, parseTelegramCallback, NONCE, TTL_MS, PHONE_MAX, INBOX_POLL_MS, MAX_BACKOFF_MS,
+  parseNtfyMessage, parseTelegramCallback, NONCE, TTL_MS, PHONE_MAX, PLAN_MAX,INBOX_POLL_MS, MAX_BACKOFF_MS,
 };

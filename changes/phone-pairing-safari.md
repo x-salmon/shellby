@@ -1,6 +1,6 @@
 ### New
 
-- Pick the mode on your phone: Ask first, Smart, Auto-edit, Plan only or Autonomous, for a new task and for each reply.
+- Pick the mode on your phone: Ask first, Smart, Auto-edit, Plan only or Autonomous (once it's turned on in Settings on your PC), for a new task and for each reply.
 - **Allow all edits** and **Always allow** on your phone's permission cards, whenever the desk card has them.
 
 ### Fixed
