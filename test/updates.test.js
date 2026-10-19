@@ -33,7 +33,7 @@ test('idle until started, and a dev run with no updater stays off', () => {
   const { u } = make();
   assert.equal(u.view().state, 'idle');
   const off = new Updates({ version: '0.18.0' });
-  assert.deepEqual(off.view(), { state: 'off', version: null, percent: 0, error: null, checkedAt: null, current: '0.18.0', retryAt: null, busy: false });
+  assert.deepEqual(off.view(), { state: 'off', version: null, percent: 0, error: null, checkedAt: null, current: '0.18.0', retryAt: null, rechecking: false, busy: false });
   assert.equal(off.install(), false, 'nothing to install');
   assert.equal(trayLabel(off.view()), null, 'and nothing in the tray');
 });
@@ -121,6 +121,41 @@ test('a failed or empty re-check keeps the downloaded update installable', async
   updater.emit('update-not-available', { version: '0.18.0' });
   assert.deepEqual([u.view().state, u.view().version, u.view().error], ['ready', '0.19.0', null]);
   assert.equal(u.install(), true);
+});
+
+test('checking again while one is ready says so, and keeps the install button', async () => {
+  const { u, updater, views } = make();
+  u.start();
+  updater.emit('update-downloaded', { version: '0.19.0' });
+  const before = views.length;
+  const done = u.check();
+  assert.deepEqual([u.view().state, u.view().rechecking, u.view().busy], ['ready', true, false], 'looking, install still pressable');
+  assert.equal(u.install(), true);
+  const after = await done;
+  assert.deepEqual([after.state, after.version, after.rechecking, after.error], ['ready', '0.19.0', false, null]);
+  assert.ok(views.slice(before).every(v => v.state === 'ready'));
+});
+
+test('a re-check that fails keeps the update and says why, for the button that asked', async () => {
+  const { u, updater, logged } = make();
+  u.start();
+  updater.emit('update-downloaded', { version: '0.19.0' });
+  updater.fail = new Error('net::ERR_INTERNET_DISCONNECTED');
+  const after = await u.check();
+  assert.deepEqual([after.state, after.version, after.rechecking], ['ready', '0.19.0', false]);
+  assert.match(after.error, /Couldn't reach GitHub/);
+  assert.deepEqual(logged, ['net::ERR_INTERNET_DISCONNECTED'], 'the raw error reaches the log');
+  updater.fail = null;
+  assert.equal((await u.check()).error, null, 'the next re-check clears it');
+});
+
+test('pressing check again twice only asks once', async () => {
+  const { u, updater } = make();
+  u.start();
+  updater.emit('update-downloaded', { version: '0.19.0' });
+  const checks = updater.checks;
+  await Promise.all([u.check(), u.check()]);
+  assert.equal(updater.checks, checks + 1);
 });
 
 test('a failed check says so, and the next one clears it', async () => {
