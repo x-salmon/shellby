@@ -210,6 +210,7 @@ class SessionManager extends EventEmitter {
       tab.pictures = 0;
       tab.picturesNoted = false;
       tab.watchSaid = { ...tab.watchSaid, compact: false };
+      tab.turnWatch = turnwatch.startTurn(); // the earlier reads went with what was dropped
     }
     // What the turn did that its notes speak of (turnwatch.js).
     tab.turnWatch = turnwatch.seeItem(tab.turnWatch, item);
@@ -325,7 +326,7 @@ class SessionManager extends EventEmitter {
     // What was asked, for its category in the per-turn ledger (usage/ledger.js). Read once as the turn starts.
     tab.turnText = typeof userItem.text === 'string' ? userItem.text : '';
     tab.turnCategory = classify(tab.turnText);
-    tab.turnWatch = turnwatch.startTurn();
+    tab.turnWatch = turnwatch.startTurn(tab.turnWatch); // what's been read whole, and not changed, carries on
     tab.outcome = null;
     // The note goes with the first real message (a /command must still start
     // with its slash), and is only forgotten once Claude has started with it:
