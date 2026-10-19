@@ -722,11 +722,31 @@
 
   window.addEventListener('hashchange', mount);
 
-  // A notification tapped while the app was open: the service worker says where to go.
+  // A notification tapped: the service worker says where to go, and keeps it a
+  // moment too, for a message the phone dropped or an iPhone that opened the start page.
+  const TAPPED = 'shellby-pocket-tapped';
+  async function takeTap() {
+    try {
+      const kept = await window.caches.open(TAPPED);
+      const res = await kept.match('/__tapped');
+      if (!res) return null;
+      await kept.delete('/__tapped');
+      return L.tappedHash(await res.json(), Date.now());
+    } catch { return null; }
+  }
+  async function followTap(hash) {
+    const to = hash || await takeTap();
+    // Already there (the message and the kept copy both came, or it opened at that URL): no redraw.
+    if (to && N.token() && location.hash !== to) go(to);
+  }
   navigator.serviceWorker?.addEventListener('message', e => {
-    const to = e.data?.open;
-    if (typeof to === 'string' && to.startsWith('/#/')) go(to.slice(1));
+    const to = typeof e.data?.open === 'string' ? L.tappedHash({ url: e.data.open, at: Date.now() }, Date.now()) : null;
+    if (!to) return;
+    takeTap(); // the kept copy is spent, so coming back later doesn't go there again
+    followTap(to);
   });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') followTap(); });
+  window.addEventListener('pageshow', e => { if (e.persisted) followTap(); });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { /* no offline shell, still works */ });
 
@@ -736,5 +756,5 @@
     try { const r = await fetch('/skin.json', { cache: 'no-cache' }); if (r.ok) D.setSkin(await r.json()); } catch { /* a plain crab will do */ }
   }
 
-  firstSkin().finally(() => { if (N.token()) start(); else show(pairScreen()); });
+  firstSkin().finally(() => { if (N.token()) start(); else show(pairScreen()); followTap(); });
 })();

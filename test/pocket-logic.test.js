@@ -94,6 +94,18 @@ test('the hash says which screen, and anything odd is the beach', () => {
   assert.deepEqual(L.route(''), { name: 'beach' });
 });
 
+test('a tapped notification leads to its screen only while the tap is fresh', () => {
+  const now = 1_000_000;
+  assert.equal(L.tappedHash({ url: '/#/tab/t1', at: now - 5000 }, now), '#/tab/t1');
+  assert.equal(L.tappedHash({ url: '/', at: now }, now), '#/');
+  assert.equal(L.tappedHash({ url: '/#/tab/t1', at: now - 10 * 60 * 1000 }, now), null);
+  assert.equal(L.tappedHash({ url: 'https://elsewhere.example/#/tab/t1', at: now }, now), null);
+  assert.equal(L.tappedHash({ url: '//elsewhere.example/', at: now }, now), null);
+  assert.equal(L.tappedHash({ url: '/#/tab/t1', at: now + 60 * 1000 }, now), null);
+  assert.equal(L.tappedHash({ url: '/#/tab/t1' }, now), null);
+  assert.equal(L.tappedHash(null, now), null);
+});
+
 test('the beach leads with what needs you, then what’s working, then what’s ready', () => {
   const tabs = [{ id: 'a', standing: 'working' }, { id: 'b', standing: 'review' }, { id: 'c', standing: 'quiet' }];
   assert.equal(L.headline({ tabs, prompts: [{}, {}] }).title, '2 things need you');

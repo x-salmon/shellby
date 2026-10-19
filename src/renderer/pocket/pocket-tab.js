@@ -36,6 +36,7 @@
       });
 
       let stick = true;
+      let asked = new Set();
       scroll.addEventListener('scroll', () => { stick = scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 80; }, { passive: true });
       const toBottom = () => { if (stick) requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; }); };
 
@@ -115,6 +116,9 @@
       function drawFoot(t) {
         const parts = [];
         const prompts = (S.view?.prompts || []).filter(p => p.tabId === tabId);
+        // A new question waits at the bottom: it comes into view, however far up you'd scrolled.
+        if (prompts.some(p => !asked.has(p.requestId))) stick = true;
+        asked = new Set(prompts.map(p => p.requestId));
         asks.replaceChildren(...prompts.map(p => promptCard(p, { inTab: true })));
         if (t.busy) {
           const doing = h('div', { class: 'working-line' }, D.crab({ px: 1.5, state: 'working', label: '' }), h('span', { class: 'doing', text: L.doingLine(t) }),
