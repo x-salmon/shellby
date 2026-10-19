@@ -22,6 +22,9 @@ jobs:
       contents: write # the draft release and its uploads
       # SignPath fetches the unsigned exes from this run's artifacts.
       actions: read
+      # Build provenance: the Sigstore certificate, and storing the attestation.
+      id-token: write
+      attestations: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # `secrets` is not one of the contexts allowed in an `if:` expression, so
@@ -202,9 +205,31 @@ jobs:
             if ($cn -ne $env:EXPECTED_PUBLISHER) { throw "$($f.Name) is signed by '$cn', not '$env:EXPECTED_PUBLISHER'" }
           }
 
+      # SLSA build provenance for the exes people download, signed through
+      # Sigstore with this run's identity: `gh attestation verify <exe> -R
+      # x-salmon/shellby` checks a download was built here from the tag. The
+      # bundle is attached too, because OpenSSF Scorecard only counts signatures
+      # and provenance it finds among the release files (*.intoto.jsonl); it
+      # never looks inside the exes at the Authenticode signature.
+      - name: Attest build provenance
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/Shellby-Setup-*.exe
+            dist/Shellby-Portable-*.exe
+      - name: Upload the provenance
+        shell: bash
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          f="dist/Shellby-${GITHUB_REF_NAME#v}.intoto.jsonl"
+          cp "$BUNDLE" "$f"
+          gh release upload "$GITHUB_REF_NAME" "$f" --clobber
+
       # Publish only once every file is attached, so auto-update never sees a
       # release without latest.yml: the guard checks the draft has the
-      # installer, portable, blockmap, checksums and a latest.yml for this
+      # installer, portable, blockmap, checksums, provenance and a latest.yml for this
       # version, and that the tag hasn't moved while this run was building.
       - name: Check the draft before publishing
         run: node scripts/release-guard.js verify

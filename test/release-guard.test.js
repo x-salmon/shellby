@@ -33,9 +33,10 @@ test('an already-published release blocks the build instead of going out empty',
   assert.match(g.checkExistingRelease({ isDraft: false }, 'v1'), /already published.*delete the release/);
 });
 
-test('publishing needs the installer, portable, blockmap, latest.yml and checksums', () => {
+test('publishing needs the installer, portable, blockmap, latest.yml, checksums and provenance', () => {
   const all = g.requiredAssets('0.21.1');
   assert.equal(g.checkAssets(all, '0.21.1'), null);
+  assert.match(g.checkAssets(all.filter(n => !n.endsWith('.intoto.jsonl')), '0.21.1'), /missing Shellby-0\.21\.1\.intoto\.jsonl/);
   assert.match(g.checkAssets(['SHA256SUMS.txt'], '0.21.1'), /missing latest\.yml, Shellby-Setup-0\.21\.1\.exe/, 'exactly what 0.21.1 shipped with');
   assert.match(g.checkAssets(g.requiredAssets('0.21.0'), '0.21.1'), /missing/, "another version's files don't count");
   assert.match(g.checkAssets(undefined, '1.0.0'), /missing/);
