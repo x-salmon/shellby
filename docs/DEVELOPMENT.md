@@ -538,7 +538,10 @@ src/main/        Electron main process
   focus.js         focus sessions: focus, break, and what a restart picks up
   limits.js        usage limits: when one is reached, when it resets
   forecast.js      the 5-hour window's pace (pure): when it fills, and whether that's worth a warning
-  turncost.js      what a turn and a tab cost (pure): tokens, share of the 5-hour window, the costliest turns, the crowded nudge, the effort and thinking badge
+  turncost.js      what a turn and a tab cost (pure): tokens, share of the 5-hour window, the costliest turns, the crowded nudge, the effort and thinking badge,
+                   and the notes under a turn's cost (a cache break, helpers that outspent it)
+  cachebreak.js    a warm prompt cache that missed (pure): caught per call, put down to a restart or a model change, kept per day
+                   for the Lean tab; and a short message about to pay for a cold one (the composer's tip)
   jobs.js          commands and Monitor watches Claude left running in the background (pure): the tray above the box and the crab's badge
   ultracode.js     ultracode runs (Claude Code's Workflow tool, docs/ULTRACODE.md): the run's card and its agents as helper crabs
   automemory.js    Claude Code's auto memory for a project: listing it, fixing one, forgetting one (Toolbox → Setup → Memory), and noticing a new one
@@ -550,8 +553,10 @@ src/main/        Electron main process
                    crabmcp.js serves the crab's tools (say, celebrate, wear, status, note, suggest) to Shellby's own conversations
   usage/           index.js (the usage meter without a prompt: a short-lived `claude -p` asked for its /usage data),
                    ledger.js (what each turn cost, pure: the per-turn ledger, a prompt's kind of ask, and the estimate the
-                   composer shows; wiring/usageplan.js brackets each turn and answers usage:estimate), scan.js (what Claude Code used lately, from its transcripts), hotfiles.js (the files Claude keeps
-                   coming back to in a project, from the same transcripts) and service.js
+                   composer shows, and Sonnet for a small ask in a conversation not started yet; wiring/usageplan.js brackets each turn
+                   and answers usage:estimate), scan.js (what Claude Code used lately, from its transcripts), hotfiles.js (the files Claude keeps
+                   coming back to in a project, from the same transcripts), loud.js (the commands whose output fills the
+                   context, from the same read) and service.js
   telemetry.js     Claude Code's own OpenTelemetry metrics (pure): reading an OTLP JSON export, the per-day ledger, the env
                    that points a conversation at Shellby; telemetry-service.js is the loopback receiver
   notes.js         Notes (pure): a list per project and a General one, their limits

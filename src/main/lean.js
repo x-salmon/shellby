@@ -9,6 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const eff = require('./efficiency');
+const cachebreak = require('./cachebreak');
 const mcpAdmin = require('./mcpadmin');
 const { scanTranscripts, totalUses } = require('./usage/scan');
 const { scanHotFiles } = require('./usage/hotfiles');
@@ -90,6 +91,7 @@ function mine(tb) {
 function createLean(deps) {
   const { config } = deps;
   let days = null;
+  let breaks = null;      // warm caches that missed, per day (cachebreak.js)
   let setups = null;
   let saveTimer = null;
   let scan = null;        // { used, from, seen, at }: seen (files already read) lives in memory only
@@ -99,20 +101,22 @@ function createLean(deps) {
 
   function load() {
     days ??= eff.normalizeDays(config.get('cacheDays'));
+    breaks ??= cachebreak.normalizeBreaks(config.get('cacheBreaks'));
     setups ??= eff.normalizeSetups(config.get('setupWeights'));
   }
 
   function save() {
     clearTimeout(saveTimer);
     saveTimer = null;
-    if (days) config.set({ cacheDays: days, setupWeights: setups });
+    if (days) config.set({ cacheDays: days, cacheBreaks: breaks, setupWeights: setups });
   }
 
-  /** One API call's growth (session 'call'), and a new conversation's setup weight with it. */
+  /** One API call's growth (session 'call'), and a new conversation's setup weight and a cache break with it. */
   function onCall(c, tab) {
     load();
     const now = Date.now();
     days = eff.recordCall(days, c, now);
+    if (c.broke) breaks = cachebreak.recordBreak(breaks, c.broke, now);
     if (c.setup) setups = eff.recordSetup(setups, deps.projectOf(tab), c.setup, now);
     if (!saveTimer) saveTimer = setTimeout(save, SAVE_MS);
   }
@@ -252,7 +256,7 @@ function createLean(deps) {
       memory: deps.memory().map(m => (m.exists ? { ...m, onDemand: eff.loadsOnDemand(head(m.path), m.scope) } : m)),
       used: u.used, watchedSince: u.from, setups, projectKey: deps.currentProject(), days, now,
     });
-    return { ok: true, ...last, hot: hotRows, telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
+    return { ok: true, ...last, breaks: cachebreak.breakSummary(breaks, now), hot: hotRows, telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
   }
 
   // XP for turning off something that sat idle, once per thing ever, so turning

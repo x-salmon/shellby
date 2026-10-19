@@ -1,0 +1,6 @@
+### New
+- **Commands that flood the conversation.** The Lean tab lists the commands in this project whose output fills Claude's context, like a test run or a long `git log`, with what each run puts in. Everything a command prints is sent again with every message after it. **Ask Claude** drafts a prompt for quieter ways to run them.
+- **When the cache missed, and why.** If a turn sends a conversation again at full price while its prompt cache should still have held it, a line under the turn's cost says so and what came just before: a quiet conversation picked up on a setup that had changed, or a different model. The Lean tab adds up the week's misses.
+- **Helpers that cost more than the work.** When helpers spend more of a turn than the conversation itself, a line under its cost says so once and suggests narrower briefs.
+- **Sonnet for small asks.** Typing a question, a docs task or a tidy-up into a conversation that hasn't started, on a top model, says what that kind of ask usually costs here and offers **Start this one on Sonnet**. The model is kept with the conversation when you reopen it.
+- **A word before paying for a cold cache.** A short message into a big conversation whose cache has gone cold sends all of it again. Shellby says so above the box and offers **Ask in a new tab** for a question that doesn't need the conversation.

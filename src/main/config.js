@@ -159,6 +159,7 @@ const DEFAULTS = {
   // setup weight, what Claude Code used lately, plugins' always-on estimates,
   // what was tidied away (XP once each), and when things were first seen.
   cacheDays: {},
+  cacheBreaks: {},      // warm caches that missed, per day and by what came before (cachebreak.js)
   setupWeights: {},
   leanUsed: null,
   pluginCosts: {},

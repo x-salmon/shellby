@@ -9,6 +9,7 @@ const workPose = require('./work-pose');
 const { cleanTitle } = require('./history');
 const review = require('./review-inbox');
 const turncost = require('./turncost');
+const { isModel } = require('./models');
 const planPace = require('./plan-pace');
 const mods = require('./mods');
 const todos = require('../renderer/shared/todos');
@@ -88,7 +89,8 @@ class SessionManager extends EventEmitter {
       exe: () => this.getExe() || exe, argsPrefix: this.argsPrefix,
       cwd: historyEntry?.cwd || cwd,
       mode: mode || this.getMode(),
-      model: this.getModel() || null,
+      // Its own model, picked before its first message (setTabModel), or the default.
+      model: (historyEntry?.model && isModel(historyEntry.model) ? historyEntry.model : '') || this.getModel() || null,
       effort: ownEffort ?? (this.getEffort() || ''),
       outputStyle: this.getOutputStyle() || '',
       fallbackModel: this.getFallbackModel() || '',
@@ -224,7 +226,10 @@ class SessionManager extends EventEmitter {
         return { ...x, share: Number.isFinite(s) ? s : null, shareText: turncost.shareText(s) };
       });
       const cost = { ...item.cost, share: Number.isFinite(share) ? share : null, ...(helpers ? { helpers } : {}) };
-      item.cost = { ...cost, line: turncost.costLine(cost), detail: turncost.costDetail(cost), effortBadge: turncost.effortBadge(cost) };
+      // A warm cache it missed, and helpers that outspent it (once a conversation): notes under the cost.
+      const notes = turncost.turnNotes(cost, { helpers: !tab.helpersNoted });
+      if (notes.some(n => n.kind === 'helpers')) tab.helpersNoted = true;
+      item.cost = { ...cost, line: turncost.costLine(cost), detail: turncost.costDetail(cost), effortBadge: turncost.effortBadge(cost), ...(notes.length ? { notes } : {}) };
     }
     if (item.kind === 'compacted' && tab.compacting) { tab.compacting = false; this.changed(); }
     // Shellby's own /compact while the tab sat idle (wiring/idle-compact.js): its mark says so.
@@ -283,6 +288,7 @@ class SessionManager extends EventEmitter {
       tab.title = this.history.get(tab.id).title;
       tab.saved = true;
       if (tab.effortBy) this.keepEffort(tab); // chosen on the chip before its first message
+      if (tab.ownModel) this.history.update(tab.id, { model: tab.session.model }); // and the model, the same way
     } else if (this.history.get(tab.id)?.done) {
       // You've just given it more to do, so it plainly isn't done any more.
       this.history.setDone(tab.id, false);
@@ -610,6 +616,22 @@ class SessionManager extends EventEmitter {
     tab.session.setEffort(effort);
     this.keepEffort(tab);
     this.changed();
+  }
+
+  /**
+   * A model of its own for a conversation that hasn't started: from the next
+   * start on (--model), kept in History. One that has started keeps its model,
+   * since switching would send it all again at full price (each model has its own cache).
+   */
+  setTabModel(tabId, model) {
+    const tab = this.require(tabId);
+    if (!model || !isModel(model)) throw new Error("Shellby doesn't know that model.");
+    if (tab.session.proc || tab.session.sessionId) return { ok: false, error: 'This conversation has started, so it keeps its model. A new tab can start on another.' };
+    tab.session.model = model;
+    tab.ownModel = true;
+    if (tab.saved) this.history.update(tab.id, { model });
+    this.changed();
+    return { ok: true };
   }
 
   // Sized from what it was asked, once: only while it follows a default of

@@ -815,6 +815,10 @@ button.rq-title:hover, button.rq-title:focus-visible { color: var(--glass); text
 .outlook-actions { grid-column: 2 / 4; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 0 4px; }
 .outlook-hint { color: var(--sand-dim); font-size: var(--fs-11); }
 .outlook .slim-btn { height: 26px; }
+/* A tip, not a warning (a cold cache, a model that would do): the same banner, said more quietly. */
+.outlook.tip { border-left-color: var(--glass); }
+.outlook.tip > svg { color: var(--glass); }
+.outlook.tip .outlook-text { color: var(--sand-dim); }
 .queue-item.held { border-style: solid; border-color: var(--line); }
 .queue-item.held .queue-tag { color: var(--amber); }
 .send-btn.queueing { background: var(--reef-3); color: var(--glass); box-shadow: none; }

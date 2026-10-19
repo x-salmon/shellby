@@ -90,6 +90,7 @@ contextBridge.exposeInMainWorld('shellby', {
   shownTab: fire('tab:shown'), savePaneLayout: fire('panes:layout'), // the Stream Deck follows the shown tab; the split view, for the next start
   paneShapes: (list) => ipcRenderer.invoke('panes:shapes', list), // the layouts you saved by name: read them, or (a list) save them
   setTabEffort: (tabId, effort) => ipcRenderer.invoke('tab:effort', { tabId, effort }), // the effort chip, for one conversation
+  setTabModel: (tabId, model) => ipcRenderer.invoke('tab:model', { tabId, model }), // a model of its own, before a conversation starts
   markReviewed: (tabId, reviewed = true, after = null) => ipcRenderer.invoke('tab:reviewed', { tabId, reviewed, after }), // the review inbox
   sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true }), // opts.selected: the file picked in All files (files-select.js); opts.fromQueue: the queue sent it (Keep warm)
   stopTask: fire('task:stop'),

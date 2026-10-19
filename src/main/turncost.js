@@ -10,16 +10,20 @@
 // outside Shellby fills the window too, so the estimate leans high, never low.
 //
 // Also when to nudge before a conversation gets crowded: the pace it's been
-// filling at says how many turns like the last few it has left.
+// filling at says how many turns like the last few it has left. And the notes
+// under a turn's cost: a warm cache it missed (cachebreak.js), and helpers
+// that spent more than the conversation itself.
 // Pure functions: no Electron, no I/O — see test/turncost.test.js.
 
 const { CROWDED_PCT } = require('./context');
+const { breakText } = require('./cachebreak');
 
 // Past this, a conversation that will be crowded within SOON_TURNS gets a nudge.
 const SOON_PCT = 60;
 const SOON_TURNS = 2;
 const RECENT_TURNS = 3;  // the pace is the average growth of the last few turns
 const TOP_TURNS = 3;     // the costliest turns the context menu lists
+const HEAVY_HELPERS = 30000; // tokens: helpers past this, and past the turn's own, get a note
 
 const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
 const USAGE_FIELDS = ['input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens', 'output_tokens'];
@@ -76,7 +80,7 @@ function helperCosts(helpers) {
 /**
  * What one turn cost, as the result item carries it, or null for a turn that
  * made no calls (a local command, one stopped before it started).
- * turn: { usages, weight, helpers? }; context: the conversation's reading after it.
+ * turn: { usages, weight, helpers?, cacheBreak? }; context: the conversation's reading after it.
  */
 function turnCost(turn, context) {
   const { fresh, read } = tokensOf(turn?.usages);
@@ -88,7 +92,32 @@ function turnCost(turn, context) {
     effort: EFFORT_NAMES[turn?.effort] ? turn.effort : '',
     thinking: Number.isFinite(turn?.thinking) && turn.thinking >= 0 ? turn.thinking : null,
     ...(helpers.length ? { helpers } : {}),
+    ...(turn?.cacheBreak && num(turn.cacheBreak.tokens) ? { cacheBreak: { tokens: num(turn.cacheBreak.tokens), cause: String(turn.cacheBreak.cause || 'other') } } : {}),
   };
+}
+
+/**
+ * Helpers that spent more than the turn's own work, and HEAVY_HELPERS or more:
+ * a sentence on why and what helps, or null.
+ */
+function helperNote(cost) {
+  const t = helpersTotal(cost);
+  if (!t || t.tokens < HEAVY_HELPERS || t.tokens <= num(cost.tokens) - t.tokens) return null;
+  const who = t.count === 1 ? 'A helper' : `${t.count} helpers`;
+  return `${who} spent ${compact(t.tokens)} of this turn's ${compact(cost.tokens)} tokens. Each one starts with an empty context and reads for itself, so a narrower brief (what to look at, what to bring back) or fewer helpers usually costs less.`;
+}
+
+/**
+ * The notes under a turn's cost: [{ kind, text }]. helpers: false once a
+ * conversation has had its helpers note, so it's said once, not every turn.
+ */
+function turnNotes(cost, { helpers = true } = {}) {
+  if (!cost) return [];
+  const heavy = helpers ? helperNote(cost) : null;
+  return [
+    cost.cacheBreak ? { kind: 'cache-break', text: breakText(cost.cacheBreak) } : null,
+    heavy ? { kind: 'helpers', text: heavy } : null,
+  ].filter(n => n !== null);
 }
 
 /** The helpers' part of a turn: { tokens, share } added up, or null with none. */
@@ -243,7 +272,7 @@ function nudge(context, growths) {
 }
 
 module.exports = {
-  mergeUsage, tokensOf, windowShare, turnCost, helperCosts, helpersTotal, compact, shareText, costLine, costDetail, effortBadge,
+  mergeUsage, tokensOf, windowShare, turnCost, helperCosts, helpersTotal, helperNote, turnNotes, compact, shareText, costLine, costDetail, effortBadge,
   turnsOf, topTurns, tabTotal, addGrowth, turnsLeft, nudge,
-  SOON_PCT, SOON_TURNS, RECENT_TURNS, TOP_TURNS,
+  SOON_PCT, SOON_TURNS, RECENT_TURNS, TOP_TURNS, HEAVY_HELPERS,
 };

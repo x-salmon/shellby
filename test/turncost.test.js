@@ -253,3 +253,21 @@ test('the cost line and its tooltip say what the helpers spent', () => {
   assert.match(tc.costDetail(one), /A helper: 9k of those tokens\. Its lane shows what it spent\./);
   assert.equal(tc.helpersTotal({ tokens: 1 }), null);
 });
+
+test('a turn carries its cache break, and its notes say so', () => {
+  const u = n => ({ input_tokens: n });
+  const c = tc.turnCost({ usages: [u(140000)], weight: 1, cacheBreak: { tokens: 140000, cause: 'resume' } }, null);
+  assert.deepEqual(c.cacheBreak, { tokens: 140000, cause: 'resume' });
+  assert.deepEqual(tc.turnNotes(c).map(n => n.kind), ['cache-break']);
+  assert.equal(tc.turnCost({ usages: [u(10)], weight: 1 }, null).cacheBreak, undefined, 'no break, no field');
+});
+
+test('helpers that outspend the turn get a note, once a conversation', () => {
+  const heavy = { tokens: 150000, helpers: [{ id: 'a', tokens: 80000 }, { id: 'b', tokens: 40000 }] };
+  assert.match(tc.helperNote(heavy), /^2 helpers spent 120k of this turn's 150k tokens\. Each one starts with an empty context/);
+  assert.equal(tc.helperNote({ tokens: 200000, helpers: [{ id: 'a', tokens: 80000 }] }), null, 'the turn spent more itself');
+  assert.equal(tc.helperNote({ tokens: 25000, helpers: [{ id: 'a', tokens: 20000 }] }), null, 'too small to mention');
+  assert.deepEqual(tc.turnNotes(heavy).map(n => n.kind), ['helpers']);
+  assert.deepEqual(tc.turnNotes(heavy, { helpers: false }), [], 'already said in this conversation');
+  assert.deepEqual(tc.turnNotes(null), []);
+});

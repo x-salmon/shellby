@@ -230,7 +230,28 @@ function routineSuggestion(ledger, routine, defaultModel = '', now = Date.now())
   return mean <= SMALL_RUN_PCT ? 'sonnet' : null;
 }
 
+/**
+ * For a conversation about to start on a top model: does this kind of ask
+ * usually suit Sonnet? -> { model: 'sonnet', pct, cheaper, measured } or null.
+ * Only for questions, docs and tidy-ups that usually cost SMALL_RUN_PCT or
+ * less. cheaper is what your own Sonnet rows of that kind show when there are
+ * enough (measured), else pct scaled by the list prices (spend.js: 3 to 5).
+ * Never changes anything.
+ */
+const SUGGEST_KINDS = ['question', 'docs', 'tidy'];
+const SONNET_SHARE = 3 / 5;
+function modelSuggestion(ledger, { pk = null, category = 'other', model = '', now = Date.now() } = {}) {
+  const family = modelFamily(model);
+  if (!SUGGEST_KINDS.includes(category) || (family && family !== 'opus' && family !== 'fable')) return null;
+  const here = estimate(ledger, { pk, category, model: model || 'opus', now });
+  const pct = here.pct;
+  if (!['project+kind', 'kind'].includes(here.basis) || pct === null || pct <= 0 || pct > SMALL_RUN_PCT) return null;
+  const onSonnet = estimate((Array.isArray(ledger) ? ledger : []).filter(r => modelFamily(r.model) === 'sonnet'), { pk, category, model: 'sonnet', now });
+  const sonnetPct = ['project+kind', 'kind'].includes(onSonnet.basis) && onSonnet.pct !== null && onSonnet.pct < pct ? onSonnet.pct : null;
+  return { model: 'sonnet', pct, cheaper: sonnetPct ?? round1(pct * SONNET_SHARE), measured: sonnetPct !== null };
+}
+
 module.exports = {
   classify, sizeOf, modelFamily, normalize, normalizeRow, record, riseOf, ratioOf, estimate, advise, shouldHold,
-  routineSuggestion, quantile, CATEGORIES, KEEP_MS, MAX_ROWS, MIN_SAMPLES, SMALL_RUN_PCT,
+  routineSuggestion, modelSuggestion, quantile, CATEGORIES, KEEP_MS, MAX_ROWS, MIN_SAMPLES, SMALL_RUN_PCT,
 };

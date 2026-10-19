@@ -11,7 +11,7 @@ function wireSettings(d) {
   // Settings as the panel sees them: the spend ledger stays in main (usage/service.js usageBreakdown),
   // and Work mode's settings show as they apply, over your own (workmode.js).
   function panelSettings() {
-    const { spendLedger: _ledger, cacheDays: _c, setupWeights: _s, leanUsed: _u, pluginCosts: _p, mcpSeen: _m, pluginEnabledAt: _e, turnCosts: _t, telemetryDays: _td, phoneTasksSecret: _pt, usageByHost: _ub, ...rest } = workmode.effective(d.config.data);
+    const { spendLedger: _ledger, cacheDays: _c, cacheBreaks: _cb, setupWeights: _s, leanUsed: _u, pluginCosts: _p, mcpSeen: _m, pluginEnabledAt: _e, turnCosts: _t, telemetryDays: _td, phoneTasksSecret: _pt, usageByHost: _ub, ...rest } = workmode.effective(d.config.data);
     // otherUsage: computers signed in to another Claude account, and how full their plans are (wiring/sessions.js).
     return { ...rest, dockOrder: workmode.behaviour(d.config.data).dock, crashReportsAvailable: !!d.sentry, otherUsage: d.otherUsage?.() || [] }; // no DSN in this build: the Settings row stays hidden
   }

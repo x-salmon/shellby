@@ -94,3 +94,20 @@ test('the chip sets one conversation, the default only those following it, and r
     assert.equal(again.effortBy, 'you');
   } finally { mgr.closeAll({ kill: true }); }
 });
+
+test('a conversation not started yet can start on its own model, kept on reopening; one that started keeps its model', () => {
+  const { mgr, history } = makeManager();
+  try {
+    const a = mgr.open({ tabId: 'a', cwd: os.tmpdir() });
+    assert.throws(() => mgr.setTabModel('a', 'gpt-9'));
+    assert.deepEqual(mgr.setTabModel('a', 'sonnet'), { ok: true });
+    assert.equal(a.session.model, 'sonnet');
+    mgr.send('a', 'what is this?', { kind: 'user', text: 'what is this?' });
+    assert.equal(history.get('a').model, 'sonnet');
+    assert.equal(mgr.setTabModel('a', 'opus').ok, false, 'started: switching would send it all again');
+    assert.equal(a.session.model, 'sonnet');
+    mgr.close('a', { kill: true });
+    const again = mgr.open({ tabId: 'a', cwd: os.tmpdir(), historyEntry: history.get('a') });
+    assert.equal(again.session.model, 'sonnet');
+  } finally { mgr.closeAll({ kill: true }); }
+});

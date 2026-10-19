@@ -2,11 +2,14 @@
 // own transcripts for that folder (and its worktrees), so the terminal counts
 // too. A file read in conversation after conversation is often worth a line in
 // CLAUDE.md (what's in it, where things live) or a split, so Claude reads less
-// to find the same thing. Read-only, async, line by line; only lines with a
-// file tool's call in them are parsed, and nothing is kept on disk.
+// to find the same thing. The same read finds the commands whose output fills
+// the context (loud.js). Read-only, async, line by line; only lines with a
+// file or shell tool's call (or a result one is waiting for) are parsed, and
+// nothing is kept on disk.
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const loud = require('./loud');
 
 const LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_BYTES = 256 * 1024 * 1024;   // per scan, newest transcripts first
@@ -136,22 +139,31 @@ async function listJsonl(dir, since, depth, out) {
   return out;
 }
 
-async function touchesOf(file) {
+// One transcript's file touches and shell results: { touches, outputs }.
+async function readTranscript(file) {
   const lines = readline.createInterface({ input: fs.createReadStream(file, { encoding: 'utf8' }), crlfDelay: Infinity });
-  const out = [];
+  const touches = [];
+  const outputs = [];
+  const pending = new Map(); // shell call id -> its command's key, until its result comes
   /** @type {string | null} */
   let root = null;
   for await (const line of lines) {
     root ??= rootIn(line);
     const hit = touchesIn(line, root);
-    if (hit) out.push(...hit);
+    if (hit) touches.push(...hit);
+    for (const c of loud.shellCallsIn(line) || []) pending.set(c.id, c.key);
+    for (const r of loud.resultsIn(line, pending) || []) {
+      pending.delete(r.id);
+      outputs.push(r);
+    }
   }
-  return out;
+  return { touches, outputs };
 }
 
 /**
- * The hottest files in the project at cwd over the last LOOKBACK_MS:
- * { files: [{ rel, reads, edits, sessions, tokens }], sessions, days }.
+ * The hottest files in the project at cwd over the last LOOKBACK_MS, and its
+ * loudest commands: { files: [{ rel, reads, edits, sessions, tokens }],
+ * loud: [{ key, runs, sessions, tokens, total }], sessions, days }.
  * A subagent's transcript counts with the conversation that ran it.
  */
 async function scanHotFiles({ configDir, cwd, now = Date.now(), maxBytes = MAX_BYTES }) {
@@ -163,22 +175,27 @@ async function scanHotFiles({ configDir, cwd, now = Date.now(), maxBytes = MAX_B
   for (const f of folders) await listJsonl(path.join(root, f.name), since, 0, files);
   files.sort((a, b) => b.mtimeMs - a.mtimeMs);
   const bySession = new Map();
+  const outputsBySession = new Map();
   let bytes = 0;
   for (const f of files) {
     if (bytes + f.size > maxBytes) break;
     bytes += f.size;
     try {
-      const touches = await touchesOf(f.file);
-      if (touches.length) bySession.set(sessionOf(f.file), [...(bySession.get(sessionOf(f.file)) || []), ...touches]);
+      const { touches, outputs } = await readTranscript(f.file);
+      const session = sessionOf(f.file);
+      if (touches.length) bySession.set(session, [...(bySession.get(session) || []), ...touches]);
+      if (outputs.length) outputsBySession.set(session, [...(outputsBySession.get(session) || []), ...outputs]);
     } catch { /* unreadable: leave it out */ }
   }
   const tally = [...bySession.values()].reduce(tallyTranscript, new Map());
+  const noisy = [...outputsBySession.values()].reduce(loud.tallyLoud, new Map());
   const sizeOf = rel => {
     const full = path.resolve(cwd, rel);
     if (relativeTo(full, cwd) === null) return null;
     try { return fs.statSync(full).size; } catch { return null; }
   };
-  return { files: hottest(tally, sizeOf), sessions: bySession.size, days: Math.round(LOOKBACK_MS / (24 * 60 * 60 * 1000)) };
+  const sessions = new Set([...bySession.keys(), ...outputsBySession.keys()]).size;
+  return { files: hottest(tally, sizeOf), loud: loud.loudest(noisy), sessions, days: Math.round(LOOKBACK_MS / (24 * 60 * 60 * 1000)) };
 }
 
 module.exports = { scanHotFiles, folderOf, isProjectFolder, relativeTo, rootIn, touchesIn, sessionOf, tallyTranscript, hottest, MIN_SESSIONS };

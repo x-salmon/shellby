@@ -7,6 +7,7 @@ const { weightOf } = require('../spend');
 const ctx = require('../context');
 const turncost = require('../turncost');
 const eff = require('../efficiency');
+const cachebreak = require('../cachebreak');
 
 const accounting = {
   // What each API call cost, for the usage-by-project ledger (spend.js). One
@@ -60,7 +61,7 @@ const accounting = {
     this.turn = null;
     if (!turn) return;
     const helpers = [...(turn.helpers || [])].map(([id, x]) => ({ id, usages: [...x.usages.values()], weight: x.weight }));
-    const cost = turncost.turnCost({ usages: [...turn.usages.values()], weight: turn.weight, effort: turn.effort, thinking: item.thinkingTokens, helpers }, this.context);
+    const cost = turncost.turnCost({ usages: [...turn.usages.values()], weight: turn.weight, effort: turn.effort, thinking: item.thinkingTokens, helpers, cacheBreak: turn.cacheBreak }, this.context);
     if (cost) item.cost = cost;
     this.growths = turncost.addGrowth(this.growths, turn.before, this.context?.tokens);
   },
@@ -83,13 +84,29 @@ const accounting = {
       setup = eff.setupTokens(c, this.setupChars);
       this.setupChars = null;
     }
-    if (delta.input || delta.write || delta.read || setup) this.emit('call', { ...delta, setup });
+    // A warm cache that missed (cachebreak.js), judged against the cache and the
+    // context as they stood before this call: both move on below and in measure().
+    const broke = c.main && !prev ? this.checkBreak(c) : null;
+    if (delta.input || delta.write || delta.read || setup) this.emit('call', { ...delta, setup, ...(broke ? { broke } : {}) });
     // Stamped on a call's first event, close to when it read the cache: its later
     // blocks arrive as it writes, which would make the cache look warmer than it is.
     if (c.main && !prev) {
       this.cache = { at: Date.now(), ttlMs: c.ttlMs || this.cache?.ttlMs || eff.DEFAULT_TTL_MS };
       this.emit('cache', this.cache);
     }
+  },
+
+  // The first main-thread call since the process started is the one a changed
+  // setup shows in. A turn keeps its biggest break, for the note by its cost.
+  checkBreak(c) {
+    const known = m => !!m && !m.startsWith('<');
+    const brk = cachebreak.cacheBreak({
+      call: c, cache: this.cache, before: this.context?.tokens, now: Date.now(),
+      resumed: !!this.resumedProc, modelChanged: known(c.model) && known(this.lastModel) && c.model !== this.lastModel,
+    });
+    this.resumedProc = false;
+    if (brk && this.turn && !(this.turn.cacheBreak?.tokens >= brk.tokens)) this.turn.cacheBreak = brk;
+    return brk;
   },
 
   // How full the context window is, from each main-thread reply's token counts.

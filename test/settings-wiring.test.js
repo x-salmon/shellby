@@ -25,12 +25,12 @@ function setup(data = {}, { sentry = null } = {}) {
 
 test("the panel never sees the spend ledger, the phone's secret or the other bookkeeping", () => {
   const s = setup({
-    hotkey: 'Ctrl+Shift+Space', spendLedger: [1], cacheDays: {}, setupWeights: {}, leanUsed: {}, pluginCosts: {},
+    hotkey: 'Ctrl+Shift+Space', spendLedger: [1], cacheDays: {}, cacheBreaks: {}, setupWeights: {}, leanUsed: {}, pluginCosts: {},
     mcpSeen: {}, pluginEnabledAt: {}, turnCosts: [], phoneTasksSecret: 'shh',
   });
   const v = s.panelSettings();
   assert.equal(v.hotkey, 'Ctrl+Shift+Space');
-  for (const k of ['spendLedger', 'cacheDays', 'setupWeights', 'leanUsed', 'pluginCosts', 'mcpSeen', 'pluginEnabledAt', 'turnCosts', 'phoneTasksSecret']) {
+  for (const k of ['spendLedger', 'cacheDays', 'cacheBreaks', 'setupWeights', 'leanUsed', 'pluginCosts', 'mcpSeen', 'pluginEnabledAt', 'turnCosts', 'phoneTasksSecret']) {
     assert.equal(k in v, false, k);
   }
   assert.equal(v.dockOrder, null, 'your own dock order, out of Work mode');
