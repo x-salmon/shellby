@@ -25,7 +25,9 @@
           const text = input.value.trim();
           if (!text) return;
           const r = await act('reply', { tabId, text, mode: mode.value });
-          if (r.ok) { input.value = ''; input.style.height = ''; }
+          if (!r.ok) return;
+          input.value = ''; input.style.height = '';
+          if (r.queued) toast('Queued. He reads it at his next step.', { tone: 'ok' });
         },
       });
       const mode = modePicker(tabOf(tabId)?.mode);
@@ -127,9 +129,13 @@
         }
         const reviewing = t.ready && !t.busy && !t.pending;
         if (reviewing) parts.push(reviewBar(t));
-        if (!t.busy && !t.pending) {
+        // While he works, what you send waits in the queue for his next step, in
+        // the mode the turn already has: a pick then would change the running turn.
+        if (!t.pending) {
+          mode.hidden = !!t.busy;
+          input.placeholder = t.busy ? 'Queue for his next step…' : 'Reply…';
           if (t.canReply) parts.push(replyRow);
-          else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
+          else if (!t.busy && !reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
         }
         foot.replaceChildren(...parts);
       }

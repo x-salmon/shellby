@@ -372,7 +372,7 @@ test('at the usage limit a phone task waits for the reset', async () => {
   } finally { stop(w); }
 });
 
-test('replies go to any conversation, not mid-turn, in the mode the phone picked (Ask if none)', async () => {
+test('replies go to any conversation, in the mode the phone picked (Ask if none), and queue mid-turn', async () => {
   const modes = [];
   const desk = tabOf('desk', { session: { pending: new Map(), mode: 'bypass', cwd: PROJECT, busy: false, setMode(m) { this.mode = m; modes.push(m); } } });
   const mine = tabOf('mine', { fromPocket: true });
@@ -384,11 +384,18 @@ test('replies go to any conversation, not mid-turn, in the mode the phone picked
     assert.equal(desk.pinnedMode, true, 'the desk mode no longer lifts it');
     assert.equal((await act({ tabId: 'desk', text: 'go on', mode: 'acceptEdits' })).ok, true);
     assert.deepEqual(modes, ['ask', 'acceptEdits']);
+    // Mid-turn it joins the desk's queue, and the running turn keeps its mode.
+    desk.session.busy = true;
+    assert.deepEqual(await act({ tabId: 'desk', text: 'and the docs', mode: 'plan' }), { ok: true, queued: true });
+    assert.deepEqual(modes, ['ask', 'acceptEdits'], 'no mode change reaches the running turn');
+    assert.deepEqual(w.of('send').filter(([, channel]) => channel === 'tab:queue').map(([, , p]) => p), [{ tabId: 'desk', text: 'and the docs' }]);
+    assert.match((await act({ tabId: 'desk', text: '/compact' })).error, /desk/, 'commands still only at the desk');
+    desk.session.busy = false;
     mine.session.busy = true;
-    assert.match((await act({ tabId: 'mine', text: 'hi' })).error, /still on it/);
+    assert.equal((await act({ tabId: 'mine', text: 'hi' })).queued, true);
     mine.session.busy = false;
     assert.equal((await act({ tabId: 'mine', text: 'carry on' })).ok, true);
-    assert.deepEqual(w.of('sendToTab'), [['desk', 'hi'], ['desk', 'go on'], ['mine', 'carry on']]);
+    assert.deepEqual(w.of('sendToTab'), [['desk', 'hi'], ['desk', 'go on'], ['mine', 'carry on']], 'queued ones never start a turn of their own');
     // The desk's panel hears about a message it didn't send.
     assert.ok(w.of('send').some(([, channel]) => channel === 'tab:sent'));
   } finally { stop(w); }
