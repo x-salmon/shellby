@@ -15,7 +15,10 @@
   };
 
   const token = () => store.get(TOKEN_KEY);
-  const setToken = t => store.set(TOKEN_KEY, t);
+  // Safari wipes a site's storage after seven days unvisited unless it's persisted.
+  const keep = () => { try { navigator.storage?.persist?.().catch(() => {}); } catch { /* not offered */ } };
+  const setToken = t => { store.set(TOKEN_KEY, t); if (t) keep(); };
+  if (store.get(TOKEN_KEY)) keep();
 
   async function call(method, name, body, { timeoutMs = 20000 } = {}) {
     const headers = { Accept: 'application/json' };

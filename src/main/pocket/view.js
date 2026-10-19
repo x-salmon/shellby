@@ -72,9 +72,20 @@ function preview(p) {
   return null;
 }
 
+/** The desk's "always" button for Claude Code's first suggestion (panel/feed-logic.js suggestionLabel), or null. */
+function alwaysLabel(s) {
+  if (!s || typeof s !== 'object') return null;
+  if (s.type === 'setMode') return s.mode === 'acceptEdits' ? 'Allow all edits' : `Switch to ${line(s.mode, 20)}`;
+  const r = s.type === 'addRules' ? s.rules?.[0] : null;
+  if (r) return line(r.ruleContent ? `Always allow ${r.toolName}(${r.ruleContent.length > 24 ? r.ruleContent.slice(0, 22) + '…' : r.ruleContent})` : `Always allow ${r.toolName}`, 60);
+  if (s.type === 'addDirectories') return 'Always allow this folder';
+  return 'Always allow';
+}
+
 /** A permission prompt waiting on you. deskOnly: why the phone may only look (channels/replies.js). */
 function phonePrompt(p, titleOf) {
   const deskOnly = deskOnlyReason(p);
+  const suggestion = Array.isArray(p.suggestions) ? p.suggestions[0] : null;
   return {
     tabId: p.tabId,
     requestId: line(p.requestId, 100),
@@ -89,6 +100,7 @@ function phonePrompt(p, titleOf) {
     question: p.toolName === 'AskUserQuestion' ? line(p.questions?.[0]?.question, 300) : null,
     plan: p.toolName === 'ExitPlanMode' ? line(p.planSummary, 120) || 'A plan' : null,
     deskOnly,
+    always: deskOnly ? null : alwaysLabel(suggestion),
   };
 }
 

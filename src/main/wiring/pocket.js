@@ -22,6 +22,7 @@ const guard = require('../guard');
 const pt = require('../channels/phone-tasks');
 const { deskOnlyReason } = require('../channels/replies');
 const { EVENTS, composeMessage } = require('../channels/messages');
+const { MODES: PHONE_MODES } = require('../config');
 const { qrRows } = require('../qr');
 const pairing = require('../pocket/pairing');
 const push = require('../pocket/push');
@@ -186,7 +187,7 @@ function wirePocket(d) {
     const out = {};
     for (const [id, tab] of d.manager?.tabs || []) {
       const mine = !!(tab.fromPocket || tab.fromPhone);
-      out[id] = { mode: tab.session.mode || null, fromPhone: mine, canReply: mine && !tab.inTerminal };
+      out[id] = { mode: tab.session.mode || null, fromPhone: mine, canReply: !tab.inTerminal };
     }
     return out;
   }
@@ -315,9 +316,10 @@ function wirePocket(d) {
   }
 
   function answer({ tabId, requestId, decision }) {
-    if (!str(tabId) || !str(requestId) || !['allow', 'deny'].includes(decision)) return no('That answer is not one the phone can give.');
+    if (!str(tabId) || !str(requestId) || !['allow', 'always', 'deny'].includes(decision)) return no('That answer is not one the phone can give.');
     const pendingItem = d.manager.tabs.get(tabId)?.session.pending.get(requestId);
     if (!pendingItem) return no('That was already answered.');
+    if (decision === 'always' && !pendingItem.suggestions?.length) return no('That one has no always-allow. Allow it this once.');
     const why = deskOnlyReason(pendingItem);
     if (why) return no(why);
     d.log.info(`pocket: ${decision} for ${pendingItem.toolName}`);
@@ -335,7 +337,8 @@ function wirePocket(d) {
     return answer;
   }
 
-  async function startTask({ project, text }) {
+  async function startTask({ project, text, mode }) {
+    const runAs = modeOf(mode);
     const prompt = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!prompt) return no('Say what you want done first.');
     if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
@@ -349,7 +352,7 @@ function wirePocket(d) {
     const w = d.usageService?.limitWait();
     const usage = d.config.get('lastUsage');
     if (w || guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), usage, now)) {
-      const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: pt.MODE, fromPhone: true });
+      const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: runAs, fromPhone: true });
       if (!held.ok) return no(`Couldn't queue it: ${held.error}`);
       d.sendOutlook?.();
       pushView();
@@ -360,8 +363,8 @@ function wirePocket(d) {
     starting++;
     let r;
     try {
-      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: pt.MODE });
-      if (!r.ok && r.noCopy) r = d.startTask(prompt, title, { mode: pt.MODE, cwd: target.key });
+      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: runAs });
+      if (!r.ok && r.noCopy) r = d.startTask(prompt, title, { mode: runAs, cwd: target.key });
       if (r.ok) adopt(r.tabId);
     } finally { starting--; }
     if (!r.ok) return no(r.error || "Couldn't start it.");
@@ -370,6 +373,9 @@ function wirePocket(d) {
     return ok({ tabId: r.tabId });
   }
 
+  // What the phone picked, from the desk's own list; anything else is Ask (pt.MODE).
+  const modeOf = m => (PHONE_MODES.includes(m) ? m : pt.MODE);
+
   function adopt(tabId) {
     const tab = d.manager.tabs.get(tabId);
     if (tab) tab.fromPocket = true;
@@ -377,15 +383,18 @@ function wirePocket(d) {
     d.history.update(tabId, { fromPhone: true });
   }
 
-  function reply({ tabId, text }) {
+  function reply({ tabId, text, mode }) {
     const tab = str(tabId) && d.manager.tabs.get(tabId);
     if (!tab) return no('That conversation has closed.');
-    if (!(tab.fromPocket || tab.fromPhone)) return no('Reply to that one at the desk: only conversations your phone started take replies from it.');
     if (tab.inTerminal) return no("It's in a terminal on your PC now. Reply there.");
     const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!said) return no('Type something first.');
     if (/^[/!]/.test(said)) return no('Commands that start with / or ! only run at the desk.');
     if (d.manager.isBusy(tabId)) return no("He's still on it. Wait for this turn to end, or stop it.");
+    // The mode the phone picked, or Ask: kept when the desk's mode changes.
+    const runAs = modeOf(mode);
+    if (tab.session.mode !== runAs) tab.session.setMode(runAs);
+    tab.pinnedMode = true;
     const r = d.sendToTab(tabId, said, []);
     if (!r.ok) return no(r.error);
     // The desk's panel draws a message it didn't send itself from this.

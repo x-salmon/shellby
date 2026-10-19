@@ -116,7 +116,7 @@
 
   // ---------------------------------------------------------------- prompts
 
-  function promptCard(p, { compact = false } = {}) {
+  function promptCard(p, { compact = false, inTab = false } = {}) {
     const sending = S.answering.get(p.requestId);
     const card = h('article', { class: `ask${p.deskOnly ? ' desk' : ''}${sending ? ' sending' : ''}`, 'aria-label': `${p.title}: ${p.ask || p.label}` });
     card.append(h('div', { class: 'ask-head' },
@@ -134,21 +134,22 @@
     for (const w of p.warnings || []) card.append(h('p', { class: 'flag' }, icon('warn'), h('span', { text: `Heads up: ${w}` })));
     if (p.deskOnly) {
       card.append(h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: p.deskOnly })));
-      card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
+      if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
       return card;
     }
     const answer = decision => actButton({
-      label: decision === 'allow' ? (sending === 'allow' ? 'Allowing…' : 'Allow') : (sending === 'deny' ? 'Denying…' : 'Deny'),
-      cls: decision === 'allow' ? 'allow big' : 'big',
+      label: decision === 'always' ? p.always : decision === 'allow' ? (sending === 'allow' ? 'Allowing…' : 'Allow') : (sending === 'deny' ? 'Denying…' : 'Deny'),
+      cls: decision === 'allow' ? 'allow big' : decision === 'always' ? 'always' : 'big',
       run: async () => {
         S.answering.set(p.requestId, decision);
         const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision });
         if (!r.ok) S.answering.delete(p.requestId);
-        else buzz(decision === 'allow' ? [6, 30, 6] : 12);
+        else buzz(decision === 'deny' ? 12 : [6, 30, 6]);
         refresh();
       },
     });
     card.append(h('div', { class: 'btns' }, answer('deny'), answer('allow')));
+    if (p.always) card.append(answer('always'));
     if (compact && (pv?.kind === 'edit' || pv?.kind === 'write')) {
       card.append(h('button', { type: 'button', class: 'link', text: pv.kind === 'edit' ? 'See the edit first' : 'See what it writes', onclick: () => openSheet(promptSheet(p)) }));
     }
@@ -255,7 +256,7 @@
   }
 
   // One conversation and what its turns changed live in pocket-tab.js.
-  const { tabScreen, diffScreen } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath });
+  const { tabScreen, diffScreen } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker });
 
   // ---------------------------------------------------------------- the queue
 
@@ -360,8 +361,8 @@
         h('div', { class: 'card' },
           h('div', { class: 'card-t' }, h('span', { class: 'card-title' }, icon('shield'), ' What this phone can do')),
           h('ul', { class: 'plain' },
-            h('li', { text: 'Allow or Deny a prompt. Always allow, plans, questions and anything the card warns about wait for the desk.' }),
-            h('li', { text: 'Start a task. It runs in Ask first, in its own copy when the folder is a repo.' }),
+            h('li', { text: 'Allow or Deny a prompt, or always allow it when the desk would offer that. Plans, questions and anything the card warns about wait for the desk.' }),
+            h('li', { text: 'Start a task or reply to any conversation, in the mode you pick. A new task runs in its own copy when the folder is a repo.' }),
             h('li', { text: 'Stop a turn, undo one, or bring a copy home.' }))),
         h('button', { type: 'button', class: 'btn danger-ghost', text: 'Forget this phone', onclick: () => confirmSheet({ title: 'Forget this phone?', text: 'It stops seeing Shellby straight away. To use it again, pair it with a new code from your PC.', yes: 'Forget it', danger: true, then: async () => { await turnOffPush().catch(() => {}); await N.post('forget'); unpaired('This phone is forgotten. Pair it again any time.'); } }) }),
         h('p', { class: 'fine', text: 'Shellby on your phone · served by your PC' }));
@@ -376,6 +377,19 @@
     };
     maybe();
     return { el, update: maybe, title: 'This phone' };
+  }
+
+  // ---------------------------------------------------------------- the mode a message runs in
+
+  const MODE_NAME = { ask: 'Ask first', smart: 'Smart', acceptEdits: 'Auto-edit', plan: 'Plan only', autonomous: 'Autonomous' };
+  const MODE_KEY = 'shellby.pocket.mode';
+
+  /** A picker for the desk's modes; value() is what's picked. */
+  function modePicker(start) {
+    const sel = h('select', { class: 'mode-pick', 'aria-label': 'Mode' },
+      ...Object.entries(MODE_NAME).map(([id, name]) => h('option', { value: id, text: name })));
+    sel.value = MODE_NAME[start] ? start : 'ask';
+    return sel;
   }
 
   // ---------------------------------------------------------------- a new task
@@ -395,6 +409,8 @@
         onclick: () => { picked = p.key; N.store.set('shellby.pocket.project', picked); drawChips(); },
       })));
       drawChips();
+      const mode = modePicker(N.store.get(MODE_KEY));
+      mode.addEventListener('change', () => N.store.set(MODE_KEY, mode.value));
       const lim = S.view?.limits;
       // One key per task, kept until it's started: sent again after a slow answer, it's the same task.
       let key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
@@ -404,7 +420,7 @@
           const said = text.value.trim();
           if (!said) { text.focus(); toast('Say what you want done first.'); return; }
           if (!picked) { toast('Pick a project first.'); return; }
-          const r = await act('task', { project: picked, text: said, key }, { timeoutMs: 180000 });
+          const r = await act('task', { project: picked, text: said, key, mode: mode.value }, { timeoutMs: 180000 });
           if (r.offline) { toast('Still waiting for your PC. Send it again: it won’t start twice.', { ms: 5200 }); return; }
           if (!r.ok) return;
           key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
@@ -418,7 +434,8 @@
         h('h2', { class: 'sheet-title', text: 'What should I do?' }),
         projects.length ? chips : h('p', { class: 'warn', text: 'Shellby doesn’t know any projects yet. Open one on your PC first.' }),
         text,
-        h('p', { class: 'rule' }, icon('shield'), h('span', { text: `Runs in Ask first, in its own copy when it can, so every edit and command comes back to you.${lim ? ` ${lim.open} of ${lim.atOnce} phone tasks open.` : ''}` })),
+        h('label', { class: 'mode-row' }, h('span', { text: 'Mode' }), mode),
+        h('p', { class: 'rule' }, icon('shield'), h('span', { text: `Runs in its own copy when it can.${lim ? ` ${lim.open} of ${lim.atOnce} phone tasks open.` : ''}` })),
         send);
       setTimeout(() => text.focus(), 260);
       return { el };
@@ -490,7 +507,7 @@
           h('li', {}, 'Tap ', h('b', { text: 'Share' }), ' in Safari’s toolbar.'),
           h('li', {}, 'Choose ', h('b', { text: 'Add to Home Screen' }), '.'),
           h('li', {}, 'Open ', h('b', { text: 'Shellby' }), ' from your Home Screen and pair it there.')),
-        h('button', { type: 'button', class: 'link', text: 'Use it in Safari instead', onclick: () => { S.installSkipped = true; mount(); } }))), update() {} };
+        h('button', { type: 'button', class: 'link', text: 'Skip this and pair here in Safari', onclick: () => { S.installSkipped = true; mount(); } }))), update() {} };
     }
     const input = h('input', {
       class: 'code-in', id: 'pairCode', type: 'text', inputmode: 'text', autocapitalize: 'characters', autocomplete: 'one-time-code', autocorrect: 'off', spellcheck: 'false',

@@ -4,7 +4,7 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath }) => {
+  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker }) => {
     // ---------------------------------------------------------------- one conversation
 
     function tabScreen(tabId) {
@@ -24,11 +24,12 @@
         run: async () => {
           const text = input.value.trim();
           if (!text) return;
-          const r = await act('reply', { tabId, text });
+          const r = await act('reply', { tabId, text, mode: mode.value });
           if (r.ok) { input.value = ''; input.style.height = ''; }
         },
       });
-      const replyRow = h('div', { class: 'reply' }, input, send);
+      const mode = modePicker(tabOf(tabId)?.mode);
+      const replyRow = h('div', { class: 'reply-box' }, mode, h('div', { class: 'reply' }, input, send));
       const stop = actButton({
         label: 'Stop', cls: 'stop', iconName: 'stop', aria: 'Stop this turn',
         run: () => confirmSheet({ title: 'Stop him?', text: 'The turn ends where it is. Anything he changed so far stays, and Undo can take it back.', yes: 'Stop', danger: true, then: () => act('stop', { tabId }, { okText: 'Stopped.' }) }),
@@ -111,7 +112,7 @@
       function drawFoot(t) {
         const parts = [];
         const prompts = (S.view?.prompts || []).filter(p => p.tabId === tabId);
-        asks.replaceChildren(...prompts.map(p => promptCard(p)));
+        asks.replaceChildren(...prompts.map(p => promptCard(p, { inTab: true })));
         if (t.busy) {
           const doing = h('div', { class: 'working-line' }, D.crab({ px: 1.5, state: 'working', label: '' }), h('span', { class: 'doing', text: L.doingLine(t) }),
             t.busySince ? h('span', { class: 'mono since', dataset: { since: t.busySince }, text: L.duration((Date.now() - t.busySince) / 1000) }) : null);
@@ -121,7 +122,7 @@
         if (reviewing) parts.push(reviewBar(t));
         if (!t.busy && !t.pending) {
           if (t.canReply) parts.push(replyRow);
-          else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: 'Reply to this one at the desk. Your phone replies to the conversations it started.' }));
+          else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
         }
         foot.replaceChildren(...parts);
       }
