@@ -56,13 +56,20 @@ jobs:
           ALLOW_PUBLISHER_CHANGE: ${{ vars.ALLOW_PUBLISHER_CHANGE }}
         run: node scripts/release-guard.js preflight
       - run: npm ci
-      - run: npm run lint
-      - run: npm test
-      # The release is the one build real people install, so the UI checks have to
+      # The release is the one build real people install, so every check has to
       # have passed on this code. When CI did that already (on this commit, or on
       # the one before it for a commit that only cuts the release), the guard says
-      # ci_green and they aren't run a second time: that was 20 minutes, one check
-      # after another. Otherwise (CI unreachable, still running) they run here.
+      # ci_green and they aren't run a second time: lint and the unit tests were
+      # 4 minutes, the UI checks 20. Otherwise (CI unreachable, still running)
+      # they all run here.
+      - if: steps.guard.outputs.ci_green != 'true'
+        run: npm run lint
+      - if: steps.guard.outputs.ci_green != 'true'
+        run: npm test
+      # What a release-only commit does change is the version and the CHANGELOG,
+      # which CI never saw: the encoding check reads both, in under a second.
+      - if: steps.guard.outputs.ci_green == 'true'
+        run: node --test test/encoding.test.js
       # npm ci on a clean runner doesn't always leave Electron's binary behind
       # (it's a postinstall download, not a package file), and these checks launch
       # the real app. Idempotent: it exits immediately when the binary is there.
