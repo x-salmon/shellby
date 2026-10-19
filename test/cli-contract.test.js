@@ -176,6 +176,8 @@ test('the summary lists each check and anything unknown', () => {
   assert.match(md, /\| ok \| version \|/);
   assert.match(md, /\| \*\*FAIL\*\* \| flags \| missing: --verbose \\\| x \|/);
   assert.match(md, /\| skipped \| real turn \|/);
+  // A backslash before a pipe can't undo the escape and split the row.
+  assert.ok(contract.summaryOf({ checks: [{ name: 'x', ok: true, detail: 'a\\|b' }] }).includes('| ok | x | a\\\\\\|b |'));
   assert.match(md, /`system\/mystery` ×3/);
   assert.match(contract.summaryOf({ version: '2.1.0', ok: true, checks: [] }), /works with Shellby/);
 });

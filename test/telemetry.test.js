@@ -35,6 +35,13 @@ test('reads the data points of an OTLP JSON export, 64-bit integers written as s
   assert.equal(points.find(p => p.name === 'claude_code.cost.usage').value, 0.4321);
 });
 
+test('an attribute named __proto__ stays an attribute and never swaps the prototype', () => {
+  const [p] = tel.pointsFrom(body([metric('claude_code.commit.count', [{ asInt: '1', attributes: [attr('__proto__', 'x'), attr('type', 'user')] }])]));
+  assert.equal(Object.getPrototypeOf(p.attrs), Object.prototype);
+  assert.deepEqual(Object.keys(p.attrs), ['__proto__', 'type']);
+  assert.equal(p.attrs.type, 'user');
+});
+
 test('anything that is not an export reads as no points', () => {
   for (const junk of [null, 'x', 42, {}, { resourceMetrics: 'no' }, { resourceMetrics: [{ scopeMetrics: [{ metrics: [{ name: 'a', gauge: {} }] }] }] }]) {
     assert.deepEqual(tel.pointsFrom(junk), []);

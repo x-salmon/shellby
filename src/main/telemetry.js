@@ -29,14 +29,12 @@ const dayKey = t => {
 const daysBack = (now, n) => { const d = new Date(now); return dayKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() - n).getTime()); };
 
 /** OTLP JSON attributes ([{ key, value: { stringValue | intValue | ... } }]) -> { key: value }. */
+// Object.fromEntries defines each key as its own, so a "__proto__" from the
+// wire is just another key rather than swapping the object's prototype.
 function attrsOf(list) {
-  const out = {};
-  for (const a of Array.isArray(list) ? list : []) {
-    if (typeof a?.key !== 'string' || !a.value || typeof a.value !== 'object') continue;
-    const v = a.value;
-    out[a.key] = v.stringValue ?? v.intValue ?? v.doubleValue ?? v.boolValue ?? null;
-  }
-  return out;
+  return Object.fromEntries((Array.isArray(list) ? list : [])
+    .filter(a => typeof a?.key === 'string' && a.value && typeof a.value === 'object')
+    .map(({ key, value: v }) => [key, v.stringValue ?? v.intValue ?? v.doubleValue ?? v.boolValue ?? null]));
 }
 
 // OTLP JSON writes 64-bit integers as strings.
