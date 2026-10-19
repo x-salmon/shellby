@@ -444,7 +444,15 @@ function wirePocket(d) {
     const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!said) return no('Type something first.');
     if (/^[/!]/.test(said)) return no('Commands that start with / or ! only run at the desk.');
-    if (d.manager.isBusy(tabId)) return no("He's still on it. Wait for this turn to end, or stop it.");
+    // Mid-turn: into the desk's own queue (tab-queue.js), which hands it to Claude
+    // at his next step or sends it once the turn ends. The panel keeps the only
+    // list main steers from, so it goes there rather than in beside it. The mode
+    // stays as it is: a change now would reach the turn already running.
+    if (d.manager.isBusy(tabId)) {
+      const win = d.tabWindow?.(tabId) || d.panel;
+      d.send(win, 'tab:queue', { tabId, text: said });
+      return ok({ queued: true });
+    }
     // The mode the phone picked, or Ask: kept when the desk's mode changes.
     const runAs = modeOf(mode);
     if (tab.session.mode !== runAs) tab.session.setMode(runAs);

@@ -137,6 +137,16 @@
     drain(tab);
   };
 
+  // A reply from your phone while he worked (wiring/pocket.js): queued as if typed
+  // here. Should this turn have ended meanwhile, drain sends it at once.
+  api.onTabQueue(({ tabId, text } = {}) => {
+    const tab = state.tabs.get(tabId);
+    if (!tab || typeof text !== 'string' || !text) return;
+    tab.queue.push(queueItem(text, []));
+    if (tab.isActive) syncBusyUi(); else syncSteers(tab);
+    drain(tab);
+  });
+
   // Text going back into a tab's box, after whatever's there: at once for the
   // tab on screen (true), into its draft for one in the background.
   function handBack(tab, text, files = []) {
