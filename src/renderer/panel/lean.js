@@ -283,15 +283,24 @@
     + 'Suggest a shorter version that keeps everything you could not work out from the code or the project itself: commands, conventions, gotchas, preferences and rules. '
     + 'Only drop what is repeated, out of date, or obvious from the code. Do not edit the file. Show me the proposed version as a diff, and for each removal say what it was and why it is safe to drop.';
 
+  // A rule for something this project doesn't use (main's rulefit.js): load it only where it applies.
+  const MISFIT_ASK = m => `My Claude Code rule file at ${m.path} is written for ${m.misfit}, but it loads into every conversation, including this project, which doesn't use ${m.misfit}. `
+    + `Suggest how to make it load only where it applies: a paths: list in its frontmatter (globs for the ${m.misfit} files it's about), or moving it into the projects that use ${m.misfit}. `
+    + 'Keep every rule in it. Do not edit anything; show me the change as a diff.';
+
   function memoryRow(m) {
-    return h('li', { class: 'tool-row' },
+    const misfit = m.misfit && !m.onDemand;
+    return h('li', { class: `tool-row${misfit ? ' is-idle' : ''}` },
       h('div', { class: 'tool-main' },
         h('div', { class: 'tool-name' },
           h('code', { text: SB.basename(m.path) }),
+          misfit ? h('span', { class: 'idle-pill', title: `Written for ${m.misfit}, which nothing at this project's root uses`, text: `${m.misfit}, not used here` }) : null,
           h('span', { class: 'src-pill', text: tok(m.tokens) })),
         h('p', { class: 'tool-desc', text: m.onDemand ? `Only when Claude works on matching files · ${m.path}` : m.path, title: m.path })),
       h('div', { class: 'tool-actions' },
-        m.tokens >= TRIM_FROM ? h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude proposes a diff; nothing changes until you say so.',
+        misfit ? h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude proposes a diff; nothing changes until you say so.',
+          onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: MISFIT_ASK(m) }); } }, 'Load only where it applies') : null,
+        !misfit && m.tokens >= TRIM_FROM ? h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude proposes a diff; nothing changes until you say so.',
           onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: TRIM_ASK(m) }); } }, 'Suggest a trim') : null,
         h('button', { class: 'icon-btn', type: 'button', title: 'Show file', 'aria-label': 'Show file', onclick: () => api.revealSetupFile(m.path) },
           SB.icon(SB.ICONS.folder, { width: 1.3 }))));

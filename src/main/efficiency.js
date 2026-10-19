@@ -404,7 +404,7 @@ function leanReport({ plugins = [], mcp = [], mcpSeen = {}, tools = null, mine =
 
   const memoryRows = memory
     .filter(m => m && m.exists && num(m.size))
-    .map(m => ({ path: m.path, scope: m.scope, tokens: Math.round(m.size / CHARS_PER_TOKEN), onDemand: !!m.onDemand }))
+    .map(m => ({ path: m.path, scope: m.scope, tokens: Math.round(m.size / CHARS_PER_TOKEN), onDemand: !!m.onDemand, ...(typeof m.misfit === 'string' ? { misfit: m.misfit } : {}) }))
     .sort((a, b) => (a.onDemand - b.onDemand) || b.tokens - a.tokens);
 
   const setupRows = Object.entries(setups).map(([key, s]) => ({ key, ...s })).sort((a, b) => b.at - a.at);

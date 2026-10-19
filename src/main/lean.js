@@ -13,6 +13,7 @@ const cachebreak = require('./cachebreak');
 const mcpAdmin = require('./mcpadmin');
 const { scanTranscripts, totalUses } = require('./usage/scan');
 const { scanHotFiles } = require('./usage/hotfiles');
+const rulefit = require('./rulefit');
 const { scanToolbox } = require('./toolbox');
 
 const SAVE_MS = 5000;                        // calls come in bursts; one write when they settle
@@ -251,9 +252,12 @@ function createLean(deps) {
     const plugins = await withDetails(list.plugins.filter(p => p.installed), refresh);
     const now = Date.now();
     const mcp = deps.toolbox()?.current?.mcp || [];
+    // Rules for a language or framework this project shows none of (rulefit.js).
+    const where = deps.setupWhere().cwd;
+    const signals = where ? rulefit.projectSignals(where) : null;
     last = eff.leanReport({
       plugins, mcp, mcpSeen: mcpSeen(mcp, now), tools: pluginTools(plugins), mine: mine(deps.toolbox()?.current), uses: totalUses(u.counts),
-      memory: deps.memory().map(m => (m.exists ? { ...m, onDemand: eff.loadsOnDemand(head(m.path), m.scope) } : m)),
+      memory: deps.memory().map(m => (m.exists ? { ...m, onDemand: eff.loadsOnDemand(head(m.path), m.scope), misfit: rulefit.misfit(m.path, signals) } : m)),
       used: u.used, hookStart: hotRows?.hookStart || 0, watchedSince: u.from, setups, projectKey: deps.currentProject(), days, now,
     });
     return { ok: true, ...last, breaks: cachebreak.breakSummary(breaks, now), hot: hotRows, telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
