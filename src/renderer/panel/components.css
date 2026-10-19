@@ -525,6 +525,17 @@ body:not(.newcomer) .newcomer-only { display: none; }
 .lean-loading.err { color: var(--danger); }
 .lean-wait { min-height: 18px; font: 600 var(--fs-12-5)/18px var(--font-mono); color: var(--glass); font-variant-numeric: tabular-nums; }
 .lean-wait-hint { font-size: var(--fs-11-5); color: var(--sand-faint); }
+.lean-budget { display: grid; gap: 4px; }
+.lean-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+.lean-seg { flex-basis: 0; min-width: 2px; }
+.lean-key { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.lean-seg.is-memory, .lean-key.is-memory { background: var(--amber); }
+.lean-seg.is-plugins, .lean-key.is-plugins { background: var(--coral); }
+.lean-seg.is-skills, .lean-key.is-skills { background: var(--glass); }
+.lean-seg.is-rest, .lean-key.is-rest { background: var(--sand-faint-deco); }
+.lean-warn { font-size: var(--fs-12-5); color: var(--amber); }
+.lean-telemetry { align-items: center; }
+.lean-hot-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .tool-row.is-idle { border-color: rgba(255, 193, 94, .4); }
 .tool-row.is-off { opacity: .7; }
 .idle-pill { font: 700 var(--fs-9-5)/16px var(--font-mono); text-transform: uppercase; letter-spacing: .05em; padding: 0 6px; border-radius: 99px; background: var(--amber); color: #1a1206; }

@@ -1,5 +1,7 @@
 /* Shellby panel — Toolbox → Lean: what every new conversation carries before your
-   first word, how much of Claude's input came from the prompt cache, and the
+   first word and where it goes, how much of Claude's input came from the prompt
+   cache (and a word when today's falls well short), Claude Code's own count of
+   lines, edits and commits, the files Claude keeps coming back to, and the
    plugins, MCP servers and your own skills that sit idle. Nothing here touches a prompt, the model
    or what Claude reads: turning a plugin off only affects new conversations and
    is one click to undo, and "Suggest a trim" and "Ask Claude" only draft a
@@ -92,12 +94,67 @@
 
   // ------------------------------------------------------------ the summary
 
+  const BUDGET = {
+    memory: { label: 'CLAUDE.md and rules', cls: 'is-memory' },
+    plugins: { label: "plugins (Claude Code's estimate)", cls: 'is-plugins' },
+    skills: { label: "your skills' listings", cls: 'is-skills' },
+    rest: { label: "Claude Code's own prompt and tools, and MCP servers you added", cls: 'is-rest' },
+  };
+
+  // Where the setup weight goes, as one bar: the parts Shellby can size, and the rest.
+  function budgetBar(b) {
+    const parts = [...b.parts, ...(b.rest ? [{ key: 'rest', tokens: b.rest }] : [])];
+    const whole = parts.reduce((n, p) => n + p.tokens, 0) || 1;
+    const legend = parts.map(p => `${BUDGET[p.key].label} ${tok(p.tokens)}`).join(' · ');
+    return h('div', { class: 'lean-budget' },
+      h('div', { class: 'lean-bar', role: 'img', 'aria-label': legend },
+        ...parts.map(p => h('span', { class: `lean-seg ${BUDGET[p.key].cls}`, style: `flex-grow: ${p.tokens / whole}`, title: `${BUDGET[p.key].label}: ${tok(p.tokens)}` }))),
+      h('p', { class: 'muted small' },
+        `${pct(b.share)} of a 200k context window before you type: `,
+        ...parts.flatMap((p, i) => [i ? ' · ' : '', h('span', { class: `lean-key ${BUDGET[p.key].cls}`, 'aria-hidden': 'true' }), ` ${BUDGET[p.key].label} ${tok(p.tokens)}`])));
+  }
+
+  function grewText(s) {
+    if (!s?.prev) return null;
+    const d = s.tokens - s.prev;
+    return `${d > 0 ? 'Up' : 'Down'} ${tok(Math.abs(d))} since ${new Date(s.prevAt).toLocaleDateString()}.`;
+  }
+
+  // Claude Code's own count, from the metrics it sends Shellby (main's telemetry.js).
+  function telemetryBlock(rep) {
+    const on = state.settings?.claudeTelemetry !== false;
+    const toggle = h('button', { class: 'btn ghost slim-btn', type: 'button',
+      title: on ? "Conversations Shellby starts stop sending Claude Code's metrics here" : "Conversations Shellby starts send Claude Code's metrics to Shellby, on this PC only",
+      onclick: async () => {
+        const r = await api.setSettings({ claudeTelemetry: !on });
+        if (r?.settings) state.settings = r.settings;
+        SB.toast('Applies to new conversations.');
+        rerender();
+      } }, on ? 'Turn off' : 'Turn on');
+    const t = rep.telemetry?.week;
+    let text;
+    if (!on) text = "Claude Code's own count of lines, accepted edits and commits is off.";
+    else if (!t) text = "Claude Code's own count of lines, accepted edits and commits shows here after a conversation Shellby starts. Telemetry you set up yourself is left alone.";
+    else {
+      const hours = t.cliSecs / 3600;
+      text = [
+        `This week Claude Code counted +${SB.compact(t.added)} / −${SB.compact(t.removed)} lines`,
+        t.acceptRate == null ? null : `${t.accepted} of ${t.accepted + t.rejected} edits accepted (${pct(t.acceptRate)})`,
+        t.commits ? `${t.commits} commit${t.commits === 1 ? '' : 's'}` : null,
+        t.prs ? `${t.prs} pull request${t.prs === 1 ? '' : 's'}` : null,
+        hours >= 0.1 ? `${hours.toFixed(1)} h of Claude working` : null,
+      ].filter(Boolean).join(', ') + '.';
+    }
+    return h('div', { class: 'mcp-bar lean-telemetry' }, h('span', { class: 'lean-cache', text }), toggle);
+  }
+
   function summary(rep) {
     const s = rep.setup;
     const head = s
       ? h('p', { class: 'lean-head' },
         'Every new conversation carries ', h('strong', { text: tok(s.tokens) }), ' before your first word',
-        h('span', { class: 'muted', text: ` (measured ${SB.relTime(s.at)} in ${s.name})` }))
+        h('span', { class: 'muted', text: ` (measured ${SB.relTime(s.at)} in ${s.name})` }),
+        grewText(s) ? h('span', { class: 'muted', text: ` ${grewText(s)}` }) : null)
       : h('p', { class: 'lean-head', text: 'Shellby measures what a conversation carries before your first word the next time one starts.' });
     const parts = [
       rep.totals.plugins ? `plugins ${tok(rep.totals.plugins)} (Claude Code's estimate)` : null,
@@ -110,14 +167,18 @@
     const cacheLine = c.rate == null
       ? 'No calls this week yet.'
       : `${pct(c.rate)} of Claude's input came from the prompt cache this week${was.rate == null ? '' : ` (last week ${pct(was.rate)})`}: ${tok(c.saved)}' worth billed at a tenth.`;
+    const drop = rep.cacheDrop;
     return h('div', { class: 'lean-summary' },
       head,
+      rep.budget ? budgetBar(rep.budget) : null,
       h('div', { class: 'setup-intro lean-ask' },
         h('p', { text: 'Rather than turning things off, Claude can look over this setup and suggest leaner ways to keep every feature you use.' }),
         h('button', { class: 'btn slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
           onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: ADVICE_ASK(rep) }); } }, 'Ask Claude')),
       h('p', { class: 'muted small', text: `That includes ${parts.join(', ')}. While the cache is warm it costs a tenth, but it always takes room in the context window, and it's paid in full whenever the cache goes cold.` }),
       h('p', { class: 'lean-cache', text: cacheLine }),
+      drop ? h('p', { class: 'lean-warn', role: 'status', text: `Only ${pct(drop.today)} of today's input came from the cache, against ${pct(drop.usual)} most days. That's usual after a change to CLAUDE.md, a plugin or an MCP server (the cached start no longer matches), or long gaps between messages.` }) : null,
+      telemetryBlock(rep),
       h('div', { class: 'mcp-bar' },
         h('span', { class: 'muted small', text: rep.watched
           ? `Idle means unused for ${rep.idleDays} days in this PC's Claude Code history, Shellby and the terminal both. Use on another PC or in WSL doesn't show here. Turning something off only changes new conversations.`
@@ -220,6 +281,25 @@
           SB.icon(SB.ICONS.folder, { width: 1.3 }))));
   }
 
+  // ------------------------------------------------------------ hot files
+
+  const HOT_ASK = rows => [
+    'These files in this project are the ones Claude Code keeps coming back to (counted from its transcripts on this PC):',
+    ...rows.map(r => `- ${r.rel}: read ${r.reads}×, edited ${r.edits}×, in ${r.sessions} conversations${r.tokens ? `, about ${r.tokens} tokens` : ''}`),
+    '',
+    "Look at them and at CLAUDE.md, then suggest how Claude could need them less: a short note in CLAUDE.md (what each holds, where things live, conventions it shows) so they needn't be read just to find something, or a split for any that is large and read for one part. Do not edit anything. For each suggestion, say what to add or change and what reading it saves.",
+  ].join('\n');
+
+  function hotRow(r) {
+    const used = [`read ${r.reads}×`, r.edits ? `edited ${r.edits}×` : null, `in ${r.sessions} conversations`].filter(Boolean).join(', ');
+    return h('li', { class: 'tool-row' },
+      h('div', { class: 'tool-main' },
+        h('div', { class: 'tool-name' },
+          h('code', { text: r.rel }),
+          r.tokens ? h('span', { class: 'src-pill', title: 'What reading all of it costs, at its size now', text: tok(r.tokens) }) : null),
+        h('p', { class: 'tool-desc', text: used })));
+  }
+
   // ------------------------------------------------------------ the tab
 
   function render(q) {
@@ -249,12 +329,18 @@
     const skills = (rep.skills || []).filter(t => match(t.name));
     const memory = rep.memory.filter(m => match(m.path) && !m.onDemand);
     const onDemand = rep.memory.filter(m => match(m.path) && m.onDemand);
+    const hot = (rep.hot?.files || []).filter(r => match(r.rel));
+    const hotLabel = hot.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
+      h('span', { text: `Files Claude keeps coming back to here (last ${rep.hot.days} days)` }),
+      h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
+        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: HOT_ASK(rep.hot.files) }); } }, 'Ask Claude')) : null;
     const rows = [
       plugins.length ? label('Plugins') : null, ...plugins.map(p => pluginRow(p, rep)),
       mcp.length ? label('MCP servers you added') : null, ...mcp.map(s => mcpRow(s, rep)),
       skills.length ? label(`Your skills, commands and agents (${tok(rep.totals.skills || 0)} in every conversation)`) : null, ...skills.map(t => skillRow(t, rep)),
       memory.length ? label('CLAUDE.md and rules, every conversation') : null, ...memory.map(memoryRow),
       onDemand.length ? label(`Rules for matching files only (${tok(rep.totals.memoryOnDemand)} in all)`) : null, ...onDemand.map(memoryRow),
+      hotLabel, ...hot.map(hotRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),
     ].filter(Boolean);
     list.replaceChildren(...(rows.length ? rows : [h('li', { class: 'history-empty', text: q ? 'No matches.' : 'Nothing loads into every conversation besides Claude Code itself.' })]));

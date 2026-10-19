@@ -18,6 +18,7 @@ function wireQuit(d) {
     if (d.config) d.saveSpend();
     if (d.config) d.usagePlan.save();
     d.lean?.save();
+    d.telemetry?.stop();
     d.toolbox?.stop();
     d.health?.stop();
     d.timeTracker?.stop(); // writes the last minutes down

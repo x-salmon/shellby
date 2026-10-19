@@ -81,7 +81,7 @@ test('setup weights are kept per project, newest first', () => {
   s = eff.recordSetup(s, { key: 'c:\\a', name: 'a' }, 18000, NOW);
   s = eff.recordSetup(s, { key: 'c:\\a', name: 'a' }, 15000, NOW + 1);
   s = eff.recordSetup(s, null, 1, NOW);
-  assert.deepEqual(s, { 'c:\\a': { name: 'a', tokens: 15000, at: NOW + 1 } });
+  assert.deepEqual(s, { 'c:\\a': { name: 'a', tokens: 15000, at: NOW + 1, prev: 18000, prevAt: NOW } }, 'a change worth noting keeps the old weight');
   for (let i = 0; i < 40; i++) s = eff.recordSetup(s, { key: `p${i}`, name: `p${i}` }, 100, NOW + 10 + i);
   assert.equal(Object.keys(s).length, 30);
   assert.ok(!s['c:\\a'], 'the oldest go first');
@@ -231,6 +231,36 @@ test('the Lean tab: setup for this project, memory sizes, the cache', () => {
   assert.deepEqual([r.totals.memory, r.totals.memoryOnDemand], [1000, 2000], 'path-scoped rules are not carried every time');
   assert.equal(r.cache.week.rate, 0.8);
   assert.equal(eff.leanReport({ now: NOW }).setup, null);
+});
+
+test('a setup that barely moved keeps the change before it', () => {
+  let s = eff.recordSetup({}, { key: 'k', name: 'k' }, 20000, NOW);
+  s = eff.recordSetup(s, { key: 'k', name: 'k' }, 26000, NOW + 1);
+  s = eff.recordSetup(s, { key: 'k', name: 'k' }, 26200, NOW + 2);
+  assert.deepEqual(s.k, { name: 'k', tokens: 26200, at: NOW + 2, prev: 20000, prevAt: NOW });
+  assert.equal(eff.normalizeSetups({ k: { name: 'k', tokens: 5, at: NOW, prev: 'x', prevAt: NOW } }).k.prev, undefined);
+});
+
+test("a cache drop: today's rate well under the week before, over enough input", () => {
+  let days = {};
+  for (let i = 1; i <= 7; i++) days = eff.recordCall(days, { input: 10000, write: 40000, read: 450000, isNew: true }, NOW - i * D);
+  const today = r => eff.recordCall(days, { input: 100000, write: 300000 - r, read: r, isNew: true }, NOW);
+  assert.deepEqual(eff.cacheDrop(today(150000), NOW), { today: 0.375, usual: 0.9 });
+  const close = eff.recordCall(days, { input: 20000, write: 30000, read: 400000, isNew: true }, NOW);
+  assert.equal(eff.cacheDrop(close, NOW), null, 'a few points under is no drop');
+  const quiet = eff.recordCall(days, { input: 1000, write: 1000, read: 0, isNew: true }, NOW);
+  assert.equal(eff.cacheDrop(quiet, NOW), null, 'too little input today to judge');
+  assert.equal(eff.cacheDrop(eff.recordCall({}, { input: 500000, write: 0, read: 0, isNew: true }, NOW), NOW), null, 'no usual to judge against');
+});
+
+test('the context budget: the parts Shellby can size, and the rest of the measured setup', () => {
+  const b = eff.contextBudget({ tokens: 30000 }, { memory: 2000, plugins: 8000, skills: 0 });
+  assert.deepEqual(b, { total: 30000, share: 0.15, parts: [{ key: 'memory', tokens: 2000 }, { key: 'plugins', tokens: 8000 }], rest: 20000 });
+  assert.equal(eff.contextBudget({ tokens: 5000 }, { memory: 2000, plugins: 8000 }).rest, 0, 'estimates past the whole leave no rest');
+  assert.equal(eff.contextBudget(null, {}), null);
+  const r = eff.leanReport({ setups: { k: { name: 'k', tokens: 30000, at: NOW } }, projectKey: 'k', now: NOW });
+  assert.equal(r.budget.rest, 30000);
+  assert.equal(r.cacheDrop, null);
 });
 
 // ---- reading the transcripts

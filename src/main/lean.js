@@ -11,6 +11,7 @@ const path = require('path');
 const eff = require('./efficiency');
 const mcpAdmin = require('./mcpadmin');
 const { scanTranscripts, totalUses } = require('./usage/scan');
+const { scanHotFiles } = require('./usage/hotfiles');
 const { scanToolbox } = require('./toolbox');
 
 const SAVE_MS = 5000;                        // calls come in bursts; one write when they settle
@@ -26,6 +27,8 @@ const MAX_MANIFEST = 1024 * 1024;
 const PLUGIN_ID_RE = /^[A-Za-z0-9][\w.-]{0,79}@[A-Za-z0-9][\w.-]{0,79}$/;
 const isStr = v => typeof v === 'string' && v.length > 0 && v.length < 300;
 const HEAD_BYTES = 4096;                     // enough of a memory file to see its frontmatter
+const HOT_MS = 10 * 60 * 1000;               // a project's hot files: read again at most this often, unless asked
+const HOT_WAIT_MS = 10 * 1000;               // how long a report waits for them
 
 // A memory file's first few KB, for its frontmatter ('' if it can't be read).
 function head(file) {
@@ -82,7 +85,7 @@ function mine(tb) {
 
 /**
  * deps: { config, shop, shopBlocked, askOnce, toolbox, memory, setupWhere,
- * configDir, projectOf(tab), currentProject(), awardXp, log }
+ * configDir, projectOf(tab), currentProject(), awardXp, log, telemetry?: { summary() } }
  */
 function createLean(deps) {
   const { config } = deps;
@@ -92,6 +95,7 @@ function createLean(deps) {
   let scan = null;        // { used, from, seen, at }: seen (files already read) lives in memory only
   let scanning = null;
   let last = null;        // the last report, for judging what a tidy-up was worth
+  let hot = null;         // { cwd, at, result }: the last hot-files scan
 
   function load() {
     days ??= eff.normalizeDays(config.get('cacheDays'));
@@ -190,6 +194,30 @@ function createLean(deps) {
     return kept;
   }
 
+  // The files Claude keeps coming back to in the folder the panel is on. One
+  // scan at a time, and the report waits for it only HOT_WAIT_MS: past that it
+  // goes out with the last result (or none) and the next report has the new
+  // one. A scan that fails says nothing rather than spoiling the rest.
+  let hotScan = null;     // { cwd, promise }: the scan under way
+  function hotFiles(refresh) {
+    const cwd = deps.setupWhere().cwd;
+    if (!cwd) return Promise.resolve(null);
+    const known = hot?.cwd === cwd ? hot.result : null;
+    if (!refresh && known && Date.now() - hot.at < HOT_MS) return Promise.resolve(known);
+    if (hotScan?.cwd !== cwd) {
+      const promise = scanHotFiles({ configDir: deps.configDir(), cwd })
+        .then(result => { hot = { cwd, at: Date.now(), result }; return result; })
+        .catch(err => { deps.log?.info(`lean: hot files scan failed: ${err.message}`); return known; })
+        .finally(() => { if (hotScan?.promise === promise) hotScan = null; });
+      hotScan = { cwd, promise };
+    }
+    let timer;
+    return Promise.race([
+      hotScan.promise,
+      new Promise(resolve => { timer = setTimeout(() => resolve(known), deps.hotWaitMs ?? HOT_WAIT_MS); }),
+    ]).finally(() => clearTimeout(timer));
+  }
+
   // One report at a time: the panel asking twice shares the first one's work.
   // One that runs past REPORT_MS answers with an error and lets go, so a call
   // into Claude Code that never comes back can't keep the tab waiting for good.
@@ -214,7 +242,7 @@ function createLean(deps) {
     load();
     // Only what's installed matters here, so the last list does unless asked
     // to check again: a Skill Shop refresh can take minutes.
-    const [list, u] = await Promise.all([deps.shop().list({ stale: !refresh }), used(refresh)]);
+    const [list, u, hotRows] = await Promise.all([deps.shop().list({ stale: !refresh }), used(refresh), hotFiles(refresh)]);
     if (!list.ok) return list;
     const plugins = await withDetails(list.plugins.filter(p => p.installed), refresh);
     const now = Date.now();
@@ -224,7 +252,7 @@ function createLean(deps) {
       memory: deps.memory().map(m => (m.exists ? { ...m, onDemand: eff.loadsOnDemand(head(m.path), m.scope) } : m)),
       used: u.used, watchedSince: u.from, setups, projectKey: deps.currentProject(), days, now,
     });
-    return { ok: true, ...last, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
+    return { ok: true, ...last, hot: hotRows, telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
   }
 
   // XP for turning off something that sat idle, once per thing ever, so turning

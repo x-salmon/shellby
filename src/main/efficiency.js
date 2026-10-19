@@ -28,6 +28,14 @@ const IDLE_MS = 21 * DAY;         // unused this long (and watched this long) is
 const CHARS_PER_TOKEN = 4;        // rough, for prompts and CLAUDE.md sizes
 const CACHE_READ_PRICE = 0.1;     // a cache read costs a tenth of fresh input
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const SETUP_CHANGE = 1000;        // tokens: a setup that moved this much is worth saying so
+// A cache rate this many points under the usual, over enough input to mean
+// something, is a drop worth a word: often a CLAUDE.md, plugin or MCP change
+// (the cached prefix no longer matches) or long gaps between messages.
+const DROP_POINTS = 0.15;
+const DROP_MIN_TODAY = 200000;    // tokens of input today
+const DROP_MIN_USUAL = 1000000;   // tokens of input over the days before
+const CONTEXT_WINDOW = 200000;    // the usual window, for the setup's share of it
 
 const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
 const clip = (s, n) => (typeof s === 'string' ? s.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, n) : '');
@@ -94,6 +102,17 @@ function cacheSummary(days, now) {
 }
 
 /**
+ * Today's cache rate against the seven days before it, when today's is well
+ * under: { today, usual } (rates, 0-1), or null.
+ */
+function cacheDrop(days, now) {
+  const today = stats(days, [daysBack(now, 0)]);
+  const usual = stats(days, Array.from({ length: 7 }, (_, i) => daysBack(now, i + 1)));
+  if (today.total < DROP_MIN_TODAY || usual.total < DROP_MIN_USUAL) return null;
+  return usual.rate - today.rate >= DROP_POINTS ? { today: today.rate, usual: usual.rate } : null;
+}
+
+/**
  * A tab's cache as of now: 'warm', 'cooling' (in its last fifth) or 'cold'.
  * cache is { at, ttlMs } from the tab's last main-thread call.
  */
@@ -126,19 +145,29 @@ function setupTokens(call, chars) {
   return total ? Math.max(0, Math.round(total - chars / CHARS_PER_TOKEN)) : null;
 }
 
-/** Tolerate anything read from disk: { [projectKey]: { name, tokens, at } }, newest MAX_SETUPS. */
+/**
+ * Tolerate anything read from disk: { [projectKey]: { name, tokens, at, prev?, prevAt? } },
+ * newest MAX_SETUPS. prev is the weight before the last change worth noting.
+ */
 function normalizeSetups(raw) {
   const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   const rows = Object.entries(src)
     .filter(([k, v]) => k && k.length <= 400 && v && num(v.tokens) && Number.isFinite(v.at))
     .sort((a, b) => b[1].at - a[1].at)
     .slice(0, MAX_SETUPS);
-  return Object.fromEntries(rows.map(([k, v]) => [k, { name: clip(v.name, 80) || 'No folder', tokens: Math.round(v.tokens), at: v.at }]));
+  return Object.fromEntries(rows.map(([k, v]) => {
+    const row = { name: clip(v.name, 80) || 'No folder', tokens: Math.round(v.tokens), at: v.at };
+    return [k, num(v.prev) && Number.isFinite(v.prevAt) ? { ...row, prev: Math.round(v.prev), prevAt: v.prevAt } : row];
+  }));
 }
 
+/** A new measurement. One that moved by SETUP_CHANGE or more keeps the old weight as prev. */
 function recordSetup(setups, project, tokens, now) {
   if (!project?.key || !num(tokens)) return setups;
-  return normalizeSetups({ ...setups, [project.key]: { name: project.name, tokens, at: now } });
+  const was = setups[project.key];
+  const moved = was && Math.abs(tokens - was.tokens) >= SETUP_CHANGE;
+  const prev = moved ? { prev: was.tokens, prevAt: was.at } : was?.prev ? { prev: was.prev, prevAt: was.prevAt } : {};
+  return normalizeSetups({ ...setups, [project.key]: { name: project.name, tokens, at: now, ...prev } });
 }
 
 // ---- what gets used
@@ -298,6 +327,25 @@ function loadsOnDemand(head, scope = 'user-rule') {
 // ---- the Lean tab
 
 /**
+ * Where the setup weight goes: CLAUDE.md and rules, plugins (Claude Code's own
+ * estimate), your skills' listings, and the rest (Claude Code's prompt and
+ * tools, and MCP servers you added), which is what's left of the measured
+ * whole. The parts are estimates and the setup may have been measured in
+ * another project, so when they add up to more than it, the rest is 0.
+ * -> { total, share (of the usual context window), parts: [{ key, tokens }], rest } or null
+ */
+function contextBudget(setup, totals) {
+  if (!setup || !num(setup.tokens)) return null;
+  const parts = [
+    { key: 'memory', tokens: num(totals.memory) },
+    { key: 'plugins', tokens: num(totals.plugins) },
+    { key: 'skills', tokens: num(totals.skills) },
+  ].filter(p => p.tokens);
+  const known = parts.reduce((n, p) => n + p.tokens, 0);
+  return { total: setup.tokens, share: setup.tokens / CONTEXT_WINDOW, parts, rest: Math.max(0, setup.tokens - known) };
+}
+
+/**
  * Everything the Lean tab shows. plugins: installed and enabled, with Claude
  * Code's own always-on estimate and whether it works in the background
  * (`claude plugin details`), and when they were installed or turned back on.
@@ -360,21 +408,24 @@ function leanReport({ plugins = [], mcp = [], mcpSeen = {}, tools = null, mine =
   const setupRows = Object.entries(setups).map(([key, s]) => ({ key, ...s })).sort((a, b) => b.at - a.at);
   const setup = setupRows.find(s => s.key === projectKey) || setupRows[0] || null;
   const sum = (rows, pick = r => r.tokens || 0) => rows.reduce((n, r) => n + pick(r), 0);
+  const totals = {
+    plugins: sum(pluginRows),
+    idlePlugins: sum(pluginRows.filter(r => r.idle)),
+    memory: sum(memoryRows.filter(r => !r.onDemand)),
+    memoryOnDemand: sum(memoryRows.filter(r => r.onDemand)),
+    skills: sum(skillRows, r => r.listTokens),
+    idleCount: pluginRows.filter(r => r.idle).length + mcpRows.filter(r => r.idle).length + skillRows.filter(r => r.idle).length,
+  };
 
   return {
     setup,
+    budget: contextBudget(setup, totals),
+    cacheDrop: cacheDrop(days, now),
     plugins: pluginRows,
     mcp: mcpRows,
     skills: skillRows,
     memory: memoryRows,
-    totals: {
-      plugins: sum(pluginRows),
-      idlePlugins: sum(pluginRows.filter(r => r.idle)),
-      memory: sum(memoryRows.filter(r => !r.onDemand)),
-      memoryOnDemand: sum(memoryRows.filter(r => r.onDemand)),
-      skills: sum(skillRows, r => r.listTokens),
-      idleCount: pluginRows.filter(r => r.idle).length + mcpRows.filter(r => r.idle).length + skillRows.filter(r => r.idle).length,
-    },
+    totals,
     watched,
     watchedFrom: Number.isFinite(watchedSince) ? watchedSince : null,
     idleDays: Math.round(IDLE_MS / DAY),
@@ -383,7 +434,7 @@ function leanReport({ plugins = [], mcp = [], mcpSeen = {}, tools = null, mine =
 }
 
 module.exports = {
-  callFrom, normalizeDays, recordCall, cacheSummary, cacheState,
+  callFrom, normalizeDays, recordCall, cacheSummary, cacheState, cacheDrop, contextBudget,
   promptChars, setupTokens, normalizeSetups, recordSetup,
   usedIn, recordUse, ownerOf, lastUsedByPlugin, mcpKey, loadsOnDemand, leanReport, toolUsage, toolTokens,
   DEFAULT_TTL_MS, IDLE_MS, CHARS_PER_TOKEN, COOLING_SHARE,

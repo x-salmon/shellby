@@ -165,6 +165,8 @@ const DEFAULTS = {
   leanTidied: [],
   mcpSeen: {},          // when Shellby first saw each MCP server (one that's new isn't idle)
   pluginEnabledAt: {},  // when a plugin was turned back on from the Lean tab
+  telemetryDays: {},    // Claude Code's own metrics per day: lines, edits accepted, commits (telemetry.js)
+  claudeTelemetry: true, // conversations Shellby starts send Claude Code's metrics to Shellby, on this PC only
   openTabs: [],       // history ids of conversations open as tabs
   paneLayout: null,   // { grid, sizes }: the split view as you left it (shared/panes.js); null -> one pane
   paneShapes: [],     // [{ name, cols: [{ w, rows }] }]: layouts you saved by name, shapes only (shared/panes.js)
