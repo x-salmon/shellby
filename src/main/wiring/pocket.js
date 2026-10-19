@@ -29,6 +29,7 @@ const { createTailscale, pickHttpsPort } = require('../pocket/tailscale');
 const view = require('../pocket/view');
 const { createPocketExtras } = require('../pocket/extras');
 const { createPocketNotices } = require('../pocket/notices');
+const { createPocketReview } = require('../pocket/review');
 
 const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
 const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
@@ -76,6 +77,13 @@ function wirePocket(d) {
   const extra = createPocketExtras(d, {
     allowed: key => !!settings().allow[key],
     tabRoot: id => { const tab = id && d.manager?.tabs.get(id); return tab?.session?.cwd || null; },
+  });
+  // Search and history, "while you were away", checks with Fix it, and the whole branch (pocket/review.js).
+  const review = createPocketReview(d, {
+    projects: () => projects(),
+    prompts: () => waitingPrompts(),
+    reply: body => reply(body),
+    maxText: pt.MAX_TEXT,
   });
 
   // ---- settings
@@ -199,7 +207,7 @@ function wirePocket(d) {
   function extras() {
     const out = {};
     for (const [id, tab] of d.manager?.tabs || []) {
-      out[id] = { mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !tab.inTerminal };
+      out[id] = { mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !tab.inTerminal, checksRunning: d.checksRunning?.(id) || null };
     }
     return out;
   }
@@ -327,7 +335,8 @@ function wirePocket(d) {
       case 'push': return setPush(device, body);
       case 'forget': return forget(device.id, 'You forgot this phone.');
       default: {
-        const fn = Object.prototype.hasOwnProperty.call(extra.actions, name) ? extra.actions[name] : null;
+        const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+        const fn = own(extra.actions, name) ? extra.actions[name] : own(review.actions, name) ? review.actions[name] : null;
         if (!fn) return no('unknown');
         const r = await fn(body);
         if (r.ok && ['focus', 'routine-toggle'].includes(name)) pushView();

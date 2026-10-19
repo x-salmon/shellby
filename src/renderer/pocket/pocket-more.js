@@ -206,6 +206,6 @@
       });
     }
 
-    return { moreScreen, routinesScreen, notesScreen, wardrobeScreen, filesScreen };
+    return { moreScreen, routinesScreen, notesScreen, wardrobeScreen, filesScreen, loaded };
   };
 })(window);

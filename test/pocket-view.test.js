@@ -35,6 +35,13 @@ test('a tab carries its folder, its copy and what is ready, never its full path'
   assert.equal(v.phoneTab(tab({ ready: { after: 'x', reviewed: true, paths: [] } })).ready, null);
 });
 
+test('a tab’s checks: the last verdict, or the run going now', () => {
+  assert.equal(v.phoneTab(tab()).checks, null);
+  assert.deepEqual(v.phoneTab(tab({ checks: { status: 'fail', after: 'a1', at: 5 } })).checks, { status: 'fail', after: 'a1' });
+  assert.deepEqual(v.phoneTab(tab({ checks: { status: 'fail', after: 'a1' } }), { checksRunning: { after: 'a2' } }).checks, { status: 'running', after: 'a2' });
+  assert.deepEqual(v.phoneTab(tab(), { checksRunning: { after: null } }).checks, { status: 'running', after: null });
+});
+
 test('a prompt says why the phone may only look, by the same rule as the phone notifications', () => {
   const tabs = [tab()];
   const prompts = [
