@@ -20,6 +20,11 @@ test('the beach is in the panel order: asking, review, finished, working, quiet'
   assert.deepEqual(view.tabs.map(t => t.standing), ['asking', 'review', 'finished', 'working', 'quiet']);
 });
 
+test("the desk's mode goes to the phone, so a new task starts in it", () => {
+  assert.equal(v.phoneView({ mode: 'autonomous' }).mode, 'autonomous');
+  assert.equal(v.phoneView({}).mode, null, 'none said: the phone falls back to its own last pick');
+});
+
 test('a tab carries its folder, its copy and what is ready, never its full path', () => {
   const t = v.phoneTab(tab({
     worktree: { branch: 'shellby/fix-upload', base: 'main', originalCwd: 'C:\\code\\shellby' },

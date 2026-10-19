@@ -44,7 +44,7 @@ const ACTIONS = [
   'focus', 'routines', 'routine-run', 'routine-toggle', 'workflow-run', 'notes', 'note-add', 'note-tick',
   'wardrobe', 'wear', 'pet', 'files', 'file',
   // pocket/talk.js
-  'unqueue', 'rename', 'effort', 'close', 'history', 'resume',
+  'rename', 'effort', 'close', 'history', 'resume',
 ];
 const MAX_UPLOAD = 6 * 1024 * 1024; // a photo for a task, made smaller on the phone first
 const UPLOAD_TYPES = ['image/jpeg', 'image/png'];

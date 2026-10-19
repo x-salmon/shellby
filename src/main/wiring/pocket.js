@@ -203,7 +203,7 @@ function wirePocket(d) {
     for (const [id, tab] of d.manager?.tabs || []) {
       out[id] = {
         mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !tab.inTerminal,
-        effort: tab.session.effort || '', queued: talk.queuedOf(id),
+        effort: tab.session.effort || '',
       };
     }
     return out;
@@ -245,6 +245,7 @@ function wirePocket(d) {
       limits: { perHour: pt.MAX_STARTS_PER_HOUR, atOnce: pt.MAX_OPEN, open: openCount() },
       pushKey: vapid?.publicKey || null,
       allow: settings().allow,
+      mode: d.config.get('mode'),
       focus: d.focusState?.() || null,
       guard: guard.settingsOf(k => d.config.get(k)),
       now: Date.now(),
@@ -290,8 +291,6 @@ function wirePocket(d) {
   }
 
   function onItem(tabId, item) {
-    // A reply that waited goes whether or not the phone is still looking.
-    if (item.kind === 'result') talk.turnEnded(tabId, item);
     if (!d.pocket?.clients.size) return;
     if (item.kind === 'usage' || item.kind === 'result') pushView();
     if (!d.pocket.watched().has(tabId)) return;
@@ -445,11 +444,18 @@ function wirePocket(d) {
     d.history.update(tabId, { fromPhone: true });
   }
 
-  // A reply, one that waits for his turn to end, and the conversation's name,
+  // A reply, one into the desk's queue mid-turn, and the conversation's name,
   // effort, closing and History (pocket/talk.js).
   const talk = createPocketTalk(d, {
     modeOf,
     takePhotos: ids => extra.takePhotos(ids),
+    // Mid-turn: into the desk's own queue (tab-queue.js), which hands it to Claude
+    // at his next step or sends it once the turn ends. The panel keeps the only
+    // list main steers from, so it goes there rather than in beside it.
+    queue(tabId, text, files) {
+      const win = d.tabWindow?.(tabId) || d.panel;
+      d.send(win, 'tab:queue', { tabId, text, ...(files.length ? { files } : {}) });
+    },
     onSent(tabId, r) {
       // The desk's panel draws a message it didn't send itself from this.
       d.send(d.tabWindow?.(tabId) || d.panel, 'tab:sent', { tabId, item: r.item });

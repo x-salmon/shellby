@@ -57,8 +57,6 @@ function phoneTab(t, extra = {}) {
     fromPhone: !!extra.fromPhone,
     canReply: !!extra.canReply,
     effort: typeof extra.effort === 'string' ? line(extra.effort, 10) : '',
-    // Replies typed on the phone while he worked, waiting for the turn to end (pocket/talk.js).
-    queued: Array.isArray(extra.queued) ? extra.queued.slice(0, 5) : [],
   };
 }
 
@@ -173,10 +171,10 @@ function phoneHeld(h) {
  *   crab:     { state, work, say, crew: [{ label, type }] }
  *   extras:   tabId -> { mode, fromPhone, canReply }
  *   outlook:  usage/service.js outlookView()
- *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey
+ *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey, mode (the desk's)
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, mode = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -196,6 +194,7 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     prompts: prompts.slice(0, 20).map(p => phonePrompt(p, titleOf)),
     usage: { ...phoneUsage(lastUsage, outlook, now), ...usageDetail(lastUsage, outlook, guard, now) },
     focus: phoneFocus(focus, now),
+    mode: line(mode, 20) || null, // the desk's mode: where a new task's picker starts
     allow: allow ? { push: !!allow.push, files: !!allow.files } : { push: false, files: false },
     held: (held || []).slice(0, 20).map(phoneHeld),
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),

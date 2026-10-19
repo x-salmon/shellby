@@ -65,7 +65,7 @@
           for (const p of photos) URL.revokeObjectURL(p.url);
           photos.length = 0;
           strip.replaceChildren();
-          if (r.queued) toast('It goes when he finishes this turn.');
+          if (r.queued) toast('Queued. He reads it at his next step.', { tone: 'ok' });
         },
       });
       const mode = modePicker(tabOf(tabId)?.mode);
@@ -168,26 +168,18 @@
         }
         const reviewing = t.ready && !t.busy && !t.pending;
         if (reviewing) parts.push(reviewBar(t));
-        if (t.queued?.length) parts.push(queuedList(t));
-        // While he works, a reply waits for the turn to end; while he asks, the question comes first.
+        // While he works, what you send waits in the queue for his next step, in the mode
+        // the turn already has: a pick then would change the running turn. While he asks,
+        // the question comes first.
         const replying = !t.pending && t.canReply;
         if (!t.pending && !t.canReply && !t.busy && !reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
         footParts.replaceChildren(...parts);
         // The box itself stays put, so the keyboard and what's typed survive every update.
-        input.placeholder = t.busy ? 'Reply… it goes when he finishes' : 'Reply…';
+        input.placeholder = t.busy ? 'Queue for his next step…' : 'Reply…';
+        mode.hidden = !!t.busy;
         replyRow.hidden = !replying;
         foot.hidden = !replying && !parts.length;
         if (replyRow.parentNode !== foot) foot.replaceChildren(footParts, replyRow);
-      }
-
-      // Replies typed while he worked. After a Stop nothing sends them by itself, so each can go now.
-      function queuedList(t) {
-        return h('div', { class: 'queued', role: 'list', 'aria-label': 'Waiting to go' },
-          h('span', { class: 'queued-head', text: t.busy ? 'Waiting for this turn to end' : 'Stopped before these went' }),
-          ...t.queued.map(m => h('div', { class: 'queued-row', role: 'listitem' },
-            h('span', { class: 'queued-text', text: [m.text, m.photos ? L.plural(m.photos, 'picture') : ''].filter(Boolean).join(' · ') }),
-            t.busy ? null : actButton({ label: 'Send', cls: 'go slim', run: () => act('unqueue', { tabId, id: m.id, send: true }) }),
-            actButton({ label: 'Remove', cls: 'ghost slim', run: () => act('unqueue', { tabId, id: m.id }) }))));
       }
 
       function reviewBar(t) {

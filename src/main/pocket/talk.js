@@ -1,18 +1,13 @@
 // What you say to a conversation from the phone, and what you do to it
-// (wiring/pocket.js): a reply, with photos; one typed while he works, which
-// waits for the turn to end; its name, its effort, closing it, and bringing an
-// old one back from History.
-//
-// The desk's queue lives in its panel and steers into the running turn. The
-// phone's waits here instead and goes when the turn ends, so the two never
-// write over each other's list (sessions.js steer).
+// (wiring/pocket.js): a reply, with photos, which joins the desk's queue while
+// he works; its name, its effort, closing it, and bringing an old one back
+// from History.
 const path = require('path');
 const pt = require('../channels/phone-tasks');
 const { EFFORTS } = require('../cli-contract');
 const { closeTab } = require('../ipc/tabs');
 const { line } = require('./view');
 
-const MAX_QUEUED = 5;
 const MAX_HISTORY = 30;
 const MAX_TITLE = 120;
 // Claude Code's own commands that only look at or tidy the conversation. Any
@@ -36,88 +31,39 @@ function commandProblem(said) {
  * @param d  main's shared deps
  * @param o  modeOf: the phone's mode, checked against the desk's list;
  *   takePhotos: photo ids (POST /upload) -> their paths, each used once;
+ *   queue(tabId, text, files): into the desk's queue, mid-turn;
  *   onSent(tabId, sendToTab's answer): the desk and the phone hear of it;
  *   pushView: the view changed
  */
-function createPocketTalk(d, { modeOf, takePhotos, onSent, pushView }) {
-  const queued = new Map(); // tabId -> [{ id, text, mode, files }]
-  let count = 0;
-
-  function open(tabId) {
-    const tab = str(tabId) && d.manager.tabs.get(tabId);
-    if (!tab) return { error: 'That conversation has closed.' };
-    if (tab.inTerminal) return { error: "It's in a terminal on your PC now. Reply there." };
-    return { tab };
-  }
-
-  function send(tabId, { text, mode, files }) {
-    const tab = d.manager.tabs.get(tabId);
-    // The mode the phone picked, or Ask: kept when the desk's mode changes.
-    const runAs = modeOf(mode);
-    if (tab.session.mode !== runAs) tab.session.setMode(runAs);
-    tab.pinnedMode = true;
-    const r = d.sendToTab(tabId, text, files);
-    if (!r.ok) return no(r.error);
-    onSent(tabId, r);
-    return ok({ turnId: r.turnId });
-  }
-
+function createPocketTalk(d, { modeOf, takePhotos, queue, onSent, pushView }) {
   function reply({ tabId, text, mode, photos }) {
-    const { tab, error } = open(tabId);
-    if (!tab) return no(error);
+    const tab = str(tabId) && d.manager.tabs.get(tabId);
+    if (!tab) return no('That conversation has closed.');
+    if (tab.inTerminal) return no("It's in a terminal on your PC now. Reply there.");
     const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     const pictures = Array.isArray(photos) ? photos : [];
     if (!said && !pictures.length) return no('Type something first.');
     const problem = commandProblem(said);
     if (problem) return no(problem);
     const busy = d.manager.isBusy(tabId);
-    const list = queued.get(tabId) || [];
-    if (busy && list.length >= MAX_QUEUED) return no(`${MAX_QUEUED} are waiting already. Let him get to those first.`);
+    // A command starts a turn of its own, so it can't join one that's running.
+    if (busy && said.startsWith('/')) return no("He's on a turn. Send the command when he's done, or at the desk.");
     const files = takePhotos(pictures);
     if (!said && !files.length) return no('Those photos have gone. Add them again.');
-    if (!busy) return send(tabId, { text: said, mode, files });
-    // He's working: this goes when the turn ends, after any already waiting.
-    queued.set(tabId, [...list, { id: `q${++count}`, text: said, mode, files }]);
-    pushView();
-    return ok({ queued: true });
-  }
-
-  // A waiting reply taken back, or sent now (after a Stop, nothing sends them by itself).
-  function unqueue({ tabId, id, send: now }) {
-    const list = queued.get(tabId) || [];
-    const m = list.find(x => x.id === id);
-    if (!m) return no('That one has gone already.');
-    if (now && d.manager.isBusy(tabId)) return no("He's still on it. It goes when this turn ends.");
-    const rest = list.filter(x => x.id !== id);
-    if (rest.length) queued.set(tabId, rest); else queued.delete(tabId);
-    pushView();
-    if (!now) return ok();
-    if (!open(tabId).tab) return no('That conversation has closed.');
-    return send(tabId, m);
-  }
-
-  // A turn ended: the first waiting reply goes, unless it was stopped. The desk's
-  // own queue may start the next turn first, and then this waits for that one.
-  function turnEnded(tabId, item) {
-    if (!queued.get(tabId)?.length || item?.interrupted) return;
-    setTimeout(() => {
-      const list = queued.get(tabId);
-      const tab = d.manager.tabs.get(tabId);
-      if (!list?.length || !tab || d.manager.isBusy(tabId) || tab.session.pending.size) return;
-      const [next, ...rest] = list;
-      if (rest.length) queued.set(tabId, rest); else queued.delete(tabId);
-      const r = open(tabId).tab ? send(tabId, next) : no('It moved to a terminal.');
-      if (!r.ok) {
-        d.log.warn('pocket: a waiting reply could not go', r.error);
-        d.pocket?.item(tabId, { k: 'note', what: 'error', text: line(`Your waiting reply couldn't go: ${r.error}`, 300) });
-      }
-      pushView();
-    }, 0);
-  }
-
-  /** What the phone shows of a conversation's waiting replies. */
-  function queuedOf(tabId) {
-    return (queued.get(tabId) || []).map(m => ({ id: m.id, text: line(m.text, 200), photos: m.files.length }));
+    // Mid-turn: the desk's queue hands it to Claude at his next step, or sends it
+    // once the turn ends. The mode stays: a change now would reach the running turn.
+    if (busy) {
+      queue(tabId, said, files);
+      return ok({ queued: true });
+    }
+    // The mode the phone picked, or Ask: kept when the desk's mode changes.
+    const runAs = modeOf(mode);
+    if (tab.session.mode !== runAs) tab.session.setMode(runAs);
+    tab.pinnedMode = true;
+    const r = d.sendToTab(tabId, said, files);
+    if (!r.ok) return no(r.error);
+    onSent(tabId, r);
+    return ok({ turnId: r.turnId });
   }
 
   function rename({ tabId, title }) {
@@ -139,7 +85,6 @@ function createPocketTalk(d, { modeOf, takePhotos, onSent, pushView }) {
   function close({ tabId }) {
     if (!str(tabId) || !d.manager.tabs.has(tabId)) return no('That conversation has closed already.');
     closeTab(d, tabId);
-    queued.delete(tabId);
     pushView();
     return ok();
   }
@@ -165,8 +110,8 @@ function createPocketTalk(d, { modeOf, takePhotos, onSent, pushView }) {
     return ok({ tabId: id });
   }
 
-  const actions = { reply, unqueue, rename, effort, close, history, resume };
-  return { actions, turnEnded, queuedOf };
+  const actions = { reply, rename, effort, close, history, resume };
+  return { actions };
 }
 
-module.exports = { createPocketTalk, commandProblem, MAX_QUEUED, PHONE_COMMANDS };
+module.exports = { createPocketTalk, commandProblem, PHONE_COMMANDS };

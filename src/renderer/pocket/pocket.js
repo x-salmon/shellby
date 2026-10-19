@@ -439,7 +439,8 @@
         onclick: () => { picked = p.key; N.store.set('shellby.pocket.project', picked); drawChips(); },
       })));
       drawChips();
-      const mode = modePicker(N.store.get(MODE_KEY));
+      // The desk's mode, as a task typed there gets; the last pick here when the PC doesn't say.
+      const mode = modePicker(S.view?.mode || N.store.get(MODE_KEY));
       mode.addEventListener('change', () => N.store.set(MODE_KEY, mode.value));
       const lim = S.view?.limits;
       // Pictures for the task: each goes to the PC as it's picked, and the task names them.

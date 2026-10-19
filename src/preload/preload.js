@@ -756,7 +756,7 @@ contextBridge.exposeInMainWorld('shellby', {
   setPanelRoomy: invoke('panel:roomy'), // widen the panel for a workflow map, or put it back
   fitPanel: invoke('panel:fit'), zoomFactor: () => webFrame.getZoomFactor(), // grow the panel until the panes fit ({ width, height } DIP); the page's zoom, for CSS px -> DIP
   onTabItem: on('tab:item'),
-  onTabSteering: on('tab:steering'), // queued messages handed to Claude mid-turn
+  onTabSteering: on('tab:steering'), onTabQueue: on('tab:queue'), // queued messages handed to Claude mid-turn; a phone reply joining the queue (wiring/pocket.js)
   onTabs: on('tabs'), keepWarmSet: invoke('keepwarm:set'), keepWarmGet: invoke('keepwarm:get'), onKeepWarm: on('keepwarm'), // Keep warm (keepwarm-service.js)
   onHomeLine: on('home:line'), // { tabId, title, base, status: 'sorting' | 'home' | 'stuck', ... }
   onLaneTrain: on('lanes:train'), // { tabId, index, phase, of } while lining copies up, then { done: true }
