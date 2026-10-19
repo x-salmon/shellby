@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.91.0: A leaner Claude, and a signed Shellby
+
+### New
+- **Claude Code's own count, in the Lean tab.** Conversations Shellby starts now send Claude Code's built-in metrics to Shellby, and nowhere else. The tab shows the lines Claude added and removed this week, how many of its edits you accepted, and the commits and pull requests it made. Only numbers are kept, never prompts. If you set up telemetry of your own, Shellby leaves it alone, and **Turn off** stops it.
+- **Where a conversation's start goes.** A bar under the setup weight splits it into CLAUDE.md and rules, plugins, your skills' listings and Claude Code's own part, and shows how much of the context window that takes before you type. When the setup grows or shrinks, the tab says by how much and since when.
+- **A word when the cache slips.** If much less of today's input comes from the prompt cache than on most days, the Lean tab says so, and what usually causes it.
+- **Files Claude keeps coming back to.** The Lean tab lists the files in this project that Claude read or edited in three or more conversations over the last 30 days, with what reading each one costs. **Ask Claude** drafts a prompt asking for CLAUDE.md notes or splits that would save the reading.
+- **Hooks that add to the conversation.** The Lean tab lists the hooks whose output Claude Code adds to your conversations, at the start, with each message or after a tool, with what each run adds. What start hooks add now has its own part in the setup bar instead of hiding in Claude Code's. **Ask Claude** drafts a prompt for leaner ways to do the same job.
+- **Helpers on Sonnet.** A new **Helpers** setting in Settings → Claude Code → Model runs the helpers Claude sends out on another model, so a search or review on Opus can cost much less. Helpers that name a model of their own keep it, and a model you've set for them yourself wins. The note about helpers that cost more than the work offers **Run helpers on Sonnet**.
+- **A word when pictures pile up.** Each screenshot in a conversation is sent again with every message after it. Once one holds five or more, a line under the turn's cost says about what they cost and offers **Start fresh with a summary**, which keeps what was said and leaves the pictures behind.
+- **Commands that flood the conversation.** The Lean tab lists the commands in this project whose output fills Claude's context, like a test run or a long `git log`, with what each run puts in. Everything a command prints is sent again with every message after it. **Ask Claude** drafts a prompt for quieter ways to run them.
+- **When the cache missed, and why.** If a turn sends a conversation again at full price while its prompt cache should still have held it, a line under the turn's cost says so and what came just before: a quiet conversation picked up on a setup that had changed, or a different model. The Lean tab adds up the week's misses.
+- **Helpers that cost more than the work.** When helpers spend more of a turn than the conversation itself, a line under its cost says so once and suggests narrower briefs.
+- **Sonnet for small asks.** Typing a question, a docs task or a tidy-up into a conversation that hasn't started, on a top model, says what that kind of ask usually costs here and offers **Start this one on Sonnet**. The model is kept with the conversation when you reopen it.
+- **A word before paying for a cold cache.** A short message into a big conversation whose cache has gone cold sends all of it again. Shellby says so above the box and offers **Ask in a new tab** for a question that doesn't need the conversation.
+
+### Fixed
+- **Ultracode off means off.** With the chip off, a message that only mentions "ultracode" no longer asks to send with Ultracode, and Claude doesn't start a run over it.
+
+### Changed
+- **Shellby is code-signed.** The installer and the portable exe now carry a verified publisher, Jacob Barford, instead of "Unknown publisher", and Windows' SmartScreen warning fades as more people install him.
+- **A tidier Ultracode chip.** It has a bolt and matches the app's other toggles, and turns amber while it's on.
+
 ## 0.90.0: A crab you paint, and Shellby on your phone
 
 ### New
