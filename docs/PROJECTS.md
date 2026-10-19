@@ -150,13 +150,13 @@ Notes stay on this PC: up to 100 a list, and they don't sync. Notes turns up on 
 ## Flaky tests
 
 - **Spotted for you.** When a test fails and then passes with the code exactly as it was, Shellby notices. A test that went green because you fixed it never counts. The second time one does it in a week, he says so: *"auth.spec › signs in flaked 2 times this week"*.
-- **Routines → Flaky tests** lists each one, its project and runner, and how often it flaked. He reads node's test runner, Jest, Vitest, Mocha, pytest, Go, Rust, Playwright, RSpec, .NET and PHPUnit.
+- **Projects → Flaky tests** lists each one, its project and runner, and how often it flaked. He reads node's test runner, Jest, Vitest, Mocha, pytest, Go, Rust, Playwright, RSpec, .NET and PHPUnit.
 - **Fix it:** one button starts a task in a copy of the project on its own branch. Claude finds the cause (timing, shared state, test order, a real network or clock), fixes that rather than adding retries, runs the test 20 times to prove it, and commits. Or **Quarantine** it the runner's own way, with a note saying why, and he offers to try again in two weeks.
 - **File an issue:** with **Let Claude tasks push** on in Settings → GitHub, a flaky test in a project on GitHub can become an issue there, after Shellby asks: what he saw (the test, how often it flaked and when, the command with any values left out) and how to go about fixing it. It's labelled `shellby` and assigned to you, so the [Issue helper](WORKFLOWS.md#from-an-issue-to-a-pull-request) can offer to take a crack at it, and anyone else on the project can see it. The row then links to the issue.
 
 ## Dependencies
 
-- **Dependency watch.** Once a week Shellby checks the projects you work in for outdated packages and known vulnerabilities, himself, without Claude. It's on the **Routines** page under Dependency watch, off until you switch it on. He goes by each project's lockfile:
+- **Dependency watch.** Once a week Shellby checks the projects you work in for outdated packages and known vulnerabilities, himself, without Claude. It's on the **Projects** page under Dependency watch, off until you switch it on. He goes by each project's lockfile:
 
     | Lockfile | What he runs | Needs |
     |---|---|---|

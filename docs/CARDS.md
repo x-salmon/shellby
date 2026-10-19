@@ -18,6 +18,7 @@ sheet.
 | Tank | The Tank's header | The crab card, saved as his tank card (it finishes "Share the tank") | `shellby-tank-…` |
 | Week | Trophies, and Friday's "your week" | The last seven days: hours, tasks, fixes, streak, his class, top project, trophies, what shipped | `shellby-week-…` |
 | Wrapped | The Wrapped sheet | A year's biggest numbers, its nemesis bug and molts | `shellby-wrapped-…` |
+| Wrapped (friends) | The Wrapped friends slide (**Make a card of us**) | You and up to five friends side by side: days together, XP, bugs, nemeses and who did most | `shellby-wrapped-friends-…` |
 | Beach | Us | A snapshot of the whole beach | `shellby-beach-…` |
 | Sparkly find | The sparkly reveal | The find or bug, its odds | `shellby-shiny-…` |
 | Medal | A tide event's finish, the Us page | The year's medal | `shellby-medal-…` |

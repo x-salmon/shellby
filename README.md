@@ -199,7 +199,7 @@ He's how you see the work without opening anything. He scuttles while Claude wor
 The rest is there if you want it, and none of it needs Claude or an account:
 
 - **A desk pet with a life of his own:** a voice and a temperament (chipper, fussy, cocky or sleepy), little scenes when nothing's happening, finds he digs up, hide and seek and fetch, a bond that grows, a tank to decorate, and a beach with a sandcastle for every project you ship. [On your desktop →](docs/DESKTOP.md) · [His tank →](docs/TANK.md)
-- **Dress him up:** 168 accessories, 24 effects and 18 crabs, 97 trophies and 99 levels, a sticker for every repo you ship, and the [Bugdex](docs/BUGDEX.md), where every kind of bug Claude fixes is a creature he scoops into a jar. More from other people in the **[community gallery](https://getshellby.com/community/)**. [Outfits, trophies and stickers →](docs/WARDROBE.md)
+- **Dress him up:** 173 accessories, 44 effects and 18 crabs, 142 trophies and 99 levels, a sticker for every repo you ship, and the [Bugdex](docs/BUGDEX.md), where every kind of bug Claude fixes is a creature he scoops into a jar. More from other people in the **[community gallery](https://getshellby.com/community/)**. [Outfits, trophies and stickers →](docs/WARDROBE.md)
 - **He watches your PC:** he sweats when the GPU runs hot, gets dizzy when memory's full and overstuffs his shell when a drive fills up, with live vitals, what's hogging it, what starts with Windows and the developer clutter you can clear. [How Health works →](docs/HEALTH.md)
 - **Things to try:** throw him at a title bar and he rides the window, fling him at the edge of the screen and he climbs it, rub the mouse over him to pet him. Pals, typing along and pranks stay off until you turn them on. [All of it →](docs/DESKTOP.md)
 
@@ -213,46 +213,46 @@ The rest is there if you want it, and none of it needs Claude or an account:
 <tr>
 <td width="33%" valign="top">
 
-**👣 The trail** · 0.82<br>
-<sub><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> opens a map of the files Claude has touched, with him walking it: footprints where he read, dug-over files where he changed things, and a replay of every step. [See](CHANGELOG.md#0820-the-trail)</sub>
+**🎨 The Crab Painter** · 0.90<br>
+<sub>A 🎨 Paint tab on his screen: paint him pixel by pixel and watch him do every mood and pose in your colours. Hats, effects and tank decor too, and one click sends what you paint to the community gallery. [See](CHANGELOG.md#0900-a-crab-you-paint-and-shellby-on-your-phone)</sub>
 
 </td>
 <td width="33%" valign="top">
 
-**★ Marks past 99** · 0.81<br>
-<sub>XP keeps counting after the top level: each mark shows as 99★1, 99★2…, with its own countdown and celebration. [See](CHANGELOG.md#0810-marks-past-99-zoomed-panes-and-named-layouts)</sub>
+**📱 Shellby on your phone** · 0.90<br>
+<sub>Your conversations live on your phone, served by your own PC over your Tailscale network. Answer Allow or Deny, start a task, read a diff and Bring it home, with no account of ours and no server in the middle. [How](docs/PHONE.md)</sub>
 
 </td>
 <td width="33%" valign="top">
 
-**🪟 Twelve panes** · 0.80<br>
-<sub>Up to twelve conversations side by side, each pane with its own tabs and box. Zoom one, name a layout or keep one per project, and <kbd>Alt</kbd>+<kbd>J</kbd> finds the one waiting for you. [See](CHANGELOG.md#0800-twelve-panes-each-with-its-own-tabs)</sub>
+**⚡ Ultracode** · 0.86<br>
+<sub>The Ultracode chip under the box lets Claude send out a whole crew of agents in the background, with a card for every run and its agents walking out as helper crabs. [See](CHANGELOG.md#0860-ultracode-a-guided-first-run-and-a-steadier-client)</sub>
 
 </td>
 </tr>
 <tr>
 <td width="33%" valign="top">
 
-**🎨 Code in colour** · 0.79<br>
-<sub>Replies stream in as Claude writes them, code is coloured by language, Mermaid diagrams are drawn, and diffs go side by side with <b>Undo this part</b>. [How](docs/CLAUDE-CODE.md)</sub>
+**📂 All files, beside the chat** · 0.87<br>
+<sub><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> shows the whole project with each file's git mark, lit up as Claude reads, writes and commits. And the mug in the tab strip keeps big conversations warm while you're at lunch. [See](CHANGELOG.md#0870-all-files-beside-the-chat-and-keep-warm)</sub>
 
 </td>
 <td width="33%" valign="top">
 
-**🧭 Outline, Problems and Debug mode** · 0.79<br>
-<sub><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> for every message and the files it touched, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> for the errors your checks found, and <code>/debug</code> to fix a bug from live logs. [See](CHANGELOG.md#0790-routines-that-follow-you-live-replies-and-code-in-colour)</sub>
+**📖 The Logbook and levels to 99** · 0.85<br>
+<sub>Everything going on in one place on his screen, and nearly every level from 20 to 99 unlocks something: shells, tank pieces, effects and perks. [See](CHANGELOG.md#0850-the-logbook-levels-to-99-and-shellby-wrapped)</sub>
 
 </td>
 <td width="33%" valign="top">
 
-**🔁 Routines that follow you** · 0.79<br>
-<sub>Your routines and workflows sync to your other PCs, arriving switched off so nothing runs twice. [See](CHANGELOG.md#0790-routines-that-follow-you-live-replies-and-code-in-colour)</sub>
+**🪸 Reef health** · 0.85<br>
+<sub>Press <b>Watch this reef</b> on a project's page and he keeps an eye on lint, coverage, CI, flaky tests and more. Every new best grows the project's coral, and a worse day never takes anything away. [How](docs/REEF.md)</sub>
 
 </td>
 </tr>
 </table>
 
-<sub>And before that: the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
+<sub>And before that: Claude Code installed for you, a Council that reads your project first, Shellby Wrapped, background sessions, combining tries, the file viewer, the trail, marks past 99, twelve panes, code in colour, the Outline and Problems, <code>/debug</code>, routines that follow you, the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
 
 ## Install
 
@@ -328,6 +328,7 @@ Everything stays on your PC. Conversation history lives in `%APPDATA%\Shellby\se
 - Phone notifications, only if you turn them on, straight to the service you picked (ntfy, Pushover, Telegram, Discord, Slack or your own endpoint).
 - Shellby on your phone, only if you turn it on: your PC serves the app to your own phone over your tailnet, and its notifications go encrypted through your phone's push service (Apple's, Google's, Mozilla's or Microsoft's), which can't read them.
 - The npm registry once a day, to say when a newer Claude Code is out (**Leave it to me** in **Settings → About** stops it).
+- The community gallery once a day, for its news of contests, winners and events, and while you're signed in to GitHub, its list of packs, to see whether you've earned a trophy for making Shellby. Nothing about you goes with either (**Community news** in **Settings → Shellby → Games** stops both).
 - Crash reports to Sentry, only when you say so: he asks first, and **Settings → About → Crash reports** changes it.
 - Things you ask for: ssh to the computers you add under **Other computers**, community packs, plugins and MCP servers, `git` fetches and pushes, workflow web requests, and the weekly dependency check (npm, pnpm, Yarn, pip-audit, cargo-audit and Go's, whichever your projects use).
 - Things that never leave your PC: the time tracker (it reads the title of the window in front to tell which project you're in, keeps only the project, the day and the minutes, and never syncs them; a day goes to Toggl, Clockify or Harvest only when you send it), push-to-talk audio (Windows' offline speech recognizer hears it, and the microphone is only open while you hold the shortcut), your PC's health readings, OpenRGB, the OBS overlay, the Stream Deck keys (behind a token only the plugin has), the phone app's port (Tailscale is what reaches it, for your login only), and the port the `shellby` command and the plugin use — all on `127.0.0.1`.

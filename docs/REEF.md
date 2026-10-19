@@ -39,7 +39,7 @@ Nothing here runs anything in the project. Shellby reads what's already lying ar
 | Lint problems | the count at the end of a lint run Claude did: eslint's *✖ 12 problems*, ruff's and biome's *Found 3 errors*, clippy's *generated 4 warnings* | lower |
 | Line coverage | `coverage/coverage-summary.json`, `coverage/lcov.info`, `lcov.info`, `coverage.xml` or `coverage/cobertura-coverage.xml`, only when the file changed, up to 5 MB, never followed out of the repo | higher |
 | CI green rate | the checks on your last 20 pull request runs Shellby already watches (needs 3) | higher |
-| Flaky tests | open ones on the Flaky page | lower |
+| Flaky tests | open ones under Flaky tests on the Projects page | lower |
 | Vulnerable packages | the weekly dependency check | lower |
 | Bug nests | open nests the Bugdex reports | lower |
 | Tests | how many tests a run Claude did counted (jest, vitest, node:test, mocha, pytest, cargo) | higher |

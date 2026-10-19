@@ -59,7 +59,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `npm run commands:check` | Diffs the catalogue of Claude Code's slash commands (`src/main/cli-commands.js`) against the installed CLI; `-- --write` records the CLI's list as `test/fixtures/cli-commands.json`. See [Keeping up with Claude Code](#keeping-up-with-claude-code) |
 | `npm run lint` | ESLint over main, the renderers, the tests and the scripts, each with the globals it really has (see eslint.config.mjs) |
 | `npm run panel:html` | Builds `src/renderer/panel/panel.html` from the files in `src/renderer/panel/html/` (a frame plus one per screen, `<!-- @include x.html -->`). Run it after editing any of them; `-- --check` says if it's stale |
-| `npm run typecheck` | TypeScript's checker over the JSDoc in `src/preload` and `src/main`'s `ipc`, `flaky`, `remote`, `backlog`, `bugdex`, `depwatch`, `tank`, `stickers`, `usage`, `weather`, `hooks`, `claude` and `routines` (jsconfig.json), with no build step |
+| `npm run typecheck` | TypeScript's checker over the JSDoc in `src/preload` and `src/main`'s `ipc`, `flaky`, `remote`, `pocket`, `backlog`, `bugdex`, `depwatch`, `tank`, `stickers`, `usage`, `weather`, `hooks`, `claude`, `routines`, `session`, `progression`, `worktrees`, `history`, `sync`, `timetrack`, `channels` and `desktop` (jsconfig.json), with no build step |
 | `npm run packs` | Validates the built-in wardrobe packs in `src/wardrobe/` |
 | `npm run packs:format` | Rewrites those packs in the house style: pivot and palette on one line, one pixel row per line |
 | `npm run packs:sheet` | A contact sheet of every built-in pack worn by the crab (Python), to eyeball new art |
@@ -84,6 +84,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/e2e-files.js [--shots <dir>]` | All files, the File manager's first tab, against the fake CLI in a throwaway repo: a fresh profile opens on it, Ctrl+Shift+F opens it, Ctrl+Shift+E switches to the Trail without closing, and back; the branch row naming the branch and saying clean; the tree, folders first; an edit lighting its row orange and opening its folder dimmed; git's mark and +/− on the file, the folder's totals while closed and the repo's on the branch row; the folder closing again when the flash is over; a commit lighting what it changed green and the branch row clean again; the branch row's worktree and branch menu with this worktree ticked; a picked file's chip and footer, the [Shellby: line reaching the fake CLI, the pick staying after sending and × clearing it; @path in the box bringing its row into view without picking it; a file added to a new folder git lists whole showing in the tree; a worktree inside the project picked from the menu, a folder and then a second file made there showing while it is the view, and back home showing home; that worktree deleted while it is the view going back home with the branch row still there, and picked again once made again; Ctrl+Shift+F closing it |
 | `node scripts/e2e-editor.js [folder]` | An edit's permission card shows its diff with line numbers, the tool row folds open to it, a path in a reply becomes a link (checked, never clicked), Ctrl+F counts and steps through matches, Ctrl+= zooms, Ctrl+Shift+P opens the palette, and Settings → Editor says what Automatic means. Screenshots go in `[folder]` |
 | `node scripts/e2e-panes.js [--shots <dir>]` | Conversations side by side and in their own windows: Split and drags up to four columns, the lines between panes resize them, each pane's own tab strip (a tab dropped on a strip, on the middle of a pane or on an edge goes where it should, a pane's × moves its tabs next door, Ctrl+Tab stays in its pane), the box moves to the pane you're in and the rest show their drafts, Alt/Ctrl+Alt+arrows move between panes and move a conversation into the next, the layout and every pane's tabs survive a restart, a tab dragged out gets a window of its own with its conversation and what was typed, and its × hands it back. Also zoom, layouts you name and a project's own, swapping panes by key and by dragging a header, a pane's lane (branch and checks), and a pane asking for your OK lighting up, with Alt+J to go there |
+| `node scripts/e2e-tool-panes.js` | A dev server's log in a pane beside the chat, with the fake CLI and a stand-in server (`test/fixtures/devservers`): opened from the server's card on the project page, it shows what the server prints and is no conversation, the box stays with the conversation, the crash shows with the way to its card, and its × closes it |
 | `node scripts/e2e-tab-overview.js [--shots <dir>]` | Lots of open conversations: the tab strip's edge markers count what's scrolled out of sight and jump to one that needs you, and the list of every open conversation groups, filters, opens, closes and tidies away the quiet ones. No Claude account: tab states are set straight on the panel |
 | `node scripts/e2e-viewer.js [--shots <dir>]` | The file viewer, against the fake CLI: a conversation's copy lists what it changed with diffs and the new side's line numbers, a second edit shows up on its own, Whole file and Diff, long lines wrapping and the Wrap button's choice carrying over, the footer's totals, an unchanged file read whole, Esc back to both panes, file links (click, Ctrl, Shift, outside the repo), the branch chip's View changes in a plain checkout, the Project page's Browse files and worktree rows, and the header's menu: the copy and an unmerged branch listed with their counts, the branch's change, diff and Whole file, a deleted branch, back to the copy and the file last open there, and a turn in the copy nudging a viewer on a worktree inside it |
 | `node scripts/e2e-notes.js` | Notes: a list per project plus a General one; adding, editing, ticking off, moving between lists and deleting, and Plan / Build / Ask each opening a task in the right folder, in the right mode, with the right prompt |
@@ -123,6 +124,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/e2e-snippets.js [screenshot.png]` | Prompt snippets with the fake CLI: Toolbox → Snippets lists the starters and saves a new one, `/name` in the box sends its prompt, a pinned snippet is a chip on the start screen, `/snippets save` keeps the last message, and `shellby do @name` reaches the same snippets over `/v1/cli` |
 | `node scripts/e2e-xp.js` | XP and levels with the fake CLI and hook events: passing tests, a failing run (no XP), green again, git push, an outside deploy, desktop "+XP", level-up, Trophies card (next unlock, bounties, 30 days) |
 | `node scripts/e2e-marks.js` | Marks past level 99: a crab one task short of ★1 finishes it; the titlebar badge (99★1), the Trophies card, the celebration card and his bubble |
+| `node scripts/e2e-molt.js [folder]` | Molting at 99 with the fake CLI: the Molt sheet, the confirm window, and back at level 1 with the molt badge ring, wearing tier shell I, with every level unlock (the level shells, the Grand aquarium) still his; then the dev hook puts him at 99 again on the new curve. Screenshots go in `[folder]` |
 | `node scripts/e2e-character.js [folder]` | The character sheet: XP seeded to make him a Tester with some of it this week, a passing test task announcing the first class, the Trophies page's sheet and the weekly card with its nameplate. Screenshots go in `[folder]`. Not in `e2e:ci` |
 | `node scripts/e2e-logbook.js` | The Logbook ([LOGBOOK.md](LOGBOOK.md)): its tab first on every page of his screen for someone brand new, a card for each system (the ones not built yet saying so), a feed line that lands on its screen, pinning and folding cards, and the quest chapters list |
 | `node scripts/e2e-quests.js` | Quests with the fake CLI: no quest card until the first task is done, then the first quest in a fresh conversation and the trail in Trophies, a real review with line comments finishing it, Chapter 1 finished with its own card, and × hiding the card (Undo-able; Trophies brings it back) |
@@ -132,10 +134,12 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/e2e-stickers-molt.js` | Stickers through a molt: one push short of level 3, a push levels him into the Snail Shell and ships a new project; his three most shipped stickers move with him, the old shell keeps all of its own, and the new sticker lands on the new shell. `E2E_SHOTS=<dir>` keeps screenshots |
 | `node scripts/e2e-flaky.js` | The flaky test detective with the fake CLI: a Jest run piped through `tail` failing then passing on the same code, the list under Projects, his "flaked 2 times this week" line, an edit between runs not counting, a click on the bubble, Fix it in a copy of the repository, and the Settings switch |
 | `node scripts/e2e-flaky-issue.js` | A flaky test filed as a GitHub issue against a mock GitHub (the flaky test seeded): no button until GitHub can take it, a question first (Cancel files nothing), then one issue labelled shellby and assigned to you with the evidence, and the row linking to it |
+| `node scripts/e2e-reef.js [folder]` | Reef health ([REEF.md](REEF.md)) and review mastery with the fake CLI, in a throwaway repo with two escape hatches committed: Watch this reef on the project page, the first count read from git, a better reading a new best with a polyp (a worse one taking nothing away), Fix this and Fix the worst putting a prompt naming the file in a new conversation's box (unsent), the coral in the tank's tray and on the Tank page, and the review tier ladder in Trophies. Nothing in the project is run. Screenshots go in `[folder]` |
 | `node scripts/e2e-bugdex.js` | The Bugdex with the fake CLI (commands replayed from `test/fixtures/bugdex/`): a failed command seen and on the loose with nothing paid, an edit and the same command passing caught (XP, the jar), the same bug soon after not counted twice, no catch for an unchanged tree, a deleted test or a grep through a log, the page, and the Settings switch |
 | `node scripts/e2e-battle.js` | Bug battles with the fake CLI: a red suite opens a battle at full HP, a read is a Scout and an edit a Patch, a re-run with fewer failing tests takes HP off (the right tool counting double), a helper joins the party, and the green run knocks it out and jars it; the chip under the tabs and the battle screen show it. `SHELLBY_SHOTS=<folder>` saves screenshots |
 | `node scripts/e2e-queue.js` | Queued messages with the fake CLI: queue behind a running turn, edit with ↑, drain in order, Stop hands them back, an error pauses the queue, a message queued while a tool runs is steered into the same turn (no Claude account needed) |
 | `node scripts/e2e-context.js` | The context meter with the fake CLI: a reply's tokens filling the hairline under its tab and the chip, what each turn cost, a quieter "filling up" offer and then "getting crowded" past 80%, the chip's menu (the running total, the costliest turns, Not now, Compact), Start fresh with a summary, and `/clear` (the next message starts without `--resume`) |
+| `node scripts/e2e-keepwarm.js` | Keep warm with the fake CLI: off with nothing cached, then a reply cached for an hour, the mug pressed with the time left beside it, a ping just before the cache expires that leaves one dim line (not your message in the feed, the tab not left working), the tooltip's countdown, and coming back after an absence turning it off. `SHELLBY_KEEPWARM_LEAD_MS` makes the ping due a second after the reply |
 | `node scripts/e2e-attachments.js` | Screenshots as tasks with the fake CLI: a snip pasted into the box, or a picture with no file behind it dropped on the panel or the crab, is saved, shown as a thumbnail chip and reaches Claude as an image block. The pastes and drops are synthetic events with real PNG bytes, so the clipboard is never touched |
 | `node scripts/e2e-cli-features.js [folder]` | The Claude Code features Shellby passes through, with the fake CLI: a reply shown as it's written, the next-prompt suggestion (Tab puts it in, unsent), `/goal` pinned above the box and cleared, a helper's words in its crab's bubble, safe mode from the tab (`--safe-mode` on the next start), Settings' fallback model and Chrome reaching a new conversation with its name, and Toolbox → Chat as one of your agents. Screenshots go in `[folder]` |
 | `node scripts/e2e-parity.js` | The Claude Code terminal's conveniences with the fake CLI, in a small git project: rewind (conversation and code), `!` commands, @ file mentions, Up and Ctrl+R through what you've sent, the effort chip and `/effort`, `/export`, the Rules tab, MCP statuses and the output style setting |
@@ -211,7 +215,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 |---|---|---|
 | `SHELLBY_USER_DATA=<folder>` | main.js, the `shellby` command, the plugin's MCP server | Dev only. A profile of its own (settings, history, single-instance lock). The run is then isolated: its own status file and Claude settings, a pretend home for the Toolbox and ssh, a free hook port, and never away |
 | `SHELLBY_FAKE_CLAUDE=<file>` | main.js | Dev only. The fake CLI (`test/fixtures/fake-claude.js`) in place of Claude Code: no account, no usage. Makes it a test run |
-| `SHELLBY_NODE=<exe>` | wiring/sessions.js, wiring/remote.js | The node that runs the fake CLI and the fake ssh (default `node`) |
+| `SHELLBY_NODE=<exe>` | wiring/sessions.js, wiring/remote.js, wiring/bg-sessions.js, wiring/projects.js, ipc/council.js, ipc/life.js, ipc/native.js | The node that runs the fake CLI and the fake ssh (default `node`) |
 | `SHELLBY_HOOK_PORT=<port>` | wiring/timetrack.js | Dev only. The port for the plugin's hook events, so a dev run stays off the installed Shellby's |
 | `SHELLBY_POCKET_PORT=<port>` | wiring/pocket.js | Any build. The phone app's port on `127.0.0.1` (default 47916); `0` takes whichever is free (the tests) |
 | `SHELLBY_FAKE_TAILSCALE=<file>` | wiring/pocket.js | Dev only. A stand-in for the Tailscale CLI (`test/fixtures/fake-tailscale.js`): signed in, HTTPS on, `serve` kept in memory. `SHELLBY_FAKE_TAILSCALE_FUNNEL=1` says Funnel is on |
@@ -219,7 +223,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_TOKEN=<token>` | the `shellby` command | Its token, in place of `cli-token` from the profile |
 | `SHELLBY_CLAUDE_PATH=<exe>` | claude/cli.js | Any build. Tried first when looking for Claude Code |
 | `SHELLBY_MOTION_TEST=1` | ipc/critter.js | Dev only. The dev hooks (`shellby.dev.*`: throw, stroll, say, life, perch…) the e2e scripts drive him with. Makes it a test run |
-| `SHELLBY_E2E=1` | test-desktop.js, offscreen-windows.js | Set by `e2e:ci` for every check. A test run whose windows live off every screen (15000 DIP to the left; Shellby and the page see bounds as if on screen, and the leftmost monitor as the only one), show without activating, keep their focus in Shellby's books instead of Windows', and "maximize" to the work area's size out there. The checks drive them over CDP, which needs no screen. Not with `SHELLBY_COVER_POLL=1` |
+| `SHELLBY_E2E=1` | test-desktop.js, ipc/critter.js, wiring/molting.js, wiring/reef.js | Set by `e2e:ci` for every check. A test run whose windows live off every screen (15000 DIP to the left; Shellby and the page see bounds as if on screen, and the leftmost monitor as the only one), show without activating, keep their focus in Shellby's books instead of Windows', and "maximize" to the work area's size out there. The checks drive them over CDP, which needs no screen. Not with `SHELLBY_COVER_POLL=1` |
 | `SHELLBY_REAL_DESKTOP=1` | test-desktop.js | Turns the test-run behaviour off, for runs that measure him as he really is (idle-cost.js, perf-budget.js) |
 | `SHELLBY_COVER_POLL=1` | test-desktop.js | Keeps the game and cover watch in a test run, for a check about it (e2e-on-top) |
 | `SHELLBY_REDUCED_MOTION=1` | wiring/windows.js | A test run honours Windows' animations-off setting again (it ignores it otherwise, since CI has it on) |
@@ -241,6 +245,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_IDLE_AWAKE=1` | wiring/windows.js | Dev only. The panel as if focused and nothing covering him, without taking focus (`idle-cost.js --awake`); `uncovered` only skips the cover watch |
 | `SHELLBY_NETWORK_PROCESS=1` | lighter.js | Any build. Chromium's network service back in its own process, to compare |
 | `SHELLBY_NUDGE_TEST=1`, `SHELLBY_RECAP_TEST=1`, `SHELLBY_FORECAST_TEST=1` | wiring/streaks.js, wiring/services.js | Dev only. The dev hooks for the nudge check, fake idle readings and backdated usage readings (e2e-streaks, e2e-recap, e2e-forecast) |
+| `SHELLBY_KEEPWARM_LEAD_MS=<ms>` | wiring/services.js | Dev only. How long before the cache expires a keep-warm ping goes (default 5 minutes), so e2e-keepwarm needn't wait 55 minutes |
 | `SHELLBY_DICTATION_WAV=<file>` | wiring/surroundings.js | Any build. A recording in place of the microphone for push-to-talk (e2e-push-to-talk) |
 | `SHELLBY_ALLOW_NOTIFY=1` | wiring/timetrack.js | Dev only. A dev run posts Windows notifications again (it doesn't, so stale toasts can't relaunch bare Electron) |
 | `SHELLBY_REGISTER_PROTOCOL=1` | main.js | A dev run registers itself for `shellby://` links, which otherwise go to the installed Shellby |
@@ -248,6 +253,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_DEV_PROFILE=<folder>` | scripts/dev-crab.js | Where `npm run dev:crab` keeps its profile (default `%TEMP%\shellby-dev-crab`) |
 | `SHELLBY_SHOTS=<folder>` | scripts/dev-crab.js, e2e-battle.js | `dev:crab --poses` saves a PNG of each pose; e2e-battle saves its screenshots |
 | `SHELLBY_E2E_HOME=x,y` | e2e-perch.js, e2e-edges.js | Where he lives for the check, in DIPs, when a fullscreen window covers his screen |
+| `SHELLBY_ELECTRON=<exe>` | e2e-team.js | An electron.exe to launch when this checkout has none (a worktree) |
 
 `SHELLBY_OWNED`, `SHELLBY_CRAB_TOOLS`, `SHELLBY_ASKPASS_PORT`, `SHELLBY_ASKPASS_TOKEN` and `SHELLBY_VALUE_*` are set by Shellby itself for the processes it starts, not by you.
 
@@ -466,6 +472,9 @@ src/main/        Electron main process
   session/         one Claude Code process per conversation (stream-json + control protocol): index.js its life
                    and what it says; args.js how it starts, control.js answering it, accounting.js what it costs, crew.js its helpers
   stream.js        pure parser: CLI events (incl. subagent tasks) → UI items
+  cli-contract.js  what Shellby needs from the Claude Code CLI (flags, modes, effort levels, the protocol), checked nightly (pure)
+  cli-coverage.js  everything Claude Code offers and what Shellby does about each: use, skip or gap (pure)
+  cli-commands.js  Claude Code's own slash commands and how Shellby handles each (pure; the panel gets a copy)
   checks.js        turn checks: which test commands a folder has, running them (cmd, fixed lines only), the verdict and the bring-home gate
   shots.js         before/after pictures of a dev server either side of a turn, in a hidden locked-down window
   editor.js        "Open in VS Code": a turn's file in VS Code's diff, both sides read out of git
@@ -508,8 +517,14 @@ src/main/        Electron main process
   quiz.js          "Quiz me" on a turn's changes: Claude's questions from the diff (tool-less -p, --json-schema); main keeps the answers
   progression/     xp.js (XP and levels: awards, falloff and bonuses, the level curve and its unlocks, per-PC counts for sync,
                    and what a shell command means), levels.js (levels 1 to 99 and their unlocks), streaks.js (streaks and nudges,
-                   pure; gitinfo.js finds a folder's repo and its last commit), shells.js, shells-extra.js, shells-molt.js and
-                   shell-gen.js (the shells he grows into), molting.js (the prestige at 99), character.js (the character sheet)
+                   pure), shells.js, shells-extra.js, shells-molt.js and shell-gen.js (the shells he grows into), molting.js
+                   (the prestige at 99), character.js (the character sheet)
+  gitinfo.js       tiny git lookups for streaks and stickers: a folder's repo, its last commit, what a shipped project is
+  quests/          the quest line: index.js (quests in chapters, each done the first time the real thing succeeds) and
+                   chapters.js (the chapters, data only)
+  reef/            reef health (docs/REEF.md): index.js (a coral per watched project, grown by new bests), signals.js
+                   (what each signal counts, pure), probe.js (git grep and coverage files, never the project's code),
+                   detail.js (which files are behind a count) and prompts.js (Fix this, Fix the worst)
   bounties.js      the day's three bounties, picked from the date alone
   moon.js          the real moon's phase from the clock alone (pure): moonlit finds and the beach's night sky
   desktop/         him on your screen: motion.js (throws: release velocity, flight, landing; idle strolls), climb.js and
@@ -525,11 +540,14 @@ src/main/        Electron main process
   forecast.js      the 5-hour window's pace (pure): when it fills, and whether that's worth a warning
   turncost.js      what a turn and a tab cost (pure): tokens, share of the 5-hour window, the costliest turns, the crowded nudge, the effort and thinking badge
   jobs.js          commands and Monitor watches Claude left running in the background (pure): the tray above the box and the crab's badge
+  ultracode.js     ultracode runs (Claude Code's Workflow tool, docs/ULTRACODE.md): the run's card and its agents as helper crabs
   automemory.js    Claude Code's auto memory for a project: listing it, fixing one, forgetting one (Toolbox → Setup → Memory), and noticing a new one
   cloud-routines.js Claude Code's cloud routines (/schedule) through a one-off RemoteTrigger call: the list, a routine's runs, Run now
   held.js          messages and routine runs held for after the usage reset (pure list ops; held-service.js sends them)
+  keepwarm.js      keep warm (docs/plans/keep-warm.md, pure): which conversations get a ping just before their cache expires,
+                   and when you're back; keepwarm-service.js runs it against the open tabs and keeps the PC awake
   selfaware.js     what Claude is told about Shellby (a fixed note, the usage line at 80% and 95%) and the feature offers it may make;
-                   crabmcp.js serves the crab's tools (say, celebrate, wear, status, suggest) to Shellby's own conversations
+                   crabmcp.js serves the crab's tools (say, celebrate, wear, status, note, suggest) to Shellby's own conversations
   usage/           index.js (the usage meter without a prompt: a short-lived `claude -p` asked for its /usage data),
                    ledger.js (what each turn cost, pure: the per-turn ledger, a prompt's kind of ask, and the estimate the
                    composer shows; wiring/usageplan.js brackets each turn and answers usage:estimate), scan.js (what Claude Code used lately, from its transcripts) and service.js
@@ -561,6 +579,8 @@ src/main/        Electron main process
   bugdex/          index.js (the Bugdex, pure: catches, stages, badges, the league, sync and the friends' share), species,
                    detect, lifecycle, cheats, art, lore, battle (the bug battle, in memory only) and portraits/ (the
                    big drawings, one file per habitat; scripts/bugdex-sheet.js draws them to a PNG); wiring/bugdex.js ties it in
+  flaky/           the flaky test detective: index.js (a fail then a pass on the same code), ids, parsers (which tests a
+                   runner says failed), store (the per-project ledger, pure) and text (the bubble, the prompts, the issue)
   fileindex.js     @ mentions: the files in a conversation's folder and a fuzzy match over them
   viewer.js        the file viewer: handles on a folder (reads kept inside it) or on a branch (read from git alone), what changed since each began, and the header menu's worktrees and branches; ipc/viewer.js serves it
   viewer-status.js the file tree's git status for a viewer handle: each file's mark and +/− against HEAD, the branch and its upstream, and the files a real commit or a git add just touched
@@ -579,6 +599,17 @@ src/main/        Electron main process
   startfrom.js     prompts for Fix this build, Address the review and loose ends (pure): log trimming
                    and redaction (GitHub Actions logs and GitLab job traces), review threads quoted, TODO parsing;
                    github/prwork.js and gitlab/mrwork.js fetch them
+  projects/        the Projects page (docs/plans/projects.md): service.js (git repos on this PC and on GitHub as one list),
+                   local, github, merge and remote (which clone is which repository), insights (what Shellby knows about
+                   each), inbox and branches (what's waiting on you, stale branches), nextup, todo and terminal (next_up and
+                   `shellby next`), tools (the project page's helpers), standup, clone, purge, and the Releases card
+                   (releases.js, release-git.js, releases-ipc.js); ipc.js serves it
+  devservers/      dev servers: service.js (what each is doing, and a crash's card), runner.js and launch.js (started
+                   detached, read from a log file), output.js (its address and crash, pure), scripts.js (what a project can
+                   run) and the port doctor (doctor.js, pure; doctor-io.js does the reading)
+  backlog/         Next up (docs/plans/next-up.md): rank.js (one ranked list), tasks.js (.shellby/tasks.md), github.js
+                   (issues and milestones), sentry.js (new production errors), trackers.js (Linear and Jira through an MCP
+                   server) and prompts.js (each item's prompt)
   claude/          Claude Code itself: cli.js finds the CLI, checks auth, scrubs billing env vars; setup.js (its hooks and CLAUDE.md files); tricks.js (what's
                    new in its changelog); update.js keeps the CLI itself current: the daily registry check, `claude update` on request or by itself while idle, tell | auto | off (fetch and run are injected; wiring/claude-updates.js)
   depwatch/        index.js (dependency watch), parse, prompts, python and tools (each package manager's checker)
@@ -593,6 +624,9 @@ src/main/        Electron main process
   painter.js       the Painter's drafts and the pack wishes it offers (pure but for the files); wiring/painter.js saves, tries on, shares
   config.js        settings in %APPDATA%\Shellby\settings.json
   workmode.js      Work mode (pure): the settings it lays over yours, where a change made in it is kept, and what else it quiets
+  first-run.js     First steps on the chat's start screen (pure): each step done by the real thing, and the core loop that opens the deeper rooms
+  test-desktop.js  what a test run does about the desktop it's on: keep painting, skip the cover and mic watch, windows off screen
+  offscreen-windows.js an e2e run's windows kept off every screen, while Shellby and the checks see on-screen bounds
   capture.js       `npm run screenshots`; reel.js records the README demo
 src/preload/     the only bridge between sandboxed renderers and main
 src/renderer/    critter + panel UIs (plain HTML/CSS/JS, no framework)
@@ -609,9 +643,16 @@ src/renderer/    critter + panel UIs (plain HTML/CSS/JS, no framework)
                    the beach's words) · pocket-stream (the token, the reconnecting stream, the API) · pocket-draw (elements from
                    text only, the crab from shared/sprite.js, a diff) · pocket (the beach, the queue, this phone, pairing, sheets)
                    · pocket-tab (one conversation and a turn's diff) · sw.js (the offline shell, push and taps on notifications)
+  dialog/          the themed confirmation window, isolated: the panel can't script it, and main takes an answer only from it
+  floor/           the floor beside him (src/main/desktop/floor.js): his pals and footprints; colony-brain.js decides what the pals do (pure)
+  note/            a note he hauled onto your screen (src/main/pranks.js); a click crumples it up
+  obs/             the OBS browser-source crab, fed over Server-Sent Events, drawn with the same sprite and classes
+  toy/             the pebble for fetch (src/main/playtime.js): drag it and let go, and main throws it
 src/skins/       built-in skins (JSON pixel grids)
-src/wardrobe/    the built-in wardrobe pack (same format as community packs)
+src/wardrobe/    the built-in wardrobe packs (same format as community packs)
 src/streamdeck/  the Stream Deck plugin (Node 24, no packages): Stream Deck's websocket on one side, deck.js on the other, keys drawn as SVG
+src/cli/         the `shellby` command (shellby.js): hand the crab a task, a line or a workflow from any terminal, or ask how he is
+src/community/   credits.json: who made Shellby (About → Made by); release:cut and contest:ship add to it
 test/            node:test suites and a fake Claude CLI
 claude-plugin/   the Shellby plugin for Claude Code (hooks that report sessions to the app)
 ```

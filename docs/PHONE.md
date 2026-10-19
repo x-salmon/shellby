@@ -38,7 +38,7 @@ Settings walks you through it a step at a time, ticking each one off as it works
 - a command too long to read on a phone
 - running a file Claude wrote this session, or changing Claude Code's own setup
 
-Those say **Look at the desk** and why.
+Those say why they wait for the desk (*"It has a question for you: answer it at the desk."*), with **See the conversation** to open it.
 
 **A conversation** opens live: Claude's reply as he writes it, each tool he runs, his helpers in their own lanes, the to-do list, and what each turn cost. **Stop** ends a turn. When a turn changed files, **See the changes** shows the diff file by file, wrapped to fit, and **Undo turn** and **Bring it home** do what they do at the desk, with the same checks gate and a confirmation on the phone first.
 
@@ -82,7 +82,7 @@ The details are in [SECURITY.md](../SECURITY.md#shellby-on-your-phone).
 | **Turn on HTTPS certificates** | Tailscale's admin console → **DNS** → **HTTPS Certificates**. Settings' button opens the page. |
 | **Tailscale didn't put Shellby on your tailnet: Serve is not enabled** | Your tailnet needs Serve allowed once. Press **Turn on Serve** in Settings, which opens the page Tailscale names. |
 | **Tailscale Funnel is on for this address** | Turn Funnel off (`tailscale funnel reset`, or in the admin console), then turn Shellby on your phone on again. |
-| The phone says **Can't reach your PC** | The PC may be asleep, or Tailscale off on one of them. The app reconnects by itself. |
+| The phone says **Couldn't reach your PC** | The PC may be asleep, or Tailscale off on one of them. The app reconnects by itself. |
 | **That code has run out** | Press **Pair a phone** again for a fresh one. |
 | No notifications on an iPhone | Open Shellby from the Home Screen (not Safari), then **Phone → Turn them on**. Check Settings → Notifications → Shellby on the iPhone too. |
 | **This phone isn't paired any more** | It was forgotten on the PC, or Shellby on your phone was turned off and on with another Tailscale account. Pair it again. |
