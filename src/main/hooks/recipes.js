@@ -78,6 +78,18 @@ const RECIPES = [
     was: ["bash -c 'grep -q \"\\\"stop_hook_active\\\": *true\" && exit 0; [ -f package.json ] || exit 0; npm test >/dev/null 2>&1 || { echo \"The tests are failing. Fix them before you finish.\" >&2; exit 2; }'"],
   },
   {
+    id: 'quiet-output', group: 'tidy', icon: '🤫',
+    title: 'Keep long command output short',
+    blurb: "Test runs keep only their last 60 lines, and a plain git log shows the last 30 commits on one line each, so they put far less into the conversation. Lean shows which commands are loudest.",
+    tweak: "Claude sees the end of a test run, where the failures and the summary are, and not the rest. A command Claude has already piped or redirected is left alone.",
+    event: 'PreToolUse', matcher: 'Bash', scope: 'project',
+    // The command stays JSON-escaped from stdin to stdout, so nothing is decoded.
+    // updatedInput replaces all of the call's input: its timeout goes along, and
+    // one run in the background is left alone.
+    command: String.raw`bash -c 'j=$(cat); printf %s "$j" | grep -qE "\"run_in_background\": *true" && exit 0; c=$(printf %s "$j" | sed -E "s/[\\\\][\\\\]/\x02/g; s/[\\\\]\"/\x01/g" | sed -nE "s/.*\"command\": *\"([^\"]*)\".*/\1/p" | head -n1 | sed -E "s/\x02/\x02\x02/g; s/\x01/\x02\"/g" | tr "\002" "\134"); case "$c" in ""|*"|"*|*">"*|*"<"*|*"&"*|*";"*|*"\\n"*) exit 0;; esac; t=$(printf %s "$j" | grep -oE "\"timeout\": *[0-9]+" | head -n1); if printf %s "$c" | grep -qE "^git log( |$)"; then printf %s "$c" | grep -qE "(^| )(-n|-[0-9]+|--oneline|--max-count[= ]?[0-9]*|--format[= ].*|--pretty[= ].*|-p|--patch|--stat)( |$)" && exit 0; n="git log --oneline -n 30${'$'}{c#git log}"; elif printf %s "$c" | grep -qE "^(npm (run )?test|npm run (test|e2e)[a-z0-9:_-]*|npx (jest|vitest|mocha)|pytest|cargo test|go test)( |$)"; then n="$c 2>&1 | tail -n 60"; else exit 0; fi; printf "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"updatedInput\":{\"command\":\"%s\"%s}}}" "$n" "${'$'}{t:+,$t}"'`,
+    sample: { tool_name: 'Bash', tool_input: { command: 'git log', description: 'Show history' } },
+  },
+  {
     id: 'git-context', group: 'context', icon: '🌿',
     title: 'Tell Claude the git status when a session starts',
     blurb: 'Claude starts each session knowing the branch and which files have changed.',

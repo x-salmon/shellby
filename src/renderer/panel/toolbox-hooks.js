@@ -608,5 +608,12 @@
     renderList(q);
   }
 
-  SB.toolboxHooks = { render };
+  // Straight to a recipe's form from elsewhere (Lean's loud commands): the list if it isn't loaded yet.
+  function openRecipe(id) {
+    const r = (state.setup?.recipes || []).find(x => x.id === id);
+    if (r) ed = { step: 'form', entry: null, recipe: r, error: '' };
+    SB.showToolbox('hook');
+  }
+
+  SB.toolboxHooks = { render, openRecipe };
 })();

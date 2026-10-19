@@ -397,7 +397,9 @@
     const loudLabel = noisy.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
       h('span', { text: `Commands whose output fills the context here (last ${rep.hot.days} days)` }),
       h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
-        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: LOUD_ASK(rep.hot.loud) }); } }, 'Ask Claude')) : null;
+        onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: LOUD_ASK(rep.hot.loud) }); } }, 'Ask Claude'),
+      h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'A ready-made hook that keeps the end of test runs and shortens plain git logs. You see it and confirm it before it is added.',
+        onclick: () => SB.toolboxHooks.openRecipe('quiet-output') }, 'Shorten with a hook')) : null;
     const hooks = (rep.hot?.hooks || []).filter(r => match(r.name));
     const hooksLabel = hooks.length ? h('li', { class: 'row-label lean-label lean-hot-label' },
       h('span', { text: `Hooks that add to the conversation (last ${rep.hot.days} days)` }),
