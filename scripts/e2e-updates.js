@@ -87,6 +87,15 @@ async function launch(mode, profile) {
     check(onScreen, 'scrolled to the update button, not just to Settings');
     await shot(panel, '2-ready');
 
+    // A newer release can land after one is downloaded: look again without restarting.
+    check(await panel.ev("!document.getElementById('updateRecheckBtn').hidden"), 'a ready update offers "Check again" beside it');
+    await panel.ev("document.getElementById('updateRecheckBtn').click()");
+    check(await until(panel, 'SB.state.updates.rechecking === true', 3000), 'pressing it looks for anything newer');
+    check(/Looking for anything newer/.test(await text(panel, 'updateStatus')), 'and says so');
+    check(!(await panel.ev("document.getElementById('updateBtn').disabled")), 'while "Restart and update" stays pressable');
+    check(await until(panel, 'SB.state.updates.rechecking === false'), 'the look settles');
+    check(/99\.0\.0 is still the newest/.test(await text(panel, 'toast')), 'and says nothing newer is out');
+
     // The button really drives the installer (the fake logs instead of quitting).
     check(await panel.ev('window.shellby.installUpdate()') === true, 'pressing it starts the install');
   } catch (e) {

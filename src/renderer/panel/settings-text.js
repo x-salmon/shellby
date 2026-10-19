@@ -70,7 +70,7 @@
   const UPDATE_STATUS = {
     checking: () => 'Looking for a new version…',
     downloading: u => `Downloading ${u.version ? `v${u.version}` : 'the update'}…`,
-    ready: u => `Version ${u.version} is downloaded and ready.`,
+    ready: u => (u.rechecking ? `Version ${u.version} is ready. Looking for anything newer…` : `Version ${u.version} is downloaded and ready.`),
     current: (u, relTime) => `You're on the latest version${u.checkedAt ? `, checked ${relTime(u.checkedAt)}` : ''}.`,
     error: u => `${u.error || "Couldn't check for updates."}${retryNote(u.retryAt)}`,
     idle: () => 'Shellby updates himself from GitHub Releases.',

@@ -177,6 +177,12 @@
     btn.classList.toggle('primary', ready);
     btn.classList.toggle('ghost', !ready);
     btn.disabled = !!u.busy;
+    // A newer release can land after one is downloaded; this looks for it
+    // without waiting for the six-hourly check.
+    const recheck = $('updateRecheckBtn');
+    recheck.hidden = !ready;
+    recheck.disabled = !!u.rechecking;
+    recheck.textContent = u.rechecking ? 'Checking…' : 'Check again';
     $('updateBar').hidden = u.state !== 'downloading';
     $('updateBar').firstElementChild.style.width = `${u.percent}%`;
   }
@@ -192,6 +198,16 @@
     const after = await api.checkUpdates();
     if (after.state === 'current') SB.toast(`v${after.current} is the latest version.`);
     if (after.state === 'error') SB.toast(`Couldn't check for updates: ${after.error}`, { ms: 5000 });
+  });
+
+  $('updateRecheckBtn').addEventListener('click', async () => {
+    const before = state.updates || {};
+    state.updates = { ...before, rechecking: true, error: null };
+    renderUpdates();
+    const after = await api.checkUpdates();
+    if (after.state !== 'ready') return; // a newer one is downloading: the row shows it
+    if (after.error) SB.toast(`Couldn't check for updates: ${after.error}`, { ms: 5000 });
+    else if (after.version === before.version) SB.toast(`v${after.version} is still the newest.`);
   });
 
   SB.renderBillingGuard = renderBillingGuard;

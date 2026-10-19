@@ -55,7 +55,8 @@ function installedBy(execPath, env = process.env) {
  * States: `off` (a dev run, no updater at all) · `scoop` (Scoop updates this
  * copy, so we never ask) · `idle` (not asked yet) ·
  * `checking` · `current` (nothing newer) · `downloading` · `ready` (downloaded,
- * waiting for a restart) · `error` (until the next check).
+ * waiting for a restart) · `error` (until the next check). `rechecking` rides
+ * along with `ready`: a look for anything newer, behind the install button.
  */
 class Updates extends EventEmitter {
   constructor({ updater = null, managedBy = null, version = '', every = EVERY, prepare = null, timers = null, log = null } = {}) {
@@ -77,6 +78,7 @@ class Updates extends EventEmitter {
     this.percent = 0;
     this.error = null;
     this.checkedAt = null;
+    this.rechecking = false; // a check while `ready`, which never hides the install button
     this.announced = null;   // last version we fired `ready` for
     this.sent = null;        // last view we emitted, so idle progress stays quiet
   }
@@ -85,7 +87,7 @@ class Updates extends EventEmitter {
     return {
       state: this.state, version: this.offered, percent: this.percent, error: this.error,
       checkedAt: this.checkedAt, current: this.version, retryAt: this.state === 'error' ? this.retryAt : null,
-      busy: this.state === 'checking' || this.state === 'downloading',
+      rechecking: this.rechecking, busy: this.state === 'checking' || this.state === 'downloading',
     };
   }
 
@@ -101,12 +103,12 @@ class Updates extends EventEmitter {
     u.on('update-available', info => {
       this.#recovered();
       const offered = versionOf(info) || this.offered;
-      if (this.state === 'ready' && offered === this.offered) return; // the cached file, found again
+      if (this.state === 'ready' && offered === this.offered) return void this.#set('ready', { error: null }); // the cached file, found again
       this.#set('downloading', { offered, percent: 0 });
     });
     u.on('update-not-available', () => {
       this.#recovered();
-      if (this.state === 'ready') return;
+      if (this.state === 'ready') return void this.#set('ready', { error: null });
       this.#set('current', { offered: null, percent: 0, checkedAt: Date.now() });
     });
     u.on('download-progress', p => {
@@ -123,7 +125,8 @@ class Updates extends EventEmitter {
     });
     // A failed re-check doesn't un-download what's already on disk.
     u.on('error', e => {
-      if (this.state !== 'ready') this.#failed(e);
+      if (this.state === 'ready') this.#recheckFailed(e);
+      else this.#failed(e);
     });
     this.check();
     this.timer = this.timers.setInterval(() => this.check(), this.every);
@@ -136,13 +139,17 @@ class Updates extends EventEmitter {
    * after the download replaces it rather than needing a second restart.
    */
   async check() {
-    if (!this.updater || this.view().busy) return this.view();
-    if (this.state !== 'ready') this.#set('checking', { error: null });
+    if (!this.updater || this.view().busy || this.rechecking) return this.view();
+    if (this.state === 'ready') this.#set('ready', { rechecking: true, error: null });
+    else this.#set('checking', { error: null });
     try {
       await this.updater.checkForUpdates();
     } catch (e) {
       // The `error` event normally beats us here; this covers a bare rejection.
       if (this.state === 'checking') this.#failed(e);
+      else if (this.state === 'ready' && !this.error) this.#recheckFailed(e);
+    } finally {
+      if (this.rechecking) this.#set(this.state, { rechecking: false });
     }
     return this.view();
   }
@@ -176,6 +183,14 @@ class Updates extends EventEmitter {
       this.retryTimer?.unref?.(); // never what keeps Shellby (or a test) running
     }
     this.#set('error', { error });
+  }
+
+  // The update on disk stays installable; the error is only there so a
+  // re-check someone asked for can say it didn't get through.
+  #recheckFailed(e) {
+    const raw = messageOf(e);
+    this.log(raw);
+    this.#set('ready', { error: plainError(raw) });
   }
 
   #recovered() {
