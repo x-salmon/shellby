@@ -121,7 +121,7 @@
     // A model switch mid-conversation: each model has a cache of its own.
     if (e.rebuild) {
       return {
-        tip: true, cls: 'tip', key: null,
+        tip: true, cls: 'quiet', key: null,
         text: `Each model keeps a cache of its own, so after this switch the next message sends this conversation's ~${SB.compact(e.rebuild.tokens)} tokens again at full price. A new tab on that model starts cheaper if this one isn't needed.`,
         actions: [h('button', { class: 'btn slim-btn', type: 'button', title: 'The switch goes to a new tab in this folder, which starts on that model.', onclick: () => askInNewTab(tab) }, 'Switch in a new tab')],
       };
@@ -129,7 +129,7 @@
     // Not with files attached: a new tab would leave them behind.
     if (e.cold && !tab?.attachments.length) {
       return {
-        tip: true, cls: 'tip', key: null,
+        tip: true, cls: 'quiet', key: null,
         text: `This conversation's cache went cold ${SB.relTime(e.cold.coldSince)}, so sending this pays for its ~${SB.compact(e.cold.tokens)} tokens again in full. If it doesn't need this conversation, a new tab costs far less.`,
         actions: [h('button', { class: 'btn slim-btn', type: 'button', onclick: () => askInNewTab(tab) }, 'Ask in a new tab')],
       };
@@ -137,7 +137,7 @@
     if (e.suggest) {
       const kind = KIND_NOUN[e.category] || 'tasks';
       return {
-        tip: true, cls: 'tip', key: null,
+        tip: true, cls: 'quiet', key: null,
         text: `${kind[0].toUpperCase()}${kind.slice(1)} like this usually take about ${pctText(e.suggest.pct)} of your window on this model${e.suggest.measured ? `, and ${pctText(e.suggest.cheaper)} on Sonnet for you` : `; Sonnet usually costs about ${pctText(e.suggest.cheaper)}`}.`,
         actions: [h('button', { class: 'btn slim-btn', type: 'button', title: 'This conversation starts on Sonnet. Others keep the model in Settings.', onclick: () => useSonnet(tab) }, 'Start this one on Sonnet')],
       };
