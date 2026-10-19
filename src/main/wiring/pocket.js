@@ -7,7 +7,8 @@
 //
 // The phone does what the desk does, through the same functions, under the
 // phone's rules (the same ones the notifications follow):
-//   - Allow and Deny only; never Always allow, and nothing deskOnlyReason flags.
+//   - Allow and Deny only; never Always allow, and nothing deskOnlyReason flags
+//     but a Deny.
 //   - New tasks in Ask first, in their own copy when the folder is a repo, at
 //     most 10 an hour and 3 at once, held for the reset at the limit.
 //   - Replies only into conversations the phone started, which are Ask first too.
@@ -341,8 +342,9 @@ function wirePocket(d) {
     const pendingItem = d.manager.tabs.get(tabId)?.session.pending.get(requestId);
     if (!pendingItem) return no('That was already answered.');
     if (decision === 'always' && (!pendingItem.suggestions?.length || ['AskUserQuestion', 'ExitPlanMode'].includes(pendingItem.toolName))) return no('That one has no always-allow. Allow it this once.');
+    // A no is always safe, so a desk-only prompt can still be turned down here: otherwise it holds the conversation until you're back.
     const why = appDeskOnlyReason(pendingItem);
-    if (why) return no(why);
+    if (why && decision !== 'deny') return no(why);
     const extra = answerExtra(pendingItem, { decision, answers, notes, read, mayWrite: mayWriteTo(d.manager.tabs.get(tabId)) });
     if (extra.error) return no(extra.error);
     d.log.info(`pocket: ${decision} for ${pendingItem.toolName}`);

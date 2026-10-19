@@ -287,6 +287,20 @@ test('a plan is approved from the phone only once it was read, and a no carries 
   } finally { stop(w); }
 });
 
+test('a desk-only prompt can be turned down from the phone, never allowed', async () => {
+  const t = tabOf('t1');
+  t.session.pending.set('r1', { requestId: 'r1', toolName: 'Bash', input: { command: 'node build.js' }, runsCreated: ['build.js'] });
+  t.session.pending.set('r2', { requestId: 'r2', toolName: 'Bash', input: { command: 'node build.js' }, runsCreated: ['build.js'] });
+  const w = await paired({ tabs: [t] });
+  try {
+    const act = body => w.d.pocket.onAction(w.device, 'answer', body);
+    assert.match((await act({ tabId: 't1', requestId: 'r1', decision: 'allow' })).error, /at the desk/);
+    assert.match((await act({ tabId: 't1', requestId: 'r2', decision: 'always' })).error, /always-allow|at the desk/);
+    assert.equal((await act({ tabId: 't1', requestId: 'r1', decision: 'deny' })).ok, true);
+    assert.deepEqual(w.of('answerPermission'), [['t1', 'r1', 'deny', { via: 'pocket' }]]);
+  } finally { stop(w); }
+});
+
 test('home and push from the phone waits for Settings to allow pushing', async () => {
   const w = await paired({ tabs: [tabOf('t1')] });
   try {

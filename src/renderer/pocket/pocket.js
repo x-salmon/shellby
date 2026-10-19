@@ -140,19 +140,6 @@
     else if (pv?.kind === 'url') card.append(h('pre', { class: 'cmd', text: pv.url }));
     else if (pv?.file) card.append(h('div', { class: 'cmd-file', text: shortPath(pv.file) }));
     for (const w of p.warnings || []) card.append(h('p', { class: 'flag' }, icon('warn'), h('span', { text: `Heads up: ${w}` })));
-    if (p.deskOnly) {
-      if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
-      return card;
-    }
-    // In a sheet: the beach redraws its cards as things change, and a half-picked answer mustn't go.
-    if (p.questions) {
-      card.append(h('button', { type: 'button', class: 'btn go big', text: p.questions.length > 1 ? 'Answer them' : 'Answer it', onclick: () => openSheet(questionSheet(p)) }));
-      return card;
-    }
-    if (p.planText) {
-      card.append(h('button', { type: 'button', class: 'btn go big', text: 'Read the plan', onclick: () => openSheet(planSheet(p)) }));
-      return card;
-    }
     const answer = decision => actButton({
       label: decision === 'always' ? p.always : decision === 'allow' ? (sending === 'allow' ? 'Allowing…' : 'Allow') : (sending === 'deny' ? 'Denying…' : 'Deny'),
       cls: decision === 'allow' ? 'allow big' : decision === 'always' ? 'always' : 'big',
@@ -164,6 +151,21 @@
         refresh();
       },
     });
+    // Only the desk can say yes, but a no from here lets the conversation get on without it.
+    if (p.deskOnly) {
+      card.append(h('div', { class: 'btns' }, answer('deny'),
+        inTab ? null : h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) })));
+      return card;
+    }
+    // In a sheet: the beach redraws its cards as things change, and a half-picked answer mustn't go.
+    if (p.questions) {
+      card.append(h('button', { type: 'button', class: 'btn go big', text: p.questions.length > 1 ? 'Answer them' : 'Answer it', onclick: () => openSheet(questionSheet(p)) }));
+      return card;
+    }
+    if (p.planText) {
+      card.append(h('button', { type: 'button', class: 'btn go big', text: 'Read the plan', onclick: () => openSheet(planSheet(p)) }));
+      return card;
+    }
     card.append(h('div', { class: 'btns' }, answer('deny'), answer('allow')));
     if (p.always) card.append(answer('always'));
     if (compact && (pv?.kind === 'edit' || pv?.kind === 'write')) {
