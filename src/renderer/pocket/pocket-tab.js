@@ -4,7 +4,7 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath }) => {
+  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker }) => {
     // ---------------------------------------------------------------- one conversation
 
     function tabScreen(tabId) {
@@ -24,11 +24,12 @@
         run: async () => {
           const text = input.value.trim();
           if (!text) return;
-          const r = await act('reply', { tabId, text });
+          const r = await act('reply', { tabId, text, mode: mode.value });
           if (r.ok) { input.value = ''; input.style.height = ''; }
         },
       });
-      const replyRow = h('div', { class: 'reply' }, input, send);
+      const mode = modePicker(tabOf(tabId)?.mode);
+      const replyRow = h('div', { class: 'reply-box' }, mode, h('div', { class: 'reply' }, input, send));
       const stop = actButton({
         label: 'Stop', cls: 'stop', iconName: 'stop', aria: 'Stop this turn',
         run: () => confirmSheet({ title: 'Stop him?', text: 'The turn ends where it is. Anything he changed so far stays, and Undo can take it back.', yes: 'Stop', danger: true, then: () => act('stop', { tabId }, { okText: 'Stopped.' }) }),

@@ -181,7 +181,7 @@ const untilTrue = async (fn, ms = 12000) => { const end = Date.now() + ms; while
     check(await untilTrue(() => !!promptOf()), 'its permission prompt reaches the phone');
     const p = promptOf();
     check(p?.deskOnly === null, `the phone may answer it (${p?.deskOnly})`);
-    check((await api('answer', { token, body: { tabId, requestId: p.requestId, decision: 'always' } })).json?.ok === false, 'Always allow is never taken from the phone');
+    check((await api('answer', { token, body: { tabId, requestId: p.requestId, decision: 'always' } })).json?.ok === false, 'Always allow is refused when Claude Code offers none');
     const allowed = await api('answer', { token, body: { tabId, requestId: p.requestId, decision: 'allow' } });
     check(allowed.json?.ok === true, 'Allow from the phone answers it');
     check(await untilTrue(() => tab()?.ready?.after), 'the turn ends with changes to review');
