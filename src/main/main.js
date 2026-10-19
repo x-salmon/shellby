@@ -65,6 +65,7 @@ const { wireNotes } = require('./wiring/notes');
 const { wireClaudeUpdates } = require('./wiring/claude-updates');
 const { wireClaudeTricks } = require('./wiring/claude-tricks');
 const { wireTray } = require('./wiring/tray');
+const { reopenAfterUpdate } = require('./updates');
 const { wireClashes } = require('./wiring/clashes');
 const { wireUsagePlan } = require('./wiring/usageplan');
 const { wireChecks } = require('./wiring/checks');
@@ -270,6 +271,7 @@ const shared = {
   booted: false,                   // deep links wait for this
   pendingLink: null,               // a shellby:// link that arrived before boot finished
   startView: null,                 // view the panel should open on at boot (e.g. a deep link wants the Wardrobe)
+  restoringTabs: false,            // last run's tabs reopening (ipc/panel.js): openTabs isn't saved meanwhile
   linkBusy: false,                 // one registry install at a time
   autonomousOkThisRun: false,      // switching into Autonomous was confirmed since Shellby started (settings:set)
   calmReason: null,                // the panel: 'blur' | 'locked' | null
@@ -530,11 +532,11 @@ app.whenReady().then(() => {
 
   if (!config.get('onboarded')) showPanel({ focusInput: false });
   // Back from "Update and restart": you pressed a button in the panel, so
-  // that's where you land.
-  if (config.get('reopenAfterUpdate')) {
-    config.set({ reopenAfterUpdate: false });
-    showPanel();
-  }
+  // that's where you land. Only the new version: the old one can start once
+  // more while the installer runs, and is killed by it (updates.js).
+  const afterUpdate = reopenAfterUpdate(config.get('reopenAfterUpdate'), app.getVersion());
+  if (afterUpdate.clear) config.set({ reopenAfterUpdate: false });
+  if (afterUpdate.open) showPanel();
 
   // Says good morning, or notices you've been away for a few days.
   wakeVoice();

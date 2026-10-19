@@ -277,7 +277,7 @@ function wireSessions(d) {
       d.sendTabs(summary); // the panel and any popped-out windows (wiring/popouts.js)
       d.clashTabsChanged?.(); // a copy opened or closed: look for clashes again (wiring/clashes.js)
       const saved = summary.filter(t => t.saved && !t.routineId && !t.workflowRunId).map(t => t.id);
-      if (!d.CAPTURE && !app.isQuitting) {
+      if (!d.CAPTURE && !app.isQuitting && !d.restoringTabs) {
         openTabsSaved ??= JSON.stringify(d.config.get('openTabs') || []);
         const json = JSON.stringify(saved);
         if (json !== openTabsSaved) { openTabsSaved = json; d.config.set({ openTabs: saved }); }

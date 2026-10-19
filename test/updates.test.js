@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('events');
-const { Updates, trayLabel, installedBy, plainError, RETRY_AFTER, EVERY } = require('../src/main/updates');
+const { Updates, trayLabel, installedBy, plainError, reopenAfterUpdate, RETRY_AFTER, EVERY, REOPEN_WAIT_MS } = require('../src/main/updates');
 
 // Stands in for electron-updater: emits what it's told to, records the rest.
 class FakeUpdater extends EventEmitter {
@@ -52,7 +52,7 @@ test('a check that finds nothing ends up up to date', async () => {
 
 test('an available update downloads, reports progress and becomes installable', () => {
   const prepared = [];
-  const { u, updater, views } = make({ prepare: () => prepared.push('closed the tabs') });
+  const { u, updater, views } = make({ prepare: version => prepared.push(`closed the tabs for ${version}`) });
   u.start();
   updater.emit('update-available', { version: '0.19.0' });
   assert.deepEqual([u.view().state, u.view().version, u.view().percent], ['downloading', '0.19.0', 0]);
@@ -67,7 +67,7 @@ test('an available update downloads, reports progress and becomes installable', 
   assert.equal(trayLabel(u.view()), 'Update to 0.19.0 and restart');
 
   assert.equal(u.install(), true);
-  assert.deepEqual(prepared, ['closed the tabs'], 'tabs close before the installer takes over');
+  assert.deepEqual(prepared, ['closed the tabs for 0.19.0'], 'tabs close before the installer takes over, told the version coming');
   assert.deepEqual(updater.installs, [[true, true]], 'silent install, then relaunch');
   assert.deepEqual(views.map(v => v.state), ['checking', 'downloading', 'downloading', 'ready']);
 });
@@ -251,4 +251,15 @@ test('under Scoop the app leaves updating to Scoop: no checks, no installs, noth
   assert.equal(u.install(), false);
   assert.equal(updater.installs.length, 0);
   assert.equal(trayLabel(u.view()), null);
+});
+
+test('after "Update and restart", only the version being installed opens the panel', () => {
+  const now = 1_000_000;
+  const flag = { version: '0.91.0', at: now - 13_000 };
+  assert.deepEqual(reopenAfterUpdate(false, '0.91.0', now), { open: false, clear: false }, 'no update pressed');
+  assert.deepEqual(reopenAfterUpdate(flag, '0.91.0', now), { open: true, clear: true }, 'the new version lands on the panel');
+  assert.deepEqual(reopenAfterUpdate(flag, '0.89.0', now), { open: false, clear: false }, 'the old one starting mid-install leaves it for the new one');
+  assert.deepEqual(reopenAfterUpdate({ ...flag, at: now - REOPEN_WAIT_MS }, '0.89.0', now), { open: false, clear: true }, 'an install that never arrived is forgotten');
+  assert.deepEqual(reopenAfterUpdate(true, '0.91.0', now), { open: true, clear: true }, 'the flag older versions wrote still works');
+  assert.deepEqual(reopenAfterUpdate({ version: null, at: now }, '0.91.0', now), { open: true, clear: true }, 'one with no version named');
 });

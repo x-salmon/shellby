@@ -282,10 +282,11 @@ function wireTray(d) {
       // Dev servers are stopped first and started again by the new version
       // (devservers/service.js stopForUpdate).
       // The installer relaunches Shellby; the flag has the new version open the
-      // panel rather than come back as just the crab (see boot).
-      prepare: () => {
+      // panel rather than come back as just the crab (see boot). It names that
+      // version, so the old one starting again mid-install doesn't use it up.
+      prepare: version => {
         app.isQuitting = true;
-        d.config.set({ reopenAfterUpdate: true });
+        d.config.set({ reopenAfterUpdate: { version, at: Date.now() } });
         d.manager?.closeAll();
         d.devServers?.stopForUpdate();
       },
