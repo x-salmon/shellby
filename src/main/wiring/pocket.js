@@ -30,6 +30,7 @@ const { createTailscale, pickHttpsPort } = require('../pocket/tailscale');
 const view = require('../pocket/view');
 const { createPocketExtras } = require('../pocket/extras');
 const { createPocketNotices } = require('../pocket/notices');
+const { createPocketTalk } = require('../pocket/talk');
 
 const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
 const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
@@ -200,7 +201,10 @@ function wirePocket(d) {
   function extras() {
     const out = {};
     for (const [id, tab] of d.manager?.tabs || []) {
-      out[id] = { mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !tab.inTerminal };
+      out[id] = {
+        mode: tab.session.mode || null, fromPhone: !!(tab.fromPocket || tab.fromPhone), canReply: !tab.inTerminal,
+        effort: tab.session.effort || '', queued: talk.queuedOf(id),
+      };
     }
     return out;
   }
@@ -286,6 +290,8 @@ function wirePocket(d) {
   }
 
   function onItem(tabId, item) {
+    // A reply that waited goes whether or not the phone is still looking.
+    if (item.kind === 'result') talk.turnEnded(tabId, item);
     if (!d.pocket?.clients.size) return;
     if (item.kind === 'usage' || item.kind === 'result') pushView();
     if (!d.pocket.watched().has(tabId)) return;
@@ -319,7 +325,6 @@ function wirePocket(d) {
     switch (name) {
       case 'answer': return answer(body);
       case 'task': return task(body);
-      case 'reply': return reply(body);
       case 'stop': return stop(body);
       case 'undo': return undo(body);
       case 'home': return home(body);
@@ -328,6 +333,7 @@ function wirePocket(d) {
       case 'push': return setPush(device, body);
       case 'forget': return forget(device.id, 'You forgot this phone.');
       default: {
+        if (Object.prototype.hasOwnProperty.call(talk.actions, name)) return talk.actions[name](body || {});
         const fn = Object.prototype.hasOwnProperty.call(extra.actions, name) ? extra.actions[name] : null;
         if (!fn) return no('unknown');
         const r = await fn(body);
@@ -439,26 +445,19 @@ function wirePocket(d) {
     d.history.update(tabId, { fromPhone: true });
   }
 
-  function reply({ tabId, text, mode }) {
-    const tab = str(tabId) && d.manager.tabs.get(tabId);
-    if (!tab) return no('That conversation has closed.');
-    if (tab.inTerminal) return no("It's in a terminal on your PC now. Reply there.");
-    const said = pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
-    if (!said) return no('Type something first.');
-    if (/^[/!]/.test(said)) return no('Commands that start with / or ! only run at the desk.');
-    if (d.manager.isBusy(tabId)) return no("He's still on it. Wait for this turn to end, or stop it.");
-    // The mode the phone picked, or Ask: kept when the desk's mode changes.
-    const runAs = modeOf(mode);
-    if (tab.session.mode !== runAs) tab.session.setMode(runAs);
-    tab.pinnedMode = true;
-    const r = d.sendToTab(tabId, said, []);
-    if (!r.ok) return no(r.error);
-    // The desk's panel draws a message it didn't send itself from this.
-    d.send(d.tabWindow?.(tabId) || d.panel, 'tab:sent', { tabId, item: r.item });
-    lastTurn.set(tabId, r.turnId);
-    d.pocket?.item(tabId, view.phoneItem(r.item));
-    return ok({ turnId: r.turnId });
-  }
+  // A reply, one that waits for his turn to end, and the conversation's name,
+  // effort, closing and History (pocket/talk.js).
+  const talk = createPocketTalk(d, {
+    modeOf,
+    takePhotos: ids => extra.takePhotos(ids),
+    onSent(tabId, r) {
+      // The desk's panel draws a message it didn't send itself from this.
+      d.send(d.tabWindow?.(tabId) || d.panel, 'tab:sent', { tabId, item: r.item });
+      lastTurn.set(tabId, r.turnId);
+      d.pocket?.item(tabId, view.phoneItem(r.item));
+    },
+    pushView: () => pushView(),
+  });
 
   function stop({ tabId }) {
     if (!str(tabId) || !d.manager.isBusy(tabId)) return no("He's not working on that one.");

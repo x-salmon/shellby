@@ -281,7 +281,7 @@
   }
 
   // One conversation and what its turns changed live in pocket-tab.js.
-  const { tabScreen, diffScreen } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn });
+  const { tabScreen, diffScreen } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, voiceButton });
   const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet });
 
   // ---------------------------------------------------------------- the queue
@@ -630,6 +630,7 @@
     else if (r.name === 'routines') show(More.routinesScreen());
     else if (r.name === 'notes') show(More.notesScreen());
     else if (r.name === 'wardrobe') show(More.wardrobeScreen());
+    else if (r.name === 'history') show(More.historyScreen());
     else if (r.name === 'files') show(More.filesScreen(r.tabId, r.path));
     else if (r.name === 'phone') show(phoneScreen());
     else show(beachScreen());

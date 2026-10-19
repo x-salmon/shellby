@@ -372,7 +372,7 @@ test('at the usage limit a phone task waits for the reset', async () => {
   } finally { stop(w); }
 });
 
-test('replies go to any conversation, not mid-turn, in the mode the phone picked (Ask if none)', async () => {
+test('replies go to any conversation, in the mode the phone picked (Ask if none)', async () => {
   const modes = [];
   const desk = tabOf('desk', { session: { pending: new Map(), mode: 'bypass', cwd: PROJECT, busy: false, setMode(m) { this.mode = m; modes.push(m); } } });
   const mine = tabOf('mine', { fromPocket: true });
@@ -384,13 +384,63 @@ test('replies go to any conversation, not mid-turn, in the mode the phone picked
     assert.equal(desk.pinnedMode, true, 'the desk mode no longer lifts it');
     assert.equal((await act({ tabId: 'desk', text: 'go on', mode: 'acceptEdits' })).ok, true);
     assert.deepEqual(modes, ['ask', 'acceptEdits']);
-    mine.session.busy = true;
-    assert.match((await act({ tabId: 'mine', text: 'hi' })).error, /still on it/);
-    mine.session.busy = false;
     assert.equal((await act({ tabId: 'mine', text: 'carry on' })).ok, true);
     assert.deepEqual(w.of('sendToTab'), [['desk', 'hi'], ['desk', 'go on'], ['mine', 'carry on']]);
     // The desk's panel hears about a message it didn't send.
     assert.ok(w.of('send').some(([, channel]) => channel === 'tab:sent'));
+  } finally { stop(w); }
+});
+
+test('a reply typed mid-turn waits, and goes when the turn ends (not after a Stop)', async () => {
+  const mine = tabOf('mine', { session: { pending: new Map(), mode: 'ask', cwd: PROJECT, busy: true, setMode() {} } });
+  const w = await paired({ tabs: [mine] });
+  try {
+    const act = (name, body) => w.d.pocket.onAction(w.device, name, body);
+    assert.deepEqual(await act('reply', { tabId: 'mine', text: 'then this' }), { ok: true, queued: true });
+    assert.equal(w.of('sendToTab').length, 0);
+    // Stopped: it stays, to send or take back.
+    mine.session.busy = false;
+    w.d.manager.emit('item', 'mine', { kind: 'result', interrupted: true });
+    await new Promise(r => setTimeout(r, 5));
+    assert.equal(w.of('sendToTab').length, 0);
+    // The next turn ends on its own: it goes.
+    w.d.manager.emit('item', 'mine', { kind: 'result', ok: true });
+    await new Promise(r => setTimeout(r, 5));
+    assert.deepEqual(w.of('sendToTab'), [['mine', 'then this']]);
+  } finally { stop(w); }
+});
+
+test('slash commands: a few safe ones from the phone, the rest and ! at the desk', async () => {
+  const w = await paired({ tabs: [tabOf('t1', { session: { pending: new Map(), mode: 'ask', cwd: PROJECT, busy: false, setMode() {} } })] });
+  try {
+    const act = text => w.d.pocket.onAction(w.device, 'reply', { tabId: 't1', text });
+    assert.equal((await act('/compact')).ok, true);
+    assert.match((await act('/clear')).error, /run at the desk/);
+    assert.match((await act('!dir')).error, /only run at the desk/);
+  } finally { stop(w); }
+});
+
+test('rename, effort, close and History from the phone', async () => {
+  const efforts = [];
+  const w = await paired({ tabs: [tabOf('t1')] });
+  try {
+    const act = (name, body) => w.d.pocket.onAction(w.device, name, body);
+    w.d.manager.rename = (id, t) => { w.d.manager.tabs.get(id).title = t; return true; };
+    w.d.manager.setTabEffort = (id, e) => efforts.push([id, e]);
+    assert.equal((await act('rename', { tabId: 't1', title: '  New name ' })).ok, true);
+    assert.equal(w.d.manager.tabs.get('t1').title, 'New name');
+    assert.equal((await act('effort', { tabId: 't1', effort: 'high' })).ok, true);
+    assert.equal((await act('effort', { tabId: 't1', effort: 'ludicrous' })).ok, false);
+    assert.deepEqual(efforts, [['t1', 'high']]);
+    w.d.history.list = () => [{ id: 'old', title: 'Old one', cwd: PROJECT, updatedAt: 5 }, { id: 't1', title: 'open', updatedAt: 9 }];
+    w.d.history.get = id => (id === 'old' ? { id } : null);
+    const opened = [];
+    w.d.openTab = o => { opened.push(o); w.d.manager.tabs.set(o.tabId, tabOf(o.tabId)); return { id: o.tabId }; };
+    const h = await act('history', {});
+    assert.deepEqual(h.list.map(e => e.id), ['old'], 'open ones are not offered');
+    assert.deepEqual(await act('resume', { id: 'old' }), { ok: true, tabId: 'old' });
+    assert.equal(opened[0].historyEntry.id, 'old');
+    assert.equal((await act('resume', { id: 'gone' })).ok, false);
   } finally { stop(w); }
 });
 

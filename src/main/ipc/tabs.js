@@ -34,6 +34,32 @@ function agentName(name, listed) {
 }
 
 /**
+ * Close a conversation and everything that runs with it: the panel's ×, and the
+ * phone's Close (wiring/pocket.js).
+ */
+function closeTab(d, tabId) {
+  // Its held messages go with it, the way its queue does.
+  const list = d.heldList();
+  if (list.some(h => h.kind === 'message' && h.tabId === tabId)) d.saveHeld(list.filter(h => !(h.kind === 'message' && h.tabId === tabId)));
+  d.manager.interrupt(tabId);
+  d.cancelChecks(tabId); // its tests stop with it
+  const tab = d.manager.tabs.get(tabId);
+  d.closePopout(tabId); // in a window of its own: that goes too
+  d.manager.close(tabId);
+  // A Next up draft closed unsent: its empty copy goes with it (wiring/projects.js).
+  if (tab?.unsentCopy) d.dropUnsentCopy?.(tab).then(gone => { if (gone) d.backlogTabClosed?.(tabId); }).catch(e => d.log.info(`unsent copy: ${e.message}`));
+  d.routineTabs.delete(tabId);
+  d.queueTabs.delete(tabId);
+  // A queued task you closed mid-run: the queue moves on to the next one.
+  d.queueWaits.get(tabId)?.({ ok: false, interrupted: true, closed: true });
+  d.queueWaits.delete(tabId);
+  d.workflows?.onTabClosed(tabId);
+  d.debugMode?.tabClosed(tabId); // its debug receiver stops listening
+  d.remote?.settleTab(tabId);
+  return true;
+}
+
+/**
  * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
@@ -51,28 +77,7 @@ function registerTabsIpc(ipcMain, d) {
   });
   // Safe mode for one conversation (sessions.js setSafeMode), from the tab menu.
   ipcMain.handle('tab:safe', (_e, { tabId, on } = {}) => (d.isStr(tabId) ? d.manager.setSafeMode(tabId, on === true) : { ok: false, error: 'Which conversation?' }));
-  ipcMain.handle('tab:close', (_e, tabId) => {
-    if (!d.isStr(tabId)) return false;
-    // Its held messages go with it, the way its queue does.
-    const list = d.heldList();
-    if (list.some(h => h.kind === 'message' && h.tabId === tabId)) d.saveHeld(list.filter(h => !(h.kind === 'message' && h.tabId === tabId)));
-    d.manager.interrupt(tabId);
-    d.cancelChecks(tabId); // its tests stop with it
-    const tab = d.manager.tabs.get(tabId);
-    d.closePopout(tabId); // in a window of its own: that goes too
-    d.manager.close(tabId);
-    // A Next up draft closed unsent: its empty copy goes with it (wiring/projects.js).
-    if (tab?.unsentCopy) d.dropUnsentCopy?.(tab).then(gone => { if (gone) d.backlogTabClosed?.(tabId); }).catch(e => d.log.info(`unsent copy: ${e.message}`));
-    d.routineTabs.delete(tabId);
-    d.queueTabs.delete(tabId);
-    // A queued task you closed mid-run: the queue moves on to the next one.
-    d.queueWaits.get(tabId)?.({ ok: false, interrupted: true, closed: true });
-    d.queueWaits.delete(tabId);
-    d.workflows?.onTabClosed(tabId);
-    d.debugMode?.tabClosed(tabId); // its debug receiver stops listening
-    d.remote?.settleTab(tabId);
-    return true;
-  });
+  ipcMain.handle('tab:close', (_e, tabId) => d.isStr(tabId) && closeTab(d, tabId));
   // Dragging a tab along the strip. The order lives in the manager, and the
   // `tabs` listener in main.js writes it back to `openTabs`, so it survives a restart.
   ipcMain.handle('tab:reorder', (_e, { tabId, beforeId } = {}) =>
@@ -339,4 +344,4 @@ function registerTabsIpc(ipcMain, d) {
   });
 }
 
-module.exports = { registerTabsIpc };
+module.exports = { closeTab, registerTabsIpc };

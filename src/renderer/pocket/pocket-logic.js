@@ -355,7 +355,7 @@
       const dir = String(hash).endsWith('/') || !rest.length;
       return { name: 'files', tabId: parts[1], path: rest.join('/') + (dir && rest.length ? '/' : '') };
     }
-    if (['queue', 'phone', 'new', 'more', 'routines', 'notes', 'wardrobe'].includes(parts[0])) return { name: parts[0] };
+    if (['queue', 'phone', 'new', 'more', 'routines', 'notes', 'wardrobe', 'history'].includes(parts[0])) return { name: parts[0] };
     return { name: 'beach' };
   }
 

@@ -4,7 +4,36 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn }) => {
+  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, go, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton }) => {
+    const EFFORTS = [['', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
+
+    // Its name, its effort and closing it: what the desk's tab menu has.
+    function tabMenu(tabId, t) {
+      return { label: 'This conversation', build: close => {
+        const name = h('input', { class: 'name-in', type: 'text', value: t.title, maxlength: '120', 'aria-label': 'Name', enterkeyhint: 'done' });
+        const rename = actButton({
+          label: 'Rename', cls: 'slim',
+          run: async () => { const r = await act('rename', { tabId, title: name.value }, { okText: 'Renamed.' }); if (r.ok) close(); },
+        });
+        const effort = h('select', { class: 'mode-pick', 'aria-label': 'Effort' }, ...EFFORTS.map(([value, text]) => h('option', { value, text })));
+        effort.value = t.effort || '';
+        effort.addEventListener('change', () => act('effort', { tabId, effort: effort.value }, { okText: 'Set. It counts from his next turn.' }));
+        const shut = actButton({
+          label: 'Close this conversation', cls: 'danger-ghost',
+          run: () => confirmSheet({
+            title: 'Close it?', text: `${t.busy ? 'He stops where he is. ' : ''}It stays in History, and More → History opens it again.`, yes: 'Close it', danger: true,
+            then: async () => { const r = await act('close', { tabId }, { okText: 'Closed.' }); if (r.ok) go('#/'); },
+          }),
+        });
+        return { el: h('div', { class: 'tab-menu' },
+          h('h2', { class: 'sheet-title', text: 'This conversation' }),
+          h('div', { class: 'field' }, h('span', { text: 'Name' }), h('div', { class: 'reply' }, name, rename)),
+          h('label', { class: 'mode-row' }, h('span', { text: 'Effort' }), effort),
+          h('p', { class: 'rule' }, icon('shield'), h('span', { text: 'In the reply box, /compact, /context and /goal work from here. Other commands run at the desk.' })),
+          shut) };
+      } };
+    }
+
     // ---------------------------------------------------------------- one conversation
 
     function tabScreen(tabId) {
@@ -14,22 +43,33 @@
       const asks = h('div', { class: 'feed-asks' });
       const scroll = h('div', { class: 'scroll' }, header, feedEl, asks);
       const foot = h('div', { class: 'foot' });
+      const footParts = h('div', { class: 'foot-parts' });
       const el = h('div', { class: 'screen tab-screen' }, topbar({ back: '#/' }), h('div', { class: 'offline-slot' }), scroll, foot);
 
       // The reply box is made once, so what you've typed stays while he works.
       const input = h('textarea', { class: 'reply-in', rows: '1', placeholder: 'Reply…', 'aria-label': 'Reply', maxlength: '4000', enterkeyhint: 'send' });
       input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = `${Math.min(160, input.scrollHeight)}px`; });
+      // Pictures go to the PC as they're picked (photoButton), and the reply names them.
+      const photos = [];
+      const strip = h('div', { class: 'photo-strip', 'aria-label': 'Pictures' });
       const send = actButton({
         label: 'Send', cls: 'go icon-only', iconName: 'send', aria: 'Send',
         run: async () => {
           const text = input.value.trim();
-          if (!text) return;
-          const r = await act('reply', { tabId, text, mode: mode.value });
-          if (r.ok) { input.value = ''; input.style.height = ''; }
+          if (!text && !photos.length) return;
+          if (photos.some(p => !p.id)) { toast('A picture is still on its way. One moment.'); return; }
+          const r = await act('reply', { tabId, text, mode: mode.value, photos: photos.map(p => p.id) });
+          if (!r.ok) return;
+          input.value = '';
+          input.style.height = '';
+          for (const p of photos) URL.revokeObjectURL(p.url);
+          photos.length = 0;
+          strip.replaceChildren();
+          if (r.queued) toast('It goes when he finishes this turn.');
         },
       });
       const mode = modePicker(tabOf(tabId)?.mode);
-      const replyRow = h('div', { class: 'reply-box' }, mode, h('div', { class: 'reply' }, input, send));
+      const replyRow = h('div', { class: 'reply-box' }, strip, h('div', { class: 'reply-tools' }, mode, photoButton(photos, strip)), h('div', { class: 'reply' }, input, send));
       const stop = actButton({
         label: 'Stop', cls: 'stop', iconName: 'stop', aria: 'Stop this turn',
         run: () => confirmSheet({ title: 'Stop him?', text: 'The turn ends where it is. Anything he changed so far stays, and Undo can take it back.', yes: 'Stop', danger: true, then: () => act('stop', { tabId }, { okText: 'Stopped.' }) }),
@@ -49,7 +89,8 @@
         const tools = [];
         if (S.view?.allow?.files) tools.push(h('a', { class: 'btn ghost slim', href: `#/files/${encodeURIComponent(tabId)}/` }, icon('folder'), h('span', { class: 'btn-label', text: 'Files' })));
         if (['review', 'finished'].includes(t.standing) && t.outcome !== 'error') tools.push(h('button', { type: 'button', class: 'btn ghost slim', onclick: () => shareTurn(t) }, icon('share'), h('span', { class: 'btn-label', text: 'Share' })));
-        header.replaceChildren(h('h2', { class: 'tab-title', text: t.title }), h('div', { class: 'chips' }, ...chips), tools.length ? h('div', { class: 'tab-tools' }, ...tools) : '');
+        tools.push(h('button', { type: 'button', class: 'btn ghost slim', 'aria-label': 'Rename, effort or close', onclick: () => openSheet(tabMenu(tabId, t)) }, icon('more'), h('span', { class: 'btn-label', text: 'Options' })));
+        header.replaceChildren(h('h2', { class: 'tab-title', text: t.title }), h('div', { class: 'chips' }, ...chips), h('div', { class: 'tab-tools' }, ...tools));
       }
 
       // Each reply's elements are kept between redraws, by where it is and what it says:
@@ -127,11 +168,26 @@
         }
         const reviewing = t.ready && !t.busy && !t.pending;
         if (reviewing) parts.push(reviewBar(t));
-        if (!t.busy && !t.pending) {
-          if (t.canReply) parts.push(replyRow);
-          else if (!reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
-        }
-        foot.replaceChildren(...parts);
+        if (t.queued?.length) parts.push(queuedList(t));
+        // While he works, a reply waits for the turn to end; while he asks, the question comes first.
+        const replying = !t.pending && t.canReply;
+        if (!t.pending && !t.canReply && !t.busy && !reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
+        footParts.replaceChildren(...parts);
+        // The box itself stays put, so the keyboard and what's typed survive every update.
+        input.placeholder = t.busy ? 'Reply… it goes when he finishes' : 'Reply…';
+        replyRow.hidden = !replying;
+        foot.hidden = !replying && !parts.length;
+        if (replyRow.parentNode !== foot) foot.replaceChildren(footParts, replyRow);
+      }
+
+      // Replies typed while he worked. After a Stop nothing sends them by itself, so each can go now.
+      function queuedList(t) {
+        return h('div', { class: 'queued', role: 'list', 'aria-label': 'Waiting to go' },
+          h('span', { class: 'queued-head', text: t.busy ? 'Waiting for this turn to end' : 'Stopped before these went' }),
+          ...t.queued.map(m => h('div', { class: 'queued-row', role: 'listitem' },
+            h('span', { class: 'queued-text', text: [m.text, m.photos ? L.plural(m.photos, 'picture') : ''].filter(Boolean).join(' · ') }),
+            t.busy ? null : actButton({ label: 'Send', cls: 'go slim', run: () => act('unqueue', { tabId, id: m.id, send: true }) }),
+            actButton({ label: 'Remove', cls: 'ghost slim', run: () => act('unqueue', { tabId, id: m.id }) }))));
       }
 
       function reviewBar(t) {

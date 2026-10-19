@@ -334,7 +334,21 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
   background: rgba(7, 16, 18, .94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--line-soft);
 }
-.foot:empty { display: none; }
+.foot:empty, .foot[hidden], .reply-box[hidden] { display: none; }
+.foot-parts { display: grid; gap: 10px; }
+.foot-parts:empty { display: none; }
+.reply-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Replies typed while he worked, waiting for the turn to end (pocket/talk.js) */
+.queued { display: grid; gap: 6px; }
+.queued-head { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--sand-faint); }
+.queued-row { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border-radius: 14px; background: var(--reef); border: 1px dashed var(--line); }
+.queued-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--sand-dim); }
+/* A conversation's options: its name, its effort, closing it */
+.tab-menu { display: grid; gap: 14px; }
+.tab-menu .field { display: grid; gap: 6px; color: var(--sand-dim); font-size: 14px; }
+.name-in { flex: 1; min-width: 0; min-height: 46px; padding: 0 14px; border-radius: 14px; background: var(--abyss); border: 1px solid var(--line); font-size: 16px; }
+.name-in:focus { outline: none; border-color: var(--glass); }
+.history-row { width: 100%; text-align: left; font: inherit; color: inherit; }
 .foot-row { display: flex; align-items: center; gap: 10px; }
 .working-line { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--sand-dim); }
 .working-line .doing { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

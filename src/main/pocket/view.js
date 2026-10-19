@@ -56,6 +56,9 @@ function phoneTab(t, extra = {}) {
     mode: extra.mode || null,
     fromPhone: !!extra.fromPhone,
     canReply: !!extra.canReply,
+    effort: typeof extra.effort === 'string' ? line(extra.effort, 10) : '',
+    // Replies typed on the phone while he worked, waiting for the turn to end (pocket/talk.js).
+    queued: Array.isArray(extra.queued) ? extra.queued.slice(0, 5) : [],
   };
 }
 
