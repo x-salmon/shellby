@@ -247,7 +247,7 @@ class SessionManager extends EventEmitter {
       if (notes.some(n => n.kind === 'helpers')) tab.helpersNoted = true;
       if (notes.some(n => n.kind === 'pictures')) tab.picturesNoted = true;
       // A big whole-file read, a long helper brief, a commit worth compacting after, a small job thought hard on.
-      const watched = turnwatch.watchNotes(tab.turnWatch, { cost, category: tab.turnCategory, said: tab.watchSaid, compact: turncost.compact });
+      const watched = turnwatch.watchNotes(tab.turnWatch, { cost, category: tab.turnCategory, said: tab.watchSaid, style: tab.session?.outputStyle || '', compact: turncost.compact });
       tab.watchSaid = turnwatch.markSaid(tab.watchSaid, watched);
       notes.push(...watched);
       item.cost = { ...cost, line: turncost.costLine(cost), detail: turncost.costDetail(cost), effortBadge: turncost.effortBadge(cost), ...(notes.length ? { notes } : {}) };

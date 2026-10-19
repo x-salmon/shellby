@@ -571,6 +571,16 @@
           } }, 'Run helpers on Sonnet');
       }
       if (action === 'fresh') return h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => SB.startFresh(this) }, 'Start fresh with a summary');
+      if (action === 'default-style' && state.settings?.outputStyle) {
+        return h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'New conversations use the Default output style. Change it in Settings → Claude Code.',
+          onclick: async e => {
+            const r = await api.setSettings({ outputStyle: '' }).catch(() => null);
+            if (!r?.settings) return SB.toast("Couldn't change that.");
+            state.settings = r.settings;
+            e.target.remove();
+            SB.toast('New conversations use the Default style.');
+          } }, 'Use the Default style');
+      }
       if (action === 'compact') return h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => SB.compactTab(this) }, 'Compact now');
       return null;
     }

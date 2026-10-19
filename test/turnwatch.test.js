@@ -72,3 +72,15 @@ test('no repeat after an edit, a shell command that changes files, a small re-re
   assert.equal(read(first, 'r2', '/p/a.js', 40).reread, null, "Claude Code's short 'unchanged' answer");
   assert.equal(read(tw.startTurn(), 'r2', '/p/a.js', size).reread, null);
 });
+
+test('a long reply in a style that explains as it goes', () => {
+  const long = 'x'.repeat(tw.WORDY_TOKENS * 4);
+  const insight = tw.seeItem(tw.startTurn(), { kind: 'text', text: `★ Insight ─────\n${long}` });
+  const fromHook = tw.watchNotes(insight, { cost: {}, style: '' });
+  assert.deepStrictEqual(fromHook.map(n => [n.kind, n.action]), [['wordy', undefined]], 'no button: Shellby did not pick it');
+  const plain = tw.seeItem(tw.startTurn(), { kind: 'text', text: long });
+  assert.deepStrictEqual(tw.watchNotes(plain, { cost: {}, style: '' }), [], 'long but plain: the work may need it');
+  assert.strictEqual(tw.watchNotes(plain, { cost: {}, style: 'Explanatory' })[0].action, 'default-style');
+  const helper = tw.seeItem(tw.startTurn(), { kind: 'text', text: `★ Insight ${long}`, sub: { parent: 'a' } });
+  assert.deepStrictEqual(tw.watchNotes(helper, { cost: {} }), []);
+});

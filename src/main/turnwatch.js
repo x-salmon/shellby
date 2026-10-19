@@ -18,6 +18,9 @@ const HIGH_EFFORTS = new Set(['high', 'xhigh', 'max']);
 const SMALL_JOBS = new Set(['tidy', 'docs']);
 const HELPERS = new Set(['Agent', 'Task']);
 const SHELLS = new Set(['Bash', 'PowerShell']);
+const WORDY_TOKENS = 1500;      // a reply this long, from a style that explains as it goes
+const INSIGHT = '★ Insight';     // the Explanatory style's notes, however it was turned on
+const TEACHING_STYLES = /^(explanatory|learning)$/i;
 const REREAD_TOKENS = 2000;     // a re-read this big is worth a word (Claude Code's own "unchanged" stub is far smaller)
 const PATH_CHARS = 500;
 const EDITS = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit']);
@@ -46,7 +49,7 @@ const tokensOf = chars => Math.round((Number.isFinite(chars) && chars > 0 ? char
  * the conversation and not changed since (files) carry over from prev.
  */
 function startTurn(prev) {
-  return { reads: {}, bigRead: 0, brief: 0, committed: false, reread: null, files: prev?.files || {} };
+  return { reads: {}, bigRead: 0, brief: 0, committed: false, reread: null, wrote: 0, insight: false, files: prev?.files || {} };
 }
 
 const pathKey = p => String(p).replace(/\\/g, '/').toLowerCase();
@@ -75,6 +78,9 @@ function toolFacts(name, input) {
 function seeItem(watch, item) {
   const w = watch || startTurn();
   if (!item || item.sub) return w;
+  if (item.kind === 'text' && typeof item.text === 'string') {
+    return { ...w, wrote: (w.wrote || 0) + item.text.length, insight: w.insight || item.text.includes(INSIGHT) };
+  }
   if (item.kind === 'tool') {
     if (item.wholeRead && typeof item.id === 'string') return { ...w, reads: { ...w.reads, [item.id]: { path: typeof item.readPath === 'string' ? item.readPath : null } } };
     if (Number.isFinite(item.briefChars)) return { ...w, brief: Math.max(w.brief, tokensOf(item.briefChars)) };
@@ -101,9 +107,10 @@ function seeItem(watch, item) {
  * The notes this turn's watch earns: [{ kind, text, action? }].
  * said: { bigRead, brief, compact, effort } for the ones already said in this
  * conversation; cost: the turn's (turncost.js turnCost); category: what kind
- * of ask it was (usage/ledger.js classify).
+ * of ask it was (usage/ledger.js classify); style: the output style Shellby
+ * started it with ('' for Default, or one a plugin's hook chose).
  */
-function watchNotes(watch, { cost, category = '', said = {}, compact = n => String(n) } = {}) {
+function watchNotes(watch, { cost, category = '', said = {}, style = '', compact = n => String(n) } = {}) {
   if (!watch || !cost) return [];
   const pct = cost.contextPct;
   return [
@@ -111,6 +118,8 @@ function watchNotes(watch, { cost, category = '', said = {}, compact = n => Stri
       ? { kind: 'big-read', text: `Claude read a whole file of about ${compact(watch.bigRead)} tokens this turn, and it's sent again with every message after it. Naming the part you need (a function, a section, a line range) reads less.` } : null,
     !said.reread && watch.reread
       ? { kind: 'reread', text: `Claude read ${shortPath(watch.reread.path)} again, about ${compact(watch.reread.tokens)} tokens, with nothing changing it since it last read it. The earlier copy is still in the conversation, so naming the part to look at again, or saying it's unchanged, reads less.` } : null,
+    !said.wordy && tokensOf(watch.wrote) >= WORDY_TOKENS && (watch.insight || TEACHING_STYLES.test(style))
+      ? { kind: 'wordy', text: `Claude wrote about ${compact(tokensOf(watch.wrote))} tokens of reply this turn, in a style that explains as it goes. Every reply stays in the conversation and is sent again with each message after it; the Default style keeps them brief.`, ...(TEACHING_STYLES.test(style) ? { action: 'default-style' } : {}) } : null,
     !said.brief && watch.brief >= LONG_BRIEF
       ? { kind: 'brief', text: `A helper went off with a brief of about ${compact(watch.brief)} tokens. It reads the code for itself, so a brief that says what to look at and what to bring back, without pasting what it can read, costs less.` } : null,
     !said.compact && watch.committed && Number.isFinite(pct) && pct >= COMPACT_PCT
@@ -124,8 +133,8 @@ const shortPath = p => String(p || 'a file').split(/[\\/]/).slice(-2).join('/');
 
 /** The said-flags after some notes went out. */
 function markSaid(said, notes) {
-  const kinds = { 'big-read': 'bigRead', reread: 'reread', brief: 'brief', compact: 'compact', effort: 'effort' };
+  const kinds = { 'big-read': 'bigRead', reread: 'reread', wordy: 'wordy', brief: 'brief', compact: 'compact', effort: 'effort' };
   return (notes || []).reduce((s, n) => (kinds[n.kind] ? { ...s, [kinds[n.kind]]: true } : s), { ...(said || {}) });
 }
 
-module.exports = { startTurn, toolFacts, seeItem, watchNotes, markSaid, REREAD_TOKENS, BIG_READ, LONG_BRIEF, COMPACT_PCT, HARD_THINKING };
+module.exports = { startTurn, toolFacts, seeItem, watchNotes, markSaid, WORDY_TOKENS, REREAD_TOKENS, BIG_READ, LONG_BRIEF, COMPACT_PCT, HARD_THINKING };
