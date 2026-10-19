@@ -550,7 +550,10 @@ src/main/        Electron main process
                    crabmcp.js serves the crab's tools (say, celebrate, wear, status, note, suggest) to Shellby's own conversations
   usage/           index.js (the usage meter without a prompt: a short-lived `claude -p` asked for its /usage data),
                    ledger.js (what each turn cost, pure: the per-turn ledger, a prompt's kind of ask, and the estimate the
-                   composer shows; wiring/usageplan.js brackets each turn and answers usage:estimate), scan.js (what Claude Code used lately, from its transcripts) and service.js
+                   composer shows; wiring/usageplan.js brackets each turn and answers usage:estimate), scan.js (what Claude Code used lately, from its transcripts), hotfiles.js (the files Claude keeps
+                   coming back to in a project, from the same transcripts) and service.js
+  telemetry.js     Claude Code's own OpenTelemetry metrics (pure): reading an OTLP JSON export, the per-day ledger, the env
+                   that points a conversation at Shellby; telemetry-service.js is the loopback receiver
   notes.js         Notes (pure): a list per project and a General one, their limits
   sync/            what follows you between PCs: prefs.js (which settings, each checked by its own rule, and the newest change
                    wins), life.js (finds, bond points and games as each PC's own share, a find swapped away stays gone; records,

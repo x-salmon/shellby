@@ -219,6 +219,7 @@ const shared = {
   parityIpc: null,
   teamIpc: null,                   // Toolbox → Team: the repo's .shellby/team.json (team-ipc.js)
   lean: null,                      // Lean Shell: the prompt cache, setup weight and idle tools (lean.js)
+  telemetry: null,                 // Claude Code's own metrics, received on 127.0.0.1 (telemetry-service.js)
   obsServer: null, rgbClient: null, presence: null, media: null, remote: null, channelSecret: null,
   deck: null, deckShown: null,     // the Stream Deck keys, and the conversation they follow (see deck.js)
   pocket: null,                    // Shellby on your phone: its server (pocket/server.js, wiring/pocket.js)

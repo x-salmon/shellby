@@ -13,6 +13,7 @@ const editor = require('../editor');
 const { HistorySearch } = require('../history/search');
 const { guardIpc, windowPolicy } = require('../ipc-guard');
 const { createLean } = require('../lean');
+const { createTelemetry } = require('../telemetry-service');
 const { createModsService } = require('../mods-service');
 const parity = require('../parity');
 const { createSkillRemover } = require('../skillremove');
@@ -60,7 +61,7 @@ const { registerNewsIpc } = require('./news');
 
 /**
  * electronIpcMain: Electron's own. d: what main shares (main.js `shared`);
- * this sets d.lean, d.parityIpc and d.teamIpc.
+ * this sets d.lean, d.telemetry, d.parityIpc and d.teamIpc.
  */
 function registerIpc(electronIpcMain, d) {
   // Every handler (here, in ipc/, and parity's and branching's) checks which
@@ -88,8 +89,11 @@ function registerIpc(electronIpcMain, d) {
     const exe = d.claudeExe();
     return exe ? runCli(exe, args, timeout, opts) : Promise.resolve({ ok: false, notInstalled: true, stdout: '', stderr: '' });
   };
+  // Claude Code's own metrics, sent here by the conversations Shellby starts (telemetry.js).
+  d.telemetry = createTelemetry({ config, configDir: d.claudeConfigDir, log });
+  if (!d.CAPTURE) d.telemetry.start();
   const lean = d.lean = createLean({
-    config, shop: () => d.shop, shopBlocked: d.shopBlocked, askOnce: d.askOnce, toolbox: () => d.toolbox, setupWhere: d.setupWhere, configDir: d.claudeConfigDir, awardXp: d.awardXp, log,
+    config, telemetry: d.telemetry, shop: () => d.shop, shopBlocked: d.shopBlocked, askOnce: d.askOnce, toolbox: () => d.toolbox, setupWhere: d.setupWhere, configDir: d.claudeConfigDir, awardXp: d.awardXp, log,
     memory: () => claudeSetup.scanMemory(d.setupWhere()),
     projectOf: tab => { const s = d.spendSource(tab); return s.pk ? { key: s.pk, name: s.project } : null; },
     currentProject: () => path.resolve(d.currentCwd()).toLowerCase(),

@@ -108,7 +108,8 @@ function wireSessions(d) {
       getChrome: () => d.config.get('claudeInChrome') === true,
       // The newer flags go only to a Claude Code whose --help lists them (main.js claudeSupports).
       supports: flag => d.claudeSupports(flag),
-      getEnv: () => d.github?.claudeEnv() || {},
+      // GitHub access, and where Claude Code sends its metrics (telemetry-service.js).
+      getEnv: () => ({ ...(d.github?.claudeEnv() || {}), ...(d.telemetry?.env() || {}) }),
       // A folder on another computer: Claude Code runs there, over ssh (remote/service.js).
       getRemote: cwd => {
         const place = d.remoteService?.placeOf(cwd);
