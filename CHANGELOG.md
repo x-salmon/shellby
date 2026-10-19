@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.92.0: Your phone does more
+
+### New
+- **A word on the turns that fill the conversation.** A line under a turn's cost says when Claude read a whole big file (naming the part you need reads less), read a file again that nothing had changed since, sent a helper off with a very long brief, kept checking on a background job, thought hard on a small tidy-up at high effort, or wrote long replies in a style that explains as it goes (with **Use the Default style** when Shellby set that style). Each is said once a conversation.
+- **Compact after a commit.** When a turn commits with the conversation 40% full or more, a line under its cost offers **Compact now**: the work is saved, so a summary loses little, and it asks the summary to keep what's needed after that commit.
+- **A word before a model switch.** Typing `/model …` into a big conversation whose cache is still warm says that the next message sends all of it again at full price, and offers **Switch in a new tab**.
+- **Keep long command output short.** A new hook in Toolbox → Hooks keeps the last 60 lines of a test run and shortens a plain `git log` to 30 one-line commits. The Lean tab's loud commands offer it as **Shorten with a hook**, with the project's own loudest build and test runs added, and the Lean tab then says how many runs it shortened and about how much it kept out of the conversation.
+- **Rules that don't fit the project.** The Lean tab marks rule files written for a language or framework this project doesn't use (a React rule in a project with no React, say), and **Load only where it applies** drafts a prompt to scope them.
+- **What each branch cost.** The Lean tab lists what each branch of the project cost this week, as a share of what Shellby spent there.
+- **MCP tools that fill the context.** The Lean tab lists the MCP tools whose results put the most into your conversations here, and **Ask Claude** drafts a prompt for narrower calls.
+- **Questions and plans, answered from your phone.** Tap an option (or type your own) to answer Claude's questions, and read a plan in full before you approve it. Approve stays shut until you've scrolled to the end, and **Keep planning** sends your notes back.
+- **More on the phone.** A new **More** screen runs a routine or workflow now, turns routines on or off, starts or stops Guard my focus, jots a note on a project's list, and dresses him up. Tap him on the beach for a pat.
+- **The week on the Queue screen.** Your weekly window, the pace you're going at and what the spending guard keeps back sit under the 5-hour meter.
+- **Speak or snap a task.** New task on the phone takes dictation and up to four pictures, shrunk on the phone before they're sent.
+- **Read a conversation's files from your phone,** read-only, when you allow it. `.env` files, keys and other secrets stay on the PC.
+- **Bring it home and push, from your phone,** when you allow it, after the same checks as at the desk.
+- **Share a moment.** A finished conversation on the phone has **Share**, with a picture of him and what landed.
+- **"Working on it" notifications.** Optionally, a quiet notification sits on your phone while a task you started there runs, and the "done" takes its place.
+- Pick the mode on your phone: Ask first, Smart, Auto-edit, Plan only or Autonomous (once it's turned on in Settings on your PC), for a new task and for each reply.
+- **Allow all edits** and **Always allow** on your phone's permission cards, whenever the desk card has them.
+- **Check again while an update waits.** Next to "Restart and update" in Settings → About, "Check again" looks for a release newer than the one already downloaded, so you don't install an old one and update twice. If a re-check can't reach GitHub, he says so.
+- **Every release carries signed build provenance.** `gh attestation verify .\Shellby-Setup-x.y.z.exe -R x-salmon/shellby` confirms a download was built by GitHub Actions from the tagged source, and the release lists the Sigstore bundle as `Shellby-x.y.z.intoto.jsonl`.
+- **Sponsor tiers, each with its own reward.** Sponsor Shellby on GitHub and he dresses for it. 🦐 Krill ($3 a month) lights an Angler's Lantern over his head, 🪼 Lanternfish ($7) adds Bioluminescence, glowing plankton that circle him, 🐚 Pearl Diver ($15) brings an Abyssal Clam for his tank that breathes open on a shining pearl, and 🐋 Leviathan ($40) turns him into The Abyss, a deep-sea crab lit from within. Give once instead: 🍾 Message in a Bottle ($10) puts a thank-you in his claw, and 💰 Sunken Treasure ($50) sinks a galleon full of gold in his tank. Shellby asks GitHub as you, so a private sponsorship counts too, and the best tier you've reached is yours to keep.
+- **Friends see your tier.** Sponsor publicly and your calling card carries a signed proof, so visiting crabs show what you've earned. Nobody can show it without sponsoring: not by editing settings, copying them, or lifting the art into a pack.
+- **A Sponsor button** in Settings → About, next to GitHub. Sponsoring also gets you a line in About → Made by.
+
+### Fixed
+- **A message sent right after Stop runs.** Sending one within a few seconds of pressing Stop could end it with "Claude Code stopped partway through that turn", and you had to send it again. Stop now only ever ends the turn you stopped.
+- On an iPhone, the button that skips adding Shellby to the Home Screen now says what it does: "Skip this and pair here in Safari".
+- A phone paired in Safari asks to keep its storage, so a week away no longer unpairs it.
+- Opening a question's conversation on your phone no longer shows a "See the conversation" button inside it, and that button no longer runs off the edge of the screen.
+- **Your tabs come back after "Update and restart".** The new version opens the panel again with your tabs in the order and panes you left them in. The old version could start once more while the installer ran and use up the reopen, so the new one came back as just the crab. Being shut mid-start could also cut the saved tab list short.
+- **No "Object has been destroyed" snag when updating** while the crab was mid-walk.
+- Shellby no longer leaves files behind in your temp folder. The empty folder he makes for git each launch is removed when he closes, and a minute after starting he clears out his own leftovers older than a day (from a crash or a killed run).
+
+### Changed
+- Your phone can reply to any conversation, not only the ones it started.
+
 ## 0.91.0: A leaner Claude, and a signed Shellby
 
 ### New
