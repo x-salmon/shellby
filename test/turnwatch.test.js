@@ -84,3 +84,12 @@ test('a long reply in a style that explains as it goes', () => {
   const helper = tw.seeItem(tw.startTurn(), { kind: 'text', text: `★ Insight ${long}`, sub: { parent: 'a' } });
   assert.deepStrictEqual(tw.watchNotes(helper, { cost: {} }), []);
 });
+
+test('many checks on a background job in one turn', () => {
+  let w = tw.startTurn();
+  for (let i = 0; i < tw.MANY_POLLS; i++) w = tw.seeItem(w, { kind: 'tool', id: `p${i}`, name: i % 2 ? 'BashOutput' : 'TaskOutput' });
+  assert.deepStrictEqual(tw.watchNotes(w, { cost: {} }).map(n => n.kind), ['polls']);
+  const few = tw.seeItem(tw.startTurn(), { kind: 'tool', id: 'p', name: 'BashOutput' });
+  assert.deepStrictEqual(tw.watchNotes(few, { cost: {} }), []);
+  assert.strictEqual(tw.startTurn(w).polls, 0, 'counted a turn at a time');
+});
