@@ -9,8 +9,11 @@
 // settings.json (or its hourly backup) lets nobody in. Each phone can be
 // forgotten on its own from Settings, and forgetting one ends its stream at once.
 //
+// Each phone has a rights level too (pocket/rights.js): full, or read-only.
+//
 // Pure: no Electron, no disk. wiring/pocket.js keeps the list in the config.
 const crypto = require('crypto');
+const { DEFAULT_RIGHTS, RIGHTS, normalizeRights } = require('./rights');
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O, 1/I/L: it's read off a screen
 const CODE_LEN = 8;                  // 31^8: about 40 bits, against five guesses
@@ -95,6 +98,7 @@ function newDevice({ name, login = '', now = Date.now() } = {}) {
     createdAt: now,
     lastSeenAt: now,
     push: null,
+    rights: DEFAULT_RIGHTS,
   };
   return { device, token };
 }
@@ -114,9 +118,18 @@ function normalizeDevices(raw) {
       createdAt: Number.isFinite(d.createdAt) ? d.createdAt : 0,
       lastSeenAt: Number.isFinite(d.lastSeenAt) ? d.lastSeenAt : 0,
       push: d.push && typeof d.push === 'object' && typeof d.push.endpoint === 'string' ? d.push : null,
+      // A record from before rights existed is a full one: that's what it had.
+      rights: normalizeRights(d.rights),
     });
   }
   return out.slice(-MAX_DEVICES);
+}
+
+/** One phone's rights changed at the desk: the list with it, or null when there's no such phone or level. */
+function setRights(devices, id, rights) {
+  const list = normalizeDevices(devices);
+  if (!RIGHTS.includes(rights) || !list.some(d => d.id === id)) return null;
+  return list.map(d => (d.id === id ? { ...d, rights } : d));
 }
 
 /** Room for one more: the one seen longest ago makes way. */
@@ -143,12 +156,12 @@ function deviceFor(devices, token) {
 function devicesView(devices, now = Date.now()) {
   return normalizeDevices(devices).map(d => ({
     id: d.id, name: d.name, createdAt: d.createdAt, lastSeenAt: d.lastSeenAt,
-    push: !!d.push, recent: now - d.lastSeenAt < 2 * 60 * 1000,
+    push: !!d.push, recent: now - d.lastSeenAt < 2 * 60 * 1000, rights: d.rights,
   }));
 }
 
 module.exports = {
   CODE_ALPHABET, CODE_LEN, CODE_TTL_MS, CODE_TRIES, MAX_DEVICES, TOKEN_RE,
   addDevice, cleanCode, cleanName, deviceFor, devicesView, nameFromAgent, newCode, newDevice, normalizeDevices,
-  openPairing, sha256, showCode, tryCode,
+  openPairing, setRights, sha256, showCode, tryCode,
 };

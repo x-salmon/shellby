@@ -30,12 +30,13 @@ function commandProblem(said) {
 /**
  * @param d  main's shared deps
  * @param o  modeOf: the phone's mode, checked against the desk's list;
+ *   blocked(mode): why the phone can't run in it yet, or '';
  *   takePhotos: photo ids (POST /upload) -> their paths, each used once;
  *   queue(tabId, text, files): into the desk's queue, mid-turn;
  *   onSent(tabId, sendToTab's answer): the desk and the phone hear of it;
  *   pushView: the view changed
  */
-function createPocketTalk(d, { modeOf, takePhotos, queue, onSent, pushView }) {
+function createPocketTalk(d, { modeOf, blocked, takePhotos, queue, onSent, pushView }) {
   function reply({ tabId, text, mode, photos }) {
     const tab = str(tabId) && d.manager.tabs.get(tabId);
     if (!tab) return no('That conversation has closed.');
@@ -58,6 +59,8 @@ function createPocketTalk(d, { modeOf, takePhotos, queue, onSent, pushView }) {
     }
     // The mode the phone picked, or Ask: kept when the desk's mode changes.
     const runAs = modeOf(mode);
+    const why = blocked(runAs);
+    if (why) return no(why);
     if (tab.session.mode !== runAs) tab.session.setMode(runAs);
     tab.pinnedMode = true;
     const r = d.sendToTab(tabId, said, files);

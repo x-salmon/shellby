@@ -22,7 +22,8 @@
 //
 // What a call may do is decided in wiring/pocket.js, under the same rules as
 // the phone notifications: Allow and Deny only, never Always allow, nothing the
-// desk card would warn about, and tasks in Ask first.
+// desk card would warn about, and tasks in Ask first; and by the phone's own
+// rights level (pocket/rights.js), set at the desk.
 const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
@@ -43,6 +44,10 @@ const ACTIONS = [
   // pocket/extras.js
   'focus', 'routines', 'routine-run', 'routine-toggle', 'workflow-run', 'notes', 'note-add', 'note-tick',
   'wardrobe', 'wear', 'pet', 'files', 'file',
+  // pocket/review.js
+  'find', 'project-history', 'past', 'away', 'checks', 'checks-fix', 'branch',
+  // pocket/quiet.js
+  'quiet',
   // pocket/talk.js
   'rename', 'effort', 'close', 'history', 'resume',
 ];
@@ -81,6 +86,8 @@ function routeTable(srcDir, assetsDir) {
     '/pocket-tab.js': app('pocket-tab.js'),
     '/pocket-more.js': app('pocket-more.js'),
     '/pocket-bits.js': app('pocket-bits.js'),
+    '/pocket-find.js': app('pocket-find.js'),
+    '/pocket-phone.js': app('pocket-phone.js'),
     '/sw.js': app('sw.js'),
     '/manifest.webmanifest': app('manifest.webmanifest'),
     // He's on the pairing screen before the PC has said which skin he wears.
@@ -185,9 +192,16 @@ class PocketServer extends EventEmitter {
 
   // ---------------------------------------------------------------- streams
 
-  /** The whole view, to every phone. */
-  broadcast(view) {
-    this.write(() => true, `event: view\ndata: ${JSON.stringify(view)}\n\n`);
+  /**
+   * The whole view, to every phone. forDevice(view, device), when given, is each phone's own copy (its rights).
+   * @param {any} view
+   * @param {((view: any, device: any) => any) | null} [forDevice]
+   */
+  broadcast(view, forDevice = null) {
+    if (!forDevice) { this.write(() => true, `event: view\ndata: ${JSON.stringify(view)}\n\n`); return; }
+    for (const c of [...this.clients]) {
+      try { c.res.write(`event: view\ndata: ${JSON.stringify(forDevice(view, c.device))}\n\n`); } catch { this.drop(c); }
+    }
   }
 
   /** One transcript item, to the phones that have that conversation open. */

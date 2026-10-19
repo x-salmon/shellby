@@ -11,7 +11,7 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketMore = ({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet }) => {
+  root.PocketMore = ({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet, canAct, lookOnly }) => {
     const FOCUS = [15, 25, 50];
 
     // A screen that loads from the PC: draw(data) once it answers, a crab while it doesn't.
@@ -46,9 +46,10 @@
         h('div', { class: 'card-t' }, h('span', { class: 'card-title' }, icon('focus'), ' Guard my focus'),
           h('span', { class: `pill ${on ? '' : 'dim'}`, text: on ? (f.phase === 'break' ? 'on a break' : `until ${L.clock(f.endsAt)}`) : 'off' })),
         h('p', { class: 'muted', text: on ? 'He holds notifications back until it ends.' : 'Hold his notifications back while you get something done.' }),
-        on
-          ? actButton({ label: 'Stop it', cls: 'ghost slim', run: () => act('focus', { stop: true }, { okText: 'Focus stopped.' }) })
-          : h('div', { class: 'btns' }, ...FOCUS.map(m => actButton({ label: `${m} min`, cls: 'slim', run: () => act('focus', { minutes: m }, { okText: `Guarding your focus for ${m} minutes.` }) }))));
+        !canAct() ? lookOnly()
+          : on
+            ? actButton({ label: 'Stop it', cls: 'ghost slim', run: () => act('focus', { stop: true }, { okText: 'Focus stopped.' }) })
+            : h('div', { class: 'btns' }, ...FOCUS.map(m => actButton({ label: `${m} min`, cls: 'slim', run: () => act('focus', { minutes: m }, { okText: `Guarding your focus for ${m} minutes.` }) }))));
     }
 
     function moreScreen() {
@@ -79,10 +80,12 @@
         title: 'Routines', name: 'routines',
         draw: (d, reload) => {
           const parts = [];
+          const may = canAct();
           if (!d.routines.length && !d.workflows.length) parts.push(h('div', { class: 'empty' }, h('p', { text: 'No routines or workflows yet. Make them on your PC’s Routines screen.' })));
+          else if (!may) parts.push(lookOnly());
           if (d.routines.length) parts.push(h('h3', { class: 'sect' }, h('span', { text: 'Routines' }), h('b', { text: d.routines.length })));
           for (const r of d.routines) {
-            const toggle = h('input', { type: 'checkbox', 'aria-label': `${r.name} on`, ...(r.enabled ? { checked: 'checked' } : {}) });
+            const toggle = h('input', { type: 'checkbox', 'aria-label': `${r.name} on`, ...(r.enabled ? { checked: 'checked' } : {}), ...(may ? {} : { disabled: 'disabled' }) });
             toggle.addEventListener('change', async () => {
               const res = await act('routine-toggle', { id: r.id, enabled: toggle.checked }, { okText: toggle.checked ? 'On.' : 'Off.' });
               if (!res.ok) toggle.checked = !toggle.checked;
@@ -94,22 +97,23 @@
                 r.scheduleText ? h('span', { text: r.scheduleText }) : null,
                 r.enabled && r.next ? h('span', { class: 'muted', text: `next ${L.clock(r.next)}` }) : null,
                 r.folder ? h('span', { class: 'muted', text: r.folder }) : null),
-              actButton({
+              may ? actButton({
                 label: 'Run now', cls: 'ghost slim',
                 run: () => confirmSheet({ title: `Run “${r.name}” now?`, text: 'It runs as you set it up on your PC, in its own mode.', yes: 'Run it', then: async () => {
                   const res = await act('routine-run', { id: r.id }, { okText: 'Started.' });
                   if (res.ok && res.tabId) go(`#/tab/${encodeURIComponent(res.tabId)}`); else reload();
                 } }),
-              })));
+              }) : null));
           }
           if (d.workflows.length) parts.push(h('h3', { class: 'sect' }, h('span', { text: 'Workflows' }), h('b', { text: d.workflows.length })));
           for (const w of d.workflows) {
             parts.push(h('div', { class: 'card' },
               h('div', { class: 'card-t' }, h('span', { class: 'card-title', text: w.name }), w.running ? h('span', { class: 'pill', text: 'running' }) : !w.enabled ? h('span', { class: 'pill dim', text: 'paused' }) : null),
               w.description ? h('p', { class: 'muted small', text: w.description }) : null,
-              w.needsInputs
-                ? h('p', { class: 'muted small', text: 'It needs inputs, so it runs from the desk.' })
-                : actButton({ label: 'Run now', cls: 'ghost slim', run: () => confirmSheet({ title: `Run “${w.name}” now?`, yes: 'Run it', then: async () => { await act('workflow-run', { id: w.id }, { okText: 'Started.' }); reload(); } }) })));
+              !may ? null
+                : w.needsInputs
+                  ? h('p', { class: 'muted small', text: 'It needs inputs, so it runs from the desk.' })
+                  : actButton({ label: 'Run now', cls: 'ghost slim', run: () => confirmSheet({ title: `Run “${w.name}” now?`, yes: 'Run it', then: async () => { await act('workflow-run', { id: w.id }, { okText: 'Started.' }); reload(); } }) })));
           }
           return parts;
         },
@@ -140,12 +144,13 @@
           });
           const open = d.notes.filter(n => !n.done);
           const done = d.notes.filter(n => n.done);
+          const may = canAct();
           const row = n => {
-            const tick = h('input', { type: 'checkbox', 'aria-label': n.done ? 'Not done' : 'Done', ...(n.done ? { checked: 'checked' } : {}) });
+            const tick = h('input', { type: 'checkbox', 'aria-label': n.done ? 'Not done' : 'Done', ...(n.done ? { checked: 'checked' } : {}), ...(may ? {} : { disabled: 'disabled' }) });
             tick.addEventListener('change', async () => { const r = await act('note-tick', { project: d.key, id: n.id, done: tick.checked }); if (r.ok) { buzz(6); reload(); } else tick.checked = !tick.checked; });
             return h('label', { class: `note${n.done ? ' done' : ''}` }, tick, h('span', { class: 'note-text', text: n.text }), n.from === 'claude' ? h('span', { class: 'pill dim', text: 'Claude' }) : null);
           };
-          return [pick, h('div', { class: 'card note-add' }, box, add),
+          return [pick, may ? h('div', { class: 'card note-add' }, box, add) : lookOnly(),
             ...(open.length ? open.map(row) : [h('p', { class: 'muted pad', text: 'Nothing on this list yet.' })]),
             ...(done.length ? [h('h3', { class: 'sect' }, h('span', { text: 'Done' }), h('b', { text: done.length })), ...done.slice(0, 20).map(row)] : [])];
         },
@@ -170,11 +175,13 @@
           const bySlot = new Map();
           for (const it of d.items) bySlot.set(it.slot, [...(bySlot.get(it.slot) || []), it]);
           const parts = [pat];
+          const may = canAct();
           if (!d.items.length) parts.push(h('p', { class: 'muted pad', text: 'Nothing unlocked to wear yet. He earns things as you work.' }));
+          else if (!may) parts.push(lookOnly());
           for (const [slot, items] of bySlot) {
             parts.push(h('h3', { class: 'sect' }, h('span', { text: slot[0].toUpperCase() + slot.slice(1) })));
             parts.push(h('div', { class: 'projects' }, ...items.map(it => h('button', {
-              type: 'button', class: `proj${it.on ? ' on' : ''}`, 'aria-pressed': it.on ? 'true' : 'false', text: it.name,
+              type: 'button', class: `proj${it.on ? ' on' : ''}`, 'aria-pressed': it.on ? 'true' : 'false', text: it.name, ...(may ? {} : { disabled: 'disabled' }),
               onclick: async () => { const r = await act('wear', { key: it.key, off: it.on }, { okText: it.on ? 'Taken off.' : `He’s wearing the ${it.name}.` }); if (r.ok) reload(); },
             }))));
           }
@@ -228,6 +235,6 @@
       });
     }
 
-    return { moreScreen, routinesScreen, notesScreen, wardrobeScreen, filesScreen, historyScreen };
+    return { moreScreen, routinesScreen, notesScreen, wardrobeScreen, filesScreen, historyScreen, loaded };
   };
 })(window);

@@ -84,6 +84,41 @@
     return `on ${DAYS[d.getDay()]} at ${clock(at)}`;
   }
 
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  /** A day in the past: "Today", "Yesterday", "Tuesday" within the week, else "12 Oct" (with the year when it isn't this one). */
+  function dayLabel(at, now = Date.now()) {
+    const d = new Date(at), n = new Date(now);
+    if (!Number.isFinite(d.getTime())) return '';
+    const start = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const days = Math.round((start(n) - start(d)) / 86400000);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days > 1 && days < 7) return DAYS[d.getDay()];
+    return `${d.getDate()} ${MONTHS[d.getMonth()]}${d.getFullYear() === n.getFullYear() ? '' : ` ${d.getFullYear()}`}`;
+  }
+
+  /** Entries (each with `at`) grouped by the day they were last worked on, newest first: [{ label, entries }]. */
+  function byDay(list, now = Date.now()) {
+    const out = [];
+    for (const e of [...(list || [])].sort((a, b) => (b.at || 0) - (a.at || 0))) {
+      const label = dayLabel(e.at, now);
+      const last = out[out.length - 1];
+      if (last && last.label === label) last.entries.push(e); else out.push({ label, entries: [e] });
+    }
+    return out;
+  }
+
+  /** The "While you were away" line: "2 finished, 1 waiting on you, 4% of your window". */
+  function awayLine(a) {
+    const bits = [];
+    if (a.finished?.length) bits.push(`${a.finished.length} finished`);
+    if (a.trouble?.length) bits.push(`${a.trouble.length} hit a problem`);
+    if (a.waiting?.length) bits.push(`${a.waiting.length} waiting on you`);
+    if (Number.isFinite(a.share) && a.share > 0) bits.push(`${a.share < 1 ? '<1' : Math.round(a.share)}% of your window spent`);
+    else if (Number.isFinite(a.tokens) && a.tokens > 0) bits.push(`${tokens(a.tokens)} spent`);
+    return bits.join(', ');
+  }
+
   function tokens(n) {
     if (!Number.isFinite(n) || n <= 0) return '';
     if (n < 1000) return `${n} tokens`;
@@ -343,19 +378,26 @@
 
   // ---------------------------------------------------------------- the phone
 
-  /** Where the app is: #/, #/tab/<id>, #/diff/<id>/<after>, #/files/<id>/<path>, #/queue, #/phone, #/new, #/more and its screens. */
+  /**
+   * Where the app is: #/, #/tab/<id>, #/prompt/<id>/<requestId>, #/diff/<id>/<after>, #/branch/<id>, #/past/<id>,
+   * #/files/<id>/<path>, #/queue, #/phone, #/new, #/find, #/history, #/more and its screens.
+   */
   function route(hash) {
     const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch { return ''; } });
     const ok = s => /^[\w-]{1,100}$/.test(s || '');
     if (parts[0] === 'tab' && ok(parts[1])) return { name: 'tab', tabId: parts[1] };
+    // One permission prompt, from a tap on its notification: the PC says whether it's still waiting.
+    if (parts[0] === 'prompt' && ok(parts[1]) && ok(parts[2])) return { name: 'prompt', tabId: parts[1], requestId: parts[2] };
     if (parts[0] === 'diff' && ok(parts[1]) && ok(parts[2])) return { name: 'diff', tabId: parts[1], after: parts[2] };
+    if (parts[0] === 'branch' && ok(parts[1])) return { name: 'branch', tabId: parts[1] };
+    if (parts[0] === 'past' && ok(parts[1])) return { name: 'past', id: parts[1] };
     // A file or folder inside a conversation's folder: the PC checks the path, this only carries it.
     if (parts[0] === 'files' && ok(parts[1])) {
       const rest = parts.slice(2);
       const dir = String(hash).endsWith('/') || !rest.length;
       return { name: 'files', tabId: parts[1], path: rest.join('/') + (dir && rest.length ? '/' : '') };
     }
-    if (['queue', 'phone', 'new', 'more', 'routines', 'notes', 'wardrobe', 'history'].includes(parts[0])) return { name: parts[0] };
+    if (['queue', 'phone', 'new', 'more', 'routines', 'notes', 'wardrobe', 'find', 'history', 'project-history'].includes(parts[0])) return { name: parts[0] };
     return { name: 'beach' };
   }
 
@@ -389,7 +431,7 @@
   }
 
   const api = {
-    STANDING, ago, backoff, clock, day, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
+    STANDING, ago, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
     markdown, modeLabel, parsePatch, plural, route, sections, sseParser, tappedHash, tokens,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -4,9 +4,11 @@
 'use strict';
 (function (root) {
   root.PocketBits = ({ S, L, D, N, h, icon, toast, buzz, act, actButton }) => {
-    function questionSheet(p) {
+    // after(): once an answer went (the prompt screen goes back to the beach).
+    function questionSheet(p, after = null) {
       return { label: 'Question', tall: true, build: close => {
-        const el = h('div', { class: 'qa-sheet' }, h('h2', { class: 'sheet-title', text: p.questions.length > 1 ? `${p.questions.length} quick questions` : 'Quick question' }), h('p', { class: 'ask-where', text: p.title }), questionForm(p, close));
+        const done = () => { close(); after?.(); };
+        const el = h('div', { class: 'qa-sheet' }, h('h2', { class: 'sheet-title', text: p.questions.length > 1 ? `${p.questions.length} quick questions` : 'Quick question' }), h('p', { class: 'ask-where', text: p.title }), questionForm(p, done));
         const watch = () => { if (!S.view?.prompts?.some(x => x.requestId === p.requestId)) close(); };
         return { el, update: watch };
       } };
@@ -55,8 +57,9 @@
     }
 
     // A plan, in full. Approve stays shut until you've scrolled to the end; Keep planning sends your notes.
-    function planSheet(p) {
-      return { label: 'The plan', tall: true, build: close => {
+    function planSheet(p, after = null) {
+      return { label: 'The plan', tall: true, build: closeSheet => {
+        const close = () => { closeSheet(); after?.(); };
         const body = h('div', { class: 'plan-body', tabindex: '0', 'aria-label': 'The plan' }, h('pre', { class: 'plan-text', text: p.planText }));
         const notes = h('textarea', { class: 'task-in', rows: '3', maxlength: '2000', placeholder: 'What should change? (optional)', 'aria-label': 'Notes on the plan' });
         let read = false;
@@ -88,7 +91,7 @@
         });
         const hint = h('p', { class: 'muted small', role: 'status', text: 'Scroll to the end to approve it.' });
         const el = h('div', { class: 'plan-sheet' }, h('h2', { class: 'sheet-title', text: 'Here’s my plan' }), h('p', { class: 'ask-where', text: p.title }), body, hint, notes, h('div', { class: 'btns' }, keep, approve));
-        const watch = () => { if (!S.view?.prompts?.some(x => x.requestId === p.requestId)) close(); };
+        const watch = () => { if (!S.view?.prompts?.some(x => x.requestId === p.requestId)) closeSheet(); };
         return { el, update: watch };
       } };
     }

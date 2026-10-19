@@ -4,7 +4,59 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, go, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton }) => {
+  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, go, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, canAct, lookOnly, checksCard }) => {
+    // ---------------------------------------------------------------- a transcript, drawn
+
+    const GLYPH = { running: '◌', ok: '✓', error: '✕', stopped: '⊘' };
+    const toolRow = r => h('div', { class: `tool ${r.state}` },
+      h('span', { class: 'tool-g', 'aria-hidden': 'true', text: GLYPH[r.state] }),
+      h('span', { class: 'tool-l', text: r.label }), h('span', { class: 'tool-d', text: r.detail }));
+
+    // ctx: { tabId, md(text, at), readOnly }. Read-only (a closed conversation from
+    // History) has no turn to open a diff of, so its changes have no link.
+    function drawBlock(b, i, all, ctx) {
+      switch (b.type) {
+        case 'user': return h('div', { class: 'msg-user' }, h('p', { text: b.text }));
+        case 'text': return h('div', { class: 'msg-claude' }, ctx.md(b.text, i));
+        case 'tools': {
+          const many = b.tools.length > 4 && i < all.length - 1;
+          const shown = many ? b.tools.slice(-2) : b.tools;
+          const rows = shown.map(toolRow);
+          if (!many) return h('div', { class: 'tools' }, ...rows);
+          const det = h('details', { class: 'tools-more' }, h('summary', { text: `${L.plural(b.tools.length - 2, 'step')} before these` }), ...b.tools.slice(0, -2).map(toolRow));
+          return h('div', { class: 'tools' }, det, ...rows);
+        }
+        case 'crew': return h('div', { class: 'crew' }, ...b.lanes.map((lane, n) => h('div', { class: `lane ${lane.state} hue-${D.helperHue(n)}` },
+          D.crab({ px: 1.4, state: lane.state === 'running' ? 'working' : lane.state === 'ok' ? 'success' : 'idle', hue: D.helperHue(n), label: '' }),
+          h('div', { class: 'lane-words' }, h('b', { text: lane.type }), h('span', { text: lane.state === 'running' ? (lane.activity || lane.description) : (lane.summary || lane.description) })),
+          h('span', { class: 'tool-g', text: GLYPH[lane.state] }))));
+        case 'asked': return h('div', { class: `asked ${b.decision || 'open'}` }, h('span', { text: b.decision ? `${b.decision === 'deny' ? 'Denied' : 'Allowed'}${b.via === 'pocket' ? ' from your phone' : b.via === 'phone' ? ' from a notification' : b.via === 'deck' ? ' on the Stream Deck' : ''}: ` : 'Asked: ' }), h('span', { class: 'mono', text: [b.label, b.detail].filter(Boolean).join(' ') }));
+        case 'end': return b.ok || b.interrupted
+          ? h('div', { class: 'turn-end', text: L.endLine(b) })
+          : h('div', { class: 'trouble' }, h('b', { text: 'He hit a problem' }), h('p', { text: b.error || 'The turn ended with an error.' }), h('span', { class: 'turn-end', text: L.endLine(b) }));
+        case 'changes': return changesCard(b, ctx);
+        case 'checks': return h('div', { class: `note checks ${b.status}`, text: b.summary || `Checks: ${b.status}` });
+        case 'note': return h('div', { class: `note ${b.what || ''}`, text: b.text });
+        default: return null;
+      }
+    }
+
+    function changesCard(b, ctx) {
+      const files = b.files.slice(0, 6).map(f => h('li', {}, h('span', { class: 'mono', text: shortPath(f.path) }), h('span', { class: 'add', text: f.binary ? 'bin' : `+${f.added}` }), h('span', { class: 'del', text: f.binary ? '' : `−${f.removed}` })));
+      const more = b.files.length + (b.more || 0) - 6;
+      return h('div', { class: `changes${b.undone ? ' undone' : ''}` },
+        h('div', { class: 'changes-head' }, icon('files'), h('b', { text: b.undone ? 'Changed, then undone' : `Changed ${L.plural(b.files.length + (b.more || 0), 'file')}` }), h('span', { class: 'add', text: `+${b.added}` }), h('span', { class: 'del', text: `−${b.removed}` })),
+        h('ul', { class: 'changes-files' }, ...files, more > 0 ? h('li', { class: 'muted', text: `and ${more} more` }) : null),
+        b.undone || ctx.readOnly ? null : h('a', { class: 'btn ghost', href: `#/diff/${encodeURIComponent(ctx.tabId)}/${encodeURIComponent(b.after)}`, text: 'See the changes' }));
+    }
+
+    /** Phone items -> the elements of a transcript. ctx as drawBlock's; md defaults to a plain render. */
+    function transcript(items, ctx = {}) {
+      const blocks = L.fold(items);
+      const full = { md: text => D.markdown(text), readOnly: false, tabId: null, ...ctx };
+      return blocks.map((b, i) => drawBlock(b, i, blocks, full)).filter(Boolean);
+    }
+
     const EFFORTS = [['', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
 
     // Its name, its effort and closing it: what the desk's tab menu has.
@@ -88,9 +140,11 @@
         if (t.fromPhone) chips.push(h('span', { class: 'pill dim', text: '📱 from your phone' }));
         const tools = [];
         if (S.view?.allow?.files) tools.push(h('a', { class: 'btn ghost slim', href: `#/files/${encodeURIComponent(tabId)}/` }, icon('folder'), h('span', { class: 'btn-label', text: 'Files' })));
+        // The whole branch against where it started: what Bring it home would bring (pocket-find.js).
+        if (t.copy) tools.push(h('a', { class: 'btn ghost slim', href: `#/branch/${encodeURIComponent(tabId)}` }, icon('files'), h('span', { class: 'btn-label', text: 'See everything' })));
         if (['review', 'finished'].includes(t.standing) && t.outcome !== 'error') tools.push(h('button', { type: 'button', class: 'btn ghost slim', onclick: () => shareTurn(t) }, icon('share'), h('span', { class: 'btn-label', text: 'Share' })));
-        tools.push(h('button', { type: 'button', class: 'btn ghost slim', 'aria-label': 'Rename, effort or close', onclick: () => openSheet(tabMenu(tabId, t)) }, icon('more'), h('span', { class: 'btn-label', text: 'Options' })));
-        header.replaceChildren(h('h2', { class: 'tab-title', text: t.title }), h('div', { class: 'chips' }, ...chips), h('div', { class: 'tab-tools' }, ...tools));
+        if (canAct()) tools.push(h('button', { type: 'button', class: 'btn ghost slim', 'aria-label': 'Rename, effort or close', onclick: () => openSheet(tabMenu(tabId, t)) }, icon('more'), h('span', { class: 'btn-label', text: 'Options' })));
+        header.replaceChildren(h('h2', { class: 'tab-title', text: t.title }), h('div', { class: 'chips' }, ...chips), h('div', { class: 'tab-tools' }, ...tools), checksCard?.(tabId, t) || '');
       }
 
       // Each reply's elements are kept between redraws, by where it is and what it says:
@@ -103,50 +157,10 @@
         return node;
       };
 
-      function drawBlock(b, i, all) {
-        switch (b.type) {
-          case 'user': return h('div', { class: 'msg-user' }, h('p', { text: b.text }));
-          case 'text': return h('div', { class: 'msg-claude' }, md(b.text, i));
-          case 'tools': {
-            const many = b.tools.length > 4 && i < all.length - 1;
-            const shown = many ? b.tools.slice(-2) : b.tools;
-            const rows = shown.map(r => h('div', { class: `tool ${r.state}` },
-              h('span', { class: 'tool-g', 'aria-hidden': 'true', text: { running: '◌', ok: '✓', error: '✕', stopped: '⊘' }[r.state] }),
-              h('span', { class: 'tool-l', text: r.label }), h('span', { class: 'tool-d', text: r.detail })));
-            if (!many) return h('div', { class: 'tools' }, ...rows);
-            const det = h('details', { class: 'tools-more' }, h('summary', { text: `${L.plural(b.tools.length - 2, 'step')} before these` }),
-              ...b.tools.slice(0, -2).map(r => h('div', { class: `tool ${r.state}` }, h('span', { class: 'tool-g', text: { running: '◌', ok: '✓', error: '✕', stopped: '⊘' }[r.state] }), h('span', { class: 'tool-l', text: r.label }), h('span', { class: 'tool-d', text: r.detail }))));
-            return h('div', { class: 'tools' }, det, ...rows);
-          }
-          case 'crew': return h('div', { class: 'crew' }, ...b.lanes.map((lane, n) => h('div', { class: `lane ${lane.state} hue-${D.helperHue(n)}` },
-            D.crab({ px: 1.4, state: lane.state === 'running' ? 'working' : lane.state === 'ok' ? 'success' : 'idle', hue: D.helperHue(n), label: '' }),
-            h('div', { class: 'lane-words' }, h('b', { text: lane.type }), h('span', { text: lane.state === 'running' ? (lane.activity || lane.description) : (lane.summary || lane.description) })),
-            h('span', { class: 'tool-g', text: { running: '◌', ok: '✓', error: '✕', stopped: '⊘' }[lane.state] }))));
-          case 'asked': return h('div', { class: `asked ${b.decision || 'open'}` }, h('span', { text: b.decision ? `${b.decision === 'deny' ? 'Denied' : 'Allowed'}${b.via === 'pocket' ? ' from your phone' : b.via === 'phone' ? ' from a notification' : b.via === 'deck' ? ' on the Stream Deck' : ''}: ` : 'Asked: ' }), h('span', { class: 'mono', text: [b.label, b.detail].filter(Boolean).join(' ') }));
-          case 'end': return b.ok || b.interrupted
-            ? h('div', { class: 'turn-end', text: L.endLine(b) })
-            : h('div', { class: 'trouble' }, h('b', { text: 'He hit a problem' }), h('p', { text: b.error || 'The turn ended with an error.' }), h('span', { class: 'turn-end', text: L.endLine(b) }));
-          case 'changes': return changesCard(b);
-          case 'checks': return h('div', { class: `note checks ${b.status}`, text: b.summary || `Checks: ${b.status}` });
-          case 'note': return h('div', { class: `note ${b.what || ''}`, text: b.text });
-          default: return null;
-        }
-      }
-
-      function changesCard(b) {
-        const files = b.files.slice(0, 6).map(f => h('li', {}, h('span', { class: 'mono', text: shortPath(f.path) }), h('span', { class: 'add', text: f.binary ? 'bin' : `+${f.added}` }), h('span', { class: 'del', text: f.binary ? '' : `−${f.removed}` })));
-        const more = b.files.length + (b.more || 0) - 6;
-        return h('div', { class: `changes${b.undone ? ' undone' : ''}` },
-          h('div', { class: 'changes-head' }, icon('files'), h('b', { text: b.undone ? 'Changed, then undone' : `Changed ${L.plural(b.files.length + (b.more || 0), 'file')}` }), h('span', { class: 'add', text: `+${b.added}` }), h('span', { class: 'del', text: `−${b.removed}` })),
-          h('ul', { class: 'changes-files' }, ...files, more > 0 ? h('li', { class: 'muted', text: `and ${more} more` }) : null),
-          b.undone ? null : h('a', { class: 'btn ghost', href: `#/diff/${encodeURIComponent(tabId)}/${encodeURIComponent(b.after)}`, text: 'See the changes' }));
-      }
-
       function drawFeed() {
         const feed = S.feeds.get(tabId);
         if (!feed.loaded) { feedEl.replaceChildren(h('div', { class: 'loading small' }, D.crab({ px: 2.5, state: 'working' }), h('p', { text: 'Fetching the conversation…' }))); return; }
-        const blocks = L.fold(feed.items);
-        const nodes = blocks.map((b, i) => drawBlock(b, i, blocks)).filter(Boolean);
+        const nodes = transcript(feed.items, { tabId, md });
         const typing = S.partial.get(tabId);
         if (typing) nodes.push(h('div', { class: 'msg-claude typing' }, D.markdown(typing), h('span', { class: 'caret', 'aria-hidden': 'true' })));
         if (!nodes.length) nodes.push(h('p', { class: 'muted pad', text: 'Nothing said yet.' }));
@@ -161,17 +175,19 @@
         if (prompts.some(p => !asked.has(p.requestId))) stick = true;
         asked = new Set(prompts.map(p => p.requestId));
         asks.replaceChildren(...prompts.map(p => promptCard(p, { inTab: true })));
+        const may = canAct();
         if (t.busy) {
           const doing = h('div', { class: 'working-line' }, D.crab({ px: 1.5, state: 'working', label: '' }), h('span', { class: 'doing', text: L.doingLine(t) }),
             t.busySince ? h('span', { class: 'mono since', dataset: { since: t.busySince }, text: L.duration((Date.now() - t.busySince) / 1000) }) : null);
-          parts.push(h('div', { class: 'foot-row' }, doing, stop));
+          parts.push(h('div', { class: 'foot-row' }, doing, may ? stop : null));
         }
         const reviewing = t.ready && !t.busy && !t.pending;
-        if (reviewing) parts.push(reviewBar(t));
+        // A phone that may only look gets the line instead of the buttons.
+        if (reviewing) parts.push(may ? reviewBar(t) : lookOnly());
         // While he works, what you send waits in the queue for his next step, in the mode
         // the turn already has: a pick then would change the running turn. While he asks,
         // the question comes first.
-        const replying = !t.pending && t.canReply;
+        const replying = may && !t.pending && t.canReply;
         if (!t.pending && !t.canReply && !t.busy && !reviewing) parts.push(h('p', { class: 'foot-note', text: 'It’s in a terminal on your PC now. Reply there.' }));
         footParts.replaceChildren(...parts);
         // The box itself stays put, so the keyboard and what's typed survive every update.
@@ -286,6 +302,6 @@
       return { el, update: () => { el.replaceChild(bar(), el.firstChild); el.querySelector('.offline-slot').replaceChildren(offlineBanner() || ''); }, title: 'Changes' };
     }
 
-    return { tabScreen, diffScreen };
+    return { tabScreen, diffScreen, transcript };
   };
 })(window);

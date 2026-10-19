@@ -2,14 +2,18 @@
 
      #/              the beach: the crab, what's waiting on you, every conversation
      #/tab/<id>      one conversation, live, with its prompt, its changes and a reply box
+     #/prompt/<id>/<r> one permission prompt on its own, from a tap on its notification
      #/diff/<id>/<a> what one of its turns changed, file by file
      #/queue         what's waiting for the usage reset
-     #/phone         this phone: notifications, and forgetting it
+     #/phone         this phone: notifications, quiet hours, and forgetting it
      #/more …        focus, routines, notes, the wardrobe and files (pocket-more.js)
+     #/find …        search, a project's history, a closed conversation, a whole branch (pocket-find.js)
+                     (the prompt screen and the quiet hours card live in pocket-phone.js)
 
    Everything comes from one stream (pocket-stream.js). Each screen is mounted
    once per visit and told when the view changes, so a half-typed reply or the
-   scroll position never goes when something arrives. */
+   scroll position never goes when something arrives. A phone the desk set to
+   read-only (view.rights) sees everything and gets no button it can't use. */
 'use strict';
 (function () {
   const L = window.PocketLogic;
@@ -31,6 +35,8 @@
     answering: new Map(),    // requestId -> 'allow' | 'deny' while it's on its way
     outcomes: new Map(),     // tabId -> standing last seen, for the celebration
     celebrate: null,         // { until, title }
+    away: null,              // what happened while the phone was away (pocket-find.js), until dismissed
+    findQuery: '',
     screen: null,
     sheet: null,
     installSkipped: false,
@@ -62,6 +68,9 @@
 
   const live = () => S.live;
   const tabOf = id => S.view?.tabs?.find(t => t.id === id) || null;
+  // Whether this phone may do things, or only look (pocket/rights.js, set at the desk).
+  const canAct = () => S.view?.rights !== 'readonly';
+  const LOOK_ONLY = 'This phone can only look. What it may do is set on your PC, in Settings → On your phone.';
 
   /** A button that does something on the PC: it waits for the answer, and can't be pressed twice. */
   function actButton({ label, cls = '', iconName = null, aria = null, run, offlineOk = false }) {
@@ -87,6 +96,9 @@
 
   // Questions and plans, usage, sharing a moment, and speaking or snapping a task (pocket-bits.js).
   const { questionSheet, planSheet, usageDetail, shareTurn, voiceButton, photoButton } = window.PocketBits({ S, L, D, N, h, icon, toast, buzz, act, actButton });
+
+  /** A line for what a read-only phone can't press. */
+  const lookOnly = () => h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: LOOK_ONLY }));
 
   // ---------------------------------------------------------------- the frame
 
@@ -121,7 +133,8 @@
 
   // ---------------------------------------------------------------- prompts
 
-  function promptCard(p, { compact = false, inTab = false } = {}) {
+  // after(): what happens once an answer went (the prompt screen goes back to the beach).
+  function promptCard(p, { compact = false, inTab = false, after = null } = {}) {
     const sending = S.answering.get(p.requestId);
     const card = h('article', { class: `ask${p.deskOnly ? ' desk' : ''}${sending ? ' sending' : ''}`, 'aria-label': `${p.title}: ${p.ask || p.label}` });
     card.append(h('div', { class: 'ask-head' },
@@ -149,8 +162,15 @@
         if (!r.ok) S.answering.delete(p.requestId);
         else buzz(decision === 'deny' ? 12 : [6, 30, 6]);
         refresh();
+        if (r.ok) after?.();
       },
     });
+    // A phone that may only look sees the prompt, and no way to answer it.
+    if (!canAct()) {
+      card.append(lookOnly());
+      if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
+      return card;
+    }
     // Only the desk can say yes, but a no from here lets the conversation get on without it.
     if (p.deskOnly) {
       card.append(h('div', { class: 'btns' }, answer('deny'),
@@ -159,11 +179,11 @@
     }
     // In a sheet: the beach redraws its cards as things change, and a half-picked answer mustn't go.
     if (p.questions) {
-      card.append(h('button', { type: 'button', class: 'btn go big', text: p.questions.length > 1 ? 'Answer them' : 'Answer it', onclick: () => openSheet(questionSheet(p)) }));
+      card.append(h('button', { type: 'button', class: 'btn go big', text: p.questions.length > 1 ? 'Answer them' : 'Answer it', onclick: () => openSheet(questionSheet(p, after)) }));
       return card;
     }
     if (p.planText) {
-      card.append(h('button', { type: 'button', class: 'btn go big', text: 'Read the plan', onclick: () => openSheet(planSheet(p)) }));
+      card.append(h('button', { type: 'button', class: 'btn go big', text: 'Read the plan', onclick: () => openSheet(planSheet(p, after)) }));
       return card;
     }
     card.append(h('div', { class: 'btns' }, answer('deny'), answer('allow')));
@@ -254,8 +274,9 @@
       const v = S.view;
       el.replaceChild(topbar(), el.firstChild);
       el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
+      fab.hidden = !canAct();
       if (!v) { scroll.replaceChildren(h('div', { class: 'loading' }, D.crab({ px: 4, state: 'working' }), h('p', { text: 'Finding your PC…' }))); return; }
-      const parts = [tide(v)];
+      const parts = [tide(v), Find.awayCard(), Find.searchRow()];
       const prompts = v.prompts || [];
       if (prompts.length) {
         parts.push(h('h3', { class: 'sect asking' }, h('i'), h('span', { text: 'Waiting on you' }), h('b', { text: prompts.length })));
@@ -272,7 +293,7 @@
         for (const t of s.tabs) parts.push(tabCard(t));
       }
       if (!v.tabs?.length && !prompts.length) {
-        parts.push(h('div', { class: 'empty' }, h('p', { text: 'Nothing on the go. Give him something to do and he’ll scuttle off with it.' }), h('a', { href: '#/new', class: 'btn go', text: 'Start a task' })));
+        parts.push(h('div', { class: 'empty' }, h('p', { text: canAct() ? 'Nothing on the go. Give him something to do and he’ll scuttle off with it.' : 'Nothing on the go.' }), canAct() ? h('a', { href: '#/new', class: 'btn go', text: 'Start a task' }) : null));
       }
       scroll.replaceChildren(...parts);
     }
@@ -280,9 +301,13 @@
     return { el, update, title: 'Shellby' };
   }
 
-  // One conversation and what its turns changed live in pocket-tab.js.
-  const { tabScreen, diffScreen } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, voiceButton });
-  const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet });
+  // One conversation and what its turns changed live in pocket-tab.js; the checks card on it comes from pocket-find.js.
+  const { tabScreen, diffScreen, transcript } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, voiceButton, canAct, lookOnly, checksCard: (...a) => Find.checksCard(...a) });
+  const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet, canAct, lookOnly });
+  // Search, history, a closed conversation, the whole branch, and what happened while you were away.
+  const Find = window.PocketFind({ S, L, D, N, h, icon, live, go, act, actButton, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded: More.loaded, transcript, shortPath });
+  // One prompt from its notification, and the quiet hours card (pocket-phone.js).
+  const { promptScreen, quietCard, pushState, turnOnPush, turnOffPush } = window.PocketPhone({ S, L, D, h, ios, standalone, icon, live, tabOf, go, toast, act, topbar, offlineBanner, promptCard, canAct });
 
   // ---------------------------------------------------------------- the queue
 
@@ -307,7 +332,7 @@
         parts.push(h('div', { class: 'card held' },
           h('div', { class: 'card-t' }, h('span', { class: 'card-title', text: x.name }), x.running ? h('span', { class: 'pill', text: 'running' }) : h('span', { class: 'pill dim', text: x.atText || 'at the reset' })),
           h('div', { class: 'card-m' }, h('span', { class: 'muted', text: x.kind === 'routine' ? 'A routine' : x.kind === 'message' ? 'A message' : x.folder || 'A task' })),
-          actButton({ label: x.running ? 'Stop it' : 'Take it out', cls: 'ghost slim', run: () => confirmSheet({ title: x.running ? 'Stop it and take it out?' : 'Take it out of the queue?', text: x.name, yes: x.running ? 'Stop it' : 'Take it out', danger: true, then: () => act('cancel-held', { id: x.id }, { okText: 'Taken out.' }) }) })));
+          canAct() ? actButton({ label: x.running ? 'Stop it' : 'Take it out', cls: 'ghost slim', run: () => confirmSheet({ title: x.running ? 'Stop it and take it out?' : 'Take it out of the queue?', text: x.name, yes: x.running ? 'Stop it' : 'Take it out', danger: true, then: () => act('cancel-held', { id: x.id }, { okText: 'Taken out.' }) }) }) : null));
       }
       scroll.replaceChildren(...parts);
     }
@@ -316,54 +341,6 @@
   }
 
   // ---------------------------------------------------------------- this phone
-
-  async function pushState() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return { can: false, why: ios && !standalone() ? 'Add Shellby to your Home Screen first: iPhones only send notifications to apps there.' : 'This browser can’t get notifications.' };
-    if (Notification.permission === 'denied') return { can: false, why: 'Notifications are turned off for Shellby. Turn them on in your phone’s Settings.' };
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      return { can: true, on: !!sub && Notification.permission === 'granted' };
-    } catch {
-      return { can: false, why: 'Notifications aren’t ready yet. Try again in a moment.' };
-    }
-  }
-
-  async function turnOnPush() {
-    const key = S.view?.pushKey;
-    if (!key) { toast("Your PC can't send notifications yet.", { tone: 'warn' }); return false; }
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { toast('Notifications stay off. You can turn them on later here.', { ms: 4000 }); return false; }
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
-      if (sub && !sameKey(sub, key)) { await sub.unsubscribe(); sub = null; }
-      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: L.keyBytes(key) });
-      const r = await act('push', { subscription: sub.toJSON() });
-      if (r.ok) toast("Notifications are on. He'll buzz when he needs you.", { tone: 'ok' });
-      return r.ok;
-    } catch (err) {
-      toast(`Notifications didn't turn on: ${err.message || err}`, { tone: 'warn', ms: 5000 });
-      return false;
-    }
-  }
-
-  function sameKey(sub, key) {
-    try {
-      const have = new Uint8Array(sub.options?.applicationServerKey || []);
-      const want = L.keyBytes(key);
-      return have.length === want.length && have.every((b, i) => b === want[i]);
-    } catch { return true; }
-  }
-
-  async function turnOffPush() {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      await sub?.unsubscribe();
-    } catch { /* already gone */ }
-    await act('push', { subscription: null }, { okText: 'Notifications are off.' });
-  }
 
   function phoneScreen() {
     const scroll = h('div', { class: 'scroll' });
@@ -385,25 +362,32 @@
           h('b', { text: live() ? `Talking to ${pc}` : `Waiting for ${pc}` }),
           h('p', { class: 'muted', text: live() ? 'Over your tailnet. Nothing goes through a server of ours.' : 'Your PC may be asleep, or Tailscale off on one of them.' }))),
         pushBox,
+        quietCard(),
         h('div', { class: 'card' },
-          h('div', { class: 'card-t' }, h('span', { class: 'card-title' }, icon('shield'), ' What this phone can do')),
-          h('ul', { class: 'plain' },
+          h('div', { class: 'card-t' }, h('span', { class: 'card-title' }, icon('shield'), ' What this phone can do'), canAct() ? null : h('span', { class: 'pill amber', text: 'read only' })),
+          canAct() ? h('ul', { class: 'plain' },
             h('li', { text: 'Allow or Deny a prompt, or always allow it when the desk would offer that. Answer a question, or approve a plan once you’ve read it. Anything the card warns about waits for the desk.' }),
             h('li', { text: 'Start a task or reply to any conversation, in the mode you pick. A new task runs in its own copy when the folder is a repo.' }),
             h('li', { text: 'Stop a turn, undo one, or bring a copy home.' }),
             h('li', { text: 'Run a routine, guard your focus, add a note, or dress him up.' }),
             S.view?.allow?.files ? h('li', { text: 'Read a conversation’s files.' }) : null,
-            S.view?.allow?.push ? h('li', { text: 'Push after bringing a copy home.' }) : null)),
+            S.view?.allow?.push ? h('li', { text: 'Push after bringing a copy home.' }) : null)
+            : h('ul', { class: 'plain' },
+              h('li', { text: 'Look: every conversation as it happens, what’s waiting, what’s ready to review and what changed.' }),
+              h('li', { text: 'Not answer, start, reply, stop, undo or bring anything home. Your PC set this phone to read only, in Settings → On your phone.' }),
+              h('li', { text: 'Turn its own notifications on or off, and forget itself.' }))),
         h('button', { type: 'button', class: 'btn danger-ghost', text: 'Forget this phone', onclick: () => confirmSheet({ title: 'Forget this phone?', text: 'It stops seeing Shellby straight away. To use it again, pair it with a new code from your PC.', yes: 'Forget it', danger: true, then: async () => { await turnOffPush().catch(() => {}); await N.post('forget'); unpaired('This phone is forgotten. Pair it again any time.'); } }) }),
         h('p', { class: 'fine', text: 'Shellby on your phone · served by your PC' }));
       drawPush();
     }
-    // Redrawn only when the connection changes: the notification card asks the browser each time.
-    let wasLive = null;
+    // Redrawn only when the connection, the rights or the quiet hours change: the
+    // notification card asks the browser each time.
+    let was = null;
     const maybe = () => {
       el.replaceChild(topbar(), el.firstChild);
       el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
-      if (wasLive !== live()) { wasLive = live(); update(); }
+      const now = JSON.stringify([live(), S.view?.rights, S.view?.quiet]);
+      if (was !== now) { was = now; update(); }
     };
     maybe();
     return { el, update: maybe, title: 'This phone' };
@@ -624,8 +608,9 @@
       return;
     }
     if (r.name === 'tab') { show(tabScreen(r.tabId)); stream.watch(r.tabId); return; }
-    stream.watch(r.name === 'diff' ? r.tabId : null);
-    if (r.name === 'diff') show(diffScreen(r.tabId, r.after));
+    stream.watch(r.name === 'diff' || r.name === 'branch' ? r.tabId : null);
+    if (r.name === 'prompt') show(promptScreen(r.tabId, r.requestId));
+    else if (r.name === 'diff') show(diffScreen(r.tabId, r.after));
     else if (r.name === 'queue') show(queueScreen());
     else if (r.name === 'more') show(More.moreScreen());
     else if (r.name === 'routines') show(More.routinesScreen());
@@ -633,6 +618,10 @@
     else if (r.name === 'wardrobe') show(More.wardrobeScreen());
     else if (r.name === 'history') show(More.historyScreen());
     else if (r.name === 'files') show(More.filesScreen(r.tabId, r.path));
+    else if (r.name === 'find') show(Find.findScreen());
+    else if (r.name === 'project-history') show(Find.historyScreen());
+    else if (r.name === 'past') show(Find.pastScreen(r.id));
+    else if (r.name === 'branch') show(Find.branchScreen(r.tabId));
     else if (r.name === 'phone') show(phoneScreen());
     else show(beachScreen());
   }
@@ -690,6 +679,7 @@
         noticeLandings(prev, v);
         tidyNotifications(v);
         if (S.screen?.update) refresh(); else mount();
+        Find.onView();
       },
       items({ tabId, items }) {
         S.feeds.set(tabId, { items: items || [], loaded: true });

@@ -5,8 +5,23 @@ const channels = require('../channels');
 const focus = require('../focus');
 const { composeMessage } = require('../channels/messages');
 const push = require('./push');
+const { inQuietHours } = require('./quiet');
 
 const PUSH_SUBJECT = 'https://getshellby.com/';
+const ID_RE = /^[\w-]{1,100}$/;
+
+/**
+ * Where a tap on the notification opens: a permission prompt straight onto its
+ * own screen (the app checks it's still waiting), anything else about a
+ * conversation onto that conversation. No token rides along: the installed
+ * app has its own.
+ */
+function urlFor(event) {
+  const tab = ID_RE.test(String(event?.tabId ?? '')) ? event.tabId : null;
+  if (!tab) return '/';
+  if (event.kind === 'asking' && ID_RE.test(String(event.requestId ?? ''))) return `/#/prompt/${encodeURIComponent(tab)}/${encodeURIComponent(event.requestId)}`;
+  return `/#/tab/${encodeURIComponent(tab)}`;
+}
 
 const ok = extra => ({ ok: true, ...extra });
 const no = error => ({ ok: false, error });
@@ -25,15 +40,20 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
    * One event from tellChannel (wiring/channels.js), to every paired phone that
    * asked for notifications. Its own settings, the same rules: Guard my focus,
    * the quick-task cut-off, and "always" for what the phone itself started.
+   * Quiet hours (pocket/quiet.js) hold everything but a permission prompt,
+   * which comes quietly, so the icon's badge still counts it.
    */
   function notify(event, { always = false } = {}) {
     const s = settings();
     if (!s.enabled || !d.config) return false;
     const targets = devices().filter(dv => dv.push);
     if (!targets.length) return false;
+    const now = Date.now();
+    const quiet = inQuietHours(s.quiet, now);
+    if (quiet && event?.kind !== 'asking') return false;
     const tab = event?.tabId ? d.manager?.tabs.get(event.tabId) : null;
     const forced = always || !!tab?.fromPocket;
-    if (!channels.shouldSend(event, s.notify, { focused: focus.guarding(d.config.get('focus'), Date.now()), always: forced })) return false;
+    if (!channels.shouldSend(event, s.notify, { focused: focus.guarding(d.config.get('focus'), now), always: forced })) return false;
     const keys = vapidKeys();
     if (!keys) return false;
     const m = composeMessage(event);
@@ -41,9 +61,10 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
     const payload = {
       title: m.title, body: m.body,
       tag: event.tabId ? `${event.kind === 'asking' ? 'ask' : 'tab'}-${event.tabId}` : `shellby-${event.kind}`,
-      url: event.tabId ? `/#/tab/${encodeURIComponent(event.tabId)}` : '/',
+      url: urlFor(event),
       badge: prompts,
-      at: Date.now(),
+      at: now,
+      ...(quiet ? { silent: true } : {}),
     };
     sendToPhones(targets, payload, { keys, ttl: event.kind === 'asking' ? 30 * 60 : 6 * 3600, urgency: m.priority === 'high' ? 'high' : 'normal' });
     return true;
@@ -74,7 +95,7 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
       if (!busy) { working.delete(id); continue; }
       if (working.has(id) || !(tab.fromPocket || tab.fromPhone)) continue;
       working.add(id);
-      if (!s.enabled || !s.notify.enabled || !s.notify.working) continue;
+      if (!s.enabled || !s.notify.enabled || !s.notify.working || inQuietHours(s.quiet)) continue;
       const targets = devices().filter(dv => dv.push);
       const keys = targets.length ? vapidKeys() : null;
       if (!keys) continue;
@@ -101,4 +122,4 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
   return { notify, noticeWork, testPush, badge };
 }
 
-module.exports = { createPocketNotices, PUSH_SUBJECT };
+module.exports = { createPocketNotices, PUSH_SUBJECT, urlFor };

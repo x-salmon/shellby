@@ -13,7 +13,9 @@
 // Pure: wiring/pocket.js gathers the inputs.
 const path = require('path');
 const { standing } = require('../../renderer/panel/tab-sort');
-const { appDeskOnlyReason } = require('../channels/replies');
+const { appDeskOnlyReason, PLAN_MAX: MAX_PLAN } = require('../channels/replies');
+const { normalizeQuiet } = require('./quiet');
+const { normalizeRights } = require('./rights');
 
 const VERSION = 1;
 const MAX_TABS = 40;
@@ -22,7 +24,6 @@ const MAX_TEXT = 8000;          // Claude's reply, per item
 const MAX_FILES = 60;
 const MAX_PROJECTS = 60;
 const MAX_QUESTIONS = 4;
-const MAX_PLAN = 30000;
 const STANDINGS = ['asking', 'review', 'finished', 'working', 'quiet'];
 
 const clip = (s, n) => {
@@ -49,7 +50,8 @@ function phoneTab(t, extra = {}) {
     outcome: t.outcome || null, unread: !!t.unread,
     copy: t.worktree ? { branch: line(t.worktree.branch, 120), base: line(t.worktree.base, 120) } : null,
     ready,
-    checks: t.checks ? { status: line(t.checks.status, 20), after: line(t.checks.after, 80) } : null,
+    // Its last checks, and whether a run is going now (wiring/checks.js): the phone shows them on the conversation.
+    checks: t.checks || extra.checksRunning ? { status: extra.checksRunning ? 'running' : line(t.checks.status, 20), after: line(extra.checksRunning?.after ?? t.checks?.after, 80) || null } : null,
     todos: t.todos ? { total: t.todos.total || 0, done: t.todos.done || 0, current: line(t.todos.current, 140) || null } : null,
     tokens: num(t.turnTokens),
     planning: !!t.planning,
@@ -169,12 +171,14 @@ function phoneHeld(h) {
  *   tabs:     sessions.js summary
  *   prompts:  waiting prompts, oldest first, each with its tabId
  *   crab:     { state, work, say, crew: [{ label, type }] }
- *   extras:   tabId -> { mode, fromPhone, canReply }
+ *   extras:   tabId -> { mode, fromPhone, canReply, checksRunning }
  *   outlook:  usage/service.js outlookView()
  *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey, mode (the desk's)
+ *   rights:   this phone's level (pocket/rights.js): the app hides what it can't use
+ *   quiet:    the quiet hours (pocket/quiet.js), shown and set on the Phone screen
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, mode = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -196,6 +200,8 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     focus: phoneFocus(focus, now),
     mode: line(mode, 20) || null, // the desk's mode: where a new task's picker starts
     allow: allow ? { push: !!allow.push, files: !!allow.files } : { push: false, files: false },
+    rights: normalizeRights(rights),
+    quiet: normalizeQuiet(quiet),
     held: (held || []).slice(0, 20).map(phoneHeld),
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),
     skin: skin || null,

@@ -42,6 +42,14 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **A conversation** opens live: Claude's reply as he writes it, each tool he runs, his helpers in their own lanes, the to-do list, and what each turn cost. **Stop** ends a turn. When a turn changed files, **See the changes** shows the diff file by file, wrapped to fit, and **Undo turn** and **Bring it home** do what they do at the desk, with the same checks gate and a confirmation on the phone first.
 
+**Its checks** sit under the title: passed, failed or running, as the desk last ran them. A failed one shows the tail of what each command said, and **Fix it** sends that back to Claude as a reply, in the mode you pick. It follows the reply's rules: not while he's working, not while a prompt is waiting, and not for a conversation that's gone to a terminal.
+
+**See everything** is on a conversation in its own copy: the whole branch against the commit it started from, which is exactly what Bring it home would bring, uncommitted work included. It's the same viewer as See the changes, file by file, and no bigger than a phone can read.
+
+**Search**, on the beach, looks through every conversation in History across every project: titles, what you asked for first and what Claude said he'd done, ranked as the desk's own search ranks. **History** beside it lists one project's conversations (or all of them) by day, newest first, thirty at a time. Tapping a closed conversation shows it read-only, with **Open it again** to carry on (as **More → History** does); an open one opens live.
+
+**While you were away.** Open the app after ten minutes or more and a card at the top of the beach says what happened meanwhile: "2 finished, 1 hit a problem, 1 waiting on you, 4% of your window spent", with a tap to each. It's worked out from the time the phone last looked, which it keeps to itself, and it goes when you dismiss it.
+
 **New task** starts one in any project Shellby knows: the folder you're working in, the ones open in a conversation, and every one he's seen you work in. Tasks from your phone follow the same rules as [phone tasks over Telegram or ntfy](CONNECTIONS.md#-your-phone):
 
 - They run in the mode you pick (Ask first unless you change it: Smart, Auto-edit, Plan only or Autonomous), in their own copy when the folder is a git repository.
@@ -54,7 +62,20 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **More** has Guard my focus (15, 25 or 50 minutes), **Routines** (Run now, and on or off; workflows that need no inputs run too), **Notes** for each project, and the **Wardrobe**. Tap him on the beach for a pat. A finished conversation has **Share**, which sends a picture of him and what landed through your phone's share sheet.
 
-**Phone** has notifications, what this phone can do, and **Forget this phone**.
+**Phone** has notifications, **Quiet hours**, what this phone can do, and **Forget this phone**.
+
+### Several phones, each with its own rights
+
+Every paired phone gets a level in Settings → On your phone, beside its **Forget** button:
+
+- **Full** is everything above. It's what a phone has when you pair it, and what every phone paired before this had.
+- **Read only** sees everything (the beach, every conversation as it happens, what changed, the queue, routines, notes) and changes nothing: it can't answer a prompt, start a task, reply, stop a turn, undo one, bring a copy home, push, run a routine, change your focus or dress him up. It can still turn its own notifications on or off, and forget itself.
+
+The level is checked on your PC for every call, not just hidden on the phone, so a tablet on the kitchen counter can watch without being able to say yes. Changing it takes effect at once, on a phone that's open too.
+
+### Quiet hours
+
+On the phone's **Phone** screen, or in Settings → On your phone: on or off, and from when to when, in your PC's own time (22:00 to 07:00 crosses midnight as you'd expect). During quiet hours nothing buzzes: a permission prompt still arrives, quietly, so the app icon's badge counts it and the card is a tap away in the morning; a finished task, the usage limit and the rest aren't sent at all, as when he's guarding your focus. One schedule covers every phone paired with that PC.
 
 ### What you can allow
 
@@ -72,10 +93,10 @@ There's also a quiet **"working on it"** notification for tasks the phone starte
 Notifications come from your PC, encrypted, through your phone's own push service (Apple's, Google's, Mozilla's or Microsoft's, whichever your browser uses). Only your phone can read them. They follow the same rules as the other phone notifications:
 
 - **The events you pick:** he needs permission, a task finished, the usage limit, a queued task, a red build and the rest.
-- **Guard my focus** holds them back, unless you say otherwise.
+- **Guard my focus** holds them back, unless you say otherwise. **Quiet hours** hold them back overnight, except a permission prompt, which comes quietly.
 - **A four-second task doesn't buzz you.** A task the phone started always says when it's done.
 
-Tap one and the app opens on that conversation. On an iPhone there are no buttons on a web app's notification, so the card is a tap away instead. The app icon's badge counts the prompts waiting.
+Tap one and the app opens on that conversation. On an iPhone there are no buttons on a web app's notification, so a tap on **"He needs you"** opens straight onto that one prompt instead: the plain sentence, the command or the edit, and big **Allow** and **Deny** (and **Always allow** when the desk would offer it). Answer it and you're back on the beach. If it was answered at the desk meanwhile, or is one that waits for the desk, the screen says so. The app icon's badge counts the prompts waiting.
 
 ## Security, in short
 
@@ -85,6 +106,7 @@ This is the one feature that lets another device drive Claude Code on your PC, s
 - **Only your Tailscale login gets in.** Tailscale tells Shellby who each request is from, and anyone else on a shared tailnet is turned away. **Funnel** (which puts an address on the open internet) is never turned on, and if it's ever on for this address, Shellby stops serving.
 - **Each phone needs a code from your PC's screen** to pair, and keeps a token only it has. Shellby keeps a hash of it, never the token, and **Forget** in Settings ends that phone's access at once.
 - **The phone's rules:** Allow, Deny and the desk's always-allow, the mode you pick, limits on how many, and everything the desk card would warn about stays at the desk.
+- **Each phone's rights** are checked on your PC on every call: a read-only phone is refused anything but looking, its own notifications and forgetting itself, whatever its app asks for.
 
 The details are in [SECURITY.md](../SECURITY.md#shellby-on-your-phone).
 

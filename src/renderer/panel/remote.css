@@ -53,3 +53,6 @@
 .pocket-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--sand-faint-deco); }
 .pocket-dot.on { background: var(--glass); box-shadow: 0 0 6px var(--glass); }
 .pocket-device .btn.danger { border-color: var(--coral); color: var(--coral); }
+.pocket-device .pocket-rights { flex: none; }
+.pocket-quiet { align-items: center; }
+.pocket-quiet .field-label { flex-direction: row; align-items: center; gap: 6px; }

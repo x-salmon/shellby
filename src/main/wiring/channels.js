@@ -114,8 +114,9 @@ function wireChannels(d) {
   // A permission prompt goes to the phone, with Allow / Deny on it when you've
   // said it may and the prompt is one the phone is allowed to answer (channels/replies.js).
   function askOnPhone(tabId, item, tab) {
-    // tabId: where the phone app's notification opens (channels ignore it).
-    const event = { kind: 'asking', project: tab.title, message: `${item.label || ''} ${item.detail || ''}`.trim(), tabId };
+    // tabId, requestId: where the phone app's notification opens, straight onto
+    // this prompt (channels ignore them).
+    const event = { kind: 'asking', project: tab.title, message: `${item.label || ''} ${item.detail || ''}`.trim(), tabId, requestId: item.requestId };
     // A task the phone started always asks there: it's where you are.
     const opts = { always: !!tab.fromPhone };
     const settings = channelSettings();

@@ -155,6 +155,9 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     if (p.enabled === true || p.enabled === false) return d.setPocket({ enabled: p.enabled });
     if (p.notify && typeof p.notify === 'object') return d.setPocket({ notify: p.notify });
     if (p.allow && typeof p.allow === 'object') return d.setPocket({ allow: p.allow });
+    if (p.quiet && typeof p.quiet === 'object') return d.setPocket({ quiet: p.quiet });
+    // A phone's rights: named by its id, as Forget names it.
+    if (p.device && typeof p.device === 'object') return d.setPocket({ device: { id: typeof p.device.id === 'string' ? p.device.id.slice(0, 40) : '', rights: p.device.rights } });
     return d.pocketView();
   });
   ipcMain.handle('pocket:pair', () => d.newPocketCode());
