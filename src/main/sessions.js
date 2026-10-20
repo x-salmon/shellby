@@ -705,6 +705,7 @@ class SessionManager extends EventEmitter {
       todos: todoGlance(t.session.todos),
       jobs: t.session.jobView(),
       planning: !!t.session.planning,
+      compacting: !!t.compacting, // Claude Code compacting it now: the phone's working line says so
       safeMode: !!t.session.safeMode, agent: t.session.agent || null,
     }));
   }

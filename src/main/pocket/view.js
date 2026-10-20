@@ -55,6 +55,7 @@ function phoneTab(t, extra = {}) {
     todos: t.todos ? { total: t.todos.total || 0, done: t.todos.done || 0, current: line(t.todos.current, 140) || null } : null,
     tokens: num(t.turnTokens),
     planning: !!t.planning,
+    compacting: !!t.compacting,
     mode: extra.mode || null,
     fromPhone: !!extra.fromPhone,
     canReply: !!extra.canReply,

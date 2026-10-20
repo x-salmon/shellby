@@ -177,7 +177,7 @@
         asks.replaceChildren(...prompts.map(p => promptCard(p, { inTab: true })));
         const may = canAct();
         if (t.busy) {
-          const doing = h('div', { class: 'working-line' }, D.crab({ px: 1.5, state: 'working', label: '' }), h('span', { class: 'doing', text: L.doingLine(t) }),
+          const doing = h('div', { class: `working-line${t.compacting ? ' compacting' : ''}` }, D.crab({ px: 1.5, state: 'working', label: '' }), h('span', { class: 'doing', text: L.doingLine(t) }),
             t.busySince ? h('span', { class: 'mono since', dataset: { since: t.busySince }, text: L.duration((Date.now() - t.busySince) / 1000) }) : null);
           parts.push(h('div', { class: 'foot-row' }, doing, may ? stop : null));
         }

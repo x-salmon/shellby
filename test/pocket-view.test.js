@@ -47,6 +47,11 @@ test('a tab’s checks: the last verdict, or the run going now', () => {
   assert.deepEqual(v.phoneTab(tab(), { checksRunning: { after: null } }).checks, { status: 'running', after: null });
 });
 
+test('a tab says when Claude Code is compacting it', () => {
+  assert.equal(v.phoneTab(tab()).compacting, false);
+  assert.equal(v.phoneTab(tab({ busy: true, compacting: true })).compacting, true);
+});
+
 test('a prompt says why the phone may only look, by the same rule as the phone notifications', () => {
   const tabs = [tab()];
   const prompts = [

@@ -16,6 +16,12 @@ test('the stream is read however the chunks fall, and pings are skipped', () => 
   assert.deepEqual(got, [['view', { v: 1 }], ['item', { tabId: 't1' }], ['bye', null]]);
 });
 
+test('a compacting tab’s working line says it’s tidying up, under a waiting prompt', () => {
+  assert.equal(L.doingLine({ compacting: true, todos: { current: 'Fix it' } }), 'Tidying the conversation up');
+  assert.equal(L.doingLine({ compacting: true, pending: 1 }), 'Waiting on your yes');
+  assert.equal(L.doingLine({ todos: { current: 'Fix it' } }), 'Fix it');
+});
+
 test('reconnecting backs off, up to fifteen seconds', () => {
   assert.equal(L.backoff(0, () => 0.5), 1000);
   assert.equal(L.backoff(2, () => 0.5), 4000);

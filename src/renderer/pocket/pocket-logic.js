@@ -145,6 +145,7 @@
   /** What a working tab is up to, in one line. */
   function doingLine(t) {
     if (t.pending) return 'Waiting on your yes';
+    if (t.compacting) return 'Tidying the conversation up';
     if (t.todos?.current) return t.todos.current;
     if (t.planning) return 'Planning';
     if (t.crew) return `${plural(t.crew, 'helper')} out`;

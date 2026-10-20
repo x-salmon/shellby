@@ -347,6 +347,14 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
 .foot-row { display: flex; align-items: center; gap: 10px; }
 .working-line { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--sand-dim); }
 .working-line .doing { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Compacting: a glint runs along under the line until it's done, as on the desk (panel.css). */
+.working-line.compacting { position: relative; }
+.working-line.compacting::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -6px; height: 2px; border-radius: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass), transparent) -70% 0 / 40% 100% no-repeat, var(--glass-dim);
+  animation: compact-glint 1.6s ease-in-out infinite;
+}
+@keyframes compact-glint { to { background-position: 170% 0, 0 0; } }
 .since { white-space: nowrap; }
 .foot-note { margin: 0; font-size: 13px; color: var(--sand-faint); text-align: center; }
 .reply { display: flex; gap: 8px; align-items: flex-end; }
