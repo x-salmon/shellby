@@ -80,6 +80,8 @@
   state.estimate = null;      // { tabId, text, ...main's estimate }
 
   const pctText = n => (n < 1 ? 'under 1%' : `${Math.round(n)}%`);
+  // "about 3%", but never "about under 1%".
+  const aboutPct = n => (n < 1 ? pctText(n) : `about ${pctText(n)}`);
   const KIND_NOUN = {
     question: 'questions', review: 'reviews', tests: 'test tasks', fix: 'fixes', feature: 'new features',
     refactor: 'refactors', docs: 'docs tasks', tidy: 'tidy-ups', other: 'tasks',
@@ -106,7 +108,7 @@
 
   function overText(e) {
     const until = e.guardOn ? 'before he stops' : 'before your limit';
-    return `This usually takes about ${pctText(e.pct)} and you've ${pctText(e.left)} left ${until}.`;
+    return `This usually takes ${aboutPct(e.pct)} and you've ${pctText(e.left)} left ${until}.`;
   }
 
   // ------------------------------------------------------------ tips (src/main/cachebreak.js, usage/ledger.js)
@@ -138,7 +140,7 @@
       const kind = KIND_NOUN[e.category] || 'tasks';
       return {
         tip: true, cls: 'quiet', key: null,
-        text: `${kind[0].toUpperCase()}${kind.slice(1)} like this usually take about ${pctText(e.suggest.pct)} of your window on this model${e.suggest.measured ? `, and ${pctText(e.suggest.cheaper)} on Sonnet for you` : `; Sonnet usually costs about ${pctText(e.suggest.cheaper)}`}.`,
+        text: `${kind[0].toUpperCase()}${kind.slice(1)} like this usually take ${aboutPct(e.suggest.pct)} of your window on this model${e.suggest.measured ? `, and ${pctText(e.suggest.cheaper)} on Sonnet for you` : `; Sonnet usually costs ${aboutPct(e.suggest.cheaper)}`}.`,
         actions: [h('button', { class: 'btn slim-btn', type: 'button', title: 'This conversation starts on Sonnet. Others keep the model in Settings.', onclick: () => useSonnet(tab) }, 'Start this one on Sonnet')],
       };
     }
@@ -167,7 +169,7 @@
     const show = !!e && e.basis !== 'none' && !e.over && !SB.isCrabOnly?.();
     el.hidden = !show;
     if (!show) { el.textContent = ''; el.removeAttribute('title'); return; }
-    el.textContent = `usually about ${pctText(e.pct)} of your window`;
+    el.textContent = `usually ${aboutPct(e.pct)} of your window`;
     el.title = `${basisText(e)}. Most land between ${pctText(e.low)} and ${pctText(e.high)}.`;
   }
 
