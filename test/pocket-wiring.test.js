@@ -348,15 +348,15 @@ test('a task from the phone runs in Ask first, in its own copy, in a project She
   } finally { stop(w); }
 });
 
-test('a task sent twice with the same key starts once, and Telegram’s phone tasks count towards three at once', async () => {
+test('a task sent twice with the same key starts once, and Telegram’s phone tasks count towards the app’s ten at once', async () => {
   const busy = id => tabOf(id, { fromPhone: true, session: { pending: new Map(), mode: 'ask', cwd: PROJECT, busy: true } });
-  const w = await paired({ tabs: [busy('p1'), busy('p2')] });
+  const w = await paired({ tabs: Array.from({ length: 9 }, (_, i) => busy(`p${i + 1}`)) });
   try {
     const body = { project: PROJECT, text: 'once only', key: 'abcdefgh12' };
     const [a, b] = await Promise.all([w.d.pocket.onAction(w.device, 'task', body), w.d.pocket.onAction(w.device, 'task', body)]);
     assert.deepEqual(a, b);
     assert.equal(w.of('startTaskInCopy').length, 1);
-    // p1, p2 and the new one: the fourth waits.
+    // p1..p9 and the new one: the eleventh waits.
     w.d.manager.tabs.get('new1').session.busy = true;
     const r = await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: 'one more' });
     assert.equal(r.ok, false);

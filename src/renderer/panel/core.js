@@ -580,6 +580,19 @@ for (const target of [window, document.body]) {
     const el = e.target.closest?.('[title], [data-tip]');
     if (el && el.matches(':focus-visible')) { target = el; show(el); }
   });
+  // A title set again on an element already claimed (a live hint re-rendering
+  // under the pointer) would bring the OS tip up beside ours: claim it at once,
+  // and keep the showing tip's words current.
+  new MutationObserver(records => {
+    for (const { target: el } of records) {
+      if (!el.hasAttribute('title') || (el !== target && !('tip' in el.dataset))) continue;
+      claim(el);
+      if (el === target && !tip.hidden) {
+        if (el.dataset.tip) { tip.textContent = el.dataset.tip; place(el); } else hide();
+      }
+    }
+  }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['title'] });
+
   document.addEventListener('focusout', hide);
   for (const ev of ['mousedown', 'keydown']) document.addEventListener(ev, hide, true);
   // Programmatic scrolls happen all the time (tab strip, live feeds); only a

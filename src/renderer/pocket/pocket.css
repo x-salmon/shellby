@@ -232,7 +232,7 @@ ul.plain li::marker { color: var(--coral); }
 /* ---------------------------------------------------------------- the dock and the button */
 .dock {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
-  display: grid; grid-template-columns: repeat(3, 1fr);
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   padding: 6px max(var(--gutter), var(--safe-r)) calc(6px + var(--safe-b)) max(var(--gutter), var(--safe-l));
   background: rgba(7, 16, 18, .92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border-top: 1px solid var(--line-soft);

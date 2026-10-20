@@ -18,6 +18,10 @@ const { appDeskOnlyReason } = require('../channels/replies');
 const { EVENTS } = require('../channels/messages');
 const { MODES: PHONE_MODES } = require('../config');
 const { qrRows } = require('../qr');
+
+// The app is paired to this PC, so it gets more room than Telegram or ntfy (pt.MAX_OPEN).
+const APP_MAX_OPEN = 10;
+const APP_STARTS_PER_HOUR = 30;
 const pairing = require('../pocket/pairing');
 const push = require('../pocket/push');
 const { PocketServer, DEFAULT_PORT } = require('../pocket/server');
@@ -249,7 +253,7 @@ function wirePocket(d) {
       held: d.heldService?.heldViews() || [],
       projects: projects(),
       skin: d.activeSkin?.() || null,
-      limits: { perHour: pt.MAX_STARTS_PER_HOUR, atOnce: pt.MAX_OPEN, open: openCount() },
+      limits: { perHour: APP_STARTS_PER_HOUR, atOnce: APP_MAX_OPEN, open: openCount() },
       pushKey: vapid?.publicKey || null,
       allow: settings().allow,
       mode: d.config.get('mode'),
@@ -397,7 +401,7 @@ function wirePocket(d) {
     const target = projects().find(p => p.key === project);
     if (!target) return no("That project isn't one Shellby knows. Pick one from the list.");
     const now = Date.now();
-    const gate = pt.startGate({ starts, open: openCount(), now });
+    const gate = pt.startGate({ starts, open: openCount(), now, maxOpen: APP_MAX_OPEN, perHour: APP_STARTS_PER_HOUR });
     if (!gate.ok) return no(gate.reply);
     starts = [...pt.recent(starts, now), now];
     // At the limit, or past what you keep for yourself: it waits for the reset.
