@@ -15,26 +15,33 @@
     const FOCUS = [15, 25, 50];
 
     // A screen that loads from the PC: draw(data) once it answers, a crab while it doesn't.
+    // The stream's pushes only touch the banner: redrawing the body on each one
+    // threw the list back to the top and swapped a checkbox out under your thumb.
     function loaded({ title, active = 'more', back = '#/more', backLabel = 'More', name, body = {}, draw }) {
       const scroll = h('div', { class: 'scroll' });
       const el = h('div', { class: 'screen' }, topbar({ back, backLabel }), h('div', { class: 'offline-slot' }), scroll, dock(active));
       let data = null;
       let asked = false;
+      let drawnMay = null;
       async function load() {
         asked = true;
         const r = await N.post(name, body);
         if (r.ok) data = r; else if (!data) data = { error: r.error || 'Your PC didn’t answer.' };
         paint();
       }
+      function banner() { el.querySelector('.offline-slot').replaceChildren(offlineBanner() || ''); }
       function paint() {
-        el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
+        banner();
+        drawnMay = canAct();
         if (!data) { scroll.replaceChildren(h('h2', { class: 'screen-title', text: title }), h('div', { class: 'loading' }, D.crab({ px: 3, state: 'working' }))); return; }
         if (data.error) { scroll.replaceChildren(h('h2', { class: 'screen-title', text: title }), h('div', { class: 'empty' }, h('p', { text: data.error }))); return; }
+        const top = scroll.scrollTop;
         scroll.replaceChildren(h('h2', { class: 'screen-title', text: title }), ...draw(data, load));
+        scroll.scrollTop = top;
       }
       paint();
       if (live()) load();
-      return { el, title, update: () => { if (!asked && live()) load(); else paint(); } };
+      return { el, title, update: () => { if (!asked && live()) load(); else if (drawnMay !== canAct()) paint(); else banner(); } };
     }
 
     // ---------------------------------------------------------------- more
@@ -147,8 +154,16 @@
           const may = canAct();
           const row = n => {
             const tick = h('input', { type: 'checkbox', 'aria-label': n.done ? 'Not done' : 'Done', ...(n.done ? { checked: 'checked' } : {}), ...(may ? {} : { disabled: 'disabled' }) });
-            tick.addEventListener('change', async () => { const r = await act('note-tick', { project: d.key, id: n.id, done: tick.checked }); if (r.ok) { buzz(6); reload(); } else tick.checked = !tick.checked; });
-            return h('label', { class: `note${n.done ? ' done' : ''}` }, tick, h('span', { class: 'note-text', text: n.text }), n.from === 'claude' ? h('span', { class: 'pill dim', text: 'Claude' }) : null);
+            const el = h('label', { class: `note${n.done ? ' done' : ''}` }, tick, h('span', { class: 'note-text', text: n.text }), n.from === 'claude' ? h('span', { class: 'pill dim', text: 'Claude' }) : null);
+            // Ticked where it sits: it moves to Done next time the list opens, not out from under you.
+            tick.addEventListener('change', async () => {
+              const r = await act('note-tick', { project: d.key, id: n.id, done: tick.checked });
+              if (!r.ok) { tick.checked = !tick.checked; return; }
+              buzz(6);
+              el.classList.toggle('done', tick.checked);
+              tick.setAttribute('aria-label', tick.checked ? 'Not done' : 'Done');
+            });
+            return el;
           };
           return [pick, may ? h('div', { class: 'card note-add' }, box, add) : lookOnly(),
             ...(open.length ? open.map(row) : [h('p', { class: 'muted pad', text: 'Nothing on this list yet.' })]),
