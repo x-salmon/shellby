@@ -184,6 +184,9 @@ function spendFrom(ev) {
 
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
 const AGENT_TOOLS = new Set(['Agent', 'Task']);
+// The Agent tool's isolation and effort values (Claude Code 2.1.303).
+const AGENT_ISOLATION = new Set(['worktree', 'remote']);
+const AGENT_EFFORT = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 
 const strings = a => (Array.isArray(a) ? a.filter(s => typeof s === 'string') : []);
 
@@ -296,6 +299,13 @@ function toolItem(b, sub) {
     };
     // The name other agents write to it by (SendMessage { to }).
     if (typeof input.name === 'string' && input.name.trim()) item.agent.name = input.name.trim().slice(0, 80);
+    // A fork carries on with the whole conversation and Claude's own model, not a fresh specialist.
+    if (item.agent.type === 'fork') item.agent.fork = true;
+    // Where it works: its own copy of the repo, or a cloud session.
+    if (AGENT_ISOLATION.has(input.isolation)) item.agent.isolation = input.isolation;
+    // A model or effort Claude picked for it (forks always use Claude's own).
+    if (typeof input.model === 'string' && input.model.trim() && !item.agent.fork) item.agent.model = input.model.trim().slice(0, 40);
+    if (AGENT_EFFORT.has(input.effort)) item.agent.effort = input.effort;
   }
   return item;
 }

@@ -271,6 +271,18 @@ test('a skill, a message between agents, and an agent\'s name are kept on their 
   assert.equal(agent.agent.name, 'scout');
 });
 
+test('an Agent call keeps whether it is a fork, where it works, and its model and effort', () => {
+  const agentOf = input => toItems({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 'g', name: 'Agent', input }] } })[0].agent;
+  const fork = agentOf({ subagent_type: 'fork', description: 'Try B', model: 'haiku' });
+  assert.equal(fork.fork, true);
+  assert.equal(fork.model, undefined, "a fork runs on Claude's own model, whatever the call says");
+  const away = agentOf({ subagent_type: 'Explore', description: 'Scout', isolation: 'worktree', model: 'sonnet', effort: 'low' });
+  assert.deepEqual([away.fork, away.isolation, away.model, away.effort], [undefined, 'worktree', 'sonnet', 'low']);
+  assert.equal(agentOf({ isolation: 'remote' }).isolation, 'remote');
+  const odd = agentOf({ isolation: 'elsewhere', effort: 'huge', model: '  ' });
+  assert.deepEqual([odd.isolation, odd.effort, odd.model], [undefined, undefined, undefined], 'values it does not know are left out');
+});
+
 test('a result says how much of the turn was thinking', () => {
   const [r] = toItems({ type: 'result', subtype: 'success', is_error: false, usage: { input_tokens: 4, output_tokens: 641, output_tokens_details: { thinking_tokens: 54 } } });
   assert.equal(r.thinkingTokens, 54);

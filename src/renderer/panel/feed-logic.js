@@ -242,6 +242,14 @@
     return first ? first.trim().slice(0, 120) : null;
   }
 
+  // Where a helper works when it isn't in this folder (the Agent tool's isolation).
+  const LANE_ISOLATION = {
+    worktree: { text: 'own copy', title: 'It works in its own copy of the repository, which goes away if it changes nothing' },
+    remote: { text: 'cloud', title: 'It works in a Claude Code session in the cloud' },
+  };
+  const laneIsolationText = kind => LANE_ISOLATION[kind]?.text || kind;
+  const laneIsolationTitle = kind => LANE_ISOLATION[kind]?.title || '';
+
   // "Quiz me" on a turn's changes (src/main/quiz.js, which checks the size again):
   // offered once the turn added and removed at least this many lines.
   const QUIZ_MIN_LINES = 30;
@@ -272,7 +280,7 @@
 
   const api = {
     files, storySteps, markFor, compactingLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
-    decisionVerdict, questionVerdict, resultLabel, diffRows, laneMeta, laneCostTitle, laneFirstLine,
+    decisionVerdict, questionVerdict, resultLabel, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

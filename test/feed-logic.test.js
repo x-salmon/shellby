@@ -214,3 +214,10 @@ test('storySteps: no story, or one step left after trimming, shows the flat list
   assert.equal(F.storySteps({ files }), null);
   assert.equal(F.storySteps({ files, story: [{ title: 'x', files: ['a.js'] }, { title: 'y', files: ['past-the-limit.js'] }] }), null);
 });
+
+test('a helper working away from this folder says where in a word, and more on hover', () => {
+  assert.equal(F.laneIsolationText('worktree'), 'own copy');
+  assert.equal(F.laneIsolationText('remote'), 'cloud');
+  assert.match(F.laneIsolationTitle('worktree'), /own copy of the repository/);
+  assert.equal(F.laneIsolationText('somewhere'), 'somewhere', 'a kind it does not know shows as itself');
+});
