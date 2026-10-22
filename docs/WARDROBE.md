@@ -6,7 +6,7 @@ Outfits, shells, trophies, XP, stickers and the cards you can share. Back to the
 
 ## Outfits
 
-- **175 accessories, 45 effects and 18 crabs** for his hat, face, neck, claw and shell. They move with him: a pumpkin swings with his claw, and eyewear scans along while he reads. He and everything he wears are shaded, with a fine dark line round them, so he stands out on any wallpaper.
+- **175 accessories, 45 effects and 19 crabs** for his hat, face, neck, claw and shell. They move with him: a pumpkin swings with his claw, and eyewear scans along while he reads. He and everything he wears are shaded, with a fine dark line round them, so he stands out on any wallpaper.
 - **Effects move like he does,** a pixel at a time: bats flap their wings, sparkles twinkle from a dot to a star and back, fireflies glow and fade, embers cool from yellow to red, leaves flip as they fall, and snow lands at his feet and blinks away.
 - **Head-to-tail sets:** a dev desk with a rubber duck, a tide pool he'd actually come from, and an on-call kit with a pager and an extinguisher. Each covers every slot.
 - **He grows into new shells:** level 3 brings a Snail Shell, then a Tin Can, a Teacup, a Toy Brick, the Golden Conch at level 20, and on up through a Coconut Half, a Lantern Jar, a Diving Helmet, a Crystal Geode and a Treasure Chest to the Rainbow Nautilus at level 99. Each is a little molt on your desktop: out of the old shell, a shiver, into the new one. Pick any home you've grown into under **Outfits → Homes**.
@@ -35,7 +35,7 @@ Outfits, shells, trophies, XP, stickers and the cards you can share. Back to the
 
 Almost every level from 20 to 99 unlocks something (`src/main/progression/levels.js`, the whole table in `docs/GAMIFICATION-PLAN.md` section 2.3): a title or rank badge, one of 12 more shells (`src/main/progression/shells-extra.js`), one of 27 tank decor pieces or 19 effects (`src/wardrobe/depths.json`, gated `unlock: { level }`), a perk, a bigger tank or a quest chapter. A thin bar under the XP bar counts down to the next one ("Next: 🐚 Ammonite at Lv 32, 1,240 XP to go"); hover it for everything at that level, or open **Every level** for the whole ladder and the perks.
 
-- **Perks** are quality of life and looks only: a bigger rested pool (22), a bounty reroll (28), a fourth bounty (33), battle replays (38), two tide-outs a week (44), the reef forecast (52), golden jars (58), crew colours (66), foil cards (77) and a Wrapped deep-cuts slide (88).
+- **Perks** are quality of life and looks only: a bigger rested pool (22), a bounty reroll (28), a fourth bounty (33), two tide-outs a week (44), a foil edge on the Wrapped card (77) and a Wrapped deep-cuts slide (88). Battle replays (38), the reef forecast (52), golden jars (58) and crew colours (66) are listed on the ladder but not built yet: reaching those levels doesn't change anything so far.
 - **Milestones:** levels 20, 30, 40, 60, 70, 80 and 90 get a full-panel ceremony in the new rank's colour (the title writes itself, the unlock cards flip in); 50 and 99 are legendary, with a card to share and a journal entry. With reduced motion it's a still card.
 - Every gate reads **everLevel**, the highest level ever reached, so nothing is ever taken back.
 

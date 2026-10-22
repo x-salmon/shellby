@@ -32,7 +32,7 @@ The slides move on by themselves every few seconds. With motion turned down (Win
 
 ## The card
 
-**📸 Make the card** on the last slide draws a 1200 × 630 picture: Shellby as he's dressed now, in his tank, with the year, six tiles of its biggest numbers (XP and days together first, then the biggest of the rest), the year's nemesis and a badge for each Molt. From level 77 (the *card-foil* perk) it gets a gold foil edge.
+**📸 Make the card** on the last slide draws a 1200 × 630 picture: Shellby as he's dressed now, in his tank, with the year, six tiles of its numbers (XP and days together first, then the first four that aren't zero of bugs caught, pushes, tasks, levels gained, fixes held, nests cleared, medals, caught in review, day streak and new pieces, in that order), the year's nemesis and a badge for each Molt. From level 77 (the *card-foil* perk) it gets a gold foil edge.
 
 It's saved to **Pictures → Shellby** and copied to your clipboard, the same as the crab card, with buttons to post it to X or Bluesky. Making one counts for the **Show-Off** trophy.
 
