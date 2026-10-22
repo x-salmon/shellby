@@ -10,6 +10,10 @@
 
   // The notes Shellby leaves in a feed that are a glyph and a line: { icon, text },
   // or null for any other kind. compact: SB.compact, for token counts.
+  // Why a copy started where it did, when your checkout sat on a finished branch (worktrees.create).
+  const movedAside = item => item.left ? `. Your checkout was on ${item.left}, already all in ${item.base}, so it's on ${item.base} now`
+    : item.stuck ? `. ${item.stuck}` : '';
+
   function markFor(item, compact) {
     switch (item.kind) {
       case 'wt-in':
@@ -17,7 +21,7 @@
       case 'wt-out':
         return { icon: '⑂', text: item.removed ? 'Claude left its worktree and removed it' : 'Claude left its worktree and kept it' };
       case 'moved':
-        return { icon: '⑂', text: `Moved into its own copy before changing anything: branch ${item.branch} (from ${item.base})` };
+        return { icon: '⑂', text: `Moved into its own copy before changing anything: branch ${item.branch} (from ${item.base})${movedAside(item)}` };
       case 'phone':
         return { icon: '📱', text: 'Started from your phone, in Ask first: he asks before he changes anything' };
       case 'home':

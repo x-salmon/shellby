@@ -98,13 +98,15 @@ function createCopies(d) {
     history.update(tab.id, { cwd: w.cwd, worktree: w });
     d.log.info(`worktree: ${w.branch} for ${path.basename(w.root)}`);
     // from / cwd: the trail (shared/trail.js) finds what was done before the move in the copy.
-    manager.note(tab.id, { kind: 'moved', branch: w.branch, base: w.base, from, cwd: w.cwd });
+    // left / stuck: your checkout was on a finished branch (worktrees.create switched it to main, or couldn't).
+    manager.note(tab.id, { kind: 'moved', branch: w.branch, base: w.base, from, cwd: w.cwd, left: made.left?.from || null, stuck: made.stuck });
     manager.changed();
     // Its packages, if your checkout has them (worktrees/copy-deps.js), so its tests run straight away.
     const deps = await installCopyDeps(w);
     if (deps.error) d.log.info(`worktree: npm ci in the copy failed: ${deps.error}`);
     if (!manager.tabs.has(tab.id)) return; // closed while it installed
     carryOn(`Shellby has moved this conversation into its own copy of the repository, at ${w.path}, on branch ${w.branch}, started from ${w.base} at its last commit. `
+      + (made.left ? `(Your checkout was on ${made.left.from}, which is already all in ${made.left.to}, so Shellby switched it to ${made.left.to} first.) ` : '')
       + `Work there from now on: the project that was at ${w.root} is at ${w.path} in this copy, so use paths under it. `
       + depsSentence(deps, w)
       + 'Carry on with what you were about to do.');

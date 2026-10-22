@@ -9,6 +9,10 @@ const compact = n => `${Math.round(n / 1000)}k`;
 test('markFor words the notes Shellby leaves in a feed, with their glyphs', () => {
   assert.deepEqual(F.markFor({ kind: 'moved', branch: 'shellby/x', base: 'main' }, compact),
     { icon: '⑂', text: 'Moved into its own copy before changing anything: branch shellby/x (from main)' });
+  assert.equal(F.markFor({ kind: 'moved', branch: 'shellby/x', base: 'main', left: 'feat/done' }, compact).text,
+    "Moved into its own copy before changing anything: branch shellby/x (from main). Your checkout was on feat/done, already all in main, so it's on main now");
+  assert.match(F.markFor({ kind: 'moved', branch: 'shellby/x', base: 'feat/done', stuck: 'feat/done is already in main, but x' }, compact).text,
+    /\(from feat\/done\)\. feat\/done is already in main, but x$/);
   assert.equal(F.markFor({ kind: 'home', commits: 1, base: 'main' }, compact).text, 'Brought home: 1 commit merged into main');
   assert.equal(F.markFor({ kind: 'home', commits: 3, base: 'dev' }, compact).text, 'Brought home: 3 commits merged into dev');
   assert.equal(F.markFor({ kind: 'phone' }, compact).icon, '📱');

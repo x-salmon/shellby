@@ -267,8 +267,9 @@ function findSession({ configDir, sessionId, prefer = [] }) {
  *   home: the folder worktrees live under (%APPDATA%/Shellby/worktrees)
  *   start: the commit to start from (default HEAD), e.g. origin/main for work that becomes a pull request
  *   named: `title` is a name Claude gave the work, so commits may use it (never the start of your prompt)
- * -> { ok: true, worktree: { path, cwd, branch, base, root, originalCwd, named } } | { ok: false, error } | null (not a repo)
- * @returns {Promise<{ ok: true, worktree: Worktree } | { ok: false, error: string, detail?: string } | null>}
+ * -> { ok: true, worktree: { path, cwd, branch, base, root, originalCwd, named }, left, stuck } | { ok: false, error } | null (not a repo)
+ *   left: { from, to } when your checkout was switched off a finished branch; stuck: why it wasn't, when it should have been
+ * @returns {Promise<{ ok: true, worktree: Worktree, left: { from: string, to: string } | null, stuck: string | null } | { ok: false, error: string, detail?: string } | null>}
  */
 async function create(dir, { home, title, named = false, start = 'HEAD' }) {
   if (typeof dir !== 'string' || !path.isAbsolute(dir) || !fs.existsSync(dir)) return null;
@@ -285,8 +286,12 @@ async function create(dir, { home, title, named = false, start = 'HEAD' }) {
   if ((longPath(root) + path.sep).toLowerCase().startsWith(longPath(home).toLowerCase() + path.sep)) return null;
   const head = await git(root, ['rev-parse', '--verify', '--quiet', 'HEAD'], { timeout: 5000 });
   if (!head.ok) return { ok: false, error: 'That repository has no commits yet, so there is nothing to copy.' };
-  const base = await git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { timeout: 5000 });
-  if (!base.ok || !base.out.trim()) return { ok: false, error: 'Your checkout is not on a branch (detached HEAD), so there would be nowhere to bring it home to.' };
+  const on = await git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { timeout: 5000 });
+  if (!on.ok || !on.out.trim()) return { ok: false, error: 'Your checkout is not on a branch (detached HEAD), so there would be nowhere to bring it home to.' };
+  // A copy starts from your checkout's branch and comes home to it: one left
+  // on a branch that's already all in main would start every copy from there.
+  const left = start === 'HEAD' ? await leaveFinishedBranch(root, on.out.trim()) : null;
+  const base = left?.to || on.out.trim();
 
   if (start !== 'HEAD' && !REF.test(start)) return { ok: false, error: 'There is no such commit to start from.' };
   const branch = branchName(title);
@@ -305,7 +310,47 @@ async function create(dir, { home, title, named = false, start = 'HEAD' }) {
   if (!add.ok) return { ok: false, error: copyRefusal(add.error), detail: lastLines(add.error) || undefined };
   const rel = prefix.trim().replace(/\/$/, '');
   const cwd = rel ? path.join(wt, ...rel.split('/')) : wt;
-  return { ok: true, worktree: { path: wt, cwd: fs.existsSync(cwd) ? cwd : wt, branch, base: base.out.trim(), root, originalCwd: path.resolve(dir), named: !!named } };
+  return {
+    ok: true, worktree: { path: wt, cwd: fs.existsSync(cwd) ? cwd : wt, branch, base, root, originalCwd: path.resolve(dir), named: !!named },
+    left: left?.to ? { from: left.from, to: left.to } : null, stuck: left?.stuck || null,
+  };
+}
+
+/** The repository's main branch, as a local branch: what origin/HEAD names, else main, else master. */
+async function mainBranchOf(root) {
+  const head = await git(root, ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'], { timeout: 5000 });
+  const named = head.ok ? head.out.trim().replace(/^origin\//, '') : '';
+  const wanted = named && REF.test(named) ? [`refs/heads/${named}`] : ['refs/heads/main', 'refs/heads/master'];
+  const refs = await git(root, ['for-each-ref', '--format=%(refname:short)', ...wanted], { timeout: 5000 });
+  return refs.ok ? refs.out.split(/\r?\n/).map(s => s.trim()).find(Boolean) || null : null;
+}
+
+/**
+ * Your checkout is on a branch that's finished: everything on it is in the
+ * main branch, which has moved on since. Switch the checkout to main (the old
+ * branch stays), so a new copy starts from main and comes home there.
+ * Only with nothing uncommitted to carry across: otherwise it says why it stayed.
+ *   -> { from, to } switched | { from, stuck: sentence } couldn't | null (nothing to do)
+ * @returns {Promise<{ from: string, to?: string, stuck?: string } | null>}
+ */
+async function leaveFinishedBranch(root, current) {
+  const main = await mainBranchOf(root);
+  if (!main || main === current) return null;
+  const [ahead, behind] = await Promise.all([
+    git(root, ['rev-list', '--count', `${main}..${current}`], { timeout: 15000 }),
+    git(root, ['rev-list', '--count', `${current}..${main}`], { timeout: 15000 }),
+  ]);
+  // Work of its own, or a branch made off main a moment ago: it's in use.
+  if (!ahead.ok || !behind.ok || Number(ahead.out.trim()) !== 0 || !(Number(behind.out.trim()) > 0)) return null;
+  const stuck = why => ({ from: current, stuck: `${current} is already in ${main}, but ${why}` });
+  const dirty = await git(root, ['status', '--porcelain', '--untracked-files=no'], { timeout: 15000 });
+  if (!dirty.ok) return null;
+  if (dirty.out.trim()) return stuck(`your checkout has uncommitted changes, so it stays on ${current}`);
+  const sw = await git(root, [...NO_HOOKS, 'switch', '--quiet', '--no-guess', main], { timeout: 30000, env: { LC_ALL: 'C' } });
+  if (sw.ok) return { from: current, to: main };
+  const elsewhere = /already (?:checked out|used by worktree) at '([^']+)'/i.exec(sw.error);
+  if (elsewhere) return stuck(`${main} is open in another copy (${path.resolve(elsewhere[1])}), so your checkout can't switch to it`);
+  return stuck(`git couldn't switch your checkout to it: ${firstLine(sw.error) || 'it refused'}`);
 }
 
 /**

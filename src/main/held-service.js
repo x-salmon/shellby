@@ -248,7 +248,7 @@ function createHeldQueue(d) {
         if (h.model && !tab.session.proc) tab.session.model = h.model; // before its process starts (--model)
       }
       turnId = manager.send(tabId, prompt, { kind: 'user', text: prompt, title, queued: { id: h.id, name: h.name } });
-      if (copy) manager.note(tabId, { kind: 'moved', branch: copy.worktree.branch, base: copy.worktree.base });
+      if (copy) manager.note(tabId, { kind: 'moved', branch: copy.worktree.branch, base: copy.worktree.base, left: copy.left?.from || null, stuck: copy.stuck });
       if (h.fromPhone && !carryOn) d.adoptPhoneTab(tabId);
       else if (h.fromPhone && manager.tabs.get(tabId)) manager.tabs.get(tabId).fromPhone = true; // carrying on: noted when it started
       queueTabs.set(tabId, h.id);
