@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.94.0: Answers from your notifications
+
+### New
+- **Allow and Deny on your phone's notifications, on Android.** Turn it on in Settings → On your phone (off at first: Android can run them from a locked phone), and "He needs you" carries the two buttons and answers without opening the app, for the prompts the beach could answer with them. A read-only phone gets the notification without them, and if an answer doesn't go, a notification says why.
+- **Share into Shellby.** On Android, share a screenshot, a link or some text from any app to Shellby: New task opens with it, pictures and all, or **Keep it as a note** saves it for later.
+- **Pick the model for a task from your phone.** New task has a Model picker beside Mode, starting on the one your PC uses. A task waiting for the reset keeps its pick.
+- **Start a note as a task.** Each open note on your phone has **Start it**, which opens New task with the note in it, in its project.
+- **Look over my changes from your phone.** In More, or a conversation's Options: a read-only security review of what's uncommitted and unpushed, in Ask first, as at the desk.
+- **Keep awake.** A conversation on your phone can keep the screen on while it's open.
+- **Trophies on your phone.** More → Trophies shows his level, streak, today's bounties and recent XP.
+- **Shortcuts on the app icon.** Long-press Shellby on Android for New task, Queue and Notes.
+
+### Fixed
+- **The Foil cards perk says what it does.** At level 77 it's the Wrapped card that gets a gold foil edge, and the perk now says so instead of promising one on the crab card too.
+- Shellby on a tablet turns sideways now, into the wider layout, instead of staying upright.
+- With a screen reader, a new prompt and a conversation that just finished are read out on your phone as they happen.
+- The phone app tidies away files it no longer uses from its offline copy when it updates.
+- The beach on your phone no longer shows a stray "null" under him when nothing happened while you were away.
+- Notes on your phone line up on the left, instead of centred.
+- On your phone, a conversation that Claude Code is compacting now says "Tidying the conversation up", with the same glint running under it as at the desk, instead of a plain "Working".
+- Notes on your phone scroll again: the list no longer jumps back to the top each time your PC sends an update, and Routines, the Wardrobe, History and Files stay put too.
+- Ticking a note on your phone crosses it off where it sits, instead of whisking it away to the Done list at the bottom.
+
 ## 0.93.1: Phone search and one-tap answers
 
 ### New
