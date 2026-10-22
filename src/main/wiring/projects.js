@@ -188,7 +188,8 @@ function wireProjects(d) {
   // a copy nothing was ever sent from goes when its tab closes (dropUnsentCopy).
   // attachments(worktree): the files that go with the prompt, as a message sent
   // from the box would carry them (attachments.js), once the copy is known (tries).
-  async function startTaskInCopy(dir, title, promptFor, { mode = null, start = 'HEAD', copy = null, draft = false, attachments = null } = {}) {
+  // model: a model of its own (models.js), set before its first message.
+  async function startTaskInCopy(dir, title, promptFor, { mode = null, start = 'HEAD', copy = null, draft = false, attachments = null, model = null } = {}) {
     if (d.config.get('crabOnly') || !d.claudeStatus?.installed || !d.claudeStatus?.loggedIn) return { ok: false, needsClaude: true, error: 'That needs Claude Code: set it up first.' };
     let w = copy;
     if (!w) {
@@ -202,6 +203,7 @@ function wireProjects(d) {
     try {
       const tab = d.openTab({ tabId, title, mode, cwd: w.cwd });
       tab.worktree = w;
+      if (model) d.manager.setTabModel(tabId, model);
       const prompt = promptFor(w);
       // Where it started, so closing it unsent can tell nothing was done in it.
       if (draft) tab.unsentCopy = { head: (await worktrees.git(w.path, ['rev-parse', 'HEAD'], { timeout: 5000 })).out?.trim() || null };

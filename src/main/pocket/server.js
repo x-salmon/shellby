@@ -50,6 +50,8 @@ const ACTIONS = [
   'quiet',
   // pocket/talk.js
   'rename', 'effort', 'close', 'history', 'resume',
+  // wiring/pocket.js lookOver, pocket/extras.js progress
+  'look-over', 'progress',
 ];
 const MAX_UPLOAD = 6 * 1024 * 1024; // a photo for a task, made smaller on the phone first
 const UPLOAD_TYPES = ['image/jpeg', 'image/png'];
@@ -88,6 +90,7 @@ function routeTable(srcDir, assetsDir) {
     '/pocket-bits.js': app('pocket-bits.js'),
     '/pocket-find.js': app('pocket-find.js'),
     '/pocket-phone.js': app('pocket-phone.js'),
+    '/pocket-new.js': app('pocket-new.js'),
     '/sw.js': app('sw.js'),
     '/manifest.webmanifest': app('manifest.webmanifest'),
     // He's on the pairing screen before the PC has said which skin he wears.
@@ -283,6 +286,10 @@ class PocketServer extends EventEmitter {
     let url;
     try { url = new URL(String(req.url || '/'), 'http://x'); } catch { plain(res, 400, 'Bad address.'); return; }
     const route = url.pathname;
+    // Shared from another app before the service worker took over (it keeps
+    // what was shared, sw.js): the app opens on a new task all the same.
+    // Its body is never read: the connection closes behind the answer.
+    if (route === '/share' && req.method === 'POST') { res.writeHead(303, { Location: '/#/share', 'Cache-Control': 'no-store', Connection: 'close' }).end(() => req.destroy()); return; }
     if (!route.startsWith(`${API}/`)) { this.file(req, res, route); return; }
 
     const name = route.slice(API.length + 1);

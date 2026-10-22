@@ -2,8 +2,9 @@
 
      #/more              Guard my focus, and the way to everything below
      #/routines          routines (Run now, on/off) and workflows (Run now)
-     #/notes             a project's Notes: read, add, tick off
+     #/notes             a project's Notes: read, add, tick off, start one as a task
      #/wardrobe          what he can wear, and a pat on the head
+     #/trophies          his level, streak, today's bounties and recent XP, to look at
      #/files/<id>/<path> a conversation's folder, read-only, when allowed
 
    Each asks the PC when it opens (and after a change), rather than riding the
@@ -11,7 +12,7 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketMore = ({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet, canAct, lookOnly }) => {
+  root.PocketMore = ({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet, canAct, lookOnly, newTask, lookOver }) => {
     const FOCUS = [15, 25, 50];
 
     // A screen that loads from the PC: draw(data) once it answers, a crab while it doesn't.
@@ -68,13 +69,17 @@
       function update() {
         el.replaceChild(topbar(), el.firstChild);
         el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
-        scroll.replaceChildren(
+        scroll.replaceChildren(...[
           h('h2', { class: 'screen-title', text: 'More' }),
           focusCard(),
           link('#/routines', 'queue', 'Routines and workflows', 'Run one now, or turn a routine on or off.'),
           link('#/notes', 'note', 'Notes', 'Jot an idea down for a project.'),
           link('#/history', 'history', 'History', 'Pick up a conversation you closed.'),
-          link('#/wardrobe', 'shirt', 'Wardrobe', 'Dress him up, or give him a pat.'));
+          canAct() ? h('button', { type: 'button', class: 'card link-card', onclick: () => lookOver() },
+            h('span', { class: 'card-t' }, h('span', { class: 'card-title' }, icon('shield'), ' Look over my changes'), icon('chevron')),
+            h('span', { class: 'card-m', text: 'A read-only security review of what’s uncommitted and unpushed.' })) : null,
+          link('#/trophies', 'trophy', 'Trophies', 'His level, streak and today’s bounties.'),
+          link('#/wardrobe', 'shirt', 'Wardrobe', 'Dress him up, or give him a pat.')].filter(Boolean));
       }
       update();
       return { el, update, title: 'More' };
@@ -154,7 +159,12 @@
           const may = canAct();
           const row = n => {
             const tick = h('input', { type: 'checkbox', 'aria-label': n.done ? 'Not done' : 'Done', ...(n.done ? { checked: 'checked' } : {}), ...(may ? {} : { disabled: 'disabled' }) });
-            const el = h('label', { class: `note${n.done ? ' done' : ''}` }, tick, h('span', { class: 'note-text', text: n.text }), n.from === 'claude' ? h('span', { class: 'pill dim', text: 'Claude' }) : null);
+            // An idea for later, started now: New task with the note in it, in its project.
+            const start = may && !n.done ? h('button', {
+              type: 'button', class: 'note-go', 'aria-label': `Start it: ${n.text.slice(0, 60)}`,
+              onclick: e => { e.preventDefault(); e.stopPropagation(); newTask({ text: n.text, project: d.key }); },
+            }, icon('play'), h('span', { text: 'Start it' })) : null;
+            const el = h('label', { class: `note${n.done ? ' done' : ''}` }, tick, h('span', { class: 'note-text', text: n.text }), n.from === 'claude' ? h('span', { class: 'pill dim', text: 'Claude' }) : null, start);
             // Ticked where it sits: it moves to Done next time the list opens, not out from under you.
             tick.addEventListener('change', async () => {
               const r = await act('note-tick', { project: d.key, id: n.id, done: tick.checked });
@@ -205,6 +215,44 @@
       });
     }
 
+    // ---------------------------------------------------------------- trophies
+
+    // The Trophies page's XP card, to look at: the PC keeps every number.
+    function trophiesScreen() {
+      return loaded({
+        title: 'Trophies', name: 'progress',
+        draw: d => {
+          const pct = Math.round(d.progress * 100);
+          const level = h('div', { class: 'card xp-card' },
+            h('div', { class: 'card-t' }, h('span', { class: 'card-title', text: `Level ${d.level}${d.marks ? ` ★${d.marks}` : ''}` }), d.rank ? h('span', { class: 'pill', text: d.rank }) : null),
+            d.title ? h('p', { class: 'muted', text: d.title }) : null,
+            h('div', { class: 'bar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': pct, 'aria-label': 'XP to the next level' }, h('i', { class: `w${Math.min(100, Math.round(pct / 5) * 5)}` })),
+            h('p', { class: 'muted small', text: d.needed ? `${d.into.toLocaleString()} of ${d.needed.toLocaleString()} XP to level ${d.level + 1}` : 'At the top.' }),
+            d.unlock?.names?.length ? h('p', { class: 'small', text: `Level ${d.unlock.level} unlocks ${d.unlock.names.join(', ')}.` }) : null);
+          const streak = h('div', { class: 'card' },
+            h('div', { class: 'card-t' }, h('span', { class: 'card-title', text: 'Streak' }), h('span', { class: `pill ${d.streak.days ? '' : 'dim'}`, text: L.plural(d.streak.days, 'day') })),
+            h('p', { class: 'muted', text: d.streak.multiplier > 1 ? `×${d.streak.multiplier.toFixed(2)} on every XP while it lasts.` : 'A week in a row adds a bonus to every XP.' }));
+          const parts = [level, streak];
+          const b = d.bounties;
+          if (b.list.length) {
+            parts.push(h('h3', { class: 'sect' }, h('span', { text: 'Today’s bounties' }), h('b', { text: `${b.list.filter(x => x.done).length}/${b.list.length}` })));
+            for (const x of b.list) {
+              parts.push(h('div', { class: `card bounty${x.done ? ' done' : ''}` },
+                h('div', { class: 'card-t' }, h('span', { class: 'card-title', text: x.text }), h('span', { class: `pill ${x.done ? '' : 'dim'}`, text: x.done ? '✓' : `${x.count}/${x.goal}` })),
+                h('span', { class: 'card-m muted', text: `+${x.xp} XP` })));
+            }
+            parts.push(h('p', { class: 'muted small pad', text: b.cleared ? `All done today: +${b.bonus} XP.` : `Clear them all for +${b.bonus} XP more.` }));
+          }
+          if (d.recent.length) {
+            parts.push(h('h3', { class: 'sect' }, h('span', { text: 'Lately' })));
+            parts.push(h('ul', { class: 'plain xp-log' }, ...d.recent.map(x => h('li', {}, h('span', { class: 'add', text: `+${x.xp}` }), ' ', h('span', { text: x.label }), x.at ? h('span', { class: 'muted small', text: ` · ${L.ago(x.at)}` }) : null))));
+          }
+          parts.push(h('p', { class: 'fine', text: `${d.total.toLocaleString()} XP in all. The rest of his trophies are on your PC.` }));
+          return parts;
+        },
+      });
+    }
+
     // ---------------------------------------------------------------- files
 
     function filesScreen(tabId, rel) {
@@ -250,6 +298,6 @@
       });
     }
 
-    return { moreScreen, routinesScreen, notesScreen, wardrobeScreen, filesScreen, historyScreen, loaded };
+    return { moreScreen, routinesScreen, notesScreen, wardrobeScreen, trophiesScreen, filesScreen, historyScreen, loaded };
   };
 })(window);

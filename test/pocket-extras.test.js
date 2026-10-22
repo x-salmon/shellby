@@ -97,3 +97,28 @@ test('a whole drive is too wide to browse', async () => {
   const { x } = extrasFor({ root: path.parse(os.tmpdir()).root });
   assert.match((await x.actions.files({ tabId: 't1', dir: '' })).error, /too wide/);
 });
+
+test('his progress goes to the phone as the XP card draws it, clipped, and a phone may only look', () => {
+  const { phoneProgress } = require('../src/main/pocket/extras');
+  const v = phoneProgress({
+    level: 12, marks: 0, title: 'Tide Runner', rank: { name: 'Coral', color: '#f00' }, into: 40, needed: 200, progress: 0.2, total: 5400, xp: 5400,
+    streak: { days: 9, multiplier: 1.05, restDays: [0, 6] },
+    bounties: { list: [{ id: 'b1', text: 'Pass the tests twice', xp: 30, goal: 2, count: 1, done: false }], cleared: false, bonus: 50, canReroll: true },
+    unlock: { level: 15, xpToGo: 900, unlocks: [{ kind: 'title', icon: '🏷️', name: 'Reef Warden' }] },
+    log: Array.from({ length: 12 }, (_, i) => ({ at: i, kind: 'tests', xp: 10, label: 'x'.repeat(500), project: 'C:\\secret\\project' })),
+    character: { stats: {} },
+  });
+  assert.equal(v.level, 12);
+  assert.equal(v.rank, 'Coral');
+  assert.deepEqual(v.streak, { days: 9, multiplier: 1.05 });
+  assert.deepEqual(v.bounties.list, [{ text: 'Pass the tests twice', xp: 30, count: 1, goal: 2, done: false }]);
+  assert.deepEqual(v.unlock, { level: 15, xpToGo: 900, names: ['🏷️ Reef Warden'] });
+  assert.equal(v.recent.length, 8);
+  assert.equal(v.recent[0].label.length, 120);
+  assert.ok(!JSON.stringify(v).includes('secret'), 'no project paths');
+  assert.equal(v.character, undefined);
+  assert.equal(phoneProgress(null), null);
+  const r = require('../src/main/pocket/rights');
+  assert.equal(r.refuse({ rights: 'readonly' }, 'progress'), null);
+  assert.ok(r.refuse({ rights: 'readonly' }, 'look-over'));
+});

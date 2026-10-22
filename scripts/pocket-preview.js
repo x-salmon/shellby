@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { PocketServer } = require('../src/main/pocket/server');
 const view = require('../src/main/pocket/view');
+const { MODELS } = require('../src/main/models');
 
 const ROOT = path.join(__dirname, '..');
 const arg = (name, fallback) => {
@@ -110,7 +111,8 @@ const currentView = () => view.phoneView({
   pc: 'desk-pc', tabs, prompts, extras, held, projects, skin,
   crab: { state: prompts.length ? 'asking' : tabs.some(t => t.busy) ? 'working' : 'idle', say: null, crew: [{ label: 'mapping tab-sort callers', type: 'Explore' }, { label: 'writing tests', type: 'test-writer' }] },
   lastUsage: { fiveHour: { pct: 42, resetsAt: Date.now() + 2 * 60 * min } },
-  limits: { perHour: 10, atOnce: 3, open: 1 },
+  limits: { perHour: 30, atOnce: 10, open: 1 },
+  models: MODELS, model: 'sonnet',
   now: Date.now(),
 });
 
@@ -177,6 +179,17 @@ async function onAction(device, name, body) {
   }
   if (name === 'reply') { emit(body.tabId, { kind: 'user', text: body.text }); return { ok: true }; }
   if (name === 'push') return { ok: false, error: 'The preview has no push service.' };
+  if (name === 'look-over') return onAction(device, 'task', { text: 'Look over shellby', project: body.project || 'C:\\code\\shellby' });
+  if (name === 'notes') return { ok: true, key: 'C:\\code\\shellby', lists: [{ key: 'general', name: 'General', open: 0 }, { key: 'C:\\code\\shellby', name: 'shellby', open: 2 }], notes: [{ id: 'n1', text: 'Make the queue screen show the weekly window too', done: false, from: 'you' }, { id: 'n2', text: 'Flaky: e2e-voice on a slow runner', done: false, from: 'claude' }] };
+  if (name === 'progress') {
+    return {
+      ok: true, level: 23, marks: 0, title: 'Tide Runner', rank: 'Coral', into: 640, needed: 1100, progress: 0.58, total: 18420,
+      streak: { days: 12, multiplier: 1.05 },
+      bounties: { list: [{ text: 'Pass the tests twice', xp: 30, count: 2, goal: 2, done: true }, { text: 'Bring a copy home', xp: 40, count: 0, goal: 1, done: false }, { text: 'Answer three prompts', xp: 25, count: 1, goal: 3, done: false }], cleared: false, bonus: 50 },
+      unlock: { level: 25, xpToGo: 1460, names: ['🏷️ Reef Warden'] },
+      recent: [{ at: Date.now() - 4 * min, xp: 30, label: 'Tests passed in shellby' }, { at: Date.now() - 50 * min, xp: 60, label: 'Brought a copy home' }, { at: Date.now() - 3 * 60 * min, xp: 30, label: 'Bounty: Pass the tests twice' }],
+    };
+  }
   if (name === 'forget') return { ok: true };
   return { ok: false, error: 'unknown' };
 }

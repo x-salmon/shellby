@@ -4,7 +4,7 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, go, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, canAct, lookOnly, checksCard }) => {
+  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, go, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, canAct, lookOnly, wake, checksCard }) => {
     // ---------------------------------------------------------------- a transcript, drawn
 
     const GLYPH = { running: '◌', ok: '✓', error: '✕', stopped: '⊘' };
@@ -59,7 +59,22 @@
 
     const EFFORTS = [['', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
 
-    // Its name, its effort and closing it: what the desk's tab menu has.
+    // Keep awake: the screen stays on while this conversation is open, for every
+    // conversation after it too, until it's turned off (pocket-bits.js wake).
+    function awakeButton() {
+      if (!wake?.can()) return null;
+      const b = h('button', { type: 'button', class: 'btn ghost slim', 'aria-pressed': wake.wanted() ? 'true' : 'false' }, icon('sun'), h('span', { class: 'btn-label', text: 'Keep awake' }));
+      b.addEventListener('click', async () => {
+        const on = b.getAttribute('aria-pressed') !== 'true';
+        const held = await wake.set(on, true);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        if (on && !held) toast('This phone won’t keep its screen on just now.', { tone: 'warn' });
+        else toast(on ? 'The screen stays on while a conversation is open.' : 'The screen sleeps as usual again.');
+      });
+      return b;
+    }
+
+    // Its name, its effort, a look over its changes and closing it: what the desk's tab menu has.
     function tabMenu(tabId, t) {
       return { label: 'This conversation', build: close => {
         const name = h('input', { class: 'name-in', type: 'text', value: t.title, maxlength: '120', 'aria-label': 'Name', enterkeyhint: 'done' });
@@ -70,6 +85,15 @@
         const effort = h('select', { class: 'mode-pick', 'aria-label': 'Effort' }, ...EFFORTS.map(([value, text]) => h('option', { value, text })));
         effort.value = t.effort || '';
         effort.addEventListener('change', () => act('effort', { tabId, effort: effort.value }, { okText: 'Set. It counts from his next turn.' }));
+        // The desk's shield, on this conversation's own folder: its copy's branch when it has one.
+        const lookKey = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+        const look = actButton({
+          label: 'Look over these changes', cls: 'ghost', iconName: 'shield',
+          run: async () => {
+            const r = await act('look-over', { tabId, key: lookKey }, { okText: 'He’s reading it over.', timeoutMs: 60000 });
+            if (r.ok) { close(); if (r.tabId) go(`#/tab/${encodeURIComponent(r.tabId)}`); }
+          },
+        });
         const shut = actButton({
           label: 'Close this conversation', cls: 'danger-ghost',
           run: () => confirmSheet({
@@ -82,6 +106,8 @@
           h('div', { class: 'field' }, h('span', { text: 'Name' }), h('div', { class: 'reply' }, name, rename)),
           h('label', { class: 'mode-row' }, h('span', { text: 'Effort' }), effort),
           h('p', { class: 'rule' }, icon('shield'), h('span', { text: 'In the reply box, /compact, /context and /goal work from here. Other commands run at the desk.' })),
+          look,
+          h('p', { class: 'muted small', text: 'A read-only security review of what’s uncommitted and unpushed here, in a new conversation in Ask first.' }),
           shut) };
       } };
     }
@@ -143,7 +169,9 @@
         // The whole branch against where it started: what Bring it home would bring (pocket-find.js).
         if (t.copy) tools.push(h('a', { class: 'btn ghost slim', href: `#/branch/${encodeURIComponent(tabId)}` }, icon('files'), h('span', { class: 'btn-label', text: 'See everything' })));
         if (['review', 'finished'].includes(t.standing) && t.outcome !== 'error') tools.push(h('button', { type: 'button', class: 'btn ghost slim', onclick: () => shareTurn(t) }, icon('share'), h('span', { class: 'btn-label', text: 'Share' })));
-        if (canAct()) tools.push(h('button', { type: 'button', class: 'btn ghost slim', 'aria-label': 'Rename, effort or close', onclick: () => openSheet(tabMenu(tabId, t)) }, icon('more'), h('span', { class: 'btn-label', text: 'Options' })));
+        if (canAct()) tools.push(h('button', { type: 'button', class: 'btn ghost slim', 'aria-label': 'Rename, effort, look over or close', onclick: () => openSheet(tabMenu(tabId, t)) }, icon('more'), h('span', { class: 'btn-label', text: 'Options' })));
+        const awake = awakeButton();
+        if (awake) tools.push(awake);
         header.replaceChildren(h('h2', { class: 'tab-title', text: t.title }), h('div', { class: 'chips' }, ...chips), h('div', { class: 'tab-tools' }, ...tools), checksCard?.(tabId, t) || '');
       }
 

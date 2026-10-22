@@ -630,3 +630,43 @@ test('the view the phone gets has the prompts, the projects and the push key, ne
     assert.equal(view.pc, 'desk-pc');
   } finally { stop(w); }
 });
+
+test('a task from the phone starts on the model picked, or the desk’s own, and never on one Shellby doesn’t know', async () => {
+  const w = await paired();
+  try {
+    const act = body => w.d.pocket.onAction(w.device, 'task', body);
+    assert.match((await act({ project: PROJECT, text: 'Fix it', model: 'gpt-9' })).error, /doesn't know that model/);
+    assert.equal(w.of('startTaskInCopy').length, 0);
+    await act({ project: PROJECT, text: 'Fix it', model: 'sonnet' });
+    await act({ project: PROJECT, text: 'Fix it again', model: '' });
+    assert.deepEqual(w.of('startTaskInCopy').map(c => c[3]), [{ mode: 'ask', model: 'sonnet' }, { mode: 'ask' }]);
+    // At the limit it waits for the reset, and keeps its model for then.
+    w.d.usageService.limitWait = () => ({ at: Date.now() + 60000 });
+    await act({ project: PROJECT, text: 'Later', model: 'haiku' });
+    assert.equal(w.of('holdForReset')[0][0].model, 'haiku');
+    const view = w.d.pocket.onOpen(w.device, { tab: null }).view;
+    assert.ok(view.models.some(m => m.id === 'sonnet' && m.label));
+  } finally { stop(w); }
+});
+
+test('Look over my changes from the phone reviews a repo in Ask first, and a read-only phone can’t ask for it', async () => {
+  // This checkout is a git repository: a conversation working in it can be looked over.
+  const w = await paired({ tabs: [tabOf('t1', { session: { pending: new Map(), mode: 'acceptEdits', cwd: ROOT, busy: false } })] });
+  try {
+    const started = [];
+    w.d.startTask = (prompt, title, opts) => { started.push({ prompt, title, opts }); w.d.manager.tabs.set('rev1', tabOf('rev1')); return { ok: true, tabId: 'rev1' }; };
+    const act = body => w.d.pocket.onAction(w.device, 'look-over', body);
+    assert.match((await act({ tabId: 'gone' })).error, /has closed/);
+    assert.match((await act({ project: 'C:\\elsewhere' })).error, /isn't one Shellby knows/);
+    assert.match((await act({ project: PROJECT })).error, /isn't a git repository/);
+    assert.equal(started.length, 0);
+    assert.deepEqual(await act({ tabId: 't1' }), { ok: true, tabId: 'rev1' });
+    assert.equal(started[0].opts.mode, 'ask', 'whatever the conversation’s own mode');
+    assert.match(started[0].prompt, /Read only: don't edit/);
+    assert.match(started[0].title, /^Look over /);
+    assert.equal(w.d.manager.tabs.get('rev1').fromPocket, true);
+    await w.d.setPocket({ device: { id: w.device.id, rights: 'readonly' } });
+    assert.match((await act({ tabId: 't1' })).error, /can only look/);
+    assert.equal(started.length, 1);
+  } finally { stop(w); }
+});

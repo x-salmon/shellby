@@ -51,6 +51,8 @@ function loadCore({ storage, search = '' } = {}) {
   // The page's address: a popped-out conversation's window says which tab it shows (?popout=).
   const context = vm.createContext({
     window, document, location: { search }, URLSearchParams,
+    // The tooltips watch for titles set again (core.js tooltips); nothing here changes one.
+    MutationObserver: class { observe() {} disconnect() {} },
     setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout, Date: globalThis.Date,
   });
   vm.runInContext(CORE, context, { filename: 'core.js' });

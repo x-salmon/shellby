@@ -8,6 +8,7 @@
 //   wardrobe   what he can wear, and putting it on; a pat on the head
 //   files      a conversation's folder, read-only, when you've allowed it
 //   photos     a picture for a new task, kept a little while until it's used
+//   progress   his level, streak, today's bounties and recent XP (the Trophies page's XP card), to look at
 //
 // Nothing here takes a path from the phone. A folder is named by its
 // conversation, a file by where it sits inside that folder, and both are
@@ -39,6 +40,30 @@ const ok = extra => ({ ok: true, ...extra });
 const no = error => ({ ok: false, error });
 const str = (v, n = 200) => (typeof v === 'string' && v.length > 0 && v.length <= n ? v : null);
 const clip = (s, n) => String(s ?? '').slice(0, n);
+const num = v => (Number.isFinite(v) ? v : 0);
+const nameOf = v => clip(typeof v === 'string' ? v : v?.name, 60);
+
+/**
+ * The XP card for a phone (wiring/progress.js xpView): only what it draws,
+ * clipped. Recent XP keeps its label, which can name a project or a test, as
+ * the desk's card does; project paths and the character sheet stay on the PC. Pure.
+ */
+function phoneProgress(v) {
+  if (!v || typeof v !== 'object') return null;
+  const b = v.bounties && typeof v.bounties === 'object' ? v.bounties : {};
+  const u = v.unlock && typeof v.unlock === 'object' ? v.unlock : null;
+  return {
+    level: num(v.level), marks: num(v.marks), title: nameOf(v.title), rank: nameOf(v.rank),
+    into: num(v.into), needed: num(v.needed), progress: Math.min(1, Math.max(0, num(v.progress))), total: num(v.total),
+    streak: { days: num(v.streak?.days), multiplier: num(v.streak?.multiplier) || 1 },
+    bounties: {
+      list: (Array.isArray(b.list) ? b.list : []).slice(0, 4).map(x => ({ text: clip(x?.text, 120), xp: num(x?.xp), count: num(x?.count), goal: num(x?.goal), done: x?.done === true })),
+      cleared: b.cleared === true, bonus: num(b.bonus),
+    },
+    unlock: u ? { level: num(u.level), xpToGo: num(u.xpToGo), names: (Array.isArray(u.unlocks) ? u.unlocks : []).slice(0, 4).map(x => clip(`${x?.icon ? `${x.icon} ` : ''}${x?.name || ''}`, 60)).filter(Boolean) } : null,
+    recent: (Array.isArray(v.log) ? v.log : []).slice(0, 8).map(x => ({ at: num(x?.at), xp: num(x?.xp), label: clip(x?.label, 120) })),
+  };
+}
 
 /**
  * d: what main shares. allowed(key): whether Settings lets the phone do it.
@@ -250,12 +275,19 @@ function createPocketExtras(d, { allowed, tabRoot, now = Date.now }) {
     return out;
   }
 
+  // ---- his progress, to look at
+
+  function progress() {
+    const v = phoneProgress(d.xpView?.());
+    return v ? ok(v) : no('His XP card isn’t ready yet. Try again in a moment.');
+  }
+
   const actions = {
     focus, routines, 'routine-run': runRoutine, 'routine-toggle': toggleRoutine, 'workflow-run': runWorkflow,
     notes: projectNotes, 'note-add': addNote, 'note-tick': tickNote,
-    wardrobe, wear, pet, files, file: readFile,
+    wardrobe, wear, pet, files, file: readFile, progress,
   };
   return { actions, savePhoto, takePhotos };
 }
 
-module.exports = { createPocketExtras, FOCUS_LENGTHS, SECRET, SKIP_DIRS, MAX_READ };
+module.exports = { createPocketExtras, phoneProgress, FOCUS_LENGTHS, SECRET, SKIP_DIRS, MAX_READ };

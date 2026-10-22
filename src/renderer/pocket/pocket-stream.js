@@ -17,8 +17,19 @@
   const token = () => store.get(TOKEN_KEY);
   // Safari wipes a site's storage after seven days unvisited unless it's persisted.
   const keep = () => { try { navigator.storage?.persist?.().catch(() => {}); } catch { /* not offered */ } };
-  const setToken = t => { store.set(TOKEN_KEY, t); if (t) keep(); };
-  if (store.get(TOKEN_KEY)) keep();
+  // A copy for the service worker (sw.js), which can't read localStorage: a
+  // notification's Allow and Deny answer with it while the app is closed.
+  const KEY_CACHE = 'shellby-pocket-key';
+  async function mirror(t) {
+    try {
+      const c = await root.caches?.open(KEY_CACHE);
+      if (!c) return;
+      if (t) await c.put('/__key', new Response(t, { headers: { 'content-type': 'text/plain' } }));
+      else await c.delete('/__key');
+    } catch { /* buttons on a notification open the app instead */ }
+  }
+  const setToken = t => { store.set(TOKEN_KEY, t); mirror(t); if (t) keep(); };
+  if (store.get(TOKEN_KEY)) { keep(); mirror(store.get(TOKEN_KEY)); }
 
   async function call(method, name, body, { timeoutMs = 20000 } = {}) {
     const headers = { Accept: 'application/json' };

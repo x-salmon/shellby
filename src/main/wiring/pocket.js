@@ -6,7 +6,7 @@
 //
 // The phone does what the desk does, through the same functions, under the
 // phone's rules (docs/PHONE.md): nothing deskOnlyReason flags but a Deny, tasks in the mode
-// picked at most 10 an hour and 3 at once, and nothing at all from a phone set
+// and on the model picked, at most 30 an hour and 10 at once, and nothing at all from a phone set
 // to read-only at the desk (pocket/rights.js).
 const { app, safeStorage } = require('electron');
 const path = require('path');
@@ -17,6 +17,7 @@ const pt = require('../channels/phone-tasks');
 const { appDeskOnlyReason } = require('../channels/replies');
 const { EVENTS } = require('../channels/messages');
 const { MODES: PHONE_MODES } = require('../config');
+const { MODELS, isModel } = require('../models');
 const { qrRows } = require('../qr');
 
 // The app is paired to this PC, so it gets more room than Telegram or ntfy (pt.MAX_OPEN).
@@ -35,6 +36,7 @@ const quiet = require('../pocket/quiet');
 const { createPocketDevices } = require('../pocket/devices');
 const rights = require('../pocket/rights');
 const { createPocketTalk } = require('../pocket/talk');
+const { createLookOver } = require('../pocket/look-over');
 
 const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
 const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
@@ -47,7 +49,8 @@ const EVENT_LABELS = Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [
 // Off until you tick them in Settings → On your phone:
 //   push:      push a conversation's branch after bringing it home
 //   files:     read a conversation's files, read-only
-const ALLOW_KEYS = ['push', 'files'];
+//   notifyAnswers: Allow and Deny on a prompt's notification (Android), which can work from a locked phone
+const ALLOW_KEYS = ['push', 'files', 'notifyAnswers'];
 
 // Another port for a dev run beside an installed Shellby, or 0 for whichever is free (the tests).
 function portFromEnv(raw) {
@@ -257,6 +260,7 @@ function wirePocket(d) {
       pushKey: vapid?.publicKey || null,
       allow: settings().allow,
       mode: d.config.get('mode'),
+      models: MODELS, model: d.config.get('model') || null,
       focus: d.focusState?.() || null,
       guard: guard.settingsOf(k => d.config.get(k)),
       quiet: settings().quiet,
@@ -351,6 +355,7 @@ function wirePocket(d) {
       case 'push': return setPush(device, body);
       case 'forget': return forget(device.id, 'You forgot this phone.');
       case 'quiet': return setQuiet(body);
+      case 'look-over': return lookOver(body || {});
       default: {
         if (Object.prototype.hasOwnProperty.call(talk.actions, name)) return talk.actions[name](body || {});
         const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
@@ -381,34 +386,36 @@ function wirePocket(d) {
   // only where a reply could: anywhere but a terminal (pocket/answers.js).
   const mayWriteTo = tab => !tab?.inTerminal;
 
-  function task(body) {
-    const key = typeof body?.key === 'string' && KEY.test(body.key) ? body.key : null;
+  // A task or a look-over asked again with the same key gets the first one's answer.
+  function once(kind, body, start) {
+    const key = typeof body?.key === 'string' && KEY.test(body.key) ? `${kind}-${body.key}` : null;
     if (key && sent.has(key)) return sent.get(key);
-    const answer = startTask(body);
-    if (key) {
-      sent.set(key, answer);
-      while (sent.size > 50) sent.delete(sent.keys().next().value);
-    }
+    const answer = start(body);
+    if (key) sent.set(key, answer);
+    while (sent.size > 50) sent.delete(sent.keys().next().value);
     return answer;
   }
+  const task = body => once('task', body, startTask);
 
-  async function startTask({ project, text, mode, photos }) {
+  async function startTask({ project, text, mode, photos, model }) {
     const runAs = modeOf(mode);
     if (modeBlocked(runAs)) return no(AUTONOMOUS_OFF);
+    // '' or none: the desk's own model. Anything else must be one models.js lists.
+    const on = typeof model === 'string' && model ? model : null;
+    if (on && !isModel(on)) return no("Shellby doesn't know that model. Pick one from the list.");
     const prompt =pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!prompt) return no('Say what you want done first.');
     if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
     const target = projects().find(p => p.key === project);
     if (!target) return no("That project isn't one Shellby knows. Pick one from the list.");
     const now = Date.now();
-    const gate = pt.startGate({ starts, open: openCount(), now, maxOpen: APP_MAX_OPEN, perHour: APP_STARTS_PER_HOUR });
+    const gate = claimStart(now);
     if (!gate.ok) return no(gate.reply);
-    starts = [...pt.recent(starts, now), now];
     // At the limit, or past what you keep for yourself: it waits for the reset.
     const w = d.usageService?.limitWait();
     const usage = d.config.get('lastUsage');
     if (w || guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), usage, now)) {
-      const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: runAs, fromPhone: true });
+      const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: runAs, fromPhone: true, ...(on ? { model: on } : {}) });
       if (!held.ok) return no(`Couldn't queue it: ${held.error}`);
       d.sendOutlook?.();
       pushView();
@@ -421,8 +428,8 @@ function wirePocket(d) {
     starting++;
     let r;
     try {
-      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: runAs, ...(files.length ? { attachments: () => files } : {}) });
-      if (!r.ok && r.noCopy) r = d.startTask(files.length && d.composePrompt ? d.composePrompt(prompt, files) : prompt, title, { mode: runAs, cwd: target.key });
+      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: runAs, ...(on ? { model: on } : {}), ...(files.length ? { attachments: () => files } : {}) });
+      if (!r.ok && r.noCopy) r = d.startTask(files.length && d.composePrompt ? d.composePrompt(prompt, files) : prompt, title, { mode: runAs, cwd: target.key, ...(on ? { model: on } : {}) });
       if (r.ok) adopt(r.tabId);
     } finally { starting--; }
     if (!r.ok) return no(r.error || "Couldn't start it.");
@@ -430,6 +437,17 @@ function wirePocket(d) {
     pushView();
     return ok({ tabId: r.tabId });
   }
+
+  // A place under the phone's limits, taken: { ok } or { ok: false, reply }.
+  function claimStart(now = Date.now()) {
+    const gate = pt.startGate({ starts, open: openCount(), now, maxOpen: APP_MAX_OPEN, perHour: APP_STARTS_PER_HOUR });
+    if (gate.ok) starts = [...pt.recent(starts, now), now];
+    return gate;
+  }
+
+  // Look over my changes (pocket/look-over.js).
+  const startLookOver = createLookOver(d, { projects: () => projects(), claimStart, adopt: id => adopt(id), pushView: () => pushView() });
+  const lookOver = body => once('look', body, startLookOver);
 
   // What the phone picked, from the desk's own list; anything else is Ask (pt.MODE).
   const modeOf = m => (PHONE_MODES.includes(m) ? m : pt.MODE);

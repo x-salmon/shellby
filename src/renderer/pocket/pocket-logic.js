@@ -398,8 +398,30 @@
       const dir = String(hash).endsWith('/') || !rest.length;
       return { name: 'files', tabId: parts[1], path: rest.join('/') + (dir && rest.length ? '/' : '') };
     }
-    if (['queue', 'phone', 'new', 'more', 'routines', 'notes', 'wardrobe', 'find', 'history', 'project-history'].includes(parts[0])) return { name: parts[0] };
+    // share: what another app shared (the service worker keeps it); trophies: his XP card.
+    if (['queue', 'phone', 'new', 'share', 'more', 'routines', 'notes', 'wardrobe', 'trophies', 'find', 'history', 'project-history'].includes(parts[0])) return { name: parts[0] };
     return { name: 'beach' };
+  }
+
+  /**
+   * What a screen reader should hear when the view changes: a prompt that's
+   * new since the last view, and a conversation that just finished (working
+   * to review or finished). Nothing on the first view: that's just opening the app.
+   */
+  function announcements(prev, next) {
+    if (!prev || !next) return [];
+    const out = [];
+    const had = new Set((prev.prompts || []).map(p => p.requestId));
+    const fresh = (next.prompts || []).filter(p => !had.has(p.requestId));
+    if (fresh.length === 1) out.push(`He needs you: ${fresh[0].title}.`);
+    else if (fresh.length > 1) out.push(`${fresh.length} prompts need you.`);
+    for (const t of next.tabs || []) {
+      const was = (prev.tabs || []).find(x => x.id === t.id);
+      if (was?.standing !== 'working' || !['review', 'finished'].includes(t.standing)) continue;
+      if (t.outcome === 'error') out.push(`${t.title} hit a problem.`);
+      else if (t.outcome !== 'stopped') out.push(`${t.title} is done.`);
+    }
+    return out;
   }
 
   const TAP_FRESH_MS = 2 * 60 * 1000;
@@ -432,7 +454,7 @@
   }
 
   const api = {
-    STANDING, ago, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
+    STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
     markdown, modeLabel, parsePatch, plural, route, sections, sseParser, tappedHash, tokens,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

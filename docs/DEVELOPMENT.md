@@ -660,10 +660,12 @@ src/renderer/    critter + panel UIs (plain HTML/CSS/JS, no framework)
                    (pure, with node:test coverage: the stream, a transcript folded for drawing, markdown as plain runs, a diff,
                    the beach's words) · pocket-stream (the token, the reconnecting stream, the API) · pocket-draw (elements from
                    text only, the crab from shared/sprite.js, a diff) · pocket (the beach, the queue, this phone, pairing, sheets)
-                   · pocket-tab (one conversation and a turn's diff) · pocket-more (focus, routines, notes, the wardrobe, files)
-                   · pocket-find (search, a project's history, a closed conversation, the whole branch, the checks card, the
-                   "while you were away" card) · pocket-phone (one prompt from its notification, the quiet hours card)
-                   · sw.js (the offline shell, push and taps on notifications)
+                   · pocket-tab (one conversation and a turn's diff) · pocket-more (focus, routines, notes, the wardrobe,
+                   trophies, files) · pocket-find (search, a project's history, a closed conversation, the whole branch, the
+                   checks card, the "while you were away" card) · pocket-phone (one prompt from its notification, the quiet
+                   hours card) · pocket-new (the mode and model pickers, New task, Look over my changes) · pocket-bits
+                   (questions and plans, sharing, photos, what another app shared, keeping the screen on) · sw.js (the
+                   offline shell, push, taps and Allow/Deny on notifications, shares from other apps)
   dialog/          the themed confirmation window, isolated: the panel can't script it, and main takes an answer only from it
   floor/           the floor beside him (src/main/desktop/floor.js): his pals and footprints; colony-brain.js decides what the pals do (pure)
   note/            a note he hauled onto your screen (src/main/pranks.js); a click crumples it up

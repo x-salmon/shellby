@@ -252,3 +252,13 @@ test('a port already in use says busy', async () => {
     assert.equal(second.status, 'busy');
   } finally { server.stop(); second.stop(); }
 });
+
+test('a share that arrives before the service worker opens the app on a new task', async () => {
+  const { server, port } = await boot();
+  try {
+    const r = await request(port, { method: 'POST', url: '/share', headers: { 'Content-Type': 'multipart/form-data; boundary=x' }, body: '--x--' });
+    assert.equal(r.status, 303);
+    assert.equal(r.headers.location, '/#/share');
+    assert.equal((await request(port, { method: 'POST', url: '/share/../pocket.js' })).status, 405);
+  } finally { server.stop(); }
+});

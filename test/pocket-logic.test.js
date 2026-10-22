@@ -181,3 +181,21 @@ test('Settings: the line under the switch, and the code’s time left', () => {
   assert.equal(T.pocketCodeHint({ expiresAt: 1000 + 4 * 60 * 1000, triesLeft: 5 }, 1000), 'Type it into Shellby on your phone. 4 min left.');
   assert.equal(T.pocketCodeHint({ expiresAt: 1000 + 30 * 1000, triesLeft: 2 }, 1000), 'Type it into Shellby on your phone. 30s left, 2 tries left.');
 });
+
+test('a share and the Trophies screen have routes of their own', () => {
+  assert.deepEqual(L.route('#/share'), { name: 'share' });
+  assert.deepEqual(L.route('#/trophies'), { name: 'trophies' });
+  assert.deepEqual(L.route('#/new'), { name: 'new' });
+});
+
+test('a screen reader hears a new prompt and a conversation that just finished, not the first view', () => {
+  const prompt = (id, title) => ({ requestId: id, tabId: 't1', title });
+  const tab = (id, standing, outcome = null) => ({ id, title: `Tab ${id}`, standing, outcome });
+  const before = { prompts: [prompt('r1', 'Fix the test')], tabs: [tab('a', 'working'), tab('b', 'working'), tab('c', 'working'), tab('d', 'review')] };
+  assert.deepEqual(L.announcements(null, before), []);
+  assert.deepEqual(L.announcements(before, before), []);
+  const after = { prompts: [prompt('r1', 'Fix the test'), prompt('r2', 'Ship it')], tabs: [tab('a', 'review'), tab('b', 'finished', 'error'), tab('c', 'finished', 'stopped'), tab('d', 'review')] };
+  assert.deepEqual(L.announcements(before, after), ['He needs you: Ship it.', 'Tab a is done.', 'Tab b hit a problem.']);
+  const two = { ...before, prompts: [prompt('r3', 'x'), prompt('r4', 'y')] };
+  assert.deepEqual(L.announcements({ ...before, prompts: [] }, two), ['2 prompts need you.']);
+});

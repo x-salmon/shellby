@@ -40,7 +40,7 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **Questions and plans** open in a sheet. A question shows its options as buttons, with a box for your own answer, and **Skip** lets him carry on with his best judgement. A plan shows in full, and **Approve** stays shut until you've scrolled to the end. **Keep planning** sends your notes back with it.
 
-**A conversation** opens live: Claude's reply as he writes it, each tool he runs, his helpers in their own lanes, the to-do list, and what each turn cost. **Stop** ends a turn. When a turn changed files, **See the changes** shows the diff file by file, wrapped to fit, and **Undo turn** and **Bring it home** do what they do at the desk, with the same checks gate and a confirmation on the phone first.
+**A conversation** opens live: Claude's reply as he writes it, each tool he runs, his helpers in their own lanes, the to-do list, and what each turn cost. **Keep awake** keeps the screen on while a conversation is open, until you turn it off (on phones that let a web app do that). **Stop** ends a turn. When a turn changed files, **See the changes** shows the diff file by file, wrapped to fit, and **Undo turn** and **Bring it home** do what they do at the desk, with the same checks gate and a confirmation on the phone first.
 
 **Its checks** sit under the title: passed, failed or running, as the desk last ran them. A failed one shows the tail of what each command said, and **Fix it** sends that back to Claude as a reply, in the mode you pick. It follows the reply's rules: not while he's working, not while a prompt is waiting, and not for a conversation that's gone to a terminal.
 
@@ -50,17 +50,22 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **While you were away.** Open the app after ten minutes or more and a card at the top of the beach says what happened meanwhile: "2 finished, 1 hit a problem, 1 waiting on you, 4% of your window spent", with a tap to each. It's worked out from the time the phone last looked, which it keeps to itself, and it goes when you dismiss it.
 
-**New task** starts one in any project Shellby knows: the folder you're working in, the ones open in a conversation, and every one he's seen you work in. Tasks from your phone follow the same rules as [phone tasks over Telegram or ntfy](CONNECTIONS.md#-your-phone):
+**New task** starts one in any project Shellby knows: the folder you're working in, the ones open in a conversation, and every one he's seen you work in. Long-press the app's icon on Android for **New task**, **Queue** and **Notes** straight away. Tasks from your phone follow the same rules as [phone tasks over Telegram or ntfy](CONNECTIONS.md#-your-phone):
 
 - They run in the mode you pick (Ask first unless you change it: Smart, Auto-edit, Plan only or Autonomous), in their own copy when the folder is a git repository.
-- At most 10 start an hour and 3 at once. At your usage limit, or past what the spending guard keeps for you, a task waits for the reset and says when it'll start.
+- They start on the model you pick, or the one your PC uses. A conversation keeps its model once it has started, as at the desk.
+- At most 30 start an hour and 10 at once. At your usage limit, or past what the spending guard keeps for you, a task waits for the reset and says when it'll start.
 - `!` commands, Claude Code's `/` commands and settings never come from the phone.
 - You can reply to any conversation, in the mode you pick under the reply box. The conversation keeps that mode until you change it at the desk.
 - **Speak** fills the box using your phone's own dictation, and **Picture** adds up to four photos. They're shrunk to a JPEG on the phone first and kept on the PC like a pasted picture.
 
 **Queue** is what's waiting for the usage reset, with **Take it out** for each one, under your 5-hour and weekly windows, your pace, and what the spending guard keeps back.
 
-**More** has Guard my focus (15, 25 or 50 minutes), **Routines** (Run now, and on or off; workflows that need no inputs run too), **Notes** for each project, and the **Wardrobe**. Tap him on the beach for a pat. A finished conversation has **Share**, which sends a picture of him and what landed through your phone's share sheet.
+**Share into Shellby.** On Android, share a screenshot, a link or some text from any app to **Shellby**: it opens New task with it, pictures and all, to send him off with, or **Keep it as a note** for later. Nothing goes to your PC until you press one.
+
+**More** has Guard my focus (15, 25 or 50 minutes), **Routines** (Run now, and on or off; workflows that need no inputs run too), **Notes** for each project (**Start it** turns a note into a new task, in its project), **Look over my changes**, **Trophies** (his level, streak, today's bounties and recent XP) and the **Wardrobe**. Tap him on the beach for a pat. A finished conversation has **Share**, which sends a picture of him and what landed through your phone's share sheet.
+
+**Look over my changes** is the desk's shield: he reads what's uncommitted and unpushed in a project for security problems and reports, changing nothing. It runs in Ask first whatever mode you're in, and counts as a phone task. A conversation's **Options** has it too, for that conversation's own folder (its copy's branch, when it has one).
 
 **Phone** has notifications, **Quiet hours**, what this phone can do, and **Forget this phone**.
 
@@ -69,7 +74,7 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 Every paired phone gets a level in Settings → On your phone, beside its **Forget** button:
 
 - **Full** is everything above. It's what a phone has when you pair it, and what every phone paired before this had.
-- **Read only** sees everything (the beach, every conversation as it happens, what changed, the queue, routines, notes) and changes nothing: it can't answer a prompt, start a task, reply, stop a turn, undo one, bring a copy home, push, run a routine, change your focus or dress him up. It can still turn its own notifications on or off, and forget itself.
+- **Read only** sees everything (the beach, every conversation as it happens, what changed, the queue, routines, notes, trophies) and changes nothing: it can't answer a prompt, start a task, reply, stop a turn, undo one, bring a copy home, push, run a routine or a look-over, change your focus or dress him up. Its notifications come without Allow and Deny. It can still turn its own notifications on or off, and forget itself.
 
 The level is checked on your PC for every call, not just hidden on the phone, so a tablet on the kitchen counter can watch without being able to say yes. Changing it takes effect at once, on a phone that's open too.
 
@@ -79,12 +84,15 @@ On the phone's **Phone** screen, or in Settings → On your phone: on or off, an
 
 ### What you can allow
 
-Settings → On your phone has two more things a paired phone may do, each off until you turn it on:
+Settings → On your phone has three more things a paired phone may do, each off until you turn it on:
 
 - **Read a conversation's files**, read-only. `.git`, `node_modules`, `.env` files, keys and other likely secrets are never shown, and nothing outside the conversation's folder is.
 - **Push after bringing a copy home**, with the secret scan and the question about other people's commits on your PC first.
+- **Allow and Deny on Android notifications.** Off at first because Android can let a notification's buttons work while the phone is locked, so anyone holding it could say yes.
 
 There's also a quiet **"working on it"** notification for tasks the phone started, which the "done" replaces. iPhones show it like any other notification; on Android it sits silently.
+
+**On a tablet** the app turns sideways with it, in a wider layout. **With a screen reader**, a new prompt and a conversation that just finished are read out as they happen.
 
 **When the PC sleeps** the app keeps what it last knew, says how old it is ("This is how things were at 09:12"), and comes back by itself the moment the PC answers.
 
@@ -96,7 +104,7 @@ Notifications come from your PC, encrypted, through your phone's own push servic
 - **Guard my focus** holds them back, unless you say otherwise. **Quiet hours** hold them back overnight, except a permission prompt, which comes quietly.
 - **A four-second task doesn't buzz you.** A task the phone started always says when it's done.
 
-Tap one and the app opens on that conversation. On an iPhone there are no buttons on a web app's notification, so a tap on **"He needs you"** opens straight onto that one prompt instead: the plain sentence, the command or the edit, and big **Allow** and **Deny** (and **Always allow** when the desk would offer it). Answer it and you're back on the beach. If it was answered at the desk meanwhile, or is one that waits for the desk, the screen says so. The app icon's badge counts the prompts waiting.
+Tap one and the app opens on that conversation. On Android, once you allow it (below), **"He needs you"** has **Allow** and **Deny** on it, which answer without opening the app, for the prompts the beach could answer with those two buttons (not a question, a plan, or one for the desk) and only on a phone with full rights. If the answer doesn't go, a notification says why, and a tap on it opens the prompt. On an iPhone there are no buttons on a web app's notification, so a tap on **"He needs you"** opens straight onto that one prompt instead: the plain sentence, the command or the edit, and big **Allow** and **Deny** (and **Always allow** when the desk would offer it). Answer it and you're back on the beach. If it was answered at the desk meanwhile, or is one that waits for the desk, the screen says so. The app icon's badge counts the prompts waiting.
 
 ## Security, in short
 

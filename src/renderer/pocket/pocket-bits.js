@@ -1,6 +1,7 @@
 /* Shellby on your phone — pieces pocket.js shows but keeps out of its own
    file: Claude's questions and plans answered from the phone, the usage
-   detail, a moment to share, and speaking or snapping a new task. */
+   detail, a moment to share, speaking or snapping a new task, what another
+   app shared, and keeping the screen on while you watch. */
 'use strict';
 (function (root) {
   root.PocketBits = ({ S, L, D, N, h, icon, toast, buzz, act, actButton }) => {
@@ -192,15 +193,20 @@
       return new Promise(res => c.toBlob(res, 'image/jpeg', 0.85));
     }
 
-    function photoButton(photos, strip) {
+    // given: pictures to start with (shared from another app), each sent as if picked.
+    function photoButton(photos, strip, { given = [] } = {}) {
       const pick = h('input', { type: 'file', accept: 'image/*', class: 'visually-hidden', 'aria-hidden': 'true', tabindex: '-1' });
       const draw = () => strip.replaceChildren(...photos.map((p, i) => h('span', { class: `photo${p.id ? '' : ' sending'}` },
         h('img', { src: p.url, alt: `Picture ${i + 1}` }),
         h('button', { type: 'button', class: 'photo-x', 'aria-label': 'Take it out', text: '×', onclick: () => { URL.revokeObjectURL(p.url); photos.splice(photos.indexOf(p), 1); draw(); } }))));
-      pick.addEventListener('change', async () => {
+      pick.addEventListener('change', () => {
         const file = pick.files?.[0];
         pick.value = '';
-        if (!file) return;
+        if (file) add(file);
+      });
+      // In the order they were shared, one after another.
+      given.slice(0, 4).reduce((p, file) => p.then(() => add(file)), Promise.resolve());
+      async function add(file) {
         if (photos.length >= 4) { toast('Four pictures at most.'); return; }
         let blob;
         try { blob = await shrink(file); } catch { blob = null; }
@@ -210,14 +216,79 @@
         draw();
         const r = await N.upload(blob);
         if (r.ok) p.id = r.id;
-        else { toast(r.error || 'It didn’t send.', { tone: 'warn' }); photos.splice(photos.indexOf(p), 1); URL.revokeObjectURL(p.url); }
+        else {
+          toast(r.error || 'It didn’t send.', { tone: 'warn' });
+          // Taken out with × while it was on its way: already gone.
+          const at = photos.indexOf(p);
+          if (at >= 0) photos.splice(at, 1);
+          URL.revokeObjectURL(p.url);
+        }
         draw();
-      });
+      }
       const b = h('button', { type: 'button', class: 'btn ghost slim', onclick: () => pick.click() }, icon('camera'), h('span', { class: 'btn-label', text: 'Picture' }));
       return h('span', {}, b, pick);
     }
 
 
-    return { questionSheet, planSheet, usageDetail, shareTurn, voiceButton, photoButton };
+    // ---------------------------------------------------------------- shared from another app
+
+    const SHARED = 'shellby-pocket-shared';
+    const SHARED_FRESH_MS = 10 * 60 * 1000;
+
+    /** What sw.js kept from a share, once: { text, photos: [Blob] }, or null. */
+    async function takeShared() {
+      try {
+        const kept = await window.caches.open(SHARED);
+        const res = await kept.match('/__shared');
+        if (!res) return null;
+        const meta = await res.json();
+        const photos = [];
+        for (let i = 0; i < Math.min(4, Number(meta.photos) || 0); i++) {
+          const r = await kept.match(`/__shared/${i}`);
+          if (r) photos.push(await r.blob());
+        }
+        for (const k of await kept.keys()) await kept.delete(k);
+        if (!Number.isFinite(meta.at) || Date.now() - meta.at > SHARED_FRESH_MS) return null;
+        return { text: String(meta.text || '').slice(0, 4000), photos };
+      } catch { return null; }
+    }
+
+    // ---------------------------------------------------------------- keeping the screen on
+
+    // Keep awake: while a conversation is open and the app is in front, the screen
+    // stays on (the browser's Wake Lock), when you've asked and the phone can.
+    // The browser lets it go whenever the app goes to the back; sync() takes it again.
+    const AWAKE_KEY = 'shellby.pocket.awake';
+    // A lock that arrives once it's no longer wanted (the conversation closed,
+    // the app went to the back) is let go at once, and only one is ever asked for at a time.
+    const wake = {
+      lock: null,
+      asking: null,
+      can: () => 'wakeLock' in navigator,
+      wanted: () => N.store.get(AWAKE_KEY) === '1',
+      still: () => wake.wanted() && document.visibilityState === 'visible' && !!S.screen?.tabId,
+      async sync(watching) {
+        if (!(watching && wake.still())) {
+          const lock = wake.lock;
+          wake.lock = null;
+          if (lock) { try { await lock.release(); } catch { /* already gone */ } }
+          return;
+        }
+        if (wake.lock) return;
+        if (!wake.asking) wake.asking = navigator.wakeLock.request('screen').catch(() => null).finally(() => { wake.asking = null; });
+        const lock = await wake.asking;
+        if (!lock || wake.lock === lock) return;
+        if (!wake.still() || wake.lock) { try { await lock.release(); } catch { /* already gone */ } return; }
+        wake.lock = lock;
+        lock.addEventListener('release', () => { if (wake.lock === lock) wake.lock = null; });
+      },
+      async set(on, watching) {
+        N.store.set(AWAKE_KEY, on ? '1' : null);
+        await wake.sync(watching);
+        return !!wake.lock === on;
+      },
+    };
+
+    return { questionSheet, planSheet, usageDetail, shareTurn, voiceButton, photoButton, takeShared, wake };
   };
 })(window);

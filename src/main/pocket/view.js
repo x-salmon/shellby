@@ -179,7 +179,7 @@ function phoneHeld(h) {
  *   quiet:    the quiet hours (pocket/quiet.js), shown and set on the Phone screen
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -200,6 +200,9 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     usage: { ...phoneUsage(lastUsage, outlook, now), ...usageDetail(lastUsage, outlook, guard, now) },
     focus: phoneFocus(focus, now),
     mode: line(mode, 20) || null, // the desk's mode: where a new task's picker starts
+    // What a new task can start on (models.js), and the desk's own pick ('' or null: Claude Code's).
+    models: (Array.isArray(models) ? models : []).slice(0, 40).map(m => ({ id: line(m?.id, 60), label: line(m?.label, 60) })).filter(m => m.id),
+    model: line(model, 60) || null,
     allow: allow ? { push: !!allow.push, files: !!allow.files } : { push: false, files: false },
     rights: normalizeRights(rights),
     quiet: normalizeQuiet(quiet),

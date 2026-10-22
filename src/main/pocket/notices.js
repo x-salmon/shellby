@@ -6,6 +6,8 @@ const focus = require('../focus');
 const { composeMessage } = require('../channels/messages');
 const push = require('./push');
 const { inQuietHours } = require('./quiet');
+const { rightsOf } = require('./rights');
+const { appDeskOnlyReason } = require('../channels/replies');
 
 const PUSH_SUBJECT = 'https://getshellby.com/';
 const ID_RE = /^[\w-]{1,100}$/;
@@ -21,6 +23,19 @@ function urlFor(event) {
   if (!tab) return '/';
   if (event.kind === 'asking' && ID_RE.test(String(event.requestId ?? ''))) return `/#/prompt/${encodeURIComponent(tab)}/${encodeURIComponent(event.requestId)}`;
   return `/#/tab/${encodeURIComponent(tab)}`;
+}
+
+/**
+ * A prompt the notification itself may answer, with Allow and Deny on it
+ * (Android shows them; an iPhone opens the prompt's own screen): what the app
+ * would answer with those two buttons, so not a question, a plan, or anything
+ * that waits for the desk. -> { tabId, requestId } | null.
+ */
+function answerable(event, item) {
+  if (event?.kind !== 'asking' || !item) return null;
+  if (!ID_RE.test(String(event.tabId ?? '')) || !ID_RE.test(String(event.requestId ?? ''))) return null;
+  if (['AskUserQuestion', 'ExitPlanMode'].includes(item.toolName) || appDeskOnlyReason(item)) return null;
+  return { tabId: event.tabId, requestId: event.requestId };
 }
 
 const ok = extra => ({ ok: true, ...extra });
@@ -58,6 +73,8 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
     if (!keys) return false;
     const m = composeMessage(event);
     const prompts = event.kind === 'asking' ? Math.max(promptsWaiting, waitingPrompts().length) : waitingPrompts().length;
+    // Only once Settings allows it: a notification's buttons can work from a locked phone.
+    const answer = s.allow?.notifyAnswers ? answerable(event, tab?.session?.pending?.get(event.requestId)) : null;
     const payload = {
       title: m.title, body: m.body,
       tag: event.tabId ? `${event.kind === 'asking' ? 'ask' : 'tab'}-${event.tabId}` : `shellby-${event.kind}`,
@@ -66,13 +83,16 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
       at: now,
       ...(quiet ? { silent: true } : {}),
     };
-    sendToPhones(targets, payload, { keys, ttl: event.kind === 'asking' ? 30 * 60 : 6 * 3600, urgency: m.priority === 'high' ? 'high' : 'normal' });
+    // Buttons only for a phone that may answer: a read-only one gets the plain notification.
+    const forPhone = dv => (answer && rightsOf(dv) === 'full' ? { ...payload, answer } : payload);
+    sendToPhones(targets, forPhone, { keys, ttl: event.kind === 'asking' ? 30 * 60 : 6 * 3600, urgency: m.priority === 'high' ? 'high' : 'normal' });
     return true;
   }
 
+  // payload: the same for every phone, or each phone's own (dv => payload).
   function sendToPhones(targets, payload, { keys, ttl, urgency }) {
     for (const dv of targets) {
-      const built = push.buildPushRequest(dv.push, payload, { keys, subject: PUSH_SUBJECT, ttl, urgency });
+      const built = push.buildPushRequest(dv.push, typeof payload === 'function' ? payload(dv) : payload, { keys, subject: PUSH_SUBJECT, ttl, urgency });
       if (built.error) { d.log.info(`pocket push: ${built.error}`); continue; }
       push.sendPush(built).then(r => {
         if (r.gone) {
@@ -122,4 +142,4 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
   return { notify, noticeWork, testPush, badge };
 }
 
-module.exports = { createPocketNotices, PUSH_SUBJECT, urlFor };
+module.exports = { createPocketNotices, PUSH_SUBJECT, answerable, urlFor };

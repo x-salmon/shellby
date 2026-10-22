@@ -4,10 +4,13 @@
      #/tab/<id>      one conversation, live, with its prompt, its changes and a reply box
      #/prompt/<id>/<r> one permission prompt on its own, from a tap on its notification
      #/diff/<id>/<a> what one of its turns changed, file by file
+     #/new           the New task sheet, over the beach (a shortcut on the app icon too)
+     #/share         the same, with what another app shared (the service worker keeps it)
      #/queue         what's waiting for the usage reset
      #/phone         this phone: notifications, quiet hours, and forgetting it
      #/more …        focus, routines, notes, the wardrobe and files (pocket-more.js)
      #/find …        search, a project's history, a closed conversation, a whole branch (pocket-find.js)
+                     (New task and Look over my changes live in pocket-new.js)
                      (the prompt screen and the quiet hours card live in pocket-phone.js)
 
    Everything comes from one stream (pocket-stream.js). Each screen is mounted
@@ -49,6 +52,7 @@
   const app = document.getElementById('app');
   const toasts = document.getElementById('toasts');
   const sheetRoot = document.getElementById('sheets');
+  const announcer = document.getElementById('announce');
 
   // ---------------------------------------------------------------- little things
 
@@ -60,6 +64,14 @@
   }
 
   const buzz = pattern => { try { navigator.vibrate?.(pattern); } catch { /* not here */ } };
+
+  // What a screen reader hears as things change (L.announcements): emptied
+  // first, so the same words twice are read twice.
+  function announce(lines) {
+    if (!announcer || !lines.length) return;
+    announcer.textContent = '';
+    requestAnimationFrame(() => { announcer.textContent = lines.join(' '); });
+  }
 
   function go(hash) {
     if (location.hash === hash) mount();
@@ -95,7 +107,10 @@
   }
 
   // Questions and plans, usage, sharing a moment, and speaking or snapping a task (pocket-bits.js).
-  const { questionSheet, planSheet, usageDetail, shareTurn, voiceButton, photoButton } = window.PocketBits({ S, L, D, N, h, icon, toast, buzz, act, actButton });
+  // What another app shared, and keeping the screen on while you watch, too.
+  const { questionSheet, planSheet, usageDetail, shareTurn, voiceButton, photoButton, takeShared, wake } = window.PocketBits({ S, L, D, N, h, icon, toast, buzz, act, actButton });
+  // The mode and model pickers, New task and Look over my changes (pocket-new.js).
+  const { modePicker, newTaskSheet, lookOverSheet } = window.PocketNew({ S, N, h, icon, go, toast, act, actButton, voiceButton, photoButton });
 
   /** A line for what a read-only phone can't press. */
   const lookOnly = () => h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: LOOK_ONLY }));
@@ -295,15 +310,17 @@
       if (!v.tabs?.length && !prompts.length) {
         parts.push(h('div', { class: 'empty' }, h('p', { text: canAct() ? 'Nothing on the go. Give him something to do and he’ll scuttle off with it.' : 'Nothing on the go.' }), canAct() ? h('a', { href: '#/new', class: 'btn go', text: 'Start a task' }) : null));
       }
-      scroll.replaceChildren(...parts);
+      // No "while you were away" card is null, which replaceChildren would print.
+      scroll.replaceChildren(...parts.filter(Boolean));
     }
     update();
     return { el, update, title: 'Shellby' };
   }
 
   // One conversation and what its turns changed live in pocket-tab.js; the checks card on it comes from pocket-find.js.
-  const { tabScreen, diffScreen, transcript } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, voiceButton, canAct, lookOnly, checksCard: (...a) => Find.checksCard(...a) });
-  const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet, canAct, lookOnly });
+  const { tabScreen, diffScreen, transcript } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, voiceButton, canAct, lookOnly, wake, checksCard: (...a) => Find.checksCard(...a) });
+  // A note's Start it opens New task with the note in it; Look over my changes picks a project.
+  const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet, canAct, lookOnly, newTask: prefill => openSheet(newTaskSheet(prefill)), lookOver: () => openSheet(lookOverSheet()) });
   // Search, history, a closed conversation, the whole branch, and what happened while you were away.
   const Find = window.PocketFind({ S, L, D, N, h, icon, live, go, act, actButton, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded: More.loaded, transcript, shortPath });
   // One prompt from its notification, and the quiet hours card (pocket-phone.js).
@@ -367,8 +384,8 @@
           h('div', { class: 'card-t' }, h('span', { class: 'card-title' }, icon('shield'), ' What this phone can do'), canAct() ? null : h('span', { class: 'pill amber', text: 'read only' })),
           canAct() ? h('ul', { class: 'plain' },
             h('li', { text: 'Allow or Deny a prompt, or always allow it when the desk would offer that. Answer a question, or approve a plan once you’ve read it. Anything the card warns about waits for the desk.' }),
-            h('li', { text: 'Start a task or reply to any conversation, in the mode you pick. A new task runs in its own copy when the folder is a repo.' }),
-            h('li', { text: 'Stop a turn, undo one, or bring a copy home.' }),
+            h('li', { text: 'Start a task or reply to any conversation, in the mode you pick, and a new task on the model you pick. A new task runs in its own copy when the folder is a repo.' }),
+            h('li', { text: 'Stop a turn, undo one, or bring a copy home. Have him look over a project’s changes for security problems.' }),
             h('li', { text: 'Run a routine, guard your focus, add a note, or dress him up.' }),
             S.view?.allow?.files ? h('li', { text: 'Read a conversation’s files.' }) : null,
             S.view?.allow?.push ? h('li', { text: 'Push after bringing a copy home.' }) : null)
@@ -393,78 +410,6 @@
     return { el, update: maybe, title: 'This phone' };
   }
 
-  // ---------------------------------------------------------------- the mode a message runs in
-
-  const MODE_NAME = { ask: 'Ask first', smart: 'Smart', acceptEdits: 'Auto-edit', plan: 'Plan only', autonomous: 'Autonomous' };
-  const MODE_KEY = 'shellby.pocket.mode';
-
-  /** A picker for the desk's modes; value() is what's picked. */
-  function modePicker(start) {
-    const sel = h('select', { class: 'mode-pick', 'aria-label': 'Mode' },
-      ...Object.entries(MODE_NAME).map(([id, name]) => h('option', { value: id, text: name })));
-    sel.value = MODE_NAME[start] ? start : 'ask';
-    return sel;
-  }
-
-  // ---------------------------------------------------------------- a new task
-
-  function newTaskSheet() {
-    return { label: 'New task', tall: true, build: close => {
-      const projects = S.view?.projects || [];
-      let picked = N.store.get('shellby.pocket.project');
-      if (!projects.some(p => p.key === picked)) picked = projects[0]?.key || null;
-      const text = h('textarea', { class: 'task-in', rows: '4', placeholder: 'Fix the flaky upload test…', 'aria-label': 'The task', maxlength: '4000', enterkeyhint: 'enter' });
-      const draft = N.store.get('shellby.pocket.draft');
-      if (draft) text.value = draft;
-      text.addEventListener('input', () => N.store.set('shellby.pocket.draft', text.value || null));
-      const chips = h('div', { class: 'projects', role: 'radiogroup', 'aria-label': 'Which project' });
-      const drawChips = () => chips.replaceChildren(...projects.map(p => h('button', {
-        type: 'button', role: 'radio', 'aria-checked': p.key === picked ? 'true' : 'false', class: `proj${p.key === picked ? ' on' : ''}`, text: p.name,
-        onclick: () => { picked = p.key; N.store.set('shellby.pocket.project', picked); drawChips(); },
-      })));
-      drawChips();
-      // The desk's mode, as a task typed there gets; the last pick here when the PC doesn't say.
-      const mode = modePicker(S.view?.mode || N.store.get(MODE_KEY));
-      mode.addEventListener('change', () => N.store.set(MODE_KEY, mode.value));
-      const lim = S.view?.limits;
-      // Pictures for the task: each goes to the PC as it's picked, and the task names them.
-      const photos = [];
-      const strip = h('div', { class: 'photo-strip', 'aria-label': 'Pictures' });
-      // One key per task, kept until it's started: sent again after a slow answer, it's the same task.
-      let key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
-      const send = actButton({
-        label: 'Send him off', cls: 'go big',
-        run: async () => {
-          const said = text.value.trim();
-          if (!said) { text.focus(); toast('Say what you want done first.'); return; }
-          if (!picked) { toast('Pick a project first.'); return; }
-          if (photos.some(p => !p.id)) { toast('A picture is still on its way. One moment.'); return; }
-          const r = await act('task', { project: picked, text: said, key, mode: mode.value, photos: photos.map(p => p.id) }, { timeoutMs: 180000 });
-          if (r.offline) { toast('Still waiting for your PC. Send it again: it won’t start twice.', { ms: 5200 }); return; }
-          if (!r.ok) return;
-          key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
-          N.store.set('shellby.pocket.draft', null);
-          photos.length = 0;
-          close();
-          if (r.held) toast(`At your limit, so it waits for the reset and starts at ${r.atText}.`, { ms: 5200 });
-          else { toast('Claws out. He’s on it.', { tone: 'ok' }); if (r.tabId) go(`#/tab/${encodeURIComponent(r.tabId)}`); }
-        },
-      });
-      const el = h('div', { class: 'new-task' },
-        h('h2', { class: 'sheet-title', text: 'What should I do?' }),
-        projects.length ? chips : h('p', { class: 'warn', text: 'Shellby doesn’t know any projects yet. Open one on your PC first.' }),
-        text,
-        h('div', { class: 'task-tools' }, voiceButton(text), photoButton(photos, strip)),
-        strip,
-        h('label', { class: 'mode-row' }, h('span', { text: 'Mode' }), mode),
-        h('p', { class: 'rule' }, icon('shield'), h('span', { text: `Runs in its own copy when it can.${lim ? ` ${lim.open} of ${lim.atOnce} phone tasks open.` : ''}` })),
-        send);
-      setTimeout(() => text.focus(), 260);
-      return { el };
-    } };
-  }
-
-  // Speak the task: the phone's own speech recognition, when it has one. The words land in the box to check.
   // ---------------------------------------------------------------- sheets
 
   function openSheet(spec) {
@@ -590,6 +535,15 @@
     app.replaceChildren(screen.el);
     requestAnimationFrame(() => screen.el.classList.remove('enter'));
     if (old && old !== screen) window.scrollTo(0, 0);
+    wake.sync(!!screen.tabId);
+  }
+
+  // New task with what another app shared, or plain when it kept nothing.
+  // A phone that may only look leaves it where the service worker kept it.
+  async function openShared() {
+    if (!canAct()) { toast(LOOK_ONLY, { ms: 5200 }); return; }
+    const shared = await takeShared();
+    openSheet(newTaskSheet(shared ? { text: shared.text, photos: shared.photos, shared: true } : {}));
   }
 
   function mount() {
@@ -599,12 +553,12 @@
     closeSheet(true);
     const r = S.route;
     if (S.justPaired && 'PushManager' in window) { show(notifyAsk()); return; }
-    if (r.name === 'new') {
+    if (r.name === 'new' || r.name === 'share') {
       history.replaceState(null, '', '#/');
       S.route = { name: 'beach' };
       show(beachScreen());
       stream.watch(null);
-      openSheet(newTaskSheet());
+      if (r.name === 'share') openShared(); else openSheet(newTaskSheet());
       return;
     }
     if (r.name === 'tab') { show(tabScreen(r.tabId)); stream.watch(r.tabId); return; }
@@ -616,6 +570,7 @@
     else if (r.name === 'routines') show(More.routinesScreen());
     else if (r.name === 'notes') show(More.notesScreen());
     else if (r.name === 'wardrobe') show(More.wardrobeScreen());
+    else if (r.name === 'trophies') show(More.trophiesScreen());
     else if (r.name === 'history') show(More.historyScreen());
     else if (r.name === 'files') show(More.filesScreen(r.tabId, r.path));
     else if (r.name === 'find') show(Find.findScreen());
@@ -677,6 +632,7 @@
         for (const id of [...S.answering.keys()]) if (!v.prompts?.some(p => p.requestId === id)) S.answering.delete(id);
         try { N.store.set(VIEW_KEY, JSON.stringify({ ...v, skin: v.skin })); } catch { /* full */ }
         noticeLandings(prev, v);
+        announce(L.announcements(prev, v));
         tidyNotifications(v);
         if (S.screen?.update) refresh(); else mount();
         Find.onView();
@@ -741,7 +697,11 @@
     takeTap(); // the kept copy is spent, so coming back later doesn't go there again
     followTap(to);
   });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') followTap(); });
+  document.addEventListener('visibilitychange', () => {
+    // The browser let the screen lock go while the app was at the back: taken again here.
+    wake.sync(!!S.screen?.tabId);
+    if (document.visibilityState === 'visible') followTap();
+  });
   window.addEventListener('pageshow', e => { if (e.persisted) followTap(); });
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => { /* no offline shell, still works */ });
