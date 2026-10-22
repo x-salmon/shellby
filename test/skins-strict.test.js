@@ -40,6 +40,8 @@ const TABLE = [
   ['anchors moved', { ...good, anchors: { head: [1, -2], claw: [48, -16] } }, true],
   ['based on a gallery pack', { ...good, basedOn: 'skin-frosty' }, true],
   ['unlocked by a level', { ...good, unlock: { level: 5 } }, true],
+  ['a contest winner', { ...good, won: '2026-10' }, true],
+  ['won in a month that isn\'t one', { ...good, won: '2026-13' }, false],
   [`${LIMITS.palette} colours`, { ...good, palette: palette(LIMITS.palette), parts: {} }, true],
   ['40 × 32', { ...good, pixels: Array(32).fill('a'.repeat(40)) }, true],
   ['an unknown part', { ...good, parts: { a: 'rocket' } }, false],

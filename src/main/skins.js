@@ -12,7 +12,9 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const ITEM_ID = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const PACK_ID = /^[a-z0-9][a-z0-9-]{1,39}$/;
 const ANCHORS = ['head', 'face', 'neck', 'claw', 'shellTop'];
-const FIELDS = new Set(['id', 'name', 'author', 'description', 'palette', 'parts', 'pixels', 'unlock', 'anchors', 'basedOn']);
+const FIELDS = new Set(['id', 'name', 'author', 'description', 'palette', 'parts', 'pixels', 'unlock', 'anchors', 'basedOn', 'won']);
+// The crab contest a built-in skin won (contest-ship.js marks it), YYYY-MM.
+const WON = /^\d{4}-(0[1-9]|1[0-2])$/;
 const LIMITS = Object.freeze({ rows: 32, cols: 40, palette: 32, name: 40, author: 40, description: 120, anchorMin: -16, anchorMax: 48 });
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const q = v => JSON.stringify(v);
@@ -50,6 +52,7 @@ function strictErrors(skin) {
   }
   if (skin.unlock !== undefined && (!isObj(skin.unlock) || Object.keys(skin.unlock).length !== 1)) errors.push('unlock must be an object with one way to earn it');
   if (skin.basedOn !== undefined && (typeof skin.basedOn !== 'string' || !PACK_ID.test(skin.basedOn))) errors.push('basedOn must be a pack id');
+  if (skin.won !== undefined && (typeof skin.won !== 'string' || !WON.test(skin.won))) errors.push('won must be a month, YYYY-MM');
   return errors;
 }
 
