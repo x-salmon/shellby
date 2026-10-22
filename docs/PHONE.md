@@ -50,12 +50,12 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **While you were away.** Open the app after ten minutes or more and a card at the top of the beach says what happened meanwhile: "2 finished, 1 hit a problem, 1 waiting on you, 4% of your window spent", with a tap to each. It's worked out from the time the phone last looked, which it keeps to itself, and it goes when you dismiss it.
 
-**New task** starts one in any project Shellby knows: the folder you're working in, the ones open in a conversation, and every one he's seen you work in. Long-press the app's icon on Android for **New task**, **Queue** and **Notes** straight away. Tasks from your phone follow the same rules as [phone tasks over Telegram or ntfy](CONNECTIONS.md#-your-phone):
+**New task** starts one in any project Shellby knows: the folder you're working in, the ones open in a conversation, and every one he's seen you work in. Long-press the app's icon on Android for **New task**, **Queue** and **Notes** straight away. Tasks from the app follow much the same rules as [phone tasks over Telegram or ntfy](CONNECTIONS.md#-your-phone), with more room, since the app is paired to this PC:
 
 - They run in the mode you pick (Ask first unless you change it: Smart, Auto-edit, Plan only or Autonomous), in their own copy when the folder is a git repository.
 - They start on the model you pick, or the one your PC uses. A conversation keeps its model once it has started, as at the desk.
 - At most 30 start an hour and 10 at once. At your usage limit, or past what the spending guard keeps for you, a task waits for the reset and says when it'll start.
-- `!` commands, Claude Code's `/` commands and settings never come from the phone.
+- `!` commands and settings never come from the phone. A new task can't start with a `/` command, and a reply can run only `/compact`, `/context` or `/goal`; the rest stay at the desk.
 - You can reply to any conversation, in the mode you pick under the reply box. The conversation keeps that mode until you change it at the desk.
 - **Speak** fills the box using your phone's own dictation, and **Picture** adds up to four photos. They're shrunk to a JPEG on the phone first and kept on the PC like a pasted picture.
 

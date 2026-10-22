@@ -29,7 +29,7 @@ at the bottom of the panel) and pick **🎨 Paint**. No JSON, no text editor.
    tip and shell top) to where they belong on him, so a hat sits on his head
    and not in the air. **Try him on the desk** puts your drawing on the real
    crab for a minute.
-6. **Save** puts him in Settings → Look (and under Colors in the Wardrobe);
+6. **Save** puts him in Settings → Shellby → Look (and under Colors in the Wardrobe);
    **Save and wear** puts him on. Every change is kept as a draft as you go,
    so closing the panel loses nothing.
 
@@ -79,7 +79,7 @@ A skin is one JSON file in `%APPDATA%\Shellby\skins`: a pixel grid, a palette,
 and a map that says which body part each colour belongs to. The Painter writes
 these for you; you can also write one by hand:
 
-1. Right-click Shellby → **Data folder**, then open `skins/` (or **Settings → Look → Open skins folder**).
+1. Right-click Shellby → **Data folder**, then open `skins/` (or **Settings → Shellby → Look → Open skins folder**).
 2. Copy [`src/skins/classic.json`](../src/skins/classic.json) in, rename it `my-crab.json`, and change `"id"` to `"my-crab"`.
 3. Change some colours, then hit **Reload** in Settings and pick your skin.
 
@@ -112,7 +112,7 @@ these for you; you can also write one by hand:
 
 The gallery takes the strict version of this, the skin in
 [`addon.schema.json`](addon.schema.json): no fields beyond these (and
-`basedOn`), parts only from the list below, ids in lowercase. A skin you drop
+`basedOn` and `unlock`), parts only from the list below, ids in lowercase. A skin you drop
 in the folder by hand is read more leniently (an unknown part is ignored), so
 it still loads; the Painter saves only skins the gallery would take.
 

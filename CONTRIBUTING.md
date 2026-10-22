@@ -26,6 +26,7 @@ Every end-to-end and maintenance script, and a map of the code, is in [docs/DEVE
 ## Guidelines
 
 - **No frameworks in the renderer.** The UI is plain HTML/CSS/JS on purpose: fast to start, easy to read, nothing to audit.
+- **Keep files small.** No source file under `src/` or `claude-plugin/mcp/` goes over 800 lines (`test/file-size.test.js` fails the run): split one before it gets there.
 - **Keep the parser pure.** `src/main/stream.js` has no Electron or I/O, and new CLI event shapes get a test in `test/stream.test.js`.
 - **Session behaviour gets a fake-CLI test.** Extend `test/fixtures/fake-claude.js` rather than hitting the real CLI in tests.
 - **Security-sensitive areas** (preload bridge, IPC handlers, markdown renderer, permission flow) need a test for any change, and a note in the PR. [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) maps each trust boundary to its code.

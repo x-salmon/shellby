@@ -41,7 +41,7 @@ const PERKS = Object.freeze({
   'reef-forecast': { level: 52, name: 'Reef forecast', text: 'The reef shows a four-week trend line' },
   'golden-jar': { level: 58, name: 'Golden jars', text: 'Jars in the tank can show their best form' },
   'crew-cosmetics': { level: 66, name: 'Crew colours', text: 'Helper crabs wear your title colour' },
-  'card-foil': { level: 77, name: 'Foil cards', text: 'The crab card and Wrapped card get a foil border' },
+  'card-foil': { level: 77, name: 'Foil cards', text: 'The Wrapped card gets a gold foil edge' },
   'wrapped-extra': { level: 88, name: 'Deep cuts', text: 'Wrapped gets a bonus "deep cuts" slide' },
   molting: { level: 99, name: 'The Molt', text: 'Start again at level 1 with everything kept, for a tier shell of his own' },
 });
