@@ -64,6 +64,18 @@
     return `${why}, trying again${wait}${which}…`;
   }
 
+  // The busy line while a hook runs on the main thread.
+  const hookLine = name => `Running hook ${name || 'a hook'}…`;
+
+  // The quiet line under a turn that was refused tool calls: each tool once,
+  // with what it was reaching for ("Bash (rm -rf dist)"), at most five spelled out.
+  const MAX_DENIALS_SHOWN = 5;
+  function denialsLine(denials = []) {
+    const parts = denials.slice(0, MAX_DENIALS_SHOWN).map(d => (d.summary ? `${d.toolName} (${d.summary})` : d.toolName));
+    const more = denials.length - parts.length;
+    return `Claude was blocked from: ${parts.join(', ')}${more > 0 ? ` and ${more} more` : ''}`;
+  }
+
   // The busy line while Claude Code compacts. chars: how much of the summary is
   // written so far, which it says only for automatic compactions. compact: SB.compact.
   const compactingLine = (chars, compact) => (chars
@@ -294,7 +306,7 @@
   }
 
   const api = {
-    files, storySteps, markFor, compactingLine, retryLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
+    files, storySteps, markFor, compactingLine, retryLine, hookLine, denialsLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
     decisionVerdict, questionVerdict, resultLabel, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
   };

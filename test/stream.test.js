@@ -2,11 +2,51 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { toItems, parseLine, describeTool, writeChars } = require('../src/main/stream');
 
-test('init event yields the session id; hook chatter is dropped', () => {
-  assert.deepEqual(toItems({ type: 'system', subtype: 'hook_started' }), []);
-  const [init] = toItems({ type: 'system', subtype: 'init', session_id: 's1', model: 'claude-opus-5-5', cwd: 'C:\\x' });
-  assert.equal(init.kind, 'init');
-  assert.equal(init.sessionId, 's1');
+test('init event yields the session id, and the mode it started in', () => {
+  const items = toItems({ type: 'system', subtype: 'init', session_id: 's1', model: 'claude-opus-5-5', cwd: 'C:\\x' });
+  assert.equal(items.length, 1, 'no mode named, no mode item');
+  assert.equal(items[0].kind, 'init');
+  assert.equal(items[0].sessionId, 's1');
+  const [, mode] = toItems({ type: 'system', subtype: 'init', session_id: 's1', permissionMode: 'plan' });
+  assert.deepEqual(mode, { kind: 'mode', mode: 'plan' });
+});
+
+test("the mode Claude Code reports becomes a mode item in Shellby's names; one it has no name for is dropped", () => {
+  const status = permissionMode => toItems({ type: 'system', subtype: 'status', status: null, permissionMode });
+  assert.deepEqual(status('default'), [{ kind: 'mode', mode: 'ask' }]);
+  assert.deepEqual(status('auto'), [{ kind: 'mode', mode: 'smart' }]);
+  assert.deepEqual(status('acceptEdits'), [{ kind: 'mode', mode: 'acceptEdits' }]);
+  assert.deepEqual(status('bypassPermissions'), [{ kind: 'mode', mode: 'autonomous' }]);
+  assert.deepEqual(status('dontAsk'), []);
+  assert.deepEqual(status('something-new'), []);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: null, permissionMode: 'plan', parent_tool_use_id: 'tu_1' }), [], "a helper's mode is its own");
+});
+
+test('a hook running names itself on the way in and out; a helper\'s says nothing', () => {
+  const base = { hook_id: 'h1', hook_name: 'PreToolUse:Bash', hook_event: 'PreToolUse' };
+  assert.deepEqual(toItems({ type: 'system', subtype: 'hook_started', ...base }), [{ kind: 'hook', on: true, name: 'PreToolUse:Bash' }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'hook_progress', ...base, stdout: 'x', stderr: '', output: 'x' }), [{ kind: 'hook', on: true, name: 'PreToolUse:Bash' }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'hook_started' }), [{ kind: 'hook', on: true, name: 'a hook' }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'hook_started', ...base, parent_tool_use_id: 'tu_1' }), []);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'hook_response', ...base, outcome: 'success', exit_code: 0 }), [{ kind: 'hook', on: false, name: 'PreToolUse:Bash' }]);
+});
+
+test("the turn's refused tool calls ride on its result, each with a short summary", () => {
+  const ev = extra => toItems({ type: 'result', subtype: 'success', is_error: false, ...extra }).find(i => i.kind === 'result');
+  assert.equal('denials' in ev({ permission_denials: [] }), false, 'none refused, nothing said');
+  assert.equal('denials' in ev({}), false);
+  assert.deepEqual(ev({ permission_denials: [
+    { tool_name: 'Bash', tool_use_id: 'tu_1', tool_input: { command: 'rm -rf dist' } },
+    { tool_name: 'Edit', tool_use_id: 'tu_2', tool_input: { file_path: 'C:\\x\\.env', old_string: 'a', new_string: 'b' } },
+    { tool_name: 'Nothing' },
+    null, { tool_use_id: 'no-name' },
+  ] }).denials, [
+    { toolName: 'Bash', toolUseId: 'tu_1', summary: 'rm -rf dist' },
+    { toolName: 'Edit', toolUseId: 'tu_2', summary: 'C:\\x\\.env' },
+    { toolName: 'Nothing', toolUseId: null, summary: '' },
+  ]);
+  const long = ev({ permission_denials: [{ tool_name: 'Bash', tool_use_id: 'tu_1', tool_input: { command: 'x'.repeat(200) } }] });
+  assert.ok(long.denials[0].summary.length <= 81, 'the summary is short');
 });
 
 test('assistant content becomes text, thinking and tool items', () => {
@@ -340,12 +380,13 @@ test('an API retry becomes a retrying item; a helper\'s does not', () => {
   assert.deepEqual(toItems({ type: 'system', subtype: 'api_retry', attempt: 1, parent_tool_use_id: 'toolu_1' }), []);
 });
 
-test('only a hook that failed or was cancelled becomes an item', () => {
+test('only a hook that failed or was cancelled leaves a note, after the hook line ends', () => {
   const base = { type: 'system', subtype: 'hook_response', hook_name: 'PreToolUse:Bash', hook_event: 'PreToolUse', output: '', stdout: '' };
-  assert.deepEqual(toItems({ ...base, outcome: 'success', exit_code: 0, stderr: '' }), []);
+  const done = name => ({ kind: 'hook', on: false, name });
+  assert.deepEqual(toItems({ ...base, outcome: 'success', exit_code: 0, stderr: '' }), [done('PreToolUse:Bash')]);
   assert.deepEqual(toItems({ ...base, outcome: 'error', exit_code: 2, stderr: 'no rm -rf\nplease' }),
-    [{ kind: 'hook-failed', name: 'PreToolUse:Bash', outcome: 'error', exitCode: 2, text: 'no rm -rf please' }]);
+    [done('PreToolUse:Bash'), { kind: 'hook-failed', name: 'PreToolUse:Bash', outcome: 'error', exitCode: 2, text: 'no rm -rf please' }]);
   assert.deepEqual(toItems({ type: 'system', subtype: 'hook_response', hook_event: 'Stop', outcome: 'cancelled' }),
-    [{ kind: 'hook-failed', name: 'Stop', outcome: 'cancelled', exitCode: null, text: null }]);
+    [done('Stop'), { kind: 'hook-failed', name: 'Stop', outcome: 'cancelled', exitCode: null, text: null }]);
   assert.deepEqual(toItems({ ...base, outcome: 'error', parent_tool_use_id: 'toolu_1' }), []);
 });

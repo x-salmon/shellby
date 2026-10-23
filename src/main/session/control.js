@@ -29,6 +29,7 @@ const control = {
     let response;
     if (decision === 'deny') {
       response = { behavior: 'deny', message: message || DENY_MESSAGE };
+      if (item.toolUseId) this.denied.add(item.toolUseId); // the turn's result won't count it again
     } else {
       response = { behavior: 'allow', updatedInput: item.input };
       // Claude reads the user's choices from updatedInput.answers (checked against the real CLI).

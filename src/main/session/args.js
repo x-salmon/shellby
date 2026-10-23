@@ -50,6 +50,18 @@ function initHooks(watchWork) {
   return hooks;
 }
 
+// Whether a hook Claude Code reports running (hook_started's hook_name) is one
+// of Shellby's own callbacks above, which run on every tool call and are nobody's
+// business: the "Running hook…" line is for yours and your plugins'. Claude Code
+// 2.1.303 reports no callback hooks at all; this covers a CLI that names them
+// "<event>:<matcher>" the way it names script hooks, or by their callback id.
+const OWN_HOOK_NAMES = new Set([
+  `PostToolUse:.*`, `PostToolUseFailure:.*`, `PreToolUse:${WORK_TOOLS}`, WORK_HOOK, STEER_HOOK,
+  `PostToolUse:${STEER_HOOK}`, `PostToolUseFailure:${STEER_HOOK}`, `PreToolUse:${WORK_HOOK}`,
+]);
+/** @param {string} name */
+const isOwnHook = name => OWN_HOOK_NAMES.has(name) || /^shellby-/.test(name.split(':').pop() || '');
+
 const args = {
   buildArgs() {
     const args = [
@@ -101,4 +113,4 @@ const args = {
   },
 };
 
-module.exports = { args, EFFORTS, OPTIONAL_FLAGS, WORK_HOOK, STEER_HOOK, writeConfig, removeFile, initHooks };
+module.exports = { args, EFFORTS, OPTIONAL_FLAGS, WORK_HOOK, STEER_HOOK, writeConfig, removeFile, initHooks, isOwnHook };
