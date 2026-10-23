@@ -40,6 +40,7 @@ Triggers:
 - { "type": "health" }  data: title, body
 - { "type": "folder", "path": "absolute", "pattern": "*.pdf" or "", "events": "added"|"changed"|"any" }  data: folder, files (list of full paths)
 - { "type": "workflow", "name": "another workflow", "status": "ok"|"error"|"any" }  data: name, status, vars
+- { "type": "server", "on": "up"|"crashed"|"stopped"|"any", "project": "" or a project name, "script": "" or "dev" }  (a dev server started from Shellby's Projects page) data: event, project, script, port, url, exitCode, root, framework
 - { "type": "startup" }  { "type": "webhook" }  { "type": "claude" } (Claude Code or the shellby command may start it)
 
 Steps (each may have "id" (snake_case, how later steps refer to it), "label", "if" (condition), "retry": { "times": 0-5, "delaySec": n }, "timeoutMin", "continueOnError"):
@@ -60,6 +61,7 @@ Steps (each may have "id" (snake_case, how later steps refer to it), "label", "i
 - { "type": "stop", "status": "ok"|"error", "message": "" }
 - { "type": "worktree", "repo": "owner/name", "branch": "short-name" }  a copy of a GitHub repository cloned on this PC, on a new branch from its default branch. output: path, branch, base, repo. Give later Claude steps "cwd": "{{ <id>.path }}".
 - { "type": "pr", "folder": "{{ <worktree id>.path }}", "title": "...", "body": "", "draft": true }  commits what's left in that copy, pushes its branch and opens a pull request. output: url, number, branch, repo, draft
+- { "type": "server", "action": "start"|"stop"|"restart", "project": "a project on the Projects page (or {{ trigger.project }})", "script": "" }  a dev server in that project: start waits until it's up. script is a package.json script (dev, start…); empty means the one last run there. output: status, port, url, project, script
 
 Values: {{ path }} in any text, with optional filters: | json, upper, lower, trim, length, first, last, join ", ", default "x", lines, slice 0 100.
 Paths: trigger.<field>, inputs.<name>, vars.<name>, <stepId>.<field> (e.g. diagnose.cause, check.output), item / loop.number inside each, now, today, run.id, secrets.NAME (only in run commands and http).

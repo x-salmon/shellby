@@ -492,6 +492,39 @@ test('a taken port: noticed on the crash, then moved to another and remembered',
   } finally { t.done(); }
 });
 
+test("a stop you asked for says 'stopped' (a crash never does), and settled() waits for up", async () => {
+  const t = setup();
+  try {
+    const events = [];
+    t.svc.on('stopped', s => events.push(['stopped', s.project, s.script, s.status]));
+    t.svc.on('crashed', s => events.push(['crashed', s.project]));
+    const { id } = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    const settling = t.svc.settled(id, { timeoutMs: 5000 });
+    t.say(id, 'Local: http://localhost:5173/\n');
+    t.poll(id);
+    const up = await settling;
+    assert.equal(up.status, 'up');
+    assert.equal(up.port, 5173);
+    assert.equal((await t.svc.settled(id)).status, 'up', 'already settled: answers at once');
+    await t.svc.stop(id);
+    assert.deepEqual(events, [['stopped', 'site', 'dev', 'stopped']]);
+    assert.equal(await t.svc.settled(id), null, 'gone from the list');
+
+    // A crash settles too, as a crash; a stop signal settles with what there is.
+    const again = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    const crashing = t.svc.settled(again.id, { timeoutMs: 5000 });
+    t.say(again.id, 'boom\n[shellby-exit 1]\n');
+    t.poll(again.id);
+    assert.equal((await crashing).status, 'crashed');
+    assert.deepEqual(events.slice(1), [['crashed', 'site']]);
+    const third = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    const ctl = new AbortController();
+    const aborted = t.svc.settled(third.id, { timeoutMs: 5000, signal: ctl.signal });
+    ctl.abort();
+    assert.equal((await aborted).status, 'starting');
+  } finally { t.done(); }
+});
+
 test('remembered ports are checked like the rest of settings.json', () => {
   const n = normalize({ ports: { 'c:/code/site|dev': 5174, 'c:/x|dev': 'nope', 'c:/y|dev': 70000 } });
   assert.deepEqual(n.ports, { 'c:/code/site|dev': 5174 });

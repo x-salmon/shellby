@@ -47,7 +47,7 @@ Each phase ships on its own (bump, CHANGELOG, tag, as every shellby change does)
 
 ### Phase 3: everywhere else
 
-- Workflows: a `server` trigger and a `server` step.
+- Workflows: a `server` trigger and a `server` step. **Done** (`devservers/flow.js`, see "Integrations").
 - MCP: `projects`, `next_up`, `server_log`, `add_task` and `finish_task`, so a Claude in a terminal can ask "what's next on this repo?" and what broke. **Done** (see "From a terminal"). `servers` folded into `projects` (each row says what's up).
 - CLI: `shellby projects`, `shellby next [project] [--all]`, `shellby next add <text>`, `shellby next done <n>`. **Done.** `shellby serve [script]` waits: starting a server from a terminal is a start, and starts stay in the panel for now.
 - Custom server commands per project for non-npm stacks (`python manage.py runserver`, `dotnet watch`, `cargo watch -x run`, `php artisan serve`).
@@ -71,6 +71,7 @@ Each phase ships on its own (bump, CHANGELOG, tag, as every shellby change does)
 | `src/main/devservers/runner.js` | Starts a server detached, tails its log, stops it, re-attaches to it. Never throws. |
 | `src/main/devservers/discover.js` | (Phase 2) listening ports -> processes -> projects. |
 | `src/main/devservers/service.js` | `DevServers` (EventEmitter): the running list, persistence, crashes, toasts, IPC. |
+| `src/main/devservers/flow.js` | (Phase 3) Workflows: what a server event hands a `server` trigger, and the `server` step. Pure over `DevServers`. |
 | `src/main/projects/service.js` | `Projects`: the merged list, refresh, IPC. Owns a `DevServers`. |
 | `src/renderer/panel/projects.js` + `projects.css` | The Projects page, a project's page, the server card and the approval sheet. |
 | `src/renderer/panel/project-report.js` | The Standup & weekly report card on a project's page. |
@@ -404,7 +405,7 @@ stays in config to try again.
 
 ## Integrations
 
-- **Workflows** (Phase 3): trigger `server` `{ on: up|crashed|stopped|any, project? }` -> `trigger.{ project, script, port, exitCode }`. Step `server` `{ action: start|stop|restart, project, script? }` -> `{ status, port, url }`. A workflow can't send a log to Claude without the card. Added to `docs/plans/workflows.md`'s tables.
+- **Workflows** (Phase 3, **done**): trigger `server` `{ on: up|crashed|stopped|any, project?, script? }` -> `trigger.{ event, project, script, port, url, exitCode, root, framework }`, from `DevServers`' `up`, `crashed` and `stopped` events (`stop()` now emits `stopped`; nothing for what happened while Shellby was closed). Step `server` `{ action: start|stop|restart, project, script? }` -> `{ status, port, url, project, script }`: `devservers/flow.js` resolves the project like the MCP tools do, starts through `DevServers.start` (so only a package.json script ever runs) and waits for `up` with `DevServers.settled` (90 s), failing when it crashes on the way. A workflow can't send a log to Claude without the card. In `docs/plans/workflows.md`'s tables, the editor, the drafting prompt and `add_workflow`'s format.
 - **MCP and CLI** (Phase 3): see "From a terminal". No start/stop over MCP in the first cut.
 - Time tracking: a running server isn't a sign of where you are. Left out.
 
