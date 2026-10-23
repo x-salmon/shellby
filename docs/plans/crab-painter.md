@@ -27,7 +27,7 @@ The order below is the build order. Each phase ships alone.
 | Undo and drafts | the Tank editor's draft and undo (`tank.js`, `tank-layouts`) |
 | Try on with an outfit | the Wardrobe stage (`wardrobe.js:59-75`) and its mood buttons |
 | Every pose | `work-pose.js` `POSES`, animated by `critter.css:147-250` (crab window only) |
-| Load and broadcast | `skins:reload` (`ipc/index.js:179`), `broadcastSkin()` (`wiring/critter.js:79-86`) |
+| Load and broadcast | `skins:reload` (`ipc/wardrobe.js:39`), `broadcastSkin()` (`wiring/critter.js:79-86`) |
 | Publish | `publishPack()` (`github/publish.js:44-88`), `confirmAndPublishPack` (`wiring/github.js:529-557`) |
 
 ## 1. The Painter screen

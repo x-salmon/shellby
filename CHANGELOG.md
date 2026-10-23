@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.94.0: Answers from your notifications
+
+### New
+- **Allow and Deny on your phone's notifications, on Android.** Turn it on in Settings → On your phone (off at first: Android can run them from a locked phone), and "He needs you" carries the two buttons and answers without opening the app, for the prompts the beach could answer with them. A read-only phone gets the notification without them, and if an answer doesn't go, a notification says why.
+- **Share into Shellby.** On Android, share a screenshot, a link or some text from any app to Shellby: New task opens with it, pictures and all, or **Keep it as a note** saves it for later.
+- **Pick the model for a task from your phone.** New task has a Model picker beside Mode, starting on the one your PC uses. A task waiting for the reset keeps its pick.
+- **Start a note as a task.** Each open note on your phone has **Start it**, which opens New task with the note in it, in its project.
+- **Look over my changes from your phone.** In More, or a conversation's Options: a read-only security review of what's uncommitted and unpushed, in Ask first, as at the desk.
+- **Keep awake.** A conversation on your phone can keep the screen on while it's open.
+- **Trophies on your phone.** More → Trophies shows his level, streak, today's bounties and recent XP.
+- **Shortcuts on the app icon.** Long-press Shellby on Android for New task, Queue and Notes.
+
+### Fixed
+- **The Foil cards perk says what it does.** At level 77 it's the Wrapped card that gets a gold foil edge, and the perk now says so instead of promising one on the crab card too.
+- Shellby on a tablet turns sideways now, into the wider layout, instead of staying upright.
+- With a screen reader, a new prompt and a conversation that just finished are read out on your phone as they happen.
+- The phone app tidies away files it no longer uses from its offline copy when it updates.
+- The beach on your phone no longer shows a stray "null" under him when nothing happened while you were away.
+- Notes on your phone line up on the left, instead of centred.
+- On your phone, a conversation that Claude Code is compacting now says "Tidying the conversation up", with the same glint running under it as at the desk, instead of a plain "Working".
+- Notes on your phone scroll again: the list no longer jumps back to the top each time your PC sends an update, and Routines, the Wardrobe, History and Files stay put too.
+- Ticking a note on your phone crosses it off where it sits, instead of whisking it away to the Done list at the bottom.
+
+## 0.93.1: Phone search and one-tap answers
+
+### New
+- **Search and history on your phone.** A Search box on the beach finds past conversations across every project, by their title, what you asked for and what Claude said he did. **History** lists a project's conversations by day, newest first. Tap a closed one to read it; an open one opens live.
+- **"While you were away."** Open the app after a while and a card at the top of the beach says what happened meanwhile: how many finished, which hit a problem, what's waiting on you and how much of your window it spent, with a tap to each.
+- **Checks on your phone, with Fix it.** A conversation shows its checks as passed, failed or running. A failed one shows the tail of what went wrong and a **Fix it** button, which sends it back to Claude as a reply in the mode you pick.
+- **See everything before Bring it home.** A conversation in its own copy has **See everything**: the whole branch against where it started, uncommitted work included, in the same diff viewer as See the changes.
+- **Answer a prompt from its notification, on an iPhone too.** A tap on "He needs you" opens Shellby on your phone straight onto that one prompt: the plain sentence, the command or the edit, and big Allow and Deny (and Always allow when the desk would offer it). Answer it and you're back on the beach. Answered at the desk already, or one that waits for the desk? The screen says so.
+- **Several phones, each with its own rights.** Beside each paired phone's Forget button in Settings → On your phone, pick **Full** or **Read only**. A read-only phone sees everything and changes nothing: no answers, tasks, replies, stops, undos, bring-homes, pushes, routines, focus or wardrobe. It can still manage its own notifications and forget itself. Your PC checks the level on every call, and a change reaches a phone that's open at once. Every phone you'd already paired is Full.
+- **Quiet hours for your phone.** On the phone's Phone screen, or in Settings → On your phone: from 22:00 to 07:00 (or whenever you like, in your PC's time, across midnight if need be) nothing buzzes. A permission prompt still arrives quietly, so the badge counts it; the rest is held back, as when he's guarding your focus.
+
+### Fixed
+- Hovering the cost hint under the message box no longer brings up a second, plain tooltip on top of the first. The hint also reads "under 1% of your window" now, not "about under 1%".
+- On the phone, the New task button no longer covers More. The bar at the bottom fits all four screens on one row again.
+- The tips above the box ("Start this one on Sonnet", a cold cache, a model switch) sit above the box again instead of floating over what you type, and their button and ✕ work.
+
+### Changed
+- The phone app can have 10 tasks going at once (was 3) and start 30 an hour (was 10). Telegram and ntfy keep the tighter limits.
+
 ## 0.93.0: Your phone keeps up
 
 ### New

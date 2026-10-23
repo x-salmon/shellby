@@ -125,7 +125,8 @@ const SETUP = `(() => {
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`, '--force-prefers-no-reduced-motion'], {
     stdio: 'ignore',
     env: {
-      ...process.env, SHELLBY_USER_DATA: data, SHELLBY_MOTION_TEST: '1', SHELLBY_TODAY: '2026-06-03',
+      // calm: a PC warmed up by the run would have him fan himself (shared/health.css)
+      ...process.env, SHELLBY_USER_DATA: data, SHELLBY_MOTION_TEST: '1', SHELLBY_TODAY: '2026-06-03', SHELLBY_FAKE_HEALTH: 'calm',
       SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: String(HOOK),
     },
   });

@@ -118,9 +118,9 @@ stats through `d.onStat` (`STAT_QUESTS`) and XP awards through `d.onAward`
 | `look-over` | `ipc/progress.js` (`review:start`) |
 | `workflow` | `wiring/projects.js` (a run that ends ok) |
 | `goal`, `medal` | `wiring/events.js`, which also records `tide-perfect` for a medal with every goal done in the event's first half |
-| `routine`, `friend`, `first-catch`, `proof`, `rematch`, `nest`, `caught`, `tier2`, `quiz3`, `thriving`, `species50`, `ninety-nine`, `molt-or-stay` | stats (`STAT_QUESTS`) |
+| `routine`, `friend`, `first-catch`, `proof`, `rematch`, `nest`, `caught`, `tier2`, `quiz3`, `thriving`, `species50`, `ninety-nine`, `molt-or-stay`, `reef-best` | stats (`STAT_QUESTS`) |
 | `quiz`, `helped`, `medal`, `cifix` | awards (`AWARD_QUESTS`) |
-| `reef-on`, `reef-best`, `nests3`, `jar-in-tank`, `decorate`, `bigger`, `milestone-piece`, `tank-share`, `every-shell` | their owners' wiring, `d.questDone?.(id)` |
+| `reef-on`, `nests3`, `jar-in-tank`, `decorate`, `bigger`, `milestone-piece`, `tank-share`, `every-shell` | their owners' wiring, `d.questDone?.(id)` |
 
 The game view `quests` (`get`, and `act`: `hide`, `seen`) carries
 `questsView()`: the chat card's shape (`list`, `current`, `doneCount`, `total`,

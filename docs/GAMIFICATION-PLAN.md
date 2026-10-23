@@ -1034,7 +1034,7 @@ Every cross-WP call goes through a `d.*` hook stubbed in WP0 or through `game-hu
 
 All animation checks launch with `--force-prefers-no-reduced-motion`, as CI expects.
 
-**Lint, typecheck and size checks:** `npm run lint`, `npm run typecheck`, and a check that no file goes over 800 lines. `test/size.test.js` already exists; if not, WP0 adds it.
+**Lint, typecheck and size checks:** `npm run lint`, `npm run typecheck`, and a check that no file goes over 800 lines. `test/file-size.test.js` already exists; if not, WP0 adds it.
 
 ---
 
