@@ -179,3 +179,25 @@ test('copy and pull request steps: a template folder, a title, and the push need
   bad([{ type: 'pr', folder: '{{ copy.path }}', title: 'x' }], /“copy” isn't a step/);
   bad([{ id: 'copy', type: 'worktree', repo: 'a/b' }, { type: 'pr', folder: '{{ copy.path }}' }], /Fill in the title/);
 });
+
+test('dev server steps: an action, a project, a checked script, and starting one needs approving', () => {
+  const { validateWorkflow: v, capabilities, riskSignature, riskDetail, describeTrigger } = require('../src/main/workflows/schema');
+  const ok = v({ name: 'S', when: [{ type: 'server', on: 'crashed', project: 'site', script: 'dev' }], steps: [
+    { id: 'fix', type: 'claude', mode: 'plan', prompt: 'Why did {{ trigger.script }} in {{ trigger.project }} exit with {{ trigger.exitCode }}?' },
+    { id: 'again', type: 'server', action: 'restart', project: '{{ trigger.project }}', script: '{{ trigger.script }}' },
+    { type: 'tell', text: 'Back on {{ again.port }}' },
+  ] });
+  assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+  assert.equal(describeTrigger(ok.workflow.when[0]), "When site's dev server (dev) crashes");
+  assert.deepEqual(capabilities(ok.workflow), ['Restart a dev server in {{ trigger.project }}']);
+  assert.match(riskDetail(ok.workflow), /restarts the “\{\{ trigger.script \}\}” script in \{\{ trigger.project \}\}/);
+  const stop = v({ ...ok.workflow, id: undefined, steps: [ok.workflow.steps[0], { ...ok.workflow.steps[1], action: 'stop' }, ok.workflow.steps[2]] });
+  assert.notEqual(riskSignature(stop.workflow), riskSignature(ok.workflow), 'another action asks again');
+  assert.equal(v({ name: 'D', steps: [{ type: 'server', project: 'site' }] }).workflow.steps[0].action, 'start', 'start unless said otherwise');
+
+  const bad = (steps, re) => { const r = v({ name: 'B', steps }); assert.equal(r.ok, false); assert.match(r.errors.map(e => e.message).join('; '), re); };
+  bad([{ type: 'server' }], /Fill in the project/);
+  bad([{ type: 'server', project: 'site', action: 'explode' }], /start, stop or restart/);
+  bad([{ type: 'server', project: 'site', script: 'dev && calc' }], /script name/);
+  bad([{ type: 'server', project: '{{ nope.project }}' }], /“nope” isn't a step/);
+});

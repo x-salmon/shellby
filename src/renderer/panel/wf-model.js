@@ -55,6 +55,7 @@
     stop: () => ({ status: 'ok' }),
     worktree: () => ({ repo: '{{ trigger.repo }}', branch: '' }),
     pr: () => ({ folder: '', title: '', draft: true }),
+    server: () => ({ action: 'start', project: '' }),
   };
 
   const TRIGGER_DEFAULTS = {
@@ -65,6 +66,7 @@
     task: () => ({ outcome: 'any' }),
     folder: () => ({ path: '', pattern: '', events: 'added' }),
     workflow: () => ({ name: '', status: 'any' }),
+    server: () => ({ on: 'crashed', project: '', script: '' }),
   };
 
   function walk(steps, fn) {

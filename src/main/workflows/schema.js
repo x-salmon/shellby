@@ -10,6 +10,7 @@ const { scheduleError, normaliseSchedule } = require('../routines');
 const { minutesError, describe: describeSchedule } = require('./schedule');
 const expr = require('./expr');
 const mcpServers = require('../mcpservers');
+const { SCRIPT_RE } = require('../devservers/scripts');
 
 const LIMITS = Object.freeze({
   name: 60, description: 500, steps: 60, depth: 4, triggers: 8, inputs: 10,
@@ -21,9 +22,11 @@ const LIMITS = Object.freeze({
 const ID = /^[a-z][a-z0-9_]{0,31}$/;
 const WF_ID = /^[\w-]{1,64}$/;
 const SECRET = /^[A-Z][A-Z0-9_]{0,39}$/;
-const STEP_TYPES = ['claude', 'mcp', 'run', 'http', 'ask', 'tell', 'set', 'if', 'each', 'wait', 'file', 'workflow', 'stop', 'worktree', 'pr'];
-const TRIGGER_TYPES = ['schedule', 'ci', 'issue', 'shipped', 'task', 'health', 'folder', 'workflow', 'startup', 'webhook', 'claude'];
+const STEP_TYPES = ['claude', 'mcp', 'run', 'http', 'ask', 'tell', 'set', 'if', 'each', 'wait', 'file', 'workflow', 'stop', 'worktree', 'pr', 'server'];
+const TRIGGER_TYPES = ['schedule', 'ci', 'issue', 'shipped', 'task', 'health', 'folder', 'workflow', 'startup', 'webhook', 'claude', 'server'];
 const CI_EVENTS = ['failed', 'fixed', 'passed', 'merged', 'review', 'any'];
+const SERVER_EVENTS = ['up', 'crashed', 'stopped', 'any'];
+const SERVER_ACTIONS = ['start', 'stop', 'restart'];
 const ISSUE_EVENTS = ['assigned', 'labelled', 'any'];
 const SHIP_KINDS = ['push', 'deploy', 'release', 'merge', 'any'];
 const OUTCOMES = ['ok', 'error', 'any'];
@@ -119,10 +122,20 @@ function checkTrigger(t, at, err) {
       const token = typeof t.token === 'string' && /^[a-f0-9]{32,64}$/.test(t.token) ? t.token : require('crypto').randomBytes(24).toString('hex');
       return { type: 'webhook', token };
     }
+    case 'server': {
+      const on = t.on ?? 'crashed';
+      if (!SERVER_EVENTS.includes(on)) { err(`${at}.on`, 'Pick up, crashed, stopped or any'); return null; }
+      const script = line(t.script, 64);
+      if (script && !SCRIPT_RE.test(script)) { err(`${at}.script`, 'A script name is letters, digits and : . _ -'); return null; }
+      return { type: 'server', on, project: line(t.project, 100), script };
+    }
     default:
       return { type: t.type };
   }
 }
+
+const SERVER_EVENT_WORDS = { up: 'comes up', crashed: 'crashes', stopped: 'is stopped', any: 'comes up, crashes or is stopped' };
+const SERVER_ACTION_WORDS = { start: 'Start', stop: 'Stop', restart: 'Restart' };
 
 function describeTrigger(t) {
   switch (t.type) {
@@ -137,6 +150,7 @@ function describeTrigger(t) {
     case 'startup': return 'When Shellby starts';
     case 'webhook': return 'When a script calls its web hook';
     case 'claude': return 'When Claude Code asks';
+    case 'server': return `When ${t.project ? `${t.project}'s` : 'a'} dev server${t.script ? ` (${t.script})` : ''} ${SERVER_EVENT_WORDS[t.on]}`;
     default: return t.type;
   }
 }
@@ -428,6 +442,19 @@ function checkStep(s, at, depth, ctx) {
       if (message) step.message = message.slice(0, LIMITS.text);
       break;
     }
+    case 'server': {
+      const action = s.action ?? 'start';
+      if (!SERVER_ACTIONS.includes(action)) err(`${at}.action`, 'Pick start, stop or restart');
+      step.action = action;
+      // A project on the Projects page, by name, owner/name or folder; a {{ value }}
+      // lets a crashed-server trigger name its own. The script is checked against
+      // the project's package.json when it runs, like the page's Start button.
+      step.project = text(s, 'project', at, err, { max: 100, multiline: false, what: 'the project' });
+      const script = text(s, 'script', at, err, { max: 64, required: false, multiline: false, what: 'the script' });
+      if (script && !expr.hasTemplate(script) && !SCRIPT_RE.test(script)) err(`${at}.script`, 'A script name is letters, digits and : . _ -');
+      else if (script) step.script = script;
+      break;
+    }
   }
 
   const kids = CONTAINERS[s.type] || [];
@@ -483,7 +510,7 @@ function checkRefs(wf, err) {
   walkSteps(wf.steps, (s, at, scope) => {
     const fields = [];
     const add = (key, value, kind = 'template') => { if (typeof value === 'string' && value) fields.push({ key, value, kind }); };
-    for (const k of ['prompt', 'command', 'url', 'body', 'args', 'question', 'text', 'title', 'message', 'path', 'content', 'over', 'cwd', 'repo', 'branch', 'folder']) add(k, s[k]);
+    for (const k of ['prompt', 'command', 'url', 'body', 'args', 'question', 'text', 'title', 'message', 'path', 'content', 'over', 'cwd', 'repo', 'branch', 'folder', 'project', 'script']) add(k, s[k]);
     for (const [k, v] of Object.entries(s.headers || {})) add(`headers.${k}`, v);
     for (const [k, v] of Object.entries(s.values || {})) add(`values.${k}`, v);
     for (const [k, v] of Object.entries(s.inputs || {})) add(`inputs.${k}`, v);
@@ -593,6 +620,7 @@ function capabilities(wf) {
     if (s.type === 'tell' && s.to === 'file') say(`Add to ${s.path}`);
     if (s.type === 'workflow') say(`Run the workflow “${s.name}”`);
     if (s.type === 'pr') say(`Push a branch and open ${s.draft ? 'a draft' : 'a'} pull request on GitHub`);
+    if (s.type === 'server') say(`${SERVER_ACTION_WORDS[s.action]} a dev server in ${s.project}`);
   });
   return out;
 }
@@ -623,6 +651,8 @@ function riskDetail(wf) {
     // Another workflow can do anything that one may: say which, and with what.
     if (s.type === 'workflow') blocks.push(`▸ ${name}: runs the workflow “${s.name}”, and everything it does${Object.keys(s.inputs || {}).length ? `\nInputs: ${JSON.stringify(s.inputs)}` : ''}`);
     if (s.type === 'pr') blocks.push(`▸ ${name}: commits what's in ${s.folder}, pushes its branch to GitHub and opens ${s.draft ? 'a draft' : 'a'} pull request\nTitle: ${s.title}${s.body ? `\n${s.body}` : ''}`);
+    // Starting one runs a script from the project's package.json, as the Projects page's Start button does.
+    if (s.type === 'server') blocks.push(`▸ ${name}: ${SERVER_ACTION_WORDS[s.action].toLowerCase()}s ${s.script ? `the “${s.script}” script` : 'a dev server'} in ${s.project}`);
   });
   const secrets = new Set();
   walkSteps(wf.steps || [], s => {
@@ -650,12 +680,13 @@ function riskSignature(wf) {
     if (s.type === 'tell' && s.to === 'file') parts.push(['tell', s.path]);
     if (s.type === 'workflow') parts.push(['workflow', s.name.toLowerCase(), s.inputs || {}]);
     if (s.type === 'pr') parts.push(['pr', s.folder, s.title, s.body || '', s.draft]);
+    if (s.type === 'server') parts.push(['server', s.action, s.project, s.script || '']);
   });
   if (!parts.length) return '';
   return JSON.stringify({ parts, when: (wf.when || []).map(t => ({ ...t, token: undefined })) });
 }
 
 module.exports = {
-  LIMITS, STEP_TYPES, TRIGGER_TYPES, CONTAINERS, ID, SECRET,
+  LIMITS, STEP_TYPES, TRIGGER_TYPES, CONTAINERS, ID, SECRET, SERVER_EVENTS, SERVER_ACTIONS,
   validateWorkflow, walkSteps, describeTrigger, capabilities, riskSignature, riskDetail,
 };

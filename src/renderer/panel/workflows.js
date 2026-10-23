@@ -178,6 +178,12 @@
           workflowPicker('Workflow', t.name, v => { t.name = v; }, { at: `${at}.name` }),
           sel('When it', [['any', 'finishes'], ['ok', 'succeeds'], ['error', 'fails']], t.status || 'any', v => { t.status = v; }, { at: `${at}.status` })),
       ];
+      case 'server': return [
+        sel('When a dev server', [['crashed', 'crashes'], ['up', 'comes up'], ['stopped', 'is stopped'], ['any', 'does any of those']], t.on || 'crashed', v => { t.on = v; }, { at: `${at}.on`, hint: 'Servers started from the Projects page. Nothing for what happened while Shellby was closed.' }),
+        h('div', { class: 'grid-2' },
+          txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' } }),
+          txt('Script (optional)', t.script, v => { t.script = v; }, { at: `${at}.script`, attrs: { placeholder: 'dev', maxlength: 64, class: 'field wf-mono' } })),
+      ];
       case 'webhook': return webhookFields(t);
       case 'claude': return [h('p', { class: 'field-hint', text: 'Claude Code (over MCP) or the shellby command can start it, passing its inputs. Only workflows with this trigger can be started that way.' })];
       case 'startup': return [h('p', { class: 'field-hint', text: 'Runs each time Shellby starts.' })];
@@ -405,6 +411,7 @@
       case 'stop': return s.status === 'error' ? `Stop as failed${s.message ? `: ${s.message}` : ''}` : `Stop${s.message ? `: ${s.message}` : ''}`;
       case 'worktree': return s.repo ? `Copy of ${s.repo}` : 'No repository yet';
       case 'pr': return `${s.draft === false ? 'Pull request' : 'Draft'}: ${firstLine(s.title) || '…'}`;
+      case 'server': return `${{ stop: 'Stop', restart: 'Restart' }[s.action] || 'Start'} ${s.script ? `${s.script} ` : ''}in ${s.project || '…'}`;
       default: return '';
     }
   }
@@ -425,6 +432,7 @@
       case 'task': return { ok: 'A task succeeds', error: 'A task fails' }[t.outcome] || 'A task finishes';
       case 'folder': return `${t.pattern || 'Files'} ${t.events === 'changed' ? 'changed' : t.events === 'any' ? 'added or changed' : 'added'}${t.path ? ` in ${SB.shortPath(t.path, 28)}` : ''}`;
       case 'workflow': return t.name ? `“${t.name}” ${{ ok: 'succeeds', error: 'fails' }[t.status] || 'finishes'}` : 'No workflow picked';
+      case 'server': return `${t.project || 'A'} server ${{ up: 'comes up', stopped: 'is stopped', any: 'changes' }[t.on] || 'crashes'}${t.script ? ` · ${t.script}` : ''}`;
       default: return TRIGGER_INFO[t.type]?.sub || '';
     }
   }

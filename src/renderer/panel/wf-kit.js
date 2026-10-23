@@ -42,8 +42,9 @@
     stop: { name: 'Stop', sub: 'End the run here' },
     worktree: { name: 'Make a copy', sub: 'A copy of a GitHub repository to work in, on its own branch' },
     pr: { name: 'Open a pull request', sub: 'Push the copy\'s branch and open a draft pull request' },
+    server: { name: 'Dev server', sub: 'Start, stop or restart a project\'s dev server' },
   };
-  const STEP_GROUPS = [['Claude', ['claude']], ['Do', ['run', 'http', 'mcp', 'file']], ['GitHub', ['worktree', 'pr']], ['Talk', ['ask', 'tell']], ['Logic', ['if', 'each', 'set', 'wait', 'workflow', 'stop']]];
+  const STEP_GROUPS = [['Claude', ['claude']], ['Do', ['run', 'http', 'mcp', 'file', 'server']], ['GitHub', ['worktree', 'pr']], ['Talk', ['ask', 'tell']], ['Logic', ['if', 'each', 'set', 'wait', 'workflow', 'stop']]];
   const CONTAINERS = { if: ['then', 'else'], each: ['steps'] };
 
   const TRIGGER_INFO = {
@@ -58,6 +59,7 @@
     startup: { name: 'When Shellby starts', sub: 'Each time Shellby opens' },
     webhook: { name: 'From a script', sub: 'A web hook on this PC only' },
     claude: { name: 'When Claude Code asks', sub: 'Claude Code (MCP) or the shellby command' },
+    server: { name: 'When a dev server changes', sub: 'One started from the Projects page comes up, crashes or is stopped' },
   };
   const ONCE_TRIGGERS = ['claude', 'startup', 'health', 'webhook'];
   const MAX = { triggers: 8, steps: 60, depth: 4, inputs: 10, choices: 4 };
@@ -72,6 +74,7 @@
     health: { title: 'What happened', body: 'The details' },
     folder: { folder: 'The folder', files: 'The files (a list)' },
     workflow: { name: 'Workflow name', status: 'ok or error', runId: 'Its run', vars: 'Its values' },
+    server: { event: 'up, crashed or stopped', project: 'Project', script: 'The script (dev, start…)', port: 'Its port, if known', url: 'Its address, if known', exitCode: 'Exit code, if it crashed', root: 'The clone it runs in', framework: 'vite, next…' },
   };
   // What each step type hands on as <id>.*
   const STEP_OUTPUTS = {
@@ -85,6 +88,7 @@
     each: () => ({ count: 'How many it went through' }),
     worktree: () => ({ path: 'The copy\'s folder', branch: 'Its branch', base: 'The branch it started from', repo: 'owner/name' }),
     pr: () => ({ url: 'Link to the pull request', number: 'Pull request number', branch: 'Its branch', repo: 'owner/name', draft: 'true if it\'s a draft' }),
+    server: () => ({ status: 'up, starting or stopped', port: 'Its port, if known', url: 'Its address, if known', project: 'Project', script: 'The script it runs' }),
   };
 
   const MODE_NAME = Object.fromEntries(SB.MODES.map(m => [m.id, m.title]));
@@ -113,6 +117,7 @@
     stop: 'M4.5 4.5h7v7h-7z',
     worktree: 'M4.5 2.5v11M4.5 9.5c0-2 1.6-3 3.5-3h1c1.4 0 2.5-1.1 2.5-2.5V2.5',
     pr: 'M4.5 2.5v11M11.5 13.5V7c0-1.4-1.1-2.5-2.5-2.5H7M8.5 3l-1.8 1.5L8.5 6',
+    server: 'M2.5 3h11v4h-11zM2.5 9h11v4h-11zM5 5h.01M5 11h.01',
     play: 'M5 3.5v9l7-4.5z',
     up: 'M4 10l4-4 4 4',
     down: 'M4 6l4 4 4-4',

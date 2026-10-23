@@ -8,6 +8,7 @@ const path = require('path');
 const { run: runCli, skipSettings } = require('../claude/cli');
 const confirm = require('../confirm');
 const depwatch = require('../depwatch');
+const devFlow = require('../devservers/flow');
 const devRunner = require('../devservers/runner');
 const devScripts = require('../devservers/scripts');
 const mcpServers = require('../mcpservers');
@@ -66,6 +67,9 @@ function wireProjects(d) {
     });
     d.devServers.on('up', v => d.bugdex?.serverUp(v));
     d.devServers.on('installed', ({ project }) => d.send(d.panel, 'projects:installed', { project }));
+    // Workflows with a "dev server" trigger (workflows/triggers.js). Nothing for
+    // what happened while Shellby was closed: reattach() sets those straight without an event.
+    for (const event of ['up', 'crashed', 'stopped']) d.devServers.on(event, v => d.workflows?.event('server', devFlow.serverEvent(event, v)));
     d.projects = new Projects({
       config: d.config,
       devServers: d.devServers,
@@ -303,6 +307,10 @@ function wireProjects(d) {
       runClaude: runClaudeOnce,
       makeCopy: d.makeIssueCopy,
       openPullRequest: d.openIssuePr,
+      // A "dev server" step: a listed project's server, by the page's own doors (devservers/flow.js).
+      devServer: args => (d.projects && d.devServers
+        ? devFlow.serverStep({ resolve: q => d.projects.resolve(q), servers: d.devServers, readScripts: devScripts.read }, args)
+        : Promise.resolve({ ok: false, error: 'Dev servers need the Projects page.' })),
       copy: text => clipboard.writeText(text),
       crypto: {
         available: () => safeStorage.isEncryptionAvailable(),

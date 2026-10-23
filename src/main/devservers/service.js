@@ -21,6 +21,7 @@ const LOOP_WINDOW_MS = 5 * 60 * 1000;
 const LOOP_CRASHES = 3;
 const STOP_WAIT_MS = 5000;
 const STOP_POLL_MS = 150;
+const SETTLE_MS = 90 * 1000;          // how long a workflow's Start waits for "up" (UP_GRACE_MS is well inside it)
 // A server still running this long after it started is up, whether or not it
 // said where: plenty never print an address Shellby can read.
 const UP_GRACE_MS = 25 * 1000;
@@ -267,7 +268,8 @@ class DevServers extends EventEmitter {
     return this.exclusive(id, async () => {
       const s = this.servers.get(id);
       if (!s) return { ok: false, error: 'That server has already gone.' };
-      if (LIVE.has(s.status) && this.alive(s)) {
+      const wasLive = LIVE.has(s.status);
+      if (wasLive && this.alive(s)) {
         s.stopping = true;
         await this.deps.runner.stop(s.pid);
         if (await this.waitGone(s)) {
@@ -278,7 +280,28 @@ class DevServers extends EventEmitter {
       }
       if (this.servers.get(id) === s) this.forget(id);
       this.changed();
+      // A stop you asked for, as against a crash: workflows can tell them apart.
+      if (wasLive && s.kind === 'server') this.emit('stopped', this.publicView({ ...s, status: 'stopped', endedAt: this.now() }));
       return { ok: true };
+    });
+  }
+
+  /**
+   * For a workflow's "start" step: once a starting server is up or has fallen
+   * over (or SETTLE_MS has passed, or `signal` says stop), its view. null when
+   * it's gone from the list.
+   */
+  settled(id, { timeoutMs = SETTLE_MS, signal = null } = {}) {
+    const view = () => { const s = this.servers.get(id); return s ? this.publicView(s) : null; };
+    const starting = () => this.servers.get(id)?.status === 'starting';
+    if (!starting() || signal?.aborted) return Promise.resolve(view());
+    return new Promise(resolve => {
+      const done = () => { clearTimeout(timer); this.off('change', check); signal?.removeEventListener('abort', done); resolve(view()); };
+      const check = () => { if (!starting()) done(); };
+      const timer = setTimeout(done, timeoutMs);
+      timer.unref?.();
+      this.on('change', check);
+      signal?.addEventListener('abort', done, { once: true });
     });
   }
 
