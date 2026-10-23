@@ -137,6 +137,63 @@ test('Claude switching itself to planning is noticed, and a mode change ends it'
   s.close();
 });
 
+test("the mode Claude Code reports is the session's: planning follows it, and no request goes back", async () => {
+  const { s, items } = makeSession();
+  s.send('mode plan');
+  await result(s);
+  assert.equal(s.mode, 'plan');
+  assert.equal(s.planning, true);
+  assert.deepEqual(items.filter(i => i.kind === 'mode'), [{ kind: 'mode', mode: 'ask' }, { kind: 'mode', mode: 'plan' }], 'init says ask; the status says plan');
+  s.send('mode acceptEdits');
+  await result(s);
+  assert.equal(s.mode, 'acceptEdits');
+  assert.equal(s.planning, false);
+  s.send('mode dontAsk');
+  await result(s);
+  assert.equal(s.mode, 'acceptEdits', 'a mode Shellby has no name for changes nothing');
+  s.close();
+});
+
+test('a hook running on the main thread comes as a line in and out, around its turn', async () => {
+  const { s, items } = makeSession();
+  s.send('hook PreToolUse:Bash');
+  await result(s);
+  const hooks = items.filter(i => i.kind === 'hook' && i.name === 'PreToolUse:Bash');
+  assert.deepEqual(hooks.map(h => h.on), [true, true, false]);
+  assert.equal(items.some(i => i.kind === 'hook-failed'), false, 'it ran fine');
+  s.close();
+});
+
+test("Shellby's own callback hooks never make a hook line, however the CLI names them", async () => {
+  const { isOwnHook, WORK_HOOK, STEER_HOOK } = require('../src/main/session/args');
+  for (const name of ['PostToolUse:.*', 'PostToolUseFailure:.*', 'PreToolUse:Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell', WORK_HOOK, STEER_HOOK, `PreToolUse:${WORK_HOOK}`]) {
+    assert.equal(isOwnHook(name), true, name);
+  }
+  for (const name of ['PreToolUse:Bash', 'SessionStart:startup', 'Stop', 'a hook', 'PostToolUse:my-plugin']) assert.equal(isOwnHook(name), false, name);
+  const { s, items } = makeSession();
+  s.send(`hook PreToolUse:${WORK_HOOK}`);
+  await result(s);
+  assert.deepEqual(items.filter(i => i.kind === 'hook' && i.name !== 'a hook'), [], 'not a line in or out');
+  s.close();
+});
+
+test("what the turn was refused rides on its result, less what you refused yourself", async () => {
+  const { s, items } = makeSession();
+  s.send('denied');
+  const r = await result(s);
+  assert.deepEqual(r.denials, [
+    { toolName: 'Bash', toolUseId: 'tu_den_1_1', summary: 'rm -rf dist' },
+    { toolName: 'Edit', toolUseId: 'tu_den_1_2', summary: 'C:\\x\\.env' },
+  ]);
+  s.send('tool please');
+  const perm = await waitFor(s, 'item', i => i.kind === 'permission');
+  s.respond(perm.requestId, 'deny');
+  const r2 = await result(s);
+  assert.equal('denials' in r2, false, 'your own No is already a card');
+  assert.equal(items.filter(i => i.kind === 'result').length, 2);
+  s.close();
+});
+
 test("a memory Claude writes down is marked as one, inside Claude Code's config folder only", async () => {
   const cfg = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-cfg-')));
   const saved = process.env.CLAUDE_CONFIG_DIR;

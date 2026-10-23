@@ -456,15 +456,52 @@ function retryOf(ev) {
   }];
 }
 
-// A hook that failed or was cancelled: without this, Claude only changes course
-// with no reason shown. A hook that ran fine says nothing.
+const hookName = ev => oneLine(ev.hook_name, 120) || oneLine(ev.hook_event, 120) || 'a hook';
+
+// A hook running (hook_started, and hook_progress every few seconds while it
+// prints): the working line names it, so a slow hook doesn't read as Claude
+// stuck. Only the main thread's. Checked against Claude Code 2.1.303.
+function hookRunningOf(ev) {
+  if (ev.parent_tool_use_id) return [];
+  return [{ kind: 'hook', on: true, name: hookName(ev) }];
+}
+
+// A hook done (hook_response): the working line goes back to Working…, and one
+// that failed or was cancelled leaves a note too, since without it Claude only
+// changes course with no reason shown.
 function hookFailedOf(ev) {
-  if (ev.parent_tool_use_id || !ev.outcome || ev.outcome === 'success') return [];
-  return [{
-    kind: 'hook-failed', name: oneLine(ev.hook_name, 120) || oneLine(ev.hook_event, 120) || 'a hook',
+  if (ev.parent_tool_use_id) return [];
+  const done = { kind: 'hook', on: false, name: hookName(ev) };
+  if (!ev.outcome || ev.outcome === 'success') return [done];
+  return [done, {
+    kind: 'hook-failed', name: hookName(ev),
     outcome: ev.outcome === 'cancelled' ? 'cancelled' : 'error', exitCode: num(ev.exit_code),
     text: oneLine(ev.stderr, 300) || oneLine(ev.output, 300) || null,
   }];
+}
+
+// Claude Code's permission modes, as Shellby names them (config.js CLI_MODE the
+// other way). dontAsk has no Shellby mode, and anything new is left alone.
+const SHELLBY_MODE = Object.freeze({ default: 'ask', auto: 'smart', acceptEdits: 'acceptEdits', plan: 'plan', bypassPermissions: 'autonomous' });
+
+// The permission mode the conversation is in, from init and from the status
+// Claude Code sends when it changes (an approved plan's "auto-accept edits", say),
+// so the mode chip and planning follow. Checked against Claude Code 2.1.303.
+function modeOf(ev) {
+  if (ev.parent_tool_use_id) return [];
+  const mode = SHELLBY_MODE[ev.permissionMode];
+  return mode ? [{ kind: 'mode', mode }] : [];
+}
+
+// What the turn was refused: Claude Code's own record of every tool call denied,
+// by you, a rule or a hook (result.permission_denials). [{ toolName, toolUseId, summary }].
+const MAX_DENIALS = 20;
+function denialsOf(list) {
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, MAX_DENIALS).filter(d => d && typeof d.tool_name === 'string').map(d => ({
+    toolName: d.tool_name, toolUseId: typeof d.tool_use_id === 'string' ? d.tool_use_id : null,
+    summary: oneLine(describeTool(d.tool_name, d.tool_input).detail, 80),
+  }));
 }
 
 // Returns an array of UI items for one parsed stream-json event.
@@ -482,7 +519,7 @@ function toItems(ev) {
             mcp_servers: Array.isArray(ev.mcp_servers) ? ev.mcp_servers.filter(s => s && typeof s.name === 'string') : [],
             plugins: Array.isArray(ev.plugins) ? ev.plugins.filter(p => p && typeof p.name === 'string' && typeof p.path === 'string') : [],
           },
-        }];
+        }, ...modeOf(ev)];
       }
       if (/^task_(started|progress|updated|notification)$/.test(ev.subtype)) return [taskItem(ev)];
       // /compact, or Claude Code doing it by itself when the window is nearly full.
@@ -490,8 +527,9 @@ function toItems(ev) {
         const m = ev.compact_metadata || {};
         return [{ kind: 'compacted', trigger: m.trigger === 'auto' ? 'auto' : 'manual', preTokens: Number.isFinite(m.pre_tokens) ? m.pre_tokens : null }];
       }
-      if (ev.subtype === 'status') return compactingOf(ev);
+      if (ev.subtype === 'status') return [...compactingOf(ev), ...modeOf(ev)];
       if (ev.subtype === 'api_retry') return retryOf(ev);
+      if (ev.subtype === 'hook_started' || ev.subtype === 'hook_progress') return hookRunningOf(ev);
       if (ev.subtype === 'hook_response') return hookFailedOf(ev);
       if (MOD_UI[ev.subtype]) return modItem(ev);
       // Every command the conversation has now, with what each one does: how a
@@ -555,6 +593,7 @@ function toItems(ev) {
     case 'result': {
       // A command print mode can't run ends the turn with only this: say so plainly.
       const said = headlessReply(ev.result) || headlessReply((ev.errors || []).join('\n'));
+      const denials = denialsOf(ev.permission_denials);
       return [...(said ? [{ kind: 'text', text: said }] : []), {
         kind: 'result', ok: !ev.is_error, subtype: ev.subtype || null,
         durationMs: ev.duration_ms ?? null, turns: ev.num_turns ?? null,
@@ -565,6 +604,8 @@ function toItems(ev) {
         costUsd: Number.isFinite(ev.total_cost_usd) ? ev.total_cost_usd : null,
         // How much of what Claude wrote was thinking (turncost.js shows it beside the effort).
         thinkingTokens: Number.isFinite(ev.usage?.output_tokens_details?.thinking_tokens) ? ev.usage.output_tokens_details.thinking_tokens : null,
+        // Every tool call the turn was refused (you, a rule or a hook), when there were any.
+        ...(denials.length ? { denials } : {}),
       }];
     }
     case 'rate_limit_event':
@@ -599,8 +640,8 @@ const KNOWN = Object.freeze({
   // control_response is read by session/ (answers to Shellby's own requests).
   // stream_event: the reply as it's written (only its words become items); prompt_suggestion: what you might ask next.
   types: new Set(['system', 'assistant', 'user', 'result', 'rate_limit_event', 'control_request', 'control_response', 'stream_event', 'prompt_suggestion']),
-  // init, task_*, compact_boundary, a compacting status, api_retry, a failed hook_response, a mod's ui_* and
-  // commands_changed become items; the rest is progress chatter.
+  // init, task_*, compact_boundary, a compacting or mode status, api_retry, hook_started, hook_progress,
+  // hook_response, a mod's ui_* and commands_changed become items; the rest is progress chatter.
   system: new Set(['init', 'task_started', 'task_progress', 'task_updated', 'task_notification', 'compact_boundary',
     'ui_log', 'ui_toast', 'ui_status', 'commands_changed',
     'hook_started', 'hook_progress', 'hook_response', 'status', 'api_retry', 'thinking_tokens',

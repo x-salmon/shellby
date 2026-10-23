@@ -322,6 +322,8 @@ function onLine(line) {
     } else if (sub === 'set_permission_mode') {
       mode = msg.request.mode;
       out({ type: 'control_response', response: { subtype: 'success', request_id: msg.request_id, response: { mode } } });
+      // ...and the mode it's in now, as 2.1.303 reports each change.
+      out({ type: 'system', subtype: 'status', status: null, permissionMode: mode, uuid: `mode-${msg.request_id}`, session_id: sessionId });
     } else if (sub === 'stop_task') {
       // Like the real CLI: the task is killed, then the answer.
       bgJobs.get(msg.request.task_id)?.stop();
@@ -971,6 +973,36 @@ function onLine(line) {
     } };
     return;
   }
+  // "denied" -> a turn Claude Code refused two tool calls in (a deny rule, a hook):
+  // the result's permission_denials, as 2.1.303 sends them.
+  if (content === 'denied') {
+    text('could not do that');
+    result(true, { permission_denials: [
+      { tool_name: 'Bash', tool_use_id: `tu_den_${turn}_1`, tool_input: { command: 'rm -rf dist' } },
+      { tool_name: 'Edit', tool_use_id: `tu_den_${turn}_2`, tool_input: { file_path: 'C:\\x\\.env', old_string: 'a', new_string: 'b' } },
+    ] });
+    return;
+  }
+  // "hook <name>" -> a hook runs on the main thread (hook_started, a progress line,
+  // then hook_response), the way 2.1.303 reports one.
+  if (content.startsWith('hook ')) {
+    const name = content.slice(5).trim();
+    const hook = (subtype, extra) => out({ type: 'system', subtype, hook_id: `hk_${turn}`, hook_name: name, hook_event: name.split(':')[0], ...extra, uuid: `hook-${subtype}-${turn}`, session_id: sessionId });
+    hook('hook_started');
+    hook('hook_progress', { stdout: 'checking…', stderr: '', output: 'checking…' });
+    hook('hook_response', { stdout: 'ok', stderr: '', output: 'ok', exit_code: 0, outcome: 'success' });
+    text(`hooked: ${name}`);
+    result(true);
+    return;
+  }
+  // "mode <permissionMode>" -> Claude Code reports a mode change (its status event).
+  if (content.startsWith('mode ')) {
+    mode = content.slice(5).trim(); // the next turn's init says so too, as the real CLI's does
+    out({ type: 'system', subtype: 'status', status: null, permissionMode: mode, uuid: `mode-${turn}`, session_id: sessionId });
+    text('MODE CHANGED');
+    result(true);
+    return;
+  }
   // "enterplan" -> Claude switches itself to planning.
   if (content === 'enterplan') {
     out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `tu_ep_${turn}`, name: 'EnterPlanMode', input: {} }] }, parent_tool_use_id: null, session_id: sessionId });
@@ -1146,7 +1178,8 @@ function onLine(line) {
       const ok = r.behavior === 'allow';
       out({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'tu_1', is_error: !ok, content: ok ? 'written' : r.message }] } });
       text(ok ? `ALLOWED${r.updatedPermissions ? ' +always' : ''}` : 'DENIED');
-      result(true);
+      // Like the real CLI, a No from you is in the turn's permission_denials too.
+      result(true, ok ? {} : { permission_denials: [{ tool_name: 'Write', tool_use_id: 'tu_1', tool_input: input }] });
     } };
     return;
   }

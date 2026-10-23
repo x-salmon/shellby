@@ -656,6 +656,9 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
   font: 500 var(--fs-10-5) var(--font-mono); font-stretch: 88%; border-radius: var(--r-sm);
 }
 .turn-cost.flash { background: var(--reef-2); color: var(--sand); }
+/* What the turn was refused (result.permission_denials): a quiet line under the meta, in the cost line's voice. */
+.turn-denials { margin: 0 auto 12px; max-width: 60ch; text-align: center; text-wrap: pretty; color: var(--sand-faint); font-size: var(--fs-11); overflow-wrap: anywhere; }
+.meta:has(+ .turn-denials) { margin-bottom: 2px; }
 /* A note under it (turncost.js turnNotes): what cost more than it needed to, and why. */
 .turn-cost:has(+ .turn-note) { margin-bottom: 4px; }
 .turn-note {

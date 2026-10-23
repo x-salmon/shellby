@@ -27,7 +27,7 @@ const jobs = require('../jobs');
 const ultracode = require('../ultracode');
 const { memoryOf } = require('../automemory');
 const { unknownType } = require('../cli-contract');
-const { args, EFFORTS, OPTIONAL_FLAGS, WORK_HOOK, STEER_HOOK, writeConfig, removeFile, initHooks } = require('./args');
+const { args, EFFORTS, OPTIONAL_FLAGS, WORK_HOOK, STEER_HOOK, writeConfig, removeFile, initHooks, isOwnHook } = require('./args');
 const { control, DENY_MESSAGE } = require('./control');
 const { placeEdit } = require('./place');
 const { accounting } = require('./accounting');
@@ -161,6 +161,7 @@ class ClaudeSession extends Base {
     this.busySince = null;         // when the current turn started, for the panel's running clock
     this.sessionId = resumeId;
     this.pending = new Map(); // requestId -> permission item
+    this.denied = new Set();  // tool use ids you clicked Deny on this turn: the result's denials leave those out
     // beforeWork(hookInput) -> hook output: set by main.js while a conversation
     // in a git project has no copy of its own yet. It sees every tool call that
     // could change files before it runs, and can hold it back (worktrees/index.js).
@@ -422,6 +423,16 @@ class ClaudeSession extends Base {
         if (item.sessionId) this.sessionId = item.sessionId;
         this.resumeAt = null; // the fork is made: from here on it's an ordinary resume
         break;
+      // The mode Claude Code says it's in (init, and each change): the session
+      // follows, with no request back, so the mode chip and planning stay right.
+      case 'mode':
+        this.mode = item.mode;
+        this.setPlanning(item.mode === 'plan');
+        break;
+      // Shellby's own callback hooks run on every tool call: nothing to say about those.
+      case 'hook':
+        if (isOwnHook(item.name)) return;
+        break;
       case 'tool': {
         if (item.filePath) this.createdFiles.add(item.filePath);
         // Claude writing down something to remember (Claude Code's auto memory).
@@ -462,6 +473,12 @@ class ClaudeSession extends Base {
         this.interrupting = false;
         // What went wrong, in a sentence and a next step (trouble.js); the CLI's own words stay in `error`.
         if (!item.ok && !item.interrupted && item.error) item.trouble = troubleOf(item.error);
+        // What it was refused, less what you refused yourself: that's already a card with your answer on it.
+        if (item.denials) {
+          item.denials = item.denials.filter(d => !d.toolUseId || !this.denied.has(d.toolUseId));
+          if (!item.denials.length) delete item.denials;
+        }
+        this.denied.clear();
         // Where this turn ends in Claude Code's transcript: rewinding to the
         // message after it resumes up to here.
         if (this.lastUuid) item.anchor = this.lastUuid;

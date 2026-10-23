@@ -73,7 +73,7 @@ test('compacting under way becomes an item, with the summary length only when Cl
 
 test('other statuses stay progress chatter', () => {
   assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: 'requesting' }), []);
-  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: null, permissionMode: 'default' }), []);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: 'requesting', permissionMode: 'dontAsk' }), [], 'a mode Shellby has no name for');
   assert.deepEqual(toItems({ type: 'system', subtype: 'status', status: 'compacting', parent_tool_use_id: 'tu_1' }), []);
 });
 
