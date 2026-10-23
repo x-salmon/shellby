@@ -13,6 +13,8 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9381;
 const wait = ms => new Promise(r => setTimeout(r, ms));
+// Poll until a condition holds (up to 10 s) instead of guessing how long the main process takes.
+const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) return true; await wait(100); } return false; };
 
 (async () => {
   let fails = 0;
@@ -47,7 +49,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const texts = () => ev("[...document.querySelectorAll('#noteList .note-text')].map(e => e.textContent)");
     const scope = () => ev("document.getElementById('notesScope').value");
     const pick = s => ev(`(() => { const sel = document.getElementById('notesScope'); sel.value = ${JSON.stringify(s)}; sel.dispatchEvent(new Event('change')); })()`);
-    const add = text => ev(`(() => { const i = document.getElementById('noteInput'); i.value = ${JSON.stringify(text)}; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`).then(() => wait(400));
+    const add = text => ev(`(() => { const i = document.getElementById('noteInput'); i.value = ${JSON.stringify(text)}; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`).then(() => until(async () => (await ev("document.getElementById('noteInput').value")) === ''));
     const row = n => `document.querySelectorAll('#noteList .note')[${n}]`;
     const stored = () => ev('shellby.listNotes()');
 
@@ -160,10 +162,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await open();
     await ev(`${row(1)}.querySelector('.note-more').click()`);
     await ev("[...document.querySelectorAll('#noteMenu .menu-item')].find(b => b.textContent === 'Delete').click()");
-    await wait(400);
+    await until(async () => (await texts()).length === 1);
     check((await texts()).join() === 'export to STL', 'a note can be deleted');
     await ev("[...document.querySelectorAll('#toast .toast-action')].find(b => b.textContent === 'Undo').click()");
-    await wait(400);
+    await until(async () => (await texts()).length === 2);
     check((await texts()).join() === 'export to STL,add a dark mode', 'and Undo puts it back where it was');
     check((await stored()).projects.find(x => x.key === key)?.notes.find(x => x.text === 'add a dark mode')?.runs.length === 2, 'with its runs');
 
