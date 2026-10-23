@@ -21,10 +21,10 @@ function project(settings = null) {
   return dir;
 }
 
-function world({ on = true, cwd = project(), tokens = 250000, sendThrows = false } = {}) {
+function world({ on = true, cwd = project(), tokens = 250000, sendThrows = false, background = false } = {}) {
   const tab = {
     id: 't1', saved: true, inTerminal: null,
-    session: { cwd, busy: false, pending: new Map(), runningCrew: () => [], cache: { at: AT, ttlMs: HOUR }, context: { tokens } },
+    session: { cwd, busy: false, pending: new Map(), hasBackgroundWork: () => background, cache: { at: AT, ttlMs: HOUR }, context: { tokens } },
   };
   const sent = [];
   const told = [];
@@ -50,6 +50,12 @@ test('sends /compact to a due tab, tells the panel, and marks the turn as idle c
   assert.equal(told[0].payload.item.turnId, 'turn-1');
   assert.equal(tab.idleCompacting, true);
   assert.equal(tab.idleCompactFor, AT);
+});
+
+test('a tab with a helper, a background command or a run still going is not compacted', () => {
+  const { d, sent } = world({ background: true });
+  assert.deepEqual(compactIdleTabs(d, at(NOW)), []);
+  assert.equal(sent.length, 0);
 });
 
 test('does nothing with the setting off', () => {

@@ -25,7 +25,7 @@ function compactIdleTabs(d, { now = Date.now(), home = os.homedir() } = {}) {
     if (s.remoteHost) continue;
     const view = {
       saved: tab.saved, routine: !!(tab.routineId || tab.workflowRunId), inTerminal: tab.inTerminal,
-      busy: s.busy, waiting: s.pending.size > 0 || s.runningCrew().length > 0,
+      busy: s.busy, waiting: s.pending.size > 0 || s.hasBackgroundWork(),
       cache: s.cache, tokens: s.context?.tokens, lastFor: tab.idleCompactFor,
     };
     // The cheap checks first, with Claude Code's default floor as the lowest

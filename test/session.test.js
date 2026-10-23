@@ -292,7 +292,7 @@ test('beforeWork sees a change before it happens, and can hold it back', async (
     assert.deepEqual(texts(items), ['Branch: add-greeting']);
 
     // Held busy while main.js moves it, a stop() is not a crash; the next turn
-    // starts a fresh process, without the hook.
+    // starts a fresh process, and with nothing watching work the hook lets it through.
     s.beforeWork = null;
     s.setBusy(true);
     await s.stop();
@@ -304,6 +304,100 @@ test('beforeWork sees a change before it happens, and can hold it back', async (
     assert.equal(require('fs').readFileSync(path.join(dir, 'a.txt'), 'utf8'), 'hi\n');
     await s.stop(); // its folder can't go while it's working there
   } finally { require('fs').rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a message sent while the process is on its way out waits for it to close, then goes in a fresh one', async () => {
+  const { s, items } = makeSession();
+  s.send('first');
+  await waitFor(s, i => i.kind === 'result');
+  const old = s.proc;
+  const stopped = s.stop();          // asked for (an idle stop, say), not closed yet
+  assert.equal(s.proc, old, 'still closing');
+  s.send('second');                  // typed in that window
+  assert.equal(s.busy, true);
+  await stopped;
+  await waitFor(s, i => i.kind === 'result' && texts(items).length === 2);
+  assert.deepEqual(texts(items), ['echo: first (mode=default)', 'echo: second (mode=default)']);
+  assert.ok(s.proc && s.proc !== old, 'a new process took it');
+  assert.equal(s.busy, false);
+  assert.ok(!items.some(i => i.kind === 'error'));
+  s.close();
+});
+
+test('Stop while a message waits for the old process to close ends that turn, and nothing starts', async () => {
+  const { s, items } = makeSession();
+  s.send('first');
+  await waitFor(s, i => i.kind === 'result');
+  const stopped = s.stop();
+  s.send('second');
+  const ended = waitFor(s, i => i.kind === 'result' && i.interrupted);
+  s.interrupt();
+  assert.equal((await ended).durationMs, 0);
+  await stopped;
+  await new Promise(r => setTimeout(r, 200));
+  assert.equal(s.proc, null, 'the turn that was interrupted never starts a process');
+  assert.equal(s.busy, false);
+  assert.deepEqual(texts(items), ['echo: first (mode=default)']);
+});
+
+test('beforeWork set once the process runs still sees the next change', async () => {
+  const dir = require('fs').mkdtempSync(path.join(os.tmpdir(), 'shellby-gate-late-'));
+  try {
+    const { s, items } = makeSession({ cwd: dir });
+    s.send('hello');                  // the process starts with nothing watching work
+    await waitFor(s, i => i.kind === 'result');
+    const seen = [];
+    s.beforeWork = input => {         // copies turned on in Settings meanwhile (copy-service.js armCopy)
+      seen.push(input.tool_name);
+      return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: 'not yet' } };
+    };
+    s.send('edit a.txt hi');
+    await waitFor(s, i => i.kind === 'result' && texts(items).length === 2);
+    assert.deepEqual(seen, ['Write']);
+    assert.equal(require('fs').existsSync(path.join(dir, 'a.txt')), false, 'held back');
+    assert.equal(texts(items)[1], 'Branch: add-greeting');
+    await s.stop();
+  } finally { require('fs').rmSync(dir, { recursive: true, force: true }); }
+});
+
+// Timers made while fn runs, and whether each has been cleared since (until restore()).
+function timersOf(fn) {
+  const made = [];
+  const cleared = new Set();
+  const { setTimeout: realSet, clearTimeout: realClear } = global;
+  global.setTimeout = (...a) => { const t = realSet(...a); made.push(t); return t; };
+  global.clearTimeout = t => { cleared.add(t); return realClear(t); };
+  const restore = () => { global.setTimeout = realSet; global.clearTimeout = realClear; };
+  try { fn(); } finally { global.setTimeout = realSet; }
+  return { made, cleared: t => cleared.has(t), restore };
+}
+
+const gone = s => new Promise(r => (s.proc ? s.once('exit', r) : r()));
+
+test('the kill timers of close() and interrupt() neither hold Shellby open nor outlive the process', async () => {
+  const { s } = makeSession();
+  s.send('hello');
+  await waitFor(s, i => i.kind === 'result');
+  const closing = timersOf(() => s.close());
+  try {
+    assert.equal(closing.made.length, 1);
+    assert.equal(closing.made[0].hasRef(), false, 'close: unref');
+    await gone(s);
+    assert.equal(closing.cleared(closing.made[0]), true, 'close: cleared once the process has gone');
+  } finally { closing.restore(); }
+
+  const again = makeSession().s;
+  again.send('slow');
+  await new Promise(r => setTimeout(r, 150));
+  const stopping = timersOf(() => again.interrupt());
+  try {
+    assert.equal(stopping.made.length, 1);
+    assert.equal(stopping.made[0].hasRef(), false, 'interrupt: unref');
+    await waitFor(again, i => i.kind === 'result');
+    again.close();
+    await gone(again);
+    assert.equal(stopping.cleared(stopping.made[0]), true, 'interrupt: cleared once the process has gone');
+  } finally { stopping.restore(); }
 });
 
 test('a turn that ends with work still running in the background says what it is waiting on', () => {
