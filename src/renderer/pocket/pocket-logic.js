@@ -180,6 +180,17 @@
   // ---------------------------------------------------------------- a transcript
 
   /**
+   * A live item added to a feed, newest last, at most max. A helper's step takes
+   * the place of its last one of that kind: fold draws only its latest tool and
+   * what it last said, and hundreds kept would push the conversation itself out.
+   */
+  function keepItem(items, item, max) {
+    if (item.sub && item.k !== 'tool' && item.k !== 'text') return items;
+    const rest = item.sub ? items.filter(x => !(x.sub && x.parent === item.parent && x.k === item.k)) : items;
+    return [...rest, item].slice(-max);
+  }
+
+  /**
    * Phone items -> blocks to draw, in order:
    *   { type: 'user', text } | { type: 'text', text } | { type: 'tools', tools: [{ id, label, detail, state }] }
    *   { type: 'crew', lanes: [{ id, type, description, state, summary }] } | { type: 'asked', ... }
@@ -454,7 +465,7 @@
   }
 
   const api = {
-    STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
+    STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keepItem, keyBytes,
     markdown, modeLabel, parsePatch, plural, route, sections, sseParser, tappedHash, tokens,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

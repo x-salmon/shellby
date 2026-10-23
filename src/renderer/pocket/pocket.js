@@ -648,8 +648,7 @@
         else {
           if (item.k === 'text' && !item.sub) S.partial.delete(tabId);
           if (item.k === 'end') S.partial.delete(tabId);
-          feed.items.push(item);
-          if (feed.items.length > 600) feed.items.splice(0, feed.items.length - 600);
+          feed.items = L.keepItem(feed.items, item, 600);
         }
         S.feeds.set(tabId, feed);
         if (S.screen?.tabId === tabId) S.screen.feed();

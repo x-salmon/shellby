@@ -63,6 +63,21 @@ test('an undo marks its changes undone', () => {
   assert.equal(blocks[1].type, 'note');
 });
 
+test('a busy helper’s live steps never push the conversation out of the feed', () => {
+  let items = [{ k: 'user', text: 'look around' }, { k: 'tool', id: 'a', label: 'Agent', agent: { type: 'Explore', description: 'map it' } }];
+  for (let i = 0; i < 1000; i++) {
+    items = L.keepItem(items, { k: 'tool', id: `s${i}`, label: 'Read', detail: `f${i}.js`, sub: true, parent: 'a' }, 600);
+    items = L.keepItem(items, { k: 'done', id: `s${i}`, sub: true, parent: 'a' }, 600);
+  }
+  assert.deepEqual(items.map(i => i.k), ['user', 'tool', 'tool']);
+  const blocks = L.fold(items);
+  assert.deepEqual(blocks.map(b => b.type), ['user', 'crew']);
+  assert.equal(blocks[1].lanes[0].activity, 'Read f999.js');
+  // The conversation's own items still roll off at the cap.
+  for (let i = 0; i < 700; i++) items = L.keepItem(items, { k: 'text', text: `${i}` }, 600);
+  assert.equal(items.length, 600);
+});
+
 test('markdown becomes blocks of plain runs, never HTML', () => {
   const md = L.markdown('# Title\n\nSome **bold**, `code` and [a link](https://example.com) and [bad](javascript:alert(1)).\n\n- one\n- two\n\n```js\nconst x = "<b>";\n```\n\n<script>alert(1)</script>');
   assert.deepEqual(md.map(b => b.t), ['h', 'p', 'li', 'li', 'code', 'p']);
