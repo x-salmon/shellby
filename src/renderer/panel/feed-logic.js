@@ -44,9 +44,24 @@
           text: item.conversation === false ? `Rewound the code: put ${files(item.restored || 0)} back`
             : `Rewound to an earlier message${item.code && item.restored ? `, and put ${files(item.restored)} back` : ''}`,
         };
+      case 'hook-failed':
+        return {
+          icon: '⚠',
+          text: `A hook ${item.outcome === 'cancelled' ? 'was cancelled' : 'failed'}: ${item.name}`
+            + `${item.exitCode != null && item.outcome !== 'cancelled' ? ` (exit ${item.exitCode})` : ''}${item.text ? `. ${item.text}` : ''}`,
+        };
       default:
         return null;
     }
+  }
+
+  // The busy line while Claude Code tries a failed API request again.
+  // { attempt, max, delayMs, status } from the api_retry event, any of them null.
+  function retryLine({ attempt, max, delayMs, status } = {}) {
+    const why = status === 429 ? 'Rate limited' : status === 529 || (status >= 500 && status < 600) ? 'The API is busy' : 'A request failed';
+    const which = attempt ? ` (attempt ${attempt}${max ? ` of ${max}` : ''})` : '';
+    const wait = delayMs >= 1000 ? ` in ${Math.round(delayMs / 1000)} s` : '';
+    return `${why}, trying again${wait}${which}…`;
   }
 
   // The busy line while Claude Code compacts. chars: how much of the summary is
@@ -279,7 +294,7 @@
   }
 
   const api = {
-    files, storySteps, markFor, compactingLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
+    files, storySteps, markFor, compactingLine, retryLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
     decisionVerdict, questionVerdict, resultLabel, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
   };

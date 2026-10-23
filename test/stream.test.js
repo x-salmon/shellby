@@ -332,3 +332,20 @@ test("the Workflow tool's result names the run's task and its run id; other resu
   assert.equal(ev({ status: 'remote_launched', taskId: 'r1', taskType: 'remote_agent', sessionUrl: 'https://x' }).workflowLaunch, undefined);
   assert.equal(ev({ agentId: 'a1', totalTokens: 5 }).workflowLaunch, undefined);
 });
+
+test('an API retry becomes a retrying item; a helper\'s does not', () => {
+  assert.deepEqual(toItems({ type: 'system', subtype: 'api_retry', attempt: 2, max_retries: 10, retry_delay_ms: 4000, error_status: 529, error: 'server_error' }),
+    [{ kind: 'retrying', attempt: 2, max: 10, delayMs: 4000, status: 529 }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'api_retry' }), [{ kind: 'retrying', attempt: null, max: null, delayMs: null, status: null }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'api_retry', attempt: 1, parent_tool_use_id: 'toolu_1' }), []);
+});
+
+test('only a hook that failed or was cancelled becomes an item', () => {
+  const base = { type: 'system', subtype: 'hook_response', hook_name: 'PreToolUse:Bash', hook_event: 'PreToolUse', output: '', stdout: '' };
+  assert.deepEqual(toItems({ ...base, outcome: 'success', exit_code: 0, stderr: '' }), []);
+  assert.deepEqual(toItems({ ...base, outcome: 'error', exit_code: 2, stderr: 'no rm -rf\nplease' }),
+    [{ kind: 'hook-failed', name: 'PreToolUse:Bash', outcome: 'error', exitCode: 2, text: 'no rm -rf please' }]);
+  assert.deepEqual(toItems({ type: 'system', subtype: 'hook_response', hook_event: 'Stop', outcome: 'cancelled' }),
+    [{ kind: 'hook-failed', name: 'Stop', outcome: 'cancelled', exitCode: null, text: null }]);
+  assert.deepEqual(toItems({ ...base, outcome: 'error', parent_tool_use_id: 'toolu_1' }), []);
+});

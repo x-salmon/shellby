@@ -227,7 +227,19 @@
       const liveView = this.live && item.kind === 'text' && !item.sub ? SB.codeView?.([this.live]) : null;
       if (this.live && item.kind !== 'partial' && !item.sub) this.endLive();
       if (this.compacting && (item.kind === 'compacted' || item.kind === 'result')) this.setCompacting(null);
+      // Anything else from Claude Code means the retried request went through.
+      if (this.retrying && item.kind !== 'retrying') {
+        this.retrying = false;
+        if (!this.compacting) this.setStatus('Working…');
+      }
       switch (item.kind) {
+        // The API failed a request and Claude Code is trying again: the busy line
+        // says so rather than sitting on Working… (feed-logic.js retryLine).
+        case 'retrying':
+          if (replay || this.compacting) return;
+          this.retrying = true;
+          this.setStatus(F.retryLine(item));
+          return;
         // Claude Code compacting the conversation: the busy line says so, over a
         // bar that runs until it's done (panel.css). The compacted mark stays after.
         case 'compacting':
@@ -325,7 +337,7 @@
           this.wipe();
           if (this.isActive) SB.renderTodos?.(this);
           // falls through
-        case 'moved': case 'wt-in': case 'wt-out': case 'phone': case 'home': case 'home-wait': case 'pushed': case 'compacted': case 'fresh': case 'rewound': {
+        case 'moved': case 'wt-in': case 'wt-out': case 'phone': case 'home': case 'home-wait': case 'pushed': case 'compacted': case 'fresh': case 'rewound': case 'hook-failed': {
           const mark = F.markFor(item, SB.compact);
           return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: mark.icon }), mark.text));
         }

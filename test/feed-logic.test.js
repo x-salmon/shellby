@@ -221,3 +221,15 @@ test('a helper working away from this folder says where in a word, and more on h
   assert.match(F.laneIsolationTitle('worktree'), /own copy of the repository/);
   assert.equal(F.laneIsolationText('somewhere'), 'somewhere', 'a kind it does not know shows as itself');
 });
+
+test('the retry line says why, when and which attempt, with whatever it was given', () => {
+  assert.equal(F.retryLine({ attempt: 2, max: 10, delayMs: 4000, status: 529 }), 'The API is busy, trying again in 4 s (attempt 2 of 10)…');
+  assert.equal(F.retryLine({ attempt: 1, status: 429 }), 'Rate limited, trying again (attempt 1)…');
+  assert.equal(F.retryLine({}), 'A request failed, trying again…');
+});
+
+test('a failed hook leaves a mark naming it', () => {
+  assert.equal(F.markFor({ kind: 'hook-failed', name: 'PreToolUse:Bash', outcome: 'error', exitCode: 2, text: 'blocked' }).text,
+    'A hook failed: PreToolUse:Bash (exit 2). blocked');
+  assert.equal(F.markFor({ kind: 'hook-failed', name: 'Stop', outcome: 'cancelled', exitCode: null, text: null }).text, 'A hook was cancelled: Stop');
+});

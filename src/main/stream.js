@@ -444,6 +444,29 @@ function compactingOf(ev) {
   return [];
 }
 
+// The API refused or failed a request and Claude Code is trying it again, which
+// otherwise looks like Shellby froze. Only the main thread's: a helper's retries
+// show in its own lane soon enough.
+const num = v => (Number.isFinite(v) ? v : null);
+function retryOf(ev) {
+  if (ev.parent_tool_use_id) return [];
+  return [{
+    kind: 'retrying', attempt: num(ev.attempt), max: num(ev.max_retries),
+    delayMs: num(ev.retry_delay_ms), status: num(ev.error_status),
+  }];
+}
+
+// A hook that failed or was cancelled: without this, Claude only changes course
+// with no reason shown. A hook that ran fine says nothing.
+function hookFailedOf(ev) {
+  if (ev.parent_tool_use_id || !ev.outcome || ev.outcome === 'success') return [];
+  return [{
+    kind: 'hook-failed', name: oneLine(ev.hook_name, 120) || oneLine(ev.hook_event, 120) || 'a hook',
+    outcome: ev.outcome === 'cancelled' ? 'cancelled' : 'error', exitCode: num(ev.exit_code),
+    text: oneLine(ev.stderr, 300) || oneLine(ev.output, 300) || null,
+  }];
+}
+
 // Returns an array of UI items for one parsed stream-json event.
 function toItems(ev) {
   if (!ev || typeof ev !== 'object') return [];
@@ -468,6 +491,8 @@ function toItems(ev) {
         return [{ kind: 'compacted', trigger: m.trigger === 'auto' ? 'auto' : 'manual', preTokens: Number.isFinite(m.pre_tokens) ? m.pre_tokens : null }];
       }
       if (ev.subtype === 'status') return compactingOf(ev);
+      if (ev.subtype === 'api_retry') return retryOf(ev);
+      if (ev.subtype === 'hook_response') return hookFailedOf(ev);
       if (MOD_UI[ev.subtype]) return modItem(ev);
       // Every command the conversation has now, with what each one does: how a
       // command a mod registers after the session started becomes known.
@@ -574,7 +599,8 @@ const KNOWN = Object.freeze({
   // control_response is read by session/ (answers to Shellby's own requests).
   // stream_event: the reply as it's written (only its words become items); prompt_suggestion: what you might ask next.
   types: new Set(['system', 'assistant', 'user', 'result', 'rate_limit_event', 'control_request', 'control_response', 'stream_event', 'prompt_suggestion']),
-  // init, task_*, compact_boundary, a compacting status, a mod's ui_* and commands_changed become items; the rest is progress chatter.
+  // init, task_*, compact_boundary, a compacting status, api_retry, a failed hook_response, a mod's ui_* and
+  // commands_changed become items; the rest is progress chatter.
   system: new Set(['init', 'task_started', 'task_progress', 'task_updated', 'task_notification', 'compact_boundary',
     'ui_log', 'ui_toast', 'ui_status', 'commands_changed',
     'hook_started', 'hook_progress', 'hook_response', 'status', 'api_retry', 'thinking_tokens',
