@@ -301,6 +301,30 @@ test('the Bugdex reads a failing command outside Shellby down to a species, neve
   assert.deepEqual(bugsOf(ev('PostToolUseFailure', { cwd: '\\\\host\\share', tool_name: 'Bash', tool_input: { command: 'x' }, error: 'ENOENT' })), []);
 });
 
+test('the flaky detective reads a test run outside Shellby down to a hash and test ids, never its text', () => {
+  const { testRunsOf } = require('../src/main/external');
+  const jest = fs.readFileSync(require('path').join(__dirname, 'fixtures', 'flaky', 'jest.txt'), 'utf8');
+  const start = testRunsOf(ev('PreToolUse', { tool_name: 'Bash', tool_use_id: 'tu_1', tool_input: { command: 'npm test' } }));
+  assert.deepEqual(start, [{ type: 'test-start', toolUseId: 'tu_1', cwd: ev('x').cwd }]);
+  const fail = testRunsOf(ev('PostToolUseFailure', { tool_name: 'Bash', tool_use_id: 'tu_1', tool_input: { command: 'npm test' }, error: jest }));
+  assert.equal(fail.length, 1);
+  assert.equal(fail[0].type, 'test-run');
+  assert.equal(fail[0].toolUseId, 'tu_1');
+  assert.equal(fail[0].run.ok, false);
+  assert.deepEqual(fail[0].run.failed, ['src/auth.spec.js › auth › signs in']);
+  assert.match(fail[0].run.cmd, /^[0-9a-f]{12}$/);
+  assert.ok(!JSON.stringify(fail).includes('npm test') && !JSON.stringify(fail).includes('connecting'), 'no command or output leaves');
+  const pass = testRunsOf(ev('PostToolUse', { tool_name: 'Bash', tool_use_id: 'tu_2', tool_input: { command: 'npm test' }, tool_response: { stdout: 'Tests: 6 passed, 6 total', stderr: '' } }));
+  assert.equal(pass[0].run.ok, true);
+  assert.equal(pass[0].run.cmd, fail[0].run.cmd, 'the same command hashes the same, so the two runs can be compared');
+  // Not a test command, interrupted, backgrounded, without a tool id, or from a folder that isn't on a local drive: nothing.
+  assert.deepEqual(testRunsOf(ev('PreToolUse', { tool_name: 'Bash', tool_use_id: 'tu_3', tool_input: { command: 'node app.js' } })), []);
+  assert.deepEqual(testRunsOf(ev('PostToolUseFailure', { tool_name: 'Bash', tool_use_id: 'tu_1', tool_input: { command: 'npm test' }, error: jest, is_interrupt: true })), []);
+  assert.deepEqual(testRunsOf(ev('PreToolUse', { tool_name: 'Bash', tool_use_id: 'tu_4', tool_input: { command: 'npm test', run_in_background: true } })), []);
+  assert.deepEqual(testRunsOf(ev('PreToolUse', { tool_name: 'Bash', tool_input: { command: 'npm test' } })), []);
+  assert.deepEqual(testRunsOf(ev('PreToolUse', { cwd: '\\\\host\\share', tool_name: 'Bash', tool_use_id: 'tu_5', tool_input: { command: 'npm test' } })), []);
+});
+
 test('a PostToolUseFailure keeps the session working, and reports only a failed test run', () => {
   const r = play([ev('UserPromptSubmit'), ev('PostToolUseFailure', { tool_name: 'Bash', tool_input: { command: 'npm test' }, error: 'boom' })]);
   assert.equal(r.s.state, 'working');

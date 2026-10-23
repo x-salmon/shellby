@@ -376,40 +376,86 @@ function wireProgress(d) {
     return p;
   }
 
-  /** A test command finished in one of Shellby's tabs: was it a flake? Did it go green? */
+  /**
+   * A test run finished on known code, wherever it ran: was it a flake? Did a
+   * fix prove itself? Every flake that's new this week starts the "When a test
+   * flakes" workflows.
+   *   run: flaky.readRun's reading (no output in it)
+   *   at: { snap: { root, tree } when it started, dir, tabId (null outside Shellby), command (null when only its hash is known) }
+   */
+  async function recordTestRun(run, at) {
+    // The command was seen before it ran: an edit sent alongside it, or made
+    // while it ran, means the code moved under it. Then it proves nothing.
+    const end = await snapshotWithin(at.dir);
+    if (!end || end.tree !== at.snap.tree) return;
+    if (at.tabId) d.surprises?.noteRun(at.tabId, { via: 'claude', cmd: run.cmd, tree: at.snap.tree, ok: run.ok, failing: run.parsed ? run.failed.length : 0, names: run.failed });
+    if (!flakyOn()) return;
+    const project = await projectOf(at.snap.root);
+    if (!project) return;
+    if (at.command) {
+      flakyCommands.delete(run.cmd);
+      flakyCommands.set(run.cmd, flaky.normalizeCmd(at.command));
+      if (flakyCommands.size > MAX_FLAKY_COMMANDS) flakyCommands.delete(flakyCommands.keys().next().value);
+    }
+    const now = Date.now();
+    const r = flaky.recordRun(d.config.get('flaky'), { key: project.id, name: project.name, root: project.root }, { ...run, tree: at.snap.tree }, now);
+    let state = r.state;
+    r.fresh.forEach(() => noteWeek('flaky'));
+    // The Bugdex's ghosts (wiring/bugdex.js): a flake is a Flaky Phantom seen; fixed for good, it's caught.
+    for (const f of r.flakes) d.bugdex?.flakySeen(project, f.id);
+    for (const id of r.fixed) {
+      noteWeek('flakefix');
+      awardXp('flakefix', { project: project.name, label: `Fixed ${flaky.labelOf(id)}` });
+      d.bugdex?.flakyFixed(project, id, flaky.normalizeFlaky(state).projects[project.id]?.tests[id]?.flakes || []);
+    }
+    const due = flaky.due(state, now);
+    if (due && d.sayText(flaky.sayLine(due), 'flaky', 9000)) state = flaky.markSaid(state, due.key, due.id, now);
+    d.config.set({ flaky: state });
+    if (r.flakes.length || r.fixed.length) d.send(d.panel, 'flaky', flakyView());
+    // Workflows with the "When a test flakes" trigger (workflows/triggers.js): a named test only, never the suite.
+    for (const f of r.flakes.filter(x => x.id !== flaky.SUITE)) {
+      d.workflows?.event('flaky', { test: f.id, label: flaky.labelOf(f.id), project: project.name, folder: project.root || at.snap.root, framework: run.framework || '', week: f.week });
+    }
+  }
+
+  /** A test command finished in one of Shellby's tabs. c: the pending entry from sessions.js. */
   async function noteTestRun(c, item, tail) {
     try {
       const snap = await c.tree;
       if (!snap || !watchTests()) return;
-      // The command was seen before it ran: an edit sent alongside it, or made
-      // while it ran, means the code moved under it. Then it proves nothing.
-      const end = await snapshotWithin(c.dir);
-      if (!end || end.tree !== snap.tree) return;
       const { output, complete } = fullOutput(item, tail);
       const run = flaky.readRun({ cmd: c.command, output, isError: item.isError, complete });
       if (!run) return;
-      d.surprises?.noteRun(c.tabId, { via: 'claude', cmd: run.cmd, tree: snap.tree, ok: run.ok, failing: run.parsed ? run.failed.length : 0, names: run.failed });
-      if (!flakyOn()) return;
-      const project = await projectOf(snap.root);
-      if (!project) return;
-      flakyCommands.delete(run.cmd);
-      flakyCommands.set(run.cmd, flaky.normalizeCmd(c.command));
-      if (flakyCommands.size > MAX_FLAKY_COMMANDS) flakyCommands.delete(flakyCommands.keys().next().value);
-      const now = Date.now();
-      const r = flaky.recordRun(d.config.get('flaky'), { key: project.id, name: project.name, root: project.root }, { ...run, tree: snap.tree }, now);
-      let state = r.state;
-      r.fresh.forEach(() => noteWeek('flaky'));
-      // The Bugdex's ghosts (wiring/bugdex.js): a flake is a Flaky Phantom seen; fixed for good, it's caught.
-      for (const f of r.flakes) d.bugdex?.flakySeen(project, f.id);
-      for (const id of r.fixed) {
-        noteWeek('flakefix');
-        awardXp('flakefix', { project: project.name, label: `Fixed ${flaky.labelOf(id)}` });
-        d.bugdex?.flakyFixed(project, id, flaky.normalizeFlaky(state).projects[project.id]?.tests[id]?.flakes || []);
-      }
-      const due = flaky.due(state, now);
-      if (due && d.sayText(flaky.sayLine(due), 'flaky', 9000)) state = flaky.markSaid(state, due.key, due.id, now);
-      d.config.set({ flaky: state });
-      if (r.flakes.length || r.fixed.length) d.send(d.panel, 'flaky', flakyView());
+      await recordTestRun(run, { snap, dir: c.dir, tabId: c.tabId, command: c.command });
+    } catch (e) {
+      d.log.error('flaky', e);
+    }
+  }
+
+  // ---- Claude Code outside Shellby (external.js testRunsOf): the same, from the plugin's hooks.
+  // The hook only hands over a hash and test ids, so the fix prompt can't name the command.
+
+  const outsideTests = new Map();   // tool_use_id -> promise of the tree when it started
+  const MAX_OUTSIDE_TESTS = 50;
+
+  /** A test command is starting in a session outside Shellby: the code as it is now. */
+  function outsideTestStart({ toolUseId, cwd }) {
+    if (!watchTests() || !toolUseId || !cwd) return;
+    const key = path.resolve(cwd).toLowerCase();
+    const p = flakySnapshots.get(key) || snapshotWithin(cwd);
+    outsideTests.set(toolUseId, p);
+    if (outsideTests.size > MAX_OUTSIDE_TESTS) outsideTests.delete(outsideTests.keys().next().value);
+  }
+
+  /** ...and finished: external.js has already read it down to a run. */
+  async function outsideTestRun({ toolUseId, cwd, run }) {
+    const tree = outsideTests.get(toolUseId);
+    outsideTests.delete(toolUseId);
+    if (!tree || !run) return;
+    try {
+      const snap = await tree;
+      if (!snap || !watchTests()) return;
+      await recordTestRun(run, { snap, dir: cwd, tabId: null, command: null });
     } catch (e) {
       d.log.error('flaky', e);
     }
@@ -566,7 +612,7 @@ function wireProgress(d) {
   return {
     crabSummary, crabTrailer,
     awardXp, checkWrapUp, checkedUp, checkupsView, flakyAct, flakyOn, flakyTree, flakyView,
-    knownFolder, noteAwayRun, noteCommand, noteFix, noteRed, noteTestRun, noteWeek, noteWorkTime,
+    knownFolder, noteAwayRun, noteCommand, noteFix, noteRed, noteTestRun, noteWeek, noteWorkTime, outsideTestRun, outsideTestStart,
     rerollBounty, reachCoreRooms, roomTaskDone, roomsPanelView, runCheckup, setRooms, showFlaky, weekView, xpView,
   };
 }
