@@ -178,7 +178,7 @@ His tank is on the **crab card** (📸 Share) once there's something in it: he s
 
 Your **calling card** (Visiting crabs) and **profile card** are public, so his tank stays off them until you turn on **Show his tank** at the bottom of the Tank. Then:
 
-- Friends see a **Peek at their tank** button next to your name in Settings → GitHub → Visiting crabs. It shows his size of tank, the floor, the back glass, the light and up to 24 pieces, drawn with their own Shellby's art. Specimen jars and decor from packs stay home.
+- Friends see a **Peek at their tank** button next to your name in Settings → Connections → GitHub → Visiting crabs. It shows his size of tank, the floor, the back glass, the light and up to 24 pieces, drawn with their own Shellby's art. Specimen jars and decor from packs stay home.
 - Your **profile card** shows him standing in it, with the same pieces.
 - A friend's crab dropping by while it's on earns **House Guest**, and the Guest Bench.
 

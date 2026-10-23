@@ -20,10 +20,10 @@
 //   - An Origin, when a browser sends one, must be this server's own.
 //   - Every /pocket/v1 call but pairing carries a device token (pocket/pairing.js).
 //
-// What a call may do is decided in wiring/pocket.js, under the same rules as
-// the phone notifications: Allow and Deny only, never Always allow, nothing the
-// desk card would warn about, and tasks in Ask first; and by the phone's own
-// rights level (pocket/rights.js), set at the desk.
+// What a call may do is decided in wiring/pocket.js: Allow, Deny, and Always
+// allow where the desk card offers it; questions and plans through their own
+// sheets; never Allow on anything appDeskOnlyReason keeps for the desk; and by
+// the phone's own rights level (pocket/rights.js), set at the desk.
 const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');

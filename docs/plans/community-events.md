@@ -1,6 +1,8 @@
 # Community events: a reason to come back, on a calendar
 
-> Status: **plan.** Nothing here is built yet.
+> Status: **partly built.** Wrapped week (§5), the monthly crab contest
+> (`src/wardrobe/contest.json`, `scripts/contest-tally.js`, `contest-ship.js`)
+> and event-limited packs (`unlock.event`) are in; the rest is still a plan.
 
 Shellby already has a year of things that come round: six seasons with
 limited items you keep (`wardrobe/seasons.js`), six tide events of ten days or

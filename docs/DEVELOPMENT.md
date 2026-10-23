@@ -20,7 +20,7 @@ claude -p --input-format stream-json --output-format stream-json --verbose
 - **Background commands and watches** (`Bash { run_in_background }`, `Monitor`) come through as the same `task_*` events with `task_type: "local_bash"` (helpers are `local_agent`), and only `task_started` says the type, so later events are known by their task id (jobs.js). A command's exit code is only in `task_notification`'s summary. Stop sends a `stop_task` control request, as Claude Code's own TaskStop does. A helper sent another message (`SendMessage`) starts again under that call's id while its messages keep the first Agent call's.
 - **Ultracode runs** (Claude Code's Workflow tool, which the word "ultracode" in a prompt opts a turn into) are `task_*` events with `task_type: "local_workflow"`; their phases and agents ride on `task_progress` as `workflow_progress`, and the agents are no tasks of their own. Each run is a card and its agents helper crabs (ultracode.js); what is and isn't exposed is in [ULTRACODE.md](ULTRACODE.md).
 - **Claude's own to-do list** is its `TaskCreate` / `TaskUpdate` calls (`TodoWrite` in older versions); the new to-do's id comes back in `TaskCreate`'s result (shared/todos.js).
-- **Newer flags** (`session/args.js` `OPTIONAL_FLAGS`: `--include-partial-messages`, `--forward-subagent-text`, `--fallback-model`, `--name`, `--agent`, `--safe-mode`, `--chrome`) are passed only when the installed CLI's `--help` lists them (`claude/cli.js` `helpFlags`, read with the status check), and never over ssh, where the version isn't known. An older CLI stops at a flag it doesn't know, so without this check every turn would fail.
+- **Newer flags** (`session/args.js` `OPTIONAL_FLAGS`: `--include-partial-messages`, `--forward-subagent-text`, `--include-hook-events`, `--fallback-model`, `--name`, `--agent`, `--safe-mode`, `--chrome`) are passed only when the installed CLI's `--help` lists them (`claude/cli.js` `helpFlags`, read with the status check), and never over ssh, where the version isn't known. An older CLI stops at a flag it doesn't know, so without this check every turn would fail.
 - **The reply as it's written** comes as `stream_event` `content_block_delta` / `text_delta` events. The session batches them into `partial` items every 50 ms. They reach the panel but are never saved, and the panel swaps them for the finished `text` item. **Prompt suggestions** (`promptSuggestions: true` in `initialize`) arrive after a turn as `prompt_suggestion` events and are never saved either. Claude Code only sends them when a server-side switch allows it. As of 2.1.296 the dev PC's account got none, even with `CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION` set. **A helper's words** (`--forward-subagent-text`) are assistant events with `parent_tool_use_id`. They show in its lane, and their first line goes in its crab's bubble.
 - **`/goal`** has no event of its own: Claude Code answers with a `<synthetic>`-model reply, `Goal set: …` or `Goal cleared: …` (`stream.js` `goalOf`), and the panel pins the goal from that.
 - **Cloud sessions** (`--teleport`, `--cloud`, `--from-pr`) open in a terminal through `handoff.js` `cloudArgs`, which allows a fixed set of arguments only. A cloud session's description goes only to PowerShell, as a single-quoted literal, never to cmd.
@@ -222,7 +222,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_PORT=<port>` | the `shellby` command, the plugin's hook and MCP server | The port they talk to (default 47913). Point them at a dev run's `SHELLBY_HOOK_PORT` |
 | `SHELLBY_TOKEN=<token>` | the `shellby` command | Its token, in place of `cli-token` from the profile |
 | `SHELLBY_CLAUDE_PATH=<exe>` | claude/cli.js | Any build. Tried first when looking for Claude Code |
-| `SHELLBY_MOTION_TEST=1` | ipc/critter.js | Dev only. The dev hooks (`shellby.dev.*`: throw, stroll, say, life, perch…) the e2e scripts drive him with. Makes it a test run |
+| `SHELLBY_MOTION_TEST=1` | ipc/critter.js, test-desktop.js, wiring/molting.js | Dev only. The dev hooks (`shellby.dev.*`: throw, stroll, say, life, perch…) the e2e scripts drive him with. Makes it a test run |
 | `SHELLBY_E2E=1` | test-desktop.js, ipc/critter.js, wiring/molting.js, wiring/reef.js | Set by `e2e:ci` for every check. A test run whose windows live off every screen (15000 DIP to the left; Shellby and the page see bounds as if on screen, and the leftmost monitor as the only one), show without activating, keep their focus in Shellby's books instead of Windows', and "maximize" to the work area's size out there. The checks drive them over CDP, which needs no screen. Not with `SHELLBY_COVER_POLL=1` |
 | `SHELLBY_REAL_DESKTOP=1` | test-desktop.js | Turns the test-run behaviour off, for runs that measure him as he really is (idle-cost.js, perf-budget.js) |
 | `SHELLBY_COVER_POLL=1` | test-desktop.js | Keeps the game and cover watch in a test run, for a check about it (e2e-on-top) |
@@ -236,6 +236,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_DISCORD_CLIENT_ID=<id>` | discord.js | Any build. Another Discord application for Rich Presence |
 | `SHELLBY_FAKE_SSH=<file>` | wiring/remote.js | Dev only. A stand-in for ssh.exe (`test/fixtures/fake-ssh.js`), run with `SHELLBY_NODE` |
 | `SHELLBY_FAKE_SSH_HOME=<folder>` | test/fixtures/fake-ssh.js | The fake ssh's home on the "other computer" |
+| `SHELLBY_FAKE_AGENTS`, `SHELLBY_FAKE_BG`, `SHELLBY_FAKE_BG_LOG`, `SHELLBY_FAKE_CLOUD`, `SHELLBY_FAKE_PING`, `SHELLBY_FAKE_*_MS`, `SHELLBY_FAKE_SSH_G`, `SHELLBY_FAKE_SSH_LOG` | test/fixtures/fake-claude.js, fake-ssh.js | The fakes' own switches, set by the tests and e2e scripts that need them (e2e-cli-features, e2e-claude-new, e2e-native, e2e-crew): what the fake CLI answers, how long it takes, and where the fakes log. Each is described where the fixture reads it |
 | `SHELLBY_REAL_SSH=1` | wiring/remote.js | An isolated run uses your real `~/.ssh` instead of the pretend home in its profile |
 | `SHELLBY_LONG_TASK_MS=<ms>` | main.js | Any build. How long a task runs before he says "bear with me" (default 3 minutes) |
 | `SHELLBY_SENTRY_DSN=<dsn>` | crash-report.js | Dev only. Sends a dev run's crash reports there (see [Crash reports](#crash-reports)) |
@@ -255,7 +256,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_E2E_HOME=x,y` | e2e-perch.js, e2e-edges.js | Where he lives for the check, in DIPs, when a fullscreen window covers his screen |
 | `SHELLBY_ELECTRON=<exe>` | e2e-team.js | An electron.exe to launch when this checkout has none (a worktree) |
 
-`SHELLBY_OWNED`, `SHELLBY_CRAB_TOOLS`, `SHELLBY_ASKPASS_PORT`, `SHELLBY_ASKPASS_TOKEN` and `SHELLBY_VALUE_*` are set by Shellby itself for the processes it starts, not by you.
+`SHELLBY_OWNED`, `SHELLBY_CRAB_TOOLS`, `SHELLBY_ASKPASS_PORT`, `SHELLBY_ASKPASS_TOKEN`, `SHELLBY_SWITCH_*` and `SHELLBY_VALUE_*` are set by Shellby itself for the processes it starts, not by you.
 
 ## Keeping up with Claude Code
 
@@ -607,7 +608,7 @@ src/main/        Electron main process
   debug-mode.js    Debug mode (pure): the prompts, a reproduction's lines, the marked lines left behind; debug-ingest.js is the
                    127.0.0.1 receiver the logging posts to; wiring/debug-mode.js runs the rounds and the card
   statusline.js    Shellby's line for Claude Code's status line, and adding/removing it in Claude's settings
-  updates.js       the self-update state machine behind the button in Settings → About (electron-updater is injected, so it's testable)
+  updates.js       the self-update state machine behind the button in Settings → General → About (electron-updater is injected, so it's testable)
   github/          sign-in (device flow, encrypted token), the REST client, gist sync, pack publishing, CI on your pull requests (ci.js), calling cards and waves for visiting crabs (card.js, mail.js), finding your own gists (gists.js), conversation history through its own gist (history-gist.js), and the service tying them together
   gitlab/          GitLab through the glab CLI (glab.js runs `glab api`, glab keeps the sign-in): which remotes are GitLab
                    projects (remote.js), the merge request watcher (watcher.js, github/ci.js's twin) and the material for

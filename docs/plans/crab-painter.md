@@ -1,13 +1,11 @@
 # The Crab Painter: paint a crab, see him move, share him
 
-> Status: **plan.** Nothing here is built yet.
+> Status: **built.** The Painter is in the app (`src/main/painter.js`,
+> `src/renderer/panel/painter.js`, `scripts/e2e-painter.js`); [SKINS.md](../SKINS.md)
+> says how to use it. This page is kept as the plan it was built from.
 
-Today a skin is a JSON pixel grid typed by hand ([SKINS.md](../SKINS.md)), and
-the only way to see it is Reload in Settings. The web Pack Studio
-(getshellby.com/community/studio/) previews packs, but nothing in the app links
-to it, and it doesn't paint. Publishing works (`github/publish.js`), but only for
-a Wardrobe pack that's already installed, so a loose skin has to be wrapped in a
-pack by hand first.
+Before it, a skin was a JSON pixel grid typed by hand, and the only way to see
+it was Reload in Settings.
 
 The Painter closes that loop inside the app: **start from a crab, paint, watch
 him do every pose, save, wear, share**, with no JSON and no text editor. It's
@@ -27,8 +25,8 @@ The order below is the build order. Each phase ships alone.
 | Undo and drafts | the Tank editor's draft and undo (`tank.js`, `tank-layouts`) |
 | Try on with an outfit | the Wardrobe stage (`wardrobe.js:59-75`) and its mood buttons |
 | Every pose | `work-pose.js` `POSES`, animated by `critter.css:147-250` (crab window only) |
-| Load and broadcast | `skins:reload` (`ipc/wardrobe.js:39`), `broadcastSkin()` (`wiring/critter.js:79-86`) |
-| Publish | `publishPack()` (`github/publish.js:44-88`), `confirmAndPublishPack` (`wiring/github.js:529-557`) |
+| Load and broadcast | `skins:reload` (`ipc/wardrobe.js:39`), `broadcastSkin()` (`wiring/critter.js`) |
+| Publish | `publishPack()` (`github/publish.js`), `confirmAndPublishPack` (`wiring/github.js`) |
 
 ## 1. The Painter screen
 

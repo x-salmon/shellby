@@ -60,7 +60,7 @@ Trophies: ✨ *Glimmer* (your first, for a Glitter Jar in the tank), 🌟 *Shiny
 
 ## Crab eggs
 
-From level 5, with **Visiting crabs** on (Settings → GitHub), he can lay an egg a week for someone who doesn't have Shellby yet, with up to three waiting at once. On the Us page, under **Eggs and the clutch**:
+From level 5, with **Visiting crabs** on (Settings → Connections → GitHub), he can lay an egg a week for someone who doesn't have Shellby yet, with up to three waiting at once. On the Us page, under **Eggs and the clutch**:
 
 1. **Lay an egg**, then **Copy invite**. That copies the download link and the egg's code (`EGG-yourname-…`). Send it however you like. **📸 Card** makes a picture of the egg with its code on.
 2. They install Shellby, turn on Visiting crabs, and paste the code on their Us page. If they paste it first, it waits and hatches once they've signed in.
@@ -76,7 +76,7 @@ Trophies: 🥚 *Proud Parent* (your first egg hatched, for a Crab Nest), 🐣 *B
 
 Friends can swap **finds**, sparkly ones too. Bugs never change hands, because a catch comes from a fix Claude made.
 
-- **Swap…** on a friend's row in Settings → GitHub → Visiting crabs shows what they'd swap and what you could give. Anything that would **finish one of your sets** says so, and anything they're after is marked.
+- **Swap…** on a friend's row in Settings → Connections → GitHub → Visiting crabs shows what they'd swap and what you could give. Anything that would **finish one of your sets** says so, and anything they're after is marked.
 - You always keep one of everything. Only a second copy can go.
 - Your copy is set aside while you wait. If they say no, call it off, or a week passes, it comes back.
 - Offers to you wait under **Swaps** with **Swap** and **No thanks**. Saying yes makes the swap at once.
@@ -96,6 +96,6 @@ Your card only shares counts: how many bugs this month, how many sparkly, and in
 
 ## On pull requests and commits
 
-If you've turned on the **pull request badge** (Settings → GitHub), its line now reads like *🦀 Built with Shellby · Lv 12 Abyssal Admin · Tester · 3 bugs jarred this week · 🎃*.
+If you've turned on the **pull request badge** (Settings → Connections → GitHub), its line now reads like *🦀 Built with Shellby · Lv 12 Abyssal Admin · Tester · 3 bugs jarred this week · 🎃*.
 
 **Sign Shellby's bring-home commits** (Settings → Claude → Copies of a project) adds one line to the commits Shellby makes bringing a copy home: `Shipped-with: Shellby (Lv 12 Abyssal Admin)`. Claude Code's own commits keep their own sign-off.

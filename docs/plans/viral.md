@@ -12,7 +12,7 @@ alone.
 ## Where it ended up (differences from the first draft below)
 
 - **Modules.** Pure: `events.js`, `board.js`, `swaps.js`, `eggs.js`, `crab-line.js`,
-  `today.js`, and sparkles in `gifts.js` / `bugdex.js`. Wiring: `wiring/events.js`,
+  `today.js`, and sparkles in `gifts/index.js` / `bugdex/index.js`. Wiring: `wiring/events.js`,
   `wiring/social.js` (swaps and eggs), and the board in `wiring/bugdex.js`. Panel:
   `tide.js`, `sparkle.js`, `social.js`, `moment-card.js` (one 1200×630 card for
   every moment), `tide.css`. Rewards: `src/wardrobe/tide-chest.json`.
@@ -88,8 +88,7 @@ packaged) sets the date every season and event reads, through one
 
 **Finds.** Every find dug up has a 1 in 128 chance of being **sparkly** (1 in 64
 during Low Tide and for ghosts in The Haunting). A sparkly find is the same
-find with its colours turned (bugdex/art.js `shiny`, moved to
-`src/main/sparkle.js`) and a glint. The shelf keeps a count of each:
+find with its colours turned (bugdex/art.js `shiny`) and a glint. The shelf keeps a count of each:
 `items[id] = { n, first, last, shiny, shinyFirst }`.
 
 **Bugs.** The Bugdex already rolls 1 in 64 (`SHINY_CHANCE`). It's been a chip

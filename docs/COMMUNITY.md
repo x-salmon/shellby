@@ -6,7 +6,7 @@ Shellby has no servers, and running its community doesn't change that. The news 
 
 A small feed, `news.json`, sits on the gallery's site beside `index.json` and `catalog.json`: `https://x-salmon.github.io/shellby-packs/news.json`. It's built from `news/*.json` in [`x-salmon/shellby-packs`](https://github.com/x-salmon/shellby-packs), so adding an item is a pull request there, and the gallery's own Pages build publishes it.
 
-Shellby reads it 30 seconds after it starts and then at most once a day, with nothing about you in the request. What's current shows as one quiet card at the top of the **Us** page and on **Settings → About**, with ✕ to put it away for good (synced with Sync on). Never a toast, a notification or anything on the desktop. **Settings → Shellby → Community news** off fetches nothing at all.
+Shellby reads it 30 seconds after it starts and then at most once a day, with nothing about you in the request. What's current shows as one quiet card at the top of the **Us** page and on **Settings → General → About**, with ✕ to put it away for good (synced with Sync on). Never a toast, a notification or anything on the desktop. **Settings → Shellby → Community news** off fetches nothing at all.
 
 ### An item
 
@@ -75,7 +75,7 @@ No entries:
 
 ## Credits
 
-`src/community/credits.json` lists everyone who has made Shellby, and ships in each release. **Settings → About → Made by** shows it: contest winners, pack makers and code, each name a link to their GitHub profile.
+`src/community/credits.json` lists everyone who has made Shellby, and ships in each release. **Settings → General → About → Made by** shows it: contest winners, pack makers and code, each name a link to their GitHub profile.
 
 ```jsonc
 { "format": 1, "people": [
@@ -107,7 +107,7 @@ Shellby checks when it starts and when you sign in, and reads the gallery's inde
 **Patron can't be had for free or passed around.** Shellby is open source, so anyone can draw anything on their own screen after rebuilding it, but nobody can get Patron any of the easy ways, or show it to anyone else:
 
 - **Your PC.** GitHub's answer, with your GitHub account's number, is sealed with Windows' encryption for your user (`src/main/patron.js`) before it's kept. The six sponsor trophies, their stats and their items never come from `config.json` alone, so editing it by hand, or copying it to another PC or to someone else, unlocks nothing. It holds while you're signed out or signed in as that account, but not while someone else is, so a sponsor can't sign in on a friend's PC to lend it. (A script run as you could forge the seal, as it could patch Shellby: this keeps out everyone short of that.)
-- **Friends.** A friend's Shellby only draws the patron items on your crab and in your tank if your calling card carries a proof signed by getshellby.com (`api/patron.js` in `x-salmon/shellby-site`) for the GitHub account that owns the card's gist, by its number, which never passes to anyone else as a login can. A proof lasts 30 days and Shellby fetches a fresh one daily. getshellby.com reads x-salmon's public sponsors from GitHub at most every 10 minutes and answers from that list, so private sponsors are never in its data and a flood of requests can't run up GitHub calls. A private sponsor gets everything on their own PC; friends see the lantern once the sponsorship is public.
+- **Friends.** A friend's Shellby only draws the patron items on your crab and in your tank if your calling card carries a proof signed by getshellby.com (`api/patron.js` in `x-salmon/shellby-site`) for the GitHub account that owns the card's gist, by its number, which never passes to anyone else as a login can. A proof lasts 30 days and Shellby fetches a fresh one daily. getshellby.com reads x-salmon's public sponsors from GitHub at most every 10 minutes and answers from that list, so private sponsors are never in its data and a flood of requests can't run up GitHub calls. A private sponsor gets everything on their own PC; friends see the supporter items once the sponsorship is public.
 - **Your own packs.** A pack can't carry any supporter item's pixels, recoloured or not: the Wardrobe skips the item and says it's a supporter item. It's a speed bump (a pixel moved gets past it), and only ever on your own screen: friends' crabs never draw your packs' items from a card.
 
 **Setting up the signer.** `node scripts/patron-keygen.js <file outside the repo>` makes the key pair: the private half is getshellby.com's `PATRON_SIGNING_KEY`, the public half goes in `PUBLIC_KEYS` in `src/main/patron.js` under the next key id (`KEY_ID` in `api/patron.js`). getshellby.com also needs `SPONSORS_TOKEN`: a classic token of x-salmon's with `read:user`, used for nothing else. Set both in Vercel for **Production only** and mark them **Sensitive**, so no preview deployment can read them. A leaked private key means a new pair under a new id; keep the old public key in the app until 30 days after the last release that trusted it. Without a sign-in it can't know, so the trophies say **Sign in to GitHub to claim**. The login comes from the GitHub sign-in itself, never from anything typed. Once earned, a trophy stays, even if you sign out.

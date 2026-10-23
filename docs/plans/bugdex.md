@@ -50,7 +50,7 @@ The same strictness as `docs/plans/flaky-tests.md` applies: **a false catch teac
 
 Everything stays on this PC except species counts, which sync like XP. No error text is stored, only a species id, a 12-character hash and a project id.
 
-This file is the contract between the pure modules (`src/main/bugdex*.js`), main, the panel, the crab and the tests.
+This file is the contract between the pure modules (`src/main/bugdex/`), main, the panel, the crab and the tests.
 
 ---
 
@@ -558,7 +558,7 @@ newbug: { xp: 40, perHour: 3, label: 'A new bug for the Bugdex', way: 'Catches a
 
 Each item gets `"unlock": { "achievement": "<id>" }`. `test/packs.test.js` checks both directions, and `npm run packs` validates.
 
-**Needs** (`src/main/needs.js`): add `'bug-caught': { group: 'work', snack: 'plankton', n: 1, perDay: 3, claude: true }` next to `'ci-fixed'` (needs.js:85).
+**Needs** (`src/main/needs.js`, since removed with pet needs): add `'bug-caught': { group: 'work', snack: 'plankton', n: 1, perDay: 3, claude: true }` next to `'ci-fixed'` (needs.js:85).
 
 **Week in review**:
 - `weekly.js KINDS` gets `'caught'` and `'newbug'`.

@@ -111,7 +111,7 @@ Shellby remembers which you used last.
 |---|---|
 | On a schedule | every day, on certain days, every few hours, or every 5-1440 minutes |
 | When a build changes | when a pull request's (or GitLab merge request's) checks fail, go green again, pass, merge, or ask for your review (needs GitHub or GitLab CI turned on) |
-| When an issue comes in | when a GitHub issue is assigned to you, or labelled `shellby` (needs **Offer to take on issues** in Settings → GitHub) |
+| When an issue comes in | when a GitHub issue is assigned to you, or labelled `shellby` (needs **Offer to take on issues** in Settings → Connections → GitHub) |
 | When something ships | when a project is pushed, deployed, released or has a pull request merged |
 | When a task finishes | when one of your Shellby tasks finishes (never a workflow's own) |
 | When the PC needs attention | when something overheats or a drive fills up |
@@ -243,7 +243,7 @@ the template from before this skips nothing and asks once more.
 What it needs:
 
 - **Offer to take on issues** and **Let Claude tasks push code and open pull
-  requests**, both in Settings → GitHub.
+  requests**, both in Settings → Connections → GitHub.
 - The repository cloned on this PC (the Projects page can clone it).
 
 Where the label counts: your own repositories, and the ones cloned on this PC
@@ -289,7 +289,7 @@ or a file), and blanked out of everything a run records.
 ## Web hooks
 
 Add the **From a script** trigger and save, and the workflow gets an address on
-Shellby's local port (it needs **Settings → Claude Code everywhere** turned on):
+Shellby's local port (it needs **Settings → Claude → Claude Code everywhere** turned on):
 
 ```powershell
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47913/v1/flow `
