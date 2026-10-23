@@ -73,7 +73,9 @@ const control = {
     // process, and killing that one would read as a crash.
     const proc = this.proc;
     const turn = this.turn;
-    setTimeout(() => { if (this.proc === proc && this.busy && this.turn === turn) this.kill(); }, killMs);
+    const timer = setTimeout(() => { if (this.proc === proc && this.busy && this.turn === turn) this.kill(); }, killMs);
+    timer.unref?.(); // never what keeps Shellby open, and gone with the process
+    proc.once('exit', () => clearTimeout(timer));
   },
 
   /**

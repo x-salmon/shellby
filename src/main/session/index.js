@@ -244,7 +244,7 @@ class ClaudeSession extends Base {
     let stderr = '';
     // Also names the servers hosted here: Claude Code then connects to them
     // with mcp_message requests before the first turn.
-    this.write({ type: 'control_request', request_id: randomUUID(), request: { subtype: 'initialize', hooks: initHooks(!!this.beforeWork), promptSuggestions: true, ...(this.mcp ? { sdkMcpServers: [crabmcp.SERVER] } : {}) } });
+    this.write({ type: 'control_request', request_id: randomUUID(), request: { subtype: 'initialize', hooks: initHooks(), promptSuggestions: true, ...(this.mcp ? { sdkMcpServers: [crabmcp.SERVER] } : {}) } });
 
     readline.createInterface({ input: proc.stdout }).on('line', line => {
       if (this.proc !== proc) return; // dropped: whatever it still says goes unheard
@@ -305,12 +305,15 @@ class ClaudeSession extends Base {
     this.proc = null;
     if (this.partial) { clearTimeout(this.partial.timer); this.partial = null; } // half a reply that will never be finished
     this.setupChars = null; // a first prompt that never got its call can't size the next one
-    this.waiting = null;
+    // A turn sent after the stop was asked for (send()) is waiting for exactly
+    // this, and goes next; one that was waiting when the process went never does.
+    const carried = this.waiting?.afterStop ? this.waiting : null;
+    this.waiting = carried;
     this.steered = [];
     this.openTools.clear();
     for (const id of [...this.requests.keys()]) this.answered({ request_id: id, subtype: 'error', error: 'Claude Code stopped.' });
     this.inOrder(() => {
-      const wasBusy = this.busy && !stopping;
+      const wasBusy = this.busy && !stopping && !carried;
       this.cancelPending();
       let crewChanged = false;
       for (const [id, t] of this.tasks) {
@@ -495,6 +498,16 @@ class ClaudeSession extends Base {
     return jobs.view(this.jobs, now);
   }
 
+  /**
+   * Whether something of this conversation is still going between turns: a
+   * helper, a background command or watch (a dev server, say), or an ultracode
+   * run. Ending the process would end it too, so an idle stop and idle
+   * compaction leave such a tab alone (sessions.js stopIdle, wiring/idle-compact.js).
+   */
+  hasBackgroundWork() {
+    return this.runningCrew().length > 0 || jobs.running(this.jobs).length > 0 || this.runningRuns().length > 0;
+  }
+
   // Claude's to-do list moved: 'todos' with the list at a glance (shared/todos.js).
   noteTodos(item) {
     if (todos.apply(this.todos, item)) this.emit('todos', todos.summary(this.todos));
@@ -536,12 +549,18 @@ class ClaudeSession extends Base {
     // with an image can't be sized, so that one isn't measured (-1).
     if (!this.sessionId && !this.proc) this.setupChars = eff.promptChars(content) ?? -1;
     const message = { type: 'user', message: { role: 'user', content } };
-    if (!ready) {
+    // A process on its way out (a stop asked for, or exited and not yet closed):
+    // start() would take it for a running one and the message would go down a
+    // closed pipe, never answered, with the tab stuck busy. The turn waits for
+    // it to close and goes in a fresh process. ping() (sessions.js) refuses instead.
+    const going = this.proc && (this.stopping || this.proc.exitCode !== null) ? this.proc : null;
+    if (!ready && !going) {
       this.start();
       return this.write(message);
     }
-    const waiting = (this.waiting = {});
-    Promise.resolve(ready).catch(() => {}).then(() => {
+    const waiting = (this.waiting = { afterStop: !!going });
+    const gone = going ? new Promise(resolve => going.once('close', resolve)) : null;
+    Promise.all([Promise.resolve(ready).catch(() => {}), gone]).then(() => {
       if (this.waiting !== waiting) return; // stopped before it went
       this.waiting = null;
       this.start();
@@ -593,8 +612,11 @@ class ClaudeSession extends Base {
   stop(timeoutMs = 8000) {
     const proc = this.proc;
     if (!proc || proc.exitCode !== null) return Promise.resolve();
-    this.stopping = true;
-    this.close();
+    // Asked twice: the second only waits (close() would drop a turn sent meanwhile).
+    if (!this.stopping) {
+      this.stopping = true;
+      this.close();
+    }
     return new Promise(resolve => {
       const timer = setTimeout(resolve, timeoutMs);
       proc.once('close', () => { clearTimeout(timer); resolve(); });
@@ -615,7 +637,10 @@ class ClaudeSession extends Base {
     if (!this.proc) return;
     const proc = this.proc;
     try { proc.stdin.end(); } catch { /* ignore */ }
-    setTimeout(() => { if (this.proc === proc) this.kill(); }, CLOSE_KILL_MS);
+    // Gone once the process is (and never what keeps Shellby open while quitting).
+    const timer = setTimeout(() => { if (this.proc === proc) this.kill(); }, CLOSE_KILL_MS);
+    timer.unref?.();
+    proc.once('exit', () => clearTimeout(timer));
   }
 }
 

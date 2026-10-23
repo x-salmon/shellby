@@ -603,7 +603,7 @@ class SessionManager extends EventEmitter {
     const stopped = [];
     for (const tab of this.tabs.values()) {
       const s = tab.session;
-      if (!s.proc || s.busy || s.pending.size || s.runningCrew().length) continue;
+      if (!s.proc || s.busy || s.pending.size || s.hasBackgroundWork()) continue;
       if (now - tab.activeAt < idleMs || keep(tab.id)) continue; // keep: Keep warm still needs its process
       s.stop().catch(() => {});
       stopped.push(tab.id);
