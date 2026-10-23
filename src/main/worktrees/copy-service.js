@@ -43,13 +43,14 @@ function createCopies(d) {
       tab.session.beforeWork = null;
       return;
     }
-    if (tab.session.beforeWork) return;
+    if (tab.session.beforeWork || tab.staysPut) return;
     const root = await changes.rootOf(tab.session.cwd);
     const home = path.resolve(d.worktreeHome()).toLowerCase() + path.sep;
     // Not a repo, already one of our copies, or a conversation that has already
-    // changed files here: it stays where it is.
-    if (!root || (path.resolve(root) + path.sep).toLowerCase().startsWith(home)) return;
-    if (tab.saved && d.history.load(tab.id).some(i => i.kind === 'changes')) return;
+    // changed files here: it stays where it is. For good (staysPut): the tab's
+    // folder doesn't change, so git and its History aren't asked again every turn.
+    if (!root || (path.resolve(root) + path.sep).toLowerCase().startsWith(home)) { tab.staysPut = true; return; }
+    if (tab.saved && d.history.load(tab.id).some(i => i.kind === 'changes')) { tab.staysPut = true; return; }
     tab.session.beforeWork = input => {
       if (tab.worktree || tab.noCopy || !d.config.get('worktrees')) return {};
       if (!worktrees.startsWork(input.tool_name, input.tool_input)) return {};
