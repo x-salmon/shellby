@@ -6,7 +6,7 @@
 // with fakes.
 const path = require('path');
 
-const LIVE = new Set(['starting', 'up']);
+const LIVE = new Set(['starting', 'up', 'erroring']);
 const caseKey = p => (process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p));
 const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 const newest = list => [...list].sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0))[0];
@@ -72,6 +72,7 @@ async function settle(deps, id, signal) {
   const s = await deps.servers.settled(id, { signal });
   if (!s) return { ok: false, error: 'The dev server went away before it was up.' };
   if (s.status === 'crashed') return { ok: false, error: `${s.project}'s dev server ${s.neverUp ? "didn't start" : 'crashed'}${Number.isInteger(s.exitCode) ? ` (exit code ${s.exitCode})` : ''}. Its card on the Projects page has the log.` };
+  if (s.status === 'erroring') return { ok: false, error: `${s.project}'s dev server is running, but its build has errors. Its card on the Projects page has the log.` };
   return answer(s);
 }
 

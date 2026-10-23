@@ -67,6 +67,16 @@ test('a crash on the way up, an unknown project and one not cloned here all fail
   assert.match((await serverStep(gone.deps, { action: 'start', project: 'site' })).error, /went away/);
 });
 
+test('a server whose build broke is still running: stop ends it, and a start that lands there fails', async () => {
+  const t = setup({ servers: [{ status: 'erroring' }] });
+  await serverStep(t.deps, { action: 'stop', project: 'site' });
+  assert.deepEqual(t.calls, [['stop', 'srv-0']]);
+  const broken = setup({ settle: s => ({ ...s, status: 'erroring', port: 5173 }) });
+  const r = await serverStep(broken.deps, { action: 'start', project: 'site' });
+  assert.equal(r.ok, false);
+  assert.match(r.error, /build has errors/);
+});
+
 test('stop ends every live server of the project (or just the script named); nothing live is fine', async () => {
   const t = setup({ servers: [{ script: 'dev' }, { script: 'storybook', root: OTHER }, { script: 'old', status: 'crashed' }] });
   const r = await serverStep(t.deps, { action: 'stop', project: 'site' });

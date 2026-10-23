@@ -492,6 +492,25 @@ test('a taken port: noticed on the crash, then moved to another and remembered',
   } finally { t.done(); }
 });
 
+test("'up' fires once, when a server is first up: never for a broken first build, and not again when a build mends", async () => {
+  const t = setup();
+  try {
+    const ups = [];
+    t.svc.on('up', s => ups.push(s.status));
+    const { id } = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    t.say(id, 'Local: http://localhost:5173/\nFailed to compile\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'erroring');
+    assert.deepEqual(ups, [], 'up but broken is not up');
+    t.say(id, 'Compiled successfully\n');
+    t.poll(id);
+    assert.deepEqual(ups, ['up']);
+    t.say(id, 'Failed to compile\nCompiled successfully\n');
+    t.poll(id);
+    assert.deepEqual(ups, ['up'], 'a mended build is not a second up');
+  } finally { t.done(); }
+});
+
 test("a stop you asked for says 'stopped' (a crash never does), and settled() waits for up", async () => {
   const t = setup();
   try {

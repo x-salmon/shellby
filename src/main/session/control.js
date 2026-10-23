@@ -141,6 +141,7 @@ const control = {
     this.mode = mode;
     this.setPlanning(mode === 'plan');
     if (this.proc) {
+      this.modeAsked = mode; // until the CLI says it's in it, a report of the old mode is stale
       this.write({ type: 'control_request', request_id: randomUUID(), request: { subtype: 'set_permission_mode', mode: CLI_MODE[mode] } });
     }
   },

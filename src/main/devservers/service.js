@@ -141,7 +141,7 @@ class DevServers extends EventEmitter {
 
   publicView(s) {
     // The pid and the log's path stay in main: the panel names a server by id.
-    const { pid: _pid, pidStartedAt: _started, stopping: _stopping, thisSession: _mine, broken: _broken, log, ...rest } = s;
+    const { pid: _pid, pidStartedAt: _started, stopping: _stopping, thisSession: _mine, broken: _broken, upSent: _upSent, log, ...rest } = s;
     return { ...rest, command: this.commandOf(s), canFix: s.status === 'crashed' || s.status === 'failed', hasLog: !!log };
   }
 
@@ -255,7 +255,7 @@ class DevServers extends EventEmitter {
     const now = this.now();
     Object.assign(s, {
       pid: r.pid, pidStartedAt: this.deps.info(r.pid)?.createdAt || now, thisSession: true, log, status: 'starting', port: null, url: null,
-      startedAt: now, upAt: 0, endedAt: 0, exitCode: null, seen: false, missed: false, neverUp: false, stopping: false, portTaken: null, broken: false,
+      startedAt: now, upAt: 0, endedAt: 0, exitCode: null, seen: false, missed: false, neverUp: false, stopping: false, portTaken: null, broken: false, upSent: false,
     });
     this.servers.set(s.id, s);
     this.runtime.set(s.id, { tail: new this.deps.runner.LogTail(log), buf: new out.LineBuffer(), lastAlive: now, marker: undefined });
@@ -466,7 +466,6 @@ class DevServers extends EventEmitter {
     if (!rt) { rt = { tail: new this.deps.runner.LogTail(s.log), buf: new out.LineBuffer(), lastAlive: this.now(), marker: undefined }; this.runtime.set(id, rt); }
     let changed = false;
     let sawMarker = false;
-    const wasStarting = s.status === 'starting';
     for (const line of rt.buf.push(rt.tail.read())) {
       const code = out.exitOf(line);
       if (code !== undefined) { rt.marker = code; sawMarker = true; continue; }
@@ -503,7 +502,7 @@ class DevServers extends EventEmitter {
     }
     if (!changed) return;
     this.changed();
-    if (wasStarting && s.status !== 'starting') this.emit('up', this.publicView(s));
+    if (s.status === 'up' && s.upSent === false) { s.upSent = true; this.emit('up', this.publicView(s)); }
   }
 
   // Running long enough to count as up, with or without an address.

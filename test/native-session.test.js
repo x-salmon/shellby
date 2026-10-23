@@ -137,6 +137,20 @@ test('Claude switching itself to planning is noticed, and a mode change ends it'
   s.close();
 });
 
+test('a report of the old mode sent before set_permission_mode landed does not undo your choice', async () => {
+  const { s } = makeSession();
+  s.send('hi');
+  await result(s);
+  s.setMode('acceptEdits');
+  s.handleNow({ kind: 'mode', mode: 'ask' });
+  assert.equal(s.mode, 'acceptEdits', 'stale: still the mode you picked');
+  s.handleNow({ kind: 'mode', mode: 'acceptEdits' });
+  s.handleNow({ kind: 'mode', mode: 'plan' });
+  assert.equal(s.mode, 'plan', 'once the CLI has said so, its changes count again');
+  assert.equal(s.planning, true);
+  s.close();
+});
+
 test("the mode Claude Code reports is the session's: planning follows it, and no request goes back", async () => {
   const { s, items } = makeSession();
   s.send('mode plan');

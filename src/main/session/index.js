@@ -422,10 +422,13 @@ class ClaudeSession extends Base {
       case 'init':
         if (item.sessionId) this.sessionId = item.sessionId;
         this.resumeAt = null; // the fork is made: from here on it's an ordinary resume
+        this.modeAsked = null;
         break;
       // The mode Claude Code says it's in (init, and each change): the session
       // follows, with no request back, so the mode chip and planning stay right.
       case 'mode':
+        if (this.modeAsked && item.mode !== this.modeAsked) return; // sent before our set_permission_mode landed
+        this.modeAsked = null;
         this.mode = item.mode;
         this.setPlanning(item.mode === 'plan');
         break;
