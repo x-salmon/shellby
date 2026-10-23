@@ -173,3 +173,33 @@ test('the prompt fences the output and says what to do (and what not to)', () =>
   const never = out.fixPrompt({ project: 'site', command: 'npm run dev', root: 'C:\\x', exitCode: null, neverUp: true }, []);
   assert.match(never, /didn't start .* no exit code/);
 });
+
+test("a build that broke, and one mended again: only the build's own words", () => {
+  const broken = [
+    'Failed to compile.',
+    '  ✘ [ERROR] Could not resolve "./missing"',
+    '[vite] Internal server error: Failed to resolve import "./x" from "src/App.tsx".',
+    '[vite] Pre-transform error: Failed to parse source',
+    '[plugin:vite:react-babel] /src/App.tsx: Unexpected token',
+    "src/app.ts(12,5): error TS2322: Type 'string' is not assignable to type 'number'.",
+    "Module not found: Error: Can't resolve './nope'",
+    'Build failed with 2 errors:',
+    'webpack compiled with 1 error',
+    `${ESC}[31mFailed to compile.${ESC}[39m`,
+  ];
+  for (const l of broken) assert.equal(out.buildState(l), 'broken', l);
+  const mended = [
+    'Compiled successfully!',
+    ' ✓ Compiled /page in 200ms',
+    'webpack compiled successfully',
+    '[vite] hmr update /src/App.tsx',
+    '[vite] page reload src/main.ts',
+    '  VITE v5.4.2  ready in 312 ms',
+    '✓ built in 1.2s',
+    '[12:00:01] Found 0 errors. Watching for file changes.',
+    'No errors found.',
+  ];
+  for (const l of mended) assert.equal(out.buildState(l), 'mended', l);
+  // Not a build: a request that failed, an error in the app's own log, a warning.
+  for (const l of ['GET /api/x 500 Internal Server Error', 'Error: connect ECONNREFUSED 127.0.0.1:5432', 'Compiled with warnings.', '']) assert.equal(out.buildState(l), null, l);
+});

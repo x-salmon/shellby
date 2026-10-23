@@ -151,7 +151,7 @@ class Projects extends EventEmitter {
    */
   async list({ refresh = false, readGit = true } = {}) {
     const [locals, remote] = await Promise.all([this.localRepos({ force: refresh }), this.githubRepos({ force: refresh })]);
-    const running = new Set(this.deps.devServers.view().servers.filter(s => s.status === 'up' || s.status === 'starting').map(s => caseKey(s.root)));
+    const running = new Set(this.deps.devServers.view().servers.filter(s => s.status === 'up' || s.status === 'starting' || s.status === 'erroring').map(s => caseKey(s.root)));
     const projects = merge(locals, remote, { hidden: new Set(this.state.hidden), lastWorked: this.deps.lastWorked(), running });
     this.listed = new Map();
     this.names = new Map();

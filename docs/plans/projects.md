@@ -38,9 +38,9 @@ Each phase ships on its own (bump, CHANGELOG, tag, as every shellby change does)
 
 ### Phase 2: the rest of the picture
 
-- Servers Shellby didn't start: found by their listening port, matched to a project, Stop (confirm window) or "Run it in Shellby instead".
-- Port in use: name who holds it, offer to stop it.
-- An "erroring" state: still up, but the output is a compile error. A quieter sign, no toast.
+- Servers Shellby didn't start: found by their listening port, matched to a project, Stop (confirm window) or "Run it in Shellby instead". **Done** (`devservers/discover.js`, `discover-io.js`; see "Discovery").
+- Port in use: name who holds it, offer to stop it. **Done** (`doctor.js`, `doctor-io.js`: the crashed card names the holder, offers Stop behind the confirm window, or a free port to move to).
+- An "erroring" state: still up, but the output is a compile error. A quieter sign, no toast. **Done** (`output.buildState`): the card and the command palette say "build error" in amber until the next good build. The crab's sign stays for crashes only.
 - Opt-in auto-restart with a crash-loop guard.
 - Project page links to what Shellby already knows per project: CI (`github/ci.js`), checkups, dependency watch, time. **Done** (`projects/insights.js`): also flaky tests, streaks, stickers, git per clone and recent conversations, as chips on each row, a "Needs you" order, and Pulse / Health / Conversations cards on the project's page.
 - A standup and weekly report per project. **Done** (`projects/standup.js`): "Yesterday / Today / Blockers" (or This week / Last week) from your own commits, the project's conversations, tracked time and the day's notes, and Claude's tasks, with blockers from what the page already flags (failing checks, a crashed server, high or critical vulnerabilities, flaky tests). Words for Slack (mrkdwn, `@here` and friends defused) or an email, and a Copy button. The work-focused sibling of the weekly crab card (`weekly.js`).
@@ -69,7 +69,8 @@ Each phase ships on its own (bump, CHANGELOG, tag, as every shellby change does)
 | `src/main/devservers/scripts.js` | `package.json` + lockfile -> runnable scripts, package manager, framework. Pure. |
 | `src/main/devservers/output.js` | Line buffer, ANSI stripping, port/URL/error detection, exit marker, redaction, the prompt. Pure. |
 | `src/main/devservers/runner.js` | Starts a server detached, tails its log, stops it, re-attaches to it. Never throws. |
-| `src/main/devservers/discover.js` | (Phase 2) listening ports -> processes -> projects. |
+| `src/main/devservers/discover.js` | Listening ports -> processes (and their parents) -> projects, and the script on the command line. Pure. |
+| `src/main/devservers/discover-io.js` | `Discovery`: the one PowerShell read, throttled, and the last listing a Stop may act on. |
 | `src/main/devservers/service.js` | `DevServers` (EventEmitter): the running list, persistence, crashes, toasts, IPC. |
 | `src/main/devservers/flow.js` | (Phase 3) Workflows: what a server event hands a `server` trigger, and the `server` step. Pure over `DevServers`. |
 | `src/main/projects/service.js` | `Projects`: the merged list, refresh, IPC. Owns a `DevServers`. |
@@ -267,7 +268,7 @@ Pure, table-driven, tested against real captured logs in `test/fixtures/devserve
 | Exit | `^\[shellby-exit (-?\d+)\]$` (the last line; never shown in the log view) |
 | URL / port | `Local:\s+(https?://\S+)` (Vite, Astro, SvelteKit), `- Local:\s+(\S+)` (Next), `ready (?:on\|started server on) .*?(https?://\S+\|:\d+)`, `listening on (?:port )?:?(\d{2,5})`, `http://(?:localhost\|127\.0\.0\.1\|\[::1\]):(\d{2,5})` as the fallback |
 | Port taken (Ph. 2) | `EADDRINUSE.*:(\d+)`, `Port (\d+) is (?:in use\|already in use)` |
-| Erroring (Ph. 2) | `Failed to compile`, `\[vite\] Internal server error`, `error TS\d+`, `Module not found`; cleared by the framework's next success line |
+| Erroring (`buildState`) | `Failed to compile`, `\[vite\] Internal server error`, `\[vite\] Pre-transform error`, `\[plugin:vite:…\]`, `error TS\d+:`, `Module not found`, esbuild's `Build failed with N errors` / `✘ [ERROR]`, `compiled with N errors`; cleared by `Compiled successfully`, `✓ Compiled`, `[vite] hmr update` / `page reload`, `ready in`, `webpack compiled`, `Build succeeded`, `Found 0 errors`, `No errors found`, `built in` |
 
 Ports are only taken from loopback / `0.0.0.0` / `localhost` URLs.
 
@@ -334,17 +335,19 @@ With `stop`, `before-quit` calls `devServers.stopAll()` next to `workflows.shutd
 
 "Is it safe to leave?" (`leaving.js`) gets `running.servers: [{ project, port }]` and a line ("2 dev servers still running"), but no `hold`.
 
-## Discovery (Phase 2)
+## Discovery (`discover.js`, `discover-io.js`)
 
 One PowerShell read, by full path, with fixed text:
-`Get-NetTCPConnection -State Listen` (address, port, owning pid) and `Get-CimInstance Win32_Process` for those pids (name, parent, command line).
+`Get-NetTCPConnection -State Listen` (address, port, owning pid) and `Get-CimInstance Win32_Process` (pid, parent, name, command line), as one JSON object.
 
-- Only loopback/any addresses, ports 1024–65535, dev-ish programs (`node`, `bun`, `deno`, `python`, `dotnet`, `php`, `ruby`, `java`), and pids that aren't Shellby's own servers.
-- Matched to a project when the command line contains a clone's root (case-insensitive, both `realpath`'d: CI runners use 8.3 short paths). No match means it isn't shown.
-- The command line is read, matched and **dropped**. Only `{ pid, port, program, project }` is kept, the same stance as `external.js`.
-- Polled every 10 s while the Projects page is open, 60 s otherwise, never while the PC is locked.
-- A found server has a status and port but **no log**: Shellby never had its output. Its card says so, and offers **Run it in Shellby instead** (stop it, then start the same script, so next time there's a log to send).
-- Stop: only a pid from the last listing, after the confirm window, the same double guard as `health/hogs.js`.
+- Only loopback/any addresses, ports 1024–65535, dev-ish programs (`node`, `bun`, `deno`, `python`, `dotnet`, `php`, `ruby`, `java`). Shellby's own processes, and the cmd pids of the servers it runs **with everything under them**, are left out (`DevServers#ownPids`).
+- Matched to a project when the listener's command line, or one of its ancestors' (up to 6: `npm run dev` is cmd -> npm -> vite, and only vite's line names the folder), names a clone's root as a whole path part (case-insensitive, either slash, the root `realpath`'d: CI runners use 8.3 short paths; `c:\code\site` never matches `c:\code\site2`). The listener's own line is looked at first, and the deepest clone wins. No match means it isn't shown.
+- The script it was started with is read off the same chain (`npm run dev`, `pnpm dev`, `yarn start`), kept only if it passes `scripts.js`'s regex. **Run it in Shellby instead** runs that script and no other: the page may only agree with main's reading, and a server whose script couldn't be read gets Stop alone.
+- Only a process whose start time Windows gave is listed at all; without it, a later Stop could never tell it from a reused pid.
+- The command line is read, matched and **dropped**. Only `{ pid, port, program, project, root, script }` is kept, the same stance as `external.js`. One entry per process (its lowest port: Vite's HMR port isn't a second server), at most 20.
+- **Read on the page's asking, not on a clock of main's**: the panel asks (`servers:found`) when a project's page opens and every 15 s while it stays open; main reads again at most every 10 s (`LOOK_EVERY_MS`; a refresh after a Stop waits at least 2 s) and shares one read between callers. Nothing is read while the page is closed, so nothing runs while the PC is locked either.
+- A found server has a status and port but **no log**: Shellby never had its output. Its card says so, with Open, **Stop…** and **Run it in Shellby instead** (stop it, wait for the port to come free, then start the script here, so next time there's a log to send).
+- Stop: only a pid from the last listing, whose process is alive with the start time recorded then (`Discovery#listed`: when Windows can't say, the answer is no), and whose image is still one of the dev programs, after the confirm window, and both checked again once the window closes: the same double guard as `health/hogs.js` and `servers:port-stop`. One Stop at a time per pid. `taskkill /T /F` by full path, so what that process started goes with it, and nothing else does. Run it in Shellby instead starts nothing until the old process has really gone.
 
 ## From a terminal (Phase 3)
 
@@ -443,7 +446,9 @@ stays in config to try again.
 | `test/devservers-scripts.test.js` | lockfile -> manager, framework guessing, regex rejects `dev && calc`, `likely` ordering, garbage package.json |
 | `test/devservers-output.test.js` | port/URL from captured Vite 5/6, Next 14/15, Astro, SvelteKit, Express, nodemon logs; exit marker; remote URLs ignored; ANSI; buffer limits; redaction; tail + first-error stitching; prompt shape with and without a note |
 | `test/devservers-runner.test.js` | real detached spawn of `node` on a fixture server (prints `Local: http://localhost:<port>/`, exits 1 on a flag file): up -> crashed with exit code from the marker; Stop isn't a crash; tree kill leaves no child; re-attach to a live one from a fresh runner; dead-while-away with and without a marker; log truncation |
-| `test/devservers-service.test.js` | state machine with a fake runner: one toast per crash, crash-loop collapsing, no toast for crashes found on start, fix tab -> Restart offer, onQuit keep vs stop, the one-time quit note, the 8-server cap |
+| `test/devservers-service.test.js` | state machine with a fake runner: one toast per crash, crash-loop collapsing, no toast for crashes found on start, fix tab -> Restart offer, onQuit keep vs stop, the one-time quit note, the 8-server cap, erroring (up -> erroring -> up, no toast or sign, forgotten by a restart) |
+| `test/devservers-discover.test.js` | the listing parsed (a single record too), listeners matched through parents on a path boundary (the listener's line first, the deepest clone), browsers / system ports / other folders / the network left out, Shellby's own servers left out by their cmd pid, the script off the command line (never an install or a shell line), a looped tree, the throttled reader (refresh waits 2 s), entries with no start time dropped, and `listed()` refusing a gone, reused or unvouched-for pid |
+| `test/projects-ipc-found.test.js` | `servers:found-stop` / `found-adopt` with a fake confirm window: nothing but a listed pid (null and odd arguments are a no), Leave it stops nothing, the image checked right before taskkill and again after the window, adopt only with main's own script (a server with none gets Stop only), no start while the old one is still there, one stop at a time per pid |
 | `test/leaving.test.js` | the servers line |
 | `test/projects-standup.test.js` | which day is "yesterday" (Friday, on a Monday), Today and Blockers, a week's groups and totals, Slack and email words, mentions defused, sources by day, `Projects.report()` |
 | `test/ipc-surface.test.js`, `test/panel-a11y.test.js` | pick up the new channels and pages automatically |

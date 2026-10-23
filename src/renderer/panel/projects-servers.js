@@ -18,6 +18,8 @@
   const portLooks = new Map(); // id -> who holds its port and a free one (doctor.js), or 'looking'
   const checkups = new Map();  // root -> { at, notes, canMakeEnv, example } | 'looking'
   const CHECKUP_MS = 30 * 1000;
+  let found = [];              // servers Shellby didn't start (servers:found), while a project's page is open
+  const FOUND_MS = 15 * 1000;
   const modeTitle = () => SB.MODES.find(m => m.id === state.settings.mode)?.title || 'your current mode';
 
   // ------------------------------------------------------------------ servers in a clone
@@ -43,7 +45,8 @@
       const s = running.find(x => x.kind === 'server' && x.script === sc.name);
       return s ? serverCard(s, c) : scriptRow(sc, c);
     });
-    box.append(h('ul', { class: 'pj-scripts' }, rowsFor(likely.length ? likely : rest.slice(0, 3))));
+    const outside = found.filter(f => f.root.toLowerCase() === c.root.toLowerCase()).map(f => foundCard(f, c));
+    box.append(h('ul', { class: 'pj-scripts' }, ...outside, rowsFor(likely.length ? likely : rest.slice(0, 3))));
     const more = likely.length ? rest : rest.slice(3);
     if (more.length) box.append(keptDetails(`scripts:${c.root}`, `More scripts (${more.length})`, h('ul', { class: 'pj-scripts' }, rowsFor(more))));
     return box;
@@ -78,7 +81,7 @@
     const act = (text, fn, cls = 'btn ghost slim-btn') => h('button', { type: 'button', class: cls, text, onclick: fn });
     const buttons = [
       fixed && act('Restart', () => serverAction('restartServer', s.id), 'btn primary slim-btn'),
-      s.status === 'up' && s.url && act('Open', () => api.openServer(s.id), 'btn slim-btn'),
+      L.isUp(s) && s.url && act('Open', () => api.openServer(s.id), 'btn slim-btn'),
       isLive(s) && s.kind === 'server' && act('Restart', () => serverAction('restartServer', s.id)),
       isLive(s) && act('Stop', () => serverAction('stopServer', s.id)),
       crashed && !fixed && s.kind === 'server' && act('Restart', () => serverAction('restartServer', s.id)),
@@ -132,6 +135,49 @@
     else api.serverLog(s.id).then(l => { if (l) { logs.set(s.id, l); draw(l); } });
     return box;
   }
+
+  // ------------------------------------------------------------------ servers Shellby didn't start
+
+  // A server found by its port (discover.js): no log, so no Send to Claude.
+  // Stop and "Run it in Shellby instead" both go through main's own confirm window.
+  function foundCard(f, c) {
+    const script = L.foundScript(f, c);
+    const act = (text, fn, cls = 'btn ghost slim-btn') => h('button', { type: 'button', class: cls, text, onclick: e => fn(e.currentTarget) });
+    return h('li', { class: 'pj-card found', id: `found-card-${f.pid}` },
+      h('div', { class: 'pj-card-head' },
+        h('span', { class: 'pj-dot found', 'aria-hidden': 'true' }),
+        h('span', { class: 'pj-script-name' }, h('code', { text: f.script ? `${f.program} · ${f.script}` : f.program }), h('span', { class: 'pj-tag', text: 'not started by Shellby' })),
+        h('span', { class: 'pj-status', role: 'status', text: `Up on :${f.port}` })),
+      h('p', { class: 'muted small pj-found-note', text: L.foundText(f) }),
+      h('div', { class: 'row wrap pj-card-actions' },
+        act('Open', () => api.openFoundServer(f.pid), 'btn slim-btn'),
+        script && c.installed !== false && act('Run it in Shellby instead', btn => foundAction(btn, () => api.adoptFoundServer({ pid: f.pid, script }))),
+        act('Stop…', btn => foundAction(btn, () => api.stopFoundServer({ pid: f.pid })))));
+  }
+
+  async function foundAction(btn, call) {
+    btn.disabled = true;
+    const r = await call();
+    btn.disabled = false;
+    if (r?.cancelled) return;
+    if (r && r.ok === false && r.error) SB.toast(r.error);
+    await loadFound({ refresh: true });
+    await P.reloadServers();
+  }
+
+  // Asked while a project's page is on screen, every FOUND_MS; main reads at
+  // most every 10 s. Nothing is asked when the page is closed.
+  let foundSeq = 0;
+  async function loadFound({ refresh = false } = {}) {
+    if (!P.openKey() || state.view !== 'projects' || document.hidden) return;
+    const seq = ++foundSeq;
+    const list = await api.foundServers({ refresh }).catch(() => null);
+    if (seq !== foundSeq || !Array.isArray(list)) return;
+    const changed = JSON.stringify(list) !== JSON.stringify(found);
+    found = list;
+    if (changed) renderAll();
+  }
+  setInterval(() => loadFound(), FOUND_MS);
 
   // ------------------------------------------------------------------ the port and environment doctor
 
@@ -273,6 +319,7 @@
 
   Object.assign(P, {
     serversSection,
+    loadFound,
     openCard: id => openCards.add(id),
     forgetLog: id => logs.delete(id),
   });

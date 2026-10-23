@@ -334,6 +334,8 @@ body[data-view="projects"] .view-projects {
 .pj-dot.up { background: var(--glass); box-shadow: 0 0 0 3px var(--glass-dim); }
 .pj-dot.starting { background: var(--amber); animation: pj-blink 1.1s ease-in-out infinite; }
 .pj-dot.crashed, .pj-dot.failed { background: var(--danger); }
+.pj-dot.erroring { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 30%, transparent); }
+.pj-dot.found { background: transparent; border: 1.5px solid var(--glass); }
 @keyframes pj-blink { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .pj-dot.starting { animation: none; } }
 
@@ -346,6 +348,11 @@ body[data-view="projects"] .view-projects {
 .pj-status { grid-column: 2; font: var(--fs-11) var(--font-mono); font-stretch: 88%; color: var(--sand-dim); }
 .pj-card.up .pj-status { color: var(--glass); }
 .pj-card.crashed .pj-status, .pj-card.failed .pj-status { color: #ffb3ad; }
+.pj-card.erroring { border-color: color-mix(in srgb, var(--amber) 45%, transparent); }
+.pj-card.erroring .pj-status { color: var(--amber); }
+/* A server Shellby didn't start: listed, with no log of its own. */
+.pj-card.found { border-style: dashed; }
+.pj-found-note { margin: 6px 0 0; }
 .pj-card-actions { margin-top: 8px; gap: 4px; }
 .pj-fixed { margin: 8px 0 0; font-size: var(--fs-13); color: var(--glass); }
 
