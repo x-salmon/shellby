@@ -7,7 +7,9 @@
 
   // ------------------------------------------------------------ dev servers
 
-  const isLive = s => s.status === 'starting' || s.status === 'up';
+  const isLive = s => s.status === 'starting' || s.status === 'up' || s.status === 'erroring';
+  // Up enough to open in a browser: erroring is still serving (the error page).
+  const isUp = s => s.status === 'up' || s.status === 'erroring';
 
   // relTime: SB.relTime, for when it ended.
   function statusText(s, relTime) {
@@ -16,6 +18,8 @@
     switch (s.status) {
       case 'starting': return s.kind === 'install' ? 'Installing…' : 'Starting…';
       case 'up': return s.port ? `Up on :${s.port}` : 'Up';
+      // Still serving, but the last build broke: the browser shows its error page.
+      case 'erroring': return `${s.port ? `Up on :${s.port}` : 'Up'} · build error`;
       // Ended while Shellby was closed with no exit code: it may well have been stopped on purpose.
       case 'crashed': return s.missed && !Number.isInteger(s.exitCode) ? `Stopped while Shellby was closed · ${ago(s.endedAt)}`
         : `${s.neverUp ? "Didn't start" : 'Crashed'} ${ago(s.endedAt)}${code}${s.missed ? ' · while Shellby was closed' : ''}`;
@@ -29,7 +33,7 @@
   // lists the servers in a folder. -> { open: server } | { start: script } | null.
   function devChoice(c, serversIn) {
     if (!c) return null;
-    const up = serversIn(c.root).find(s => s.status === 'up' && s.url && s.kind === 'server');
+    const up = serversIn(c.root).find(s => isUp(s) && s.url && s.kind === 'server');
     if (up) return { open: up };
     if (serversIn(c.root).some(isLive)) return null;
     const script = c.scripts.find(s => s.name === c.lastScript) || c.scripts.find(s => s.likely);
@@ -149,7 +153,20 @@
 
   const addedLine = added => (added ? `Added ${repositories(added)}` : 'Nothing added.');
 
-  const api = { isLive, statusText, devChoice, SCOPES, readView, visible, togglePin, emptyText, needsList, cloneFacts, tidyPrompt, copiesSummary, scanLede, addedLine };
+  // A server Shellby didn't start (discover.js): what its card says, and which
+  // script "Run it in Shellby instead" would run: the one it was started with
+  // when that can be read from its command line, else the clone's last or likeliest.
+  function foundText(f) {
+    return `${f.program} is listening on :${f.port}, started outside Shellby${f.script ? ` (${f.script})` : ''}. There's no log: Shellby never had its output.`;
+  }
+  function foundScript(f, c) {
+    const names = new Set((c?.scripts || []).map(s => s.name));
+    if (f.script && names.has(f.script)) return f.script;
+    const pick = (c?.scripts || []).find(s => s.name === c?.lastScript) || (c?.scripts || []).find(s => s.likely);
+    return pick?.name || null;
+  }
+
+  const api = { isLive, isUp, statusText, foundText, foundScript, devChoice, SCOPES, readView, visible, togglePin, emptyText, needsList, cloneFacts, tidyPrompt, copiesSummary, scanLede, addedLine };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyProjectsLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

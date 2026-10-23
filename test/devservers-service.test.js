@@ -497,3 +497,45 @@ test('remembered ports are checked like the rest of settings.json', () => {
   assert.deepEqual(n.ports, { 'c:/code/site|dev': 5174 });
   assert.deepEqual(normalize({}).ports, {});
 });
+
+test('erroring: still up while the build is broken, up again once it compiles, quietly, and not a crash', () => {
+  const t = setup();
+  try {
+    const { id } = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    t.say(id, '  ➜  Local:   http://localhost:5173/\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'up');
+    t.say(id, '[vite] Internal server error: Failed to resolve import "./x"\n');
+    t.poll(id);
+    const s = t.svc.view().servers[0];
+    assert.equal(s.status, 'erroring');
+    assert.equal(s.broken, undefined, 'the flag stays in main');
+    assert.equal(t.toasts.length, 0, 'no toast: it is still serving');
+    assert.equal(t.svc.summary().down, 0, 'no sign on the crab either');
+    assert.equal(t.svc.summary().upPort, 5173, 'still up, on its port');
+    assert.equal(t.svc.liveCount(), 1);
+    assert.equal(t.svc.ownPids().size, 1, 'its cmd pid, for discovery to leave out');
+    assert.equal(t.svc.fixDraft(id), null, 'nothing to send: it has not crashed');
+    t.say(id, '[vite] hmr update /src/App.tsx\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'up');
+  } finally { t.done(); }
+});
+
+test('erroring then crashed is a crash like any other, and a restart starts clean', async () => {
+  const t = setup();
+  try {
+    const { id } = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    t.say(id, 'Failed to compile.\nLocal: http://localhost:5173/\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'erroring', 'broken before it was up: erroring once it is');
+    t.say(id, '[shellby-exit 1]\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'crashed');
+    assert.equal(t.toasts.length, 1);
+    await t.svc.restart(id);
+    t.say(id, 'Local: http://localhost:5173/\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'up', 'the old build error is forgotten');
+  } finally { t.done(); }
+});

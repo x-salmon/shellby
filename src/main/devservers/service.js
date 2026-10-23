@@ -24,7 +24,9 @@ const STOP_POLL_MS = 150;
 // A server still running this long after it started is up, whether or not it
 // said where: plenty never print an address Shellby can read.
 const UP_GRACE_MS = 25 * 1000;
-const LIVE = new Set(['starting', 'up']);
+// erroring: still up, but the last build broke (output.buildState). A quieter
+// state than crashed: the card says so, there's no sign and no toast.
+const LIVE = new Set(['starting', 'up', 'erroring']);
 const ON_QUIT = ['keep', 'stop'];
 const MAX_PORTS = 100;
 
@@ -78,7 +80,7 @@ function normalizeServer(s, dir) {
   const kind = s.kind === 'install' ? 'install' : 'server';
   if (kind === 'server' && !scripts.SCRIPT_RE.test(String(s.script))) return null;
   const log = dir ? path.join(dir, `${s.id}.log`) : null;
-  let status = ['starting', 'up', 'crashed', 'failed'].includes(s.status) ? s.status : 'crashed';
+  let status = ['starting', 'up', 'erroring', 'crashed', 'failed'].includes(s.status) ? s.status : 'crashed';
   const pidStartedAt = num(s.pidStartedAt) || null;
   // Running, but with nothing to tell its process from another: it's not ours to touch.
   if (LIVE.has(status) && (!int(s.pid) || !pidStartedAt)) status = 'crashed';
@@ -138,7 +140,7 @@ class DevServers extends EventEmitter {
 
   publicView(s) {
     // The pid and the log's path stay in main: the panel names a server by id.
-    const { pid: _pid, pidStartedAt: _started, stopping: _stopping, thisSession: _mine, log, ...rest } = s;
+    const { pid: _pid, pidStartedAt: _started, stopping: _stopping, thisSession: _mine, broken: _broken, log, ...rest } = s;
     return { ...rest, command: this.commandOf(s), canFix: s.status === 'crashed' || s.status === 'failed', hasLog: !!log };
   }
 
@@ -147,7 +149,7 @@ class DevServers extends EventEmitter {
     const all = [...this.servers.values()].filter(s => s.kind === 'server');
     const live = all.filter(s => LIVE.has(s.status));
     const down = all.filter(s => s.status === 'crashed' && !s.seen);
-    const up = live.filter(s => s.status === 'up');
+    const up = live.filter(s => s.status !== 'starting');
     return {
       up: this.settings.crab ? live.length : 0,
       upPort: this.settings.crab && live.length === 1 ? up[0]?.port ?? null : null,
@@ -252,7 +254,7 @@ class DevServers extends EventEmitter {
     const now = this.now();
     Object.assign(s, {
       pid: r.pid, pidStartedAt: this.deps.info(r.pid)?.createdAt || now, thisSession: true, log, status: 'starting', port: null, url: null,
-      startedAt: now, upAt: 0, endedAt: 0, exitCode: null, seen: false, missed: false, neverUp: false, stopping: false, portTaken: null,
+      startedAt: now, upAt: 0, endedAt: 0, exitCode: null, seen: false, missed: false, neverUp: false, stopping: false, portTaken: null, broken: false,
     });
     this.servers.set(s.id, s);
     this.runtime.set(s.id, { tail: new this.deps.runner.LogTail(log), buf: new out.LineBuffer(), lastAlive: now, marker: undefined });
@@ -441,13 +443,18 @@ class DevServers extends EventEmitter {
     if (!rt) { rt = { tail: new this.deps.runner.LogTail(s.log), buf: new out.LineBuffer(), lastAlive: this.now(), marker: undefined }; this.runtime.set(id, rt); }
     let changed = false;
     let sawMarker = false;
+    const wasStarting = s.status === 'starting';
     for (const line of rt.buf.push(rt.tail.read())) {
       const code = out.exitOf(line);
       if (code !== undefined) { rt.marker = code; sawMarker = true; continue; }
-      if (s.kind === 'server' && !s.url) {
+      if (s.kind !== 'server') continue;
+      if (!s.url) {
         const u = out.detectUrl(line);
         if (u) { Object.assign(s, { status: 'up', port: u.port, url: u.url, upAt: s.upAt || this.now() }); changed = true; }
       }
+      // The build broke, or was mended: the status follows once it's up.
+      const build = out.buildState(line);
+      if (build) s.broken = build === 'broken';
     }
     if (checkAlive || sawMarker) {
       rt.lastAlive = this.now();
@@ -467,7 +474,13 @@ class DevServers extends EventEmitter {
         changed = true;
       }
     }
-    if (changed) { this.changed(); this.emit('up', this.publicView(s)); }
+    if (s.status !== 'starting' && s.kind === 'server') {
+      const want = s.broken ? 'erroring' : 'up';
+      if (s.status !== want) { s.status = want; changed = true; }
+    }
+    if (!changed) return;
+    this.changed();
+    if (wasStarting && s.status !== 'starting') this.emit('up', this.publicView(s));
   }
 
   // Running long enough to count as up, with or without an address.
@@ -523,6 +536,11 @@ class DevServers extends EventEmitter {
       action: 'See the error',
       onClick: () => this.deps.openCard(s.id),
     });
+  }
+
+  /** The cmd pids of the servers Shellby runs: discovery leaves them, and everything under them, out. */
+  ownPids() {
+    return new Set([...this.servers.values()].filter(s => LIVE.has(s.status) && int(s.pid)).map(s => s.pid));
   }
 
   // ------------------------------------------------------------------ picking servers back up
