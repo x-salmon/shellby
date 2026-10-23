@@ -492,8 +492,102 @@ test('a taken port: noticed on the crash, then moved to another and remembered',
   } finally { t.done(); }
 });
 
+test("'up' fires once, when a server is first up: never for a broken first build, and not again when a build mends", async () => {
+  const t = setup();
+  try {
+    const ups = [];
+    t.svc.on('up', s => ups.push(s.status));
+    const { id } = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    t.say(id, 'Local: http://localhost:5173/\nFailed to compile\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'erroring');
+    assert.deepEqual(ups, [], 'up but broken is not up');
+    t.say(id, 'Compiled successfully\n');
+    t.poll(id);
+    assert.deepEqual(ups, ['up']);
+    t.say(id, 'Failed to compile\nCompiled successfully\n');
+    t.poll(id);
+    assert.deepEqual(ups, ['up'], 'a mended build is not a second up');
+  } finally { t.done(); }
+});
+
+test("a stop you asked for says 'stopped' (a crash never does), and settled() waits for up", async () => {
+  const t = setup();
+  try {
+    const events = [];
+    t.svc.on('stopped', s => events.push(['stopped', s.project, s.script, s.status]));
+    t.svc.on('crashed', s => events.push(['crashed', s.project]));
+    const { id } = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    const settling = t.svc.settled(id, { timeoutMs: 5000 });
+    t.say(id, 'Local: http://localhost:5173/\n');
+    t.poll(id);
+    const up = await settling;
+    assert.equal(up.status, 'up');
+    assert.equal(up.port, 5173);
+    assert.equal((await t.svc.settled(id)).status, 'up', 'already settled: answers at once');
+    await t.svc.stop(id);
+    assert.deepEqual(events, [['stopped', 'site', 'dev', 'stopped']]);
+    assert.equal(await t.svc.settled(id), null, 'gone from the list');
+
+    // A crash settles too, as a crash; a stop signal settles with what there is.
+    const again = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    const crashing = t.svc.settled(again.id, { timeoutMs: 5000 });
+    t.say(again.id, 'boom\n[shellby-exit 1]\n');
+    t.poll(again.id);
+    assert.equal((await crashing).status, 'crashed');
+    assert.deepEqual(events.slice(1), [['crashed', 'site']]);
+    const third = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    const ctl = new AbortController();
+    const aborted = t.svc.settled(third.id, { timeoutMs: 5000, signal: ctl.signal });
+    ctl.abort();
+    assert.equal((await aborted).status, 'starting');
+  } finally { t.done(); }
+});
+
 test('remembered ports are checked like the rest of settings.json', () => {
   const n = normalize({ ports: { 'c:/code/site|dev': 5174, 'c:/x|dev': 'nope', 'c:/y|dev': 70000 } });
   assert.deepEqual(n.ports, { 'c:/code/site|dev': 5174 });
   assert.deepEqual(normalize({}).ports, {});
+});
+
+test('erroring: still up while the build is broken, up again once it compiles, quietly, and not a crash', () => {
+  const t = setup();
+  try {
+    const { id } = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    t.say(id, '  ➜  Local:   http://localhost:5173/\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'up');
+    t.say(id, '[vite] Internal server error: Failed to resolve import "./x"\n');
+    t.poll(id);
+    const s = t.svc.view().servers[0];
+    assert.equal(s.status, 'erroring');
+    assert.equal(s.broken, undefined, 'the flag stays in main');
+    assert.equal(t.toasts.length, 0, 'no toast: it is still serving');
+    assert.equal(t.svc.summary().down, 0, 'no sign on the crab either');
+    assert.equal(t.svc.summary().upPort, 5173, 'still up, on its port');
+    assert.equal(t.svc.liveCount(), 1);
+    assert.equal(t.svc.ownPids().size, 1, 'its cmd pid, for discovery to leave out');
+    assert.equal(t.svc.fixDraft(id), null, 'nothing to send: it has not crashed');
+    t.say(id, '[vite] hmr update /src/App.tsx\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'up');
+  } finally { t.done(); }
+});
+
+test('erroring then crashed is a crash like any other, and a restart starts clean', async () => {
+  const t = setup();
+  try {
+    const { id } = t.svc.start({ root: ROOT, script: 'dev', project: 'site' }).server;
+    t.say(id, 'Failed to compile.\nLocal: http://localhost:5173/\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'erroring', 'broken before it was up: erroring once it is');
+    t.say(id, '[shellby-exit 1]\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'crashed');
+    assert.equal(t.toasts.length, 1);
+    await t.svc.restart(id);
+    t.say(id, 'Local: http://localhost:5173/\n');
+    t.poll(id);
+    assert.equal(t.svc.view().servers[0].status, 'up', 'the old build error is forgotten');
+  } finally { t.done(); }
 });

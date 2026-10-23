@@ -23,6 +23,7 @@ class Steps {
       runWorkflow: args => this.childRun(run, args),
       copy: ({ repo, slug }) => (d.makeCopy ? d.makeCopy({ repo, slug }) : Promise.resolve({ ok: false, error: 'Copies need a repository cloned on this PC.' })),
       pullRequest: ({ folder, title, body, draft, workflow }) => (d.openPullRequest ? d.openPullRequest({ folder, title, body, draft, workflow }) : Promise.resolve({ ok: false, error: 'Pull requests need GitHub sign-in.' })),
+      server: ({ action, project, script, signal }) => (d.devServer ? d.devServer({ action, project, script, signal }) : Promise.resolve({ ok: false, error: 'Dev servers need the Projects page.' })),
       sleep: (ms, signal) => fx.sleep(ms, signal),
     };
   }

@@ -22,8 +22,10 @@ const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').
  *   issue:    data { event, reasons: ['assigned'|'labelled'], repo, ... }
  *   shipped:  data { kind, project, ... }
  *   task:     data { outcome, ... }
+ *   flaky:    data { project, test, ... }
  *   health, startup: any data
  *   workflow: data { name, status, chain }
+ *   server:   data { event: 'up'|'crashed'|'stopped', project, script, ... }
  */
 function matchEvent(workflows, type, data = {}) {
   const out = [];
@@ -42,6 +44,8 @@ function matches(t, data, wf) {
     case 'issue': return (t.on === 'any' || (Array.isArray(data.reasons) && data.reasons.includes(t.on))) && (!t.repo || same(t.repo, data.repo));
     case 'shipped': return (t.kind === 'any' || t.kind === data.kind) && (!t.project || same(t.project, data.project));
     case 'task': return t.outcome === 'any' || t.outcome === data.outcome;
+    case 'flaky': return !t.project || same(t.project, data.project);
+    case 'server': return (t.on === 'any' || t.on === data.event) && (!t.project || same(t.project, data.project)) && (!t.script || same(t.script, data.script));
     case 'workflow':
       return same(t.name, data.name) && !same(wf.name, data.name)
         && (t.status === 'any' || t.status === data.status)

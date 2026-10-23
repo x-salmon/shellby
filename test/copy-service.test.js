@@ -75,6 +75,22 @@ test('with copies turned off, no tab gets the hook', async () => {
   assert.equal(tab.session.beforeWork, null);
 });
 
+test('a tab that will never get a copy is looked at once, not before every turn', async () => {
+  const changes = require('../src/main/changes');
+  const real = changes.rootOf;
+  let asked = 0;
+  changes.rootOf = async () => { asked++; return null; }; // not a repo
+  try {
+    const copies = setup();
+    const tab = { id: 't1', saved: false, session: { cwd: ROOT, beforeWork: null } };
+    await copies.armCopy(tab);
+    await copies.armCopy(tab);
+    await copies.armCopy(tab);
+    assert.equal(asked, 1, 'git asked once');
+    assert.equal(tab.session.beforeWork, null);
+  } finally { changes.rootOf = real; }
+});
+
 test('the branch-naming request asks for one "Branch:" line', () => {
   assert.match(NAME_THE_BRANCH, /"Branch: <name>"/);
   // The first word is the commit type workMessage reads, so the work comes home typed.

@@ -42,8 +42,9 @@
     stop: { name: 'Stop', sub: 'End the run here' },
     worktree: { name: 'Make a copy', sub: 'A copy of a GitHub repository to work in, on its own branch' },
     pr: { name: 'Open a pull request', sub: 'Push the copy\'s branch and open a draft pull request' },
+    server: { name: 'Dev server', sub: 'Start, stop or restart a project\'s dev server' },
   };
-  const STEP_GROUPS = [['Claude', ['claude']], ['Do', ['run', 'http', 'mcp', 'file']], ['GitHub', ['worktree', 'pr']], ['Talk', ['ask', 'tell']], ['Logic', ['if', 'each', 'set', 'wait', 'workflow', 'stop']]];
+  const STEP_GROUPS = [['Claude', ['claude']], ['Do', ['run', 'http', 'mcp', 'file', 'server']], ['GitHub', ['worktree', 'pr']], ['Talk', ['ask', 'tell']], ['Logic', ['if', 'each', 'set', 'wait', 'workflow', 'stop']]];
   const CONTAINERS = { if: ['then', 'else'], each: ['steps'] };
 
   const TRIGGER_INFO = {
@@ -52,12 +53,14 @@
     issue: { name: 'When an issue comes in', sub: 'Assigned to you, or labelled shellby' },
     shipped: { name: 'When something ships', sub: 'A push, deploy, release or merge' },
     task: { name: 'When a task finishes', sub: 'One of your Shellby conversations' },
+    flaky: { name: 'When a test flakes', sub: 'A test fails, then passes on the same code' },
     health: { name: 'When the PC needs attention', sub: 'Something overheats or fills up' },
     folder: { name: 'When files change', sub: 'Files added or changed in a folder' },
     workflow: { name: 'After another workflow', sub: 'When it finishes, succeeds or fails' },
     startup: { name: 'When Shellby starts', sub: 'Each time Shellby opens' },
     webhook: { name: 'From a script', sub: 'A web hook on this PC only' },
     claude: { name: 'When Claude Code asks', sub: 'Claude Code (MCP) or the shellby command' },
+    server: { name: 'When a dev server changes', sub: 'One started from the Projects page comes up, crashes or is stopped' },
   };
   const ONCE_TRIGGERS = ['claude', 'startup', 'health', 'webhook'];
   const MAX = { triggers: 8, steps: 60, depth: 4, inputs: 10, choices: 4 };
@@ -69,9 +72,11 @@
     issue: { event: 'assigned or labelled', reasons: 'Every reason it came in (a list)', repo: 'owner/name', number: 'Issue number', title: 'Issue title', body: 'What the issue says', labels: 'Its labels (a list)', author: 'Who opened it', url: 'Link' },
     shipped: { kind: 'push, deploy, release or merge', project: 'Project', version: 'Version, if any' },
     task: { title: 'Task title', outcome: 'ok or error', folder: 'Its folder', error: 'The error, if it failed' },
+    flaky: { test: 'The test, as the runner names it', label: 'Its short name', project: 'Project', folder: 'Its folder', framework: 'The test runner', week: 'Flakes this week' },
     health: { title: 'What happened', body: 'The details' },
     folder: { folder: 'The folder', files: 'The files (a list)' },
     workflow: { name: 'Workflow name', status: 'ok or error', runId: 'Its run', vars: 'Its values' },
+    server: { event: 'up, crashed or stopped', project: 'Project', script: 'The script (dev, start…)', port: 'Its port, if known', url: 'Its address, if known', exitCode: 'Exit code, if it crashed', root: 'The clone it runs in', framework: 'vite, next…' },
   };
   // What each step type hands on as <id>.*
   const STEP_OUTPUTS = {
@@ -85,6 +90,7 @@
     each: () => ({ count: 'How many it went through' }),
     worktree: () => ({ path: 'The copy\'s folder', branch: 'Its branch', base: 'The branch it started from', repo: 'owner/name' }),
     pr: () => ({ url: 'Link to the pull request', number: 'Pull request number', branch: 'Its branch', repo: 'owner/name', draft: 'true if it\'s a draft' }),
+    server: () => ({ status: 'up, starting or stopped', port: 'Its port, if known', url: 'Its address, if known', project: 'Project', script: 'The script it runs' }),
   };
 
   const MODE_NAME = Object.fromEntries(SB.MODES.map(m => [m.id, m.title]));
@@ -113,6 +119,7 @@
     stop: 'M4.5 4.5h7v7h-7z',
     worktree: 'M4.5 2.5v11M4.5 9.5c0-2 1.6-3 3.5-3h1c1.4 0 2.5-1.1 2.5-2.5V2.5',
     pr: 'M4.5 2.5v11M11.5 13.5V7c0-1.4-1.1-2.5-2.5-2.5H7M8.5 3l-1.8 1.5L8.5 6',
+    server: 'M2.5 3h11v4h-11zM2.5 9h11v4h-11zM5 5h.01M5 11h.01',
     play: 'M5 3.5v9l7-4.5z',
     up: 'M4 10l4-4 4 4',
     down: 'M4 6l4 4 4-4',
@@ -133,6 +140,7 @@
     issue: 'M8 2.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 1 0 0-11M7 8a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
     shipped: 'M8 10.5V2.8M5 5.6l3-3 3 3M3 9.5v3.5h10V9.5',
     task: 'M3 8.4l3 3 7-7',
+    flaky: 'M3 8.4l3 3 7-7M3 3.5l2 2M5 3.5l-2 2',
     health: 'M1.5 8.5h3l1.5-4 3 8 1.5-4h4',
     folder: 'M2 4.5c0-.6.4-1 1-1h3l1.5 1.5H13c.6 0 1 .4 1 1V12c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1z',
     startup: 'M8 2v5.5M5 4a5 5 0 1 0 6 0',

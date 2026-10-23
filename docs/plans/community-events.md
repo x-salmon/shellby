@@ -1,6 +1,6 @@
 # Community events: a reason to come back, on a calendar
 
-> Status: **plan.** Nothing here is built yet.
+> Status: **built**, apart from §8 (the `x-salmon/shellby-packs` side), which lives in that repository. The rest of this file is the plan as it was written, kept as the contract for what shipped.
 
 Shellby already has a year of things that come round: six seasons with
 limited items you keep (`wardrobe/seasons.js`), six tide events of ten days or

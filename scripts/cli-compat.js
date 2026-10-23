@@ -81,7 +81,7 @@ function shellbyArgs(opts = {}) {
 
 const initialize = () => ({
   type: 'control_request', request_id: randomUUID(),
-  request: { subtype: 'initialize', hooks: initHooks(true) },
+  request: { subtype: 'initialize', hooks: initHooks() },
 });
 
 /**

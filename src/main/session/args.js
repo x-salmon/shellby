@@ -39,16 +39,32 @@ function writeConfig(config) {
 /** @param {string | null} file */
 const removeFile = file => { if (file) fs.rm(file, { force: true }, () => {}); };
 
-// The hooks Shellby registers with initialize: steering always, the work hook
-// when something watches work (beforeWork). scripts/cli-compat.js sends the same.
-/** @param {boolean} watchWork */
-function initHooks(watchWork) {
+// The hooks Shellby registers with initialize: steering, and the work hook on
+// every tool that changes files. Hooks are fixed for the life of the process,
+// and what watches work (beforeWork) comes and goes while it runs (copies
+// turned on in Settings mid-conversation, say), so the hook is always there and
+// answers "go ahead" while nothing watches (control.js answerHook): one
+// round trip over stdin, like the steer hook's. scripts/cli-compat.js sends the same.
+function initHooks() {
   const steerAt = [{ matcher: '.*', hookCallbackIds: [STEER_HOOK] }];
-  /** @type {Record<string, { matcher: string, hookCallbackIds: string[] }[]>} */
-  const hooks = { PostToolUse: steerAt, PostToolUseFailure: steerAt };
-  if (watchWork) hooks.PreToolUse = [{ matcher: WORK_TOOLS, hookCallbackIds: [WORK_HOOK] }];
-  return hooks;
+  return {
+    PreToolUse: [{ matcher: WORK_TOOLS, hookCallbackIds: [WORK_HOOK] }],
+    PostToolUse: steerAt,
+    PostToolUseFailure: steerAt,
+  };
 }
+
+// Whether a hook Claude Code reports running (hook_started's hook_name) is one
+// of Shellby's own callbacks above, which run on every tool call and are nobody's
+// business: the "Running hook…" line is for yours and your plugins'. Claude Code
+// 2.1.303 reports no callback hooks at all; this covers a CLI that names them
+// "<event>:<matcher>" the way it names script hooks, or by their callback id.
+const OWN_HOOK_NAMES = new Set([
+  `PostToolUse:.*`, `PostToolUseFailure:.*`, `PreToolUse:${WORK_TOOLS}`, WORK_HOOK, STEER_HOOK,
+  `PostToolUse:${STEER_HOOK}`, `PostToolUseFailure:${STEER_HOOK}`, `PreToolUse:${WORK_HOOK}`,
+]);
+/** @param {string} name */
+const isOwnHook = name => OWN_HOOK_NAMES.has(name) || /^shellby-/.test(name.split(':').pop() || '');
 
 const args = {
   buildArgs() {
@@ -101,4 +117,4 @@ const args = {
   },
 };
 
-module.exports = { args, EFFORTS, OPTIONAL_FLAGS, WORK_HOOK, STEER_HOOK, writeConfig, removeFile, initHooks };
+module.exports = { args, EFFORTS, OPTIONAL_FLAGS, WORK_HOOK, STEER_HOOK, writeConfig, removeFile, initHooks, isOwnHook };

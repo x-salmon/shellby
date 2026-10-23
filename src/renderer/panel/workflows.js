@@ -167,6 +167,7 @@
         txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' } }),
       ];
       case 'task': return [sel('When a task', [['any', 'finishes'], ['ok', 'succeeds'], ['error', 'fails']], t.outcome || 'any', v => { t.outcome = v; }, { at: `${at}.outcome`, hint: 'Your own conversations, not a workflow\'s.' })];
+      case 'flaky': return [txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' }, hint: 'Needs “Spot flaky tests” on in Settings → Claude. trigger.test names the test, trigger.folder its project.' })];
       case 'folder': return [
         folderField('Folder to watch', t.path, v => { t.path = v; }, { at: `${at}.path`, placeholder: 'C:\\Users\\you\\Downloads' }),
         h('div', { class: 'grid-2' },
@@ -177,6 +178,12 @@
         h('div', { class: 'grid-2' },
           workflowPicker('Workflow', t.name, v => { t.name = v; }, { at: `${at}.name` }),
           sel('When it', [['any', 'finishes'], ['ok', 'succeeds'], ['error', 'fails']], t.status || 'any', v => { t.status = v; }, { at: `${at}.status` })),
+      ];
+      case 'server': return [
+        sel('When a dev server', [['crashed', 'crashes'], ['up', 'comes up'], ['stopped', 'is stopped'], ['any', 'does any of those']], t.on || 'crashed', v => { t.on = v; }, { at: `${at}.on`, hint: 'Servers started from the Projects page. Nothing for what happened while Shellby was closed.' }),
+        h('div', { class: 'grid-2' },
+          txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' } }),
+          txt('Script (optional)', t.script, v => { t.script = v; }, { at: `${at}.script`, attrs: { placeholder: 'dev', maxlength: 64, class: 'field wf-mono' } })),
       ];
       case 'webhook': return webhookFields(t);
       case 'claude': return [h('p', { class: 'field-hint', text: 'Claude Code (over MCP) or the shellby command can start it, passing its inputs. Only workflows with this trigger can be started that way.' })];
@@ -405,6 +412,7 @@
       case 'stop': return s.status === 'error' ? `Stop as failed${s.message ? `: ${s.message}` : ''}` : `Stop${s.message ? `: ${s.message}` : ''}`;
       case 'worktree': return s.repo ? `Copy of ${s.repo}` : 'No repository yet';
       case 'pr': return `${s.draft === false ? 'Pull request' : 'Draft'}: ${firstLine(s.title) || '…'}`;
+      case 'server': return `${{ stop: 'Stop', restart: 'Restart' }[s.action] || 'Start'} ${s.script ? `${s.script} ` : ''}in ${s.project || '…'}`;
       default: return '';
     }
   }
@@ -423,8 +431,10 @@
       case 'issue': return `${{ assigned: 'Assigned to me', labelled: 'Labelled shellby', any: 'Assigned or labelled' }[t.on] || t.on}${t.repo ? ` · ${t.repo}` : ''}`;
       case 'shipped': return `${{ any: 'Anything', push: 'A push', deploy: 'A deploy', release: 'A release', merge: 'A merge' }[t.kind] || t.kind}${t.project ? ` · ${t.project}` : ''}`;
       case 'task': return { ok: 'A task succeeds', error: 'A task fails' }[t.outcome] || 'A task finishes';
+      case 'flaky': return `A test flakes${t.project ? ` · ${t.project}` : ''}`;
       case 'folder': return `${t.pattern || 'Files'} ${t.events === 'changed' ? 'changed' : t.events === 'any' ? 'added or changed' : 'added'}${t.path ? ` in ${SB.shortPath(t.path, 28)}` : ''}`;
       case 'workflow': return t.name ? `“${t.name}” ${{ ok: 'succeeds', error: 'fails' }[t.status] || 'finishes'}` : 'No workflow picked';
+      case 'server': return `${t.project || 'A'} server ${{ up: 'comes up', stopped: 'is stopped', any: 'changes' }[t.on] || 'crashes'}${t.script ? ` · ${t.script}` : ''}`;
       default: return TRIGGER_INFO[t.type]?.sub || '';
     }
   }

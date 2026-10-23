@@ -228,6 +228,15 @@ test('the retry line says why, when and which attempt, with whatever it was give
   assert.equal(F.retryLine({}), 'A request failed, trying again…');
 });
 
+test('the hook line names the hook, and the denials line each refused tool once, with what it reached for', () => {
+  assert.equal(F.hookLine('PreToolUse:Bash'), 'Running hook PreToolUse:Bash…');
+  assert.equal(F.hookLine(''), 'Running hook a hook…');
+  assert.equal(F.denialsLine([{ toolName: 'Bash', toolUseId: 'tu_1', summary: 'rm -rf dist' }, { toolName: 'Edit', toolUseId: 'tu_2', summary: '' }]),
+    'Claude was blocked from: Bash (rm -rf dist), Edit');
+  const many = Array.from({ length: 7 }, (_, i) => ({ toolName: `Tool${i}`, toolUseId: `tu_${i}`, summary: '' }));
+  assert.equal(F.denialsLine(many), 'Claude was blocked from: Tool0, Tool1, Tool2, Tool3, Tool4 and 2 more');
+});
+
 test('a failed hook leaves a mark naming it', () => {
   assert.equal(F.markFor({ kind: 'hook-failed', name: 'PreToolUse:Bash', outcome: 'error', exitCode: 2, text: 'blocked' }).text,
     'A hook failed: PreToolUse:Bash (exit 2). blocked');

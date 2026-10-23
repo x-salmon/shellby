@@ -73,6 +73,7 @@ make yourself is saved as the panel's size.
 | `startup` | none | `{}` |
 | `webhook` | `token` (generated; never set by hand) | the POSTed JSON `data` |
 | `claude` | none: Claude Code may run it over MCP or `shellby flow run` | the inputs it passed |
+| `server` | `on`: `up` `crashed` `stopped` `any`; `project?` (name, matched case-insensitively); `script?` (a package.json script name) | `{ event, project, script, port, url, exitCode, root, framework }` from `DevServers` 'up', 'crashed' and 'stopped' (devservers/flow.js `serverEvent`); nothing for what happened while Shellby was closed |
 
 A manual run, a `claude` run, a webhook and a `workflow` step can all pass
 `inputs`; they're checked against the workflow's `inputs` list and available as
@@ -106,6 +107,7 @@ Every step can have:
 | `stop` | `status`: `ok` `error`; `message?` | ends the run |
 | `worktree` | `repo` (template, `owner/name` cloned here), `branch?` (≤60, a name for `shellby/<name>-<hex>`) | `{ path, branch, base, repo }`: a worktree from `origin/<default branch>` (github/pullrequest.js) |
 | `pr` | `folder` (template: a `worktree` step's path), `title` (≤250), `body?`, `draft` (default true) | `{ url, number, branch, repo, draft }`: commits leftovers and pushes the copy's branch with no hooks, never forced; only Shellby's own copies |
+| `server` | `action`: `start` `stop` `restart`; `project` (template; a project on the Projects page, resolved like the MCP tools: `Projects.resolve`), `script?` (template or a `SCRIPT_RE` name; empty = the script last run in its main clone, else the likeliest in package.json) | `{ status, port, url, project, script }` (devservers/flow.js `serverStep`): start and restart wait up to 90 s for `up` (`DevServers.settled`) and fail when it crashes on the way; stop ends every live server of that project (or script) and answers `stopped` |
 
 ### Templates and conditions
 
@@ -172,8 +174,8 @@ missing or wrong, it asks once more in the same conversation.
 
 ## Safety
 
-- Saving a workflow that can act without asking (a `run`, `http` or `file`
-  write step, a Claude step in a mode other than Ask/Plan, or any non-manual
+- Saving a workflow that can act without asking (a `run`, `http`, `file`
+  write or `server` step, a Claude step in a mode other than Ask/Plan, or any non-manual
   trigger with those) shows a confirm window listing exactly what it may do.
   Autonomous needs the same one-time acknowledgement as everywhere else.
 - Anything Claude proposes over MCP always goes through that confirm window,
