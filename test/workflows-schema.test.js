@@ -42,7 +42,10 @@ test('triggers are checked and described', () => {
     { type: 'ci', on: 'failed', repo: 'x-salmon/shellby' },
     { type: 'webhook' },
     { type: 'folder', path: 'C:\\Users\\me\\Downloads', pattern: '*.pdf' },
+    { type: 'flaky', project: 'shellby' },
   ] }));
+  assert.equal(describeTrigger(wf.when[5]), 'When a test flakes in shellby');
+  assert.equal(describeTrigger(ok(base({ when: [{ type: 'flaky' }] })).when[0]), 'When a test flakes');
   assert.deepEqual(wf.when[0].schedule, { type: 'weekly', time: '09:05', days: [1, 5] });
   assert.match(wf.when[3].token, /^[a-f0-9]{48}$/);
   assert.equal(describeTrigger(wf.when[1]), 'Every 15 minutes');

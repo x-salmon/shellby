@@ -22,7 +22,7 @@ const ID = /^[a-z][a-z0-9_]{0,31}$/;
 const WF_ID = /^[\w-]{1,64}$/;
 const SECRET = /^[A-Z][A-Z0-9_]{0,39}$/;
 const STEP_TYPES = ['claude', 'mcp', 'run', 'http', 'ask', 'tell', 'set', 'if', 'each', 'wait', 'file', 'workflow', 'stop', 'worktree', 'pr'];
-const TRIGGER_TYPES = ['schedule', 'ci', 'issue', 'shipped', 'task', 'health', 'folder', 'workflow', 'startup', 'webhook', 'claude'];
+const TRIGGER_TYPES = ['schedule', 'ci', 'issue', 'shipped', 'task', 'flaky', 'health', 'folder', 'workflow', 'startup', 'webhook', 'claude'];
 const CI_EVENTS = ['failed', 'fixed', 'passed', 'merged', 'review', 'any'];
 const ISSUE_EVENTS = ['assigned', 'labelled', 'any'];
 const SHIP_KINDS = ['push', 'deploy', 'release', 'merge', 'any'];
@@ -97,6 +97,8 @@ function checkTrigger(t, at, err) {
       if (!SHIP_KINDS.includes(kind)) { err(`${at}.kind`, 'Pick push, deploy, release, merge or any'); return null; }
       return { type: 'shipped', kind, project: line(t.project, 100) };
     }
+    case 'flaky':
+      return { type: 'flaky', project: line(t.project, 100) };
     case 'task':
     case 'workflow': {
       const outcome = (t.type === 'task' ? t.outcome : t.status) ?? 'any';
@@ -131,6 +133,7 @@ function describeTrigger(t) {
     case 'issue': return `When an issue is ${{ assigned: 'assigned to you', labelled: 'labelled shellby', any: 'assigned to you or labelled shellby' }[t.on]}${t.repo ? ` on ${t.repo}` : ''}`;
     case 'shipped': return `When ${t.project || 'a project'} ${t.kind === 'any' ? 'ships' : { push: 'is pushed', deploy: 'is deployed', release: 'is released', merge: 'has a pull request merged' }[t.kind]}`;
     case 'task': return `When a task ${t.outcome === 'any' ? 'finishes' : t.outcome === 'ok' ? 'succeeds' : 'fails'}`;
+    case 'flaky': return `When a test flakes${t.project ? ` in ${t.project}` : ''}`;
     case 'health': return 'When something overheats or fills up';
     case 'folder': return `When files are ${t.events === 'any' ? 'added or changed' : t.events} in ${path.basename(t.path) || t.path}${t.pattern ? ` (${t.pattern})` : ''}`;
     case 'workflow': return `After “${t.name}” ${t.status === 'any' ? 'runs' : t.status === 'ok' ? 'succeeds' : 'fails'}`;

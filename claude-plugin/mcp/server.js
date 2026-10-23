@@ -100,6 +100,7 @@ const WORKFLOW_FORMAT = [
   '- issue { on: assigned|labelled|any, repo?: "owner/name" } (a GitHub issue assigned to them, or labelled shellby) -> event, reasons[], repo, number, title, body, labels[], author, url',
   '- shipped { kind: push|deploy|release|merge|any, project? } -> kind, project, version',
   '- task { outcome: ok|error|any } (a Shellby task finished) -> title, outcome, folder, error',
+  '- flaky { project? } (a test failed and then passed on the same code) -> test, label, project, folder, framework, week',
   '- health {} (something overheats or fills up) -> title, body',
   '- folder { path (absolute), pattern?: "*.pdf", events: added|changed|any } -> folder, files[]',
   '- workflow { name (another workflow), status: ok|error|any } -> name, status, runId, vars',

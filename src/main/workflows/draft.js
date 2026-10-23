@@ -36,6 +36,7 @@ Triggers:
 - { "type": "issue", "on": "assigned"|"labelled"|"any", "repo": "owner/name" or "" }  (a GitHub issue assigned to them or labelled shellby) data: event, reasons, repo, number, title, body, labels, author, url
 - { "type": "shipped", "kind": "push"|"deploy"|"release"|"merge"|"any", "project": "" }  data: kind, project, version
 - { "type": "task", "outcome": "ok"|"error"|"any" }  (a Shellby task finished) data: title, outcome, folder, error
+- { "type": "flaky", "project": "" }  (a test failed and then passed on the same code) data: test, label, project, folder, framework, week (flakes this week)
 - { "type": "health" }  data: title, body
 - { "type": "folder", "path": "absolute", "pattern": "*.pdf" or "", "events": "added"|"changed"|"any" }  data: folder, files (list of full paths)
 - { "type": "workflow", "name": "another workflow", "status": "ok"|"error"|"any" }  data: name, status, vars

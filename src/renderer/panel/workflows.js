@@ -167,6 +167,7 @@
         txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' } }),
       ];
       case 'task': return [sel('When a task', [['any', 'finishes'], ['ok', 'succeeds'], ['error', 'fails']], t.outcome || 'any', v => { t.outcome = v; }, { at: `${at}.outcome`, hint: 'Your own conversations, not a workflow\'s.' })];
+      case 'flaky': return [txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' }, hint: 'Needs “Spot flaky tests” on in Settings → Claude. trigger.test names the test, trigger.folder its project.' })];
       case 'folder': return [
         folderField('Folder to watch', t.path, v => { t.path = v; }, { at: `${at}.path`, placeholder: 'C:\\Users\\you\\Downloads' }),
         h('div', { class: 'grid-2' },
@@ -423,6 +424,7 @@
       case 'issue': return `${{ assigned: 'Assigned to me', labelled: 'Labelled shellby', any: 'Assigned or labelled' }[t.on] || t.on}${t.repo ? ` · ${t.repo}` : ''}`;
       case 'shipped': return `${{ any: 'Anything', push: 'A push', deploy: 'A deploy', release: 'A release', merge: 'A merge' }[t.kind] || t.kind}${t.project ? ` · ${t.project}` : ''}`;
       case 'task': return { ok: 'A task succeeds', error: 'A task fails' }[t.outcome] || 'A task finishes';
+      case 'flaky': return `A test flakes${t.project ? ` · ${t.project}` : ''}`;
       case 'folder': return `${t.pattern || 'Files'} ${t.events === 'changed' ? 'changed' : t.events === 'any' ? 'added or changed' : 'added'}${t.path ? ` in ${SB.shortPath(t.path, 28)}` : ''}`;
       case 'workflow': return t.name ? `“${t.name}” ${{ ok: 'succeeds', error: 'fails' }[t.status] || 'finishes'}` : 'No workflow picked';
       default: return TRIGGER_INFO[t.type]?.sub || '';

@@ -63,6 +63,7 @@
     issue: () => ({ on: 'any', repo: '' }),
     shipped: () => ({ kind: 'any', project: '' }),
     task: () => ({ outcome: 'any' }),
+    flaky: () => ({ project: '' }),
     folder: () => ({ path: '', pattern: '', events: 'added' }),
     workflow: () => ({ name: '', status: 'any' }),
   };

@@ -114,6 +114,7 @@ Shellby remembers which you used last.
 | When an issue comes in | when a GitHub issue is assigned to you, or labelled `shellby` (needs **Offer to take on issues** in Settings → GitHub) |
 | When something ships | when a project is pushed, deployed, released or has a pull request merged |
 | When a task finishes | when one of your Shellby tasks finishes (never a workflow's own) |
+| When a test flakes | when the flaky test detective sees a test fail and then pass on the same code, in Shellby's tabs or in Claude Code elsewhere (needs **Spot flaky tests** in Settings → Claude). `trigger.test` names the test, `trigger.folder` the project |
 | When the PC needs attention | when something overheats or a drive fills up |
 | When files change | when files arrive in (or change in) a folder, optionally matching a pattern like `*.pdf` |
 | After another workflow | when another workflow succeeds, fails or either |

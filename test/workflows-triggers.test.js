@@ -24,6 +24,15 @@ test('events match triggers by kind, repo and outcome', () => {
   assert.deepEqual(names('shipped', { kind: 'push', project: 'shellby' }), []);
 });
 
+test('a flaky test starts the workflows for its project, or for any', () => {
+  const any = wf([{ type: 'flaky' }], { name: 'Any' });
+  const one = wf([{ type: 'flaky', project: 'Shellby' }], { name: 'One' });
+  const names = data => matchEvent([any, one], 'flaky', data).map(m => m.workflow.name);
+  assert.deepEqual(names({ project: 'shellby', test: 'test/a.test.js › b' }), ['Any', 'One']);
+  assert.deepEqual(names({ project: 'other', test: 'x' }), ['Any']);
+  assert.equal(one.when[0].project, 'Shellby');
+});
+
 test('workflow chains stop after three hops and never self-trigger', () => {
   const next = wf([{ type: 'workflow', name: 'First', status: 'ok' }], { name: 'Next' });
   assert.equal(matchEvent([next], 'workflow', { name: 'first', status: 'ok', chain: 1 }).length, 1);
