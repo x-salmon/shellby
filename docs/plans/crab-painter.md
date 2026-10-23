@@ -1,6 +1,6 @@
 # The Crab Painter: paint a crab, see him move, share him
 
-> Status: **plan.** Nothing here is built yet.
+> Status: **built** (🎨 Paint in the panel: `src/renderer/panel/painter*.js`, `src/renderer/shared/pixel-grid.js`). The rest of this file is the plan as it was written, kept as the contract for what shipped.
 
 Today a skin is a JSON pixel grid typed by hand ([SKINS.md](../SKINS.md)), and
 the only way to see it is Reload in Settings. The web Pack Studio
