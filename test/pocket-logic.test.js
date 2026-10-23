@@ -160,6 +160,14 @@ test('words: durations, tokens, a typed code', () => {
   assert.deepEqual([...L.keyBytes('AQID')], [1, 2, 3]);
 });
 
+test('an update waits to redraw a list while a thumb is on it or it is still coasting', () => {
+  const now = 10_000;
+  assert.equal(L.holdRedraw({ touching: true, movedAt: 0 }, now), true);
+  assert.equal(L.holdRedraw({ touching: false, movedAt: now - 50 }, now), true);
+  assert.equal(L.holdRedraw({ touching: false, movedAt: now - L.SETTLE_MS }, now), false);
+  assert.equal(L.holdRedraw({}, now), false, 'a list nobody has touched redraws straight away');
+});
+
 test('history groups by the day it was worked on, newest first, and the away card sums itself up', () => {
   const now = new Date(2026, 9, 19, 12).getTime(); // a Monday
   const day = 864e5;
