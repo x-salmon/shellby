@@ -190,3 +190,19 @@ test('scanLede and addedLine count repositories properly', () => {
   assert.equal(L.addedLine(0), 'Nothing added.');
   assert.equal(L.addedLine(undefined), 'Nothing added.');
 });
+
+test('erroring is live and up, and says so; a found server has its words and its script', () => {
+  assert.equal(L.statusText({ status: 'erroring', port: 5173 }, relTime), 'Up on :5173 · build error');
+  assert.equal(L.isLive({ status: 'erroring' }), true);
+  assert.equal(L.isUp({ status: 'erroring' }), true);
+  assert.equal(L.isUp({ status: 'starting' }), false);
+  assert.ok(L.devChoice({ root: 'C:\\x', scripts: [] }, () => [{ status: 'erroring', url: 'http://localhost:5173/', kind: 'server' }]).open, 'Open still works on the error page');
+  const f = { pid: 7, port: 5173, program: 'node', script: 'dev', root: 'C:\\x' };
+  assert.match(L.foundText(f), /node is listening on :5173, started outside Shellby \(dev\)/);
+  assert.match(L.foundText({ ...f, script: null }), /no log/);
+  const c = { scripts: [{ name: 'dev', likely: true }, { name: 'serve', likely: true }], lastScript: 'serve' };
+  assert.equal(L.foundScript(f, c), 'dev', 'the script it was started with, when the clone has it');
+  assert.equal(L.foundScript({ ...f, script: 'nope' }, c), 'serve', 'else the one you ran last');
+  assert.equal(L.foundScript({ ...f, script: null }, { scripts: [{ name: 'build', likely: false }, { name: 'dev', likely: true }] }), 'dev', 'else the likeliest');
+  assert.equal(L.foundScript(f, { scripts: [] }), null);
+});

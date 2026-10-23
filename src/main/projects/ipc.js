@@ -3,9 +3,12 @@
 //
 // The panel never hands in a path: folders come from a dialog main opens, or
 // are picked from what the service listed (knowsRoot); servers are named by id.
+const fs = require('fs');
 const { checkRepo } = require('./remote');
 const doctorIo = require('../devservers/doctor-io');
+const { Discovery } = require('../devservers/discover-io');
 const runner = require('../devservers/runner');
+const { SCRIPT_RE } = require('../devservers/scripts');
 const { ID } = require('./todo');
 const { purgePlan, purgeArgs } = require('./purge');
 
@@ -25,12 +28,25 @@ const LOCAL_URL = /^https?:\/\/localhost:\d{1,5}\/\S*$/;
  *   processInfo(pid), imageOf(pid)  native-windows: is it the same process, and what is it
  *   ownPids() -> Set                Shellby's own processes, never offered to stop
  *   doctor?                         doctor-io.js, or a test's
+ *   discovery?                      discover-io.js's Discovery, or a test's
  * }
  */
 function registerProjectsIpc(ipcMain, d) {
   const P = () => d.projects();
   const S = () => d.devServers();
   const io = d.doctor || doctorIo;
+  const isPid = v => Number.isInteger(v) && v > 4;
+  // Servers Shellby didn't start, matched to the clones on the page. The
+  // listing is read on the page's asking (while a project's page is open),
+  // and a Stop only ever acts on a pid from the last listing.
+  const realRoot = p => { try { return fs.realpathSync.native(p); } catch { return p; } };
+  const discovery = d.discovery || new Discovery({
+    roots: () => [...(P()?.listed.values() || [])].map(root => ({ root: realRoot(root), project: P().nameFor(root), listed: root })),
+    ownPids: () => new Set([...(d.ownPids?.() || []), ...(S()?.ownPids() || [])]),
+    info: d.processInfo,
+  });
+  // The clone as the page lists it (realpath may have changed its spelling), for start().
+  const listedRoot = f => P()?.knowsRoot(f.listed || f.root) || null;
   // What the card was last shown for each server: who held its port and the
   // free one offered. Stopping or moving only ever acts on these.
   const portLooks = new Map(); // server id -> { port, holders: [{ pid, name, createdAt }], free }
@@ -270,6 +286,57 @@ function registerProjectsIpc(ipcMain, d) {
     portLooks.delete(id);
     return S().usePort(id, port);
   });
+
+  // ---------------------------------------------------------------- servers Shellby didn't start (discover.js)
+
+  // What's listening in your projects that Shellby didn't start. Asked by the
+  // page while a project's page is open; read again at most every 10 s.
+  ipcMain.handle('servers:found', async (_e, opts) => {
+    if (!P()?.listed.size) return [];
+    const list = await discovery.look({ force: !!opts?.refresh });
+    return list.map(({ pid, port, program, project, script, listed, root }) => ({ pid, port, program, project, script, root: listed || root }));
+  });
+  ipcMain.handle('servers:found-open', (_e, pid) => {
+    const f = isPid(pid) ? discovery.listed(pid) : null;
+    if (!f || f.error) return false;
+    d.openExternal(`http://localhost:${f.port}/`);
+    return true;
+  });
+
+  // Stopping one: the process the page named, if it's still the same one, after
+  // Shellby's own window has asked. adopt: then start the script here, so next
+  // time there's a log. -> { ok } | { ok: false, error, cancelled? }
+  async function stopFound(pid, { script = null } = {}) {
+    const f = isPid(pid) ? discovery.listed(pid) : { error: 'That server is not on the list.' };
+    if (f.error) return { ok: false, error: f.error };
+    const root = listedRoot(f);
+    if (!root) return { ok: false, error: "That project isn't on the Projects page any more." };
+    const adopt = typeof script === 'string' && SCRIPT_RE.test(script) ? script : null;
+    const what = `${f.program} (process ${f.pid}) on port ${f.port}`;
+    const yes = await d.ask({
+      icon: '🔌', danger: true,
+      title: adopt ? `Run ${f.project}'s server in Shellby instead?` : `Stop ${f.project}'s server?`,
+      message: adopt
+        ? `Shellby stops ${what}, which it didn't start, then runs the "${adopt}" script here itself, with a log it can show you.`
+        : `${what} was started outside Shellby, in ${f.project}. Stopping it ends it and anything it started, the way Task Manager's End task does.`,
+      note: adopt ? 'The terminal it was running in keeps its own output. Nothing else in that terminal is touched.' : "Anything unsaved in it is lost. If you don't know what it is, leave it.",
+      buttons: [{ label: adopt ? 'Stop it and run it here' : 'Stop it', style: 'danger' }, { label: 'Leave it' }], defaultId: 1, cancelId: 1,
+    });
+    if (yes !== 0) return { ok: false, cancelled: true };
+    // Asked again after the window: it may have ended, or been replaced, while you read.
+    const again = discovery.listed(pid);
+    if (again.error) return { ok: false, error: again.error };
+    await runner.stop(pid);
+    discovery.forget(pid);
+    for (let i = 0; i < 20; i++) {
+      if (!(await io.whoHasPort(f.port, { info: d.processInfo, image: d.imageOf })).length) break;
+      await new Promise(r => setTimeout(r, 250));
+    }
+    if (!adopt) return { ok: true };
+    return S().start({ root, script: adopt, project: P().nameFor(root) });
+  }
+  ipcMain.handle('servers:found-stop', (_e, { pid } = {}) => stopFound(pid));
+  ipcMain.handle('servers:found-adopt', (_e, { pid, script } = {}) => stopFound(pid, { script }));
 
   // Before a start: .env keys the example has and yours doesn't, and the Node version it wants.
   ipcMain.handle('servers:doctor', (_e, root) => {
