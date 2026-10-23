@@ -624,7 +624,8 @@ src/main/        Electron main process
                    (releases.js, release-git.js, releases-ipc.js); ipc.js serves it
   devservers/      dev servers: service.js (what each is doing, and a crash's card), runner.js and launch.js (started
                    detached, read from a log file), output.js (its address and crash, pure), scripts.js (what a project can
-                   run) and the port doctor (doctor.js, pure; doctor-io.js does the reading)
+                   run), the port doctor (doctor.js, pure; doctor-io.js does the reading) and servers Shellby didn't
+                   start (discover.js, pure; discover-io.js reads the listening ports while a project's page is open)
   backlog/         Next up (docs/plans/next-up.md): rank.js (one ranked list), tasks.js (.shellby/tasks.md), github.js
                    (issues and milestones), sentry.js (new production errors), trackers.js (Linear and Jira through an MCP
                    server) and prompts.js (each item's prompt)
