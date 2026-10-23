@@ -280,17 +280,52 @@
     if (r.ok && !r.again) { buzz([6, 40, 6]); celebrate('He loved that.'); }
   }
 
+  // A list the PC's updates redraw: it keeps its place, and a redraw that comes
+  // while your thumb is on it (or it's still coasting) waits until it's still.
+  // Swapping the content out mid-swipe stopped the scroll dead on an iPhone.
+  function steadyList(scroll) {
+    const feel = { touching: false, movedAt: 0 };
+    let waiting = null;
+    let timer = null;
+    function put(parts) {
+      const top = scroll.scrollTop;
+      scroll.replaceChildren(...parts);
+      scroll.scrollTop = top;
+    }
+    function later() {
+      timer = null;
+      if (!waiting) return;
+      if (L.holdRedraw(feel)) { timer = setTimeout(later, L.SETTLE_MS); return; }
+      const parts = waiting;
+      waiting = null;
+      put(parts);
+    }
+    const wait = () => { if (waiting && !timer) timer = setTimeout(later, L.SETTLE_MS); };
+    const lift = () => { feel.touching = false; feel.movedAt = Date.now(); wait(); };
+    scroll.addEventListener('touchstart', () => { feel.touching = true; }, { passive: true });
+    scroll.addEventListener('touchend', lift, { passive: true });
+    scroll.addEventListener('touchcancel', lift, { passive: true });
+    scroll.addEventListener('scroll', () => { feel.movedAt = Date.now(); }, { passive: true });
+    // now: something you tapped on the list itself, which answers straight away.
+    return function draw(parts, now = false) {
+      if (now || !L.holdRedraw(feel)) { waiting = null; put(parts); return; }
+      waiting = parts;
+      wait();
+    };
+  }
+
   function beachScreen() {
     const scroll = h('div', { class: 'scroll beach' });
+    const draw = steadyList(scroll);
     const fab = h('a', { href: '#/new', class: 'fab', 'aria-label': 'New task' }, icon('plus'), h('span', { text: 'New task' }));
     const el = h('div', { class: 'screen' }, topbar(), h('div', { class: 'offline-slot' }), scroll, fab, dock('beach'));
     let quietOpen = false;
-    function update() {
+    function update(now = false) {
       const v = S.view;
       el.replaceChild(topbar(), el.firstChild);
       el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
       fab.hidden = !canAct();
-      if (!v) { scroll.replaceChildren(h('div', { class: 'loading' }, D.crab({ px: 4, state: 'working' }), h('p', { text: 'Finding your PC…' }))); return; }
+      if (!v) { draw([h('div', { class: 'loading' }, D.crab({ px: 4, state: 'working' }), h('p', { text: 'Finding your PC…' }))], true); return; }
       const parts = [tide(v), Find.awayCard(), Find.searchRow()];
       const prompts = v.prompts || [];
       if (prompts.length) {
@@ -299,7 +334,7 @@
       }
       for (const s of L.sections(v)) {
         if (s.key === 'quiet' && s.tabs.length > 2) {
-          parts.push(h('button', { type: 'button', class: 'sect sect-toggle', 'aria-expanded': quietOpen ? 'true' : 'false', onclick: () => { quietOpen = !quietOpen; update(); } },
+          parts.push(h('button', { type: 'button', class: 'sect sect-toggle', 'aria-expanded': quietOpen ? 'true' : 'false', onclick: () => { quietOpen = !quietOpen; update(true); } },
             h('span', { text: s.label }), h('b', { text: s.tabs.length }), icon('chevron', quietOpen ? 'open' : '')));
           if (quietOpen) for (const t of s.tabs) parts.push(tabCard(t));
           continue;
@@ -311,10 +346,10 @@
         parts.push(h('div', { class: 'empty' }, h('p', { text: canAct() ? 'Nothing on the go. Give him something to do and he’ll scuttle off with it.' : 'Nothing on the go.' }), canAct() ? h('a', { href: '#/new', class: 'btn go', text: 'Start a task' }) : null));
       }
       // No "while you were away" card is null, which replaceChildren would print.
-      scroll.replaceChildren(...parts.filter(Boolean));
+      draw(parts.filter(Boolean), now);
     }
     update();
-    return { el, update, title: 'Shellby' };
+    return { el, update: () => update(), title: 'Shellby' };
   }
 
   // One conversation and what its turns changed live in pocket-tab.js; the checks card on it comes from pocket-find.js.
@@ -331,6 +366,7 @@
   function queueScreen() {
     const scroll = h('div', { class: 'scroll' });
     const el = h('div', { class: 'screen' }, topbar(), h('div', { class: 'offline-slot' }), scroll, dock('queue'));
+    const draw = steadyList(scroll);
     function update() {
       el.replaceChild(topbar(), el.firstChild);
       el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
@@ -351,7 +387,7 @@
           h('div', { class: 'card-m' }, h('span', { class: 'muted', text: x.kind === 'routine' ? 'A routine' : x.kind === 'message' ? 'A message' : x.folder || 'A task' })),
           canAct() ? actButton({ label: x.running ? 'Stop it' : 'Take it out', cls: 'ghost slim', run: () => confirmSheet({ title: x.running ? 'Stop it and take it out?' : 'Take it out of the queue?', text: x.name, yes: x.running ? 'Stop it' : 'Take it out', danger: true, then: () => act('cancel-held', { id: x.id }, { okText: 'Taken out.' }) }) }) : null));
       }
-      scroll.replaceChildren(...parts);
+      draw(parts);
     }
     update();
     return { el, update, title: 'Queue' };
@@ -670,6 +706,22 @@
   setInterval(() => {
     for (const el of document.querySelectorAll('[data-since]')) el.textContent = L.duration((Date.now() - Number(el.dataset.since)) / 1000);
   }, 1000);
+
+  // An iPhone moves the whole page up to make room for the keyboard, and can
+  // leave it there once the keyboard goes: a black band under the dock and a
+  // list that won't scroll, until a new screen happened to put it back. Only
+  // the lists inside scroll, so the page goes back to the top whenever nothing
+  // is being typed in.
+  const KEYBOARD_GONE_MS = 120;
+  const typing = () => !!document.activeElement?.matches?.('input, textarea, select, [contenteditable="true"]');
+  function settlePage() {
+    if (typing() || (!window.scrollY && !document.documentElement.scrollTop)) return;
+    window.scrollTo(0, 0);
+  }
+  document.addEventListener('focusout', () => setTimeout(settlePage, KEYBOARD_GONE_MS));
+  window.visualViewport?.addEventListener('resize', () => setTimeout(settlePage, KEYBOARD_GONE_MS));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') settlePage(); });
+  window.addEventListener('pageshow', settlePage);
 
   window.addEventListener('hashchange', mount);
 

@@ -451,6 +451,14 @@
     return /iPhone|iPad|iPod/.test(s) || (/Macintosh/.test(s) && touchPoints > 1);
   }
 
+  /** How long a list keeps still after the last scroll before the PC's update may redraw it. */
+  const SETTLE_MS = 350;
+
+  /** A redraw waits while a thumb is on the list or it's still coasting: iOS drops a scroll whose content is swapped out under it. */
+  function holdRedraw({ touching = false, movedAt = 0 } = {}, now = Date.now()) {
+    return !!touching || now - movedAt < SETTLE_MS;
+  }
+
   /** A typed pairing code, as it's shown: upper case, a dash after four. */
   function formatCode(typed) {
     const s = String(typed ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
@@ -465,7 +473,7 @@
   }
 
   const api = {
-    STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keepItem, keyBytes,
+    SETTLE_MS, STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, holdRedraw, inline, isIos, keepItem, keyBytes,
     markdown, modeLabel, parsePatch, plural, route, sections, sseParser, tappedHash, tokens,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
