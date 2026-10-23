@@ -202,7 +202,7 @@ test('erroring is live and up, and says so; a found server has its words and its
   assert.match(L.foundText({ ...f, script: null }), /no log/);
   const c = { scripts: [{ name: 'dev', likely: true }, { name: 'serve', likely: true }], lastScript: 'serve' };
   assert.equal(L.foundScript(f, c), 'dev', 'the script it was started with, when the clone has it');
-  assert.equal(L.foundScript({ ...f, script: 'nope' }, c), 'serve', 'else the one you ran last');
-  assert.equal(L.foundScript({ ...f, script: null }, { scripts: [{ name: 'build', likely: false }, { name: 'dev', likely: true }] }), 'dev', 'else the likeliest');
+  assert.equal(L.foundScript({ ...f, script: 'nope' }, c), null, 'one the clone has not got: no button');
+  assert.equal(L.foundScript({ ...f, script: null }, c), null, 'none read off its command line: no button, never a guess');
   assert.equal(L.foundScript(f, { scripts: [] }), null);
 });

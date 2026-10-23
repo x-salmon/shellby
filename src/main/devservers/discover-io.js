@@ -11,6 +11,7 @@ const { POWERSHELL } = require('../system32');
 const discover = require('./discover');
 
 const LOOK_EVERY_MS = 10 * 1000;
+const FORCE_GAP_MS = 2000;      // even a refresh (after a Stop) waits this long after the last read
 const READ_TIMEOUT_MS = 15 * 1000;
 const START_SLACK_MS = 3000;
 
@@ -51,14 +52,21 @@ class Discovery {
     this.looking = null;
   }
 
-  /** The list, read again if the last look is older than LOOK_EVERY_MS. -> the public list */
+  /**
+   * The list, read again if the last look is older than LOOK_EVERY_MS (or
+   * FORCE_GAP_MS with force). Only a process whose start time Windows gave is
+   * kept: without it a Stop could never tell the process from a later one
+   * with its pid. -> the public list
+   */
   async look({ force = false } = {}) {
     if (this.looking) return this.looking;
-    if (!force && this.at && this.now() - this.at < LOOK_EVERY_MS) return this.view();
+    if (this.at && this.now() - this.at < (force ? FORCE_GAP_MS : LOOK_EVERY_MS)) return this.view();
     this.looking = (async () => {
       const text = await this.read();
       const list = discover.found(discover.parseListing(text), { roots: this.deps.roots(), ownPids: this.deps.ownPids() });
-      this.found = list.map(f => ({ ...f, createdAt: this.deps.info?.(f.pid)?.createdAt || null }));
+      this.found = list
+        .map(f => ({ ...f, createdAt: this.deps.info?.(f.pid)?.createdAt || null }))
+        .filter(f => f.createdAt);
       this.at = this.now();
       return this.view();
     })().catch(() => this.view()).finally(() => { this.looking = null; });
@@ -70,17 +78,17 @@ class Discovery {
   }
 
   /**
-   * One from the last listing, if it's still the same process (same pid, a
-   * start time within a few seconds of the one recorded). -> the entry, or
-   * { error } when it has gone or was never listed.
+   * One from the last listing, if it's still the same process: same pid,
+   * alive, with a start time within a few seconds of the one recorded. When
+   * Windows can't say (no info, no start time), the answer is no.
+   * -> the entry, or { error } when it has gone or was never listed.
    */
   listed(pid) {
     const f = this.found.find(x => x.pid === pid);
     if (!f) return { error: "Look again: that server isn't on the list any more." };
     const now = this.deps.info?.(pid);
-    if (now && (!now.alive || (f.createdAt && now.createdAt && Math.abs(now.createdAt - f.createdAt) > START_SLACK_MS))) {
-      return { error: 'That server has already stopped.' };
-    }
+    if (!now?.alive || !now.createdAt || !f.createdAt) return { error: 'That server has already stopped.' };
+    if (Math.abs(now.createdAt - f.createdAt) > START_SLACK_MS) return { error: 'That server has already stopped.' };
     return f;
   }
 
@@ -89,4 +97,4 @@ class Discovery {
   }
 }
 
-module.exports = { Discovery, readListing, SCRIPT, LOOK_EVERY_MS };
+module.exports = { Discovery, readListing, SCRIPT, LOOK_EVERY_MS, FORCE_GAP_MS };

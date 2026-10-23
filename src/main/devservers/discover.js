@@ -80,13 +80,28 @@ function scriptOf(chain) {
   return null;
 }
 
-/** Which of `roots` a chain's command lines name (the deepest match wins), or null. roots: [{ root, key }] with key = folderKey(root). */
+// Does `line` name the folder `key` as a whole path part? "c:\code\site"
+// must not count for c:\code\site2: after the key comes a separator, a
+// quote, a space, or the end of the line.
+function namesFolder(line, key) {
+  for (let at = line.indexOf(key); at >= 0; at = line.indexOf(key, at + 1)) {
+    const next = line[at + key.length];
+    if (next === undefined || next === '\\' || next === '"' || next === "'" || /\s/.test(next)) return true;
+  }
+  return false;
+}
+
+/**
+ * Which of `roots` a chain's command lines name, or null. The listener's own
+ * line is looked at first, then its parents', and the deepest folder wins.
+ * roots: [{ root, key }] with key = folderKey(root).
+ */
 function rootOf(chain, roots) {
-  let best = null;
   for (const p of chain) {
     const line = folderKey(p.commandLine);
+    let best = null;
     for (const r of roots) {
-      if (line.includes(r.key) && (!best || r.key.length > best.key.length)) best = r;
+      if (namesFolder(line, r.key) && (!best || r.key.length > best.key.length)) best = r;
     }
     if (best) return best;
   }
@@ -121,4 +136,4 @@ function found(listing, { roots = [], ownPids = new Set() } = {}) {
   return [...byPid.values()].sort((a, b) => a.port - b.port || a.pid - b.pid).slice(0, MAX_FOUND);
 }
 
-module.exports = { parseListing, found, scriptOf, chainOf, folderKey, DEV_PROGRAMS, MAX_FOUND };
+module.exports = { parseListing, found, scriptOf, chainOf, rootOf, namesFolder, folderKey, DEV_PROGRAMS, MAX_FOUND };

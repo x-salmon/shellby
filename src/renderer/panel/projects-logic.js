@@ -154,16 +154,14 @@
   const addedLine = added => (added ? `Added ${repositories(added)}` : 'Nothing added.');
 
   // A server Shellby didn't start (discover.js): what its card says, and which
-  // script "Run it in Shellby instead" would run: the one it was started with
-  // when that can be read from its command line, else the clone's last or likeliest.
+  // script "Run it in Shellby instead" would run: only the one main read off
+  // its command line, and only when the clone has it. Otherwise no button:
+  // main refuses any other script, so the page offers none.
   function foundText(f) {
     return `${f.program} is listening on :${f.port}, started outside Shellby${f.script ? ` (${f.script})` : ''}. There's no log: Shellby never had its output.`;
   }
   function foundScript(f, c) {
-    const names = new Set((c?.scripts || []).map(s => s.name));
-    if (f.script && names.has(f.script)) return f.script;
-    const pick = (c?.scripts || []).find(s => s.name === c?.lastScript) || (c?.scripts || []).find(s => s.likely);
-    return pick?.name || null;
+    return f.script && (c?.scripts || []).some(s => s.name === f.script) ? f.script : null;
   }
 
   const api = { isLive, isUp, statusText, foundText, foundScript, devChoice, SCOPES, readView, visible, togglePin, emptyText, needsList, cloneFacts, tidyPrompt, copiesSummary, scanLede, addedLine };

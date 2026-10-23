@@ -91,6 +91,29 @@ test('the script from the command line: only a name scripts.js would run', () =>
   assert.equal(discover.scriptOf(chain(['npm run "dev && calc"'])), null);
 });
 
+test('a folder is matched as a whole path part, and the listener\'s own line beats its parents\'', () => {
+  const key = discover.folderKey(ROOT);
+  assert.equal(discover.namesFolder(discover.folderKey('node C:\\code\\site\\node_modules\\vite\\bin\\vite.js'), key), true);
+  assert.equal(discover.namesFolder(discover.folderKey('node "C:\\code\\site" --watch'), key), true);
+  assert.equal(discover.namesFolder(discover.folderKey('cd C:\\code\\site'), key), true, 'at the end of the line');
+  assert.equal(discover.namesFolder(discover.folderKey('node c:/code/site/server.js'), key), true, 'either slash');
+  assert.equal(discover.namesFolder(discover.folderKey('node C:\\code\\site2\\server.js'), key), false, 'a longer name with the same start');
+  assert.equal(discover.namesFolder(discover.folderKey('node C:\\code\\site-old\\server.js'), key), false);
+  assert.equal(discover.namesFolder(discover.folderKey('node C:\\code\\sitecore'), key), false);
+  // The listener names one clone, its parent another: the listener's own line decides.
+  const sites = [{ root: ROOT, project: 'site', key }, { root: OTHER, project: 'other', key: discover.folderKey(OTHER) }];
+  const chain = [
+    { pid: 2, parent: 1, name: 'node.exe', commandLine: 'node C:\\code\\other\\node_modules\\vite\\bin\\vite.js' },
+    { pid: 1, parent: 0, name: 'cmd.exe', commandLine: 'cmd /c cd C:\\code\\site && npm run dev' },
+  ];
+  assert.equal(discover.rootOf(chain, sites).root, OTHER);
+  // Two clones named on one line, one inside the other: the deeper one.
+  const nested = [{ root: 'C:\\code', project: 'code', key: discover.folderKey('C:\\code') }, ...sites];
+  assert.equal(discover.rootOf([chain[0]], nested).root, OTHER);
+  assert.equal(discover.rootOf([{ pid: 1, parent: 0, name: 'node.exe', commandLine: 'node C:\\code\\server.js' }], nested).root, 'C:\\code');
+  assert.equal(discover.rootOf([{ pid: 1, parent: 0, name: 'node.exe', commandLine: 'node C:\\codex\\server.js' }], nested), null);
+});
+
 test('a process tree with a loop ends', () => {
   const l = discover.parseListing(JSON.stringify({
     listen: [{ LocalAddress: '::', LocalPort: 3000, OwningProcess: 1 }],
@@ -121,7 +144,10 @@ test('the reader is throttled, remembers what it listed, and a Stop needs the sa
     await disc.look();
     assert.equal(reads, 2);
     await disc.look({ force: true });
-    assert.equal(reads, 3);
+    assert.equal(reads, 2, 'a refresh straight after a read is the same read');
+    now += 2_500;
+    await disc.look({ force: true });
+    assert.equal(reads, 3, 'a refresh waits at least 2 s');
     // Two at once share one read.
     now += 11_000;
     await Promise.all([disc.look(), disc.look()]);
@@ -137,6 +163,28 @@ test('the reader is throttled, remembers what it listed, and a Stop needs the sa
     disc.forget(1002);
     assert.deepEqual(disc.view().map(f => f.pid), [4001]);
   })();
+});
+
+test('no start time, no entry; and listed() says no whenever Windows cannot vouch for the process', async () => {
+  const info = new Map([[1002, { alive: true, createdAt: 500 }], [4001, { alive: true, createdAt: null }]]);
+  const disc = new Discovery({ roots: () => roots, ownPids: () => new Set([3000]), info: pid => info.get(pid) ?? null, read: async () => text });
+  assert.deepEqual((await disc.look()).map(f => f.pid), [1002], 'the one with no start time is dropped at listing time');
+  assert.equal(disc.listed(1002).pid, 1002);
+  // Windows can't be asked (no koffi): closed, not open.
+  info.set(1002, null);
+  assert.match(disc.listed(1002).error, /already stopped/);
+  info.set(1002, undefined);
+  assert.match(disc.listed(1002).error, /already stopped/);
+  // Alive but with no start time now: the same.
+  info.set(1002, { alive: true, createdAt: null });
+  assert.match(disc.listed(1002).error, /already stopped/);
+  info.set(1002, { alive: false, createdAt: 500 });
+  assert.match(disc.listed(1002).error, /already stopped/);
+  info.set(1002, { alive: true, createdAt: 2_000 });
+  assert.equal(disc.listed(1002).pid, 1002, 'within the slack: the same process');
+  // A reader with no info() at all lists nothing it could later be asked to stop.
+  const blind = new Discovery({ roots: () => roots, ownPids: () => new Set(), read: async () => text });
+  assert.deepEqual(await blind.look(), []);
 });
 
 test('a failed read is an empty list, never a throw', async () => {
