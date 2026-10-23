@@ -23,7 +23,7 @@ const STEER_HOOK = 'shellby-steer';
 // its --help (claude/cli.js helpFlags): an older one stops at a flag it doesn't
 // know, and every turn would fail. On another computer its version isn't known,
 // so they're left out there.
-const OPTIONAL_FLAGS = Object.freeze(['--include-partial-messages', '--forward-subagent-text', '--fallback-model', '--name', '--agent', '--safe-mode', '--chrome']);
+const OPTIONAL_FLAGS = Object.freeze(['--include-partial-messages', '--forward-subagent-text', '--include-hook-events', '--fallback-model', '--name', '--agent', '--safe-mode', '--chrome']);
 // A conversation's name as Claude Code shows it (--name): one line, not too long.
 const NAME_MAX = 100;
 /** @param {unknown} v */
@@ -71,6 +71,8 @@ const args = {
     // The reply as it's written, and what each helper says, not only its tool calls.
     if (can('--include-partial-messages')) args.push('--include-partial-messages');
     if (can('--forward-subagent-text')) args.push('--forward-subagent-text');
+    // How each hook ran, for the note when one fails (stream.js hookFailedOf).
+    if (can('--include-hook-events')) args.push('--include-hook-events');
     if (this.fallbackModel && this.fallbackModel !== this.model && can('--fallback-model')) args.push('--fallback-model', this.fallbackModel);
     if (this.chrome && can('--chrome')) args.push('--chrome');
     if (this.safeMode && can('--safe-mode')) args.push('--safe-mode');

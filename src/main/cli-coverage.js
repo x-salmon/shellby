@@ -59,7 +59,7 @@ const FLAGS = Object.freeze({
   '--from-pr': use('handoff.js'),
   '--help': use('cli-compat.js'),
   '--ide': skip('Shellby opens files in your editor itself (editor.js).'),
-  '--include-hook-events': skip('Hooks Shellby needs come through the initialize handshake (session/args.js initHooks).'),
+  '--include-hook-events': use('session/args.js: a note in the conversation when a hook fails'),
   '--include-partial-messages': use('session/args.js: the reply as it\'s written'),
   '--input-format': use('session/args.js'),
   '--json-schema': use('council/run.js, council/look.js, backlog/trackers.js'),

@@ -128,7 +128,7 @@ test('no fallback to the same model, and nothing for options left off', () => {
   assert.ok(!same.includes('--fallback-model'));
   const plain = new ClaudeSession({ exe: 'x', cwd: '.', mode: 'ask' }).buildArgs();
   for (const f of ['--fallback-model', '--chrome', '--safe-mode', '--agent', '--name']) assert.ok(!plain.includes(f), f);
-  assert.ok(plain.includes('--include-partial-messages') && plain.includes('--forward-subagent-text'));
+  for (const f of ['--include-partial-messages', '--forward-subagent-text', '--include-hook-events']) assert.ok(plain.includes(f), f);
 });
 
 test('a conversation name is one line, cut short, and never empty', () => {
