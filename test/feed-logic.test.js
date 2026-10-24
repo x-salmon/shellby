@@ -9,6 +9,10 @@ const compact = n => `${Math.round(n / 1000)}k`;
 test('markFor words the notes Shellby leaves in a feed, with their glyphs', () => {
   assert.deepEqual(F.markFor({ kind: 'moved', branch: 'shellby/x', base: 'main' }, compact),
     { icon: '⑂', text: 'Moved into its own copy before changing anything: branch shellby/x (from main)' });
+  assert.equal(F.markFor({ kind: 'moved', branch: 'shellby/x', base: 'main', left: 'feat/done' }, compact).text,
+    "Moved into its own copy before changing anything: branch shellby/x (from main). Your checkout was on feat/done, already all in main, so it's on main now");
+  assert.match(F.markFor({ kind: 'moved', branch: 'shellby/x', base: 'feat/done', stuck: 'feat/done is already in main, but x' }, compact).text,
+    /\(from feat\/done\)\. feat\/done is already in main, but x$/);
   assert.equal(F.markFor({ kind: 'home', commits: 1, base: 'main' }, compact).text, 'Brought home: 1 commit merged into main');
   assert.equal(F.markFor({ kind: 'home', commits: 3, base: 'dev' }, compact).text, 'Brought home: 3 commits merged into dev');
   assert.equal(F.markFor({ kind: 'phone' }, compact).icon, '📱');
@@ -209,4 +213,32 @@ test('storySteps: no story, or one step left after trimming, shows the flat list
   const files = [{ path: 'a.js', added: 1, removed: 0 }];
   assert.equal(F.storySteps({ files }), null);
   assert.equal(F.storySteps({ files, story: [{ title: 'x', files: ['a.js'] }, { title: 'y', files: ['past-the-limit.js'] }] }), null);
+});
+
+test('a helper working away from this folder says where in a word, and more on hover', () => {
+  assert.equal(F.laneIsolationText('worktree'), 'own copy');
+  assert.equal(F.laneIsolationText('remote'), 'cloud');
+  assert.match(F.laneIsolationTitle('worktree'), /own copy of the repository/);
+  assert.equal(F.laneIsolationText('somewhere'), 'somewhere', 'a kind it does not know shows as itself');
+});
+
+test('the retry line says why, when and which attempt, with whatever it was given', () => {
+  assert.equal(F.retryLine({ attempt: 2, max: 10, delayMs: 4000, status: 529 }), 'The API is busy, trying again in 4 s (attempt 2 of 10)…');
+  assert.equal(F.retryLine({ attempt: 1, status: 429 }), 'Rate limited, trying again (attempt 1)…');
+  assert.equal(F.retryLine({}), 'A request failed, trying again…');
+});
+
+test('the hook line names the hook, and the denials line each refused tool once, with what it reached for', () => {
+  assert.equal(F.hookLine('PreToolUse:Bash'), 'Running hook PreToolUse:Bash…');
+  assert.equal(F.hookLine(''), 'Running hook a hook…');
+  assert.equal(F.denialsLine([{ toolName: 'Bash', toolUseId: 'tu_1', summary: 'rm -rf dist' }, { toolName: 'Edit', toolUseId: 'tu_2', summary: '' }]),
+    'Claude was blocked from: Bash (rm -rf dist), Edit');
+  const many = Array.from({ length: 7 }, (_, i) => ({ toolName: `Tool${i}`, toolUseId: `tu_${i}`, summary: '' }));
+  assert.equal(F.denialsLine(many), 'Claude was blocked from: Tool0, Tool1, Tool2, Tool3, Tool4 and 2 more');
+});
+
+test('a failed hook leaves a mark naming it', () => {
+  assert.equal(F.markFor({ kind: 'hook-failed', name: 'PreToolUse:Bash', outcome: 'error', exitCode: 2, text: 'blocked' }).text,
+    'A hook failed: PreToolUse:Bash (exit 2). blocked');
+  assert.equal(F.markFor({ kind: 'hook-failed', name: 'Stop', outcome: 'cancelled', exitCode: null, text: null }).text, 'A hook was cancelled: Stop');
 });

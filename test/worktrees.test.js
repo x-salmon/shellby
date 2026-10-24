@@ -318,6 +318,89 @@ test('moveBase changes nothing on a clash, or when your checkout is on another b
   } finally { t.done(); }
 });
 
+// Your checkout on a branch that's all in main, and main moved on since.
+function finishedBranch(t) {
+  t.g(t.dir, 'switch', '-q', '-c', 'feat/done');
+  fs.writeFileSync(path.join(t.dir, 'done.txt'), 'done\n');
+  t.g(t.dir, 'add', '-A');
+  t.g(t.dir, 'commit', '-qm', 'feat: done');
+  t.g(t.dir, 'switch', '-q', 'main');
+  t.g(t.dir, 'merge', '-q', 'feat/done');
+  fs.writeFileSync(path.join(t.dir, 'later.txt'), 'later\n');
+  t.g(t.dir, 'add', '-A');
+  t.g(t.dir, 'commit', '-qm', 'feat: later');
+  t.g(t.dir, 'switch', '-q', 'feat/done');
+}
+
+test('a checkout left on a finished branch is switched to main, so the copy starts there', async () => {
+  const t = setup();
+  try {
+    finishedBranch(t);
+    const made = await worktrees.create(t.dir, { home: t.home, title: 'Next thing' });
+    assert.equal(made.ok, true);
+    assert.equal(made.worktree.base, 'main');
+    assert.deepEqual(made.left, { from: 'feat/done', to: 'main' });
+    assert.equal(made.stuck, null);
+    assert.equal(t.g(t.dir, 'symbolic-ref', '--short', 'HEAD'), 'main');
+    assert.ok(fs.existsSync(path.join(made.worktree.path, 'later.txt')), "starts from main's last commit");
+    assert.equal(t.g(t.dir, 'rev-parse', '--verify', '--quiet', 'feat/done').length, 40, 'the old branch stays');
+  } finally { t.done(); }
+});
+
+test('a branch in use stays put: work of its own, or made off main a moment ago', async () => {
+  const t = setup();
+  try {
+    t.g(t.dir, 'switch', '-q', '-c', 'feat/fresh');
+    const fresh = await worktrees.create(t.dir, { home: t.home, title: 'Fresh' });
+    assert.equal(fresh.worktree.base, 'feat/fresh');
+    assert.equal(fresh.left, null);
+
+    fs.writeFileSync(path.join(t.dir, 'own.txt'), 'own\n');
+    t.g(t.dir, 'add', '-A');
+    t.g(t.dir, 'commit', '-qm', 'feat: own');
+    t.g(t.dir, 'switch', '-q', 'main');
+    fs.writeFileSync(path.join(t.dir, 'm.txt'), 'm\n');
+    t.g(t.dir, 'add', '-A');
+    t.g(t.dir, 'commit', '-qm', 'feat: m');
+    t.g(t.dir, 'switch', '-q', 'feat/fresh');
+    const own = await worktrees.create(t.dir, { home: t.home, title: 'Own' });
+    assert.equal(own.worktree.base, 'feat/fresh');
+    assert.equal(own.left, null);
+    assert.equal(own.stuck, null);
+    assert.equal(t.g(t.dir, 'symbolic-ref', '--short', 'HEAD'), 'feat/fresh');
+  } finally { t.done(); }
+});
+
+test("a finished branch with uncommitted changes, or main open elsewhere, stays and says why", async () => {
+  const t = setup();
+  try {
+    finishedBranch(t);
+    fs.writeFileSync(path.join(t.dir, 'a.txt'), 'yours, uncommitted\n');
+    const dirty = await worktrees.create(t.dir, { home: t.home, title: 'Dirty' });
+    assert.equal(dirty.worktree.base, 'feat/done');
+    assert.equal(dirty.left, null);
+    assert.match(dirty.stuck, /feat\/done is already in main, but your checkout has uncommitted changes/);
+    assert.equal(fs.readFileSync(path.join(t.dir, 'a.txt'), 'utf8'), 'yours, uncommitted\n');
+
+    t.g(t.dir, 'checkout', '-q', '--', 'a.txt');
+    t.g(t.dir, 'worktree', 'add', '-q', path.join(t.base, 'mainhere'), 'main');
+    const held = await worktrees.create(t.dir, { home: t.home, title: 'Held' });
+    assert.equal(held.worktree.base, 'feat/done');
+    assert.match(held.stuck, /main is open in another copy \(.*mainhere\)/);
+    assert.equal(t.g(t.dir, 'symbolic-ref', '--short', 'HEAD'), 'feat/done');
+  } finally { t.done(); }
+});
+
+test('a copy from a given commit never moves your checkout', async () => {
+  const t = setup();
+  try {
+    finishedBranch(t);
+    const made = await worktrees.create(t.dir, { home: t.home, title: 'From main', start: 'main' });
+    assert.equal(made.left, null);
+    assert.equal(t.g(t.dir, 'symbolic-ref', '--short', 'HEAD'), 'feat/done');
+  } finally { t.done(); }
+});
+
 test('throw it away deletes the copy and its unmerged branch', async () => {
   const t = setup();
   try {

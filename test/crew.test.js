@@ -207,18 +207,23 @@ test('a quiet tab keeps its process while it waits on you or runs something in t
     const later = Date.now() + 60 * 60 * 1000;
     let results = 0;
     mgr.on('item', (_tabId, item) => { if (item.kind === 'result') results++; });
-    for (const id of ['asking', 'background']) {
+    for (const id of ['asking', 'background', 'serving', 'ultra']) {
       mgr.open({ tabId: id, cwd: os.tmpdir() });
       mgr.send(id, 'hello', { kind: 'user', text: 'hello' });
     }
-    await until(mgr, () => results === 2);
+    await until(mgr, () => results === 4);
     mgr.tabs.get('asking').session.pending.set('req-1', { requestId: 'req-1' });
     mgr.tabs.get('background').session.tasks.set('t1', { taskId: 't1', status: 'running' });
+    // A dev server left running (jobs.js) and an ultracode run are not helpers, and an idle stop would end them too.
+    mgr.tabs.get('serving').session.handle({ kind: 'task', phase: 'started', taskId: 'j1', taskType: 'local_bash', description: 'npm run dev' });
+    mgr.tabs.get('ultra').session.handle({ kind: 'task', phase: 'started', taskId: 'w1', taskType: 'local_workflow', description: 'Ship it' });
     assert.deepEqual(mgr.stopIdle(1000, later), []);
 
     mgr.tabs.get('asking').session.pending.clear();
     mgr.tabs.get('background').session.tasks.set('t1', { taskId: 't1', status: 'completed' });
-    assert.deepEqual(mgr.stopIdle(1000, later).sort(), ['asking', 'background']);
+    mgr.tabs.get('serving').session.handle({ kind: 'task', phase: 'done', taskId: 'j1', taskType: 'local_bash', status: 'completed', summary: 'exit 0' });
+    mgr.tabs.get('ultra').session.handle({ kind: 'task', phase: 'done', taskId: 'w1', taskType: 'local_workflow', status: 'completed' });
+    assert.deepEqual(mgr.stopIdle(1000, later).sort(), ['asking', 'background', 'serving', 'ultra']);
   } finally {
     mgr.closeAll();
   }

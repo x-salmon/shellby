@@ -29,6 +29,7 @@ const control = {
     let response;
     if (decision === 'deny') {
       response = { behavior: 'deny', message: message || DENY_MESSAGE };
+      if (item.toolUseId) this.denied.add(item.toolUseId); // the turn's result won't count it again
     } else {
       response = { behavior: 'allow', updatedInput: item.input };
       // Claude reads the user's choices from updatedInput.answers (checked against the real CLI).
@@ -73,7 +74,9 @@ const control = {
     // process, and killing that one would read as a crash.
     const proc = this.proc;
     const turn = this.turn;
-    setTimeout(() => { if (this.proc === proc && this.busy && this.turn === turn) this.kill(); }, killMs);
+    const timer = setTimeout(() => { if (this.proc === proc && this.busy && this.turn === turn) this.kill(); }, killMs);
+    timer.unref?.(); // never what keeps Shellby open, and gone with the process
+    proc.once('exit', () => clearTimeout(timer));
   },
 
   /**
@@ -138,6 +141,7 @@ const control = {
     this.mode = mode;
     this.setPlanning(mode === 'plan');
     if (this.proc) {
+      this.modeAsked = mode; // until the CLI says it's in it, a report of the old mode is stale
       this.write({ type: 'control_request', request_id: randomUUID(), request: { subtype: 'set_permission_mode', mode: CLI_MODE[mode] } });
     }
   },

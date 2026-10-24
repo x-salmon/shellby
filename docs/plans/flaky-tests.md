@@ -99,23 +99,36 @@ truncates, the stream item also carries `tail`, the last 8,000 characters.
 Main reads `text + tail` for parsing and **deletes `tail` before sending the
 item to the panel**, so the panel and IPC load stay as they are.
 
-### Outside sessions (v2, behind a check)
+### Outside sessions (v2, shipped)
 
-The plugin's hook only gets `PostToolUse`, which fires for successful
-commands, so outside sessions only ever show passes. That's not enough to
-see a flip. v2:
+The plugin's hook once only got `PostToolUse`, which fires for successful
+commands, so outside sessions only ever showed passes. Claude Code 2.1.291
+sends `PostToolUseFailure` (`{ tool_name, tool_input, tool_use_id, error,
+is_interrupt }`), and the plugin registers it for `Bash|PowerShell`
+(`claude-plugin/hooks/hooks.json`). So:
 
-- Check whether the installed Claude Code sends `PostToolUseFailure` (it's
-  newer than the plugin's hooks.json). If it does, register it in
-  `claude-plugin/hooks/hooks.json`.
-- `external.js` reduces the event to `{ type: 'test-run', ok, failed, cwd,
-  cmdHash }` **inside the reducer**: test ids and a hash leave, the output
-  never does (the same rule `checkup` follows).
-- The tree is taken at `PreToolUse` for test commands. Hooks time out after
-  3 s and must never block, so the snapshot runs in Shellby, not in the hook.
+- `external.js` `testRunsOf(evt)` reduces each event **inside the reducer**,
+  the same way the Bugdex's `bugsOf` does: `PreToolUse` for a test command
+  (not backgrounded, in a folder on a local drive) gives
+  `{ type: 'test-start', toolUseId, cwd }`; `PostToolUse` and a
+  non-interrupted `PostToolUseFailure` give `{ type: 'test-run', toolUseId,
+  cwd, run }` where `run` is `readRun()`'s reading: a 12-character command
+  hash, test ids and yes/no answers. The command and its output never leave.
+- The tree is taken in Shellby at `test-start` (`outsideTestStart`, wiring/
+  progress.js), keyed by `tool_use_id`, at most 50 in flight. Hooks time out
+  after 3 s and must never block, so the snapshot never runs in the hook.
+- `outsideTestRun` awaits that tree, takes the end-of-run snapshot, and
+  records through the same `recordTestRun` the tabs use: the same strictness,
+  the same bubble, Bugdex ghost, XP and panel push. With no `test-start` seen
+  (Shellby started mid-command) the run is dropped.
+- The hook gives no truncation, so `complete` is true when the runner's count
+  matches the names read. A `PostToolUseFailure` whose `error` carries no
+  summary (just an exit code) is `parsed: false` and can only make a
+  suite-level flake, as the table says.
+- The fix prompt can't name the command for a run seen only outside (only
+  its hash reached Shellby), so it's left out, as the prompt section allows.
 
-v1 ships without this. The panel says "Watches tests run in Shellby's tabs"
-so nobody expects more.
+The panel says "in Shellby's tabs or in Claude Code elsewhere".
 
 ## Parsers
 
@@ -299,7 +312,9 @@ main's own window (the renderer can't skip it).
 |---|---|
 | `src/main/flaky/index.js` | Pure: `normalizeCmd`, `parse`, `recordRun`, `setStatus`, `flakyView`, `due` (what to say). No I/O, no clock. |
 | `src/main/stream.js` | `tail` on truncated tool results. |
-| `src/main/main.js` | Snapshot on test `tool`, record on `tool_result`, speech, IPC (`flaky:get`, `flaky:fix`, `flaky:quarantine`, `flaky:dismiss`), `flakyView` pushes. |
+| `src/main/wiring/progress.js` | Snapshot on test `tool` (`flakyTree`), record on `tool_result` (`noteTestRun`) and from outside sessions (`outsideTestStart`, `outsideTestRun`), both through `recordTestRun`: speech, `flakyView` pushes, the `flaky` workflow event. IPC in `src/main/ipc/progress.js` (`flaky:get`, `flaky:act`, `flaky:forget`). |
+| `src/main/external.js` | `testRunsOf`: a hook event reduced to a hash and test ids. `src/main/wiring/timetrack.js` wires `test-start` / `test-run`. |
+| `test/flaky-outside.test.js` | The outside path over a temp git repo: a flake, an edit between runs, the detective off. |
 | `src/main/progression/xp.js` | `flakefix` award. |
 | `src/main/weekly.js` | `flaky` and `flakefix` kinds. |
 | `src/preload/*` | `getFlaky`, `onFlaky`, `fixFlaky`, `quarantineFlaky`, `dismissFlaky`. |
@@ -354,8 +369,26 @@ paths on Windows runners (resolve paths before comparing) and reduced motion
    names is the main risk), then `/verify`.
 8. Ship: bump to the next minor, CHANGELOG ("**Flaky test detective.** …"),
    `docs/DEVELOPMENT.md` e2e table row, push, tag.
-9. Later (v2): outside sessions via `PostToolUseFailure`, and a `flaky`
-   workflow trigger ("When a test flakes").
+9. v2 (shipped after 0.94): outside sessions via `PostToolUseFailure`
+   (above), and the `flaky` workflow trigger ("When a test flakes", below).
+
+## Status
+
+Everything above is in the code. Steps 1 to 8 shipped in 0.59.0 (File an
+issue after 0.64), and step 9 on the branch after 0.94.0. Nothing in this
+plan is left to do.
+
+## Workflow trigger
+
+`{ type: 'flaky', project: '' }` in `workflows/schema.js`, described as
+"When a test flakes" (`in <project>` when one is named), matched in
+`triggers.js` on the project's name when given. `recordTestRun` fires
+`d.workflows.event('flaky', { test, label, project, folder, framework,
+week })` for every **named** test that flaked in that run (never the suite
+`*`). A test that flakes twice fires twice; workflows have their own rate
+limit (60 starts an hour). The editor's trigger (wf-kit.js, wf-model.js,
+workflows.js), the draft format (`draft.js`), the MCP `add_workflow`
+description (`claude-plugin/mcp/server.js`) and docs/WORKFLOWS.md name it.
 
 ## Not doing
 

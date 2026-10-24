@@ -322,3 +322,22 @@ test('a copy and a pull request hand their results on, and a refusal fails the r
   assert.equal(failed.status, 'error');
   assert.match(failed.error, /nothing to propose/);
 });
+
+test('a dev server step hands on where the server is, and a crash on the way up fails the run', async () => {
+  const w = wf([
+    { id: 'srv', type: 'server', action: 'restart', project: '{{ trigger.project }}', script: '{{ trigger.script }}' },
+    { type: 'tell', text: '{{ srv.status }} on {{ srv.port }}' },
+  ]);
+  const { effects, calls } = fx();
+  effects.server = async a => { calls.push(['server', a]); return { ok: true, status: 'up', port: 5173, url: 'http://localhost:5173/', project: 'site', script: 'dev' }; };
+  const trigger = { type: 'server', data: { event: 'crashed', project: 'site', script: 'dev', exitCode: 1 } };
+  const r = await runIt(w, effects, record({ trigger }));
+  assert.equal(r.status, 'ok', r.error);
+  assert.deepEqual({ ...calls[0][1], signal: undefined }, { action: 'restart', project: 'site', script: 'dev', signal: undefined });
+  assert.equal(calls[1][1].text, 'up on 5173');
+
+  effects.server = async () => ({ ok: false, error: "site's dev server crashed (exit code 1)." });
+  const failed = await runIt(w, effects, record({ trigger }));
+  assert.equal(failed.status, 'error');
+  assert.match(failed.error, /crashed \(exit code 1\)/);
+});

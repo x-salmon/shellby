@@ -8,6 +8,7 @@ const path = require('path');
 const { run: runCli, skipSettings } = require('../claude/cli');
 const confirm = require('../confirm');
 const depwatch = require('../depwatch');
+const devFlow = require('../devservers/flow');
 const devRunner = require('../devservers/runner');
 const devScripts = require('../devservers/scripts');
 const mcpServers = require('../mcpservers');
@@ -66,6 +67,9 @@ function wireProjects(d) {
     });
     d.devServers.on('up', v => d.bugdex?.serverUp(v));
     d.devServers.on('installed', ({ project }) => d.send(d.panel, 'projects:installed', { project }));
+    // Workflows with a "dev server" trigger (workflows/triggers.js). Nothing for
+    // what happened while Shellby was closed: reattach() sets those straight without an event.
+    for (const event of ['up', 'crashed', 'stopped']) d.devServers.on(event, v => d.workflows?.event('server', devFlow.serverEvent(event, v)));
     d.projects = new Projects({
       config: d.config,
       devServers: d.devServers,
@@ -192,12 +196,14 @@ function wireProjects(d) {
   async function startTaskInCopy(dir, title, promptFor, { mode = null, start = 'HEAD', copy = null, draft = false, attachments = null, model = null } = {}) {
     if (d.config.get('crabOnly') || !d.claudeStatus?.installed || !d.claudeStatus?.loggedIn) return { ok: false, needsClaude: true, error: 'That needs Claude Code: set it up first.' };
     let w = copy;
+    let aside = {}; // your checkout's finished branch, left for main (worktrees.create)
     if (!w) {
       const made = await worktrees.create(dir, { home: d.worktreeHome(), title, start });
       // notRepo: no copy could ever be made here, as against one that failed this time.
       if (!made) return { ok: false, noCopy: true, notRepo: true, error: "That folder isn't in a git repository." };
       if (!made.ok) return { ok: false, noCopy: true, error: made.error };
       w = made.worktree;
+      aside = { left: made.left?.from || null, stuck: made.stuck };
     }
     const tabId = d.randomUUID();
     try {
@@ -213,7 +219,7 @@ function wireProjects(d) {
         else d.manager.send(tabId, prompt, { kind: 'user', text: prompt, title });
       }
       d.history.update(tabId, { cwd: w.cwd, worktree: w });
-      d.manager.note(tabId, { kind: 'moved', branch: w.branch, base: w.base });
+      d.manager.note(tabId, { kind: 'moved', branch: w.branch, base: w.base, ...aside });
       d.wake();
       // A draft has no History entry until it's sent: its title and folder go along instead.
       const entry = d.history.get(tabId) || { title, cwd: w.cwd };
@@ -301,6 +307,10 @@ function wireProjects(d) {
       runClaude: runClaudeOnce,
       makeCopy: d.makeIssueCopy,
       openPullRequest: d.openIssuePr,
+      // A "dev server" step: a listed project's server, by the page's own doors (devservers/flow.js).
+      devServer: args => (d.projects && d.devServers
+        ? devFlow.serverStep({ resolve: q => d.projects.resolve(q), servers: d.devServers, readScripts: devScripts.read }, args)
+        : Promise.resolve({ ok: false, error: 'Dev servers need the Projects page.' })),
       copy: text => clipboard.writeText(text),
       crypto: {
         available: () => safeStorage.isEncryptionAvailable(),

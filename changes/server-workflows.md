@@ -1,0 +1,3 @@
+### New
+
+- **Workflows know about your dev servers.** A new trigger, **When a dev server changes**, starts a workflow when a server you run from the Projects page comes up, crashes or is stopped, for every project or just one, and the steps get its project, script, port and exit code. A new **Dev server** step starts, stops or restarts one by project name (`{{ trigger.project }}` after a crash), and Start waits until it's up before the next step. Only a script from the project's own package.json ever runs, the same as the page's Start button, and saving a workflow with the step shows it in the confirmation window like any other action it can take unasked.

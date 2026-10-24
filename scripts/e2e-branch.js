@@ -96,7 +96,9 @@ git('commit', '-qm', 'init');
     await send('edit a.txt second');
     await idle();
     const original = await active();
-    const origCopy = (await entry(original))?.worktree?.path;
+    let origCopy = (await entry(original))?.worktree?.path;
+    // The turn is over when the tab is idle, but the file and the saved copy path settle a beat later on a loaded PC.
+    for (let i = 0; i < 100 && !(origCopy && read(path.join(origCopy, 'a.txt')) === 'second'); i++) { await wait(100); origCopy = (await entry(original))?.worktree?.path; }
     check(!!origCopy && read(path.join(origCopy, 'a.txt')) === 'second', 'the original works in its own copy, now at "second"');
     check(read(path.join(repo, 'a.txt')) === 'start', 'your checkout is untouched');
     check(await ev("SB.activeTab().el.querySelectorAll('.msg.user .msg-branch').length") === 4, 'every message offers to try again from there');

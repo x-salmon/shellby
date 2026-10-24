@@ -1,8 +1,6 @@
 # The Crab Painter: paint a crab, see him move, share him
 
-> Status: **built.** The Painter is in the app (`src/main/painter.js`,
-> `src/renderer/panel/painter.js`, `scripts/e2e-painter.js`); [SKINS.md](../SKINS.md)
-> says how to use it. This page is kept as the plan it was built from.
+> Status: **built** (🎨 Paint in the panel: `src/main/painter.js`, `src/renderer/panel/painter*.js`, `src/renderer/shared/pixel-grid.js`, checked by `scripts/e2e-painter.js`). [SKINS.md](../SKINS.md) says how to use it. The rest of this file is the plan as it was written, kept as the contract for what shipped.
 
 Before it, a skin was a JSON pixel grid typed by hand, and the only way to see
 it was Reload in Settings.

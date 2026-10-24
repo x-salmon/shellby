@@ -95,6 +95,11 @@
       area('Description (optional)', s.body, v => putOrDrop(s, 'body', v), { at: `${c.at}.body`, insert: ins(c), attrs: { rows: 4, placeholder: 'Closes #{{ trigger.number }}' } }),
       check('Open it as a draft', s.draft !== false, v => { s.draft = v; }, { hint: 'Needs “Let Claude tasks push code and open pull requests” in Settings → GitHub.' }),
     ],
+    server: (s, c) => [
+      sel('Do what', [['start', 'Start it (and wait until it\'s up)'], ['stop', 'Stop it'], ['restart', 'Restart it']], s.action || 'start', v => { s.action = v; }, { at: `${c.at}.action` }),
+      txt('Project', s.project, v => { s.project = v; }, { at: `${c.at}.project`, insert: ins(c), attrs: { maxlength: 100, placeholder: '{{ trigger.project }}' }, hint: 'A project on the Projects page: its name, owner/name or folder.' }),
+      txt('Script (optional)', s.script, v => putOrDrop(s, 'script', v), { at: `${c.at}.script`, insert: ins(c), attrs: { maxlength: 64, placeholder: 'dev', class: 'field wf-mono' }, hint: 'A script in its package.json. Empty means the one last run there.' }),
+    ],
     stop: (s, c) => [
       sel('Finish the run as', [['ok', 'Done (ok)'], ['error', 'Failed']], s.status || 'ok', v => { s.status = v; }, { at: `${c.at}.status` }),
       txt('Message (optional)', s.message, v => putOrDrop(s, 'message', v), { at: `${c.at}.message`, attrs: { maxlength: 1000 } }),

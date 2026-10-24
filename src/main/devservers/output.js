@@ -99,6 +99,42 @@ function localUrl(url, port) {
   return `${m[1].toLowerCase()}://localhost:${port}${m[2] || '/'}`;
 }
 
+// A server that's still up but serving a compile error: what the frameworks
+// print when the build breaks, and what they print when it's fixed again.
+// Only the build's own words: an "error" in a request log isn't one.
+const BROKEN = [
+  /\bFailed to compile\b/i,                        // webpack, Next, create-react-app
+  /\[vite\] Internal server error/i,
+  /\[vite\] Pre-transform error/i,
+  /\[plugin:vite:[^\]]{1,60}\]/,                   // vite's plugin errors (esbuild, react)
+  /\berror TS\d{3,5}:/,                            // tsc, ts-loader, vue-tsc
+  /\bModule not found\b/i,
+  /\bBuild failed with \d+ errors?\b/i,            // esbuild
+  /✘ \[ERROR\]/,                                   // esbuild
+  /\bcompiled with \d+ errors?\b/i,                // webpack, angular
+];
+const MENDED = [
+  /\bCompiled successfully\b/i,
+  /✓ Compiled\b/i,                                 // Next
+  /\bcompiled (?:client and server )?successfully\b/i,
+  /\[vite\] (?:hmr update|page reload)\b/i,
+  /\bready in \d+/i,                               // vite (a restart)
+  /\bwebpack compiled\b(?! with \d+ error)/i,
+  /\bBuild succeeded\b/i,
+  /\bFound 0 errors\b/i,                           // tsc --watch
+  /\bNo errors found\b/i,
+  /\bCompiled without errors\b/i,
+  /\bbuilt in \d+/i,
+];
+
+/** A line -> 'broken' when the build has an error, 'mended' when it's good again, else null. */
+function buildState(line) {
+  const l = clean(line);
+  if (MENDED.some(re => re.test(l))) return 'mended';
+  if (BROKEN.some(re => re.test(l))) return 'broken';
+  return null;
+}
+
 /** The exit code in runner.js's last line, or undefined if this isn't it. */
 function exitOf(line) {
   const m = EXIT_RE.exec(String(line ?? '').trim());
@@ -214,6 +250,6 @@ function fixPrompt(server, lines, note = '') {
 }
 
 module.exports = {
-  LineBuffer, detectUrl, exitOf, redact, redactLines, tail, errorLines, fixPrompt, fence, stripAnsi, clean,
+  LineBuffer, detectUrl, buildState, exitOf, redact, redactLines, tail, errorLines, fixPrompt, fence, stripAnsi, clean,
   MAX_LINES, MAX_LINE, TAIL_LINES, MAX_NOTE,
 };

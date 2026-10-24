@@ -111,7 +111,7 @@
   // What another app shared, and keeping the screen on while you watch, too.
   const { questionSheet, planSheet, usageDetail, shareTurn, voiceButton, photoButton, takeShared, wake } = window.PocketBits({ S, L, D, N, h, icon, toast, buzz, act, actButton });
   // The outbox for while the PC is away, saved prompts and reading aloud (pocket-later.js).
-  const Later = window.PocketLater({ S, L, N, h, icon, toast, buzz, live });
+  const Later = window.PocketLater({ S, L, N, h, icon, toast, buzz, live, act, actButton, openSheet });
   // The mode and model pickers, New task and Look over my changes (pocket-new.js).
   const { modePicker, newTaskSheet, lookOverSheet } = window.PocketNew({ S, L, N, h, icon, go, toast, act, actButton, voiceButton, photoButton, later: Later });
 
@@ -297,17 +297,52 @@
     if (r.ok && !r.again) { buzz([6, 40, 6]); celebrate('He loved that.'); }
   }
 
+  // A list the PC's updates redraw: it keeps its place, and a redraw that comes
+  // while your thumb is on it (or it's still coasting) waits until it's still.
+  // Swapping the content out mid-swipe stopped the scroll dead on an iPhone.
+  function steadyList(scroll) {
+    const feel = { touching: false, movedAt: 0 };
+    let waiting = null;
+    let timer = null;
+    function put(parts) {
+      const top = scroll.scrollTop;
+      scroll.replaceChildren(...parts);
+      scroll.scrollTop = top;
+    }
+    function later() {
+      timer = null;
+      if (!waiting) return;
+      if (L.holdRedraw(feel)) { timer = setTimeout(later, L.SETTLE_MS); return; }
+      const parts = waiting;
+      waiting = null;
+      put(parts);
+    }
+    const wait = () => { if (waiting && !timer) timer = setTimeout(later, L.SETTLE_MS); };
+    const lift = () => { feel.touching = false; feel.movedAt = Date.now(); wait(); };
+    scroll.addEventListener('touchstart', () => { feel.touching = true; }, { passive: true });
+    scroll.addEventListener('touchend', lift, { passive: true });
+    scroll.addEventListener('touchcancel', lift, { passive: true });
+    scroll.addEventListener('scroll', () => { feel.movedAt = Date.now(); }, { passive: true });
+    // now: something you tapped on the list itself, which answers straight away.
+    return function draw(parts, now = false) {
+      if (now || !L.holdRedraw(feel)) { waiting = null; put(parts); return; }
+      waiting = parts;
+      wait();
+    };
+  }
+
   function beachScreen() {
     const scroll = h('div', { class: 'scroll beach' });
+    const draw = steadyList(scroll);
     const fab = h('a', { href: '#/new', class: 'fab', 'aria-label': 'New task' }, icon('plus'), h('span', { text: 'New task' }));
     const el = h('div', { class: 'screen' }, topbar(), h('div', { class: 'offline-slot' }), scroll, fab, dock('beach'));
     let quietOpen = false;
-    function update() {
+    function update(now = false) {
       const v = S.view;
       el.replaceChild(topbar(), el.firstChild);
       el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
       fab.hidden = !canAct();
-      if (!v) { scroll.replaceChildren(h('div', { class: 'loading' }, D.crab({ px: 4, state: 'working' }), h('p', { text: 'Finding your PC…' }))); return; }
+      if (!v) { draw([h('div', { class: 'loading' }, D.crab({ px: 4, state: 'working' }), h('p', { text: 'Finding your PC…' }))], true); return; }
       const parts = [tide(v), Later.outboxCard(), Find.awayCard(), Find.searchRow()];
       const prompts = v.prompts || [];
       if (prompts.length) {
@@ -316,7 +351,7 @@
       }
       for (const s of L.sections(v)) {
         if (s.key === 'quiet' && s.tabs.length > 2) {
-          parts.push(h('button', { type: 'button', class: 'sect sect-toggle', 'aria-expanded': quietOpen ? 'true' : 'false', onclick: () => { quietOpen = !quietOpen; update(); } },
+          parts.push(h('button', { type: 'button', class: 'sect sect-toggle', 'aria-expanded': quietOpen ? 'true' : 'false', onclick: () => { quietOpen = !quietOpen; update(true); } },
             h('span', { text: s.label }), h('b', { text: s.tabs.length }), icon('chevron', quietOpen ? 'open' : '')));
           if (quietOpen) for (const t of s.tabs) parts.push(tabCard(t));
           continue;
@@ -328,12 +363,12 @@
         parts.push(h('div', { class: 'empty' }, h('p', { text: canAct() ? 'Nothing on the go. Give him something to do and he’ll scuttle off with it.' : 'Nothing on the go.' }), canAct() ? h('a', { href: '#/new', class: 'btn go', text: 'Start a task' }) : null));
       }
       // No "while you were away" card is null, which replaceChildren would print.
-      scroll.replaceChildren(...parts.filter(Boolean));
+      draw(parts.filter(Boolean), now);
     }
     update();
     // What waits to send changes on the phone alone: the card follows it.
     const stopOut = Later.onOutbox(() => { if (S.screen?.el === el) update(); else stopOut(); });
-    return { el, update, title: 'Shellby' };
+    return { el, update: () => update(), title: 'Shellby' };
   }
 
   // One conversation and what its turns changed live in pocket-tab.js; the checks card on it comes from pocket-find.js.
@@ -350,6 +385,7 @@
   function queueScreen() {
     const scroll = h('div', { class: 'scroll' });
     const el = h('div', { class: 'screen' }, topbar(), h('div', { class: 'offline-slot' }), scroll, dock('queue'));
+    const draw = steadyList(scroll);
     function update() {
       el.replaceChild(topbar(), el.firstChild);
       el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
@@ -368,36 +404,13 @@
         parts.push(h('div', { class: 'card held' },
           h('div', { class: 'card-t' }, h('span', { class: 'card-title', text: x.name }), x.running ? h('span', { class: 'pill', text: 'running' }) : h('span', { class: 'pill dim', text: x.atText || 'at the reset' })),
           h('div', { class: 'card-m' }, h('span', { class: 'muted', text: x.kind === 'routine' ? 'A routine' : x.kind === 'message' ? 'A message' : x.folder || 'A task' })),
-          canAct() && x.kind === 'task' && !x.started ? heldTools(x, held) : null,
+          canAct() && x.kind === 'task' && !x.started ? Later.heldTools(x, held) : null,
           canAct() ? actButton({ label: x.running ? 'Stop it' : 'Take it out', cls: 'ghost slim', run: () => confirmSheet({ title: x.running ? 'Stop it and take it out?' : 'Take it out of the queue?', text: x.name, yes: x.running ? 'Stop it' : 'Take it out', danger: true, then: () => act('cancel-held', { id: x.id }, { okText: 'Taken out.' }) }) }) : null));
       }
-      scroll.replaceChildren(...parts);
+      draw(parts);
     }
     update();
     return { el, update, title: 'Queue' };
-  }
-
-  // A task that hasn't started: reword it, or move it up or down the queue (they go oldest first).
-  function heldTools(x, held) {
-    const tasks = held.filter(y => y.kind === 'task' && !y.started);
-    const i = tasks.findIndex(y => y.id === x.id);
-    const move = (dir, label, iconName) => actButton({ label, cls: 'ghost slim icon-only', iconName, aria: label, run: () => act('held-move', { id: x.id, dir }) });
-    return h('div', { class: 'held-tools' },
-      i > 0 ? move('up', 'Earlier', 'up') : null,
-      i < tasks.length - 1 ? move('down', 'Later', 'down') : null,
-      // Only what the phone queued: one from the desk is reworded there.
-      x.editable ? h('button', { type: 'button', class: 'btn ghost slim', text: 'Edit', onclick: () => openSheet(rewordSheet(x)) }) : null,
-      x.when === 'tonight' ? h('span', { class: 'pill dim', text: 'tonight' }) : null);
-  }
-
-  function rewordSheet(x) {
-    return { label: 'Edit the task', build: close => {
-      const text = h('textarea', { class: 'task-in', rows: '5', maxlength: '4000', 'aria-label': 'The task' });
-      text.value = x.prompt || x.name;
-      const save = actButton({ label: 'Save', cls: 'go big', run: async () => { const r = await act('held-edit', { id: x.id, prompt: text.value }, { okText: 'Saved.' }); if (r.ok) close(); } });
-      setTimeout(() => text.focus(), 260);
-      return { el: h('div', { class: 'new-task' }, h('h2', { class: 'sheet-title', text: 'Edit the task' }), x.folder ? h('p', { class: 'muted', text: x.folder }) : null, text, save) };
-    } };
   }
 
   // ---------------------------------------------------------------- this phone
@@ -692,8 +705,7 @@
         else {
           if (item.k === 'text' && !item.sub) S.partial.delete(tabId);
           if (item.k === 'end') S.partial.delete(tabId);
-          feed.items.push(item);
-          if (feed.items.length > 600) feed.items.splice(0, feed.items.length - 600);
+          feed.items = L.keepItem(feed.items, item, 600);
         }
         S.feeds.set(tabId, feed);
         if (S.screen?.tabId === tabId) S.screen.feed();
@@ -718,6 +730,22 @@
   setInterval(() => {
     for (const el of document.querySelectorAll('[data-since]')) el.textContent = L.duration((Date.now() - Number(el.dataset.since)) / 1000);
   }, 1000);
+
+  // An iPhone moves the whole page up to make room for the keyboard, and can
+  // leave it there once the keyboard goes: a black band under the dock and a
+  // list that won't scroll, until a new screen happened to put it back. Only
+  // the lists inside scroll, so the page goes back to the top whenever nothing
+  // is being typed in.
+  const KEYBOARD_GONE_MS = 120;
+  const typing = () => !!document.activeElement?.matches?.('input, textarea, select, [contenteditable="true"]');
+  function settlePage() {
+    if (typing() || (!window.scrollY && !document.documentElement.scrollTop)) return;
+    window.scrollTo(0, 0);
+  }
+  document.addEventListener('focusout', () => setTimeout(settlePage, KEYBOARD_GONE_MS));
+  window.visualViewport?.addEventListener('resize', () => setTimeout(settlePage, KEYBOARD_GONE_MS));
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') settlePage(); });
+  window.addEventListener('pageshow', settlePage);
 
   window.addEventListener('hashchange', mount);
 

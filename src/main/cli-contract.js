@@ -35,6 +35,7 @@ const REQUIRED_FLAGS = Object.freeze([
   // the newest release must still have them.
   { flag: '--include-partial-messages' },
   { flag: '--forward-subagent-text' },
+  { flag: '--include-hook-events' },
   { flag: '--fallback-model' },
   { flag: '--name' },
   { flag: '--agent' },

@@ -117,6 +117,24 @@ test('long text is clipped and one-liners lose their control characters', () => 
   assert.equal(v.phoneItems(Array.from({ length: 500 }, () => ({ kind: 'text', text: 'x' }))).length, v.MAX_ITEMS);
 });
 
+test('a busy helper’s steps never push the conversation out of the tail', () => {
+  const steps = Array.from({ length: 400 }, (_, i) => [
+    { kind: 'tool', id: `s${i}`, name: 'Read', label: 'Read', detail: `f${i}.js`, sub: true, parent: 'a' },
+    { kind: 'tool_result', id: `s${i}`, isError: false, sub: true, parent: 'a' },
+  ]).flat();
+  const items = [
+    { kind: 'user', text: 'look around', turnId: 'u1' },
+    { kind: 'tool', id: 'a', name: 'Agent', label: 'Agent', agent: { type: 'Explore', description: 'map it' } },
+    { kind: 'text', text: 'helper says hi', sub: true, parent: 'a' },
+    ...steps,
+    { kind: 'text', text: 'Still looking.' },
+  ];
+  const out = v.phoneItems(items);
+  // The phone draws a helper's latest step and what it last said (pocket-logic fold): only those come.
+  assert.deepEqual(out.map(i => i.k), ['user', 'tool', 'text', 'tool', 'text']);
+  assert.equal(out[3].detail, 'f399.js');
+});
+
 test('questions come with their options, and a plan in full, for the phone to answer', () => {
   const prompts = [
     { tabId: 't1', requestId: 'q', toolName: 'AskUserQuestion', input: { questions: [{ question: 'Which?', header: 'DB', multiSelect: true, options: [{ label: 'A', description: 'first' }] }] } },

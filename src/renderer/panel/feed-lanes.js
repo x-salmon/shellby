@@ -17,14 +17,21 @@
       this.meta = h('span', { class: 'lane-meta' });
       this.body = h('div', { class: 'lane-body' });
       this.summaryEl = h('div', { class: 'lane-summary', hidden: true });
+      this.bgTag = h('span', { class: 'lane-type bg', text: 'background', hidden: !item.agent.background });
+      const a = item.agent;
       // Starts folded: the head already shows what it's doing. It opens itself only to ask you something.
       this.el = h('details', { class: 'lane running', style: `--lane-hue:${SB.HUES[index % SB.HUES.length]}deg` },
         h('summary', { class: 'lane-head' },
           h('span', { class: 'lane-crab' }, SB.helperSprite(index)),
           h('span', { class: 'lane-text' },
-            h('span', { class: 'lane-title' }, h('b', { text: item.agent.description || 'Helper' }), h('span', { class: 'lane-type', text: item.agent.type }),
-              item.agent.name ? h('span', { class: 'lane-type name', title: 'Other agents write to it by this name', text: `@${item.agent.name}` }) : null,
-              item.agent.background ? h('span', { class: 'lane-type bg', text: 'background' }) : null),
+            h('span', { class: 'lane-title' }, h('b', { text: a.description || 'Helper' }),
+              a.fork
+                ? h('span', { class: 'lane-type', title: 'A copy of Claude that carries on with this whole conversation', text: 'copy of Claude' })
+                : h('span', { class: 'lane-type', text: a.type }),
+              a.name ? h('span', { class: 'lane-type name', title: 'Other agents write to it by this name', text: `@${a.name}` }) : null,
+              a.isolation ? h('span', { class: 'lane-type bg', title: F.laneIsolationTitle(a.isolation), text: F.laneIsolationText(a.isolation) }) : null,
+              a.model || a.effort ? h('span', { class: 'lane-type bg', title: 'The model and effort Claude chose for it', text: [a.model, a.effort].filter(Boolean).join(' · ') }) : null,
+              this.bgTag),
             this.activity),
           this.meta,
           h('span', { class: 'lane-state', 'aria-hidden': 'true' })),
@@ -40,6 +47,9 @@
     update(item, replay) {
       // Sent another message after it finished (SendMessage): it's back at work in the same lane.
       if (item.phase === 'started' && this.status !== 'running') this.reopen();
+      // Claude Code decides, not the tool call: the desktop runs every top-level helper in the
+      // background, and a helper's own helpers run in the foreground unless asked otherwise.
+      if (item.phase === 'started' && typeof item.background === 'boolean') this.bgTag.hidden = !item.background;
       if (item.usage) this.stats = { ...this.stats, tokens: item.usage.tokens, toolUses: item.usage.toolUses };
       if (item.phase === 'progress' && item.description) this.setActivity(item.description);
       if (item.phase === 'started' && item.description) this.setActivity(replay ? item.description : 'Getting started…');
