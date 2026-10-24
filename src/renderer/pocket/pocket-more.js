@@ -66,9 +66,16 @@
       const link = (hash, name, label, sub) => h('a', { href: hash, class: 'card link-card' },
         h('span', { class: 'card-t' }, h('span', { class: 'card-title' }, icon(name), ` ${label}`), icon('chevron')),
         h('span', { class: 'card-m', text: sub }));
+      // The cards are redrawn only when the focus or the rights change: redrawing on
+      // each push from the PC threw the list back to the top, so it wouldn't scroll.
+      let drawn = null;
       function update() {
         el.replaceChild(topbar(), el.firstChild);
         el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
+        const f = S.view?.focus || {};
+        const now = JSON.stringify([canAct(), f.phase, f.endsAt, f.phase && f.endsAt > Date.now()]);
+        if (drawn === now) return;
+        drawn = now;
         scroll.replaceChildren(...[
           h('h2', { class: 'screen-title', text: 'More' }),
           focusCard(),
