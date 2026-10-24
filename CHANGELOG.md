@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.95.0: Dev servers he finds, and flaky tests anywhere
+
+### New
+- A helper's lane says when it's a copy of Claude that carries on with the whole conversation (a fork), when it works in its own copy of the repository or in the cloud, and which model and effort Claude chose for it.
+- When the API is busy or rate limited and Claude Code tries a request again, the working line says so, with the attempt and how long until the next try, instead of sitting on "Working…".
+- A hook that fails or is cancelled leaves a note in the conversation naming it, with its exit code and what it printed, so Claude changing course has a reason you can see.
+- That covers every hook, including the ones that check a tool before it runs: Shellby now asks Claude Code to report how each hook went.
+- **Flaky tests spotted outside Shellby too.** With the Shellby plugin, a test Claude Code runs in a terminal or VS Code counts the same as one in Shellby's tabs: a fail and then a pass on the same code is a flake, and lands on the Projects page. The hook hands over test names and a hash of the command, never the output.
+- **A workflow can start when a test flakes.** The new **When a test flakes** trigger, for one project or any, gives the steps the test's name, its project and folder, and how often it flaked this week.
+- **Write while your PC sleeps.** On your phone, a new task or a reply written while the PC isn't answering waits in a "waiting to send" card on the beach, with **Don't send** for each, and goes in order the moment the PC is back. One that reached the PC just as the connection dropped never runs twice.
+- **Run the checks again from your phone.** A conversation's checks card has **Run again**, so after Fix it you can see whether the fix worked without going to the desk.
+- **A word on one line of a diff.** Tap a line in See the changes on your phone, type "rename this" or "why?", and it goes as a reply that names the file and the line.
+- **Tasks for later, from your phone.** New task has **When**: now, after your 5-hour window resets, or tonight. Later ones go in the Queue.
+- **Edit and reorder the Queue on your phone.** A queued task that hasn't started has arrows to move it earlier or later, and one your phone queued has **Edit** to reword it.
+- **Saved tasks.** **Save this** on New task keeps what you typed as a one-tap chip above the box, on that phone.
+- **Read aloud.** A conversation on your phone can read his replies out as they land, for when you can't look.
+- **Your PC on the beach.** With Health on, a line under the usage meter shows the PC's CPU and graphics load and heat, memory and battery, and Health's warning when something runs hot.
+- **Try it again or branch, from your phone.** Tap one of your own messages to send it again in a new conversation, with the files as they were then, or branch from after his answer. The conversation you started from stays as it is.
+- A dev server you started in a terminal shows on its project's page too, found by the port it listens on and matched to the clone on its command line. Its card says it's not Shellby's and has no log, with Open, Stop (after Shellby's own confirm window, and only the process it just listed) and "Run it in Shellby instead", which stops it and starts the same script here so the next crash has a log to send.
+- A dev server that's still up but whose last build broke (Failed to compile, a Vite internal error, a TypeScript error, a missing module) now says "build error" on its card and in the command palette, in amber, until the next good build. No toast and no sign on the crab: it's still serving.
+- **Workflows know about your dev servers.** A new trigger, **When a dev server changes**, starts a workflow when a server you run from the Projects page comes up, crashes or is stopped, for every project or just one, and the steps get its project, script, port and exit code. A new **Dev server** step starts, stops or restarts one by project name (`{{ trigger.project }}` after a crash), and Start waits until it's up before the next step. Only a script from the project's own package.json ever runs, the same as the page's Start button, and saving a workflow with the step shows it in the confirmation window like any other action it can take unasked.
+- **What Claude was blocked from.** When a permission rule or a hook refuses a tool call, the turn ends with a quiet line naming each one, with what it was reaching for ("Claude was blocked from: Bash (rm -rf dist)"). A No you clicked yourself is already a card, so it isn't repeated.
+- **The mode chip follows Claude Code.** When a conversation's permission mode changes on Claude Code's side (an approved plan going on with edits allowed, say), the chip and the crab's planning follow, instead of showing the mode you set last.
+- **Hooks you can see running.** While one of your hooks runs, the working line says which ("Running hook PreToolUse:Bash…") until it's done, so a slow hook never reads as Claude stuck.
+- The branch chip's menu can switch your checkout to another branch. New tasks start from the branch your checkout is on, so this is how you send them back to main. It won't switch with uncommitted changes, while a conversation is working there, or onto a branch another copy has open.
+- A copy that started from a branch your checkout has since left can come home to the branch it's on now. Bring it home offers "Bring it into main" (or wherever you are), and only the copy's own work goes across, never the old branch's.
+
+### Fixed
+- A helper's "background" tag now follows how Claude Code actually ran it, not what the call asked for: helpers started by other helpers run in the foreground.
+- A checkout left on a branch that's already all in main no longer pulls every new conversation onto it. When the next one moves into its own copy, Shellby switches your checkout to main first (the old branch stays), so the copy starts from main and comes home there. If your checkout has uncommitted changes, or main is open in another copy, it stays where it is, and the conversation says why.
+- A conversation opened on your phone while its helpers had been busy for a while showed "Nothing said yet." Their hundreds of steps filled everything the phone is sent and pushed the conversation out. Now only each helper's latest step and what it last said come along, so the conversation itself always shows.
+- **Long screens on your phone scroll again.** On an iPhone, Routines and workflows (and other long lists) could stick in place under your thumb, because the page around the list could move by a pixel and took the swipe. Now only the list scrolls.
+- On your phone, a long task title in "While you were away" no longer pushes the card past the edge of the screen. Titles end in "…" instead.
+- **The beach scrolls on your iPhone again.** After the keyboard had been up (searching, say), the phone could leave the whole page pushed up: a black band under the buttons at the bottom, and a list that wouldn't scroll until you opened another screen. The page now settles back as soon as the keyboard goes.
+- **An update from your PC no longer stops your swipe.** The beach and the Queue keep their place when your PC sends something new, and an update that arrives mid-swipe waits until the list is still.
+- Bring it home on your phone now finishes the conversation, as "Bring it home and finish" does at the desk: the copy is tidied away and it moves to Done, instead of sitting under Finished until you bring it home again on your PC.
+- The More screen on your phone scrolls again, down to the Wardrobe. It no longer jumps back to the top each time your PC sends an update.
+- **Asking for a routine in a conversation asks you again.** "Make this a weekly routine" now always puts up Shellby's confirm window. Before, it went through the Claude Code plugin, and a plugin older than 1.5 was turned away without a word to you. The crab's own tools now include adding and listing routines, so it no longer matters which plugin version you have.
+- **A quiet tab no longer loses its dev server.** A conversation that left a command running in the background (`npm run dev`, say), a watch, or an ultracode run kept its process only for helpers: after half an hour idle, Shellby stopped it and the server with it. Idle stops and idle compaction now leave those tabs alone, the same as one with a helper still out.
+- **A message typed just as a tab's process was being stopped no longer leaves it stuck busy.** It waits for the old process to close, then goes in a fresh one; Stop in that moment ends the turn as usual.
+- **Copies turned on mid-conversation now take effect.** The "make a copy first" check on edits was only set up when a conversation's process started, so turning the setting on while a tab was open left that tab editing your checkout until it next restarted.
+
 ## 0.94.1: Docs that match the code
 
 ### Fixed

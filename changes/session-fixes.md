@@ -1,4 +1,0 @@
-### Fixed
-- **A quiet tab no longer loses its dev server.** A conversation that left a command running in the background (`npm run dev`, say), a watch, or an ultracode run kept its process only for helpers: after half an hour idle, Shellby stopped it and the server with it. Idle stops and idle compaction now leave those tabs alone, the same as one with a helper still out.
-- **A message typed just as a tab's process was being stopped no longer leaves it stuck busy.** It waits for the old process to close, then goes in a fresh one; Stop in that moment ends the turn as usual.
-- **Copies turned on mid-conversation now take effect.** The "make a copy first" check on edits was only set up when a conversation's process started, so turning the setting on while a tab was open left that tab editing your checkout until it next restarted.
