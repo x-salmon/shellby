@@ -22,6 +22,9 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; background: var(--abyss); }
+/* Only a screen's .scroll scrolls. A page that could move even 1px took the
+   swipe on iOS, and the list under your thumb stayed put. */
+html, body { overflow: hidden; }
 body {
   color: var(--sand);
   font: 16px/1.5 var(--font-body);
@@ -424,6 +427,7 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center;
   padding: calc(var(--safe-t) + 24px) max(28px, var(--safe-r)) calc(var(--safe-b) + 24px) max(28px, var(--safe-l));
   max-width: 460px; margin: 0 auto; width: 100%;
+  min-height: 0; overflow-y: auto; justify-content: safe center;
 }
 .pair-body h1 { margin: 6px 0 0; font: 700 28px/1.1 var(--font-pixel); text-wrap: balance; }
 .pair-body p { margin: 0; color: var(--sand-dim); }
@@ -536,7 +540,7 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
 label.note { text-align: left; }
 .bounty.done .card-title { color: var(--sand-dim); text-decoration: line-through; }
 .xp-log li { padding: 4px 0; }
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.visually-hidden { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .usage-row { margin: 10px 0 4px; }
 .usage-row.warn { color: var(--amber); }
 
