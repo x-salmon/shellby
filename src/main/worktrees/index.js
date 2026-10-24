@@ -449,7 +449,9 @@ async function bringHome(w, { message = null, trailer = null } = {}) {
   if (commits) {
     const on = await git(w.root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { timeout: 5000 });
     if (!on.ok || on.out.trim() !== w.base) {
-      return { ok: false, error: `Your checkout is on ${on.out.trim() || 'no branch'} now. Switch back to ${w.base} to bring this home.` };
+      // elsewhere: the branch it's on, so the panel can offer to bring it there instead (moveBase).
+      const now = on.ok ? on.out.trim() : '';
+      return { ok: false, elsewhere: now || undefined, error: now ? `Your checkout is on ${now} now, and this copy started from ${w.base}.` : `Your checkout is on no branch now. Switch back to ${w.base} to bring this home.` };
     }
     // Titled with what the work is, so `git log --first-parent` reads as a list
     // of changes (release drafts skip merges, so it isn't counted twice).
@@ -474,6 +476,32 @@ async function bringHome(w, { message = null, trailer = null } = {}) {
     }
   }
   return { ok: true, merged: commits > 0, commits };
+}
+
+/**
+ * Your checkout moved to another branch since the copy started: carry only the
+ * copy's own commits (base..branch) over onto that branch, so it comes home
+ * there without dragging the old base's work along. Nothing changes on a clash.
+ *   -> { ok: true, worktree } (the same copy, with onto as its base) | { ok: false, error, conflict? }
+ * @param {any} w
+ * @param {string} onto
+ */
+async function moveBase(w, onto) {
+  const bad = checkWorktree(w);
+  if (bad) return { ok: false, error: bad };
+  if (typeof onto !== 'string' || !REF.test(onto)) return { ok: false, error: 'There is no such branch.' };
+  if (onto === w.base) return { ok: true, worktree: w };
+  const on = await git(w.root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { timeout: 5000 });
+  if (!on.ok || on.out.trim() !== onto) return { ok: false, error: `Your checkout isn't on ${onto} any more.` };
+  const dirty = await git(w.path, ['status', '--porcelain'], { timeout: 15000 });
+  if (!dirty.ok || dirty.out.trim()) return { ok: false, error: 'The copy has uncommitted changes. Bring it home once to commit them, then try again.' };
+  const moved = await git(w.path, [...NO_HOOKS, 'rebase', '--no-verify', '--onto', onto, w.base, w.branch], { timeout: 120000, env: { LC_ALL: 'C' } });
+  if (!moved.ok) {
+    await git(w.path, ['rebase', '--abort'], { timeout: 15000 });
+    const conflict = /CONFLICT|could not apply/i.test(moved.out + moved.error);
+    return { ok: false, conflict, error: conflict ? `This copy's work clashes with ${onto}. Nothing was changed.` : `Couldn't move the copy onto ${onto}: ${firstLine(moved.error || moved.out)}` };
+  }
+  return { ok: true, worktree: { ...w, base: onto } };
 }
 
 // Why `git worktree add` said no, in a sentence (git's own words go in `detail`).
@@ -716,7 +744,7 @@ async function caughtUp(w) {
 }
 
 module.exports = {
-  git, create, createAt, startingPoint, branchOf, status, bringHome, remove, branchName, workMessage, checkWorktree, BRANCH,
+  git, create, createAt, startingPoint, branchOf, status, bringHome, moveBase, remove, branchName, workMessage, checkWorktree, BRANCH,
   remoteStatus, pushBase, tipOf, bringAllHome, caughtUp, upstreamOf, copyRefusal,
   startsWork, onlyLooks, suggestedName, projectDirName, carryTranscript, copySession, findSession,
 };
