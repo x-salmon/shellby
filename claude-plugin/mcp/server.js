@@ -343,8 +343,9 @@ const TOOLS = [
 
 // Shellby's own conversations get the crab's tools from the app itself
 // (src/main/crabmcp.js) and say so with SHELLBY_CRAB_TOOLS, so these copies
-// would only add their schemas to every request there.
-const CRAB_TOOLS = ['say', 'celebrate', 'wear', 'status'];
+// would only add their schemas to every request there. The routine tools are
+// among them: the app's copies need no token from a file.
+const CRAB_TOOLS = ['say', 'celebrate', 'wear', 'status', 'add_routine', 'list_routines'];
 const listedTools = (env = process.env) => (env.SHELLBY_CRAB_TOOLS === '1' ? TOOLS.filter(t => !CRAB_TOOLS.includes(t.name)) : TOOLS);
 
 // ------------------------------------------------------------------ transport

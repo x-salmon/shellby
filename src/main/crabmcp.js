@@ -14,9 +14,10 @@
 // Pure: handle() takes the JSON-RPC message and a `call` callback that does the
 // work; see test/crabmcp.test.js.
 
-const { MOODS, MAX_TEXT, MAX_ITEM } = require('./crabtools');
+const { MOODS, MAX_TEXT, MAX_ITEM, MAX_ROUTINE_PROMPT } = require('./crabtools');
 const { FEATURE_IDS, FOCUS_MINUTES } = require('./selfaware');
 const { MAX_TEXT: MAX_NOTE } = require('./notes');
+const { MODES } = require('./config');
 
 const SERVER = 'shellby';
 const VERSION = '1.0.0';
@@ -49,6 +50,28 @@ const CRAB_TOOLS = [
     name: 'note',
     description: "Put an idea on the user's Notes list for this project, to plan, build or ask about later. Only when they ask you to note something.",
     inputSchema: obj({ text: { type: 'string', maxLength: MAX_NOTE } }, ['text']),
+  },
+  // Routines are served here too, so asking for one puts up Shellby's confirm
+  // window even when the plugin is missing or too old to show the crab token.
+  // The plugin's copy has nested schedule objects; this one takes the same
+  // short schedule string `suggest` does, to keep the schema small.
+  {
+    name: 'add_routine',
+    description: 'Propose a routine: a prompt Shellby runs on a schedule, saved only if the user says yes. A taken name replaces that one. Runs start fresh: make the prompt self-contained.',
+    inputSchema: obj({
+      name: { type: 'string', maxLength: 60 },
+      prompt: { type: 'string', maxLength: MAX_ROUTINE_PROMPT },
+      schedule: { type: 'string', description: '"daily 08:30", "weekly mon,fri 17:00" or "every 4h"' },
+      folder: { type: 'string', description: 'Absolute path' },
+      mode: { type: 'string', enum: MODES.filter(m => m !== 'autonomous') },
+      model: { type: 'string' },
+      catchUp: { type: 'boolean' },
+    }, ['name', 'prompt', 'schedule']),
+  },
+  {
+    name: 'list_routines',
+    description: "The user's routines.",
+    inputSchema: obj({}),
   },
 ];
 

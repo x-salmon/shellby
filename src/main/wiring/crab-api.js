@@ -91,7 +91,7 @@ function wireCrabApi(d) {
     if (intent.action === 'list_routines' || intent.action === 'add_routine') {
       if (d.config.get('crabOnly')) return { ok: false, error: 'Routines are off: Shellby is in just-the-crab mode.', status: 403 };
       if (intent.action === 'list_routines') return { text: crabtools.routinesReply(d.routinesView()) };
-      return d.routineService.proposeRoutine(intent.routine, { modelGiven: intent.modelGiven });
+      return d.routineService.proposeRoutine(intent.routine, { modelGiven: intent.modelGiven, catchUpGiven: intent.catchUpGiven });
     }
 
     if (['list_workflows', 'run_workflow', 'add_workflow'].includes(intent.action)) {
@@ -142,8 +142,25 @@ function wireCrabApi(d) {
   async function crabTool(tab, name, args) {
     if (name === 'suggest') return suggestCard(tab, args);
     if (name === 'note') return noteFrom(tab, args);
+    if (name === 'add_routine' || name === 'list_routines') return routineFrom(name, args);
     if (!['say', 'celebrate', 'wear', 'status'].includes(name)) return { text: `Unknown tool: ${name}`, isError: true };
     const r = applyCrabIntent({ action: name, args });
+    return r.ok === false ? { text: r.error, isError: true } : { text: r.text };
+  }
+
+  /**
+   * add_routine and list_routines from one of Shellby's own conversations. It
+   * was started by Shellby, so the call presents Shellby's own token rather than
+   * one read from a file, and adding still waits on the user's yes in the confirm window.
+   */
+  async function routineFrom(name, args) {
+    let body = { action: name, args };
+    if (name === 'add_routine') {
+      const schedule = selfaware.parseSchedule(args?.schedule);
+      if (!schedule) return { text: 'Give the schedule as "daily 08:30", "weekly mon,fri 17:00" or "every 4h".', isError: true };
+      body = { action: name, args: { ...args, schedule } };
+    }
+    const r = await applyCrabIntent(body, crabToken || '');
     return r.ok === false ? { text: r.error, isError: true } : { text: r.text };
   }
 
