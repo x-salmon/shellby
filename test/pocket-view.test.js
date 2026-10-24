@@ -160,3 +160,21 @@ test('a prompt carries the desk’s always-allow label, never on one only the de
   assert.ok(plan.deskOnly);
   assert.equal(plan.always, null);
 });
+
+test('the PC line has the CPU, the first GPU, memory and the battery from Health, and Health’s own warning', () => {
+  const sample = { cpu: { load: 42.4, temp: 71.6 }, gpus: [{ load: 90, temp: 83 }, { load: 1, temp: 30 }], ram: { pct: 61.2 }, battery: { level: 80, rate: 12 } };
+  const m = v.phoneMachine(sample, { level: 'warn', text: '83°' });
+  assert.deepEqual(m, { cpu: { load: 42, temp: 72 }, gpu: { load: 90, temp: 83 }, ram: 61, battery: { level: 80, charging: true }, warn: '83°', hot: 'warn' });
+  assert.equal(v.phoneMachine(null), null, 'nothing when Health is off');
+  assert.equal(v.phoneMachine({ cpu: {}, gpus: [] }, null).gpu, null);
+  assert.equal(v.phoneView({ health: sample }).machine.cpu.load, 42);
+  assert.equal(v.phoneView({}).machine, null);
+});
+
+test('a queued task on the phone carries its words, when it goes, and whether it started', () => {
+  const t = v.phoneHeld({ id: 'h1', kind: 'task', name: 'Refactor', prompt: 'Refactor the auth module', folder: 'shellby', atText: '01:00', when: 'tonight', tabId: null });
+  assert.equal(t.prompt, 'Refactor the auth module');
+  assert.equal(t.when, 'tonight');
+  assert.equal(t.started, false);
+  assert.equal(v.phoneHeld({ id: 'h2', kind: 'task', prompt: 'x', tabId: 'tab1' }).started, true);
+});

@@ -6,7 +6,7 @@
    that it never touches /pocket/v1: what Shellby is doing always comes live
    from the PC. */
 'use strict';
-const CACHE = 'shellby-pocket-4';
+const CACHE = 'shellby-pocket-5';
 // A tap, kept for a moment: a phone can drop a message to an app it has
 // paused, and an iPhone may open the start page instead of the URL. The app
 // looks here whenever it comes to the front (pocket.js).
@@ -24,7 +24,7 @@ const MAX_SHARED_TEXT = 4000;
 const ID = /^[\w-]{1,100}$/;
 
 const SHELL = [
-  '/', '/pocket.css', '/pocket.js', '/pocket-logic.js', '/pocket-stream.js', '/pocket-draw.js', '/pocket-tab.js', '/pocket-more.js', '/pocket-bits.js', '/pocket-find.js', '/pocket-phone.js', '/pocket-new.js', '/manifest.webmanifest',
+  '/', '/pocket.css', '/pocket.js', '/pocket-logic.js', '/pocket-stream.js', '/pocket-draw.js', '/pocket-tab.js', '/pocket-more.js', '/pocket-bits.js', '/pocket-find.js', '/pocket-phone.js', '/pocket-new.js', '/pocket-later.js', '/manifest.webmanifest',
   '/shared/sprite.js', '/shared/tokens.css', '/shared/fonts.css',
   '/assets/fonts/PixelifySans.ttf', '/assets/fonts/AtkinsonHyperlegible-Regular.ttf', '/assets/fonts/AtkinsonHyperlegible-Bold.ttf', '/assets/fonts/MartianMono.ttf',
   '/icons/icon-192.png', '/icons/badge-96.png', '/skin.json',

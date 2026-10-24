@@ -73,7 +73,7 @@ function createHeldQueue(d) {
     if (h.kind === 'message') return { ...base, tabId: h.tabId, text: h.text, attachments: h.attachments };
     if (h.kind === 'routine') return { ...base, routineId: h.routineId, name: h.name };
     return {
-      ...base, name: h.name, prompt: h.prompt, cwd: h.cwd, folder: h.cwd ? path.basename(h.cwd) : null, mode: h.mode, model: h.model || '', when: h.when || 'reset',
+      ...base, name: h.name, prompt: h.prompt, cwd: h.cwd, folder: h.cwd ? path.basename(h.cwd) : null, mode: h.mode, model: h.model || '', when: h.when || 'reset', fromPhone: !!h.fromPhone,
       tabId: h.tabId, running: !!h.tabId && queueWaits.has(h.tabId),
       // Started before and still here: it ran dry partway (or Shellby restarted), and carries on.
       resuming: !!h.tabId && !queueWaits.has(h.tabId),
@@ -362,8 +362,17 @@ function createHeldQueue(d) {
       : { tabId: h.tabId, cwd: h.cwd && d.isFolder(h.cwd) ? h.cwd : d.currentCwd(), title: h.title });
   }
 
+  // A queued task reworded, or moved up or down the queue (the phone's Queue screen).
+  function changeHeld(r) {
+    if (r.error) return { ok: false, error: r.error };
+    saveHeld(r.list);
+    return { ok: true };
+  }
+  const rewordHeld = (id, prompt) => changeHeld(held.reword(heldList(), id, prompt));
+  const moveHeld = (id, dir) => changeHeld(held.move(heldList(), id, dir));
+
   return {
-    heldList, heldView, heldViews, holdForReset, queueTabs, queueTask, queueWaits, releaseHeld,
+    heldList, heldView, heldViews, holdForReset, moveHeld, rewordHeld, queueTabs, queueTask, queueWaits, releaseHeld,
     reopenForHeld, saveHeld, scheduleHeld, syncKeepAwake,
   };
 }

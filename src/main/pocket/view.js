@@ -164,7 +164,33 @@ function phoneFocus(f, now) {
 function phoneHeld(h) {
   if (h.kind === 'routine') return { id: h.id, kind: 'routine', name: line(h.name, 120), atText: line(h.atText, 20) };
   if (h.kind === 'message') return { id: h.id, kind: 'message', name: line(h.text, 120), atText: line(h.atText, 20) };
-  return { id: h.id, kind: 'task', name: line(h.name || h.prompt, 120), folder: line(h.folder, 80), atText: line(h.atText, 20), running: !!h.running };
+  return {
+    id: h.id, kind: 'task', name: line(h.name || h.prompt, 120), folder: line(h.folder, 80), atText: line(h.atText, 20), running: !!h.running,
+    // A task that hasn't started anywhere yet can be reworded and moved up or down the queue.
+    prompt: clip(h.prompt, 4000), when: h.when === 'tonight' ? 'tonight' : 'reset', started: !!h.tabId,
+    // Reworded on the phone only when the phone queued it, not in Autonomous, and its words all fit here.
+    editable: !!h.fromPhone && h.mode !== 'autonomous' && typeof h.prompt === 'string' && h.prompt.length <= 4000,
+  };
+}
+
+/**
+ * The PC itself, from Health's last reading (health/monitor.js latest): the CPU and
+ * first GPU's load and heat, memory, and the battery. null when Health is off. Pure.
+ */
+function phoneMachine(sample, mood) {
+  if (!sample || typeof sample !== 'object') return null;
+  const deg = v => (Number.isFinite(v) ? Math.round(v) : null);
+  const gpu = Array.isArray(sample.gpus) ? sample.gpus[0] : null;
+  const b = sample.battery;
+  return {
+    cpu: { load: deg(sample.cpu?.load), temp: deg(sample.cpu?.temp) },
+    gpu: gpu ? { load: deg(gpu.load), temp: deg(gpu.temp) } : null,
+    ram: deg(sample.ram?.pct),
+    battery: b && Number.isFinite(b.level) ? { level: deg(b.level), charging: num(b.rate) > 0 } : null,
+    // Health's own word when something runs hot or full (health/rules.js moodFor).
+    warn: mood?.level && mood.level !== 'ok' ? line(mood.text, 40) || null : null,
+    hot: mood?.level === 'critical' ? 'critical' : mood?.level === 'warn' ? 'warn' : null,
+  };
 }
 
 /**
@@ -177,9 +203,10 @@ function phoneHeld(h) {
  *   lastUsage, held (heldViews), projects ([{ key, name }]), skin, limits, pushKey, mode (the desk's)
  *   rights:   this phone's level (pocket/rights.js): the app hides what it can't use
  *   quiet:    the quiet hours (pocket/quiet.js), shown and set on the Phone screen
+ *   health, mood: Health's last reading and mood, for the PC line on the beach
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, health = null, mood = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -207,6 +234,7 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     rights: normalizeRights(rights),
     quiet: normalizeQuiet(quiet),
     held: (held || []).slice(0, 20).map(phoneHeld),
+    machine: phoneMachine(health, mood),
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),
     skin: skin || null,
     limits: limits || null,
@@ -272,4 +300,4 @@ function phoneItems(items) {
   return out.slice(-MAX_ITEMS);
 }
 
-module.exports = { MAX_ITEMS, STANDINGS, VERSION, clip, line, phoneHeld, phoneItem, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };
+module.exports = { MAX_ITEMS, STANDINGS, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };

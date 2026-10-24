@@ -37,6 +37,7 @@ const { createPocketDevices } = require('../pocket/devices');
 const rights = require('../pocket/rights');
 const { createPocketTalk } = require('../pocket/talk');
 const { createLookOver } = require('../pocket/look-over');
+const { createPocketLater } = require('../pocket/later');
 
 const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
 const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
@@ -264,6 +265,8 @@ function wirePocket(d) {
       focus: d.focusState?.() || null,
       guard: guard.settingsOf(k => d.config.get(k)),
       quiet: settings().quiet,
+      health: d.health?.monitor?.latest || null,
+      mood: d.healthMood || null,
       now: Date.now(),
     });
   }
@@ -351,15 +354,15 @@ function wirePocket(d) {
       case 'undo': return undo(body);
       case 'home': return home(body);
       case 'reviewed': return reviewed(body);
-      case 'cancel-held': return cancelHeld(body);
       case 'push': return setPush(device, body);
       case 'forget': return forget(device.id, 'You forgot this phone.');
       case 'quiet': return setQuiet(body);
       case 'look-over': return lookOver(body || {});
+      case 'reply': return once('reply', body, b => talk.actions.reply(b || {})); // sent again from the outbox: once
       default: {
         if (Object.prototype.hasOwnProperty.call(talk.actions, name)) return talk.actions[name](body || {});
         const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-        const fn = own(extra.actions, name) ? extra.actions[name] : own(review.actions, name) ? review.actions[name] : null;
+        const fn = own(extra.actions, name) ? extra.actions[name] : own(review.actions, name) ? review.actions[name] : own(later.actions, name) ? later.actions[name] : null;
         if (!fn) return no('unknown');
         const r = await fn(body);
         if (r.ok && ['focus', 'routine-toggle'].includes(name)) pushView();
@@ -391,13 +394,13 @@ function wirePocket(d) {
     const key = typeof body?.key === 'string' && KEY.test(body.key) ? `${kind}-${body.key}` : null;
     if (key && sent.has(key)) return sent.get(key);
     const answer = start(body);
-    if (key) sent.set(key, answer);
+    if (key) sent.set(key, Promise.resolve(answer).then(r => { if (!r?.ok) sent.delete(key); return r; })); // a no (busy, say) may be a yes later
     while (sent.size > 50) sent.delete(sent.keys().next().value);
     return answer;
   }
   const task = body => once('task', body, startTask);
 
-  async function startTask({ project, text, mode, photos, model }) {
+  async function startTask({ project, text, mode, photos, model, when }) {
     const runAs = modeOf(mode);
     if (modeBlocked(runAs)) return no(AUTONOMOUS_OFF);
     // '' or none: the desk's own model. Anything else must be one models.js lists.
@@ -408,6 +411,8 @@ function wirePocket(d) {
     if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
     const target = projects().find(p => p.key === project);
     if (!target) return no("That project isn't one Shellby knows. Pick one from the list.");
+    // For later: after the reset or tonight, in the queue, as the Routines page's Queue it does.
+    if (when === 'reset' || when === 'tonight') return later.queueForLater({ prompt, cwd: target.key, mode: runAs, model: on, when, photos });
     const now = Date.now();
     const gate = claimStart(now);
     if (!gate.ok) return no(gate.reply);
@@ -439,13 +444,16 @@ function wirePocket(d) {
   }
 
   // A place under the phone's limits, taken: { ok } or { ok: false, reply }.
-  function claimStart(now = Date.now()) {
-    const gate = pt.startGate({ starts, open: openCount(), now, maxOpen: APP_MAX_OPEN, perHour: APP_STARTS_PER_HOUR });
+  function claimStart(now = Date.now(), { open = openCount() } = {}) {
+    const gate = pt.startGate({ starts, open, now, maxOpen: APP_MAX_OPEN, perHour: APP_STARTS_PER_HOUR });
     if (gate.ok) starts = [...pt.recent(starts, now), now];
     return gate;
   }
 
   // Look over my changes (pocket/look-over.js).
+  // The queue, tasks for later, checks again and branching (pocket/later.js).
+  const later = createPocketLater(d, { adopt: id => adopt(id), pushView: () => pushView(), claimStart: opts => claimStart(Date.now(), opts), once });
+
   const startLookOver = createLookOver(d, { projects: () => projects(), claimStart, adopt: id => adopt(id), pushView: () => pushView() });
   const lookOver = body => once('look', body, startLookOver);
 
@@ -529,14 +537,6 @@ function wirePocket(d) {
   function reviewed({ tabId, after }) {
     if (!str(tabId)) return no('That conversation has closed.');
     return d.manager.setReviewed(tabId, true, str(after, 100)) ? ok() : no('Nothing to mark.');
-  }
-
-  function cancelHeld({ id }) {
-    const r = d.cancelHeld?.(str(id));
-    if (!r?.ok) return no('That has already gone.');
-    d.sendOutlook?.();
-    pushView();
-    return ok();
   }
 
   // Its push subscription, the quiet hours and a phone's rights (pocket/devices.js).

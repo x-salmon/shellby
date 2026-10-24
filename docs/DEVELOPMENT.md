@@ -518,7 +518,8 @@ src/main/        Electron main process
                    where it started), rights.js (pure: a phone's level, full or read-only, and the one allowlist a read-only
                    one may call), quiet.js (pure: the quiet hours window in the PC's local time, checked at the door),
                    notices.js (push notifications, with the deep link a tap opens), answers.js (pure: what goes with a
-                   question's or a plan's answer); wiring/pocket.js ties it in and decides what each phone action may do
+                   question's or a plan's answer), later.js (a task for after the reset or tonight, the queue's take out,
+                   reword and move, checks run again, and Try again or Branch from here); wiring/pocket.js ties it in and decides what each phone action may do
   handoff.js       a conversation to a terminal and back (pure): the launch command per shell, ids, folders
   btw.js           /btw side questions: a tool-less -p on a fork of the conversation that saves nothing
   council/         The Council: the advisors, the chair and their schemas (prompts.js), reading the project first and picking who sits with a read-only -p (look.js), quick/debate sittings as tool-less -p calls (run.js), project context (context.js), the last sittings, their outcomes and each advisor's record (store.js)
@@ -661,13 +662,14 @@ src/renderer/    critter + panel UIs (plain HTML/CSS/JS, no framework)
                    own animatable group with its ink line inside it, drawn only on cells nothing else fills), framecap, workposes (what he holds for each work pose, and how long a pose stays up; the OBS overlay uses it too), diff (an edit's red and green lines), panes (the split grid, its sizes and a saved layout; pure), trail (where Claude has been in the files: the steps from a conversation's items, the tree of what was touched, going in circles, secrets, a change's tests and whether they ran, the state at any step for the replay; pure, and main's ipc trail:tests uses its testsFor), viewer-logic (the file viewer's tree, numbered diff lines and header words; pure), files-logic (All files: what lights up as Claude reads, writes and commits, for how long, the folders a flash opens, pinned rows and folder totals; pure)
   pocket/          the phone app, served to a phone by src/main/pocket/server.js (no Electron, no framework): pocket-logic
                    (pure, with node:test coverage: the stream, a transcript folded for drawing, markdown as plain runs, a diff,
-                   the beach's words) · pocket-stream (the token, the reconnecting stream, the API) · pocket-draw (elements from
+                   the beach's words, the outbox and saved prompts, a reply as it's read aloud, a word on a diff's line) · pocket-stream (the token, the reconnecting stream, the API) · pocket-draw (elements from
                    text only, the crab from shared/sprite.js, a diff) · pocket (the beach, the queue, this phone, pairing, sheets)
                    · pocket-tab (one conversation and a turn's diff) · pocket-more (focus, routines, notes, the wardrobe,
                    trophies, files) · pocket-find (search, a project's history, a closed conversation, the whole branch, the
                    checks card, the "while you were away" card) · pocket-phone (one prompt from its notification, the quiet
                    hours card) · pocket-new (the mode and model pickers, New task, Look over my changes) · pocket-bits
-                   (questions and plans, sharing, photos, what another app shared, keeping the screen on) · sw.js (the
+                   (questions and plans, sharing, photos, what another app shared, keeping the screen on) · pocket-later (the
+                   outbox for what's written while the PC is away, saved prompts, reading replies aloud) · sw.js (the
                    offline shell, push, taps and Allow/Deny on notifications, shares from other apps)
   dialog/          the themed confirmation window, isolated: the panel can't script it, and main takes an answer only from it
   floor/           the floor beside him (src/main/desktop/floor.js): his pals and footprints; colony-brain.js decides what the pals do (pure)

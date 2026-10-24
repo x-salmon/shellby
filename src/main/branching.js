@@ -45,7 +45,9 @@ function register(deps) {
 
   // ------------------------------------------------------------ making one
 
-  ipcMain.handle('branch:run', async (_e, { tabId, turnId, at = 'before', send = false } = {}) => {
+  // The phone's Try again and Branch from here come here too (wiring/pocket.js).
+  ipcMain.handle('branch:run', (_e, args) => run(args));
+  async function run({ tabId, turnId, at = 'before', send = false } = {}) {
     if (!isStr(tabId) || !isStr(turnId)) return { ok: false, error: 'There is nothing to branch from there.' };
     if (busyBranching.has(tabId)) return { ok: false, error: 'Already making a branch of this one.' };
     if (manager.tabs.size >= deps.MAX_TABS) return { ok: false, error: `Shellby can run up to ${deps.MAX_TABS} conversations at once. Close one first, then branch.` };
@@ -69,7 +71,7 @@ function register(deps) {
       busyBranching.delete(tabId);
       if (source) source.branching = false;
     }
-  });
+  }
 
   async function makeBranch({ tabId, turnId, at, send }) {
     const entry = history.get(tabId);
@@ -417,6 +419,8 @@ function register(deps) {
     deps.stat('branch-kept');
     return { ok: true, home, discarded, failed, base: mine?.base || null, closed: !!home?.tidied };
   });
+
+  return { run };
 }
 
 module.exports = { register };

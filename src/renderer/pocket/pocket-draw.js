@@ -58,6 +58,11 @@
     sun: 'M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1',
     trophy: 'M5 2.5h6v3.5a3 3 0 0 1-6 0zM5 4H2.5a2.5 2.5 0 0 0 2.7 3M11 4h2.5a2.5 2.5 0 0 1-2.7 3M8 9v3M5.5 13.5h5',
     play: 'M5 3.5v9l7-4.5z',
+    speak: 'M2.5 6h2.5L8.5 3v10L5 10H2.5ZM11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.5a6 6 0 0 1 0 9',
+    branch: 'M4.5 2.5v11M4.5 10a4 4 0 0 0 4-4h3M11.5 3.5 13.5 6l-2 2.5',
+    up: 'M4 10l4-4 4 4',
+    down: 'M4 6l4 4 4-4',
+    chip: 'M4.5 4.5h7v7h-7zM6.5 1.5v3M9.5 1.5v3M6.5 11.5v3M9.5 11.5v3M1.5 6.5h3M1.5 9.5h3M11.5 6.5h3M11.5 9.5h3',
   };
   function icon(name, cls = '') {
     const s = document.createElementNS(SVG, 'svg');
@@ -124,17 +129,24 @@
   }
 
   // ---------------------------------------------------------------- a diff
-  function diffFile(file) {
+  // onRow(row): a tap on a line (a word about it goes back as a reply, pocket-tab.js).
+  function diffFile(file, { onRow = null } = {}) {
     if (file.binary) return h('p', { class: 'muted small pad', text: 'A binary file: nothing to show on a phone.' });
     if (!file.hunks.length) return h('p', { class: 'muted small pad', text: 'No line changes (a rename or a mode change).' });
     const box = h('div', { class: 'diff', role: 'table', 'aria-label': `Changes to ${file.path}` });
     for (const hunk of file.hunks) {
       box.append(h('div', { class: 'diff-hunk', role: 'row', text: hunk.header ? `@@ ${hunk.header}` : '@@' }));
       for (const r of hunk.rows) {
-        box.append(h('div', { class: `diff-row ${r.kind}`, role: 'row' },
+        const row = h('div', { class: `diff-row ${r.kind}${onRow ? ' tappable' : ''}`, role: 'row' },
           h('span', { class: 'diff-n', 'aria-hidden': 'true', text: r.kind === 'del' ? r.a : r.b }),
           h('span', { class: 'diff-sign', 'aria-hidden': 'true', text: r.kind === 'add' ? '+' : r.kind === 'del' ? '−' : ' ' }),
-          h('span', { class: 'diff-text', text: r.text || ' ', 'aria-label': `${r.kind === 'add' ? 'added' : r.kind === 'del' ? 'removed' : ''} ${r.text}`.trim() })));
+          h('span', { class: 'diff-text', text: r.text || ' ', 'aria-label': `${r.kind === 'add' ? 'added' : r.kind === 'del' ? 'removed' : ''} ${r.text}`.trim() }));
+        if (onRow) {
+          row.tabIndex = 0;
+          row.addEventListener('click', () => onRow(r));
+          row.addEventListener('keydown', e => { if (e.key === 'Enter') onRow(r); });
+        }
+        box.append(row);
       }
     }
     return box;

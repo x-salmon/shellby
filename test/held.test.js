@@ -156,3 +156,42 @@ test('a task from the phone stays marked as one and keeps the mode it picked, el
   assert.equal('fromPhone' in task({ fromPhone: 'yes' }), false, 'only a real true counts');
   assert.equal(task({}).mode, 'autonomous', 'other tasks keep theirs');
 });
+
+test('a queued task is reworded before it starts, and its name follows unless it had its own', () => {
+  const list = held.normalize([
+    { kind: 'task', prompt: 'first job', at: RESET, createdAt: NOW, id: 'a' },
+    { kind: 'task', prompt: 'second job', name: 'Named', at: RESET, createdAt: NOW + 1, id: 'b' },
+    { kind: 'task', prompt: 'running', at: RESET, createdAt: NOW + 2, id: 'c', tabId: 'tab1', tries: 1 },
+  ], NOW);
+  const r = held.reword(list, 'a', 'the first job, better');
+  assert.equal(r.list[0].prompt, 'the first job, better');
+  assert.equal(r.list[0].name, 'the first job, better');
+  assert.equal(held.reword(list, 'b', 'new words').list[1].name, 'Named');
+  assert.match(held.reword(list, 'c', 'too late').error, /started already/);
+  assert.match(held.reword(list, 'a', '  ').error, /Say what/);
+  assert.match(held.reword(list, 'zz', 'x').error, /isn't a queued task/);
+});
+
+test('a queued task moves up or down among the tasks, and the queue keeps that order', () => {
+  const list = held.normalize([
+    { kind: 'task', prompt: 'one', at: RESET, createdAt: NOW, id: 'a' },
+    { kind: 'routine', routineId: 'r1', name: 'R', at: RESET, createdAt: NOW + 1, id: 'r' },
+    { kind: 'task', prompt: 'two', at: RESET, createdAt: NOW + 2, id: 'b' },
+  ], NOW);
+  const up = held.move(list, 'b', -1).list;
+  assert.deepEqual(up.filter(h => h.kind === 'task').map(h => h.id), ['b', 'a']);
+  assert.deepEqual(held.normalize(up, NOW).filter(h => h.kind === 'task').map(h => h.id), ['b', 'a'], 'kept through a save');
+  assert.deepEqual(held.move(list, 'a', -1).list.map(h => h.id), list.map(h => h.id), 'the first stays first');
+  // Queued in the same millisecond, they still swap.
+  const same = held.normalize([{ kind: 'task', prompt: 'x', at: RESET, createdAt: NOW, id: 'x' }, { kind: 'task', prompt: 'y', at: RESET, createdAt: NOW, id: 'y' }], NOW);
+  assert.deepEqual(held.move(same, 'y', -1).list.map(h => h.id), ['y', 'x']);
+});
+
+test('moving a queued task passes over one that has started', () => {
+  const list = held.normalize([
+    { kind: 'task', prompt: 'running', at: RESET, createdAt: NOW, id: 'a', tabId: 'tab1', tries: 1 },
+    { kind: 'task', prompt: 'waiting', at: RESET, createdAt: NOW + 1, id: 'b' },
+  ], NOW);
+  assert.deepEqual(held.move(list, 'b', -1).list.map(h => h.id), ['a', 'b'], 'nothing to pass but a started one');
+  assert.match(held.move(list, 'a', 1).error, /started/);
+});

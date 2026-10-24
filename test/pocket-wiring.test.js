@@ -670,3 +670,120 @@ test('Look over my changes from the phone reviews a repo in Ask first, and a rea
     assert.equal(started.length, 1);
   } finally { stop(w); }
 });
+
+test('a task for later goes into the queue, after the reset or tonight, and never with pictures', async () => {
+  const w = await paired();
+  try {
+    const r = await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: 'refactor overnight', when: 'tonight', mode: 'acceptEdits' });
+    assert.deepEqual(r, { ok: true, held: true, atText: '14:20', when: 'tonight' });
+    const held = w.of('holdForReset')[0][0];
+    assert.equal(held.when, 'tonight');
+    assert.equal(held.mode, 'acceptEdits');
+    assert.equal(held.fromPhone, true);
+    assert.equal(w.of('startTaskInCopy').length, 0);
+    assert.match((await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: 'with a photo', when: 'reset', photos: ['p1'] })).error, /Pictures/);
+    // Anything else is now.
+    await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: 'right away', when: 'someday' });
+    assert.equal(w.of('startTaskInCopy').length, 1);
+    // Unattended Autonomous is the desk's to queue.
+    w.d.config.set({ autonomousAcknowledged: true });
+    assert.match((await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: 'all night', when: 'tonight', mode: 'autonomous' })).error, /queued at your PC/);
+  } finally { stop(w); }
+});
+
+test('a reply sent again with the same key (the outbox, after the PC woke) goes once', async () => {
+  const t = tabOf('t1', { session: { pending: new Map(), mode: 'ask', cwd: PROJECT, busy: false, setMode(m) { this.mode = m; } } });
+  const w = await paired({ tabs: [t] });
+  try {
+    const body = { tabId: 't1', text: 'from the train', key: 'outbox1234' };
+    const a = await w.d.pocket.onAction(w.device, 'reply', body);
+    const b = await w.d.pocket.onAction(w.device, 'reply', body);
+    assert.deepEqual(a, b);
+    assert.deepEqual(w.of('sendToTab'), [['t1', 'from the train']]);
+  } finally { stop(w); }
+});
+
+test('Run again runs the checks on the conversation’s last change, and says why when it can’t', async () => {
+  const change = { kind: 'changes', root: PROJECT, before: 'b0', after: 'a1', files: [{ path: 'src/a.js' }] };
+  const w = await paired({ tabs: [tabOf('t1'), tabOf('t2')], items: { t1: [change] } });
+  try {
+    w.d.changeRef = r => ({ ...r, ref: true });
+    w.d.runChecksFor = async ref => { w.rec.push(['runChecksFor', ref]); return { ok: true, status: 'pass' }; };
+    assert.deepEqual(await w.d.pocket.onAction(w.device, 'checks-run', { tabId: 't1' }), { ok: true, status: 'pass' });
+    assert.equal(w.of('runChecksFor')[0][0].after, 'a1');
+    assert.match((await w.d.pocket.onAction(w.device, 'checks-run', { tabId: 't2' })).error, /Nothing has changed/);
+    // A long run answers at once and is reported by the view.
+    w.d.runChecksFor = () => new Promise(() => {});
+    assert.deepEqual(await w.d.pocket.onAction(w.device, 'checks-run', { tabId: 't1' }), { ok: true, started: true });
+    w.d.runChecksFor = async () => ({ ok: false, declined: true });
+    assert.match((await w.d.pocket.onAction(w.device, 'checks-run', { tabId: 't1' })).error, /Say yes there/);
+  } finally { stop(w); }
+});
+
+test('a queued task is reworded or moved through the desk’s queue', async () => {
+  const w = await paired();
+  try {
+    w.d.heldList = () => [{ id: 'h1', kind: 'task', fromPhone: true }, { id: 'h2', kind: 'task', fromPhone: false }];
+    assert.match((await w.d.pocket.onAction(w.device, 'held-edit', { id: 'h2', prompt: 'x' })).error, /queued at your PC/);
+    assert.match((await w.d.pocket.onAction(w.device, 'held-edit', { id: 'h1', prompt: '!rm -rf .' })).error, /only run at the desk/);
+    w.d.heldService = {
+      rewordHeld: (id, prompt) => { w.rec.push(['reword', id, prompt]); return { ok: true }; },
+      moveHeld: (id, dir) => { w.rec.push(['move', id, dir]); return id === 'h1' ? { ok: true } : { ok: false, error: "That isn't a queued task any more." }; },
+    };
+    assert.equal((await w.d.pocket.onAction(w.device, 'held-edit', { id: 'h1', prompt: 'new words' })).ok, true);
+    assert.equal((await w.d.pocket.onAction(w.device, 'held-move', { id: 'h1', dir: 'up' })).ok, true);
+    assert.match((await w.d.pocket.onAction(w.device, 'held-move', { id: 'h9', dir: 'down' })).error, /queued task/);
+    assert.deepEqual(w.of('reword'), [['h1', 'new words']]);
+    assert.deepEqual(w.of('move'), [['h1', -1], ['h9', 1]]);
+  } finally { stop(w); }
+});
+
+test('Try again and Branch from here go through branching.js, and the new conversation is the phone’s', async () => {
+  const w = await paired({ tabs: [tabOf('t1')] });
+  try {
+    w.d.branchRun = async args => { w.rec.push(['branchRun', args]); w.d.manager.tabs.set('b1', tabOf('b1')); return { ok: true, tabId: 'b1' }; };
+    assert.deepEqual(await w.d.pocket.onAction(w.device, 'branch-from', { tabId: 't1', turnId: 'u1', at: 'before' }), { ok: true, tabId: 'b1' });
+    await w.d.pocket.onAction(w.device, 'branch-from', { tabId: 't1', turnId: 'u1', at: 'after' });
+    assert.deepEqual(w.of('branchRun').map(([a]) => [a.at, a.send]), [['before', true], ['after', false]]);
+    assert.equal(w.d.manager.tabs.get('b1').fromPocket, true);
+    assert.match((await w.d.pocket.onAction(w.device, 'branch-from', { tabId: 'gone', turnId: 'u1' })).error, /closed/);
+  } finally { stop(w); }
+});
+
+test('a read-only phone can’t run checks, change the queue or branch', async () => {
+  const w = await paired({ tabs: [tabOf('t1')] });
+  try {
+    await w.d.setPocket({ device: { id: w.device.id, rights: 'readonly' } });
+    for (const name of ['checks-run', 'held-edit', 'held-move', 'branch-from']) {
+      assert.match((await w.d.pocket.onAction(w.device, name, { tabId: 't1', id: 'h1', turnId: 'u1' })).error, /only look/, name);
+    }
+  } finally { stop(w); }
+});
+
+test('every action pocket/later.js answers is one the server lets through', () => {
+  const { ACTIONS } = require('../src/main/pocket/server');
+  const { createPocketLater } = require('../src/main/pocket/later');
+  for (const name of Object.keys(createPocketLater({}, { adopt() {}, pushView() {}, claimStart: () => ({ ok: true }), once: (_k, b, start) => start(b) }).actions)) assert.ok(ACTIONS.includes(name), name);
+});
+
+test('a reply turned down is not remembered under its key, so the outbox can send it again later', async () => {
+  const t = tabOf('t1', { session: { pending: new Map(), mode: 'ask', cwd: PROJECT, busy: true, setMode(m) { this.mode = m; } } });
+  const w = await paired({ tabs: [t] });
+  try {
+    const body = { tabId: 't1', text: '/compact', key: 'outbox5678' };
+    assert.match((await w.d.pocket.onAction(w.device, 'reply', body)).error, /on a turn/);
+    t.session.busy = false;
+    assert.equal((await w.d.pocket.onAction(w.device, 'reply', body)).ok, true);
+  } finally { stop(w); }
+});
+
+test('tasks for later count in the phone’s hour, and an Autonomous one or one in Autonomous is the desk’s to reword', async () => {
+  const w = await paired();
+  try {
+    for (let i = 0; i < 30; i++) await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: `later ${i}`, when: 'reset' });
+    assert.equal(w.of('holdForReset').length, 30);
+    assert.equal((await w.d.pocket.onAction(w.device, 'task', { project: PROJECT, text: 'one too many', when: 'reset' })).ok, false);
+    w.d.heldList = () => [{ id: 'h1', kind: 'task', fromPhone: true, mode: 'autonomous' }];
+    assert.match((await w.d.pocket.onAction(w.device, 'held-edit', { id: 'h1', prompt: 'other words' })).error, /queued at your PC/);
+  } finally { stop(w); }
+});

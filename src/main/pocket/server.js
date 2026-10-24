@@ -46,6 +46,8 @@ const ACTIONS = [
   'wardrobe', 'wear', 'pet', 'files', 'file',
   // pocket/review.js
   'find', 'project-history', 'past', 'away', 'checks', 'checks-fix', 'branch',
+  // pocket/later.js
+  'held-edit', 'held-move', 'checks-run', 'branch-from',
   // pocket/quiet.js
   'quiet',
   // pocket/talk.js
@@ -91,6 +93,7 @@ function routeTable(srcDir, assetsDir) {
     '/pocket-find.js': app('pocket-find.js'),
     '/pocket-phone.js': app('pocket-phone.js'),
     '/pocket-new.js': app('pocket-new.js'),
+    '/pocket-later.js': app('pocket-later.js'),
     '/sw.js': app('sw.js'),
     '/manifest.webmanifest': app('manifest.webmanifest'),
     // He's on the pairing screen before the PC has said which skin he wears.

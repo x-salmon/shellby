@@ -3,7 +3,7 @@
    shared), and Look over my changes. pocket.js hands in what it shares. */
 'use strict';
 (function (root) {
-  root.PocketNew = ({ S, N, h, icon, go, toast, act, actButton, voiceButton, photoButton }) => {
+  root.PocketNew = ({ S, L, N, h, icon, go, toast, act, actButton, voiceButton, photoButton, later }) => {
     // ---------------------------------------------------------------- the mode a message runs in
 
     const MODE_NAME = { ask: 'Ask first', smart: 'Smart', acceptEdits: 'Auto-edit', plan: 'Plan only', autonomous: 'Autonomous' };
@@ -26,6 +26,16 @@
       const sel = h('select', { class: 'mode-pick', 'aria-label': 'Model' },
         h('option', { value: '', text: desk ? `As on your PC: ${desk.label}` : 'As on your PC' }),
         ...models.map(m => h('option', { value: m.id, text: m.label })));
+      sel.value = '';
+      return sel;
+    }
+
+    // ---------------------------------------------------------------- when it starts
+
+    // Now, or into the queue: after the 5-hour window resets, or tonight at 1am (queue-when.js).
+    const WHEN = [['', 'Now'], ['reset', 'After the reset'], ['tonight', 'Tonight']];
+    function whenPicker() {
+      const sel = h('select', { class: 'mode-pick', 'aria-label': 'When' }, ...WHEN.map(([value, text]) => h('option', { value, text })));
       sel.value = '';
       return sel;
     }
@@ -56,27 +66,32 @@
         const mode = modePicker(S.view?.mode || N.store.get(MODE_KEY));
         mode.addEventListener('change', () => N.store.set(MODE_KEY, mode.value));
         const model = modelPicker();
+        const when = whenPicker();
         const lim = S.view?.limits;
         // Pictures for the task: each goes to the PC as it's picked, and the task names them.
         const photos = [];
         const strip = h('div', { class: 'photo-strip', 'aria-label': 'Pictures' });
         // One key per task, kept until it's started: sent again after a slow answer, it's the same task.
-        let key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+        let key = L.newKey();
+        // Offline too: it waits on the phone and goes when the PC answers (pocket-later.js).
         const send = actButton({
-          label: 'Send him off', cls: 'go big',
+          label: 'Send him off', cls: 'go big', offlineOk: true,
           run: async () => {
             const said = text.value.trim();
             if (!said) { text.focus(); toast('Say what you want done first.'); return; }
             if (!picked) { toast('Pick a project first.'); return; }
             if (photos.some(p => !p.id)) { toast('A picture is still on its way. One moment.'); return; }
-            const r = await act('task', { project: picked, text: said, key, mode: mode.value, model: model.value, photos: photos.map(p => p.id) }, { timeoutMs: 180000 });
-            if (r.offline) { toast('Still waiting for your PC. Send it again: it won’t start twice.', { ms: 5200 }); return; }
-            if (!r.ok) return;
-            key = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+            if (when.value && photos.length) { toast('Pictures only go with a task that starts now.'); return; }
+            const body = { project: picked, text: said, key, mode: mode.value, model: model.value, photos: photos.map(p => p.id), ...(when.value ? { when: when.value } : {}) };
+            const r = await later.send('task', body, { label: L.promptChip(said), timeoutMs: 180000 });
+            if (!r.ok) { if (r.error) toast(r.error, { tone: 'warn', ms: 4800 }); return; }
+            key = L.newKey();
             if (!given) N.store.set('shellby.pocket.draft', null);
             photos.length = 0;
             close();
-            if (r.held) toast(`At your limit, so it waits for the reset and starts at ${r.atText}.`, { ms: 5200 });
+            if (r.kept) return;
+            if (r.held && r.when) toast(`Queued. It starts ${r.when === 'tonight' ? 'tonight' : 'after the reset'}, at ${r.atText}.`, { tone: 'ok', ms: 5200 });
+            else if (r.held) toast(`At your limit, so it waits for the reset and starts at ${r.atText}.`, { ms: 5200 });
             else { toast('Claws out. He’s on it.', { tone: 'ok' }); if (r.tabId) go(`#/tab/${encodeURIComponent(r.tabId)}`); }
           },
         });
@@ -94,12 +109,14 @@
         const el = h('div', { class: 'new-task' },
           h('h2', { class: 'sheet-title', text: 'What should I do?' }),
           projects.length ? chips : h('p', { class: 'warn', text: 'Shellby doesn’t know any projects yet. Open one on your PC first.' }),
+          later.savedRow(text),
           prefill.shared ? h('p', { class: 'flag' }, icon('warn'), h('span', { text: 'Shared from another app. Read it through before you send him off with it.' })) : null,
           text,
           h('div', { class: 'task-tools' }, voiceButton(text), photoButton(photos, strip, { given: prefill.photos || [] })),
           strip,
           h('label', { class: 'mode-row' }, h('span', { text: 'Mode' }), mode),
           (S.view?.models || []).length ? h('label', { class: 'mode-row' }, h('span', { text: 'Model' }), model) : null,
+          h('label', { class: 'mode-row' }, h('span', { text: 'When' }), when),
           h('p', { class: 'rule' }, icon('shield'), h('span', { text: `Runs in its own copy when it can.${lim ? ` ${lim.open} of ${lim.atOnce} phone tasks open.` : ''}` })),
           send, keep);
         setTimeout(() => text.focus(), 260);
