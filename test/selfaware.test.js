@@ -19,7 +19,9 @@ test('the note stays small: it rides along on every turn', () => {
   // Raise these deliberately, not by accident: every character is paid for on
   // every turn of every conversation (cached, but still paid).
   assert.ok(systemNote().length <= 1600, `note is ${systemNote().length} chars`);
-  assert.ok(JSON.stringify(toolsFor()).length <= 2600, `tools are ${JSON.stringify(toolsFor()).length} chars`);
+  // add_routine and list_routines moved here from the plugin, which no longer
+  // lists its own (about 2000 chars) in Shellby's conversations.
+  assert.ok(JSON.stringify(toolsFor()).length <= 3000, `tools are ${JSON.stringify(toolsFor()).length} chars`);
 });
 
 test('the note names every feature it can offer, and only offers with suggestions on', () => {

@@ -160,14 +160,19 @@ function createRoutines(d) {
    * routine with the same name is changed in place, keeping its history and
    * whether it's paused.
    */
-  async function proposeRoutine(proposed, { modelGiven = true } = {}) {
+  async function proposeRoutine(proposed, { modelGiven = true, catchUpGiven = true } = {}) {
     if (routineAsking) return { ok: false, error: 'Shellby is already asking the user about a routine. Wait for that answer first.', status: 409 };
     if (Date.now() - routineDeclinedAt < ROUTINE_COOLDOWN_MS) return { ok: false, error: 'The user just turned down a routine. Talk it over with them before proposing another.', status: 429 };
     if (proposed.cwd && !d.isFolder(proposed.cwd)) return { ok: false, error: `That folder doesn't exist: ${proposed.cwd}`, status: 400 };
     const replacing = routines().find(r => sameName(proposed.name, r.name)) || null;
     // Changing one without naming a model keeps the model it runs on, so a quiet
     // re-proposal can't move a routine pinned to a lighter model back to the default.
-    const routine = replacing && !modelGiven ? { ...proposed, model: replacing.model || '' } : proposed;
+    // Catching up after the PC was off is kept the same way.
+    const routine = !replacing ? proposed : {
+      ...proposed,
+      ...(modelGiven ? {} : { model: replacing.model || '' }),
+      ...(catchUpGiven ? {} : { catchUp: replacing.catchUp !== false }),
+    };
     if (!replacing && routines().length >= MAX_ROUTINES) return { ok: false, error: `The user already has ${MAX_ROUTINES} routines, which is the limit.`, status: 400 };
 
     routineAsking = true;

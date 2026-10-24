@@ -142,6 +142,18 @@ test('a yes saves the proposed routine', async () => {
   assert.equal(data.routines[0].name, 'Nightly');
 });
 
+test('changing a routine without naming a model or catch-up keeps the ones it had', async () => {
+  const kept = { ...nightly, model: 'haiku', catchUp: false };
+  const { svc, data } = setup({ answer: 0, routines: [kept] });
+
+  await svc.proposeRoutine({ ...nightly, id: 'new', prompt: 'tidy more', model: '', catchUp: true }, { modelGiven: false, catchUpGiven: false });
+
+  assert.equal(data.routines.length, 1);
+  assert.equal(data.routines[0].prompt, 'tidy more');
+  assert.equal(data.routines[0].model, 'haiku');
+  assert.equal(data.routines[0].catchUp, false);
+});
+
 test('the scheduler starts once, and stopping it is safe either side of that', t => {
   t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'setImmediate', 'Date'], now: NOW });
   const { svc } = setup();
