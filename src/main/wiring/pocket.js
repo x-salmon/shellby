@@ -514,13 +514,13 @@ function wirePocket(d) {
     return ok({ patch: patch.slice(0, 200000), truncated: !!r?.truncated || patch.length > 200000 });
   }
 
-  // push: and push the branch it lands on, when Settings allows it. The desk's
-  // own checks go first (the secret scan, other people's commits), as at the desk.
+  // The desk's "Bring it home and finish", so it moves to Done. push: and push the branch it lands on,
+  // when Settings allows it. The desk's own checks go first (the secret scan, other people's commits).
   async function home({ tabId, force, push: andPush }) {
     if (!str(tabId)) return no('That conversation has closed.');
     if (andPush === true && !settings().allow.push) return no('Pushing from your phone is off. Turn it on in Settings → On your phone.');
     if (andPush === true && force === true) return no('Red checks and a push together only happen at the desk.');
-    const r = await d.bringTabHome(tabId, { force: force === true, ...(andPush === true ? { push: true } : {}) });
+    const r = await d.bringTabHome(tabId, { force: force === true, finish: true, ...(andPush === true ? { push: true } : {}) });
     if (r.red) return { ok: false, red: true, error: r.error };
     const pushed = r.push;
     return r.ok ? ok({ merged: !!r.merged, commits: r.commits || 0, base: r.base || null, ...(andPush === true ? { pushed: !!pushed?.ok, pushError: pushed && !pushed.ok ? String(pushed.error || '') : null } : {}) }) : no(r.error || "Couldn't bring it home.");

@@ -234,7 +234,7 @@
         const home = t.copy ? actButton({
           label: 'Bring it home', cls: 'go', iconName: 'home',
           run: () => confirmSheet({
-            title: 'Bring it home?', text: `Merges ${t.copy.branch} into ${t.copy.base}. Never a force-push: your checkout keeps its history.`, yes: 'Bring it home',
+            title: 'Bring it home?', text: `Merges ${t.copy.branch} into ${t.copy.base}, then tidies the copy away and moves the conversation to Done. Never a force-push: your checkout keeps its history.`, yes: 'Bring it home',
             then: async () => {
               const r = await act('home', { tabId }, { timeoutMs: 600000 });
               if (r.ok) { celebrate(t.title); toast(r.merged ? `Home in ${r.base || t.copy.base}${r.commits ? `, ${L.plural(r.commits, 'commit')}` : ''}.` : 'Nothing new to bring home.', { tone: 'ok', ms: 4200 }); } else if (r.red) confirmSheet({ title: 'His checks are red', text: `${r.error} Bring it home anyway?`, yes: 'Bring it home anyway', danger: true, then: () => act('home', { tabId, force: true }, { okText: 'Brought home.', timeoutMs: 600000 }) });
@@ -253,7 +253,7 @@
         return actButton({
           label: 'Home and push', cls: 'ghost', iconName: 'send',
           run: () => confirmSheet({
-            title: 'Bring it home and push?', text: `Merges ${t.copy.branch} into ${t.copy.base}, then pushes ${t.copy.base}. If your PC needs to ask you something first, it asks there.`, yes: 'Home and push',
+            title: 'Bring it home and push?', text: `Merges ${t.copy.branch} into ${t.copy.base}, pushes ${t.copy.base}, and moves the conversation to Done. If your PC needs to ask you something first, it asks there.`, yes: 'Home and push',
             then: async () => {
               const r = await act('home', { tabId, push: true }, { timeoutMs: 600000 });
               if (!r.ok) return;
