@@ -212,6 +212,36 @@
     ];
   }
 
+  // Your checkout's other branches (main's branch-switch.js). New copies start from
+  // the branch it's on, so this is how they go back to starting from main.
+  const SWITCH_SHOWN = 8;
+  function switchItems(tab) {
+    const sep = h('div', { class: 'menu-sep', hidden: true });
+    const label = h('div', { class: 'menu-label', text: 'Switch branch', hidden: true });
+    const list = h('div', {});
+    api.viewerBranches(tab.id).then(r => {
+      if (!r?.ok || !r.branches.length) return;
+      sep.hidden = label.hidden = false;
+      const main = r.branches.filter(b => b.name === 'main' || b.name === 'master');
+      const rest = r.branches.filter(b => !main.includes(b)).slice(0, SWITCH_SHOWN - main.length);
+      for (const b of [...main, ...rest]) {
+        list.append(h('button', { class: 'menu-item', disabled: !!b.elsewhere, onclick: () => { SB.closeMenus(); switchTo(tab, b.name); } },
+          h('span', { class: 'mi-check', text: '⑂' }),
+          h('span', {}, h('div', { class: 'mi-title', text: b.name }), h('div', { class: 'mi-sub', text: b.elsewhere ? 'Open in another copy' : 'New copies will start from it' }))));
+      }
+    }).catch(() => {});
+    return [sep, label, list];
+  }
+
+  async function switchTo(tab, branch) {
+    const r = await api.viewerCheckout(tab.id, branch).catch(() => null);
+    if (!r?.ok) return SB.toast(r?.error || "Couldn't switch branch.", { ms: 8000 });
+    SB.forgetBranch?.(tab.cwd);
+    $('branchLabel').textContent = branch;
+    $('branchChip').title = `On branch ${branch}`;
+    SB.toast(`Switched to ${branch}. New tasks start from it.`);
+  }
+
   $('branchChip').addEventListener('click', async () => {
     const tab = SB.activeTab();
     const w = tab?.worktree;
@@ -226,8 +256,8 @@
     const others = family.filter(f => !f.current);
     // Its own copy's part of the menu: none for a tab in your checkout.
     const copyItems = w ? copyMenu(tab, w, fromBacklog) : viewable
-      ? [h('div', { class: 'menu-label', text: SB.hasTries(tab) ? 'This conversation works in your checkout' : `On branch ${$('branchLabel').textContent}` }), viewChangesItem(tab, 'Files changed here, with their diffs')]
-      : [h('div', { class: 'menu-label', text: 'This conversation works in your checkout' })];
+      ? [h('div', { class: 'menu-label', text: SB.hasTries(tab) ? 'This conversation works in your checkout' : `On branch ${$('branchLabel').textContent}` }), viewChangesItem(tab, 'Files changed here, with their diffs'), ...switchItems(tab)]
+      : [h('div', { class: 'menu-label', text: 'This conversation works in your checkout' }), ...switchItems(tab)];
     SB.openMenu($('branchMenu'), $('branchChip'), () => [
       ...copyItems,
       ...(others.length ? [
