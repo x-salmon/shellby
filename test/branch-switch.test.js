@@ -29,6 +29,14 @@ test('lists the other branches and switches to one', async () => {
   assert.strictEqual(git(dir, 'branch', '--show-current'), 'main');
 });
 
+test("doesn't run the repository's post-checkout hook", async () => {
+  const dir = repo();
+  const hook = path.join(dir, '.git', 'hooks', 'post-checkout');
+  fs.writeFileSync(hook, '#!/bin/sh\ntouch ran\n', { mode: 0o755 });
+  assert.strictEqual((await switchBranch(dir, 'feat/x')).ok, true);
+  assert.strictEqual(fs.existsSync(path.join(dir, 'ran')), false);
+});
+
 test('refuses with uncommitted changes, and leaves the branch alone', async () => {
   const dir = repo();
   fs.writeFileSync(path.join(dir, 'a.txt'), 'changed\n');
