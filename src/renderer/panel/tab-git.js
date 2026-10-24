@@ -332,12 +332,23 @@
     ] });
   }
 
-  async function bringHome(tab, { finish = false, push = false, force = false } = {}) {
+  // onto: your checkout's branch, when it moved off the copy's base (main's worktrees.moveBase).
+  async function bringHome(tab, { finish = false, push = false, force = false, onto = null } = {}) {
     if (tab.busy) return SB.toast('Let him finish first.');
     const check = checksHome(tab);
     SB.toast(check && !force ? 'Running the tests in the copy first…' : push ? 'Bringing it home, then pushing…' : 'Bringing it home…', { ms: check && !force ? 60000 : push ? 30000 : 8000 });
-    const r = await api.bringWorktreeHome(tab.id, { finish, push, force, check });
-    if (r?.red) return redHome(tab, r, () => bringHome(tab, { finish, push, force: true }));
+    const r = await api.bringWorktreeHome(tab.id, { finish, push, force, check, ...(onto ? { onto } : {}) });
+    if (r?.red) return redHome(tab, r, () => bringHome(tab, { finish, push, force: true, onto }));
+    if (r?.elsewhere) {
+      return SB.toast(`${r.error} Bring only this copy's own work into ${r.elsewhere}?`, { ms: 14000, action: `Bring it into ${r.elsewhere}`, onAction: () => bringHome(tab, { finish, push, force, onto: r.elsewhere }) });
+    }
+    if (onto && r?.conflict && !r.ok && r.base !== onto) {
+      return SB.toast(r.error, { ms: 12000, action: 'Ask him to sort it out', onAction: () => {
+        SB.activate(tab.id);
+        SB.send(`My checkout is on ${onto} now. Rebase only this copy's own commits onto it (git rebase --onto ${onto} ${r.base}), resolve the conflicts so both sides' intent survives, run the tests if there are any, and tell me when it's done. I'll then bring it home into ${onto}.`);
+      } });
+    }
+    if (r?.ok && onto && tab.worktree) tab.worktree = { ...tab.worktree, base: r.base };
     const merged = `Merged ${r?.commits} commit${r?.commits === 1 ? '' : 's'} into ${r?.base}.${r?.green ? ' Tests green on this branch.' : ''}`;
     if (r?.ok && r.push) {
       if (r.push.ok) return SB.toast(`${r.merged ? `${merged} ` : ''}${pushNews(r.push)}`, { ms: 7000 });

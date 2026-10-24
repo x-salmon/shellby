@@ -269,6 +269,52 @@ test('bring it home refuses when your checkout has moved to another branch', asy
     const r = await worktrees.bringHome(w, { message: 'x' });
     assert.equal(r.ok, false);
     assert.match(r.error, /elsewhere.*main/);
+    assert.equal(r.elsewhere, 'elsewhere', 'names the branch, so the panel can offer it');
+  } finally { t.done(); }
+});
+
+test('moveBase carries only the copy\'s own commits onto the branch your checkout moved to', async () => {
+  const t = setup();
+  try {
+    // The copy starts from a feature branch, then your checkout goes back to main.
+    t.g(t.dir, 'switch', '-q', '-c', 'feat');
+    fs.writeFileSync(path.join(t.dir, 'feat.txt'), 'feat\n');
+    t.g(t.dir, 'add', '-A'); t.g(t.dir, 'commit', '-qm', 'feat work');
+    const { worktree: w } = await worktrees.create(t.dir, { home: t.home, title: 'Moved base' });
+    assert.equal(w.base, 'feat');
+    fs.writeFileSync(path.join(w.path, 'mine.txt'), 'mine\n');
+    t.g(w.path, 'add', '-A'); t.g(w.path, 'commit', '-qm', 'copy work');
+    t.g(t.dir, 'switch', '-q', 'main');
+
+    const moved = await worktrees.moveBase(w, 'main');
+    assert.equal(moved.ok, true);
+    assert.equal(moved.worktree.base, 'main');
+    assert.equal(moved.worktree.branch, w.branch);
+    assert.deepEqual(await worktrees.bringHome(moved.worktree, { message: 'copy work' }), { ok: true, merged: true, commits: 1 });
+    assert.equal(fs.existsSync(path.join(t.dir, 'mine.txt')), true, "the copy's work is on main");
+    assert.equal(fs.existsSync(path.join(t.dir, 'feat.txt')), false, "the feature branch's work didn't come along");
+  } finally { t.done(); }
+});
+
+test('moveBase changes nothing on a clash, or when your checkout is on another branch', async () => {
+  const t = setup();
+  try {
+    t.g(t.dir, 'switch', '-q', '-c', 'feat');
+    const { worktree: w } = await worktrees.create(t.dir, { home: t.home, title: 'Clash on move' });
+    fs.writeFileSync(path.join(w.path, 'a.txt'), 'from the copy\n');
+    t.g(w.path, 'commit', '-qam', 'copy');
+    const tip = t.g(w.path, 'rev-parse', 'HEAD');
+    t.g(t.dir, 'switch', '-q', 'main');
+    fs.writeFileSync(path.join(t.dir, 'a.txt'), 'from you\n');
+    t.g(t.dir, 'commit', '-qam', 'mine');
+
+    assert.match((await worktrees.moveBase(w, 'other')).error, /isn't on other/);
+    const r = await worktrees.moveBase(w, 'main');
+    assert.equal(r.ok, false);
+    assert.equal(r.conflict, true);
+    assert.equal(t.g(w.path, 'rev-parse', 'HEAD'), tip, 'the copy is where it was');
+    assert.equal(t.g(w.path, 'status', '--porcelain'), '', 'no half-finished rebase left behind');
+    assert.equal((await worktrees.moveBase(w, '--exec=x')).ok, false);
   } finally { t.done(); }
 });
 

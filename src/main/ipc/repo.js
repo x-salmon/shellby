@@ -58,12 +58,22 @@ function registerRepoIpc(ipcMain, d) {
     error: `${checks.redHeadline(gate.checks)} on this branch, so it stayed in its copy.`,
   });
   async function bringTabHome(tabId, opts) {
-    const w = worktreeOf(tabId);
+    let w = worktreeOf(tabId);
     if (!w) return { ok: false, error: 'That conversation has no copy of its own.' };
     if (d.manager.isBusy(tabId)) return { ok: false, error: 'Let him finish first.' };
     if (retiring.has(tabId)) return { ok: false, error: 'Already on it.' };
     retiring.add(tabId);
     try {
+      // onto: your checkout moved to another branch; carry the copy's own commits there first.
+      if (d.isStr(opts?.onto) && opts.onto !== w.base) {
+        const moved = await line.turn(w.root, () => worktrees.moveBase(w, opts.onto));
+        if (!moved.ok) return { ...moved, base: w.base };
+        w = moved.worktree;
+        const tab = d.manager.tabs.get(tabId);
+        if (tab) tab.worktree = w;
+        d.history.update(tabId, { worktree: w });
+        d.manager.changed();
+      }
       // The tests first, when you've asked for that (wiring/checks.js): red stops here, unless forced.
       const gate = await d.gateHome(tabId, w, { check: typeof opts?.check === 'boolean' ? opts.check : undefined, force: opts?.force === true });
       if (!gate.ok) return gate.red ? redResult(gate, w) : gate;
