@@ -330,7 +330,7 @@ ${r.detail}` });
 
   // ---- branching a conversation from any turn (branching.js)
   let branchAsking = false; // one question at a time, so a flood of them can't be clicked through
-  branching.register({
+  d.branchRun = branching.register({
     ipcMain, manager: d.manager, history: d.history, MAX_TABS, log: d.log, stat: d.stat, wake: d.wake, composePrompt: d.composePrompt, openTab: d.openTab, send: d.send,
     panel: () => d.panel, worktreeHome: d.worktreeHome, claudeConfigDir: d.claudeConfigDir,
     turnEnding: tabId => d.turnEnds.get(tabId) || Promise.resolve(),
@@ -347,7 +347,7 @@ ${r.detail}` });
       retiring.add(id);
       try { return await d.retireWorktree(id, w, opts); } finally { retiring.delete(id); }
     },
-  });
+  }).run;
 }
 
 module.exports = { registerRepoIpc };

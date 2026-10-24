@@ -6,12 +6,13 @@
      #/diff/<id>/<a> what one of its turns changed, file by file
      #/new           the New task sheet, over the beach (a shortcut on the app icon too)
      #/share         the same, with what another app shared (the service worker keeps it)
-     #/queue         what's waiting for the usage reset
+     #/queue         what's waiting for the usage reset or tonight: take out, reword, reorder
      #/phone         this phone: notifications, quiet hours, and forgetting it
      #/more …        focus, routines, notes, the wardrobe and files (pocket-more.js)
      #/find …        search, a project's history, a closed conversation, a whole branch (pocket-find.js)
                      (New task and Look over my changes live in pocket-new.js)
                      (the prompt screen and the quiet hours card live in pocket-phone.js)
+                     (the outbox, saved prompts and Read aloud live in pocket-later.js)
 
    Everything comes from one stream (pocket-stream.js). Each screen is mounted
    once per visit and told when the view changes, so a half-typed reply or the
@@ -109,8 +110,10 @@
   // Questions and plans, usage, sharing a moment, and speaking or snapping a task (pocket-bits.js).
   // What another app shared, and keeping the screen on while you watch, too.
   const { questionSheet, planSheet, usageDetail, shareTurn, voiceButton, photoButton, takeShared, wake } = window.PocketBits({ S, L, D, N, h, icon, toast, buzz, act, actButton });
+  // The outbox for while the PC is away, saved prompts and reading aloud (pocket-later.js).
+  const Later = window.PocketLater({ S, L, N, h, icon, toast, buzz, live });
   // The mode and model pickers, New task and Look over my changes (pocket-new.js).
-  const { modePicker, newTaskSheet, lookOverSheet } = window.PocketNew({ S, N, h, icon, go, toast, act, actButton, voiceButton, photoButton });
+  const { modePicker, newTaskSheet, lookOverSheet } = window.PocketNew({ S, L, N, h, icon, go, toast, act, actButton, voiceButton, photoButton, later: Later });
 
   /** A line for what a read-only phone can't press. */
   const lookOnly = () => h('p', { class: 'desk-only' }, icon('eye'), h('span', { text: LOOK_ONLY }));
@@ -270,7 +273,21 @@
       h('button', { type: 'button', class: 'tide-crab', 'aria-label': `Shellby, ${state}. Give him a pat`, onclick: patHim }, D.crab({ px: 4, state, label: '' }), said ? h('span', { class: `bubble ${state}`, text: said }) : null),
       h('div', { class: 'tide-words' }, h('h2', { class: 'tide-title', text: cel ? 'Nailed it' : head.title }), h('p', { class: 'tide-sub', text: cel ? cel.title : head.sub })),
       meter,
+      machineLine(view?.machine),
       view?.usage?.warning ? h('p', { class: 'tide-warn', text: view.usage.warning }) : null);
+  }
+
+  // The PC itself, from Health on your PC: heat, load, memory and the battery. Nothing when Health is off.
+  function machineLine(m) {
+    if (!m) return null;
+    const bits = [];
+    if (m.cpu?.temp != null || m.cpu?.load != null) bits.push(`CPU ${[m.cpu.load != null ? `${m.cpu.load}%` : null, m.cpu.temp != null ? `${m.cpu.temp}°` : null].filter(Boolean).join(' · ')}`);
+    if (m.gpu && (m.gpu.temp != null || m.gpu.load != null)) bits.push(`GPU ${[m.gpu.load != null ? `${m.gpu.load}%` : null, m.gpu.temp != null ? `${m.gpu.temp}°` : null].filter(Boolean).join(' · ')}`);
+    if (m.ram != null) bits.push(`RAM ${m.ram}%`);
+    if (m.battery) bits.push(`Battery ${m.battery.level}%${m.battery.charging ? ' ⚡' : ''}`);
+    if (!bits.length) return null;
+    return h('p', { class: `machine${m.hot ? ` ${m.hot}` : ''}`, 'aria-label': `Your PC: ${bits.join(', ')}${m.warn ? `. Running hot: ${m.warn}` : ''}` },
+      icon('chip'), h('span', { text: bits.join('  ·  ') }), m.warn ? h('b', { text: ` ${m.warn}` }) : null);
   }
 
   // A pat from the beach: he feels it on your desktop (pocket/extras.js pet).
@@ -291,7 +308,7 @@
       el.querySelector('.offline-slot').replaceChildren(offlineBanner() || '');
       fab.hidden = !canAct();
       if (!v) { scroll.replaceChildren(h('div', { class: 'loading' }, D.crab({ px: 4, state: 'working' }), h('p', { text: 'Finding your PC…' }))); return; }
-      const parts = [tide(v), Find.awayCard(), Find.searchRow()];
+      const parts = [tide(v), Later.outboxCard(), Find.awayCard(), Find.searchRow()];
       const prompts = v.prompts || [];
       if (prompts.length) {
         parts.push(h('h3', { class: 'sect asking' }, h('i'), h('span', { text: 'Waiting on you' }), h('b', { text: prompts.length })));
@@ -314,15 +331,17 @@
       scroll.replaceChildren(...parts.filter(Boolean));
     }
     update();
+    // What waits to send changes on the phone alone: the card follows it.
+    const stopOut = Later.onOutbox(() => { if (S.screen?.el === el) update(); else stopOut(); });
     return { el, update, title: 'Shellby' };
   }
 
   // One conversation and what its turns changed live in pocket-tab.js; the checks card on it comes from pocket-find.js.
-  const { tabScreen, diffScreen, transcript } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, voiceButton, canAct, lookOnly, wake, checksCard: (...a) => Find.checksCard(...a) });
+  const { tabScreen, diffScreen, transcript } = window.PocketTab({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, voiceButton, canAct, lookOnly, wake, later: Later, checksCard: (...a) => Find.checksCard(...a) });
   // A note's Start it opens New task with the note in it; Look over my changes picks a project.
   const More = window.PocketMore({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, confirmSheet, canAct, lookOnly, newTask: prefill => openSheet(newTaskSheet(prefill)), lookOver: () => openSheet(lookOverSheet()) });
   // Search, history, a closed conversation, the whole branch, and what happened while you were away.
-  const Find = window.PocketFind({ S, L, D, N, h, icon, live, go, act, actButton, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded: More.loaded, transcript, shortPath });
+  const Find = window.PocketFind({ S, L, D, N, h, icon, live, go, act, actButton, canAct, toast, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded: More.loaded, transcript, shortPath });
   // One prompt from its notification, and the quiet hours card (pocket-phone.js).
   const { promptScreen, quietCard, pushState, turnOnPush, turnOffPush } = window.PocketPhone({ S, L, D, h, ios, standalone, icon, live, tabOf, go, toast, act, topbar, offlineBanner, promptCard, canAct });
 
@@ -349,12 +368,36 @@
         parts.push(h('div', { class: 'card held' },
           h('div', { class: 'card-t' }, h('span', { class: 'card-title', text: x.name }), x.running ? h('span', { class: 'pill', text: 'running' }) : h('span', { class: 'pill dim', text: x.atText || 'at the reset' })),
           h('div', { class: 'card-m' }, h('span', { class: 'muted', text: x.kind === 'routine' ? 'A routine' : x.kind === 'message' ? 'A message' : x.folder || 'A task' })),
+          canAct() && x.kind === 'task' && !x.started ? heldTools(x, held) : null,
           canAct() ? actButton({ label: x.running ? 'Stop it' : 'Take it out', cls: 'ghost slim', run: () => confirmSheet({ title: x.running ? 'Stop it and take it out?' : 'Take it out of the queue?', text: x.name, yes: x.running ? 'Stop it' : 'Take it out', danger: true, then: () => act('cancel-held', { id: x.id }, { okText: 'Taken out.' }) }) }) : null));
       }
       scroll.replaceChildren(...parts);
     }
     update();
     return { el, update, title: 'Queue' };
+  }
+
+  // A task that hasn't started: reword it, or move it up or down the queue (they go oldest first).
+  function heldTools(x, held) {
+    const tasks = held.filter(y => y.kind === 'task' && !y.started);
+    const i = tasks.findIndex(y => y.id === x.id);
+    const move = (dir, label, iconName) => actButton({ label, cls: 'ghost slim icon-only', iconName, aria: label, run: () => act('held-move', { id: x.id, dir }) });
+    return h('div', { class: 'held-tools' },
+      i > 0 ? move('up', 'Earlier', 'up') : null,
+      i < tasks.length - 1 ? move('down', 'Later', 'down') : null,
+      // Only what the phone queued: one from the desk is reworded there.
+      x.editable ? h('button', { type: 'button', class: 'btn ghost slim', text: 'Edit', onclick: () => openSheet(rewordSheet(x)) }) : null,
+      x.when === 'tonight' ? h('span', { class: 'pill dim', text: 'tonight' }) : null);
+  }
+
+  function rewordSheet(x) {
+    return { label: 'Edit the task', build: close => {
+      const text = h('textarea', { class: 'task-in', rows: '5', maxlength: '4000', 'aria-label': 'The task' });
+      text.value = x.prompt || x.name;
+      const save = actButton({ label: 'Save', cls: 'go big', run: async () => { const r = await act('held-edit', { id: x.id, prompt: text.value }, { okText: 'Saved.' }); if (r.ok) close(); } });
+      setTimeout(() => text.focus(), 260);
+      return { el: h('div', { class: 'new-task' }, h('h2', { class: 'sheet-title', text: 'Edit the task' }), x.folder ? h('p', { class: 'muted', text: x.folder }) : null, text, save) };
+    } };
   }
 
   // ---------------------------------------------------------------- this phone
@@ -385,7 +428,8 @@
           canAct() ? h('ul', { class: 'plain' },
             h('li', { text: 'Allow or Deny a prompt, or always allow it when the desk would offer that. Answer a question, or approve a plan once you’ve read it. Anything the card warns about waits for the desk.' }),
             h('li', { text: 'Start a task or reply to any conversation, in the mode you pick, and a new task on the model you pick. A new task runs in its own copy when the folder is a repo.' }),
-            h('li', { text: 'Stop a turn, undo one, or bring a copy home. Have him look over a project’s changes for security problems.' }),
+            h('li', { text: 'Stop a turn, undo one, run its checks again, try a message again or branch from it, or bring a copy home. Have him look over a project’s changes for security problems.' }),
+            h('li', { text: 'Queue a task for after the reset or tonight, and reword or reorder what’s queued.' }),
             h('li', { text: 'Run a routine, guard your focus, add a note, or dress him up.' }),
             S.view?.allow?.files ? h('li', { text: 'Read a conversation’s files.' }) : null,
             S.view?.allow?.push ? h('li', { text: 'Push after bringing a copy home.' }) : null)
@@ -653,9 +697,12 @@
         }
         S.feeds.set(tabId, feed);
         if (S.screen?.tabId === tabId) S.screen.feed();
+        Later.heard(tabId, item);
       },
       live(on) {
         S.live = on;
+        // Back: what was written while the PC was away goes now.
+        if (on) Later.flush();
         document.body.classList.toggle('offline-mode', !on);
         refresh();
       },

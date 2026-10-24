@@ -453,9 +453,93 @@
     return Uint8Array.from(bin, c => c.charCodeAt(0));
   }
 
+  // ---------------------------------------------------------------- written while the PC was away
+
+  const OUTBOX_MAX = 20;
+  const OUTBOX_KINDS = ['task', 'reply'];
+
+  /** What the outbox kept, cleaned: [{ key, name, body, label, at }], oldest first. */
+  function outboxOf(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(e => e && OUTBOX_KINDS.includes(e.name) && typeof e.key === 'string' && e.key && e.body && typeof e.body === 'object')
+      .map(e => ({ key: e.key, name: e.name, body: e.body, label: String(e.label || '').slice(0, 120), at: Number.isFinite(e.at) ? e.at : 0 }))
+      .slice(-OUTBOX_MAX);
+  }
+
+  /** The outbox with one more to send: { list } or { error } when it's full. The same key is kept once. */
+  function outboxPut(list, entry) {
+    const now = outboxOf(list).filter(e => e.key !== entry.key);
+    if (now.length >= OUTBOX_MAX) return { error: `${OUTBOX_MAX} are already waiting to send. Let some go first.` };
+    return { list: [...now, ...outboxOf([entry])] };
+  }
+
+  const outboxDrop = (list, key) => outboxOf(list).filter(e => e.key !== key);
+
+  /** A fresh key: sent twice (after a slow answer, or from the outbox), the PC does it once. */
+  const newKey = () => Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+
+  // ---------------------------------------------------------------- prompts kept for later
+
+  const SAVED_MAX = 12;
+  const SAVED_TEXT = 1000;
+
+  /** The saved prompts, cleaned: [{ text }]. */
+  function savedOf(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(p => p && typeof p.text === 'string' && p.text.trim()).map(p => ({ text: p.text.trim().slice(0, SAVED_TEXT) })).slice(0, SAVED_MAX);
+  }
+
+  /** One more saved prompt, newest first: the same words aren't kept twice. { list } or { error }. */
+  function savePrompt(list, text) {
+    const t = String(text || '').trim().slice(0, SAVED_TEXT);
+    if (!t) return { error: 'Type the task first, then save it.' };
+    const rest = savedOf(list).filter(p => p.text !== t);
+    if (rest.length >= SAVED_MAX) return { error: `That's ${SAVED_MAX} saved already. Remove one first.` };
+    return { list: [{ text: t }, ...rest] };
+  }
+
+  const dropPrompt = (list, text) => savedOf(list).filter(p => p.text !== text);
+
+  /** A saved prompt's chip: its first line, cut short. */
+  function promptChip(text) {
+    const first = String(text || '').split('\n').find(l => l.trim()) || '';
+    const s = first.trim().replace(/\s+/g, ' ');
+    return s.length > 32 ? `${s.slice(0, 31).trimEnd()}…` : s;
+  }
+
+  // ---------------------------------------------------------------- read aloud
+
+  const SPOKEN_MAX = 4000;
+
+  /** A reply as it should be read aloud: no markdown marks, code said to be code, links as their words. */
+  function spokenText(md) {
+    return String(md || '')
+      .replace(/```[\s\S]*?(```|$)/g, ' (some code) ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+[.)])\s+/gm, '')
+      .replace(/(\*\*|__|\*|_|~~)(?=\S)([\s\S]*?\S)\1/g, '$2')
+      .replace(/^\s*(\|.*\|)\s*$/gm, line => line.replace(/\|/g, ' ').replace(/-{3,}/g, ''))
+      .replace(/https?:\/\/\S+/g, 'a link')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, SPOKEN_MAX);
+  }
+
+  // ---------------------------------------------------------------- a word on a line of a diff
+
+  /** A reply about one line of a change: where it is, the line itself, and what you said. */
+  function lineComment({ path, row, said }) {
+    const n = row?.kind === 'del' ? row.a : row?.b;
+    const where = `${path}${Number.isFinite(n) ? `, line ${n}` : ''}${row?.kind === 'del' ? ' (a line this turn removed)' : ''}`;
+    const code = String(row?.text ?? '').trim().slice(0, 300);
+    return `In ${where}:\n\n    ${code || '(an empty line)'}\n\n${String(said || '').trim()}`;
+  }
+
   const api = {
-    STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
-    markdown, modeLabel, parsePatch, plural, route, sections, sseParser, tappedHash, tokens,
+    OUTBOX_MAX, SAVED_MAX, STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, dropPrompt, duration, endLine, fold, formatCode, headline, inline, isIos, keyBytes,
+    lineComment, markdown, modeLabel, newKey, outboxDrop, outboxOf, outboxPut, parsePatch, plural, promptChip, route, savePrompt, savedOf, sections, spokenText, sseParser, tappedHash, tokens,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PocketLogic = api;

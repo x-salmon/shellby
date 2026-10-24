@@ -4,7 +4,7 @@
    what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketTab = ({ S, L, D, N, h, icon, tabOf, go, toast, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, canAct, lookOnly, wake, checksCard }) => {
+  root.PocketTab = ({ S, L, D, N, h, icon, live, tabOf, go, toast, buzz, act, actButton, topbar, offlineBanner, promptCard, confirmSheet, celebrate, shortPath, modePicker, shareTurn, openSheet, photoButton, canAct, lookOnly, wake, later, checksCard }) => {
     // ---------------------------------------------------------------- a transcript, drawn
 
     const GLYPH = { running: '◌', ok: '✓', error: '✕', stopped: '⊘' };
@@ -16,7 +16,10 @@
     // History) has no turn to open a diff of, so its changes have no link.
     function drawBlock(b, i, all, ctx) {
       switch (b.type) {
-        case 'user': return h('div', { class: 'msg-user' }, h('p', { text: b.text }));
+        // Yours, in a live conversation that may act: tap it to try again or branch from it.
+        case 'user': return ctx.onUser && b.turnId
+          ? h('button', { type: 'button', class: 'msg-user tappable', 'aria-label': `Your message: ${b.text}. Try again or branch from here`, onclick: () => ctx.onUser(b) }, h('p', { text: b.text }))
+          : h('div', { class: 'msg-user' }, h('p', { text: b.text }));
         case 'text': return h('div', { class: 'msg-claude' }, ctx.md(b.text, i));
         case 'tools': {
           const many = b.tools.length > 4 && i < all.length - 1;
@@ -55,6 +58,27 @@
       const blocks = L.fold(items);
       const full = { md: text => D.markdown(text), readOnly: false, tabId: null, ...ctx };
       return blocks.map((b, i) => drawBlock(b, i, blocks, full)).filter(Boolean);
+    }
+
+    // Try again from one of your messages, or branch from after its turn (branching.js on the PC):
+    // a new conversation from that point, in a copy with the files as they were then.
+    function branchSheet(tabId, b) {
+      return { label: 'From here', build: close => {
+        const go1 = (at, label, okText) => actButton({
+          label, cls: at === 'before' ? 'go big' : 'ghost big', iconName: 'branch',
+          run: async () => {
+            const r = await act('branch-from', { tabId, turnId: b.turnId, at, key: L.newKey() }, { okText, timeoutMs: 180000 });
+            if (r.ok) { close(); if (r.tabId) go(`#/tab/${encodeURIComponent(r.tabId)}`); }
+          },
+        });
+        return { el: h('div', { class: 'confirm' },
+          h('h2', { class: 'sheet-title', text: 'From this message' }),
+          h('p', { class: 'quote', text: b.text.length > 300 ? `${b.text.slice(0, 299)}…` : b.text }),
+          go1('before', 'Try it again', 'Trying it again, side by side.'),
+          h('p', { class: 'muted small', text: 'Sends this message again in a new conversation, with the files as they were before it. This one stays as it is.' }),
+          go1('after', 'Branch from after it', 'Branched.'),
+          h('p', { class: 'muted small', text: 'A new conversation that picks up once he’d answered it, for taking things another way.' })) };
+      } };
     }
 
     const EFFORTS = [['', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['xhigh', 'Extra high'], ['max', 'Max']];
@@ -130,20 +154,23 @@
       // Pictures go to the PC as they're picked (photoButton), and the reply names them.
       const photos = [];
       const strip = h('div', { class: 'photo-strip', 'aria-label': 'Pictures' });
+      // Offline too: it waits on the phone and goes when the PC answers (pocket-later.js).
       const send = actButton({
-        label: 'Send', cls: 'go icon-only', iconName: 'send', aria: 'Send',
+        label: 'Send', cls: 'go icon-only', iconName: 'send', aria: 'Send', offlineOk: true,
         run: async () => {
           const text = input.value.trim();
           if (!text && !photos.length) return;
           if (photos.some(p => !p.id)) { toast('A picture is still on its way. One moment.'); return; }
-          const r = await act('reply', { tabId, text, mode: mode.value, photos: photos.map(p => p.id) });
-          if (!r.ok) return;
+          if (!live() && photos.length) { toast('Pictures go once your PC answers. Send the words now, or wait.', { tone: 'warn' }); return; }
+          const r = await later.send('reply', { tabId, text, mode: mode.value, photos: photos.map(p => p.id) }, { label: `${tabOf(tabId)?.title || 'A conversation'}: ${L.promptChip(text)}` });
+          if (!r.ok) { if (r.error) toast(r.error, { tone: 'warn', ms: 4800 }); return; }
           input.value = '';
           input.style.height = '';
           for (const p of photos) URL.revokeObjectURL(p.url);
           photos.length = 0;
           strip.replaceChildren();
           if (r.queued) toast('Queued. He reads it at his next step.', { tone: 'ok' });
+          else if (!r.kept) buzz(8);
         },
       });
       const mode = modePicker(tabOf(tabId)?.mode);
@@ -172,6 +199,8 @@
         if (canAct()) tools.push(h('button', { type: 'button', class: 'btn ghost slim', 'aria-label': 'Rename, effort, look over or close', onclick: () => openSheet(tabMenu(tabId, t)) }, icon('more'), h('span', { class: 'btn-label', text: 'Options' })));
         const awake = awakeButton();
         if (awake) tools.push(awake);
+        const speak = later.speakButton(tabId);
+        if (speak) tools.push(speak);
         header.replaceChildren(h('h2', { class: 'tab-title', text: t.title }), h('div', { class: 'chips' }, ...chips), h('div', { class: 'tab-tools' }, ...tools), checksCard?.(tabId, t) || '');
       }
 
@@ -188,7 +217,7 @@
       function drawFeed() {
         const feed = S.feeds.get(tabId);
         if (!feed.loaded) { feedEl.replaceChildren(h('div', { class: 'loading small' }, D.crab({ px: 2.5, state: 'working' }), h('p', { text: 'Fetching the conversation…' }))); return; }
-        const nodes = transcript(feed.items, { tabId, md });
+        const nodes = transcript(feed.items, { tabId, md, onUser: canAct() ? b => openSheet(branchSheet(tabId, b)) : null });
         const typing = S.partial.get(tabId);
         if (typing) nodes.push(h('div', { class: 'msg-claude typing' }, D.markdown(typing), h('span', { class: 'caret', 'aria-hidden': 'true' })));
         if (!nodes.length) nodes.push(h('p', { class: 'muted pad', text: 'Nothing said yet.' }));
@@ -285,6 +314,34 @@
       return { el, update, feed: drawFeed, tabId, title: tabOf(tabId)?.title || 'Conversation' };
     }
 
+    // ---------------------------------------------------------------- a word on one line
+
+    // "Rename this", "why?": a reply that names the file and the line, in the mode the conversation has.
+    function commentSheet(tabId, path, row) {
+      return { label: 'About this line', build: close => {
+        const said = h('textarea', { class: 'task-in', rows: '3', maxlength: '3000', placeholder: 'Rename this, or why is it here?', 'aria-label': 'What about this line' });
+        const n = row.kind === 'del' ? row.a : row.b;
+        const send = actButton({
+          label: 'Send', cls: 'go big', offlineOk: true,
+          run: async () => {
+            if (!said.value.trim()) { said.focus(); toast('Say what about it first.'); return; }
+            const t = tabOf(tabId);
+            const r = await later.send('reply', { tabId, text: L.lineComment({ path, row, said: said.value }), mode: t?.mode || 'ask', photos: [] }, { label: n != null ? `${shortPath(path)}:${n}` : shortPath(path) });
+            if (!r.ok) { if (r.error) toast(r.error, { tone: 'warn', ms: 4800 }); return; }
+            close();
+            if (r.kept) return;
+            toast(r.queued ? 'Queued. He reads it at his next step.' : 'Sent.', { tone: 'ok' });
+          },
+        });
+        setTimeout(() => said.focus(), 260);
+        return { el: h('div', { class: 'new-task' },
+          h('h2', { class: 'sheet-title', text: 'About this line' }),
+          h('p', { class: 'cmd-file', text: `${shortPath(path)}${n != null ? ` · line ${n}` : ''}` }),
+          h('pre', { class: `cmd line-${row.kind}`, text: row.text || ' ' }),
+          said, send) };
+      } };
+    }
+
     // ---------------------------------------------------------------- what a turn changed
 
     function diffScreen(tabId, after) {
@@ -308,7 +365,9 @@
         if (!r.ok) { body.replaceChildren(h('p', { class: 'warn small pad', text: r.error || "Couldn't read that change." })); return; }
         const parsed = L.parsePatch(r.patch);
         const one = path ? parsed.find(f => f.path === path) || parsed[0] : null;
-        body.replaceChildren(...(path ? [one ? D.diffFile(one) : h('p', { class: 'muted small pad', text: 'No line changes.' })] : parsed.map(f => h('div', {}, h('p', { class: 'file-name mono', text: f.path }), D.diffFile(f)))));
+        // A tap on a line: a word about it, sent as a reply (only where a reply could go).
+        const tap = file => (canAct() && tabOf(tabId)?.canReply ? { onRow: row => openSheet(commentSheet(tabId, file.path, row)) } : {});
+        body.replaceChildren(...(path ? [one ? D.diffFile(one, tap(one)) : h('p', { class: 'muted small pad', text: 'No line changes.' })] : parsed.map(f => h('div', {}, h('p', { class: 'file-name mono', text: f.path }), D.diffFile(f, tap(f))))));
         if (r.truncated) body.append(h('p', { class: 'muted small pad', text: 'That’s as much as fits on a phone. The rest is on your PC.' }));
         row?.classList.add('loaded');
       }

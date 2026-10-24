@@ -39,8 +39,11 @@ const tabs = [
 let prompts = [
   { tabId: 'flaky', requestId: 'r1', toolName: 'Bash', label: 'Run', detail: 'npm test -- --grep upload', input: { command: 'npm test -- --grep upload' }, plain: { ask: 'Run the upload tests, then read what failed' }, warnings: [] },
 ];
-const extras = { flaky: { mode: 'ask', fromPhone: true, canReply: true }, summary: { mode: 'smart' }, tailnet: { mode: 'ask' }, site: { mode: 'acceptEdits' } };
-const held = [{ id: 'h1', kind: 'task', name: 'Write tests for the deck ref check', prompt: '', folder: 'shellby', atText: '14:20', running: false }];
+const extras = { flaky: { mode: 'ask', fromPhone: true, canReply: true }, summary: { mode: 'smart' }, tailnet: { mode: 'ask', canReply: true }, site: { mode: 'acceptEdits' } };
+const held = [
+  { id: 'h1', kind: 'task', name: 'Write tests for the deck ref check', prompt: 'Write tests for the deck ref check', folder: 'shellby', atText: '14:20', running: false, fromPhone: true },
+  { id: 'h2', kind: 'task', name: 'Tidy the docs index', prompt: 'Tidy the docs index', folder: 'shellby', atText: '01:00', when: 'tonight', running: false, fromPhone: true },
+];
 const projects = [{ key: 'C:\\code\\shellby', name: 'shellby' }, { key: 'C:\\code\\shellby-site', name: 'shellby-site' }, { key: 'C:\\code\\dotfiles', name: 'dotfiles' }];
 
 const items = {
@@ -113,6 +116,7 @@ const currentView = () => view.phoneView({
   lastUsage: { fiveHour: { pct: 42, resetsAt: Date.now() + 2 * 60 * min } },
   limits: { perHour: 30, atOnce: 10, open: 1 },
   models: MODELS, model: 'sonnet',
+  health: { cpu: { load: 34, temp: 62 }, gpus: [{ load: 12, temp: 48 }], ram: { pct: 58 }, battery: null },
   now: Date.now(),
 });
 
@@ -169,6 +173,11 @@ async function onAction(device, name, body) {
   if (name === 'home') { const t = tabs.find(x => x.id === body.tabId); emit(t.id, { kind: 'home', base: 'main', commits: 2 }); t.ready = null; t.unread = false; changed(); return { ok: true, merged: true, commits: 2, base: 'main' }; }
   if (name === 'reviewed') { const t = tabs.find(x => x.id === body.tabId); t.ready = null; t.unread = false; changed(); return { ok: true }; }
   if (name === 'cancel-held') { held.splice(0, held.length); changed(); return { ok: true }; }
+  if (name === 'held-edit') { const x = held.find(y => y.id === body.id); if (!x) return { ok: false, error: 'That has already gone.' }; x.prompt = x.name = body.prompt; changed(); return { ok: true }; }
+  if (name === 'held-move') { const i = held.findIndex(y => y.id === body.id); const j = i + (body.dir === 'up' ? -1 : 1); if (i < 0 || !held[j]) return { ok: false, error: 'That has already gone.' }; [held[i], held[j]] = [held[j], held[i]]; changed(); return { ok: true }; }
+  if (name === 'checks-run') { const t = tabs.find(x => x.id === body.tabId); t.checks = { status: 'running', after: t.ready?.after || 'a1b2c3', at: Date.now() }; changed(); setTimeout(() => { t.checks = { status: 'pass', after: t.checks.after, at: Date.now() }; changed(); }, 3000); return { ok: true, started: true }; }
+  if (name === 'branch-from') return onAction(device, 'task', { text: body.at === 'after' ? 'Branch of the conversation' : 'Tried again', project: 'C:\\code\\shellby' });
+  if (name === 'task' && (body.when === 'reset' || body.when === 'tonight')) { held.push({ id: `h${Date.now()}`, kind: 'task', name: body.text.slice(0, 60), prompt: body.text, folder: 'shellby', atText: body.when === 'tonight' ? '01:00' : '14:20', when: body.when, running: false, fromPhone: true }); changed(); return { ok: true, held: true, atText: body.when === 'tonight' ? '01:00' : '14:20', when: body.when }; }
   if (name === 'task') {
     const id = `new${Date.now()}`;
     tabs.unshift({ id, title: `📱 ${body.text.slice(0, 60)}`, cwd: body.project, busy: true, busySince: Date.now(), pending: 0, crew: 0, worktree: { branch: 'shellby/new', base: 'main' } });

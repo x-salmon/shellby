@@ -11,7 +11,7 @@
    riding the stream. pocket.js hands in what it shares with the other screens. */
 'use strict';
 (function (root) {
-  root.PocketFind = ({ S, L, D, N, h, icon, live, go, act, actButton, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded, transcript, shortPath }) => {
+  root.PocketFind = ({ S, L, D, N, h, icon, live, go, act, actButton, canAct, toast, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded, transcript, shortPath }) => {
     const SEEN_KEY = 'shellby.pocket.seen';
     const HISTORY_KEY = 'shellby.pocket.history';
     const AWAY_MS = 10 * 60 * 1000;   // hidden this long, and the card says what happened meanwhile
@@ -236,7 +236,7 @@
       const status = c.status;
       const word = { pass: 'Checks passed', fail: 'Checks failed', running: 'Checking…', timeout: 'Checks ran out of time', error: 'Checks couldn’t run' }[status] || `Checks: ${status}`;
       const card = h('div', { class: `card checks-card ${status}` },
-        h('div', { class: 'card-t' }, h('span', { class: 'card-title' }, h('span', { class: 'tool-g', 'aria-hidden': 'true', text: { pass: '✓', fail: '✕', running: '◌', timeout: '⊘', error: '✕' }[status] || '' }), ` ${word}`)));
+        h('div', { class: 'card-t' }, h('span', { class: 'card-title' }, h('span', { class: 'tool-g', 'aria-hidden': 'true', text: { pass: '✓', fail: '✕', running: '◌', timeout: '⊘', error: '✕' }[status] || '' }), ` ${word}`), runAgain(tabId, t)));
       if (status === 'pass' || status === 'running') return card;
       const key = `${tabId}:${c.after}:${status}`;
       let got = details.get(key);
@@ -264,6 +264,18 @@
         body.replaceChildren(...parts);
       });
       return card;
+    }
+
+    // Run the checks again now, on the conversation's last change: after Fix it, say.
+    function runAgain(tabId, t) {
+      if (!canAct() || t.checks?.status === 'running' || t.busy) return null;
+      return actButton({
+        label: 'Run again', cls: 'ghost slim', iconName: 'play',
+        run: async () => {
+          const r = await act('checks-run', { tabId });
+          if (r.ok) toast(r.started ? 'Running his checks. This card says how they went.' : r.status === 'pass' ? 'Checks passed.' : 'Checks done.', { tone: 'ok' });
+        },
+      });
     }
 
     // Fix it is a reply: it goes in the mode you pick, under the reply's own rules.

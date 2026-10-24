@@ -48,7 +48,7 @@
     let data;
     try { data = await res.json(); } catch { data = null; }
     if (res.status === 401) return { ok: false, unpaired: true, error: 'This phone isn’t paired any more.' };
-    if (res.status === 429) return { ok: false, error: 'Slow down a little, then try again.' };
+    if (res.status === 429) return { ok: false, retry: true, error: 'Slow down a little, then try again.' };
     if (res.status === 403 && !data) return { ok: false, error: 'Your PC turned that down.' };
     return data && typeof data === 'object' ? data : { ok: false, error: `Your PC said ${res.status}.` };
   }

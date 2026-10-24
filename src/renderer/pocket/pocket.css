@@ -597,3 +597,36 @@ label.note { text-align: left; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .sheet, .sheet.in { transition: none; }
 }
+
+/* The PC itself under the meter, from Health */
+.machine { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 13px; color: var(--sand-dim); font-variant-numeric: tabular-nums; }
+.machine .ic { flex: none; }
+.machine.warn b { color: var(--amber); }
+.machine.critical b { color: var(--danger); }
+
+/* Written while the PC was away, waiting to send */
+.outbox { border-color: rgba(255, 196, 92, .35); }
+.out-list { display: grid; gap: 2px; }
+.out-row { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 44px; }
+.out-row .btn { flex: none; }
+.out-what { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+
+/* Saved prompts on New task */
+.saved { display: grid; gap: 6px; }
+.saved-chips:empty { display: none; }
+.saved-chip { min-height: 34px; background: none; border-style: dashed; color: var(--sand); font-weight: 600; }
+.saved-chip.editing { border-color: var(--danger); }
+.saved-label { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--sand-dim); }
+.saved-tools { display: flex; gap: 16px; }
+
+/* A queued task: earlier, later, edit */
+.held-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* Your messages and a diff's lines, tapped for more */
+button.msg-user { border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+button.msg-user:active { filter: brightness(1.15); }
+.diff-row.tappable { cursor: pointer; }
+.diff-row.tappable:active, .diff-row.tappable:focus-visible { outline: 1px solid var(--glass); outline-offset: -1px; }
+.quote { margin: 0; padding: 10px 12px; border-left: 3px solid var(--line); color: var(--sand-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cmd.line-add { color: var(--add-fg); }
+.cmd.line-del { color: var(--del-fg); }

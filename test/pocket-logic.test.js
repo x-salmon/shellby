@@ -199,3 +199,47 @@ test('a screen reader hears a new prompt and a conversation that just finished, 
   const two = { ...before, prompts: [prompt('r3', 'x'), prompt('r4', 'y')] };
   assert.deepEqual(L.announcements({ ...before, prompts: [] }, two), ['2 prompts need you.']);
 });
+
+test('the outbox keeps what was written while the PC was away, once per key, oldest first, and no more than it can hold', () => {
+  let list = [];
+  list = L.outboxPut(list, { key: 'k1', name: 'task', body: { text: 'a', key: 'k1' }, label: 'a', at: 1 }).list;
+  list = L.outboxPut(list, { key: 'k2', name: 'reply', body: { text: 'b', key: 'k2' }, label: 'b', at: 2 }).list;
+  list = L.outboxPut(list, { key: 'k1', name: 'task', body: { text: 'a again', key: 'k1' }, label: 'a', at: 3 }).list;
+  assert.deepEqual(list.map(e => e.key), ['k2', 'k1']);
+  assert.equal(list[1].body.text, 'a again');
+  assert.deepEqual(L.outboxDrop(list, 'k2').map(e => e.key), ['k1']);
+  // Only tasks and replies, never anything else the PC could be asked.
+  assert.deepEqual(L.outboxOf([{ key: 'x', name: 'home', body: {} }, null, { key: 'y', name: 'reply', body: {} }]).map(e => e.key), ['y']);
+  let full = [];
+  for (let i = 0; i < L.OUTBOX_MAX; i++) full = L.outboxPut(full, { key: `k${i}`, name: 'reply', body: {}, label: '' }).list;
+  assert.match(L.outboxPut(full, { key: 'more', name: 'reply', body: {} }).error, /waiting to send/);
+  assert.notEqual(L.newKey(), L.newKey());
+  assert.match(L.newKey(), /^[A-Za-z0-9_-]{8,64}$/, 'a key the PC accepts');
+});
+
+test('saved prompts: newest first, the same words once, and a chip from the first line', () => {
+  let list = L.savePrompt([], 'Run the tests and fix what fails').list;
+  list = L.savePrompt(list, 'Update the dependencies\nand run the tests').list;
+  list = L.savePrompt(list, 'Run the tests and fix what fails').list;
+  assert.deepEqual(list.map(p => p.text), ['Run the tests and fix what fails', 'Update the dependencies\nand run the tests']);
+  assert.match(L.savePrompt(list, '   ').error, /Type the task/);
+  assert.deepEqual(L.dropPrompt(list, 'Run the tests and fix what fails').length, 1);
+  assert.equal(L.promptChip('Update the dependencies\nand run the tests'), 'Update the dependencies');
+  assert.equal(L.promptChip('A very long saved prompt that keeps on going past the chip'), 'A very long saved prompt that k…');
+  let full = [];
+  for (let i = 0; i < L.SAVED_MAX; i++) full = L.savePrompt(full, `task ${i}`).list;
+  assert.match(L.savePrompt(full, 'one more').error, /Remove one/);
+});
+
+test('a reply read aloud has no markdown marks, says code is code, and names a link', () => {
+  const said = L.spokenText('## Done\n\nI **fixed** the `upload` test.\n\n```js\nconst x = 1;\n```\n\n- See [the docs](https://example.com/docs) or https://example.com');
+  assert.equal(said, 'Done I fixed the upload test. (some code) See the docs or a link');
+  assert.equal(L.spokenText(''), '');
+});
+
+test('a word on a line of a diff names the file and the line, added or removed', () => {
+  const add = L.lineComment({ path: 'src/a.js', row: { kind: 'add', text: '  const x = 1;', a: null, b: 12 }, said: 'Rename x' });
+  assert.equal(add, 'In src/a.js, line 12:\n\n    const x = 1;\n\nRename x');
+  const del = L.lineComment({ path: 'src/a.js', row: { kind: 'del', text: 'old()', a: 7, b: null }, said: 'Why did this go?' });
+  assert.match(del, /line 7 \(a line this turn removed\)/);
+});

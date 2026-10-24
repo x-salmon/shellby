@@ -29,7 +29,7 @@ Settings walks you through it a step at a time, ticking each one off as it works
 
 ## What it does
 
-**The beach** is everything at a glance, in the same order as the desk's tabs: what's waiting on you first, then what's ready to review, then what's finished, working and quiet. Shellby himself sits at the top, the real crab in the skin you chose, doing what he's doing on your desktop, with your 5-hour usage window under him.
+**The beach** is everything at a glance, in the same order as the desk's tabs: what's waiting on you first, then what's ready to review, then what's finished, working and quiet. Shellby himself sits at the top, the real crab in the skin you chose, doing what he's doing on your desktop, with your 5-hour usage window under him. When Health is on at your PC, a line under that says how the PC itself is doing: the CPU's and graphics card's load and heat, memory, and the battery, with Health's own warning when something runs hot. Worth a look before you send something heavy off from the sofa.
 
 **A permission prompt** shows as a card with the plain sentence, the command (or the edit, line by line), and any warning the desk card would show. **Allow** and **Deny** answer it straight from the beach, and when the desk card offers **Allow all edits** or **Always allow**, so does the phone. Like answering from a notification, some prompts are only ever answered at the desk:
 
@@ -40,11 +40,15 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 **Questions and plans** open in a sheet. A question shows its options as buttons, with a box for your own answer, and **Skip** lets him carry on with his best judgement. A plan shows in full, and **Approve** stays shut until you've scrolled to the end. **Keep planning** sends your notes back with it.
 
-**A conversation** opens live: Claude's reply as he writes it, each tool he runs, his helpers in their own lanes, the to-do list, and what each turn cost. **Keep awake** keeps the screen on while a conversation is open, until you turn it off (on phones that let a web app do that). **Stop** ends a turn. When a turn changed files, **See the changes** shows the diff file by file, wrapped to fit, and **Undo turn** and **Bring it home** do what they do at the desk, with the same checks gate and a confirmation on the phone first.
+**A conversation** opens live: Claude's reply as he writes it, each tool he runs, his helpers in their own lanes, the to-do list, and what each turn cost. **Keep awake** keeps the screen on while a conversation is open, until you turn it off (on phones that let a web app do that). **Stop** ends a turn. When a turn changed files, **See the changes** shows the diff file by file, wrapped to fit. Tap a line in it to say something about that line ("rename this", "why is this here?"): it goes as a reply that names the file and the line. **Undo turn** and **Bring it home** do what they do at the desk, with the same checks gate and a confirmation on the phone first.
 
-**Its checks** sit under the title: passed, failed or running, as the desk last ran them. A failed one shows the tail of what each command said, and **Fix it** sends that back to Claude as a reply, in the mode you pick. It follows the reply's rules: not while he's working, not while a prompt is waiting, and not for a conversation that's gone to a terminal.
+**Its checks** sit under the title: passed, failed or running, as the desk last ran them, with **Run again** to run them now on the conversation's last change (after a Fix it, say). A failed one shows the tail of what each command said, and **Fix it** sends that back to Claude as a reply, in the mode you pick. It follows the reply's rules: not while he's working, not while a prompt is waiting, and not for a conversation that's gone to a terminal.
 
 **See everything** is on a conversation in its own copy: the whole branch against the commit it started from, which is exactly what Bring it home would bring, uncommitted work included. It's the same viewer as See the changes, file by file, and no bigger than a phone can read.
+
+**Read aloud**, on a conversation, reads his last reply out and every reply after it while a conversation is open, until you turn it off. Code is skipped ("some code"), and links are just "a link". Handy on a walk.
+
+**Try it again or branch from here.** Tap one of your own messages for **Try it again**, which sends it again in a new conversation with the files as they were before it, or **Branch from after it**, which picks up once he'd answered it, for taking things another way. The conversation you started from stays as it is, as with Try again from here and Branch from here at the desk.
 
 **Search**, on the beach, looks through every conversation in History across every project: titles, what you asked for first and what Claude said he'd done, ranked as the desk's own search ranks. **History** beside it lists one project's conversations (or all of them) by day, newest first, thirty at a time. Tapping a closed conversation shows it read-only, with **Open it again** to carry on (as **More → History** does); an open one opens live.
 
@@ -58,8 +62,10 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 - `!` commands and settings never come from the phone. A new task can't start with a `/` command, and a reply can run only `/compact`, `/context` or `/goal`; the rest stay at the desk.
 - You can reply to any conversation, in the mode you pick under the reply box. The conversation keeps that mode until you change it at the desk.
 - **Speak** fills the box using your phone's own dictation, and **Picture** adds up to four photos. They're shrunk to a JPEG on the phone first and kept on the PC like a pasted picture.
+- **When**: Now, **After the reset** (your 5-hour window's) or **Tonight** (1am). A task for later goes in the Queue, as one queued on the Routines page does, and keeps its mode and model. Pictures only go with a task that starts now.
+- **Saved** tasks sit above the box: **Save this** keeps what you've typed as a chip ("Run the tests and fix what fails"), a tap on one fills the box, and **Edit** lets you take them away. They're kept on this phone, twelve at most.
 
-**Queue** is what's waiting for the usage reset, with **Take it out** for each one, under your 5-hour and weekly windows, your pace, and what the spending guard keeps back.
+**Queue** is what's waiting for the usage reset or for tonight, with **Take it out** for each one, and for a task that hasn't started yet, arrows to move it earlier or later (they go in order) and, for one the phone queued itself, **Edit** to reword it, under your 5-hour and weekly windows, your pace, and what the spending guard keeps back.
 
 **Share into Shellby.** On Android, share a screenshot, a link or some text from any app to **Shellby**: it opens New task with it, pictures and all, to send him off with, or **Keep it as a note** for later. Nothing goes to your PC until you press one.
 
@@ -74,7 +80,7 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 Every paired phone gets a level in Settings → On your phone, beside its **Forget** button:
 
 - **Full** is everything above. It's what a phone has when you pair it, and what every phone paired before this had.
-- **Read only** sees everything (the beach, every conversation as it happens, what changed, the queue, routines, notes, trophies) and changes nothing: it can't answer a prompt, start a task, reply, stop a turn, undo one, bring a copy home, push, run a routine or a look-over, change your focus or dress him up. Its notifications come without Allow and Deny. It can still turn its own notifications on or off, and forget itself.
+- **Read only** sees everything (the beach, every conversation as it happens, what changed, the queue, routines, notes, trophies) and changes nothing: it can't answer a prompt, start a task, reply, stop a turn, undo one, run checks, try a message again or branch from it, change the queue, bring a copy home, push, run a routine or a look-over, change your focus or dress him up. Its notifications come without Allow and Deny. It can still turn its own notifications on or off, and forget itself.
 
 The level is checked on your PC for every call, not just hidden on the phone, so a tablet on the kitchen counter can watch without being able to say yes. Changing it takes effect at once, on a phone that's open too.
 
@@ -94,7 +100,7 @@ There's also a quiet **"working on it"** notification for tasks the phone starte
 
 **On a tablet** the app turns sideways with it, in a wider layout. **With a screen reader**, a new prompt and a conversation that just finished are read out as they happen.
 
-**When the PC sleeps** the app keeps what it last knew, says how old it is ("This is how things were at 09:12"), and comes back by itself the moment the PC answers.
+**When the PC sleeps** the app keeps what it last knew, says how old it is ("This is how things were at 09:12"), and comes back by itself the moment the PC answers. You can still write: a new task, a reply or a word on a line waits on the phone, in a **waiting to send** card on the beach with **Don't send** for each, and goes in order the moment the PC answers. Each one carries a key, so one that reached the PC just as the connection dropped is never done twice. Pictures need the PC there to take them.
 
 ## Notifications
 

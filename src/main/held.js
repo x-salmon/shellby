@@ -134,6 +134,38 @@ function started(list, id, tabId) {
 /** Has this task been started as often as it may be? */
 const spent = h => h.kind === 'task' && h.tries >= MAX_TRIES;
 
+/**
+ * A queued task reworded, before it has started anywhere: { list } or { error }.
+ * Its name follows the new words, unless it was given one of its own.
+ */
+function reword(list, id, prompt) {
+  const h = list.find(x => x.id === id);
+  if (!h || h.kind !== 'task') return { error: "That isn't a queued task any more." };
+  if (h.tabId) return { error: 'That one has started already, so it carries on as it is.' };
+  const text = typeof prompt === 'string' ? prompt.trim().slice(0, MAX_TEXT) : '';
+  if (!text) return { error: 'Say what Shellby should do.' };
+  const named = h.name !== taskName(h.prompt);
+  return { list: list.map(x => (x.id === id ? { ...x, prompt: text, name: named ? x.name : taskName(text) } : x)) };
+}
+
+/**
+ * A queued task one place earlier (dir < 0) or later among the tasks: the queue
+ * goes oldest first, so it swaps createdAt with its neighbour. { list } or { error }.
+ */
+function move(list, id, dir) {
+  // Only those still waiting: one that has started carries on where it is.
+  const tasks = list.filter(x => x.kind === 'task' && !x.tabId);
+  const i = tasks.findIndex(x => x.id === id);
+  if (i < 0) return { error: "That isn't a queued task any more, or it has started." };
+  const other = tasks[i + (dir < 0 ? -1 : 1)];
+  if (!other) return { list };
+  const a = tasks[i];
+  // Queued in the same millisecond: a nudge past it, or the swap would change nothing.
+  const mine = other.createdAt === a.createdAt ? a.createdAt + (dir < 0 ? -1 : 1) : other.createdAt;
+  const swapped = list.map(x => (x.id === a.id ? { ...x, createdAt: mine } : x.id === other.id ? { ...x, createdAt: a.createdAt } : x));
+  return { list: swapped.sort((p, q) => p.createdAt - q.createdAt) };
+}
+
 /** "2 messages, a routine and 3 queued tasks": what went, for one notification. */
 function summary(items) {
   const n = k => items.filter(h => h.kind === k).length;
@@ -145,4 +177,4 @@ function summary(items) {
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts.join('');
 }
 
-module.exports = { normalize, hold, without, due, next, defer, started, spent, summary, taskName, MAX_HELD, MAX_TRIES, TASK_MODES };
+module.exports = { normalize, hold, reword, move, without, due, next, defer, started, spent, summary, taskName, MAX_HELD, MAX_TRIES, TASK_MODES };
