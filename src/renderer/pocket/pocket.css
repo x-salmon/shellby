@@ -165,7 +165,7 @@ body.offline-mode .btn:not(.ghost):not(.link) { filter: saturate(.5); opacity: .
 @keyframes pulse { 50% { opacity: .35; } }
 
 .card {
-  display: grid; gap: 8px; width: 100%; text-align: left; padding: 13px 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; width: 100%; text-align: left; padding: 13px 14px;
   background: var(--reef); border: 1px solid var(--line); border-radius: 14px; color: var(--sand);
 }
 button.card { cursor: pointer; font: inherit; transition: transform .12s var(--ease-out), border-color .2s; }
@@ -554,8 +554,8 @@ label.note { text-align: left; }
 .away .card-t .card-title { color: var(--glass); }
 .away-x { width: 36px; height: 36px; margin: -6px -8px -6px 0; border: 0; border-radius: 50%; background: none; color: var(--sand-dim); font-size: 22px; line-height: 1; cursor: pointer; }
 .away-line { margin: 0; font-size: 15px; }
-.away-rows { display: grid; gap: 2px; }
-.away-row { display: flex; gap: 10px; align-items: center; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--sand); text-align: left; cursor: pointer; border-radius: 8px; }
+.away-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.away-row { display: flex; min-width: 0; gap: 10px; align-items: center; min-height: 40px; padding: 0 4px; border: 0; background: none; color: var(--sand); text-align: left; cursor: pointer; border-radius: 8px; }
 .away-row:active { background: var(--reef-2); }
 .away-row .tool-g { width: 16px; text-align: center; }
 .away-row .tool-g.err { color: var(--danger); }
