@@ -309,7 +309,7 @@ test('home and push from the phone waits for Settings to allow pushing', async (
     assert.equal(w.of('bringTabHome').length, 0);
     await w.d.setPocket({ allow: { push: true } });
     assert.equal((await act({ tabId: 't1', push: true })).ok, true);
-    assert.deepEqual(w.of('bringTabHome')[0], ['t1', { force: false, push: true }]);
+    assert.deepEqual(w.of('bringTabHome')[0], ['t1', { force: false, finish: true, push: true }]);
   } finally { stop(w); }
 });
 
@@ -464,7 +464,8 @@ test('bring it home, stop, reviewed and the queue go through the desk’s own co
     t.session.busy = false;
     assert.equal((await w.d.pocket.onAction(w.device, 'stop', { tabId: 't1' })).ok, false);
     assert.deepEqual(await w.d.pocket.onAction(w.device, 'home', { tabId: 't1' }), { ok: true, merged: true, commits: 2, base: 'main' });
-    assert.deepEqual(w.of('bringTabHome'), [['t1', { force: false }]]);
+    // The phone finishes it, as the desk's "Bring it home and finish" does: it moves to Done.
+    assert.deepEqual(w.of('bringTabHome'), [['t1', { force: false, finish: true }]]);
     assert.equal((await w.d.pocket.onAction(w.device, 'reviewed', { tabId: 't1', after: 'a1' })).ok, true);
     assert.equal((await w.d.pocket.onAction(w.device, 'cancel-held', { id: 'h1' })).ok, true);
     assert.equal((await w.d.pocket.onAction(w.device, 'cancel-held', { id: 'h2' })).ok, false);
