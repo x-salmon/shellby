@@ -190,6 +190,23 @@ async function onAction(device, name, body) {
       recent: [{ at: Date.now() - 4 * min, xp: 30, label: 'Tests passed in shellby' }, { at: Date.now() - 50 * min, xp: 60, label: 'Brought a copy home' }, { at: Date.now() - 3 * 60 * min, xp: 30, label: 'Bounty: Pass the tests twice' }],
     };
   }
+  if (name === 'routines') {
+    const at = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); if (d < new Date()) d.setDate(d.getDate() + 1); return d.getTime(); };
+    return {
+      ok: true,
+      routines: [
+        { id: 'r1', name: 'Docs check: shellby', enabled: true, running: false, scheduleText: 'Every day at 8:00 PM', next: at(20, 0), folder: 'shellby' },
+        { id: 'r2', name: 'Tax deadline check', enabled: true, running: false, scheduleText: 'Mon at 9:00 AM', next: at(9, 0), folder: 'home' },
+        { id: 'r3', name: 'Open items reminder', enabled: false, running: false, scheduleText: 'Every day at 8:30 AM', next: null, folder: 'home' },
+        { id: 'r4', name: 'Rules watch', enabled: true, running: true, scheduleText: 'Mon at 8:30 AM', next: at(8, 30), folder: 'shellby' },
+      ],
+      workflows: [
+        { id: 'w1', name: 'Fix a red build', description: 'When CI fails on main, find the cause and open a fix.', enabled: true, running: false, needsInputs: false },
+        { id: 'w2', name: 'Release notes', description: 'Gather the change notes into a draft.', enabled: false, running: false, needsInputs: true },
+      ],
+    };
+  }
+  if (name === 'routine-toggle' || name === 'routine-run' || name === 'workflow-run') return { ok: true };
   if (name === 'forget') return { ok: true };
   return { ok: false, error: 'unknown' };
 }
