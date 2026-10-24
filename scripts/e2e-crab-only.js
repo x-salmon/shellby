@@ -45,9 +45,12 @@ async function launch() {
   let run = await launch();
   try {
     const { panel, critter } = run;
+    // The panel picks its first view once settings load, which on a slow start
+    // comes after any fixed wait: poll for it.
+    const until = async (expr, ms = 15000) => { const end = Date.now() + ms; for (;;) { const v = await panel.ev(expr); if (v || Date.now() > end) return v; await wait(200); } };
     await wait(3000);
     // 1. First run: onboarding with three paths, Claude steps tucked away.
-    check(await panel.ev("document.body.dataset.view") === 'onboarding', 'new user sees onboarding');
+    check(await until("document.body.dataset.view === 'onboarding'"), 'new user sees onboarding');
     check(await panel.ev("document.querySelectorAll('#onboardPaths .path').length") === 4, 'four paths offered');
     check(await panel.ev("document.getElementById('claudeSetup').hidden"), 'Claude steps hidden until chosen');
     await shot(panel, '1-onboarding');
