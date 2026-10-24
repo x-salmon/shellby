@@ -4,6 +4,7 @@
 // Never with uncommitted work in the way, and never onto a branch another copy holds.
 const { execFile } = require('child_process');
 const leaving = require('./leaving');
+const { noHooks } = require('./changes');
 
 const GIT_TIMEOUT_MS = 20000;
 const REF = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;
@@ -11,7 +12,9 @@ const REF = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;
 function run(cwd, args) {
   return new Promise(resolve => {
     // No fsmonitor or hooks: a repository's config must not choose a program for us to run.
-    execFile('git', ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '-C', cwd, ...args],
+    // Hooks point at this run's own empty folder (changes.js): /dev/null is C:\dev\null on
+    // Windows, a folder any user can make.
+    execFile('git', ['-c', 'core.fsmonitor=false', ...noHooks(), '-C', cwd, ...args],
       { windowsHide: true, timeout: GIT_TIMEOUT_MS, maxBuffer: 1024 * 1024 },
       (err, stdout, stderr) => resolve({ ok: !err, out: String(stdout || ''), err: String(stderr || '').trim() }));
   });
