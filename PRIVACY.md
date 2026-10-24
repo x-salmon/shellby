@@ -1,6 +1,6 @@
 # Privacy policy
 
-*Last updated: 18 October 2026, adding community news, the gallery index read for the trophies for making Shellby, and your year on your calling card during Wrapped week.*
+*Last updated: 19 October 2026, adding the once-a-day sponsor check with GitHub and the Patron proof for public sponsors. On 18 October: community news, the gallery index read for the trophies for making Shellby, and your year on your calling card during Wrapped week.*
 
 Shellby is a desktop app that runs on your PC. It has **no servers, no accounts of its own, no telemetry and no analytics**. Nobody behind Shellby, including its author, receives anything about you or how you use it, except a crash report you choose to send, and, if you publicly sponsor Shellby on GitHub, your GitHub username, to sign your 🏮 Patron proof (both below).
 

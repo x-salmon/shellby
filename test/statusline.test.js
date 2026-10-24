@@ -86,6 +86,9 @@ test('whether the Shellby plugin is on, from enabledPlugins', () => {
 test('the plugin version Shellby expects is the one in claude-plugin', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'claude-plugin', '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.equal(PLUGIN_VERSION, manifest.version, 'bump PLUGIN_VERSION in src/main/statusline.js with the plugin');
+  const market = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.claude-plugin', 'marketplace.json'), 'utf8'));
+  const listed = market.plugins.find(p => p.name === 'shellby');
+  assert.equal(listed?.version, manifest.version, 'bump the version in .claude-plugin/marketplace.json with the plugin');
 });
 
 test('isOlderVersion: compares major.minor.patch as numbers, and never calls a version it cannot read older', () => {

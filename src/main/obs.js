@@ -10,7 +10,7 @@
 // on the stream is the same crab, with the same outfit and the same animations,
 // rather than a second copy that drifts.
 //
-// Security: localhost only, GET only, and every URL it will answer is in a fixed
+// Security: localhost only, GET and HEAD only, and every URL it will answer is in a fixed
 // table built at startup. No part of a request ever becomes part of a file path,
 // so there is no traversal to get wrong.
 const fs = require('fs');

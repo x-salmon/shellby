@@ -9,10 +9,10 @@ Six times a year, for a week or so, something's going on at sea. While one's on,
 | Event | When | Its bug comes along with... | The twist |
 |---|---|---|---|
 | 🌾 **Harvest Moon** | Oct 1 – 9 | a fix that works first try | every catch pays half again in XP |
-| 🎃 **The Haunting** | Oct 24 – Nov 1 | any fix after 9 pm | ghosts in the Wreck are twice as likely to sparkle |
-| ❄️ **Frostbite** | Dec 18 – Jan 1 | your third catch in a day | |
+| 🎃 **The Haunting** | Oct 24 – Nov 1 | any fix between 9 pm and 5 am | ghosts in the Wreck are twice as likely to sparkle |
+| ❄️ **Frostbite** | Dec 18 – Jan 1 | your third catch in a day | snow piles up on his shell a little with every catch (the banner's line only: no boost) |
 | 💌 **Pen Pal Week** | Feb 9 – 15 | a bug beaten with a helper crab in the fight | swaps count double toward the trophies |
-| 🌸 **Spring Clean** | Mar 22 – Apr 2 | a fix that deletes more lines than it adds | |
+| 🌸 **Spring Clean** | Mar 22 – Apr 2 | a fix that deletes more lines than it adds | something lives in the code you delete (the banner's line only: no boost) |
 | 🌊 **Low Tide** | Jul 10 – 21 | any catch in the Shallows | he digs twice as often, and finds and bugs sparkle twice as often |
 
 South of the equator (the town you picked for the weather), Harvest Moon, Spring Clean and Low Tide move six months, like their seasons. The holidays keep their dates.

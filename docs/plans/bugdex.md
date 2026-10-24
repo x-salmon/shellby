@@ -36,6 +36,11 @@
   while-you-were-away card.
 - `bug-terrarium` (not `terrarium`, which `shell-cargo.json` already has) is the
   Naturalist reward.
+- **Files the plan names that aren't there.** `needs.js` was removed with his needs on
+  2026-10-17 ([pet-needs.md](pet-needs.md)), so a catch feeds no snack. The sprite code
+  the pages share is `src/renderer/shared/sprite.js` and `pixel-grid.js`, not a
+  `pixel-art.js`. The lifecycle tests are in `test/bugdex.test.js`, not a
+  `bugdex-lifecycle.test.js`.
 
 The code: `src/main/bugdex/index.js` (state, pure), `src/main/bugdex/` (`species`, `detect`,
 `lifecycle`, `cheats`, `art`), `src/main/wiring/bugdex.js`, and the panel's

@@ -87,8 +87,9 @@ one lands under "Changed" word for word.
 - **e2e counts come from source** (`FINDS`, `SETS`, `BITS`, `templates()`), never
   hardcoded numbers.
 - `claude-plugin/.claude-plugin/plugin.json` has its own version. Bump it together
-  with `PLUGIN_VERSION` in `src/main/statusline.js` (a test checks they match), and
-  only when the plugin changes.
+  with `PLUGIN_VERSION` in `src/main/statusline.js` and the plugin's entry in
+  `.claude-plugin/marketplace.json` (a test checks all three match), and only when
+  the plugin changes.
 
 ## Running the app and probes
 
