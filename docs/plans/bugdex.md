@@ -36,6 +36,11 @@
   while-you-were-away card.
 - `bug-terrarium` (not `terrarium`, which `shell-cargo.json` already has) is the
   Naturalist reward.
+- **Files the plan names that aren't there.** `needs.js` was removed with his needs on
+  2026-10-17 ([pet-needs.md](pet-needs.md)), so a catch feeds no snack. The sprite code
+  the pages share is `src/renderer/shared/sprite.js` and `pixel-grid.js`, not a
+  `pixel-art.js`. The lifecycle tests are in `test/bugdex.test.js`, not a
+  `bugdex-lifecycle.test.js`.
 
 The code: `src/main/bugdex/index.js` (state, pure), `src/main/bugdex/` (`species`, `detect`,
 `lifecycle`, `cheats`, `art`), `src/main/wiring/bugdex.js`, and the panel's
@@ -50,7 +55,7 @@ The same strictness as `docs/plans/flaky-tests.md` applies: **a false catch teac
 
 Everything stays on this PC except species counts, which sync like XP. No error text is stored, only a species id, a 12-character hash and a project id.
 
-This file is the contract between the pure modules (`src/main/bugdex*.js`), main, the panel, the crab and the tests.
+This file is the contract between the pure modules (`src/main/bugdex/`), main, the panel, the crab and the tests.
 
 ---
 
@@ -558,7 +563,7 @@ newbug: { xp: 40, perHour: 3, label: 'A new bug for the Bugdex', way: 'Catches a
 
 Each item gets `"unlock": { "achievement": "<id>" }`. `test/packs.test.js` checks both directions, and `npm run packs` validates.
 
-**Needs** (`src/main/needs.js`): add `'bug-caught': { group: 'work', snack: 'plankton', n: 1, perDay: 3, claude: true }` next to `'ci-fixed'` (needs.js:85).
+**Needs** (`src/main/needs.js`, since removed with pet needs): add `'bug-caught': { group: 'work', snack: 'plankton', n: 1, perDay: 3, claude: true }` next to `'ci-fixed'` (needs.js:85).
 
 **Week in review**:
 - `weekly.js KINDS` gets `'caught'` and `'newbug'`.

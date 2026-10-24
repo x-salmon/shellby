@@ -61,7 +61,7 @@ So Shellby doesn't panic at every spike:
 
 ## Notifications
 
-You get one Windows notification when a reading crosses its warning line, and another if it gets very bad. The same warning won't repeat for 30 minutes, though going from warning to very bad always notifies. Clicking the notification opens the Health view.
+You get one Windows notification when a reading crosses its warning line, and another if it gets very bad. The same warning won't repeat for 30 minutes, though going from warning to very bad always notifies, and a very bad reading notifies again every 10 minutes while it lasts. Clicking the notification opens the Health view.
 
 The Health view keeps a log of the last 40 alerts, including when things went back to normal.
 
@@ -91,9 +91,9 @@ Processes that run as administrator can't be ended without admin rights, and She
 
 Above the list, one line owns up to his share: **Shellby himself: 1% CPU, 450 MB**. It adds up every process he runs (his window, the panel, and the helpers Electron starts for them), counts CPU as a share of your whole PC like Task Manager does, and updates every 5 seconds. Hover it to see how many processes that is and what it comes to as a share of one core.
 
-Mostly that's the panel: its animations run while you're looking at it, and calm down when another window is in front. If he's using 5% or more of your PC, or over 1 GB, a hint says what helps. With the panel closed he settles to almost nothing, and once he's been measured that way on your PC the hint tells you the actual figure. Fewer pals and less wandering (**Settings → Moving around**) make him lighter still.
+Mostly that's the panel: its animations run while you're looking at it, and calm down when another window is in front. If he's using 5% or more of your PC, or over 1 GB, a hint says what helps. With the panel closed he settles to almost nothing, and once he's been measured that way on your PC the hint tells you the actual figure. Fewer pals and less wandering (**Settings → Shellby → Moving around**) make him lighter still.
 
-GPU use per process needs Windows 10 1709 or later. Reading the list takes a second or two, so it's only read while the Health view is open and something is wrong.
+GPU use per process needs Windows 10 1709 or later. Reading the list takes a second or two, so it's only read while the Health view is open and something is wrong, or when you open the list yourself (**See what's using the CPU, GPU and memory right now**).
 
 ## Starts with Windows
 
@@ -145,5 +145,8 @@ In the Health view:
 - `src/main/health/startup.js`: the startup list, its on/off switch and the audit prompt. Also covered in `test/hogs.test.js`.
 - `src/main/health/hwinfo.js`: HWiNFO's readings through Remote Sensor Monitor.
 - `src/main/health/space.js`: Docker, WSL and the package caches, and the cleanup prompt.
+- `src/main/health/lhm-update.js`: LibreHardwareMonitor's version against its latest release (at most once a day), and the update prompt. Covered in `test/lhm-update.test.js`.
+- `src/main/health/footprint.js`: Shellby's own CPU and memory across all his processes. Covered in `test/footprint.test.js`.
+- `src/main/health/fake.js`: the scripted sensors `SHELLBY_FAKE_HEALTH` picks (dev and test runs only).
 - **Fake sensors.** `SHELLBY_FAKE_HEALTH=hot|scorching|dizzy|stuffed|calm|nocpu|hotdrive|cluttered npm start` runs a dev build with scripted sensors and no waiting. It's ignored by installed builds.
 - **End-to-end check.** `node scripts/e2e-health.js` launches each scenario and checks the desktop mood, the bubble, the Health view and the badge on Health in the panel's bottom bar.

@@ -298,7 +298,7 @@ The cadence should follow the people, not the calendar.
   the signed-in login and not otherwise; never lock again on sign-out.
 - `test/events.test.js`: one-off years, colours present, no renderer copies
   left (a test greps the renderer for event ids outside the shared list).
-- `test/catalog.test.js`: `unlock: { event }` accepted for built-in ids,
+- `test/wardrobe.test.js`: `unlock: { event }` accepted for built-in ids,
   refused otherwise; `contest` field shape.
 - `test/yearbook.test.js`: `wrappedWeek` edges (Jan 1, Jan 2, Jan 8, Jan 9) and
   the calling card's `wrapped` cleaning.

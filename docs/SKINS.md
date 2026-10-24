@@ -50,8 +50,8 @@ his tank's tray straight away.
 **Share** sends what you painted to the community gallery
 ([getshellby.com/community](https://getshellby.com/community/)) as a pull
 request from your GitHub account, so anyone can add it to their Shellby once
-it's reviewed. You need to be signed in to GitHub with **Publish Wardrobe
-packs** on (Settings → GitHub). It wraps your skin in a pack of its own
+it's reviewed. You need to be signed in to GitHub with **Publish my Wardrobe
+packs to the community gallery** on (Settings → Connections → GitHub). It wraps your skin in a pack of its own
 (`skin-<id>`), checks it the way the gallery's Pack check will, and shows the
 same confirm window as any pack you publish. Afterwards the skin says **In
 review** until the gallery lists it, then **In the gallery**. Sharing again

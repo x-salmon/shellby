@@ -45,7 +45,7 @@ Claude summary or a failing build can all go to n8n.
 
 1. In Shellby, start from the **Look at what n8n sends** template and save it.
    Open its **From a script** trigger and copy the token. (Web hooks need
-   **Settings → Claude Code everywhere** turned on, since that's what opens
+   **Settings → Claude → Claude Code everywhere** turned on, since that's what opens
    Shellby's local port.) Items that arrive while one is being read wait their
    turn.
 2. In n8n, import [ask-shellby.json](n8n/ask-shellby.json) and paste the token

@@ -102,7 +102,7 @@ Routines run unattended with their own saved permission mode. Saving one that do
 ## 🔑 Your credentials
 
 - **Claude's sign-in is Claude Code's.** Shellby never sees your Claude credentials. Claude Code gets the environment as it is on your PC, API keys and provider switches included. **Always use my Claude plan** (Settings → Claude) leaves out `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL` and the Bedrock, Vertex and Foundry switches, so it always runs on your plan.
-- **Your GitHub token, if you let Claude use it.** Shellby keeps its GitHub sign-in encrypted by Windows. If you turn on **Let Claude tasks push code and open pull requests** (Settings → GitHub), that token goes into Claude Code's environment as `GH_TOKEN` and `GITHUB_PERSONAL_ACCESS_TOKEN`, so `gh`, `git` and GitHub MCP servers work.
+- **Your GitHub token, if you let Claude use it.** Shellby keeps its GitHub sign-in encrypted by Windows. If you turn on **Let Claude tasks push code and open pull requests** (Settings → Connections → GitHub), that token goes into Claude Code's environment as `GH_TOKEN` and `GITHUB_PERSONAL_ACCESS_TOKEN`, so `gh`, `git` and GitHub MCP servers work.
 
 > [!WARNING]
 > With **Let Claude tasks push** on, anything Claude runs can read your GitHub token. It is off unless you turn it on.

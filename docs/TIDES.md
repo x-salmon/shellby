@@ -9,10 +9,10 @@ Six times a year, for a week or so, something's going on at sea. While one's on,
 | Event | When | Its bug comes along with... | The twist |
 |---|---|---|---|
 | 🌾 **Harvest Moon** | Oct 1 – 9 | a fix that works first try | every catch pays half again in XP |
-| 🎃 **The Haunting** | Oct 24 – Nov 1 | any fix after 9 pm | ghosts in the Wreck are twice as likely to sparkle |
-| ❄️ **Frostbite** | Dec 18 – Jan 1 | your third catch in a day | |
+| 🎃 **The Haunting** | Oct 24 – Nov 1 | any fix between 9 pm and 5 am | ghosts in the Wreck are twice as likely to sparkle |
+| ❄️ **Frostbite** | Dec 18 – Jan 1 | your third catch in a day | snow piles up on his shell a little with every catch (the banner's line only: no boost) |
 | 💌 **Pen Pal Week** | Feb 9 – 15 | a bug beaten with a helper crab in the fight | swaps count double toward the trophies |
-| 🌸 **Spring Clean** | Mar 22 – Apr 2 | a fix that deletes more lines than it adds | |
+| 🌸 **Spring Clean** | Mar 22 – Apr 2 | a fix that deletes more lines than it adds | something lives in the code you delete (the banner's line only: no boost) |
 | 🌊 **Low Tide** | Jul 10 – 21 | any catch in the Shallows | he digs twice as often, and finds and bugs sparkle twice as often |
 
 South of the equator (the town you picked for the weather), Harvest Moon, Spring Clean and Low Tide move six months, like their seasons. The holidays keep their dates.
@@ -60,7 +60,7 @@ Trophies: ✨ *Glimmer* (your first, for a Glitter Jar in the tank), 🌟 *Shiny
 
 ## Crab eggs
 
-From level 5, with **Visiting crabs** on (Settings → GitHub), he can lay an egg a week for someone who doesn't have Shellby yet, with up to three waiting at once. On the Us page, under **Eggs and the clutch**:
+From level 5, with **Visiting crabs** on (Settings → Connections → GitHub), he can lay an egg a week for someone who doesn't have Shellby yet, with up to three waiting at once. On the Us page, under **Eggs and the clutch**:
 
 1. **Lay an egg**, then **Copy invite**. That copies the download link and the egg's code (`EGG-yourname-…`). Send it however you like. **📸 Card** makes a picture of the egg with its code on.
 2. They install Shellby, turn on Visiting crabs, and paste the code on their Us page. If they paste it first, it waits and hatches once they've signed in.
@@ -76,7 +76,7 @@ Trophies: 🥚 *Proud Parent* (your first egg hatched, for a Crab Nest), 🐣 *B
 
 Friends can swap **finds**, sparkly ones too. Bugs never change hands, because a catch comes from a fix Claude made.
 
-- **Swap…** on a friend's row in Settings → GitHub → Visiting crabs shows what they'd swap and what you could give. Anything that would **finish one of your sets** says so, and anything they're after is marked.
+- **Swap…** on a friend's row in Settings → Connections → GitHub → Visiting crabs shows what they'd swap and what you could give. Anything that would **finish one of your sets** says so, and anything they're after is marked.
 - You always keep one of everything. Only a second copy can go.
 - Your copy is set aside while you wait. If they say no, call it off, or a week passes, it comes back.
 - Offers to you wait under **Swaps** with **Swap** and **No thanks**. Saying yes makes the swap at once.
@@ -96,6 +96,6 @@ Your card only shares counts: how many bugs this month, how many sparkly, and in
 
 ## On pull requests and commits
 
-If you've turned on the **pull request badge** (Settings → GitHub), its line now reads like *🦀 Built with Shellby · Lv 12 Abyssal Admin · Tester · 3 bugs jarred this week · 🎃*.
+If you've turned on the **pull request badge** (Settings → Connections → GitHub), its line now reads like *🦀 Built with Shellby · Lv 12 Abyssal Admin · Tester · 3 bugs jarred this week · 🎃*.
 
 **Sign Shellby's bring-home commits** (Settings → Claude → Copies of a project) adds one line to the commits Shellby makes bringing a copy home: `Shipped-with: Shellby (Lv 12 Abyssal Admin)`. Claude Code's own commits keep their own sign-off.

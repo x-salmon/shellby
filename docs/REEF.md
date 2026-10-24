@@ -35,7 +35,7 @@ Nothing here runs anything in the project. Shellby reads what's already lying ar
 
 | Signal | Where it comes from | Better |
 |---|---|---|
-| Escape hatches | `git grep` over HEAD's tracked text files for `ts-ignore`, `any`, `eslint-disable`, `noqa` and the like (the same rule the bug battles use), leaving out `node_modules`, `vendor`, `dist`, `build` and minified files. Once a day, after 10 minutes away from the keyboard, with a 5 s timeout. Repos with more than 20,000 tracked files are skipped. | lower |
+| Escape hatches | `git grep` over HEAD's tracked text files for `ts-ignore`, `any`, `eslint-disable`, `noqa` and the like (the same rule the bug battles use), leaving out `node_modules`, `vendor`, `dist`, `build`, `third_party` and minified files. Once a day, after 10 minutes away from the keyboard, with a 5 s timeout. Repos with more than 20,000 tracked files are skipped. | lower |
 | Lint problems | the count at the end of a lint run Claude did: eslint's *✖ 12 problems*, ruff's and biome's *Found 3 errors*, clippy's *generated 4 warnings* | lower |
 | Line coverage | `coverage/coverage-summary.json`, `coverage/lcov.info`, `lcov.info`, `coverage.xml` or `coverage/cobertura-coverage.xml`, only when the file changed, up to 5 MB, never followed out of the repo | higher |
 | CI green rate | the checks on your last 20 pull request runs Shellby already watches (needs 3) | higher |

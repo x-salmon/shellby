@@ -326,7 +326,7 @@ can mark colour keys as `"lit"`, and those stay bright at night.
 | `src/renderer/panel/tank-paint.js` | render | Paints a `view()` onto a canvas context at scale `k`; shared by the Tank tab, the Health porthole, `card.js`, and (as SVG) `profile-card.js` |
 | `src/renderer/panel/tank.js` + `tank.css` | UI | The Tank tab and the editor |
 | `src/main/wardrobe/catalog.js` | validation | The `decor` kind and the `level` unlock gate |
-| `src/wardrobe/tank-starter.json`, `tank-reef.json`, … | data | Built-in decor packs |
+| `src/wardrobe/tank-decor.json` | data | The built-in decor pack |
 | `src/main/main.js` | wiring | The `tank:*` IPC, achievement stats, live-decor feeds (Phase 3) |
 | `src/preload/preload.js` | IPC | The `tank:*` surface (`ipc-surface.test.js` must be updated) |
 
