@@ -4,6 +4,7 @@
 const changes = require('../changes');
 const fileIndex = require('../fileindex');
 const leaving = require('../leaving');
+const branchSwitch = require('../branch-switch');
 const { createViewer, locate, branchOf, sameDir, writeWatch } = require('../viewer');
 
 /**
@@ -57,6 +58,24 @@ function registerViewerIpc(ipcMain, d) {
   ipcMain.handle('viewer:branch', async (_e, tabId) => {
     const f = folderOf(tabId);
     return { branch: f.error ? null : await branchOf(f.cwd) };
+  });
+  // The branch chip's "Switch branch" (branch-switch.js): only your own checkout, never a copy, never mid-turn.
+  ipcMain.handle('viewer:branches', async (_e, tabId) => {
+    const f = folderOf(tabId);
+    if (f.error) return { ok: false, error: f.error };
+    if (f.tab.worktree) return { ok: false, error: 'This conversation works in its own copy.' };
+    return branchSwitch.listBranches(f.cwd);
+  });
+  ipcMain.handle('viewer:checkout', async (_e, tabId, branch) => {
+    const f = folderOf(tabId);
+    if (f.error) return { ok: false, error: f.error };
+    if (f.tab.worktree) return { ok: false, error: 'This conversation works in its own copy.' };
+    // Any conversation working in this folder would have the files change under it.
+    const working = [...d.manager.tabs.values()].some(t => t.session?.busy && t.session.cwd && sameDir(t.session.cwd, f.cwd));
+    if (working) return { ok: false, error: 'Let him finish first: a conversation is working in this folder.' };
+    const r = await branchSwitch.switchBranch(f.cwd, branch);
+    if (r.ok) nudge(f.cwd, { commits: true });
+    return r;
   });
   ipcMain.handle('viewer:close', (_e, id) => { viewer.close(id); return true; });
   // The header's menu: the repo's worktrees and unmerged branches, each under a key main issued;

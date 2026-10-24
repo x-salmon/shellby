@@ -65,6 +65,7 @@
     }
     return seen.branch;
   }
+  SB.forgetBranch = cwd => branchSeen.delete(cwd); // after a switch (tab-git.js), look again next time
   function showBranch(branch) {
     $('branchChip').hidden = !branch;
     if (branch) {
