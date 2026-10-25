@@ -21,7 +21,7 @@ const skip = why => ({ status: 'skip', why });
 const gap = what => ({ status: 'gap', what });
 
 const BG = use('wiring/bg-sessions.js: Settings, Everywhere, Background sessions');
-// Claude Code doesn't offer the tool with --brief in print mode (checked on 2.1.296 and 2.1.302, last 2026-10-17):
+// Claude Code doesn't offer the tool with --brief in print mode (checked on 2.1.296, 2.1.302 and 2.1.310, last 2026-10-25):
 // the account has to be entitled to it (isBriefEntitled, tengu_brief_mode_enabled), so there's nothing to show yet.
 const BRIEF = gap('SendUserMessage (--brief): Claude sends short updates while it works, said by the crab in a bubble. Not offered in print mode yet: build it once a session lists the tool.');
 const TERMINAL_ONLY = 'It drives a terminal UI, which Shellby replaces.';
@@ -123,9 +123,9 @@ const TOOLS = Object.freeze({
   Agent: use('stream.js: helper crabs'),
   AskUserQuestion: use('feed-asks.js: question cards'),
   Bash: use('stream.js'),
-  CronCreate: use('stream.js: shown as a step'),
-  CronDelete: use('stream.js: shown as a step'),
-  CronList: use('stream.js: shown as a step'),
+  CronCreate: use('stream.js describeTool: when, in words, and the prompt'),
+  CronDelete: use('stream.js describeTool'),
+  CronList: use('stream.js describeTool'),
   DesignSync: skip('Claude Design\'s own tool; shown as a step like any other.'),
   Edit: use('stream.js, changes.js'),
   EnterPlanMode: use('stream.js, session/'),
@@ -145,7 +145,7 @@ const TOOLS = Object.freeze({
   ReadMcpResourceTool: use('stream.js: shown as a step'),
   RemoteTrigger: use('cloud-routines.js'),
   ReportFindings: use('feed-native.js renderFindings'),
-  ScheduleWakeup: use('stream.js: shown as a step'),
+  ScheduleWakeup: use('stream.js describeTool: when Claude picks it up again, and why'),
   SendMessage: use('session/crew.js'),
   SendUserMessage: BRIEF,
   Skill: use('stream.js'),

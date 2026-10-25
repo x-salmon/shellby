@@ -252,6 +252,8 @@ function phoneItem(item) {
   switch (item.kind) {
     case 'user': return { k: 'user', text: clip(item.text, 4000), turnId: line(item.turnId, 80) || null };
     case 'text': return { k: 'text', text: clip(item.text, MAX_TEXT), ...sub };
+    // /context: the PC draws a bar; the phone shows Claude Code's own table, as it always has.
+    case 'context-usage': return { k: 'text', text: clip(item.text, MAX_TEXT) };
     case 'partial': return item.sub ? null : { k: 'partial', text: clip(item.text, MAX_TEXT) };
     case 'tool': {
       /** @type {Record<string, any>} */

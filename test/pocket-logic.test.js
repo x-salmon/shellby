@@ -266,3 +266,10 @@ test('a word on a line of a diff names the file and the line, added or removed',
   const del = L.lineComment({ path: 'src/a.js', row: { kind: 'del', text: 'old()', a: 7, b: null }, said: 'Why did this go?' });
   assert.match(del, /line 7 \(a line this turn removed\)/);
 });
+
+test("clashPrompt asks him to merge the branch in, sort out the clashes and test, in the desk's own words", () => {
+  const p = L.clashPrompt('main');
+  assert.ok(p.startsWith('Merge main into this branch (git merge main), resolve the conflicts'));
+  const desk = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'renderer', 'panel', 'tab-git.js'), 'utf8');
+  assert.ok(desk.includes(L.clashPrompt('${tab.worktree.base}')), 'the phone and the desk ask the same way');
+});

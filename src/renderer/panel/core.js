@@ -127,7 +127,8 @@ SB.clock = ms => {
   return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
 };
 
-SB.compact = n => (n == null ? '' : n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+// 820, 2.5k, 24k, 1M, 1.5M: a 1M-token window isn't "1000k".
+SB.compact = n => (n == null ? '' : n >= 999500 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
 
 SB.prettyAccel = a => String(a || '').replace(/Control/g, 'Ctrl').replace(/\+/g, ' + ');
 

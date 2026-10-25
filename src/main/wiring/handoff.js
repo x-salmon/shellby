@@ -194,6 +194,7 @@ function wireHandoff(d) {
   const CLOUD_SAYS = {
     teleport: 'with claude --teleport. Pick the cloud session there; Bring it into Shellby works once it runs.',
     cloud: 'with claude --cloud. Claude Code starts the cloud session there.',
+    ultraplan: 'with /ultraplan. Claude Code asks there before the cloud session starts, and the plan comes back there to edit and approve.',
     pr: 'with claude --from-pr. Pick the pull request there.',
   };
   async function openCloud({ kind, value = null, tabId = null } = {}) {

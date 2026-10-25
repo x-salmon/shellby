@@ -177,3 +177,18 @@ test("a cloud session's own words reach PowerShell quoted, and never cmd", () =>
   assert.ok(teleport.ok && teleport.plans.some(p => p.shell === 'cmd'), 'a plain flag may');
   assert.equal(handoff.launchPlans({ ...base, cloud: { kind: 'pr', value: 'nope' } }).ok, false);
 });
+
+test('/ultraplan starts an interactive session on the command, its words checked like a cloud description, and never through cmd', () => {
+  assert.deepEqual(handoff.cloudArgs('ultraplan', 'move auth to "sessions"\nthen tidy'), { ok: true, args: ["/ultraplan move auth to 'sessions' then tidy"] });
+  assert.match(handoff.cloudArgs('ultraplan', '  ').error, /\/ultraplan <what to plan>/);
+  assert.equal(handoff.cloudArgs('ultraplan', 'x'.repeat(2001)).ok, false);
+  assert.equal(handoff.cloudArgs('ultraplan', '--model x').args[0], '/ultraplan --model x', 'the words follow the command, never a flag of their own');
+  assert.equal(handoff.cloudArgs('ultraplan', 'tidy C:\\code\\app\\').args[0], '/ultraplan tidy C:\\code\\app', 'no backslash left to swallow the closing quote');
+  assert.equal(handoff.cloudArgs('cloud', 'fix it \\\\').args[1], 'fix it');
+  assert.equal(handoff.cloudArgs('cloud', '\\').ok, false);
+  const base = { exe: 'C:\\Claude\\claude.exe', cwd: 'C:\\code\\app', powershell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', cmd: 'C:\\Windows\\System32\\cmd.exe' };
+  const r = handoff.launchPlans({ ...base, cloud: { kind: 'ultraplan', value: 'x' } });
+  assert.ok(r.ok);
+  assert.ok(!r.plans.some(p => p.shell === 'cmd'));
+  assert.match(handoff.resumeScript({ exe: base.exe, cwd: base.cwd, args: ["/ultraplan it's done"] }), /& 'C:\\Claude\\claude\.exe' '\/ultraplan it''s done'$/);
+});

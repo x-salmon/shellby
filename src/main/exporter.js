@@ -28,6 +28,10 @@ function toMarkdown(entry, items) {
       case 'text':
         out.push('**Claude**', '', i.text, '');
         break;
+      // /context's table, as Claude Code wrote it (the panel draws it as a bar).
+      case 'context-usage':
+        out.push('**Claude Code**', '', i.text || '', '');
+        break;
       case 'tool':
         out.push(`- *${i.label}* ${i.detail ? `\`${String(i.detail).replace(/`/g, "'")}\`` : ''}`.trimEnd());
         if (i.plan) out.push('', fence(i.plan), '');

@@ -249,3 +249,33 @@
 .ultra-agent.failed .ultra-agent-state { color: var(--coral); }
 .ultra-agent-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ultra-actions { margin-top: 7px; }
+
+/* /context as a bar of what fills the window (native-more.js) */
+.ctxu-card { margin: 6px 0 14px; padding: 9px 11px 10px; border: 1px solid var(--line-soft); border-left: 2px solid var(--glass); border-radius: var(--r-sm); background: var(--ink); font-size: var(--fs-12); color: var(--sand-dim); }
+.ctxu-head { display: flex; align-items: baseline; gap: 8px; color: var(--sand); }
+.ctxu-head b { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.ctxu-bar { display: flex; height: 10px; margin: 8px 0 7px; border-radius: 3px; overflow: hidden; background: var(--reef-3); }
+.ctxu-seg { min-width: 2px; height: 100%; }
+.ctxu-seg + .ctxu-seg { box-shadow: inset 1px 0 0 var(--ink); }
+.ctxu-seg.buffer { background: repeating-linear-gradient(135deg, var(--line) 0 3px, var(--reef-2) 3px 6px); }
+.ctxu-seg.free { background: transparent; }
+.ctxu-seg.n0, .ctxu-dot.n0 { background: var(--glass); }
+.ctxu-seg.n1, .ctxu-dot.n1 { background: var(--amber); }
+.ctxu-seg.n2, .ctxu-dot.n2 { background: var(--coral); }
+.ctxu-seg.n3, .ctxu-dot.n3 { background: var(--sand-dim); }
+.ctxu-seg.n4, .ctxu-dot.n4 { background: var(--coral-deep); }
+.ctxu-seg.n5, .ctxu-dot.n5 { background: var(--sand-faint); }
+.ctxu-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 3px 14px; margin: 0; padding: 0; list-style: none; }
+.ctxu-legend li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ctxu-dot { flex: none; width: 8px; height: 8px; border-radius: 2px; }
+.ctxu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sand); }
+.ctxu-num { font-variant-numeric: tabular-nums; color: var(--sand-faint); }
+.ctxu-more { margin-top: 7px; }
+.ctxu-more > summary { cursor: pointer; color: var(--sand-faint); }
+.ctxu-more > summary:hover, .ctxu-more > summary:focus-visible { color: var(--sand); }
+.ctxu-table { max-height: 320px; overflow: auto; margin-top: 6px; }
+.ctxu-actions { margin-top: 8px; }
+
+/* /mobile's QR code (native-more.js) */
+.mobile-box { max-width: 340px; text-align: center; }
+.mobile-qr { display: block; margin: 6px auto 10px; image-rendering: pixelated; border-radius: var(--r-sm); }

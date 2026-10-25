@@ -56,9 +56,12 @@ function makeRepo() {
     const lastReply = () => ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant')].at(-1)?.textContent || ''");
     const file = name => fs.readFileSync(path.join(repo, name), 'utf8').trim();
 
-    await wait(3000);
+    // Ready when the panel is, not after a guess: a slow start (after a long suite, say) left the
+    // folder unset, so the turns ran outside the repo and every diff and rewind below failed.
+    if (!(await until("typeof SB !== 'undefined' && typeof SB.send === 'function' && !!SB.activeTab?.() && typeof shellby?.setFolder === 'function'", 30000))) throw new Error('the panel never got ready');
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
-    await ev(`shellby.setFolder(${JSON.stringify(repo)}).then(r => SB.folderChanged(r))`);
+    const moved = await ev(`shellby.setFolder(${JSON.stringify(repo)}).then(r => { SB.folderChanged(r); return !!r && r.ok !== false; })`);
+    check(moved, 'the conversation works in the test repo');
     await wait(800);
 
     // 1. Two turns that each change a file.

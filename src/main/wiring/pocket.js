@@ -529,7 +529,7 @@ function wirePocket(d) {
     if (andPush === true && !settings().allow.push) return no('Pushing from your phone is off. Turn it on in Settings → On your phone.');
     if (andPush === true && force === true) return no('Red checks and a push together only happen at the desk.');
     const r = await d.bringTabHome(tabId, { force: force === true, finish: true, ...(andPush === true ? { push: true } : {}) });
-    if (r.red) return { ok: false, red: true, error: r.error };
+    if (r.red || r.conflict) return { ok: false, ...(r.red ? { red: true } : { conflict: true }), error: r.error }; // red checks: ask; a clash: offer to have him sort it out
     const pushed = r.push;
     return r.ok ? ok({ merged: !!r.merged, commits: r.commits || 0, base: r.base || null, ...(andPush === true ? { pushed: !!pushed?.ok, pushError: pushed && !pushed.ok ? String(pushed.error || '') : null } : {}) }) : no(r.error || "Couldn't bring it home.");
   }

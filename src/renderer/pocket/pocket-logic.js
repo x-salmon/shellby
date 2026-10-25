@@ -556,7 +556,13 @@
     return `In ${where}:\n\n    ${code || '(an empty line)'}\n\n${String(said || '').trim()}`;
   }
 
+  // ---------------------------------------------------------------- a copy that clashes with its branch
+
+  /** What Claude is asked when Bring it home clashes: the same words as the desk's "Ask him to sort it out" (tab-git.js). */
+  const clashPrompt = base => `Merge ${base} into this branch (git merge ${base}), resolve the conflicts so both sides' intent survives, run the tests if there are any, and commit. Then tell me it's ready to bring home.`;
+
   const api = {
+    clashPrompt,
     OUTBOX_MAX, SAVED_MAX, SETTLE_MS, STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, dropPrompt, duration, endLine, fold, formatCode, headline, holdRedraw, inline,
     isIos, keepItem, keyBytes, lineComment, markdown, modeLabel, newKey, outboxDrop, outboxOf, outboxPut, parsePatch, plural, promptChip, route, savePrompt, savedOf, sections, spokenText, sseParser,
     tappedHash, tokens,
