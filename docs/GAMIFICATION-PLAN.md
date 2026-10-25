@@ -1,5 +1,7 @@
 # Shellby Gamification Overhaul: Design and Implementation Plan
 
+> Status: **built.** Section 0 describes Shellby before this plan; the rest is the plan as it was written.
+
 This plan is meant to be saved as `docs/GAMIFICATION-PLAN.md`. I read these to write it: `xp.js`, `quests.js`, `streaks.js`, `bounties.js`, the bugdex modules (`battle.js`, `lifecycle.js`, `cheats.js`), `bugdex.js` exports, `shells.js`, `tank.js`, `wardrobe/catalog.js`, `wardrobe/achievements.js`, `rooms.js`, `feature-use.js`, `weekly.js`, the `events.js` header, `quiz.js`, `wiring/progress.js`, `wiring/bugdex-reward.js`, `ipc/progress.js`, the preload, `scripts/panel-html.js`, `shared/sprite.js` and `card.js`/`week-card.js`.
 
 ---

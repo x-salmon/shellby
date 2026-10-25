@@ -39,8 +39,8 @@ legs, or an anchor well off his body stops Share until you fix it or say
 **That's on purpose**. Legs that touch, even at a corner, step together rather
 than taking turns; that's only a note, since classic's do too.
 
-The same screen paints **accessories** (up to 16 × 16, with a pivot: the pixel
-that sits on its spot), **effects** (up to 8 × 8) and **tank decor** (up to
+The same screen paints **accessories** (up to 16 × 16, with a pivot, `P`: the
+pixel that sits on its spot), **effects** (up to 8 × 8) and **tank decor** (up to
 32 × 32), each with up to four pictures to flip between where that kind can
 have them. They're saved as a pack of your own, so they're in the Wardrobe and
 his tank's tray straight away.
@@ -79,7 +79,7 @@ A skin is one JSON file in `%APPDATA%\Shellby\skins`: a pixel grid, a palette,
 and a map that says which body part each colour belongs to. The Painter writes
 these for you; you can also write one by hand:
 
-1. Right-click Shellby → **Data folder**, then open `skins/` (or **Settings → Shellby → Look → Open skins folder**).
+1. Right-click Shellby → **Data folder (history, skins)**, then open `skins/` (or **Settings → Shellby → Look → Open skins folder**).
 2. Copy [`src/skins/classic.json`](../src/skins/classic.json) in, rename it `my-crab.json`, and change `"id"` to `"my-crab"`.
 3. Change some colours, then hit **Reload** in Settings and pick your skin.
 
