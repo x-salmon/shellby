@@ -166,7 +166,7 @@ contextBridge.exposeInMainWorld('shellby', {
 
   // between Shellby and a terminal (src/main/handoff.js), and Claude Code's background sessions (wiring/bg-sessions.js)
   continueInTerminal: invoke('handoff:terminal'), pickUpHere: invoke('handoff:pickup'),
-  openCloud: invoke('handoff:cloud'), // a cloud session in a terminal: { kind: teleport | cloud | pr, value?, tabId? }
+  openCloud: invoke('handoff:cloud'), // a cloud session in a terminal: { kind: teleport | cloud | ultraplan | pr, value?, tabId? }
   bringIntoShellby: (id, force = false) => ipcRenderer.invoke('handoff:bring', { id, force }), bgSessions: invoke('bg:list'), bgLogs: invoke('bg:logs'), bgOpen: invoke('bg:open'), bgStop: invoke('bg:stop'), bgRespawn: invoke('bg:respawn'), bgRemove: invoke('bg:remove'), onBgSessions: on('bg-sessions'),
 
   // Settings → Other computers: Claude Code over ssh (src/main/remote/)
@@ -276,7 +276,7 @@ contextBridge.exposeInMainWorld('shellby', {
   cloudRuns: invoke('cloud:runs'),
   runCloudRoutine: invoke('cloud:run'),
   openCloudRoutine: fire('cloud:open'),
-  ultraReview: invoke('review:ultra'),
+  ultraReview: invoke('review:ultra'), openInsights: invoke('insights:open'), mobileQr: invoke('mobile:qr'), // the newest /insights report in the browser; /mobile's QR code
   onSkillFirst: on('native:skill-first'),
   reconnectMcp: (tabId, name) => ipcRenderer.invoke('mcp:reconnect', { tabId, name }),
   signInMcp: (tabId, name) => ipcRenderer.invoke('mcp:signin', { tabId, name }),

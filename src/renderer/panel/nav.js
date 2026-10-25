@@ -399,6 +399,8 @@
       { group: 'Cloud', icon: '☁️', title: 'Pick up a cloud session here', sub: 'claude --teleport, in a terminal: from claude.ai/code or the app', keys: 'teleport cloud web remote session resume', run: () => open('teleport') },
       { group: 'Cloud', icon: '☁️', title: 'Start a cloud session on what\'s in the box', sub: 'claude --cloud, in a terminal: it keeps going with this PC off', keys: 'cloud web remote session start background',
         run: () => { if (!typed()) return SB.toast('Type what the cloud session should do in the box first.', { ms: 5000 }); return open('cloud', typed()); } },
+      { group: 'Cloud', icon: '🗺️', title: 'Plan what\'s in the box in the cloud (ultraplan)', sub: '/ultraplan, in a terminal: a cloud session drafts the plan, you edit and approve it there', keys: 'ultraplan plan cloud draft remote',
+        run: () => { if (!typed()) return SB.toast('Type what to plan in the box first.', { ms: 5000 }); return open('ultraplan', typed()); } },
       { group: 'Cloud', icon: '⑂', title: 'Pick up the conversation behind a pull request', sub: 'claude --from-pr, in a terminal. Paste its address in the box first to skip the list', keys: 'pull request pr github from-pr resume review',
         run: () => open('pr', /^https:\/\/github\.com\/\S+\/pull\/\d+$/.test(typed()) ? typed() : null) },
     ];

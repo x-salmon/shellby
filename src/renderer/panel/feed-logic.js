@@ -266,7 +266,32 @@
     return steps.length > 1 ? steps : null;
   }
 
+  // ------------------------------------------------------------ Claude Code's own commands, drawn
+
+  // /context's categories as a bar: what's used first (biggest first), then the
+  // room kept back for compacting, then what's free. Each { name, tokens, pct, tone }.
+  const FREE = /^free space$/i;
+  const BUFFER = /autocompact buffer|reserved/i;
+  function contextSegments(categories) {
+    const list = (Array.isArray(categories) ? categories : [])
+      .filter(c => c && typeof c.name === 'string' && Number.isFinite(c.pct) && c.pct >= 0)
+      .map(c => ({ name: c.name, tokens: Number.isFinite(c.tokens) ? c.tokens : 0, pct: Math.min(100, c.pct),
+        tone: FREE.test(c.name) ? 'free' : BUFFER.test(c.name) ? 'buffer' : 'used' }));
+    const used = list.filter(c => c.tone === 'used').sort((a, b) => b.tokens - a.tokens);
+    return [...used, ...list.filter(c => c.tone === 'buffer'), ...list.filter(c => c.tone === 'free')];
+  }
+
+  // A reply that links /insights' report (Claude Code writes it to usage-data/report*.html).
+  const INSIGHTS_LINK = /file:\/\/\S*usage-data[\\/]report(?:-[\w-]+)?\.html/i;
+  const insightsReportIn = text => typeof text === 'string' && INSIGHTS_LINK.test(text);
+
+  // /subtask <task>: what's sent instead, in plain sight. Claude Code's own
+  // /subtask forks a helper that inherits the whole conversation and hands its
+  // result back; in Shellby the same helper is the Agent tool's "fork" type.
+  const subtaskPrompt = task => `Send this off to a forked helper (the Agent tool with subagent_type "fork", in the background, so it has this whole conversation) and carry on. When its result comes back, tell me what it found.\n\nThe task: ${String(task).trim()}`;
+
   const api = {
+    contextSegments, insightsReportIn, subtaskPrompt,
     files, storySteps, markFor, compactingLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
     decisionVerdict, questionVerdict, resultLabel, diffRows, laneMeta, laneCostTitle, laneFirstLine,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
