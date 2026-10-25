@@ -5,6 +5,9 @@
 - **/mobile shows a QR code** for the Claude app, to scan with your phone.
 - **The /insights report is a click away.** When Claude Code finishes the report, an "Open the insights report" button opens it in your browser.
 
+### Fixed
+- **Bring it home from your phone no longer leaves you stuck when it clashes.** If the branch it started from has moved on in ways that clash, the phone now offers "Ask him to sort it out", as the desk does: he merges the branch in, sorts out the clashes, runs the tests, and tells you when it's ready to bring home.
+
 ### Changed
 - **Seven more of Claude Code's commands work here instead of sending you to a terminal.** `/tasks` shows the background tray above the box, `/workflows` jumps to this conversation's Ultracode runs, `/autofix-pr` opens Fix this build on your failing pull request, `/loops` and `/daemon` open Routines, `/wellbeing` opens Time for a focus session, and `/chrome` opens its setting.
 - **Claude's schedules read in plain words.** When Claude sets itself a wake-up or a schedule, the step says when ("in 20 min: watching CI", "weekdays at 09:00") instead of showing raw settings.

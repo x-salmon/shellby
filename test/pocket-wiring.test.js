@@ -313,6 +313,15 @@ test('home and push from the phone waits for Settings to allow pushing', async (
   } finally { stop(w); }
 });
 
+test('a home that clashes with its branch says so, so the phone can offer to have him sort it out', async () => {
+  const w = await paired({ tabs: [tabOf('t1')] });
+  try {
+    w.d.bringTabHome = async () => ({ ok: false, conflict: true, error: 'main has changed in ways that clash with this copy. Nothing was merged.' });
+    assert.deepEqual(await w.d.pocket.onAction(w.device, 'home', { tabId: 't1' }),
+      { ok: false, conflict: true, error: 'main has changed in ways that clash with this copy. Nothing was merged.' });
+  } finally { stop(w); }
+});
+
 test('a task names only photos the phone sent, each used once', async () => {
   const w = await paired();
   try {
