@@ -98,7 +98,7 @@ const REASON_TEXT = {
 function projectLine(p, todoCount = 0) {
   const main = p.local?.[0];
   const servers = (p.local || []).flatMap(c => c.servers || []).filter(s => s.kind !== 'install');
-  const up = servers.filter(s => s.status === 'up' || s.status === 'starting');
+  const up = servers.filter(s => s.status === 'up' || s.status === 'starting' || s.status === 'erroring');
   const bits = [
     main ? `${one(main.root)}${main.branch ? ` on ${one(main.branch)}` : ''}` : 'GitHub only, not on this PC',
     p.local?.length > 1 && `${p.local.length} clones`,
@@ -211,7 +211,7 @@ function pickServer(p, script = '') {
     return named.length ? { server: newest(named) } : { error: `${label(p)} has no dev server running \`${one(script)}\`. Its servers: ${[...new Set(all.map(s => one(s.script)))].join(', ')}.` };
   }
   const down = all.filter(s => s.status === 'crashed' || s.status === 'failed');
-  const live = all.filter(s => s.status === 'up' || s.status === 'starting');
+  const live = all.filter(s => s.status === 'up' || s.status === 'starting' || s.status === 'erroring');
   return { server: down.length ? newest(down) : live.length ? newest(live) : newest(all) };
 }
 
@@ -219,7 +219,8 @@ function pickServer(p, script = '') {
 function serverLogText(p, s, lines) {
   const state = s.status === 'crashed' || s.status === 'failed'
     ? `${s.neverUp ? "didn't start" : 'crashed'}${Number.isInteger(s.exitCode) ? `, exit code ${s.exitCode}` : ''}`
-    : s.status === 'up' ? `up${s.port ? ` on port ${s.port}` : ''}` : s.status;
+    : s.status === 'up' ? `up${s.port ? ` on port ${s.port}` : ''}`
+      : s.status === 'erroring' ? `up${s.port ? ` on port ${s.port}` : ''}, but its last build failed` : s.status;
   if (!lines.length) return `The dev server \`${commandOf(s)}\` in ${label(p)} (${state}) hasn't printed anything Shellby kept.`;
   return [
     `The dev server \`${commandOf(s)}\` in ${label(p)} at ${one(s.root)} (${state}).`,

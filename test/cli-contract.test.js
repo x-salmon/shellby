@@ -65,6 +65,7 @@ Options:
   --verbose                             Override verbose mode setting
   --include-partial-messages            Include partial message chunks
   --forward-subagent-text               Forward subagent text
+  --include-hook-events                 Include hook lifecycle events
   --fallback-model <model>              Fall back when overloaded
   -n, --name <name>                     Set a display name
   --agent <agent>                       Agent for the session

@@ -5,13 +5,14 @@
      saved prompts   your own one-tap starters on New task, kept on this phone
      read aloud      a conversation's replies read out as they land, for when
                      you're walking and can't look
+     the queue       a held task's Earlier, Later and Edit, on the Queue screen
 
    The outbox only holds what the PC would take from this phone anyway: each
    one goes through the same call, with a key, so one that did reach the PC
    before the answer was lost isn't done twice. pocket.js hands in what it shares. */
 'use strict';
 (function (root) {
-  root.PocketLater = ({ S, L, N, h, icon, toast, buzz, live }) => {
+  root.PocketLater = ({ S, L, N, h, icon, toast, buzz, live, act, actButton, openSheet }) => {
     // ---------------------------------------------------------------- the outbox
 
     const OUTBOX_KEY = 'shellby.pocket.outbox';
@@ -167,8 +168,33 @@
       return b;
     }
 
+    // ---------------------------------------------------------------- the queue for the reset
+
+    // A task that hasn't started: reword it, or move it up or down the queue (they go oldest first).
+    function heldTools(x, held) {
+      const tasks = held.filter(y => y.kind === 'task' && !y.started);
+      const i = tasks.findIndex(y => y.id === x.id);
+      const move = (dir, label, iconName) => actButton({ label, cls: 'ghost slim icon-only', iconName, aria: label, run: () => act('held-move', { id: x.id, dir }) });
+      return h('div', { class: 'held-tools' },
+        i > 0 ? move('up', 'Earlier', 'up') : null,
+        i < tasks.length - 1 ? move('down', 'Later', 'down') : null,
+        // Only what the phone queued: one from the desk is reworded there.
+        x.editable ? h('button', { type: 'button', class: 'btn ghost slim', text: 'Edit', onclick: () => openSheet(rewordSheet(x)) }) : null,
+        x.when === 'tonight' ? h('span', { class: 'pill dim', text: 'tonight' }) : null);
+    }
+
+    function rewordSheet(x) {
+      return { label: 'Edit the task', build: close => {
+        const text = h('textarea', { class: 'task-in', rows: '5', maxlength: '4000', 'aria-label': 'The task' });
+        text.value = x.prompt || x.name;
+        const save = actButton({ label: 'Save', cls: 'go big', run: async () => { const r = await act('held-edit', { id: x.id, prompt: text.value }, { okText: 'Saved.' }); if (r.ok) close(); } });
+        setTimeout(() => text.focus(), 260);
+        return { el: h('div', { class: 'new-task' }, h('h2', { class: 'sheet-title', text: 'Edit the task' }), x.folder ? h('p', { class: 'muted', text: x.folder }) : null, text, save) };
+      } };
+    }
+
     if (outbox().length) later();
 
-    return { send, flush, outboxCard, onOutbox, outboxCount: () => outbox().length, savedRow, speakButton, heard, hush };
+    return { send, flush, outboxCard, onOutbox, outboxCount: () => outbox().length, savedRow, speakButton, heard, hush, heldTools };
   };
 })(window);

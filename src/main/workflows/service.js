@@ -35,6 +35,7 @@ class WorkflowService {
    *   runCommand(cwd, command, { timeoutMs, signal }), runClaude(args, timeoutMs, { input }) -> { stdout, timedOut, ... },
    *   makeCopy({ repo, slug }) -> { ok, path, branch, base, repo } (a worktree to work in),
    *   openPullRequest({ folder, title, body, draft, workflow }) -> { ok, url, number, ... },
+   *   devServer({ action, project, script, signal }) -> { ok, status, port, url, project, script } (devservers/flow.js),
    *   copy(text), crypto: { available, encrypt, decrypt }, webhookPort() -> number | null,
    *   log: { info, warn }, now(), liveMcp() -> the Toolbox's MCP servers,
    *   fetchImpl?, callMcpTool?(def, tool, args, opts), listMcpTools?(def, opts) (tests)

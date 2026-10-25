@@ -114,12 +114,14 @@ Shellby remembers which you used last.
 | When an issue comes in | when a GitHub issue is assigned to you, or labelled `shellby` (needs **Offer to take on issues** in Settings → Connections → GitHub) |
 | When something ships | when a project is pushed, deployed, released or has a pull request merged |
 | When a task finishes | when one of your Shellby tasks finishes (never a workflow's own) |
+| When a test flakes | when the flaky test detective sees a test fail and then pass on the same code, in Shellby's tabs or in Claude Code elsewhere (needs **Spot flaky tests** in Settings → Claude). `trigger.test` names the test, `trigger.folder` the project |
 | When the PC needs attention | when something overheats or a drive fills up |
 | When files change | when files arrive in (or change in) a folder, optionally matching a pattern like `*.pdf` |
 | After another workflow | when another workflow succeeds, fails or either |
 | When Shellby starts | each time Shellby starts |
 | From a script | a web hook: when a script calls its address (see below) |
 | When Claude Code asks | lets Claude Code (`run_workflow`) and `shellby flow run` start it |
+| When a dev server changes | when a dev server started from the [Projects page](PROJECTS.md) comes up, crashes or is stopped, optionally only one project's or one script's. The steps get its project, script, port and exit code as `trigger.*` |
 
 Every workflow can also be run by hand with **Run**.
 
@@ -142,6 +144,7 @@ Every workflow can also be run by hand with **Run**.
 | **Stop** | ends the run, as done or as failed |
 | **Make a copy** | a copy of a GitHub repository cloned on this PC, on its own branch, started from its main branch on GitHub. Later steps work in it as `{{ copy.path }}`. |
 | **Open a pull request** | commits whatever is left in the copy, pushes its branch and opens a pull request (a draft, unless you untick it) |
+| **Dev server** | starts, stops or restarts a dev server in a project on the Projects page (`{{ trigger.project }}` after a crash, or a name). Start waits until it's up and hands on its port and address; one that crashes on the way up fails the step, and its card on the Projects page has the log. Only a script from the project's own `package.json` ever runs, as with the page's Start button. |
 
 Every step can also retry, have a time limit, run only if a condition holds,
 or carry on when it fails.
@@ -319,7 +322,7 @@ this way, and Claude can't pick Autonomous for a step.
 - Saving a workflow that can act without asking (a command, a web request, a
   file write, an MCP tool step, MCP servers a Claude step may use unasked, a
   Claude step in Smart, Auto-edit or Autonomous, running another workflow,
-  opening a pull request) shows exactly
+  opening a pull request, starting or stopping a dev server) shows exactly
   what it may do in Shellby's confirmation window. It asks again only when one
   of those things changes.
 - At most 4 runs go at once, and the rest wait their turn. A workflow that

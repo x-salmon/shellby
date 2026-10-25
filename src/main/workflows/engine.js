@@ -454,6 +454,17 @@ class Engine {
         return { url: r.url, number: r.number, branch: r.branch, repo: r.repo, draft: r.draft };
       }
 
+      case 'server': {
+        const r = await fx.server({
+          action: step.action,
+          project: expr.render(step.project, ctx).trim(),
+          script: step.script ? expr.render(step.script, ctx).trim() : '',
+          signal,
+        });
+        if (!r.ok) throw new StepFailed(r.error || `Couldn't ${step.action} the dev server.`);
+        return { status: r.status, port: r.port ?? null, url: r.url ?? null, project: r.project, script: r.script ?? null };
+      }
+
       default:
         throw new StepFailed(`Unknown step type ${step.type}`);
     }

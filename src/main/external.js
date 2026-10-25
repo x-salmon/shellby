@@ -8,6 +8,8 @@
 // inputs (commands, file contents) arrive in the payload and are dropped unread.
 // The one exception is a backgrounded command, where the program it runs ('node',
 // 'npm') is kept so Shellby can say what was left running -- never its arguments.
+// A test command's output is read on the spot (bugsOf, testRunsOf) and dropped:
+// what leaves is a species, a hash and test names.
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
@@ -19,6 +21,7 @@ const { checkupOf, readCheckup, commandDir } = require('./checkup');
 const { clientOf, describeClient } = require('./clients');
 const bugRead = require('./bugdex/detect');
 const { cmdKey } = require('./flaky/ids');
+const { readRun } = require('./flaky/parsers');
 const workPose = require('./work-pose');
 
 const DEFAULT_PORT = 47913;
@@ -216,6 +219,33 @@ function bugsOf(evt) {
     reading = bugRead.read({ cmd: command, output: typeof evt.error === 'string' ? evt.error : '', isError: true });
   }
   return reading ? [{ type: 'bug-read', toolUseId, reading, cwd }] : [];
+}
+
+/**
+ * What the flaky test detective takes from one hook event (wiring/progress.js
+ * outsideTestStart / outsideTestRun): a test command starting, or what its run
+ * amounted to. Pure. The command and its output are read here and dropped:
+ * only a command hash, test ids and yes/no answers leave (flaky/parsers.js
+ * readRun), the same rule the Bugdex's bugsOf keeps.
+ *   -> [{ type: 'test-start', toolUseId, cwd } | { type: 'test-run', toolUseId, cwd, run }]
+ */
+function testRunsOf(evt) {
+  const name = evt?.hook_event_name;
+  const cwd = typeof evt?.cwd === 'string' && LOCAL_DIR.test(evt.cwd) && evt.cwd.length <= MAX_CWD ? evt.cwd : null;
+  if (!cwd || typeof evt.session_id !== 'string' || !ID_RE.test(evt.session_id) || !SHELL_TOOLS.has(evt.tool_name)) return [];
+  const command = typeof evt.tool_input?.command === 'string' ? evt.tool_input.command : '';
+  const toolUseId = typeof evt.tool_use_id === 'string' && TOOL_USE_RE.test(evt.tool_use_id) ? evt.tool_use_id : null;
+  if (!command || !toolUseId || evt.tool_input?.run_in_background === true || classifyCommand(command) !== 'tests') return [];
+  if (name === 'PreToolUse') return [{ type: 'test-start', toolUseId, cwd }];
+  let run = null;
+  if (name === 'PostToolUse') {
+    const res = evt.tool_response;
+    const output = res && typeof res === 'object' ? [res.stdout, res.stderr].filter(x => typeof x === 'string').join('\n') : (typeof res === 'string' ? res : '');
+    run = readRun({ cmd: command, output, isError: false });
+  } else if (name === 'PostToolUseFailure' && evt.is_interrupt !== true) {
+    run = readRun({ cmd: command, output: typeof evt.error === 'string' ? evt.error : '', isError: true });
+  }
+  return run ? [{ type: 'test-run', toolUseId, cwd, run }] : [];
 }
 
 /** Quiet down sessions that stopped sending events (Claude killed, laptop slept). */
@@ -453,6 +483,8 @@ class ExternalSessions extends EventEmitter {
     for (const e of effects) this.emit(e.type, e);
     // The Bugdex's own reading of it (wiring/bugdex.js): never on the effects, which the crab reacts to.
     for (const e of bugsOf(evt)) this.emit(e.type, e);
+    // ...and the flaky test detective's (wiring/progress.js): a hash and test ids, never the output.
+    for (const e of testRunsOf(evt)) this.emit(e.type, e);
   }
 
   update(sessions) {
@@ -465,4 +497,4 @@ class ExternalSessions extends EventEmitter {
   get summary() { return { ...summarize(this.sessions), status: this.status, port: this.port }; }
 }
 
-module.exports = { ExternalSessions, applyHookEvent, bugsOf, expire, summarize, acceptable, markerPath, programOf, DEFAULT_PORT, ROUTES };
+module.exports = { ExternalSessions, applyHookEvent, bugsOf, testRunsOf, expire, summarize, acceptable, markerPath, programOf, DEFAULT_PORT, ROUTES };

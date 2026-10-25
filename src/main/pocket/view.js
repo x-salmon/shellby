@@ -291,15 +291,28 @@ function phoneItem(item) {
   }
 }
 
-/** A transcript's tail, as phone items. */
+/**
+ * A transcript's tail, as phone items. Of a helper's own steps, only its latest
+ * tool and what it last said come: that's all the phone draws of one, and a busy
+ * helper's hundreds of steps would otherwise fill the tail and push out the
+ * Agent call that draws its lane, leaving the phone nothing to show.
+ */
 function phoneItems(items) {
+  const list = Array.isArray(items) ? items : [];
   const out = [];
-  for (const it of Array.isArray(items) ? items : []) {
-    const p = phoneItem(it);
+  const kept = new Set(); // a helper's parent + kind, already kept from later on
+  for (let i = list.length - 1; i >= 0 && out.length < MAX_ITEMS; i--) {
+    const p = phoneItem(list[i]);
     // A partial is only ever on its way to being a text; the saved transcript has the text.
-    if (p && p.k !== 'partial') out.push(p);
+    if (!p || p.k === 'partial') continue;
+    if (p.sub) {
+      const key = `${p.parent}\n${p.k}`;
+      if ((p.k !== 'tool' && p.k !== 'text') || kept.has(key)) continue;
+      kept.add(key);
+    }
+    out.push(p);
   }
-  return out.slice(-MAX_ITEMS);
+  return out.reverse();
 }
 
 module.exports = { MAX_ITEMS, STANDINGS, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };

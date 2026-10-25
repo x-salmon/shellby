@@ -292,6 +292,7 @@
     if (same) return;
     showScreen('detail');
     P.renderDetail();
+    P.loadFound?.(); // servers Shellby didn't start, asked only while a project's page is open
   }
 
   // Back to the list, read again: the page may have just read fresher git than the rows have.

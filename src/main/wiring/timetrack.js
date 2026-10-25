@@ -491,6 +491,9 @@ function wireTimetrack(d) {
     d.external.on('bug-start', e => d.bugdex?.outsideStart(e));
     d.external.on('bug-read', e => d.bugdex?.outsideResult(e));
     d.external.on('bug-wrote', e => d.bugdex?.outsideWrote(e));
+    // The flaky test detective, outside Shellby too: a hash and test ids, never the output (external.js testRunsOf).
+    d.external.on('test-start', e => d.outsideTestStart?.(e));
+    d.external.on('test-run', e => d.outsideTestRun?.(e));
     d.external.on('turn-done', e => {
       d.awardXp('task', { project: e.project });
       d.noteWorkTime(e.ms);

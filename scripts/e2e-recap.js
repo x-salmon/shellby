@@ -25,11 +25,14 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   });
   try {
     let list = [];
-    for (let i = 0; i < 40 && !list.some(t => t.url.endsWith('panel.html')); i++) {
+    // A busy PC (the whole e2e run at once) can take past 20 s to show the panel.
+    for (let i = 0; i < 60 && !list.some(t => t.url.endsWith('panel.html')); i++) {
       try { list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); } catch { /* starting */ }
       await wait(500);
     }
-    const ws = new WebSocket(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
+    const panel = list.find(t => t.url.endsWith('panel.html'));
+    if (!panel) throw new Error('the panel never opened in 30 s');
+    const ws = new WebSocket(panel.webSocketDebuggerUrl);
     await new Promise(r => { ws.onopen = r; });
     let id = 0; const p = new Map();
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };

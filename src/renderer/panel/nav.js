@@ -237,12 +237,12 @@
     const found = where && K.cloneFor(projects?.list?.projects, where);
     if (!found) return [];
     const { project: p, clone: c } = found;
-    const mine = (projects.servers?.servers || []).filter(s => s.root.toLowerCase() === c.root.toLowerCase() && (s.status === 'starting' || s.status === 'up'));
+    const mine = (projects.servers?.servers || []).filter(s => s.root.toLowerCase() === c.root.toLowerCase() && (s.status === 'starting' || s.status === 'up' || s.status === 'erroring'));
     const entry = (id, icon, title, sub, run, keys = '') => ({ id: `pj:${id}`, group: 'Project', icon, title, sub, keys: `project ${p.name} ${keys}`, run });
     const script = c.scripts?.find(s => s.name === c.lastScript) || c.scripts?.find(s => s.likely);
     const servers = mine.flatMap(s => [
-      s.status === 'up' && s.url && entry(`open:${s.script}`, '▶', `Open ${s.script} in the browser`, `${p.name} · ${s.port ? `:${s.port}` : s.url}`, () => api.openServer(s.id), 'dev server localhost port'),
-      entry(`stop:${s.script}`, '■', `Stop ${s.manager} run ${s.script}`, `${p.name} · ${s.status === 'up' ? 'running' : 'starting'}`, async () => {
+      s.status !== 'starting' && s.url && entry(`open:${s.script}`, '▶', `Open ${s.script} in the browser`, `${p.name} · ${s.port ? `:${s.port}` : s.url}`, () => api.openServer(s.id), 'dev server localhost port'),
+      entry(`stop:${s.script}`, '■', `Stop ${s.manager} run ${s.script}`, `${p.name} · ${s.status === 'up' ? 'running' : s.status === 'erroring' ? 'running, build error' : 'starting'}`, async () => {
         const r = await api.stopServer(s.id);
         SB.toast(r?.ok === false ? r.error || "Couldn't stop it." : `Stopped ${s.script} in ${p.name}.`);
       }, 'dev server kill'),

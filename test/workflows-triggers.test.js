@@ -24,6 +24,15 @@ test('events match triggers by kind, repo and outcome', () => {
   assert.deepEqual(names('shipped', { kind: 'push', project: 'shellby' }), []);
 });
 
+test('a flaky test starts the workflows for its project, or for any', () => {
+  const any = wf([{ type: 'flaky' }], { name: 'Any' });
+  const one = wf([{ type: 'flaky', project: 'Shellby' }], { name: 'One' });
+  const names = data => matchEvent([any, one], 'flaky', data).map(m => m.workflow.name);
+  assert.deepEqual(names({ project: 'shellby', test: 'test/a.test.js › b' }), ['Any', 'One']);
+  assert.deepEqual(names({ project: 'other', test: 'x' }), ['Any']);
+  assert.equal(one.when[0].project, 'Shellby');
+});
+
 test('workflow chains stop after three hops and never self-trigger', () => {
   const next = wf([{ type: 'workflow', name: 'First', status: 'ok' }], { name: 'Next' });
   assert.equal(matchEvent([next], 'workflow', { name: 'first', status: 'ok', chain: 1 }).length, 1);
@@ -173,4 +182,18 @@ test('issue triggers match on why the issue came in, and the repository', () => 
   assert.equal(any.when[0].on, 'any');
   assert.equal(validateWorkflow({ name: 'X', when: [{ type: 'issue', on: 'closed' }], steps: [{ type: 'tell', text: 'x' }] }).ok, false);
   assert.equal(validateWorkflow({ name: 'X', when: [{ type: 'issue', repo: 'not a repo' }], steps: [{ type: 'tell', text: 'x' }] }).ok, false);
+});
+
+test('server triggers match on the event, the project and the script', () => {
+  const crash = wf([{ type: 'server' }], { name: 'Crash' });
+  const site = wf([{ type: 'server', on: 'any', project: 'Site' }], { name: 'Site' });
+  const dev = wf([{ type: 'server', on: 'up', script: 'dev' }], { name: 'Dev' });
+  const names = data => matchEvent([crash, site, dev], 'server', data).map(m => m.workflow.name);
+  assert.equal(crash.when[0].on, 'crashed', 'a crash unless said otherwise');
+  assert.deepEqual(names({ event: 'crashed', project: 'site', script: 'dev' }), ['Crash', 'Site']);
+  assert.deepEqual(names({ event: 'up', project: 'site', script: 'dev' }), ['Site', 'Dev']);
+  assert.deepEqual(names({ event: 'up', project: 'other', script: 'start' }), []);
+  assert.deepEqual(names({ event: 'stopped', project: 'other', script: 'dev' }), []);
+  assert.equal(validateWorkflow({ name: 'X', when: [{ type: 'server', on: 'exploded' }], steps: [{ type: 'tell', text: 'x' }] }).ok, false);
+  assert.equal(validateWorkflow({ name: 'X', when: [{ type: 'server', script: 'dev && calc' }], steps: [{ type: 'tell', text: 'x' }] }).ok, false);
 });
