@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
@@ -45,7 +46,7 @@ const SHOTS = shotsAt > 0 ? process.argv[shotsAt + 1] : null;
       if (r?.result?.data) fs.writeFileSync(path.join(SHOTS, `${name}.png`), Buffer.from(r.result.data, 'base64'));
       else console.log(`(no screenshot for ${name}: the window didn't paint)`);
     };
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await wait(500);
 

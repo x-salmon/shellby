@@ -11,6 +11,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9342;
@@ -39,7 +40,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     };
     const critter = await connect(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl);
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await wait(3000);
+    await panelBooted(panel.ev);
     // Open the panel only if it isn't already (a fresh profile opens it for onboarding).
     if (await panel.ev('document.visibilityState') !== 'visible') await critter.ev('window.shellby.critter.click()'); // show the panel so layout/hover are real
     await wait(800);

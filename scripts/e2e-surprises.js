@@ -10,6 +10,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9388;
@@ -76,7 +77,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
       await wait(1500); // the turn's diff and the last run's snapshot come after the result
     };
 
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     // A mic held by another app reads as a call, which hushes him: pin it off.
     await panel.ev("shellby.dev.life({ what: 'call', on: false })");

@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { panelBooted } = require('./lib/boot');
 
 const PORT = Number(process.env.E2E_CDP_PORT) || 9333;
 const ROOT = path.join(__dirname, '..');
@@ -55,7 +56,7 @@ async function cdp(wsUrl) {
     const t = await targets();
     panel = await cdp(t.panel.webSocketDebuggerUrl);
     const critter = await cdp(t.critter.webSocketDebuggerUrl);
-    await wait(3000);
+    await panelBooted(panel.evaluate);
 
     if (await panel.evaluate('document.body.dataset.view') === 'onboarding') {
       await panel.evaluate("document.getElementById('letsGoBtn').click()");

@@ -11,6 +11,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const { COMMAND } = require('../src/main/statusline');
 const { AWARDS } = require('../src/main/progression/xp');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
@@ -47,7 +48,7 @@ const plain = s => s.replace(/\x1b\[[0-9;]*m/g, '');
     };
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     const untilLine = async (re, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (re.test(read())) return read(); await wait(150); } return read(); };
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
 
     // 1. The line exists and shows Shellby with his level.

@@ -12,6 +12,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9384;
@@ -66,7 +67,7 @@ fs.mkdirSync(claudeConfig);
     const shot = (name, show = null) => (process.env.E2E_SHOTS ? ev(`document.querySelectorAll('.celebrate .cel-close').forEach(b => b.click()); ${show ? `document.querySelector(${JSON.stringify(show)})?.scrollIntoView({ block: 'start' })` : ''}`).then(() => wait(500)).then(() => send('Page.captureScreenshot', { format: 'png' })).then(m => fs.writeFileSync(path.join(process.env.E2E_SHOTS, `vscode-${name}.png`), Buffer.from(m.result.data, 'base64'))) : null);
     const FEED = '.feed:not([hidden])';
 
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await ev(`shellby.setFolder(${JSON.stringify(repo)}).then(SB.folderChanged)`);
     await wait(500);

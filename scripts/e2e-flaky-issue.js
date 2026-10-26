@@ -10,6 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9391;
@@ -91,7 +92,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({
     let list = [];
     for (let i = 0; i < 40 && !list.some(t => t.url.endsWith('panel.html')); i++) { list = await targets(); await wait(500); }
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev(`shellby.setFolder(${JSON.stringify(repo)}).then(SB.folderChanged)`);
     const buttons = () => panel.ev("[...document.querySelectorAll('#flakyList button')].map(b => b.textContent).join(',')");
     const act = () => panel.ev(`shellby.flakyAct({ key: ${JSON.stringify(KEY)}, id: ${JSON.stringify(TEST)}, action: 'issue' })`);

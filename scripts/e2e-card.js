@@ -10,6 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { EVENT_NAMES } = require('../src/main/channels');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9346;
@@ -69,7 +70,7 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     const send = (method, params = {}) => new Promise(r => { const i = ++id; p.set(i, m => r(m.result)); ws.send(JSON.stringify({ id: i, method, params })); });
     const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }))?.result?.value;
     const until = async (expr, ms = 6000) => { for (let t = 0; t < ms; t += 200) { if (await ev(expr)) return true; await wait(200); } return false; };
-    await wait(3000);
+    await panelBooted(ev);
 
     // Dress him up first.
     await ev(`(async () => {

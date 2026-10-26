@@ -12,6 +12,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const events = require('../src/main/events');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9351;
@@ -42,7 +43,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const send = (method, params = {}) => new Promise(r => { const i = ++id; p.set(i, m => r(m.result)); ws.send(JSON.stringify({ id: i, method, params })); });
     const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }))?.result?.value;
     const shot = async name => { if (shots) await savePng(send, path.join(shots, `${name}.png`)); };
-    await wait(3000);
+    await panelBooted(ev);
     await ev(`shellby.setSettings({ onboarded: true, crabOnly: false })`);
     await ev(`SB.tide.refresh()`);
     await wait(500);

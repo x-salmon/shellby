@@ -17,6 +17,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const { BITS } = require('../src/main/voice');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9363;
@@ -73,7 +74,7 @@ async function windows() {
     const { panel, critter } = await windows();
     const until = async (c, expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(120); } return false; };
     const bubble = () => critter.ev("document.getElementById('bubbleText').textContent");
-    await wait(3000);
+    await panelBooted(panel.ev);
     // Any app holding the microphone (Discord, a game recorder) reads as a call,
     // and on a call he says nothing; pin it off so the run doesn't depend on the PC.
     await panel.ev("shellby.dev.life({ what: 'call', on: false })");
@@ -199,7 +200,7 @@ async function windows() {
 
     app = launch(data, { SHELLBY_FAKE_HEALTH: 'hot' });
     const again = await windows();
-    await wait(4000);
+    await panelBooted(again.panel.ev);
     check(await again.panel.ev('shellby.dev.temperament()') === temperament, `still the same ${temperament} crab after a restart`);
     check(saved().voice?.seed === seed, '...with the same seed');
 

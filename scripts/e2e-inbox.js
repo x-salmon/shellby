@@ -10,6 +10,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
@@ -81,7 +82,7 @@ function makeRepo() {
     panel = await cdp(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     const { ev } = panel;
     const until = async (expr, ms = 15000) => { const end = Date.now() + ms; for (;;) { const v = await ev(expr); if (v || Date.now() > end) return v; await wait(200); } };
-    await wait(2500);
+    await panelBooted(ev);
 
     await ev("SB.setView('projects')");
     const rowsOf = "[...document.querySelectorAll('#pjInbox .pj-inbox-group[aria-label=\"Stale branches\"] .pj-h-row')]";

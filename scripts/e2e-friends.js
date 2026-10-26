@@ -12,6 +12,7 @@ const { savePng } = require('./lib/shot');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { formatWave } = require('../src/main/github/mail');
 const { TEMPERAMENTS } = require('../src/main/banter');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
@@ -84,7 +85,7 @@ async function connect(url) {
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     const critter = await connect(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl);
     const ev = panel.ev;
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; })");
     // A mic in use elsewhere (Discord, a game) reads as a call and hushes him: the visit has to be heard.
     await ev("shellby.dev?.life?.({ what: 'call', on: false })");

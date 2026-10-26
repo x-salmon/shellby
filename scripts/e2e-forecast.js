@@ -10,6 +10,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
@@ -40,7 +41,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const ev = expr => call('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }).then(m => m.result?.result?.value);
     const until = async (expr, ms = 10000) => { for (let t = 0; t < ms; t += 250) { if (await ev(expr)) return true; await wait(250); } return false; };
     const usage = r => ev(`SB.api.devUsage(${JSON.stringify(r)})`);
-    await wait(3000);
+    await panelBooted(ev);
     await ev("SB.setView('chat')");
 
     // A real conversation first, so there's a tab for held messages to go back to.

@@ -7,6 +7,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { crabPainted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9339;
@@ -54,7 +55,7 @@ $f.Close()
       await wait(500);
     }
     critter = await cdp(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl);
-    await wait(3000);
+    await crabPainted(critter.ev);
     const b = JSON.parse(await critter.ev('JSON.stringify({x:screenX,y:screenY,w:outerWidth,h:outerHeight,dpr:devicePixelRatio})'));
     const rect = [b.x * b.dpr, b.y * b.dpr, b.w * b.dpr, b.h * b.dpr].map(Math.round);
     const psFile = path.join(os.tmpdir(), 'shellby-cover.ps1');

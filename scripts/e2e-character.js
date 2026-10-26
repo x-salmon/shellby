@@ -10,6 +10,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const { dayKey } = require('../src/main/weekly');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
@@ -51,7 +52,7 @@ function seed(dir) {
     const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }))?.result?.value;
     const until = async (expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(150); } return false; };
     const shot = async name => await savePng(send, path.join(OUT, name));
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.dev?.life?.({ what: 'call', on: false }); SB.setView('chat'); true");
 
     const sheet = (await ev('shellby.getXp()')).character;

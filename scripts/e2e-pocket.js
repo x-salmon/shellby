@@ -16,6 +16,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const { DNS, LOGIN } = require('../test/fixtures/fake-tailscale');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9377;
@@ -112,7 +113,7 @@ const untilTrue = async (fn, ms = 12000) => { const end = Date.now() + ms; while
       await wait(500);
     }
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await panel.ev(`shellby.setFolder(${JSON.stringify(repo)}).then(SB.folderChanged)`);
     await wait(500);

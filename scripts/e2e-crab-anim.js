@@ -28,6 +28,7 @@ const { POSES } = require('../src/main/work-pose');
 const { NAMES: FLOURISHES } = require('../src/main/flourish');
 const { BITS } = require('../src/main/voice');
 const { SCENE_BITS } = require('../src/main/scenes');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9411;
@@ -138,7 +139,7 @@ const SETUP = `(() => {
     }
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     const critter = await connect(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl);
-    await wait(2500);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true, skin: 'classic', scale: 1 }).then(r => { SB.state.settings = r.settings; })");
     await panel.ev('shellby.setWardrobeOptions({ seasonalAuto: false })');
     await panel.ev("shellby.dev.life({ what: 'call', on: false })");

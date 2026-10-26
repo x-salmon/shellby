@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9363;
@@ -62,7 +63,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     };
     const save = async def => { const r = ev(`shellby.saveWorkflow(${def}).then(r => JSON.stringify(r))`); const done = await Promise.race([r, wait(1500).then(() => null)]); if (done === null) await yesToDialog(); return JSON.parse(await r); };
 
-    await wait(3000);
+    await panelBooted(ev);
     await call('Runtime.enable');
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; })");
 

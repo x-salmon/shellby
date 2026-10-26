@@ -14,6 +14,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9397;
@@ -60,7 +61,7 @@ async function connect(url) {
     const fresh = async () => { await ev('SB.newTab({ reuse: false })'); await wait(400); };
     const argsOf = async () => { await ev("SB.send('args')"); await idle(); try { return JSON.parse(await lastReply()); } catch { return []; } };
 
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
 
     // ---- 0. the start screen's suggestions hold still when his look changes

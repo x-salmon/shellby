@@ -9,6 +9,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9344;
@@ -37,7 +38,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     };
     const critter = await connect(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl);
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await wait(3500);
+    await panelBooted(panel.ev);
     if (await panel.ev('document.body.dataset.view') === 'onboarding') {
       await panel.ev("document.getElementById('letsGoBtn').click()");
       await wait(400);

@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9419;
@@ -40,7 +41,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
     const ev = expr => new Promise(r => { const i = ++id; p.set(i, m => r(m.result?.result?.value)); ws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, awaitPromise: true } })); });
     const until = async (expr, ms = 15000) => { for (let t = 0; t < ms; t += 250) { if (await ev(expr)) return true; await wait(250); } return false; };
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await ev('window.__tabs = []; shellby.onTabs(t => { window.__tabs = t; }); true');
     const turn = async (text, done) => { await ev(`SB.send(${JSON.stringify(text)})`); return until(done); };

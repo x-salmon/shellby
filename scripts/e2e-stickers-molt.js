@@ -9,6 +9,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9375;
@@ -73,7 +74,7 @@ fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({
     const panel = await connect('panel.html');
     const crab = await connect('critter.html');
     const until = async (c, expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(120); } return false; };
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev(`shellby.setFolder(${JSON.stringify(repo)}).then(SB.folderChanged)`);
     await wait(500);
     await panel.ev('SB.newTab()');

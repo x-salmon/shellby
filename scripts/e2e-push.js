@@ -8,6 +8,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9373;
@@ -56,7 +57,7 @@ git(other, 'push', '-q');
     const ev = expr => new Promise(r => { const i = ++id; p.set(i, m => r(m.result?.result?.value)); ws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, awaitPromise: true } })); });
     const until = async (expr, ms = 10000) => { for (let t = 0; t < ms; t += 150) { if (await ev(expr)) return true; await wait(150); } return false; };
     const shot = name => (process.env.E2E_SHOTS ? new Promise(r => { const i = ++id; p.set(i, m => { fs.writeFileSync(path.join(process.env.E2E_SHOTS, `${name}.png`), Buffer.from(m.result.data, 'base64')); r(); }); ws.send(JSON.stringify({ id: i, method: 'Page.captureScreenshot', params: { format: 'png' } })); }) : null);
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await ev(`shellby.setFolder(${JSON.stringify(repo)}).then(SB.folderChanged)`);
     await wait(500);

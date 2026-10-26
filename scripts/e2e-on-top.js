@@ -16,6 +16,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const native = require('../src/main/desktop/native-windows');
+const { panelBooted } = require('./lib/boot');
 
 native.dpiAware(); // see the same physical pixels the app does
 
@@ -70,7 +71,7 @@ function above(a, b) {
     }
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     const critter = await connect(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl);
-    await wait(2500);
+    await panelBooted(panel.ev);
     const state = await panel.ev('shellby.dev.perchState()');
     const me = state.self;
     const look = () => native.describe(me);

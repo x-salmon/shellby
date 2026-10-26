@@ -14,6 +14,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const climb = require('../src/main/desktop/climb');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9368;
@@ -59,7 +60,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     const floorT = list.find(t => t.url.endsWith('floor.html'));
     const state = () => panel.ev('shellby.dev.edges()');
     const until = async (fn, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return true; await wait(100); } return false; };
-    await wait(2500);
+    await panelBooted(panel.ev);
     await critter.ev("window.__cls = new Set(); new MutationObserver(() => document.body.className.split(' ').forEach(c => window.__cls.add(c))).observe(document.body, { attributes: true, attributeFilter: ['class'] }); true");
     const seen = cls => critter.ev(`window.__cls.has(${JSON.stringify(cls)})`);
     const forget = () => critter.ev('window.__cls.clear(); true');

@@ -11,6 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { STARTERS } = require('../src/main/snippets');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
@@ -52,7 +53,7 @@ async function cli(body) {
     const type = text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); })(SB.$('input'))`);
     const enter = () => ev("SB.$('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))");
     const replies = () => ev("JSON.stringify([...SB.activeTab().el.querySelectorAll('.msg.assistant')].map(e => e.textContent.trim()))").then(JSON.parse);
-    await wait(3000);
+    await panelBooted(ev);
 
     // 1. The Toolbox tab, with the starters.
     await ev("SB.showToolbox('snippet')");

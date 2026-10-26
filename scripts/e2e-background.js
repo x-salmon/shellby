@@ -12,6 +12,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9372;
@@ -55,7 +56,7 @@ async function connect(url, dir) {
       headers: { 'Content-Type': 'application/json', 'X-Shellby': '1' },
     }).then(r => r.status);
 
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; })");
     await panel.ev('shellby.setExternal(true)');
     check(await until(panel, "shellby.getExternal().then(v => v.status === 'listening')", 6000), 'Shellby is listening for sessions elsewhere');

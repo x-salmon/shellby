@@ -9,6 +9,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { findClaude } = require('../src/main/claude/cli');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const CDP = 9348;
@@ -45,7 +46,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     };
     const critter = await connect(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl);
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await wait(2500);
+    await panelBooted(panel);
     // Record every mood the crab shows.
     await critter("window.__moods = []; setInterval(() => { const m = (document.body.className.match(/state-(\\w+)/) || [])[1]; if (m && window.__moods.at(-1) !== m) window.__moods.push(m); }, 50); true");
 

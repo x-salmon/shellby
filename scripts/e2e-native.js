@@ -17,6 +17,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9394;
@@ -68,7 +69,7 @@ async function connect(url) {
     const lastReply = () => ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant')].pop()?.textContent || ''");
     const fresh = async () => { await ev('SB.newTab({ reuse: false })'); await wait(400); };
 
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
 
     // ---- 1. its to-do list

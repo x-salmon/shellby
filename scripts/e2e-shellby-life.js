@@ -19,6 +19,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const { SHELLS } = require('../src/main/progression/shells');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
@@ -70,7 +71,7 @@ async function connect(url) {
     const SIGN = `!!document.querySelector('#sprite .part-claw.acc-held rect[fill="#a0693a"]')`;
     const FLAG = `!!document.querySelector('#sprite .acc-held rect[fill="#2dc653"]')`;
     const signUp = () => critter.ev(SIGN);
-    await wait(3000);
+    await panelBooted(panel.ev);
     // Record every body class the critter shows, so short beats aren't missed.
     await critter.ev("window.__cls = new Set(); new MutationObserver(() => document.body.className.split(' ').forEach(c => window.__cls.add(c))).observe(document.body, { attributes: true, attributeFilter: ['class'] }); true");
     const seen = cls => critter.ev(`window.__cls.has(${JSON.stringify(cls)})`);

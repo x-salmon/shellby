@@ -9,6 +9,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9355;
@@ -36,7 +37,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const until = async (expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(150); } return false; };
     const lastReply = () => ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant')].pop()?.textContent || ''");
     const card = "[...SB.activeTab().el.querySelectorAll('.ask.question')].pop()";
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
 
     // 1. One question: a real card, number keys answer it.

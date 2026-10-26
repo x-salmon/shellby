@@ -10,6 +10,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9391;
@@ -68,7 +69,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
     const entry = async id => (await dex())?.species.find(s => s.id === id);
     const xpKinds = () => panel.ev('shellby.getXp().then(v => v.log.map(e => e.kind))');
 
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await panel.ev(`shellby.setFolder(${JSON.stringify(repo)}).then(SB.folderChanged)`);
     await wait(500);

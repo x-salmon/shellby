@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
@@ -56,7 +57,7 @@ async function connect(match) {
   try {
     const panel = await connect('panel.html');
     const critter = await connect('critter.html');
-    await wait(2500);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true, mode: 'autonomous' }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     const type = text => panel.ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))`);
 

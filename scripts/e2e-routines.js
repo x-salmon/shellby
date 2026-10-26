@@ -11,6 +11,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9364;
@@ -38,7 +39,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const until = async (expr, ms = 15000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(150); } return false; };
     const describe = words => ev(`(() => { document.getElementById('routineAskText').value = ${JSON.stringify(words)}; document.getElementById('routineAskBtn').click(); return true; })()`);
 
-    await wait(3000);
+    await panelBooted(ev);
     check(await until("typeof shellby !== 'undefined' && !!SB.state?.settings", 20000), 'the panel is up');
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('routines'); })");
     check(await until("document.getElementById('routinesView')?.offsetParent !== null"), 'the Routines page opens');

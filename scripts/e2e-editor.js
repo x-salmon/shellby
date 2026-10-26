@@ -11,6 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9397;
@@ -46,7 +47,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const key = (k, mods = {}) => ev(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true, ctrlKey: ${!!mods.ctrl}, shiftKey: ${!!mods.shift} }))`);
     const feed = 'SB.activeTab().el';
 
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await ev(`shellby.setFolder(${JSON.stringify(work)}).then(r => SB.folderChanged(r))`);
     check(await until(`SB.activeTab()?.cwd?.toLowerCase() === ${JSON.stringify(work.toLowerCase())}`), 'a conversation in the test folder');

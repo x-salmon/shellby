@@ -11,6 +11,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
@@ -58,7 +59,7 @@ async function launch(port, env) {
   let run = await launch(9391, { SHELLBY_USER_DATA: fake, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47988' });
   try {
     const panel = await cdp((await run.target('panel.html')).webSocketDebuggerUrl);
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("SB.setView('chat')");
     const type = text => panel.ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))`);
 

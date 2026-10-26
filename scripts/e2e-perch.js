@@ -17,6 +17,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const native = require('../src/main/desktop/native-windows');
+const { panelBooted } = require('./lib/boot');
 
 native.dpiAware(); // see the same physical pixels the app does
 
@@ -75,7 +76,7 @@ async function openNotepad(at) {
     const critter = await connect(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl);
     const state = () => panel.ev('shellby.dev.perchState()');
     const until = async (fn, ms = 6000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return true; await wait(80); } return false; };
-    await wait(2500);
+    await panelBooted(panel.ev);
     await critter.ev("window.__cls = new Set(); new MutationObserver(() => document.body.className.split(' ').forEach(c => window.__cls.add(c))).observe(document.body, { attributes: true, attributeFilter: ['class'] }); true");
     const seen = cls => critter.ev(`window.__cls.has(${JSON.stringify(cls)})`);
     const forget = () => critter.ev('window.__cls.clear(); true');

@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9351;
@@ -51,7 +52,7 @@ async function cdp(url) {
       await wait(500);
     }
     const { send, ev } = await cdp(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await wait(2500);
+    await panelBooted(ev);
     await ev("SB.setView('time')");
     const ready = async () => { for (let i = 0; i < 40; i++) { if (await ev("document.querySelectorAll('#timeProjects .tm-project').length")) return true; await wait(250); } return false; };
     check(await ready(), 'the Time page lists a project');

@@ -15,6 +15,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9380;
@@ -93,7 +94,7 @@ const RIG = `(() => {
     const { panel, critter } = await windows();
     const until = async (c, expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(120); } return false; };
     const played = name => `window.__cues.some(([n, ok]) => n === ${JSON.stringify(name)} && ok)`;
-    await wait(3000);
+    await panelBooted(panel.ev);
     // His moves follow Windows' animation setting, and any app holding the microphone
     // (Discord, a game recorder) reads as a call; pin both so the run doesn't depend on the PC.
     await panel.ev("shellby.dev.life({ what: 'call', on: false })");

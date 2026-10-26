@@ -18,6 +18,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9390;
@@ -52,7 +53,7 @@ function connect(url) {
     const until = (expr, ms = 10000) => poll({ ev }, expr, ms);
     until.in = (w, expr, ms = 10000) => poll(w, expr, ms);
     const type = async text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))`);
-    await wait(3000);
+    await panelBooted(ev);
     await ev("SB.setView('chat')");
     await critter.ev("window.__said = []; const bt = document.getElementById('bubbleText'); new MutationObserver(() => window.__said.push(bt.textContent)).observe(bt, { childList: true, characterData: true, subtree: true }); true");
 

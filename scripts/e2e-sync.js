@@ -15,6 +15,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { FINDS } = require('../src/main/gifts');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
@@ -64,7 +65,7 @@ async function connect(url) {
       await wait(500);
     }
     panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; })");
     if (signIn) {
       await panel.ev("shellby.githubSignIn(['sync'])");

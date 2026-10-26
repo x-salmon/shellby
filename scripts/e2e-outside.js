@@ -14,6 +14,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9378;
@@ -86,7 +87,7 @@ function keyPresser() {
   try {
     const { panel, critter } = await windows();
     const until = async (c, expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(120); } return false; };
-    await wait(3000);
+    await panelBooted(panel.ev);
     await critter.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
 
     // ------------------------------------------------------- rain

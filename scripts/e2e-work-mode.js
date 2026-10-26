@@ -13,6 +13,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9393;
@@ -55,7 +56,7 @@ async function connect(url) {
       await wait(500);
     }
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await wait(3000);
+    await panelBooted(panel.ev);
     const bar = () => panel.ev("[...document.querySelectorAll('.dock [data-view-btn]')].map(b => b.dataset.viewBtn)");
 
     // 1. Three paths; Work mode needs Claude Code, so its steps show.

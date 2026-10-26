@@ -9,6 +9,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9358;
@@ -65,7 +66,7 @@ async function connect(url) {
     }
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     const ev = panel.ev;
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; })");
 
     // 1. Signed out: the section explains itself; Claude access waits for sign-in.

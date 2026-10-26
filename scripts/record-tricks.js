@@ -12,6 +12,7 @@ const os = require('os');
 const path = require('path');
 const koffi = require('koffi');
 const native = require('../src/main/desktop/native-windows');
+const { panelBooted } = require('./lib/boot');
 
 native.dpiAware(); // physical pixels, like ffmpeg's gdigrab
 
@@ -250,7 +251,7 @@ async function launch(clip) {
   const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
   const dev = call => panel.ev(`shellby.dev.${call}`);
   const until = async (fn, ms) => { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return true; await wait(80); } return false; };
-  await wait(2500);
+  await panelBooted(panel.ev);
   await dev("life({ what: 'call', on: false })"); // a mic in use elsewhere would hush him
   return { app, panel, dev, until };
 }

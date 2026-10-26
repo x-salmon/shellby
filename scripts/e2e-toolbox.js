@@ -11,6 +11,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9357;
@@ -52,7 +53,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const until = async (expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(150); } return false; };
     const pick = (sel, value) => ev(`(s => { s.value = ${JSON.stringify(value)}; s.dispatchEvent(new Event('change')); })(document.querySelector('${sel}'))`);
     const rows = () => ev("document.querySelectorAll('#toolList .tool-row').length");
-    await wait(3000);
+    await panelBooted(ev);
 
     const out = process.argv[2] || path.join(os.tmpdir(), 'shellby-toolbox.png');
     // Screenshots are for a person to look at, not something checked, so one that

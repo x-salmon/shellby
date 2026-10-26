@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9341;
@@ -25,7 +26,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     let id = 0; const p = new Map();
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
     const ev = expr => new Promise(r => { const i = ++id; p.set(i, m => r(m.result?.result?.value)); ws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true } })); });
-    await wait(3000);
+    await panelBooted(ev);
     await ev("SB.setView('chat')");
     for (const width of [400, 420, 440, 460, 494]) {
       const row = [];

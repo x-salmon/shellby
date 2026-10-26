@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
@@ -74,7 +75,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       return null;
     };
 
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     check(await until("typeof shellby !== 'undefined' && shellby.listWorkflows().then(v => !!v?.templates)", 20000), 'the workflow service answers');
 

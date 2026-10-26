@@ -11,6 +11,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9363;
@@ -49,7 +50,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     })()`);
     const chatText = scope => ev(`document.querySelector('${scope} .wf-chat-log')?.innerText || ''`);
 
-    await wait(3000);
+    await panelBooted(ev);
     check(await until("typeof shellby !== 'undefined' && typeof shellby.chatRoutine === 'function'", 20000), 'the routine chat is on the bridge');
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('routines'); })");
     check(await until("document.getElementById('routinesView')?.offsetParent !== null"), 'the Routines page opens');

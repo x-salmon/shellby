@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9352;
@@ -43,7 +44,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const until = async (c, expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(150); } return false; };
     const xp = () => panel.ev('shellby.getXp()');
     const kinds = async () => (await xp()).log.map(e => e.kind);
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     // Count XP floats on the desktop.
     await critter.ev("window.__xp = []; new MutationObserver(m => m.forEach(r => r.addedNodes.forEach(n => window.__xp.push(n.textContent)))).observe(document.getElementById('xpFloat'), { childList: true }); true");

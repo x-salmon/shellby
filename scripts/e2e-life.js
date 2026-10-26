@@ -20,6 +20,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const { FINDS, SETS } = require('../src/main/gifts');
 const { UNLOCKS } = require('../src/main/bond');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9377;
@@ -77,7 +78,7 @@ async function windows() {
   try {
     const { panel, critter } = await windows();
     const until = async (c, expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(120); } return false; };
-    await wait(3000);
+    await panelBooted(panel.ev);
     // CI runners ask for reduced motion, which draws only the still props; this check is about the moving ones.
     await critter.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
     // Everything the crab shows, so short beats aren't missed.

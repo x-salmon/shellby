@@ -18,6 +18,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9374;
@@ -71,7 +72,7 @@ async function connect(url, dir) {
     // How far a part of him is out of his shell (1 out, 0 tucked in).
     const out = part => critter.ev(`Number(getComputedStyle(document.querySelector('#sprite .${part}')).opacity)`);
 
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; })");
     await panel.ev('shellby.setExternal(true)');
     check(await until("true", 1000) && await panel.ev("new Promise(r => { const t = setInterval(async () => { if ((await shellby.getExternal()).status === 'listening') { clearInterval(t); r(true); } }, 200); setTimeout(() => r(false), 6000); })"), 'Shellby is listening for sessions elsewhere');

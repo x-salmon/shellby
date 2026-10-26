@@ -14,6 +14,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9418;
@@ -51,7 +52,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const card = () => ev("(c => c ? { phase: [...c.classList].find(x => x.startsWith('phase-')), text: c.textContent } : null)([...SB.activeTab().el.querySelectorAll('.debug-card')].pop())");
     const press = label => ev(`(b => { if (b) b.click(); return !!b; })([...[...SB.activeTab().el.querySelectorAll('.debug-card')].pop().querySelectorAll('button')].find(b => b.textContent.startsWith(${JSON.stringify(label)})))`);
 
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
 
     // ---- 1. @ another conversation

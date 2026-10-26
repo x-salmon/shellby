@@ -11,6 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9376;
@@ -54,7 +55,7 @@ const post = (port, route, body, headers = {}) => fetch(`http://127.0.0.1:${port
     const critter = await connect(list.find(t => t.url.endsWith('critter.html')).webSocketDebuggerUrl, OUT);
     const until = async (c, expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(150); } return false; };
 
-    await wait(3000);
+    await panelBooted(panel.ev);
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; })");
     await panel.ev('shellby.setExternal(true)');
     check(await until(panel, "shellby.getExternal().then(v => v.status === 'listening')", 6000), 'the local port is listening');

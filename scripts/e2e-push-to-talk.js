@@ -13,6 +13,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const koffi = require('koffi');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
@@ -77,7 +78,7 @@ async function windows() {
   try {
     const { panel, critter } = await windows();
     const until = async (c, expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(100); } return false; };
-    await wait(3000);
+    await panelBooted(panel.ev);
     await critter.ev("window.__said = []; const bt = document.getElementById('bubbleText'); new MutationObserver(() => window.__said.push(bt.textContent)).observe(bt, { childList: true, characterData: true, subtree: true }); true");
     const visible = () => panel.ev("document.visibilityState === 'visible'");
 

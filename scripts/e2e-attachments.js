@@ -10,6 +10,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9365;
@@ -49,7 +50,7 @@ const pngFile = (w, h) => `await new Promise(r => { const c = document.createEle
     const drop = (on, fileExpr) => on(`(async () => { const dt = new DataTransfer(); dt.items.add(${fileExpr});
       window.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); })()`);
     const shots = () => { try { return fs.readdirSync(path.join(userData, 'screenshots')); } catch { return []; } };
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await wait(500);
 

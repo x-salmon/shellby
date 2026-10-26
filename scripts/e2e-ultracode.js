@@ -16,6 +16,7 @@ const os = require('os');
 const path = require('path');
 
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9487;
@@ -73,7 +74,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
       return said;
     }
 
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await wait(500);
 

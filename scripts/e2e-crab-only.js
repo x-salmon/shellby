@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9347;
@@ -48,7 +49,7 @@ async function launch() {
     // The panel picks its first view once settings load, which on a slow start
     // comes after any fixed wait: poll for it.
     const until = async (expr, ms = 15000) => { const end = Date.now() + ms; for (;;) { const v = await panel.ev(expr); if (v || Date.now() > end) return v; await wait(200); } };
-    await wait(3000);
+    await panelBooted(panel.ev);
     // 1. First run: onboarding with three paths, Claude steps tucked away.
     check(await until("document.body.dataset.view === 'onboarding'"), 'new user sees onboarding');
     check(await panel.ev("document.querySelectorAll('#onboardPaths .path').length") === 4, 'four paths offered');

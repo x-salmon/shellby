@@ -9,6 +9,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9381;
@@ -41,7 +42,7 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
     const ev = expr => new Promise(r => { const i = ++id; p.set(i, m => r(m.result?.result?.value)); ws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, awaitPromise: true } })); });
     const idle = async () => { for (let i = 0; i < 60 && await ev('SB.activeTab().busy'); i++) await wait(150); };
-    await wait(3000);
+    await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true, mode: 'smart' }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await ev(`shellby.setFolder(${JSON.stringify(repo)}).then(SB.folderChanged)`);
 
