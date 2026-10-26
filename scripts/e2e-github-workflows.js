@@ -39,7 +39,8 @@ const view = ({ claude, workflows }) => JSON.stringify({
     let id = 0; const p = new Map();
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
     const ev = expr => new Promise(r => { const i = ++id; p.set(i, m => r(m.result?.result?.value)); ws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, awaitPromise: true } })); });
-    await wait(3000);
+    // The panel finishes booting once bootstrap answers, which can take more than 3 s.
+    for (let i = 0; i < 100 && !(await ev('window.SB?.starting === false')); i++) await wait(200);
 
     check(await ev("!!document.getElementById('ghWorkflows')"), 'the toggle exists');
 
