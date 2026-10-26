@@ -112,6 +112,7 @@
     $('recapToggle').checked = state.settings.recap !== false;
     $('claudeTricksToggle').checked = state.settings.claudeTricks !== false;
     $('justSawToggle').checked = state.settings.attachWhatISaw === true;
+    $('askedBeforeToggle').checked = state.settings.askedBefore !== false;
     $('forecastToggle').checked = state.settings.forecast !== false;
     $('chromeToggle').checked = state.settings.claudeInChrome === true;
     $('spendGuardToggle').checked = state.settings.spendGuard !== false;
@@ -325,6 +326,7 @@
   $('notifyToggle').addEventListener('change', async e => { const r = await api.setSettings({ notifications: e.target.checked }); state.settings = r.settings; });
   $('recapToggle').addEventListener('change', async e => { const r = await api.setSettings({ recap: e.target.checked }); state.settings = r.settings; });
   $('claudeTricksToggle').addEventListener('change', async e => { const r = await api.setSettings({ claudeTricks: e.target.checked }); state.settings = r.settings; });
+  $('askedBeforeToggle').addEventListener('change', async e => { const r = await api.setSettings({ askedBefore: e.target.checked }); state.settings = r.settings; });
   $('justSawToggle').addEventListener('change', async e => { const r = await api.setSettings({ attachWhatISaw: e.target.checked }); state.settings = r.settings; SB.syncJustSaw?.(); });
   $('flakyToggle').addEventListener('change', async e => { const r = await api.setSettings({ flakyTests: e.target.checked }); state.settings = r.settings; SB.refreshFlaky?.(); });
   $('catchBugsToggle').addEventListener('change', async e => { const r = await api.setSettings({ catchBugs: e.target.checked }); state.settings = r.settings; $('bugdexOptions').hidden = !e.target.checked; });

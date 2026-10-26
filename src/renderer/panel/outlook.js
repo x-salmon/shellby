@@ -3,7 +3,8 @@
    hold what you've typed. Main works out the forecast and does the holding
    and sending (src/main/forecast.js, held.js); this only shows it. The same
    banner carries two quieter tips while you type: a cold cache this message
-   would pay for, and Sonnet for a conversation that hasn't started. */
+   would pay for, and, for a conversation that hasn't started, a past one
+   that asked much the same (src/main/history/similar.js) or Sonnet. */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
@@ -137,6 +138,18 @@
         actions: [h('button', { class: 'btn slim-btn', type: 'button', onclick: () => askInNewTab(tab) }, 'Ask in a new tab')],
       };
     }
+    // Before Sonnet: the answer you already have costs nothing at all.
+    if (e.before && tab) {
+      const b = e.before;
+      return {
+        tip: true, cls: 'quiet', key: null,
+        text: beforeText(b),
+        actions: [
+          h('button', { class: 'btn slim-btn', type: 'button', title: 'That conversation goes with this message as context', onclick: () => bringIn(tab, b) }, 'Bring it in'),
+          h('button', { class: 'btn slim-btn ghost', type: 'button', title: b.ask || b.title, onclick: () => openBefore(tab, b) }, 'Open it'),
+        ],
+      };
+    }
     if (e.suggest) {
       const kind = KIND_NOUN[e.category] || 'tasks';
       return {
@@ -202,10 +215,40 @@
     const text = typedNow();
     const seq = ++estSeq;
     if (!tab || !estimable(text) || SB.isCrabOnly?.()) return;
-    const r = await api.estimateUsage({ tabId: tab.id, text }).catch(() => null);
+    const [r, similar] = await Promise.all([
+      api.estimateUsage({ tabId: tab.id, text }).catch(() => null),
+      // Only before the first message: main says the same (ipc/mentions.js).
+      !tab.saved && state.settings?.askedBefore !== false ? api.context.similar(tab.id, text).catch(() => []) : [],
+    ]);
     if (seq !== estSeq) return; // you've typed on since
-    state.estimate = r && (r.basis !== 'none' || r.rebuild || r.cold || r.suggest) ? { ...r, tabId: tab.id, text } : null;
+    const before = Array.isArray(similar) && similar[0] ? similar[0] : null;
+    state.estimate = (r && (r.basis !== 'none' || r.rebuild || r.cold || r.suggest)) || before
+      ? { basis: 'none', ...r, before, tabId: tab.id, text } : null;
     renderOutlook();
+  }
+
+  // ------------------------------------------------------------ "You've asked this before" (src/main/history/similar.js)
+
+  function beforeText(b) {
+    const when = SB.relTime(b.updatedAt);
+    return `You asked something like this ${when === 'just now' ? 'just now' : when.endsWith('ago') ? when : `on ${when}`}: “${b.title}”${b.done ? ', ticked off as done' : ''}. Its answer may save working it out again.`;
+  }
+
+  // Its whole conversation goes in the box as context, as an @ pick of it would.
+  async function bringIn(tab, b) {
+    const r = await api.context.attach(tab.id, `chat:${b.id}`).catch(() => null);
+    if (!r?.ok) return SB.toast(r?.error || "Couldn't bring it in.");
+    dismissedTip = tab.id;
+    if (SB.activeTab() === tab) SB.addAttachments([r.path]);
+    else if (!tab.attachments.includes(r.path)) tab.attachments.push(r.path);
+    renderOutlook();
+  }
+
+  // In a tab of its own; what you've typed stays in this one's box.
+  function openBefore(tab, b) {
+    dismissedTip = tab.id;
+    renderOutlook();
+    SB.openHistory(b.id);
   }
 
   // "Hold big tasks for the reset" (Settings): SB.send asks before sending.

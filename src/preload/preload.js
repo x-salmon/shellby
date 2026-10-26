@@ -99,7 +99,7 @@ contextBridge.exposeInMainWorld('shellby', {
   freshTab: invoke('tab:fresh'),
   tabCost: invoke('tab:cost'),
   // the terminal's conveniences (parity.js)
-  suggestFiles: (tabId, query) => ipcRenderer.invoke('files:suggest', { tabId, query }), context: { suggest: (tabId, query) => ipcRenderer.invoke('context:suggest', { tabId, query }), attach: (tabId, id) => ipcRenderer.invoke('context:attach', { tabId, id }) }, // @ files, and a dev server, red build, chat or note (wiring/mention-context.js)
+  suggestFiles: (tabId, query) => ipcRenderer.invoke('files:suggest', { tabId, query }), context: { suggest: (tabId, query) => ipcRenderer.invoke('context:suggest', { tabId, query }), attach: (tabId, id) => ipcRenderer.invoke('context:attach', { tabId, id }), similar: (tabId, text) => ipcRenderer.invoke('context:similar', { tabId, text }) }, // @ files, and a dev server, red build, chat or note (wiring/mention-context.js)
   promptHistory: invoke('prompt:history'),
   runShell: (tabId, command) => ipcRenderer.invoke('shell:run', { tabId, command }),
   askBtw: (tabId, question) => ipcRenderer.invoke('btw:ask', { tabId, question }),
@@ -141,8 +141,7 @@ contextBridge.exposeInMainWorld('shellby', {
   shotImage: invoke('shots:image'),                // a before/after picture, as a data URL (shots.js)
   toolPicture: invoke('pictures:tool'),            // a picture a tool handed Claude (tool-pictures.js)
   worktreeStatus: invoke('worktree:status'),
-  bringWorktreeHome: invoke('worktree:home'),
-  shipWorktree: invoke('worktree:ship'),
+  bringWorktreeHome: invoke('worktree:home'), shipWorktree: invoke('worktree:ship'), // ship: a pull request (src/main/ship.js)
   discardWorktree: invoke('worktree:discard'),
   repoStatus: invoke('repo:status'),
   pushRepo: invoke('repo:push'),

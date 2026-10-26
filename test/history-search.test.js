@@ -94,3 +94,25 @@ test('the index reads a transcript again only once it has changed', async () => 
     history.flush();
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('similar: past conversations in History, read the way search reads them, and rereads held back while typing', async () => {
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-hsimilar-')));
+  try {
+    const history = new History(dir, { indexSaveMs: 0, appendMs: 0 });
+    const login = history.create({ title: 'Flaky login test', cwd: dir, mode: 'default' });
+    history.append(login.id, { kind: 'user', text: 'The login test fails on CI about one run in five, fix it' });
+    history.append(login.id, { kind: 'text', text: 'It raced the session store; fixed.' });
+    const dark = history.create({ title: 'Dark mode', cwd: dir, mode: 'default' });
+    history.append(dark.id, { kind: 'user', text: 'Add a dark mode toggle to settings' });
+    history.append(dark.id, { kind: 'text', text: 'Added.' });
+    let stats = 0;
+    const fsp = { stat: f => { stats++; return fs.promises.stat(f); }, readFile: (f, enc) => fs.promises.readFile(f, enc) };
+    const search = new hs.HistorySearch(history, { fsp });
+    const r = await search.similar('the login test keeps failing on CI again');
+    assert.equal(r[0]?.id, login.id);
+    assert.ok(!r.some(x => x.id === dark.id));
+    const before = stats;
+    await search.similar('login test failing on CI once more');
+    assert.equal(stats, before, 'a second lookup a moment later uses what the index has');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

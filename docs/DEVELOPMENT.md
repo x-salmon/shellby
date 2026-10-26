@@ -473,6 +473,7 @@ src/main/        Electron main process
   ipc/             the panel's and crab's IPC handlers, one module per area: `registerXIpc(ipcMain, shared)`;
                    index.js registers them all behind the window check (ipc-guard.js)
   sessions.js      parallel conversations (tabs) + the critter's rolled-up mood
+  ship.js          Ship it: a copy's tests, commit, secret scan, push and pull request in order, and the pull request's words (pure, deps passed in)
   session/         one Claude Code process per conversation (stream-json + control protocol): index.js its life
                    and what it says; args.js how it starts, control.js answering it, accounting.js what it costs, crew.js its helpers
   stream.js        pure parser: CLI events (incl. subagent tasks) → UI items
@@ -487,7 +488,8 @@ src/main/        Electron main process
                    (the trail, Ctrl+Shift+E, is the panel's own: renderer/shared/trail.js; parity.js answers its trail:tests)
   filelinks.js     file links in a conversation: which editor, its vscode://-style link, and what's never opened (pure); ipc/files.js opens them
   safety.js        flags "runs a file Claude wrote" / "changes Claude Code itself"
-  worktrees/       a copy of the project per tab: index.js (making, moving into and bringing home copies), copy-deps.js
+  worktrees/       a copy of the project per tab: index.js (making, moving into and bringing home copies), claude-session.js
+                   (carrying Claude Code's transcript of a conversation into its copy), copy-deps.js
                    (node_modules for a new copy), copy-service.js, clash.js (copies that changed the same files, pure) and
                    clash-scan.js (asking git which files each changed), home-line.js (copies coming home into one checkout
                    take turns, clashes sorted out one copy at a time), merge-train.js (lining finished copies up)
@@ -579,6 +581,7 @@ src/main/        Electron main process
                    wins), life.js (finds, bond points and games as each PC's own share, a find swapped away stays gone; records,
                    quests, scenes, his seed), plans.js (routines and workflows)
   history/         index.js (local conversation index + transcripts), search.js (searching inside past conversations),
+                   similar.js ("You've asked this before": the past conversation in a project most like a new ask, pure),
                    sync.js (which conversations sync between PCs, pure: the trimmed copy that travels, the merge, the recap
                    Claude gets; github/history-gist.js moves it)
   timetrack/       time on each project: index.js (built from what Shellby sees), service.js (the 15-second look at the

@@ -97,9 +97,33 @@ function wireMentionContext(d, opts = {}) {
     return { ok: true, from: `Conversation: ${e.title || 'Untitled'}`, body: mc.chatBody(e.title, d.history.load(e.id)) };
   }
 
+  // A past conversation in this tab's project, by id: any of them, not only the
+  // @ menu's few most recent ("You've asked this before" can find an old one).
+  async function chatInProject(tabId, id) {
+    const tab = d.manager.tabs.get(tabId);
+    const e = tab && id !== tabId ? d.history?.get?.(id) : null;
+    if (!e) return null;
+    const { root } = await homeOf(tab);
+    if (!inside(e.worktree?.originalCwd || e.cwd || '', root)) return null;
+    return { id: `chat:${e.id}`, kind: 'chat', label: mc.clip(e.title || 'Untitled', mc.MAX_LABEL), ref: e };
+  }
+
+  /**
+   * "You've asked this before": this project's past conversations most like
+   * what's being typed in a tab that hasn't started yet (history/similar.js).
+   * -> [{ id, title, updatedAt, done, score, shared, ask }]
+   */
+  async function similar(tabId, text) {
+    const tab = d.manager.tabs.get(tabId);
+    if (!tab || !d.historySearch) return [];
+    const { root } = await homeOf(tab);
+    return d.historySearch.similar(text, { exclude: tabId, inProject: e => inside(e.worktree?.originalCwd || e.cwd || '', root) });
+  }
+
   /** A pick: its snapshot saved. -> { ok, path } | { ok: false, error } */
   async function attach(tabId, id) {
-    const item = (await sources(tabId)).find(i => i.id === id);
+    const item = (await sources(tabId)).find(i => i.id === id)
+      || (id.startsWith('chat:') ? await chatInProject(tabId, id.slice(5)) : null);
     if (!item) return { ok: false, error: "That isn't there any more. Type @ again." };
     const b = await bodyOf(item);
     if (!b.ok) return b;
@@ -139,7 +163,7 @@ function wireMentionContext(d, opts = {}) {
     }
   }
 
-  return { suggest, attach, readForClaude };
+  return { suggest, attach, similar, readForClaude };
 }
 
 module.exports = { wireMentionContext };

@@ -18,6 +18,13 @@ function registerMentionsIpc(ipcMain, d) {
     if (!isStr(tabId, 80) || !isStr(id, 300) || !d.mentionContext) return { ok: false, error: 'Nothing to attach.' };
     try { return await d.mentionContext.attach(tabId, id); } catch (err) { return { ok: false, error: err.message }; }
   });
+  // "You've asked this before" (history/similar.js), for a tab that hasn't started yet.
+  ipcMain.handle('context:similar', async (_e, { tabId, text } = {}) => {
+    if (!isStr(tabId, 80) || !isStr(text, 20000) || !d.mentionContext || d.config.get('askedBefore') === false) return [];
+    const tab = d.manager.tabs.get(tabId);
+    if (!tab || tab.saved) return []; // only before the first message: a started task has its own history
+    try { return await d.mentionContext.similar(tabId, text); } catch { return []; }
+  });
 }
 
 module.exports = { registerMentionsIpc };

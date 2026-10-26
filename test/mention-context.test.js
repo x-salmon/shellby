@@ -209,3 +209,30 @@ test('wiring: a failed build-log fetch says why and saves nothing', async () => 
     assert.equal(fs.existsSync(dir), false);
   } finally { fs.rmSync(base, { recursive: true, force: true }); }
 });
+
+test('wiring: a chat past the @ menu\'s few can still be brought in, but only from this project', async () => {
+  const { ctx, d, base } = setup();
+  try {
+    const now = Date.now();
+    for (let i = 0; i < 10; i++) d.history.entries.push({ id: `new${i}`, title: `Newer ${i}`, cwd: d.manager.tabs.get('here').session.cwd, updatedAt: now - i });
+    d.history.get = id => d.history.entries.find(e => e.id === id) || null;
+    assert.ok(!(await ctx.suggest('here', 'chat')).some(i => i.id === 'chat:old'), 'out of the menu');
+    const r = await ctx.attach('here', 'chat:old');
+    assert.ok(r.ok, r.error);
+    assert.match(fs.readFileSync(r.path, 'utf8'), /You: Fix the login/);
+    for (const id of ['chat:elsewhere', 'chat:here', 'chat:nope']) assert.equal((await ctx.attach('here', id)).ok, false, id);
+  } finally { fs.rmSync(base, { recursive: true, force: true }); }
+});
+
+test('wiring: "asked before" looks only in this project, never at the tab itself', async () => {
+  const { ctx, d, base } = setup();
+  try {
+    let asked = null;
+    d.historySearch = { similar: async (text, opts) => { asked = { text, opts }; return [{ id: 'old' }]; } };
+    assert.deepEqual(await ctx.similar('here', 'fix the login redirect loop'), [{ id: 'old' }]);
+    assert.equal(asked.text, 'fix the login redirect loop');
+    assert.equal(asked.opts.exclude, 'here');
+    assert.deepEqual(d.history.entries.filter(asked.opts.inProject).map(e => e.id), ['here', 'old', 'copy']);
+    assert.deepEqual(await ctx.similar('nope', 'fix the login redirect loop'), []);
+  } finally { fs.rmSync(base, { recursive: true, force: true }); }
+});
