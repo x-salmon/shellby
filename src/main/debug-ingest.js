@@ -14,11 +14,15 @@ const MAX_BODY = 16 * 1024;
 const PATH = /^\/debug\/([0-9a-f]{32})\/?(?:\?.*)?$/;
 
 class DebugIngest {
-  /** onLines(token, body): a POST to a live address. */
+  /**
+   * onLines(token, body): a POST to a live address.
+   * @param {{ onLines?: (token: string, body: string) => void, host?: string }} [opts]
+   */
   constructor({ onLines, host = '127.0.0.1' } = {}) {
     this.onLines = onLines || (() => {});
     this.host = host;
     this.tokens = new Set();
+    /** @type {import('http').Server | null} */
     this.server = null;
     this.port = 0;
     this.opening = null;
@@ -35,7 +39,7 @@ class DebugIngest {
         server.on('error', reject);
         server.listen(0, this.host, () => {
           this.server = server;
-          this.port = server.address().port;
+          this.port = /** @type {import('net').AddressInfo} */ (server.address()).port;
           resolve(this.port);
         });
       }).finally(() => { this.opening = null; });

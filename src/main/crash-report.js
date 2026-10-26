@@ -42,7 +42,10 @@ const LEFT_OUT = new Set([
   'Screenshots',
 ]);
 
-/** The DSN to use, or null. Dev builds only report when told to, to their own project. */
+/**
+ * The DSN to use, or null. Dev builds only report when told to, to their own project.
+ * @param {{ env?: NodeJS.ProcessEnv, isPackaged?: boolean, capture?: boolean }} [opts]
+ */
 function dsnFor({ env = {}, isPackaged = false, capture = false } = {}) {
   if (capture) return null;
   if (!isPackaged) return env.SHELLBY_SENTRY_DSN || null;

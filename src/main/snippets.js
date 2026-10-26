@@ -71,7 +71,12 @@ function slots(text) {
 
 const needsInput = snippet => { const s = slots(snippet.text); return s.all || s.count > 0; };
 
-/** One snippet, checked: { ok: true, snippet: { name, text, hint?, newTab? } } | { ok: false, error } */
+/** @typedef {{ name: string, text: string, hint?: string, newTab?: boolean }} Snippet */
+
+/**
+ * One snippet, checked: { ok: true, snippet: { name, text, hint?, newTab? } } | { ok: false, error }
+ * @returns {{ ok: true, snippet: Snippet } | { ok: false, error: string }}
+ */
 function check(input) {
   if (!isObj(input)) return { ok: false, error: 'Expected a snippet.' };
   const name = normalizeName(input.name);
@@ -82,6 +87,7 @@ function check(input) {
   if (text.length > MAX_TEXT) return { ok: false, error: `Keep it under ${MAX_TEXT} characters.` };
   const hint = cleanHint(input.hint);
   if (hint.length > MAX_HINT) return { ok: false, error: `Keep the hint under ${MAX_HINT} characters.` };
+  /** @type {Snippet} */
   const snippet = { name, text };
   // A hint only means something when there's a blank for it to describe.
   if (hint && needsInput(snippet)) snippet.hint = hint;
@@ -245,7 +251,10 @@ function noteUse(stats, name, now = Date.now()) {
   return { ...stats, [n]: { n: (Number.isFinite(was?.n) ? was.n : 0) + 1, at: now } };
 }
 
-/** Stats for the snippets there are, with a rename carried across. */
+/**
+ * Stats for the snippets there are, with a rename carried across.
+ * @param {{ from: string, to: string } | null} [renamed]
+ */
 function keepUse(stats, list, renamed = null) {
   const out = {};
   for (const s of list) {
@@ -290,7 +299,7 @@ function merge(list, incoming) {
   const renamed = [];
   let skipped = 0;
   for (const raw of incoming) {
-    const r = check(isObj(raw) && RESERVED.has(normalizeName(raw.name)) ? { ...raw, name: `${normalizeName(raw.name)}-2` } : raw);
+    const r = check(isObj(raw) && RESERVED.has(normalizeName(raw.name) || '') ? { ...raw, name: `${normalizeName(raw.name)}-2` } : raw);
     if (!r.ok) { skipped++; continue; }
     const s = r.snippet;
     if (out.some(x => x.text === s.text)) { skipped++; continue; }

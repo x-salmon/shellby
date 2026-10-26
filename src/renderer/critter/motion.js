@@ -16,10 +16,13 @@ const WHEEE_MS = 1800;
 const BOUNCE_HARD = 2500;  // DIP/s: a bump this fast or faster is as loud as a bump gets
 const AMBLE = 38;          // DIP/s: his walking pace when a walk doesn't say (motion.js STROLL_SPEED)
 const HURRY = AMBLE * 2;   // DIP/s: this fast or faster and the amble is a run (fetch, a dash home)
+/** @type {any} */
 let landedTimer = null;
+/** @type {any} */
 let dizzyTimer = null;
+/** @type {any} */
 let wheeeTimer = null;
-const dustHost = document.getElementById('dust');
+const dustHost = /** @type {HTMLElement} */ (document.getElementById('dust'));
 
 
 // Riding a window that's moving: lean back against it, and the faster it goes
@@ -57,6 +60,7 @@ function dizzy(ms = DIZZY_MS) {
 // A move takes over his body, so whatever little habit he was in the middle of stops.
 // While he burrows, claws full of sand go flying out behind him.
 const GRAIN_EVERY_MS = 140;
+/** @type {any} */
 let grainTimer = null;
 function kickSand() {
   const dir = getComputedStyle(document.documentElement).getPropertyValue('--dir').trim() === '-1' ? -1 : 1;
@@ -157,7 +161,7 @@ api.onPerch(msg => {
   paintBody();
 });
 document.addEventListener('mousemove', e => {
-  if (through) setOver(!!e.target.closest?.('#crab, #bgBadge, #srvPill, .helper'));
+  if (through) setOver(!!/** @type {Element | null} */ (e.target)?.closest?.('#crab, #bgBadge, #srvPill, .helper'));
 });
 
 // ---- up a wall or hanging from the top of the screen (src/main/desktop/climbing.js).
@@ -177,7 +181,9 @@ document.addEventListener('mouseleave', () => { if (through) setOver(false); });
 // comes from main (src/main/voice.js, perching.js); the animation is one class
 // per habit in critter.css, so an unknown one simply does nothing.
 const BIT_MS = 2600;
+/** @type {any} */
 let bitTimer = null;
+/** @type {string | null} */
 let bit = null;
 api.onBit(msg => {
   if (typeof msg?.bit !== 'string' || !/^[a-z]{2,12}$/.test(msg.bit)) return;

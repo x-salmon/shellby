@@ -139,13 +139,20 @@ class DeckServer extends EventEmitter {
    * token:   what every request must carry (Authorization: Bearer …)
    * getKeys: () => keys(), the first thing a plugin is sent
    * onPress: (action, ref) => Promise<{ ok, error? }>
+   * @param {{ token: string, getKeys: () => any, onPress: (action: string, ref: string) => Promise<any>, port?: number }} opts
    */
   constructor({ token, getKeys, onPress, port = DEFAULT_PORT }) {
     super();
-    Object.assign(this, { token, getKeys, onPress, port });
+    this.token = token;
+    this.getKeys = getKeys;
+    this.onPress = onPress;
+    this.port = port;
+    /** @type {import('http').Server | null} */
     this.server = null;
+    /** @type {Set<import('http').ServerResponse>} */
     this.clients = new Set();
     this.status = 'off';          // 'off' | 'listening' | 'busy' | 'error'
+    /** @type {NodeJS.Timeout | null} */
     this.keepalive = null;
   }
 
@@ -160,15 +167,15 @@ class DeckServer extends EventEmitter {
     const server = http.createServer((req, res) => this.handle(req, res));
     server.headersTimeout = 5000;
     server.requestTimeout = 10000;
-    server.on('error', err => {
-      clearInterval(this.keepalive);
+    server.on('error', (/** @type {NodeJS.ErrnoException} */ err) => {
+      clearInterval(this.keepalive ?? undefined);
       this.keepalive = null;
       this.server = null;
       this.status = err.code === 'EADDRINUSE' ? 'busy' : 'error';
       this.emit('status', this.view());
     });
     server.listen(this.port, '127.0.0.1', () => {
-      this.port = server.address().port;
+      this.port = /** @type {import('net').AddressInfo} */ (server.address()).port;
       this.status = 'listening';
       this.keepalive = setInterval(() => this.write(': ping\n\n'), KEEPALIVE_MS);
       this.emit('status', this.view());
@@ -177,7 +184,7 @@ class DeckServer extends EventEmitter {
   }
 
   stop() {
-    clearInterval(this.keepalive);
+    clearInterval(this.keepalive ?? undefined);
     this.keepalive = null;
     for (const res of this.clients) { try { res.end(); } catch { /* gone */ } }
     this.clients.clear();

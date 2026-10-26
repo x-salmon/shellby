@@ -9,7 +9,7 @@
   const C = window.ShellbyCritter;
   const Sprite = window.ShellbySprite;
   const root = document.documentElement.style;
-  const host = document.getElementById('prop');
+  const host = /** @type {HTMLElement} */ (document.getElementById('prop'));
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------------------------------------------------------------- his eyes
@@ -53,6 +53,7 @@
     shades: { slot: 'face', pivot: [4, 1], palette: { K: '#1b1d2a', w: '#7fd6c2' }, pixels: ['KKKKKKKKK', 'KwKKKKwKK', '.KK...KK.'] },
   };
 
+  /** @type {any} */
   let propTimer = null;
   function clearProp() {
     clearTimeout(propTimer);
@@ -142,6 +143,7 @@
   });
 
   // ---------------------------------------------------------------- a visitor talking back
+  /** @type {any} */
   let vTimer = null;
   api.onVisitorSay(msg => {
     const v = C.visitor();

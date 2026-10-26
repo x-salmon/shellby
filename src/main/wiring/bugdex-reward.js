@@ -17,8 +17,14 @@ const LIVE = new Set([...live().map(s => s.id), 'missingno']);
  *   view, openPage: thunks, as they're declared after this is made.
  */
 function makeReward({ d, view, names, openPage }) {
+  /**
+   * @param {any} e the encounter
+   * @param {any} r bugdex.recordCatch's answer
+   * @param {{ quiet?: boolean, boosts?: ReturnType<typeof events.boostsAt> | null }} opts
+   */
   function reward(e, r, { quiet, boosts = null }) {
     const sp = speciesById(e.species);
+    if (!sp) return; // recordCatch counts nothing for a species it doesn't know, so never reached
     const projectName = e.name || names.get(e.project) || null;
     // What the tide events' goals look at (events.js): where it lived, and whether it was the event's own.
     d.stat('bug-caught', { habitat: sp.habitat, species: sp.id });
@@ -57,7 +63,7 @@ function makeReward({ d, view, names, openPage }) {
     const card = {
       id: sp.id, name: v?.name || sp.name, rarity: sp.rarity, isNew: r.isNew, forms: r.forms, evolved: r.evolved, stage: r.stage, completed: habitats.map(h => h.name), pixels: v?.pixels || sp.pixels, palette: v?.palette || sp.palette,
       habitat: HABITATS.find(h => h.id === sp.habitat)?.name || null, // where it lives, for its card
-      badge: r.badge ? HABITATS.find(h => h.id === r.badge).badge.name : null, league: r.league, fame: r.fame,
+      badge: r.badge ? HABITATS.find(h => h.id === r.badge)?.badge.name : null, league: r.league, fame: r.fame,
       battle: e.source ? lifecycle.encId(e) : null, // the battle screen plays the catch out itself
     };
     d.send(d.panel, 'bugdex:caught', card);
@@ -94,7 +100,7 @@ function makeReward({ d, view, names, openPage }) {
         : r.evolved ? `Your ${sp.name} evolved!`
           : sp.rarity === 'legendary' ? `A legendary bug: ${sp.name}!` : `New to the Bugdex: ${sp.name}`;
       const body = r.fame ? `Every badge, the Deep Four and the champion. ${sp.name} was the last.`
-        : badge ? `You beat ${sp.name}, the boss of ${HABITATS.find(h => h.id === r.badge).name}.${where}`
+        : badge ? `You beat ${sp.name}, the boss of ${HABITATS.find(h => h.id === r.badge)?.name}.${where}`
           : shiny ? `1 in ${Math.round(1 / bugdex.SHINY_CHANCE)}, and it's in a jar.${where}`
             : r.evolved ? `It's a ${card.name} now.${where}` : `${sp.blurb}${where}`;
       d.notify(title, body, () => openPage(sp.id), { tone: 'celebrate', pet: true });

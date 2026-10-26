@@ -250,6 +250,7 @@ const overlaps = (a, b) => !!a.refs?.length && !!b.refs?.length && a.refs.some(r
 
 function areaPattern(latest, earlier) {
   const others = earlier.filter(e => UNDOING.has(e.kind) && !overlaps(e, latest));
+  /** @type {{ area: string, hits: any[] } | null} */
   let best = null;
   for (const area of areasOf(latest)) {
     const hits = others.filter(e => areasOf(e).has(area));
@@ -340,6 +341,9 @@ function cleanRule(text) {
 /**
  * Note one correction. -> { store, offer }: offer is a new card to show, or null.
  * opts: { now, id } (id for the offer; tests pass their own).
+ * @param {any} store
+ * @param {any} event
+ * @param {{ now?: number, id?: string }} [opts]
  */
 function record(store, event, { now = Date.now(), id } = {}) {
   const s = normalize(store, now);
@@ -354,7 +358,7 @@ function record(store, event, { now = Date.now(), id } = {}) {
     id: id || `${now.toString(36)}${Math.random().toString(36).slice(2, 8)}`,
     root: e.root, project: e.project || '', ...p, rule: fallbackRule(p), state: 'open', at: now,
   };
-  const clean = cleanOffer(offer, now);
+  const clean = /** @type {NonNullable<ReturnType<typeof cleanOffer>>} */ (cleanOffer(offer, now)); // built from a cleaned event, so it always passes
   return { store: { events, offers: pruneOffers([...s.offers, clean]) }, offer: { ...clean, headline: headline(clean, clean.project) } };
 }
 

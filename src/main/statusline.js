@@ -114,8 +114,11 @@ function healthLabel(h) {
 
 const FRESH_EVERY_MS = 60 * 1000; // the command ignores a file untouched for two minutes
 
+/** @type {string | null} */
 let lastWritten = null;
+/** @type {string[]} */
 let written = [];       // the files the last write made, which keepFresh touches
+/** @type {NodeJS.Timeout | null} */
 let freshTimer = null;
 /** Write the emoji line, and the plain twin when given. */
 function writeStatus(line, file = STATUS_FILE, plain = null) {
@@ -140,8 +143,9 @@ function writeStatus(line, file = STATUS_FILE, plain = null) {
 // rewritten: touch it instead, so "old" only ever means Shellby isn't running.
 function keepFresh() {
   if (freshTimer) return;
-  freshTimer = setInterval(touchStatus, FRESH_EVERY_MS);
-  freshTimer.unref?.(); // never what keeps Shellby (or a test) running
+  const timer = setInterval(touchStatus, FRESH_EVERY_MS);
+  freshTimer = timer;
+  timer.unref?.(); // never what keeps Shellby (or a test) running
 }
 
 /** Mark the status files as current. */
@@ -152,7 +156,7 @@ function touchStatus(now = new Date()) {
 function clearStatus(file = STATUS_FILE) {
   lastWritten = null;
   written = [];
-  clearInterval(freshTimer);
+  clearInterval(freshTimer ?? undefined);
   freshTimer = null;
   for (const f of [file, plainFile(file)]) { try { fs.rmSync(f, { force: true }); } catch { /* ignore */ } }
 }

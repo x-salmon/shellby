@@ -3,8 +3,9 @@
 (function () {
   'use strict';
   const api = window.shellbyDialog;
-  const $ = id => document.getElementById(id);
+  const $ = id => /** @type {HTMLElement} */ (document.getElementById(id));
   let answered = false;
+  /** @type {any} */
   let spec = null;
 
   function answer(index) {
@@ -64,7 +65,7 @@
       btn.addEventListener('click', () => answer(i));
       return btn;
     }));
-    const def = actions.children[s.defaultId ?? 0];
+    const def = /** @type {HTMLElement | undefined} */ (actions.children[s.defaultId ?? 0]);
     requestAnimationFrame(() => {
       def?.focus();
       api.resize(Math.ceil(document.body.getBoundingClientRect().height));

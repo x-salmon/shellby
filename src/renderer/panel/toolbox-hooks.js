@@ -10,6 +10,7 @@
   const kit = () => SB.setupKit;
 
   // null: the list. { step: 'pick' } or { step: 'form', entry, recipe, draft, error, test, claude }.
+  /** @type {any} */
   let ed = null;
   const openRows = new Set();        // rows opened up, so a rescan doesn't fold them shut
   const rowTests = new Map();        // row id -> { busy, verdict, error }

@@ -32,7 +32,7 @@ function startAt({ when = 'reset', resetAt = null, limited = false, sawWindow = 
   if (pick === 'tonight') {
     const night = nextNight(now);
     // At the limit and it resets after tonight's start: nothing could run before then.
-    return { at: limited && Number.isFinite(resetAt) && resetAt > night ? resetAt : night };
+    return { at: limited && resetAt !== null && Number.isFinite(resetAt) && resetAt > night ? resetAt : night };
   }
   if (Number.isFinite(resetAt)) return { at: resetAt };
   if (sawWindow) return { error: "There's no 5-hour window running to wait for, so it would just start now. Run it as a normal task instead, or queue it for tonight.", idle: true };

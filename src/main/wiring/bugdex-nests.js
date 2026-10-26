@@ -169,9 +169,10 @@ function wireNests(d) {
   });
 
   if (!d.CAPTURE) {
-    const timer = setInterval(guard(() => sweep()), SWEEP_MS);
+    const sweepSafely = guard(() => sweep());
+    const timer = setInterval(() => { sweepSafely(); }, SWEEP_MS);
     timer.unref?.();
-    setTimeout(guard(() => sweep()), FIRST_SWEEP_MS).unref?.();
+    setTimeout(() => { sweepSafely(); }, FIRST_SWEEP_MS).unref?.();
   }
 
   return {

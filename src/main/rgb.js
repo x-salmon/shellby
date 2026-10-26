@@ -128,6 +128,7 @@ function parseControllerData(buf, version = OUR_PROTOCOL) {
   const numModes = r.u16();
   const activeMode = r.i32();
   if (numModes > 4096) throw new Error(`implausible mode count ${numModes}`);
+  /** @type {{ index: number, colorMode: number, bytes: string } | null} */
   let mode = null;
   for (let i = 0; i < numModes; i++) {
     const start = r.offset;
@@ -221,6 +222,7 @@ const GLASS = { r: 127, g: 214, b: 194 };
  * What the room should be, given what Shellby is doing and how the PC is.
  * Health beats work: an overheating GPU matters more than a running task.
  *   -> { r, g, b } | null (null: leave the lights alone)
+ * @param {{ state?: string, mood?: string, ciFailing?: number }} [facts]
  */
 function colorFor({ state, mood, ciFailing = 0 } = {}) {
   if (mood === 'scorching') return { r: 255, g: 40, b: 0 };
@@ -248,7 +250,10 @@ function colorFor({ state, mood, ciFailing = 0 } = {}) {
 class OpenRgbClient extends EventEmitter {
   constructor({ host = '127.0.0.1', port = DEFAULT_PORT, clientName = 'Shellby' } = {}) {
     super();
-    Object.assign(this, { host, port, clientName });
+    this.host = host;
+    this.port = port;
+    this.clientName = clientName;
+    /** @type {string | null} */
     this.lastError = null;
     this.devices = null;       // [{ id, name, numLeds }] from the last successful talk
     this.busy = null;

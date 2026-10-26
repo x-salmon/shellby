@@ -136,13 +136,17 @@ function splitPipes(text) {
   return out;
 }
 
+/** @typedef {{ path: string, segs: any[], filters: { name: string, args: any[] }[] }} Part */
+
 /**
  * "Hi {{ a.b | upper }}" -> parts: ['Hi ', { path, segs, filters }], or an error.
  * Parsed once and checked by schema.js, so a bad template is caught on save.
+ * @returns {{ ok: true, parts: (string | Part)[], error?: undefined } | { ok: false, error: string, parts?: undefined }}
  */
 function parseTemplate(text) {
   const s = String(text ?? '');
   if (s.length > MAX_TEMPLATE) return { ok: false, error: `Text is too long (over ${MAX_TEMPLATE} characters)` };
+  /** @type {(string | Part)[]} */
   const parts = [];
   let i = 0;
   let subs = 0;
@@ -177,6 +181,9 @@ const evalPart = (part, ctx) => part.filters.reduce((v, f) => applyFilter(v, f.n
  * Template -> string. `quote(value, part)` formats each substitution (Claude
  * prompts wrap it «», commands make it a literal). Throws on a bad template:
  * callers validate first.
+ * @param {string} text
+ * @param {any} ctx
+ * @param {{ quote?: (value: any, part: Part) => string }} [opts]
  */
 function render(text, ctx, { quote = toText } = {}) {
   const parsed = parseTemplate(text);

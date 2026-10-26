@@ -20,6 +20,7 @@
 // Everything that touches git, GitHub or the tab comes in as deps, so
 // test/ship.test.js runs it against a real repository and a pretend GitHub.
 const checks = require('./checks');
+const secretscan = require('./secretscan');
 
 const TITLE_MAX = 120;
 const SUMMARY_MAX = 3000;
@@ -32,7 +33,12 @@ const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 const noMentions = s => String(s ?? '').replace(/@(?=[\w-])/g, '@‍');
 // A file name or commit subject in Markdown: as code, so nothing in it formats.
 const asCode = s => `\`${String(s).replace(/`/g, "'")}\``;
-const plural = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
+// Claude's reply can quote a token it read: a line the secret scan flags never reaches GitHub.
+const scrub = s => String(s ?? '').split('\n').map(line => {
+  const kind = secretscan.lineSecret(line);
+  return kind ? `(a line left out: it looked like ${kind})` : line;
+}).join('\n');
+const plural =(n, one) => `${n} ${one}${n === 1 ? '' : 's'}`;
 const seconds = ms => `${Math.max(1, Math.round((ms || 0) / 1000))}s`;
 
 /**
@@ -170,8 +176,8 @@ async function shipCopy(tabId, { draft = false, force = false } = {}, deps) {
 
   const r = await deps.openPr({
     folder: w.path,
-    title: prTitle(deps.title(tabId), commits, w.branch),
-    body: prBody({ summary: deps.reply(tabId), commits, files, verdict: gate.verdict || null, forced: force }),
+    title: scrub(prTitle(deps.title(tabId), commits, w.branch)),
+    body: scrub(prBody({ summary: deps.reply(tabId), commits, files, verdict: gate.verdict || null, forced: force })),
     draft: !!draft,
     base: w.base,
   });

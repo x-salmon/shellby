@@ -43,18 +43,21 @@
 
   // ------------------------------------------------------------ usage and cost
 
+  /** @type {any} */
   let usage = null;        // { tools: { 'kind:name': { uses, lastUsed, listTokens, useTokens } }, watchedFrom }
+  /** @type {Promise<void> | null} */
   let usageLoading = null;
   let usageTried = false;  // asked once; after one retry, a failure waits for Rescan
   let usageFailed = false;
   let usageRetried = false;
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let usageRetry = null;
   const removing = new Set();
 
   function loadUsage(refresh = false) {
     if (usageLoading) return usageLoading;
     usageTried = true;
-    clearTimeout(usageRetry);
+    clearTimeout(usageRetry ?? undefined);
     usageRetry = null;
     usageLoading = api.leanUsage(refresh)
       .then(r => { usageFailed = !r?.ok; if (r?.ok) usage = r; })
@@ -90,13 +93,14 @@
 
   const byName = (a, b) => a.name.localeCompare(b.name);
   const SORTS = {
-    name: (a, b) => (isNew(b) - isNew(a)) || (isPinned(b) - isPinned(a)) || byName(a, b),
+    name: (a, b) => (Number(isNew(b)) - Number(isNew(a))) || (Number(isPinned(b)) - Number(isPinned(a))) || byName(a, b),
     used: (a, b) => (num(usageOf(b)?.uses) - num(usageOf(a)?.uses)) || (num(usageOf(b)?.lastUsed) - num(usageOf(a)?.lastUsed)) || byName(a, b),
     // Never used, the ones costing the most in every conversation first: what's worth a look.
-    unused: (a, b) => (!!num(usageOf(a)?.uses) - !!num(usageOf(b)?.uses)) || (num(usageOf(b)?.listTokens) - num(usageOf(a)?.listTokens)) || byName(a, b),
+    unused: (a, b) => (Number(!!num(usageOf(a)?.uses)) - Number(!!num(usageOf(b)?.uses))) || (num(usageOf(b)?.listTokens) - num(usageOf(a)?.listTokens)) || byName(a, b),
   };
 
   // A health filter from the line above the list: 'nodesc' or 'dupes' (servers go to the MCP tab).
+  /** @type {string | null} */
   let only = null;
   const ONLY = { nodesc: t => SB.toolboxBatch.isOwn(t) && !t.description, dupes: t => !!t.hides?.length };
 
@@ -204,6 +208,7 @@
   // One open editor, kept while you look at other tabs. Named by its file: saving a
   // new name: in the frontmatter renames the tool but not the file. It belongs to
   // the list it was opened from (view), which may be All rather than its own kind.
+  /** @type {any} */
   let toolEd = null; // { kind, view, path, name, original, text, mtimeMs, error, conflict, leaving }
   const NOUN = { skill: 'skill', agent: 'agent', command: 'command' };
   const ownTool = t => MERGED.includes(t.kind) && (t.source === 'user' || t.source === 'project') && !!t.path;
@@ -471,6 +476,7 @@
   // ------------------------------------------------------------ MCP servers
 
   const mcpBusy = new Set();
+  /** @type {any} */
   let mcpForm = null; // { name, transport, target, scope, env, headers, error } while the Add form is open
 
   async function mcpCall(name, fn, done) {
@@ -544,15 +550,16 @@
   // The section row, then only that section's kinds below it (none for Lean and Team).
   function syncTabs() {
     const group = GROUP[kind];
-    document.querySelectorAll('#toolGroups [data-group]').forEach(b => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#toolGroups [data-group]')).forEach(b => {
       b.setAttribute('aria-selected', String(b.dataset.group === group));
       const n = b.querySelector('.n');
       if (n) n.textContent = countOf(b.dataset.group);
     });
-    document.querySelectorAll('#toolTabs [data-kind]').forEach(b => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#toolTabs [data-kind]')).forEach(b => {
       const k = b.dataset.kind;
       b.hidden = GROUP[k] !== group;
-      b.querySelector('.n').textContent = countOf(k);
+      const n = b.querySelector('.n');
+      if (n) n.textContent = countOf(k);
       b.setAttribute('aria-selected', String(k === kind));
     });
     $('toolTabs').hidden = group === 'lean' || group === 'team';
@@ -647,16 +654,16 @@
   // row, which would drop the keyboard at the top of the page. Put it back on the
   // same heading, or the same button of the same row.
   function focusedIn(list) {
-    const a = document.activeElement;
+    const a = /** @type {HTMLElement | null} */ (document.activeElement);
     if (!a || a === list || !list.contains(a)) return () => {};
-    const head = a.closest('.tool-group-btn');
-    const row = a.closest('.tool-row[data-key]');
+    const head = /** @type {HTMLElement | null} */ (a.closest('.tool-group-btn'));
+    const row = /** @type {HTMLElement | null} */ (a.closest('.tool-row[data-key]'));
     if (!head && !row) return () => {};
-    const nth = head ? -1 : [...row.querySelectorAll('button')].indexOf(a);
+    const nth = head || !row ? -1 : [...row.querySelectorAll('button')].indexOf(/** @type {any} */ (a));
     return () => {
       const el = head
         ? [...list.querySelectorAll('.tool-group-btn')].find(b => b.dataset.src === head.dataset.src)
-        : [...list.querySelectorAll('.tool-row[data-key]')].find(r => r.dataset.key === row.dataset.key);
+        : [...list.querySelectorAll('.tool-row[data-key]')].find(r => r.dataset.key === row?.dataset.key);
       const target = nth >= 0 ? el?.querySelectorAll('button')[nth] : el;
       target?.focus({ preventScroll: true });
     };
@@ -690,18 +697,19 @@
       total - shownRows > PAGE ? h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: more(total) }, 'Show all') : null)];
   }
 
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let searchWait = null;
   function choose(k) {
-    clearTimeout(searchWait);
+    clearTimeout(searchWait ?? undefined);
     kind = GROUP[ALIAS[k] || k] ? ALIAS[k] || k : 'tool';
     lastKind[GROUP[kind]] = kind;
     saveView();
     render();
   }
-  document.querySelectorAll('#toolGroups [data-group]').forEach(b => b.addEventListener('click', () => choose(lastKind[b.dataset.group])));
-  document.querySelectorAll('#toolTabs [data-kind]').forEach(b => b.addEventListener('click', () => choose(b.dataset.kind)));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#toolGroups [data-group]')).forEach(b => b.addEventListener('click', () => choose(lastKind[b.dataset.group ?? ''])));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#toolTabs [data-kind]')).forEach(b => b.addEventListener('click', () => choose(b.dataset.kind)));
   $('toolSearch').addEventListener('input', () => {
-    clearTimeout(searchWait);
+    clearTimeout(searchWait ?? undefined);
     searchWait = setTimeout(() => { if (state.view === 'toolbox') render(); }, SEARCH_WAIT_MS);
   });
   $('toolSource').addEventListener('change', e => { sources[kind] = e.target.value; saveView(); render(); });

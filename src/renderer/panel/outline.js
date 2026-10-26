@@ -12,10 +12,14 @@
   const list = $('outlineList');
   const LANDED_MS = 2400;
 
+  /** @type {any} */
   let tab = null;
+  /** @type {any[]} */
   let turns = [];
+  /** @type {{ turn: any, n: number, file?: any }[]} */
   let rows = [];    // what's listed: { turn, n, file? }
   let at = 0;       // the row picked
+  /** @type {HTMLElement | null} */
   let back = null;  // what had the keyboard before
 
   SB.openOutline = async (t = SB.activeTab()) => {
@@ -25,7 +29,7 @@
     turns = r?.turns || [];
     if (!turns.length) return SB.toast('Nothing has been sent in this conversation yet.');
     tab = t;
-    back = document.activeElement;
+    back = /** @type {HTMLElement | null} */ (document.activeElement);
     SB.closeMenus?.();
     input.value = '';
     sheet.hidden = false;
@@ -44,7 +48,7 @@
   }
 
   const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-  const base = p => String(p).split(/[\\/]/).pop();
+  const base = p => String(p).split(/[\\/]/).pop() || '';
 
   function filter() {
     const words = input.value.toLowerCase().split(/\s+/).filter(Boolean);

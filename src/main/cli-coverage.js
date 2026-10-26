@@ -178,6 +178,7 @@ const COMMAND_LINE = /^ {2}([a-z][\w-]*)(?:\|([a-z][\w-]*))?(?=\s|$)/;
 function parseHelp(text) {
   const flags = new Set();
   const commands = new Set();
+  /** @type {'options' | 'commands' | null} */
   let section = null;
   for (const line of String(text ?? '').replace(/\r/g, '').split('\n')) {
     if (/^Options:/.test(line)) { section = 'options'; continue; }
@@ -210,7 +211,9 @@ function coverageOf({ help, tools = null }) {
   const notIn = (list, names) => (names ? Object.keys(list).filter(n => !names.includes(n)).sort() : []);
   const gaps = [];
   const seenGap = new Set();
-  for (const [kind, list, names] of [['flag', FLAGS, live.flags], ['command', COMMANDS, live.commands], ['tool', TOOLS, liveTools]]) {
+  /** @type {[string, Record<string, any>, string[] | null][]} */
+  const lists = [['flag', FLAGS, live.flags], ['command', COMMANDS, live.commands], ['tool', TOOLS, liveTools]];
+  for (const [kind, list, names] of lists) {
     for (const [name, e] of Object.entries(list)) {
       if (e.status !== 'gap' || (names && !names.includes(name)) || seenGap.has(e.what)) continue;
       seenGap.add(e.what);

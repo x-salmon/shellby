@@ -62,7 +62,9 @@
 
   // ------------------------------------------------------------ /mobile
 
+  /** @type {HTMLElement | null} */
   let sheet = null;
+  /** @type {HTMLElement | null} */
   let returnTo = null;
 
   function drawQr(canvas, rows) {
@@ -90,19 +92,20 @@
     const r = await api.mobileQr().catch(() => null);
     if (!r?.qr) return SB.toast('Get the Claude app from claude.ai/mobile.', { ms: 6000, action: 'Open', onAction: () => api.openExternal(r?.url || 'https://claude.ai/mobile') });
     closeMobile();
-    returnTo = document.activeElement;
+    returnTo = /** @type {HTMLElement | null} */ (document.activeElement);
     const canvas = h('canvas', { class: 'mobile-qr', role: 'img', 'aria-label': `QR code for ${r.url}` });
     drawQr(canvas, r.qr);
     const close = h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Close', title: 'Close (Esc)', onclick: closeMobile, text: '✕' });
-    sheet = h('div', { class: 'card-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'mobileTitle' },
+    const box = h('div', { class: 'card-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'mobileTitle' },
       h('div', { class: 'card-box mobile-box' },
         h('div', { class: 'card-head' }, h('h2', { id: 'mobileTitle', text: 'Claude on your phone' }), close),
         canvas,
         h('p', { class: 'small muted', text: "Scan it with your phone's camera to get the Claude app. To follow these conversations on your phone as well: Settings → Connections → Put Shellby on my phone." }),
         h('p', { class: 'small' }, h('button', { type: 'button', class: 'link-btn', text: r.url, onclick: () => api.openExternal(r.url) }))));
-    sheet.addEventListener('click', e => { if (e.target === sheet) closeMobile(); });
-    sheet.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeMobile(); } });
-    document.body.append(sheet);
+    sheet = box;
+    box.addEventListener('click', e => { if (e.target === box) closeMobile(); });
+    box.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeMobile(); } });
+    document.body.append(box);
     close.focus();
   };
 })();

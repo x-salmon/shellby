@@ -53,6 +53,15 @@ test('ships in order: checks, commit, pull request, then a note in the conversat
   assert.deepEqual(note.slice(1), ['t1', { kind: 'shipped', url: 'https://github.com/me/crab/pull/7', number: 7, repo: 'me/crab', base: 'main', draft: false, existing: false, green: true }]);
 });
 
+test('a secret in Claude\'s reply never reaches the pull request', async () => {
+  const token = `ghp_${'a1B2'.repeat(9)}`;
+  const { d, calls } = deps({ reply: () => `Done.\nI used ${token} to test it.\nAll green.` });
+  await shipCopy('t1', {}, d);
+  const { body } = calls.find(c => c[0] === 'openPr')[1];
+  assert.ok(!body.includes(token));
+  assert.match(body, /Done\.\n\(a line left out: it looked like a GitHub token\)\nAll green\./);
+});
+
 test('a draft is asked for when you say so', async () => {
   const { d, calls } = deps();
   await shipCopy('t1', { draft: true }, d);

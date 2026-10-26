@@ -3,7 +3,7 @@
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
-  let ticker = null;
+  let ticker;
 
   const clock = ms => {
     const s = Math.max(0, Math.ceil(ms / 1000));

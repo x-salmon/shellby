@@ -48,6 +48,7 @@
   // ------------------------------------------------------------ background commands
 
   const outputs = new Map(); // `${tabId}:${jobId}` -> { text, error, timer } while its output is open
+  /** @type {ReturnType<typeof setInterval> | null} */
   let ticker = null;
 
   const ago = ms => (ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))}s ago` : `${Math.round(ms / 60000)}m ago`);
@@ -68,6 +69,7 @@
     const key = `${tab.id}:${job.id}`;
     const o = outputs.get(key);
     if (o) { clearInterval(o.timer); outputs.delete(key); renderJobs(tab); return; }
+    /** @type {{ text: string | null, error: string | null, timer: ReturnType<typeof setInterval> | null, cut?: boolean }} */
     const next = { text: null, error: null, timer: null };
     outputs.set(key, next);
     if (job.status === 'running') next.timer = setInterval(() => fetchOutput(tab, job), OUTPUT_EVERY_MS);
@@ -145,7 +147,7 @@
       for (const el of $('jobs').querySelectorAll('.job.running .job-state')) el.textContent = SB.clock(now - Number(el.dataset.since));
     }, 1000);
   }
-  function stopTicker() { clearInterval(ticker); ticker = null; }
+  function stopTicker() { if (ticker) clearInterval(ticker); ticker = null; }
 
   SB.renderTodos = renderTodos;
   SB.renderJobs = renderJobs;

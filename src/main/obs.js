@@ -94,15 +94,15 @@ class ObsServer extends EventEmitter {
     if (this.server) return;
     const server = http.createServer((req, res) => this.handle(req, res));
     server.headersTimeout = 5000;
-    server.on('error', err => {
-      clearInterval(this.keepalive);
+    server.on('error', (/** @type {NodeJS.ErrnoException} */ err) => {
+      clearInterval(this.keepalive ?? undefined);
       this.keepalive = null;
       this.server = null;
       this.status = err.code === 'EADDRINUSE' ? 'busy' : 'error';
       this.emit('status', this.view());
     });
     server.listen(this.port, '127.0.0.1', () => {
-      this.port = server.address().port;
+      this.port = /** @type {import('net').AddressInfo} */ (server.address()).port;
       this.status = 'listening';
       // A comment line every so often: OBS keeps the source alive across a
       // laptop sleep, and an idle connection can otherwise be dropped.
@@ -113,7 +113,7 @@ class ObsServer extends EventEmitter {
   }
 
   stop() {
-    clearInterval(this.keepalive);
+    clearInterval(this.keepalive ?? undefined);
     this.keepalive = null;
     for (const res of this.clients) res.end();
     this.clients.clear();

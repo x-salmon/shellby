@@ -18,6 +18,7 @@ const CHECKS = ['audit', 'outdated'];
 
 // [ecosystem, check, pattern]. First match wins, so the more specific spelling
 // (`yarn npm audit`) comes before the general one (`yarn audit`).
+/** @type {Array<[string, string, RegExp]>} */
 const COMMANDS = [
   ['yarn', 'audit', /\byarn\s+(npm\s+)?audit\b/i],
   ['yarn', 'outdated', /\byarn\s+(outdated|upgrade-interactive\s+--dry-run)\b/i],
@@ -180,6 +181,7 @@ function commandDir(command, cwd) {
   const lead = /^(?:cd|pushd|Set-Location|sl|Push-Location)\s+(?:-(?:LiteralPath|Path)\s+)?("[^"]+"|'[^']+'|[^\s;&|]+)\s*(?:&&|;|\n)/i.exec(c);
   const prefix = /\b(?:npm|pnpm)\s+(?:[^\n|;&]*\s)?(?:--prefix|-C|--dir)\s+("[^"]+"|'[^']+'|[^\s;&|]+)/i.exec(c);
   const manifest = /\bcargo\s+[^\n|;&]*--manifest-path\s+("[^"]+"|'[^']+'|[^\s;&|]+)/i.exec(c);
+  /** @type {string | null} */
   let dir = null;
   if (lead) dir = unquote(lead[1]);
   else if (prefix) dir = unquote(prefix[1]);
@@ -207,12 +209,12 @@ function cleanResult(r) {
 /** Tolerate anything read from disk. { projects: { [key]: { name, audit, outdated, cleanAt } } } */
 function normalizeCheckups(raw) {
   const src = raw && typeof raw === 'object' && raw.projects && typeof raw.projects === 'object' ? raw.projects : {};
-  const list = Object.entries(src).slice(0, MAX_PROJECTS * 3).map(([key, p]) => {
+  const list = /** @type {Array<[string, any]>} */ (Object.entries(src).slice(0, MAX_PROJECTS * 3).map(([key, p]) => {
     if (!key || key.length > 400 || !p || typeof p !== 'object') return null;
     const audit = cleanResult(p.audit), outdated = cleanResult(p.outdated);
     if (!audit && !outdated) return null;
     return [key, { name: clip(p.name, 60) || path.basename(key) || 'project', audit, outdated, cleanAt: time(p.cleanAt) }];
-  }).filter(Boolean);
+  }).filter(Boolean));
   const latest = p => Math.max(p.audit?.at || 0, p.outdated?.at || 0);
   list.sort((a, b) => latest(b[1]) - latest(a[1]));
   return { projects: Object.fromEntries(list.slice(0, MAX_PROJECTS)) };

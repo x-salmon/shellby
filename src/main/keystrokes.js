@@ -14,8 +14,9 @@
 //
 // Best effort, like desktop/native-windows.js: no koffi, not Windows, or a call that
 // fails all come back as null ("can't hear the keyboard"), never an exception.
+/** @type {any} */ // FFI module, untyped (its types aren't in the program: jsconfig's noResolve)
 let koffi = null;
-try { koffi = require('koffi'); } catch { /* desktop/native-windows.js already said so */ }
+try { koffi = require(/** @type {string} */ ('koffi')); } catch { /* desktop/native-windows.js already said so */ }
 
 const WM_INPUT = 0x00FF;
 const RID_INPUT = 0x10000003;
@@ -27,6 +28,7 @@ const HWND_MESSAGE = -3;
 const USAGE_PAGE_GENERIC = 1, USAGE_KEYBOARD = 6;
 const CLASS_NAME = 'ShellbyKeystrokes';
 
+/** @type {any} */ // koffi function handles
 let api = null;
 function load() {
   if (api || !koffi || process.platform !== 'win32') return api;
@@ -61,8 +63,10 @@ function load() {
 
 // The class and its procedure live as long as the app: a class can't be
 // registered twice, and Windows may still call the procedure while a window closes.
+/** @type {any} */
 let proc = null;
 let classReady = false;
+/** @type {(() => void) | null} */
 let listener = null;
 const scratch = Buffer.alloc(64); // a keyboard event is 40 bytes on 64-bit
 

@@ -75,7 +75,8 @@
 
   const EST_DELAY_MS = 450;   // after you stop typing for a moment
   const EST_MIN_CHARS = 15;   // shorter than this says too little to guess from
-  let estTimer = null;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let estTimer;
   let estSeq = 0;
   state.estimate = null;      // { tabId, text, ...main's estimate }
 

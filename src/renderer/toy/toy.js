@@ -3,7 +3,7 @@
 // plain pebble before he has one.
 'use strict';
 (function () {
-  const toy = document.getElementById('toy');
+  const toy = /** @type {HTMLElement} */ (document.getElementById('toy'));
   const bridge = window.toy;
   const PX = 6; // screen pixels per sprite pixel
   window.ShellbyFrameCap.cap(document); // a transparent window: every frame costs the GPU
@@ -15,6 +15,7 @@
 
   // Same as dragging him (critter.js): pointer capture keeps the drag alive past
   // the window edge; main moves the window by how far the pointer has gone.
+  /** @type {{ x: number, y: number } | null} */
   let down = null;
   toy.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;

@@ -56,6 +56,7 @@ function classify(item) {
  *   log?(msg)
  */
 function createTracker(deps) {
+  /** @type {ReturnType<typeof fresh> | null} */
   let turn = null;
 
   function fresh(turnId) {

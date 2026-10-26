@@ -99,6 +99,7 @@ function loadForClaude(file, { nativeImage, readFile = fs.readFileSync, statSize
  * `load(file)` is loadForClaude bound to Electron (injected for tests).
  * `readContext(file)` is an @ context pick's block, or null for any other file
  * (wiring/mention-context.js): those go in the text, not the list.
+ * @param {(file: any) => string | null} [readContext]
  */
 function composeContent(text, files, load, readContext = () => null) {
   const shown = new Set();

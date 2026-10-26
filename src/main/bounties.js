@@ -24,7 +24,13 @@ const CLEAR_ALL_XP = 50;
 const MAX_PROJECTS = 10;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** @typedef {{ id: string, kinds: readonly string[], goal: number, xp: number, text: string, distinct?: boolean }} Bounty */
+/** @typedef {{ from: string, to: string } | null} Rerolled */
+
+/** @type {Map<string, Bounty>} */
 const byId = new Map(BOUNTIES.map(b => [b.id, b]));
+// Only ever asked about ids that came out of BOUNTIES (orderFor, or normalized against it).
+const bounty = id => /** @type {Bounty} */ (byId.get(id));
 
 // FNV-1a: a small, stable hash so the pick depends only on the date.
 function hash(s) {
@@ -40,13 +46,17 @@ const orderFor = day => BOUNTIES.map(b => b.id).sort((x, y) => hash(`${day}|${x}
  * The day's bounties (ids), never two that count the same kind of thing.
  *   count: 3, or 4 with the fourth-bounty perk (the first three are the same either way)
  *   rerolled: { from, to } a bounty swapped today (reroll)
+ * @param {string} day
+ * @param {number} [count]
+ * @param {Rerolled} [rerolled]
  */
 function pickFor(day, count = PER_DAY, rerolled = null) {
   const n = Math.max(1, Math.min(MAX_PER_DAY, Math.floor(Number(count) || PER_DAY)));
+  /** @type {string[]} */
   const picked = [];
   const kindsTaken = new Set();
   for (const id of orderFor(day)) {
-    const b = byId.get(id);
+    const b = bounty(id);
     if (b.kinds.some(k => kindsTaken.has(k))) continue;
     picked.push(id);
     b.kinds.forEach(k => kindsTaken.add(k));
@@ -64,22 +74,29 @@ function reroll(raw, day, id, { count = PER_DAY } = {}) {
   const s = normalizeBounties(raw, day, { count });
   const ids = pickFor(day, count, s.rerolled);
   if (!s.day || s.rerolled || !ids.includes(id) || s.done.includes(id)) return { state: s, ok: false, to: null };
-  const taken = new Set(ids.filter(x => x !== id).flatMap(x => byId.get(x).kinds));
-  const to = orderFor(day).find(x => !ids.includes(x) && !byId.get(x).kinds.some(k => taken.has(k)));
+  const taken = new Set(ids.filter(x => x !== id).flatMap(x => bounty(x).kinds));
+  const to = orderFor(day).find(x => !ids.includes(x) && !bounty(x).kinds.some(k => taken.has(k)));
   if (!to) return { state: s, ok: false, to: null };
   return { state: normalizeBounties({ ...s, rerolled: { from: id, to } }, day, { count }), ok: true, to };
 }
 
-/** Tolerate anything read from disk; a different day starts fresh. */
+/**
+ * Tolerate anything read from disk; a different day starts fresh.
+ * @param {any} raw
+ * @param {string} day
+ * @param {{ count?: number }} [opts]
+ * @returns {{ day: string | null, progress: Record<string, any>, done: string[], cleared: boolean, rerolled: Rerolled }}
+ */
 function normalizeBounties(raw, day, { count = PER_DAY } = {}) {
   if (!DAY_RE.test(day)) return { day: null, progress: {}, done: [], cleared: false, rerolled: null };
   const r = raw && typeof raw === 'object' && raw.day === day ? raw : {};
+  /** @type {Rerolled} */
   const rr = r.rerolled && byId.has(r.rerolled.from) && byId.has(r.rerolled.to) ? { from: r.rerolled.from, to: r.rerolled.to } : null;
   const ids = pickFor(day, count, rr);
   const progress = {};
   for (const id of ids) {
     const v = r.progress?.[id];
-    if (byId.get(id).distinct) progress[id] = [...new Set((Array.isArray(v) ? v : []).filter(p => typeof p === 'string' && p.length <= 80))].slice(0, MAX_PROJECTS);
+    if (bounty(id).distinct) progress[id] = [...new Set((Array.isArray(v) ? v : []).filter(p => typeof p === 'string' && p.length <= 80))].slice(0, MAX_PROJECTS);
     else progress[id] = Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
   }
   const done = [...new Set((Array.isArray(r.done) ? r.done : []).filter(id => ids.includes(id)))];
@@ -98,9 +115,10 @@ function progressBounties(raw, day, kind, project, { count = PER_DAY } = {}) {
   if (!s.day) return none;
   const ids = pickFor(day, count, s.rerolled);
   const progress = { ...s.progress };
+  /** @type {Bounty[]} */
   const completed = [];
   for (const id of ids) {
-    const b = byId.get(id);
+    const b = bounty(id);
     if (!b.kinds.includes(kind) || s.done.includes(id)) continue;
     if (b.distinct) {
       if (!project || progress[id].includes(project)) continue;
@@ -123,7 +141,7 @@ function bountiesView(raw, day, { count = PER_DAY, canReroll = false } = {}) {
   return {
     canReroll: !!canReroll && !s.rerolled,
     list: pickFor(day, count, s.rerolled).map(id => {
-      const b = byId.get(id);
+      const b = bounty(id);
       return { id, text: b.text, xp: b.xp, goal: b.goal, count: Math.min(b.goal, countOf(b, s.progress[id])), done: s.done.includes(id) };
     }),
     cleared: s.cleared,

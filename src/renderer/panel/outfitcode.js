@@ -6,8 +6,10 @@
   const ACC_SLOTS = new Set(['hat', 'face', 'neck', 'held', 'shell']);
   const SLOT_LABEL = { hat: 'Hat', face: 'Face', neck: 'Neck', held: 'Held', shell: 'Shell', effect: 'Effect', skin: 'Colors' };
   let current = '';
-  let preview = null;
-  let timer = null;
+  /** @type {any} */
+  let preview = null; // previewOutfitCode's answer: { ok, error?, found, packs?, unknown?, catalogError? }
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
 
   // ------------------------------------------------------------ your code
 

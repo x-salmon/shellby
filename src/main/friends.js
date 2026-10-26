@@ -50,7 +50,7 @@ const SOUVENIRS = Object.freeze([
   { id: 'bottle-cap', name: 'Bottle cap', palette: { a: '#e63946', b: '#ffd6d9' }, pixels: ['abab', 'aaaa'] },
 ]);
 
-const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; };
+const hash = s => { let h = 2166136261; for (const ch of String(s)) { h ^= /** @type {number} */ (ch.codePointAt(0)); h = Math.imul(h, 16777619) >>> 0; } return h; };
 const dayOf = t => new Date(t).toISOString().slice(0, 10);
 const souvenirFor = (login, at) => SOUVENIRS[hash(`${String(login).toLowerCase()}|${dayOf(at)}`) % SOUVENIRS.length];
 const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
@@ -166,12 +166,25 @@ class Friends extends EventEmitter {
    */
   constructor({ config, github, myCard, canVisit = () => true, dropIns = () => true, sharesTank = () => false, now = () => Date.now(), rand = Math.random }) {
     super();
-    Object.assign(this, { config, github, myCard, canVisit, dropIns, sharesTank, now, rand });
+    this.config = config;
+    this.github = github;
+    this.myCard = myCard;
+    this.canVisit = canVisit;
+    this.dropIns = dropIns;
+    this.sharesTank = sharesTank;
+    this.now = now;
+    this.rand = rand;
+    /** @type {NodeJS.Timeout | null} */
     this.timer = null;
+    /** @type {NodeJS.Timeout | null} */
     this.leaveTimer = null;
+    /** @type {NodeJS.Timeout[]} */
     this.togetherTimers = [];
+    /** @type {{ login: string, card: any, until: number, souvenir: any, signed: boolean } | null} */
     this.visiting = null;
+    /** @type {Promise<{ ok: boolean, error?: string }> | null} */
     this.refreshing = null;
+    /** @type {Promise<{ ok: boolean, error?: string }> | null} */
     this.takingDown = null;
   }
 
@@ -198,14 +211,14 @@ class Friends extends EventEmitter {
   }
 
   start() {
-    clearInterval(this.timer);
+    clearInterval(/** @type {any} */ (this.timer));
     this.timer = null;
     if (!this.enabled) return;
     this.timer = setInterval(() => this.tick().catch(() => {}), TICK_MS);
     if (this.now() - this.state.lastRefreshAt > REFRESH_MS) this.refresh().catch(() => {});
   }
 
-  stop() { clearInterval(this.timer); this.timer = null; this.leave(); }
+  stop() { clearInterval(/** @type {any} */ (this.timer)); this.timer = null; this.leave(); }
 
   async tick() {
     if (!this.enabled) return;
@@ -382,7 +395,7 @@ class Friends extends EventEmitter {
     else this.save({ lastVisitAt: at });
     // `signed`: the first visit in its window, the one that may leave a sticker swap (main.js).
     this.visiting = { login: f.login, card: f.card, until: at + VISIT_MS, souvenir, signed: signs };
-    clearTimeout(this.leaveTimer);
+    clearTimeout(/** @type {any} */ (this.leaveTimer));
     this.leaveTimer = setTimeout(() => this.leave(), VISIT_MS);
     this.planTogether();
     // Counted first: a trophy it unlocks has a line of its own, and the visitor's goes last.
@@ -396,6 +409,7 @@ class Friends extends EventEmitter {
   // when its time comes: a task that started meanwhile, or focus, skips it.
   planTogether() {
     this.togetherTimers.forEach(clearTimeout);
+    /** @type {string | null} */
     let last = null;
     this.togetherTimers = [];
     for (let at = TOGETHER_FIRST_MS; at < VISIT_MS - TOGETHER_MS; at += TOGETHER_EVERY_MS) {
@@ -409,7 +423,7 @@ class Friends extends EventEmitter {
   }
 
   leave() {
-    clearTimeout(this.leaveTimer);
+    clearTimeout(/** @type {any} */ (this.leaveTimer));
     this.leaveTimer = null;
     this.togetherTimers.forEach(clearTimeout);
     this.togetherTimers = [];

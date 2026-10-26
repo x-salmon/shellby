@@ -50,7 +50,7 @@ const clawLoad = () => (holdingSign() ? signKind() : tossed ? 'empty' : 'own');
 // Uh oh: a red build needs the claw he carries things in, so whatever is in it
 // goes up in the air, the sign takes its place, and it drops back down once the
 // build is green and he has stopped celebrating.
-const tossHost = document.getElementById('toss');
+const tossHost = /** @type {HTMLElement} */ (document.getElementById('toss'));
 let tossTimers = [];
 const heldItem = () => (outfit.accessories || []).find(a => a.slot === 'held') || null;
 

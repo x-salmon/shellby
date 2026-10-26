@@ -6,11 +6,11 @@
 // helper lane layout and the desktop window. A stream wants the crab, his
 // outfit, what he is doing and what he is saying.
 (function () {
-  const spriteHost = document.getElementById('sprite');
-  const bubble = document.getElementById('bubble');
-  const bubbleText = document.getElementById('bubbleText');
-  const countEl = document.getElementById('count');
-  const crewHost = document.getElementById('crew');
+  const spriteHost = /** @type {HTMLElement} */ (document.getElementById('sprite'));
+  const bubble = /** @type {HTMLElement} */ (document.getElementById('bubble'));
+  const bubbleText = /** @type {HTMLElement} */ (document.getElementById('bubbleText'));
+  const countEl = /** @type {HTMLElement} */ (document.getElementById('count'));
+  const crewHost = /** @type {HTMLElement} */ (document.getElementById('crew'));
 
   // The bubble glyphs the desktop crab uses, so the two read the same.
   const BUBBLES = { working: '', asking: '?', success: '✓', error: '!', learned: '✦', unlocked: '★', levelup: 'LV', petted: '♥' };
@@ -18,9 +18,12 @@
   const HUES = [0, 145, 250, 60, 300, 200];
   const MAX_CREW = 6;
 
+  /** @type {any} */
   let skin = null;
+  /** @type {any} */
   let outfit = { accessories: [], effect: null, crewAccessories: [], home: null };
   let px = 4;
+  /** @type {any} */
   let fx = null;
   let state = 'idle';
 
@@ -52,7 +55,7 @@
       const el = document.createElement('div');
       el.className = 'helper';
       const hue = HUES[i % HUES.length];
-      el.style.setProperty('--hue', hue);
+      el.style.setProperty('--hue', String(hue));
       const svg = window.ShellbySprite.build(skin, {
         px: Math.max(1, px * 0.5),
         accessories: outfit.crewAccessories || [],

@@ -42,14 +42,23 @@ const BOND_LINES = Object.freeze(['', "we're pals now!", "we're buddies now!", "
 
 function createLife(d) {
   const now = () => d.now?.() ?? Date.now();
-  let watchTimer = null, micTimer = null, lookTimer = null;
+  /** @type {NodeJS.Timeout | null} */
+  let watchTimer = null;
+  /** @type {NodeJS.Timeout | null} */
+  let micTimer = null;
+  /** @type {NodeJS.Timeout | null} */
+  let lookTimer = null;
   let track = surroundings.emptyState();
   let micBusy = false;
   let onCall = false;
+  /** @type {boolean | null} */
   let forcedCall = null;          // dev/e2e: pretend you're on a call (or aren't)
   let playing = false;
+  /** @type {{ id: string, timers: NodeJS.Timeout[] } | null} */
   let scene = null;              // { id, timers } while a scene plays
+  /** @type {string | null} */
   let presenting = null;         // a find being held up
+  /** @type {(() => void) | null} */
   let presentDone = null;        // ...and what happens when he puts it down
   let lastSceneAt = now();
   const recent = [];             // scene ids, newest last
@@ -58,7 +67,9 @@ function createLife(d) {
   let lastPetAt = 0;             // no nodding off straight after a fuss
   let look = { x: 0, y: 0, near: false };
   let lookSent = '';
+  /** @type {string | null} */
   let lastDay = null;
+  /** @type {NodeJS.Timeout[]} */
   let visitTimers = [];
   // One-off moments queued for a little later (a find after a dig, a keepsake,
   // a line once the desktop is back). cancel() and stop() drop them all.
@@ -100,10 +111,11 @@ function createLife(d) {
     if (!r.gained && !r.milestone) { if (r.state) setBond(r.state); return r; }
     setBond(r.state);
     if (r.levelUp) {
-      d.stat('bond-level', { n: r.levelUp.index });
-      d.awardXp('bond', { label: `You and Shellby: ${r.levelUp.name}` });
-      celebrate(BOND_LINES[r.levelUp.index], { eyebrow: 'Closer', icon: r.levelUp.icon, title: r.levelUp.name, text: bond.UNLOCKS.find(u => u.level === r.levelUp.index)?.text || '' });
-      d.askForIdea?.(r.levelUp.index); // once ever, at Buddies (feedback.js)
+      const up = r.levelUp;
+      d.stat('bond-level', { n: up.index });
+      d.awardXp('bond', { label: `You and Shellby: ${up.name}` });
+      celebrate(BOND_LINES[up.index], { eyebrow: 'Closer', icon: up.icon, title: up.name, text: bond.UNLOCKS.find(u => u.level === up.index)?.text || '' });
+      d.askForIdea?.(up.index); // once ever, at Buddies (feedback.js)
     }
     if (r.milestone) celebrate(bond.celebrationLine('days', { days: r.milestone }), { eyebrow: 'Together', icon: '🗓️', title: `${r.milestone} days together`, text: 'He counts. Every one of them.' });
     changed();
@@ -392,6 +404,7 @@ function createLife(d) {
   // A bug Claude fixed, in a jar (bugdex/index.js): he lunges, corks it and holds it
   // up. Catches land while he's working, so one waits until he's free; a newer
   // one replaces it, and it goes stale after JAR_WAIT_MS.
+  /** @type {any} */
   let jarWaiting = null;
   const JAR_MS = 2600;
   const JAR_WAIT_MS = 10 * MINUTE;
@@ -400,10 +413,11 @@ function createLife(d) {
     jarWaiting = { ...card, at: now() };
     jarIfFree();
   }
+  /** @type {NodeJS.Timeout | null} */
   let jarRetry = null;
   const JAR_RETRY_MS = 3000;
   function jarIfFree() {
-    clearTimeout(jarRetry);
+    clearTimeout(/** @type {any} */ (jarRetry));
     if (!jarWaiting) return;
     if (now() - jarWaiting.at > JAR_WAIT_MS) { jarWaiting = null; return; }
     // Busy (a scene, a dig, a task): look again shortly, rather than at the next idle tick.
@@ -450,7 +464,7 @@ function createLife(d) {
     later(ms, () => presentDone?.());
     if (r) d.toPanel('life:found', { ...findCard(find), isNew: r.isNew, shiny });
     if (r && shiny) {
-      const big = gifts.sparkly(find, { big: true }); // the reveal has room for its portrait
+      const big = /** @type {{ pixels: any, palette: any }} */ (gifts.sparkly(find, { big: true })); // the reveal has room for its portrait
       d.toPanel('sparkle:reveal', {
         kind: 'find', id: find.id, name: find.name, rarity: find.rarity, pixels: big.pixels, palette: big.palette,
         odds: r.odds || Math.round(1 / gifts.SPARKLE_CHANCE), after: Math.max(0, gifts.total(r.state) - 1), at: now(), level: d.level?.() || 1,
@@ -477,7 +491,7 @@ function createLife(d) {
     else if (rare && r.isNew) remember('rare-find', { item: find.name });
     if (find.rarity === 'legendary') { d.stat('legendary-find'); d.burst(); }
     for (const setId of r.completed) {
-      const set = gifts.SETS.find(s => s.id === setId);
+      const set = /** @type {(typeof gifts.SETS)[number]} */ (gifts.SETS.find(s => s.id === setId)); // dig() only completes sets it knows
       d.stat('set-completed');
       d.awardXp('treasure', { label: `Completed the ${set.name} set` });
       remember('set-done', { set: set.name });
@@ -545,8 +559,10 @@ function createLife(d) {
    * A visit started (v) or ended (null). The two of them say hello, chat between
    * the things they do together, and say goodbye before the visitor walks off.
    *   v: { login, card, until, signed }; ctx: what there is to talk about
+   * @param {any} v
+   * @param {{ visitMs?: number, togetherAt?: number[], myCard?: any }} [ctx]
    */
-  function visit(v, { visitMs, togetherAt = [], myCard = {} } = {}) {
+  function visit(v, { visitMs = 0, togetherAt = [], myCard = {} } = {}) {
     visitTimers.forEach(clearTimeout);
     visitTimers = [];
     if (!v) return;
@@ -618,9 +634,9 @@ function createLife(d) {
   }
 
   function stop() {
-    clearInterval(watchTimer); clearInterval(micTimer); clearInterval(lookTimer);
+    for (const t of [watchTimer, micTimer, lookTimer]) if (t) clearInterval(t);
     watchTimer = micTimer = lookTimer = null;
-    clearTimeout(jarRetry);
+    clearTimeout(/** @type {any} */ (jarRetry));
     jarWaiting = null;
     cancel();
   }

@@ -34,6 +34,7 @@
   }
 
   // scale: card px per sprite pixel; by default as big as fits the box. He stands at its bottom, in the middle.
+  /** @param {{ x: number, y: number, w: number, h: number }} box @param {number | null} [scale] */
   function crab(box, scale = null) {
     // His shell stickers, only from projects known to be on show (an unknown id stays off).
     const shown = new Set((state.stickers?.projects || []).filter(p => !p.hidden).map(p => p.id));
@@ -200,9 +201,13 @@ ${stickers.length ? stickerRow(stickers, x0, 142, 30, 10) : `<text x="${x0}" y="
 
   // ------------------------------------------------------------ settings + publishing
 
+  /** @type {any} */
   let timer = null;
+  /** @type {any} */
   let soon = null;     // the next one-off check (first check, or after a change)
+  /** @type {any} */
   let current = null;  // the last profile-card view from main
+  /** @type {string | null} */
   let preview = null;  // the last SVG drawn, shown in Settings
 
   const isOn = () => !!(state.github?.signedIn && state.github.features.profileCard?.on && state.github.features.profileCard?.granted);
@@ -247,7 +252,9 @@ ${stickers.length ? stickerRow(stickers, x0, 142, 30, 10) : `<text x="${x0}" y="
 
   const STEPS = ['repo', 'action', 'card', 'readme'];
   const RECHECK_MS = 10 * 1000; // coming back from the browser re-checks, at most this often
+  /** @type {any} */
   let setup = null;             // the last profile-card:setup answer
+  /** @type {Promise<void> | null} */
   let checking = null;
   let checkedAt = 0;
   let generation = 0;           // bumped on turning off, so a late answer is dropped
@@ -278,13 +285,14 @@ ${stickers.length ? stickerRow(stickers, x0, 142, 30, 10) : `<text x="${x0}" y="
     const login = state.github?.login || 'your username';
     const done = doneSteps(p);
     const next = p ? STEPS.find(s => !done.includes(s)) : 'repo';
-    for (const li of document.querySelectorAll('#pcSteps .pc-step')) {
-      const step = li.dataset.step;
+    for (const li of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#pcSteps .pc-step'))) {
+      const step = li.dataset.step || '';
       const isDone = done.includes(step);
       li.classList.toggle('done', isDone);
       li.classList.toggle('next', step === next);
-      li.querySelector('.pc-tick').textContent = isDone ? '✓' : String(STEPS.indexOf(step) + 1);
-      li.querySelector('.btn').classList.toggle('ghost', step !== next);
+      const tick = li.querySelector('.pc-tick'), btn = li.querySelector('.btn');
+      if (tick) tick.textContent = isDone ? '✓' : String(STEPS.indexOf(step) + 1);
+      if (btn) btn.classList.toggle('ghost', step !== next);
     }
     const isPrivate = p?.repo && !p.isPublic;
     $('pcRepoText').textContent = isPrivate
@@ -301,7 +309,7 @@ ${stickers.length ? stickerRow(stickers, x0, 142, 30, 10) : `<text x="${x0}" y="
     $('pcSetupNote').classList.toggle('bad', !!setup?.error);
     const allDone = !next;
     $('pcDone').hidden = !allDone;
-    document.querySelector('#pcSteps .pc-steps').hidden = allDone;
+    /** @type {HTMLElement} */ (document.querySelector('#pcSteps .pc-steps')).hidden = allDone;
     renderStatus();
   }
 

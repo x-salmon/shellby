@@ -405,6 +405,8 @@ interface ShellbyPanelExtras {
   renderModeCards: any;
   renderSettings: any;
   renderSkins: any;
+  // ship-it.js
+  shipIt: any;
   // shop.js
   openShop: any;
   // slash-menu.js

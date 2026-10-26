@@ -329,7 +329,7 @@
   $('flakyToggle').addEventListener('change', async e => { const r = await api.setSettings({ flakyTests: e.target.checked }); state.settings = r.settings; SB.refreshFlaky?.(); });
   $('catchBugsToggle').addEventListener('change', async e => { const r = await api.setSettings({ catchBugs: e.target.checked }); state.settings = r.settings; $('bugdexOptions').hidden = !e.target.checked; });
   for (const [id, key] of [['bugBattlesToggle', 'bugBattles'], ['bugFollowerToggle', 'bugFollower'], ['shareBugdexToggle', 'shareBugdex']]) {
-    $(id).addEventListener('change', async e => { const r = await api.setSettings({ [key]: e.target.checked }); state.settings = r.settings; SB.bugdexSettingsChanged?.(); });
+    $(id).addEventListener('change', async e => { const r = await api.setSettings({ [key]: e.target.checked }); state.settings = r.settings; SB.renderBattleChip?.(); SB.renderLooseBattles?.(); });
   }
   $('checkEachTurnToggle').addEventListener('change', async e => { const r = await api.setSettings({ checkEachTurn: e.target.checked }); state.settings = r.settings; $('checkEachTurnOptions').hidden = !state.settings.checkEachTurn; });
   $('checkTimeoutSelect').addEventListener('change', async e => { const r = await api.setSettings({ checkTimeoutMin: Number(e.target.value) }); state.settings = r.settings; });

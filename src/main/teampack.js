@@ -97,9 +97,10 @@ const hashOf = v => crypto.createHash('sha256').update(canonical(v)).digest('hex
 /** A hook as the pack has it: { event, matcher, command, timeout?, about? } | { error } */
 function checkHook(input) {
   const v = claudeSetup.validateHook(input);
-  if (v.error) return v;
+  if (v.error || !v.hook) return v;
+  /** @type {{ event: string, matcher: string, command: string, timeout?: number, about?: string }} */
   const hook = { event: v.hook.event, matcher: v.hook.matcher || '', command: v.hook.command };
-  if (Number.isFinite(v.hook.timeout)) hook.timeout = v.hook.timeout;
+  if (Number.isFinite(v.hook.timeout)) hook.timeout = /** @type {number} */ (v.hook.timeout);
   const about = oneLine(input?.about, MAX_HOOK_ABOUT);
   if (about) hook.about = about;
   return { hook };
@@ -119,6 +120,7 @@ function checkWorkflow(input) {
 // The names a server needs filled in: a list of names, or an object whose
 // values are ignored (a value in a repo's file is either a secret that
 // shouldn't be there, or something a teammate didn't choose).
+/** @returns {{ error: string, names?: undefined, dropped?: undefined } | { error?: undefined, names: string[], dropped: boolean }} */
 function blankNames(raw, re, what) {
   if (raw === undefined || raw === null) return { names: [], dropped: false };
   const names = Array.isArray(raw) ? raw : isObj(raw) ? Object.keys(raw) : null;
@@ -135,6 +137,8 @@ function blankNames(raw, re, what) {
  *   { name, transport, command | url, env: [name], headers: [name], about? } | { error }
  * env and headers are only names: the values are each teammate's own. `dropped`
  * says values were in the file and were left out.
+ * @typedef {{ name: string, transport: string, url?: string, command?: string, env: string[], headers: string[], about?: string }} McpServer
+ * @returns {{ error: string, server?: undefined, dropped?: undefined } | { error?: undefined, server: McpServer, dropped: boolean }}
  */
 function checkMcp(input) {
   if (!isObj(input)) return { error: "isn't an MCP server" };
@@ -143,9 +147,9 @@ function checkMcp(input) {
   if (!hasCommand === !hasUrl) return { error: `"${oneLine(input.name, 40) || 'a server'}" needs a command or a url (one of them)` };
   const transport = hasUrl ? (input.transport === 'sse' ? 'sse' : 'http') : 'stdio';
   const env = blankNames(hasUrl ? undefined : input.env, ENV_NAME, 'environment variables');
-  if (env.error) return env;
+  if (env.error !== undefined) return { error: env.error };
   const headers = blankNames(hasUrl ? input.headers : undefined, HEADER_NAME, 'headers');
-  if (headers.error) return headers;
+  if (headers.error !== undefined) return { error: headers.error };
   // What `claude mcp add` would make of it, with stand-in values.
   const target = (hasUrl ? input.url : input.command).trim();
   // What the confirm window shows has to be what runs: no invisible characters.
@@ -155,6 +159,7 @@ function checkMcp(input) {
     env: env.names.map(n => `${n}=x`).join('\n'), headers: headers.names.map(n => `${n}: x`).join('\n'),
   });
   if (tried.error) return { error: `${oneLine(input.name, 40) || 'a server'}: ${tried.error}` };
+  /** @type {McpServer} */
   const server = { name: tried.summary.name, transport, ...(hasUrl ? { url: tried.summary.target } : { command: target }), env: env.names, headers: headers.names };
   const about = oneLine(input.about, MAX_HOOK_ABOUT);
   if (about) server.about = about;
@@ -209,7 +214,7 @@ function parse(text) {
 // Each part of a pack, checked: { value } | { error }.
 const CHECK = {
   snippets(s) {
-    if (isObj(s) && snippets.RESERVED.has(snippets.normalizeName(s.name))) return { error: `/${snippets.normalizeName(s.name)} is one of Shellby's own commands` };
+    if (isObj(s) && snippets.RESERVED.has(snippets.normalizeName(s.name) || '')) return { error: `/${snippets.normalizeName(s.name)} is one of Shellby's own commands` };
     const r = snippets.check(s);
     return r.ok ? { value: r.snippet } : { error: r.error };
   },
@@ -221,7 +226,7 @@ const CHECK = {
   },
   mcpServers(s) {
     const r = checkMcp(s);
-    if (r.error) return r;
+    if (r.error !== undefined) return r;
     return { value: r.server, note: r.dropped ? `The MCP server "${r.server.name}" had values in the file. They were left out: each teammate fills in their own.` : null };
   },
 };
@@ -289,7 +294,7 @@ function portableMcp(name, def) {
     input = { name, command: words.join(' '), env: Object.keys(isObj(def.env) ? def.env : {}) };
   }
   const r = checkMcp(input);
-  if (r.error) return { ok: false, error: r.error };
+  if (r.error !== undefined) return { ok: false, error: r.error };
   return { ok: true, server: r.server, blanks: [...r.server.env, ...r.server.headers] };
 }
 
@@ -392,7 +397,7 @@ function setupPlan(view) {
 // Nothing in the window can hide: invisible characters are spelled out, and so
 // are long runs of spaces (the window folds them).
 const visible = s => String(s)
-  .replace(/\p{Cf}/gu, c => `[U+${c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}]`)
+  .replace(/\p{Cf}/gu, c => `[U+${/** @type {number} */ (c.codePointAt(0)).toString(16).toUpperCase().padStart(4, '0')}]`)
   .replace(/ {3,}/g, m => ` [${m.length} spaces] `);
 const indent = (s, by = '    ') => visible(s).split('\n').map(l => `${by}${l}`).join('\n');
 
@@ -401,6 +406,9 @@ const indent = (s, by = '    ') => visible(s).split('\n').map(l => `${by}${l}`).
  * summarised away. workflowDetail: name -> what the workflow's own window
  * would show (workflows/service.js). -> { title, message, detail, danger } |
  * { error } when it's too much to show in one window.
+ * @param {any} pack
+ * @param {ReturnType<typeof setupPlan>} plan
+ * @param {{ repo?: string, workflowDetail?: Record<string, string> }} [opts]
  */
 function setupDetail(pack, plan, { repo, workflowDetail = {} } = {}) {
   const parts = [];
@@ -468,10 +476,12 @@ function contents(pack) {
  * secret: the file is meant to be committed.
  *   picked: { name, about, snippets: [snippet], workflows: [saved workflow], hooks: [hook], rules: [{ list, rule }] }
  *   -> { ok: true, text, notes: [string] } | { ok: false, error }
+ * @returns {{ ok: true, text: string, notes: string[] } | { ok: false, error: string }}
  */
 function build(picked, root) {
   const notes = [];
   const secretIn = (what, value) => {
+    /** @type {string | null} */
     let kind = null;
     mapStrings(value, (s) => {
       for (const line of s.split('\n')) kind = kind || lineSecret(line);
@@ -521,7 +531,7 @@ function build(picked, root) {
   const servers = [];
   for (const s of picked.mcpServers || []) {
     const r = checkMcp(s);
-    if (r.error) return { ok: false, error: `An MCP server: ${r.error}` };
+    if (r.error !== undefined) return { ok: false, error: `An MCP server: ${r.error}` };
     if (r.dropped) return { ok: false, error: `The MCP server "${r.server.name}" still has values in it. Only the names go in a team pack.` };
     const bad = secretIn(`The MCP server "${r.server.name}"`, r.server);
     if (bad) return { ok: false, error: bad };

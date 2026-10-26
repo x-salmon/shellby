@@ -5,8 +5,8 @@
 (function () {
   const bridge = window.floor;
   const brain = window.ShellbyColony;
-  const colonyHost = document.getElementById('colony');
-  const tracksHost = document.getElementById('tracks');
+  const colonyHost = /** @type {HTMLElement} */ (document.getElementById('colony'));
+  const tracksHost = /** @type {HTMLElement} */ (document.getElementById('tracks'));
   const TICK_MS = 80;            // pals move at a pixel-art pace, not the screen's
   const STEP = 13;               // a footprint every this many DIPs he walks
   const PRINT_MS = 24000;        // how long a print lasts before the tide takes it
@@ -14,10 +14,12 @@
   const FOOT = 18;               // his feet sit this far above the floor's bottom edge
   window.ShellbyFrameCap.cap(document); // a transparent window: every frame costs the GPU
 
+  /** @type {any} */
   let skin = null, px = 4, scale = 0.55, accessories = [];
   let roster = [];
   let pals = [];
   let tracks = false;
+  /** @type {{ x: number, floor: boolean, lift: number, away: any, state: string, half: number } | null} */
   let shellby = null;            // { x, floor, away, state, half }
   let calm = false;
   const els = new Map();         // pal id -> element
@@ -105,6 +107,7 @@
   }, TICK_MS);
 
   // ---- footprints: one every STEP he walks, a little behind him, alternating feet
+  /** @type {number | null} */
   let lastPrint = null;
   let foot = 1;
   function print(x, dir, lift = 0) {
@@ -115,7 +118,7 @@
     el.style.bottom = `${FOOT - 4 + lift + foot * 2}px`;
     el.style.setProperty('--dir', dir < 0 ? '-1' : '1');
     tracksHost.append(el);
-    while (tracksHost.childElementCount > MAX_PRINTS) tracksHost.firstElementChild.remove();
+    while (tracksHost.childElementCount > MAX_PRINTS) tracksHost.firstElementChild?.remove();
     setTimeout(() => el.remove(), PRINT_MS);
   }
   function follow(s) {
@@ -134,7 +137,7 @@
   // ---- the pointer: the strip lets clicks through except over a pal
   let over = false;
   document.addEventListener('mousemove', e => {
-    const now = !!e.target.closest?.('.pal');
+    const now = !!/** @type {Element | null} */ (e.target)?.closest?.('.pal');
     if (now !== over) { over = now; bridge.hit(now); }
   });
   document.addEventListener('mouseleave', () => { if (over) { over = false; bridge.hit(false); } });

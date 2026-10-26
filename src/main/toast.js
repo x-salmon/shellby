@@ -21,7 +21,7 @@ function esc(s) {
  * The toast's XML. A click on the toast or its button reaches Electron as a
  * plain 'click' (any arguments without "type=action" do), so callers keep
  * their usual onClick.
- * @param {{ title: string, body?: string, tone?: string, action?: string, artDir: string }} spec
+ * @param {{ title: string, body?: string, tone?: string, action?: string | null, artDir: string }} spec
  * @returns {string}
  */
 function xml({ title, body = '', tone = 'default', action = null, artDir }) {

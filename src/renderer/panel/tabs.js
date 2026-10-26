@@ -22,7 +22,7 @@
   // ------------------------------------------------------------ tabs
 
 
-  SB.activeTab = () => state.tabs.get(state.activeTab) || null;
+  SB.activeTab = () => state.tabs.get(/** @type {string} */ (state.activeTab)) || null;
   // The tabs of the strip a tab is in, in order: its pane's while split, every
   // conversation with one pane (tab-strip.js walks it with the arrow keys).
   SB.stripIds = (tabId = state.activeTab) => {
@@ -141,7 +141,7 @@
     // at the end. A drag in progress wins, so a background tab reporting progress
     // mid-drag can't snap the strip back from under the pointer.
     if (!SB.isDraggingTab()) orderTabs([...summaries.map(s => s.id).filter(id => state.tabs.has(id)), ...[...state.tabs.keys()].filter(id => !ids.has(id))]);
-    if (!state.tabs.has(state.activeTab)) {
+    if (!state.tabs.has(/** @type {string} */ (state.activeTab))) {
       const next = SB.nextShown(); // the last tab; split, one its pane would show (tab-panes.js)
       if (next) SB.activate(next); else if (!SB.solo) SB.newTab();
     }
@@ -156,6 +156,7 @@
   // All tab creation funnels through here. Concurrent callers (e.g. closing the
   // last tab while the main process reports "no tabs") share one in-flight
   // request, so they can never produce two blank tabs.
+  /** @type {Promise<any> | null} */
   let creating = null;
   SB.newTab = ({ focus = true, reuse = true } = {}) => {
     const cur = SB.activeTab();
@@ -185,7 +186,7 @@
 
   // A fresh tab in a known project (or the usual folder), with a prompt ready to
   // send (from a nudge).
-  SB.newTabIn = async ({ cwd, draft } = {}) => {
+  SB.newTabIn = async (/** @type {{ cwd?: string, draft?: string }} */ { cwd, draft } = {}) => {
     const r = await api.newTab(cwd ? { cwd } : {});
     if (!r.ok) return SB.toast(r.error);
     SB.ensureTab({ id: r.tabId, title: 'New task', cwd: cwd || state.cwd });
@@ -218,7 +219,7 @@
     const list = closedList();
     const known = new Set((state.sessions || []).map(s => s.id));
     while (list.length) {
-      const id = list.shift();
+      const id = /** @type {string} */ (list.shift());
       SB.pref.set(CLOSED_KEY, JSON.stringify(list));
       if (state.tabs.has(id) || (state.sessions?.length && !known.has(id))) continue;
       return SB.inChat(() => SB.openHistory(id));
@@ -299,7 +300,7 @@
       // otherwise the keys stay the textarea's and the page's.
       // Nor while a tab's name is being typed: the arrows are the caret's then.
       // Nor when something the key was pressed in took it already (defaultPrevented).
-      if (e.defaultPrevented || e.target.closest?.('.title-edit') || !dir || !state.activeTab || state.view !== 'chat' || SB.panes.count(state.grid) < 2 || SB.overlayOpen()) return;
+      if (e.defaultPrevented || /** @type {HTMLElement} */ (e.target).closest?.('.title-edit') || !dir || !state.activeTab || state.view !== 'chat' || SB.panes.count(state.grid) < 2 || SB.overlayOpen()) return;
       e.preventDefault();
       if (K.matches(e, 'movePane')) { SB.movePane(state.activeTab, dir); return; }
       // A tool's pane takes no box: on past it, the same way.
@@ -336,8 +337,9 @@
       return;
     }
     // Y / A / N answer the newest open permission card in the active tab.
-    if (e.target.closest('textarea, input, select') || e.ctrlKey || e.metaKey || e.altKey || state.view !== 'chat') return;
-    if (e.target.closest('.card-sheet')) return; // not through a dialog (the shortcut list, the share card)
+    const at = /** @type {HTMLElement} */ (e.target);
+    if (at.closest('textarea, input, select') || e.ctrlKey || e.metaKey || e.altKey || state.view !== 'chat') return;
+    if (at.closest('.card-sheet')) return; // not through a dialog (the shortcut list, the share card)
     const open = tab?.openAsk();
     const btn = open?.querySelector(`[data-key="${e.key.toLowerCase()}"]`);
     if (btn) { e.preventDefault(); btn.click(); }

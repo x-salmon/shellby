@@ -17,14 +17,21 @@
   const DARK_HZ = 300;
   const PLIP_GAP_S = [0.8, 4];
 
+  /** @typedef {typeof FLAVORS.surf} Flavor */
+  /** @typedef {{ ac: AudioContext, src: AudioBufferSourceNode, level: GainNode, low: BiquadFilterNode, swell: GainNode, foam: GainNode, flavor: Flavor, waveTimer: any, plipTimer: any }} Chain */
+
   let kind = 'off';
+  /** @type {Chain | null} */
   let chain = null;
 
+  /** @param {number[]} range */
   const between = ([lo, hi]) => lo + Math.random() * (hi - lo);
 
   // Brown noise (a random walk, kept from drifting off), looped: the deep
   // rumble of water. Made once.
+  /** @type {AudioBuffer | null} */
   let brown = null;
+  /** @param {AudioContext} ac */
   function brownNoise(ac) {
     if (brown) return brown;
     brown = ac.createBuffer(1, ac.sampleRate * 4, ac.sampleRate);
@@ -37,6 +44,12 @@
     return brown;
   }
 
+  /**
+   * @param {AudioContext} ac
+   * @param {AudioNode} out
+   * @param {Flavor} flavor
+   * @returns {Chain}
+   */
   function build(ac, out, flavor) {
     const src = ac.createBufferSource();
     src.buffer = brownNoise(ac);
@@ -64,6 +77,7 @@
   }
 
   // One wave: in (darker to brighter, louder), the break, then the long pull back.
+  /** @param {Chain} c */
   function wave(c) {
     const { ac, flavor } = c;
     const at = ac.currentTime + 0.05;
@@ -87,6 +101,7 @@
   }
 
   // A drop into the pool: a sine that slides up fast. Sometimes a few in a row.
+  /** @param {Chain} c */
   function plip(c) {
     const { ac } = c;
     const n = Math.random() < 0.25 ? 2 + Math.floor(Math.random() * 2) : 1;

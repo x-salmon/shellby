@@ -16,8 +16,11 @@
   const wrapOn = () => SB.pref(WRAP_KEY) !== '0';
   const ICON = 'M1.8 4.2c0-.7.5-1.2 1.2-1.2h3l1.4 1.5H13c.7 0 1.2.5 1.2 1.2v6.1c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z';
   const lastFile = new Map(); // a place (V.placeKey) -> the file last open there, while Shellby runs
+  /** @type {any} */
   let cur = null;             // what's open: the handle, the lists and the file on screen
-  let shownAt = 0, timer = null;
+  let shownAt = 0;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let timer = null;
 
   // A call on the handle. One dropped (eight others opened since, a closed tab, a reload) is opened
   // again, once, with its changes list rebuilt, since main serves diffs only for files on that list.
@@ -60,6 +63,10 @@
   // pick, so call() can make it again. A pick keeps the file you were on when the new place has it
   // too (on its changes list or in its tree), else opens the one last open there when it still has
   // that, else shows the placeholder (V.keepFile).
+  /**
+   * @param {any} req
+   * @param {{ file?: string | null, line?: number | null, side?: string | null, handle?: any, place?: any }} [opts]
+   */
   async function start(req, { file = null, line = null, side = null, handle = null, place = null } = {}) {
     const r = handle || await api.viewerOpen(req).catch(() => null);
     if (!r?.ok) return SB.toast(r?.error || "Couldn't open that folder.");
@@ -202,12 +209,16 @@
   }
 
   // A line to go to (a link's :42) opens the whole file there, changed or not; Diff is a click away.
+  /**
+   * @param {string} rel
+   * @param {{ line?: number | null, keep?: boolean }} [opts]
+   */
   async function showFile(rel, { line = null, keep = false } = {}) {
     const me = cur;
     if (me.file !== rel || line) me.whole = !!line;
     me.file = rel; me.line = line;
     lastFile.set(V.placeKey(me), rel);
-    for (const b of document.querySelectorAll('#viewerList .vw-row')) b.classList.toggle('on', b.dataset.path === rel);
+    for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#viewerList .vw-row'))) b.classList.toggle('on', b.dataset.path === rel);
     const f = me.files.find(x => x.path === rel) || null;
     const main = $('viewerMain');
     const was = main.querySelector('.vw-scroll');
@@ -243,7 +254,7 @@
           'aria-disabled': big ? 'true' : null,
           'aria-label': big ? "Wrap, unavailable: long files show as plain text, which can't wrap" : null,
           title: big ? "Long files show as plain text, which can't wrap." : 'Wrap long lines',
-          onclick: e => { if (!big) setWrap(e.currentTarget, !wrapOn()); },
+          onclick: e => { if (!big) setWrap(/** @type {HTMLElement} */ (e.currentTarget), !wrapOn()); },
         }) : null));
   }
 
@@ -350,7 +361,7 @@
   // Main's nudge: something in the folder may have changed. One look, at most every 2 s, only on
   // Changes and only while showing; otherwise the viewer remembers, and looks when it's shown again.
   const showing = () => state.view === 'viewer' && cur?.side === 'changes';
-  api.onViewerStale(({ ids } = {}) => {
+  api.onViewerStale((/** @type {{ ids?: string[] }} */ { ids } = {}) => {
     if (!cur || !ids?.includes(cur.id)) return;
     if (!showing()) { cur.dirty = true; return; }
     if (timer) return;
@@ -382,7 +393,7 @@
   $('viewerList').addEventListener('keydown', e => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     const rows = [...$('viewerList').querySelectorAll('.vw-row')];
-    const at = rows.indexOf(document.activeElement);
+    const at = rows.indexOf(/** @type {any} */ (document.activeElement));
     const next = rows[Math.max(0, Math.min(rows.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))];
     if (next) { e.preventDefault(); next.focus(); }
   });
@@ -401,9 +412,9 @@
     // The Files buttons (Task 6) and the header's live state follow the tabs.
     syncButtons() {
       const canOpen = SB.viewer.canOpen;
-      $('filesBtn').hidden = SB.panes.count(state.grid) > 1 || !canOpen(state.tabs.get(state.activeTab));
-      for (const b of document.querySelectorAll('.pane-head .pane-files')) {
-        const pane = state.grid.flat().find(p => p.id === b.closest('.pane-head')?.dataset.pane);
+      $('filesBtn').hidden = SB.panes.count(state.grid) > 1 || !canOpen(state.activeTab && state.tabs.get(state.activeTab));
+      for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.pane-head .pane-files'))) {
+        const pane = state.grid.flat().find(p => p.id === /** @type {HTMLElement | null} */ (b.closest('.pane-head'))?.dataset.pane);
         b.hidden = !canOpen(state.tabs.get(pane?.active));
       }
       if (cur && state.view === 'viewer') drawLive();

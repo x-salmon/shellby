@@ -28,10 +28,15 @@ const LEAVE_LINES_SHOWN = 12;
  *   onIdleReading ({ idleMs, locked }) for each reading taken,
  */
 function createAway(d) {
+  /** @type {any[]} */
   let recapLog = [];
+  /** @type {{ since: number | null }} */
   let away = { since: null };
+  /** @type {any[]} */
   let leaveProjects = [];   // the last git check, for the shutdown guard (which can't wait for git)
+  /** @type {Promise<any[]> | null} */
   let leaveChecking = null; // the check in flight, shared by everyone who asks meanwhile
+  /** @type {NodeJS.Timeout | null} */
   let leaveSoon = null;
 
   // ---- while you were away (recap.js)
@@ -44,6 +49,7 @@ function createAway(d) {
     if (event) recapLog = recap.record(recapLog, event, Date.now());
   }
 
+  /** @param {{ locked?: boolean, idleMs?: number | null }} [reading] */
   function checkAway({ locked = false, idleMs = null } = {}) {
     if (d.CAPTURE || !d.config) return;
     if (idleMs === null) {
@@ -96,7 +102,7 @@ function createAway(d) {
   function welcomeBack({ since, until }) {
     const { panel } = d;
     if (d.config.get('recap') === false || !panel || panel.isDestroyed()) return;
-    const digest = recap.build(recapLog, { since, until, waiting: waitingOnYou(), limit: d.limitWait() });
+    const digest = recap.build(recapLog, /** @type {any} */ ({ since, until, waiting: waitingOnYou(), limit: d.limitWait() }));
     if (!digest) return;
     d.send(panel, 'recap', digest);
     d.tankGauges?.unread('recap'); // a message in a bottle in his tank until you dismiss it
@@ -143,7 +149,7 @@ function createAway(d) {
   async function checkLeaving({ fresh = false } = {}) {
     if (d.CAPTURE || !d.config) return [];
     if (fresh && leaveChecking) await leaveChecking;
-    leaveChecking ||= leaving.check(leaveFolders(), undefined, { scan: secretscan.atRisk })
+    leaveChecking ||= leaving.check(leaveFolders(), undefined, { scan: /** @type {any} */ (secretscan.atRisk) })
       .then(projects => { leaveProjects = projects; return projects; })
       .catch(e => { d.log.warn('safe-to-leave check failed', e.message); return leaveProjects; })
       .finally(() => { leaveChecking = null; });
@@ -154,7 +160,7 @@ function createAway(d) {
   const leaveVerdict = () => leaving.verdict(leaveProjects, runningNow());
 
   function checkLeavingSoon() {
-    clearTimeout(leaveSoon);
+    clearTimeout(/** @type {any} */ (leaveSoon));
     leaveSoon = setTimeout(checkLeaving, LEAVE_AFTER_WORK_MS);
   }
 

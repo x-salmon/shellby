@@ -267,10 +267,12 @@
     const prompt = h('pre', { class: 'pj-prompt', tabindex: '0', 'aria-label': 'What will be sent to Claude' });
     const note = h('textarea', { class: 'field pj-note', rows: '2', maxlength: '500', placeholder: 'Anything to add? (optional)', 'aria-label': 'A note for Claude' });
     note.value = notes.get(s.id) || '';
+    /** @type {any} */
     let t = null;
     let seq = 0;
     // Send is only ever for the draft on screen: off while it's being fetched,
     // and it carries that draft's hash so main sends exactly this text or nothing.
+    /** @type {{ hash: any, note: string } | null} */
     let shown = null; // { hash, note }
     const refresh = async () => {
       const mine = ++seq;

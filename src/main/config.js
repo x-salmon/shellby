@@ -249,6 +249,8 @@ class Config {
     this.data = { ...DEFAULTS, ...data };
     if (!MODES.includes(this.data.mode)) this.data.mode = DEFAULTS.mode;
     this.backedUpAt = 0;
+    /** Called after each set(patch) with the data as it was (wiring/github.js). @type {((patch: object, prev: object) => void) | undefined} */
+    this.onSet = undefined;
     if (restoredFrom) writeSettings(this.file, JSON.stringify(this.data, null, 2));
     if (!unreadable && !this.lost && Object.keys(data).length) this.backUp();
   }

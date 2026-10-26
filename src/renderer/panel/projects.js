@@ -23,11 +23,15 @@
     try { const v = JSON.parse(SB.pref(PREF.pins, '[]')); return Array.isArray(v) ? v.filter(k => typeof k === 'string') : []; } catch { return []; }
   };
 
+  /** @type {any} */
   let data = null;           // projects:list
+  /** @type {any} */
   let servers = null;         // servers:get, kept live by servers:changed
   let { sort, scope } = L.readView({ sort: SB.pref(PREF.sort), scope: SB.pref(PREF.scope) });
   let pins = readPins();
+  /** @type {string | null} */
   let openKey = null;         // the project whose page is open
+  /** @type {any} */
   let detail = null;          // projects:detail for it
   let loadedAt = 0;           // when the list last came back, for "updated 4m ago"
 
@@ -71,6 +75,7 @@
 
   // Shared with project-page.js, projects-servers.js and projects-add.js, which
   // add their parts to it as they load.
+  /** @type {any} */
   const P = SB.pj = {
     data: () => data, servers: () => servers, openKey: () => openKey, detail: () => detail,
     serversIn, keptDetails, load, showScreen, renderAll, openProject, closeProject, newHere, devAction,
@@ -99,6 +104,7 @@
   // The list redraws on every keystroke in the search box, so it isn't a live
   // region; a screen reader hears how many are showing once you pause.
   let countSaid = '';
+  /** @type {any} */
   let countTimer = null;
   function announceCount(n) {
     clearTimeout(countTimer);
@@ -261,7 +267,7 @@
     $('pjQuitCount').textContent = `${servers.running} running`;
     $('pjStopAll').textContent = servers.running > 1 ? 'Stop all' : 'Stop it';
     $('pjOnQuit').value = onQuit;
-    for (const r of document.querySelectorAll('input[name="setOnQuit"]')) r.checked = r.value === onQuit;
+    for (const r of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('input[name="setOnQuit"]'))) r.checked = r.value === onQuit;
     $('srvCrabToggle').checked = crab;
     $('srvSignToggle').checked = sign;
     $('srvToastToggle').checked = toast;
@@ -273,7 +279,7 @@
     const v = await api.setServerSettings(patch);
     if (v) { servers = v; renderQuit(); }
   }
-  for (const r of document.querySelectorAll('input[name="setOnQuit"]')) r.addEventListener('change', () => r.checked && setServerSettings({ onQuit: r.value, quitNoteSeen: true }));
+  for (const r of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('input[name="setOnQuit"]'))) r.addEventListener('change', () => r.checked && setServerSettings({ onQuit: r.value, quitNoteSeen: true }));
   $('pjOnQuit').addEventListener('change', e => setServerSettings({ onQuit: e.target.value, quitNoteSeen: true }));
   $('srvCrabToggle').addEventListener('change', e => setServerSettings({ crab: e.target.checked }));
   $('srvSignToggle').addEventListener('change', e => setServerSettings({ sign: e.target.checked }));
@@ -333,7 +339,7 @@
   api.onProjectInstalled(({ project }) => { SB.toast(`Dependencies installed in ${project}.`); load(); });
 
   // The crab's sign, a toast or the tray: straight to that server's card.
-  api.onProjectsShow(({ serverId } = {}) => showServer(serverId));
+  api.onProjectsShow((/** @type {{ serverId?: string }} */ { serverId } = {}) => showServer(serverId));
   async function showServer(serverId) {
     if (!data) await load();
     servers = await api.getServers();

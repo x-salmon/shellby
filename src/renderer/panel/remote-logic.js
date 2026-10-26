@@ -99,7 +99,7 @@
     };
   }
 
-  /** What the question box says for one of ssh's prompts. */
+  /** What the question box says for one of ssh's prompts. @param {{ prompt?: string, kind?: string }} [ask] */
   function askText({ prompt, kind } = {}) {
     const p = String(prompt || '');
     const key = /key '([^']+)'/.exec(p)?.[1];

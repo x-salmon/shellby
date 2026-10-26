@@ -87,6 +87,7 @@
     const rows = R.numberLines(patch);
     if (!rows.some(R.commentable)) return SB.renderDiff(patch, { binary, file });
     const wrap = h('div', { class: 'rv-wrap' });
+    /** @type {DiffView | null} */
     let view = null;
     const show = () => {
       const split = SB.pref(LAYOUT_KEY, 'inline') === 'split';
@@ -96,7 +97,7 @@
       const seg = (key, label) => h('button', {
         class: `rv-seg${(key === 'split') === split ? ' on' : ''}`, type: 'button', 'aria-pressed': String((key === 'split') === split),
         onclick: () => {
-          if ((key === 'split') === split || view.busyWriting()) return;
+          if ((key === 'split') === split || view?.busyWriting()) return;
           SB.pref.set(LAYOUT_KEY, key);
           show();
         },
@@ -112,9 +113,22 @@
   };
 
   class DiffView {
+    /**
+     * @param {any} tab
+     * @param {any[]} rows
+     * @param {string} file
+     * @param {any} ref
+     * @param {{ split?: boolean, undoable?: boolean, onChanged?: (() => void) | null }} [opts]
+     */
     constructor(tab, rows, file, ref, { split = false, undoable = false, onChanged = null } = {}) {
-      Object.assign(this, { tab, rows, file, ref, onChanged });
+      this.tab = tab;
+      this.rows = rows;
+      this.file = file;
+      this.ref = ref;
+      this.onChanged = onChanged;
+      /** @type {{ a: number, b: number } | null} */
       this.pick = null;    // { a, b }: rows picked, a where it started
+      /** @type {{ el: any, text: any, editing: any, pristine: () => boolean } | null} */
       this.box = null;     // the comment being written, if any
       // Colours, worked out in the file's own order whichever way it's laid out (code.js).
       const paint = SB.diffPainter?.(file);
@@ -199,7 +213,7 @@
         if (i < 0 || i >= this.rows.length) return;
         this.select(e.shiftKey && this.pick ? this.pick.a : i, i);
         this.lines[i].scrollIntoView({ block: 'nearest' });
-        const a = R.anchor(this.rows, this.pick.a, i);
+        const a = this.pick && R.anchor(this.rows, this.pick.a, i);
         if (a) this.live.textContent = `${R.where(a)}: ${this.rows[i].text}`;
       } else if (e.key === 'Enter' && this.pick && !this.busyWriting()) {
         e.preventDefault();
@@ -221,6 +235,7 @@
     }
 
     // A box under the picked lines, or under the comment being edited.
+    /** @param {any} [editing] */
     write(editing = null) {
       if (this.busyWriting()) return;
       this.closeBox();
@@ -262,7 +277,8 @@
       cancel.addEventListener('click', () => { this.closeBox(); this.el.focus({ preventScroll: true }); });
       this.box = { el, text, editing, pristine: () => text.value === (editing?.body || '') };
       if (editing) this.draw(); // hides the note it replaces
-      this.place(el, editing ? R.rowsFor(this.rows, editing)?.last : Math.max(this.pick.a, this.pick.b));
+      const pick = /** @type {{ a: number, b: number }} */ (this.pick); // set, or anchor was null above
+      this.place(el, editing ? R.rowsFor(this.rows, editing)?.last : Math.max(pick.a, pick.b));
       text.focus();
     }
 
@@ -280,8 +296,9 @@
     undoButton(n, header) {
       const idle = 'Undo this part';
       const b = h('button', { class: 'hunk-undo', type: 'button', title: 'Put just these lines back the way they were before this turn. The rest of the file stays.' }, idle);
-      let armed = null;
-      const disarm = () => { clearTimeout(armed); armed = null; b.textContent = idle; b.classList.remove('armed'); };
+      /** @type {number | undefined} */
+      let armed;
+      const disarm = () => { clearTimeout(armed); armed = undefined; b.textContent = idle; b.classList.remove('armed'); };
       b.addEventListener('mousedown', e => e.stopPropagation());
       b.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -346,6 +363,7 @@
 
   // Two presses to discard, like Undo. The bar is redrawn whenever the queue is
   // (tabs.js), so the first press is remembered here, for exactly these comments.
+  /** @type {{ tab: any, n: number, timer: number } | null} */
   let armed = null; // { tab, n, timer }
   const disarm = () => { if (armed) clearTimeout(armed.timer); armed = null; };
 

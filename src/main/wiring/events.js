@@ -42,12 +42,14 @@ function wireEvents(d) {
 
   function eventsView() {
     const v = events.view(state(), today(), where(), extra());
-    if (v.active) {
+    /** @type {any} */
+    const a = v.active;
+    const sp = a ? speciesById(a.bug.id) : null;
+    if (a && sp) {
       // The banner draws its bug and finds: in colour once you have them, a silhouette until then.
-      const sp = speciesById(v.active.bug.id);
       const look = (have, a) => (have ? { pixels: a.pixels, palette: a.palette } : art.silhouette(a));
-      v.active.bug = { ...v.active.bug, name: sp.name, ...look(v.active.bug.caught, sp) };
-      v.active.finds = v.active.finds.map(f => { const g = gifts.findById(f.id); return { ...f, name: g.name, ...look(f.found, g) }; });
+      a.bug = { ...a.bug, name: sp.name, ...look(a.bug.caught, sp) };
+      a.finds = a.finds.map(f => { const g = gifts.findById(f.id); return g ? { ...f, name: g.name, ...look(f.found, g) } : f; });
     }
     return { ...v, on: on() };
   }
@@ -66,12 +68,14 @@ function wireEvents(d) {
 
   // A goal the stat moved is now complete.
   function goalFinished(r) {
+    /** @type {any} */
     const a = events.view(r.state, today(), where()).active;
     return !!a && a.goals.some(g => g.done && r.moved.includes(g.id));
   }
 
   // Every goal done in the first half of the event: a perfect tide (its own trophy stat).
   function wasPerfect() {
+    /** @type {any} */
     const a = events.view(state(), today(), where()).active;
     return !!a && a.doneAt > 0 && a.doneAt - a.startsAt <= (a.endsAt - a.startsAt) / 2;
   }
@@ -79,6 +83,7 @@ function wireEvents(d) {
   function finished(id, key) {
     const ev = events.eventById(id);
     const medal = events.medalOf(key);
+    if (!medal) return; // a run key events.record made is always one medalOf reads
     if (wasPerfect()) d.stat('tide-perfect');
     d.questDone?.('medal');
     d.log.info(`events: finished ${key}`);
@@ -125,7 +130,7 @@ function wireEvents(d) {
       d.log.info(`events: ${ev.id} started`);
       d.speak('milestone', { force: true, text: `${ev.emoji} ${ev.name.toLowerCase()}!` });
       d.send(d.critter, 'critter:burst', d.outfit().confetti);
-      d.notify(`${ev.emoji} ${ev.name} is on`, `${ev.blurb} ${events.timeLeft(events.runAt(ev, today(), where()).end.getTime(), today().getTime())}.`, () => openUs(), { tone: 'celebrate', pet: true });
+      d.notify(`${ev.emoji} ${ev.name} is on`, `${ev.blurb} ${events.timeLeft(events.runAt(ev, today(), where())?.end.getTime(), today().getTime())}.`, () => openUs(), { tone: 'celebrate', pet: true });
     } else {
       d.speak('milestone', { force: true, text: `last day of ${ev.name.toLowerCase()}!`.slice(0, 24) });
       d.notify(`Last day of ${ev.name}`, 'Some goals are still open. The medal is only for this year\'s.', () => openUs(), { pet: true });

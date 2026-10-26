@@ -29,6 +29,7 @@ async function run({ app, critter, panel, showPanel, send, setCrewSlots, wardrob
   const js = code => panel.webContents.executeJavaScript(code);
   const item = it => send(panel, 'tab:item', { tabId: TAB, item: it });
   // His own lines from src/main/voice.js, so the reel shows him talking.
+  /** @type {{ text: string, occasion: string, until: number } | null} */
   let line = null;
   const say = text => { line = text ? { text, occasion: 'reel', until: Date.now() + 60e3 } : null; };
   const mood = (state, crew = []) => send(critter, 'critter:state', { state, busy: state === 'working' ? 1 : 0, crew, moreCrew: 0, background: 0, say: line });

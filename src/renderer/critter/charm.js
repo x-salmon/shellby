@@ -8,7 +8,7 @@
 (function () {
   const api = window.shellby.critter;
   const C = window.ShellbyCritter;
-  const crab = document.getElementById('crab');
+  const crab = /** @type {HTMLElement} */ (document.getElementById('crab'));
   const root = document.documentElement.style;
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -44,6 +44,7 @@
   const BELLY_WINDOW_MS = 15000; // ...within this long
   const BELLY_MS = 2600;
   let travel = 0;
+  /** @type {number | null} */
   let lastX = null;
   let pets = [];
 
@@ -123,6 +124,7 @@
   const FRET_OCCASIONS = new Set(['tests', 'longTask']);
   const RELIEF_AFTER_MS = 45 * 1000;
   const RELIEF_MS = 1300;
+  /** @type {number | null} */
   let workingSince = null;
   api.onState(msg => {
     const was = state;

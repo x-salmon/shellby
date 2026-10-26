@@ -9,6 +9,7 @@
 
 const DAY = 24 * 60 * 60 * 1000;
 
+/** @type {ReadonlyArray<{ at: number, name: string, icon: string }>} */
 const LEVELS = Object.freeze([
   { at: 0, name: 'New friends', icon: '🥚' },
   { at: 25, name: 'Pals', icon: '🐚' },
@@ -16,17 +17,18 @@ const LEVELS = Object.freeze([
   { at: 260, name: 'Close friends', icon: '💛' },
   { at: 600, name: 'Best friends', icon: '💞' },
   { at: 1300, name: 'Inseparable', icon: '🌟' },
-].map(Object.freeze));
+].map(l => Object.freeze(l)));
 
 // What each level opens up. src/main/scenes.js and life.js check `bond` levels
 // against the same numbers.
+/** @type {ReadonlyArray<{ level: number, text: string }>} */
 const UNLOCKS = Object.freeze([
   { level: 1, text: 'He starts bringing up things you did together.' },
   { level: 2, text: 'He shows off his favourite find, and asks to play hide and seek.' },
   { level: 3, text: 'He draws you hearts in the sand.' },
   { level: 4, text: 'He leans on your cursor for a cuddle. (And a trophy.)' },
   { level: 5, text: 'Golden hearts when you pet him.' },
-].map(Object.freeze));
+].map(l => Object.freeze(l)));
 
 // How a bond grows. `perDay` caps the ones you could otherwise farm.
 const EARN = Object.freeze({
@@ -177,6 +179,7 @@ function earn(stateIn, kind, now) {
   if (!rule || !Number.isFinite(t)) return none;
   const day = dayKey(t);
   let today = state.today.date === day ? state.today : { ...Object.fromEntries(Object.keys(EARN).map(k => [k, 0])), date: day };
+  /** @type {number | null} */
   let milestone = null;
   if (kind === 'day') {
     if (state.lastDay === day) return none;
@@ -194,6 +197,7 @@ function earn(stateIn, kind, now) {
   const points = state.points + rule.points;
   const after = levelFor(points);
   state = { ...state, points, today };
+  /** @type {{ index: number, name: string, icon: string } | null} */
   let levelUp = null;
   if (after.index > state.level) {
     levelUp = { index: after.index, name: after.name, icon: after.icon };
@@ -202,11 +206,16 @@ function earn(stateIn, kind, now) {
   return { state, gained: points - before.points, levelUp, milestone };
 }
 
-/** First run (or the first run of this feature): when did he move in? */
+/**
+ * First run (or the first run of this feature): when did he move in?
+ * @param {any} stateIn
+ * @param {number} now
+ * @param {{ since?: number | null }} [opts]
+ */
 function hatch(stateIn, now, { since = null } = {}) {
   const state = normalize(stateIn);
   if (state.hatchedAt) return state;
-  const at = pos(since) && since < now ? since : now;
+  const at = since !== null && pos(since) && since < now ? since : now;
   return { ...remember({ ...state, hatchedAt: at }, 'hatched', at).state, hatchedAt: at };
 }
 

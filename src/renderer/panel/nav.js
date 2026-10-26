@@ -11,9 +11,9 @@
   // A view may name its own way back (the file viewer: where it was opened from).
   SB.goBack = () => SB.setView(SB.views[state.view]?.parent?.() || SB.PARENT_VIEW[state.view] || SB.homeView());
 
-  const navButtons = [...document.querySelectorAll('[data-view-btn]')];
+  const navButtons = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-view-btn]'))];
   // In bar order, which Work mode changes (workmode.js), so Ctrl+1… follow it.
-  const dockButtons = () => [...document.querySelectorAll('.dock [data-view-btn]')];
+  const dockButtons = () => [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.dock [data-view-btn]'))];
   SB.retitleDock = () => dockButtons().forEach((b, i) => {
     b.title = `${b.textContent.trim()} (Ctrl+${i + 1})`;
     b.setAttribute('aria-keyshortcuts', `Control+${i + 1}`);
@@ -174,6 +174,7 @@
   const list = $('paletteList');
   let results = [];
   let selected = 0;
+  /** @type {HTMLElement | null} */
   let returnFocus = null;
 
   const claude = () => !SB.isCrabOnly();
@@ -191,6 +192,7 @@
   function actionEntries() {
     const tab = claude() && SB.activeTab();
     if (!tab) return [];
+    /** @type {(id: string, icon: string, title: string, sub: string, run: () => any, shortcut?: string | null, keys?: string) => object} */
     const act = (id, icon, title, sub, run, shortcut = null, keys = '') => ({
       id: `act:${id}`, group: 'This conversation', icon, title, sub, shortcut, keys, run: () => SB.inChat(run),
     });
@@ -220,13 +222,14 @@
   // ---- this conversation's project: its folder and its dev server (projects.js)
 
   const PROJECTS_STALE_MS = 30000;
+  /** @type {{ at: number, list: any, servers: any } | null} */
   let projects = null;  // { at, list, servers }
   async function loadProjects() {
     if (!claude()) return;
-    const fresh = projects && Date.now() - projects.at < PROJECTS_STALE_MS;
+    const fresh = projects && Date.now() - projects.at < PROJECTS_STALE_MS ? projects : null;
     try {
-      const [list, servers] = await Promise.all([fresh ? projects.list : api.listProjects(), api.getServers()]);
-      projects = { at: fresh ? projects.at : Date.now(), list, servers };
+      const [list, servers] = await Promise.all([fresh ? fresh.list : api.listProjects(), api.getServers()]);
+      projects = { at: fresh ? fresh.at : Date.now(), list, servers };
     } catch { return; } // no project actions this time; the rest of the palette is unaffected
     if (!sheet.hidden) update({ keep: true });
   }
@@ -237,7 +240,7 @@
     const found = where && K.cloneFor(projects?.list?.projects, where);
     if (!found) return [];
     const { project: p, clone: c } = found;
-    const mine = (projects.servers?.servers || []).filter(s => s.root.toLowerCase() === c.root.toLowerCase() && (s.status === 'starting' || s.status === 'up' || s.status === 'erroring'));
+    const mine = (projects?.servers?.servers || []).filter(s => s.root.toLowerCase() === c.root.toLowerCase() && (s.status === 'starting' || s.status === 'up' || s.status === 'erroring'));
     const entry = (id, icon, title, sub, run, keys = '') => ({ id: `pj:${id}`, group: 'Project', icon, title, sub, keys: `project ${p.name} ${keys}`, run });
     const script = c.scripts?.find(s => s.name === c.lastScript) || c.scripts?.find(s => s.likely);
     const servers = mine.flatMap(s => [
@@ -410,7 +413,7 @@
   // strip without a pointer (the drag gesture's keyboard twin, and the only way
   // there is for anyone who can't drag).
   function tabEntries() {
-    const tab = state.tabs.get(state.activeTab);
+    const tab = state.activeTab && state.tabs.get(state.activeTab);
     if (!claude() || !tab) return [];
     // To a terminal and back (handoff.js), once there's a conversation to carry on.
     const handoff = !tab.saved ? [] : [tab.inTerminal
@@ -418,7 +421,7 @@
       : { group: 'Conversations', icon: '›_', title: 'Continue this conversation in a terminal', sub: `${tab.title} · Windows Terminal, claude --resume`, keys: 'terminal handoff resume cli console powershell wt', run: () => SB.continueInTerminal(tab.id) }];
     if (state.tabs.size < 2) return handoff;
     const here = tab.title;
-    return [...handoff, ...[[-1, 'left', 'PageUp'], [1, 'right', 'PageDown']].map(([step, where, key]) => ({
+    return [...handoff, .../** @type {[number, string, string][]} */ ([[-1, 'left', 'PageUp'], [1, 'right', 'PageDown']]).map(([step, where, key]) => ({
       group: 'Conversations', icon: step < 0 ? '⬅️' : '➡️',
       title: `Move this conversation ${where}`, sub: `${here} · Ctrl+Shift+${key === 'PageUp' ? 'PgUp' : 'PgDn'}`,
       keys: 'tab strip reorder order move drag position',
@@ -429,7 +432,7 @@
   // Splitting, popping out and moving between panes: the keyboard's way to do
   // what dragging a tab into the chat, or out of the window, does (tab-panes.js).
   function paneEntries() {
-    const tab = state.tabs.get(state.activeTab);
+    const tab = state.activeTab && state.tabs.get(state.activeTab);
     if (!claude() || !tab) return [];
     const shown = SB.panes.shownTabs(state.grid);
     const here = SB.focusedPane();
@@ -546,7 +549,7 @@
   function landFocus() {
     if (document.activeElement && document.activeElement !== document.body) return;
     if (state.view === 'chat') return $('input').focus({ preventScroll: true });
-    const heading = document.querySelector(`.view-${state.view} h2`);
+    const heading = /** @type {HTMLElement | null} */ (document.querySelector(`.view-${state.view} h2`));
     if (!heading) return;
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
@@ -555,7 +558,7 @@
   function openPalette() {
     if (state.view === 'onboarding' || SB.solo) return;
     SB.closeMenus();
-    returnFocus = document.activeElement;
+    returnFocus = /** @type {HTMLElement | null} */ (document.activeElement);
     sheet.hidden = false;
     input.value = '';
     update();
@@ -617,6 +620,7 @@
 
   // ---- your own keys (shortcuts.js checks them; main keeps them in Settings, and Sync carries them)
 
+  /** @type {{ id: string, btn: HTMLElement, onKey: (e: KeyboardEvent) => void } | null} */
   let recording = null; // { id, btn, onKey }
   const yours = () => ({ ...(state.settings.keybindings || {}) });
 
@@ -678,12 +682,13 @@
     (editing ? keysList.querySelector('.keys-edit') : editBtn)?.focus({ preventScroll: true });
   });
 
+  /** @type {HTMLElement | null} */
   let keysBack = null; // what had the keyboard before, unless that was the palette
   // edit: straight into changing keys (Settings → Shortcut).
   SB.openShortcuts = ({ edit = false } = {}) => {
     editing = !!edit;
     if (state.view === 'onboarding') return;
-    const from = sheet.hidden ? document.activeElement : returnFocus;
+    const from = /** @type {HTMLElement | null} */ (sheet.hidden ? document.activeElement : returnFocus);
     keysBack = from && from !== document.body && !from.closest('.palette-sheet, .card-sheet') ? from : null;
     closePalette({ restoreFocus: false });
     SB.closeMenus();
@@ -698,7 +703,7 @@
     keysStatus.textContent = '';
     keysSheet.hidden = true;
     if (keysBack?.isConnected && keysBack.getClientRects().length) keysBack.focus({ preventScroll: true });
-    else { document.activeElement?.blur(); landFocus(); }
+    else { /** @type {HTMLElement | null} */ (document.activeElement)?.blur(); landFocus(); }
     keysBack = null;
   }
   $('shortcutsClose').addEventListener('click', closeShortcuts);

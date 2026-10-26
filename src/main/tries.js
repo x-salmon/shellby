@@ -33,9 +33,12 @@ function parseArg(arg) {
   return { n, text };
 }
 
-/** Why it can't start (before asking about the cost), or null. */
+/**
+ * Why it can't start (before asking about the cost), or null.
+ * @param {{ n?: number, text?: string, tabsOpen?: number, maxTabs?: number, attachments?: number }} [opts]
+ */
 function problem({ n, text, tabsOpen = 0, maxTabs = 32, attachments = 0 } = {}) {
-  if (!Number.isInteger(n) || n < MIN_TRIES || n > MAX_TRIES) return 'Two, three or four tries.';
+  if (n === undefined || !Number.isInteger(n) || n < MIN_TRIES || n > MAX_TRIES) return 'Two, three or four tries.';
   if (typeof text !== 'string' || !text.trim()) return 'Type what he should try first.';
   if (text.length > MAX_TEXT) return "That's too long to try several ways at once.";
   if (attachments > MAX_ATTACHMENTS) return `That's more than one message carries: ${MAX_ATTACHMENTS} attachments at most.`;
@@ -68,17 +71,19 @@ const aboutPct = p => (p < 1 ? 'less than 1%' : `about ${Math.round(p)}%`);
  * The confirmation, in the isolated window. estimate: usage:estimate's shape
  * (wiring/usageplan.js estimateFor) or null. attachments: how many go with it.
  * -> { title, message, detail, note, danger, over, total, buttons, defaultId, cancelId }
+ * @param {{ n?: number, estimate?: any, mode?: string, attachments?: number }} [opts]
  */
 function costQuestion({ n, estimate = null, mode = '', attachments = 0 } = {}) {
+  /** @type {any} */
   const e = estimate || {};
   const known = e.basis && e.basis !== 'none' && Number.isFinite(e.pct) && e.pct >= 0;
-  const total = known ? Math.round(e.pct * n * 10) / 10 : null;
+  const total = known ? Math.round(e.pct * /** @type {number} */ (n) * 10) / 10 : null;
   const hasLeft = Number.isFinite(e.left);
   const leftText = hasLeft ? ` You've ${Math.round(e.left)}% left${e.guardOn ? ' before the part you keep for yourself' : ''}.` : '';
   const message = known
     ? `Each try usually takes ${aboutPct(e.pct)} of your window, so ${aboutPct(total)} in all.${leftText}`
     : `He hasn't seen enough tasks like this to guess; each try is a full task.${leftText}`;
-  const over = known && total > 0 && Number.isFinite(e.nowPct) && Number.isFinite(e.line) && e.nowPct + total > e.line;
+  const over = total !== null && total > 0 && Number.isFinite(e.nowPct) && Number.isFinite(e.line) && e.nowPct + total > e.line;
   const warning = !over ? ''
     : e.guardOn
       ? `\n\nThat's more than you've got before the share you keep for yourself (${100 - e.line}%), so the spending guard would hold this back.`

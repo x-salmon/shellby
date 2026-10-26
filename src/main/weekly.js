@@ -113,6 +113,7 @@ function normalizeWeekly(raw) {
  * Count one thing that happened (n of them: a rewind takes back several turns).
  * kind: one of KINDS; project: { id, name } for shipping kinds (so the card can
  * say which projects shipped).
+ * @param {{ id?: string, name?: string } | null} [project]
  */
 function recordDay(stateIn, now, kind, project = null, n = 1) {
   const many = Math.min(count(n), MAX_AT_ONCE);
@@ -120,7 +121,7 @@ function recordDay(stateIn, now, kind, project = null, n = 1) {
   return updateDay(stateIn, now, d => {
     const out = { ...d, [kind]: (d[kind] || 0) + many };
     if (project && ID_RE.test(project.id || '') && (SHIP_KINDS.includes(kind) || kind === 'minted')) {
-      out.projects = { ...(d.projects || {}), [project.id]: clip(project.name, 60) || 'project' };
+      out.projects = { ...(d.projects || {}), [/** @type {string} */ (project.id)]: clip(project.name, 60) || 'project' };
     }
     return out;
   });
@@ -191,6 +192,10 @@ const LOG_KINDS = { fixed: 'fixed', tests: 'tests', task: 'task', deps: 'deps', 
  * Tally a window of days [from, to) (ms, local midnights). Days the ledger
  * kept are read from it; earlier ones from the XP log and the stickers.
  *   xp: normalized XP state (progression/xp.js); stickers: normalized sticker state (stickers/index.js)
+ * @param {ReturnType<typeof normalizeWeekly>} s
+ * @param {number} from
+ * @param {number} to
+ * @param {{ xp?: any, stickers?: any }} [sources]
  */
 function tally(s, from, to, { xp, stickers } = {}) {
   const totals = Object.fromEntries(KINDS.map(k => [k, 0]));
@@ -288,6 +293,9 @@ function hiddenOf(stickers, extra) {
  * The last seven days (today included) and the seven before, for the card.
  *   streak: { current, longest } (progression/streaks.js); level: levelFor() (progression/xp.js)
  *   hidden: project names or ids to keep off it, on top of the stickers you've hidden
+ * @param {any} stateIn
+ * @param {number} now
+ * @param {{ xp?: any, stickers?: any, streak?: any, level?: any, usage?: any, hidden?: Iterable<string> | null }} [opts]
  */
 function weekSummary(stateIn, now, { xp = null, stickers = null, streak = null, level = null, usage = null, hidden = null } = {}) {
   const s = normalizeWeekly(stateIn);

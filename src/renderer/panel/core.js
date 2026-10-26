@@ -158,8 +158,13 @@ SB.focusKept = (box, key, { attr = 'keep', preventScroll = false } = {}) => {
   el.focus({ preventScroll });
   return document.activeElement === el;
 };
+/**
+ * @param {HTMLElement} box
+ * @param {() => void} draw
+ * @param {{ attr?: string, scroller?: HTMLElement | null, preventScroll?: boolean }} [opts]
+ */
 SB.keepFocus = (box, draw, { attr = 'keep', scroller = null, preventScroll = false } = {}) => {
-  const a = document.activeElement;
+  const a = /** @type {HTMLElement | null} */ (document.activeElement);
   const key = a && box.contains(a) ? a.dataset[attr] : null;
   const top = scroller ? scroller.scrollTop : 0;
   draw();
@@ -236,6 +241,10 @@ function dismissToasts() {
   endToast();
 }
 
+/**
+ * @param {string} msg
+ * @param {{ title?: string, note?: string, action?: string, onAction?: () => void, actions?: { label: string, onAction: () => void }[], tone?: string | null, ms?: number }} [opts]
+ */
 function showToast(msg, { title, note, action, onAction, actions, tone = null, ms = TOAST_MS } = {}) {
   const t = toastSlot();
   t.classList.toggle('urgent', tone === 'urgent');
@@ -301,7 +310,7 @@ SB.icon = (d, { size = 16, width = 1.4 } = {}) => {
   path.setAttribute('d', d);
   path.setAttribute('fill', 'none');
   path.setAttribute('stroke', 'currentColor');
-  path.setAttribute('stroke-width', width);
+  path.setAttribute('stroke-width', String(width));
   path.setAttribute('stroke-linecap', 'round');
   path.setAttribute('stroke-linejoin', 'round');
   svg.append(path);
@@ -350,7 +359,7 @@ SB.patchMarkdownInto = (el, text) => {
   const tpl = document.createElement('template');
   tpl.innerHTML = SB.md.render(text); // md escapes all input first; see shared/markdown.js
   const fresh = [...tpl.content.childNodes];
-  const parts = fresh.map(n => (n.nodeType === 1 ? n.outerHTML : n.nodeValue));
+  const parts = fresh.map(n => (n.nodeType === 1 ? /** @type {Element} */ (n).outerHTML : n.nodeValue));
   // A block maps to one child (markdown.js joins them with nothing, enhanceCode swaps
   // a <pre> for its box); if that ever stops holding, everything is redrawn.
   const was = el.childNodes.length === el.mdParts?.length ? el.mdParts : [];
@@ -369,7 +378,7 @@ SB.patchMarkdownInto = (el, text) => {
 // Links are inert <a data-href> (the window blocks navigation and popups), in
 // rendered markdown and in panel.html alike; main only opens https.
 document.addEventListener('click', e => {
-  const a = e.target.closest('a[data-href]');
+  const a = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest('a[data-href]'));
   if (a) { e.preventDefault(); SB.api.openExternal(a.dataset.href); }
 });
 
@@ -396,7 +405,7 @@ SB.setView = view => {
   s.view = view;
   document.body.dataset.view = view;
   const section = SB.NAV_SECTION[view] || view;
-  document.querySelectorAll('[data-view-btn]').forEach(b => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-view-btn]')).forEach(b => {
     const on = b.dataset.viewBtn === section;
     b.classList.toggle('active', on);
     if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
@@ -410,6 +419,7 @@ SB.setView = view => {
 
 // Where the keyboard goes back to when a menu it was in closes: whatever had it
 // before the menu opened (the box, a chip), so Esc or a choice never strands it.
+/** @type {HTMLElement | null} */
 let menuReturn = null;
 
 const MENU_MIN_HEIGHT = 120; // a menu squeezed by a tiny window still shows a few rows
@@ -417,7 +427,7 @@ SB.openMenu = (menu, anchor, build) => {
   const wasOpen = !menu.hidden;
   SB.closeMenus();
   if (wasOpen) return;
-  const from = document.activeElement;
+  const from = /** @type {HTMLElement | null} */ (document.activeElement);
   menuReturn = from && from !== document.body && !from.closest('.popover') ? from : anchor;
   menu.replaceChildren(...build().filter(Boolean));
   menu.style.maxHeight = '';
@@ -441,6 +451,7 @@ SB.openMenu = (menu, anchor, build) => {
 // Every floating menu is a .popover, or the composer's .slash-menu (slash
 // commands, @-picker): asking the page beats keeping a list of ids in step.
 const OPEN_MENUS = '.popover:not([hidden]), .slash-menu:not([hidden])';
+/** @type {HTMLElement | null} */
 let menuAnchor = null; // the button that opened the current menu: its aria-expanded goes back to false
 
 SB.anyMenuOpen = () => !!document.querySelector(OPEN_MENUS);
@@ -450,7 +461,7 @@ SB.anyMenuOpen = () => !!document.querySelector(OPEN_MENUS);
 // elsewhere leaves focus where the click put it.
 SB.closeMenus = ({ refocus = false } = {}) => {
   const held = !!document.activeElement?.closest(OPEN_MENUS);
-  for (const menu of document.querySelectorAll('.popover')) menu.hidden = true;
+  for (const menu of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.popover'))) menu.hidden = true;
   for (const id of ['modeChip', 'folderChip', 'branchChip', 'ctxChip', 'usage', 'effortChip', 'tabAllBtn', 'reviewBtn']) SB.$(id).setAttribute('aria-expanded', 'false');
   SB.hideSlash?.();
   SB.hidePick?.();
@@ -461,7 +472,7 @@ SB.closeMenus = ({ refocus = false } = {}) => {
 };
 
 document.addEventListener('mousedown', e => {
-  if (!e.target.closest('.popover, .mode-chip, .folder-chip, .ctx-chip, .usage, .tab-all, .tab-review, .slash-menu, .snip-more, .note-more, .vw-where, .ft-where, #input')) SB.closeMenus();
+  if (!/** @type {HTMLElement} */ (e.target).closest('.popover, .mode-chip, .folder-chip, .ctx-chip, .usage, .tab-all, .tab-review, .slash-menu, .snip-more, .note-more, .vw-where, .ft-where, #input')) SB.closeMenus();
 });
 
 // Up/Down walk a menu's items (wrapping round), Home/End jump to either end.
@@ -470,12 +481,12 @@ document.addEventListener('mousedown', e => {
 const MENU_ITEMS = 'button:not(:disabled), [role^="menuitem"]:not(:disabled)';
 document.addEventListener('keydown', e => {
   if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
-  const menu = e.target.closest?.('.popover[role="menu"]');
+  const menu = /** @type {HTMLElement} */ (e.target).closest?.('.popover[role="menu"]');
   if (!menu) return;
-  const items = [...menu.querySelectorAll(MENU_ITEMS)].filter(el => el.getClientRects().length > 0);
+  const items = [.../** @type {NodeListOf<HTMLElement>} */ (menu.querySelectorAll(MENU_ITEMS))].filter(el => el.getClientRects().length > 0);
   if (!items.length) return;
   e.preventDefault();
-  const i = items.indexOf(document.activeElement);
+  const i = items.indexOf(/** @type {HTMLElement} */ (document.activeElement));
   const n = items.length;
   const next = { ArrowDown: i + 1, ArrowUp: i < 0 ? n - 1 : i - 1, Home: 0, End: n - 1 }[e.key];
   items[(next + n) % n].focus();
@@ -503,8 +514,9 @@ SB.menuItem = (title, sub, onPick, opts = {}) => {
 // scrollIntoView that runs out of room), snap it back so the title bar stays put.
 for (const target of [window, document.body]) {
   target.addEventListener('scroll', () => {
-    if (document.scrollingElement.scrollTop || document.body.scrollTop) {
-      document.scrollingElement.scrollTop = 0;
+    const page = /** @type {Element} */ (document.scrollingElement);
+    if (page.scrollTop || document.body.scrollTop) {
+      page.scrollTop = 0;
       document.body.scrollTop = 0;
     }
   });
@@ -521,11 +533,14 @@ for (const target of [window, document.body]) {
   tip.setAttribute('role', 'tooltip');
   tip.hidden = true;
   document.body.append(tip);
+  /** @type {HTMLElement | null} */
   let target = null;
-  let timer = null;
+  let timer;
   // The element the tip is showing for: it's described by the tip while it shows
   // (the title it came from is gone), and gets back what it had before.
+  /** @type {HTMLElement | null} */
   let described = null;
+  /** @type {string | null} */
   let describedBefore = null;
   const undescribe = () => {
     if (!described) return;
@@ -575,23 +590,24 @@ for (const target of [window, document.body]) {
   const hide = () => { clearTimeout(timer); target = null; tip.hidden = true; undescribe(); };
 
   document.addEventListener('mouseover', e => {
-    const el = e.target.closest?.('[title], [data-tip]');
+    const el = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest?.('[title], [data-tip]'));
     if (!el || el === target) return;
     claim(el);
     target = el;
     clearTimeout(timer);
     timer = setTimeout(() => { if (target === el) show(el); }, 450);
   });
-  document.addEventListener('mouseout', e => { if (target && !target.contains(e.relatedTarget)) hide(); });
+  document.addEventListener('mouseout', e => { if (target && !target.contains(/** @type {Node | null} */ (e.relatedTarget))) hide(); });
   document.addEventListener('focusin', e => {
-    const el = e.target.closest?.('[title], [data-tip]');
+    const el = /** @type {HTMLElement | null} */ (/** @type {HTMLElement} */ (e.target).closest?.('[title], [data-tip]'));
     if (el && el.matches(':focus-visible')) { target = el; show(el); }
   });
   // A title set again on an element already claimed (a live hint re-rendering
   // under the pointer) would bring the OS tip up beside ours: claim it at once,
   // and keep the showing tip's words current.
   new MutationObserver(records => {
-    for (const { target: el } of records) {
+    for (const record of records) {
+      const el = /** @type {HTMLElement} */ (record.target);
       if (!el.hasAttribute('title') || (el !== target && !('tip' in el.dataset))) continue;
       claim(el);
       if (el === target && !tip.hidden) {

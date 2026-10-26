@@ -18,6 +18,7 @@
 
   const checking = new Map();   // tabId -> the tree a check is running on now
   let order = [];               // tab ids as listed
+  /** @type {string | null} */
   let picked = null;            // the highlighted row, by id so a redraw keeps it
   let drawn = '';               // what the list last showed
   let sendingTo = null;         // the row whose Send back box is open
@@ -36,6 +37,7 @@
     return h('span', { class: `rv-verdict ${it.verdict}` }, h('span', { 'aria-hidden': 'true', text: v.icon }), ` ${v.text}`);
   }
 
+  /** @param {string} label @param {string} key @param {() => void} onclick @param {{ primary?: boolean, hint?: string }} [opts] */
   function actionBtn(label, key, onclick, { primary = false, hint } = {}) {
     return h('button', {
       class: `btn slim-btn${primary ? ' primary' : ' ghost'}`, type: 'button',

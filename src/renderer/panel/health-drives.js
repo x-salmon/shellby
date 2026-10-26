@@ -10,6 +10,7 @@
   const { gb } = L;
 
   let sensorsOpened = false;         // the Sensors fold opens itself once, when setup is needed
+  /** @type {any} */
   let lhmUpdate = null;              // main's lhmUpdate(): LHM's installed and latest versions
 
   // ------------------------------------------------------------ fans

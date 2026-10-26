@@ -11,11 +11,15 @@
   const LIST_WORDS = { allow: 'Runs without asking', ask: 'Always asks first', deny: 'Never runs' };
   const WHERE_WORDS = { user: 'in your settings', project: "in the project's shared settings", local: 'in your settings for this project' };
 
+  /** @type {Promise<any> | null} */
   let loading = null;
   let lastTry = 0;
+  /** @type {string | null} */
   let busy = null;        // what's being added: 'snippets', 'wf:name', 'hook:<key>'…
   let gen = 0;            // bumped by every newer view, so a slow refresh can't put an older one back
+  /** @type {any} */
   let draft = null;       // the make/edit form while it's open
+  /** @type {{ file: string, notes: string[] } | null} */
   let written = null;     // { file, notes } after a save, until the form opens again
   const scopes = new Map(); // 'hook:<key>' -> 'local' | 'user', kept across re-renders
   // What you've typed for a pack MCP server's blanks: name -> { env: {}, headers: {} }.

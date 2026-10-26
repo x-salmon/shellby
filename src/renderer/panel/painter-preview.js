@@ -23,7 +23,9 @@
     const { doc, settings, meta, commit, fill, reduced } = x;
     const cur = x.cur;
     let pose = 'idle', wear = false;
-    let fx = null, fxKey = '', decorTimer = 0;
+    /** @type {any} */
+    let fx = null;
+    let fxKey = '', decorTimer = 0;
     let deskUntil = 0, deskTimer = 0;
 
     // ------------------------------------------------------------ the preview

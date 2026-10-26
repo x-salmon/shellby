@@ -148,6 +148,8 @@ const crabTokenPath = userData => require('path').join(userData, CRAB_TOKEN_FILE
  * A task can name one of the user's snippets (`shellby do @review`), and then
  * its prompt is only what goes with it, and may be empty.
  *   { ok: true, task: { prompt, cwd, mode, snippet } } | { ok: false, error }
+ * @param {any} body
+ * @param {{ modes?: string[], maxPrompt?: number, isDir?: (dir: string) => boolean }} [opts]
  */
 function parseTaskRequest(body, { modes, maxPrompt = 4000, isDir = () => true } = {}) {
   if (!body || typeof body !== 'object' || body.action !== 'task') return { ok: false, error: 'Expected a task.' };

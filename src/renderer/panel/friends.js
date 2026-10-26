@@ -3,6 +3,7 @@
 'use strict';
 (function () {
   const { h, api, $ } = SB;
+  /** @type {any} */
   let view = null;
   // A tide event's emoji, for the medals on a friend's row, from main's list (tide.js, src/main/events.js view().all).
   const medalEmoji = id => SB.tide?.emojiOf(id) || '🏅';

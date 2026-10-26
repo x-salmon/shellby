@@ -116,6 +116,7 @@ function pickDir(cwds, dir = configDir()) {
  */
 async function list(cwds, dir = configDir()) {
   const memDir = pickDir(Array.isArray(cwds) ? cwds : [cwds], dir);
+  /** @type {{ dir: string | null, exists: boolean, index: string | null, memories: any[] }} */
   const out = { dir: memDir, exists: false, index: null, memories: [] };
   if (!memDir) return out;
   let names;

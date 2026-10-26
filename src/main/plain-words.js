@@ -120,6 +120,7 @@ function describeCommand(command, description) {
  * plainer to say. ctx: { cwd, inCopy } (inCopy: the tab works in its own copy).
  */
 function describe(name, input = {}, { cwd = null, inCopy = false } = {}) {
+  /** @type {Record<string, any>} */
   const i = input && typeof input === 'object' ? input : {};
   const copy = s => (inCopy ? `${s} in its own copy of the repo` : s);
   if (SHELL_TOOLS.has(name)) {
@@ -164,6 +165,7 @@ const UP_OR_HOME_RE = /(?:^|[\s"'=(])(\.\.[\\/]|~[\\/]|%[A-Za-z_]+%|\$env:|\$HOM
  * already says -> [string], short, in order of how much they matter.
  */
 function warnings(name, input = {}, { cwd = null, originalCwd = null } = {}) {
+  /** @type {Record<string, any>} */
   const i = input && typeof input === 'object' ? input : {};
   const out = [];
   const inside = p => [cwd, originalCwd].some(dir => dir && isInside(p, dir));

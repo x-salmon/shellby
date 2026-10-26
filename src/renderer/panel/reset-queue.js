@@ -8,7 +8,9 @@
   const form = $('resetQueueForm');
   const text = $('resetQueueText');
   const MODE_NAME = { ask: 'Ask first', smart: 'Smart', acceptEdits: 'Auto-edit', plan: 'Plan only', autonomous: 'Autonomous' };
+  /** @type {string | null} */
   let folder = null; // null: the current folder, whatever that is when you press Queue it
+  /** @type {any} */
   let phone = null;  // channels:get, for the line about where results go
   let adding = false;
 

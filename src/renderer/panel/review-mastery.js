@@ -6,6 +6,7 @@
 'use strict';
 (function () {
   const { h, api, $ } = SB;
+  /** @type {any} */
   let view = null;
 
   const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -67,7 +68,7 @@
     render();
   }
 
-  api.onGame(({ what, view: v, event } = {}) => {
+  api.onGame((/** @type {any} */ { what, view: v, event } = {}) => {
     if (what !== 'review' || !v || typeof v.tier !== 'number') return;
     view = v;
     render();

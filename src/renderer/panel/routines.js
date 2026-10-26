@@ -3,15 +3,20 @@
 (function () {
   const { h, api, state, $ } = SB;
   const form = $('routineEditor');
+  /** @type {any} */
   let editing = null;      // routine being edited (null = new)
+  /** @type {string | null} */
   let folder = null;       // chosen cwd for the editor (null = default)
+  /** @type {any} */
   let chat = null;         // Build it with Claude (wf-chat.js), one per editor session
   let trial = false;       // a new routine Claude saved switched off to test it
   let tools = {};          // { mcp?, mcpOnly? }: MCP servers it may use without asking (mcp-picker.js)
+  /** @type {any[] | null} */
   let mcpList = null;      // the servers it could pick, for its folder (null while reading)
 
   // Templates live in main (routine-templates.js), so the dependency checkup's
   // prompt and the one the Sticker Book uses can't drift apart.
+  /** @type {any[]} */
   let templates = [];
   api.routineTemplates().then(list => { templates = Array.isArray(list) ? list : []; if (state.view === 'routines') render(); });
 
@@ -107,10 +112,11 @@
   form.elements.type.addEventListener('change', syncWhen);
 
   // `greeting`: what Claude said about a draft, to open the chat with.
+  /** @param {any} [r] a routine, or a template @param {{ greeting?: string }} [opts] */
   function openEditor(r = null, { greeting = '' } = {}) {
     if (chat) closeEditor(); // one editor, one chat: whatever was open goes the usual way
     editing = r && !r.isTemplate ? r : null;
-    $('routineEditorTitle').textContent = editing ? `Edit “${r.name}”` : 'New routine';
+    $('routineEditorTitle').textContent = editing ? `Edit “${editing.name}”` : 'New routine';
     $('routineTplNote').hidden = !(r?.isTemplate && r.note);
     $('routineTplNote').textContent = r?.isTemplate && r.note ? r.note : '';
     fillForm(r);
@@ -246,7 +252,7 @@
         const res = await api.chatRoutine({ routine: def, messages, runId });
         return res?.ok && res.routine ? { ...res, def: res.routine } : res;
       },
-      apply: (def, { since } = {}) => {
+      apply: (def, /** @type {{ since?: string }} */ { since } = {}) => {
         if (!alive()) return false;
         if (since && snapshot() !== since) return 'conflict';
         const before = readForm();

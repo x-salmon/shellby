@@ -48,6 +48,7 @@
   // ------------------------------------------------------------ code blocks in replies
 
   // Label widths for a diagram, in the font its labels are drawn in.
+  /** @type {CanvasRenderingContext2D | null} */
   let ctx2d = null;
   const measure = (s) => {
     if (!ctx2d) {

@@ -61,6 +61,7 @@ function story(items, root, files) {
   const steps = [];
   const claimed = new Set();
   let said = '';      // the last thing Claude said
+  /** @type {{ title: string, files: string[] } | null} */
   let open = null;    // the step being written
   for (const i of Array.isArray(items) ? items : []) {
     if (i?.kind === 'text' && !i.sub) { said = i.text; open = null; continue; }

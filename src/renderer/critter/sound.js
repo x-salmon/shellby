@@ -20,12 +20,17 @@
     faint: 800, lower: 400, caught: 1500, badge: 2500, fled: 800, cry: 600,
   };
 
+  /** @type {AudioContext | null} */
   let ctx = null;
+  /** @type {GainNode | null} */
   let bus = null;
   let mix = { voice: false, fx: false, ambient: 'off', volume: BASE_VOLUME };
   let calm = false;
+  /** @type {any} */
   let suspendTimer = null;
+  /** @type {Promise<void> | null} */
   let suspending = null; // the suspend() under way, until it settles
+  /** @type {any} */
   let stepTimer = null;
   let stepN = 0;
   const lastAt = {};
@@ -38,10 +43,12 @@
     const Ctor = root.AudioContext || root.webkitAudioContext;
     if (!Ctor) return null;
     if (!ctx) {
-      ctx = new Ctor();
-      bus = ctx.createGain();
-      bus.gain.value = busGain();
-      bus.connect(ctx.destination);
+      const ac = /** @type {AudioContext} */ (new Ctor());
+      const master = ac.createGain();
+      master.gain.value = busGain();
+      master.connect(ac.destination);
+      ctx = ac;
+      bus = master;
     }
     // A window that was never clicked (he's focusable: false) can start
     // suspended, and a quiet spell suspends it (below); resuming is a no-op once
@@ -57,11 +64,14 @@
   // a sound arriving then would be scheduled on a clock about to stop. So a
   // sound in that moment resumes once the suspend has gone through.
   function rest() {
+    if (!ctx) return;
     suspending = ctx.suspend().catch(() => {}).finally(() => { suspending = null; });
   }
   function wake() {
-    if (suspending) suspending.then(() => { if (!calm) ctx.resume().catch(() => {}); });
-    else if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const ac = ctx;
+    if (!ac) return;
+    if (suspending) suspending.then(() => { if (!calm) ac.resume().catch(() => {}); });
+    else if (ac.state === 'suspended') ac.resume().catch(() => {});
   }
 
   // A running AudioContext keeps the audio device and its thread busy mixing
@@ -79,7 +89,11 @@
   const out = () => (audio() ? bus : null);
 
   // ---- building blocks
-  function tone(ac, { at, freq, to = freq, ms, type = 'square', gain, attack = 0.006, dest = bus }) {
+  /**
+   * @param {AudioContext} ac
+   * @param {{ at: number, freq: number, to?: number, ms: number, type?: OscillatorType, gain: number, attack?: number, dest?: AudioNode }} opts
+   */
+  function tone(ac, { at, freq, to = freq, ms, type = 'square', gain, attack = 0.006, dest = /** @type {AudioNode} */ (bus) }) {
     const end = at + ms / 1000;
     const osc = ac.createOscillator();
     const g = ac.createGain();
@@ -95,8 +109,13 @@
     osc.stop(end + 0.02);
   }
 
+  /** @type {AudioBuffer | null} */
   let noiseBuf = null;
-  function noise(ac, { at, ms, freq, q = 1, type = 'bandpass', gain, dest = bus }) {
+  /**
+   * @param {AudioContext} ac
+   * @param {{ at: number, ms: number, freq: number, q?: number, type?: BiquadFilterType, gain: number, dest?: AudioNode }} opts
+   */
+  function noise(ac, { at, ms, freq, q = 1, type = 'bandpass', gain, dest = /** @type {AudioNode} */ (bus) }) {
     if (!noiseBuf) {
       noiseBuf = ac.createBuffer(1, ac.sampleRate * 0.5, ac.sampleRate);
       const d = noiseBuf.getChannelData(0);
@@ -120,11 +139,12 @@
   const hz = semitone => 440 * Math.pow(2, semitone / 12);
 
   // A note with a little brass to it: two detuned saws through a soft filter.
+  /** @param {AudioContext} ac */
   function horn(ac, at, semitone, ms, gain) {
     const f = ac.createBiquadFilter();
     f.type = 'lowpass';
     f.frequency.value = 2200;
-    f.connect(bus);
+    f.connect(/** @type {AudioNode} */ (bus));
     tone(ac, { at, freq: hz(semitone), ms, type: 'sawtooth', gain, dest: f });
     tone(ac, { at, freq: hz(semitone) * 1.006, ms, type: 'sawtooth', gain: gain * 0.7, dest: f });
   }
@@ -310,7 +330,7 @@
       volume: Number.isFinite(next.volume) ? Math.max(0, Math.min(100, next.volume)) : BASE_VOLUME,
     };
     if (!mix.fx) scuttle(0);
-    if (bus) bus.gain.setTargetAtTime(busGain(), ctx.currentTime, 0.05);
+    if (bus && ctx) bus.gain.setTargetAtTime(busGain(), ctx.currentTime, 0.05);
     root.ShellbyAmbient?.set(calm ? 'off' : mix.ambient);
     if (ctx && !calm) restLater(); // the sea just switched off: rest once it has faded
   }

@@ -7,6 +7,7 @@
 (function () {
   const { api, h, $ } = SB;
 
+  /** @type {any} */
   let view = null; // main's questsView(); null until it arrives (nothing shows)
 
   const SCREEN_LABELS = {
@@ -105,6 +106,7 @@
 
   // ------------------------------------------------------------ updates
 
+  /** @param {{ done?: any, next?: any, finished?: boolean, chapter?: any, chapterDone?: boolean, opened?: any[] }} news */
   function celebrate({ done, next, finished, chapter, chapterDone, opened = [] }) {
     if (SB.isCrabOnly?.()) return;
     const trail = { label: 'Open the Logbook', run: SB.showQuests };
@@ -134,6 +136,7 @@
     });
   }
 
+  /** @param {any} [msg] main's quests:changed payload: the view, plus what just happened */
   function received({ view: v, ...news } = {}) {
     if (!v) return;
     view = v;

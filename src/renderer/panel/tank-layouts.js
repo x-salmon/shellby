@@ -9,6 +9,7 @@
 (function () {
   const { h, api, $ } = SB;
 
+  /** @type {any} */
   let lv = null; // { max, list, seasons } from main
   let busy = false;
 

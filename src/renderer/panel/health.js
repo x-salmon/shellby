@@ -11,10 +11,15 @@
   const MIN = 60 * 1000;
   const HISTORY_MAX = 720;           // matches the monitor's hour of 5 s samples
 
+  /** @type {any} */
   let view = null;                   // last snapshot from main (see health/service.js view())
+  /** @type {any[]} */
   let history = [];
+  /** @type {any} */
   let fx = null;
-  let saveTimer = null;
+  /** @type {number | undefined} */
+  let saveTimer;
+  /** @type {Record<string, string>} */
   const drawn = {};                  // section -> signature of what it shows now
 
   const levelOf = id => view?.checks?.[id]?.level || 'ok';
@@ -27,6 +32,7 @@
 
   // Shared with the screen's other files, which add their parts to it as they
   // load (health-gauges.js, health-drives.js, health-hogs.js).
+  /** @type {Record<string, any>} */
   const H = SB.health = {
     view: () => view, history: () => history,
     levelOf, pendingOf, setText, smooth, changed, ask: checkId => ask(checkId),
@@ -103,7 +109,7 @@
     P.paint(ctx, scene, { still: true, gauges: SB.tankGauges?.current() || null });
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
-  document.addEventListener('sb:tank', e => { if (state.view === 'health') renderPorthole(e.detail); });
+  document.addEventListener('sb:tank', e => { if (state.view === 'health') renderPorthole(/** @type {CustomEvent} */ (e).detail); });
   document.addEventListener('sb:tank-gauges', () => { if (state.view === 'health') renderPorthole(); }); // the water takes his mood
 
   // ------------------------------------------------------------ settings + log

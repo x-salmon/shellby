@@ -94,7 +94,9 @@ function renderCrew(crew, more, ended = []) {
 // ---- a friend's crab, visiting (src/main/friends.js). It stands closest to
 // him, ahead of any helpers, and walks back off to the left when it's time.
 const VISITOR_SCALE = 0.7; // must match VISITOR_SCALE in src/main/main.js
+/** @type {HTMLDivElement | null} */
 let visitorEl = null;
+/** @type {any} */
 let visitorLook = null;
 function visitorSprite() {
   return window.ShellbySprite.build(visitorLook.skin, { px: Math.max(1, px * VISITOR_SCALE), accessories: visitorLook.accessories || [], shell: visitorLook.shell || undefined, stickers: visitorLook.stickers || [] });
@@ -136,6 +138,7 @@ api.onSkin(() => { if (visitorEl && visitorLook) visitorEl.querySelector('svg')?
 // Main picks what and when (src/main/friends.js); the moves are one body class
 // each in critter.css, and the notes and sparks float up from both crabs here.
 const TOGETHER_BITS = { dance: ['♪', '♫'], sing: ['♪', '♫', '♪'], party: ['✦', '★'], highfive: ['✦'] };
+/** @type {string | null} */
 let together = null;
 let togetherTimers = [];
 function endTogether() {

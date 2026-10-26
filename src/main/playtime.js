@@ -19,11 +19,22 @@ const SKIP_CLASSES = new Set(['Progman', 'WorkerW', 'Shell_TrayWnd', 'Shell_Seco
 const FOOT = 18; // his feet are this far above his window's bottom edge (critter.css #crab)
 const DEFAULT_TOY = Object.freeze({ palette: { a: '#8d99ae', b: '#b8c2d1', c: '#e9ecef' }, pixels: ['.bbb.', 'bccba', 'bbbba', '.aaa.'] });
 
+/**
+ * @typedef {{ x: number, y: number }} Point
+ * @typedef {{ kind: 'hide', phase: string, home: Point, hiddenAt: number, hints: number, covered?: boolean, tick?: NodeJS.Timeout }} HideGame
+ * @typedef {{ kind: 'fetch', phase: string, home: Point, throws: number, from?: number, toyX?: number }} FetchGame
+ */
+
 function createPlaytime(d) {
-  let game = null;   // { kind: 'hide', phase, hiddenAt, hints, timers } | { kind: 'fetch', phase, ... }
+  /** @type {HideGame | FetchGame | null} */
+  let game = null;
+  /** @type {import('electron').BrowserWindow | null} */
   let toy = null;    // the pebble's BrowserWindow
+  /** @type {InstanceType<typeof CritterMotion> | null} */
   let toyMotion = null;
+  /** @type {{ x: number, y: number, dx: number, dy: number, samples: { x: number, y: number, t: number }[] } | null} */
   let toyDrag = null;
+  /** @type {NodeJS.Timeout | null} */
   let boredTimer = null;
 
   const state = () => play.normalize(d.config.get('play'));
@@ -113,8 +124,12 @@ function createPlaytime(d) {
     stop(null, { stay: true });
   }
 
+  /**
+   * @param {number | null} foundMs
+   * @param {{ dragged?: boolean }} [opts]
+   */
   function endHide(foundMs, { dragged = false } = {}) {
-    const g = game;
+    const g = /** @type {HideGame} */ (game); // only called while he's hiding
     clearInterval(g.tick);
     game = { ...g, phase: 'over' };
     const r = play.hideResult(state(), foundMs);
@@ -167,18 +182,18 @@ function createPlaytime(d) {
   function makeToy() {
     if (toy && !toy.isDestroyed()) return toy;
     const size = play.FETCH.size;
-    toy = d.makeWindow({ width: size, height: size });
+    const w = /** @type {import('electron').BrowserWindow} */ (d.makeWindow({ width: size, height: size }));
+    toy = w;
     toyMotion = new CritterMotion({
-      getPos: () => { const [x, y] = toy.getPosition(); return { x, y }; },
+      getPos: () => { const [x, y] = w.getPosition(); return { x, y }; },
       place: (x, y) => { if (toy && !toy.isDestroyed()) toy.setPosition(Math.round(x), Math.round(y)); },
       box: toyFloor,
       onSettled: kind => { if (kind === 'flight') landed(); },
     });
     // Closing is asynchronous: by the time an old pebble's 'closed' arrives,
     // a new game may already have its own, which this mustn't touch.
-    const w = toy;
     w.on('closed', () => { if (toy === w) { toy = null; toyMotion?.halt(); toyMotion = null; } });
-    return toy;
+    return w;
   }
 
   function toyLook() {
@@ -204,7 +219,7 @@ function createPlaytime(d) {
   }
 
   function bored() {
-    clearTimeout(boredTimer);
+    clearTimeout(boredTimer ?? undefined);
     // Nothing thrown (or held and never let go, or dropped somewhere it never
     // settled) for a while: game over. A walk to or from the pebble re-arms it.
     boredTimer = setTimeout(() => {
@@ -217,7 +232,7 @@ function createPlaytime(d) {
   function toyDragStart() {
     if (game?.kind !== 'fetch' || !toy) return;
     if (game.phase === 'running') d.motion().stop(); // you grabbed it back off him
-    toyMotion.halt();
+    toyMotion?.halt();
     bored();
     // Like dragging him (main.js): the grab offset is fixed now and moves follow
     // the real cursor, because the renderer's screenX lags while its window moves.
@@ -239,11 +254,11 @@ function createPlaytime(d) {
     if (!toyDrag || !toy) return;
     const [x, y] = toy.getPosition();
     const v = releaseVelocity([...toyDrag.samples, { x, y, t: Date.now() }]);
-    game = { ...game, phase: 'flying', from: toyDrag.x };
+    game = { .../** @type {FetchGame} */ (game), phase: 'flying', from: toyDrag.x }; // the pebble only exists mid-fetch
     toyDrag = null;
     bored();
     d.toCrab('critter:bit', { bit: 'squint', ms: 900 });
-    toyMotion.launch(v, { why: 'thrown' }); // a gentle drop just falls
+    toyMotion?.launch(v, { why: 'thrown' }); // a gentle drop just falls
   }
 
   function landed() {
@@ -289,8 +304,12 @@ function createPlaytime(d) {
   }
 
   // `stay`: he's being dragged somewhere, so don't put him back home.
+  /**
+   * @param {string | null} line
+   * @param {{ stay?: boolean }} [opts]
+   */
   function endFetch(line, { stay = false } = {}) {
-    clearTimeout(boredTimer);
+    clearTimeout(boredTimer ?? undefined);
     const g = game;
     game = null;
     toyMotion?.halt();
@@ -314,7 +333,11 @@ function createPlaytime(d) {
   }
 
   // ---------------------------------------------------------------- stopping
-  /** Stop whatever game is on (a task started, the menu, quitting). He goes home. */
+  /**
+   * Stop whatever game is on (a task started, the menu, quitting). He goes home.
+   * @param {string | null} [reason]
+   * @param {{ stay?: boolean }} [opts]
+   */
   function stop(reason = null, { stay = false } = {}) {
     if (!game) return;
     clearTimers();
