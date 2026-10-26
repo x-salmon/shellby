@@ -68,7 +68,8 @@ async function until(fn, ms = 8000) {
   for (const sc of SCENARIOS) {
     const { app, critter, panel } = await launch(sc.name);
     try {
-      await wait(2500);
+      // The panel finishes booting once bootstrap answers, which can take more than 3 s.
+      await until(() => panel.ev('window.SB?.starting === false'), 20000);
       if (await panel.ev('document.visibilityState') !== 'visible') await critter.ev('window.shellby.critter.click()');
       await wait(600);
       // Desktop first: opening the Health view earns the Check-Up trophy, and the

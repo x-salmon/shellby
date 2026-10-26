@@ -95,7 +95,8 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
       if (m?.result?.data) fs.writeFileSync(path.join(SHOTS, `${name}.png`), Buffer.from(m.result.data, 'base64'));
       else console.log(`(no screenshot for ${name}: the window didn't paint in time)`);
     };
-    await wait(3000);
+    // The first tab opens once bootstrap answers, which can take more than 3 s.
+    await until('!!SB.activeTab?.()');
     await ev("SB.setView('chat')");
     await ev(`shellby.setFolder(${JSON.stringify(repo)}).then(SB.folderChanged)`);
     await wait(500);
