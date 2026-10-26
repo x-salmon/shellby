@@ -9,6 +9,7 @@
   const { api, state, $ } = SB;
 
   let undoable = false;
+  /** @type {(() => void) | null} */
   let lastUndo = null; // what Ctrl+Z takes back: the latest offered, his tidy or a layout's
 
   function show(name) {
@@ -38,7 +39,7 @@
   $('tkTidyUndo').addEventListener('click', undo);
   document.addEventListener('keydown', e => {
     if (!lastUndo || state.view !== 'tank' || SB.tankEditing?.() || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return;
-    if (e.target.closest?.('input, textarea, select')) return;
+    if (/** @type {HTMLElement} */ (e.target).closest?.('input, textarea, select')) return;
     e.preventDefault();
     const fn = lastUndo;
     lastUndo = null;

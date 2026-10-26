@@ -308,6 +308,7 @@
               : 'Safe mode off: your CLAUDE.md, skills, plugins, hooks and MCP servers are back from the next message.'));
         case 'text': {
           const el = SB.linkifyPaths(SB.renderMarkdownInto(h('div', { class: `msg assistant${item.sub ? ' sub' : ''}` }), item.text));
+          if (!item.sub) SB.decorateReply?.(el, item.text); // the /insights report's button (native-more.js)
           // Before append, so its height is final when the feed follows it down;
           // again after, as a block's scroll only holds once it's on the page.
           SB.restoreCodeView?.([el], liveView);
@@ -346,6 +347,7 @@
         case 'tries': return SB.renderTries?.(this, item, replay); // tries.js
         case 'debug': return SB.renderDebug?.(this, item, replay); // debug-mode.js
         case 'ultracode': return SB.renderUltracode?.(this, item, replay); // ultracode.js
+        case 'context-usage': return SB.renderContextUsage?.(this, item); // /context, as a bar (native-more.js)
         // Shellby's own one-line notes: cleared, moved into a copy, from the phone,
         // brought home, pushed, compacted, started fresh, rewound. /clear empties
         // the screen first, as in the terminal: live or replayed, so a
@@ -357,6 +359,13 @@
         case 'moved': case 'wt-in': case 'wt-out': case 'phone': case 'home': case 'home-wait': case 'pushed': case 'compacted': case 'fresh': case 'rewound': case 'hook-failed': {
           const mark = F.markFor(item, SB.compact);
           return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: mark.icon }), mark.text));
+        }
+        // Ship it (src/main/ship.js): the note, and the pull request a click away.
+        case 'shipped': {
+          const mark = F.markFor(item, SB.compact);
+          const url = typeof item.url === 'string' && /^https:\/\//.test(item.url) ? item.url : null;
+          return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: mark.icon }), mark.text,
+            url ? h('button', { type: 'button', class: 'link-btn small', text: 'Open it', onclick: () => SB.api.openExternal(url) }) : null));
         }
         // A crit hit or a clean landing (src/main/surprises.js), kept with the turn that earned it.
         case 'surprise': return this.append(h('div', { class: `home-mark surprise-mark ${item.what === 'landing' ? 'landing' : 'crit'}` },

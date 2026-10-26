@@ -24,6 +24,11 @@ const MAX_COMMAND = 4000;
 // env: extra environment variables (a workflow passes its values this way, never in the command text).
 // maxCommand: refuse (rather than cut short) a longer command; a workflow's
 // commands are refused, since running half of one is worse than not running it.
+/**
+ * @param {string} cwd
+ * @param {string} command
+ * @param {{ timeoutMs?: number, signal?: AbortSignal | null, env?: Record<string, string> | null, maxCommand?: number | null }} [opts]
+ */
 function run(cwd, command, { timeoutMs = TIMEOUT_MS, signal = null, env = null, maxCommand = null } = {}) {
   const started = Date.now();
   if (maxCommand && String(command || '').length > maxCommand) return Promise.resolve({ command: String(command).slice(0, 200), output: `The command is too long (over ${maxCommand} characters).`, code: -1, timedOut: false, ms: 0 });

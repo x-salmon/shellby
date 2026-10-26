@@ -7,6 +7,7 @@
 'use strict';
 (function () {
   const { h, api, $ } = SB;
+  /** @type {any} */
   let view = null;
   let busy = false;
 
@@ -45,7 +46,7 @@
     svg.setAttribute('class', 'reef-spark');
     svg.setAttribute('aria-hidden', 'true');
     const best = document.createElementNS(ns, 'line');
-    Object.entries({ x1: 0, x2: w, y1: y(sig.best), y2: y(sig.best), class: 'reef-spark-best' }).forEach(([k, v]) => best.setAttribute(k, v));
+    Object.entries({ x1: 0, x2: w, y1: y(sig.best), y2: y(sig.best), class: 'reef-spark-best' }).forEach(([k, v]) => best.setAttribute(k, String(v)));
     const line = document.createElementNS(ns, 'polyline');
     line.setAttribute('points', vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' '));
     line.setAttribute('class', `reef-spark-line ${sig.trend}`);
@@ -169,7 +170,7 @@
     renderAll();
   }
 
-  api.onGame(({ what, view: v, event } = {}) => {
+  api.onGame((/** @type {any} */ { what, view: v, event } = {}) => {
     if (what !== 'reef' || !v?.projects) return;
     view = v;
     renderAll();

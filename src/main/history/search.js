@@ -11,6 +11,7 @@
 // See test/history-search.test.js.
 const fs = require('fs');
 const path = require('path');
+const { rankSimilar } = require('./similar');
 
 const SEARCHED = new Set(['user', 'text', 'result']);
 const MAX_ITEM_TEXT = 20000;          // a pasted log is searched only so far
@@ -22,6 +23,7 @@ const MAX_CONVERSATIONS = 30;
 const MAX_TERMS = 8;
 const MIN_QUERY = 2;
 const DAY = 864e5;
+const SIMILAR_FRESH_MS = 60000;      // as-you-type lookups reread changed transcripts at most this often
 const RECENT_DAYS = 30;               // newer conversations edge ahead on a tie
 
 const fold = s => String(s || '').toLowerCase();
@@ -202,6 +204,7 @@ class HistorySearch {
     this.onError = onError;
     this.cache = new Map(); // id -> { size, mtimeMs, docs }
     this.refreshing = null;
+    this.similarAt = 0;
   }
 
   /** Bring the index up to date. Concurrent calls share one pass. */
@@ -234,6 +237,20 @@ class HistorySearch {
       const text = await this.fsp.readFile(file, 'utf8');
       this.cache.set(id, { size: st.size, mtimeMs: st.mtimeMs, docs: docsOf(text) });
     } catch (e) { this.onError('read', e); }
+  }
+
+  /**
+   * The past conversations most like what's being typed (similar.js). Asked
+   * as you type, so the index is brought up to date at most every SIMILAR_FRESH_MS.
+   * @param {string} text
+   * @param {{ exclude?: string | null, inProject?: (entry: any) => boolean }} [opts]
+   */
+  async similar(text, opts = {}) {
+    if (!this.similarAt || Date.now() - this.similarAt > SIMILAR_FRESH_MS) {
+      await this.refresh();
+      this.similarAt = Date.now();
+    }
+    return rankSimilar(this.history.list(), id => this.cache.get(id)?.docs, text, opts);
   }
 
   /** query: text; filters: { project, pc, from, to }. -> { results, facets } */

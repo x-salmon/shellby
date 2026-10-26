@@ -25,15 +25,19 @@ function createTelemetry(deps) {
   const { config } = deps;
   const token = randomBytes(24).toString('hex');
   const expected = Buffer.from(`Bearer ${token}`);
+  /** @type {import('http').Server | null} */
   let server = null;
+  /** @type {number | null} */
   let port = null;
+  /** @type {any} */
   let days = null;
+  /** @type {NodeJS.Timeout | null} */
   let saveTimer = null;
 
   const load = () => { days ??= tel.normalizeDays(config.get('telemetryDays')); };
 
   function save() {
-    clearTimeout(saveTimer);
+    clearTimeout(saveTimer ?? undefined);
     saveTimer = null;
     if (days) config.set({ telemetryDays: days });
   }
@@ -98,7 +102,7 @@ function createTelemetry(deps) {
       deps.log?.warn(`telemetry: receiver failed: ${err.message}`);
       if (server === s) { server = null; port = null; }
     });
-    s.listen(0, '127.0.0.1', () => { if (server === s) port = s.address().port; });
+    s.listen(0, '127.0.0.1', () => { if (server === s) port = /** @type {import('net').AddressInfo} */ (s.address()).port; });
     server = s;
   }
 

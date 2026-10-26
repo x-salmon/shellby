@@ -166,7 +166,7 @@
     const keep = state.activeTab;
     state.grid = next.grid;
     state.paneSizes = room.space ? SB.atLeastMin(next.grid, next.sizes, room.space) : next.sizes;
-    SB.activate(state.tabs.has(keep) ? keep : P.shownTabs(next.grid)[0]);
+    SB.activate(keep && state.tabs.has(keep) ? keep : P.shownTabs(next.grid)[0]);
     if (need) SB.toast(`"${shape.name}": ${need} new conversation${need === 1 ? '' : 's'} for the panes short.`);
     return true;
   };

@@ -52,6 +52,7 @@
 
   // ---------------------------------------------------------------- a question waiting
   // A claw tap after a while, then a hop now and then: he stays polite about it.
+  /** @type {[string, number][]} */
   const ASK_STEPS = [['ask-nudge', 20 * 1000], ['ask-plead', 60 * 1000]];
   let askTimers = [];
   function asking(on) {

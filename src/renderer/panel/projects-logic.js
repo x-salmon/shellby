@@ -52,6 +52,7 @@
 
   // A sort and scope read back from storage: anything unknown (an old
   // "attention" sort, say) falls back to the default.
+  /** @param {{ sort?: any, scope?: any }} [view] */
   function readView({ sort, scope } = {}) {
     return { sort: Object.hasOwn(SORTS, sort) ? sort : 'recent', scope: SCOPES.includes(scope) ? scope : 'all' };
   }

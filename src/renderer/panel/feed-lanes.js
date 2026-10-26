@@ -59,6 +59,7 @@
       this.tick();
     }
 
+    /** @param {{ ok?: boolean, stats?: any, summary?: string, resultText?: string, stopped?: boolean }} end */
     finish({ ok = true, stats, summary, resultText, stopped = false }) {
       if (stats) this.stats = { ...this.stats, ...stats };
       if (this.status === 'running') {

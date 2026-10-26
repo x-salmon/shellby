@@ -168,7 +168,7 @@ test('the first ultracode message asks in the confirm window, with a rough cost,
 
 test("none of it is open to the crab's window or a stranger", async () => {
   const { ipc } = setup();
-  for (const c of ['jobs:output', 'jobs:stop', 'memory:list', 'memory:save', 'memory:forget', 'cloud:list', 'cloud:run', 'review:ultra', 'ultracode:stop', 'ultracode:status', 'ultracode:confirm']) {
+  for (const c of ['jobs:output', 'jobs:stop', 'memory:list', 'memory:save', 'memory:forget', 'cloud:list', 'cloud:run', 'review:ultra', 'ultracode:stop', 'ultracode:status', 'ultracode:confirm', 'insights:open', 'mobile:qr']) {
     await assert.rejects(ipc.invokeAs(ipc.senders.critter, c, {}), undefined, c);
     await assert.rejects(ipc.invokeAs(ipc.senders.stranger, c, {}), undefined, c);
   }
@@ -182,4 +182,28 @@ test('notes on a plan reach Claude whole, up to a page, and no further', async (
   await ipc.invoke('task:permission', { tabId: 't', requestId: 'r', decision: 'deny', message: note });
   assert.equal(answered[0].length, 4000);
   assert.ok(answered[0].startsWith('> 2. Add a cache\nSkip it.'));
+});
+
+test('/insights opens only the newest report in Claude Code\'s own usage-data folder, whatever the panel sends', async () => {
+  const { ipc, cfg } = setup();
+  const dir = path.join(cfg, 'usage-data');
+  assert.match((await ipc.invoke('insights:open', 'C:\\Windows\\evil.html')).error, /no insights report yet/);
+  fs.mkdirSync(dir, { recursive: true });
+  const at = (file, secondsAgo) => { fs.writeFileSync(path.join(dir, file), '<html>'); const t = new Date(Date.now() - secondsAgo * 1000); fs.utimesSync(path.join(dir, file), t, t); };
+  at('report.html', 60);
+  at('report-abc123.html', 5);
+  at('notes.html', 0);        // not a report
+  at('report-new.htm', 0);    // not .html
+  fs.mkdirSync(path.join(dir, 'report-dir.html')); // a folder, not a file
+  const before = electron.callsOf('shell.openPath').length;
+  assert.deepEqual(await ipc.invoke('insights:open', path.join(dir, 'report.html')), { ok: true });
+  const opened = electron.callsOf('shell.openPath').slice(before);
+  assert.deepEqual(opened, [[path.join(dir, 'report-abc123.html')]]);
+});
+
+test("/mobile's QR code is the Claude app's link, made in main", async () => {
+  const { ipc } = setup();
+  const r = await ipc.invoke('mobile:qr', 'https://evil.example');
+  assert.equal(r.url, 'https://claude.ai/mobile');
+  assert.ok(Array.isArray(r.qr) && r.qr.length >= 21 && r.qr.every(row => /^[01]+$/.test(row) && row.length === r.qr.length));
 });

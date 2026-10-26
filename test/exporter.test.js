@@ -55,3 +55,8 @@ test('fileName: the title, minus what Windows will not take', () => {
   assert.equal(fileName({}), 'conversation.md');
   assert.equal(fileName({ title: '???' }), 'conversation.md');
 });
+
+test("toMarkdown: /context's table goes into the export as Claude Code wrote it", () => {
+  const md = toMarkdown(entry, [{ kind: 'user', text: '/context' }, { kind: 'context-usage', pct: 2, text: '## Context Usage\n\n| Skills | 10k | 1.0% |' }]);
+  assert.match(md, /\*\*Claude Code\*\*\n\n## Context Usage\n\n\| Skills \| 10k \| 1\.0% \|/);
+});

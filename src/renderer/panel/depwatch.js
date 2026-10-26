@@ -3,7 +3,9 @@
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
+  /** @type {any} */
   let view = null;
+  /** @type {string | null} */
   let shown = null;              // what the list was last built from: the Projects page re-renders often
   let started = new Set();       // projects with a bump task going, until the next check
   let startedFor = null;         // ...which check that was

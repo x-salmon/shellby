@@ -22,12 +22,14 @@ const SPECIALTY_AT = 3;
 const BUG_TYPES = new Set(Object.keys(require('./bugdex/species').TYPES));
 
 // Hats a crew member earns by its own level (wardrobe ids from base.pack.json).
+/** @type {readonly (readonly [number, string])[]} */
 const HAT_LADDER = Object.freeze([
   [1, 'beanie'], [3, 'hard-hat'], [5, 'headphones'], [8, 'captains-hat'],
   [12, 'wizard-hat'], [16, 'top-hat'], [20, 'crown'],
 ]);
 const HAT_CHOICES = new Set(['auto', 'none', 'match', ...HAT_LADDER.map(([, id]) => id)]);
 
+/** @type {readonly (readonly [number, string])[]} */
 const TITLES = Object.freeze([
   [1, 'Deckhand'], [3, 'Swabbie'], [5, 'Able Crab'], [8, 'Boatswain'],
   [12, 'Quartermaster'], [16, 'First Mate'], [20, 'Old Salt'], [30, 'Legend of the Fleet'],
@@ -240,7 +242,7 @@ function levelForXp(xp) {
   return { level, xp, progress: (xp - lo) / (hi - lo), nextXp: hi };
 }
 
-const titleFor = level => TITLES.filter(([l]) => level >= l).at(-1)[1];
+const titleFor = level => /** @type {readonly [number, string]} */ (TITLES.filter(([l]) => level >= l).at(-1))[1]; // levels start at 1, as TITLES does
 const hatsEarned = level => HAT_LADDER.filter(([l]) => level >= l).map(([, id]) => id);
 
 /** What a member wears at a level: a wardrobe id, 'match' (Shellby's hat) or null. */

@@ -35,7 +35,7 @@
   let selected = null; // the species whose card is open
   let filter = 'all';  // all, caught, seen, or a habitat id
   let boardTab = 'all'; // the friends' board: all, a habitat id, or sparkles
-  let seenTimer = null;
+  let seenTimer;
 
   SB.NAV_SECTION.bugdex = 'wardrobe'; // a tab of the Shellby screen, like Finds
 
@@ -258,7 +258,7 @@
 
   function renderGrid(v) {
     // Redrawing takes the focused tile with it: put the keyboard back on the same one.
-    const had = document.activeElement?.closest?.('#bdGrid [data-id]')?.dataset.id;
+    const had = /** @type {HTMLElement | null} */ (document.activeElement?.closest?.('#bdGrid [data-id]'))?.dataset.id;
     const list = v.species.filter(shows).sort((a, b) => a.no - b.no);
     $('bdGrid').replaceChildren(...(list.length ? list.map(tile) : [h('li', { class: 'muted small', text: filter === 'caught' ? 'Nothing caught yet.' : 'Nothing here yet.' })]));
     if (had) tileFor(had)?.focus({ preventScroll: true });
@@ -400,7 +400,7 @@
     if (!v) return;
     state.bugdex = v;
     document.querySelectorAll('.bd-count').forEach(el => { el.textContent = v.caught ? String(v.caught) : ''; });
-    document.querySelectorAll('.bd-badge').forEach(el => { el.hidden = !v.unseen.length; });
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.bd-badge')).forEach(el => { el.hidden = !v.unseen.length; });
     SB.refreshShellbyBadge?.();
     if (state.view === 'bugdex') render();
   }

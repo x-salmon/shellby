@@ -33,25 +33,29 @@ const ALLOWED_PROMPTS = new Set(Object.values(TERMINAL_PROMPTS));
 // Claude Code's own ways between this PC and its cloud sessions, which it runs
 // interactively, so each opens in a terminal: teleport (a cloud session picked
 // up here, from its own list), cloud (a new cloud session that starts on what
-// you wrote) and pr (the conversation behind a pull request, from its own list
-// or by the pull request's address).
+// you wrote), ultraplan (a cloud session that drafts a plan of what you wrote,
+// which comes back to that terminal to edit and approve) and pr (the
+// conversation behind a pull request, from its own list or by its address).
 const CLOUD_DESCRIPTION_MAX = 2000;
 const PR_URL = /^https:\/\/github\.com\/[\w.-]{1,100}\/[\w.-]{1,100}\/pull\/\d{1,9}$/;
 // What cmd's start line may carry as it is: no spaces, quotes or anything cmd reads as its own.
 const PLAIN_ARG = /^[\w:/.-]{1,300}$/;
 
 /**
- * The CLI's arguments for one of those, checked. kind: 'teleport' | 'cloud' | 'pr';
+ * The CLI's arguments for one of those, checked. kind: 'teleport' | 'cloud' | 'ultraplan' | 'pr';
  * value: what the cloud session starts on, or a pull request's address (none:
  * Claude Code's own list). -> { ok: true, args } | { ok: false, error }
  */
 function cloudArgs(kind, value = null) {
   if (kind === 'teleport') return { ok: true, args: ['--teleport'] };
-  if (kind === 'cloud') {
+  if (kind === 'cloud' || kind === 'ultraplan') {
     // One line, and no double quotes: Windows PowerShell 5.1 splits a native argument at an inner one.
-    const text = typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/"/g, "'").trim() : '';
-    if (!text) return { ok: false, error: 'Say what the cloud session should do first.' };
+    // No backslash at the end either: next to the quote 5.1 closes the argument with, it reads as an escaped one.
+    const text = typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/"/g, "'").trim().replace(/\\+$/, '').trim() : '';
+    if (!text) return { ok: false, error: kind === 'ultraplan' ? 'Say what to plan first: /ultraplan <what to plan>.' : 'Say what the cloud session should do first.' };
     if (text.length > CLOUD_DESCRIPTION_MAX) return { ok: false, error: `That's more than a cloud session starts on (${CLOUD_DESCRIPTION_MAX} characters). Shorten it, then try again.` };
+    // /ultraplan only runs in an interactive session, where it asks before it starts (print mode refuses it, 2.1.310).
+    if (kind === 'ultraplan') return { ok: true, args: [`/ultraplan ${text}`] };
     // A leading - would be read as a flag of its own.
     return { ok: true, args: ['--cloud', text.startsWith('-') ? ` ${text}` : text] };
   }

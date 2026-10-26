@@ -167,9 +167,11 @@ function registerIpc(electronIpcMain, d) {
     log: { warn: msg => log.warn('team pack', msg) },
   });
   // ---- history (ipc/history.js)
+  // One index for History's search and "You've asked this before" (wiring/mention-context.js).
+  d.historySearch = new HistorySearch(d.history, { onError: (what, err) => log.warn(`history search: ${what}`, err.message) });
   registerHistoryIpc(ipcMain, {
     history: d.history, manager: d.manager, openTab: d.openTab, log,
-    search: new HistorySearch(d.history, { onError: (what, err) => log.warn(`history search: ${what}`, err.message) }),
+    search: d.historySearch,
     isPoppedOut: id => d.isPoppedOut(id), showPopout: id => d.showPopout(id),
     onCleared: () => d.usagePlan.clear(), // what each turn cost goes with the conversations
     confirmClear: async (count, openCount) => {

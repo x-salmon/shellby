@@ -37,7 +37,7 @@
   function render() {
     const v = view();
     const list = v?.on ? v.items || [] : [];
-    for (const box of document.querySelectorAll('[data-news]')) {
+    for (const box of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-news]'))) {
       box.hidden = !list.length;
       box.replaceChildren(...(list.length ? [card(list[0], list.length - 1)] : []));
     }

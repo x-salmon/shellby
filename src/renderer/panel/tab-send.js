@@ -138,8 +138,11 @@
     const attachments = [...tab.attachments];
     const picked = typed ? SB.treePickOpts?.(tab) : undefined; // as it was when you pressed Enter
     let snippet = null; // its name, counted as a use once the prompt has gone
+    // /subtask <task> and the like go as the words they stand for, shown as sent (builtin-commands.js).
+    const rewritten = SB.rewriteBuiltin?.(text);
+    if (rewritten) text = rewritten;
     // /export, /rewind, ! commands and friends happen here, not in Claude (composer.js).
-    if (SB.runLocal?.(text, tab, attachments)) { clearComposer(tab); return true; }
+    else if (SB.runLocal?.(text, tab, attachments)) { clearComposer(tab); return true; }
     // /review and the rest of your snippets: Claude gets the prompt they stand for,
     // filled in before it can be queued, so editing the snippet can't change it later.
     if (SB.isSnippetCall?.(text)) {

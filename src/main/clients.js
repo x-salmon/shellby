@@ -61,6 +61,7 @@ function parseToken(raw) {
  * The host token wins when we have one; otherwise Claude Code's entrypoint is
  * a weaker hint. Unknown on both counts is a null label: the caller then says
  * "Claude Code", exactly as it did before any of this existed.
+ * @param {{ host?: string | null, entry?: string | null }} [session]
  */
 function clientOf({ host, entry } = {}) {
   const h = parseToken(host);

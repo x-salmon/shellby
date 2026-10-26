@@ -21,6 +21,7 @@
   const PEEK_ROWS = 4;         // how much of him shows while he peeks: his eye stalks
   const NIBBLE_HZ = 3;
 
+  /** @param {number[]} range @param {() => number} rand */
   const between = ([a, b], rand) => Math.round(a + (b - a) * rand());
 
   /**

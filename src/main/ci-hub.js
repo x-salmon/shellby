@@ -13,7 +13,10 @@ const tag = p => ({ ...p, forge: p.forge || 'github', ref: p.ref || `${p.repo}#$
 const EMPTY = { prs: [], reviews: [], reviewsTotal: 0, lastPollAt: null, error: null };
 
 class CiHub extends EventEmitter {
-  /** github, gitlab: watchers with view(), poll(), markSeen(), stop() and 'change' / 'event'. */
+  /**
+   * github, gitlab: watchers with view(), poll(), markSeen(), stop() and 'change' / 'event'.
+   * @param {{ github?: any, gitlab?: any }} [watchers]
+   */
   constructor({ github = null, gitlab = null } = {}) {
     super();
     this.github = github;

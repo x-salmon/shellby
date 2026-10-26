@@ -44,6 +44,12 @@ const PICK_UNSAFE = /[\0-\x1f\x7f-\x9f\p{Cf}\p{Zl}\p{Zp}]/u; // control, format 
 // the output or null, for a caller that tells one failure from another.
 // Nothing is ever fetched (changes.js NO_FETCH_ARGS says why): lazy fetch off, and no transport at all,
 // so a repo that says it is a partial clone can't make git run the program its config names.
+/**
+ * @param {string} cwd
+ * @param {string[]} args
+ * @param {{ buffer?: boolean, env?: Record<string, string> | null, maxBuffer?: number, exit?: boolean }} [opts]
+ * @returns {Promise<any>}
+ */
 function git(cwd, args, { buffer = false, env = null, maxBuffer = 8 * 1024 * 1024, exit = false } = {}) {
   return new Promise(resolve => {
     execFile('git', ['-C', cwd, '-c', 'core.quotepath=off', '-c', 'core.fsmonitor=false', '-c', 'protocol.allow=never', ...args], {
@@ -288,6 +294,8 @@ function createViewer({ home = os.homedir() } = {}) {
 
   // origin: given when a pick from the header's menu opens it. The handle belongs to the conversation
   // (keepTabs) only while it shows that conversation's own folder, and then compares with its base.
+  /** @typedef {{ tabId: string | null, root: string, base: string | null } | null} Origin */
+  /** @param {{ dir?: string, base?: string | null, tabId?: string | null, origin?: Origin }} [opts] */
   async function open({ dir, base = null, tabId = null, origin = null } = {}) {
     // A local folder only: a network share would make Windows log in to it (leaving.js okDir).
     if (!okDir(dir)) return { ok: false, error: 'Open what?' };
@@ -307,6 +315,7 @@ function createViewer({ home = os.homedir() } = {}) {
 
   // A branch nothing has checked out (switchTo opens these): its commits since it left base, their
   // diffs, its tree and its files, all read from git. root: the folder of the handle it was picked from.
+  /** @param {{ root?: string, ref?: string, base?: string | null, origin?: Origin }} [opts] */
   async function openBranch({ root, ref, base = null, origin = null } = {}) {
     if (!okDir(root) || typeof ref !== 'string' || !HEAD_REF.test(ref)) return { ok: false, error: 'Open what?' };
     const top = longPath(root);
@@ -339,7 +348,7 @@ function createViewer({ home = os.homedir() } = {}) {
   async function computeFolder(h, key) {
     const uncommittedOnly = key === 'head';
     if (!longPath(h.root)) return { ok: false, gone: true, error: 'This folder is gone.' };
-    const info = {};
+    const info = /** @type {any} */ ({});
     const snap = await changes.snapshot(h.root, info, { hooks: false, noFetch: true });
     if (!snap) return info.skipped ? { ok: false, tooManyNew: true, error: 'Too many new files to compare.' } : { ok: false, error: "Couldn't read changes." };
     // The base by its full name: a main checkout on a branch called "--fork-point" would otherwise
@@ -348,7 +357,7 @@ function createViewer({ home = os.homedir() } = {}) {
     const mb = !uncommittedOnly && h.base ? (await git(h.root, ['merge-base', `${HEADS}${h.base}`, 'HEAD']))?.trim() : null;
     const fork = mb && TREE.test(mb) ? mb : null;
     const before = fork || snap.head || EMPTY_TREE;
-    const diff = {};
+    const diff = /** @type {any} */ ({});
     const sum = await changes.summarize({ root: snap.root, tree: before }, snap, { noFetch: true, info: diff });
     if (diff.failed) return { ok: false, error: "Couldn't read changes." }; // not "Nothing has changed here."
     const files = sum?.files || [];
@@ -385,7 +394,7 @@ function createViewer({ home = os.homedir() } = {}) {
       if (TREE.test(fork)) before = fork;
       else if (mb.code !== 1) return { ok: false, error: "Couldn't read changes." };
     }
-    const diff = {};
+    const diff = /** @type {any} */ ({});
     const sum = await changes.summarize({ root: at, tree: before }, { root: at, tree: commit }, { noFetch: true, info: diff });
     if (diff.failed) return { ok: false, error: "Couldn't read changes." }; // a missing object, a timeout: not "nothing changed"
     const files = sum?.files || [];
@@ -537,7 +546,7 @@ function createViewer({ home = os.homedir() } = {}) {
     const trees = listed.filter((_w, i) => ours[i] === common);
     // Another worktree inside this one (an agent's, under .claude/worktrees) is a place of its own, not
     // an untracked folder of this one, whether or not the repo ignores it.
-    const folders = all.map(w => longPath(w.path)).filter(Boolean);
+    const folders = /** @type {string[]} */ (all.map(w => longPath(w.path)).filter(Boolean));
     const inside = dir => {
       const at = longPath(dir);
       return at ? folders.filter(f => isUnder(at, f)).map(f => path.relative(at, f).split(path.sep).join('/')) : [];
@@ -547,6 +556,7 @@ function createViewer({ home = os.homedir() } = {}) {
       const st = await git(w.path, ['status', '--porcelain', '-z', '--untracked-files=all']);
       return st === null ? null : countStatus(st, inside(w.path));
     })));
+    /** @type {{ kind: string, label: string, branch: string, path?: string, changed?: number, ahead?: number, when?: number, ref?: string }[]} */
     const rows = trees.map((w, i) => ({
       kind: 'worktree', label: path.basename(w.path), branch: w.branch || 'detached',
       ...(changed[i] === null ? {} : { changed: changed[i] }), path: w.path,
@@ -577,6 +587,7 @@ function createViewer({ home = os.homedir() } = {}) {
     for (const [k, e] of lists) if (e.at !== null && now - e.at >= PLACES_MS) lists.delete(k);
     const had = lists.get(common);
     if (had) return had.p;
+    /** @type {{ at: number | null, p: Promise<any> | null }} */
     const e = { at: null, p: null };
     e.p = buildPlaces(root, common).catch(() => null).then(built => {
       if (!built) { if (lists.get(common) === e) lists.delete(common); return null; }

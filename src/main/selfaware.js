@@ -119,6 +119,7 @@ function parseSchedule(text) {
   const s = clip(text, 60).toLowerCase();
   const pad = t => t.padStart(5, '0');  // the routine editor's time field wants 08:30, not 8:30
   let m = /^daily (\d{1,2}:\d{2})$/.exec(s);
+  /** @type {{ type: string, time?: string, days?: number[], everyHours?: number } | null} */
   let out = null;
   if (m) out = { type: 'daily', time: pad(m[1]) };
   m = /^weekly ([a-z, ]+?) (\d{1,2}:\d{2})$/.exec(s);

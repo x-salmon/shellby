@@ -25,6 +25,7 @@ function parseDay(text) {
  *   env: process.env
  *   capture: main's captureClock ({ now: Date | null })
  *   clock: () => Date (the real one by default)
+ * @param {{ packaged?: boolean, env?: NodeJS.ProcessEnv, capture?: { now: Date | null } | null, clock?: () => Date }} [opts]
  */
 function makeToday({ packaged = true, env = {}, capture = null, clock = () => new Date() } = {}) {
   const fixed = packaged ? null : parseDay(env.SHELLBY_TODAY);

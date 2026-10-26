@@ -1034,6 +1034,39 @@ function onLine(line) {
     result(true);
     return;
   }
+  // "/context" -> Claude Code's own synthetic table (test/fixtures/context-usage.md, recorded from 2.1.310).
+  if (content === '/context') {
+    const table = require('fs').readFileSync(require('path').join(__dirname, 'context-usage.md'), 'utf8');
+    out({ type: 'assistant', message: { id: `synthetic-${turn}`, model: '<synthetic>', content: [{ type: 'text', text: table }] }, parent_tool_use_id: null, session_id: sessionId });
+    result(true);
+    return;
+  }
+  // "/insights" -> a report written to usage-data (only into a CLAUDE_CONFIG_DIR under temp), and a reply linking it.
+  if (content === '/insights') {
+    const fsx = require('fs'), pathx = require('path'), osx = require('os');
+    const root = process.env.CLAUDE_CONFIG_DIR || '';
+    const file = pathx.join(root || pathx.join(osx.homedir(), '.claude'), 'usage-data', 'report.html');
+    const rel = root ? pathx.relative(pathx.resolve(osx.tmpdir()), pathx.resolve(root)) : '';
+    if (rel && !rel.startsWith('..') && !pathx.isAbsolute(rel)) {
+      fsx.mkdirSync(pathx.dirname(file), { recursive: true });
+      fsx.writeFileSync(file, '<!doctype html><title>Insights</title>');
+    }
+    text(`Your shareable insights report is ready: file://${file.replace(/\\/g, '/')}`);
+    result(true);
+    return;
+  }
+  // "schedules" -> Claude sets itself a wake-up (/loop) and a weekday schedule, as 2.1.310's tools take them.
+  if (content === 'schedules') {
+    const call = (id, name, input) => {
+      out({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name, input }] }, parent_tool_use_id: null, session_id: sessionId });
+      out({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, content: 'Scheduled.' }] }, parent_tool_use_id: null, session_id: sessionId });
+    };
+    call(`tu_wake_${turn}`, 'ScheduleWakeup', { delaySeconds: 1200, reason: 'watching CI', prompt: '/loop check CI' });
+    call(`tu_cron_${turn}`, 'CronCreate', { cron: '0 9 * * 1-5', prompt: 'check the build' });
+    text('SCHEDULED');
+    result(true);
+    return;
+  }
   // "think" -> a reply that thought first: the result says how much (output_tokens_details).
   if (content === 'think') {
     text(`thought at ${effort || 'default'}`);

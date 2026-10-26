@@ -14,6 +14,7 @@
 
   // The remote path lends Settings' Other computers section to this screen,
   // and gives it back on the way out (core.js setView calls leave).
+  /** @type {Comment | null} */
   let lentFrom = null;
   function lendRemote(on) {
     const group = $('remoteGroup');

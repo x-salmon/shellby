@@ -47,6 +47,7 @@ function cleanDoc(doc) {
   const parts = {};
   for (const [k, v] of Object.entries(isObj(doc.parts) ? doc.parts : {})) if (palette[k] && G.PARTS.includes(v)) parts[k] = v;
   const point = (p, lo, hi) => (Array.isArray(p) && p.length === 2 && p.every(n => Number.isInteger(n) && n >= lo && n <= hi) ? [p[0], p[1]] : null);
+  /** @type {Record<string, number[] | null> | null} */
   let anchors = null;
   if (isObj(doc.anchors)) {
     anchors = {};
@@ -124,7 +125,7 @@ function saveDraft(dir, raw, now = Date.now()) {
   if (!d) return { ok: false, error: "That isn't a drawing Shellby can keep." };
   const text = JSON.stringify(d);
   if (Buffer.byteLength(text) > MAX_DRAFT_BYTES) return { ok: false, error: 'That drawing is too big to keep.' };
-  const file = draftPath(dir, d.id);
+  const file = /** @type {string} */ (draftPath(dir, d.id)); // cleanDraft checked the id
   if (!fs.existsSync(file) && draftFiles(dir).length >= MAX_DRAFTS) return { ok: false, full: true, error: `That's ${MAX_DRAFTS} drafts already. Save or delete one to keep another.` };
   try { writeAtomic(file, text); } catch { return { ok: false, error: "Couldn't keep the draft." }; }
   return { ok: true, draft: d };
@@ -199,9 +200,10 @@ async function readCapped(res, max, ctrl) {
  * Open pack wishes from GitHub, never throwing. cache: { at, wishes } from
  * before; a fresh one (under a day old) is used as it is, and a failed fetch
  * (offline, rate-limited) keeps it. -> { wishes, at, fresh }
+ * @param {{ api?: string, fetchImpl?: typeof fetch, cache?: { at?: number, wishes?: any[] } | null, now?: number, timeoutMs?: number }} [opts]
  */
 async function fetchWishes({ api = 'https://api.github.com', fetchImpl = globalThis.fetch, cache = null, now = Date.now(), timeoutMs = 10000 } = {}) {
-  const kept = isObj(cache) && Array.isArray(cache.wishes) ? { wishes: cleanWishes(cache.wishes), at: Number(cache.at) || 0 } : null;
+  const kept = cache && isObj(cache) && Array.isArray(cache.wishes) ? { wishes: cleanWishes(cache.wishes), at: Number(cache.at) || 0 } : null;
   if (kept && now - kept.at < WISH_TTL_MS) return { ...kept, fresh: false };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);

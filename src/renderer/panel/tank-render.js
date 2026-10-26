@@ -163,12 +163,13 @@
   const STILL = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   function playOnHover(btn, t) {
     const pictures = [t.pixels, ...t.frames];
+    /** @type {number | null} */
     let timer = null, i = 0;
     const show = n => btn.querySelector('.tk-thumb')?.replaceChildren(SB.tankPaint.thumb({ ...t, pixels: pictures[n] }, THUMB));
     const start = () => {
       if (timer || STILL()) return;
       timer = setInterval(() => {
-        if (!btn.isConnected) { clearInterval(timer); timer = null; return; } // the tray re-rendered under the pointer
+        if (!btn.isConnected) { clearInterval(timer ?? undefined); timer = null; return; } // the tray re-rendered under the pointer
         i = (i + 1) % pictures.length;
         show(i);
       }, Math.round(1000 / Math.max(1, t.fps || 2)));

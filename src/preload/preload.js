@@ -99,7 +99,7 @@ contextBridge.exposeInMainWorld('shellby', {
   freshTab: invoke('tab:fresh'),
   tabCost: invoke('tab:cost'),
   // the terminal's conveniences (parity.js)
-  suggestFiles: (tabId, query) => ipcRenderer.invoke('files:suggest', { tabId, query }), context: { suggest: (tabId, query) => ipcRenderer.invoke('context:suggest', { tabId, query }), attach: (tabId, id) => ipcRenderer.invoke('context:attach', { tabId, id }) }, // @ files, and a dev server, red build, chat or note (wiring/mention-context.js)
+  suggestFiles: (tabId, query) => ipcRenderer.invoke('files:suggest', { tabId, query }), context: { suggest: (tabId, query) => ipcRenderer.invoke('context:suggest', { tabId, query }), attach: (tabId, id) => ipcRenderer.invoke('context:attach', { tabId, id }), similar: (tabId, text) => ipcRenderer.invoke('context:similar', { tabId, text }) }, // @ files, and a dev server, red build, chat or note (wiring/mention-context.js)
   promptHistory: invoke('prompt:history'),
   runShell: (tabId, command) => ipcRenderer.invoke('shell:run', { tabId, command }),
   askBtw: (tabId, question) => ipcRenderer.invoke('btw:ask', { tabId, question }),
@@ -141,7 +141,7 @@ contextBridge.exposeInMainWorld('shellby', {
   shotImage: invoke('shots:image'),                // a before/after picture, as a data URL (shots.js)
   toolPicture: invoke('pictures:tool'),            // a picture a tool handed Claude (tool-pictures.js)
   worktreeStatus: invoke('worktree:status'),
-  bringWorktreeHome: invoke('worktree:home'),
+  bringWorktreeHome: invoke('worktree:home'), shipWorktree: invoke('worktree:ship'), // ship: a pull request (src/main/ship.js)
   discardWorktree: invoke('worktree:discard'),
   repoStatus: invoke('repo:status'),
   pushRepo: invoke('repo:push'),
@@ -166,7 +166,7 @@ contextBridge.exposeInMainWorld('shellby', {
 
   // between Shellby and a terminal (src/main/handoff.js), and Claude Code's background sessions (wiring/bg-sessions.js)
   continueInTerminal: invoke('handoff:terminal'), pickUpHere: invoke('handoff:pickup'),
-  openCloud: invoke('handoff:cloud'), // a cloud session in a terminal: { kind: teleport | cloud | pr, value?, tabId? }
+  openCloud: invoke('handoff:cloud'), // a cloud session in a terminal: { kind: teleport | cloud | ultraplan | pr, value?, tabId? }
   bringIntoShellby: (id, force = false) => ipcRenderer.invoke('handoff:bring', { id, force }), bgSessions: invoke('bg:list'), bgLogs: invoke('bg:logs'), bgOpen: invoke('bg:open'), bgStop: invoke('bg:stop'), bgRespawn: invoke('bg:respawn'), bgRemove: invoke('bg:remove'), onBgSessions: on('bg-sessions'),
 
   // Settings → Other computers: Claude Code over ssh (src/main/remote/)
@@ -276,7 +276,7 @@ contextBridge.exposeInMainWorld('shellby', {
   cloudRuns: invoke('cloud:runs'),
   runCloudRoutine: invoke('cloud:run'),
   openCloudRoutine: fire('cloud:open'),
-  ultraReview: invoke('review:ultra'),
+  ultraReview: invoke('review:ultra'), openInsights: invoke('insights:open'), mobileQr: invoke('mobile:qr'), // the newest /insights report in the browser; /mobile's QR code
   onSkillFirst: on('native:skill-first'),
   reconnectMcp: (tabId, name) => ipcRenderer.invoke('mcp:reconnect', { tabId, name }),
   signInMcp: (tabId, name) => ipcRenderer.invoke('mcp:signin', { tabId, name }),

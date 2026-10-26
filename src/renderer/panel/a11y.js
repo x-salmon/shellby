@@ -17,7 +17,9 @@
   const idOf = el => { const [k] = Object.keys(el.dataset); return k ? `${k}=${el.dataset[k]}` : null; };
   const chosen = el => el.getAttribute('aria-selected') === 'true' || el.getAttribute('aria-checked') === 'true';
 
+  /** @type {HTMLElement | null} */
   let owner = null;   // the group the keyboard was last in
+  /** @type {string | null} */
   let lastId = null;  // and the item it was on
 
   function sync(group) {
@@ -86,7 +88,7 @@
   }
 
   // Leaving a group for anywhere else means it shouldn't pull focus back later.
-  document.addEventListener('focusin', e => { if (owner && !owner.contains(e.target)) owner = null; });
+  document.addEventListener('focusin', e => { if (owner && !owner.contains(/** @type {Node} */ (e.target))) owner = null; });
 
   SB.rove = rove;  document.querySelectorAll('[data-roving]').forEach(rove);
 
@@ -96,17 +98,21 @@
   // (Import a workflow) are modal: Tab stays inside them, and closing one of the
   // page's own goes back to whatever opened it.
   const FOCUSABLE = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
-  const sheets = [...document.querySelectorAll('.card-sheet')];
+  const sheets = /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.card-sheet')]);
   // Looked up on every key press: sheets come and go.
   const openSheet = () => document.querySelector('.card-sheet:not([hidden])');
+  /** @type {HTMLElement | null} */
   let returnTo = null;
 
-  document.addEventListener('focusin', e => { if (!e.target.closest('.card-sheet')) returnTo = e.target; });
+  document.addEventListener('focusin', e => {
+    const el = /** @type {HTMLElement} */ (e.target);
+    if (!el.closest('.card-sheet')) returnTo = el;
+  });
 
   document.addEventListener('keydown', e => {
     const sheet = e.key === 'Tab' && openSheet();
     if (!sheet) return;
-    const stops = [...sheet.querySelectorAll(FOCUSABLE)].filter(shown);
+    const stops = [.../** @type {NodeListOf<HTMLElement>} */ (sheet.querySelectorAll(FOCUSABLE))].filter(shown);
     if (!stops.length) return;
     const first = stops[0], last = stops[stops.length - 1];
     const inside = sheet.contains(document.activeElement);

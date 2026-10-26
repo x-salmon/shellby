@@ -18,6 +18,7 @@
   const LIGHTHOUSE = 'lighthouse';
   const THERMO = { ref: 'glass-thermometer', tubeTop: 2, tube: 8 }; // its art: the tube's rows (tank-decor.json)
 
+  /** @type {any} */
   let g = null; // the latest reading from main
 
   // ------------------------------------------------------------ painting
@@ -128,7 +129,7 @@
 
   // The switches under the tank, and a line saying what they show right now.
   function renderSwitches() {
-    document.querySelectorAll('[data-live]').forEach(el => { el.checked = g?.live?.[el.dataset.live] !== false; });
+    document.querySelectorAll('[data-live]').forEach(el => { const box = /** @type {HTMLInputElement} */ (el); box.checked = g?.live?.[box.dataset.live ?? ''] !== false; });
     const now = document.getElementById('tkLiveNow');
     if (now) now.textContent = words() || 'Nothing to show right now: all calm.';
   }
@@ -142,7 +143,7 @@
   }
 
   document.addEventListener('change', async e => {
-    const el = e.target.closest?.('[data-live]');
+    const el = /** @type {HTMLInputElement | null} */ (/** @type {HTMLElement} */ (e.target).closest?.('[data-live]'));
     if (!el) return;
     const on = el.checked;
     const r = await api.setTankLive({ key: el.dataset.live, on }).catch(() => null);

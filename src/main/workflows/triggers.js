@@ -122,10 +122,20 @@ class RateLimit {
  * the latest slot counts, once (like routines' Scheduler).
  */
 class ScheduleTicker {
+  /**
+   * @param {{ getWorkflows: () => any[], onDue: (wf: any, trigger: any, slot: number) => void, tickMs?: number,
+   *   now?: () => number, timers?: { setInterval: typeof setInterval, clearInterval: typeof clearInterval } }} opts
+   */
   constructor({ getWorkflows, onDue, tickMs = 30000, now = () => Date.now(), timers = { setInterval, clearInterval } }) {
-    Object.assign(this, { getWorkflows, onDue, tickMs, now, timers });
+    this.getWorkflows = getWorkflows;
+    this.onDue = onDue;
+    this.tickMs = tickMs;
+    this.now = now;
+    this.timers = timers;
+    /** @type {number | null} */
     this.last = null;
     this.fired = new Map(); // `${wf.id}:${index}` -> slot
+    /** @type {NodeJS.Timeout | null} */
     this.timer = null;
   }
 
@@ -166,9 +176,23 @@ class ScheduleTicker {
  * trigger, files[]) once a burst of changes has gone quiet. sync(workflows)
  * starts and stops watchers to match.
  */
+/**
+ * One watched folder: the watcher, the quiet timer and the files seen since it last fired.
+ * @typedef {{ watcher: fs.FSWatcher | null, timer: NodeJS.Timeout | null, files: Map<string, string>, wf: any, trigger: any,
+ *   test: (name: string) => boolean }} Entry
+ */
 class FolderWatch {
+  /**
+   * @param {{ onFiles: (wf: any, trigger: any, files: string[]) => void, onError?: (wf: any, trigger: any, e: Error) => void,
+   *   quietMs?: number, watch?: typeof fs.watch, stat?: (p: string) => fs.Stats }} opts
+   */
   constructor({ onFiles, onError = () => {}, quietMs = FOLDER_QUIET_MS, watch = fs.watch, stat = p => fs.statSync(p) }) {
-    Object.assign(this, { onFiles, onError, quietMs, watchFn: watch, stat });
+    this.onFiles = onFiles;
+    this.onError = onError;
+    this.quietMs = quietMs;
+    this.watchFn = watch;
+    this.stat = stat;
+    /** @type {Map<string, Entry>} */
     this.watchers = new Map(); // key -> { watcher, timer, files: Map, wf, trigger }
   }
 
@@ -189,6 +213,7 @@ class FolderWatch {
   }
 
   open(key, wf, trigger) {
+    /** @type {Entry} */
     const entry = { watcher: null, timer: null, files: new Map(), wf, trigger, test: patternTest(trigger.pattern) };
     try {
       // Top level only: a workflow that sorts files into subfolders would

@@ -48,6 +48,8 @@
   /**
    * The Next up card. project: { root (the main clone, or null), repo (owner/name, or null), name }.
    * onClone(repo): the page's Clone… for a project only on GitHub.
+   * @param {{ root?: string | null, repo?: string | null, name?: string }} project
+   * @param {{ onClone?: (repo: string) => void }} [opts]
    */
   function card({ root = null, repo = null, name = '' }, { onClone } = {}) {
     const target = root ? { root } : { repo };

@@ -16,9 +16,12 @@
   const isOwn = t => (t.source === 'user' || t.source === 'project') && !!t.path;
 
   const picked = new Set(); // 'kind:name'
+  /** @type {string | null} */
   let anchor = null;        // the last box clicked, for Shift+click ranges
   let busy = false;
+  /** @type {any[]} */
   let parked = [];
+  /** @type {any} */
   let ctx = null;           // from toolbox.js: { render, isIdle(t) }
 
   function init(c) {
@@ -180,7 +183,7 @@
       mcpDown ? { key: 'mcp', text: `${mcpDown} MCP ${mcpDown === 1 ? 'server' : 'servers'} down`, title: "Won't connect or waiting for sign-in" } : null,
       noDesc ? { key: 'nodesc', text: `${noDesc} without a description`, title: 'Claude picks skills by description, so these rarely get used' } : null,
       dupes ? { key: 'dupes', text: `${dupes} hiding another copy`, title: 'Same name in more than one place: only one of them loads' } : null,
-    ].filter(Boolean);
+    ].filter(p => !!p);
   }
 
   function healthLine(tb, only, pick) {

@@ -37,6 +37,7 @@ const isObject = v => !!v && typeof v === 'object' && !Array.isArray(v);
 // text. A block left open runs to the end, minus a ``` stuck onto its last line.
 function fences(text) {
   const blocks = [];
+  /** @type {{ lang: string, start: number, bodyStart: number } | null} */
   let open = null;
   for (const m of text.matchAll(/^[ \t]*```([^`\n]*)$/gm)) {
     const info = m[1].trim();

@@ -26,7 +26,7 @@
     const c = document.createElement('canvas');
     c.width = box.w;
     c.height = box.h;
-    const g = c.getContext('2d');
+    const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
     g.imageSmoothingEnabled = false;
     await SB.momentCard.drawArt(g, m, { x: 0, y: 0, w: box.w, h: box.h });
     return c;
@@ -37,7 +37,7 @@
     const c = document.createElement('canvas');
     c.width = layer.width;
     c.height = layer.height;
-    const g = c.getContext('2d');
+    const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
     g.drawImage(layer, 0, 0);
     g.globalCompositeOperation = 'source-in';
     g.fillStyle = colour;
@@ -56,7 +56,7 @@
     const sweep = document.createElement('canvas');
     sweep.width = box.w;
     sweep.height = box.h;
-    const sg = sweep.getContext('2d');
+    const sg = /** @type {CanvasRenderingContext2D} */ (sweep.getContext('2d'));
     const FLIP = 0.4;
     const glints = [[0.12, 0.2], [0.86, 0.16], [0.9, 0.74], [0.1, 0.8], [0.5, 0.04]];
     return (ctx, t) => {
@@ -112,14 +112,15 @@
     const canvas = document.createElement('canvas');
     canvas.width = base.canvas.width;
     canvas.height = base.canvas.height;
-    const ctx = canvas.getContext('2d');
+    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
     ctx.imageSmoothingEnabled = false;
     const frame = kind === 'molt' ? moltFrames(m, box) : await sparkleFrames(m, box);
     const paint = async t => { ctx.drawImage(base.canvas, 0, 0); await frame(ctx, t); };
 
     await paint(0);
     const stream = canvas.captureStream(0);
-    const [track] = stream.getVideoTracks();
+    // A canvas track (CanvasCaptureMediaStreamTrack) takes a frame on request; lib.dom only knows the plain track.
+    const [track] = /** @type {(MediaStreamTrack & { requestFrame(): void })[]} */ (stream.getVideoTracks());
     const rec = new window.MediaRecorder(stream, { mimeType: type[0], videoBitsPerSecond: BITS_PER_SECOND });
     const parts = [];
     rec.ondataavailable = e => { if (e.data?.size) parts.push(e.data); };

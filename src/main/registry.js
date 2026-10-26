@@ -212,7 +212,7 @@ async function fetchRegistryPack(packId, { baseUrl = REGISTRY_URL, fetchImpl = g
  * The gallery's catalog.json: every community item with its pack, so an outfit
  * code can say which pack a missing item comes from. Never throws.
  * slot is an accessory slot, 'effect', 'skin' or 'decor' (tank decor, its own category in the gallery).
- * @returns {Promise<{ ok: boolean, items?: [{ key, slot, name, packId, packName }], errors: string[] }>}
+ * @returns {Promise<{ ok: boolean, items?: { key: string, slot: string, name: string, packId: string, packName: string }[], errors: string[] }>}
  */
 async function fetchRegistryCatalog({ baseUrl = REGISTRY_URL, fetchImpl = globalThis.fetch, timeoutMs = 15000 } = {}) {
   const fail = msg => ({ ok: false, errors: [msg] });

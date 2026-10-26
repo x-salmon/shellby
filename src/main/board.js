@@ -41,6 +41,7 @@ function rank(rows) {
  *   friends: [{ login, bugdex }] as their cards carry it (cleaned)
  * -> { key, month, entrants, tabs: [{ id, label, icon }], rows: { tabId: [row] }, mine: { tabId: place } }
  *   row: { login, me, value, place, medal }
+ * @param {{ me?: { login?: string, month?: any }, friends?: any[], key?: string }} [opts]
  */
 function board({ me = {}, friends = [], key } = {}) {
   if (!MONTH_RE.test(key || '')) return null;

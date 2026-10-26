@@ -44,7 +44,7 @@ function referencedFiles(command, createdFiles) {
   const hits = [];
   for (const file of createdFiles) {
     const full = norm(file);
-    const base = full.split('\\').pop();
+    const base = full.split('\\').pop() || '';
     const baseOk = base.length >= 3 && /\.[a-z0-9]{1,6}$/.test(base);
     const re = baseOk ? new RegExp(`(^|[\\s"'\\\\/&;|(])${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[\\s"';|)&])`) : null;
     if (cmd.includes(full) || (re && re.test(cmd))) hits.push(file);

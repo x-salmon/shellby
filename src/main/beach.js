@@ -334,7 +334,7 @@ function view({ stickerState, streakState, findState, bugState = null, state: st
 
   const ownedFinds = Object.entries(findState.items)
     .map(([id, it]) => ({ f: gifts.findById(id), it }))
-    .filter(x => x.f)
+    .filter(/** @returns {x is { f: NonNullable<ReturnType<typeof gifts.findById>>, it: any }} */ x => !!x.f)
     .sort((a, b) => a.it.first - b.it.first || a.f.id.localeCompare(b.f.id))
     .map(({ f, it }) => ({
       id: f.id, name: f.name, rarity: f.rarity, blurb: f.blurb, pixels: f.pixels, palette: f.palette,

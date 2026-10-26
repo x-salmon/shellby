@@ -18,6 +18,7 @@
 
   const checking = new Map();   // tabId -> the tree a check is running on now
   let order = [];               // tab ids as listed
+  /** @type {string | null} */
   let picked = null;            // the highlighted row, by id so a redraw keeps it
   let drawn = '';               // what the list last showed
   let sendingTo = null;         // the row whose Send back box is open
@@ -36,6 +37,7 @@
     return h('span', { class: `rv-verdict ${it.verdict}` }, h('span', { 'aria-hidden': 'true', text: v.icon }), ` ${v.text}`);
   }
 
+  /** @param {string} label @param {string} key @param {() => void} onclick @param {{ primary?: boolean, hint?: string }} [opts] */
   function actionBtn(label, key, onclick, { primary = false, hint } = {}) {
     return h('button', {
       class: `btn slim-btn${primary ? ' primary' : ' ghost'}`, type: 'button',
@@ -89,6 +91,7 @@
     h('div', { class: 'rv-actions' },
       actionBtn('Open', 'Enter', () => open(it.id), { primary: true, hint: 'Go to it, at its latest changes' }),
       isCopy ? actionBtn('Bring it home', 'B', () => bringHome(it.id), { hint: `Merge ${it.branch} into ${t.worktree.base}` }) : null,
+      isCopy ? actionBtn('Ship it', 'P', () => shipIt(it.id), { hint: `Open a pull request from ${it.branch} into ${t.worktree.base}` }) : null,
       actionBtn('Send back', 'S', () => openSend(it.id), { hint: 'Tell him what should change' }),
       actionBtn('Mark reviewed', 'R', () => markReviewed(it.id), { hint: 'Takes it off this list' })),
     sendingTo === it.id ? sendBox(t) : null);
@@ -187,6 +190,14 @@
     SB.bringHome(t);
   }
 
+  // A pull request instead of a merge (ship-it.js); it stays on the list until you mark it reviewed.
+  function shipIt(id) {
+    const t = state.tabs.get(id);
+    if (!t?.worktree || !SB.shipIt) return;
+    say(`Shipping "${SB.shownTitle(t)}".`);
+    SB.shipIt(t);
+  }
+
   function openSend(id) {
     sendingTo = id;
     picked = id;
@@ -238,6 +249,7 @@
     if (e.key === 'Enter' && onRow) { e.preventDefault(); open(id); return; }
     const key = e.key.toLowerCase();
     if (key === 'b' && state.tabs.get(id)?.worktree) { e.preventDefault(); bringHome(id); }
+    else if (key === 'p' && state.tabs.get(id)?.worktree) { e.preventDefault(); shipIt(id); }
     else if (key === 'r') { e.preventDefault(); markReviewed(id); }
     else if (key === 's') { e.preventDefault(); openSend(id); }
   });

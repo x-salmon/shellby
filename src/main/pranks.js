@@ -29,11 +29,16 @@ const NOTE_SIZE = Object.freeze({ width: 210, height: 150 });
  * }
  */
 function createPranks(d) {
+  /** @type {NodeJS.Timeout | null} */
   let tick = null;
   let nearSince = 0;
-  let running = null;  // { kind, timers: [], frame }
-  let haul = null;     // { side, note, inX, phase, timer }: a note on its way in
+  /** @type {{ kind: string, timers: NodeJS.Timeout[], frame: NodeJS.Timeout | null } | null} */
+  let running = null;
+  /** @type {{ side: string, note: import('electron').BrowserWindow | null, inX: number, phase: string, wa: Electron.Rectangle, timer?: NodeJS.Timeout } | null} */
+  let haul = null;     // a note on its way in
+  /** @type {NodeJS.Timeout | null} */
   let homeTimer = null; // the walk home after a note, or after one was called off
+  /** @type {Set<import('electron').BrowserWindow>} */
   const notes = new Set();
   let recentNotes = [];
   let devIgnore = new Set(); // dev/e2e only: rails a test has said to look past (a call, a fullscreen app)
@@ -100,7 +105,7 @@ function createPranks(d) {
   function end() {
     if (!running) return;
     running.timers.forEach(clearTimeout);
-    clearInterval(running.frame);
+    if (running.frame) clearInterval(running.frame);
     running = null;
   }
 
@@ -116,7 +121,7 @@ function createPranks(d) {
     d.bit('squint', mischief.PINCH.windupMs, dir);
     later(mischief.PINCH.windupMs, () => {
       const start = d.screen.getCursorScreenPoint();
-      if (reason() || !mischief.cursorNear(start, d.clawPoint())) { end(); return; } // you moved on, or it stopped being ok
+      if (!running || reason() || !mischief.cursorNear(start, d.clawPoint())) { end(); return; } // you moved on, or it stopped being ok
       d.bit('pinch', mischief.PINCH.holdMs + 300, dir);
       const began = Date.now();
       let held = start;
@@ -155,7 +160,7 @@ function createPranks(d) {
     running = { kind: 'nudge', timers: [], frame: null };
     d.bit('shove', 1200, Math.sign(dx));
     later(380, () => {
-      if (reason()) { end(); return; }
+      if (!running || reason()) { end(); return; }
       const began = Date.now();
       let last = rect.left; // where he last put it: anywhere else, and you've taken hold of it
       running.frame = setInterval(() => {
@@ -244,7 +249,7 @@ function createPranks(d) {
         const step = mischief.NOTE.haulSpeed * Math.min(60, dt) / 1000;
         const done = Math.abs(haul.inX - x) <= step;
         x = done ? haul.inX : x + dir * step;
-        if (!haul.note.isDestroyed()) {
+        if (haul.note && !haul.note.isDestroyed()) {
           const at = noteBeside(haul.side);
           haul.note.setPosition(Math.round(at.x), Math.round(at.y));
         }
@@ -269,7 +274,7 @@ function createPranks(d) {
 
   // Back to his spot, unless something else has him by then (you, a climb, another move).
   function goHome(ms) {
-    clearTimeout(homeTimer);
+    if (homeTimer) clearTimeout(homeTimer);
     homeTimer = setTimeout(() => {
       homeTimer = null;
       if (!d.dragging() && !d.motion().busy && !d.climbingBusy() && !haul) d.walkHome();
@@ -307,7 +312,7 @@ function createPranks(d) {
       else note.webContents.send('note:settle');
     }
     // Left off the edge of the screen by whatever cut in: he comes back.
-    if (dragged) clearTimeout(homeTimer); else goHome(400);
+    if (!dragged) goHome(400); else if (homeTimer) clearTimeout(homeTimer);
   }
 
   // ---------------------------------------------------------------- what main tells us
@@ -319,7 +324,7 @@ function createPranks(d) {
 
   function onInterrupted({ dragged = false } = {}) {
     end();
-    if (dragged) clearTimeout(homeTimer);
+    if (dragged && homeTimer) clearTimeout(homeTimer);
     abandon({ dragged });
   }
 

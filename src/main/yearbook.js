@@ -52,7 +52,15 @@ const dayOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const yearOf = d => String(d.getFullYear());
 const asDate = now => (now instanceof Date ? now : new Date(now));
 
+/**
+ * @typedef {{ since: string | null, partial: boolean, days: string[], byKind: Record<string, number>, ships: Record<string, number>,
+ *   bySpecies: Record<string, number>, dayXp: Record<string, number>, piecesEarned: string[], trophies: string[],
+ *   hours: number[], weekdays: number[], firstTaskAt?: number, [count: string]: any }} Year
+ */
+
+/** @param {string | null} [since] @returns {Year} */
 function emptyYear(since = null) {
+  /** @type {Year} */
   const y = { since, partial: false, days: [], byKind: {}, ships: {}, bySpecies: {}, dayXp: {}, piecesEarned: [], trophies: [],
     hours: Array(24).fill(0), weekdays: Array(7).fill(0) };
   for (const k of COUNTS) y[k] = 0;
@@ -63,7 +71,7 @@ function emptyYear(since = null) {
 // A { key: n } map read from disk: good keys, whole positive counts, at most `max` (the biggest kept).
 function countMap(raw, keyOk, max) {
   if (!isObj(raw)) return {};
-  const rows = Object.entries(raw).filter(([k, v]) => keyOk(k) && count(v) > 0).map(([k, v]) => [k, count(v)]);
+  const rows = Object.entries(raw).filter(([k, v]) => keyOk(k) && count(v) > 0).map(([k, v]) => /** @type {[string, number]} */ ([k, count(v)]));
   return Object.fromEntries(rows.sort((a, b) => b[1] - a[1]).slice(0, max));
 }
 const fixedArray = (raw, n) => Array.from({ length: n }, (_, i) => count(Array.isArray(raw) ? raw[i] : 0));
@@ -260,6 +268,7 @@ function forCard(state, year) {
   const y = s.years[String(year)];
   if (!y || y.days.length < MIN_ACTIVE_DAYS) return null;
   const sum = summary(s, year);
+  if (!sum) return null;
   return cleanCardWrapped({ year: Number(year), xp: sum.xp, days: sum.activeDays, levels: sum.levelsGained, bugs: sum.catches, nemesis: sum.nemesis?.id || null });
 }
 
@@ -281,8 +290,10 @@ function cleanCardWrapped(raw) {
  */
 function friendsYears(me, friends, year) {
   const theirs = (Array.isArray(friends) ? friends : [])
-    .map(f => ({ login: f?.login, w: cleanCardWrapped(f?.wrapped) }))
-    .filter(f => typeof f.login === 'string' && f.w && f.w.year === Number(year))
+    .flatMap((f) => {
+      const w = cleanCardWrapped(f?.wrapped);
+      return typeof f?.login === 'string' && w && w.year === Number(year) ? [{ login: /** @type {string} */ (f.login), w }] : [];
+    })
     .sort((a, b) => b.w.days - a.w.days || b.w.xp - a.w.xp || (a.login.toLowerCase() < b.login.toLowerCase() ? -1 : 1))
     .slice(0, MAX_FRIENDS_SHOWN);
   if (!theirs.length) return null;
@@ -352,7 +363,9 @@ function backfill(state, sources = {}, now = new Date()) {
 
 // The longest run of consecutive days in a sorted list of 'YYYY-MM-DD'.
 function longestRun(days) {
-  let best = 0, run = 0, prev = null;
+  let best = 0, run = 0;
+  /** @type {number | null} */
+  let prev = null;
   for (const d of days) {
     const t = Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
     run = prev !== null && t - prev === 86400000 ? run + 1 : 1;

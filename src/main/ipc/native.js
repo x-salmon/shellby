@@ -1,7 +1,8 @@
 // What Claude Code does by itself, made visible: the commands a conversation
 // left running in the background (jobs.js), what Claude remembers about you and
-// a project (automemory.js), your cloud routines (cloud-routines.js) and the
-// ultra review of a branch (wiring/handoff.js). Shellby runs none of these: it
+// a project (automemory.js), your cloud routines (cloud-routines.js), the
+// ultra review of a branch (wiring/handoff.js), the /insights report and
+// /mobile's QR code. Shellby runs none of these: it
 // reads them, and asks Claude Code to act. Kept out of main.js, which only wires it up.
 const fs = require('fs');
 const os = require('os');
@@ -15,11 +16,15 @@ const justSaw = require('../just-saw');
 const automemory = require('../automemory');
 const cloud = require('../cloud-routines');
 const { findClaude, run: runCli } = require('../claude/cli');
+const { qrRows } = require('../qr');
 
 const OUTPUT_TAIL = 8000;              // characters of a job's output the panel shows
 const CLOUD_FRESH_MS = 10 * 60 * 1000; // a list asked for again within this is the one already fetched
 const ID = /^[\w-]{1,120}$/;
 const MEMORY_FILE = /^[\w.-]{1,120}\.md$/i;
+// /insights writes report.html and report-<id>.html into usage-data (Claude Code 2.1.310).
+const REPORT_FILE = /^report(-[\w-]{1,80})?\.html$/i;
+const MOBILE_URL = 'https://claude.ai/mobile';
 
 const realTmp = () => { try { return fs.realpathSync.native(os.tmpdir()); } catch { return os.tmpdir(); } };
 
@@ -225,6 +230,32 @@ function registerNativeIpc(ipcMain, d) {
 
   // ---- the ultra review: Claude Code's own, in a terminal of its own
   ipcMain.handle('review:ultra', (_e, tabId) => (d.isStr(tabId) ? d.handoff.ultraReview(tabId) : { ok: false, error: 'That conversation is closed.' }));
+
+  // ---- /insights: Claude Code writes its report to its own folder, and only
+  // the newest one there is ever opened, so the panel names no path at all.
+  ipcMain.handle('insights:open', async () => {
+    const file = await newestReport(path.join(d.claudeConfigDir(), 'usage-data'));
+    if (!file) return { ok: false, error: "There's no insights report yet. Send /insights and Claude Code writes one." };
+    const err = await shell.openPath(file);
+    return err ? { ok: false, error: err } : { ok: true };
+  });
+
+  // ---- /mobile: the Claude app's own download page, as Claude Code links it.
+  ipcMain.handle('mobile:qr', () => ({ url: MOBILE_URL, qr: qrRows(MOBILE_URL) }));
 }
 
-module.exports = { registerNativeIpc, tail };
+/** The newest report*.html in dir, or null. Never throws. */
+async function newestReport(dir) {
+  let names;
+  try { names = await fs.promises.readdir(dir); } catch { return null; }
+  const found = await Promise.all(names.filter(n => REPORT_FILE.test(n)).map(async n => {
+    const file = path.join(dir, n);
+    try {
+      const st = await fs.promises.lstat(file); // a link could point anywhere; a report is a plain file
+      return st.isFile() ? { file, at: st.mtimeMs } : null;
+    } catch { return null; }
+  }));
+  return found.filter(Boolean).sort((a, b) => b.at - a.at)[0]?.file || null;
+}
+
+module.exports = { registerNativeIpc, tail, newestReport, MOBILE_URL };

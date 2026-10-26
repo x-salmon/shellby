@@ -7,6 +7,7 @@
   const P = SB.pj;
   const { load, showScreen } = P;
 
+  /** @type {any} */
   let scan = null;            // { candidates, picked: Set }
   let cloneRepo = null;
   let cloning = false;

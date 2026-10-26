@@ -14,6 +14,7 @@
 
   // ------------------------------------------------------------ the strip
 
+  /** @type {any} */
   let drag = null;   // the tab being dragged along the strip (see "drag to reorder")
   let renaming = null;  // the tab whose name is being edited in a strip (see "rename")
   const shownActive = new WeakMap();  // a strip -> the tab it last scrolled into view
@@ -33,7 +34,7 @@
   SB.tabIcon = tabIcon;
 
   // A tab's element, in whichever strip draws it.
-  const tabElOf = tabId => [...document.querySelectorAll('.tabs > .tab')].find(el => el.dataset.tabId === tabId) || null;
+  const tabElOf = tabId => [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.tabs > .tab'))].find(el => el.dataset.tabId === tabId) || null;
   SB.tabElOf = tabElOf;
 
   // A strip is one Tab stop: arrow keys, Home and End walk its conversations.
@@ -101,8 +102,8 @@
   // One strip: `ids` in order, `activeId` the tab it shows.
   function drawTabs(strip, ids, activeId) {
     // A busy tab redraws the strip as it streams; keep the keyboard on the tab (or ×) it was on.
-    const focused = strip.contains(document.activeElement) ? document.activeElement : null;
-    const keep = focused && { id: focused.closest('[data-tab-id]')?.dataset.tabId, x: focused.classList.contains('tab-x') };
+    const focused = strip.contains(document.activeElement) ? /** @type {HTMLElement} */ (document.activeElement) : null;
+    const keep = focused && { id: /** @type {HTMLElement | null} */ (focused.closest('[data-tab-id]'))?.dataset.tabId, x: focused.classList.contains('tab-x') };
     const shown = ids.map(id => state.tabs.get(id)).filter(Boolean);
     const sig = shown.map(t => tabSig(t, t.id === activeId)).join('\n');
     const same = drawnSig.get(strip) === sig && strip.children.length === shown.length;
@@ -159,6 +160,7 @@
   // with dblclick on the tab, because the first click activates the tab, which
   // redraws the strip, and the second click lands on a different element.
   const DOUBLE_MS = 400;
+  /** @type {{ id: string, at: number } | null} */
   let lastClick = null;
   const wired = new WeakSet();  // once per strip: twice, one click would count as a double-click
   function wireStrip(strip) {
@@ -352,7 +354,7 @@
   // Marks the dragged tab in place, in every strip, so starting and ending a
   // drag don't have to redraw them. A redraw in between re-applies it from `drag` itself.
   function lift() {
-    for (const el of document.querySelectorAll('.tabs > .tab')) el.classList.toggle('dragging', !!drag?.moved && el.dataset.tabId === drag.id);
+    for (const el of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.tabs > .tab'))) el.classList.toggle('dragging', !!drag?.moved && el.dataset.tabId === drag.id);
   }
 
   // The tab to land in front of on the top strip: the first whose midpoint is

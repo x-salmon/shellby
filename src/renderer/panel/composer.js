@@ -453,7 +453,7 @@
         h('span', { class: 'rewind-stop', 'aria-hidden': 'true' }),
         h('span', {},
           h('div', { class: 'mi-title rewind-text', text: p.text || '(no text)' }),
-          h('div', { class: 'mi-sub', text: [`before turn ${points.length - i}`, p.at ? SB.ago?.(p.at) || new Date(p.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null, codeAfter(p)].filter(Boolean).join(' · ') }))))),
+          h('div', { class: 'mi-sub', text: [`before turn ${points.length - i}`, p.at ? SB.relTime(p.at) : null, codeAfter(p)].filter(Boolean).join(' · ') }))))),
     ]);
   };
 
@@ -531,7 +531,7 @@
         h('span', { class: 'mi-check', text: '⑂' }),
         h('span', {},
           h('div', { class: 'mi-title rewind-text', text: p.text || '(no text)' }),
-          h('div', { class: 'mi-sub', text: p.conversation ? (p.at ? SB.ago?.(p.at) || new Date(p.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '') : 'From before Shellby could branch conversations' })))),
+          h('div', { class: 'mi-sub', text: p.conversation ? (p.at ? SB.relTime(p.at) : '') : 'From before Shellby could branch conversations' })))),
     ]);
   };
 

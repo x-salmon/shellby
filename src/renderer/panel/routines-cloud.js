@@ -8,6 +8,7 @@
 (function () {
   const { h, api, state, $ } = SB;
 
+  /** @type {any} */
   let view = null;      // { ok, routines, more, at } | { ok: false, error, signedOut }
   let loading = false;
   let asked = false;    // fetched at least once this run: after that, opening the page reads the kept list

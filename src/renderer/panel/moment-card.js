@@ -289,7 +289,7 @@
     // Only over the sticker's own pixels: they're drawn again on a canvas of their own as the mask.
     const c = document.createElement('canvas');
     c.width = at.w; c.height = at.h;
-    const x = c.getContext('2d');
+    const x = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
     drawPixels(x, art.pixels, art.palette, 0, 0, at.px);
     x.globalCompositeOperation = 'source-atop';
     x.translate(-at.x, -at.y);

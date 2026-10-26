@@ -10,6 +10,7 @@
   const RING_R = 15;
   const RING_C = 2 * Math.PI * RING_R;
   const MAX_RIVALS = 6;
+  /** @type {any} */
   let view = null;
 
   function ring(n) {
@@ -18,7 +19,7 @@
     svg.setAttribute('viewBox', '0 0 36 36');
     svg.setAttribute('class', 'bd-nest-ring');
     svg.setAttribute('aria-hidden', 'true');
-    for (const [cls, dash] of [['track', RING_C], ['fill', RING_C * Math.max(0, Math.min(1, n.progress || 0))]]) {
+    for (const [cls, dash] of /** @type {[string, number][]} */ ([['track', RING_C], ['fill', RING_C * Math.max(0, Math.min(1, n.progress || 0))]])) {
       const c = document.createElementNS(svgNs, 'circle');
       c.setAttribute('cx', '18');
       c.setAttribute('cy', '18');

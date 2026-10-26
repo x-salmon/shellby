@@ -16,6 +16,7 @@ const WINDOW_MS = { fiveHour: 5 * HOUR, sevenDay: 7 * 24 * HOUR };
 const TOP = 6;                       // rows before the rest become "Everything else"
 
 // Relative price per input token; output costs 5×, cache writes 1.25×, cache reads 0.1×.
+/** @type {[RegExp, number][]} */
 const RATES = [[/haiku/i, 1], [/sonnet/i, 3], [/opus|fable/i, 5]];
 const DEFAULT_RATE = 3;
 
@@ -28,7 +29,7 @@ const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
 const clip = (s, n) => (typeof s === 'string' ? s.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, n) : '');
 
 /** A model's relative price per input token (Haiku is 1). */
-const rateOf = model => (RATES.find(([re]) => re.test(model || '')) || [null, DEFAULT_RATE])[1];
+const rateOf = model => RATES.find(([re]) => re.test(model || ''))?.[1] ?? DEFAULT_RATE;
 
 /** What one API call cost, in model-weighted tokens (0 when there's nothing to count). */
 function weightOf(usage, model) {
@@ -52,7 +53,7 @@ function normalizeEntry(e) {
 
 /** Tolerate anything read from disk: an array of entries, oldest first. */
 function normalize(raw) {
-  return (Array.isArray(raw) ? raw : []).map(normalizeEntry).filter(Boolean).sort((a, b) => a.t - b.t).slice(-MAX_ENTRIES);
+  return (Array.isArray(raw) ? raw : []).map(normalizeEntry).filter(e => e !== null).sort((a, b) => a.t - b.t).slice(-MAX_ENTRIES);
 }
 
 /**

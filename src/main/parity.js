@@ -56,6 +56,7 @@ function addPrompt(list, text) {
  *   correctionFromTurns(tabId, kind, refs), noteCorrection(tabId, event),
  *   dataDir, stat(event), noteUndone(turns) -> the weekly card's turns taken back,
  *   openExternal(url) -> the browser, log }
+ * @param {{ ipcMain: Pick<import('electron').IpcMain, 'handle' | 'on'>, [k: string]: any }} deps
  */
 function register(deps) {
   const { ipcMain, manager, history, config, confirm, dialog, clipboard, app } = deps;
@@ -73,7 +74,9 @@ function register(deps) {
 
   // ---- what you've sent, for Up and Ctrl+R: a file of its own, not settings
   const promptsFile = path.join(deps.dataDir, 'prompt-history.json');
+  /** @type {string[] | null} */
   let prompts = null;
+  /** @returns {string[]} */
   const loadPrompts = () => {
     if (prompts) return prompts;
     try { prompts = JSON.parse(fs.readFileSync(promptsFile, 'utf8')); } catch { prompts = []; }
@@ -81,8 +84,9 @@ function register(deps) {
     return prompts;
   };
   function rememberPrompt(text) {
-    const next = addPrompt(loadPrompts(), text);
-    if (next.length === prompts.length && next.every((p, i) => p === prompts[i])) return;
+    const was = loadPrompts();
+    const next = addPrompt(was, text);
+    if (next.length === was.length && next.every((p, i) => p === was[i])) return;
     prompts = next;
     const tmp = `${promptsFile}.tmp`;
     try { fs.writeFileSync(tmp, JSON.stringify(prompts)); fs.renameSync(tmp, promptsFile); } catch { /* a convenience: never worth an error */ }
@@ -174,7 +178,7 @@ function register(deps) {
       busy: tab.session.busy,
       points: rewind.points(items).map(p => {
         const plan = rewind.plan(items, p.turnId);
-        const live = plan.changes.filter(c => !undone.has(c.after));
+        const live = (plan.changes || []).filter(c => !undone.has(c.after));
         return { ...p, conversation: plan.conversation, code: live.length, ...rewind.weight(live) };
       }),
     };
@@ -218,10 +222,11 @@ function register(deps) {
     if (conversation && !plan.conversation) {
       return { ok: false, error: 'That part of the conversation is from before Shellby could rewind it. You can still put the code back.' };
     }
+    const planned = plan.changes || [];
 
     // Undoing turns' code is a correction (corrections.js): what they changed,
     // read now, before the transcript is cut.
-    const lesson = code && plan.changes.length ? deps.correctionFromTurns?.(tab.id, 'rewind', { afters: plan.changes.map(c => c.after) }) : null;
+    const lesson = code && planned.length ? deps.correctionFromTurns?.(tab.id, 'rewind', { afters: planned.map(c => c.after) }) : null;
     // Awaited, so a lesson card is in the feed before the panel redraws from `kept`;
     // a failure to note one never fails the rewind itself.
     const learn = async () => { if (lesson && restored) await Promise.resolve(deps.noteCorrection?.(tab.id, lesson)).catch(() => {}); };
@@ -233,7 +238,7 @@ function register(deps) {
     let turnsBack = 0; // turns whose code went back, for the weekly card
     if (code) {
       const done = new Set(items.filter(i => i.kind === 'undone').map(i => i.after));
-      for (const ch of plan.changes) {
+      for (const ch of planned) {
         if (done.has(ch.after)) continue; // already undone by hand
         const ref = deps.changeRef({ tabId: tab.id, root: ch.root, before: ch.before, after: ch.after });
         if (!ref) return { ok: false, error: "Couldn't find one of those turns' changes any more, so nothing more was rewound.", restored };
@@ -263,7 +268,7 @@ function register(deps) {
     items = history.load(tab.id);
     plan = rewind.plan(items, turnId);
     if (!plan.ok) return plan;
-    const kept = [...items.slice(0, plan.index), ...plan.tail, marker];
+    const kept = [...items.slice(0, plan.index), ...(plan.tail || []), marker];
     // The transcript before Claude's side: if the disk says no, nothing has
     // changed for Claude either and the rewind can simply be tried again.
     if (!history.rewrite(tab.id, kept)) return { ok: false, error: "Couldn't save the rewound conversation, so it was left as it was.", restored };
@@ -341,6 +346,10 @@ function register(deps) {
   const LIST_WORDS = { allow: 'run without asking', ask: 'always ask first', deny: 'never run' };
   const SCOPE_WORDS = { user: 'your settings, so every project', project: "this project's shared settings", local: 'your own settings for this project' };
 
+  /**
+   * @param {{ scope?: string, list?: string, rule?: string }} req
+   * @param {boolean} remove
+   */
   async function changeRule({ scope, list, rule } = {}, remove) {
     const fail = error => ({ ok: false, error, setup: deps.setupView() });
     const target = claudeSetup.settingsFiles(deps.setupWhere()).find(f => f.scope === scope);
@@ -482,7 +491,7 @@ function register(deps) {
     // Read from the config files, not `claude mcp get`, which would start the server to check on it.
     const found = mcpAdmin.findServer(name, { home: deps.setupWhere().home, cwd });
     const built = mcpAdmin.removeArgs(name, found?.scope);
-    if (built.error) return { ok: false, error: built.error };
+    if (built.error || !found) return { ok: false, error: built.error };
     const where = found.scope === 'user' ? mcpAdmin.SCOPE_WORDS.user : `${mcpAdmin.SCOPE_WORDS[found.scope]} (${tildify(cwd)})`;
     const response = await ask({
       icon: '🔌', title: `Remove the MCP server "${name}"?`,

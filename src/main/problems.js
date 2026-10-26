@@ -53,6 +53,7 @@ function parse(output, { cwd = null } = {}) {
   const lines = String(output || '').replace(ANSI_RE, '').replace(/\r\n?/g, '\n').split('\n');
   const out = [];
   const seen = new Set();
+  /** @type {(file: string, line: string | number, col: string | number, severity: string, message: string, code?: string | null) => void} */
   const add = (file, line, col, severity, message, code = null) => {
     if (!looksLikeFile(file) || severity === 'note') return;
     const p = {
@@ -66,6 +67,7 @@ function parse(output, { cwd = null } = {}) {
     out.push(p);
   };
 
+  /** @type {string | null} */
   let stylishFile = null; // an ESLint stylish block's file, for the rows under it
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i].length > MAX_LINE_LEN ? lines[i].slice(0, MAX_LINE_LEN) : lines[i];

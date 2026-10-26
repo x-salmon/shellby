@@ -212,6 +212,9 @@
    *         ghost: a piece being dragged in, drawn see-through,
    *         dim: uid -> alpha (the piece you're dragging, faded where it was),
    *         gauges: live decor from tank-gauges.js, or null }
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {any} scene
+   * @param {{ t?: number, still?: boolean, crab?: any, ghost?: any, dim?: Map<number, number> | null, gauges?: any }} [opts]
    */
   function paint(ctx, scene, { t = 0, still = false, crab = null, ghost = null, dim = null, gauges = null } = {}) {
     const W = WATER[timeOf(scene.style.light)] || WATER.night;
@@ -258,7 +261,7 @@
     const c = document.createElement('canvas');
     c.width = src.width * k;
     c.height = src.height * k;
-    const g = c.getContext('2d');
+    const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
     g.imageSmoothingEnabled = false;
     g.drawImage(src, 0, 0, c.width, c.height);
     return c;
@@ -273,7 +276,7 @@
     const c = document.createElement('canvas');
     c.width = scene.world.w;
     c.height = scene.world.h;
-    paint(c.getContext('2d'), scene, { still: true, crab });
+    paint(/** @type {CanvasRenderingContext2D} */ (c.getContext('2d')), scene, { still: true, crab });
     return c;
   }
 

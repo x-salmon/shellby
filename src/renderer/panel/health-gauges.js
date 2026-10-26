@@ -15,6 +15,7 @@
   const { fmt } = L;
 
   let rangeMs = Number(SB.pref(RANGE_KEY)) === HOUR ? HOUR : 10 * MIN;
+  /** @type {{ id: string, at: number, until: number } | null} */
   let mark = null;                   // { id, at, until }: an alert picked from the log
 
   // ------------------------------------------------------------ sparkline
@@ -100,7 +101,7 @@
     });
     const history = H.history();
     parts.spark.replaceChildren(spec.spark
-      ? sparkline(history, spec.spark.key, { ...spec.spark, markAt: marked ? mark.at : null })
+      ? sparkline(history, spec.spark.key, { ...spec.spark, markAt: marked && mark ? mark.at : null })
       : h('div', { class: 'hl-spark empty' }));
     setText(parts.stats, spec.spark ? L.stats(history, spec.spark.key, spec.unit === '°C' ? '°' : spec.unit, rangeMs) : '');
     parts.stats.title = `Lowest and highest in the last ${rangeMs === HOUR ? 'hour' : '10 minutes'}`;
@@ -135,7 +136,7 @@
   function showAlert(e) {
     const id = String(e.id);
     if (!L.sparkKeyOf(id)) {
-      const target = e.kind === 'disk' ? [...document.querySelectorAll('.hl-disk')].find(el => el.dataset.id === id) || $('hlDrivesBlock') : $('hlSpace');
+      const target = e.kind === 'disk' ? [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.hl-disk'))].find(el => el.dataset.id === id) || $('hlDrivesBlock') : $('hlSpace');
       if (target && !target.hidden) target.scrollIntoView({ behavior: smooth(), block: 'center' });
       else SB.toast("That one isn't on screen any more.");
       return;

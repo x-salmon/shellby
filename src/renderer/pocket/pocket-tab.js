@@ -267,12 +267,25 @@
             then: async () => {
               const r = await act('home', { tabId }, { timeoutMs: 600000 });
               if (r.ok) { celebrate(t.title); toast(r.merged ? `Home in ${r.base || t.copy.base}${r.commits ? `, ${L.plural(r.commits, 'commit')}` : ''}.` : 'Nothing new to bring home.', { tone: 'ok', ms: 4200 }); } else if (r.red) confirmSheet({ title: 'His checks are red', text: `${r.error} Bring it home anyway?`, yes: 'Bring it home anyway', danger: true, then: () => act('home', { tabId, force: true }, { okText: 'Brought home.', timeoutMs: 600000 }) });
+              else if (r.conflict) sortItOut(t);
             },
           }),
         }) : actButton({ label: 'Looks good', cls: 'go', iconName: 'check', run: () => act('reviewed', { tabId, after: t.ready.after }, { okText: 'Marked as looked at.' }) });
         return h('div', { class: 'review-bar' },
           h('a', { class: 'btn ghost', href: `#/diff/${encodeURIComponent(tabId)}/${encodeURIComponent(t.ready.after)}` }, icon('files'), h('span', { text: 'Changes' }), h('span', { class: 'add', text: `+${t.ready.added}` }), h('span', { class: 'del', text: `−${t.ready.removed}` })),
           undo, home, pushHome(t));
+      }
+
+      // Bring it home clashed with where the copy started: he can merge it in,
+      // sort out the clashes and run the tests, and then it comes home cleanly.
+      function sortItOut(t) {
+        const base = t.copy.base;
+        confirmSheet({
+          title: `It clashes with ${base}`,
+          text: `${base} has moved on in ways that clash with this copy, so nothing was merged. He can merge ${base} into the copy, sort out the clashes so both sides' changes survive, and run the tests. Then bring it home again.`,
+          yes: 'Ask him to sort it out',
+          then: () => later.send('reply', { tabId, text: L.clashPrompt(base), mode: t.mode || 'ask', photos: [] }, { label: `${t.title || 'A conversation'}: sort out the clash` }),
+        });
       }
 
       // Bring it home and push, when Settings allows the phone to push. The desk's
@@ -285,7 +298,7 @@
             title: 'Bring it home and push?', text: `Merges ${t.copy.branch} into ${t.copy.base}, pushes ${t.copy.base}, and moves the conversation to Done. If your PC needs to ask you something first, it asks there.`, yes: 'Home and push',
             then: async () => {
               const r = await act('home', { tabId, push: true }, { timeoutMs: 600000 });
-              if (!r.ok) return;
+              if (!r.ok) { if (r.conflict) sortItOut(t); return; }
               celebrate(t.title);
               toast(r.pushed ? `Home in ${r.base || t.copy.base}, and pushed.` : `Home in ${r.base || t.copy.base}, but the push didn’t go${r.pushError ? `: ${r.pushError}` : '.'}`, { tone: r.pushed ? 'ok' : 'warn', ms: 6000 });
             },

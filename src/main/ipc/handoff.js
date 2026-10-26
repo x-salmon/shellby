@@ -18,8 +18,8 @@ function registerHandoffIpc(ipcMain, d) {
   ipcMain.handle('bg:stop', (_e, id) => d.bgSessions.stop(id));
   ipcMain.handle('bg:respawn', (_e, id) => d.bgSessions.respawn(id));
   ipcMain.handle('bg:remove', (_e, id) => d.bgSessions.remove(id));
-  // A cloud session in a terminal: { kind: teleport | cloud | pr, value?, tabId? } (handoff.js cloudArgs checks the rest).
-  ipcMain.handle('handoff:cloud', (_e, { kind, value, tabId } = {}) => (['teleport', 'cloud', 'pr'].includes(kind)
+  // A cloud session in a terminal: { kind: teleport | cloud | ultraplan | pr, value?, tabId? } (handoff.js cloudArgs checks the rest).
+  ipcMain.handle('handoff:cloud', (_e, { kind, value, tabId } = {}) => (['teleport', 'cloud', 'ultraplan', 'pr'].includes(kind)
     ? d.handoff.openCloud({ kind, value: d.isStr(value) ? value : null, tabId: d.isStr(tabId) ? tabId : null })
     : { ok: false, error: 'Which kind of cloud session?' }));
 }

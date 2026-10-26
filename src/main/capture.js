@@ -146,6 +146,7 @@ async function shot(win, file) {
 // Projects for the sticker shots (stickers/index.js): a mix of tiers, marks and ages.
 function demoStickers(now) {
   const DAY = 24 * 3600 * 1000;
+  /** @type {[string, string, string, number, string[], number, number][]} */
   const list = [
     ['5b1c0de0a1f2', 'shellby', 'JavaScript', 42, ['live', 'release', 'v1', 'merged'], 300, 0],
     ['9e3a7c21d4b8', '3d-rack', 'TypeScript', 17, ['live', 'merged', 'green'], 120, 2],
@@ -154,6 +155,7 @@ function demoStickers(now) {
     ['71a9c3e05b6f', 'kelp-cli', 'Go', 1, ['moon'], 200, 75],
     ['e2f4a8b6c0d3', 'dotfiles', 'Shell', 3, [], 400, 190],
   ];
+  /** @type {Record<string, any>} */
   const projects = {};
   for (const [id, name, lang, ships, marks, firstAgo, lastAgo] of list) {
     projects[id] = { name, lang, ships, marks, firstShipAt: now - firstAgo * DAY, lastShipAt: now - lastAgo * DAY, deploys: marks.includes('live') ? 3 : 0, releases: marks.includes('release') ? 2 : 0, lastVersion: marks.includes('v1') ? '1.2.0' : null };

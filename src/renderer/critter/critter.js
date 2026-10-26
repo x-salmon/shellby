@@ -3,12 +3,12 @@
 /* global SIGNS:writable, catchHeld:writable, clawLoad:writable, heldItem:writable, helperHats:writable, helperSprite:writable, holdingSign:writable, renderCrew:writable, settled:writable, signKind:writable, throwHeld:writable, visitorEl:writable, wantsSign:writable */
 /* exported HUES, clampN, crewHost, flinging */
 
-const crab = document.getElementById('crab');
-const spriteHost = document.getElementById('sprite');
-const bubbleText = document.getElementById('bubbleText');
-const crewHost = document.getElementById('crew');
-const countEl = document.getElementById('count');
-const bgBadge = document.getElementById('bgBadge');
+const crab = /** @type {HTMLElement} */ (document.getElementById('crab'));
+const spriteHost = /** @type {HTMLElement} */ (document.getElementById('sprite'));
+const bubbleText = /** @type {HTMLElement} */ (document.getElementById('bubbleText'));
+const crewHost = /** @type {HTMLElement} */ (document.getElementById('crew'));
+const countEl = /** @type {HTMLElement} */ (document.getElementById('count'));
+const bgBadge = /** @type {HTMLElement} */ (document.getElementById('bgBadge'));
 const api = window.shellby.critter;
 
 const BUBBLES = { working: '', asking: '?', success: '✓', error: '!', learned: '✦', unlocked: '★', levelup: 'LV', molting: '', petted: '♥', cheer: 'green!', refreshed: 'ready!', stickered: '✦' };
@@ -17,27 +17,38 @@ const HEALTH_BUBBLE_STATES = new Set(['idle', 'sleeping']);
 // Each helper gets its own shell colour so parallel agents are easy to tell apart.
 const HUES = [0, 145, 250, 60, 300, 200];
 
+/** @type {any} */
 let skin = null;
+/** @type {any} */
 let outfit = { accessories: [], effect: null, crewAccessories: [], home: null };
+/** @type {any} */
 let fx = null;
 let px = 4;
 let state = 'idle';
+/** @type {any} */
 let health = null;
 let ciFailing = 0; // pull requests with red CI (src/main/github/ci.js)
+/** @type {{ up: number, upPort?: number, down: number } | null} */
 let servers = null; // { up, upPort, down }: your dev servers (src/main/devservers/service.js)
 const serversDown = () => servers?.down || 0;
+/** @type {{ phase: 'focus' | 'break', endsAt: number } | null} */
 let focusing = null; // { phase: 'focus' | 'break', endsAt } (src/main/focus.js)
+/** @type {{ resetsAt: number } | null} */
 let limit = null;    // { resetsAt }: napping until the usage limit resets (src/main/limits.js)
+/** @type {{ text: string, occasion?: string, until: number } | null} */
 let say = null;      // { text, occasion, until }: what he's saying (src/main/voice.js)
 let onCall = false;  // you're on a call: he holds up his "shh" sign (src/main/surroundings.js)
 let planning = false; // Claude is planning, not changing anything yet (plan mode)
 let planReady = false; // ...and has a plan for you to read
+/** @type {string | null} */
 let flourish = null;  // how he takes a finished turn (src/main/flourish.js): null is his usual hop or oof
 // Things a scene or a game puts on him for a moment, by slot (src/renderer/critter/life.js).
+/** @type {Map<string, any>} */
 const overrides = new Map();
 // What he works with while Claude uses a tool, a scroll or a wrench (see
 // "how he works" below). It beats his own held item and a scene's, and gives
 // way to a sign or a sticker.
+/** @type {any} */
 let tool = null;
 const holdTool = item => { if (item === tool) return; tool = item || null; drawSelf(); };
 // eslint-disable-next-line prefer-const -- signs.js sets it
@@ -75,7 +86,9 @@ let confetti = true;
 api.onBurst(effect => { if (fx && effect && confetti) fx.burst(effect); });
 
 // Shellby himself. While he molts, the molt decides which shell he's in.
+/** @type {{ shell: string, bubble: string, cls: string, stickers: any[] } | null} */
 let molt = null; // { shell, bubble, stickers } during a molt
+/** @type {{ id: string, holding: boolean, held: any } | null} */
 // eslint-disable-next-line prefer-const -- stickers.js sets it
 let slap = null; // { id, holding, held } while a new sticker goes on (see onSticker)
 function drawSelf() {
@@ -107,7 +120,8 @@ function drawSelf() {
 function stickersFor(shell) {
   if (shell === 'none') return [];
   const list = (molt ? molt.stickers : outfit.stickers) || [];
-  return slap ? list.filter(s => s.id !== slap.id) : list;
+  const going = slap;
+  return going ? list.filter(s => s.id !== going.id) : list;
 }
 
 // A level-up unlocked a new shell: crawl out of the old one, shiver for a
@@ -148,7 +162,7 @@ function bubbleFor() {
   if (onCall && state === 'idle') return '🤫';
   // His own voice comes last of the things that mean something, and still beats
   // the bare mood glyph it replaces.
-  if (saying()) return say.text;
+  if (say && saying()) return say.text;
   // Planning reads differently from working, and a plan waiting differently from a yes/no.
   if (state === 'asking' && planReady) return 'plan?';
   if (state === 'working' && planning) return 'plan…';
@@ -259,6 +273,7 @@ api.onState(msg => {
 });
 
 // ---- click vs drag (pointer capture keeps drags alive past the window edge)
+/** @type {{ x: number, y: number } | null} */
 let down = null;
 let dragging = false;
 bgBadge.addEventListener('click', () => api.bgClick());
@@ -266,7 +281,7 @@ bgBadge.addEventListener('click', () => api.bgClick());
 // Your dev servers: ":5173" while one is up, red when one fell over. Like the
 // background badge, it stays up whatever his mood (he can nap with a server
 // running). Asleep, only a crash shows.
-const srvPill = document.getElementById('srvPill');
+const srvPill = /** @type {HTMLElement} */ (document.getElementById('srvPill'));
 function renderServers() {
   const down = serversDown();
   const up = servers?.up || 0;
@@ -274,10 +289,11 @@ function renderServers() {
   srvPill.hidden = !show;
   if (!show) return;
   srvPill.classList.toggle('down', down > 0);
-  srvPill.textContent = down > 0 ? (down > 1 ? `${down} down` : 'down') : up === 1 && servers.upPort ? `:${servers.upPort}` : `${up} up`;
+  const upPort = servers?.upPort;
+  srvPill.textContent = down > 0 ? (down > 1 ? `${down} down` : 'down') : up === 1 && upPort ? `:${upPort}` : `${up} up`;
   srvPill.setAttribute('aria-label', down > 0
     ? `${down} dev server${down === 1 ? '' : 's'} crashed. Click to see the error.`
-    : up === 1 && servers.upPort ? `Dev server running on port ${servers.upPort}. Click to see it.` : `${up} dev servers running. Click to see them.`);
+    : up === 1 && upPort ? `Dev server running on port ${upPort}. Click to see it.` : `${up} dev servers running. Click to see them.`);
 }
 srvPill.addEventListener('click', () => api.serversClick());
 crab.addEventListener('pointerdown', e => {
@@ -303,7 +319,8 @@ crab.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') 
 // ---- petting: rub the mouse back and forth over him (no click needed)
 const PET_TURNS = 5;        // direction changes...
 const PET_WINDOW_MS = 1400; // ...within this long
-const heartsHost = document.getElementById('hearts');
+const heartsHost = /** @type {HTMLElement} */ (document.getElementById('hearts'));
+/** @type {{ x: number | null, dir: number, turns: number[] }} */
 let rub = { x: null, dir: 0, turns: [] };
 crab.addEventListener('pointermove', e => {
   if (down) return;
@@ -348,13 +365,13 @@ const setDropping = on => {
 };
 window.addEventListener('dragenter', e => { e.preventDefault(); if (dragDepth++ === 0) setDropping(true); });
 window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; setDropping(false); } });
-window.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+window.addEventListener('dragover', e => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; });
 window.addEventListener('drop', async e => {
   e.preventDefault();
   dragDepth = 0;
   setDropping(false);
   // A picture with no file behind it (dragged out of a browser) is saved first.
-  const { paths } = await window.shellby.attachFiles([...e.dataTransfer.files]);
+  const { paths } = await window.shellby.attachFiles([...(e.dataTransfer?.files || [])]);
   if (paths.length) api.drop(paths);
 });
 
@@ -399,8 +416,9 @@ tellReduced();
 // whichever way he faces, and bobs along faster when he walks. Its Bugdex
 // portrait is drawn in finer pixels than his, so it stays the size the little
 // 8×8 sprites were; small art (a hatchling) keeps his chunky pixels.
-const buddyEl = document.getElementById('buddy');
+const buddyEl = /** @type {HTMLElement} */ (document.getElementById('buddy'));
 const BUDDY_BOX = 8; // its longer side, in his pixels: at any size it stays in his slot, clear of the helpers (critter.css #buddy)
+/** @type {{ pixels: any[][], palette: any, ghost?: boolean } | null} */
 let buddyArt = null;
 function drawBuddy() {
   const b = buddyArt;

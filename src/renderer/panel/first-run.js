@@ -10,6 +10,7 @@
 (function () {
   const { api, h, $ } = SB;
 
+  /** @type {any} */
   let view = null; // main's firstRunView(); null until it arrives (no card)
 
   const off = () => !view || SB.isCrabOnly?.();

@@ -10,6 +10,7 @@ const confirm = require('../confirm');
 const { createHomeLine } = require('../worktrees/home-line');
 const { secretGate: gateSecrets } = require('../secret-gate');
 const { MAX_TABS } = require('../sessions');
+const ship = require('../ship');
 const worktrees = require('../worktrees');
 
 /**
@@ -52,6 +53,30 @@ function registerRepoIpc(ipcMain, d) {
   // (the tab closes; the conversation stays in History).
   ipcMain.handle('worktree:home', (_e, tabId, opts) => bringTabHome(tabId, opts));
   d.bringTabHome = bringTabHome; // the phone's Bring it home goes the same way (wiring/pocket.js)
+  // Ship it: the copy's tests, then its branch pushed and a pull request opened (ship.js).
+  ipcMain.handle('worktree:ship', async (_e, tabId, opts) => {
+    if (retiring.has(tabId)) return { ok: false, error: 'Already on it.' };
+    if (!d.isStr(tabId)) return { ok: false, error: 'That conversation has no copy of its own.' };
+    retiring.add(tabId);
+    try {
+      return await ship.shipCopy(tabId, { draft: opts?.draft === true, force: opts?.force === true }, {
+        worktreeOf,
+        isBusy: id => d.manager.isBusy(id),
+        canPr: () => (d.github?.can('claude') ? { ok: true }
+          : { ok: false, github: true, error: 'Ship it needs “Let Claude tasks push code and open pull requests” on in Settings → GitHub.' }),
+        status: w => worktrees.status(w),
+        gate: (id, w, o) => d.gateHome(id, w, o),
+        commit: w => worktrees.commitCopy(w, { trailer: d.crabTrailer() }),
+        git: worktrees.git,
+        openPr: req => d.openIssuePr(req),
+        title: id => d.manager.tabs.get(id)?.title,
+        reply: id => d.manager.tabs.get(id)?.lastReply,
+        note: (id, item) => { if (d.manager.tabs.has(id)) d.manager.note(id, item); },
+      });
+    } finally {
+      retiring.delete(tabId);
+    }
+  });
   // Red checks: nothing merged, and what failed, for the panel to offer "anyway" or "fix them".
   const redResult = (gate, w) => ({
     ok: false, red: true, checks: gate.checks, fix: gate.fix, base: w.base, branch: w.branch,

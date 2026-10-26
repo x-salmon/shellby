@@ -6,12 +6,14 @@
   const { h, api, state, $ } = SB;
 
   SB.NAV_SECTION.time = 'history';
-  for (const b of document.querySelectorAll('[data-goto-view]')) b.addEventListener('click', () => SB.setView(b.dataset.gotoView));
+  for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-goto-view]'))) b.addEventListener('click', () => SB.setView(b.dataset.gotoView));
 
+  /** @type {any} */
   let view = null;          // the last view from main
   let rangeId = 'week';
   let estimates = false;    // fill untracked days from commits
   const open = new Set();   // projects with their details open, kept across redraws
+  /** @type {ReturnType<typeof setInterval> | null} */
   let refreshTimer = null;
 
   // ------------------------------------------------------------------ words
@@ -39,12 +41,12 @@
   }
 
   function scheduleRefresh() {
-    clearInterval(refreshTimer);
+    clearInterval(refreshTimer ?? undefined);
     // Today's numbers move while you work: a quiet redraw each minute, never
     // while you're typing into the page.
     refreshTimer = setInterval(() => {
-      if (state.view !== 'time') return clearInterval(refreshTimer);
-      if ($('timeView').contains(document.activeElement) && document.activeElement.matches('input, select, textarea')) return;
+      if (state.view !== 'time') return clearInterval(refreshTimer ?? undefined);
+      if ($('timeView').contains(document.activeElement) && document.activeElement?.matches('input, select, textarea')) return;
       load();
     }, 60 * 1000);
   }
@@ -223,6 +225,7 @@
   // and a Send button here, and a "Goes to" pick in each project's details.
 
   let syncForm = false;     // the connect form is open
+  /** @type {any} */
   let syncList = null;      // { ok, options, links } or { ok: false, error }, once per visit
   let syncLoading = false;
   let syncDay = null;
@@ -367,7 +370,7 @@
   $('timeAdd').addEventListener('submit', async e => {
     e.preventDefault();
     const err = $('timeAddError');
-    const sign = Number(document.querySelector('.tm-sign [aria-checked="true"]').dataset.sign);
+    const sign = Number(/** @type {HTMLElement} */ (document.querySelector('.tm-sign [aria-checked="true"]')).dataset.sign);
     const minutes = (Number($('timeAddHours').value) || 0) * 60 + (Number($('timeAddMinutes').value) || 0);
     const key = $('timeAddProject').value;
     const note = $('timeAddNote').value.trim();

@@ -56,7 +56,10 @@ function args(input) {
  * { ok: true, status, body } | { ok: false, error, signedOut? }.
  */
 function readOutput(stdout) {
-  let result = null, final = null;
+  /** @type {any} */
+  let result = null;
+  /** @type {any} */
+  let final = null;
   for (const line of String(stdout || '').split('\n')) {
     let ev;
     try { ev = JSON.parse(line); } catch { continue; }
@@ -69,6 +72,7 @@ function readOutput(stdout) {
     const signedOut = /log ?in|sign ?in|auth|claude\.ai account/i.test(said);
     return { ok: false, signedOut, error: signedOut ? 'Cloud routines need Claude Code signed in with your claude.ai account.' : said || "Claude Code didn't say." };
   }
+  /** @type {any} */
   let body = null;
   try { body = typeof result.json === 'string' ? JSON.parse(result.json) : result.json; } catch { /* not JSON: the status says enough */ }
   const status = Number(result.status);
@@ -150,6 +154,9 @@ function cronWords(cron) {
 /**
  * Ask Claude Code. exe: its path. -> what readOutput says, plus { routines }
  * for list and { runs } for list_runs.
+ * @param {string | null} exe
+ * @param {any} input
+ * @param {{ runner?: typeof run, cwd?: string }} [opts]
  */
 async function ask(exe, input, { runner = run, cwd } = {}) {
   if (!exe) return { ok: false, error: "Claude Code isn't installed." };

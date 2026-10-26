@@ -2,8 +2,8 @@
 // it says; click it and it crumples up and goes. Nothing else.
 'use strict';
 (function () {
-  const note = document.getElementById('note');
-  const text = document.getElementById('text');
+  const note = /** @type {HTMLElement} */ (document.getElementById('note'));
+  const text = /** @type {HTMLElement} */ (document.getElementById('text'));
   const bridge = window.note;
   const CRUMPLE_MS = 420;
   window.ShellbyFrameCap.cap(document); // a transparent window: every frame costs the GPU

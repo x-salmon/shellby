@@ -316,6 +316,8 @@ function resolve(scene, temperament, rand = Math.random, { silent = false } = {}
  * and whether a scene should play silent.
  *   packScenes: [{ id, voice, who, when, beats }] (voice: a voice key or null)
  *   worn: { key, fallback } or null
+ * @param {any[]} [packScenes]
+ * @param {{ key?: string | null, fallback?: string | null } | null} [worn]
  */
 function inVoice(packScenes = [], worn = null) {
   const key = worn?.key || null;

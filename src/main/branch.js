@@ -50,6 +50,8 @@ const tagged = i => i && (i.kind === 'changes' || i.kind === 'checkpoint') && ty
  * git project, or an older transcript with no diffs at all). approx: the files
  * came from a neighbouring turn, so they may be a little off. items: the
  * transcript the new tab starts with.
+ * @param {any[]} items
+ * @param {{ turnId?: string, at?: string }} [where]
  */
 function plan(items, { turnId, at = 'before' } = {}) {
   const list = Array.isArray(items) ? items.filter(Boolean) : [];
@@ -371,6 +373,7 @@ function sinceSplit(items, others = []) {
 function outcome(items, from = 0) {
   let turns = 0;
   let ms = 0;
+  /** @type {{ status: string, failing: number } | null} */
   let checks = null;
   let said = '';
   for (const i of (Array.isArray(items) ? items : []).slice(Math.max(0, from))) {

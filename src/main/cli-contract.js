@@ -152,6 +152,8 @@ const BADGE_CACHE_SECONDS = 3600;
  * it. shields.io refuses keys it doesn't know, so the last version that worked
  * lives in the state, not the badge. previous: the state as it was. Neither
  * holds a time, so a night with nothing new leaves both files as they were.
+ * @param {any} report
+ * @param {{ lastGood?: string | null } | null} [previous]
  * @returns {{ badge: object, state: { version: string, ok: boolean, lastGood: string|null } }}
  */
 function badgeFor(report, previous = null) {

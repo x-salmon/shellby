@@ -14,14 +14,17 @@
   const runBtn = $('problemsRun');
   const fixAllBtn = $('problemsFixAll');
 
+  /** @type {any} */
   let tab = null;
-  let data = null;  // problems:get's answer
+  /** @type {any} */
+  let data = null;  // problems:get's answer: { problems, never?, commands?, at, status? }
+  /** @type {HTMLElement | null} */
   let back = null;
 
   SB.openProblems = async (t = SB.activeTab()) => {
     if (!t) return;
     tab = t;
-    back = document.activeElement;
+    back = /** @type {HTMLElement | null} */ (document.activeElement);
     SB.closeMenus?.();
     sheet.hidden = false;
     await load();
@@ -87,6 +90,7 @@
     return h('li', {}, open, fix);
   }
 
+  /** @param {number[] | null} picked */
   async function sendFix(picked = null) {
     if (!tab || !data) return;
     if (tab.busy) SB.toast('He’s working: it goes once he’s done.', { ms: 2400 });

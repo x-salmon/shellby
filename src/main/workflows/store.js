@@ -38,6 +38,7 @@ function writeAtomic(file, text) {
 }
 
 class RunStore {
+  /** @param {{ dir: string, log?: (message: string) => void }} opts */
   constructor({ dir, log = () => {} }) {
     this.dir = dir;
     this.log = log;
@@ -144,9 +145,16 @@ class RunStore {
 }
 
 class SecretStore {
-  /** crypto: { available(), encrypt(text) -> Buffer, decrypt(Buffer) -> text } */
+  /**
+   * crypto: { available(), encrypt(text) -> Buffer, decrypt(Buffer) -> text }
+   * @param {{ file: string, crypto: { available: () => boolean, encrypt: (text: string) => Buffer, decrypt: (data: Buffer) => string },
+   *   log?: (message: string) => void }} opts
+   */
   constructor({ file, crypto, log = () => {} }) {
-    Object.assign(this, { file, crypto, log });
+    this.file = file;
+    this.crypto = crypto;
+    this.log = log;
+    /** @type {Record<string, string> | null} */
     this.values = null;
   }
 

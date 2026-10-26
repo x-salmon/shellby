@@ -13,8 +13,11 @@
   const CRAB_PX = 7;
   const TIER_PX = 3;
   const CEREMONY_MS = 2600;
+  /** @type {any} */
   let view = null;
+  /** @type {Element | null} */
   let lastFocus = null;
+  /** @type {{ was: any, now: any, count: any, badge: string | null } | null} */
   let molted = null; // the molt just played, for its card: { was, now, count, badge }
 
   const sheet = () => $('moltSheet');
@@ -113,7 +116,7 @@
     molted = null;
     sheet().hidden = true;
     document.body.classList.remove('molt-open');
-    lastFocus?.focus?.();
+    /** @type {HTMLElement | null} */ (lastFocus)?.focus?.();
   }
 
   $('moltClose')?.addEventListener('click', close);

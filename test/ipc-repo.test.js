@@ -37,7 +37,7 @@ function setup({ tabs = {}, busy = [], retire = async () => ({ ok: true }) } = {
     turnEnds: new Map(), turnStarts: new Map(),
   };
   registerRepoIpc(ipc.ipcMain, d);
-  return { ipc, rec };
+  return { ipc, rec, d };
 }
 
 const NO_COPY = 'That conversation has no copy of its own.';
@@ -92,6 +92,20 @@ test('worktree:home waits while the tab is busy', async () => {
 
   assert.deepEqual(await ipc.invoke('worktree:home', 't'), { ok: false, error: 'Let him finish first.' });
   assert.deepEqual(rec.of('note'), []);
+});
+
+test('worktree:ship only ships a copy in Shellby\'s folder, never while he works, and only with pushing allowed', async () => {
+  const off = { can: () => false };
+  let x = setup({ tabs: { t: { worktree: theirs } } });
+  assert.match((await x.ipc.invoke('worktree:ship', 't')).error, /copy of its own/);
+  x = setup({ tabs: { t: { worktree: ours } }, busy: ['t'] });
+  assert.equal((await x.ipc.invoke('worktree:ship', 't')).error, 'Let him finish first.');
+  x = setup({ tabs: { t: { worktree: ours } } });
+  x.d.github = off;
+  const r = await x.ipc.invoke('worktree:ship', 't');
+  assert.equal(r.github, true, 'the panel offers Settings → GitHub');
+  assert.match(r.error, /Settings → GitHub/);
+  assert.deepEqual(x.rec.of('note'), []);
 });
 
 test('repo:status and repo:push say so when the folder is not a git repository', async () => {

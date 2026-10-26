@@ -9,8 +9,11 @@
   const W = 96, H = 64;
   const SOON_MS = 2000; // outfit changes come in bursts while you try things on
 
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let soon = null;
-  let current = null; // the last view from main
+  /** @type {any} */
+  let current = null; // the last view from main: { error?, repoUrl? }
+  /** @type {string | null} */
   let preview = null; // the last SVG drawn
 
   const isOn = () => !!(state.github?.signedIn && state.github.features.prBadge?.on && state.github.features.prBadge?.granted);
@@ -32,20 +35,20 @@
     row.hidden = !isOn();
     if (row.hidden || !current) return;
     if (!preview && SB.profileCard?.ready()) preview = build();
-    if (preview) $('pbPreview').src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(preview)}`;
+    if (preview) /** @type {HTMLImageElement} */ ($('pbPreview')).src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(preview)}`;
     $('pbStatus').textContent = current.error || 'Pull requests your tabs open get him at the bottom, with your level and a link to Shellby.';
     $('pbStatus').classList.toggle('bad', !!current.error);
   }
 
   function sendSoon() {
     if (!isOn()) return;
-    clearTimeout(soon);
+    if (soon) clearTimeout(soon);
     soon = setTimeout(() => { soon = null; send().catch(() => {}); }, SOON_MS);
   }
 
   async function load() {
     const on = isOn();
-    if (!on) { clearTimeout(soon); preview = null; }
+    if (!on) { if (soon) clearTimeout(soon); preview = null; }
     const v = await api.getPrBadge();
     if (on !== isOn()) return; // turned on or off while we asked: that newer load wins
     render(v);

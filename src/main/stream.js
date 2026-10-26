@@ -19,7 +19,37 @@ const TOOL_VERBS = {
   TaskStop: 'Stopped a background task', TaskOutput: 'Checked a background task', Monitor: 'Watching',
   SendMessage: 'Messaged', RemoteTrigger: 'Cloud routines', ReportFindings: 'Reported findings',
   PushNotification: 'Notified you', EnterWorktree: 'Moved into a worktree', ExitWorktree: 'Left the worktree',
+  ScheduleWakeup: 'Will pick this up again', CronCreate: 'Scheduled', CronDelete: 'Cancelled a schedule', CronList: 'Checked its schedules',
 };
+
+// When Claude comes back by itself (/loop's ScheduleWakeup, CronCreate), in
+// words: "in 20 min", "every day at 09:00". A cron it can't word stays as it is.
+const pad2 = n => String(n).padStart(2, '0');
+function inWords(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  if (s < 90) return `in ${s} s`;
+  if (s < 3600) return `in ${Math.round(s / 60)} min`;
+  const h = s / 3600;
+  return `in ${Number.isInteger(h) ? h : h.toFixed(1)} h`;
+}
+const CRON_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function cronWords(cron) {
+  const f = String(cron || '').trim().split(/\s+/);
+  if (f.length !== 5) return String(cron || '').slice(0, 60);
+  const [min, hour, dom, mon, dow] = f;
+  const isMin = v => /^\d{1,2}$/.test(v) && Number(v) < 60;
+  const isHour = v => /^\d{1,2}$/.test(v) && Number(v) < 24;
+  const every = /^\*\/(\d{1,2})$/.exec(min);
+  if (every && Number(every[1]) > 0 && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `every ${Number(every[1])} min`;
+  if (isMin(min) && hour === '*' && dom === '*' && mon === '*' && dow === '*') return `every hour at :${pad2(min)}`;
+  if (isMin(min) && isHour(hour) && dom === '*' && mon === '*') {
+    const at = `${pad2(hour)}:${pad2(min)}`;
+    if (dow === '*') return `every day at ${at}`;
+    if (dow === '1-5') return `weekdays at ${at}`;
+    if (/^[0-6]$/.test(dow)) return `${CRON_DAYS[Number(dow)]}s at ${at}`;
+  }
+  return `cron ${f.join(' ')}`;
+}
 
 // To-do statuses Claude Code uses (TaskUpdate, TodoWrite); 'deleted' drops one.
 const TODO_STATUSES = new Set(['pending', 'in_progress', 'completed']);
@@ -124,6 +154,15 @@ function describeTool(name = '', input = {}) {
   if (name === 'PushNotification') return { label: TOOL_VERBS.PushNotification, detail: String(i.message ?? '').replace(/\s+/g, ' ').trim().slice(0, 400) };
   if (name === 'EnterWorktree') return { label: TOOL_VERBS.EnterWorktree, detail: typeof i.name === 'string' ? i.name.slice(0, 120) : '' };
   if (name === 'ExitWorktree') return { label: TOOL_VERBS.ExitWorktree, detail: i.action === 'remove' ? 'and removed it' : '' };
+  if (name === 'ScheduleWakeup') {
+    if (i.stop) return { label: 'Ended the loop', detail: '' };
+    return { label: TOOL_VERBS.ScheduleWakeup, detail: [inWords(i.delaySeconds), todoText(i.reason)].filter(Boolean).join(': ') };
+  }
+  if (name === 'CronCreate') {
+    const when = `${cronWords(i.cron)}${i.recurring === false ? ', once' : ''}${i.durable ? ', kept across restarts' : ''}`;
+    return { label: TOOL_VERBS.CronCreate, detail: [when, todoText(i.prompt)].filter(Boolean).join(': ') };
+  }
+  if (name === 'CronDelete') return { label: TOOL_VERBS.CronDelete, detail: todoText(i.id) };
   let detail =
     i.command ?? i.file_path ?? i.notebook_path ??
     (i.pattern != null ? `${i.pattern}${i.path ? ` in ${i.path}` : ''}` : null) ??
@@ -413,6 +452,42 @@ function goalOf(text) {
   return null;
 }
 
+// /context's answer, a synthetic reply in Markdown: the total, then a table of
+// what's using the window by category. Checked against Claude Code 2.1.310:
+//   ## Context Usage / **Model:** m / **Tokens:** 23.6k / 1m (2%) /
+//   ### Estimated usage by category / | System prompt | 2.5k | 0.3% | …
+// The rest (MCP tools one by one, memory files, skills) stays in `text`.
+const CONTEXT_TEXT = 20000;
+const CONTEXT_CATEGORIES = 20;
+const SCALE = { k: 1e3, m: 1e6 };
+/** '2.5k' -> 2500, '1m' -> 1000000, '820' -> 820; null if it isn't one. */
+function tokenCount(s) {
+  const m = /^([\d.,]+)\s*([km])?$/i.exec(String(s).trim());
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, ''));
+  return Number.isFinite(n) ? Math.round(n * (SCALE[(m[2] || '').toLowerCase()] || 1)) : null;
+}
+function contextUsageOf(text) {
+  const t = String(text || '');
+  if (!/^## Context Usage\b/.test(t.trim())) return null;
+  const total = /\*\*Tokens:\*\*\s*([\d.,]+[km]?)\s*\/\s*([\d.,]+[km]?)\s*\((\d+(?:\.\d+)?)%\)/i.exec(t);
+  if (!total) return null;
+  const model = /\*\*Model:\*\*\s*([^\s*]+)/.exec(t)?.[1] || null;
+  // Only the first table: the one under "by category".
+  const section = t.split(/^### /m).find(s => /^Estimated usage by category/i.test(s)) || '';
+  const categories = section.split('\n')
+    // A share too small to print comes as "<0.1%": kept, at the bound it names.
+    .map(line => /^\|\s*([^|]+?)\s*\|\s*([\d.,]+[km]?)\s*\|\s*<?\s*(\d+(?:\.\d+)?)%\s*\|\s*$/i.exec(line))
+    .filter(Boolean)
+    .map(m => ({ name: m[1].slice(0, 80), tokens: tokenCount(m[2]), pct: Number(m[3]) }))
+    .filter(c => c.tokens !== null)
+    .slice(0, CONTEXT_CATEGORIES);
+  return {
+    kind: 'context-usage', model, used: tokenCount(total[1]), window: tokenCount(total[2]), pct: Number(total[3]),
+    categories, text: t.length > CONTEXT_TEXT ? `${t.slice(0, CONTEXT_TEXT)}\n\n…` : t,
+  };
+}
+
 // A piece of the reply as Claude writes it (--include-partial-messages): only
 // the main thread's words, which the panel shows until the whole block arrives.
 function partialOf(ev) {
@@ -548,7 +623,10 @@ function toItems(ev) {
       for (const b of ev.message?.content || []) {
         const goal = own && b.type === 'text' ? goalOf(b.text) : null;
         if (goal) out.push(goal);
-        if (b.type === 'text' && b.text?.trim()) out.push({ kind: 'text', text: b.text.trim(), ...sub });
+        // /context's table becomes a bar of what fills the window (native-more.js), the table folded under it.
+        const usage = own && b.type === 'text' ? contextUsageOf(b.text) : null;
+        if (usage) out.push(usage);
+        else if (b.type === 'text' && b.text?.trim()) out.push({ kind: 'text', text: b.text.trim(), ...sub });
         // Its text, when Claude Code passes it on: it often sends the block empty, signature only.
         else if (b.type === 'thinking') out.push({ kind: 'thinking', ...(b.thinking?.trim() ? { text: b.thinking.trim() } : {}), ...sub });
         else if (b.type === 'tool_use') out.push(toolItem(b, sub));
@@ -662,4 +740,4 @@ function parseLine(line) {
   return { event: ev, items: toItems(ev) };
 }
 
-module.exports = { workflowOf, workflowLaunchOf, worktreeOf, findingsOf, questionsOf, todoOf, todoIdOf, goalOf, toItems, parseLine, describeTool, resultText, resultImages, truncate, usageFrom, spendFrom, writtenPath, writeChars, WRITE_TOOLS, AGENT_TOOLS, KNOWN };
+module.exports = { workflowOf, workflowLaunchOf, worktreeOf, findingsOf, questionsOf, todoOf, todoIdOf, goalOf, contextUsageOf, tokenCount, cronWords, inWords, toItems, parseLine, describeTool, resultText, resultImages, truncate, usageFrom, spendFrom, writtenPath, writeChars, WRITE_TOOLS, AGENT_TOOLS, KNOWN };

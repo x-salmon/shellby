@@ -11,13 +11,14 @@
   const { api, state, $ } = SB;
   const GLOW_MS = 3400;
 
+  /** @type {any} */
   let view = null; // main's roomsView(); null until it arrives (everything shows)
 
   // Every door: the bar's buttons, and the tabs along the top of his screen
   // (repeated on each of its pages).
   const doors = () => [
-    ...[...document.querySelectorAll('.dock [data-view-btn]')].map(b => ({ id: b.dataset.viewBtn, b })),
-    ...[...document.querySelectorAll('.shellby-tabs [data-goto]')].map(b => ({ id: b.dataset.goto, b })),
+    ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.dock [data-view-btn]'))].map(b => ({ id: b.dataset.viewBtn, b })),
+    ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.shellby-tabs [data-goto]'))].map(b => ({ id: b.dataset.goto, b })),
   ].filter(d => d.id !== 'wardrobe' && d.id !== 'chat');
 
   // Every room still shut, doors or not (the Reef card has none).
@@ -40,7 +41,7 @@
       b.classList.toggle('room-fresh', fresh.has(id));
     }
     // Rooms that are a card on a screen rather than a door (data-room).
-    document.querySelectorAll('[data-room]').forEach(el => el.classList.toggle('room-locked', locked.has(el.dataset.room)));
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-room]')).forEach(el => el.classList.toggle('room-locked', locked.has(el.dataset.room)));
     SB.renderScreensSetting?.();
     const more = $('dockMore');
     more.hidden = !locked.size;
@@ -70,6 +71,7 @@
     }
   }
 
+  /** @param {{ view?: any, opened?: any[] }} [msg] main's rooms:changed payload */
   function received({ view: v, opened = [] } = {}) {
     if (!v) return;
     view = v;

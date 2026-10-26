@@ -6,8 +6,8 @@
 // ---- a new sticker (src/main/stickers/index.js): the first time a project ships,
 // he holds its sticker up in his claw, turns his shell to you and slaps it on,
 // with a little puff of sand. Main says where it goes, in sprite pixels.
-const stickerFly = document.getElementById('stickerFly');
-const sandHost = document.getElementById('sand');
+const stickerFly = /** @type {HTMLElement} */ (document.getElementById('stickerFly'));
+const sandHost = /** @type {HTMLElement} */ (document.getElementById('sand'));
 const SLAP_HOLD_MS = 1300;
 const SLAP_TURN_MS = 450;
 const SLAP_FLY_MS = 380;
@@ -41,7 +41,7 @@ function sandPuff(at) {
 
 // A sticker on his shell catches the light (a tier-up, a new mark, a re-press).
 function glint(id) {
-  const g = typeof id === 'string' && [...spriteHost.querySelectorAll('[data-sticker]')].find(el => el.dataset.sticker === id);
+  const g = typeof id === 'string' && [.../** @type {NodeListOf<HTMLElement | SVGElement>} */ (spriteHost.querySelectorAll('[data-sticker]'))].find(el => el.dataset.sticker === id);
   if (!g) return;
   g.classList.remove('glint');
   void g.getBoundingClientRect(); // restart the animation
@@ -55,10 +55,11 @@ api.onSticker(msg => {
   // Without motion it's simply there, which main has already drawn.
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const size = msg.small.pixels.length;
-  slap = {
+  const going = {
     id: msg.id, holding: true,
     held: { slot: 'held', anchor: 'claw', follows: 'claw', pivot: [Math.floor(size / 2), size], pixels: msg.small.pixels, palette: msg.small.palette },
   };
+  slap = going;
   flags.add('sticker-hold');
   drawSelf();
   paintBody();
@@ -67,11 +68,11 @@ api.onSticker(msg => {
   slapTimers = [
     setTimeout(() => { flags.delete('sticker-hold'); flags.add('sticker-turn'); paintBody(); }, SLAP_HOLD_MS),
     setTimeout(() => {
-      slap.holding = false;
+      going.holding = false;
       drawSelf();
       if (!at) return; // it went in the Sticker Book, not on the shell
       const [cx, cy] = skin.anchors?.claw || window.ShellbySprite.DEFAULT_ANCHORS.claw;
-      const sx = (cx - slap.held.pivot[0]) * px, sy = (cy - slap.held.pivot[1]) * px;
+      const sx = (cx - going.held.pivot[0]) * px, sy = (cy - going.held.pivot[1]) * px;
       stickerFly.replaceChildren(window.ShellbySprite.grid(msg.small.pixels, msg.small.palette, { px }));
       stickerFly.style.left = `${sx}px`;
       stickerFly.style.top = `${sy}px`;
@@ -96,7 +97,7 @@ api.onSticker(msg => {
 });
 
 // "+25 XP" rises out of Shellby whenever he earns XP.
-const xpHost = document.getElementById('xpFloat');
+const xpHost = /** @type {HTMLElement} */ (document.getElementById('xpFloat'));
 api.onXp(({ amount }) => {
   const el = document.createElement('span');
   el.textContent = `+${amount} XP`;
@@ -109,7 +110,8 @@ api.onXp(({ amount }) => {
 // little show of its own. The badge pops up over him and he jumps (a crit) or
 // comes in to land (a clean landing); main sends the line, sound and confetti.
 const SURPRISE_MS = { crit: 2200, landing: 2400 };
-const surpriseHost = document.getElementById('surprise');
+const surpriseHost = /** @type {HTMLElement} */ (document.getElementById('surprise'));
+/** @type {any} */
 let surpriseTimer = null;
 api.onSurprise(msg => {
   const kind = msg?.kind === 'landing' ? 'landing' : 'crit';

@@ -15,7 +15,7 @@
   const FLINCH_MS = 900;
   const LEVELS = new Set(['none', 'typing', 'fast']);
 
-  const crab = document.getElementById('crab');
+  const crab = /** @type {HTMLElement} */ (document.getElementById('crab'));
   const board = document.createElement('div');
   board.id = 'keys';
   board.setAttribute('aria-hidden', 'true');
@@ -36,6 +36,7 @@
 
   let level = 'none';
   let impressed = false;
+  /** @type {any} */
   let tapTimer = null;
   let flip = false;
 
@@ -73,6 +74,7 @@
   });
 
   // ---------------------------------------------------------------- thunder
+  /** @type {any} */
   let thunderTimer = null;
   function storm(on) {
     if (!on) { clearTimeout(thunderTimer); thunderTimer = null; return; }

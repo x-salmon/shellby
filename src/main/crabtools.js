@@ -230,11 +230,15 @@ function routineQuestion(routine, { replacing = null, defaultFolder = '', own = 
   };
 }
 
-/** The sentence Claude reads back once the user has answered. */
+/**
+ * The sentence Claude reads back once the user has answered.
+ * @param {any} routine
+ * @param {{ added: boolean, replaced?: boolean, next?: number | null }} outcome
+ */
 function routineReply(routine, { added, replaced = false, next = null }) {
   if (!added) return `The user decided not to ${replaced ? 'change' : 'add'} the "${routine.name}" routine. Nothing was saved.`;
   const when = describeSchedule(routine.schedule);
-  const nextText = Number.isFinite(next) ? ` Next run: ${new Date(next).toLocaleString()}.` : '';
+  const nextText = typeof next === 'number' && Number.isFinite(next) ? ` Next run: ${new Date(next).toLocaleString()}.` : '';
   return `${replaced ? 'Changed' : 'Added'} the "${routine.name}" routine (${when}).${nextText} The user can pause, edit or delete it from Shellby's Routines page.`;
 }
 

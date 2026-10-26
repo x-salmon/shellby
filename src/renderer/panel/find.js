@@ -9,10 +9,12 @@
   const count = $('findCount');
   const MAX_MATCHES = 2000;
 
+  /** @type {Range[]} */
   let ranges = [];
   let current = -1;
+  /** @type {MutationObserver | null} */
   let observer = null;
-  let timer = null;
+  let timer;
 
   const feed = () => SB.activeTab()?.el || null;
 
@@ -34,7 +36,7 @@
       acceptNode: n => (n.parentElement?.closest('.empty, .en') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
     });
     while (walker.nextNode() && out.length < MAX_MATCHES) {
-      const node = walker.currentNode;
+      const node = /** @type {Text} */ (walker.currentNode);
       const text = node.data.toLowerCase();
       for (let i = text.indexOf(needle); i !== -1 && out.length < MAX_MATCHES; i = text.indexOf(needle, i + needle.length)) {
         const r = new Range();

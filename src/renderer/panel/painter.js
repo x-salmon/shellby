@@ -35,17 +35,35 @@
 
   let mode = SB.pref('painter.mode', 'skin');
   if (!G.MODES[mode]) mode = 'skin';
-  let cur = null;           // the drawing open: a draft (main's painter.js cleanDraft shape)
+  /** @typedef {[number, number]} Cell a column and row on the canvas */
+  /** @type {any} */
+  let cur = null;          // the drawing open: a draft (main's painter.js cleanDraft shape)
   let hist = G.history();
-  let tool = 'pencil', brush = 1, colour = null, partView = false;
+  let tool = 'pencil', brush = 1, partView = false;
+  /** @type {string | null} */
+  let colour = null;
   let K = 8;                // css px per cell
+  /** @type {{ base: any, start: Cell, last: Cell, preview: any } | null} */
   let stroke = null;        // { base, start, last } while the pointer is down
+  /** @type {Cell | null} */
   let hover = null;         // the cell under the pointer
+  /** @type {{ cells: number[][], until: number } | null} */
   let flash = null;         // { cells, until } for "Show me"
   let draftTimer = 0;
+  /** @type {{ ch: string, base: any } | null} */
   let editing = null;       // { ch, base } while a colour picker is open on a swatch
+  /** @type {{ hex: string, part: string } | null} */
   let adding = null;        // { hex, part } while a new colour is being picked
-  let drafts = [], gallery = {}, wishes = [], items = [], news = null;
+  /** @type {any[]} */
+  let drafts = [];
+  /** @type {Record<string, any>} */
+  let gallery = {};
+  /** @type {any[]} */
+  let wishes = [];
+  /** @type {any[]} */
+  let items = [];
+  /** @type {any} */
+  let news = null;
 
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const doc = () => cur.doc;
@@ -59,6 +77,7 @@
   // replaceChildren would write a skipped (null) child out as the text "null".
   const fill = (el, ...kids) => el.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
   const inField = el => !!el?.closest?.('input, textarea, select, [contenteditable="true"]');
+  const all = sel => /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(sel));
 
   // The preview, and saving and sharing, are files of their own (painter-preview.js,
   // painter-share.js); this is what they get to see and do of the drawing.
@@ -96,7 +115,7 @@
     const [title, sub] = START_TEXT[mode];
     $('ptStartTitle').textContent = title;
     $('ptStartSub').textContent = sub;
-    document.querySelectorAll('#ptModes [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
+    all('#ptModes [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
     T.renderContest();
     // Drafts first: what you were in the middle of.
     const mine = drafts.filter(d => d.mode === mode);
@@ -147,6 +166,7 @@
 
   // A blank crab starts with classic's colours (each already knowing its part)
   // and his outline faintly behind; anything else starts with one colour.
+  /** @param {{ wish?: any, name?: string }} [o] a pack wish to make, or a name */
   function startBlank({ wish = null, name = '' } = {}) {
     const m = wish ? wish.kind : mode;
     let d = G.blank(m);
@@ -216,11 +236,11 @@
   function renderEditor() {
     if (!cur) return;
     const m = G.MODES[cur.mode];
-    document.querySelectorAll('#ptTools [data-pt-tool]').forEach(b => {
+    all('#ptTools [data-pt-tool]').forEach(b => {
       b.hidden = b.dataset.ptTool === 'pivot' && cur.mode !== 'accessory';
       b.setAttribute('aria-checked', String(b.dataset.ptTool === tool));
     });
-    document.querySelectorAll('#ptTools [data-brush]').forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.brush) === brush)));
+    all('#ptTools [data-brush]').forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.brush) === brush)));
     $('ptUndo').disabled = !hist.canUndo;
     $('ptRedo').disabled = !hist.canRedo;
     $('ptSize').textContent = `${doc().w}×${doc().h}`;
@@ -326,36 +346,40 @@
     const m = G.MODES[cur.mode];
     const d = doc();
     if (adding) {
+      const a = adding;
       fill(box,
         h('span', { text: 'New colour' }),
-        h('input', { type: 'color', value: adding.hex, 'aria-label': 'Colour', oninput: e => { adding.hex = e.target.value; } }),
+        h('input', { type: 'color', value: a.hex, 'aria-label': 'Colour', oninput: e => { a.hex = e.target.value; } }),
         m.parts ? h('span', { text: 'moves with' }) : null,
-        m.parts ? partSelect(adding.part, v => { adding.part = v; }) : null,
+        m.parts ? partSelect(a.part, v => { a.part = v; }) : null,
         h('button', { type: 'button', class: 'btn slim-btn', onclick: addTheColour }, 'Add'),
         h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: () => { adding = null; renderSwatchEdit(); } }, 'Cancel'));
       return;
     }
     if (!colour || colour === G.EMPTY || !d.palette[colour]) { fill(box, ); return; }
-    const inUse = G.used(d).has(colour);
+    const ch = colour;
+    const inUse = G.used(d).has(ch);
     fill(box,
       h('input', {
-        type: 'color', value: d.palette[colour], 'aria-label': 'Change this colour',
-        oninput: e => { editing ||= { ch: colour, base: doc() }; commit(G.setColour(doc(), editing.ch, e.target.value), { record: false, quiet: true }); },
+        type: 'color', value: d.palette[ch], 'aria-label': 'Change this colour',
+        oninput: e => { editing ||= { ch, base: doc() }; commit(G.setColour(doc(), ch, e.target.value), { record: false, quiet: true }); },
         onchange: () => { if (editing && editing.base !== doc()) hist.record(editing.base); editing = null; renderEditor(); },
       }),
       m.parts ? h('span', { text: 'moves with' }) : null,
-      m.parts ? partSelect(d.parts[colour] || '', v => commit(G.setPart(doc(), colour, v))) : null,
-      inUse ? null : h('button', { type: 'button', class: 'btn ghost slim-btn', title: 'Nothing is painted with it', onclick: () => { const next = G.removeColour(doc(), colour); if (next) { colour = null; commit(next); } } }, 'Remove'));
+      m.parts ? partSelect(d.parts[ch] || '', v => commit(G.setPart(doc(), ch, v))) : null,
+      inUse ? null : h('button', { type: 'button', class: 'btn ghost slim-btn', title: 'Nothing is painted with it', onclick: () => { const next = G.removeColour(doc(), ch); if (next) { colour = null; commit(next); } } }, 'Remove'));
   }
 
   function startAdding() {
     const d = doc();
-    adding = { hex: d.palette[colour] || '#ff7a5c', part: (G.MODES[cur.mode].parts && d.parts[colour]) || 'body' };
+    const ch = colour || '';
+    adding = { hex: d.palette[ch] || '#ff7a5c', part: (G.MODES[cur.mode].parts && d.parts[ch]) || 'body' };
     renderSwatchEdit();
     $('ptSwatchEdit').querySelector('input[type="color"]')?.focus();
   }
 
   function addTheColour() {
+    if (!adding) return;
     const r = G.addColour(doc(), adding.hex, adding.part);
     if (!r) return SB.toast(`That's every colour a ${kindLabel(cur.mode)} can have.`);
     adding = null;
@@ -379,6 +403,7 @@
     canvas.style.height = `${d.h * K}px`;
   }
 
+  /** @type {any} */
   let guideSkin = null;
   function paint(now = performance.now()) {
     if (!cur) return;
@@ -444,6 +469,7 @@
     } else if (flash) { flash = null; }
   }
 
+  /** @param {PointerEvent} e @returns {Cell} */
   function cellAt(e) {
     const r = canvas.getBoundingClientRect();
     const d = doc();
@@ -640,13 +666,13 @@
     if (t === 'pencil' && colour === G.EMPTY) colour = Object.keys(doc().palette)[0] || null;
     renderEditor();
   }
-  document.querySelectorAll('#ptTools [data-pt-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.ptTool)));
-  document.querySelectorAll('#ptTools [data-brush]').forEach(b => b.addEventListener('click', () => { brush = Number(b.dataset.brush); renderEditor(); }));
+  all('#ptTools [data-pt-tool]').forEach(b => b.addEventListener('click', () => setTool(b.dataset.ptTool)));
+  all('#ptTools [data-brush]').forEach(b => b.addEventListener('click', () => { brush = Number(b.dataset.brush); renderEditor(); }));
   $('ptUndo').addEventListener('click', undo);
   $('ptRedo').addEventListener('click', redo);
   $('ptPartView').addEventListener('click', () => { partView = !partView; renderEditor(); });
   $('ptGuide').addEventListener('click', () => { cur.guide = !cur.guide; keep(); renderEditor(); });
-  document.querySelectorAll('#ptModes [data-mode]').forEach(b => b.addEventListener('click', async () => {
+  all('#ptModes [data-mode]').forEach(b => b.addEventListener('click', async () => {
     mode = b.dataset.mode;
     try { window.localStorage.setItem('painter.mode', mode); } catch { /* this session only */ }
     await refresh();
@@ -672,10 +698,11 @@
       return;
     }
     if (e.altKey) return;
-    if (KEYS[k] && !e.target.closest?.('.pt-anchor')) { e.preventDefault(); setTool(KEYS[k]); return; }
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (KEYS[k] && !target.closest?.('.pt-anchor')) { e.preventDefault(); setTool(KEYS[k]); return; }
     if (e.key === '[' || e.key === ']') { e.preventDefault(); brush = e.key === '[' ? 1 : 2; renderEditor(); return; }
     const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-    if (step && tool === 'move' && !e.target.closest?.('.pt-anchor')) {
+    if (step && tool === 'move' && !target.closest?.('.pt-anchor')) {
       e.preventDefault();
       const next = G.move(doc(), step[0], step[1]);
       if (next) commit(next); else SB.announce?.('It can\'t go further that way.');

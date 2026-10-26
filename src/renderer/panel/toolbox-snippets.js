@@ -15,8 +15,10 @@
   const MAX_HINT = 60;
   const NEAR_MAX = 3500;
 
+  /** @type {any} */
   let editor = null; // { id, was, name, text, hint, newTab, start } while it's open
   let opened = 0;
+  /** @type {{ name: string, until: number } | null} */
   let flash = null;  // { name, until }: a snippet just saved, lit up in the list for a moment
 
   const list = () => state.snippets || [];
@@ -124,7 +126,7 @@
       onclick: () => openMenu(more, () => rowMenu(s, pinned)),
     }, h('span', { text: '⋯' }));
     const editing = editor?.was === s.name;
-    const lit = flash?.name === s.name && Date.now() < flash.until;
+    const lit = !!flash && flash.name === s.name && Date.now() < flash.until;
     return h('li', { class: `tool-row snippet-row${editing ? ' is-editing' : ''}${lit ? ' just-saved' : ''}`, dataset: { name: s.name } },
       h('div', { class: 'tool-main' },
         h('div', { class: 'tool-name', title: `Type /${s.name} in the box, or shellby do @${s.name} in a terminal` },

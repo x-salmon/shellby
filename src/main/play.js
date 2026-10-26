@@ -36,6 +36,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  *   size:    { width, height } of his window
  *   home:    { x, y } where he is now
  * Returns { x, y, covered }.
+ * @param {{ windows?: { rect: { left: number, top: number, right: number, bottom: number } }[], work: any, size: { width: number, height: number }, home: { x: number, y: number } }} opts
  */
 function chooseHideSpot({ windows = [], work, size, home }, rand = Math.random) {
   const m = HIDE.margin;

@@ -11,9 +11,9 @@
   // A view may name its own way back (the file viewer: where it was opened from).
   SB.goBack = () => SB.setView(SB.views[state.view]?.parent?.() || SB.PARENT_VIEW[state.view] || SB.homeView());
 
-  const navButtons = [...document.querySelectorAll('[data-view-btn]')];
+  const navButtons = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-view-btn]'))];
   // In bar order, which Work mode changes (workmode.js), so Ctrl+1… follow it.
-  const dockButtons = () => [...document.querySelectorAll('.dock [data-view-btn]')];
+  const dockButtons = () => [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.dock [data-view-btn]'))];
   SB.retitleDock = () => dockButtons().forEach((b, i) => {
     b.title = `${b.textContent.trim()} (Ctrl+${i + 1})`;
     b.setAttribute('aria-keyshortcuts', `Control+${i + 1}`);
@@ -174,6 +174,7 @@
   const list = $('paletteList');
   let results = [];
   let selected = 0;
+  /** @type {HTMLElement | null} */
   let returnFocus = null;
 
   const claude = () => !SB.isCrabOnly();
@@ -191,6 +192,7 @@
   function actionEntries() {
     const tab = claude() && SB.activeTab();
     if (!tab) return [];
+    /** @type {(id: string, icon: string, title: string, sub: string, run: () => any, shortcut?: string | null, keys?: string) => object} */
     const act = (id, icon, title, sub, run, shortcut = null, keys = '') => ({
       id: `act:${id}`, group: 'This conversation', icon, title, sub, shortcut, keys, run: () => SB.inChat(run),
     });
@@ -205,6 +207,7 @@
       SB.hasChanges(tab) && act('changes', '±', 'Show the last turn’s changes', 'Every file it touched, each diff a key away, and Undo', () => SB.showChanges(tab), 'showChanges', 'diff files changed undo review'),
       w && act('home', '↩', 'Bring it home', `Commit what’s left and merge into ${w.base}. The conversation carries on`, () => SB.bringHome(tab), 'bringHome', 'merge worktree copy branch'),
       w && act('homePush', '⇡', 'Bring it home and push', `Merge into ${w.base}, then push it to its remote`, () => SB.bringHome(tab, { push: true }), null, 'merge worktree copy branch push'),
+      w && idle && act('ship', '🚀', 'Ship it', `Run the tests, push this branch and open a pull request into ${w.base}`, () => SB.shipIt(tab), null, 'pull request pr github push publish open draft'),
       idle && act('compact', '⇣', 'Compact', 'Claude sums up the conversation so far and carries on in the room it frees', () => SB.compactTab(tab), null, 'context full crowded summarise summarize'),
       idle && act('fresh', '↻', 'Start fresh with a summary', 'Claude writes a handoff note, then a new conversation picks it up in this tab', () => SB.startFresh(tab), null, 'context handoff new summary compact'),
       idle && act('clear', '⌫', 'Clear', 'A new conversation in this tab, with nothing carried over (/clear)', () => SB.clearConversation(tab), null, 'clear reset new context forget wipe'),
@@ -220,13 +223,14 @@
   // ---- this conversation's project: its folder and its dev server (projects.js)
 
   const PROJECTS_STALE_MS = 30000;
+  /** @type {{ at: number, list: any, servers: any } | null} */
   let projects = null;  // { at, list, servers }
   async function loadProjects() {
     if (!claude()) return;
-    const fresh = projects && Date.now() - projects.at < PROJECTS_STALE_MS;
+    const fresh = projects && Date.now() - projects.at < PROJECTS_STALE_MS ? projects : null;
     try {
-      const [list, servers] = await Promise.all([fresh ? projects.list : api.listProjects(), api.getServers()]);
-      projects = { at: fresh ? projects.at : Date.now(), list, servers };
+      const [list, servers] = await Promise.all([fresh ? fresh.list : api.listProjects(), api.getServers()]);
+      projects = { at: fresh ? fresh.at : Date.now(), list, servers };
     } catch { return; } // no project actions this time; the rest of the palette is unaffected
     if (!sheet.hidden) update({ keep: true });
   }
@@ -237,7 +241,7 @@
     const found = where && K.cloneFor(projects?.list?.projects, where);
     if (!found) return [];
     const { project: p, clone: c } = found;
-    const mine = (projects.servers?.servers || []).filter(s => s.root.toLowerCase() === c.root.toLowerCase() && (s.status === 'starting' || s.status === 'up' || s.status === 'erroring'));
+    const mine = (projects?.servers?.servers || []).filter(s => s.root.toLowerCase() === c.root.toLowerCase() && (s.status === 'starting' || s.status === 'up' || s.status === 'erroring'));
     const entry = (id, icon, title, sub, run, keys = '') => ({ id: `pj:${id}`, group: 'Project', icon, title, sub, keys: `project ${p.name} ${keys}`, run });
     const script = c.scripts?.find(s => s.name === c.lastScript) || c.scripts?.find(s => s.likely);
     const servers = mine.flatMap(s => [
@@ -399,6 +403,8 @@
       { group: 'Cloud', icon: '☁️', title: 'Pick up a cloud session here', sub: 'claude --teleport, in a terminal: from claude.ai/code or the app', keys: 'teleport cloud web remote session resume', run: () => open('teleport') },
       { group: 'Cloud', icon: '☁️', title: 'Start a cloud session on what\'s in the box', sub: 'claude --cloud, in a terminal: it keeps going with this PC off', keys: 'cloud web remote session start background',
         run: () => { if (!typed()) return SB.toast('Type what the cloud session should do in the box first.', { ms: 5000 }); return open('cloud', typed()); } },
+      { group: 'Cloud', icon: '🗺️', title: 'Plan what\'s in the box in the cloud (ultraplan)', sub: '/ultraplan, in a terminal: a cloud session drafts the plan, you edit and approve it there', keys: 'ultraplan plan cloud draft remote',
+        run: () => { if (!typed()) return SB.toast('Type what to plan in the box first.', { ms: 5000 }); return open('ultraplan', typed()); } },
       { group: 'Cloud', icon: '⑂', title: 'Pick up the conversation behind a pull request', sub: 'claude --from-pr, in a terminal. Paste its address in the box first to skip the list', keys: 'pull request pr github from-pr resume review',
         run: () => open('pr', /^https:\/\/github\.com\/\S+\/pull\/\d+$/.test(typed()) ? typed() : null) },
     ];
@@ -408,7 +414,7 @@
   // strip without a pointer (the drag gesture's keyboard twin, and the only way
   // there is for anyone who can't drag).
   function tabEntries() {
-    const tab = state.tabs.get(state.activeTab);
+    const tab = state.activeTab && state.tabs.get(state.activeTab);
     if (!claude() || !tab) return [];
     // To a terminal and back (handoff.js), once there's a conversation to carry on.
     const handoff = !tab.saved ? [] : [tab.inTerminal
@@ -416,7 +422,7 @@
       : { group: 'Conversations', icon: '›_', title: 'Continue this conversation in a terminal', sub: `${tab.title} · Windows Terminal, claude --resume`, keys: 'terminal handoff resume cli console powershell wt', run: () => SB.continueInTerminal(tab.id) }];
     if (state.tabs.size < 2) return handoff;
     const here = tab.title;
-    return [...handoff, ...[[-1, 'left', 'PageUp'], [1, 'right', 'PageDown']].map(([step, where, key]) => ({
+    return [...handoff, .../** @type {[number, string, string][]} */ ([[-1, 'left', 'PageUp'], [1, 'right', 'PageDown']]).map(([step, where, key]) => ({
       group: 'Conversations', icon: step < 0 ? '⬅️' : '➡️',
       title: `Move this conversation ${where}`, sub: `${here} · Ctrl+Shift+${key === 'PageUp' ? 'PgUp' : 'PgDn'}`,
       keys: 'tab strip reorder order move drag position',
@@ -427,7 +433,7 @@
   // Splitting, popping out and moving between panes: the keyboard's way to do
   // what dragging a tab into the chat, or out of the window, does (tab-panes.js).
   function paneEntries() {
-    const tab = state.tabs.get(state.activeTab);
+    const tab = state.activeTab && state.tabs.get(state.activeTab);
     if (!claude() || !tab) return [];
     const shown = SB.panes.shownTabs(state.grid);
     const here = SB.focusedPane();
@@ -544,7 +550,7 @@
   function landFocus() {
     if (document.activeElement && document.activeElement !== document.body) return;
     if (state.view === 'chat') return $('input').focus({ preventScroll: true });
-    const heading = document.querySelector(`.view-${state.view} h2`);
+    const heading = /** @type {HTMLElement | null} */ (document.querySelector(`.view-${state.view} h2`));
     if (!heading) return;
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
@@ -553,7 +559,7 @@
   function openPalette() {
     if (state.view === 'onboarding' || SB.solo) return;
     SB.closeMenus();
-    returnFocus = document.activeElement;
+    returnFocus = /** @type {HTMLElement | null} */ (document.activeElement);
     sheet.hidden = false;
     input.value = '';
     update();
@@ -615,6 +621,7 @@
 
   // ---- your own keys (shortcuts.js checks them; main keeps them in Settings, and Sync carries them)
 
+  /** @type {{ id: string, btn: HTMLElement, onKey: (e: KeyboardEvent) => void } | null} */
   let recording = null; // { id, btn, onKey }
   const yours = () => ({ ...(state.settings.keybindings || {}) });
 
@@ -676,12 +683,13 @@
     (editing ? keysList.querySelector('.keys-edit') : editBtn)?.focus({ preventScroll: true });
   });
 
+  /** @type {HTMLElement | null} */
   let keysBack = null; // what had the keyboard before, unless that was the palette
   // edit: straight into changing keys (Settings → Shortcut).
   SB.openShortcuts = ({ edit = false } = {}) => {
     editing = !!edit;
     if (state.view === 'onboarding') return;
-    const from = sheet.hidden ? document.activeElement : returnFocus;
+    const from = /** @type {HTMLElement | null} */ (sheet.hidden ? document.activeElement : returnFocus);
     keysBack = from && from !== document.body && !from.closest('.palette-sheet, .card-sheet') ? from : null;
     closePalette({ restoreFocus: false });
     SB.closeMenus();
@@ -696,7 +704,7 @@
     keysStatus.textContent = '';
     keysSheet.hidden = true;
     if (keysBack?.isConnected && keysBack.getClientRects().length) keysBack.focus({ preventScroll: true });
-    else { document.activeElement?.blur(); landFocus(); }
+    else { /** @type {HTMLElement | null} */ (document.activeElement)?.blur(); landFocus(); }
     keysBack = null;
   }
   $('shortcutsClose').addEventListener('click', closeShortcuts);
