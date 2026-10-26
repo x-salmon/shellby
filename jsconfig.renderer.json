@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable"
+    ],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "strictNullChecks": true,
+    "skipLibCheck": true,
+    "types": [],
+    "noResolve": true,
+    "moduleDetection": "legacy"
+  },
+  "include": [
+    "src/renderer/**/*.js",
+    "src/renderer/globals.d.ts"
+  ]
+}

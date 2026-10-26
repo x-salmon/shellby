@@ -1,7 +1,9 @@
 /* Shellby panel — shared state and helpers. Loaded first; everything hangs off `SB`. */
 'use strict';
 
-const SB = window.SB = {
+// The literal's own members are typed here; what the other panel files hang on
+// SB is listed in ../globals.d.ts (npm run renderer:globals writes it).
+const SBCore = {
   api: window.shellby,
   md: window.ShellbyMarkdown,
   Sprite: window.ShellbySprite,
@@ -14,20 +16,24 @@ const SB = window.SB = {
   // From the page's first script until boot.js has opened its first screen (setView, below).
   starting: !new URLSearchParams(location.search).get('popout'),
   state: {
-    settings: {}, status: {}, skins: [], skin: null, sessions: [], cwd: '', home: '',
-    view: 'chat', version: '', packaged: false, updates: null,
-    toolbox: null, pinned: [], learned: [], routines: [], notes: null,
-    snippets: [],         // saved prompts: /name in the box, @name from a terminal (toolbox.js)
-    workflows: null,      // the workflows View (docs/plans/workflows.md), fetched on first visit
-    tabs: new Map(),      // tabId -> Tab (see feed.js)
-    activeTab: null,      // the focused pane: where the box sends
-    grid: [],             // the tabs on screen, as columns of ids (see shared/panes.js)
-    paneSizes: null,      // the panes' sizes: weights by tab id (shared/panes.js)
+    settings: /** @type {Record<string, any>} */ ({}), status: /** @type {Record<string, any>} */ ({}),
+    skins: /** @type {any[]} */ ([]), skin: /** @type {any} */ (null), sessions: /** @type {any[]} */ ([]), cwd: '', home: '',
+    view: 'chat', version: '', packaged: false, updates: /** @type {any} */ (null),
+    toolbox: /** @type {any} */ (null), pinned: /** @type {any[]} */ ([]), learned: /** @type {any[]} */ ([]),
+    routines: /** @type {any[]} */ ([]), notes: /** @type {any} */ (null),
+    snippets: /** @type {any[]} */ ([]), // saved prompts: /name in the box, @name from a terminal (toolbox.js)
+    workflows: /** @type {any} */ (null), // the workflows View (docs/plans/workflows.md), fetched on first visit
+    tabs: /** @type {Map<string, any>} */ (new Map()), // tabId -> Tab (see feed.js)
+    activeTab: /** @type {string | null} */ (null),   // the focused pane: where the box sends
+    grid: /** @type {any[]} */ ([]),                   // the tabs on screen, as columns of ids (see shared/panes.js)
+    paneSizes: /** @type {Record<string, number> | null} */ (null), // the panes' sizes: weights by tab id (shared/panes.js)
     panesSaved: false,    // a split layout is in config (tab-panes.js savePanes), so one pane has to clear it
-    popped: new Set(),    // tabs out in windows of their own (main's 'tabs' says which)
-    clashes: [],          // copies that changed the same files (clashes.js; src/main/worktrees/clash.js has the shape)
+    popped: /** @type {Set<string>} */ (new Set()),   // tabs out in windows of their own (main's 'tabs' says which)
+    clashes: /** @type {any[]} */ ([]),                // copies that changed the same files (clashes.js; src/main/worktrees/clash.js has the shape)
   },
 };
+/** @type {typeof SBCore & ShellbyPanelExtras} */
+const SB = window.SB = /** @type {any} */ (SBCore);
 if (SB.solo) document.body.classList.add('solo');
 // The shortcuts you changed (Ctrl+/ → Change): every handler that asks shortcuts.js gets them.
 SB.shortcuts?.useOverrides(() => SB.state.settings.keybindings);
