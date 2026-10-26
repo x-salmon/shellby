@@ -39,7 +39,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const send = (method, params = {}) => new Promise(r => { const i = ++id; p.set(i, m => r(m.result)); ws.send(JSON.stringify({ id: i, method, params })); });
     const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }))?.result?.value;
     const until = async (expr, ms = 8000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(200); } return false; };
-    await wait(3000);
+    // The first tab opens once bootstrap answers, which can take more than 3 s.
+    await until('!!SB.activeTab?.()', 15000);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     const recapUp = () => ev("!!document.querySelector('.recap:not(.leaving)')");
 
