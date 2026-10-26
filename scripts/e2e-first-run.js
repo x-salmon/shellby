@@ -89,13 +89,19 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
   try {
     await run('fresh', {}, async ({ ev, until, send }) => {
       // Celebration cards queue up (a first trophy, a room, First steps done):
-      // close the ones in the way until the wanted one is in front.
+      // close the ones in the way until the wanted one is in front. Read and close
+      // in one step: a closed card makes way for the next 220 ms later, and two
+      // round trips on a busy PC could close the wanted card as it arrived.
       const seeCard = async (re, ms = 25000) => {
         const end = Date.now() + ms;
         while (Date.now() < end) {
-          const text = await ev("document.querySelector('.celebrate:not([hidden])')?.textContent || ''");
-          if (re.test(text)) return true;
-          if (text) await ev("document.querySelector('.celebrate .cel-close')?.click()");
+          const seen = await ev(`(c => {
+            if (!c) return false;
+            if (${re}.test(c.textContent)) return true;
+            c.querySelector('.cel-close')?.click();
+            return false;
+          })(document.querySelector('.celebrate:not([hidden]):not(.leaving)'))`);
+          if (seen) return true;
           await wait(250);
         }
         return false;
