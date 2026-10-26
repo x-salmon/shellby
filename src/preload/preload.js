@@ -142,6 +142,7 @@ contextBridge.exposeInMainWorld('shellby', {
   toolPicture: invoke('pictures:tool'),            // a picture a tool handed Claude (tool-pictures.js)
   worktreeStatus: invoke('worktree:status'),
   bringWorktreeHome: invoke('worktree:home'),
+  shipWorktree: invoke('worktree:ship'),
   discardWorktree: invoke('worktree:discard'),
   repoStatus: invoke('repo:status'),
   pushRepo: invoke('repo:push'),

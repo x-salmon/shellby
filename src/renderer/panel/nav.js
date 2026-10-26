@@ -207,6 +207,7 @@
       SB.hasChanges(tab) && act('changes', '±', 'Show the last turn’s changes', 'Every file it touched, each diff a key away, and Undo', () => SB.showChanges(tab), 'showChanges', 'diff files changed undo review'),
       w && act('home', '↩', 'Bring it home', `Commit what’s left and merge into ${w.base}. The conversation carries on`, () => SB.bringHome(tab), 'bringHome', 'merge worktree copy branch'),
       w && act('homePush', '⇡', 'Bring it home and push', `Merge into ${w.base}, then push it to its remote`, () => SB.bringHome(tab, { push: true }), null, 'merge worktree copy branch push'),
+      w && idle && act('ship', '🚀', 'Ship it', `Run the tests, push this branch and open a pull request into ${w.base}`, () => SB.shipIt(tab), null, 'pull request pr github push publish open draft'),
       idle && act('compact', '⇣', 'Compact', 'Claude sums up the conversation so far and carries on in the room it frees', () => SB.compactTab(tab), null, 'context full crowded summarise summarize'),
       idle && act('fresh', '↻', 'Start fresh with a summary', 'Claude writes a handoff note, then a new conversation picks it up in this tab', () => SB.startFresh(tab), null, 'context handoff new summary compact'),
       idle && act('clear', '⌫', 'Clear', 'A new conversation in this tab, with nothing carried over (/clear)', () => SB.clearConversation(tab), null, 'clear reset new context forget wipe'),

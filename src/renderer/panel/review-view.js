@@ -91,6 +91,7 @@
     h('div', { class: 'rv-actions' },
       actionBtn('Open', 'Enter', () => open(it.id), { primary: true, hint: 'Go to it, at its latest changes' }),
       isCopy ? actionBtn('Bring it home', 'B', () => bringHome(it.id), { hint: `Merge ${it.branch} into ${t.worktree.base}` }) : null,
+      isCopy ? actionBtn('Ship it', 'P', () => shipIt(it.id), { hint: `Open a pull request from ${it.branch} into ${t.worktree.base}` }) : null,
       actionBtn('Send back', 'S', () => openSend(it.id), { hint: 'Tell him what should change' }),
       actionBtn('Mark reviewed', 'R', () => markReviewed(it.id), { hint: 'Takes it off this list' })),
     sendingTo === it.id ? sendBox(t) : null);
@@ -189,6 +190,14 @@
     SB.bringHome(t);
   }
 
+  // A pull request instead of a merge (ship-it.js); it stays on the list until you mark it reviewed.
+  function shipIt(id) {
+    const t = state.tabs.get(id);
+    if (!t?.worktree || !SB.shipIt) return;
+    say(`Shipping "${SB.shownTitle(t)}".`);
+    SB.shipIt(t);
+  }
+
   function openSend(id) {
     sendingTo = id;
     picked = id;
@@ -240,6 +249,7 @@
     if (e.key === 'Enter' && onRow) { e.preventDefault(); open(id); return; }
     const key = e.key.toLowerCase();
     if (key === 'b' && state.tabs.get(id)?.worktree) { e.preventDefault(); bringHome(id); }
+    else if (key === 'p' && state.tabs.get(id)?.worktree) { e.preventDefault(); shipIt(id); }
     else if (key === 'r') { e.preventDefault(); markReviewed(id); }
     else if (key === 's') { e.preventDefault(); openSend(id); }
   });

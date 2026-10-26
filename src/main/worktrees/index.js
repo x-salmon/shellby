@@ -467,13 +467,17 @@ async function status(w) {
  *   message: the subject for both commits, or null to name them with workMessage()
  *   -> { ok: true, merged, commits } | { ok: false, error, conflict? }
  */
+// Shellby's own commits may carry a "Shipped-with:" trailer (crab-line.js), if you turned it on.
+const trailerLine = trailer => (typeof trailer === 'string' && /^[A-Za-z-]+: [^\n]{1,120}$/.test(trailer) ? `\n\n${trailer}` : '');
+
 /**
+ * Commit whatever the copy has left uncommitted (Bring it home and Ship it).
  * @param {any} w
  * @param {{ message?: string | null, trailer?: string | null }} [opts]
+ * @returns {Promise<{ ok: boolean, error?: string }>}
  */
-async function bringHome(w, { message = null, trailer = null } = {}) {
-  // Shellby's own commits may carry a "Shipped-with:" trailer (crab-line.js), if you turned it on.
-  const tail = typeof trailer === 'string' && /^[A-Za-z-]+: [^\n]{1,120}$/.test(trailer) ? `\n\n${trailer}` : '';
+async function commitCopy(w, { message = null, trailer = null } = {}) {
+  const tail = trailerLine(trailer);
   const bad = checkWorktree(w);
   if (bad) return { ok: false, error: bad };
   if (!fs.existsSync(w.path)) return { ok: false, error: 'The copy is gone (deleted outside Shellby).' };
@@ -488,6 +492,20 @@ async function bringHome(w, { message = null, trailer = null } = {}) {
     const commit = add.ok && await git(w.path, [...NO_HOOKS, 'commit', '-q', '--no-verify', '-m', `${said}${tail}`]);
     if (!commit?.ok) return { ok: false, error: `Couldn't commit the copy's changes: ${firstLine(commit?.error || add.error)}` };
   }
+  return { ok: true };
+}
+
+/**
+ * @param {any} w
+ * @param {{ message?: string | null, trailer?: string | null }} [opts]
+ */
+async function bringHome(w, { message = null, trailer = null } = {}) {
+  const committed = await commitCopy(w, { message, trailer });
+  if (!committed.ok) return { ok: false, error: committed.error };
+  // The merge is named and signed the way the commit was.
+  const tail = trailerLine(trailer);
+  const given = message ? String(message).slice(0, 400) : '';
+  const names = out => out.split('\0').filter(Boolean);
 
   const ahead = await git(w.root, ['rev-list', '--count', `${w.base}..${w.branch}`], { timeout: 15000 });
   const commits = ahead.ok ? Number(ahead.out.trim()) || 0 : 0;
@@ -789,7 +807,7 @@ async function caughtUp(w) {
 }
 
 module.exports = {
-  git, create, createAt, startingPoint, branchOf, status, bringHome, moveBase, remove, branchName, workMessage, checkWorktree, BRANCH,
+  git, create, createAt, startingPoint, branchOf, status, commitCopy, bringHome, moveBase, remove, branchName, workMessage, checkWorktree, BRANCH,
   remoteStatus, pushBase, tipOf, bringAllHome, caughtUp, upstreamOf, copyRefusal,
   startsWork, onlyLooks, suggestedName, projectDirName, carryTranscript, copySession, findSession,
 };

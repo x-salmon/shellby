@@ -360,6 +360,13 @@
           const mark = F.markFor(item, SB.compact);
           return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: mark.icon }), mark.text));
         }
+        // Ship it (src/main/ship.js): the note, and the pull request a click away.
+        case 'shipped': {
+          const mark = F.markFor(item, SB.compact);
+          const url = typeof item.url === 'string' && /^https:\/\//.test(item.url) ? item.url : null;
+          return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: mark.icon }), mark.text,
+            url ? h('button', { type: 'button', class: 'link-btn small', text: 'Open it', onclick: () => SB.api.openExternal(url) }) : null));
+        }
         // A crit hit or a clean landing (src/main/surprises.js), kept with the turn that earned it.
         case 'surprise': return this.append(h('div', { class: `home-mark surprise-mark ${item.what === 'landing' ? 'landing' : 'crit'}` },
           h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: item.what === 'landing' ? '🛬' : '🎲' }),

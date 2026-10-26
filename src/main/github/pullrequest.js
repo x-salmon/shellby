@@ -43,6 +43,19 @@ async function defaultBranch(gh, repo) {
   return typeof info?.default_branch === 'string' && REF.test(info.default_branch) ? info.default_branch : null;
 }
 
+/**
+ * The branch a pull request goes into: the one asked for when GitHub has it
+ * (a copy made from a feature branch goes back to that branch), else the
+ * repository's default branch. Its origin ref is fetched, so the comparison is fresh.
+ */
+async function baseFor(gh, git, root, repo, asked, env) {
+  const fetch = b => git(root, ['fetch', '--quiet', '--no-tags', 'origin', `+refs/heads/${b}:refs/remotes/origin/${b}`], { timeout: 120000, env });
+  if (typeof asked === 'string' && REF.test(asked) && (await fetch(asked)).ok) return asked;
+  const base = await defaultBranch(gh, repo);
+  if (base) await fetch(base); // a failed fetch leaves the last one, which still compares
+  return base;
+}
+
 /** The open pull request from this branch, if there is one. */
 async function existingPr(gh, repo, branch) {
   const owner = repo.split('/')[0];
@@ -75,11 +88,12 @@ async function makeCopy({ repo, slug }, { findRoot, gh, git, create, home, env =
 
 /**
  * Commit what's left in a copy, push its branch and open a pull request.
+ *   base: the branch to propose into, when GitHub has it (else the default branch)
  *   deps: { gh, git, home, env, web, gate }
  *   gate(root, { rev, remote }): the secret scan, null to push on (secret-gate.js)
  * -> { ok: true, url, number, branch, repo, base, draft } | { ok: false, error, cancelled?, secrets? }
  */
-async function openPullRequest({ folder, title, body = '', draft = true }, { gh, git, home, env = {}, web = 'https://github.com', gate = null }) {
+async function openPullRequest({ folder, title, body = '', draft = true, base: asked = null }, { gh, git, home, env = {}, web = 'https://github.com', gate = null }) {
   if (!insideHome(folder, home) || !fs.existsSync(folder)) return fail('A pull request can only be opened from a copy Shellby made (a “Make a copy” step).');
   const top = await git(folder, ['rev-parse', '--show-toplevel'], { timeout: 5000 });
   const root = top.ok ? top.out.trim() : '';
@@ -90,7 +104,7 @@ async function openPullRequest({ folder, title, body = '', draft = true }, { gh,
   const origin = await git(root, ['remote', 'get-url', 'origin'], { timeout: 5000 });
   const repo = origin.ok ? githubRepoOf(origin.out.trim()) : null;
   if (!repo) return fail('That copy\'s repository isn\'t on GitHub.');
-  const base = await defaultBranch(gh, repo);
+  const base = asked ? await baseFor(gh, git, root, repo, asked, env) : await defaultBranch(gh, repo);
   if (!base) return fail(`GitHub didn't say what ${repo}'s main branch is.`);
 
   const name = String(title || '').replace(/\s+/g, ' ').trim().slice(0, TITLE_MAX) || `Work from Shellby on ${branch}`;

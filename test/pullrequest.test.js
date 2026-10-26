@@ -119,6 +119,26 @@ test('the pull request step commits what is left, pushes only its branch, and op
   } finally { s.done(); }
 });
 
+test('a pull request goes back into the branch asked for, or the default branch when GitHub hasn\'t got it', async () => {
+  const s = setup();
+  try {
+    s.g(s.dir, 'push', '-q', s.bare.replace(/\\/g, '/'), 'main:refs/heads/dev');
+    const gh = fakeGh();
+    const copy = await makeCopy({ repo: 'me/crab', slug: 'feature' }, copyDeps(s, gh));
+    fs.writeFileSync(path.join(copy.path, 'x.txt'), 'x\n');
+    const r = await openPullRequest({ folder: copy.path, title: 'X', draft: false, base: 'dev' }, prDeps(s, gh));
+    assert.equal(r.ok, true, r.error);
+    assert.equal(r.base, 'dev');
+    assert.equal(gh.posted[0].body.base, 'dev');
+
+    fs.writeFileSync(path.join(copy.path, 'y.txt'), 'y\n');
+    const local = await openPullRequest({ folder: copy.path, title: 'Y', draft: false, base: 'only-here' }, prDeps(s, gh));
+    assert.equal(local.ok, true, local.error);
+    assert.equal(local.base, 'main', 'a branch GitHub has never seen falls back to the default');
+    assert.equal(gh.posted[1].body.base, 'main');
+  } finally { s.done(); }
+});
+
 test('no changes, no pull request', async () => {
   const s = setup();
   try {

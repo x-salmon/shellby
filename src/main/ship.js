@@ -152,7 +152,7 @@ async function shipCopy(tabId, { draft = false, force = false } = {}, deps) {
   if (!w) return { ok: false, error: 'Ship it works on a conversation with a copy of its own.' };
   if (deps.isBusy(tabId)) return { ok: false, error: 'Let him finish first.' };
   const can = deps.canPr();
-  if (!can.ok) return { ok: false, error: can.error };
+  if (!can.ok) return { ...can, ok: false };
   const s = await deps.status(w);
   if (!s.ok) return { ok: false, error: s.error };
   if (!s.ahead && !s.uncommitted) return { ok: false, nothing: true, error: `Nothing to ship yet: this copy has no changes that ${w.base} doesn't have.` };

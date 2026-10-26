@@ -198,6 +198,13 @@
       h('button', { class: 'menu-item', onclick: () => { SB.closeMenus(); bringHome(tab, { finish: true }); } },
         h('span', { class: 'mi-check', text: '✓' }),
         h('span', {}, h('div', { class: 'mi-title', text: 'Bring it home and finish' }), h('div', { class: 'mi-sub', text: 'Merge, then tidy the copy away. The conversation and its diffs move to Done in History' }))),
+      // Ship it (ship-it.js): a pull request instead of a merge.
+      h('button', { class: 'menu-item', onclick: () => { SB.closeMenus(); SB.shipIt(tab); } },
+        h('span', { class: 'mi-check', text: '🚀' }),
+        h('span', {}, h('div', { class: 'mi-title', text: 'Ship it' }), h('div', { class: 'mi-sub', text: `Run the tests, push this branch and open a pull request into ${w.base}` }))),
+      h('button', { class: 'menu-item', onclick: () => { SB.closeMenus(); SB.shipIt(tab, { draft: true }); } },
+        h('span', { class: 'mi-check', text: '✎' }),
+        h('span', {}, h('div', { class: 'mi-title', text: 'Ship it as a draft' }), h('div', { class: 'mi-sub', text: 'The same, as a draft pull request for you to finish on GitHub' }))),
       ...fromBacklog,
       // Claude Code's own cloud review of the branch, in a terminal where its launch dialog asks first.
       h('button', { class: 'menu-item', onclick: () => { SB.closeMenus(); SB.ultraReview(tab); } },
