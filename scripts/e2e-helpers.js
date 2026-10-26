@@ -17,6 +17,7 @@ const fs = require('fs');
 const net = require('net');
 const os = require('os');
 const path = require('path');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9399;
@@ -111,7 +112,7 @@ function makeRepo(held) {
       if (s?.data) fs.writeFileSync(path.join(shots, `${name}.png`), Buffer.from(s.data, 'base64'));
     };
     const click = async (scope, text) => ev(`(b => { if (b) b.click(); return !!b; })([...document.querySelectorAll(${JSON.stringify(scope)})].find(b => b.textContent === ${JSON.stringify(text)}))`);
-    await wait(2500);
+    await panelBooted(ev);
     await until("!!SB.state.claude?.loggedIn || !!SB.state.claudeStatus?.loggedIn", 8000);
 
     // ---- the project's page

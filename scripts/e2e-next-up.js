@@ -14,6 +14,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { panelBooted } = require('./lib/boot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
@@ -76,7 +77,7 @@ async function cdp(url) {
     const until = async (expr, ms = 15000) => { const end = Date.now() + ms; for (;;) { const v = await ev(expr); if (v || Date.now() > end) return v; await wait(200); } };
     const rows = "[...document.querySelectorAll('#pjDetailScreen .bl-card .bl-row')]";
     const rowOf = title => `${rows}.find(r => r.querySelector('.pj-h-text b')?.textContent === ${JSON.stringify(title)})`;
-    await wait(2500);
+    await panelBooted(ev);
 
     // ---- the card
     await ev("SB.setView('projects')");

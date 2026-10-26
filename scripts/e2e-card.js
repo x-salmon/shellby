@@ -147,12 +147,16 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
       const type = await ev('SB.momentClip.pickType()?.[1] || null');
       check(type === 'mp4', `this Chromium records MP4 (${type})`);
       await ev("document.getElementById('cardClip').click()");
+      // The button stays disabled while it records (paced by the clock), encodes and saves:
+      // on a busy PC (the whole suite at once) that runs well past the four seconds.
+      await until("!document.getElementById('cardClip').disabled", 45000);
       let file = null;
-      for (let i = 0; i < 60 && !file; i++) { file = clips()[0] || null; if (!file) await wait(250); }
+      for (let i = 0; i < 20 && !file; i++) { file = clips()[0] || null; if (!file) await wait(250); }
       await wait(300);
       const buf = file ? fs.readFileSync(path.join(dir, file)) : Buffer.alloc(0);
       const magic = file?.endsWith('.mp4') ? buf.subarray(4, 8).toString('latin1') === 'ftyp' : buf.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
-      check(!!file && magic && buf.length < 5 * 1024 * 1024, `the ${kind} clip is saved as a real ${type} (${file || 'none'}, ${buf.length} bytes)`);
+      const toast = file ? '' : `, toast: ${JSON.stringify(await ev("document.getElementById('toast')?.textContent || ''"))}`;
+      check(!!file && magic && buf.length < 5 * 1024 * 1024, `the ${kind} clip is saved as a real ${type} (${file || 'none'}, ${buf.length} bytes${toast})`);
       const duration = await ev(`(async () => {
         const v = document.getElementById('cardVideo');
         if (v.hidden || !v.src) return null;
