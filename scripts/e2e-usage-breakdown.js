@@ -43,7 +43,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
     const call = (method, params) => new Promise(r => { const i = ++id; p.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
     const ev = expr => call('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true }).then(m => m.result?.result?.value);
-    await wait(3000);
+    // The first tab opens once bootstrap answers, which can take more than 3 s.
+    for (let i = 0; i < 100 && !(await ev('!!SB.activeTab?.()')); i++) await wait(150);
     await ev("SB.setView('chat')");
 
     // A real turn: the fake CLI replies with token counts and a usage reading.

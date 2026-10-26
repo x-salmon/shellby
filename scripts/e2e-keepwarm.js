@@ -52,7 +52,8 @@ async function cdp(wsUrl) {
     const poll = async (expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await panel.ev(expr).catch(() => false)) return true; await wait(200); } return false; };
     const type = text => panel.ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))`);
     const pressed = "SB.$('keepWarmBtn').getAttribute('aria-pressed') === 'true'";
-    await wait(3000);
+    // The panel finishes booting once bootstrap answers, which can take more than 3 s.
+    await poll('window.SB?.starting === false', 20000);
     await panel.ev("SB.setView('chat')");
 
     await panel.ev("SB.$('keepWarmBtn').click()");

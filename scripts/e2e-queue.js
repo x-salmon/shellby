@@ -34,7 +34,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const until = async (expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(150); } return false; };
     const type = async text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))`);
     const users = () => ev("JSON.stringify([...SB.activeTab().el.querySelectorAll('.msg.user')].map((e => { const c = e.cloneNode(true); c.querySelectorAll('.routine-tag').forEach(t => t.remove()); return c.textContent.trim(); })))").then(JSON.parse);
-    await wait(3000);
+    // The first tab opens once bootstrap answers, which can take more than 3 s.
+    await until('!!SB.activeTab?.()', 15000);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
     await wait(500);
 

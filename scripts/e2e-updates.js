@@ -55,7 +55,8 @@ async function launch(mode, profile) {
   let run = await launch('1', newProfile());
   try {
     const panel = run;
-    await wait(2500);
+    // The updater's state reaches the panel with bootstrap, which can take more than 3 s.
+    await until(panel, '!!window.SB?.state?.updates');
     await panel.ev("SB.setView('settings')");
     check(await panel.ev("!document.getElementById('updateRow').hidden"), 'Settings → About has an update row');
     check(await until(panel, "SB.state.updates.state === 'downloading'"), 'the check finds the new version and downloads it');
@@ -109,7 +110,8 @@ async function launch(mode, profile) {
   run = await launch('fail', newProfile());
   try {
     const panel = run;
-    await wait(2500);
+    // The updater's state reaches the panel with bootstrap, which can take more than 3 s.
+    await until(panel, '!!window.SB?.state?.updates');
     await panel.ev("SB.setView('settings')");
     check(await until(panel, "SB.state.updates.state === 'error'"), 'a failed check ends in an error');
     check(/Couldn't reach GitHub/.test(await text(panel, 'updateStatus')), 'which says what went wrong, in plain words');
