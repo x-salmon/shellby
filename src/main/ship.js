@@ -26,6 +26,7 @@ const TITLE_MAX = 120;
 const SUMMARY_MAX = 3000;
 const MAX_COMMITS = 20;
 const MAX_FILES = 30;
+const REF = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/; // as github/pullrequest.js checks a base
 
 const oneLine = s => String(s ?? '').replace(/\s+/g, ' ').trim();
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
@@ -33,8 +34,15 @@ const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 const noMentions = s => String(s ?? '').replace(/@(?=[\w-])/g, '@‍');
 // A file name or commit subject in Markdown: as code, so nothing in it formats.
 const asCode = s => `\`${String(s).replace(/`/g, "'")}\``;
-// Claude's reply can quote a token it read: a line the secret scan flags never reaches GitHub.
-const scrub = s => String(s ?? '').split('\n').map(line => {
+// Claude's reply can quote a key it read. One flagged line may be the start of
+// more (a private key runs on for lines the scan can't tell apart), so a reply
+// with any of it is left out whole.
+function summaryOf(reply) {
+  const kind = String(reply ?? '').split('\n').map(line => secretscan.lineSecret(line)).find(Boolean);
+  return kind ? `(Claude's reply is left out: it had something that looks like ${kind}.)` : reply;
+}
+// Anything else that slips through: a line the secret scan flags never reaches GitHub.
+const scrub =s => String(s ?? '').split('\n').map(line => {
   const kind = secretscan.lineSecret(line);
   return kind ? `(a line left out: it looked like ${kind})` : line;
 }).join('\n');
@@ -150,6 +158,8 @@ async function describe(w, git) {
 async function shipCopy(tabId, { draft = false, force = false } = {}, deps) {
   const w = deps.worktreeOf(tabId);
   if (!w) return { ok: false, error: 'Ship it works on a conversation with a copy of its own.' };
+  // Both go to git as revisions: never as something it could read as an option (History can be edited by hand).
+  if (!REF.test(String(w.base)) || !REF.test(String(w.branch))) return { ok: false, error: "That copy's branches have names git can't be trusted with." };
   if (deps.isBusy(tabId)) return { ok: false, error: 'Let him finish first.' };
   const can = deps.canPr();
   if (!can.ok) return { ...can, ok: false };
@@ -177,7 +187,7 @@ async function shipCopy(tabId, { draft = false, force = false } = {}, deps) {
   const r = await deps.openPr({
     folder: w.path,
     title: scrub(prTitle(deps.title(tabId), commits, w.branch)),
-    body: scrub(prBody({ summary: deps.reply(tabId), commits, files, verdict: gate.verdict || null, forced: force })),
+    body: scrub(prBody({ summary: summaryOf(deps.reply(tabId)), commits, files, verdict: gate.verdict || null, forced: force })),
     draft: !!draft,
     base: w.base,
   });

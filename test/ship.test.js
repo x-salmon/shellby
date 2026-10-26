@@ -59,7 +59,25 @@ test('a secret in Claude\'s reply never reaches the pull request', async () => {
   await shipCopy('t1', {}, d);
   const { body } = calls.find(c => c[0] === 'openPr')[1];
   assert.ok(!body.includes(token));
-  assert.match(body, /Done\.\n\(a line left out: it looked like a GitHub token\)\nAll green\./);
+  assert.ok(!body.includes('All green'), 'the whole reply goes, not just the line');
+  assert.match(body, /## Summary\n\n\(Claude's reply is left out: it had something that looks like a GitHub token\.\)/);
+});
+
+test('a private key quoted over several lines is left out with the reply it was in', async () => {
+  const key = ['-----BEGIN RSA PRIVATE KEY-----', 'MIIEowIBAAKCAQEAx4f', 'tY8q1lZp0vK', '-----END RSA PRIVATE KEY-----'].join('\n');
+  const { d, calls } = deps({ reply: () => `Here is the key I found:\n${key}` });
+  await shipCopy('t1', {}, d);
+  const { body } = calls.find(c => c[0] === 'openPr')[1];
+  assert.ok(!body.includes('MIIEowIBAAKCAQEAx4f') && !body.includes('tY8q1lZp0vK'));
+});
+
+test('branch names git could read as options never reach it', async () => {
+  for (const bad of [{ base: '--output=x' }, { branch: '-x' }, { base: 'a..b' }]) {
+    const { d, names } = deps({ worktreeOf: () => ({ ...W, ...bad }) });
+    const r = await shipCopy('t1', {}, d);
+    assert.equal(r.ok, false);
+    assert.ok(!names().includes('gate') && !names().includes('git'), JSON.stringify(bad));
+  }
 });
 
 test('a draft is asked for when you say so', async () => {
