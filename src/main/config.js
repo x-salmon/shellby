@@ -5,6 +5,7 @@ const workmode = require('./workmode');
 const { writeFileDurable } = require('./durable');
 
 const MODES = ['ask', 'smart', 'acceptEdits', 'plan', 'autonomous'];
+const CREW_SIDES = ['left', 'right'];
 
 // UI mode -> Claude Code --permission-mode value
 const CLI_MODE = {
@@ -24,6 +25,7 @@ const DEFAULTS = {
   skin: 'classic',
   critterPos: null,
   critterScale: 1,
+  crewSide: 'left',  // which side of him his helpers line up on: left | right (wiring/windows.js selfLeft)
   openAtLogin: false,
   notifications: true,
   recap: true,        // a digest of what happened when you come back after an hour away (see recap.js)
@@ -356,4 +358,4 @@ function writeSettings(file, text) {
   fs.rmSync(file + '.tmp', { force: true });
 }
 
-module.exports = { Config, MODES, CLI_MODE, DEFAULTS, readJson };
+module.exports = { Config, CREW_SIDES, MODES, CLI_MODE, DEFAULTS, readJson };

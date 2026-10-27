@@ -63,6 +63,8 @@ api.onSkin(msg => {
   outfit = msg.outfit || outfit;
   document.documentElement.style.setProperty('--px', `${px}px`);
   document.documentElement.style.setProperty('--self-w', `${22 * px + 120}px`);
+  // On #stage, not body: paintBody rewrites the body's classes.
+  document.getElementById('stage')?.classList.toggle('crew-right', msg.crewRight === true);
   drawSelf();
   for (const el of helpers.values()) el.querySelector('svg')?.replaceWith(helperSprite(el.dataset.hue, helperHats.get(el)));
   // Equipped effect (snow, bats, ...) plays around Shellby in flights now and then (effects.js FLIGHT); burst effects wait for a finished task.

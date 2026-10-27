@@ -6,7 +6,7 @@ const attach = require('../attachments');
 const { TIMEOUTS_MIN } = require('../checks');
 const { setPlanOnly } = require('../claude/cli');
 const { SETTINGS: CLIMB_SETTINGS } = require('../desktop/climb');
-const { MODES } = require('../config');
+const { CREW_SIDES, MODES } = require('../config');
 const confirm = require('../confirm');
 const crashReport = require('../crash-report');
 const { COLONY_MAX } = require('../desktop/floor');
@@ -78,7 +78,13 @@ function registerSettingsIpc(ipcMain, d) {
       const b = d.critter.getBounds();
       const width = size.width + d.crewExtra();
       // Grow/shrink around the critter's feet so it doesn't jump.
-      d.critter.setBounds({ x: b.x + b.width - width, y: b.y + b.height - size.height, width, height: size.height });
+      d.critter.setBounds({ x: d.crewRight() ? b.x : b.x + b.width - width, y: b.y + b.height - size.height, width, height: size.height });
+      d.broadcastSkin();
+    }
+    // Helpers out already cross over to his other side; he stays where he is.
+    if ('crewSide' in allowed && allowed.crewSide !== (before.crewSide || 'left')) {
+      const b = d.critter.getBounds();
+      d.critter.setBounds({ ...b, x: allowed.crewSide === 'right' ? b.x + d.crewExtra() : b.x - d.crewExtra() });
       d.broadcastSkin();
     }
   }
@@ -106,7 +112,7 @@ function registerSettingsIpc(ipcMain, d) {
 
   ipcMain.handle('settings:set', async (_e, patch = {}) => {
     const allowed = {};
-    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped']) {
+    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped']) {
       if (k in patch) allowed[k] = patch[k];
     }
     // Turning on Autonomous for the first time needs a confirmation that renderer
@@ -143,6 +149,7 @@ function registerSettingsIpc(ipcMain, d) {
     if (allowed.mode === 'autonomous' && !d.config.get('autonomousAcknowledged') && allowed.autonomousAcknowledged !== true) delete allowed.mode;
     if (allowed.autonomousAcknowledged === false) delete allowed.autonomousAcknowledged; // can't be un-acknowledged silently either
     if ('critterScale' in allowed) allowed.critterScale = [0.75, 1, 1.5, 2].includes(allowed.critterScale) ? allowed.critterScale : 1;
+    if ('crewSide' in allowed && !CREW_SIDES.includes(allowed.crewSide)) delete allowed.crewSide;
     if ('model' in allowed && !isModel(allowed.model)) delete allowed.model;
     if ('shareButtons' in patch) allowed.shareButtons = !!patch.shareButtons; // 📸 on celebrations (share-moments.md)
     if ('fallbackModel' in allowed && !isModel(allowed.fallbackModel)) delete allowed.fallbackModel;

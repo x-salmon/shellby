@@ -101,6 +101,7 @@
     $('settingsFolder').title = state.cwd;
     renderSkins();
     $('scaleSelect').value = String(state.settings.critterScale || 1);
+    $('crewSideSelect').value = state.settings.crewSide === 'right' ? 'right' : 'left';
     $('hotkeyBtn').textContent = SB.prettyAccel(state.settings.hotkey) || 'None';
     $('hotkeyMsg').textContent = '';
     renderModels();
@@ -246,6 +247,7 @@
   $('changeFolderBtn').addEventListener('click', async () => { await SB.folderChanged(await api.pickFolder()); renderSettings(); });
   $('resetPosBtn').addEventListener('click', () => { api.resetCritterPosition(); SB.toast('Shellby is back in the bottom-right corner of your main screen.'); });
   $('scaleSelect').addEventListener('change', async e => { const r = await api.setSettings({ critterScale: Number(e.target.value) }); state.settings = r.settings; });
+  $('crewSideSelect').addEventListener('change', async e => { const r = await api.setSettings({ crewSide: e.target.value }); state.settings = r.settings; });
   $('styleSelect').addEventListener('change', async e => {
     const r = await api.setSettings({ outputStyle: e.target.value });
     state.settings = r.settings;

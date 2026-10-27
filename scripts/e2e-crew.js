@@ -79,14 +79,31 @@ async function connect(match) {
     await critter.shot('desktop-helper');
     check(await panel.until("document.querySelectorAll('.msg.assistant').length >= 2 && [...document.querySelectorAll('.msg.assistant')].pop().textContent.includes('REVIEW FIXED')"), 'the second review turn finishes');
 
+    // ---- lined up on his right (Settings → Look), for a crab at the left of the screen
+    // Shellby's own spot on screen: his window's left edge plus where #self sits in it.
+    const selfX = "window.screenX + Math.round(document.getElementById('self').getBoundingClientRect().left)";
+    await critter.until("!document.querySelector('#crew .helper')", 6000); // the last one walked home
+    await critter.until('window.innerWidth === document.getElementById(\'self\').offsetWidth', 3000); // and the window shrank
+    const homeX = await critter.ev(selfX);
+    await panel.ev("shellby.setSettings({ crewSide: 'right' }).then(r => { SB.state.settings = r.settings; })");
+    check(await critter.until("document.getElementById('stage').classList.contains('crew-right')", 3000), 'the crab hears his helpers go on his right');
+    await type('review crew on the right');
+    check(await critter.until("!!document.querySelector('#crew .helper:not(.leaving)')", 6000), 'a helper goes out');
+    check(await critter.until(`(() => { const h = document.querySelector('#crew .helper:not(.leaving)'), s = document.getElementById('self'); return h && h.getBoundingClientRect().left >= s.getBoundingClientRect().right - 1; })()`, 3000),
+      'it stands on his right');
+    const outX = await critter.ev(selfX);
+    check(outX === homeX, `he stays where he was while it's out (${homeX} -> ${outX})`);
+    await critter.shot('desktop-helper-right');
+    check(await panel.until("document.querySelectorAll('.msg.assistant').length >= 3 && [...document.querySelectorAll('.msg.assistant')].pop().textContent.includes('REVIEW FIXED')"), 'the third review turn finishes');
+
     // ---- the Crew page (the Crew Boss trophy card would cover it)
     for (let i = 0; i < 12 && await panel.ev("!!document.querySelector('.cel-close')"); i++) { await panel.ev("document.querySelector('.cel-close').click()"); await wait(300); }
     await panel.ev("SB.setView('crew')");
     check(await panel.until("document.querySelectorAll('#crewList .cr-row').length === 1"), 'the Crew page lists one member');
     const row = await panel.ev(`(() => { const r = document.querySelector('#crewList .cr-row'); return { name: r.querySelector('h3').textContent, type: r.querySelector('.cr-type code').textContent, lv: r.querySelector('.cr-lv').textContent, stats: [...r.querySelectorAll('.cr-stat b')].map(b => b.textContent) }; })()`);
     check(row.type === 'code-reviewer', `row shows the agent type (${row.type})`);
-    check(row.stats[0] === '2' && row.stats[1] === '2', `row shows 2 runs, 2 acted on (${row.stats.join(', ')})`);
-    check(Number(row.lv) >= 2, `two runs acted on is level 2 or more (${row.lv})`);
+    check(row.stats[0] === '3' && row.stats[1] === '3', `row shows 3 runs, 3 acted on (${row.stats.join(', ')})`);
+    check(Number(row.lv) >= 2, `three runs acted on is level 2 or more (${row.lv})`);
     check(await panel.ev("!document.getElementById('crewDock').hidden && document.querySelectorAll('#crewDock .cr-dock-crab').length === 1"), 'the dock shows the crew');
     check(await panel.ev("document.querySelector('.shellby-tabs [data-goto=\"crew\"][aria-current=\"page\"]') !== null"), 'the Crew tab is current in the Shellby tabs');
     await panel.shot('crew-page');

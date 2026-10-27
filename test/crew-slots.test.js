@@ -8,7 +8,7 @@ const { wireCrewSlots } = require('../src/main/wiring/crew-slots');
 const BASE = { width: 100, height: 80 };
 const SLOT = 30;
 
-function setup({ perching = null, climbing = null } = {}) {
+function setup({ perching = null, climbing = null, right = false } = {}) {
   let bounds = { x: 500, y: 400, ...BASE };
   const store = {};
   const stops = [];
@@ -18,6 +18,7 @@ function setup({ perching = null, climbing = null } = {}) {
     critter: { getBounds: () => ({ ...bounds }), setBounds: b => { bounds = { ...b }; } },
     critterBaseSize: () => BASE,
     crewExtra: (slots = d.crewShown, guest = d.guestShown) => slots * SLOT + (guest ? 50 : 0),
+    selfLeft: (slots, guest) => (right ? 0 : d.crewExtra(slots, guest)),
     workAreas: () => [{ x: 0, y: 0, width: 1920, height: 1040 }],
     placeCritter: (x, y) => { bounds = { ...bounds, x, y }; },
     config: { set: patch => Object.assign(store, patch) },
@@ -31,6 +32,24 @@ test('helpers arriving widen the window to the left at once, his right edge fixe
   assert.equal(s.d.crewShown, 2);
   assert.equal(s.bounds().width, BASE.width + 2 * SLOT);
   assert.equal(s.bounds().x + s.bounds().width, 500 + BASE.width, 'he stays where he is');
+});
+
+test('lined up on his right, the window widens to the right, his left edge fixed', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const s = setup({ right: true });
+  s.setCrewSlots(2);
+  assert.equal(s.bounds().width, BASE.width + 2 * SLOT);
+  assert.equal(s.bounds().x, 500, 'he stays where he is');
+  s.setCrewSlots(0);
+  t.mock.timers.tick(1100);
+  assert.deepEqual(s.bounds(), { x: 500, y: 400, ...BASE }, 'and is still there once they walk home');
+});
+
+test('lined up on his right, his saved spot is the window\'s left edge', () => {
+  const s = setup({ right: true });
+  s.setCrewSlots(2);
+  s.saveCritterPos();
+  assert.deepEqual(s.store.critterPos, { x: 500, y: 400 });
 });
 
 test('never more slots than are drawn', () => {

@@ -11,7 +11,7 @@ html, body {
 }
 
 #stage { position: absolute; inset: 0; }
-/* Shellby keeps a fixed slot at the right; the window grows left for helpers. */
+/* Shellby keeps a fixed slot at the right; the window grows left for helpers (.crew-right: mirrored). */
 #self { position: absolute; right: 0; top: 0; bottom: 0; width: var(--self-w, 160px); }
 
 /* ---------- crew: one helper crab per running subagent ---------- */
@@ -20,6 +20,13 @@ html, body {
   display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 10px;
   padding: 0 4px 0 56px;
 }
+/* Settings → Look → "Helpers line up on his right": Shellby keeps the left slot
+   and the window grows right (wiring/windows.js selfLeft). They walk out and
+   home the mirror way. */
+.crew-right #self { right: auto; left: 0; }
+.crew-right #crew { left: var(--self-w, 160px); right: 0; flex-direction: row; padding: 0 56px 0 4px; }
+.crew-right .helper { --out: -1; }
+.crew-right .helper.visitor { margin-right: 0; margin-left: 6px; }
 .helper {
   position: relative; flex: none; cursor: pointer;
   animation: helper-in .55s cubic-bezier(.2,.9,.3,1.2) backwards;
@@ -63,12 +70,13 @@ html, body {
 .helper.visitor .part-claw { animation: visitor-wave 3.2s steps(1) infinite; }
 .helper.visitor .tag { opacity: 1; background: var(--glass); }
 .helper.visitor.leaving { animation: visitor-out .9s ease-in forwards; }
-@keyframes visitor-in { from { transform: translateX(-120px); opacity: 0; } }
-@keyframes visitor-out { to { transform: translateX(-120px); opacity: 0; } }
+/* --out: which way is away from Shellby (1 when the crew is on his left, -1 on his right) */
+@keyframes visitor-in { from { transform: translateX(calc(-120px * var(--out, 1))); opacity: 0; } }
+@keyframes visitor-out { to { transform: translateX(calc(-120px * var(--out, 1))); opacity: 0; } }
 @keyframes visitor-bob { 50% { transform: translateY(-2px); } }
 @keyframes visitor-wave { 0%, 62%, 100% { transform: none; } 70%, 86% { transform: rotate(-24deg); } 78% { transform: rotate(-6deg); } }
-@keyframes helper-in { from { transform: translateX(70px) scale(.4); opacity: 0; } }
-@keyframes helper-out { 30% { transform: translateY(-8px); } to { transform: translateX(90px) scale(.3); opacity: 0; } }
+@keyframes helper-in { from { transform: translateX(calc(70px * var(--out, 1))) scale(.4); opacity: 0; } }
+@keyframes helper-out { 30% { transform: translateY(-8px); } to { transform: translateX(calc(90px * var(--out, 1))) scale(.3); opacity: 0; } }
 /* Done: a little hop with a scroll held up, then home. Failed: a slow, low trudge. */
 .helper.leaving.home-ok { animation: helper-out-ok 1.5s ease-in forwards; }
 .helper.leaving.home-sad { animation: helper-out-sad 1.5s ease-in forwards; }
@@ -79,8 +87,8 @@ html, body {
   box-shadow: 0 1px 0 rgba(0,0,0,.35); image-rendering: pixelated;
   animation: loot-up .5s steps(3) backwards;
 }
-@keyframes helper-out-ok { 0%, 40% { transform: none; } 20% { transform: translateY(-6px); } 55% { transform: translateY(-3px); } to { transform: translateX(90px) scale(.3); opacity: 0; } }
-@keyframes helper-out-sad { 0%, 25% { transform: translateY(1px); } to { transform: translateX(90px) translateY(2px) scale(.3); opacity: 0; } }
+@keyframes helper-out-ok { 0%, 40% { transform: none; } 20% { transform: translateY(-6px); } 55% { transform: translateY(-3px); } to { transform: translateX(calc(90px * var(--out, 1))) scale(.3); opacity: 0; } }
+@keyframes helper-out-sad { 0%, 25% { transform: translateY(1px); } to { transform: translateX(calc(90px * var(--out, 1))) translateY(2px) scale(.3); opacity: 0; } }
 @keyframes loot-up { from { transform: translateY(6px); opacity: 0; } }
 
 /* ---------- busy count ---------- */
@@ -754,6 +762,9 @@ body.together-party .part-claw, body.together-party .helper.visitor .part-claw {
 body.together-highfive #sprite { animation: together-lean-left 1.5s ease-in-out infinite; }
 body.together-highfive .helper.visitor svg { animation: together-lean-right 1.5s ease-in-out infinite; }
 body.together-highfive .helper.visitor .part-claw { animation: together-claw-up 1.5s steps(1) infinite; }
+/* the visitor on his right: they lean toward each other the other way */
+body.together-highfive .crew-right #sprite { animation-name: together-lean-right; }
+body.together-highfive .crew-right .helper.visitor svg { animation-name: together-lean-left; }
 body.together-sing #sprite, body.together-sing .helper.visitor svg { animation: together-sway 1.2s ease-in-out infinite alternate; }
 body.together-sing .part-eyes, body.together-sing .helper.visitor .part-eyes { animation: together-blink 1.2s steps(1) infinite; }
 body.together-sing .part-stalks, body.together-sing .helper.visitor .part-stalks { animation: none; }

@@ -88,7 +88,7 @@ function wireCritter(d) {
     // The Painter's "Try him on the desk" (wiring/painter.js): the crab wears
     // the drawing for a minute; the panel and everything else keep your skin.
     const trying = d.deskPreview?.until > Date.now() ? d.deskPreview.skin : null;
-    d.send(d.critter, 'critter:skin', { skin: trying || skin, px: d.px(), helperWidth: d.helperWidth(), outfit: o, ...(trying ? { preview: true } : {}) });
+    d.send(d.critter, 'critter:skin', { skin: trying || skin, px: d.px(), helperWidth: d.helperWidth(), crewRight: d.crewRight(), outfit: o, ...(trying ? { preview: true } : {}) });
     d.bugdex?.sendBuddy(); // his favourite catch, at his new size
     d.send(d.panel, 'skin', { skin, outfit: o });
     d.floor?.reskin(); // his pals are his colours, his size

@@ -169,8 +169,8 @@ api.onTogether(msg => {
   const me = crab.getBoundingClientRect(), them = visitorEl.getBoundingClientRect();
   const bits = TOGETHER_BITS[activity] || [];
   if (activity === 'highfive') {
-    // A spark where they meet, each time the claws touch.
-    const x = (them.right + me.left) / 2, y = me.top + me.height * 0.35;
+    // A spark where they meet, each time the claws touch (the visitor on his left, or his right).
+    const x = them.left < me.left ? (them.right + me.left) / 2 : (me.right + them.left) / 2, y = me.top + me.height * 0.35;
     for (const d of [700, 2200, 3700]) floatBit(bits[0], x, y, d);
   } else {
     bits.forEach((b, i) => {

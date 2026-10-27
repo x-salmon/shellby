@@ -138,7 +138,7 @@ function registerCritterIpc(ipcMain, d) {
       const t = Date.now();
       return d.motion.release([{ x: 0, y: 0, t: t - 50 }, { x: vx * 0.05, y: vy * 0.05, t }]);
     });
-    ipcMain.handle('dev:stroll', () => d.motion.stroll((d.config.get('critterPos')?.x ?? d.critter.getPosition()[0]) - d.crewExtra()));
+    ipcMain.handle('dev:stroll', () => d.motion.stroll((d.config.get('critterPos')?.x ?? d.critter.getPosition()[0]) - d.selfLeft()));
     ipcMain.handle('dev:focus-end', () => {
       const s = focus.normalize(d.config.get('focus'));
       if (s) { d.config.set({ focus: { ...s, endsAt: Date.now() - 1 } }); d.advanceFocus(); }

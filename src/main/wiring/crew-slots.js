@@ -1,5 +1,5 @@
 // Room in the crab's window for his helper crabs and a visiting friend's: the
-// window grows to the left to fit them, keeping Shellby himself anchored in
+// window grows to his left (or right: crewSide) to fit them, keeping Shellby himself anchored in
 // place, and shrinks once they've walked home. And saving his spot, which is
 // his own, not the widened window's left edge.
 // Kept out of main.js, which only wires it up.
@@ -26,9 +26,11 @@ function wireCrewSlots(d) {
       const b = d.critter.getBounds();
       const base = d.critterBaseSize();
       const width = base.width + d.crewExtra(slots, g);
+      // Shellby's own spot stays where it is, whichever side they line up on.
+      const x = b.x + d.selfLeft() - d.selfLeft(slots, g);
       d.crewShown = slots;
       d.guestShown = g;
-      d.critter.setBounds({ x: b.x + b.width - width, y: b.y, width, height: base.height });
+      d.critter.setBounds({ x, y: b.y, width, height: base.height });
     };
     d.motion?.stop(); // a throw or stroll would put back the old left edge
     if (n > d.crewShown || (guest && !d.guestShown)) apply(Math.max(n, d.crewShown), guest || d.guestShown);
@@ -42,7 +44,7 @@ function wireCrewSlots(d) {
     const c = clampToDisplays(b, d.workAreas());
     if (c.x !== b.x || c.y !== b.y) d.placeCritter(c.x, c.y);
     // Persist Shellby's own spot, not the crew-widened window's left edge.
-    d.config.set({ critterPos: { x: c.x + d.crewExtra(), y: c.y } });
+    d.config.set({ critterPos: { x: c.x + d.selfLeft(), y: c.y } });
   }
 
   return { setCrewSlots, saveCritterPos };

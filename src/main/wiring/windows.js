@@ -28,6 +28,12 @@ function wireWindows(d) {
   const VISITOR_SCALE = 0.7;
   const visitorWidth = () => Math.round(px() * 22 * VISITOR_SCALE) + 16;
   const crewExtra = (slots = d.crewShown, guest = d.guestShown) => (slots || guest ? slots * helperWidth() + (guest ? visitorWidth() : 0) + CREW_PAD : 0);
+  // His helpers line up on his left, or on his right ("Helpers line up on his",
+  // Settings → Look) when he lives at the left of the screen. Shellby himself
+  // stays put: the window grows away from him on that side.
+  const crewRight = () => d.config.get('crewSide') === 'right';
+  // How far Shellby sits from his window's left edge.
+  const selfLeft = (slots, guest) => (crewRight() ? 0 : crewExtra(slots, guest));
 
   // 120: room either side for a held tool swung out level from his claw (a
   // narrower window cut it off). Keep in step with --self-w in critter.js.
@@ -71,7 +77,7 @@ function wireWindows(d) {
     d.climbing?.grabbed(); // put straight back, not dropped from wherever he was
     d.motion?.stop();
     const p = defaultCritterPos(critterBaseSize());
-    placeCritter(p.x - crewExtra(), p.y);
+    placeCritter(p.x - selfLeft(), p.y);
     d.config.set({ critterPos: p });
     settleCritter();
   }
@@ -99,7 +105,7 @@ function wireWindows(d) {
   // Throws land on the floor of the screen he's on; strolls stay on it too.
   function motionBox() {
     const b = d.critter.getBounds();
-    const wa = screen.getDisplayNearestPoint({ x: b.x + b.width - critterBaseSize().width / 2, y: b.y + b.height / 2 }).workArea;
+    const wa = screen.getDisplayNearestPoint({ x: b.x + selfLeft() + critterBaseSize().width / 2, y: b.y + b.height / 2 }).workArea;
     return { minX: wa.x, maxX: wa.x + wa.width - b.width, minY: wa.y, floorY: wa.y + wa.height - b.height };
   }
 
@@ -126,7 +132,7 @@ function wireWindows(d) {
       box: motionBox,
       homePos: () => {
         const p = d.config.get('critterPos') || defaultCritterPos(critterBaseSize());
-        return { x: p.x - crewExtra(), y: p.y };
+        return { x: p.x - selfLeft(), y: p.y };
       },
       pin: () => (d.CAPTURE ? sendToBottom(d.critter) : pinToDesktop(d.critter)),
       onTop: () => onTopNow(),
@@ -303,7 +309,7 @@ function wireWindows(d) {
         if (d.perching.maybeGoUp()) return;
         if (d.climbing.maybeClimb()) return;
         const home = d.config.get('critterPos');
-        if (home && Math.random() < 0.35) return void d.motion.stroll(home.x - crewExtra());
+        if (home && Math.random() < 0.35) return void d.motion.stroll(home.x - selfLeft());
       }
       if (!voice.hasHabits(d.config.get('chatter')) || Math.random() > d.IDLE_BIT_CHANCE) return;
       // A scene, a habit, maybe a find or a memory (life.js).
@@ -520,8 +526,8 @@ function wireWindows(d) {
   }
 
   return {
-    applyLayer, createCritter, createMischief, createMotion, crabCalm: crabCalmNow, crewExtra, critterBaseSize,
-    critterGeo, helperWidth, motionBox, placeCritter, px, resetCritterPos, secureWindow,
+    applyLayer, createCritter, createMischief, createMotion, crabCalm: crabCalmNow, crewExtra, crewRight, critterBaseSize,
+    critterGeo, helperWidth, motionBox, placeCritter, px, resetCritterPos, secureWindow, selfLeft,
     setReducedMotion, settleCritter, syncLayer, wanders: wandersNow, watchIdleCost, webPreferences, workAreas,
   };
 }

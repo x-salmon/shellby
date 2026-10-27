@@ -177,7 +177,7 @@ function wirePanel(d) {
   function placePanel() {
     const { panel } = d;
     const b = d.critter.getBounds();
-    const self = { x: b.x + d.crewExtra(), y: b.y, width: b.width - d.crewExtra(), height: b.height };
+    const self = { x: b.x + d.selfLeft(), y: b.y, width: b.width - d.crewExtra(), height: b.height };
     const [pw, ph] = panel.getSize();
     const display = screen.getDisplayNearestPoint({ x: b.x, y: b.y });
     const wa = { ...display.workArea };

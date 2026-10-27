@@ -34,6 +34,7 @@ function setup({ config: initial = {}, isolated = false, hotkeyOk = true, skins 
     applyLayer: rec.fn('applyLayer'),
     critterBaseSize: () => ({ width: 96, height: 96 }),
     crewExtra: () => 0,
+    crewRight: () => config.get('crewSide') === 'right',
     showListening: rec.fn('showListening'),
     panelSettings: () => config.all(),
     currentCwd: () => os.tmpdir(),
@@ -95,6 +96,23 @@ test('settings:set coerces flags to booleans and clamps size and colony', async 
 
   await ipc.invoke('settings:set', { colony: 'lots' });
   assert.equal(config.get('colony'), 5, 'a non-integer keeps the colony it had');
+});
+
+test('settings:set moves his helpers to his other side, keeping him where he is', async () => {
+  const { ipc, config, d, rec } = setup();
+  d.crewExtra = () => 40;
+  Object.defineProperty(config, 'data', { get: () => config.all() }); // the old settings, as config.js hands them over
+
+  await ipc.invoke('settings:set', { crewSide: 'right' });
+  assert.equal(config.get('crewSide'), 'right');
+  assert.deepEqual(rec.of('critter.setBounds'), [[{ x: 140, y: 100, width: 64, height: 64 }]], 'his window\'s left edge moves to where he stands');
+  assert.equal(rec.of('broadcastSkin').length, 1, 'the crab hears which side');
+
+  await ipc.invoke('settings:set', { crewSide: 'right' });
+  assert.equal(rec.of('critter.setBounds').length, 1, 'the same side again moves nothing');
+
+  await ipc.invoke('settings:set', { crewSide: 'up' });
+  assert.equal(config.get('crewSide'), 'right', 'a side that is not left or right is dropped');
 });
 
 test('settings:set takes Share buttons on celebrations as a flag', async () => {
