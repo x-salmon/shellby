@@ -7,12 +7,15 @@
 // quit, plus the Time page's view, edits and exports (CSV, PDF, clipboard).
 //
 // Nothing here leaves the PC. A window's title is matched and dropped; only
-// project, day and seconds are kept. main.js passes in what it owns.
+// project, day and seconds are kept. With "Sync my hours" on, github/sync.js
+// carries those to your other PCs (sync/hours.js), and the Time page adds
+// theirs in. main.js passes in what it owns.
 const fs = require('fs');
 const path = require('path');
 const tt = require('./index');
 const { timesheetHtml, exportName } = require('./timesheet');
 const gitinfo = require('../gitinfo');
+const syncHours = require('../sync/hours');
 
 const TICK_MS = 15 * 1000;
 const GIT_EVERY_MS = 60 * 1000;
@@ -37,6 +40,7 @@ class TimeTracker {
    *   known() -> [{ key, name }]                 projects Shellby has seen (streaks, stickers)
    *   claudeAt() -> { dirs: [dir], names: [folder name] }  where Claude is working right now
    *   resolve(dir) -> Promise<{ root, name } | null>        the project a folder belongs to
+   *   device?() -> this PC's id (progression/xp.js), so its own share of the synced hours isn't counted twice
    *   electron: { dialog, BrowserWindow, clipboard, shell, app }, panel() -> BrowserWindow
    * }
    */
@@ -63,8 +67,31 @@ class TimeTracker {
   toPanel(channel, payload) { this.deps.toPanel(channel, payload); }
 
   get settings() {
-    const { enabled, idleMinutes, roundMinutes, roundMode, currency } = this.state;
-    return { enabled, idleMinutes, roundMinutes, roundMode, currency };
+    const { enabled, sync, idleMinutes, roundMinutes, roundMode, currency } = this.state;
+    return { enabled, sync, idleMinutes, roundMinutes, roundMode, currency };
+  }
+
+  // ---------------------------------------------------------------- your other PCs
+
+  elsewhere() { return this.deps.config.get('timeElsewhere'); }
+  device() { return this.deps.device?.() || null; }
+
+  /** This PC's books with your other PCs' hours laid over them (just its own with sync off). */
+  combined() {
+    return syncHours.combine(this.state, this.elsewhere(), this.device(), this.deps.known().map(p => p.key));
+  }
+
+  /** How many of your other PCs have sent hours here. */
+  otherPcs() {
+    if (!this.state.sync) return 0;
+    const device = this.device();
+    return Object.entries(syncHours.clean(this.elsewhere()).shares).filter(([dev, sh]) => dev !== device && Object.keys(sh.days).length + Object.keys(sh.manual).length > 0).length;
+  }
+
+  /** A sync brought newer details for a project (its client, rate, name): take them. */
+  adoptSynced() {
+    const next = syncHours.adopt(this.state, this.elsewhere());
+    if (next !== this.state) this.update(next);
   }
 
   start() {
@@ -252,22 +279,29 @@ class TimeTracker {
     return out;
   }
 
-  /** opts: { range, from, to, estimates, only: { key } | { client } } -> a summary for that range. */
+  /**
+   * opts: { range, from, to, estimates, only: { key } | { client }, local } -> a summary for that range.
+   * local: this PC's hours only, without your other PCs' (what it sends to a time tracker).
+   */
   async summary(opts = {}) {
     const range = this.rangeOf(opts.range, opts.from, opts.to);
+    const state = opts.local ? this.state : this.combined();
     const known = this.deps.known().filter(p => !this.ignored(p.key));
     const names = Object.fromEntries(known.map(p => [p.key, p.name]));
+    // Only folders on this PC have commits to look up.
     const keys = new Set([...Object.keys(this.state.projects).filter(k => !this.ignored(k)), ...known.map(p => p.key)]);
     const commits = await this.commitsFor(keys, range);
     const only = opts.only?.key ? { key: String(opts.only.key) } : opts.only && typeof opts.only.client === 'string' ? { client: opts.only.client } : null;
-    return { range, summary: tt.summarize(this.state, range, { commits, estimates: !!opts.estimates, only, names }) };
+    return { range, summary: tt.summarize(state, range, { commits, estimates: !!opts.estimates, only, names }) };
   }
 
   async view(opts = {}) {
     const { range, summary } = await this.summary(opts);
-    const s = this.state;
+    const s = this.combined();
     return {
       settings: this.settings,
+      otherPcs: this.otherPcs(),
+      syncable: !!this.deps.syncable?.(),
       now: this.nowView(),
       range, ranges: tt.ranges(this.now()),
       summary,
@@ -290,16 +324,26 @@ class TimeTracker {
     const was = this.state.enabled;
     this.update(tt.setSettings(this.state, patch));
     if (!was && this.state.enabled) { this.lastTick = this.now(); this.recent = null; }
+    if ('sync' in patch && this.state.sync) this.adoptSynced();
     if (was && !this.state.enabled) this.current = { key: null, why: 'none' };
     return this.settings;
   }
 
+  /** On the books here, known here, or with hours from another PC: one the Time page can change. */
+  canEdit(key) {
+    return !!(tt.projectOf(this.state, key) || this.deps.known().some(p => p.key === key) || tt.projectOf(this.combined(), key));
+  }
+
+  // The name a project goes by, its details from another PC included.
+  nameHere(key) { return tt.projectOf(this.state, key)?.name || tt.projectOf(this.combined(), key)?.name || this.nameOf(key); }
+
   /** A project's client, rate, billable, name or ignored. A known project not yet on the books is put on first. */
   setProject(key, patch) {
     if (typeof key !== 'string') return { ok: false, error: 'Which project?' };
-    const known = this.deps.known().find(p => p.key === key);
-    if (!tt.projectOf(this.state, key) && !known) return { ok: false, error: "That project isn't one Shellby knows." };
-    this.update(tt.setProject(tt.ensureProject(this.state, key, this.nameOf(key)), key, patch));
+    if (!this.canEdit(key)) return { ok: false, error: "That project isn't one Shellby knows." };
+    // Stamped, so the change follows you to your other PCs.
+    const at = syncHours.stampFor(this.state, this.elsewhere(), key, this.now());
+    this.update(tt.setProject(tt.ensureProject(this.state, key, this.nameHere(key)), key, patch, at));
     return { ok: true };
   }
 
@@ -318,9 +362,15 @@ class TimeTracker {
     if (day > tt.dayKey(this.now())) return { ok: false, error: "That day hasn't happened yet." };
     const m = Number(minutes);
     if (!Number.isFinite(m) || Math.abs(m) > 24 * 60) return { ok: false, error: 'Minutes has to be a number, at most a day.' };
-    const known = this.deps.known().find(p => p.key === key);
-    if (!tt.projectOf(this.state, key) && !known) return { ok: false, error: "That project isn't one Shellby knows." };
-    let s = tt.ensureProject(this.state, key, this.nameOf(key));
+    if (!this.canEdit(key)) return { ok: false, error: "That project isn't one Shellby knows." };
+    let s = tt.ensureProject(this.state, key, this.nameHere(key));
+    // Each PC sends only its own hours to a time tracker, so time another PC
+    // kept is taken off there: from here it would still be sent from there.
+    if (m < 0) {
+      const here = Math.max(0, (s.days[day]?.[key] || 0) + (s.manual[day]?.[key] || 0));
+      const there = syncHours.elsewhereOn(this.state, this.elsewhere(), this.device(), key, day, this.deps.known().map(p => p.key));
+      if (-m * 60 > here && there > 0) return { ok: false, error: `Only ${tt.duration(here)} of that day was kept on this PC. Take the rest off on the PC that kept it.` };
+    }
     if (m) s = tt.adjust(s, day, key, Math.round(m * 60));
     if (typeof note === 'string') s = tt.setNote(s, day, key, note);
     this.update(s);

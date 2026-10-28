@@ -321,7 +321,8 @@ class TimeSync {
     const s = this.state;
     const p = PROVIDERS[s.provider];
     const call = this.caller(s.provider, this.deps.secret.get(), s.account);
-    const { summary } = await this.deps.tracker.summary({ range: 'custom', from: day, to: day });
+    // This PC's hours only: each PC sends its own, so synced hours never go over twice.
+    const { summary } = await this.deps.tracker.summary({ range: 'custom', from: day, to: day, local: true });
     const { entries, unmatched } = planDay(summary, day, s, list.options);
     if (!entries.length) return { ok: false, error: unmatched.length ? `None of that day's projects are matched to ${p.name} yet.` : 'No billed time that day to send.', unmatched };
     const sent = { ...(s.sent[day] || {}) };

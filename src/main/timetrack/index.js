@@ -85,6 +85,7 @@ function cleanProject(p) {
     billable: src.billable === undefined ? true : !!src.billable,
     ignored: !!src.ignored,
     added: !!src.added,   // added by hand on the Time page, not just seen
+    at: Number.isFinite(src.at) && src.at > 0 ? src.at : 0, // when you last changed its details, so the newest follows you between PCs
   };
 }
 
@@ -108,6 +109,7 @@ function normalize(raw) {
   const currency = typeof src.currency === 'string' ? src.currency.trim().toUpperCase() : '';
   return {
     enabled: !!src.enabled,
+    sync: !!src.sync,     // this PC's hours go to your other PCs, and theirs come here (sync/hours.js)
     idleMinutes: pick(Number(src.idleMinutes), IDLE_CHOICES, DEFAULTS.idleMinutes),
     roundMinutes: pick(Number(src.roundMinutes), ROUND_CHOICES, DEFAULTS.roundMinutes),
     roundMode: pick(src.roundMode, ROUND_MODES, DEFAULTS.roundMode),
@@ -129,6 +131,7 @@ function setSettings(stateIn, patch = {}) {
   return normalize({
     ...s,
     ...('enabled' in p ? { enabled: !!p.enabled } : {}),
+    ...('sync' in p ? { sync: !!p.sync } : {}),
     ...('idleMinutes' in p ? { idleMinutes: p.idleMinutes } : {}),
     ...('roundMinutes' in p ? { roundMinutes: p.roundMinutes } : {}),
     ...('roundMode' in p ? { roundMode: p.roundMode } : {}),
@@ -155,14 +158,15 @@ function ensureProject(stateIn, key, name, { added = false } = {}) {
   return normalize({ ...s, projects });
 }
 
-/** A project's client, rate, billable flag, display name or ignored flag. */
-function setProject(stateIn, key, patch = {}) {
+/** A project's client, rate, billable flag, display name or ignored flag. at: when (for sync). */
+function setProject(stateIn, key, patch = {}, at = 0) {
   const s = normalize(stateIn);
   if (!projectOf(s, key)) return s;
   const p = patch && typeof patch === 'object' ? patch : {};
   const allowed = ['name', 'client', 'rate', 'billable', 'ignored'].filter(k => k in p);
   const next = { ...projectOf(s, key), ...Object.fromEntries(allowed.map(k => [k, p[k]])) };
   if ('rate' in p && (p.rate === null || p.rate === '')) next.rate = null;
+  if (at) next.at = at;
   return normalize({ ...s, projects: { ...s.projects, [key]: next } });
 }
 
@@ -501,7 +505,7 @@ function toText(summary, label = '') {
 
 module.exports = {
   DEFAULTS, IDLE_CHOICES, ROUND_CHOICES, ROUND_MODES, STICKY_MS, MAX_CREDIT_S, KEEP_DAYS,
-  normalize, setSettings, ensureProject, setProject, removeProject, credit, adjust, setNote,
+  normalize, cleanProject, setSettings, ensureProject, setProject, removeProject, credit, adjust, setNote,
   projectOf, appKind, matchTitle, attribute,
   ranges, daysBetween, roundSeconds, estimateFromCommits, summarize,
   duration, hours, money, lineText, csvCell, toCsv, toText, dayKey,

@@ -211,12 +211,28 @@
     const rounds = F.roundValues(view.choices.round, view.choices.roundModes);
     setOptions($('timeRound'), rounds, F.roundLabel, s.roundMinutes ? `${s.roundMinutes}|${s.roundMode}` : '0|nearest');
     if (document.activeElement !== $('timeCurrency')) $('timeCurrency').value = s.currency;
+    renderSyncHours();
     // Projects you said not to track, with the way back.
     const ignored = view.projects.filter(p => p.ignored);
     $('timeIgnored').hidden = !ignored.length;
     $('timeIgnored').replaceChildren('Not tracked: ', ...ignored.flatMap((p, i) => [i ? ', ' : '', p.name, ' ',
       h('button', { type: 'button', class: 'link-btn', text: 'track again', 'aria-label': `Track ${p.name} again`,
         onclick: () => api.setTimeProject(p.key, { ignored: false }).then(load) })]));
+  }
+
+  // Your hours on your other PCs: only where you switch it on, over the progress sync.
+  function renderSyncHours() {
+    const on = !!view.settings.sync;
+    $('timeSyncHours').checked = on;
+    const pcs = view.otherPcs || 0;
+    $('timeSyncHint').textContent = !on
+      ? 'Adds the hours from your other PCs to these, once it’s on there too. Clients and rates follow whichever PC changed them last.'
+      : !view.syncable ? 'Waiting for sync: sign in to GitHub and tick Sync in Settings, Connections.'
+        : pcs ? `Counting hours from ${pcs} other PC${pcs === 1 ? '' : 's'}. Each PC still sends only its own hours to a time tracker.`
+          : 'On. Hours from your other PCs show here once they sync with it on there too.';
+    $('timePrivacy').textContent = on
+      ? 'Hours go to your other PCs through your private sync gist. Window titles never leave this PC.'
+      : 'Hours are kept only on this PC, never synced or sent anywhere.';
   }
 
   // ------------------------------------------------------------------ sending to a tracker
@@ -345,6 +361,11 @@
   $('timeToggle').addEventListener('change', async e => {
     await api.setTimeSettings({ enabled: e.target.checked });
     SB.toast(e.target.checked ? 'Shellby is keeping time' : 'Time keeping is off. What’s there stays.');
+    load();
+  });
+  $('timeSyncHours').addEventListener('change', async e => {
+    await api.setTimeSettings({ sync: e.target.checked });
+    SB.toast(e.target.checked ? 'Your hours will sync between your PCs' : 'Hours stay on this PC now. Your other PCs drop them at their next sync.');
     load();
   });
   $('timeIdle').addEventListener('change', e => api.setTimeSettings({ idleMinutes: Number(e.target.value) }).then(load));

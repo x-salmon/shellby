@@ -176,8 +176,9 @@ test('time by hand: added, taken off, never below zero, with a note', () => {
 
 test('a project can be named, billed and forgotten', () => {
   let s = withProjects(on(), SHELLBY);
-  s = tt.setProject(s, SHELLBY.key, { name: 'Shellby app', client: 'Harbor Tree', rate: '85.555', billable: false, evil: 1 });
-  assert.deepEqual(s.projects[SHELLBY.key], { name: 'Shellby app', client: 'Harbor Tree', rate: 85.56, billable: false, ignored: false, added: false });
+  // Stamped with when, so the change follows you to your other PCs (sync/hours.js); a patch can't set the stamp itself.
+  s = tt.setProject(s, SHELLBY.key, { name: 'Shellby app', client: 'Harbor Tree', rate: '85.555', billable: false, evil: 1, at: 9 }, 1234);
+  assert.deepEqual(s.projects[SHELLBY.key], { name: 'Shellby app', client: 'Harbor Tree', rate: 85.56, billable: false, ignored: false, added: false, at: 1234 });
   s = tt.setProject(s, SHELLBY.key, { rate: '' });
   assert.equal(s.projects[SHELLBY.key].rate, null);
   s = tt.credit(s, SHELLBY.key, 30, at(0));

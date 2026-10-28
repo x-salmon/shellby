@@ -34,6 +34,7 @@ const stickers = require('../stickers');
 const syncLife = require('../sync/life');
 const syncPrefs = require('../sync/prefs');
 const syncPlans = require('../sync/plans');
+const syncHours = require('../sync/hours');
 const tankShare = require('../tank/share');
 const voice = require('../voice');
 const { KNOWN_ACHIEVEMENTS } = require('../wardrobe/achievements');
@@ -70,6 +71,8 @@ function wireGithub(d) {
         const news = syncPlans.describeArrived(syncPlans.arrived(before, d.config.data));
         if (news) d.send(d.panel, 'github:error', news);
         if (d.life) d.send(d.panel, 'life', d.life.view()); // finds, the bond, games from another PC
+        // A project's client or rate changed on another PC (sync/hours.js); their hours show on the Time page's next redraw.
+        if (JSON.stringify(d.config.data.timeElsewhere) !== JSON.stringify(before.timeElsewhere)) d.timeTracker?.adoptSynced();
         // A friend added on another PC needs their card fetched here.
         if (d.friends && friendsChanged(d.config.data, before)) { d.friends.emit('change', d.friends.view()); d.friends.refresh().catch(() => {}); }
       },
@@ -101,7 +104,7 @@ function wireGithub(d) {
       const tankMoved = 'tank' in patch && JSON.stringify(tankShare.syncable(patch.tank)) !== JSON.stringify(tankShare.syncable(prev.tank));
       const friendsMoved = 'friends' in patch && friendsChanged(patch, prev);
       const eventsMoved = 'events' in patch && JSON.stringify(events.normalize(patch.events)) !== JSON.stringify(events.normalize(prev.events));
-      if (changed || syncLife.moved(patch, prev) || stickersMoved || tankMoved || friendsMoved || eventsMoved || (patch.wardrobe && JSON.stringify(patch.wardrobe.unlocked) !== JSON.stringify(prev.wardrobe?.unlocked))) d.github?.changedSoon();
+      if (changed || syncLife.moved(patch, prev) || syncHours.moved(patch, prev) || stickersMoved || tankMoved || friendsMoved || eventsMoved || (patch.wardrobe && JSON.stringify(patch.wardrobe.unlocked) !== JSON.stringify(prev.wardrobe?.unlocked))) d.github?.changedSoon();
     };
     d.github.restore();
     d.github.schedule();

@@ -10,7 +10,9 @@
 // your settings whichever PC changed it last, snippets and pins item by item
 // (sync/prefs.js). His life (finds, the bond, games, quests, scenes and his
 // personality) is in sync/life.js. Your routines and workflows go one by one,
-// each arriving switched off (sync/plans.js). The gist is yours but is still treated as
+// each arriving switched off (sync/plans.js). The Time page's hours go only
+// from the PCs where you switched that on, each PC's share kept apart
+// (sync/hours.js). The gist is yours but is still treated as
 // untrusted input.
 const { normalizeStats } = require('../wardrobe/achievements');
 const { normalizeXp, mergeXpCounts, cleanByDevice } = require('../progression/xp');
@@ -24,6 +26,7 @@ const newsFeed = require('../news');
 const prefs = require('../sync/prefs');
 const life = require('../sync/life');
 const plans = require('../sync/plans');
+const hours = require('../sync/hours');
 const { findGist } = require('./gists');
 
 const FILE = 'shellby-sync.json';
@@ -64,6 +67,7 @@ function snapshot(get, data = {}, now = Date.now()) {
     prefs: prefs.snapshot(data, stamps.prefs),
     life: life.snapshot(get, xp.device, stamps.life, now),
     plans: plans.snapshot(data, stamps.plans),
+    hours: hours.snapshot(get, xp.device, now),
   });
 }
 
@@ -107,6 +111,8 @@ function clean(raw) {
     life: life.clean(r.life),
     // Routines and workflows, checked as if you'd saved them; none in Autonomous.
     plans: plans.clean(r.plans),
+    // Each PC's hours, from the ones that sync them, and each project's details.
+    hours: hours.clean(r.hours),
   };
 }
 
@@ -148,6 +154,7 @@ function merge(aIn, bIn) {
     prefs: prefs.merge(a.prefs, b.prefs),
     life: life.merge(a.life, b.life),
     plans: plans.merge(a.plans, b.plans),
+    hours: hours.merge(a.hours, b.hours),
   });
 }
 
@@ -189,6 +196,7 @@ function patchFor(merged, get, data = {}) {
   const pl = plans.apply(data, merged.plans);
   Object.assign(patch, pl.values);
   patch.syncStamps.plans = pl.stamps;
+  Object.assign(patch, hours.patchFor(merged.hours, get));
   return patch;
 }
 
@@ -203,7 +211,7 @@ async function readGist(gh, id) {
 
 // What's in the gist is settled: nobody else's legacy is pending.
 const settled = snap => { const c = clean(snap); return { ...c, xp: { ...c.xp, legacyPending: false } }; };
-const content = snap => JSON.stringify({ ...settled(snap), note: 'Shellby sync: trophies, XP, outfit, streak days, shell stickers, the Bugdex, finds, his bond, his tank and its saved layouts, your friends list, settings, routines and workflows. Safe to delete; Shellby makes a new one.' }, null, 1);
+const content = snap => JSON.stringify({ ...settled(snap), note: 'Shellby sync: trophies, XP, outfit, streak days, shell stickers, the Bugdex, finds, his bond, his tank and its saved layouts, your friends list, settings, routines, workflows and the hours from PCs that sync them. Safe to delete; Shellby makes a new one.' }, null, 1);
 
 /**
  * One sync: merge local with the gist, apply what changed locally, push what
@@ -216,7 +224,8 @@ async function syncNow(gh, { get, set, data = () => ({}) }) {
   if (!id) {
     const created = await gh.post('/gists', { public: false, description: 'Shellby sync', files: { [FILE]: { content: content(local) } } });
     // This PC's legacy is now the gist's, so it counts in full from here on.
-    set({ syncGistId: created.id, xp: { ...normalizeXp(get('xp')), legacyPending: false } });
+    // This PC's share of the hours is stamped too, so the next sync agrees.
+    set({ syncGistId: created.id, xp: { ...normalizeXp(get('xp')), legacyPending: false }, ...hours.patchFor(local.hours, get) });
     return { gistId: created.id, pulled: false, pushed: true };
   }
   if (id !== get('syncGistId')) set({ syncGistId: id });
@@ -224,8 +233,12 @@ async function syncNow(gh, { get, set, data = () => ({}) }) {
   const merged = merge(local, remote);
   const pulled = !same(merged, local);
   if (pulled) set(patchFor(merged, get, data()));
-  // Pushed only: this PC's share of the counts is stamped, so the next sync agrees.
-  else if (!same({ life: (get('syncStamps') || {}).life?.tally }, { life: merged.life.tally })) set({ syncStamps: { ...(get('syncStamps') || {}), life: { ...(get('syncStamps') || {}).life, tally: merged.life.tally } } });
+  else {
+    // Pushed only: this PC's share of the counts and of the hours is stamped, so the next sync agrees.
+    if (!same({ life: (get('syncStamps') || {}).life?.tally }, { life: merged.life.tally })) set({ syncStamps: { ...(get('syncStamps') || {}), life: { ...(get('syncStamps') || {}).life, tally: merged.life.tally } } });
+    const hoursPatch = hours.patchFor(merged.hours, get);
+    if (Object.keys(hoursPatch).length) set(hoursPatch);
+  }
   const pushed = !same(merged, remote);
   if (pushed) await gh.patch(`/gists/${encodeURIComponent(id)}`, { files: { [FILE]: { content: content(merged) } } });
   return { gistId: id, pulled, pushed };

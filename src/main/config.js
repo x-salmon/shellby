@@ -136,7 +136,8 @@ const DEFAULTS = {
   checksTrusted: {},  // { project root (lower-case): true | false }: asked once before running a project's own tests (checks.js)
   turnShots: true,   // before/after pictures of a Shellby dev server either side of a turn (see shots.js)
   flaky: null,        // which tests flaked, by project: names and hashes, never output (see flaky/index.js); this PC only
-  timeTracking: null, // seconds on each project per day, clients and rates (see timetrack/index.js); this PC only, never synced
+  timeTracking: null, // seconds on each project per day, clients and rates (see timetrack/index.js); this PC's own, synced only if you switch on "Sync my hours"
+  timeElsewhere: null, // { shares, projects }: the hours your other PCs sync, and each project's details (see sync/hours.js); only sync writes it
   timeSync: null,     // { provider, account, links, sent }: sending days to Toggl, Clockify or Harvest (see timetrack/timesync.js); off until you connect one
   timeSyncToken: null, // ...and its token, encrypted by Windows (never in the clear)
   statusLinePrevious: null, // the Claude Code statusLine Shellby replaced (restored on remove)

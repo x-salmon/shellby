@@ -15,7 +15,7 @@
         <li><b>Claude at work.</b> While Claude works in a project, your terminal and docs count for it.</li>
         <li><b>Git.</b> A commit, checkout or pull says which project you're in.</li>
       </ul>
-      <p>The clock stops when you're away from the keyboard. Window titles are read to find the project and then forgotten: only the project, the day and the minutes are kept, on this PC. Nothing is sent anywhere unless you send it to your time tracker.</p>
+      <p>The clock stops when you're away from the keyboard. Window titles are read to find the project and then forgotten: only the project, the day and the minutes are kept, on this PC. Nothing is sent anywhere unless you send it to your time tracker, or switch on syncing your hours between your PCs.</p>
     </section>
     <p class="tm-now" id="timeNow" aria-live="polite"></p>
     <section class="focus-card" id="focusCard" aria-label="Focus">
@@ -102,6 +102,8 @@
           <label class="field-label">Currency<input class="field slim tm-cur" id="timeCurrency" maxlength="3" spellcheck="false" autocomplete="off" aria-describedby="timeCurHint"></label>
         </div>
         <p class="muted small" id="timeCurHint">Three letters, like USD, EUR or GBP.</p>
+        <label class="toggle"><input type="checkbox" id="timeSyncHours" aria-describedby="timeSyncHint"><span class="switch"></span>Sync my hours between PCs</label>
+        <p class="muted small" id="timeSyncHint"></p>
         <div class="row wrap">
           <button type="button" class="btn ghost slim-btn" id="timeAddFolder">Add a project folder…</button>
         </div>
@@ -109,5 +111,5 @@
         <p class="muted small" id="timeIgnored" hidden></p>
       </section>
     </div>
-    <p class="muted small history-note" id="timePrivacy">Hours are kept only on this PC, never synced or sent anywhere.</p>
+    <p class="muted small history-note" id="timePrivacy"></p>
   </main>

@@ -25,7 +25,7 @@ const streaks = require('../progression/streaks');
 const timetrack = require('../timetrack');
 const { TimeTracker } = require('../timetrack/service');
 const { TimeSync } = require('../timetrack/timesync');
-const { markRed } = require('../progression/xp');
+const { markRed, normalizeXp } = require('../progression/xp');
 const toast = require('../toast');
 
 /** d: what main shares (main.js `shared`). */
@@ -34,7 +34,8 @@ function wireTimetrack(d) {
   //
   // The window in front, Claude's work and git's reflogs say which project you're
   // on; the seconds add up per day for timesheets and invoices. Off until you
-  // turn it on, and it never leaves this PC.
+  // turn it on, and it stays on this PC unless you switch on "Sync my hours"
+  // (sync/hours.js).
 
   // Every project Shellby has seen you work in or ship: [{ key, name }], key the
   // repo's folder (case-folded on Windows, as streaks keep it).
@@ -67,6 +68,9 @@ function wireTimetrack(d) {
         names: (d.external?.summary.sessions || []).filter(s => s.state === 'working' || s.state === 'asking').map(s => s.project),
       }),
       resolve: dir => projectOf(dir),
+      // Your other PCs' hours ride on the progress sync (github/sync.js).
+      device: () => normalizeXp(d.config.get('xp')).device,
+      syncable: () => !!d.github?.can('sync'),
       electron: { dialog, BrowserWindow, clipboard, shell, app },
       panel: () => d.panel,
     });
