@@ -83,7 +83,7 @@ Inside Shellby, your items are known as `<pack id>/<item id>`, so `spooky-extras
 
 Accessories and effect sprites are drawn the same way skins are:
 
-- `palette` maps **one character** to one `#rrggbb` colour. It can have 1–16 entries. `.` can't be used as a key because it means "transparent".
+- `palette` maps **one character** to one `#rrggbb` colour. It can have 1–16 entries. `.` can't be used as a key because it means "transparent", and neither can an emoji (it counts as two characters in a pixel row).
 - `pixels` is a list of rows. Any character that isn't in the palette is transparent. Use `.` for readability.
 - Accessories can be up to **16×16**. Effect sprites can be up to **8×8**.
 
@@ -266,7 +266,7 @@ A voice changes what Shellby says in his speech bubble. He wears **one voice at 
 }
 ```
 
-**Lines.** Each line is plain text of **at most 24 characters**, so it fits his bubble. Emoji and any language are fine. Control characters aren't. Each occasion takes 1–20 lines. Give an occasion three or more lines and he won't repeat himself, because he uses every line before he says one again.
+**Lines.** Each line is plain text of **at most 24 characters**, so it fits his bubble. Emoji and any language are fine. Control characters aren't. Each occasion takes up to 20 lines: Shellby keeps the first 20 and warns about the rest, and the gallery refuses a pack with more. Give an occasion three or more lines and he won't repeat himself, because he uses every line before he says one again.
 
 **Occasions.** Where the voice has lines for an occasion, he uses them instead of his own. That includes the lines Shellby makes up for milestones and memories, so a grumpy crab stays grumpy at his 100th day. For occasions you leave out, `fallback` decides what happens:
 

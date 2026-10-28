@@ -33,7 +33,7 @@
       "type": "object",
       "minProperties": 1,
       "maxProperties": 16,
-      "propertyNames": { "minLength": 1, "maxLength": 1, "not": { "const": "." } },
+      "propertyNames": { "minLength": 1, "maxLength": 1, "pattern": "^[\\u0000-\\uffff]$", "not": { "const": "." } },
       "additionalProperties": { "$ref": "#/$defs/hex" }
     },
     "pixels16": {
@@ -164,12 +164,12 @@
           "type": "object",
           "minProperties": 1,
           "maxProperties": 32,
-          "propertyNames": { "minLength": 1, "maxLength": 1, "not": { "const": "." } },
+          "propertyNames": { "minLength": 1, "maxLength": 1, "pattern": "^[\\u0000-\\uffff]$", "not": { "const": "." } },
           "additionalProperties": { "$ref": "#/$defs/hex" }
         },
         "parts": {
           "type": "object",
-          "propertyNames": { "minLength": 1, "maxLength": 1 },
+          "propertyNames": { "minLength": 1, "maxLength": 1, "pattern": "^[\\u0000-\\uffff]$" },
           "additionalProperties": { "enum": ["shell", "body", "claw", "eyes", "stalks", "legs", "extra"] }
         },
         "pixels": {

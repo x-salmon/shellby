@@ -193,7 +193,7 @@ function wireYearbook(d) {
       speciesName: id => speciesById(id)?.name || null,
       pieceName: decorName,
       deepCuts,
-      reef: null, // the reef's biggest improvement, once reef/index.js keeps a history of readings
+      reef: null, // the reef's biggest improvement, once this reads reef/index.js's series of readings
     }).map(sl => (sl.id === 'bugdex' && sl.nemesis ? { ...sl, nemesis: { ...sl.nemesis, art: bugArt(sl.nemesis.id) } } : sl))
       .map(sl => (sl.id === 'pieces' ? { ...sl, pieces: sl.pieces.slice(0, 12).map(p => ({ ...p, art: decorArt(p.key) })) } : sl));
     const together = friendsSlide(key);

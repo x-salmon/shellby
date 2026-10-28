@@ -23,7 +23,7 @@ The repos you work in, the dev servers in them, the hours you spend, the tests t
 </tr>
 </table>
 
-- **Projects** (<kbd>Ctrl</kbd>+<kbd>7</kbd>) lists your repos: the ones Shellby has seen you work in, plus any you add. **Add a repo…** takes one folder; **Scan a folder…** looks through a folder you pick and lists the repos in it for you to tick, adding nothing by itself. Sign in to GitHub and turn on **Show my repositories** to see those too. A clone and its GitHub repository are one project, however many clones you have.
+- **Projects** (<kbd>Ctrl</kbd>+<kbd>7</kbd>, or <kbd>Ctrl</kbd>+<kbd>2</kbd> in Work mode, which puts the tools first on the bar) lists your repos: the ones Shellby has seen you work in, plus any you add. **Add a repo…** takes one folder; **Scan a folder…** looks through a folder you pick and lists the repos in it for you to tick, adding nothing by itself. Sign in to GitHub and turn on **Show my repositories** to see those too. A clone and its GitHub repository are one project, however many clones you have.
 - **What needs you.** Each row shows where the project lives, with its path under the name, and a few chips for what you'd act on, like failing checks, vulnerabilities, unpushed work and to-dos. Trouble is coloured, the rest stays grey. Time this week and stickers are on the project's page. The line above the list counts them (*"3 need you"*) and says when Shellby last looked (*"updated 4m ago"*). **Recent** and **A–Z** set the order, and the menu next to it filters: **All**, **Needs you** (only those projects, worst first), **On this PC**, **Running** or **GitHub only**. The *"3 need you"* link switches **Needs you** on. The list remembers the order and filter after Shellby restarts.
 - **Pin to top** in a project's **⋯** menu keeps it first on the list, whatever the order. A pin icon by its name shows it.
 - **Search from the keyboard.** <kbd>Ctrl</kbd>+<kbd>F</kbd> on Projects goes to the search box, <kbd>Enter</kbd> opens the top match, and <kbd>Esc</kbd> clears it.
@@ -119,7 +119,7 @@ Three things a project's page can start for you. Each one opens a new conversati
 
 ## Notes
 
-Somewhere to put ideas before they're tasks. **Notes** on the bar (<kbd>Ctrl</kbd>+<kbd>8</kbd>, or **New note** in <kbd>Ctrl</kbd>+<kbd>K</kbd>) keeps a list for each project and one **General** list, and opens on the project you're working in. Type a note and press <kbd>Enter</kbd> (<kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line). Point at a note (or tab into it) for its three buttons:
+Somewhere to put ideas before they're tasks. **Notes** on the bar (<kbd>Ctrl</kbd>+<kbd>8</kbd>, <kbd>Ctrl</kbd>+<kbd>3</kbd> in Work mode, or **New note** in <kbd>Ctrl</kbd>+<kbd>K</kbd>) keeps a list for each project and one **General** list, and opens on the project you're working in. Type a note and press <kbd>Enter</kbd> (<kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line). Point at a note (or tab into it) for its three buttons:
 
 - **Plan:** Claude plans it, and nothing changes until you approve the plan.
 - **Build:** it goes to Claude as written, in your current mode.

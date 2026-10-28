@@ -16,7 +16,7 @@ If the panel is shut on January 2nd, Wrapped is waiting when you open it. Shellb
 Each slide shows up only if there's something to say, so a quiet year is a short Wrapped, never a row of zeros.
 
 1. **Your year in one number:** the XP, levels gained and any Molts
-2. **Days together:** active days, your longest run in a row, tide-out days used, tasks finished
+2. **Days together:** active days, your longest run in a row, tasks finished
 3. **When you worked:** your busiest hour and day of the week, with a heatmap, and your biggest day
 4. **What you shipped:** your top 3 projects by pushes, deploys and pull requests merged
 5. **The Bugdex:** bugs caught, new kinds, your nemesis (the bug you caught most) with its picture, and sparkly ones
@@ -66,5 +66,5 @@ The yearbook stays on this PC. It never syncs, and nothing in it goes on your ca
 - Wrapped week: `yearbook.wrappedWeek(today)` (Jan 2–8 local, `{ year, from, until, dayOf }` or null), `forCard(state, year)` and `cleanCardWrapped` (the calling card's `wrapped`, cleaned in `github/card.js`), and `friendsYears(me, friends, year)` for the slide. The wiring reads the day from `d.today()` (so `SHELLBY_TODAY` works) unless `dev-clock` moved it, adds `week` to `get()`, appends the `friends` slide in the week, gives `d.wrappedForCard()` to the calling card, and turns a Wrapped card saved that week (`card:save` → `d.cardSaved`, or the `card-shared:wrapped` stat) into the `wrapped-week-<year>` stat.
 - Perk levels are constants in the wiring (`DEEP_CUTS_LEVEL = 88`, `FOIL_LEVEL = 77`), read against `d.everLevel()`.
 - Renderer: `html/wrapped.html` (a card-sheet), `wrapped.js` (slides, the 🎁 on Trophies, opening on `onGame` and once on load), `wrapped-card.js` (`SB.wrappedCard.draw` / `share`, through `SB.cardKit`), `wrapped.css`.
-- Not yet: the reef slide's "biggest improvement" (`ctx.reef`) waits for `reef.js` to keep a history of readings, and tide-out days need `streaks.js` to report them (`note('tideout')`).
+- Not yet: the reef slide's "biggest improvement" (`ctx.reef`) waits for `wiring/yearbook.js` to read the reef's series of readings (`reef/index.js`, which keeps them) instead of passing `reef: null`, and tide-out days need `progression/streaks.js` to report them (`note('tideout')`).
 - **End-to-end check:** `node scripts/e2e-wrapped.js` seeds a year, sets the clock to January 1st (nothing) and 2nd (the sheet opens), steps through every slide, makes the card PNG, checks the year is shown and Year One's snowglobe is earned, and that the tank's Milestones shelf has every piece. Then, on January 4th 2027 (`SHELLBY_TODAY`) with fixture friends' cards: the week's banner and its count, the friends' slide after the card and its PNG, and the Wrapped Week trim for sharing the Wrapped card.

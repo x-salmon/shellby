@@ -112,7 +112,7 @@ these for you; you can also write one by hand:
 
 The gallery takes the strict version of this, the skin in
 [`addon.schema.json`](addon.schema.json): no fields beyond these (and
-`basedOn` and `unlock`), parts only from the list below, ids in lowercase. A skin you drop
+`basedOn`, `unlock` and, for a built-in contest winner, `won`), parts only from the list below, ids in lowercase. A skin you drop
 in the folder by hand is read more leniently (an unknown part is ignored), so
 it still loads; the Painter saves only skins the gallery would take.
 

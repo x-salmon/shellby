@@ -5,7 +5,7 @@ release, a new file in a folder, another workflow, a script, Claude Code, or
 you. Steps hand each other data, so "Claude, find out why this failed" can
 decide whether the next step fixes it or tells you about it.
 
-They live on the **Automate** page (the bottom bar, or <kbd>Ctrl</kbd>+<kbd>4</kbd>).
+They live on the **Automate** page (the bottom bar, or <kbd>Ctrl</kbd>+<kbd>4</kbd>, or <kbd>Ctrl</kbd>+<kbd>6</kbd> in Work mode, which puts the tools first on the bar).
 
 ## Three ways to make one
 

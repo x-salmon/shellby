@@ -116,7 +116,7 @@ const EVENTS = freeze([
     id: 'low-tide', name: 'Low Tide', emoji: '🌊', colour: '#4ea8de', season: 'summer', nature: true, start: [7, 10], end: [7, 21],
     lines: ['the sea went out!', 'so much to dig up', 'sparkly sand today', 'low tide! go dig!'],
     blurb: 'The sea\'s gone out further than anyone remembers. Everything\'s washing up.',
-    twist: 'He digs twice as often, and finds are twice as likely to sparkle.',
+    twist: 'He digs twice as often, and finds and bugs are twice as likely to sparkle.',
     bug: 'tide-pool-nudibranch', bugRule: 'Any catch in the Shallows while Low Tide is on.',
     finds: ['stranded-jelly', 'pearl-oyster'], trophy: 'beachcombed',
     boosts: { dig: 2, shiny: { all: 2 } },

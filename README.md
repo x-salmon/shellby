@@ -214,6 +214,26 @@ The rest is there if you want it, and none of it needs Claude or an account:
 <tr>
 <td width="33%" valign="top">
 
+**🖥️ Dev servers he finds** · 0.95<br>
+<sub>A dev server you started in a terminal shows on its project's page, a broken build says so on its card, and a workflow can start when a server crashes or a test flakes, even one Claude Code ran outside Shellby. [See](CHANGELOG.md#0950-dev-servers-he-finds-and-flaky-tests-anywhere)</sub>
+
+</td>
+<td width="33%" valign="top">
+
+**🔔 Answers from your notifications** · 0.94<br>
+<sub>Allow and Deny right on your Android phone's notification, share a screenshot or a link into a new task, and pick the model for a task from your phone. [See](CHANGELOG.md#0940-answers-from-your-notifications)</sub>
+
+</td>
+<td width="33%" valign="top">
+
+**📲 Your phone does more** · 0.92–0.93<br>
+<sub>Answer Claude's questions and read his plans, search past conversations, see what happened while you were away, run the checks again and bring work home, all from your phone. [See](CHANGELOG.md#0920-your-phone-does-more)</sub>
+
+</td>
+</tr>
+<tr>
+<td width="33%" valign="top">
+
 **🪶 A leaner Claude** · 0.91<br>
 <sub>The Lean tab now shows the files, commands and hooks that fill your conversations, why a cache missed, and Claude Code's own count of lines and commits. Helpers can run on Sonnet, and every release is code-signed. [See](CHANGELOG.md#0910-a-leaner-claude-and-a-signed-shellby)</sub>
 
@@ -231,29 +251,9 @@ The rest is there if you want it, and none of it needs Claude or an account:
 
 </td>
 </tr>
-<tr>
-<td width="33%" valign="top">
-
-**⚡ Ultracode** · 0.86<br>
-<sub>The Ultracode chip under the box lets Claude send out a whole crew of agents in the background, with a card for every run and its agents walking out as helper crabs. [See](CHANGELOG.md#0860-ultracode-a-guided-first-run-and-a-steadier-client)</sub>
-
-</td>
-<td width="33%" valign="top">
-
-**📂 All files, beside the chat** · 0.87<br>
-<sub><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> shows the whole project with each file's git mark, lit up as Claude reads, writes and commits. And the mug in the tab strip keeps big conversations warm while you're at lunch. [See](CHANGELOG.md#0870-all-files-beside-the-chat-and-keep-warm)</sub>
-
-</td>
-<td width="33%" valign="top">
-
-**📖 The Logbook and levels to 99** · 0.85<br>
-<sub>Everything going on in one place on his screen, and nearly every level from 20 to 99 unlocks something: shells, tank pieces, effects and perks. [See](CHANGELOG.md#0850-the-logbook-levels-to-99-and-shellby-wrapped)</sub>
-
-</td>
-</tr>
 </table>
 
-<sub>And before that: reef health, Claude Code installed for you, a Council that reads your project first, Shellby Wrapped, background sessions, combining tries, the file viewer, the trail, marks past 99, twelve panes, code in colour, the Outline and Problems, <code>/debug</code>, routines that follow you, the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
+<sub>And before that: all files beside the chat, keep warm, Ultracode, the Logbook and levels to 99, reef health, Claude Code installed for you, a Council that reads your project first, Shellby Wrapped, background sessions, combining tries, the file viewer, the trail, marks past 99, twelve panes, code in colour, the Outline and Problems, <code>/debug</code>, routines that follow you, the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
 
 ## Install
 
@@ -261,11 +261,12 @@ The rest is there if you want it, and none of it needs Claude or an account:
 
 **Crab + Claude Code:**
 
-1. **Install Claude Code** and sign in with your Claude account (Pro or Max):
+1. **Install Claude Code** with Anthropic's installer (the one Shellby's first screen runs for you if you skip this) and sign in with your Claude account (Pro or Max):
    ```powershell
-   npm install -g @anthropic-ai/claude-code
+   irm https://claude.ai/install.ps1 | iex
    claude auth login
    ```
+   `npm install -g @anthropic-ai/claude-code` works too.
 2. Download **Shellby-Setup-x.y.z.exe** (or the portable build) from [Releases](https://github.com/x-salmon/shellby/releases/latest) and run it.
 3. Shellby walks you through a two-step check (CLI found ✓, signed in with a Claude account ✓) and asks how much freedom he gets.
 
