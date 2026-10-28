@@ -115,7 +115,7 @@ function createUsage(d) {
     d.usagePlan?.onSpend(tab, s.weight); // and towards what this turn cost (turncost.js)
   }
 
-  /** Spend that isn't a tab's (a Council sitting): source is spend.record()'s. */
+  /** Spend that isn't a tab's: source is spend.record()'s. */
   function recordSpend(source, weight) {
     spendLedger ??= spend.normalize(d.config.get('spendLedger'));
     spendLedger = spend.record(spendLedger, source, weight, Date.now());

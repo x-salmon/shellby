@@ -16,7 +16,7 @@
 
   const VIEW_NAMES = {
     chat: 'Chat', logbook: 'Logbook', wardrobe: 'Outfits', trophies: 'Trophies', finds: 'Finds', stickers: 'Stickers',
-    bugdex: 'Bugdex', tank: 'Tank', us: 'Us', crew: 'Crew', council: 'Council', projects: 'Projects', history: 'History',
+    bugdex: 'Bugdex', tank: 'Tank', us: 'Us', crew: 'Crew', projects: 'Projects', history: 'History',
     notes: 'Notes', health: 'Health', toolbox: 'Toolbox', workflows: 'Automate', routines: 'Routines', time: 'Time', shop: 'Skill Shop',
   };
 

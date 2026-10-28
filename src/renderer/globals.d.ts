@@ -181,8 +181,6 @@ interface ShellbyPanelExtras {
   toast: any;
   untilTime: any;
   views: any;
-  // council-minutes.js
-  councilMinutes: any;
   // crabonly.js
   applyCrabOnly: any;
   chooseCrabOnly: any;

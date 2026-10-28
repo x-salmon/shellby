@@ -52,7 +52,6 @@ const { registerStartFromIpc } = require('./startfrom');
 const { registerBacklogIpc } = require('./backlog');
 const { registerProjectToolsIpc } = require('./project-tools');
 const { registerNotesIpc } = require('./notes');
-const { registerCouncilIpc } = require('./council');
 const { registerCrewIpc } = require('./crew');
 const { registerNativeIpc } = require('./native');
 const { registerGameIpc } = require('./game');
@@ -257,7 +256,6 @@ function registerIpc(electronIpcMain, d) {
   registerBacklogIpc(ipcMain, d);
   registerProjectToolsIpc(ipcMain, d);
   registerNotesIpc(ipcMain, d);
-  registerCouncilIpc(ipcMain, d);
   registerCrewIpc(ipcMain, d);
   registerNativeIpc(ipcMain, d);
   registerGameIpc(ipcMain, d); // the game screens' one bridge (game-hub.js)

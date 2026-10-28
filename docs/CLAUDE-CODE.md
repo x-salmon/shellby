@@ -128,17 +128,6 @@ More out of your Claude plan, without asking Claude to do any less. Nothing here
 - **Before it gets crowded.** Past 60% full, if the last few turns say it'll be crowded within a couple more, the box offers **Compact** or **Start fresh with a summary** while there's still room to do it calmly. Past 80% the same offer says it's getting crowded. It's one offer that changes its wording, never two, and **Not now** on the early one still lets the crowded one through.
 - **XP for tidying.** Turning off a plugin or server that sat idle is worth XP, once for each one, and so is starting a crowded conversation fresh with a summary. Nothing pays for cheaper tasks, shorter replies or fewer of them.
 
-## The Council
-
-Put a decision to a table of advisor crabs on **Shellby → Council**, with Shellby in the chair at its head. Each one argues their own angle in a speech bubble and drops a vote on the table, and Shellby unrolls a verdict scroll sealed with the decision.
-
-- **He reads the project first.** With **Read <project> first** on, Shellby reads the folder you're working in before anyone speaks, for the facts the question turns on (where the code is, what calls it, what it does and doesn't do), and lays them on the table as numbered cards. Every advisor argues from the same facts and cites them as F1, F2. Each fact links to its file and line; one naming a file that isn't there is left out, and the minutes say so. The read can only read, never leaves the folder, and stops at $0.30.
-- **He picks who sits.** For each question he seats the 3 to 5 advisors whose angles matter most, from nine: the **Skeptic**, **Builder**, **Guard**, **Player**, **Elder**, **Tester**, **Keeper**, **Newcomer** and **Counter**, and up to three of your own. Turn **Shellby picks who sits** off under **Seats** to choose the table yourself.
-- **Two ways to sit.** **Quick** answers for the whole table in one call (about the cost of one reply). **Debate** has each advisor think alone on a small model, then each answers another by name before the chair rules; the minutes and their vote token show who changed their mind. Advisors get no tools and no history, so a sitting stays cheap, and the minutes show what it cost.
-- **A decision.** The verdict is **Do it**, **Don't** or **First, this**, with the best case against it, where they agree and split, the next steps, and what's still open. Advisors who vote "Depends" name the one condition, and each says what would change their mind.
-- **After the verdict:** **Plan the next steps** opens a conversation in Plan mode with the verdict and its facts, as a draft for you to read and send. **Answer what's open** has him read the project for what's still open, and the council sits again on the same question. **Add to Notes**, **Copy minutes** or **Ask a follow-up**. **Past sessions** keeps the last 20 sittings to reread for free.
-- **Their record.** Say how a verdict went (**Followed it, and it worked**, **Followed it, and it didn't**, or **Didn't follow it**), and each advisor's plaque shows how often they were right on verdicts you followed. Once there are two to go on, the chair weighs it.
-
 ## Automate
 
 <p align="center"><img src="img/screenshot-routines.png" width="420" alt="The Routines page: a Friday Downloads tidy running now, a morning briefing, and a disk space watch"></p>

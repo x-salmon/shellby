@@ -124,7 +124,7 @@ test('chapters open by the highest level ever reached', () => {
 });
 
 test('a never-opened screen opens its chapter early, one tutorial at a time, after the open ones are done', () => {
-  const dormant = ['projects', 'bugdex', 'routines', 'council', 'tank'];
+  const dormant = ['projects', 'bugdex', 'routines', 'tank'];
   assert.deepEqual(quests.unlockChapters(null, ctx(1, dormant), 1).opened, [], 'not while Chapter 1 is in progress');
   const s = finishChapter(null, 'first-tide', ctx(1, dormant));
   const r = quests.unlockChapters(s, ctx(1, dormant), 2);

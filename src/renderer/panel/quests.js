@@ -11,7 +11,7 @@
   let view = null; // main's questsView(); null until it arrives (nothing shows)
 
   const SCREEN_LABELS = {
-    projects: 'Projects', bugdex: 'the Bugdex', tank: 'the Tank', routines: 'Routines', workflows: 'Automate', council: 'the Council',
+    projects: 'Projects', bugdex: 'the Bugdex', tank: 'the Tank', routines: 'Routines', workflows: 'Automate',
     crew: 'the Crew', us: 'Us', trophies: 'Trophies', wardrobe: 'Outfits',
   };
 

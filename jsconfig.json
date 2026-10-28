@@ -30,7 +30,6 @@
     "src/main/capture-demo.js",
     "src/main/changes.js",
     "src/main/checks.js",
-    "src/main/council/run.js",
     "src/main/devservers/discover.js",
     "src/main/devservers/doctor-io.js",
     "src/main/devservers/doctor.js",

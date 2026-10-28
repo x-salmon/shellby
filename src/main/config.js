@@ -184,7 +184,6 @@ const DEFAULTS = {
   skillsSeen: null,   // skills Claude has used in Shellby, so the first use of each is noticed (wiring/native.js)
   corrections: null,  // { events, offers }: corrections noted and rules offered from them (see corrections.js); this PC only
   routines: [],       // see routines/index.js
-  council: null,      // { seated, custom, mode, model }: who sits at the Council table (council/prompts.js); null -> the five defaults
   depWatch: null,     // { enabled, lastScanAt, results }: the weekly package check (see depwatch/index.js); off until you turn it on
   plainCards: true, // permission cards and the Working bar say what a step does, in plain words (plain-words.js)
   keybindings: {},  // { shortcut id: [keys] }: the panel's shortcuts you changed (renderer/panel/shortcuts.js)

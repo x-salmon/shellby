@@ -115,19 +115,14 @@ const CHAPTERS = freeze([
     ],
   },
   {
-    id: 'second-opinions', n: 5, icon: '🧐', title: 'Second Opinions', unlock: { level: 15, dormant: ['council'] },
+    id: 'second-opinions', n: 5, icon: '🧐', title: 'Second Opinions', unlock: { level: 15 },
     blurb: 'Reading Claude’s work closely is a skill. It grows.',
-    teaches: 'Quizzes, helpers and the council all feed review mastery.',
+    teaches: 'Quizzes, helpers and look-overs all feed review mastery.',
     quests: [
       {
         id: 'quiz', icon: '❓', title: 'Pass a quiz', go: 'chat', links: ['trophies'],
         why: 'A three-question quiz on a change Claude just made: the fastest way to know you really read it.',
         how: 'Under a reply that changed files, choose Quiz me and answer.',
-      },
-      {
-        id: 'council', icon: '🏛️', title: 'Hear the council out', go: 'council', links: ['council'],
-        why: 'Advisor crabs argue a decision out and he rules on it. Good for the calls you keep putting off.',
-        how: 'Open Council, ask a question and wait for the verdict.',
       },
       {
         id: 'helped', icon: '🦀', title: 'Use a helper’s find', go: 'crew', links: ['crew'],

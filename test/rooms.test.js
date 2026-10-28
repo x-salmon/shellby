@@ -43,7 +43,7 @@ test('finished tasks open rooms in order and report each one once', () => {
     s = r.state;
     opened.push(r.opened.map(x => x.id));
   }
-  assert.deepEqual(opened, [['history', 'projects', 'notes', 'trophies'], ['finds', 'stickers'], ['health', 'toolbox', 'crew', 'reef'], ['bugdex', 'council', 'mastery'], ['workflows', 'us'], ['tank'], []]);
+  assert.deepEqual(opened, [['history', 'projects', 'notes', 'trophies'], ['finds', 'stickers'], ['health', 'toolbox', 'crew', 'reef'], ['bugdex', 'mastery'], ['workflows', 'us'], ['tank'], []]);
   assert.equal(rooms.roomsView(s).all, true);
 });
 
@@ -107,8 +107,8 @@ test('someone new opens only the working rooms however many tasks go by, until t
 test('the core loop opens every game room tasks have already earned, once, each marked new', () => {
   const s = after(4, newcomer());
   const r = rooms.reachCore(s);
-  assert.deepEqual(r.opened.map(x => x.id), ['finds', 'stickers', 'crew', 'reef', 'bugdex', 'council', 'mastery']);
-  assert.deepEqual(rooms.roomsView(r.state).fresh, ['history', 'projects', 'notes', 'trophies', 'health', 'toolbox', 'finds', 'stickers', 'crew', 'reef', 'bugdex', 'council', 'mastery']);
+  assert.deepEqual(r.opened.map(x => x.id), ['finds', 'stickers', 'crew', 'reef', 'bugdex', 'mastery']);
+  assert.deepEqual(rooms.roomsView(r.state).fresh, ['history', 'projects', 'notes', 'trophies', 'health', 'toolbox', 'finds', 'stickers', 'crew', 'reef', 'bugdex', 'mastery']);
   assert.deepEqual(rooms.reachCore(r.state).opened, [], 'reached is reached: not announced twice');
   assert.equal(rooms.reachCore(r.state).state.core, true);
 });

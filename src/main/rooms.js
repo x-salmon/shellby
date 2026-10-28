@@ -30,7 +30,6 @@ const ROOMS = Object.freeze([
   { id: 'crew', game: true, tasks: 3, in: 'wardrobe', name: 'Crew', text: 'The helper crabs Claude sends out, and what each is best at.' },
   { id: 'reef', game: true, chapter: 'reef-wakes', part: 'projects', tasks: 3, name: 'Reef', text: 'A coral reef on each project’s page that grows while its tests, CI and dependencies stay healthy.' },
   { id: 'bugdex', game: true, chapter: 'bug-hunter', tasks: 4, in: 'wardrobe', name: 'Bugdex', text: 'Every bug you two have caught, and the battles to catch them.' },
-  { id: 'council', game: true, chapter: 'second-opinions', tasks: 4, in: 'wardrobe', name: 'Council', text: 'A table of advisor crabs who argue a decision out, with him in the chair.' },
   { id: 'mastery', game: true, chapter: 'long-watch', part: 'trophies', tasks: 4, name: 'Review mastery', text: 'Your eye for review, ranked on the Trophies page: bugs you catch in his changes, quizzes, tiers.' },
   { id: 'workflows', chapter: 'clockwork', tasks: 5, name: 'Automate', text: 'Routines and workflows: work he does on a schedule or when something happens.' },
   { id: 'us', game: true, chapter: 'tides-and-friends', tasks: 5, in: 'wardrobe', name: 'Us', text: 'Your time together, on a beach that gets a sandcastle for every project you ship.' },

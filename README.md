@@ -70,7 +70,7 @@ Windows may show a SmartScreen warning the first time; [Install](#install) expla
 
 ## Everything he can do
 
-Already use Claude Code on this PC? The tool screens are on the bar from the start: **History**, **Projects**, **Notes**, **Health**, the **Toolbox** and **Automate**. New to it, you start with just him, a chat box and **First steps**: open a project, give Claude a task, see what he changed, and say hi to the crab. Each step ticks itself off when you really do it, and any of them can be skipped. The tool screens open as he works: History, Projects and Notes after his first task, Health and the Toolbox after his third, Automate after his fifth. The game side of his screen (Finds, Stickers, Crew, the Bugdex, the Council, Us, the Tank, a project's Reef and Review mastery) waits until First steps are done or he reaches level 3, then opens as tasks earn it, each with a "new" on its door. Can't wait? **More → Show every screen**, or **Settings → General → Screens → Show everything now**, puts them all out, and [Work mode](docs/DESKTOP.md#work-mode) starts with every one of them. If you used Shellby before First steps existed, nothing changes for you.
+Already use Claude Code on this PC? The tool screens are on the bar from the start: **History**, **Projects**, **Notes**, **Health**, the **Toolbox** and **Automate**. New to it, you start with just him, a chat box and **First steps**: open a project, give Claude a task, see what he changed, and say hi to the crab. Each step ticks itself off when you really do it, and any of them can be skipped. The tool screens open as he works: History, Projects and Notes after his first task, Health and the Toolbox after his third, Automate after his fifth. The game side of his screen (Finds, Stickers, Crew, the Bugdex, Us, the Tank, a project's Reef and Review mastery) waits until First steps are done or he reaches level 3, then opens as tasks earn it, each with a "new" on its door. Can't wait? **More → Show every screen**, or **Settings → General → Screens → Show everything now**, puts them all out, and [Work mode](docs/DESKTOP.md#work-mode) starts with every one of them. If you used Shellby before First steps existed, nothing changes for you.
 
 | | |
 |---|---|
@@ -116,7 +116,7 @@ Already use Claude Code on this PC? The tool screens are on the bar from the sta
 **Work your way**
 - <kbd>Ctrl</kbd>+<kbd>K</kbd> for everything, every slash command, and push-to-talk.
 - **All files** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>): the whole project beside the chat, each file with its git mark, lit up as Claude reads, writes and commits. Click a file and it goes along with your messages, so "this" means that file.
-- A **Toolbox** for your skills, agents, MCP servers and hooks, and a **Council** of advisor crabs for big decisions.
+- A **Toolbox** for your skills, agents, MCP servers and hooks.
 - Hand a conversation to the terminal and back, or run Claude Code on another computer over ssh.
 
 **[Everything he does with Claude Code →](docs/CLAUDE-CODE.md)** · **[Already use Claude Code in a terminal or editor? Here's what he adds →](docs/WHY-SHELLBY.md)**

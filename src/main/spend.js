@@ -24,6 +24,7 @@ const DEFAULT_RATE = 3;
 // Opus's are 3 and 5 times that, so weightOf() times this is roughly dollars.
 const USD_PER_WEIGHT = 1e-6;
 
+// 'council' stays so sittings already in the ledger keep their kind.
 const KINDS = new Set(['tab', 'routine', 'workflow', 'council']);
 const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
 const clip = (s, n) => (typeof s === 'string' ? s.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, n) : '');

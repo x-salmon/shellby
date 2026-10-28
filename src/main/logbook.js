@@ -9,7 +9,7 @@
 
 // The panel views a card or a feed may point at (feature-use.js SCREENS ids).
 const KNOWN_VIEWS = Object.freeze([
-  'chat', 'logbook', 'wardrobe', 'trophies', 'finds', 'stickers', 'bugdex', 'tank', 'us', 'crew', 'council',
+  'chat', 'logbook', 'wardrobe', 'trophies', 'finds', 'stickers', 'bugdex', 'tank', 'us', 'crew',
   'projects', 'history', 'notes', 'health', 'toolbox', 'workflows', 'routines', 'time', 'shop',
 ]);
 const KNOWN = new Set(KNOWN_VIEWS);
@@ -40,7 +40,6 @@ const LINK_TEXT = Object.freeze({
   trophies: 'Counts toward a trophy and your level.',
   routines: 'Runs from Automate → Routines.',
   workflows: 'Runs from Automate.',
-  council: 'Sits in the Council.',
   crew: 'Comes from his crew.',
   us: 'Shows on the Us page.',
   finds: 'Goes on the Finds shelf.',

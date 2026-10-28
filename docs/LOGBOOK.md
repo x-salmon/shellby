@@ -114,7 +114,6 @@ stats through `d.onStat` (`STAT_QUESTS`) and XP awards through `d.onAward`
 | `comment`, `branch`, `home`, `reset` | as before |
 | `checkup`, `patched`, `flaky-look`, `away` | `wiring/progress.js` |
 | `cifix` | `wiring/github.js` |
-| `council` | `ipc/council.js` |
 | `look-over` | `ipc/progress.js` (`review:start`) |
 | `workflow` | `wiring/projects.js` (a run that ends ok) |
 | `goal`, `medal` | `wiring/events.js`, which also records `tide-perfect` for a medal with every goal done in the event's first half |

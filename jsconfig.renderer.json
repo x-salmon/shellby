@@ -30,7 +30,6 @@
     "src/renderer/panel/card.js",
     "src/renderer/panel/celebrate.js",
     "src/renderer/panel/composer.js",
-    "src/renderer/panel/council.js",
     "src/renderer/panel/crew.js",
     "src/renderer/panel/feed-asks.js",
     "src/renderer/panel/feed-changes.js",
