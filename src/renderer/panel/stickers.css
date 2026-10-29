@@ -5,8 +5,6 @@ body[data-view="stickers"] .view-stickers { display: block; overflow-y: auto; pa
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
   mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
 }
-.shellby-tabs button { position: relative; }
-.shellby-tabs .st-badge { top: 3px; right: 4px; }
 
 .tier-paper { --tier: var(--line); }
 .tier-vinyl { --tier: #4fb7a3; }

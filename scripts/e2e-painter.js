@@ -132,8 +132,12 @@ async function quit(app, ms = 20000) {
 
     // ---------------------------------------------------------------- 1. the start screen
     console.log('the start screen');
-    check(await panel.ev('document.querySelectorAll(\'.shellby-tabs [data-goto="paint"]\').length === document.querySelectorAll(\'.shellby-tabs\').length'), 'every row of his screen has 🎨 Paint');
-    await panel.ev("document.querySelector('#wardrobeView .shellby-tabs [data-goto=\"paint\"]').click()");
+    check(await panel.ev('!document.querySelector(\'.shellby-tabs [data-goto="paint"]\')'), 'Paint has no tab of its own');
+    await panel.ev("SB.setView('wardrobe')");
+    check(await panel.ev("!!document.querySelector('#wardrobeView .wd-make [data-goto=\"paint\"]')"), 'Outfits has 🎨 Paint');
+    await panel.ev("document.querySelector('#wardrobeView .wd-make').scrollIntoView({ block: 'center' })");
+    await panel.shot('painter-0-outfits');
+    await panel.ev("document.querySelector('#wardrobeView .wd-make [data-goto=\"paint\"]').click()");
     await until("SB.state.view === 'paint' && !document.getElementById('ptStart').hidden", 'the Painter');
     // The tiles come from main (skins, drafts, wishes), a moment after the screen.
     await until("!!document.querySelector('#ptFrom [data-skin=\"classic\"]') && !!document.querySelector('#ptFrom [data-blank=\"skin\"]')", 'Start from: classic, and a blank crab');

@@ -27,6 +27,11 @@
       <button type="button" class="btn ghost slim-btn" id="copyCodeBtn">Copy</button>
       <button type="button" class="btn slim-btn" id="wearCodeBtn">Wear a code…</button>
     </div>
+    <!-- Make him yours: the Painter and the Sticker Book open from here (painter.js, stickers.js) -->
+    <div class="wd-make" role="group" aria-label="Make him yours">
+      <button type="button" class="wd-make-btn" data-goto="paint"><span class="wd-make-icon" aria-hidden="true">🎨</span><b>Paint</b><span class="wd-make-sub">your own colours</span></button>
+      <button type="button" class="wd-make-btn" data-goto="stickers" data-room="stickers"><span class="wd-make-icon" aria-hidden="true">🏷️</span><b>Stickers</b><span class="wd-make-sub">a mark for every repo you ship</span><span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
+    </div>
     <div class="seg wd-slots" id="wdSlots" role="tablist" aria-label="Slots" data-roving>
       <button type="button" role="tab" data-slot="hat" aria-selected="true">Hats</button>
       <button type="button" role="tab" data-slot="face">Face</button>
@@ -43,7 +48,7 @@
     <section class="setting-group wd-options">
       <h3>Options</h3>
       <label class="toggle"><input type="checkbox" id="seasonalToggle"><span class="switch"></span>Seasonal outfits: dress up automatically for Halloween, winter and more</label>
-      <label class="toggle"><input type="checkbox" id="crewToggle"><span class="switch"></span>Helper crabs wear hats: each crew member its own (pick them on the Crew page)</label>
+      <label class="toggle"><input type="checkbox" id="crewToggle"><span class="switch"></span>Helper crabs wear hats: each crew member its own (pick them on the Crew card, in Toolbox → Agents)</label>
       <label class="toggle" id="unlockAllOption" hidden><input type="checkbox" id="unlockAllToggle"><span class="switch"></span>Unlock everything (skip the achievements)</label>
     </section>
     <section class="setting-group wd-packs">

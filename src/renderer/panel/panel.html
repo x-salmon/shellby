@@ -684,9 +684,7 @@
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
@@ -716,6 +714,11 @@
       <button type="button" class="btn ghost slim-btn" id="copyCodeBtn">Copy</button>
       <button type="button" class="btn slim-btn" id="wearCodeBtn">Wear a code…</button>
     </div>
+    <!-- Make him yours: the Painter and the Sticker Book open from here (painter.js, stickers.js) -->
+    <div class="wd-make" role="group" aria-label="Make him yours">
+      <button type="button" class="wd-make-btn" data-goto="paint"><span class="wd-make-icon" aria-hidden="true">🎨</span><b>Paint</b><span class="wd-make-sub">your own colours</span></button>
+      <button type="button" class="wd-make-btn" data-goto="stickers" data-room="stickers"><span class="wd-make-icon" aria-hidden="true">🏷️</span><b>Stickers</b><span class="wd-make-sub">a mark for every repo you ship</span><span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
+    </div>
     <div class="seg wd-slots" id="wdSlots" role="tablist" aria-label="Slots" data-roving>
       <button type="button" role="tab" data-slot="hat" aria-selected="true">Hats</button>
       <button type="button" role="tab" data-slot="face">Face</button>
@@ -732,7 +735,7 @@
     <section class="setting-group wd-options">
       <h3>Options</h3>
       <label class="toggle"><input type="checkbox" id="seasonalToggle"><span class="switch"></span>Seasonal outfits: dress up automatically for Halloween, winter and more</label>
-      <label class="toggle"><input type="checkbox" id="crewToggle"><span class="switch"></span>Helper crabs wear hats: each crew member its own (pick them on the Crew page)</label>
+      <label class="toggle"><input type="checkbox" id="crewToggle"><span class="switch"></span>Helper crabs wear hats: each crew member its own (pick them on the Crew card, in Toolbox → Agents)</label>
       <label class="toggle" id="unlockAllOption" hidden><input type="checkbox" id="unlockAllToggle"><span class="switch"></span>Unlock everything (skip the achievements)</label>
     </section>
     <section class="setting-group wd-packs">
@@ -751,18 +754,8 @@
   <!-- ====================== PAINT: the Crab Painter (painter.js, shared/pixel-grid.js, src/main/wiring/painter.js) ====================== -->
   <main class="view view-paint" id="paintView">
     <div class="view-head">
-      <h2 class="sr-only">Painter</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
-      <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
-        <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
-      </nav>
+      <button type="button" class="back-btn" data-goto="wardrobe">← Outfits</button>
+      <h2>Painter</h2>
       <button type="button" class="btn ghost slim-btn" id="ptMenuBtn" aria-haspopup="menu" title="More" aria-label="More painting options">⋯</button>
     </div>
 
@@ -885,9 +878,7 @@
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
@@ -1008,18 +999,8 @@
   <!-- ====================== STICKERS ====================== -->
   <main class="view view-stickers" id="stickersView">
     <div class="view-head">
-      <h2 class="sr-only">Sticker Book</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
-      <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
-        <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
-      </nav>
+      <button type="button" class="back-btn" data-goto="wardrobe">← Outfits</button>
+      <h2>Sticker Book</h2>
       <button type="button" class="btn ghost slim-btn share-icon" data-share-card title="Share a picture of your Shellby" aria-label="Share a picture of your Shellby">📸</button>
     </div>
     <section class="st-hero" aria-label="His shell">
@@ -1065,9 +1046,7 @@
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
@@ -1099,9 +1078,7 @@
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
@@ -1154,9 +1131,7 @@
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
@@ -1269,9 +1244,7 @@
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>

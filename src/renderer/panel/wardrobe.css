@@ -153,6 +153,21 @@ body[data-view="trophies"] .view-trophies { display: block; overflow-y: auto; pa
 .outfit-code code { font: 500 var(--fs-14) var(--font-mono); color: var(--glass); letter-spacing: .04em; margin-right: auto; user-select: all; }
 .outfit-code .slim-btn { height: 28px; }
 
+/* ---------- make him yours: the Painter and the Sticker Book ---------- */
+.wd-make { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 0 0 12px; }
+.wd-make-btn {
+  position: relative; display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "icon name n" "icon sub sub";
+  align-items: center; column-gap: 10px; padding: 8px 12px; text-align: left;
+  border: 1px solid var(--line-soft); border-radius: var(--r); background: var(--reef); color: var(--sand);
+}
+.wd-make-btn:hover { border-color: var(--line); background: var(--reef-2); }
+.wd-make-btn:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+.wd-make-icon { grid-area: icon; font-size: 20px; }
+.wd-make-btn b { grid-area: name; font-size: var(--fs-13); }
+.wd-make-sub { grid-area: sub; font-size: var(--fs-11); color: var(--sand-dim); }
+.wd-make-btn .n { grid-area: n; font: 600 var(--fs-11) var(--font-mono); color: var(--sand-dim); }
+.wd-make-btn .st-badge { top: 6px; right: 6px; }
+
 .code-box { width: min(100%, 460px); }
 .code-lede { margin: 0 0 8px !important; }
 .code-input { font: 500 var(--fs-16) var(--font-mono); letter-spacing: .06em; text-transform: uppercase; height: 40px; }

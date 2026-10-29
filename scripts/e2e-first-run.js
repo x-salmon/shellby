@@ -77,7 +77,8 @@ async function run(name, settings, body) {
   }
 }
 
-const TABS = "[...document.querySelectorAll('#wardrobeView .shellby-tabs [data-goto]')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.dataset.goto).join()";
+// His screen's doors: its tabs, and the Sticker Book's button on Outfits.
+const TABS = "[...document.querySelectorAll('#wardrobeView .shellby-tabs [data-goto], #wardrobeView .wd-make [data-goto]')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.dataset.goto).join()";
 const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => getComputedStyle(b).display !== 'none' && !b.hidden).map(b => b.dataset.viewBtn || b.id).join()";
 const CARD = "document.querySelector('.feed:not([hidden]) .empty .first-run-card')";
 const NOW_STEP = `(${CARD}?.querySelector('.fr-step.now')?.dataset.step || null)`;
@@ -178,15 +179,15 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
       check(await seeCard(/You two are off/), 'a "First steps done" card says so');
       check(await seeCard(new RegExp(`${ROOMS.find(r => r.id === gameIds[0]).name}.* open`)), 'and a "New room" card opens the game rooms already earned');
       check(await until(`${JSON.stringify(gameIds)}.every(id => (${TABS}).split(',').includes(id))`), `${gameIds.join(' and ')} join his screen`);
-      check(await ev(`${JSON.stringify(gameIds)}.every(id => document.querySelector('#wardrobeView .shellby-tabs [data-goto="' + id + '"]').classList.contains('room-fresh'))`), 'each with a "new" on its tab');
+      check(await ev(`${JSON.stringify(gameIds)}.every(id => document.querySelector('#wardrobeView [data-goto="' + id + '"]').classList.contains('room-fresh'))`), 'each with a "new" on its tab');
       check(await until("!document.body.classList.contains('newcomer')"), 'the newcomer words go');
       await closeCards();
       await savePng(send, path.join(SHOTS, '3-new-rooms.png'));
 
       // 4. A visit takes its "new" off; Show everything now opens the rest.
       await ev(`SB.setView(${JSON.stringify(gameIds[0])})`);
-      check(await until(`!document.querySelector('#wardrobeView .shellby-tabs [data-goto="${gameIds[0]}"]').classList.contains('room-fresh')`), `visiting ${gameIds[0]} takes its "new" off`);
-      check(await ev(`document.querySelector('#wardrobeView .shellby-tabs [data-goto="${gameIds[1]}"]').classList.contains('room-fresh')`), `and leaves ${gameIds[1]}'s`);
+      check(await until(`!document.querySelector('#wardrobeView [data-goto="${gameIds[0]}"]').classList.contains('room-fresh')`), `visiting ${gameIds[0]} takes its "new" off`);
+      check(await ev(`document.querySelector('#wardrobeView [data-goto="${gameIds[1]}"]').classList.contains('room-fresh')`), `and leaves ${gameIds[1]}'s`);
       await ev("SB.setView('settings')");
       await ev("SB.$('showEverythingBtn').click()");
       check(await until("SB.$('showEverythingBtn').disabled"), 'Show everything now opens every screen');

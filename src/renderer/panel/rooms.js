@@ -14,11 +14,11 @@
   /** @type {any} */
   let view = null; // main's roomsView(); null until it arrives (everything shows)
 
-  // Every door: the bar's buttons, and the tabs along the top of his screen
-  // (repeated on each of its pages).
+  // Every door: the bar's buttons, the tabs along the top of his screen
+  // (repeated on each of its pages), and the Sticker Book's button on Outfits.
   const doors = () => [
     ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.dock [data-view-btn]'))].map(b => ({ id: b.dataset.viewBtn, b })),
-    ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.shellby-tabs [data-goto]'))].map(b => ({ id: b.dataset.goto, b })),
+    ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.shellby-tabs [data-goto], .wd-make [data-goto]'))].map(b => ({ id: b.dataset.goto, b })),
   ].filter(d => d.id !== 'wardrobe' && d.id !== 'chat');
 
   // Every room still shut, doors or not (the Reef card has none).
