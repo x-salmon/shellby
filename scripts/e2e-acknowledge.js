@@ -45,8 +45,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const isNew = key => ev(`SB.state.wardrobe.accessories.concat(SB.state.wardrobe.effects).find(i => i.key === '${key}').isNew`);
     const stored = () => ev('shellby.wardrobeView().then(v => v.accessories.concat(v.effects).filter(i => i.isNew).map(i => i.key).sort())');
     const shot = async name => { if (SHOTS) await savePng(send, path.join(SHOTS, `${name}.png`)); };
+    // In view first: a mouse moved past the window's edge reaches nothing (the grid sits below Outfits' Paint and Stickers row).
     const hover = async sel => {
-      const r = await ev(`(b => b && { x: b.left + b.width / 2, y: b.top + b.height / 2 })(document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect())`);
+      const r = await ev(`(el => { if (!el) return null; el.scrollIntoView({ block: 'center' }); const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })(document.querySelector(${JSON.stringify(sel)}))`);
       if (!r) return false;
       await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: r.x, y: r.y });
       await wait(400);
