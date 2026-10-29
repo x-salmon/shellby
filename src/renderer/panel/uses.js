@@ -12,6 +12,8 @@
   // Count each arrival, not each re-render of the same screen.
   const setView = SB.setView;
   SB.setView = target => {
+    // An old name that does its own going (core.js VIEW_ALIAS) counts where it lands, once.
+    if (typeof SB.VIEW_ALIAS[target] === 'function') return setView(target);
     const was = state.view;
     setView(target);
     if (state.view !== was && !SB.solo) api.featureUsed(state.view);

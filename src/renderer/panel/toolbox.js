@@ -107,7 +107,9 @@
   // The tab, sources and order you left, for next time.
   const VIEW_KEY = 'shellby.toolbox.view';
   function saveView() {
-    try { window.localStorage.setItem(VIEW_KEY, JSON.stringify({ kind, sources, sort })); } catch { /* lasts this session */ }
+    // Get more isn't kept as where the Toolbox opens: opening it fetches every marketplace's list.
+    const keep = kind === 'shop' ? lastKind.tools : kind;
+    try { window.localStorage.setItem(VIEW_KEY, JSON.stringify({ kind: keep, sources, sort })); } catch { /* lasts this session */ }
   }
   function loadView() {
     let v;
@@ -574,6 +576,7 @@
     setup.refresh(); // hooks and memory: rescanned when stale, re-renders when it lands
     syncTabs();
     SB.crewCard?.(kind === 'agent'); // the helper crabs sit over the Agents list (crew.js)
+    SB.toolboxShop?.shown(kind === 'shop'); // Get more draws its own pane (shop.js, which loads after this file)
     $('toolboxBadge').hidden = true;
 
     const search = $('toolSearch');
@@ -585,8 +588,7 @@
     const q = search.value.trim().toLowerCase();
     if (setup.owns(kind)) { $('setupPane').hidden = false; setup.render(kind, q); return; }
     setup.hide();
-    SB.toolboxShop?.shown(kind === 'shop'); // shop.js loads after this file
-    if (kind === 'shop') { list.hidden = true; return; } // shop.js draws its own pane
+    if (kind === 'shop') { list.hidden = true; return; }
     if (kind === 'lean') return SB.lean.render(q);
     if (kind === 'snippet') return SB.toolboxSnippets.render(q);
     if (kind === 'mod') return SB.toolboxMods.render(q);
@@ -756,9 +758,26 @@
   }
 
   // /permissions, /mcp: straight to that tab.
+  // The tab is picked first, so the Toolbox draws once, on it.
   SB.showToolbox = (k) => {
+    const to = ALIAS[k] || k;
+    if (GROUP[to]) {
+      clearTimeout(searchWait ?? undefined);
+      kind = to;
+      lastKind[GROUP[kind]] = kind;
+      saveView();
+    }
     SB.setView('toolbox');
-    choose(k);
+  };
+
+  // Leaving the Toolbox puts the Crew card and Get more away, so coming back is an
+  // arrival again: a fresh roster, the plugin list loaded and the visit counted.
+  const setView = SB.setView;
+  SB.setView = target => {
+    setView(target);
+    if (state.view === 'toolbox') return;
+    SB.crewCard?.(false);
+    SB.toolboxShop?.shown(false);
   };
 
   loadView();

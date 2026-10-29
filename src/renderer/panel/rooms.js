@@ -102,6 +102,11 @@
     SB.toast('Every screen is on the bar now.');
   };
   SB.hasLockedRooms = () => lockedIds().length > 0;
+  /** A room was seen: its "new" goes, if it had one. */
+  SB.seeRoom = id => {
+    if (!freshIds().includes(id)) return;
+    api.seenRoom(id).then(v => received({ view: v })).catch(() => {});
+  };
 
   $('dockMore').addEventListener('click', () => SB.toast(moreText(), { action: 'Show every screen', onAction: SB.openAllRooms, ms: 5000 }));
 
@@ -113,8 +118,9 @@
     if (PART_OF[target] && SB.isRoomLocked(target)) api.openRoom(target).then(v => received({ view: v })).catch(() => {});
     // A tab of his screen is its own door; the bar's button is the screen's.
     const fresh = new Set(freshIds());
-    // A room that's a card counts as seen when its screen is.
-    for (const [part, on] of Object.entries(PART_OF)) if (on === state.view && fresh.has(part)) api.seenRoom(part).then(v => received({ view: v })).catch(() => {});
+    // A room that's a card counts as seen when its screen is; the Crew's only shows
+    // on the Toolbox's Agents tab, so crew.js says when it's seen (SB.seeRoom).
+    for (const [part, on] of Object.entries(PART_OF)) if (part !== 'crew' && on === state.view && fresh.has(part)) SB.seeRoom(part);
     for (const id of new Set([state.view, SB.NAV_SECTION[state.view] || state.view])) {
       if (SB.isRoomLocked(id)) api.openRoom(id).then(v => received({ view: v })).catch(() => {}); // the screen showed; only the door stays shut
       else if (fresh.has(id) && id === state.view) api.seenRoom(id).then(v => received({ view: v })).catch(() => {}); // its "new" goes

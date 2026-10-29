@@ -175,11 +175,13 @@ interface ShellbyPanelExtras {
   relTime: any;
   remotePlace: any;
   renderMarkdownInto: any;
+  reveal: any;
   shortPath: any;
   sprite: any;
   tildify: any;
   toast: any;
   untilTime: any;
+  VIEW_ALIAS: any;
   views: any;
   // crabonly.js
   applyCrabOnly: any;
@@ -190,6 +192,9 @@ interface ShellbyPanelExtras {
   startClaudeSetup: any;
   // credits.js
   credits: any;
+  // crew.js
+  crewCard: any;
+  crewPill: any;
   // debug-mode.js
   renderDebug: any;
   startDebug: any;
@@ -385,6 +390,7 @@ interface ShellbyPanelExtras {
   isGameWaiting: any;
   isRoomLocked: any;
   openAllRooms: any;
+  seeRoom: any;
   // routines-cloud.js
   renderCloudRoutines: any;
   // routines.js
@@ -407,6 +413,7 @@ interface ShellbyPanelExtras {
   shipIt: any;
   // shop.js
   openShop: any;
+  toolboxShop: any;
   // slash-menu.js
   fitMenu: any;
   hideSlash: any;

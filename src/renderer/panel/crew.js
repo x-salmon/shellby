@@ -168,6 +168,7 @@
     const was = !$('crewCard').hidden;
     $('crewCard').hidden = !on;
     if (!on || was) return;
+    SB.seeRoom?.('crew'); // rooms.js: its "new" goes once the card is in sight
     render();
     api.getCrew().then(apply);
   };
