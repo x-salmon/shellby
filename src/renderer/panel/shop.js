@@ -1,4 +1,6 @@
-/* Shellby panel — Skill Shop: browse and install plugins from Claude Code's marketplaces. */
+/* Shellby panel — Skill Shop: browse and install plugins from Claude Code's
+   marketplaces, the Toolbox's Get more tab (toolbox.js shows the pane; going
+   to `shop` by name opens the Toolbox there). */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
@@ -120,7 +122,7 @@
   }
 
   function render() {
-    if (state.view !== 'shop') return; // async results may land after you've left
+    if (state.view !== 'toolbox' || $('shopPane').hidden) return; // async results may land after you've left
     const list = $('shopList');
     const sh = state.shop;
     renderSuggest(sh);
@@ -165,13 +167,9 @@
     render();
   }
 
-  SB.openShop = () => {
-    SB.setView('shop');
-    load(); // cheap: main serves a cached list for 5 minutes
-  };
+  SB.openShop = () => SB.showToolbox('shop'); // its pane loads the list as it shows (toolboxShop.shown)
+  SB.VIEW_ALIAS.shop = SB.openShop;
 
-  $('shopBtn').addEventListener('click', SB.openShop);
-  $('shopBack').addEventListener('click', () => SB.setView('toolbox'));
   $('shopRefresh').addEventListener('click', () => load({ refresh: true }));
   $('shopSearch').addEventListener('input', render);
   $('shopMarket').addEventListener('change', render);
@@ -182,7 +180,17 @@
     if (v) addMarketplace(v);
   });
 
-  SB.views.shop = {
-    render, // SB.NAV_SECTION keeps the Toolbox lit while the shop is open
+  SB.toolboxShop = {
+    /** The Toolbox drew its Get more tab (on) or another one. Arriving loads the list
+     *  (cheap: main serves a cached one for 5 minutes) and counts as a visit to the shop. */
+    shown(on) {
+      const pane = $('shopPane');
+      const was = !pane.hidden;
+      pane.hidden = !on;
+      if (!on) return;
+      if (was) { render(); return; }
+      if (!SB.solo) api.featureUsed('shop');
+      load();
+    },
   };
 })();

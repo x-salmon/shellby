@@ -390,8 +390,8 @@ SB.views = {};  // name -> { render?(), parent?() (where Back goes, when the vie
 // of the Shellby screen, Paint and Stickers open from Outfits, Routines sits beside
 // Workflows under Automate), and which screens sit one level down, so Back/Esc go
 // up to their parent.
-SB.NAV_SECTION = { shop: 'toolbox', paint: 'wardrobe', trophies: 'wardrobe', stickers: 'wardrobe', finds: 'wardrobe', tank: 'wardrobe', us: 'wardrobe', routines: 'workflows', viewer: 'chat' };
-SB.PARENT_VIEW = { shop: 'toolbox', paint: 'wardrobe', stickers: 'wardrobe' };
+SB.NAV_SECTION = { paint: 'wardrobe', trophies: 'wardrobe', stickers: 'wardrobe', finds: 'wardrobe', tank: 'wardrobe', us: 'wardrobe', routines: 'workflows', viewer: 'chat' };
+SB.PARENT_VIEW = { paint: 'wardrobe', stickers: 'wardrobe' };
 SB.homeView = () => (SB.state.settings.crabOnly ? 'health' : 'chat');
 // Screens folded into another one: the old name (from main, a quest, Ctrl+K, a toast)
 // goes to the screen it's on now, and the part after # comes into view there. A

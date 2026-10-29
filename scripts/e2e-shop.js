@@ -5,6 +5,7 @@
 //   node scripts/e2e-shop.js
 const { spawn } = require('child_process');
 const path = require('path');
+const { savePng } = require('./lib/shot');
 const os = require('os');
 const fs = require('fs');
 
@@ -38,10 +39,8 @@ async function cdp(wsUrl) {
     if (r.result?.exceptionDetails) throw new Error(r.result.exceptionDetails.exception?.description || 'eval failed');
     return r.result?.result?.value;
   };
-  const shot = async file => {
-    const r = await send('Page.captureScreenshot', { format: 'png' });
-    fs.writeFileSync(file, Buffer.from(r.result.data, 'base64'));
-  };
+  // An unpainted window (the confirm, off-screen in a test run) never answers a screenshot: savePng gives up after 10 s.
+  const shot = file => savePng(async (method, params) => (await send(method, params)).result, file);
   return { send, evaluate, shot, close: () => ws.close() };
 }
 
@@ -59,18 +58,19 @@ async function until(fn, what, ms = 30000) {
     const panel = await cdp((await target('panel.html')).webSocketDebuggerUrl);
     await until(() => panel.evaluate('!!window.SB && !!SB.state.version'), 'panel boot');
     await panel.evaluate(`(async () => { await shellby.setSettings({ onboarded: true, crabOnly: false }); SB.state.settings.onboarded = true; shellby.claudeStatus(); })()`);
-    await panel.evaluate(`document.body.dataset.view = 'chat'; SB.setView('toolbox'); document.getElementById('shopBtn').click()`);
+    await panel.evaluate(`document.body.dataset.view = 'chat'; SB.setView('toolbox'); document.querySelector('#toolGroups [data-group="shop"]').click()`);
     await until(() => panel.evaluate(`document.querySelectorAll('#shopList .shop-row').length > 0 || /Couldn|not installed/.test(document.getElementById('shopList').textContent)`), 'plugin list', 60000);
 
     const info = await panel.evaluate(`({
       view: document.body.dataset.view,
+      pane: !document.getElementById('shopPane').hidden,
       rows: document.querySelectorAll('#shopList .shop-row').length,
       first: document.querySelector('#shopList .shop-row strong')?.textContent,
       counts: [...document.querySelectorAll('#shopTabs .n')].map(n => n.textContent),
       empty: document.querySelector('#shopList .history-empty')?.textContent || null,
     })`);
     console.log('shop:', JSON.stringify(info));
-    if (info.view !== 'shop' || info.rows < 1) throw new Error('shop did not list plugins');
+    if (info.view !== 'toolbox' || !info.pane || info.rows < 1) throw new Error('shop did not list plugins');
     await panel.shot(path.join(profile, 'shop-browse.png'));
 
     await panel.evaluate(`const s = document.getElementById('shopSearch'); s.value = 'code-review'; s.dispatchEvent(new Event('input'))`);

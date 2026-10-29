@@ -3,7 +3,6 @@
     <div class="view-head">
       <h2>Toolbox</h2>
       <button type="button" class="btn ghost slim-btn" id="rescanBtn" title="Scan again">Rescan</button>
-      <button type="button" class="btn primary slim-btn" id="shopBtn" title="Browse and install skills from Claude Code plugin marketplaces">Get more</button>
     </div>
     <p class="view-lede">What Claude Code can use, and the setup behind every conversation. Anything Shellby builds for itself comes first, tagged <span class="new-pill">new</span>.</p>
     <div class="toolbox-controls">
@@ -12,6 +11,7 @@
         <button type="button" role="tab" data-group="setup" title="Hooks, permission rules and memory files">Setup</button>
         <button type="button" role="tab" data-group="lean" title="What every conversation carries before your first word, and what sits idle">Lean <span class="n"></span></button>
         <button type="button" role="tab" data-group="team" title="This repo's team pack: .shellby/team.json">Team <span class="n"></span></button>
+        <button type="button" role="tab" data-group="shop" title="Browse and install skills from Claude Code plugin marketplaces">Get more</button>
       </div>
       <div class="kind-chips" id="toolTabs" role="tablist" aria-label="Kind" data-roving>
         <button type="button" role="tab" data-kind="tool" aria-selected="true">All <span class="n"></span></button>
@@ -25,7 +25,7 @@
         <button type="button" role="tab" data-kind="rule" title="Permission rules: allow, ask, deny" hidden>Rules <span class="n"></span></button>
         <button type="button" role="tab" data-kind="memory" hidden>Memory <span class="n"></span></button>
       </div>
-      <div class="tool-find">
+      <div class="tool-find" id="toolFind">
         <input type="search" id="toolSearch" class="field" placeholder="Search skills…" aria-label="Search skills">
         <select class="field" id="toolSource" aria-label="Where they come from"></select>
         <select class="field" id="toolSort" aria-label="Order">
@@ -55,5 +55,30 @@
       </details>
     </section>
     <div class="setup-pane" id="setupPane" hidden></div>
+    <!-- Get more: the Skill Shop, plugins from Claude Code's marketplaces (shop.js) -->
+    <section class="shop-pane" id="shopPane" aria-label="Get more: the Skill Shop" hidden>
+      <div class="shop-head">
+        <p class="muted small">Skills, agents and commands from Claude Code plugin marketplaces. Installed plugins are ready in new conversations.</p>
+        <button type="button" class="btn ghost slim-btn" id="shopRefresh" title="Fetch the latest plugin lists">Refresh</button>
+      </div>
+      <div class="shop-suggest" id="shopSuggest" hidden></div>
+      <div class="toolbox-controls">
+        <input type="search" id="shopSearch" class="field" placeholder="Search plugins…" aria-label="Search plugins">
+        <div class="seg" id="shopTabs" role="tablist" aria-label="Show" data-roving>
+          <button type="button" role="tab" data-filter="all" aria-selected="true">Browse <span class="n"></span></button>
+          <button type="button" role="tab" data-filter="installed">Installed <span class="n"></span></button>
+        </div>
+        <select class="field" id="shopMarket" aria-label="Marketplace"></select>
+      </div>
+      <ul class="tool-list" id="shopList"></ul>
+      <details class="shop-add">
+        <summary>Add a marketplace</summary>
+        <form class="row" id="shopAddForm">
+          <input type="text" class="field" id="shopAddInput" placeholder="owner/repo or https://…" aria-label="Marketplace GitHub repo or URL" spellcheck="false">
+          <button type="submit" class="btn slim-btn">Add</button>
+        </form>
+        <p class="muted small">Anyone can publish a marketplace. Only add ones you trust.</p>
+      </details>
+    </section>
     <ul class="tool-list" id="toolList"></ul>
   </main>

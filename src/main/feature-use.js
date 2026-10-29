@@ -12,7 +12,7 @@ const SCREENS = Object.freeze([
   { id: 'chat', name: 'Chat', text: 'Where you and Claude work.' },
   ...ROOMS.filter(r => !r.part).map(({ id, name, text, in: inside }) => ({ id, name, text, ...(inside ? { in: inside } : {}) })), // a part (the Reef) is a card, not a screen
   { id: 'wardrobe', name: 'Outfits', text: 'His wardrobe: hats, shells and colours, more as he levels up.' },
-  { id: 'shop', in: 'toolbox', name: 'Skill Shop', text: 'Plugins with skills, agents and tools to add to Claude Code.' },
+  { id: 'shop', in: 'toolbox', name: 'Skill Shop', text: 'The Toolbox’s Get more tab: plugins with skills, agents and tools to add to Claude Code.' },
   { id: 'routines', in: 'workflows', name: 'Routines', text: 'A prompt that runs on a schedule, or Claude cloud routines.' },
   { id: 'time', in: 'history', name: 'Time', text: 'Hours per project from your conversations, for a timesheet.' },
 ]);

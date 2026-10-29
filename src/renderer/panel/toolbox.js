@@ -24,9 +24,9 @@
   // Which section each kind sits in, and the kind a section opens on (the one you left it on).
   const GROUP = {
     tool: 'tools', skill: 'tools', agent: 'tools', command: 'tools', mcp: 'tools', mod: 'tools', snippet: 'tools',
-    hook: 'setup', rule: 'setup', memory: 'setup', lean: 'lean', team: 'team',
+    hook: 'setup', rule: 'setup', memory: 'setup', lean: 'lean', team: 'team', shop: 'shop',
   };
-  const lastKind = { tools: 'tool', setup: 'hook', lean: 'lean', team: 'team' };
+  const lastKind = { tools: 'tool', setup: 'hook', lean: 'lean', team: 'team', shop: 'shop' };
   const ALIAS = { permissions: 'rule' }; // /permissions in the composer
   let kind = 'tool';
   const SEARCH_WHAT = {
@@ -563,7 +563,8 @@
       if (n) n.textContent = countOf(k);
       b.setAttribute('aria-selected', String(k === kind));
     });
-    $('toolTabs').hidden = group === 'lean' || group === 'team';
+    $('toolTabs').hidden = group === 'lean' || group === 'team' || group === 'shop';
+    $('toolFind').hidden = group === 'shop'; // the shop has its own search
   }
 
   function render() {
@@ -584,6 +585,8 @@
     const q = search.value.trim().toLowerCase();
     if (setup.owns(kind)) { $('setupPane').hidden = false; setup.render(kind, q); return; }
     setup.hide();
+    SB.toolboxShop?.shown(kind === 'shop'); // shop.js loads after this file
+    if (kind === 'shop') { list.hidden = true; return; } // shop.js draws its own pane
     if (kind === 'lean') return SB.lean.render(q);
     if (kind === 'snippet') return SB.toolboxSnippets.render(q);
     if (kind === 'mod') return SB.toolboxMods.render(q);
