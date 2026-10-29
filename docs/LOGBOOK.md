@@ -8,8 +8,11 @@ one to the next. The plan behind both is in
 
 ## The Logbook
 
-The first tab of his screen (`rooms.js` room `logbook`, open from the start).
-Ctrl+K finds it as "Shellby: Logbook".
+A section of the Trophies page, which is open from the start (`rooms.js` room
+`trophies`, tasks 0). It used to be a tab of its own; anything that still asks
+for the `logbook` view lands on Trophies with the Logbook in view (core.js
+`VIEW_ALIAS`). Ctrl+K finds it as "Shellby: Logbook". Arriving at Trophies
+counts as opening it (`lastOpenAt`, the Logbook Lectern's count).
 
 For someone new, a card about a room that hasn't opened yet waits with it
 (`loose` with the Bugdex, `tide` with Us, `reef` with the Reef, `review` with

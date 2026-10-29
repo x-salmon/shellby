@@ -1,7 +1,7 @@
 # Making a Shellby skin
 
 The easiest way is the **Painter**: open Shellby's screen (**Shellby** in the bar
-at the bottom of the panel) and pick **🎨 Paint**. No JSON, no text editor.
+at the bottom of the panel) and, on Outfits, pick **🎨 Paint**. No JSON, no text editor.
 
 ## Paint one
 

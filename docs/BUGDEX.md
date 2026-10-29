@@ -122,7 +122,7 @@ Clean fixes, held fixes, sealed rematches and cleared nests all count toward tro
 
 ### Your crew pitches in
 
-A helper Claude sends out joins the battle as one of your crew. Each crew member keeps count of the bugs it helped beat, and becomes a specialist against the kind it beats most (once it has beaten 3), which makes its assists count double. You'll find it on **Shellby → Crew**.
+A helper Claude sends out joins the battle as one of your crew. Each crew member keeps count of the bugs it helped beat, and becomes a specialist against the kind it beats most (once it has beaten 3), which makes its assists count double. You'll find it on the Crew card, in **Toolbox → Agents**.
 
 ### Sound, motion and screen readers
 

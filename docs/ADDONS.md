@@ -8,7 +8,7 @@ A wardrobe pack is **one JSON file** that adds things Shellby can wear or show:
 - **Voices**: new ways for him to talk, like a pirate, a grump, or another language. See [Voices](#voices).
 - **Scenes**: little stories he acts out in beats, like building a sandcastle that crumbles. See [Scenes](#scenes).
 
-Painting a single skin, accessory, effect or piece of tank decor? The **Painter** (Shellby's screen → **🎨 Paint**, see [SKINS.md](SKINS.md)) makes the pack for you, checks it and can share it to the gallery in one click. This file is the format underneath, for packs with several things in them (or the web [Pack Studio](https://getshellby.com/community/studio/)).
+Painting a single skin, accessory, effect or piece of tank decor? The **Painter** (Shellby's screen → Outfits → **🎨 Paint**, see [SKINS.md](SKINS.md)) makes the pack for you, checks it and can share it to the gallery in one click. This file is the format underneath, for packs with several things in them (or the web [Pack Studio](https://getshellby.com/community/studio/)).
 
 Packs hold **data only**: pixels, colours, short lines of text and a few settings. There is no code, scripting, HTML or links that run. Shellby checks every pack when it loads, so a broken pack can't break the app. The strict rules are in [`addon.schema.json`](addon.schema.json), and editors like VS Code can use that file to check your pack as you type.
 
