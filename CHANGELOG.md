@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.95.3: Fewer rooms
+
+### New
+- **His helpers can line up on his right.** If Shellby lives at the left edge of your screen, set Settings → Shellby → Look → "Helpers line up on his" to Right and the helper crabs (and a visiting friend's crab) walk out on his other side instead of off the edge of the monitor. Shellby stays exactly where he is.
+- **/context draws a bar.** Instead of a long table, you see how full the context window is and what's filling it, biggest first, with Claude Code's full breakdown folded underneath.
+- **/ultraplan from the box.** Type `/ultraplan` and what to plan, or pick "Plan what's in the box in the cloud" in the palette. Claude Code opens in a terminal, asks before the cloud session starts, and the plan comes back there for you to edit and approve.
+- **/subtask sends a helper off with the whole conversation.** A forked helper crab takes the task in the background while Claude carries on, and its result comes back to the conversation.
+- **/mobile shows a QR code** for the Claude app, to scan with your phone.
+- **The /insights report is a click away.** When Claude Code finishes the report, an "Open the insights report" button opens it in your browser.
+- **Ship it: a copy's work to a pull request in one go.** From the copy's menu, Ctrl+K or the review inbox (P), he runs the tests in the copy, commits what's left, looks the commits over for secrets, pushes the branch and opens a pull request into the branch the copy came from (which has to be on GitHub). The pull request is written from the conversation: its title, Claude's last reply (left out if it has anything that looks like a secret), the commits, the files and how the tests went. If the tests fail, nothing is pushed, and you can ship it anyway or ask him to fix them. "Ship it as a draft" opens a draft. Shipping again from the same copy pushes the new work to the same pull request, and a note in the conversation links to it.
+- **"You've asked this before."** While you type a new task, Shellby looks through this project's History for a conversation that asked much the same. If it finds one, a quiet tip above the box offers to bring that conversation in as context, or open it, before Claude works it all out again. It's worked out on this PC and costs no usage. Turn it off in Settings → General.
+- **Your hours on all your PCs.** Switch on **Sync my hours between PCs** on the Time page of each PC you work on, and the hours from all of them add up in one place: the week's totals, the chart, timesheets and CSV exports cover everywhere you worked. The same repo in a different folder counts as one project when the folder names match, and a project's client and rate follow whichever PC changed them last. Each PC still sends only its own hours to Toggl, Clockify or Harvest, so nothing goes over twice. It rides on Sync in Settings → Connections → GitHub, and it's off until you turn it on.
+
+### Fixed
+- **Low Tide's banner says what it really does.** It said finds sparkle twice as often; bugs do too, and now it says so.
+- **The guides match the app again.** A bug from a red build or a branch that won't come home waits a week before it slips away (three days for a stopped push), a nocturnal catch is one between midnight and 5 am, the bar's shortcuts say what they are in Work mode, and the README shows what's new since 0.91.
+- **Bring it home from your phone no longer leaves you stuck when it clashes.** If the branch it started from has moved on in ways that clash, the phone now offers "Ask him to sort it out", as the desk does: he merges the branch in, sorts out the clashes, runs the tests, and tells you when it's ready to bring home.
+- **The rewind list shows how long ago each point was** ("3h ago") again, instead of only a clock time.
+- **Turning Bugdex battles off now hides the battle chip** straight away, instead of leaving it showing until the next battle.
+
+### Changed
+- **His screen has fewer tabs.** It's now Outfits, Trophies, Finds, the Bugdex, the Tank and Us, and nothing went away:
+  - **The Logbook** is on the Trophies page, open from the start.
+  - **The Crew** is a card over Toolbox → Agents, and each agent's row shows its crab's level.
+  - **🎨 Paint** and **the Sticker Book** open from a row on Outfits, each with a way back.
+- **The Skill Shop is Toolbox → Get more,** beside Tools, Setup, Lean and Team. `/plugin` and Ctrl+K still go straight there.
+- **Seven more of Claude Code's commands work here instead of sending you to a terminal.** `/tasks` shows the background tray above the box, `/workflows` jumps to this conversation's Ultracode runs, `/autofix-pr` opens Fix this build on your failing pull request, `/loops` and `/daemon` open Routines, `/wellbeing` opens Time for a focus session, and `/chrome` opens its setting.
+- **Claude's schedules read in plain words.** When Claude sets itself a wake-up or a schedule, the step says when ("in 20 min: watching CI", "weekdays at 09:00") instead of showing raw settings.
+- The Council is gone: the advisor crabs, their screen and its quest. Chapter 5, Second Opinions, now opens at level 15 and asks for a quiz, a helper's find and a look over.
+
 ## 0.95.1: Blocks compromised certificates
 
 ### Fixed
