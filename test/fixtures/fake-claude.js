@@ -1019,8 +1019,9 @@ function onLine(line) {
     const fsx = require('fs'), pathx = require('path'), osx = require('os');
     const root = process.env.CLAUDE_CONFIG_DIR || '';
     const file = pathx.join(root || pathx.join(osx.homedir(), '.claude'), 'usage-data', 'report.html');
-    const rel = root ? pathx.relative(pathx.resolve(osx.tmpdir()), pathx.resolve(root)) : '';
-    if (rel && !rel.startsWith('..') && !pathx.isAbsolute(rel)) {
+    // `transcript` is set only for a config folder really under temp, both sides resolved:
+    // on CI os.tmpdir() is an 8.3 short path (RUNNER~1) and a test's folder the long one.
+    if (transcript) {
       fsx.mkdirSync(pathx.dirname(file), { recursive: true });
       fsx.writeFileSync(file, '<!doctype html><title>Insights</title>');
     }
