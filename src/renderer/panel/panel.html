@@ -321,6 +321,25 @@
         </select>
       </div>
     </div>
+    <!-- Crew: one lasting helper crab per agent type, over the Agents list (crew.js, src/main/crew-roster.js) -->
+    <section class="cr-card" id="crewCard" data-room="crew" aria-labelledby="crewHead" tabindex="-1" hidden>
+      <h3 class="cr-head" id="crewHead">Crew <span class="n cr-count"></span></h3>
+      <p class="muted small">Every agent Claude sends out gets a crab, one for each type of agent, and they keep their record. They level up with every run, and more when Claude acts on what they found.</p>
+      <div class="cr-dock" id="crewDock" role="group" aria-label="The crew" hidden></div>
+      <p class="cr-totals muted small" id="crewTotals" hidden></p>
+      <div class="cr-empty" id="crewEmpty" hidden>
+        <div class="cr-empty-crab" id="crewEmptyCrab" aria-hidden="true"></div>
+        <div>
+          <h3>No crew yet</h3>
+          <p>When Claude hands part of a task to a helper agent (Explore, a code reviewer, one you wrote yourself), that helper joins the crew here and keeps its record from then on.</p>
+        </div>
+      </div>
+      <details class="cr-roster" id="crewRoster">
+        <summary class="xp-sub">Every crab’s record</summary>
+        <ul class="cr-list" id="crewList" aria-label="Crew members"></ul>
+        <p class="muted small cr-note">“Acted on” means Claude went on to change files after that helper reported back, in the same turn.</p>
+      </details>
+    </section>
     <div class="setup-pane" id="setupPane" hidden></div>
     <ul class="tool-list" id="toolList"></ul>
   </main>
@@ -667,7 +686,6 @@
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -739,7 +757,6 @@
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -870,7 +887,6 @@
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -988,37 +1004,6 @@
     <ul class="trophy-list" id="trophyList"></ul>
   </main>
 
-  <!-- ====================== CREW: one lasting helper crab per agent type (crew.js, src/main/crew-roster.js) ====================== -->
-  <main class="view view-crew" id="crewView">
-    <div class="view-head">
-      <h2 class="sr-only">Crew</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
-      <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
-        <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
-      </nav>
-    </div>
-    <p class="view-lede">Every agent Claude sends out gets a crab, one for each type of agent, and they keep their record. They level up with every run, and more when Claude acts on what they found.</p>
-    <div class="cr-dock" id="crewDock" role="group" aria-label="The crew" hidden></div>
-    <p class="cr-totals muted small" id="crewTotals" hidden></p>
-    <div class="cr-empty" id="crewEmpty" hidden>
-      <div class="cr-empty-crab" id="crewEmptyCrab" aria-hidden="true"></div>
-      <div>
-        <h3>No crew yet</h3>
-        <p>When Claude hands part of a task to a helper agent (Explore, a code reviewer, one you wrote yourself), that helper joins the crew here and keeps its record from then on.</p>
-      </div>
-    </div>
-    <ul class="cr-list" id="crewList" aria-label="Crew members"></ul>
-    <p class="muted small cr-note">“Acted on” means Claude went on to change files after that helper reported back, in the same turn.</p>
-  </main>
-
 
   <!-- ====================== STICKERS ====================== -->
   <main class="view view-stickers" id="stickersView">
@@ -1029,7 +1014,6 @@
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -1083,7 +1067,6 @@
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -1118,7 +1101,6 @@
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -1174,7 +1156,6 @@
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -1290,7 +1271,6 @@
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>

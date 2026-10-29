@@ -1,14 +1,24 @@
-/* Shellby — Crew (crew.js). Tokens come from panel.css; the dock is the
-   Wardrobe's stage (wardrobe.css) with the whole crew on it, the level coin and
-   bar are the Trophies tab's, so the tabs of his screen feel like one place. */
+/* Shellby — Crew (crew.js), a card over the Toolbox's Agents list. Tokens come
+   from panel.css; the dock is the Wardrobe's stage (wardrobe.css) with the whole
+   crew on it, and the level coin and bar are the Trophies tab's. */
 
-body[data-view="crew"] .view-crew { display: block; overflow-y: auto; padding: 14px 16px 20px; animation: fadein .18s var(--ease-out); }
-.view-crew {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+.cr-card { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.cr-card:focus { outline: none; }
+.cr-head { margin: 0 0 4px; font-size: 15px; }
+.cr-head .n { margin-left: 4px; color: var(--sand-dim); font-weight: 400; }
+.cr-roster > summary { cursor: pointer; }
+.cr-roster[open] > summary { margin-bottom: 8px; }
+/* An agent's crab on its Toolbox row: its level, a click to its record. */
+.cr-pill {
+  height: 22px; padding: 0 8px; border: 1px solid var(--line-soft); border-radius: 99px;
+  background: var(--abyss); color: var(--sand-dim); font-size: var(--fs-9-5); white-space: nowrap;
 }
+.cr-pill b { color: var(--sand); }
+.cr-pill:hover { border-color: var(--line); color: var(--sand); }
+.cr-pill:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
 /* The crew only ever comes out for Claude's helpers. */
-body.crab-only [data-goto="crew"] { display: none; }
+body.crab-only .cr-pill,
+body.crab-only .cr-card { display: none; }
 
 /* ---------------------------------------------------------------- the dock */
 .cr-dock {

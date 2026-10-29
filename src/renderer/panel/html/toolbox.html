@@ -35,6 +35,25 @@
         </select>
       </div>
     </div>
+    <!-- Crew: one lasting helper crab per agent type, over the Agents list (crew.js, src/main/crew-roster.js) -->
+    <section class="cr-card" id="crewCard" data-room="crew" aria-labelledby="crewHead" tabindex="-1" hidden>
+      <h3 class="cr-head" id="crewHead">Crew <span class="n cr-count"></span></h3>
+      <p class="muted small">Every agent Claude sends out gets a crab, one for each type of agent, and they keep their record. They level up with every run, and more when Claude acts on what they found.</p>
+      <div class="cr-dock" id="crewDock" role="group" aria-label="The crew" hidden></div>
+      <p class="cr-totals muted small" id="crewTotals" hidden></p>
+      <div class="cr-empty" id="crewEmpty" hidden>
+        <div class="cr-empty-crab" id="crewEmptyCrab" aria-hidden="true"></div>
+        <div>
+          <h3>No crew yet</h3>
+          <p>When Claude hands part of a task to a helper agent (Explore, a code reviewer, one you wrote yourself), that helper joins the crew here and keeps its record from then on.</p>
+        </div>
+      </div>
+      <details class="cr-roster" id="crewRoster">
+        <summary class="xp-sub">Every crab’s record</summary>
+        <ul class="cr-list" id="crewList" aria-label="Crew members"></ul>
+        <p class="muted small cr-note">“Acted on” means Claude went on to change files after that helper reported back, in the same turn.</p>
+      </details>
+    </section>
     <div class="setup-pane" id="setupPane" hidden></div>
     <ul class="tool-list" id="toolList"></ul>
   </main>

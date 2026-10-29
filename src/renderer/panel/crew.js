@@ -1,6 +1,8 @@
-/* Shellby panel — Crew, a tab of Shellby's screen: one lasting helper crab per
-   agent type, each with a name, a hat, a level and a record of its runs. Main
-   keeps the roster (src/main/crew-roster.js, wiring/crew.js) and sends it whole. */
+/* Shellby panel — Crew, a card over the Toolbox's Agents list: one lasting
+   helper crab per agent type, each with a name, a hat, a level and a record of
+   its runs, and a level pill on that agent's row. Going to `crew` (a quest, a
+   find, Ctrl+K) opens the Toolbox there. Main keeps the roster
+   (src/main/crew-roster.js, wiring/crew.js) and sends it whole. */
 'use strict';
 (function () {
   const { h, api, state, $, plural } = SB;
@@ -114,6 +116,7 @@
 
   function show(type) {
     open = type;
+    $('crewRoster').open = true;
     render();
     const el = document.getElementById(`crew-${type}`);
     el?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -147,15 +150,42 @@
     if (spot) [...$('crewList').querySelectorAll('.cr-row')].find(r => r.dataset.type === spot.type)?.querySelector(`[data-focus="${spot.focus}"]`)?.focus();
   }
 
+  // The card is up: the Toolbox is open on its Agents tab.
+  const shown = () => state.view === 'toolbox' && !$('crewCard').hidden;
+
   function apply(v) {
     if (!v) return;
     view = v;
-    if (state.view === 'crew') render();
+    if (shown()) { render(); SB.views.toolbox.render(); } // the agents' level pills too
   }
 
   api.onCrew(apply);
   // Shellby's own hat changed: "same as Shellby" follows it.
-  api.onWardrobe(() => { if (state.view === 'crew') api.getCrew().then(apply); });
+  api.onWardrobe(() => { if (shown()) api.getCrew().then(apply); });
 
-  SB.views.crew = { render: () => { render(); api.getCrew().then(v => { view = v; render(); }); } };
+  /** The Toolbox drew its Agents tab (on) or another one: the card follows. */
+  SB.crewCard = on => {
+    const was = !$('crewCard').hidden;
+    $('crewCard').hidden = !on;
+    if (!on || was) return;
+    render();
+    api.getCrew().then(apply);
+  };
+
+  /** A level pill for an agent's row in the Toolbox, when that agent has a crab. */
+  SB.crewPill = type => {
+    const m = view?.members.find(x => x.type === type);
+    if (!m) return null;
+    return h('button', {
+      type: 'button', class: 'cr-pill', title: `${m.name}, its crab: level ${m.level}, ${plural(m.runs, 'run')}`,
+      'aria-label': `${m.name}, level ${m.level} crab: show its record`,
+      onclick: e => { e.stopPropagation(); show(m.type); },
+    }, '🦀 ', h('b', { text: `Lv ${m.level}` }));
+  };
+
+  // Crew isn't a screen of its own any more: the Toolbox, on Agents, with the card in view.
+  SB.VIEW_ALIAS.crew = () => {
+    SB.showToolbox('agent');
+    SB.reveal('crewCard');
+  };
 })();

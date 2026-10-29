@@ -92,9 +92,10 @@
     });
   }
 
-  // A room that's a card goes to the screen it sits on.
-  const PART_OF = { reef: 'projects', mastery: 'trophies' };
-  const goesTo = id => PART_OF[id] || id;
+  // A room that's a card goes to the screen it sits on, or where its old name
+  // leads now (core.js VIEW_ALIAS: Crew opens the Toolbox on Agents).
+  const PART_OF = { reef: 'projects', mastery: 'trophies', crew: 'toolbox' };
+  const goesTo = id => (SB.VIEW_ALIAS[id] ? id : PART_OF[id] || id);
 
   SB.openAllRooms = async () => {
     received({ view: await api.openAllRooms() });
@@ -108,6 +109,8 @@
   const setView = SB.setView;
   SB.setView = target => {
     setView(target);
+    // A card asked for by name (a quest, Ctrl+K) stays open, like a door would.
+    if (PART_OF[target] && SB.isRoomLocked(target)) api.openRoom(target).then(v => received({ view: v })).catch(() => {});
     // A tab of his screen is its own door; the bar's button is the screen's.
     const fresh = new Set(freshIds());
     // A room that's a card counts as seen when its screen is.

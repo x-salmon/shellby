@@ -1,8 +1,8 @@
 // The crew, end to end in the real app against the fake Claude CLI (no account,
 // no usage): a code-reviewer helper goes out, its crab appears on the desktop
-// wearing its crew name, Claude acts on what it found, and the Crew page shows
-// the lasting record (runs, acted on, level, hat), which a rename and a hat
-// change update. Screenshots go to %TEMP%\shellby-e2e-crew.
+// wearing its crew name, Claude acts on what it found, and the Crew card (over
+// the Toolbox's Agents list) shows the lasting record (runs, acted on, level,
+// hat), which a rename and a hat change update. Screenshots go to %TEMP%\shellby-e2e-crew.
 //   node scripts/e2e-crew.js
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -96,17 +96,24 @@ async function connect(match) {
     await critter.shot('desktop-helper-right');
     check(await panel.until("document.querySelectorAll('.msg.assistant').length >= 3 && [...document.querySelectorAll('.msg.assistant')].pop().textContent.includes('REVIEW FIXED')"), 'the third review turn finishes');
 
-    // ---- the Crew page (the Crew Boss trophy card would cover it)
+    // ---- the Crew card, over the Toolbox's Agents (the Crew Boss trophy card would cover it)
     for (let i = 0; i < 12 && await panel.ev("!!document.querySelector('.cel-close')"); i++) { await panel.ev("document.querySelector('.cel-close').click()"); await wait(300); }
     await panel.ev("SB.setView('crew')");
-    check(await panel.until("document.querySelectorAll('#crewList .cr-row').length === 1"), 'the Crew page lists one member');
+    check(await panel.until("SB.state.view === 'toolbox' && !SB.$('crewCard').hidden && document.querySelector('#toolTabs [data-kind=\"agent\"]').getAttribute('aria-selected') === 'true'"), 'going to the crew opens the Toolbox on Agents, with the card');
+    check(await panel.until("document.querySelectorAll('#crewList .cr-row').length === 1"), 'the Crew card lists one member');
     const row = await panel.ev(`(() => { const r = document.querySelector('#crewList .cr-row'); return { name: r.querySelector('h3').textContent, type: r.querySelector('.cr-type code').textContent, lv: r.querySelector('.cr-lv').textContent, stats: [...r.querySelectorAll('.cr-stat b')].map(b => b.textContent) }; })()`);
     check(row.type === 'code-reviewer', `row shows the agent type (${row.type})`);
     check(row.stats[0] === '3' && row.stats[1] === '3', `row shows 3 runs, 3 acted on (${row.stats.join(', ')})`);
     check(Number(row.lv) >= 2, `three runs acted on is level 2 or more (${row.lv})`);
     check(await panel.ev("!document.getElementById('crewDock').hidden && document.querySelectorAll('#crewDock .cr-dock-crab').length === 1"), 'the dock shows the crew');
-    check(await panel.ev("document.querySelector('.shellby-tabs [data-goto=\"crew\"][aria-current=\"page\"]') !== null"), 'the Crew tab is current in the Shellby tabs');
-    await panel.shot('crew-page');
+    check(await panel.ev("!document.querySelector('.shellby-tabs [data-goto=\"crew\"]')"), 'the Crew has no tab on his screen any more');
+    check(await panel.until("!!document.querySelector('#toolList .cr-pill')"), 'the code-reviewer agent\'s row shows its crab');
+    await panel.shot('crew-card');
+    // Another kind of tool: the card goes.
+    await panel.ev("document.querySelector('#toolTabs [data-kind=\"skill\"]').click()");
+    check(await panel.until("SB.$('crewCard').hidden"), 'the card is only over Agents');
+    await panel.ev("SB.setView('crew')");
+    await panel.until("!SB.$('crewCard').hidden");
 
     // ---- rename and a hat
     await panel.ev("document.querySelector('#crewDock .cr-dock-crab').click()");
@@ -120,9 +127,9 @@ async function connect(match) {
     await panel.until("document.querySelector('#crewList details.cr-more')?.open === true", 2000);
     await panel.shot('crew-drawer');
 
-    // ---- crab-only mode has no crew tab
+    // ---- crab-only mode has no crew
     await panel.ev("document.body.classList.add('crab-only')");
-    check(await panel.ev("getComputedStyle(document.querySelector('.shellby-tabs [data-goto=\"crew\"]')).display === 'none'"), 'just-the-crab mode hides the Crew tab');
+    check(await panel.ev("getComputedStyle(SB.$('crewCard')).display === 'none'"), 'just-the-crab mode hides the Crew card');
     await panel.ev("document.body.classList.remove('crab-only')");
   } catch (e) {
     check(false, e.message);

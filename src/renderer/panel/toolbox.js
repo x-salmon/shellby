@@ -422,7 +422,8 @@
       h('span', { class: 'src-pill', text: t.kind === 'mcp' ? (t.status || '') : sourceLabel(t.source) })),
     t.description ? h('span', { class: 'tool-desc', text: t.description }) : null,
     meter(u));
-    li.append(h('div', { class: 'tool-head' }, MERGED.includes(t.kind) ? SB.toolboxBatch.checkbox(t, shownOwn) : null, toggle, h('div', { class: 'tool-actions' }, quickActions(t))));
+    const crab = t.kind === 'agent' ? SB.crewPill?.(t.name) : null; // its crew crab's level (crew.js)
+    li.append(h('div', { class: 'tool-head' }, MERGED.includes(t.kind) ? SB.toolboxBatch.checkbox(t, shownOwn) : null, toggle, h('div', { class: 'tool-actions' }, crab, quickActions(t))));
     if (open) li.append(toolDetail(t, id));
     return li;
   }
@@ -571,6 +572,7 @@
     const setup = SB.toolboxSetup;
     setup.refresh(); // hooks and memory: rescanned when stale, re-renders when it lands
     syncTabs();
+    SB.crewCard?.(kind === 'agent'); // the helper crabs sit over the Agents list (crew.js)
     $('toolboxBadge').hidden = true;
 
     const search = $('toolSearch');
