@@ -6,8 +6,8 @@
 
 ## Same Claude Code. Less babysitting.
 
-Parallel tasks on their own branches, undo for any turn, and routines that start the moment your limit resets,<br>
-all on **your own Pro or Max plan**, on Windows 10 and 11. No API keys, no per-token billing.<br>
+Run several Claude Code tasks at once, each on its own branch. Undo any turn. Queue work for when your limit resets.<br>
+On the **Pro or Max plan you already pay for**, on Windows 10 and 11. No API keys, no per-token billing.<br>
 **And a pixel hermit crab who scuttles off to do it.**
 
 ### [⬇ Download for Windows](https://github.com/x-salmon/shellby/releases/latest)
@@ -24,13 +24,27 @@ all on **your own Pro or Max plan**, on Windows 10 and 11. No API keys, no per-t
 
 </div>
 
+### 🌿 Several tasks at once, each on its own branch
+
+Open a tab per task. With **copies** on (one switch in Settings → Claude), each tab works in its own copy of your repo, on its own branch, so two tasks never trip over each other's files. When one is done, **Bring it home** merges it back, never with a force-push, or **Ship it** opens a pull request. If the merge would clash, nothing is merged and he can sort it out on his branch first.
+
+### ↩️ Undo any turn
+
+Didn't like what Claude did? **Undo** puts back every file the turn changed, or just one step of it, including what a script or `npm install` did.
+
+### 🌙 Work that starts when your limit resets
+
+Queue heavy tasks ("refactor X", "write tests for Y") for when your 5-hour window resets, or for tonight. They start by themselves, one after another, with the PC kept awake. A task that runs out of usage partway picks its conversation back up after the next reset.
+
+<sub>[Everything else he can do →](#everything-he-can-do)</sub>
+
 **Already use Claude Code?**
 
 - 🧠 **It's the real `claude`.** The official CLI you installed and signed in to. No model of its own, no fork.
 - 🔁 **Nothing to migrate.** Your skills, agents, hooks, MCP servers, `CLAUDE.md` files and permission rules carry over, and anything you set up in Shellby works in your terminal too.
-- 🛠️ **The difference is the tooling.** Parallel work, undo, review, scheduling and alerts, so you don't have to script them yourself. **[Why Shellby, if you have Claude Code →](docs/WHY-SHELLBY.md)**
+- 🛠️ **The difference is the tooling** you'd otherwise script yourself: the three above, plus review, alerts and workflows. **[Why Shellby, if you have Claude Code →](docs/WHY-SHELLBY.md)**
 
-**What can it do to my repo without asking?** Only what you've allowed: the default **Ask first** mode asks before every edit and command your own rules don't already permit, and the fenced-off Autonomous mode is never on unless you pick it. A tab can work in its own copy of the repo on its own branch that only merges back when you say so, never with a force-push, and **Undo** puts back every file a turn changed. [Permission modes →](#permission-modes)
+**What can it do to my repo without asking?** Only what you've allowed: the default **Ask first** mode asks before every edit and command your own rules don't already permit, and the fenced-off Autonomous mode is never on unless you pick it. Work in a copy only comes home when you say so. [Permission modes →](#permission-modes)
 
 **Before you install**
 
@@ -43,7 +57,7 @@ No. Your tasks go through your own `claude`, so they count against your Pro or M
 <details>
 <summary><b>Does it send my code anywhere?</b></summary>
 
-Only to Anthropic, through Claude Code, the same as in your terminal. Shellby has no accounts of its own and no telemetry, and no servers of its own except one public sponsors' crabs ask for a signed badge. Sync and crash reports are off until you say yes. The [privacy policy](PRIVACY.md) lists every connection, and [SECURITY.md](SECURITY.md) covers how to report a problem.
+Only to Anthropic, through Claude Code, the same as in your terminal. Shellby has no accounts of its own and no telemetry. Its only server is a public one that gives sponsors' crabs a signed badge. Sync and crash reports are off until you say yes. The [privacy policy](PRIVACY.md) lists every connection, and [SECURITY.md](SECURITY.md) covers how to report a problem.
 </details>
 
 <details>
@@ -99,7 +113,7 @@ Already use Claude Code on this PC? The tool screens are on the bar from the sta
 <p align="center"><sub>Drag a tab into the chat to split it: up to twelve conversations side by side, or pop one out into its own window</sub></p>
 
 - **Helper crabs:** every subagent gets a lane in the panel and a crab on your desktop, and each kind levels up into a named crew member.
-- **Tabs on their own branches:** each one works in its own copy of the repo. **Bring it home** merges it back, never with a force-push.
+- **Tabs on their own branches:** with copies on (**Settings → Claude → Copies of a project**), each one works in its own copy of the repo. **Bring it home** merges it back, never with a force-push.
 - **Up to twelve side by side,** or branch from any turn to **try it another way**.
 
 **Keep your code safe**
