@@ -664,7 +664,6 @@
       <h2 class="sr-only">Wardrobe</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
@@ -737,7 +736,6 @@
       <h2 class="sr-only">Painter</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
@@ -869,7 +867,6 @@
       <h2 class="sr-only">Trophies and XP</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
@@ -956,6 +953,17 @@
         <ul class="xp-ways" id="xpWays"></ul>
       </details>
     </section>
+    <!-- The Logbook: every game system as a card, each linked to its screen (logbook.js, main/logbook.js) -->
+    <section class="lb-section" id="lbSection" aria-labelledby="lbHead" tabindex="-1">
+      <h3 class="lb-head" id="lbHead">Logbook</h3>
+      <p class="muted small lb-intro">What’s going on, what to do next, and what each thing leads to. Every card opens its screen.</p>
+      <p class="view-lede newcomer-only" id="lbNewcomer">Just starting? First steps on the chat’s start screen come first. This fills up as you two work.</p>
+      <div class="lb-cards" id="lbCards" aria-live="polite"></div>
+      <section class="lb-chapters" id="lbChapters" aria-labelledby="lbChaptersHead" tabindex="-1">
+        <h3 id="lbChaptersHead">Quest line <span class="muted small" id="lbChapterCount"></span></h3>
+        <ol class="lb-chapter-list" id="lbChapterList"></ol>
+      </section>
+    </section>
     <!-- Review mastery (review-mastery.js, docs/CLAUDE-CODE.md#review-mastery) -->
     <section class="rm-card" id="rmCard" data-room="mastery" aria-labelledby="rmTitle">
       <div class="rm-head">
@@ -980,41 +988,12 @@
     <ul class="trophy-list" id="trophyList"></ul>
   </main>
 
-  <!-- ====================== LOGBOOK ====================== -->
-  <!-- every game system on one page, each card linked to its screen (logbook.js, main/logbook.js) -->
-  <main class="view view-logbook" id="logbookView">
-    <div class="view-head">
-      <h2 class="sr-only">Logbook</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
-      <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
-        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
-        <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
-        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
-        <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
-      </nav>
-    </div>
-    <p class="muted small lb-intro">What’s going on, what to do next, and what each thing leads to. Every card opens its screen.</p>
-    <p class="view-lede newcomer-only" id="lbNewcomer">Just starting? First steps on the chat’s start screen come first. This page fills up as you two work.</p>
-    <div class="lb-cards" id="lbCards" aria-live="polite"></div>
-    <section class="lb-chapters" id="lbChapters" aria-labelledby="lbChaptersHead" tabindex="-1">
-      <h3 id="lbChaptersHead">Quest line <span class="muted small" id="lbChapterCount"></span></h3>
-      <ol class="lb-chapter-list" id="lbChapterList"></ol>
-    </section>
-  </main>
-
   <!-- ====================== CREW: one lasting helper crab per agent type (crew.js, src/main/crew-roster.js) ====================== -->
   <main class="view view-crew" id="crewView">
     <div class="view-head">
       <h2 class="sr-only">Crew</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
@@ -1047,7 +1026,6 @@
       <h2 class="sr-only">Sticker Book</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
@@ -1102,7 +1080,6 @@
       <h2 class="sr-only">Finds</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
@@ -1138,7 +1115,6 @@
       <h2 class="sr-only">Bugdex</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
@@ -1195,7 +1171,6 @@
       <h2 class="sr-only">You and Shellby</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
@@ -1312,7 +1287,6 @@
       <h2 class="sr-only">His tank</h2>
       <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="logbook">Logbook</button>
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>

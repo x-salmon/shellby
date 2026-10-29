@@ -303,7 +303,7 @@
     const go = view => () => SB.setView(view);
     return [
       { icon: '🎩', title: 'Shellby: outfits', sub: 'Dress him up', keys: 'crab wardrobe hats skins colors effects packs', run: go('wardrobe') },
-      { icon: '📓', title: 'Shellby: Logbook', sub: 'Bounties, your quest, bugs on the loose and what each leads to', keys: 'logbook hub quests chapters bounties today tide reef review unlock next', run: go('logbook') },
+      { icon: '📓', title: 'Shellby: Logbook', sub: 'On Trophies: bounties, your quest, bugs on the loose and what each leads to', keys: 'logbook hub quests chapters bounties today tide reef review unlock next', run: go('logbook') },
       { icon: '🏆', title: 'Shellby: trophies & XP', sub: 'Level, XP and trophies', keys: 'level achievements', run: go('trophies') },
       claude() && { icon: '🦀', title: 'Shellby: crew', sub: 'Your helper agents, each a crab with a level and a record', keys: 'crew helpers subagents agents party roster level hats code-reviewer explore', run: go('crew') },
       { icon: '🐚', title: 'Shellby: finds', sub: 'Everything he’s dug up for you', keys: 'gifts shelf treasure dig collection sets', run: go('finds') },

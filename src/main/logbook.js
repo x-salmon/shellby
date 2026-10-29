@@ -9,7 +9,7 @@
 
 // The panel views a card or a feed may point at (feature-use.js SCREENS ids).
 const KNOWN_VIEWS = Object.freeze([
-  'chat', 'logbook', 'wardrobe', 'trophies', 'finds', 'stickers', 'bugdex', 'tank', 'us', 'crew',
+  'chat', 'wardrobe', 'trophies', 'finds', 'stickers', 'bugdex', 'tank', 'us', 'crew',
   'projects', 'history', 'notes', 'health', 'toolbox', 'workflows', 'routines', 'time', 'shop',
 ]);
 const KNOWN = new Set(KNOWN_VIEWS);
@@ -53,7 +53,7 @@ const UNLOCK_FEEDS = Object.freeze({
   shell: { to: 'wardrobe', text: 'A new home for him, in Outfits → Homes.' },
   home: { to: 'wardrobe', text: 'A new home for him, in Outfits → Homes.' },
   title: { to: 'trophies', text: 'A new title on his card.' },
-  chapter: { to: 'logbook', text: 'Opens a new quest chapter.' },
+  chapter: { to: 'trophies', text: 'Opens a new quest chapter.' },
   perk: { to: 'trophies', text: 'A perk that stays, even after a molt.' },
 });
 const WEAR_FEED = Object.freeze({ to: 'wardrobe', text: 'Something new to wear.' });
@@ -77,7 +77,7 @@ const obj = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : null);
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const stamp = n => (Number.isFinite(Number(n)) && Number(n) > 0 ? Math.floor(Number(n)) : null);
 const feed = (to, text) => (KNOWN.has(to) && text ? { to, text } : null);
-const go = (view, focus) => ({ view: KNOWN.has(view) ? view : 'logbook', ...(focus ? { focus } : {}) });
+const go = (view, focus) => ({ view: KNOWN.has(view) ? view : 'trophies', ...(focus ? { focus } : {}) });
 
 function card(id, fields) {
   return { id, icon: '', title: '', text: '', missing: false, rows: [], progress: null, urgency: URGENT.low, ...fields, feeds: arr(fields.feeds).filter(Boolean) };
@@ -107,7 +107,7 @@ function todayCard(xp) {
 
 function questCard(q) {
   const v = obj(q);
-  if (!v || !obj(v.chapter)) return notYet('quest', '🗺️', 'Quest', 'logbook');
+  if (!v || !obj(v.chapter)) return notYet('quest', '🗺️', 'Quest', 'trophies');
   const ch = v.chapter;
   const cur = arr(v.list).find(x => x.id === v.current) || null;
   const next = obj(v.nextLocked);
@@ -122,9 +122,9 @@ function questCard(q) {
     progress: { n: num(ch.doneCount), of: num(ch.total) },
     chapters: { done: num(v.chaptersDone), of: num(v.totalChapters) },
     urgency: cur ? URGENT.quest : URGENT.low,
-    go: go(cur ? target : 'logbook', cur ? null : 'lbChapters'),
+    go: go(cur ? target : 'trophies', cur ? null : 'lbChapters'),
     feeds: [
-      ch.teaches && feed('logbook', ch.teaches),
+      ch.teaches && feed('trophies', ch.teaches),
       ...arr(cur?.links).filter(l => l !== 'chat').map(l => feed(l, LINK_TEXT[l])),
     ],
   });

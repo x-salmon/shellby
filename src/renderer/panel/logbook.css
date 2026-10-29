@@ -1,11 +1,9 @@
-/* Shellby panel — the Logbook: every game system on one page (logbook.js).
-   Tokens come from panel.css. */
+/* Shellby panel — the Logbook: every game system as a card, a section of the
+   Trophies page (logbook.js). Tokens come from panel.css. */
 
-body[data-view="logbook"] .view-logbook { display: block; overflow-y: auto; padding: 14px 16px 20px; animation: fadein .18s var(--ease-out); }
-.view-logbook {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
-}
+.lb-section { margin: 16px 0; }
+.lb-section:focus { outline: none; }
+.lb-head { margin: 0 0 4px; font-size: 15px; }
 .lb-intro { margin: 0 0 10px; }
 
 .lb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
@@ -67,6 +65,5 @@ body[data-view="logbook"] .view-logbook { display: block; overflow-y: auto; padd
 .lb-ch-head b { flex: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  body[data-view="logbook"] .view-logbook { animation: none; }
   .lb-bar i { transition: none; }
 }

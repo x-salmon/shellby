@@ -17,12 +17,11 @@
 // page, Review mastery on Trophies), hidden until it opens. `chapter` is the
 // quest chapter (quests/chapters.js) that teaches it, named when it opens.
 const ROOMS = Object.freeze([
-  // Open from the start: the one page that says what to do next (logbook.js).
-  { id: 'logbook', tasks: 0, in: 'wardrobe', name: 'Logbook', text: 'Everything going on in one place: today’s bounties, your quest, bugs on the loose and what each one leads to.' },
+  // Open from the start: its Logbook is the one place that says what to do next (logbook.js).
+  { id: 'trophies', tasks: 0, in: 'wardrobe', name: 'Trophies', text: 'What you two have done together, and the Logbook: what’s going on and what to do next.' },
   { id: 'history', tasks: 1, name: 'History', text: 'Every conversation you two have had, to pick back up any time.' },
   { id: 'projects', tasks: 1, name: 'Projects', text: 'Every repo you work in on one page, with its dev server a click away.' },
   { id: 'notes', tasks: 1, name: 'Notes', text: 'Ideas to plan, build or ask Claude about, for each project and in one General list.' },
-  { id: 'trophies', tasks: 1, in: 'wardrobe', name: 'Trophies', text: 'What you two have done together, and what unlocks next.' },
   { id: 'finds', game: true, tasks: 2, in: 'wardrobe', name: 'Finds', text: 'Things he digs up on the desk while you work, to keep on a shelf.' },
   { id: 'stickers', game: true, tasks: 2, in: 'wardrobe', name: 'Stickers', text: 'A mark on his shell for every repo you ship.' },
   { id: 'health', tasks: 3, name: 'Health', text: 'He keeps an eye on your PC: temperatures, memory and drives.' },

@@ -61,15 +61,15 @@ const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => get
       await ev("SB.setView('chat')");
       check(await ev(SHOWN) === 'wardrobe,chat,dockMore', `a new bar is Shellby, Chat and More (${await ev(SHOWN)})`);
       check(/History opens after his first task/.test(await ev("SB.$('dockMore').title")), '"More" says what opens next');
-      check(await ev(TABS) === 'logbook,wardrobe,paint', `his screen starts as the Logbook, his outfits and the Painter (${await ev(TABS)})`);
+      check(await ev(TABS) === 'wardrobe,paint,trophies', `his screen starts as his outfits, the Painter and Trophies with its Logbook (${await ev(TABS)})`);
 
       // 2. A finished task opens History and Projects.
       await ev("(i => { i.value = 'hello'; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))");
       check(await until(`(${SHOWN}) === 'wardrobe,chat,history,projects,notes,dockMore'`, 15000), 'the first task puts History and Projects on the bar');
       check(await ev("document.querySelector('.dock [data-view-btn=\"history\"]').classList.contains('room-new')"), 'the new button glows');
       // The first task's trophy card may go first; the room card waits its turn.
-      check(await until("/History, Projects, Notes and Trophies are open/.test(document.querySelector('.celebrate')?.textContent || '')", 20000), 'a "New room" card says so');
-      check(await ev(TABS) === 'logbook,wardrobe,paint,trophies', `and Trophies joins his screen (${await ev(TABS)})`);
+      check(await until("/History, Projects and Notes are open/.test(document.querySelector('.celebrate')?.textContent || '')", 20000), 'a "New room" card says so');
+      check(await ev(TABS) === 'wardrobe,paint,trophies', `and his screen is as it was (${await ev(TABS)})`);
       check(/Finds \(on his screen\) opens after his next task/.test(await ev("SB.$('dockMore').title")), '"More" names the next tab on his screen');
 
       // A link to a tab that's still shut (a find's card, Ctrl+K) opens it for good.
@@ -86,7 +86,7 @@ const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => get
       // 4. Show every screen.
       await ev('SB.openAllRooms()');
       check(await until(`(${SHOWN}) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes'`), '"Show every screen" opens the rest and hides More');
-      check(await ev(TABS) === 'logbook,wardrobe,paint,trophies,crew,stickers,finds,bugdex,tank,us', 'and every tab of his screen');
+      check(await ev(TABS) === 'wardrobe,paint,trophies,crew,stickers,finds,bugdex,tank,us', 'and every tab of his screen');
     });
 
     // 5. Someone who was here before rooms: no rooms value yet, already onboarded.

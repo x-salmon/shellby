@@ -41,10 +41,10 @@
     });
   }
 
-  // The whole line lives in the Logbook now, chapter by chapter.
+  // The whole line lives in the Logbook (on the Trophies page), chapter by chapter.
   SB.showQuests = () => {
-    SB.setView('logbook');
-    requestAnimationFrame(() => $('lbChapters')?.scrollIntoView({ block: 'nearest' }));
+    SB.setView('trophies');
+    SB.reveal('lbChapters');
   };
 
   const pips = () => h('span', { class: 'quest-pips', 'aria-hidden': 'true' },

@@ -130,7 +130,7 @@
       SB.celebrate({
         eyebrow: 'First steps done', icon: '🦀', title: 'You two are off',
         text: 'That’s the whole loop: a project, a task, his changes, and the crab himself. More of his world opens from here as you work.',
-        action: { label: 'Open the Logbook', run: () => SB.setView('logbook') },
+        action: { label: 'Open the Logbook', run: () => SB.setView('logbook') }, // on the Trophies page
       });
     }
   }

@@ -392,8 +392,21 @@ SB.views = {};  // name -> { render?(), parent?() (where Back goes, when the vie
 SB.NAV_SECTION = { shop: 'toolbox', paint: 'wardrobe', trophies: 'wardrobe', crew: 'wardrobe', stickers: 'wardrobe', finds: 'wardrobe', tank: 'wardrobe', us: 'wardrobe', routines: 'workflows', viewer: 'chat' };
 SB.PARENT_VIEW = { shop: 'toolbox' };
 SB.homeView = () => (SB.state.settings.crabOnly ? 'health' : 'chat');
+// Screens folded into another one: the old name (from main, a quest, Ctrl+K, a toast)
+// goes to the screen it's on now, and the part after # comes into view there.
+SB.VIEW_ALIAS = { logbook: 'trophies#lbSection' };
 
-SB.setView = view => {
+// Bring an element into view (and the keyboard to it, when it takes focus) once it has drawn.
+SB.reveal = id => requestAnimationFrame(() => {
+  const el = SB.$(id);
+  if (!el) return;
+  el.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  if (el.tabIndex >= 0 || el.hasAttribute('tabindex')) el.focus({ preventScroll: true });
+});
+
+SB.setView = target => {
+  let [view, focus] = (SB.VIEW_ALIAS[target] || target).split('#');
+  if (focus) SB.reveal(focus);
   const s = SB.state;
   // A screen asked for while the panel starts (you, Ctrl+K, main): its start opens it at the end
   // instead of the chat (boot.js). The chat itself is what the start goes to anyway.

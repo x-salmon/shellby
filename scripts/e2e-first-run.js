@@ -120,7 +120,7 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
       check(!(await ev(visible("document.querySelector('.feed:not([hidden]) .empty .quest-card')"))), 'no quest card beside it');
       check(await ev(SHOWN) === 'wardrobe,chat,dockMore', `a short bar: Shellby, Chat and More (${await ev(SHOWN)})`);
       check(await ev("document.body.classList.contains('newcomer')"), 'newcomer words are on');
-      await ev("SB.setView('logbook')");
+      await ev("SB.setView('logbook')"); // on the Trophies page now
       check(await until("document.querySelectorAll('#lbCards .lb-card').length > 0"), 'the Logbook has its cards');
       const lb = await ev("[...document.querySelectorAll('#lbCards .lb-card')].map(c => c.dataset.card).join()");
       check(!/\b(loose|reef|review)\b/.test(lb), `but none about the game rooms still shut (${lb})`);

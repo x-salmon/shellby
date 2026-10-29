@@ -1,8 +1,9 @@
-// ci: logbook: the tab on his screen, cards for every system, a feed link that navigates, pins, quest chapters
+// ci: logbook: on the Trophies page, cards for every system, a feed link that navigates, pins, quest chapters
 // End-to-end check of the Logbook (main/logbook.js, panel/logbook.js) and the
 // quest chapters (main/quests.js) against the dev app over CDP, driven by the
 // fake Claude CLI (test/fixtures/fake-claude.js):
-//   1. Someone brand new already has the Logbook tab, on every page of his screen
+//   1. Someone brand new already has Trophies, with the Logbook on it; the old
+//      Logbook screen's name lands there, and it has no tab of its own
 //   2. It opens with a card for each system (counts from main/logbook.js), the
 //      ones not built yet saying "not yet" instead of breaking
 //   3. A "this feeds that" line is a link that lands on its screen
@@ -69,20 +70,15 @@ const CARDS = "[...document.querySelectorAll('#lbCards .lb-card')].map(c => c.da
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
   try {
     await run({ onboarded: true, rooms: { tasks: 0, open: [], all: false } }, async ({ ev, until, data }) => {
-      // 1. The tab is there from the start, on every page of his screen.
+      // 1. Trophies is there from the start, with the Logbook on it, and no tab of its own.
       await ev("SB.setView('wardrobe')");
-      check(await until("!!document.querySelector('#wardrobeView .shellby-tabs [data-goto=\"logbook\"]') && !SB.isRoomLocked('logbook')"), 'a brand-new user has the Logbook tab on his screen');
-      const everyPage = await ev("[...document.querySelectorAll('.shellby-tabs')].every(n => n.querySelector('[data-goto=\"logbook\"]'))");
-      check(everyPage, 'every page of his screen has the tab');
-      // What the page looked like, when it didn't: this has only failed on CI.
-      if (!everyPage) console.log(await ev(`JSON.stringify({ view: SB.state.view, waiting: SB.isGameWaiting?.(), lbCards: document.querySelectorAll('#lbCards .lb-card').length,
-        tabs: [...document.querySelectorAll('.shellby-tabs')].map(n => (n.closest('[id]')?.id || '?') + ':' + [...n.querySelectorAll('[data-goto]')].map(b => b.dataset.goto).join(',')),
-        logbookLoaded: typeof SB.renderLogbook, errors: window.__shellbyErrors || null })`));
-      check(await ev("document.querySelector('#wardrobeView .shellby-tabs button').dataset.goto === 'logbook'"), 'it is the first tab');
+      check(await until("!!document.querySelector('#wardrobeView .shellby-tabs [data-goto=\"trophies\"]') && !SB.isRoomLocked('trophies')"), 'a brand-new user has the Trophies tab on his screen');
+      check(await ev("!document.querySelector('.shellby-tabs [data-goto=\"logbook\"]')"), 'the Logbook has no tab of its own');
+      check(await ev("!!document.querySelector('#trophiesView #lbSection #lbCards')"), 'the Logbook is a section of the Trophies page');
 
-      // 2. Cards for every system, none of them broken.
-      await ev("document.querySelector('#wardrobeView .shellby-tabs [data-goto=\"logbook\"]').click()");
-      check(await until("SB.state.view === 'logbook' && document.querySelectorAll('#lbCards .lb-card').length > 0"), 'the tab opens the Logbook with cards');
+      // 2. Cards for every system, none of them broken. The old screen's name lands on Trophies.
+      await ev("SB.setView('logbook')");
+      check(await until("SB.state.view === 'trophies' && document.querySelectorAll('#lbCards .lb-card').length > 0"), 'going to the Logbook opens Trophies with its cards');
       const shown = await ev(CARDS);
       const always = CARD_IDS.filter(id => id !== 'molt' && id !== 'wrapped');
       check(always.every(id => shown.includes(id)), `a card for each system (${always.length})`);
@@ -100,7 +96,7 @@ const CARDS = "[...document.querySelectorAll('#lbCards .lb-card')].map(c => c.da
       }
 
       // 4. Pinning.
-      await ev("SB.setView('logbook')");
+      await ev("SB.setView('trophies')");
       await until("document.querySelectorAll('#lbCards .lb-card').length > 0");
       const last = await ev(`${CARDS}.at(-1)`);
       await ev(`document.querySelector('#lbCards .lb-card[data-card="${last}"] .lb-pin').click()`);
@@ -113,7 +109,7 @@ const CARDS = "[...document.querySelectorAll('#lbCards .lb-card')].map(c => c.da
       // 5. Quest chapters.
       check(await until(`document.querySelectorAll('#lbChapterList > li').length === ${CHAPTERS.length}`), `the quest line lists all ${CHAPTERS.length} chapters`);
       for (const q of CHAPTERS[0].quests) await ev(`SB.api.dev.quest('${q.id}')`);
-      await ev("SB.setView('wardrobe'); SB.setView('logbook')");
+      await ev("SB.setView('wardrobe'); SB.setView('trophies')");
       check(await until(`document.querySelector('#lbChapterList > li[data-chapter="${CHAPTERS[0].id}"]')?.classList.contains('done')`), 'Chapter 1 is ticked off');
       // Level 1 on day one: screens only count as never tried after a week, so nothing opens early.
       check(await ev("[...document.querySelectorAll('#lbChapterList > li')].slice(1).every(li => li.classList.contains('locked'))"), 'later chapters wait for their level');

@@ -7,8 +7,8 @@ const newcomer = () => rooms.initialRooms(false);
 const fresh = () => rooms.reachCore(newcomer()).state;
 const after = (n, start = fresh()) => { let s = start; for (let i = 0; i < n; i++) s = rooms.taskDone(s).state; return s; };
 
-test('someone new starts with no rooms open beyond Shellby, Chat and the Logbook', () => {
-  assert.deepEqual(rooms.openRooms(fresh()), ['logbook'], 'the Logbook says what to do next, so it is open from the start');
+test('someone new starts with no rooms open beyond Shellby, Chat and Trophies', () => {
+  assert.deepEqual(rooms.openRooms(fresh()), ['trophies'], 'its Logbook says what to do next, so it is open from the start');
   assert.deepEqual(rooms.roomsView(fresh()).next, { id: 'history', name: 'History', tasksToGo: 1 });
 });
 
@@ -21,12 +21,12 @@ test('someone who was here before rooms keeps every door open', () => {
 
 test('someone new who already uses Claude Code starts with the tool screens open', () => {
   const s = rooms.initialRooms(false, { claudeUser: true });
-  assert.deepEqual(rooms.openRooms(s), ['logbook', ...rooms.TOOL_ROOMS], 'the Logbook is open for everyone');
+  assert.deepEqual(rooms.openRooms(s), ['trophies', ...rooms.TOOL_ROOMS], 'Trophies and its Logbook are open for everyone');
   assert.deepEqual(rooms.roomsView(s).fresh, [], 'nothing is marked new: they were there from the start');
   assert.equal(rooms.roomsView(s).all, false, 'his own screens still grow with him');
-  assert.deepEqual(rooms.roomsView(s).next, { id: 'trophies', name: 'Trophies', tasksToGo: 1, in: 'wardrobe' });
-  // The first task announces only what was still closed.
-  assert.deepEqual(rooms.taskDone(s).opened.map(r => r.id), ['trophies']);
+  assert.deepEqual(rooms.roomsView(s).next, { id: 'finds', name: 'Finds', core: true, in: 'wardrobe' }, 'only the game is left, and it waits on the core loop');
+  // The first task announces only what was still closed: nothing, yet.
+  assert.deepEqual(rooms.taskDone(s).opened.map(r => r.id), []);
   assert.deepEqual(rooms.initialRooms(true, { claudeUser: true }), rooms.initialRooms(true), 'someone already here keeps everything');
 });
 
@@ -43,13 +43,13 @@ test('finished tasks open rooms in order and report each one once', () => {
     s = r.state;
     opened.push(r.opened.map(x => x.id));
   }
-  assert.deepEqual(opened, [['history', 'projects', 'notes', 'trophies'], ['finds', 'stickers'], ['health', 'toolbox', 'crew', 'reef'], ['bugdex', 'mastery'], ['workflows', 'us'], ['tank'], []]);
+  assert.deepEqual(opened, [['history', 'projects', 'notes'], ['finds', 'stickers'], ['health', 'toolbox', 'crew', 'reef'], ['bugdex', 'mastery'], ['workflows', 'us'], ['tank'], []]);
   assert.equal(rooms.roomsView(s).all, true);
 });
 
 test('a room opened by hand stays open and is not announced again later', () => {
   const s = rooms.openRoom(fresh(), 'workflows');
-  assert.deepEqual(rooms.openRooms(s), ['logbook', 'workflows']);
+  assert.deepEqual(rooms.openRooms(s), ['trophies', 'workflows']);
   let t = s;
   const opened = [];
   for (let i = 0; i < 8; i++) { const r = rooms.taskDone(t); t = r.state; opened.push(...r.opened.map(x => x.id)); }
@@ -76,6 +76,11 @@ test('the next room counts down the tasks still to go', () => {
   assert.equal(rooms.roomsView(after(6)).next, null);
 });
 
+test('the Logbook is part of Trophies, not a room of its own: a stored Logbook door is dropped', () => {
+  assert.ok(!rooms.ROOMS.some(r => r.id === 'logbook'));
+  assert.deepEqual(rooms.normalizeRooms({ tasks: 1, open: ['logbook', 'notes'], fresh: ['logbook'], core: true }), { tasks: 1, open: ['notes'], all: false, core: true, fresh: [] });
+});
+
 test('the beach is part of Us, not a room of its own', () => {
   assert.ok(!rooms.ROOMS.some(r => r.id === 'beach'));
   assert.deepEqual(rooms.normalizeRooms({ tasks: 3, open: ['beach', 'us'], core: true }).open, ['us'],'a stored Beach door is dropped');
@@ -100,7 +105,7 @@ test('someone new opens only the working rooms however many tasks go by, until t
   const s = after(10, newcomer());
   const open = rooms.openRooms(s);
   assert.ok(GAME.every(id => !open.includes(id)), `no game room yet (${open})`);
-  assert.deepEqual(open, ['logbook', 'history', 'projects', 'notes', 'trophies', 'health', 'toolbox', 'workflows']);
+  assert.deepEqual(open, ['trophies', 'history', 'projects', 'notes', 'health', 'toolbox', 'workflows']);
   assert.deepEqual(rooms.roomsView(s).next, { id: 'finds', name: 'Finds', core: true, in: 'wardrobe' }, 'next says the game waits on the core loop');
 });
 
@@ -108,7 +113,7 @@ test('the core loop opens every game room tasks have already earned, once, each 
   const s = after(4, newcomer());
   const r = rooms.reachCore(s);
   assert.deepEqual(r.opened.map(x => x.id), ['finds', 'stickers', 'crew', 'reef', 'bugdex', 'mastery']);
-  assert.deepEqual(rooms.roomsView(r.state).fresh, ['history', 'projects', 'notes', 'trophies', 'health', 'toolbox', 'finds', 'stickers', 'crew', 'reef', 'bugdex', 'mastery']);
+  assert.deepEqual(rooms.roomsView(r.state).fresh, ['history', 'projects', 'notes', 'health', 'toolbox', 'finds', 'stickers', 'crew', 'reef', 'bugdex', 'mastery']);
   assert.deepEqual(rooms.reachCore(r.state).opened, [], 'reached is reached: not announced twice');
   assert.equal(rooms.reachCore(r.state).state.core, true);
 });
@@ -126,9 +131,9 @@ test('a game room opened by hand (Ctrl+K) stays open before the core loop', () =
 
 test('a visit takes a room off the new list, and only that room', () => {
   const s = after(1, newcomer());
-  assert.deepEqual(rooms.roomsView(s).fresh, ['history', 'projects', 'notes', 'trophies']);
+  assert.deepEqual(rooms.roomsView(s).fresh, ['history', 'projects', 'notes']);
   const seen = rooms.seeRoom(s, 'history');
-  assert.deepEqual(rooms.roomsView(seen).fresh, ['projects', 'notes', 'trophies']);
+  assert.deepEqual(rooms.roomsView(seen).fresh, ['projects', 'notes']);
   assert.deepEqual(rooms.seeRoom(seen, 'history'), seen, 'seeing it again changes nothing');
 });
 

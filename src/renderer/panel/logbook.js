@@ -1,5 +1,6 @@
-/* Shellby panel — the Logbook: every game system on one page (main/logbook.js
-   composes the cards). Each card says what's going on and what to do next,
+/* Shellby panel — the Logbook: every game system as a card, a section of the
+   Trophies page (main/logbook.js composes the cards; `logbook` as a view goes
+   there, core.js VIEW_ALIAS). Each card says what's going on and what to do next,
    opens the screen it comes from, and lists what it feeds ("catch it with a
    test → its nest clears → coral grows"), each a link to that screen. A card
    whose system hasn't arrived says "not yet". Cards pin to the top or fold
@@ -12,8 +13,6 @@
   let view = null;   // main's logbookView()
   let quests = null; // main's questsView(), for the chapter list
 
-  SB.NAV_SECTION.logbook = 'wardrobe'; // a tab of the Shellby screen
-
   const VIEW_NAMES = {
     chat: 'Chat', logbook: 'Logbook', wardrobe: 'Outfits', trophies: 'Trophies', finds: 'Finds', stickers: 'Stickers',
     bugdex: 'Bugdex', tank: 'Tank', us: 'Us', crew: 'Crew', projects: 'Projects', history: 'History',
@@ -23,13 +22,7 @@
   /** Go to a screen and, when it names one, bring an element on it into view. */
   SB.go = SB.go || ((target, focus) => {
     SB.setView(target);
-    if (!focus) return;
-    requestAnimationFrame(() => {
-      const el = $(focus);
-      if (!el) return;
-      el.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      if (el.tabIndex >= 0 || el.hasAttribute('tabindex')) el.focus({ preventScroll: true });
-    });
+    if (focus) SB.reveal(focus);
   });
 
   // ------------------------------------------------------------ cards
@@ -147,23 +140,22 @@
       quests = q;
       renderChapters();
       // The newest chapter has been seen: its "New" mark goes.
-      if (q?.chapter?.isNew && SB.state.view === 'logbook') api.gameAct('quests', 'seen', q.chapter.id).catch(() => {});
+      if (q?.chapter?.isNew && SB.state.view === 'trophies') api.gameAct('quests', 'seen', q.chapter.id).catch(() => {});
     } catch (e) {
       const box = $('lbCards');
       if (box && !view) box.replaceChildren(h('p', { class: 'muted', text: 'The Logbook couldn’t load just now. Try again in a moment.' }));
     }
   }
 
-  // An arrival counts as opening it (the logbook-opened stat); a re-render while here doesn't.
-  let arrived = false;
-  const setView = SB.setView;
-  SB.setView = target => { arrived = target === 'logbook' && SB.state.view !== 'logbook'; setView(target); };
+  const renderTrophies = SB.views.trophies.render;
+  SB.views.trophies.render = () => { renderTrophies(); refresh(); };
 
-  SB.views.logbook = {
-    render() {
-      if (arrived) act('open').then(refresh); else refresh();
-      arrived = false;
-    },
+  // An arrival at Trophies counts as opening it (the logbook-opened stat); a re-render while there doesn't.
+  const setView = SB.setView;
+  SB.setView = target => {
+    const was = SB.state.view;
+    setView(target);
+    if (SB.state.view === 'trophies' && was !== 'trophies') act('open');
   };
 
   api.onGame(({ what, view: v } = {}) => {
