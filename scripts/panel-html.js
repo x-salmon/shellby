@@ -5,7 +5,9 @@
 // title bar, the menus, the bar, the sheets and the scripts) with a line
 //   <!-- @include chat.html -->
 // for each screen, and a screen can include its own pieces the same way
-// (settings.html includes a file per tab). The built panel.html is committed,
+// (settings.html includes a file per tab). A piece is used once, except one
+// whose first line is `<!-- @shared -->` (the Shellby screen's tabs, repeated
+// at the top of each of its pages). The built panel.html is committed,
 // so `npm start` and every e2e script need no build step, and
 // test/panel-html.test.js fails when it's out of date.
 //
@@ -19,16 +21,19 @@ const SRC = path.join(PANEL, 'html');
 const OUT = path.join(PANEL, 'panel.html');
 const INCLUDE = /^[ \t]*<!-- @include ([a-z0-9-]+\.html) -->$/;
 const NOTE = '<!-- Built from html/ by `npm run panel:html` (scripts/panel-html.js). Edit those files, not this one. -->';
+const SHARED = '<!-- @shared -->';
 
 /** One file with its includes filled in. seen: the files on the way here (a loop is an error). */
 function expand(name, used, seen = []) {
   if (seen.includes(name)) throw new Error(`${[...seen, name].join(' -> ')}: an include loop`);
   const file = path.join(SRC, name);
   if (!fs.existsSync(file)) throw new Error(`${seen.at(-1) || 'frame.html'} includes ${name}, which isn't in ${path.relative(process.cwd(), SRC)}`);
-  if (used.has(name)) throw new Error(`${name} is included twice`);
+  const [first, ...rest] = fs.readFileSync(file, 'utf8').replace(/\n$/, '').split('\n');
+  const shared = first.trim() === SHARED;
+  if (used.has(name) && !shared) throw new Error(`${name} is included twice`);
   used.add(name);
-  const text = fs.readFileSync(file, 'utf8').replace(/\n$/, '');
-  return text.split('\n').map(line => {
+  const lines = shared ? rest : [first, ...rest];
+  return lines.map(line => {
     const m = line.match(INCLUDE);
     return m ? expand(m[1], used, [...seen, name]) : line;
   }).join('\n');

@@ -137,7 +137,7 @@
     stale = false;
     const spot = focusSpot();
     const { members, totals } = view;
-    $('crewCount').textContent = members.length || '';
+    document.querySelectorAll('.cr-count').forEach(el => { el.textContent = members.length ? String(members.length) : ''; });
     $('crewEmpty').hidden = members.length > 0;
     if (!members.length) $('crewEmptyCrab').replaceChildren(SB.Sprite.build(state.skin, { px: 3, fit: true }));
     $('crewTotals').hidden = !members.length;

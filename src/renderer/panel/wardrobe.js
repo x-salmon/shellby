@@ -286,7 +286,7 @@
   function applyView(view) {
     if (!view) return;
     state.wardrobe = view;
-    $('wdCount').textContent = `${view.totals.unlocked}/${view.totals.all}`;
+    document.querySelectorAll('.wd-count').forEach(el => { el.textContent = `${view.totals.unlocked}/${view.totals.all}`; });
     refreshBadge();
     if (state.view === 'wardrobe') render();
     if (state.view === 'trophies') renderTrophies();
@@ -343,7 +343,7 @@
   // ------------------------------------------------------------ trophies
   function renderTrophies() {
     const list = wd()?.achievements || [];
-    $('trophyCount').textContent = `${list.filter(a => a.done).length}/${list.length}`;
+    document.querySelectorAll('.tr-count').forEach(el => { el.textContent = `${list.filter(a => a.done).length}/${list.length}`; });
     $('trophyList').replaceChildren(...list.map(a => h('li', { class: `trophy${a.done ? ' done' : ''}${a.hidden && !a.done ? ' secret' : ''}` },
       h('span', { class: 'trophy-icon', text: a.hidden && !a.done ? '❔' : a.icon }),
       h('div', { class: 'trophy-main' },

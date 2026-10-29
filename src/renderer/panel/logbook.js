@@ -32,19 +32,6 @@
     });
   });
 
-  // ------------------------------------------------------------ the tab
-
-  // The Logbook is the first tab of his screen. Its own page and Outfits have
-  // the button in their markup; the other pages' strips get it here.
-  function addTabs() {
-    for (const nav of document.querySelectorAll('.shellby-tabs')) {
-      if (nav.querySelector('[data-goto="logbook"]')) continue;
-      const b = h('button', { type: 'button', 'data-goto': 'logbook', text: 'Logbook' });
-      b.addEventListener('click', () => SB.setView('logbook'));
-      nav.prepend(b);
-    }
-  }
-
   // ------------------------------------------------------------ cards
 
   function bar(n, of, label) {
@@ -174,7 +161,6 @@
 
   SB.views.logbook = {
     render() {
-      addTabs();
       if (arrived) act('open').then(refresh); else refresh();
       arrived = false;
     },
@@ -184,6 +170,4 @@
     if (what === 'logbook') received(v);
     if (what === 'quests' && v) { quests = v; renderChapters(); }
   });
-
-  addTabs();
 })();

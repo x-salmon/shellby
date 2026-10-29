@@ -16,6 +16,15 @@ test('every piece in html/ is used, once', () => {
   assert.equal(new Set(used).size, used.length);
 });
 
+test('a shared piece (the Shellby tabs) is one row, the same on every page of his screen', () => {
+  const { html } = build();
+  assert.doesNotMatch(html, /@shared/);
+  const rows = html.match(/<nav class="seg shellby-tabs"[\s\S]*?<\/nav>/g);
+  assert.ok(rows.length >= 6, 'each page of his screen has the row');
+  assert.equal(new Set(rows).size, 1, 'and it is the same row everywhere');
+  assert.doesNotMatch(rows[0], /aria-current|\sid="/, 'with no page marked and no ids to repeat');
+});
+
 test('a screen per piece: each <main> view lives in a file of its own', () => {
   const frame = fs.readFileSync(require('path').join(__dirname, '..', 'src', 'renderer', 'panel', 'html', 'frame.html'), 'utf8');
   assert.doesNotMatch(frame, /<main class="view/);

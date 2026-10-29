@@ -410,6 +410,10 @@ SB.setView = view => {
     b.classList.toggle('active', on);
     if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
+  // The Shellby screen's tabs are one row repeated on each of its pages (html/shellby-tabs.html).
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.shellby-tabs [data-goto]')).forEach(b => {
+    if (b.dataset.goto === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
   SB.closeMenus();
   SB.views[view]?.render?.();
   if (view === 'chat') setTimeout(() => SB.$('input').focus(), 30);

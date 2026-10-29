@@ -662,12 +662,13 @@
   <main class="view view-wardrobe" id="wardrobeView">
     <div class="view-head">
       <h2 class="sr-only">Wardrobe</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="logbook">Logbook</button>
-        <button type="button" aria-current="page" data-goto="wardrobe">Outfits <span class="n" id="wdCount"></span></button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
-        <button type="button" data-goto="crew">Crew</button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -734,12 +735,13 @@
   <main class="view view-paint" id="paintView">
     <div class="view-head">
       <h2 class="sr-only">Painter</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="logbook">Logbook</button>
-        <button type="button" data-goto="wardrobe">Outfits</button>
-        <button type="button" aria-current="page" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
-        <button type="button" data-goto="crew">Crew</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
+        <button type="button" data-goto="paint">🎨 Paint</button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -865,11 +867,13 @@
   <main class="view view-trophies" id="trophiesView">
     <div class="view-head">
       <h2 class="sr-only">Trophies and XP</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" aria-current="page" data-goto="trophies">Trophies <span class="n" id="trophyCount"></span></button>
-        <button type="button" data-goto="crew">Crew</button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -981,12 +985,13 @@
   <main class="view view-logbook" id="logbookView">
     <div class="view-head">
       <h2 class="sr-only">Logbook</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" aria-current="page" data-goto="logbook">Logbook</button>
-        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
-        <button type="button" data-goto="crew">Crew</button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
@@ -1007,13 +1012,16 @@
   <main class="view view-crew" id="crewView">
     <div class="view-head">
       <h2 class="sr-only">Crew</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
-        <button type="button" aria-current="page" data-goto="crew">Crew <span class="n" id="crewCount"></span></button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
+        <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
         <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
       </nav>
@@ -1037,12 +1045,14 @@
   <main class="view view-stickers" id="stickersView">
     <div class="view-head">
       <h2 class="sr-only">Sticker Book</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
-        <button type="button" data-goto="crew">Crew</button>
-        <button type="button" aria-current="page" data-goto="stickers">Stickers <span class="n st-count"></span></button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
+        <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
@@ -1090,13 +1100,15 @@
   <main class="view view-finds" id="findsView">
     <div class="view-head">
       <h2 class="sr-only">Finds</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
-        <button type="button" data-goto="crew">Crew</button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
-        <button type="button" aria-current="page" data-goto="finds">Finds <span class="n fd-count"></span></button>
+        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
         <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
@@ -1124,13 +1136,16 @@
   <main class="view view-bugdex" id="bugdexView">
     <div class="view-head">
       <h2 class="sr-only">Bugdex</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
-        <button type="button" aria-current="page" data-goto="bugdex">Bugdex <span class="n bd-count"></span></button>
+        <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
         <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
       </nav>
@@ -1178,16 +1193,18 @@
   <main class="view view-us" id="usView">
     <div class="view-head">
       <h2 class="sr-only">You and Shellby</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
-        <button type="button" data-goto="crew">Crew</button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
         <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" aria-current="page" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
       </nav>
     </div>
     <!-- Community news (news.js, src/main/news.js): one quiet card at a time, with ✕. -->
@@ -1293,15 +1310,17 @@
   <main class="view view-tank" id="tankView">
     <div class="view-head">
       <h2 class="sr-only">His tank</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
-        <button type="button" data-goto="wardrobe">Outfits</button>
+        <button type="button" data-goto="logbook">Logbook</button>
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="paint">🎨 Paint</button>
-        <button type="button" data-goto="trophies">Trophies</button>
-        <button type="button" data-goto="crew">Crew</button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="crew">Crew <span class="n cr-count"></span></button>
         <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
         <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" aria-current="page" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
+        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
         <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
       </nav>
     </div>
