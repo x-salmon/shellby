@@ -119,6 +119,37 @@ test('the pull request step commits what is left, pushes only its branch, and op
   } finally { s.done(); }
 });
 
+test('with refresh, an open pull request gets its new body; without one, or if GitHub refuses, the push stands', async () => {
+  const s = setup();
+  try {
+    const gh = fakeGh();
+    const copy = await makeCopy({ repo: 'me/crab', slug: 'issue-42' }, copyDeps(s, gh));
+    fs.writeFileSync(path.join(copy.path, 'fix.txt'), 'fixed\n');
+    const ask = { folder: copy.path, title: 'Fix it', body: 'first', draft: false };
+    assert.equal((await openPullRequest(ask, prDeps(s, gh))).ok, true);
+
+    const patched = [];
+    const open = {
+      ...gh,
+      get: async p => (p.includes('/pulls?') ? [{ number: 7, draft: false, body: 'on GitHub' }] : gh.get(p)),
+      post: async () => { throw invalid('A pull request already exists for me:x.'); },
+      patch: async (p, body) => { patched.push([p, body]); },
+    };
+    const refresh = body => `${body}, brought up to date`;
+    const r = await openPullRequest({ ...ask, refresh }, prDeps(s, open));
+    assert.equal(r.existing, true);
+    assert.equal('stale' in r, false);
+    assert.deepEqual(patched, [['/repos/me/crab/pulls/7', { body: 'on GitHub, brought up to date' }]]);
+
+    const refused = await openPullRequest({ ...ask, refresh }, prDeps(s, { ...open, patch: async () => { throw new Error('Forbidden'); } }));
+    assert.equal(refused.ok, true, 'the commits are on GitHub');
+    assert.equal(refused.stale, true);
+
+    await openPullRequest(ask, prDeps(s, open));
+    assert.equal(patched.length, 1, "a workflow's retried step leaves its pull request alone");
+  } finally { s.done(); }
+});
+
 test('a pull request goes back into the branch asked for, and never quietly into another', async () => {
   const s = setup();
   try {

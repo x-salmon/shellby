@@ -434,6 +434,33 @@ function reefView(state, now) {
   };
 }
 
+/**
+ * The year's biggest improvement across every reef, for Wrapped: the signal
+ * that moved furthest for the better, for its size, between its first and last
+ * readings that year. Only the last MAX_SERIES readings are kept, so this reads
+ * the end of the year.
+ * @param {any} state
+ * @param {number | string} year
+ * @returns {{ project: string, signal: string, unit: string, from: number, to: number } | null}
+ */
+function biggestImprovement(state, year) {
+  let top = null;
+  for (const p of Object.values(normalize(state).projects)) {
+    for (const [sig, s] of Object.entries(p.signals)) {
+      const days = s.series.filter(([d]) => d.startsWith(`${year}-`));
+      if (days.length < 2 || !p.name) continue;
+      const from = days[0][1];
+      const to = days.at(-1)[1];
+      if (!beats(sig, from, to)) continue;
+      const gain = Math.abs(to - from) / Math.max(Math.abs(from), 1);
+      if (!top || gain > top.gain) top = { gain, project: p.name, signal: SIGNALS[sig].label, unit: SIGNALS[sig].unit, from, to };
+    }
+  }
+  if (!top) return null;
+  const { gain: _gain, ...best } = top;
+  return best;
+}
+
 /** Each project's coral, for tank.library({ coral }): [{ id, name, stage, polyps, art }]. */
 function corals(state, now) {
   return Object.entries(normalize(state).projects).map(([id, p]) => {
@@ -445,5 +472,5 @@ function corals(state, now) {
 module.exports = {
   STAGES, THRIVING, DELETED_SHARE, MAX_PROJECTS, FRESH_DAYS, ID_RE,
   dayKey, normalize, enable, reading, noteCiRun, mark, setDetail, fixPrompt, healthOf, trendOf, thrivingCount,
-  nextImprovement, coralArt, reefView, corals, signals, detail, prompts,
+  nextImprovement, biggestImprovement, coralArt, reefView, corals, signals, detail, prompts,
 };

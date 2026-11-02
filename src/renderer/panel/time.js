@@ -233,6 +233,10 @@
     $('timePrivacy').textContent = on
       ? 'Hours go to your other PCs through your private sync gist. Window titles never leave this PC.'
       : 'Hours are kept only on this PC, never synced or sent anywhere.';
+    // Older days stay on the PC that kept them, so a timesheet over them comes up short.
+    const short = $('timeShort');
+    short.hidden = !view.shortBefore;
+    short.textContent = view.shortBefore ? `Your other PCs only send their newest hours, so this period leaves out what they kept before ${shortDay(view.shortBefore)}.` : '';
   }
 
   // ------------------------------------------------------------------ sending to a tracker

@@ -31,7 +31,7 @@
       case 'pushed':
         return { icon: '⇡', text: `Pushed ${item.branch} to ${item.remote}: ${commits(item.commits)}${item.pulled ? `, after taking in ${item.pulled} from ${item.remote}` : ''}` };
       case 'shipped':
-        return { icon: '🚀', text: `${item.existing ? 'Pushed the new work to' : item.draft ? 'Opened a draft' : 'Opened'} pull request #${item.number} on ${item.repo}, into ${item.base}${item.green ? ', tests green' : ''}` };
+        return { icon: '🚀', text: `${item.existing ? 'Pushed the new work to' : item.draft ? 'Opened a draft' : 'Opened'} pull request #${item.number} on ${item.repo}, into ${item.base}${item.green ? ', tests green' : ''}${item.stale ? ". GitHub didn't take the new description, so it still shows the last ship" : ''}` };
       case 'compacted':
         return { icon: '⇣', text: `${item.trigger === 'auto' ? 'Claude Code compacted the conversation to make room'
           : item.trigger === 'idle' ? 'Compacted the conversation while it sat idle, before its cache ran out'

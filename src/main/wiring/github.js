@@ -216,12 +216,12 @@ function wireGithub(d) {
       .catch(e => d.log.warn('PR badge', e.message));
   }
 
-  async function openIssuePr({ folder, title, body: asked, draft, base }) {
+  async function openIssuePr({ folder, title, body: asked, draft, base, refresh }) {
     if (!d.github?.can('claude')) return { ok: false, error: 'Opening pull requests needs “Let Claude tasks push code and open pull requests” on in Settings → GitHub.' };
     // The badge goes in the body it opens with, rather than an edit after.
     const badge = d.github.can('prBadge') ? await d.prBadge.block() : null;
     const body = badge ? prBadges.withBadge(asked, badge) : asked;
-    const r = await issueWork.openPullRequest({ folder, title, body, draft, base }, {
+    const r = await issueWork.openPullRequest({ folder, title, body, draft, base, refresh }, {
       gh: d.github.gh(), git: worktrees.git, home: d.worktreeHome(), env: d.github.claudeEnv(), web: githubEndpoints().web,
       gate: (root, o) => secretGate(d, root, o), // what it pushes is looked over for secrets first
     });

@@ -39,7 +39,7 @@ const STAT_MAXIMA = Object.freeze({ 'review-tier': 'reviewTier', 'reef-thriving'
 // XP kinds (progression/xp.js AWARDS) that are counted as well as paid.
 const KIND_COUNTS = Object.freeze({ merged: 'merged', quiz: 'quizzes' });
 
-const COUNTS = ['xp', 'tasks', 'tideOuts', 'deploys', 'merged', 'catches', 'newSpecies', 'shiny', 'nestsCleared', 'cleanFixes', 'held',
+const COUNTS = ['xp', 'tasks', 'deploys', 'merged', 'catches', 'newSpecies', 'shiny', 'nestsCleared', 'cleanFixes', 'held',
   'rematchesWon', 'quizzes', 'reviewCaught', 'reviewTier', 'medals', 'tidePerfect', 'levelsGained', 'startLevel', 'endLevel', 'molts',
   'reefBests', 'thrivingMax', 'focusSessions', 'finds'];
 const MAX_TIME = 8.64e15; // the last moment a Date can hold
@@ -192,7 +192,6 @@ function noteStat(s, y, event, p, now) {
  *   'xp'      { kind, gained, project? }   an award paid (d.onAward)
  *   'stat'    { event, payload }           an achievement stat (d.onStat)
  *   'trophy'  { id, pieces: [key] }        a trophy earned, with the tank pieces it brought
- *   'tideout' {}                           a tide-out day used (progression/streaks.js)
  */
 function note(state, event, payload = {}, now = new Date()) {
   const when = asDate(now);
@@ -206,7 +205,7 @@ function note(state, event, payload = {}, now = new Date()) {
   else if (event === 'trophy' && typeof p.id === 'string' && KEY_RE.test(p.id)) {
     const pieces = strings(p.pieces, KEY_RE, 10);
     out = { s, y: { ...y, trophies: strings([...y.trophies, p.id], KEY_RE, MAX_LIST), piecesEarned: strings([...y.piecesEarned, ...pieces], KEY_RE, MAX_LIST) } };
-  } else if (event === 'tideout') out = { s, y: { ...y, tideOuts: y.tideOuts + 1 } };
+  }
   return { ...out.s, years: { ...out.s.years, [key]: out.y } };
 }
 
@@ -378,8 +377,12 @@ function longestRun(days) {
 const topOf = (map, n) => Object.entries(map).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, n);
 const peak = arr => (arr.some(n => n > 0) ? arr.indexOf(Math.max(...arr)) : null);
 
-/** A year's numbers worked out: what the slides and the card read. */
-function summary(state, year) {
+/**
+ * A year's numbers worked out: what the slides and the card read.
+ * tideOutDays: the days streaks settled as tide-outs (progression/streaks.js),
+ * which it keeps for 400 days: long enough to count a whole year in January.
+ */
+function summary(state, year, { tideOutDays = [] } = {}) {
   const s = normalize(state);
   const y = s.years[String(year)];
   if (!y) return null;
@@ -387,7 +390,8 @@ function summary(state, year) {
   const nemesis = topOf(y.bySpecies, 1)[0];
   return {
     year: Number(year), since: y.since, partial: y.partial,
-    xp: y.xp, tasks: y.tasks, activeDays: y.days.length, longestStreak: longestRun(y.days), tideOuts: y.tideOuts,
+    xp: y.xp, tasks: y.tasks, activeDays: y.days.length, longestStreak: longestRun(y.days),
+    tideOuts: tideOutDays.filter(d => d.startsWith(`${year}-`)).length,
     topKinds: topOf(y.byKind, 3).map(([kind, xp]) => ({ kind, xp })),
     topProjects: topOf(y.ships, 3).map(([name, n]) => ({ name, n })),
     ships: Object.values(y.ships).reduce((a, n) => a + n, 0), deploys: y.deploys, merged: y.merged,

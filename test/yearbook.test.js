@@ -242,6 +242,17 @@ test('slides leave out what has nothing to say, and always start with the year a
   for (const x of list) assert.ok(x.title && Array.isArray(x.lines), `${x.id} has words`);
 });
 
+test('the reef slide names the biggest improvement, and tide-outs count on the day they held', () => {
+  const s = yearWith(2026, 3);
+  const days = ['2025-12-31', '2026-03-04', '2026-12-31', '2027-01-01'];
+  const sum = Y.summary(s, 2026, { tideOutDays: days });
+  assert.equal(sum.tideOuts, 2, 'only that year\'s, however late they were settled');
+  assert.equal(Y.summary(s, 2026).tideOuts, 0);
+  const list = slides(sum, { reef: { project: 'shellby', signal: 'Line coverage', unit: '%', from: 61.5, to: 78 } });
+  assert.deepEqual(list.find(x => x.id === 'reef').lines, ['Biggest improvement: Line coverage 61.5% → 78% in shellby.']);
+  assert.ok(list.find(x => x.id === 'days').lines.includes('2 tide-out days used, and the streak held.'));
+});
+
 test('the card has six tiles, XP and days first, then the biggest of the rest', () => {
   let s = yearWith(2026, 4);
   s = Y.note(s, 'stat', stat('bug-caught', { species: 'x' }), at(2026, 4, 1));

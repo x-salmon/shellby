@@ -18,6 +18,18 @@ function run(state, readings, start = T0) {
   return { state: s, last: r };
 }
 
+test("the year's biggest improvement is the signal that moved furthest for its size", () => {
+  const { state } = run(watched(), [['tests', 100], ['escapes', 10], ['tests', 110], ['escapes', 2]]);
+  assert.deepEqual(reef.biggestImprovement(state, 2026), { project: 'shellby', signal: 'Escape hatches', unit: '', from: 10, to: 2 });
+});
+
+test('a signal that got worse, or only read once that year, is no improvement', () => {
+  const { state } = run(watched(), [['lint', 3], ['lint', 9], ['coverage', 70]]);
+  assert.equal(reef.biggestImprovement(state, 2026), null);
+  assert.equal(reef.biggestImprovement(run(watched(), [['tests', 100], ['tests', 200]]).state, 2025), null, 'another year has nothing to say');
+  assert.equal(reef.biggestImprovement(undefined, 2026), null);
+});
+
 test('the reef is off until you watch it, and watching starts it fresh', () => {
   assert.equal(reef.reading(null, ID, 'lint', 3, T0).reason, 'off');
   const r = reef.enable(null, ID, { name: 'shellby', root: 'C:\\code\\shellby' }, true, T0);

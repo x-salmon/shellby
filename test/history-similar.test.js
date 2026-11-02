@@ -112,3 +112,10 @@ test('asksOf reads the title and the first few of your messages, not Claude\'s',
   assert.equal(a.first, 'one');
   assert.equal(a.text, 'T\none\ntwo\nthree');
 });
+
+test('a long paste in your first message leaves room for what you asked after it', () => {
+  const paste = Array.from({ length: 300 }, (_, i) => `logline${i}`).join(' ');
+  const { terms } = asksOf({ title: 'Crash report' }, [{ kind: 'user', text: paste }, { kind: 'user', text: 'the invoice rounding is wrong' }]);
+  for (const word of ['crash', 'invoice', 'rounding']) assert.ok(terms.has(termsOf(word)[0]), word);
+  assert.ok(terms.size < 40, 'and the paste itself stays a small part of it');
+});

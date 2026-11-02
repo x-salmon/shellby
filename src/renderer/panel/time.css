@@ -54,6 +54,7 @@ body[data-view="time"] .view-time {
 
 .tm-fill { margin: 10px 0 0; }
 .tm-fill .toggle { font-size: var(--fs-12-5); color: var(--sand-dim); }
+.tm-short { margin: 10px 0 0; }
 
 /* ---------------------------------------------------------------- projects */
 .tm-projects { list-style: none; margin: 12px 0 4px; padding: 0; display: grid; gap: 6px; }

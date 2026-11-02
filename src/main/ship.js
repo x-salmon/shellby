@@ -15,7 +15,8 @@
 // The pull request's words come from the work itself: the conversation's
 // title, Claude's last reply, the commits, the files and how the checks went.
 // Shipping again from the same copy pushes the new commits to the same pull
-// request.
+// request and brings its commits, files and checks up to date (withWork). The
+// title and summary are left alone: you may have edited them on GitHub.
 //
 // Everything that touches git, GitHub or the tab comes in as deps, so
 // test/ship.test.js runs it against a real repository and a pretend GitHub.
@@ -27,6 +28,13 @@ const SUMMARY_MAX = 3000;
 const MAX_COMMITS = 20;
 const MAX_FILES = 30;
 const REF = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/; // as github/pullrequest.js checks a base
+// Around the part of a pull request's body Shellby keeps up to date.
+const WORK_START = '<!-- shellby-work -->';
+const WORK_END = '<!-- /shellby-work -->';
+// A pull request shipped before those marks: the same part starts at its first
+// heading and ends with the line under Checks.
+const OLD_WORK = /^## (?:Commits|Files|Checks)\s*$/m;
+const OLD_WORK_END = /^## Checks\s*\n+.*$/m;
 
 const oneLine = s => String(s ?? '').replace(/\s+/g, ' ').trim();
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
@@ -79,14 +87,13 @@ function checksLine(verdict) {
 }
 
 /**
- * The pull request's body, in Markdown.
- * @param {{ summary?: string | null, commits: string[], files: { path: string, added: number | null, removed: number | null }[],
+ * The part of the body that says what's in the branch now, marked so shipping
+ * again can replace it.
+ * @param {{ commits: string[], files: { path: string, added: number | null, removed: number | null }[],
  *   moreFiles?: number, verdict?: any, forced?: boolean }} work
  */
-function prBody({ summary, commits, files, moreFiles = 0, verdict = null, forced = false }) {
+function prWork({ commits, files, moreFiles = 0, verdict = null, forced = false }) {
   const out = [];
-  const said = String(summary ?? '').trim();
-  if (said) out.push('## Summary', '', noMentions(clip(said, SUMMARY_MAX)), '');
   if (commits.length) {
     out.push('## Commits', '');
     for (const c of commits.slice(0, MAX_COMMITS)) out.push(`- ${asCode(noMentions(oneLine(c)))}`);
@@ -105,7 +112,38 @@ function prBody({ summary, commits, files, moreFiles = 0, verdict = null, forced
   }
   // Forced is "Ship it anyway", offered only once the checks came back red.
   out.push('## Checks', '', forced && !verdict ? '⚠️ Shipped anyway, past checks that failed.' : checksLine(verdict));
-  return out.join('\n').trim();
+  return `${WORK_START}\n${out.join('\n').trim()}\n${WORK_END}`;
+}
+
+/**
+ * The pull request's body, in Markdown.
+ * @param {{ summary?: string | null, commits: string[], files: { path: string, added: number | null, removed: number | null }[],
+ *   moreFiles?: number, verdict?: any, forced?: boolean }} work
+ */
+function prBody({ summary, ...work }) {
+  const said = String(summary ?? '').trim();
+  return [...(said ? ['## Summary', '', noMentions(clip(said, SUMMARY_MAX)), ''] : []), prWork(work)].join('\n');
+}
+
+/**
+ * A body already on GitHub with its work part replaced, and everything around
+ * it (the summary, the badge, anything you added) as it was.
+ * @param {string | null | undefined} body
+ * @param {string} work  prWork's
+ */
+function withWork(body, work) {
+  const text = String(body ?? '');
+  const start = text.indexOf(WORK_START);
+  if (start >= 0) {
+    // No end mark: GitHub's length limit took it, along with whatever followed.
+    const end = text.indexOf(WORK_END, start);
+    return `${text.slice(0, start)}${work}${end < 0 ? '' : text.slice(end + WORK_END.length)}`;
+  }
+  const old = text.search(OLD_WORK);
+  if (old < 0) return text.trim() ? `${text.trimEnd()}\n\n${work}` : work;
+  const tail = text.slice(old);
+  const ended = OLD_WORK_END.exec(tail);
+  return `${text.slice(0, old)}${work}${ended ? tail.slice(ended.index + ended[0].length) : ''}`;
 }
 
 /**
@@ -148,7 +186,7 @@ async function describe(w, git) {
  *   gate: (tabId: string, w: any, o: { check: boolean, force: boolean }) => Promise<any>,
  *   commit: (w: any) => Promise<{ ok: boolean, error?: string }>,
  *   git: (cwd: string, args: string[], opts?: any) => Promise<{ ok: boolean, out: string, error?: string }>,
- *   openPr: (req: { folder: string, title: string, body: string, draft: boolean, base: string }) => Promise<any>,
+ *   openPr: (req: { folder: string, title: string, body: string, draft: boolean, base: string, refresh: (body: string | null | undefined) => string }) => Promise<any>,
  *   title: (tabId: string) => string | null | undefined,
  *   reply: (tabId: string) => string | null | undefined,
  *   note: (tabId: string, item: any) => void,
@@ -184,17 +222,22 @@ async function shipCopy(tabId, { draft = false, force = false } = {}, deps) {
   const { commits, files } = await describe(w, deps.git);
   if (!commits.length) return { ok: false, nothing: true, error: `Nothing to ship yet: this copy has no changes that ${w.base} doesn't have.` };
 
+  const work = { commits, files, verdict: gate.verdict || null, forced: force };
   const r = await deps.openPr({
     folder: w.path,
     title: scrub(prTitle(deps.title(tabId), commits, w.branch)),
-    body: scrub(prBody({ summary: summaryOf(deps.reply(tabId)), commits, files, verdict: gate.verdict || null, forced: force })),
+    body: scrub(prBody({ summary: summaryOf(deps.reply(tabId)), ...work })),
     draft: !!draft,
     base: w.base,
+    refresh: body => withWork(body, scrub(prWork(work))),
   });
   if (!r.ok) return r;
   const green = gate.verdict?.status === 'pass';
-  deps.note(tabId, { kind: 'shipped', url: r.url, number: r.number, repo: r.repo, base: r.base, draft: !!r.draft, existing: !!r.existing, green });
+  deps.note(tabId, {
+    kind: 'shipped', url: r.url, number: r.number, repo: r.repo, base: r.base, draft: !!r.draft, existing: !!r.existing, green,
+    ...(r.stale ? { stale: true } : {}),
+  });
   return { ...r, green };
 }
 
-module.exports = { shipCopy, prTitle, prBody, checksLine, parseNumstat, describe, SUMMARY_MAX, MAX_COMMITS, MAX_FILES };
+module.exports = { shipCopy, prTitle, prBody, prWork, withWork, checksLine, parseNumstat, describe, SUMMARY_MAX, MAX_COMMITS, MAX_FILES };

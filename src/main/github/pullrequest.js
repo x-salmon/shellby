@@ -87,11 +87,16 @@ async function makeCopy({ repo, slug }, { findRoot, gh, git, create, home, env =
 /**
  * Commit what's left in a copy, push its branch and open a pull request.
  *   base: the branch to propose into, which GitHub must have (else the default branch)
+ *   refresh(body): when one is already open, what its body becomes (ship.js). A
+ *     workflow's retried step has none: its pull request is as it should be.
  *   deps: { gh, git, home, env, web, gate }
  *   gate(root, { rev, remote }): the secret scan, null to push on (secret-gate.js)
- * -> { ok: true, url, number, branch, repo, base, draft } | { ok: false, error, cancelled?, secrets? }
+ * -> { ok: true, url, number, branch, repo, base, draft, existing, stale? } | { ok: false, error, cancelled?, secrets? }
+ *   stale: the push went through, but GitHub didn't take the new body
+ * @param {{ folder: string, title?: string, body?: string, draft?: boolean, base?: string | null, refresh?: ((body: any) => string) | null }} req
+ * @param {{ gh: any, git: any, home: string, env?: any, web?: string, gate?: ((root: string, o: { rev: string, remote: string }) => Promise<any>) | null }} deps
  */
-async function openPullRequest({ folder, title, body = '', draft = true, base: asked = null }, { gh, git, home, env = {}, web = 'https://github.com', gate = null }) {
+async function openPullRequest({ folder, title, body = '', draft = true, base: asked = null, refresh = null }, { gh, git, home, env = {}, web = 'https://github.com', gate = null }) {
   if (!insideHome(folder, home) || !fs.existsSync(folder)) return fail('A pull request can only be opened from a copy Shellby made (a “Make a copy” step).');
   const top = await git(folder, ['rev-parse', '--show-toplevel'], { timeout: 5000 });
   const root = top.ok ? top.out.trim() : '';
@@ -126,6 +131,7 @@ async function openPullRequest({ folder, title, body = '', draft = true, base: a
   const open = asDraft => gh.post(`/repos/${repo}/pulls`, { title: name, head: branch, base, body: String(body || '').slice(0, BODY_MAX), draft: asDraft });
   const why = e => `GitHub didn't open the pull request: ${e.detail || e.message}`;
   let pr;
+  /** @type {any} */
   let existing = null;
   try {
     pr = await open(!!draft);
@@ -139,7 +145,15 @@ async function openPullRequest({ folder, title, body = '', draft = true, base: a
     else try { pr = await open(false); } catch (e2) { return fail(why(e2)); }
   }
   if (!Number.isInteger(pr?.number)) return fail('GitHub didn\'t say which pull request it opened.');
-  return { ok: true, url: `${web}/${repo}/pull/${pr.number}`, number: pr.number, branch, repo, base, draft: !!pr.draft, existing: !!existing };
+  const opened = { ok: true, url: `${web}/${repo}/pull/${pr.number}`, number: pr.number, branch, repo, base, draft: !!pr.draft, existing: !!existing };
+  if (!existing || !refresh) return opened;
+  // The commits are on GitHub by now, so a body it won't take doesn't undo the push.
+  try {
+    await gh.patch(`/repos/${repo}/pulls/${pr.number}`, { body: String(refresh(existing.body)).slice(0, BODY_MAX) });
+    return opened;
+  } catch {
+    return { ...opened, stale: true };
+  }
 }
 
 module.exports = { makeCopy, openPullRequest, insideHome };

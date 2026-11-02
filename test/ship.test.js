@@ -3,7 +3,7 @@
 // checks, git and GitHub; the pull request's words from the work itself.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { shipCopy, prTitle, prBody, checksLine, parseNumstat } = require('../src/main/ship');
+const { shipCopy, prTitle, prBody, prWork, withWork, checksLine, parseNumstat } = require('../src/main/ship');
 
 const W = { path: 'C:\\copies\\crab', root: 'C:\\code\\crab', branch: 'shellby/fix-login-abc123', base: 'main' };
 const PASS = { status: 'pass', commands: [{ cmd: 'npm run test', ok: true, durationMs: 12000, failed: [] }] };
@@ -51,6 +51,48 @@ test('ships in order: checks, commit, pull request, then a note in the conversat
   assert.match(req.body, /✅ Checks passed: `npm run test` passed \(12s\)\./);
   const note = calls.find(c => c[0] === 'note');
   assert.deepEqual(note.slice(1), ['t1', { kind: 'shipped', url: 'https://github.com/me/crab/pull/7', number: 7, repo: 'me/crab', base: 'main', draft: false, existing: false, green: true }]);
+});
+
+test('shipping again past red checks stops the pull request saying they passed', async () => {
+  const first = deps();
+  await shipCopy('t1', {}, first.d);
+  const { body } = first.calls.find(c => c[0] === 'openPr')[1];
+  assert.match(body, /✅ Checks passed/);
+
+  const again = deps({ gate: () => Promise.resolve({ ok: true }) });
+  await shipCopy('t1', { force: true }, again.d);
+  const badge = '<!-- shellby-badge -->crab<!-- /shellby-badge -->';
+  const onGitHub = `${body.replace('Fixed it', 'Edited on GitHub')}\n\n${badge}`;
+  const now = again.calls.find(c => c[0] === 'openPr')[1].refresh(onGitHub);
+  assert.doesNotMatch(now, /Checks passed/);
+  assert.match(now, /⚠️ Shipped anyway, past checks that failed\./);
+  assert.match(now, /## Summary\n\nEdited on GitHub/, 'what you edited stays');
+  assert.ok(now.endsWith(badge), 'and so does the badge');
+});
+
+test('a secret in what changed never reaches the pull request when it is brought up to date', async () => {
+  const token = `ghp_${'a1B2'.repeat(9)}`;
+  const { d, calls } = deps({ git: (_cwd, args) => Promise.resolve({ ok: true, out: args.includes('log') ? `Add ${token}\n` : '' }) });
+  await shipCopy('t1', {}, d);
+  assert.ok(!calls.find(c => c[0] === 'openPr')[1].refresh('').includes(token));
+});
+
+test('withWork replaces the work of a pull request from before the marks, and adds it to one without', () => {
+  const work = prWork({ commits: ['New commit'], files: [] });
+  const badge = '<!-- shellby-badge -->crab<!-- /shellby-badge -->';
+  const old = `## Summary\n\nHi\n\n## Commits\n\n- \`Old commit\`\n\n## Checks\n\n✅ Checks passed: \`x\`.\n\n${badge}`;
+  assert.equal(withWork(old, work), `## Summary\n\nHi\n\n${work}\n\n${badge}`);
+  assert.equal(withWork(old.replace(badge, 'Added by hand.'), work), `## Summary\n\nHi\n\n${work}\n\nAdded by hand.`);
+  assert.equal(withWork('Written by hand.\n', work), `Written by hand.\n\n${work}`);
+  // A body cut at GitHub's limit lost its end mark: one work block all the same.
+  assert.equal(withWork(`Hi\n\n${work.slice(0, -10)}`, work), `Hi\n\n${work}`);
+  assert.equal(withWork(null, work), work);
+});
+
+test('a description GitHub refused is said in the conversation', async () => {
+  const { d, calls } = deps({ openPr: () => Promise.resolve({ ok: true, url: 'https://github.com/me/crab/pull/7', number: 7, repo: 'me/crab', base: 'main', existing: true, stale: true }) });
+  await shipCopy('t1', {}, d);
+  assert.equal(calls.find(c => c[0] === 'note')[2].stale, true);
 });
 
 test('a secret in Claude\'s reply never reaches the pull request', async () => {

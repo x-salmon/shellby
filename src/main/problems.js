@@ -48,6 +48,8 @@ const sev = w => (/error/.test(w) ? 'error' : w === 'warning' ? 'warning' : w ==
  * Problems in a command's output.
  *   -> [{ file, line, col, severity: 'error'|'warning', message, code? }], errors first.
  * cwd: where it ran, so absolute paths inside it come back relative.
+ * @param {string} output
+ * @param {{ cwd?: string | null }} [opts]
  */
 function parse(output, { cwd = null } = {}) {
   const lines = String(output || '').replace(ANSI_RE, '').replace(/\r\n?/g, '\n').split('\n');

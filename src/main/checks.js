@@ -55,7 +55,7 @@ const NO_PYTEST_RE = /No module named '?pytest'?(?![\w.])/;
 /** Is this a command line checks.js would have built? Anything else never runs. */
 function isSafeCommand(cmd) {
   if (typeof cmd !== 'string' || cmd.length > 100) return false;
-  return SCRIPT_CMD_RE.test(cmd) || Object.values(FIXED).includes(cmd) || VENV_PYTEST.includes(cmd);
+  return SCRIPT_CMD_RE.test(cmd) || /** @type {string[]} */ (Object.values(FIXED)).includes(cmd) || VENV_PYTEST.includes(cmd);
 }
 
 function parseJson(text) {
@@ -66,6 +66,8 @@ function parseJson(text) {
  * package.json text + the folder's file names -> the commands to run, in order.
  * The test script (not npm's "no test specified" placeholder), then one of
  * typecheck or build: enough to say "it works", not a whole CI pipeline. Pure.
+ * @param {string} pkgText
+ * @param {any} [files]  the names, as a list or a Set
  */
 function pickFromPackage(pkgText, files = []) {
   const pkg = parseJson(pkgText);
@@ -84,6 +86,7 @@ function pickFromPackage(pkgText, files = []) {
  * The commands that find problems rather than run tests, for the Problems
  * list: package.json's lint script and its typecheck, cargo check or go vet.
  * [] when there are none (the tests are what's left). Pure.
+ * @param {{ pkgText?: string | null, files?: string[] }} [facts]
  */
 function pickProblemCommands({ pkgText = null, files = [] } = {}) {
   const names = new Set(files);
@@ -108,6 +111,7 @@ const usesPytest = ({ pyproject = '', setupCfg = '', hasIni = false } = {}) =>
  * What a folder holds -> the commands to run. A Node project wins over the
  * rest (a repo with both usually tests through npm). Pure.
  *   facts: { pkgText, files: [names], pyproject, setupCfg, venvPython: one of VENV_PYTHONS that exists }
+ * @param {{ pkgText?: string | null, files?: string[], pyproject?: string, setupCfg?: string, venvPython?: string | null }} [facts]
  */
 function pickCommands({ pkgText = null, files = [], pyproject = '', setupCfg = '', venvPython = null } = {}) {
   const names = new Set(files);
@@ -118,7 +122,7 @@ function pickCommands({ pkgText = null, files = [], pyproject = '', setupCfg = '
   if (names.has('Cargo.toml')) return [FIXED.cargo];
   if (names.has('go.mod')) return [FIXED.go];
   if (usesPytest({ pyproject, setupCfg, hasIni: names.has('pytest.ini') })) {
-    return [VENV_PYTHONS.includes(venvPython) ? pytestWith(venvPython) : FIXED.pytest];
+    return [venvPython && VENV_PYTHONS.includes(venvPython) ? pytestWith(venvPython) : FIXED.pytest];
   }
   return [];
 }
@@ -177,6 +181,7 @@ const missingPytest = (cmd, output) => (cmd === FIXED.pytest || VENV_PYTEST.incl
  * is only read for which tests failed (flaky/index.js knows the runners' formats).
  * pytest missing from the python that ran it isn't a failing test: that's an
  * error (needsEnv), and it doesn't hold up bringing a copy home.
+ * @param {{ cmd: string, exitCode?: number | null, timedOut?: boolean, error?: string | null, output?: string, durationMs?: number, cwd?: string | null }} run
  */
 function commandVerdict({ cmd, exitCode = null, timedOut = false, error = null, output = '', durationMs = 0, cwd = null }) {
   const ok = !timedOut && !error && exitCode === 0;
@@ -203,6 +208,8 @@ function statusOf(commands) {
 /**
  * The item noted into the tab. after: the turn's tree it stamps; tree: the
  * folder as the checks found it (not the same when it moved on since). Pure.
+ * @param {any[] | null | undefined} results
+ * @param {{ after?: any, root?: any, tree?: any, at?: number, cwd?: string | null }} [stamp]
  */
 function buildVerdict(results, { after, root, tree = null, at = Date.now(), cwd = null } = {}) {
   const commands = (results || []).map(r => commandVerdict({ cwd, ...r }));
@@ -323,7 +330,9 @@ function checkEnv(env = process.env) {
  * from waiting forever. A timeout or cancel ends the whole tree (taskkill /T).
  */
 function runCommand(cmd, cwd, { timeoutMs = DEFAULT_TIMEOUT_MIN * 60000, spawnImpl = spawn, killImpl = killTree } = {}) {
+  /** @type {any} */
   let child = null;
+  /** @type {any} */
   let finish = null;
   let ended = false;
   const startedAt = Date.now();
@@ -363,6 +372,7 @@ function killTree(pid) {
  * about alongside failing tests).
  */
 function runAll(commands, cwd, opts = {}) {
+  /** @type {any} */
   let current = null;
   let cancelled = false;
   const promise = (async () => {

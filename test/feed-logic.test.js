@@ -20,6 +20,12 @@ test('markFor words the notes Shellby leaves in a feed, with their glyphs', () =
   assert.match(F.markFor({ kind: 'cleared' }, compact).text, /^Cleared\. .*\/export/);
 });
 
+test('markFor says when a pull request kept its old description', () => {
+  const mark = { kind: 'shipped', existing: true, number: 7, repo: 'me/crab', base: 'main' };
+  assert.equal(F.markFor(mark, compact).text, 'Pushed the new work to pull request #7 on me/crab, into main');
+  assert.match(F.markFor({ ...mark, stale: true }, compact).text, /GitHub didn't take the new description/);
+});
+
 test('markFor says what a push took in from the remote first', () => {
   assert.equal(F.markFor({ kind: 'pushed', branch: 'main', remote: 'origin', commits: 2 }, compact).text, 'Pushed main to origin: 2 commits');
   assert.equal(F.markFor({ kind: 'pushed', branch: 'main', remote: 'origin', commits: 1, pulled: 4 }, compact).text, 'Pushed main to origin: 1 commit, after taking in 4 from origin');

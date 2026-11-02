@@ -88,6 +88,17 @@ class TimeTracker {
     return Object.entries(syncHours.clean(this.elsewhere()).shares).filter(([dev, sh]) => dev !== device && Object.keys(sh.days).length + Object.keys(sh.manual).length > 0).length;
   }
 
+  /**
+   * The day this range's hours from other PCs start being whole, when the range
+   * starts before it: older days stayed on those PCs (sync/hours.js SHARE_BYTES).
+   * @param {{ from?: string }} range
+   */
+  shortBefore(range) {
+    if (!this.state.sync) return null;
+    const from = syncHours.wholeFrom(this.elsewhere(), this.device());
+    return from && range?.from && range.from < from ? from : null;
+  }
+
   /** A sync brought newer details for a project (its client, rate, name): take them. */
   adoptSynced() {
     const next = syncHours.adopt(this.state, this.elsewhere());
@@ -301,6 +312,7 @@ class TimeTracker {
     return {
       settings: this.settings,
       otherPcs: this.otherPcs(),
+      shortBefore: this.shortBefore(range),
       syncable: !!this.deps.syncable?.(),
       now: this.nowView(),
       range, ranges: tt.ranges(this.now()),

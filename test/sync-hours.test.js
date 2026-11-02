@@ -111,6 +111,48 @@ test('two projects here with the same folder name: another PC\'s hours stay apar
   assert.equal(combined.days[DAY][HOME], 60);
 });
 
+test('two projects here with one folder name keep their own client and rate through a sync', () => {
+  const OLD = 'e:\\old\\shellby';
+  const start = { ...books(HOME, 60), projects: { [HOME]: { name: 'a' }, [OLD]: { name: 'b' } } };
+  const both = tt.setProject(tt.setProject(start, HOME, { client: 'Acme', rate: 150 }, 2000), OLD, { client: 'Beta', rate: 80 }, 1000);
+  const sent = hours.snapshot(k => (k === 'timeTracking' ? both : undefined), 'pc-home1', 5000);
+  assert.equal(hours.pidOf(HOME) in sent.projects, false, 'neither goes up: the name can\'t say which it was');
+  // Details an older version already sent up under that name change nothing here.
+  const already = { shares: {}, projects: { shellby: { name: 'a', client: 'Acme', rate: 150, at: 9000 } } };
+  assert.equal(hours.adopt(both, already), both);
+});
+
+test('both PCs\' notes on one project and day stay on the timesheet, each once', () => {
+  const noted = text => books(HOME, 60, { notes: { [DAY]: { [HOME]: text } } });
+  const theirs = text => ({ shares: { 'pc-work1': { at: 1, days: { [DAY]: { [WORK]: 600 } }, notes: { [DAY]: { [WORK]: text } } } } });
+  const note = (mine, other) => hours.combine(noted(mine), theirs(other), 'pc-home1').notes[DAY][HOME];
+  assert.equal(note('Fixed the login', 'Wrote the invoice'), 'Fixed the login; Wrote the invoice');
+  assert.equal(note('Same note', 'Same note'), 'Same note');
+  // Saved from the Time page, this PC's note already has the other PC's in it.
+  assert.equal(note('Fixed the login; Wrote the invoice', 'Wrote the invoice'), 'Fixed the login; Wrote the invoice');
+  assert.equal(note('Fixed it; Tested it', 'Tested it'), 'Fixed it; Tested it');
+  assert.equal(note('Fixed the login', 'Wrote the invoice; Fixed the login'), 'Fixed the login; Wrote the invoice', '...or the other PC saved the two of them');
+  assert.equal(note('Fixed it; Tested it', 'Tested it; Fixed it'), 'Fixed it; Tested it');
+  assert.equal(note('Fixed the login; Wrote the invoice', 'Wrote the'), 'Fixed the login; Wrote the invoice; Wrote the', 'whole parts are compared');
+});
+
+test('a share too big for the gist says where it starts, and only then', () => {
+  const days = {};
+  for (let i = 0; i < 700; i++) {
+    const day = new Date(Date.UTC(2024, 0, 1 + i)).toISOString().slice(0, 10);
+    days[day] = { [`${WORK}-one`]: 3600, [`${WORK}-two`]: 1800, [`${WORK}-three`]: 900 };
+  }
+  const elsewhereFor = timeTracking => hours.snapshot(k => (k === 'timeTracking' ? timeTracking : undefined), 'pc-work1', 5000);
+  const big = elsewhereFor({ sync: true, days });
+  const share = big.shares['pc-work1'];
+  assert.equal(share.cut, Object.keys(share.days)[0]);
+  assert.ok(share.cut > '2024-01-01');
+  assert.equal(hours.clean(big).shares['pc-work1'].cut, share.cut, 'the mark survives the trip through the gist');
+  assert.equal(hours.wholeFrom(big, 'pc-home1'), share.cut);
+  assert.equal(hours.wholeFrom(big, 'pc-work1'), null, 'this PC has all of its own hours');
+  assert.equal(hours.wholeFrom(elsewhereFor({ sync: true, days: { [DAY]: { [WORK]: 60 } } }), 'pc-home1'), null);
+});
+
 // A tracker on the PC with id pc-home1, with the given books and what sync brought.
 function tracker(timeTracking, timeElsewhere) {
   const saved = { timeTracking, timeElsewhere };
@@ -128,6 +170,16 @@ test("the Time page adds up every PC's hours, but a time tracker gets only this 
   assert.equal((await t.summary({ range: 'custom', ...WEEK })).summary.totals.seconds, 1800);
   assert.equal((await t.summary({ range: 'custom', ...WEEK, local: true })).summary.totals.seconds, 600);
   assert.equal((await t.view({ range: 'custom', ...WEEK })).otherPcs, 1);
+});
+
+test('the Time page says when a period starts before the other PCs\' hours do', async () => {
+  const CUT = '2026-10-01';
+  const elsewhere = { shares: { 'pc-work1': { at: 1, days: { [DAY]: { [WORK]: 1200 } }, cut: CUT } } };
+  const { t } = tracker(books(HOME, 600), elsewhere);
+  assert.equal((await t.view({ range: 'custom', from: '2026-09-01', to: '2026-10-31' })).shortBefore, CUT);
+  assert.equal((await t.view({ range: 'custom', ...WEEK })).shortBefore, null);
+  const { t: off } = tracker(books(HOME, 600, { sync: false }), elsewhere);
+  assert.equal((await off.view({ range: 'custom', from: '2026-09-01', to: '2026-10-31' })).shortBefore, null);
 });
 
 test('time another PC kept is taken off on that PC, so it never gets billed from there anyway', () => {

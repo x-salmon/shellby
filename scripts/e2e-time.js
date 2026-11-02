@@ -121,8 +121,8 @@ async function cdp(url) {
       const req = process.mainModule.require;
       const { BrowserWindow, app } = req('electron');
       const { TimeTracker } = req(${JSON.stringify(path.join(ROOT, 'src', 'main', 'timetrack/service.js'))});
-      const { timesheetHtml } = req(${JSON.stringify(path.join(ROOT, 'src', 'main', 'timesheet.js'))});
-      const tt = req(${JSON.stringify(path.join(ROOT, 'src', 'main', 'timetrack.js'))});
+      const { timesheetHtml } = req(${JSON.stringify(path.join(ROOT, 'src', 'main', 'timetrack', 'timesheet.js'))});
+      const tt = req(${JSON.stringify(path.join(ROOT, 'src', 'main', 'timetrack', 'index.js'))});
       const state = tt.normalize(JSON.parse(req('fs').readFileSync(${JSON.stringify(path.join(profile, 'settings.json'))}, 'utf8')).timeTracking);
       const week = tt.ranges(Date.now()).find(x => x.id === 'week');
       const html = timesheetHtml(tt.summarize(state, week), { label: 'This week', preparedBy: 'E2E' });

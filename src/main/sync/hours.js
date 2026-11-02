@@ -15,7 +15,12 @@
 // each PC, so another PC's folder counts for the project here with the same
 // folder name (when just one has it); else it shows as a project of its own.
 // A project's client, rate, name and billable flag follow whichever PC changed
-// them last (adopt).
+// them last (adopt). Two projects here with one folder name can't be told apart
+// by it, so their details stay on this PC: neither sent nor taken.
+//
+// Two PCs' notes on one project and day are both kept, each once (joinNote).
+// A share cut to size says where it now starts (cut), so the Time page can say
+// a range reaches further back than the other PCs' hours do (wholeFrom).
 //
 // What stays on each PC: whether it keeps time at all, the idle limit, the
 // rounding and the currency, and what it sent to Toggl, Clockify or Harvest
@@ -24,6 +29,7 @@
 const tt = require('../timetrack');
 
 const DEVICE_RE = /^[a-z0-9-]{4,40}$/;
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const PID_RE = /^[^\\/:*?"<>|\u0000-\u001f]{1,100}$/;
 const MAX_DEVICES = 4;
 const MAX_PROJECTS = 200;
@@ -34,6 +40,7 @@ const SHARE_BYTES = 24 * 1024;
 const INDENT_BYTES = 8; // github/sync.js writes the gist one space a level deep: each entry's line starts this far in
 const KINDS = ['days', 'manual', 'notes'];
 const META = ['name', 'client', 'rate', 'billable', 'ignored'];
+const NOTE_JOIN = '; '; // as the Time page joins commit subjects
 
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const pos = v => (Number.isFinite(v) && v > 0 ? v : 0);
@@ -43,6 +50,34 @@ const own = (map, k) => (map && Object.prototype.hasOwnProperty.call(map, k) ? m
 /** What matches a project between PCs: its folder's name, case-folded. */
 const pidOf = key => String(key || '').split(/[\\/]/).filter(Boolean).pop()?.toLowerCase() || '';
 
+/**
+ * The folder names more than one project here goes by: the name alone can't
+ * say which of them another PC's details are for.
+ * @param {string[]} keys
+ * @returns {Set<string>}
+ */
+function sharedNames(keys) {
+  const seen = new Set();
+  const shared = new Set();
+  for (const key of keys) {
+    const pid = pidOf(key);
+    if (seen.has(pid)) shared.add(pid);
+    seen.add(pid);
+  }
+  return shared;
+}
+
+/**
+ * One day's notes from two PCs: every part of both, each once. A note saved
+ * from the Time page already has the other PC's in it, on either side.
+ * @param {string | undefined} mine
+ * @param {string} theirs
+ */
+function joinNote(mine, theirs) {
+  if (!mine) return theirs;
+  return [...new Set([...mine.split(NOTE_JOIN), ...theirs.split(NOTE_JOIN)])].join(NOTE_JOIN);
+}
+
 // A folder from the gist is only ever a drive's (C:\...) or a POSIX one: never a
 // network share (\\host\share), which git would go and reach for.
 const UNC = /^[\\/]{2}/;
@@ -50,21 +85,30 @@ const localOnly = days => Object.fromEntries(Object.entries(isObj(days) ? days :
   .map(([day, m]) => [day, Object.fromEntries(Object.entries(isObj(m) ? m : {}).filter(([k]) => !UNC.test(k)))]));
 const sizeOf = m => Buffer.byteLength(JSON.stringify(m)) + Object.keys(m).length * INDENT_BYTES;
 
-/** One PC's hours: clean, and cut to SHARE_BYTES by dropping the oldest days. */
+/**
+ * One PC's hours: clean, and cut to SHARE_BYTES by dropping the oldest days.
+ * cut: the first day still there, when older ones were dropped (here, or by
+ * the PC that wrote this share).
+ */
 function cleanBody(raw) {
   const s = tt.normalize(isObj(raw) ? { days: localOnly(raw.days), manual: localOnly(raw.manual), notes: localOnly(raw.notes) } : {});
   const days = [...new Set(KINDS.flatMap(k => Object.keys(s[k])))].sort().reverse();
   const out = { days: {}, manual: {}, notes: {} };
   let bytes = 0;
+  /** @type {string | null} */
+  let cut = isObj(raw) && DAY_RE.test(String(raw.cut)) ? raw.cut : null;
+  /** @type {string | null} */
+  let kept = null;
   for (const day of days) {
     const part = KINDS.map(k => (s[k][day] ? sizeOf(s[k][day]) + day.length + INDENT_BYTES : 0)).reduce((a, b) => a + b, 0);
-    if (bytes + part > SHARE_BYTES) break;
+    if (bytes + part > SHARE_BYTES) { cut = kept || day; break; }
     bytes += part;
+    kept = day;
     for (const k of KINDS) if (s[k][day]) out[k][day] = s[k][day];
   }
   // Oldest first, as timetrack keeps them, so two copies of one share compare equal.
   for (const k of KINDS) out[k] = Object.fromEntries(Object.entries(out[k]).sort(([a], [b]) => (a < b ? -1 : 1)));
-  return out;
+  return cut ? { ...out, cut } : out;
 }
 
 /** A project's details as they travel: { name, client, rate, billable, ignored, at }. */
@@ -120,9 +164,10 @@ function snapshot(get, device, now) {
     }
   }
   if (s.sync) {
+    const shared = sharedNames(Object.keys(s.projects));
     for (const [key, p] of Object.entries(s.projects)) {
       const pid = pidOf(key);
-      if (PID_RE.test(pid)) projects[pid] = newerMeta(own(projects, pid), cleanMeta(p));
+      if (PID_RE.test(pid) && !shared.has(pid)) projects[pid] = newerMeta(own(projects, pid), cleanMeta(p));
     }
   }
   return clean({ shares, projects });
@@ -155,10 +200,11 @@ function adopt(stateIn, elsewhereIn) {
   const s = tt.normalize(stateIn);
   if (!s.sync) return stateIn;
   const e = clean(elsewhereIn);
+  const shared = sharedNames(Object.keys(s.projects));
   /** @type {Record<string, any> | null} */
   let projects = null;
   for (const [key, p] of Object.entries(s.projects)) {
-    const theirs = own(e.projects, pidOf(key));
+    const theirs = shared.has(pidOf(key)) ? null : own(e.projects, pidOf(key));
     if (!theirs) continue;
     const mine = cleanMeta(p);
     if (same(mine, theirs) || newerMeta(mine, theirs) !== theirs) continue;
@@ -201,7 +247,7 @@ function combine(stateIn, elsewhereIn, device, known = []) {
         const into = { ...(out[kind][day] || {}) };
         for (const [path, v] of Object.entries(m)) {
           const key = keyFor(path);
-          if (kind === 'notes') { if (!into[key]) into[key] = v; } else into[key] = (into[key] || 0) + v;
+          if (kind === 'notes') into[key] = joinNote(into[key], v); else into[key] = (into[key] || 0) + v;
           if (!own(projects, key) && !knownSet.has(key)) projects[key] = tt.cleanProject(own(e.projects, pidOf(key)) || { name: path.split(/[\\/]/).filter(Boolean).pop() });
         }
         out[kind][day] = into;
@@ -231,6 +277,15 @@ function elsewhereOn(stateIn, elsewhereIn, device, key, day, known = []) {
   return Math.max(0, n);
 }
 
+/**
+ * The day the other PCs' hours are all here from: the latest any of them was
+ * cut to fit, or null when each sent everything it has.
+ */
+function wholeFrom(elsewhereIn, device) {
+  const cuts = Object.entries(clean(elsewhereIn).shares).filter(([dev]) => dev !== device).map(([, share]) => share.cut).filter(Boolean);
+  return cuts.length ? cuts.sort().at(-1) : null;
+}
+
 /** Whether a settings change touched anything synced here (config.onSet), to sync soon. */
 function moved(patch, prev) {
   if (!('timeTracking' in patch)) return false;
@@ -238,4 +293,4 @@ function moved(patch, prev) {
   return a.sync !== b.sync || (a.sync && !same(Object.values(a.projects).map(cleanMeta), Object.values(b.projects).map(cleanMeta)));
 }
 
-module.exports = { clean, snapshot, merge, patchFor, adopt, combine, elsewhereOn, stampFor, moved, pidOf, newerMeta, SHARE_BYTES };
+module.exports = { clean, snapshot, merge, patchFor, adopt, combine, elsewhereOn, wholeFrom, stampFor, moved, pidOf, newerMeta, SHARE_BYTES };

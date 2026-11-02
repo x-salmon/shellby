@@ -20,6 +20,7 @@ const ASKS_READ = 3;       // your first few messages say what a conversation wa
 const MAX_ASK_CHARS = 2000;
 const MAX_RESULTS = 3;
 const MAX_TERMS = 60;
+const ASK_TERMS = 30;      // for each message, so a long paste can't crowd out the ones after it
 const ASK_SHOWN = 160;
 
 // Words that say nothing about what a task is: English glue, and the way asks
@@ -57,9 +58,10 @@ function stem(w) {
  * The meaningful words of some text, stemmed, each once. Identifiers count as
  * themselves and as their parts: "flakyLoginTest" is also flaky, login, test.
  * @param {string} text
+ * @param {number} [max]  stop after this many
  * @returns {string[]}
  */
-function termsOf(text) {
+function termsOf(text, max = MAX_TERMS) {
   const out = new Set();
   const add = w => {
     const low = w.toLowerCase();
@@ -73,7 +75,7 @@ function termsOf(text) {
     const parts = word.split(/_+|(?<=[\p{Ll}\p{N}])(?=\p{Lu})/u).filter(Boolean);
     if (parts.length > 1) for (const p of parts) add(p);
     add(word);
-    if (out.size >= MAX_TERMS) break;
+    if (out.size >= max) break;
   }
   return [...out];
 }
@@ -85,7 +87,11 @@ function termsOf(text) {
  */
 function asksOf(entry, docs) {
   const asks = (docs || []).filter(d => d.kind === 'user').slice(0, ASKS_READ).map(d => d.text.slice(0, MAX_ASK_CHARS));
-  return { first: asks[0] || '', text: [entry.title || '', ...asks].join('\n') };
+  return {
+    first: asks[0] || '',
+    text: [entry.title || '', ...asks].join('\n'),
+    terms: new Set([...termsOf(entry.title || ''), ...asks.flatMap(ask => termsOf(ask, ASK_TERMS))]),
+  };
 }
 
 /** Did Claude answer anything in it? A conversation that never got a reply has nothing to bring in. */
@@ -111,8 +117,7 @@ function rankSimilar(entries, docsFor, text, { exclude = null, inProject = () =>
     const docs = docsFor(e.id);
     if (!answered(docs)) continue;
     const asks = asksOf(e, docs);
-    const terms = new Set(termsOf(asks.text));
-    if (terms.size) pool.push({ e, asks, terms });
+    if (asks.terms.size) pool.push({ e, asks, terms: asks.terms });
   }
   if (!pool.length) return [];
   // How many of this project's conversations use each word: the rarer, the more it says.

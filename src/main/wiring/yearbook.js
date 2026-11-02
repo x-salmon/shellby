@@ -11,6 +11,7 @@ const { slides, cardTiles } = require('../yearbook-slides');
 const bugdex = require('../bugdex');
 const { speciesById } = require('../bugdex/species');
 const streaks = require('../progression/streaks');
+const reef = require('../reef');
 const { normalizeXp } = require('../progression/xp');
 const { normalizeStats } = require('../wardrobe/achievements');
 const friends = require('../friends');
@@ -187,13 +188,13 @@ function wireYearbook(d) {
     const s = backfillOnce();
     const key = String(year);
     if (!YEAR_RE.test(key) || !yearbook.available(s, now()).some(a => String(a.year) === key)) return null;
-    const sum = yearbook.summary(s, key);
+    const sum = yearbook.summary(s, key, { tideOutDays: streaks.normalize(d.config.get('streaks')).tideOuts });
     const deepCuts = level() >= DEEP_CUTS_LEVEL;
     const list = slides(sum, {
       speciesName: id => speciesById(id)?.name || null,
       pieceName: decorName,
       deepCuts,
-      reef: null, // the reef's biggest improvement, once this reads reef/index.js's series of readings
+      reef: reef.biggestImprovement(d.config.get('reef'), key),
     }).map(sl => (sl.id === 'bugdex' && sl.nemesis ? { ...sl, nemesis: { ...sl.nemesis, art: bugArt(sl.nemesis.id) } } : sl))
       .map(sl => (sl.id === 'pieces' ? { ...sl, pieces: sl.pieces.slice(0, 12).map(p => ({ ...p, art: decorArt(p.key) })) } : sl));
     const together = friendsSlide(key);

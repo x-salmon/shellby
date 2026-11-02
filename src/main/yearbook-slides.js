@@ -27,7 +27,7 @@ const hourName = h => (h === 0 ? 'midnight' : h === 12 ? 'noon' : h < 12 ? `${h}
  * The slides for one year.
  *   sum: yearbook.summary(state, year)
  *   ctx: { speciesName(id) -> string|null, pieceName(key) -> string|null,
- *          trophyName(id) -> string|null, deepCuts: boolean, reef: { project, signal, from, to } | null }
+ *          trophyName(id) -> string|null, deepCuts: boolean, reef: { project, signal, unit, from, to } | null }
  * Each slide: { id, eyebrow, title, big?, unit?, lines: [string], ...extras }.
  */
 function slides(sum, ctx = {}) {
@@ -115,7 +115,7 @@ function slides(sum, ctx = {}) {
     out.push({
       id: 'reef', eyebrow: 'The reef', title: sum.thrivingMax ? `${plural(sum.thrivingMax, 'reef')} thriving` : 'Your reefs grew',
       lines: [
-        reef ? `Biggest improvement: ${reef.signal} ${n(reef.from)} → ${n(reef.to)} in ${reef.project}.` : null,
+        reef ? `Biggest improvement: ${reef.signal} ${n(reef.from)}${reef.unit || ''} → ${n(reef.to)}${reef.unit || ''} in ${reef.project}.` : null,
         sum.reefBests ? `${plural(sum.reefBests, 'new best')} across your projects.` : null,
       ].filter(Boolean),
     });
