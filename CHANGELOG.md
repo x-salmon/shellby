@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.95.5: A clearer front page
+
+### Changed
+- **The README says what Shellby is for, first.** Its top now leads with the three things people come for: several tasks at once, each on its own branch; undoing any turn; and work that starts when your limit resets. It also says that a copy per tab is one switch in Settings → Claude. Nothing in the app has changed.
+
 ## 0.95.4: 0.95.3, delivered
 
 0.95.3 didn't make it out of the build, so this is the first version to bring everything in 0.95.3 (below). Nothing else has changed.
