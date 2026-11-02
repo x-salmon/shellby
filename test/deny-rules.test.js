@@ -64,9 +64,11 @@ test('the fifth no in different turns offers a deny rule, once', () => {
   assert.equal(offers[4].rule, 'Bash(git push:*)');
   assert.match(offers[4].headline, /5 times/);
   assert.equal(offers[5], null);
-  const after = c.resolve(store, offers[4].id, 'dismissed');
+  // On the test's clock: by today's, an open card from T0 may be past keeping and gone.
+  const answered = T0 + 10 * MIN;
+  const after = c.resolve(store, offers[4].id, 'dismissed', answered);
   assert.equal(c.blocked(after.offers, OTHER, { type: 'deny-rule', key: 'deny-rule:Bash(git push:*)' }), true);
-  assert.deepEqual(c.learnedRoots(c.resolve(store, offers[4].id, 'added')), []);
+  assert.deepEqual(c.learnedRoots(c.resolve(store, offers[4].id, 'added', answered)), []);
 });
 
 test('the diff marks only what changes in the permissions block', () => {
