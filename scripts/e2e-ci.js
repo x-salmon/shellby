@@ -248,6 +248,8 @@ const failed = results.filter(r => !r.ok);
 const flaky = results.filter(r => r.flaky);
 console.log('='.repeat(70));
 if (flaky.length) console.log(`${flaky.length} flaky: ${flaky.map(f => `${f.name} (${passes(f)})`).join(', ')}`);
+// A pass on the second go keeps the build green, so say so where a PR shows it.
+if (process.env.GITHUB_ACTIONS) for (const f of flaky) console.log(`::warning title=Flaky e2e check::${f.name} (${passes(f)})`);
 console.log(failed.length ? `${failed.length} of ${results.length} FAILED: ${failed.map(f => f.name).join(', ')}` : `all ${results.length} passed`);
 if (reportFile) {
   const report = results.map(r => ({ name: r.name, verdict: r.flaky ? 'flaky' : r.ok ? 'pass' : 'fail', runs: r.runs, why: r.ok ? null : r.why }));

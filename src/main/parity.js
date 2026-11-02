@@ -8,6 +8,7 @@
 // removed deny rule, a new MCP server) or runs a program (the first ! command)
 // is asked in the isolated confirm window, never decided by the panel.
 // Tightening needs no question.
+const { ID, obj, opt, text } = require('./ipc-args');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -56,7 +57,7 @@ function addPrompt(list, text) {
  *   correctionFromTurns(tabId, kind, refs), noteCorrection(tabId, event),
  *   dataDir, stat(event), noteUndone(turns) -> the weekly card's turns taken back,
  *   openExternal(url) -> the browser, log }
- * @param {{ ipcMain: Pick<import('electron').IpcMain, 'handle' | 'on'>, [k: string]: any }} deps
+ * @param {{ ipcMain: import('./ipc-guard').GuardedIpc, [k: string]: any }} deps
  */
 function register(deps) {
   const { ipcMain, manager, history, config, confirm, dialog, clipboard, app } = deps;
@@ -385,8 +386,8 @@ function register(deps) {
     if (r.ok) deps.stat(remove ? 'rule-removed' : 'rule-saved');
     return { ...r, setup: deps.setupView() };
   }
-  ipcMain.handle('setup:save-rule', (_e, req) => changeRule(req || {}, false));
-  ipcMain.handle('setup:remove-rule', (_e, req) => changeRule(req || {}, true));
+  ipcMain.handle('setup:save-rule', (_e, req) => changeRule(req || {}, false), [obj({ scope: opt(ID), list: opt(ID), rule: opt(text(100_000)) })]);
+  ipcMain.handle('setup:remove-rule', (_e, req) => changeRule(req || {}, true), [obj({ scope: opt(ID), list: opt(ID), rule: opt(text(100_000)) })]);
 
   // ---- MCP servers
   const running = () => [...manager.tabs.values()].filter(t => t.session.proc);
@@ -400,7 +401,7 @@ function register(deps) {
     deps.toolbox()?.setInit({ ...(deps.lastInit() || {}), mcp_servers: servers.map(s => ({ name: s.name, status: s.status, ...(s.scope ? { source: s.scope } : {}) })) });
     return { ok: true, servers: servers.length };
   }
-  ipcMain.handle('mcp:refresh', (_e, tabId) => refreshMcp(tabId));
+  ipcMain.handle('mcp:refresh', (_e, tabId) => refreshMcp(tabId), [opt(ID)]);
 
   // Reconnect and on/off act on every open conversation that's running, which
   // is what the Toolbox's one list of servers stands for.

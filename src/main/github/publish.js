@@ -25,6 +25,7 @@ const titleText = v => String(v ?? '').replace(/`/g, "'").replace(/@/g, '@\u200d
 async function publishedPack(gh, upstream, id, ref) {
   try {
     const f = await gh.get(`/repos/${enc(upstream)}/contents/packs/${encodeURIComponent(id)}/pack.json?ref=${encodeURIComponent(ref)}`);
+    /** @type {{ version?: unknown } | null} */
     let json = null;
     try { json = JSON.parse(unb64(f?.content)); } catch { /* unreadable: treat as a replacement */ }
     return { sha: f?.sha, json };

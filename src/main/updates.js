@@ -246,8 +246,8 @@ function reopenAfterUpdate(flag, version, now = Date.now()) {
  * `SHELLBY_FAKE_UPDATE=1 npm start`. Set it to `fail` for the offline path.
  */
 function fakeUpdater({ version = '99.0.0', mode = 'ok', step = 600 } = {}) {
-  const u = new EventEmitter();
-  u.quitAndInstall = (...args) => console.log('[shellby] fake updater would install now', args);
+  const u = /** @type {EventEmitter & { quitAndInstall: (...args: unknown[]) => void, checkForUpdates: () => Promise<unknown> }} */ (new EventEmitter());
+  u.quitAndInstall =(...args) => console.log('[shellby] fake updater would install now', args);
   u.checkForUpdates = async () => {
     u.emit('checking-for-update');
     await new Promise(r => setTimeout(r, step));

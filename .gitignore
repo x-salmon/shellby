@@ -1,5 +1,6 @@
 node_modules/
 dist/
+coverage/
 out/
 
 # Never commit local state: transcripts can contain file contents and secrets.

@@ -17,6 +17,7 @@
 //   uninstallPlugin(id) -> Promise<result>, trash(path) -> Promise, openFolder(dir) -> result, reveal(dir),
 //   home, log
 // }
+const { ID, obj: shape } = require('./ipc-args');
 const fs = require('fs');
 const path = require('path');
 const mods = require('./mods');
@@ -219,13 +220,13 @@ function createModsService(deps) {
 
   function register(ipcMain) {
     const obj = v => (v && typeof v === 'object' ? v : {});
-    ipcMain.handle('mods:check', (_e, id) => check(id));
-    ipcMain.handle('mods:set-enabled', (_e, req) => setEnabled(obj(req).id, !!obj(req).on));
-    ipcMain.handle('mods:test', (_e, id) => runTests(id));
-    ipcMain.handle('mods:remove', (_e, id) => remove(id));
-    ipcMain.handle('mods:open', (_e, id) => open(id));
-    ipcMain.handle('mods:draft', (_e, req) => draft(obj(req)));
-    ipcMain.on('mods:reveal', (_e, id) => reveal(id));
+    ipcMain.handle('mods:check', (_e, id) => check(id), [ID]);
+    ipcMain.handle('mods:set-enabled', (_e, req) => setEnabled(obj(req).id, !!obj(req).on), [shape({ id: ID })]);
+    ipcMain.handle('mods:test', (_e, id) => runTests(id), [ID]);
+    ipcMain.handle('mods:remove', (_e, id) => remove(id), [ID]);
+    ipcMain.handle('mods:open', (_e, id) => open(id), [ID]);
+    ipcMain.handle('mods:draft', (_e, req) => draft(obj(req)), [shape()]);
+    ipcMain.on('mods:reveal', (_e, id) => reveal(id), [ID]);
   }
 
   return { check, setEnabled, runTests, remove, open, reveal, draft, register };

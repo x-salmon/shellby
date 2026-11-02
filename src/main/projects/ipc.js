@@ -3,6 +3,7 @@
 //
 // The panel never hands in a path: folders come from a dialog main opens, or
 // are picked from what the service listed (knowsRoot); servers are named by id.
+const { PATH, list } = require('../ipc-args');
 const fs = require('fs');
 const { checkRepo } = require('./remote');
 const doctorIo = require('../devservers/doctor-io');
@@ -69,7 +70,7 @@ function registerProjectsIpc(ipcMain, d) {
     return dir ? P().scan(dir) : { ok: false, cancelled: true };
   });
   ipcMain.handle('projects:scan-cancel', () => { P()?.cancelScan(); return true; });
-  ipcMain.handle('projects:add-many', (_e, roots) => P()?.addMany(roots) ?? { ok: false });
+  ipcMain.handle('projects:add-many', (_e, roots) => P()?.addMany(roots) ?? { ok: false }, [list(PATH)]);
   ipcMain.handle('projects:remove', (_e, key) => (isStr(key) ? P()?.remove(key) : { ok: false }));
 
   // ---------------------------------------------------------------- the inbox (inbox.js)

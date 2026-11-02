@@ -67,12 +67,28 @@ function gitEnv(token, base = process.env) {
   };
 }
 
+/** @typedef {{ get: (key: string) => any, set: (patch: object) => void, data: any }} Config  Shellby's Config, the part used here */
+/** @typedef {{ available: boolean, load: () => any, save: (auth: object) => void, clear: () => void }} TokenStore  token-store.js */
+/** @typedef {InstanceType<typeof GitHubApi>} GitHubClient */
+
 class GitHubService extends EventEmitter {
+  /** @type {Config} */ config;
+  /** @type {TokenStore} */ store;
+  /** @type {string} */ web;
+  /** @type {string} */ api;
+  /** @type {string} */ clientId;
+  /** @type {typeof fetch} */ fetchImpl;
+  /** @type {() => number} */ now;
+  /** @type {(before: any) => void} */ onSynced;
+  /** @type {((gh: GitHubClient) => Promise<any>) | null} */ syncHistory;
+
   /**
    * config: Shellby's Config. store: TokenStore. web/api/clientId: GitHub (or a
    * mock in tests). openUrl/copy: shell helpers. onSynced(before): called after a pull,
    * with the settings (config.data) from before the sync. syncHistory(gh): one
    * history sync (history-gist.js), resolving to its result; null where there's none.
+   * @param {{ config: Config, store: TokenStore, web?: string, api?: string, clientId?: string, fetchImpl?: typeof fetch,
+   *   now?: () => number, onSynced?: (before: any) => void, syncHistory?: ((gh: GitHubClient) => Promise<any>) | null }} opts
    */
   constructor({ config, store, web = 'https://github.com', api = 'https://api.github.com', clientId = CLIENT_ID, fetchImpl = fetch, now = () => Date.now(), onSynced = () => {}, syncHistory = null }) {
     super();
@@ -80,7 +96,9 @@ class GitHubService extends EventEmitter {
     this.auth = this.store.load();
     this.flow = null;       // { user_code, verification_uri, expiresAt, features, abort }
     this.syncing = null;
+    /** @type {NodeJS.Timeout | null} */
     this.timer = null;
+    /** @type {NodeJS.Timeout | null} */
     this.soon = null;
     this.stopped = false;   // after stop(), a sign-in finishing late starts nothing
   }
@@ -213,8 +231,8 @@ class GitHubService extends EventEmitter {
     this.cancel();
     this.store.clear();
     this.auth = null;
-    clearInterval(this.timer); this.timer = null;
-    clearTimeout(this.soon); this.soon = null;
+    clearInterval(/** @type {NodeJS.Timeout} */ (this.timer)); this.timer = null;
+    clearTimeout(/** @type {NodeJS.Timeout} */ (this.soon)); this.soon = null;
     const f = this.state.features;
     this.save({ login: null, name: '', avatar: null, lastSyncAt: null, lastSyncError: null, authLost: false, features: { ...f, claude: false, friends: false, profileCard: false, prBadge: false } });
   }
@@ -254,7 +272,7 @@ class GitHubService extends EventEmitter {
   syncsAnything() { return this.can('sync') || (this.can('history') && !!this.syncHistory); }
 
   schedule() {
-    clearInterval(this.timer);
+    clearInterval(/** @type {NodeJS.Timeout} */ (this.timer));
     this.timer = this.syncsAnything() && !this.stopped ? setInterval(() => this.sync().catch(() => {}), SYNC_EVERY_MS) : null;
   }
 
@@ -310,7 +328,7 @@ class GitHubService extends EventEmitter {
   /** Extra env for Shellby's own Claude Code tabs, when you allowed it. */
   claudeEnv() { return this.can('claude') ? gitEnv(this.auth.token) : {}; }
 
-  stop() { this.stopped = true; clearInterval(this.timer); clearTimeout(this.soon); this.cancel(); }
+  stop() { this.stopped = true; clearInterval(/** @type {NodeJS.Timeout} */ (this.timer)); clearTimeout(/** @type {NodeJS.Timeout} */ (this.soon)); this.cancel(); }
 }
 
 module.exports = { GitHubService, gitEnv, normalizeState, FEATURES };

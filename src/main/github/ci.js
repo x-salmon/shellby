@@ -93,22 +93,43 @@ function normalizeSeen(raw) {
   return out;
 }
 
+/** @typedef {InstanceType<typeof import('./api')['GitHubApi']>} GitHubApi */
+/** @typedef {{ load: () => unknown, save: (seen: Record<string, number>) => void }} SeenStore  config.ciSeen */
+/** @typedef {NonNullable<ReturnType<typeof prRef>> & ReturnType<typeof searchFacts> & { url: string }} PrRef  a search hit, with its page */
+/**
+ * @typedef {PrRef & { state?: string, failing?: string[], sha?: string | null, branch?: string | null, reviewComments?: number,
+ *   talk?: ReturnType<typeof comments.summarize> | null }} Pr  one of yours, checked (check(), withTalk())
+ */
+
 class CiWatcher extends EventEmitter {
+  /** @type {() => GitHubApi} */ gh;
+  /** @type {() => string | null} */ login;
+  /** @type {string} */ web;
+  /** @type {string} */ api;
+  /** @type {() => number} */ now;
+
   /**
    * gh: () => GitHubApi; login: () => string|null; web/api: GitHub base URLs (mockable).
    * seen: { load, save } for when each PR was last opened or marked read (config.ciSeen).
+   * @param {{ gh: () => GitHubApi, login: () => string | null, web?: string, api?: string, now?: () => number, seen?: SeenStore | null }} opts
    */
   constructor({ gh, login, web = 'https://github.com', api = 'https://api.github.com', now = () => Date.now(), seen = null }) {
     super();
     Object.assign(this, { gh, login, web, api, now });
+    /** @type {SeenStore} */
     this.seenStore = seen || { load: () => null, save: () => {} };
     this.seen = normalizeSeen(this.seenStore.load());
     this.talk = new Map(); // key -> { updatedAt, list }: comments.read() again only when the PR moved
+    /** @type {NodeJS.Timeout | null} */
     this.timer = null;
+    /** @type {NodeJS.Timeout | null} */
     this.first = null;
+    /** @type {Promise<ReturnType<CiWatcher['view']>> | null} */
     this.polling = null;
     this.epoch = 0;     // bumped by stop(), so a poll that was in flight discards its results
+    /** @type {ReturnType<typeof transitions>['memory'] | null} */
     this.memory = null;
+    /** @type {{ prs: Pr[], reviews: PrRef[], reviewsTotal: number, lastPollAt: number | null, error: string | null }} */
     this.state = { prs: [], reviews: [], reviewsTotal: 0, lastPollAt: null, error: null };
   }
 
@@ -122,7 +143,7 @@ class CiWatcher extends EventEmitter {
 
   stop() {
     this.epoch++;
-    clearInterval(this.timer); clearTimeout(this.first);
+    clearInterval(/** @type {NodeJS.Timeout} */ (this.timer)); clearTimeout(/** @type {NodeJS.Timeout} */ (this.first));
     this.timer = null; this.first = null;
     this.memory = null;
     this.talk.clear();
@@ -134,7 +155,7 @@ class CiWatcher extends EventEmitter {
     return {
       ...this.state,
       failing: this.state.prs.filter(p => p.state === 'failing').length,
-      unread: this.state.prs.filter(p => p.talk?.unread > 0).length,
+      unread: this.state.prs.filter(p => /** @type {number} */ (p.talk?.unread) > 0).length,
     };
   }
 

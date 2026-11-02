@@ -1,3 +1,4 @@
+// ci: Next up: tasks.md on the project page, Do this, commit, tracker issues
 // End-to-end check of Next up (docs/plans/next-up.md) against the dev app over
 // CDP (throwaway profile, the fake Claude CLI). A real git repository with a
 // committed .shellby/tasks.md and a FIXME in its code is added to Projects;

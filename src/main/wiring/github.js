@@ -310,9 +310,10 @@ function wireGithub(d) {
       dropIns: () => workmode.behaviourOf(d.config).dropIns, // Work mode: only when you invite them
     });
     // A refresh saves several times; the panel only needs the last one.
+    /** @type {NodeJS.Timeout | null} */
     let viewTimer = null;
     d.friends.on('change', () => {
-      clearTimeout(viewTimer);
+      clearTimeout(/** @type {NodeJS.Timeout} */ (viewTimer));
       viewTimer = setTimeout(() => d.send(d.panel, 'friends', friendsView()), 150);
     });
     d.friends.on('record', event => d.stat(event));
@@ -535,6 +536,10 @@ function wireGithub(d) {
   // answers, for the pull request; pack, the wrap to publish (written to your
   // packs only once this is a yes and the pull request is open, never before);
   // update, the gallery's version when it's an update of your own pack.
+  /**
+   * @param {string} packId
+   * @param {{ forLine?: string, pack?: { id?: string, [key: string]: unknown } | null, update?: string | null }} [opts]
+   */
   async function confirmAndPublishPack(packId, { forLine = '', pack: given = null, update = null } = {}) {
     if (!d.github?.can('publish')) return { ok: false, error: 'Turn on "Publish Wardrobe packs" in Settings → GitHub first.' };
     let json = given;

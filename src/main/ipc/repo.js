@@ -2,6 +2,7 @@
 // throwing it away, pushing the checkout with a secret scan first, and
 // branching a conversation from any turn (branching.js).
 // Kept out of main.js, which only wires it up.
+const { ID, obj, opt } = require('../ipc-args');
 const path = require('path');
 const branching = require('../branching');
 const changes = require('../changes');
@@ -14,7 +15,7 @@ const ship = require('../ship');
 const worktrees = require('../worktrees');
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerRepoIpc(ipcMain, d) {
@@ -51,7 +52,7 @@ function registerRepoIpc(ipcMain, d) {
   // Bringing it home merges and keeps the conversation going in its copy, so
   // you can carry on and bring it home again. finish: also tidy the copy away
   // (the tab closes; the conversation stays in History).
-  ipcMain.handle('worktree:home', (_e, tabId, opts) => bringTabHome(tabId, opts));
+  ipcMain.handle('worktree:home', (_e, tabId, opts) => bringTabHome(tabId, opts), [opt(ID), opt(obj())]);
   d.bringTabHome = bringTabHome; // the phone's Bring it home goes the same way (wiring/pocket.js)
   // Ship it: the copy's tests, then its branch pushed and a pull request opened (ship.js).
   ipcMain.handle('worktree:ship', async (_e, tabId, opts) => {

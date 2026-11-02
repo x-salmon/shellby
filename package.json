@@ -27,6 +27,7 @@
     "setup": "node scripts/setup.js",
     "dev:crab": "node scripts/dev-crab.js",
     "test": "node scripts/test.js",
+    "coverage": "node scripts/coverage.js",
     "lint": "eslint .",
     "panel:html": "node scripts/panel-html.js",
     "renderer:globals": "node scripts/renderer-globals.js",

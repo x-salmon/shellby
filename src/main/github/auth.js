@@ -67,6 +67,8 @@ async function startDeviceFlow({ scopes, clientId = CLIENT_ID, web = 'https://gi
 /**
  * Poll until approved, denied or expired. Resolves { token, scopes } or throws
  * with a friendly message. `signal` (AbortSignal) cancels.
+ * @param {{ device_code: string, interval?: number, expires_in?: number }} flow
+ * @param {{ clientId?: string, web?: string, fetchImpl?: typeof fetch, signal?: AbortSignal, sleep?: (ms: number) => Promise<void> }} [opts]
  */
 async function pollForToken({ device_code, interval = 5, expires_in = 900 }, { clientId = CLIENT_ID, web = 'https://github.com', fetchImpl = fetch, signal, sleep = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
   let wait = Math.max(1, interval) * 1000;

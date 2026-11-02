@@ -135,7 +135,20 @@ function becameOurs(events, reasons, login, since) {
   return reasons.filter(r => out.has(r));
 }
 
+/** @typedef {NonNullable<ReturnType<typeof issueRef>> & { reasons: string[] }} Issue  an issue as workflows see it, with why it was found */
+/** @typedef {{ primed?: boolean, primedAt?: number, seen?: string[] }} SeenState  what he has seen (config) */
+/** @typedef {InstanceType<typeof import('./api')['GitHubApi']>} GitHubApi */
+
 class IssueWatcher extends EventEmitter {
+  /** @type {() => GitHubApi} */ gh;
+  /** @type {() => string | null} */ login;
+  /** @type {() => Promise<string[]>} */ repos;
+  /** @type {() => SeenState} */ load;
+  /** @type {(state: SeenState) => void} */ save;
+  /** @type {string} */ web;
+  /** @type {string} */ api;
+  /** @type {() => number} */ now;
+
   /**
    * gh: () => GitHubApi; login: () => string|null; repos: () => Promise<[owner/name]>
    * (projects cloned here); load/save: what he has seen (config); web/api: GitHub (mockable).
@@ -143,11 +156,15 @@ class IssueWatcher extends EventEmitter {
   constructor({ gh, login, repos = async () => [], load, save, web = 'https://github.com', api = 'https://api.github.com', now = () => Date.now() }) {
     super();
     Object.assign(this, { gh, login, repos, load, save, web, api, now });
+    /** @type {NodeJS.Timeout | null} */
     this.timer = null;
+    /** @type {NodeJS.Timeout | null} */
     this.first = null;
+    /** @type {Promise<ReturnType<IssueWatcher['view']>> | null} */
     this.polling = null;
     this.epoch = 0;
     this.pushable = new Map(); // repo -> can you push there (asked once per session)
+    /** @type {{ issues: Issue[], lastPollAt: number | null, error: string | null }} */
     this.state = { issues: [], lastPollAt: null, error: null };
   }
 
@@ -162,7 +179,7 @@ class IssueWatcher extends EventEmitter {
   /** Turned off or signed out: forget what he's seen, so turning it on again doesn't offer a backlog. */
   stop() {
     this.epoch++;
-    clearInterval(this.timer); clearTimeout(this.first);
+    clearInterval(/** @type {NodeJS.Timeout} */ (this.timer)); clearTimeout(/** @type {NodeJS.Timeout} */ (this.first));
     this.timer = null; this.first = null;
     this.pushable.clear();
     this.save({ primed: false, seen: [] });

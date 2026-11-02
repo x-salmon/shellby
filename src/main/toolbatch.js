@@ -9,6 +9,7 @@
 // Parking moves the file (or a skill's folder) into Shellby's own folder, out of
 // Claude Code's sight, and writes down where it came from. Restoring moves it
 // back, unless something new took its place in the meantime.
+const { ID, list, obj } = require('./ipc-args');
 const fs = require('fs');
 const path = require('path');
 const { removalTarget } = require('./skillremove');
@@ -439,11 +440,11 @@ function createToolBatch(deps) {
   }
 
   function register(ipcMain) {
-    ipcMain.handle('toolbox:remove-many', (_e, refs) => removeMany(refs));
-    ipcMain.handle('toolbox:park', (_e, refs) => park(refs));
-    ipcMain.handle('toolbox:restore', (_e, ids) => restore(ids));
+    ipcMain.handle('toolbox:remove-many', (_e, refs) => removeMany(refs), [list(obj())]);
+    ipcMain.handle('toolbox:park', (_e, refs) => park(refs), [list(obj())]);
+    ipcMain.handle('toolbox:restore', (_e, ids) => restore(ids), [list(ID)]);
     ipcMain.handle('toolbox:parked', () => listParked());
-    ipcMain.handle('toolbox:export', (_e, refs) => exportMany(refs));
+    ipcMain.handle('toolbox:export', (_e, refs) => exportMany(refs), [list(obj())]);
     ipcMain.handle('toolbox:import', () => importBundle());
   }
 

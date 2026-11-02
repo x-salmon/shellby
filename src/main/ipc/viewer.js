@@ -1,6 +1,7 @@
 // The file viewer's channels (viewer.js): open a handle on a conversation's
 // folder, or on a worktree of a project the Project page showed (or a place picked from its header's menu), then read
 // inside it. Read-only. Kept out of main.js, which only wires it up.
+const { ID, PATH, opt } = require('../ipc-args');
 const changes = require('../changes');
 const fileIndex = require('../fileindex');
 const leaving = require('../leaving');
@@ -8,7 +9,7 @@ const branchSwitch = require('../branch-switch');
 const { createViewer, locate, branchOf, sameDir, writeWatch } = require('../viewer');
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps); this sets d.viewerNudge and d.viewerWrites
  */
 function registerViewerIpc(ipcMain, d) {
@@ -47,10 +48,10 @@ function registerViewerIpc(ipcMain, d) {
     return { ok: false, error: 'Open what?' };
   });
   ipcMain.handle('viewer:tree', (_e, id, opts) => viewer.treeOf(id, { fresh: !!opts?.fresh })); // a folder's index (fresh: read again now), or a branch's own tree
-  ipcMain.handle('viewer:status', (_e, id) => viewer.statusOf(id)); // the file tree's marks (viewer-status.js); a folder handle only
+  ipcMain.handle('viewer:status', (_e, id) => viewer.statusOf(id), [opt(ID)]); // the file tree's marks (viewer-status.js); a folder handle only
   ipcMain.handle('viewer:changes', (_e, id, opts) => viewer.changesOf(id, { uncommittedOnly: !!opts?.uncommittedOnly }));
-  ipcMain.handle('viewer:read', (_e, id, rel) => viewer.read(id, rel));
-  ipcMain.handle('viewer:diff', (_e, id, rel) => viewer.diffOf(id, rel));
+  ipcMain.handle('viewer:read', (_e, id, rel) => viewer.read(id, rel), [opt(ID), opt(PATH)]);
+  ipcMain.handle('viewer:diff', (_e, id, rel) => viewer.diffOf(id, rel), [opt(ID), opt(PATH)]);
   ipcMain.handle('viewer:locate', async (_e, tabId, target) => {
     const f = folderOf(tabId);
     return f.error ? { inside: false } : locate(f.cwd, target);
@@ -77,10 +78,10 @@ function registerViewerIpc(ipcMain, d) {
     if (r.ok) nudge(f.cwd, { commits: true });
     return r;
   });
-  ipcMain.handle('viewer:close', (_e, id) => { viewer.close(id); return true; });
+  ipcMain.handle('viewer:close', (_e, id) => { viewer.close(id); return true; }, [opt(ID)]);
   // The header's menu: the repo's worktrees and unmerged branches, each under a key main issued;
   // a pick names only a key, and main checks it again before it opens (viewer.js switchTo).
-  ipcMain.handle('viewer:places', (_e, id) => viewer.placesOf(id));
+  ipcMain.handle('viewer:places', (_e, id) => viewer.placesOf(id), [opt(ID)]);
   ipcMain.handle('viewer:switch', (_e, id, key) => viewer.switchTo(id, key));
   // Something in a folder may have changed: a nudge for each viewer open on it. commits: a turn
   // ended, a step was undone or a ! command ran, where a commit may have landed, so viewers on the

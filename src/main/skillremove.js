@@ -7,6 +7,7 @@
 // Toolbox's own scan, and has to sit right where Claude Code looks for that kind.
 // It's asked first, and goes to the Recycle Bin, never deleted outright, so a
 // skill removed by mistake is one Restore away.
+const { ID, PATH, obj, text } = require('./ipc-args');
 const fs = require('fs');
 const path = require('path');
 const { samePath } = require('./toolbox');
@@ -162,8 +163,8 @@ function createSkillRemover(deps) {
 
   function register(ipcMain) {
     ipcMain.handle('toolbox:remove', (_e, a) => (LIST[a?.kind] && isStr(a?.name) ? remove(a.kind, a.name) : { ok: false, error: "Shellby can't remove that." }));
-    ipcMain.handle('toolbox:read', (_e, a) => read(a?.kind, a?.path));
-    ipcMain.handle('toolbox:write', (_e, a) => write(a?.kind, a?.path, a?.text, a?.mtimeMs));
+    ipcMain.handle('toolbox:read', (_e, a) => read(a?.kind, a?.path), [obj({ kind: ID, path: PATH })]);
+    ipcMain.handle('toolbox:write', (_e, a) => write(a?.kind, a?.path, a?.text, a?.mtimeMs), [obj({ kind: ID, path: PATH, text: text(32 * 1024 * 1024) })]);
   }
 
   return { remove, read, write, register };

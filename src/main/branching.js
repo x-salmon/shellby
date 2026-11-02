@@ -9,6 +9,7 @@
 //
 // Every step that makes something (a copy, a History entry, a tab) is undone
 // if a later one fails, so a branch either opens whole or not at all.
+const { ID, obj, opt } = require('./ipc-args');
 const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('crypto');
@@ -46,7 +47,7 @@ function register(deps) {
   // ------------------------------------------------------------ making one
 
   // The phone's Try again and Branch from here come here too (wiring/pocket.js).
-  ipcMain.handle('branch:run', (_e, args) => run(args));
+  ipcMain.handle('branch:run', (_e, args) => run(args), [obj({ tabId: opt(ID) })]);
   async function run({ tabId, turnId, at = 'before', send = false } = {}) {
     if (!isStr(tabId) || !isStr(turnId)) return { ok: false, error: 'There is nothing to branch from there.' };
     if (busyBranching.has(tabId)) return { ok: false, error: 'Already making a branch of this one.' };

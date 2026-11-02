@@ -68,6 +68,7 @@ async function failingBuild(gh, { repo, number, web = 'https://github.com' }) {
     const v = verdict(runs?.check_runs, status?.statuses);
     return { error: v.state === 'failing' ? 'GitHub didn\'t say which job failed.' : 'Nothing is failing on that pull request any more.' };
   }
+  /** @type {{ id: number | null, name: string, url: string, step: string | null }} */
   const job = { id: Number.isInteger(run.id) ? run.id : null, name: clip(run.name, 120) || 'check', url: webUrl(run.html_url, web) || webUrl(run.details_url, web), step: null };
   if (run.app?.slug !== 'github-actions' || !job.id) return { pull, job, log: null, why: 'it isn\'t a GitHub Actions job, so its log lives elsewhere' };
   // For Actions, a check run's id is its job's id.

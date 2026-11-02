@@ -95,7 +95,15 @@ const hasBadge = body => typeof body === 'string' && body.includes(START);
  *   github: GitHubService (can('prBadge'), gh(), view().login)
  *   level(): your level now
  */
+/** @typedef {InstanceType<typeof import('./api')['GitHubApi']>} GitHubApi */
+
 class PrBadge {
+  /** @type {{ get: (key: string) => any, set: (patch: object) => void }} */ config;
+  /** @type {{ can: (feature: string) => boolean, gh: () => GitHubApi, view: () => { login: string | null } }} */ github;
+  /** @type {() => number} */ level;
+  /** @type {string} */ web;
+  /** @type {(() => object) | undefined} */ summary;  // set by wiring/github.js: the line under him
+
   constructor({ config, github, level = () => 1, web = 'https://github.com' }) {
     Object.assign(this, { config, github, level, web });
     this.svg = null;        // the latest drawing from the panel
@@ -222,6 +230,7 @@ async function commitExists(gh, login, sha) {
 
 /** <you>/shellby-badge, made public if it isn't there yet. */
 async function ensureRepo(gh, login) {
+  /** @type {{ private?: boolean } | null} */
   let repo = null;
   try {
     repo = await gh.get(`/repos/${login}/${REPO}`);

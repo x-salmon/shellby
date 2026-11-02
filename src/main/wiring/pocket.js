@@ -71,12 +71,12 @@ function wirePocket(d) {
   const tailscale = d.tailscaleCli || devTailscale() || createTailscale();
   let ts = { installed: null, state: 'unknown', dnsName: '', login: '', https: false };
   let serve = { httpsPort: 0, url: '', funnel: false, taken: [] };
-  let checking = null;
-  let problem = null;       // why it isn't serving, for Settings: { text, link?, linkText? }
-  let code = null;          // the pairing window: { code, expiresAt, tries }
-  let vapid = null;
-  let watcher = null;
-  let ticker = null;
+  /** @type {Promise<typeof ts> | null} */ let checking = null;
+  /** @type {{ text: string, link?: string | null, linkText?: string | null } | null} */ let problem = null;       // why it isn't serving, for Settings: { text, link?, linkText? }
+  /** @type {ReturnType<typeof pairing.openPairing> | null} */ let code = null;          // the pairing window: { code, expiresAt, tries }
+  /** @type {ReturnType<typeof push.newVapidKeys> | null} */ let vapid = null;
+  /** @type {NodeJS.Timeout | null} */ let watcher = null;
+  /** @type {NodeJS.Timeout | null} */ let ticker = null;
   let lastView = '';
   const lastTurn = new Map(); // watched tab -> the turn whose message the phone has
   // Focus, routines, notes, the wardrobe, files and photos (pocket/extras.js).
@@ -284,7 +284,7 @@ function wirePocket(d) {
   }
 
   // Every change: the whole view goes out, when it looks different.
-  let pending = null;
+  /** @type {NodeJS.Timeout | null} */ let pending = null;
   function pushView() {
     if (pending || !d.pocket || d.pocket.status !== 'listening' || !d.pocket.clients.size) return;
     pending = setTimeout(() => {
@@ -336,7 +336,7 @@ function wirePocket(d) {
     }
     return n;
   }
-  let starts = [];
+  /** @type {number[]} */ let starts = [];
   // A task the phone sent again (its answer was slow, so it tried once more) is the same task.
   const sent = new Map(); // key -> the promise of its answer
   const KEY = /^[A-Za-z0-9_-]{8,64}$/;
@@ -567,7 +567,7 @@ function wirePocket(d) {
   // ---- on and off (the panel asks; the confirmation window decides)
 
   // The server, listening (or not, and why) before Settings is told how it went.
-  function listen() {
+  /** @returns {Promise<void>} */ function listen() {
     if (d.pocket.status === 'listening') return Promise.resolve();
     return new Promise(resolve => {
       d.pocket.once('status', () => resolve());
@@ -601,8 +601,8 @@ function wirePocket(d) {
   }
 
   function watch() {
-    clearInterval(watcher);
-    clearInterval(ticker);
+    clearInterval(/** @type {NodeJS.Timeout} */ (watcher));
+    clearInterval(/** @type {NodeJS.Timeout} */ (ticker));
     watcher = setInterval(() => { refreshTailscale().catch(() => {}); }, WATCH_MS);
     ticker = setInterval(() => { pushView(); }, TICK_MS);
     watcher.unref?.();
@@ -610,8 +610,8 @@ function wirePocket(d) {
   }
 
   async function stopServing() {
-    clearInterval(watcher);
-    clearInterval(ticker);
+    clearInterval(/** @type {NodeJS.Timeout} */ (watcher));
+    clearInterval(/** @type {NodeJS.Timeout} */ (ticker));
     watcher = ticker = null;
     d.pocket?.stop();
     await takeServeBack();

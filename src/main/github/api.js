@@ -1,7 +1,13 @@
 // A tiny GitHub REST client for Shellby's own calls (profile, gists, pack PRs).
 // Base URLs are injectable so tests run against a local mock GitHub.
+
+/** @typedef {Error & { status?: number, detail?: string }} GitHubError  a failed answer, with its HTTP status */
+
 class GitHubApi {
-  // onUnauthorized: GitHub said the sign-in is no good (expired or revoked), whichever call found out.
+  /**
+   * onUnauthorized: GitHub said the sign-in is no good (expired or revoked), whichever call found out.
+   * @param {{ token: string, api?: string, fetchImpl?: typeof fetch, onUnauthorized?: (() => void) | null }} opts
+   */
   constructor({ token, api = 'https://api.github.com', fetchImpl = fetch, onUnauthorized = null }) {
     this.token = token; this.api = api; this.fetchImpl = fetchImpl; this.onUnauthorized = onUnauthorized;
   }
@@ -29,7 +35,7 @@ class GitHubApi {
     try { data = text ? JSON.parse(text) : null; } catch { data = null; }
     if (!res.ok) {
       if (res.status === 401) this.onUnauthorized?.();
-      const err = new Error(data?.message || `GitHub answered ${res.status}`);
+      const err = /** @type {GitHubError} */ (new Error(data?.message || `GitHub answered ${res.status}`));
       err.status = res.status;
       // "Validation Failed" says little: what failed is in errors[] ("A pull request already exists…").
       const detail = Array.isArray(data?.errors) ? data.errors.map(e => (typeof e?.message === 'string' ? e.message : '')).filter(Boolean).join(' ') : '';
@@ -60,7 +66,7 @@ class GitHubApi {
       res = await this.fetchImpl(to.href, { method: 'GET', headers: { 'user-agent': 'Shellby' }, redirect: 'follow' });
     }
     if (!res.ok) {
-      const err = new Error(`GitHub answered ${res.status}`);
+      const err = /** @type {GitHubError} */ (new Error(`GitHub answered ${res.status}`));
       err.status = res.status;
       throw err;
     }

@@ -225,6 +225,7 @@ const recent = (times, now) => (Array.isArray(times) ? times.filter(t => Number.
  * May another task start? -> { ok: true } | { ok: false, reply }.
  *   starts: when phone tasks started (ms); open: phone tasks still working or waiting on you
  *   maxOpen, perHour: the phone app (paired to this PC) allows more than a chat channel
+ * @param {{ starts?: number[], open?: number, now?: number, maxOpen?: number, perHour?: number }} [opts]
  */
 function startGate({ starts = [], open = 0, now = Date.now(), maxOpen = MAX_OPEN, perHour = MAX_STARTS_PER_HOUR } = {}) {
   if (open >= maxOpen) return { ok: false, reply: `${maxOpen} tasks from your phone are already going. Let one finish first.` };

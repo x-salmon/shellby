@@ -1,6 +1,7 @@
 // The Toolbox: its tools, prompt snippets, Claude Code's hooks and memory, and
 // the skill shop (plugin marketplaces). Kept out of main.js, which only wires
 // it up.
+const { ID, either, obj: shape, opt, str } = require('../ipc-args');
 const { shell } = require('electron');
 const path = require('path');
 const claudeSetup = require('../claude/setup');
@@ -83,12 +84,12 @@ function registerToolboxIpc(ipcMain, d) {
     if (r.ok) d.stat('memory-saved');
     return { ...r, setup: d.setupView() };
   });
-  ipcMain.handle('setup:save-hook', (_e, req) => d.confirmAndChangeHook(req || {}, false));
-  ipcMain.handle('setup:remove-hook', (_e, req) => d.confirmAndChangeHook(req || {}, true));
-  ipcMain.handle('setup:pause-hook', (_e, req) => d.pauseHook(req || {}));
-  ipcMain.handle('setup:resume-hook', (_e, id) => d.resumeHook(id));
-  ipcMain.handle('setup:forget-paused-hook', (_e, id) => d.forgetPausedHook(id));
-  ipcMain.handle('setup:test-hook', (_e, req) => d.testHook(req || {}));
+  ipcMain.handle('setup:save-hook', (_e, req) => d.confirmAndChangeHook(req || {}, false), [shape({ scope: opt(ID) })]);
+  ipcMain.handle('setup:remove-hook', (_e, req) => d.confirmAndChangeHook(req || {}, true), [shape({ scope: opt(ID) })]);
+  ipcMain.handle('setup:pause-hook', (_e, req) => d.pauseHook(req || {}), [shape({ scope: opt(ID) })]);
+  ipcMain.handle('setup:resume-hook', (_e, id) => d.resumeHook(id), [opt(either(ID, Number.isInteger))]);
+  ipcMain.handle('setup:forget-paused-hook', (_e, id) => d.forgetPausedHook(id), [opt(either(ID, Number.isInteger))]);
+  ipcMain.handle('setup:test-hook', (_e, req) => d.testHook(req || {}), [shape({ hook: shape() })]);
   ipcMain.handle('setup:draft-hook', (_e, req) => d.draftHook(req && typeof req === 'object' ? req : {}));
   // The JSON a hook would get, to show (and change) before a test run.
   ipcMain.handle('setup:sample-hook-input', (_e, hook) => {
@@ -106,9 +107,9 @@ function registerToolboxIpc(ipcMain, d) {
   // ---- skill shop (Claude Code plugin marketplaces)
   // No marketplace refresh (git pull) while an install confirmation is open.
   ipcMain.handle('shop:list', (_e, req) => d.shopBlocked() || d.shop.list({ refresh: !!obj(req).refresh && !d.shopAsking }));
-  ipcMain.handle('shop:install', (_e, id) => d.confirmAndInstallPlugin(id));
-  ipcMain.handle('shop:uninstall', (_e, id) => d.confirmAndUninstallPlugin(id));
-  ipcMain.handle('shop:add-marketplace', (_e, source) => d.confirmAndAddMarketplace(source));
+  ipcMain.handle('shop:install', (_e, id) => d.confirmAndInstallPlugin(id), [ID]);
+  ipcMain.handle('shop:uninstall', (_e, id) => d.confirmAndUninstallPlugin(id), [ID]);
+  ipcMain.handle('shop:add-marketplace', (_e, source) => d.confirmAndAddMarketplace(source), [str()]);
   ipcMain.on('shop:open', (_e, id) => {
     // Only links the CLI itself reported for a listed plugin.
     const url = d.shop.find(id)?.url;

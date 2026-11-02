@@ -9,6 +9,8 @@
 // side (an offer it made, an egg it laid) before anything happens.
 const { sameLogin } = require('./card');
 
+/** @typedef {InstanceType<typeof import('./api')['GitHubApi']>} GitHubApi */
+
 const WAVES = Object.freeze({
   wave: 'waves hello 👋',
   outfit: 'loves the outfit',
@@ -78,11 +80,14 @@ async function sendWave(gh, cardId, waveKey, from) {
  * New waves on your own card since last time, from friends only.
  * cursor: { page, seenId } from the last check (comments come oldest first, so
  * we pick up on the page we stopped at). Returns { waves, cursor }.
+ * @param {GitHubApi} gh
+ * @param {string} cardId
+ * @param {{ cursor?: { page?: number, seenId?: number }, friends?: string[], me?: string | null }} [opts]
  */
 async function checkWaves(gh, cardId, { cursor = {}, friends = [], me = null } = {}) {
-  let page = Number.isSafeInteger(cursor.page) && cursor.page > 0 ? cursor.page : 1;
+  let page = Number.isSafeInteger(cursor.page) && /** @type {number} */ (cursor.page) > 0 ? /** @type {number} */ (cursor.page) : 1;
   const firstCheck = !Number.isSafeInteger(cursor.seenId);
-  let seenId = firstCheck ? 0 : cursor.seenId;
+  let seenId = firstCheck ? 0 : /** @type {number} */ (cursor.seenId);
   const found = [];
   const letters = [];
   for (let n = 0; n < MAX_PAGES; n++) {

@@ -167,6 +167,7 @@ function patchFor(merged, get, data = {}) {
   const streaks = get('streaks') || {};
   const stamps = get('syncStamps') || {};
   const lived = life.patchFor(merged.life, get, normalizeXp(xp).device, stamps.life);
+  /** @type {{ syncStamps: { outfitAt: unknown, skinAt: unknown, prefs: unknown, plans?: unknown, life: unknown }, [key: string]: unknown }} */
   const patch = {
     ...lived.patch,
     wardrobe: { ...w, unlocked: merged.wardrobe.unlocked, collected: merged.wardrobe.collected, outfit: merged.wardrobe.outfit },

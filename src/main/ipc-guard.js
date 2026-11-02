@@ -1,3 +1,5 @@
+const { matches } = require('./ipc-args');
+
 // Who may call which channel. Every handler is registered through this, so a
 // window can reach only what its own bridge offers: the crab's window (which
 // draws friends' visiting crabs and stickers) can move him and take a drop,
@@ -16,6 +18,21 @@
 // "Shellby is still working on the last task."). A send has no one to answer,
 // so its failure stops here instead of surfacing as an anonymous uncaught
 // exception or unhandled rejection.
+//
+// handle(channel, fn, schema) and on(channel, fn, schema): schema, from
+// ipc-args.js, is checked after who's asking and before the handler. Arguments
+// that don't fit are refused the same way, so the handler never sees them.
+/**
+ * @typedef {(channel: string, fn: (e: any, ...args: any[]) => any, schema?: import('./ipc-args').Check[]) => void} Register
+ * @typedef {{ handle: Register, on: Register }} GuardedIpc
+ */
+
+/**
+ * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain
+ * @param {(channel: string, sender: any) => boolean} allow
+ * @param {{ onRefused?: (channel: string, sender?: any) => void, onFailed?: (channel: string, err: unknown, info: { answered: boolean }) => void }} [hooks]
+ * @returns {GuardedIpc}
+ */
 function guardIpc(ipcMain, allow, { onRefused = () => {}, onFailed = () => {} } = {}) {
   const refusedOnce = new Set();
   const refuse = (channel, e) => {
@@ -27,9 +44,10 @@ function guardIpc(ipcMain, allow, { onRefused = () => {}, onFailed = () => {} } 
     try { onFailed(channel, err, { answered }); } catch { /* the report itself must never throw */ }
   };
   return {
-    handle(channel, fn) {
+    handle(channel, fn, schema) {
       ipcMain.handle(channel, async (e, ...args) => {
         if (!allow(channel, e.sender)) { refuse(channel, e); throw new Error('Not allowed from this window.'); }
+        if (schema && !matches(schema, args)) { refuse(channel, e); throw new Error("That request wasn't one Shellby accepts."); }
         try {
           return await fn(e, ...args);
         } catch (err) {
@@ -38,9 +56,10 @@ function guardIpc(ipcMain, allow, { onRefused = () => {}, onFailed = () => {} } 
         }
       });
     },
-    on(channel, fn) {
+    on(channel, fn, schema) {
       ipcMain.on(channel, (e, ...args) => {
         if (!allow(channel, e.sender)) { refuse(channel, e); return; }
+        if (schema && !matches(schema, args)) { refuse(channel, e); return; }
         try {
           const out = fn(e, ...args);
           if (out && typeof out.then === 'function') out.then(null, err => failed(channel, err, false));

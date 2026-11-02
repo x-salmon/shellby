@@ -234,6 +234,16 @@ jobs:
           cp "$BUNDLE" "$f"
           gh release upload "$GITHUB_REF_NAME" "$f" --clobber
 
+      # A release reaches some installs first and climbs on its own, so a bad one
+      # can be halted before it reaches everyone (scripts/rollout.js and the
+      # Rollout workflow). Here, after SignPath's rewrite of latest.yml and
+      # before the guard reads the draft.
+      - name: Start the rollout
+        shell: bash
+        run: |
+          node scripts/rollout.js start dist/latest.yml
+          gh release upload "$GITHUB_REF_NAME" dist/latest.yml --clobber
+
       # Publish only once every file is attached, so auto-update never sees a
       # release without latest.yml: the guard checks the draft has the
       # installer, portable, blockmap, checksums, provenance and a latest.yml for this

@@ -32,6 +32,24 @@ jobs:
       # runtime dependency fails the build.
       - run: npm audit --omit=dev --audit-level=high
 
+  # How much of src/ the unit tests run, against scripts/coverage-floor.json. Its
+  # own job: measuring slows the tests, and a timeout caused by that shouldn't
+  # turn the real unit-test job red.
+  coverage:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run coverage -- --md coverage-summary.md
+      - if: always()
+        shell: bash
+        run: if [ -f coverage-summary.md ]; then cat coverage-summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+
   # The only automated coverage the renderer and main's wiring get: each check
   # launches the real app and drives it over CDP with the fake Claude CLI. Its
   # own job, so a renderer regression and a failing unit test surface together

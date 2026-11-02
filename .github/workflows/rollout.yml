@@ -1,0 +1,52 @@
+name: Rollout
+
+# Moves the latest release through its stages (scripts/rollout.js), hourly. Run
+# it by hand with a percent to take over: 0 halts a bad release where it stands
+# and the hourly step leaves it there, 100 finishes one that can't wait.
+on:
+  schedule:
+    - cron: '41 * * * *'   # hourly, off the hour
+  workflow_dispatch:
+    inputs:
+      percent:
+        description: 'Percent of installs (0 halts, 100 finishes). Empty: the next stage, if due'
+        required: false
+      tag:
+        description: 'Release tag. Empty: the latest'
+        required: false
+
+# Read-only by default; the one job asks for what it writes.
+permissions:
+  contents: read
+
+# Two runs rewriting latest.yml at once could leave the older write in place.
+concurrency:
+  group: rollout
+  cancel-in-progress: false
+
+jobs:
+  rollout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # replacing latest.yml on the release
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      PERCENT: ${{ inputs.percent }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # gh has GH_TOKEN; nothing here pushes
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Set or step the rollout
+        shell: bash
+        run: |
+          if [ -n "$PERCENT" ]; then
+            node scripts/rollout.js set "$PERCENT" "$TAG"
+          else
+            node scripts/rollout.js step
+          fi

@@ -479,7 +479,7 @@ function contextUsageOf(text) {
     // A share too small to print comes as "<0.1%": kept, at the bound it names.
     .map(line => /^\|\s*([^|]+?)\s*\|\s*([\d.,]+[km]?)\s*\|\s*<?\s*(\d+(?:\.\d+)?)%\s*\|\s*$/i.exec(line))
     .filter(Boolean)
-    .map(m => ({ name: m[1].slice(0, 80), tokens: tokenCount(m[2]), pct: Number(m[3]) }))
+    .map((/** @type {RegExpExecArray} */ m) => ({ name: m[1].slice(0, 80), tokens: tokenCount(m[2]), pct: Number(m[3]) }))
     .filter(c => c.tokens !== null)
     .slice(0, CONTEXT_CATEGORIES);
   return {
@@ -638,6 +638,12 @@ function toItems(ev) {
       if (!Array.isArray(content)) return [];
       return content.filter(b => b.type === 'tool_result').map(b => {
         const full = resultText(b.content);
+        /**
+         * @type {{ kind: string, id: unknown, isError: boolean, text: string, chars: number, sub?: boolean, parent?: unknown,
+         *   tail?: string, images?: ReturnType<typeof resultImages>, todoId?: string, outputFile?: string,
+         *   worktree?: ReturnType<typeof worktreeOf>, workflowLaunch?: ReturnType<typeof workflowLaunchOf>,
+         *   agentStats?: { durationMs: unknown, tokens: unknown, toolUses: unknown } }}
+         */
         const item = {
           kind: 'tool_result', id: b.tool_use_id, isError: !!b.is_error,
           text: truncate(full, MAX_RESULT_CHARS), chars: full.length, ...sub,

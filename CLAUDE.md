@@ -45,7 +45,8 @@ The git stash stack is shared by every worktree. Use a WIP commit instead.
   commits and tags locally. Then `git push --atomic origin main vX.Y.Z`: the
   release commit is version-only, so CI's pass on its parent counts and the
   release skips re-running e2e. A tag that fails to release is never moved: the
-  fix ships as the next patch.
+  fix ships as the next patch. Releases roll out in stages by themselves; the
+  Rollout workflow with percent 0 halts one (`scripts/rollout.js`).
 - After merging several branches, run the full `npm run e2e:ci` once before
   pushing: merged branches break each other's checks, and each CI round trip is
   about 5 minutes.
@@ -84,6 +85,9 @@ one lands under "Changed" word for word.
 - **Electron 44's clipboard is async and W3C-style.** `readImage`, `writeImage` and
   `availableFormats` are gone, and `writeText` returns a promise. Check
   `node_modules/electron/electron.d.ts` before using an Electron API from memory.
+- **New IPC handlers that take arguments need a schema** (`src/main/ipc-args.js`, the
+  third argument to `ipcMain.handle`). `test/fixtures/ipc-unchecked.json` only shrinks.
+  Check for a local `obj`, `list` or `text` helper first: several modules have one.
 - **e2e counts come from source** (`FINDS`, `SETS`, `BITS`, `templates()`), never
   hardcoded numbers.
 - `claude-plugin/.claude-plugin/plugin.json` has its own version. Bump it together

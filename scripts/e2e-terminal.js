@@ -1,3 +1,4 @@
+// ci: the Projects page from a terminal: the MCP server and the shellby command
 // End-to-end check of the Projects page from a terminal, against the dev app
 // (throwaway profile, its own hooks port): the plugin's real MCP server, run
 // from a subfolder of a real git repository, and the real `shellby` command,

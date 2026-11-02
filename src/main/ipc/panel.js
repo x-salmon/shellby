@@ -1,6 +1,7 @@
 // The panel itself: opening and closing it, Claude Code's sign-in and status,
 // pictures and files for the composer (attachments.js), and updates.
 // Kept out of main.js, which only wires it up.
+const { ID } = require('../ipc-args');
 const { BrowserWindow, app, dialog, nativeImage } = require('electron');
 const { execFile } = require('child_process');
 const os = require('os');
@@ -15,7 +16,7 @@ const snippets = require('../snippets');
 const { TASKKILL } = require('../system32');
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerPanelIpc(ipcMain, d) {
@@ -287,7 +288,7 @@ function registerPanelIpc(ipcMain, d) {
   // ---- keeping Claude Code itself up to date (claude/update.js)
   ipcMain.handle('claude:tricks-dismiss', () => { d.dismissClaudeTricks(); return true; });
   ipcMain.handle('claude:update-check', async () => (d.claudeUpdates ? d.claudeUpdates.check() : null));
-  ipcMain.handle('claude:update-mode', (_e, mode) => (d.claudeUpdates ? d.claudeUpdates.setMode(mode) : null));
+  ipcMain.handle('claude:update-mode', (_e, mode) => (d.claudeUpdates ? d.claudeUpdates.setMode(mode) : null), [ID]);
   // Runs Claude Code's own `claude update`. A conversation mid-turn keeps the
   // copy it started with, so it isn't stopped, but you're told before it's swapped.
   ipcMain.handle('claude:update', async () => {
