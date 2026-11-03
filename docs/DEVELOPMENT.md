@@ -246,7 +246,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_LONG_TASK_MS=<ms>` | main.js | Any build. How long a task runs before he says "bear with me" (default 3 minutes) |
 | `SHELLBY_SENTRY_DSN=<dsn>` | crash-report.js | Dev only. Sends a dev run's crash reports there (see [Crash reports](#crash-reports)) |
 | `SHELLBY_TODAY=YYYY-MM-DD` | today.js | Dev only. That day, at the real time of day, for seasons and tide events |
-| `SHELLBY_FAKE_UPDATE=1` | wiring/tray.js (the fake is `fakeUpdater` in updates.js) | Dev only. A scripted updater: `1` offers 99.0.0, `fail` fails, `current` is up to date |
+| `SHELLBY_FAKE_UPDATE=1` | wiring/tray.js (the fake is `fakeUpdater` in updates.js) | Dev only. A scripted updater: `1` offers 99.0.0, `fail` fails, `current` is up to date. It starts once the panel has bootstrapped, so a slow boot still sees the whole sequence |
 | `SHELLBY_AWAY_S=<seconds>` | wiring/windows.js | Dev only. How soon no key or mouse counts as away (an isolated run otherwise never is) |
 | `SHELLBY_IDLE_AWAKE=1` | wiring/windows.js | Dev only. The panel as if focused and nothing covering him, without taking focus (`idle-cost.js --awake`); `uncovered` only skips the cover watch |
 | `SHELLBY_NETWORK_PROCESS=1` | lighter.js | Any build. Chromium's network service back in its own process, to compare |

@@ -81,6 +81,7 @@ function registerPanelIpc(ipcMain, d) {
     }
     // A conversation popped out into its own window stays out of the panel's tabs.
     const tabs = d.manager.summary.filter(t => !d.isPoppedOut(t.id));
+    d.panelBooted?.();
     return {
       ...panelView(),
       welcomeTrophies: d.welcomeTrophies.splice(0),
