@@ -253,11 +253,13 @@ test("looking at a repo never runs its hooks", async () => {
   } finally { r.done(); }
 });
 
-test('a repeat within 2 s is answered from the last look; a different mode looks again', async () => {
+test('a repeat within 2 s is answered from the last look; a different mode looks again', async t => {
   const r = repo();
   try {
     const v = createViewer();
     const h = await v.open({ dir: r.dir });
+    // The clock stands still, so "within 2 s" holds however long git takes on a busy PC.
+    t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
     r.write(r.dir, 'a.txt', 'x\n');
     const first = await v.changesOf(h.id);
     r.write(r.dir, 'b.txt', 'y\n');
@@ -291,13 +293,15 @@ test('a nudge while a look is running: the next call looks again, and the old lo
   } finally { r.done(); }
 });
 
-test('a diff is cut from the list last handed out, whichever mode it was', async () => {
+test('a diff is cut from the list last handed out, whichever mode it was', async t => {
   const r = repo();
   try {
     const wt = worktree(r);                  // a.txt committed on the branch
     r.write(wt, 'src/keep.js', 'const k = 2;\n'); // keep.js uncommitted
     const v = createViewer();
     const h = await v.open({ dir: wt });
+    // The clock stands still, so "within 2 s" holds however long git takes on a busy PC.
+    t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
     assert.ok((await v.changesOf(h.id)).files.some(f => f.path === 'a.txt'));
     assert.equal((await v.changesOf(h.id, { uncommittedOnly: true })).files.some(f => f.path === 'a.txt'), false);
     assert.equal((await v.diffOf(h.id, 'a.txt')).ok, false, 'the list shown is the uncommitted one: a.txt is not on it');

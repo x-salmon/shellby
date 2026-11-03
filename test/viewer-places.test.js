@@ -135,12 +135,14 @@ test(`caps: ${MAX_PLACE_TREES} worktrees, and the newest ${MAX_PLACE_BRANCHES} b
   } finally { r.done(); }
 });
 
-test('the list is built when asked, then reused for 10 s', async () => {
+test('the list is built when asked, then reused for 10 s', async t => {
   const r = repo();
   try {
     assert.equal(PLACES_MS, 10000);
     const v = createViewer();
     const h = await v.open({ dir: r.dir });
+    // The clock stands still, so "under 10 s" holds however long git takes on a busy PC.
+    t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
     const first = await v.placesOf(h.id);
     r.branch('late');
     const again = await v.placesOf(h.id);
