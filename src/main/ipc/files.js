@@ -1,7 +1,9 @@
 // File links and the panel's zoom: opening a path from a conversation in your
 // editor (filelinks.js), which editors there are, and Ctrl+= / Ctrl+-.
 // Kept out of main.js, which only wires it up.
+const { ID, PATH, obj, opt } = require('../ipc-args');
 const { app, shell } = require('electron');
+const { openSafe } = require('../safe-open');
 const fs = require('fs');
 const path = require('path');
 const links = require('../filelinks');
@@ -11,7 +13,7 @@ const ZOOM_STEPS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.5];
 const isInstalled = scheme => !!app.getApplicationNameForProtocol(`${scheme}://`);
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerFilesIpc(ipcMain, d) {
@@ -27,13 +29,13 @@ function registerFilesIpc(ipcMain, d) {
     if (reveal) { shell.showItemInFolder(t.file); return { ok: true, how: 'folder' }; }
     const id = links.pickEditor(d.config.get('editor'), isInstalled);
     if (id) {
-      shell.openExternal(links.editorUrl(id, t.file, st.isFile() ? t.line : null, st.isFile() ? t.col : null));
+      openSafe(links.editorUrl(id, t.file, st.isFile() ? t.line : null, st.isFile() ? t.col : null), { schemes: [`${links.EDITORS[id].scheme}:`] });
       return { ok: true, how: links.EDITORS[id].label };
     }
     if (st.isFile() && links.runsWhenOpened(t.file)) { shell.showItemInFolder(t.file); return { ok: true, how: 'folder' }; }
     const err = await shell.openPath(t.file);
     return err ? { ok: false, error: err } : { ok: true, how: 'default' };
-  });
+  }, [obj({ tabId: opt(ID), target: PATH })]);
 
   ipcMain.handle('editors:get', () => {
     const using = links.pickEditor(d.config.get('editor'), isInstalled);

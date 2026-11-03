@@ -19,6 +19,7 @@ const MAX_SCRIPTS = 40;
 const MAX_PKG_BYTES = 512 * 1024;
 
 // The body of a script -> the framework it starts, or null.
+/** @type {[RegExp, string][]} */
 const FRAMEWORKS = [
   [/\bnext\s+(dev|start)\b/, 'next'],
   [/\bnux[it]\s+dev\b/, 'nuxt'],
@@ -45,7 +46,10 @@ function frameworkOf(body) {
   return null;
 }
 
-/** The package manager a folder uses, from the names of the files in it. */
+/**
+ * The package manager a folder uses, from the names of the files in it.
+ * @param {string[] | Set<string>} files
+ */
 function managerOf(files) {
   const has = files instanceof Set ? f => files.has(f) : f => (files || []).includes(f);
   for (const [file, manager] of LOCKFILES) if (has(file)) return manager;
@@ -55,6 +59,8 @@ function managerOf(files) {
 /**
  * package.json text + the folder's file names -> { manager, scripts: [{ name, framework, likely }] }
  * or null when it isn't a package.json with any scripts. Likely servers first, then by name.
+ * @param {string} pkgText
+ * @param {string[] | Set<string>} [files]
  */
 function scriptsOf(pkgText, files = []) {
   let pkg;

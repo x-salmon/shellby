@@ -106,8 +106,9 @@ test('clipboard:text copies a string, long prompts included, and nothing else', 
 test('card:save refuses bytes that are not a PNG, too big, or not bytes at all', async () => {
   const { ipc } = setup();
 
+  // Anything but bytes never reaches the handler (its schema refuses it); bytes that aren't a card do, and get a no.
   for (const bad of [new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9]), png(CARD_MAX_BYTES), 'iVBORw0KGgo=', [137, 80, 78, 71], null, PNG_SIGNATURE.buffer]) {
-    const r = await ipc.invoke('card:save', bad, 'card');
+    const r = await ipc.invoke('card:save', bad, 'card').catch(e => ({ ok: false, error: e.message }));
     assert.equal(r.ok, false, String(bad));
   }
 });
@@ -186,7 +187,7 @@ test('card:save keeps a clip as the container it is, and never puts it on the cl
 test('card:save refuses a clip that isn\'t the container it says, or is too big', async () => {
   const { ipc } = setup();
   for (const [bytes, video] of [[webm(), 'mp4'], [mp4(), 'webm'], [png(), 'mp4'], [mp4(CLIP_MAX_BYTES), 'mp4'], [new Uint8Array(8), 'webm'], ['ftyp', 'mp4']]) {
-    const r = await ipc.invoke('card:save', bytes, 'shiny', { video });
+    const r = await ipc.invoke('card:save', bytes, 'shiny', { video }).catch(e => ({ ok: false, error: e.message }));
     assert.equal(r.ok, false, `${video}: ${bytes.length}`);
   }
   // A video type it doesn't know is a picture, and an MP4 isn't one.

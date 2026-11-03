@@ -2,6 +2,7 @@
 // with your say-so), and updates (updates.js).
 // Kept out of main.js, which only wires it up.
 const { Menu, Tray, app, clipboard, nativeImage, shell } = require('electron');
+const { openSafe } = require('../safe-open');
 const os = require('os');
 const path = require('path');
 const confirm = require('../confirm');
@@ -108,16 +109,16 @@ function wireTray(d) {
     if (url.length > MAX_URL) {
       clipboard.writeText(body).catch(e => d.log.warn("couldn't copy the problem report", e?.message));
       d.notify('Report copied', 'The details are on your clipboard — paste them into the issue.');
-      shell.openExternal(`${ISSUES_URL}?labels=bug`);
+      openSafe(`${ISSUES_URL}?labels=bug`);
       return;
     }
-    shell.openExternal(url);
+    openSafe(url);
   }
 
   // The idea form, with the version filled in. Like a problem report, it's a
   // draft in the browser until the user presses submit.
   function suggestIdea() {
-    shell.openExternal(feedback.ideaUrl({ version: app.getVersion(), packaged: app.isPackaged }));
+    openSafe(feedback.ideaUrl({ version: app.getVersion(), packaged: app.isPackaged }));
   }
 
   // Once ever, when the bond first reaches Buddies (life.js grow), he asks for an

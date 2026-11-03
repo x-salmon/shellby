@@ -106,7 +106,7 @@ function isAlive(pid, createdAt, info, { trustBare = false } = {}) {
  * child of Shellby's is ended with it, and could be cut off mid-tree.
  */
 function stop(pid, { execFileImpl = execFile, spawnImpl = spawn, detached = false } = {}) {
-  return new Promise(resolve => {
+  return new Promise(/** @param {(value?: void) => void} resolve */ resolve => {
     if (!Number.isInteger(pid) || pid <= 0) return resolve();
     const job = jobs.get(pid);
     jobs.delete(pid);
@@ -143,6 +143,7 @@ class LogTail {
 
   /** -> the new text ('' when there's none). Never throws. */
   read() {
+    /** @type {number | null} */
     let fd = null;
     try {
       const size = fs.statSync(this.file).size;
@@ -177,6 +178,7 @@ class LogTail {
  * the new end. -> true if it trimmed.
  */
 function trimLog(file, { max = MAX_LOG_BYTES, keep = KEEP_LOG_BYTES } = {}) {
+  /** @type {number | null} */
   let fd = null;
   try {
     const size = fs.statSync(file).size;

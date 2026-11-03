@@ -96,6 +96,11 @@ export default [
     languageOptions: { globals: { self: 'readonly', caches: 'readonly', fetch: 'readonly', URL: 'readonly', Response: 'readonly', AbortSignal: 'readonly', Promise: 'readonly' } },
   },
   {
+    // Links reach the browser through safe-open.js, which checks the scheme.
+    files: ['src/main/**/*.js'],
+    rules: { 'no-restricted-syntax': ['error', { selector: "MemberExpression[object.name='shell'][property.name='openExternal']", message: 'Use openSafe from safe-open.js.' }] },
+  },
+  {
     // Test files and the e2e drivers evaluate renderer code as strings; the
     // names inside those strings are not theirs to resolve.
     files: ['test/**/*.js', 'scripts/**/*.js'],

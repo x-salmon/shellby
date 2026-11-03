@@ -1,12 +1,13 @@
 // GitHub and what hangs off it: signing in, CI on your pull requests, issues,
 // visiting crabs (friends.js), and Claude Code's status line, which a profile
 // card shows. Kept out of main.js, which only wires it up.
-const { clipboard, shell } = require('electron');
+const { clipboard } = require('electron');
+const { openSafe } = require('../safe-open');
 const confirm = require('../confirm');
 const statusLine = require('../statusline');
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerGithubIpc(ipcMain, d) {
@@ -45,7 +46,7 @@ function registerGithubIpc(ipcMain, d) {
     if (!f) return;
     clipboard.writeText(f.code).catch(e => d.log.warn("couldn't copy the device code", e?.message));
     // Checked against GitHub's own device page in the service; a dev mock (http) isn't opened.
-    if (f.url.startsWith('https:')) shell.openExternal(f.url);
+    if (f.url.startsWith('https:')) openSafe(f.url);
   };
   ipcMain.on('github:open-code', openDeviceCode);
   ipcMain.on('github:cancel', () => d.github.cancel());
@@ -133,7 +134,7 @@ function registerGithubIpc(ipcMain, d) {
     return r;
   });
   ipcMain.handle('github:publish', (_e, packId) => (d.isStr(packId) && /^[a-z0-9][a-z0-9-]{1,39}$/.test(packId) ? d.confirmAndPublishPack(packId) : { ok: false }));
-  ipcMain.on('github:manage', () => shell.openExternal('https://github.com/settings/applications'));
+  ipcMain.on('github:manage', () => openSafe('https://github.com/settings/applications'));
   ipcMain.handle('plugin:install', () => d.confirmAndInstallShellbyPlugin());
   ipcMain.handle('plugin:update', () => d.confirmAndUpdateShellbyPlugin());
   ipcMain.handle('statusline:install', async () => {

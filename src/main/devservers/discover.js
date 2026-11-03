@@ -95,10 +95,15 @@ function namesFolder(line, key) {
  * Which of `roots` a chain's command lines name, or null. The listener's own
  * line is looked at first, then its parents', and the deepest folder wins.
  * roots: [{ root, key }] with key = folderKey(root).
+ * @template {{ root: string, key: string }} R
+ * @param {Array<{ commandLine: string }>} chain
+ * @param {R[]} roots
+ * @returns {R | null}
  */
 function rootOf(chain, roots) {
   for (const p of chain) {
     const line = folderKey(p.commandLine);
+    /** @type {R | null} */
     let best = null;
     for (const r of roots) {
       if (namesFolder(line, r.key) && (!best || r.key.length > best.key.length)) best = r;

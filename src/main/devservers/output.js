@@ -32,7 +32,7 @@ class LineBuffer {
 
   push(text) {
     const parts = (this.partial + String(text ?? '')).split(/\r\n|\n|\r/);
-    this.partial = parts.pop().slice(-MAX_LINE * 2);
+    this.partial = (parts.pop() ?? '').slice(-MAX_LINE * 2); // split always leaves one part
     const added = parts.map(l => clean(l).slice(0, MAX_LINE));
     if (added.length) this.lines = [...this.lines, ...added].slice(-this.max);
     return added;
@@ -156,6 +156,7 @@ const keyValue = (m, q, key, sep, dq, sq) => {
   const value = dq != null ? '"[redacted]"' : sq != null ? "'[redacted]'" : '[redacted]';
   return `${q}${key}${q}${sep}${value}`;
 };
+/** @type {[RegExp, string][]} */
 const REDACTIONS = [
   [/\b(Bearer|Basic|token)\s+[A-Za-z0-9._~+/=-]{12,}/gi, '$1 [redacted]'],
   [/\b(?:sk|pk|rk)-(?:ant-|proj-|live-|test-)?[A-Za-z0-9_-]{16,}/g, '[redacted]'],

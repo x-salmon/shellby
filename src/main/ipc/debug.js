@@ -2,9 +2,12 @@
 // buttons move it on. Each message to Claude goes from one of these, pressed
 // by you; the panel names a debug session by the id main gave it.
 // Kept out of main.js, which only wires it up.
+const { ID, obj, opt, text } = require('../ipc-args');
+
+const MAX_BUG = 50_000; // what was typed after /debug: the box's longest message (wiring/snippets.js PANEL_MAX_TEXT)
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerDebugIpc(ipcMain, d) {
@@ -13,7 +16,7 @@ function registerDebugIpc(ipcMain, d) {
   ipcMain.handle('debug:start', (_e, { tabId, bug } = {}) => {
     if (!isId(tabId)) return { ok: false, error: 'That conversation is closed.' };
     return d.debugMode ? d.debugMode.start(tabId, typeof bug === 'string' ? bug : '') : off;
-  });
+  }, [obj({ tabId: ID, bug: opt(text(MAX_BUG)) })]);
   // what: 'send' (what was logged), 'fixed' (take the logging out), 'again' (what's left), 'stop'.
   ipcMain.handle('debug:act', (_e, { id, what } = {}) => {
     if (!isId(id) || !d.debugMode) return off;

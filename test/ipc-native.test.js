@@ -94,7 +94,9 @@ test("memories are listed for the tab's project, saved and forgotten only by the
 
   assert.equal((await ipc.invoke('memory:save', { file: 'a.md', body: 'A, changed.' })).ok, true);
   assert.match(fs.readFileSync(path.join(dir, 'a.md'), 'utf8'), /A, changed\./);
-  for (const file of ['../a.md', 'a.txt', 'MEMORY.md', '', null]) assert.equal((await ipc.invoke('memory:save', { file, body: 'x' })).ok, false, String(file));
+  for (const file of ['../a.md', 'a.txt', 'MEMORY.md']) assert.equal((await ipc.invoke('memory:save', { file, body: 'x' })).ok, false, String(file));
+  // No file name at all never reaches the handler (its schema).
+  for (const file of ['', null]) await assert.rejects(ipc.invoke('memory:save', { file, body: 'x' }), /wasn't one Shellby accepts/, String(file));
 
   assert.equal((await ipc.invoke('memory:forget', { file: '..\\a.md' })).ok, false);
   assert.equal((await ipc.invoke('memory:forget', { file: 'a.md' })).ok, true);

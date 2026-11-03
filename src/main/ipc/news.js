@@ -5,7 +5,7 @@
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/; // news.js ID_RE
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js `shared`)
  */
 function registerNewsIpc(ipcMain, d) {

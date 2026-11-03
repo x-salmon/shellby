@@ -138,7 +138,7 @@ function register(deps) {
     rememberPrompt(`!${cmd}`);
     deps.stat('shell-run');
     return { ok: true, code: r.code };
-  });
+  }, [obj({ tabId: opt(ID), command: opt(text(100_000)) })]); // past MAX_COMMAND the handler says why
 
   // ---- /btw: a side question, answered from a fork of the conversation (btw.js)
   // The tab's own CLI (the fake one in tests), in its folder, so --resume finds it.
@@ -341,7 +341,7 @@ function register(deps) {
     if (r.canceled || !r.filePath) return { ok: false, cancelled: true };
     try { fs.writeFileSync(r.filePath, md); } catch (e) { return { ok: false, error: `Couldn't save it: ${e.message}` }; }
     return { ok: true, to: 'file', path: r.filePath };
-  });
+  }, [obj({ id: opt(ID), to: opt(ID) })]);
 
   // ---- permission rules
   const LIST_WORDS = { allow: 'run without asking', ask: 'always ask first', deny: 'never run' };
@@ -453,7 +453,7 @@ function register(deps) {
     deps.openExternal(url);
     if (r.response.callbackExpected) watchSignIn(t, tabId, name);
     return { ok: true, opened: true, connector: !r.response.callbackExpected };
-  });
+  }, [obj({ tabId: opt(ID), name: ID })]);
   ipcMain.handle('mcp:toggle', (_e, { tabId, name, enabled } = {}) => (isStr(name) ? everyRunning(tabId, 'mcp_toggle', { serverName: name, enabled: !!enabled }, 'Turning a server on or off') : { ok: false, error: 'Unknown server.' }));
 
   ipcMain.handle('mcp:add', async (_e, input) => {
@@ -484,7 +484,7 @@ function register(deps) {
     if (!r.ok) return { ok: false, error: (r.stderr || r.stdout || 'Claude Code said no.').trim().split('\n').slice(-3).join(' ') };
     deps.stat('mcp-added');
     return { ok: true, name: s.name, note: 'New conversations will have it. Ones already running pick it up next time they start.' };
-  });
+  }, [obj({ tabId: opt(ID) })]); // the form's fields: mcpAdmin.addArgs checks each
 
   ipcMain.handle('mcp:remove', async (_e, { tabId, name } = {}) => {
     if (!isStr(name)) return { ok: false, error: 'Unknown server.' };
@@ -505,7 +505,7 @@ function register(deps) {
     if (!r.ok) return { ok: false, error: (r.stderr || r.stdout || 'Claude Code said no.').trim().split('\n').slice(-3).join(' ') };
     deps.stat('mcp-removed');
     return { ok: true };
-  });
+  }, [obj({ tabId: opt(ID), name: ID })]);
 
   // ---- output styles
   ipcMain.handle('styles:list', () => outputStyles.list({ home: deps.setupWhere().home, cwd: deps.currentCwd() }));

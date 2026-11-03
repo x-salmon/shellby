@@ -8,6 +8,7 @@
 //
 // The panel names a project by a root the Projects page listed (knowsRoot),
 // never a folder of its own.
+const { PATH, obj } = require('../ipc-args');
 const tools = require('../projects/tools');
 const worktrees = require('../worktrees');
 const local = require('../projects/local');
@@ -16,7 +17,7 @@ const isRoot = r => typeof r === 'string' && r.length > 0 && r.length < 1000;
 const text = (s, n) => (typeof s === 'string' ? s.slice(0, n) : '');
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  * @param [opts]  git: worktrees.git, or a test's; readRepo(dir) and pickFolder() likewise
  */
@@ -63,7 +64,7 @@ function registerProjectToolsIpc(ipcMain, d, {
     const res = await d.startTaskInCopy(p.root, 'When did this break?',
       w => tools.bisectPrompt({ what, test, good, project: p.name }, { branch: w.branch, base: w.base }), { draft: true });
     return res.ok ? { ok: true, tabId: res.tabId } : res;
-  });
+  }, [obj({ root: PATH })]); // what, test and good: typed, and checked above
 
   // "Check the docs": fixes in a copy on its own branch, for you to look over.
   ipcMain.handle('tools:docs', async (_e, root) => {

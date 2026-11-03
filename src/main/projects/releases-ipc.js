@@ -8,6 +8,7 @@
 // The panel names a clone only by a root the Projects page listed (knowsRoot),
 // and a release only by the commit it read: a clone that has moved since isn't
 // released. Nothing is pushed unless the push box was ticked or Push pressed.
+const { PATH, obj, str: nonEmpty } = require('../ipc-args');
 const { caseKey } = require('./merge');
 const rg = require('./release-git');
 const R = require('./releases');
@@ -135,7 +136,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
       if (r.ok) released(root, t.version);
       return r;
     });
-  });
+  }, [obj({ root: PATH, tag: nonEmpty({ max: 300 }) })]);
 
   // "Push them first": the branch alone, so CI checks it before a release ships it.
   ipcMain.handle('releases:pushBranch', (_e, { root: given } = {}) => {

@@ -4,7 +4,8 @@
 // painter.js (drafts, wishes), wardrobe/wrap.js (one thing as a pack) and
 // renderer/shared/pixel-grid.js (the checks, the same ones the panel shows).
 // Kept out of main.js, which only wires it up.
-const { app, dialog, shell } = require('electron');
+const { app, dialog } = require('electron');
+const { openSafe } = require('../safe-open');
 const fs = require('fs');
 const path = require('path');
 const G = require('../../renderer/shared/pixel-grid');
@@ -274,7 +275,7 @@ function wirePainter(d) {
     let contestUrl = null;
     if (pack.contest) {
       contestUrl = wrap.contestEntryUrl({ name: got.name, packId, month: pack.contest, prUrl: r.url });
-      shell.openExternal(contestUrl);
+      openSafe(contestUrl);
     }
     const commented = number ? await tellTheWish(number, got.name, r.url) : false;
     return { ...r, packId, version: pack.version, commented, contestUrl };
@@ -345,7 +346,7 @@ function wirePainter(d) {
     return { ok: true, code: encodeOutfit({}, `${packId}/${id}`) };
   }
 
-  const openStudio = () => shell.openExternal(STUDIO_URL);
+  const openStudio = () => openSafe(STUDIO_URL);
 
   return {
     reloadSkins,

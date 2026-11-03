@@ -18,6 +18,8 @@ const statusLine = require('./statusline');
 const { Log } = require('./log');
 const crashReport = require('./crash-report');
 const { guardAllWebContents } = require('./web-guard');
+const { setOpenLog } = require('./safe-open');
+const { makeRevive } = require('./window-revive');
 const { registerIpc } = require('./ipc');
 const { wireCrash } = require('./wiring/crash');
 const { wireProfile } = require('./wiring/profile');
@@ -304,9 +306,15 @@ process.on('unhandledRejection', reason => snag('unhandled rejection', reason in
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => app.quit());
 // Every page, however it was made: no pop-ups, navigation, redirects or webviews (web-guard.js).
 guardAllWebContents(app);
+setOpenLog(log);
 // A window or a helper process dying: the panel going blank used to be the only
 // sign, and nothing at all when it was the critter.
-app.on('render-process-gone', (_e, _wc, details) => snag('a window died', `${details.reason} (exit code ${details.exitCode})`));
+// So it reports, then loads the page again (window-revive.js).
+const revive = makeRevive({ log, onGaveUp: () => snag('a window keeps crashing', 'gave up reloading it') });
+app.on('render-process-gone', (_e, wc, details) => {
+  snag('a window died', `${details.reason} (exit code ${details.exitCode})`);
+  revive(wc, details);
+});
 app.on('child-process-gone', (_e, details) => log.error('a child process died', `${details.type}: ${details.reason}`));
 
 // Dev/test runs get their own identity so Windows never ties their toasts or

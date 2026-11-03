@@ -5,12 +5,14 @@
 // be one you've added (or one in your ssh config, to add it), a folder must be
 // one ssh.js accepts, and a key a file name in ~/.ssh. Nothing the panel sends
 // is ever put on a command line as it came.
+const { PATH, obj: shape, opt, str, text } = require('../ipc-args');
 const ssh = require('../remote/ssh');
 
 const MAX_ANSWER = 1024;
+const HOST = str({ max: 300 }); // an ssh alias; ssh.isHost says which
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares (main.js `shared`); d.remoteService is wireRemote's
  */
 function registerRemoteIpc(ipcMain, d) {
@@ -23,7 +25,7 @@ function registerRemoteIpc(ipcMain, d) {
   const forHost = fn => (/** @type {any} */ _e, /** @type {unknown} */ alias) => (host(alias) ? fn(/** @type {string} */ (alias)) : nope);
 
   ipcMain.handle('remote:view', () => svc().view());
-  ipcMain.handle('remote:add', forHost(alias => svc().addComputer(alias)));
+  ipcMain.handle('remote:add', forHost(alias => svc().addComputer(alias)), [HOST]);
   ipcMain.handle('remote:create', (_e, form) => {
     if (!form || typeof form !== 'object') return { ok: false, error: 'Fill in the form first.' };
     const { alias, address, user, port, jump } = obj(form);
@@ -35,17 +37,17 @@ function registerRemoteIpc(ipcMain, d) {
   ipcMain.handle('remote:check', forHost(alias => svc().check(alias)));
   ipcMain.handle('remote:install', forHost(alias => svc().installClaude(alias)));
   ipcMain.handle('remote:sign-in', forHost(alias => svc().signInClaude(alias)));
-  ipcMain.handle('remote:setup-key', forHost(alias => svc().setupKey(alias)));
+  ipcMain.handle('remote:setup-key', forHost(alias => svc().setupKey(alias)), [HOST]);
   ipcMain.handle('remote:agent-on', () => svc().enableAgent());
   ipcMain.handle('remote:unlock', (_e, name) => (typeof name === 'string' && /^[A-Za-z0-9._-]{1,80}$/.test(name) ? svc().unlockKey(name) : { ok: false, error: 'Which key?' }));
   ipcMain.handle('remote:browse', (_e, p) => {
     const { alias, dir } = obj(p);
     return host(alias) ? svc().browse(alias, typeof dir === 'string' ? dir : '~') : nope;
-  });
+  }, [shape({ alias: HOST, dir: opt(text(32_767)) })]);
   ipcMain.handle('remote:add-folder', (_e, p) => {
     const { alias, dir } = obj(p);
     return host(alias) && typeof dir === 'string' ? svc().addFolder(alias, dir) : nope;
-  });
+  }, [shape({ alias: HOST, dir: PATH })]);
   ipcMain.handle('remote:remove-folder', (_e, anchor) => (typeof anchor === 'string' ? svc().removeFolder(anchor) : { ok: false, error: 'Which folder?' }));
   // Work there from now on: only ever one of its folders' stand-ins.
   ipcMain.handle('remote:work-here', (_e, anchor) => {

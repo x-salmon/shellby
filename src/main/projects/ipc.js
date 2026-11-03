@@ -3,7 +3,7 @@
 //
 // The panel never hands in a path: folders come from a dialog main opens, or
 // are picked from what the service listed (knowsRoot); servers are named by id.
-const { PATH, list } = require('../ipc-args');
+const { ID: SRV, PATH, list, obj, opt, str } = require('../ipc-args');
 const fs = require('fs');
 const { checkRepo } = require('./remote');
 const doctorIo = require('../devservers/doctor-io');
@@ -71,7 +71,7 @@ function registerProjectsIpc(ipcMain, d) {
   });
   ipcMain.handle('projects:scan-cancel', () => { P()?.cancelScan(); return true; });
   ipcMain.handle('projects:add-many', (_e, roots) => P()?.addMany(roots) ?? { ok: false }, [list(PATH)]);
-  ipcMain.handle('projects:remove', (_e, key) => (isStr(key) ? P()?.remove(key) : { ok: false }));
+  ipcMain.handle('projects:remove', (_e, key) => (isStr(key) ? P()?.remove(key) : { ok: false }), [str({ max: 2000 })]);
 
   // ---------------------------------------------------------------- the inbox (inbox.js)
   // Deleting work that exists nowhere else is asked here, in main's own dialog,
@@ -91,7 +91,7 @@ function registerProjectsIpc(ipcMain, d) {
       buttons: [{ label: 'Delete it', style: 'danger' }, { label: 'Keep it' }], defaultId: 1, cancelId: 1,
     });
     return yes === 0 ? P().deleteBranch(root, name, { confirmed: r.sha }) : { ok: false, cancelled: true };
-  });
+  }, [obj({ root: PATH, name: str({ max: 2000 }) })]);
   ipcMain.handle('projects:remove-copy', async (_e, copyPath) => {
     if (!isStr(copyPath) || !P()) return { ok: false };
     const r = await P().removeCopy(copyPath);
@@ -111,7 +111,7 @@ function registerProjectsIpc(ipcMain, d) {
     if (yes !== 0) return { ok: false, cancelled: true };
     const done = await P().removeCopy(copyPath, { confirmed: { changed: r.changed, only: r.only, ignoredTotal: r.ignoredTotal } });
     return done.needsConfirm ? { ok: false, error: 'There is more in that copy than a moment ago, so it stays. Have another look.' } : done;
-  });
+  }, [PATH]);
 
   // Cloning: the folder comes from this dialog, never from the panel.
   ipcMain.handle('projects:clone-folder', async () => {
@@ -138,7 +138,7 @@ function registerProjectsIpc(ipcMain, d) {
     const r = await P().clone(repo, pickedCloneParent, p => d.toPanel('projects:clone-progress', { repo, ...p }));
     if (r.ok) pickedCloneParent = null;
     return r;
-  });
+  }, [str({ max: 2000 })]); // "owner/name", or a GitHub URL: checkRepo says which
   ipcMain.handle('projects:clone-cancel', () => { P()?.cancelClone(); return true; });
 
   // Forget Claude's history here (claude purge): what would go, asked in main's
@@ -167,12 +167,12 @@ function registerProjectsIpc(ipcMain, d) {
     const known = P()?.knowsRoot(root);
     if (known) d.openPath(known);
     return !!known;
-  });
+  }, [PATH]);
   ipcMain.handle('projects:open-github', (_e, repo) => {
     const r = checkRepo(repo);
     if (r) d.openExternal(`https://github.com/${r}`);
     return !!r;
-  });
+  }, [str({ max: 2000 })]);
   // The project's to-do list. The key must be one the page was shown (addTodo checks).
   ipcMain.handle('projects:todo-add', (_e, { key, text } = {}) => (isStr(key) && typeof text === 'string'
     ? P()?.addTodo(key, text, 'you') ?? { ok: false } : { ok: false }));
@@ -212,29 +212,29 @@ function registerProjectsIpc(ipcMain, d) {
     if (!known) return { ok: false, error: 'Unknown project folder.' };
     // The name goes into toasts and the prompt, so it's the listed project's, never the panel's.
     return S().start({ root: known, script: typeof script === 'string' ? script : '', project: P().nameFor(known) });
-  });
-  ipcMain.handle('servers:stop', (_e, id) => (isId(id) ? S().stop(id) : { ok: false }));
-  ipcMain.handle('servers:restart', (_e, id) => (isId(id) ? S().restart(id) : { ok: false }));
-  ipcMain.handle('servers:dismiss', (_e, id) => (isId(id) ? S().dismiss(id) : { ok: false }));
-  ipcMain.handle('servers:seen', (_e, id) => { if (isId(id)) S()?.markSeen(id); return true; });
-  ipcMain.handle('servers:log', (_e, id) => (isId(id) ? S().log(id) : null));
-  ipcMain.handle('servers:fix-draft', (_e, { id, note } = {}) => (isId(id) ? S().fixDraft(id, typeof note === 'string' ? note : '') : null));
+  }, [obj({ root: PATH, script: opt(str({ max: 300 })) })]);
+  ipcMain.handle('servers:stop', (_e, id) => (isId(id) ? S().stop(id) : { ok: false }), [SRV]);
+  ipcMain.handle('servers:restart', (_e, id) => (isId(id) ? S().restart(id) : { ok: false }), [SRV]);
+  ipcMain.handle('servers:dismiss', (_e, id) => (isId(id) ? S().dismiss(id) : { ok: false }), [SRV]);
+  ipcMain.handle('servers:seen', (_e, id) => { if (isId(id)) S()?.markSeen(id); return true; }, [SRV]);
+  ipcMain.handle('servers:log', (_e, id) => (isId(id) ? S().log(id) : null), [SRV]);
+  ipcMain.handle('servers:fix-draft', (_e, { id, note } = {}) => (isId(id) ? S().fixDraft(id, typeof note === 'string' ? note : '') : null), [obj({ id: SRV })]);
   // The only way a server's output reaches Claude: you pressed Send on its card.
   // hash: the draft the card showed; a prompt that has changed since isn't sent.
   ipcMain.handle('servers:fix-send', (_e, { id, note, hash } = {}) => (isId(id) && typeof hash === 'string'
-    ? S().sendFix(id, typeof note === 'string' ? note : '', hash) : { ok: false }));
+    ? S().sendFix(id, typeof note === 'string' ? note : '', hash) : { ok: false }), [obj({ id: SRV, hash: str({ max: 300 }) })]);
   ipcMain.handle('servers:open', (_e, id) => {
     const s = isId(id) ? S()?.view().servers.find(x => x.id === id) : null;
     if (!s?.url || !LOCAL_URL.test(s.url)) return false;
     d.openExternal(s.url);
     return true;
-  });
+  }, [SRV]);
   ipcMain.handle('servers:open-log', (_e, id) => {
     const s = isId(id) ? S()?.servers.get(id) : null;
     if (!s?.log) return false;
     d.showItem(s.log);
     return true;
-  });
+  }, [SRV]);
   ipcMain.handle('servers:stop-all', async () => { await S()?.stopAll(); return S()?.view(); });
 
   // ---------------------------------------------------------------- the port and environment doctor (doctor.js)
@@ -249,7 +249,7 @@ function registerProjectsIpc(ipcMain, d) {
     const free = await io.freePort(s.portTaken);
     portLooks.set(id, { port: s.portTaken, holders, free });
     return { port: s.portTaken, free, holders: holders.map(({ pid, name, canStop }) => ({ pid, name, canStop })) };
-  });
+  }, [SRV]);
 
   // "Stop it": the program the card named, if it's still the same one, after
   // Shellby's own window has asked. Then the server starts again.
@@ -278,7 +278,7 @@ function registerProjectsIpc(ipcMain, d) {
     }
     portLooks.delete(id);
     return S().restart(id);
-  });
+  }, [obj({ id: SRV, pid: Number.isInteger })]);
 
   // "Use :5174": the free port the card offered, remembered for this script.
   // port null: back to the usual one.
@@ -289,7 +289,7 @@ function registerProjectsIpc(ipcMain, d) {
     if (!look?.free || look.free !== port) return { ok: false, error: 'Look again: that port was never offered.' };
     portLooks.delete(id);
     return S().usePort(id, port);
-  });
+  }, [obj({ id: SRV, port: opt(Number.isInteger) })]); // port null: the usual one
 
   // ---------------------------------------------------------------- servers Shellby didn't start (discover.js)
 
@@ -299,13 +299,13 @@ function registerProjectsIpc(ipcMain, d) {
     if (!P()?.listed.size) return [];
     const list = await discovery.look({ force: !!opts?.refresh });
     return list.map(({ pid, port, program, project, script, listed, root }) => ({ pid, port, program, project, script, root: listed || root }));
-  });
+  }, [opt(obj())]);
   ipcMain.handle('servers:found-open', (_e, pid) => {
     const f = isPid(pid) ? discovery.listed(pid) : null;
     if (!f || f.error) return false;
     d.openExternal(`http://localhost:${f.port}/`);
     return true;
-  });
+  }, [Number.isInteger]);
 
   // Stopping one: the process the page named, if it's still the same one, after
   // Shellby's own window has asked. adopt: then start the script here, so next
@@ -362,20 +362,20 @@ function registerProjectsIpc(ipcMain, d) {
     if (!gone(pid)) return { ok: false, error: "It didn't stop, so nothing was started in its place. Try again, or end it from Task Manager." };
     return S().start({ root, script: f.script, project: P().nameFor(root) });
   }
-  ipcMain.handle('servers:found-stop', (_e, arg) => stopFound(arg?.pid));
-  ipcMain.handle('servers:found-adopt', (_e, arg) => stopFound(arg?.pid, { adopt: true, script: arg?.script }));
+  ipcMain.handle('servers:found-stop', (_e, arg) => stopFound(arg?.pid), [obj({ pid: Number.isInteger })]);
+  ipcMain.handle('servers:found-adopt', (_e, arg) => stopFound(arg?.pid, { adopt: true, script: arg?.script }), [obj({ pid: Number.isInteger, script: opt(str({ max: 300 })) })]);
 
   // Before a start: .env keys the example has and yours doesn't, and the Node version it wants.
   ipcMain.handle('servers:doctor', (_e, root) => {
     const known = P()?.knowsRoot(root);
     return known ? io.checkProject(known) : null;
-  });
+  }, [PATH]);
   // ".env from the example": only where there's no .env at all.
   ipcMain.handle('servers:make-env', (_e, root) => {
     const known = P()?.knowsRoot(root);
     return known ? io.makeEnv(known) : { ok: false, error: 'Unknown project folder.' };
-  });
-  ipcMain.handle('servers:settings', (_e, patch) => S()?.setSettings(patch && typeof patch === 'object' ? patch : {}));
+  }, [PATH]);
+  ipcMain.handle('servers:settings', (_e, patch) => S()?.setSettings(patch && typeof patch === 'object' ? patch : {}), [obj()]);
 }
 
 module.exports = { registerProjectsIpc };
