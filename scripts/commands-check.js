@@ -42,6 +42,8 @@ function cliCode(given) {
 /**
  * Every slash command defined in code: an object with name:"x" and, close by,
  * a command's type (local, local-jsx, prompt) or one of its tell-tale fields.
+ * A plugin-backed command's name can be a minified constant (name:vai), but
+ * only commands have pluginCommand, and that key keeps its literal value.
  */
 function scanCommands(code) {
   const found = new Set();
@@ -53,6 +55,7 @@ function scanCommands(code) {
     const isCommand = /type:"(local-jsx|local|prompt)"|progressMessage|argumentHint|supportsNonInteractive|menuDescription/.test(near);
     if (isCommand && /description/i.test(near)) found.add(m[1]);
   }
+  for (const [, name] of code.matchAll(/pluginCommand:"([a-z][a-z0-9-]*)"/g)) found.add(name);
   return [...found].filter(n => !NOT_COMMANDS.has(n)).sort();
 }
 

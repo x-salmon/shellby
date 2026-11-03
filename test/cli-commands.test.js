@@ -88,6 +88,11 @@ test('scanCommands finds command definitions and skips look-alikes and bundled s
   assert.deepEqual(scanCommands(code), ['rewind', 'theme']);
 });
 
+test('scanCommands finds a plugin-backed command whose name the minifier made a constant', () => {
+  const code = 'jen=Uen({name:vai,description:"Review it",progressMessage:"reviewing",pluginName:"security-review",pluginCommand:"security-review",async go(){}});';
+  assert.deepEqual(scanCommands(code), ['security-review']);
+});
+
 test('slash menu: Claude Code\'s own show with a "claude code" pill, after yours of the same name', () => {
   const builtins = builtinCommands(null);
   const got = L.slashCandidates('comp', { builtins });
