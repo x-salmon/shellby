@@ -1,5 +1,6 @@
 // The Wardrobe's IPC: outfits, voices, packs from a file or the gallery, and
 // outfit codes (SHB-XXXX-XXXX). Kept out of main.js, which only wires it up.
+const { ID, PATH, obj, opt } = require('../ipc-args');
 const fs = require('fs');
 const attach = require('../attachments');
 const { fetchRegistryCatalog } = require('../registry');
@@ -29,7 +30,7 @@ const NOT_A_CODE = "That doesn't look like an outfit code.";
  *   painter: { readSkin, saveSkin, preview, saveItem, items, drafts, saveDraft, deleteDraft,
  *              wishes, share, gallery, exportPack, code, studio }   wiring/painter.js
  * }
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d
  */
 function registerWardrobeIpc(ipcMain, d) {
@@ -57,7 +58,7 @@ function registerWardrobeIpc(ipcMain, d) {
     const text = readPack(file);
     if (text.errors) return { ok: false, errors: text.errors };
     return withView(await d.confirmAndInstallPackText(text.ok));
-  });
+  }, [opt(PATH)]); // no file: the open dialog
   // Removing a pack puts it in the trash for a week (catalog.js removePack), so
   // the toast can offer it back. { ok, view }: ok false if nothing was removed.
   ipcMain.handle('wardrobe:remove-pack', (_e, packId) => ({ ok: isStr(packId) && !!W().remove(packId), view: W().view() }));
@@ -99,7 +100,7 @@ function registerWardrobeIpc(ipcMain, d) {
   const kindOk = k => PAINT_KINDS.includes(k);
   const idOk = id => typeof id === 'string' && SKIN_ID.test(id);
   // Save: { ok, id, warnings }. Strict checks, a fresh id or your own, written atomically, then a reload.
-  ipcMain.handle('skins:save', (_e, skin, opts) => (isObj(skin) && idOk(skin.id) ? P.saveSkin(skin, { replace: opts?.replace === true }) : { ok: false, error: 'That isn’t a skin.' }));
+  ipcMain.handle('skins:save', (_e, skin, opts) => (isObj(skin) && idOk(skin.id) ? P.saveSkin(skin, { replace: opts?.replace === true }) : { ok: false, error: 'That isn’t a skin.' }), [obj({ id: ID }), opt(obj())]);
   // A skin to start from or edit: { ok, skin, source, basedOn? }. Locked pack skins are refused.
   ipcMain.handle('skins:read', (_e, id) => (isStr(id) && id.length <= 81 ? P.readSkin(id) : { ok: false }));
   // The desktop crab wears it for a minute (null: back to his own now).

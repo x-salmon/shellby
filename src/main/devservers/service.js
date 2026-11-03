@@ -123,6 +123,7 @@ class DevServers extends EventEmitter {
     this.crashes = new Map(); // root|script -> [ms]
     this.loopToasted = new Map(); // root|script -> ms
     this.busy = new Map(); // id -> the stop or restart in progress: one at a time per server
+    /** @type {NodeJS.Timeout | null} */
     this.timer = null;
     this.lastTrim = 0;
   }
@@ -292,6 +293,8 @@ class DevServers extends EventEmitter {
    * For a workflow's "start" step: once a starting server is up or has fallen
    * over (or SETTLE_MS has passed, or `signal` says stop), its view. null when
    * it's gone from the list.
+   * @param {string} id
+   * @param {{ timeoutMs?: number, signal?: AbortSignal | null }} [opts]
    */
   settled(id, { timeoutMs = SETTLE_MS, signal = null } = {}) {
     const view = () => { const s = this.servers.get(id); return s ? this.publicView(s) : null; };
@@ -437,7 +440,7 @@ class DevServers extends EventEmitter {
     this.timer.unref?.();
   }
 
-  stopTicking() { clearInterval(this.timer); this.timer = null; }
+  stopTicking() { if (this.timer) clearInterval(this.timer); this.timer = null; }
 
   tick() {
     const now = this.now();

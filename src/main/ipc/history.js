@@ -14,7 +14,7 @@ const isStr = s => typeof s === 'string' && s.length > 0 && s.length < 10000;
  *   onCleared()                   optional: what else goes with Clear all history (the per-turn ledger)
  *   log
  * }
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d
  */
 function registerHistoryIpc(ipcMain, d) {

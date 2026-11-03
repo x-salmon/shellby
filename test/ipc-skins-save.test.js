@@ -85,7 +85,8 @@ test('a good skin is saved, read back, and everyone hears', async () => {
 test('ids: only [\\w-]{1,40}, and never a built-in skin\'s or the built-in pack\'s', async () => {
   const { ipc, skinsDir } = setup();
   for (const id of ['../evil', 'a b', 'x'.repeat(41), '', 7, 'con/x']) {
-    const r = await ipc.invoke('skins:save', mine({ id }));
+    // An id that isn't a string at all never reaches the handler (its schema); the rest are its own no.
+    const r = await ipc.invoke('skins:save', mine({ id })).catch(e => ({ ok: false, error: e.message }));
     assert.equal(r.ok, false, `${JSON.stringify(id)} refused`);
   }
   assert.equal((await ipc.invoke('skins:save', mine({ id: 'classic' }))).ok, false, 'a built-in skin');
@@ -102,7 +103,7 @@ test('main checks strictly, whatever the panel sent', async () => {
   // A colour with no part blocks saving: it wouldn't move with him.
   const { l: _l, ...noLegs } = classic.parts;
   assert.match((await ipc.invoke('skins:save', mine({ parts: noLegs }))).error, /no part/);
-  assert.equal((await ipc.invoke('skins:save', 'nope')).ok, false);
+  await assert.rejects(ipc.invoke('skins:save', 'nope'), /wasn't one Shellby accepts/); // its schema wants a skin object
   assert.deepEqual(fs.readdirSync(skinsDir), []);
 });
 

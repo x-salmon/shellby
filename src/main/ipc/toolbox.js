@@ -1,16 +1,19 @@
 // The Toolbox: its tools, prompt snippets, Claude Code's hooks and memory, and
 // the skill shop (plugin marketplaces). Kept out of main.js, which only wires
 // it up.
-const { ID, either, obj: shape, opt, str } = require('../ipc-args');
+const { ID, PATH, either, obj: shape, opt, str, text } = require('../ipc-args');
 const { shell } = require('electron');
+const { openSafe } = require('../safe-open');
 const path = require('path');
 const claudeSetup = require('../claude/setup');
 const hookTest = require('../hooks/test');
 const snippets = require('../snippets');
 const { samePath } = require('../toolbox');
 
+const MAX_MEMORY_TEXT = 512 * 1024; // what claude/setup.js writeMemory takes (MAX_MEMORY); past it the handler says why
+
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerToolboxIpc(ipcMain, d) {
@@ -65,7 +68,7 @@ function registerToolboxIpc(ipcMain, d) {
     // Only reveal files the toolbox itself reported (never arbitrary paths from the renderer).
     const known = d.toolbox.current && ['skills', 'agents', 'commands'].some(k => d.toolbox.current[k].some(t => t.path === p || (t.hides || []).some(x => x.path === p)));
     if (known) shell.showItemInFolder(p);
-  });
+  }, [PATH]);
 
   // ---- hooks and memory (Toolbox → Hooks / Memory)
   // Memory paths are only ever ones a fresh scan lists, so the panel can't aim a write anywhere else.
@@ -74,7 +77,7 @@ function registerToolboxIpc(ipcMain, d) {
   ipcMain.handle('setup:read-memory', (_e, p) => {
     const m = knownMemory(p);
     return m ? claudeSetup.readMemory(m.path) : { ok: false, error: "Shellby doesn't edit that file." };
-  });
+  }, [PATH]);
   ipcMain.handle('setup:write-memory', (_e, req) => {
     const { path: p, text, mtimeMs } = obj(req);
     const m = knownMemory(p);
@@ -83,7 +86,7 @@ function registerToolboxIpc(ipcMain, d) {
     try { r = claudeSetup.writeMemory(m.path, text, mtimeMs); } catch { r = { ok: false, error: "Couldn't save that file." }; }
     if (r.ok) d.stat('memory-saved');
     return { ...r, setup: d.setupView() };
-  });
+  }, [shape({ path: PATH, text: text(MAX_MEMORY_TEXT), mtimeMs: Number.isFinite })]);
   ipcMain.handle('setup:save-hook', (_e, req) => d.confirmAndChangeHook(req || {}, false), [shape({ scope: opt(ID) })]);
   ipcMain.handle('setup:remove-hook', (_e, req) => d.confirmAndChangeHook(req || {}, true), [shape({ scope: opt(ID) })]);
   ipcMain.handle('setup:pause-hook', (_e, req) => d.pauseHook(req || {}), [shape({ scope: opt(ID) })]);
@@ -102,19 +105,19 @@ function registerToolboxIpc(ipcMain, d) {
     const s = d.setupView();
     const hit = [...s.memory.filter(m => m.exists), ...s.hooks, ...s.paused].find(x => samePath(x.path, p));
     if (hit) shell.showItemInFolder(hit.path);
-  });
+  }, [PATH]);
 
   // ---- skill shop (Claude Code plugin marketplaces)
   // No marketplace refresh (git pull) while an install confirmation is open.
-  ipcMain.handle('shop:list', (_e, req) => d.shopBlocked() || d.shop.list({ refresh: !!obj(req).refresh && !d.shopAsking }));
+  ipcMain.handle('shop:list', (_e, req) => d.shopBlocked() || d.shop.list({ refresh: !!obj(req).refresh && !d.shopAsking }), [opt(shape())]);
   ipcMain.handle('shop:install', (_e, id) => d.confirmAndInstallPlugin(id), [ID]);
   ipcMain.handle('shop:uninstall', (_e, id) => d.confirmAndUninstallPlugin(id), [ID]);
   ipcMain.handle('shop:add-marketplace', (_e, source) => d.confirmAndAddMarketplace(source), [str()]);
   ipcMain.on('shop:open', (_e, id) => {
     // Only links the CLI itself reported for a listed plugin.
     const url = d.shop.find(id)?.url;
-    if (url) shell.openExternal(url);
-  });
+    if (url) openSafe(url);
+  }, [ID]);
 }
 
 module.exports = { registerToolboxIpc };

@@ -9,7 +9,7 @@ const notes = require('../notes');
 const NOTE_MODE = { plan: 'plan', build: null, ask: 'ask' };
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerNotesIpc(ipcMain, d) {

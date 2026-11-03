@@ -27,6 +27,12 @@ function readSmall(root, name, max = MAX_ENV_BYTES) {
 /**
  * Who's listening on `port`. info(pid) -> { alive, createdAt }, image(pid) ->
  * { name, full } (native-windows). -> [{ pid, name, createdAt, canStop }]
+ * @param {number} port
+ * @param {{
+ *   info?: (pid: number) => { alive: boolean, createdAt: number | null } | null,
+ *   image?: (pid: number) => { name: string, full?: string } | null,
+ *   run?: typeof execFile,
+ * }} [opts]
  */
 function whoHasPort(port, { info, image, run = execFile } = {}) {
   return new Promise(resolve => {
@@ -50,7 +56,7 @@ function tryListen(port, host) {
   return new Promise(resolve => {
     const srv = net.createServer();
     srv.unref();
-    srv.once('error', e => resolve(e?.code !== 'EADDRINUSE' && e?.code !== 'EACCES'));
+    srv.once('error', /** @param {NodeJS.ErrnoException} e */ e => resolve(e?.code !== 'EADDRINUSE' && e?.code !== 'EACCES'));
     srv.listen({ port, host, exclusive: true }, () => srv.close(() => resolve(true)));
   });
 }
@@ -63,7 +69,8 @@ async function freePort(from, { listen = tryListen } = {}) {
   return null;
 }
 
-let nodeCache = null; // { at, version }
+/** @type {{ at: number, version: string | null } | null} */
+let nodeCache = null;
 
 /**
  * The Node on PATH ("v20.11.1"), or null. Asked from your home folder, so a

@@ -1,7 +1,7 @@
 // The file viewer's channels (viewer.js): open a handle on a conversation's
 // folder, or on a worktree of a project the Project page showed (or a place picked from its header's menu), then read
 // inside it. Read-only. Kept out of main.js, which only wires it up.
-const { ID, PATH, opt } = require('../ipc-args');
+const { ID, PATH, obj, opt, str } = require('../ipc-args');
 const changes = require('../changes');
 const fileIndex = require('../fileindex');
 const leaving = require('../leaving');
@@ -46,8 +46,8 @@ function registerViewerIpc(ipcMain, d) {
       return viewer.open({ dir });
     }
     return { ok: false, error: 'Open what?' };
-  });
-  ipcMain.handle('viewer:tree', (_e, id, opts) => viewer.treeOf(id, { fresh: !!opts?.fresh })); // a folder's index (fresh: read again now), or a branch's own tree
+  }, [obj({ tabId: opt(ID), projectRoot: opt(PATH), worktreePath: opt(PATH) })]);
+  ipcMain.handle('viewer:tree', (_e, id, opts) => viewer.treeOf(id, { fresh: !!opts?.fresh }), [opt(ID), opt(obj())]); // a folder's index (fresh: read again now), or a branch's own tree
   ipcMain.handle('viewer:status', (_e, id) => viewer.statusOf(id), [opt(ID)]); // the file tree's marks (viewer-status.js); a folder handle only
   ipcMain.handle('viewer:changes', (_e, id, opts) => viewer.changesOf(id, { uncommittedOnly: !!opts?.uncommittedOnly }));
   ipcMain.handle('viewer:read', (_e, id, rel) => viewer.read(id, rel), [opt(ID), opt(PATH)]);
@@ -77,7 +77,7 @@ function registerViewerIpc(ipcMain, d) {
     const r = await branchSwitch.switchBranch(f.cwd, branch);
     if (r.ok) nudge(f.cwd, { commits: true });
     return r;
-  });
+  }, [ID, str({ max: 1000 })]); // a branch name from viewer:branches; switchBranch checks it
   ipcMain.handle('viewer:close', (_e, id) => { viewer.close(id); return true; }, [opt(ID)]);
   // The header's menu: the repo's worktrees and unmerged branches, each under a key main issued;
   // a pick names only a key, and main checks it again before it opens (viewer.js switchTo).

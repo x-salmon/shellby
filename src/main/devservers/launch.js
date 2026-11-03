@@ -12,8 +12,23 @@
 // script run by Shellby's own exe as Node (ELECTRON_RUN_AS_NODE), but the
 // packaged app now turns that off (the runAsNode fuse, package.json).
 'use strict';
+
+/**
+ * The bit of koffi used here. Its own types aren't in the program (jsconfig's
+ * noResolve), so the require goes through a typed alias of require itself.
+ * @typedef {(...args: any[]) => any} NativeFn  an FFI call: its signature is the string given to func()
+ * @typedef {{ func: (signature: string) => NativeFn }} KoffiLib
+ * @typedef {{
+ *   load: (dll: string) => KoffiLib,
+ *   struct: (name: string, fields: Record<string, string>) => unknown,
+ *   sizeof: (name: string) => number,
+ * }} Koffi
+ * @typedef {{ startupSize: number, saSize: number, CreateFileW: NativeFn, CreateProcessW: NativeFn, CloseHandle: NativeFn }} Api
+ */
+const requireNative = /** @type {(id: string) => Koffi} */ (require);
+/** @type {Koffi | null} */
 let koffi = null;
-try { koffi = require('koffi'); } catch { /* no native launch: start() reports it */ }
+try { koffi = requireNative('koffi'); } catch { /* no native launch: start() reports it */ }
 
 const GENERIC_READ = 0x80000000;
 const FILE_APPEND_DATA = 0x4;          // without FILE_WRITE_DATA: every write lands at the end, so trimLog is safe
@@ -30,6 +45,7 @@ const CREATE_NO_WINDOW = 0x08000000;
 const INVALID_HANDLE = -1;
 const MAX_COMMAND_LINE = 32767;
 
+/** @type {Api | null | undefined} */
 let api;
 function load() {
   if (api !== undefined) return api;
@@ -77,6 +93,8 @@ const wide = s => { const b = new Uint16Array(s.length + 1); for (let i = 0; i <
  * Start `app` with the full `commandLine`, detached from Shellby, with no
  * window, stdin on NUL and stdout and stderr appended to `logFile`.
  * -> { pid } | null (no native access, or Windows refused). Never throws.
+ * @param {{ app: string, commandLine: string, cwd: string, env: Record<string, string | undefined>, logFile: string }} what
+ * @returns {{ pid: number } | null}
  */
 function launch({ app, commandLine, cwd, env, logFile }) {
   const a = load();
@@ -94,7 +112,7 @@ function launch({ app, commandLine, cwd, env, logFile }) {
     // it. A job that doesn't allow breaking away refuses the whole start, so
     // try once more without: the server then ends with Shellby, but it runs.
     for (const flags of [base | CREATE_BREAKAWAY_FROM_JOB, base]) {
-      const pi = {};
+      const pi = { hProcess: 0, hThread: 0, dwProcessId: 0, dwThreadId: 0 }; // _Out_: koffi fills it in
       if (!a.CreateProcessW(app, wide(commandLine), null, null, 1, flags, block, cwd, si, pi)) continue;
       a.CloseHandle(pi.hThread);
       a.CloseHandle(pi.hProcess);

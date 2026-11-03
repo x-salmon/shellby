@@ -3,6 +3,7 @@
 // parity and team packs register themselves, given what they use.
 // Kept out of main.js, which only calls it.
 const { app, clipboard, dialog, shell } = require('electron');
+const { openSafe } = require('../safe-open');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -153,7 +154,7 @@ function registerIpc(electronIpcMain, d) {
     noteUndone: n => d.noteWeek('undone', null, n),
     turnEnding: tabId => d.turnEnds.get(tabId) || Promise.resolve(),
     dataDir: app.getPath('userData'),
-    openExternal: url => shell.openExternal(url),
+    openExternal: url => openSafe(url),
     runClaude, log,
   });
   d.teamIpc = teamIpcModule.register({

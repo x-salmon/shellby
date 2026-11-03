@@ -1,7 +1,7 @@
 // The panel itself: opening and closing it, Claude Code's sign-in and status,
 // pictures and files for the composer (attachments.js), and updates.
 // Kept out of main.js, which only wires it up.
-const { ID } = require('../ipc-args');
+const { ID, PATH } = require('../ipc-args');
 const { BrowserWindow, app, dialog, nativeImage } = require('electron');
 const { execFile } = require('child_process');
 const os = require('os');
@@ -27,8 +27,8 @@ function registerPanelIpc(ipcMain, d) {
     const r = attach.saveImage(bytes, d.shotsDir(), { nativeImage });
     if (r.path) d.stat('files-dropped');
     return r;
-  });
-  ipcMain.handle('attach:thumb', (_e, file) => (d.isStr(file) ? attach.thumbnail(file, { nativeImage }) : null));
+  }, [v => v instanceof Uint8Array]);
+  ipcMain.handle('attach:thumb', (_e, file) => (d.isStr(file) ? attach.thumbnail(file, { nativeImage }) : null), [PATH]);
   // A picture Claude wrote or edited, big enough to see on its step in the chat.
   ipcMain.handle('pictures:file', (_e, file) => (d.isStr(file) ? attach.thumbnail(file, { nativeImage, edge: attach.PREVIEW_EDGE }) : null));
   ipcMain.handle('attach:pick', async () => {

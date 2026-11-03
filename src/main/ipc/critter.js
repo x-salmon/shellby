@@ -12,7 +12,7 @@ const rooms = require('../rooms');
 const voice = require('../voice');
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerCritterIpc(ipcMain, d) {

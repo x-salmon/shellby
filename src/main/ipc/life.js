@@ -2,6 +2,7 @@
 // (playtime.js), the homes he moves into, and his XP.
 // Kept out of main.js, which only wires it up.
 const { app, dialog, shell } = require('electron');
+const { openSafe } = require('../safe-open');
 const os = require('os');
 const { sendToBottom } = require('../desktop/desktop-layer');
 const confirm = require('../confirm');
@@ -11,7 +12,7 @@ const { run: runCli } = require('../claude/cli');
 const shells = require('../progression/shells');
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerLifeIpc(ipcMain, d) {
@@ -61,7 +62,7 @@ function registerLifeIpc(ipcMain, d) {
     toPanel: (channel, payload) => d.send(d.panel, channel, payload),
     openPath: p => shell.openPath(p),
     showItem: p => shell.showItemInFolder(p),
-    openExternal: url => shell.openExternal(url),
+    openExternal: url => openSafe(url),
     ask: spec => confirm.ask(d.panel, { ...d.dialogLook(), ...spec }),
     runClaude: (args, timeout) => {
       if (d.FAKE_CLI) return runCli(process.env.SHELLBY_NODE || 'node', [d.FAKE_CLI, ...args], timeout); // tests

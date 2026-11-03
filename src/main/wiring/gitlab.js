@@ -3,7 +3,7 @@
 // and CI on the Releases card for a project that lives on GitLab. glab keeps
 // the sign-in (`glab auth login`); Shellby only ever runs `glab api`.
 // Kept out of main.js, which only wires it up.
-const { shell } = require('electron');
+const { openSafe } = require('../safe-open');
 const { GlabApi, runGlab, checkHost } = require('../gitlab/glab');
 const { isGitLabHost } = require('../gitlab/remote');
 const { GitLabWatcher } = require('../gitlab/watcher');
@@ -123,7 +123,7 @@ function wireGitlab(d) {
     const host = checkHost(u.host);
     const known = new Set(['gitlab.com', ...gitlabSettings().hosts, ...(d.ciGitlab?.view().hosts || []).map(h => h.host)]);
     if (!host || !known.has(host)) return false;
-    shell.openExternal(u.href);
+    openSafe(u.href);
     return true;
   }
 

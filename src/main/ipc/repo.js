@@ -77,7 +77,7 @@ function registerRepoIpc(ipcMain, d) {
     } finally {
       retiring.delete(tabId);
     }
-  });
+  }, [ID, opt(obj())]);
   // Red checks: nothing merged, and what failed, for the panel to offer "anyway" or "fix them".
   const redResult = (gate, w) => ({
     ok: false, red: true, checks: gate.checks, fix: gate.fix, base: w.base, branch: w.branch,
@@ -259,7 +259,7 @@ ${r.detail}` });
     if (repoBusy) return { ok: false, error: 'Already on it.' };
     repoBusy = true;
     try { return await line.turn(root, () => pushHome(root, { tabId })); } finally { repoBusy = false; }
-  });
+  }, [opt(ID)]); // no tab: the folder Shellby is working in
   // Every copy with something to bring home gets its checks first, one at a
   // time (wiring/checks.js). Any red: nothing is merged, and the panel hears
   // which. -> { green: copies that passed, red: the result to return, or null }
@@ -362,7 +362,7 @@ ${r.detail}` });
     if (retiring.has(tabId)) return { ok: false, error: 'Already on it.' };
     retiring.add(tabId);
     try { return await d.retireWorktree(tabId, w, { force: true }); } finally { retiring.delete(tabId); }
-  });
+  }, [ID]);
 
   // ---- branching a conversation from any turn (branching.js)
   let branchAsking = false; // one question at a time, so a flood of them can't be clicked through

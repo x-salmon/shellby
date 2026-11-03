@@ -1,5 +1,6 @@
 // Conversation tabs: opening, ordering, compacting, and what each turn changed
 // (changes.js). Kept out of main.js, which only wires it up.
+const { ID, PATH, obj, opt } = require('../ipc-args');
 const fs = require('fs');
 const os = require('os');
 const changes = require('../changes');
@@ -60,7 +61,7 @@ function closeTab(d, tabId) {
 }
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerTabsIpc(ipcMain, d) {
@@ -331,7 +332,7 @@ function registerTabsIpc(ipcMain, d) {
     const ref = d.isStr(raw?.file) ? d.changeRef(raw) : null;
     if (!ref) return { ok: false, error: "That isn't a file from this conversation's changes." };
     return editor.open(ref);
-  });
+  }, [obj({ tabId: opt(ID), file: PATH })]);
   // A before/after picture of the dev server, by an id a 'shots' item in that tab names (wiring/shots.js).
   ipcMain.handle('shots:image', (_e, { tabId, id } = {}) => {
     const url = d.isStr(tabId) && d.isStr(id) ? d.shotImage(tabId, id) : null;

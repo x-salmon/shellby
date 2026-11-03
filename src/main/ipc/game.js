@@ -4,7 +4,7 @@
 const { ACTION_RE, isView } = require('../game-hub');
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps): d.gameHub
  */
 function registerGameIpc(ipcMain, d) {

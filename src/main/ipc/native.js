@@ -7,7 +7,9 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { ID: TAB_ID, obj, opt, str, text } = require('../ipc-args');
 const { clipboard, nativeImage, shell } = require('electron');
+const { openSafe } = require('../safe-open');
 const attach = require('../attachments');
 const confirm = require('../confirm');
 const jobs = require('../jobs');
@@ -22,6 +24,7 @@ const OUTPUT_TAIL = 8000;              // characters of a job's output the panel
 const CLOUD_FRESH_MS = 10 * 60 * 1000; // a list asked for again within this is the one already fetched
 const ID = /^[\w-]{1,120}$/;
 const MEMORY_FILE = /^[\w.-]{1,120}\.md$/i;
+const MAX_MEMORY_BODY = 64 * 1024;     // what automemory.saveBody takes (MAX_BYTES); past it the handler says why
 // /insights writes report.html and report-<id>.html into usage-data (Claude Code 2.1.310).
 const REPORT_FILE = /^report(-[\w-]{1,80})?\.html$/i;
 const MOBILE_URL = 'https://claude.ai/mobile';
@@ -47,7 +50,7 @@ async function tail(file, chars) {
 }
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  */
 function registerNativeIpc(ipcMain, d) {
@@ -173,7 +176,7 @@ function registerNativeIpc(ipcMain, d) {
   ipcMain.handle('memory:save', (_e, { tabId, file, body, mtimeMs } = {}) => {
     if (!d.isStr(file) || !MEMORY_FILE.test(file) || typeof body !== 'string') return { ok: false, error: "That isn't one of Claude's memories." };
     return automemory.saveBody(dirOf(tabId), file, body, Number.isFinite(mtimeMs) ? mtimeMs : undefined);
-  });
+  }, [obj({ tabId: opt(TAB_ID), file: str({ max: 200 }), body: text(MAX_MEMORY_BODY) })]);
 
   ipcMain.handle('memory:forget', (_e, { tabId, file } = {}) => {
     if (!d.isStr(file) || !MEMORY_FILE.test(file)) return { ok: false, error: "That isn't one of Claude's memories." };
@@ -226,7 +229,7 @@ function registerNativeIpc(ipcMain, d) {
     return r.ok ? { ok: true, url: cloud.routineUrl(id) } : { ok: false, error: r.error };
   });
 
-  ipcMain.on('cloud:open', (_e, id) => { shell.openExternal(d.isStr(id) && ID.test(id) ? cloud.routineUrl(id) : cloud.ROUTINES_URL); });
+  ipcMain.on('cloud:open', (_e, id) => { openSafe(d.isStr(id) && ID.test(id) ? cloud.routineUrl(id) : cloud.ROUTINES_URL); });
 
   // ---- the ultra review: Claude Code's own, in a terminal of its own
   ipcMain.handle('review:ultra', (_e, tabId) => (d.isStr(tabId) ? d.handoff.ultraReview(tabId) : { ok: false, error: 'That conversation is closed.' }));

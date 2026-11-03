@@ -94,7 +94,7 @@ test('a closed conversation, a remote one, and nothing at all are refused', asyn
     assert.equal(remote.ok, false);
     assert.match(remote.error, /another computer/);
     assert.equal((await s.ipc.invoke('viewer:open', {})).ok, false);
-    assert.equal((await s.ipc.invoke('viewer:open', null)).ok, false);
+    await assert.rejects(s.ipc.invoke('viewer:open', null), /wasn't one Shellby accepts/); // its schema wants an object
     assert.deepEqual(await s.ipc.invoke('viewer:locate', 't2', 'a.txt'), { inside: false });
     assert.deepEqual(await s.ipc.invoke('viewer:branch', 't2'), { branch: null });
   } finally { s.done(); }

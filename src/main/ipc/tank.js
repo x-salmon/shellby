@@ -31,7 +31,7 @@ const DECORATE_MIN = 5; // pieces in a saved tank for the "decorate" quest
  *   life()         optional: his life (life.js), for moments in the bond journal (bond.js MEMORIES)
  *   reefCorals()   optional: each watched reef's coral (reef/index.js corals())
  * }
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d
  */
 function registerTankIpc(ipcMain, d) {

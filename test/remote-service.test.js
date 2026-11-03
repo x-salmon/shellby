@@ -306,13 +306,19 @@ function ipcWith(svc = {}) {
 
 test('IPC: a computer must look like one, and nothing odd reaches the service', async () => {
   const { ipc, calls } = ipcWith();
+  // A string that isn't a host is the handler's "Which computer?"; what isn't a string at all some
+  // channels' schemas refuse before the handler. Either way nothing reaches the service.
+  const answer = p => p.then(r => r, e => ({ ok: false, error: e.message }));
+  const NO = /^Which computer\?$|wasn't one Shellby accepts/;
   for (const bad of ['-oProxyCommand=calc', '', null, 42, 'a b', 'x;y']) {
     for (const ch of ['remote:add', 'remote:check', 'remote:install', 'remote:sign-in', 'remote:setup-key', 'remote:remove']) {
-      assert.deepEqual(await ipc.invoke(ch, bad), { ok: false, error: 'Which computer?' }, `${ch} ${bad}`);
+      const r = await answer(ipc.invoke(ch, bad));
+      assert.equal(r.ok, false, `${ch} ${bad}`);
+      assert.match(r.error, NO, `${ch} ${bad}`);
     }
   }
-  assert.deepEqual(await ipc.invoke('remote:browse', null), { ok: false, error: 'Which computer?' });
-  assert.deepEqual(await ipc.invoke('remote:add-folder', { alias: 'sandbox' }), { ok: false, error: 'Which computer?' }, 'no folder');
+  await assert.rejects(ipc.invoke('remote:browse', null), /wasn't one Shellby accepts/);
+  await assert.rejects(ipc.invoke('remote:add-folder', { alias: 'sandbox' }), /wasn't one Shellby accepts/, 'no folder');
   assert.deepEqual(await ipc.invoke('remote:unlock', '../id_rsa'), { ok: false, error: 'Which key?' });
   assert.equal(calls.length, 0);
   await ipc.invoke('remote:check', 'sandbox');

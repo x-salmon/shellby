@@ -1,7 +1,8 @@
 // GitHub and what hangs off it: CI on your pull requests, issues he could
 // take on, and visiting crabs (friends.js).
 // Kept out of main.js, which only wires it up.
-const { app, safeStorage, shell } = require('electron');
+const { app, safeStorage } = require('electron');
+const { openSafe } = require('../safe-open');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -417,7 +418,7 @@ function wireGithub(d) {
   // Only GitHub's own pages (or the dev mock's) for PRs the watcher reported.
   function openGitHubUrl(url) {
     const web = githubEndpoints().web;
-    if (typeof url === 'string' && url.startsWith(`${web}/`) && (url.startsWith('https:') || !app.isPackaged)) shell.openExternal(url);
+    if (typeof url === 'string' && url.startsWith(`${web}/`) && (url.startsWith('https:') || !app.isPackaged)) openSafe(url);
   }
 
   // A pull request's page on GitHub, or a merge request's on its GitLab.

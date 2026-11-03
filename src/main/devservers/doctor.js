@@ -24,6 +24,7 @@ const IN_USE = [
 
 /** A server's lines -> the port it couldn't have, or null. The last one said wins. */
 function portInUse(lines) {
+  /** @type {number | null} */
   let found = null;
   for (const raw of lines || []) {
     const line = String(raw ?? '');
@@ -118,10 +119,17 @@ function envKeys(text) {
 const EXAMPLE_FILES = ['.env.example', '.env.sample', '.env.template', '.env.dist', '.env.defaults', 'example.env'];
 const ENV_FILES = ['.env', '.env.local', '.env.development', '.env.development.local'];
 
+/** @typedef {{ example: string, missing: string[], noEnv: boolean }} EnvCheck */
+/** @typedef {{ range: string, from: string }} NodeWanted */
+
 /**
  * example: { file, text } | null; present: [{ file, text }]; outside: names set
  * in Shellby's own environment (a key set for the whole PC counts as set).
  * -> { example, missing: [name], noEnv } or null when there's no example.
+ * @param {{ file: string, text: string | null } | null} example
+ * @param {Array<{ file: string, text: string | null }>} present
+ * @param {string[]} [outside]
+ * @returns {EnvCheck | null}
  */
 function missingEnv(example, present, outside = []) {
   if (!example) return null;
@@ -140,13 +148,18 @@ function missingEnv(example, present, outside = []) {
  * The version a project asks for. files: { nvmrc, nodeVersion, packageJson }
  * (each text or null). -> { range, from } or null. An alias nvm resolves
  * itself (lts/*, node, stable) says nothing checkable, so it's null.
+ * @param {{ nvmrc?: string | null, nodeVersion?: string | null, packageJson?: string | null }} [files]
+ * @returns {NodeWanted | null}
  */
 function nodeWanted({ nvmrc = null, nodeVersion = null, packageJson = null } = {}) {
   const first = s => String(s || '').split(/\r?\n/).map(l => l.replace(/#.*$/, '').trim()).find(Boolean) || '';
-  for (const [text, from] of [[nvmrc, '.nvmrc'], [nodeVersion, '.node-version']]) {
+  /** @type {[string | null, string][]} */
+  const files = [[nvmrc, '.nvmrc'], [nodeVersion, '.node-version']];
+  for (const [text, from] of files) {
     const v = first(text);
     if (v && parseRange(v)) return { range: v.replace(/^v/i, ''), from };
   }
+  /** @type {{ engines?: { node?: unknown } } | null} */
   let pkg = null;
   try { pkg = JSON.parse(String(packageJson || '')); } catch { /* not JSON */ }
   const engines = pkg && typeof pkg === 'object' && pkg.engines && typeof pkg.engines.node === 'string' ? pkg.engines.node.trim() : '';
@@ -154,7 +167,10 @@ function nodeWanted({ nvmrc = null, nodeVersion = null, packageJson = null } = {
   return null;
 }
 
-// A version, partly given ("20", "20.11") -> [major, minor|null, patch|null] or null.
+/**
+ * A version, partly given ("20", "20.11") -> [major, minor|null, patch|null] or null.
+ * @returns {[number, number | null, number | null] | null}
+ */
 function partial(v) {
   const m = /^v?(\d{1,6})(?:\.(\d{1,6}|[xX*]))?(?:\.(\d{1,6}|[xX*]))?(?:[-+][0-9A-Za-z.-]*)?$/.exec(String(v).trim());
   if (!m) return null;
@@ -189,6 +205,7 @@ function parseRange(range) {
     const set = [];
     for (const tok of s.split(/\s+/).filter(Boolean)) {
       const m = /^(>=|<=|>|<|=|\^|~)?(.+)$/.exec(tok);
+      if (!m) return null; // can't happen: the token is non-empty and has no newline
       const p = partial(m[2]);
       if (!p) return null;
       const op = m[1] || '';
@@ -225,6 +242,8 @@ function satisfies(version, range) {
  * What the doctor has to say about a project before it starts, in words for
  * the server card. env: missingEnv's answer; node: { wanted, have } (have:
  * "v20.11.1" or null when Node isn't on PATH). -> [{ kind, text, keys? }]
+ * @param {{ env?: EnvCheck | null, node?: { wanted: NodeWanted, have: string | null } | null }} [checks]
+ * @returns {Array<{ kind: string, text: string, keys?: string[] }>}
  */
 function notes({ env = null, node = null } = {}) {
   const out = [];

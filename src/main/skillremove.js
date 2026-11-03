@@ -162,7 +162,7 @@ function createSkillRemover(deps) {
   }
 
   function register(ipcMain) {
-    ipcMain.handle('toolbox:remove', (_e, a) => (LIST[a?.kind] && isStr(a?.name) ? remove(a.kind, a.name) : { ok: false, error: "Shellby can't remove that." }));
+    ipcMain.handle('toolbox:remove', (_e, a) => (LIST[a?.kind] && isStr(a?.name) ? remove(a.kind, a.name) : { ok: false, error: "Shellby can't remove that." }), [obj({ kind: ID, name: ID })]);
     ipcMain.handle('toolbox:read', (_e, a) => read(a?.kind, a?.path), [obj({ kind: ID, path: PATH })]);
     ipcMain.handle('toolbox:write', (_e, a) => write(a?.kind, a?.path, a?.text, a?.mtimeMs), [obj({ kind: ID, path: PATH, text: text(32 * 1024 * 1024) })]);
   }

@@ -86,7 +86,7 @@ test('handlers that take an object answer a null or string payload instead of th
 
   assert.deepEqual(await ipc.invoke('toolbox:pin', null), []);
   assert.equal((await ipc.invoke('snippets:save', null)).ok, false);
-  assert.equal((await ipc.invoke('setup:write-memory', 'C:\\x.md')).ok, false);
+  await assert.rejects(ipc.invoke('setup:write-memory', 'C:\\x.md'), /wasn't one Shellby accepts/); // its schema wants an object
   await ipc.invoke('shop:list', null);
   assert.deepEqual(rec.of('shop.list'), [[{ refresh: false }]]);
 });
@@ -153,18 +153,21 @@ test('setup:read-memory reads a memory file the scan lists, and nothing else', a
   assert.equal(mine.ok, true);
   assert.equal(mine.text, '# Mine\n');
 
-  for (const p of [path.join(home, 'secrets.md'), path.join(home, '.claude', '..', '.ssh', 'id_rsa'), 'C:\\Windows\\win.ini', 7, null]) {
+  for (const p of [path.join(home, 'secrets.md'), path.join(home, '.claude', '..', '.ssh', 'id_rsa'), 'C:\\Windows\\win.ini']) {
     assert.deepEqual(await ipc.invoke('setup:read-memory', p), { ok: false, error: "Shellby doesn't edit that file." }, String(p));
   }
+  // Not a path at all: the schema refuses it before the handler.
+  for (const p of [7, null]) await assert.rejects(ipc.invoke('setup:read-memory', p), /wasn't one Shellby accepts/, String(p));
 });
 
 test('setup:write-memory refuses unknown paths, non-string text and a missing mtime', async () => {
   const { ipc } = setup();
   const { mtimeMs } = fs.statSync(memoryFile);
 
-  for (const req of [{ path: path.join(home, 'evil.md'), text: 'x', mtimeMs }, { path: memoryFile, text: 42, mtimeMs },
-    { path: memoryFile, text: 'x' }, { path: memoryFile, text: 'x', mtimeMs: 'now' }]) {
-    assert.equal((await ipc.invoke('setup:write-memory', req)).ok, false, JSON.stringify(req));
+  // An unknown path is the handler's no; text that isn't text and an mtime that isn't a number never reach it (its schema).
+  assert.equal((await ipc.invoke('setup:write-memory', { path: path.join(home, 'evil.md'), text: 'x', mtimeMs })).ok, false);
+  for (const req of [{ path: memoryFile, text: 42, mtimeMs }, { path: memoryFile, text: 'x' }, { path: memoryFile, text: 'x', mtimeMs: 'now' }]) {
+    await assert.rejects(ipc.invoke('setup:write-memory', req), /wasn't one Shellby accepts/, JSON.stringify(req));
   }
   assert.equal(fs.readFileSync(memoryFile, 'utf8'), '# Mine\n');
 });

@@ -28,7 +28,7 @@ const { matches } = require('./ipc-args');
  */
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain
+ * @param {import('./ipc-guard').GuardedIpc} ipcMain
  * @param {(channel: string, sender: any) => boolean} allow
  * @param {{ onRefused?: (channel: string, sender?: any) => void, onFailed?: (channel: string, err: unknown, info: { answered: boolean }) => void }} [hooks]
  * @returns {GuardedIpc}

@@ -3,7 +3,9 @@
 // keys (deck.js), desk lighting (rgb.js), your Discord profile (discord.js),
 // music, typing, the weather, the shellby command and the crab card.
 // Kept out of main.js, which only wires it up.
+const { ID, obj, opt, str } = require('../ipc-args');
 const { app, clipboard, ClipboardItem, nativeImage, shell } = require('electron');
+const { openSafe } = require('../safe-open');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -13,6 +15,8 @@ const { OpenRgbClient } = require('../rgb');
 // What a Copy button may put on the clipboard. Prompts, plans and code blocks run
 // to tens of thousands of characters; this only stops something absurd.
 const MAX_COPY_CHARS = 1_000_000;
+// A card's pixels, as the renderer sends them (card.js): what the handlers' Buffer.from takes.
+const isBytes = v => v instanceof Uint8Array;
 
 // What a card may be called after: anything else is just a card. The moments are
 // moment-card.js's MOMENT_KINDS (a test keeps the two lists together).
@@ -42,7 +46,7 @@ function isMp4(buf) {
 const isClip = (buf, ext) => buf.length > 16 && buf.length <= CLIP_MAX_BYTES && (ext === 'mp4' ? isMp4(buf) : isWebm(buf));
 
 /**
- * @param {Pick<import('electron').IpcMain, 'handle' | 'on'>} ipcMain  main's, behind ipc-guard.js
+ * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
  * @param {{ fetchImpl?: any }} [net]  tests stand in for the network (Post to Discord)
  */
@@ -302,7 +306,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     // card into a "couldn't save" — the sheet's Copy button can try again.
     const copied = await copyCard(card.buf);
     return { ok: true, copied, ...where };
-  });
+  }, [isBytes, opt(ID), opt(obj())]);
   ipcMain.handle('card:copy', async (_e, bytes) => {
     const card = cardImage(bytes);
     return { ok: !!card && await copyCard(card.buf) };
@@ -365,8 +369,8 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
 
   // ---- misc
   ipcMain.on('open-external', (_e, url) => {
-    try { if (new URL(url).protocol === 'https:') shell.openExternal(url); } catch { /* ignore bad urls */ }
-  });
+    if (typeof url === 'string' && url.startsWith('https:')) openSafe(url);
+  }, [str()]);
   ipcMain.on('feedback:problem', () => d.reportProblem?.());
   ipcMain.on('feedback:idea', () => d.suggestIdea?.());
   ipcMain.on('open-data-folder', () => shell.openPath(app.getPath('userData')));
