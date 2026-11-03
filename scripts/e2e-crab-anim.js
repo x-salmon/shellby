@@ -57,6 +57,7 @@ const LOOKS = [...new Set([
   'state-working planning', 'state-sleeping limited',
 ])];
 const MOMENTS = [0.1, 0.45, 1.2]; // seconds into every animation, for the screenshots
+const REDRAW_TRIES = 3; // a moment his own life redrew him in is read again (__draws), this many times at most
 
 async function connect(url) {
   const ws = new WebSocket(url);
@@ -117,6 +118,11 @@ const SETUP = `(() => {
       a.currentTime = s * 1000;
     }
   };
+  // His life goes on while we look (src/main/life.js): a prop or something in his
+  // claw redraws his sprite, and its parts start their animations afresh,
+  // unpaused. Counted, so a moment a redraw cut into is read again.
+  window.__draws = 0;
+  new MutationObserver(() => { window.__draws++; }).observe(document.getElementById('sprite'), { childList: true });
   return true;
 })()`;
 
@@ -151,16 +157,22 @@ const SETUP = `(() => {
     const got = {};
     fs.mkdirSync(OUT, { recursive: true });
     const send = (m, p) => critter.send(m, p);
-    let shotsSame = 0, shotsDiff = 0;
+    let shotsSame = 0, shotsDiff = 0, reread = 0;
     for (const look of LOOKS) {
       await critter.ev(`__look(${JSON.stringify(look)})`);
       await wait(100);
       got[look] = {};
       for (const [i, s] of MOMENTS.entries()) {
-        await critter.ev(`__freeze(${s})`);
-        await wait(120);
-        got[look][s] = await critter.ev('__describe()');
-        const png = await capturePng(send, { clip: await critter.ev("(() => { const r = document.getElementById('self').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, scale: 1 }; })()") });
+        let png = null;
+        for (let tries = 0; tries < REDRAW_TRIES; tries++) {
+          const draws = await critter.ev('__draws');
+          await critter.ev(`__freeze(${s})`);
+          await wait(120);
+          got[look][s] = await critter.ev('__describe()');
+          png = await capturePng(send, { clip: await critter.ev("(() => { const r = document.getElementById('self').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, scale: 1 }; })()") });
+          if (await critter.ev('__draws') === draws) break;
+          reread++;
+        }
         if (!png) continue;
         const name = `${look.replace(/\s+/g, '_')}-${i}.png`;
         fs.writeFileSync(path.join(OUT, name), png);
@@ -189,6 +201,7 @@ const SETUP = `(() => {
       }
     }
     if (BEFORE) check(shotsDiff === 0 && shotsSame > 0, `screenshots the same as ${BEFORE} (${shotsSame} same, ${shotsDiff} different)`);
+    if (reread) console.log(`${reread} moment${reread === 1 ? '' : 's'} read again: his life redrew him mid-look`);
     console.log(`screenshots in ${OUT}`);
     panel.close(); critter.close();
   } catch (e) {
