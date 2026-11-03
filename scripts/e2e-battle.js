@@ -70,6 +70,15 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
       await wait(1500); // snapshots and git run after the result
     };
     const fight = () => ev('shellby.getBugBattles().then(l => l[0] || null)');
+    // A failed command reaches the battle once main has its project and a git picture of the code
+    // (wiring/bugdex.js observe), which can land seconds after the turn on a slow PC: the battle is
+    // read once the move is there, never after a fixed wait. -> the battle then (or the last seen, or null).
+    const fightUntil = async (test, ms = 15000) => {
+      const end = Date.now() + ms;
+      let b = null;
+      while (Date.now() < end) { b = await fight(); if (b && test(b)) return b; await wait(150); }
+      return b;
+    };
     let shot = 0;
     const snap = async label => { if (SHOTS) await savePng(send, path.join(SHOTS, `${String(++shot).padStart(2, '0')}-${label}.png`)); };
 
@@ -81,23 +90,26 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
 
     // ---- 1. a red suite: a wild bug, at full HP, with a chip under the tabs
     await task('suite 4');
-    let b = await fight();
-    check(b?.species === 'assertive-lobster' && b.hp === b.max, `a red suite starts a battle at full HP (${b?.species} ${b?.hp}/${b?.max})`);
+    const spottedFrom = Date.now();
+    let b = await fightUntil(x => !!x.species);
+    const spotted = ((Date.now() - spottedFrom) / 1000).toFixed(1);
+    check(b?.species === 'assertive-lobster' && b.hp === b.max, `a red suite starts a battle at full HP (${b?.species} ${b?.hp}/${b?.max}, ${spotted}s after the turn's wait)`);
     check(await until("!document.getElementById('battleChip')?.hidden"), 'the chip shows under the tabs');
 
     // ---- 2. reading and editing chip at it
     await task(`read ${path.join(repo, 'app.js')}`);
     await task('patch app.js half fixed');
-    b = await fight();
-    check(b.moves.some(m => m.move === 'scout') && b.moves.some(m => m.move === 'patch'), `a read is a Scout, an edit a Patch (${b.moves.map(m => m.move).join(',')})`);
-    check(b.hp < b.max && b.hp > 0, `they wear it down (${b.hp}/${b.max})`);
+    b = await fightUntil(x => x.moves.some(m => m.move === 'scout') && x.moves.some(m => m.move === 'patch'));
+    check(!!b?.moves.some(m => m.move === 'scout') && b.moves.some(m => m.move === 'patch'), `a read is a Scout, an edit a Patch (${b?.moves.map(m => m.move).join(',')})`);
+    check(b?.hp < b?.max && b.hp > 0, `they wear it down (${b?.hp}/${b?.max})`);
 
     // ---- 3. fewer failing tests: super effective
-    const before = b.hp;
+    const before = b?.hp;
+    const seen = b?.moves.length || 0;
     await task('suite 2');
-    b = await fight();
-    const last = b.moves.at(-1);
-    check(last.move === 'tests' && (last.fx === 'super' || last.fx === 'crit') && b.hp < before, `two of four fixed: ${last.fx} (${before} -> ${b.hp})`);
+    b = await fightUntil(x => x.moves.slice(seen).some(m => m.move === 'tests'));
+    const last = b?.moves.slice(seen).find(m => m.move === 'tests');
+    check(last?.move === 'tests' && (last.fx === 'super' || last.fx === 'crit') && b.hp < before, `two of four fixed: ${last?.fx} (${before} -> ${b?.hp})`);
 
     // The screen, opened mid-fight.
     await ev('SB.openBattle(SB.bugBattles()[0].id)');
