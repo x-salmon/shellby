@@ -23,6 +23,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { isDeepStrictEqual } = require('util');
 const { capturePng } = require('./lib/shot');
 const { POSES } = require('../src/main/work-pose');
 const { NAMES: FLOURISHES } = require('../src/main/flourish');
@@ -181,7 +182,8 @@ const SETUP = `(() => {
         const off = new Set();
         for (const s of MOMENTS) {
           const a = want[look][s] || {}, b = got[look][s] || {};
-          for (const p of new Set([...Object.keys(a), ...Object.keys(b)])) if (JSON.stringify(a[p]) !== JSON.stringify(b[p])) off.add(p);
+          // By value: Chromium's order of a keyframe's properties in getKeyframes() isn't part of what he does.
+          for (const p of new Set([...Object.keys(a), ...Object.keys(b)])) if (!isDeepStrictEqual(a[p], b[p])) off.add(p);
         }
         check(!off.size, `${look}: moves as recorded${off.size ? ` (not: ${[...off].join(', ')})` : ''}`);
       }
