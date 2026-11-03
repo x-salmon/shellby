@@ -259,6 +259,8 @@ function wireTray(d) {
 
   // ---- updates
 
+  let fakeWaiting = false; // a fake updater, until the panel has bootstrapped
+
   function setupUpdates() {
     // Dev runs can walk the whole sequence without a release behind it:
     // SHELLBY_FAKE_UPDATE=1 (or =fail, =current) npm start
@@ -302,6 +304,17 @@ function wireTray(d) {
       `Version ${view.version} is downloaded. Click to install it now, or it installs when you quit.`,
       showUpdateSetting,
     ));
+    // The fake plays its whole sequence in about four seconds, and a dev panel
+    // can take longer than that to bootstrap: it would only ever see the end.
+    // So it waits for the panel (panelBooted). A real download outlasts any boot.
+    if (fake) fakeWaiting = true;
+    else d.updates.start();
+  }
+
+  /** The panel has bootstrapped (ipc/panel.js): a fake updater starts now, once. */
+  function panelBooted() {
+    if (!fakeWaiting) return;
+    fakeWaiting = false;
     d.updates.start();
   }
 
@@ -321,7 +334,7 @@ function wireTray(d) {
 
   return {
     askForIdea, askToSend, buildMenu, createTray, drainCrashQueue, reportProblem, reportUncleanExit, suggestIdea,
-    setupUpdates, updateView,
+    setupUpdates, updateView, panelBooted,
   };
 }
 
