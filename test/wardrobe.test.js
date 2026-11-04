@@ -477,7 +477,7 @@ test('achievements: normalizeStats tolerates garbage', () => {
 test('addon schema is valid JSON and mirrors the validator enums', () => {
   const schema = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', 'addon.schema.json'), 'utf8'));
   assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema');
-  assert.equal(schema.$id, 'https://github.com/x-salmon/shellby/blob/main/docs/addon.schema.json');
+  assert.equal(schema.$id, 'https://raw.githubusercontent.com/x-salmon/shellby/main/docs/addon.schema.json');
   const d = schema.$defs;
   assert.deepEqual(d.accessory.properties.slot.enum, catalog.SLOTS);
   assert.deepEqual(d.accessory.properties.anchor.enum, catalog.ANCHORS);

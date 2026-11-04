@@ -1,5 +1,5 @@
 {
-  "$schema": "https://github.com/x-salmon/shellby/blob/main/docs/addon.schema.json",
+  "$schema": "https://raw.githubusercontent.com/x-salmon/shellby/main/docs/addon.schema.json",
   "format": 1,
   "id": "now-playing",
   "name": "Now Playing",

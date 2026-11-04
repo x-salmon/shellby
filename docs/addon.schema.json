@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/x-salmon/shellby/blob/main/docs/addon.schema.json",
+  "$id": "https://raw.githubusercontent.com/x-salmon/shellby/main/docs/addon.schema.json",
   "title": "Shellby wardrobe pack",
   "description": "A data-only pack of accessories, effects, skins, voices, scenes and tank decor for Shellby (format 1). See docs/ADDONS.md. The app strips unknown fields and skips invalid items; this schema is the strict version used to validate uploads.",
   "type": "object",
