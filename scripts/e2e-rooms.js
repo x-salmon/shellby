@@ -49,7 +49,8 @@ async function run(settings, body) {
   }
 }
 
-const TABS = "[...document.querySelectorAll('#wardrobeView .shellby-tabs [data-goto]')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.dataset.goto).join()";
+// His screen's tabs as the Finds page has them: the main row, then Home's own row under it (html/home-tabs.html).
+const TABS = "[...document.querySelectorAll('#findsView .shellby-tabs [data-goto]')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.dataset.goto).join()";
 const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => getComputedStyle(b).display !== 'none' && !b.hidden).map(b => b.dataset.viewBtn || b.id).join()";
 
 (async () => {
@@ -61,7 +62,7 @@ const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => get
       await ev("SB.setView('chat')");
       check(await ev(SHOWN) === 'wardrobe,chat,dockMore', `a new bar is Shellby, Chat and More (${await ev(SHOWN)})`);
       check(/History opens after his first task/.test(await ev("SB.$('dockMore').title")), '"More" says what opens next');
-      check(await ev(TABS) === 'wardrobe,trophies', `his screen starts as his outfits and Trophies with its Logbook (${await ev(TABS)})`);
+      check(await ev(TABS) === 'wardrobe,trophies', `his screen starts as his outfits and Trophies with its Logbook, no Home yet (${await ev(TABS)})`);
 
       // 2. A finished task opens History and Projects.
       await ev("(i => { i.value = 'hello'; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))");
@@ -86,8 +87,11 @@ const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => get
       // 4. Show every screen.
       await ev('SB.openAllRooms()');
       check(await until(`(${SHOWN}) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes'`), '"Show every screen" opens the rest and hides More');
-      check(await ev(TABS) === 'wardrobe,trophies,finds,bugdex,tank,us', 'and every tab of his screen');
+      check(await ev(TABS) === 'wardrobe,trophies,bugdex,home,finds,tank,us,stickers', `and every tab of his screen, Home's row included (${await ev(TABS)})`);
       check(await ev("getComputedStyle(document.querySelector('.wd-make [data-goto=\"stickers\"]')).display !== 'none'"), 'and the Sticker Book on Outfits');
+      await ev("SB.setView('tank')");
+      await ev("SB.setView('home')");
+      check(await ev("SB.state.view === 'tank' && document.querySelector('#tankView .shellby-tabs [data-goto=\"home\"]').getAttribute('aria-current') === 'page'"), 'Home goes back to the room you were in last, and is the current tab there');
     });
 
     // 5. Someone who was here before rooms: no rooms value yet, already onboarded.
