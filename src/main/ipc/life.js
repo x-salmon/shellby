@@ -19,7 +19,10 @@ function registerLifeIpc(ipcMain, d) {
   // ---- his life between tasks: the Us and Finds pages (life.js), and games (playtime.js)
   ipcMain.handle('life:get', () => d.life?.view() || null);
   ipcMain.handle('life:birthday', (_e, bd) => d.life?.setBirthday(bd && typeof bd === 'object' ? { m: Number(bd.m), d: Number(bd.d) } : null) || null);
-  ipcMain.handle('life:favourite', (_e, id) => d.life?.setFavourite(typeof id === 'string' ? id.slice(0, 40) : null) || null);
+  ipcMain.handle('life:favourite', (_e, id) => {
+    if (typeof id === 'string') d.featureAct?.('find-kept'); // a find made your favourite (taking it back isn't): What you use counts it (feature-use.js)
+    return d.life?.setFavourite(typeof id === 'string' ? id.slice(0, 40) : null) || null;
+  });
   ipcMain.on('life:finds-seen', () => d.life?.findsSeen());
   ipcMain.handle('life:play', (_e, kind) => {
     if (!d.life || !d.playtime) return { ok: false, error: 'Not ready yet.' };

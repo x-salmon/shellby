@@ -6,6 +6,7 @@
 const { app, screen } = require('electron');
 const featureUse = require('../feature-use');
 const focus = require('../focus');
+const { str } = require('../ipc-args');
 const native = require('../desktop/native-windows');
 const quests = require('../quests');
 const rooms = require('../rooms');
@@ -101,6 +102,8 @@ function registerCritterIpc(ipcMain, d) {
     const next = featureUse.record(d.config.get('featureUse'), String(id || ''), Date.now());
     if (JSON.stringify(next) !== JSON.stringify(featureUse.normalize(d.config.get('featureUse')))) d.config.set({ featureUse: next });
   });
+  // Something done with him from the panel (a reward card opened in chat): one of feature-use.js's ACTIONS, or nothing (wiring/feature-acts.js).
+  ipcMain.on('features:act', (_e, id) => d.featureAct?.(id), [str({ max: 40 })]);
   ipcMain.handle('features:report', () => featureUse.report(d.config.get('featureUse'), Date.now()));
   // ---- quests: the features worth finding, and the chat's card for the next one (quests/index.js)
   ipcMain.handle('quests:get', () => d.questsPanelView());

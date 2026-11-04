@@ -94,6 +94,18 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(/never sent anywhere/.test(await ev("document.getElementById('usesLede').textContent")), 'and it says the count stays on this PC');
     const sync = require(path.join(ROOT, 'src', 'main', 'sync/prefs.js'));
     check(!JSON.stringify(Object.keys(sync.PREFS || {})).includes('featureUse'), 'the count is not one of the settings Sync carries');
+
+    // ---- What you do: a reward card opened in chat tells main; an id nobody listed does not count.
+    await ev("window.shellby.featureActed('reward-opened'); window.shellby.featureActed('reward-opened'); window.shellby.featureActed('petted')");
+    await wait(300);
+    const uses = JSON.parse(fs.readFileSync(path.join(data, 'settings.json'), 'utf8')).featureUse?.uses;
+    check(uses?.['reward-opened']?.n === 2 && !uses.petted, `a thing done with him is counted, an unknown one is not (${JSON.stringify(uses)})`);
+    await ev("SB.showSettingsTab('general'); SB.views.settings.render()");
+    await wait(600);
+    const doesTop = await ev("document.getElementById('doesTop').textContent");
+    check(/^Most: Opened a reward 2/.test(doesTop), `What you do leads with the most done (${doesTop})`);
+    const notYet = await ev("[...document.querySelectorAll('#doesNever .uses-row b')].map(b => b.textContent)");
+    check(notYet.includes('Dressed him') && notYet.includes('Decorated the tank') && !notYet.includes('Opened a reward'), `and lists what you haven't done (${notYet.join(', ')})`);
   } catch (e) {
     check(false, e.message);
   } finally {
