@@ -617,6 +617,8 @@ interface ShellbyPanelExtras {
   editorBar: any;
   renderChecks: any;
   renderShots: any;
+  // turn-rewards.js
+  renderRewards: any;
   // ultracode.js
   renderUltraChip: any;
   renderUltracode: any;
