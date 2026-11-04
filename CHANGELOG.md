@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.96.0: The crab where you work
+
+### New
+- **Wrapped names your biggest reef improvement.** The reef slide now says which signal moved furthest for its size that year, in which project ("Line coverage 61.5% → 78% in shellby"). Only the last 60 readings of each signal are kept, so it reads the end of the year.
+- **Wrapped counts your tide-out days.** The "tide-out days used, and the streak held" line was always missing. It's there now, past days included, and each one counts in the year it held your streak.
+- **The Time page says when other PCs' hours run out.** Each PC sends only its newest hours, up to 24 KB. If the period you're looking at starts before those do, the page says what's left out, so a timesheet for an older month doesn't come up short without a word.
+- **What a task earned shows at the end of it in Chat.** A find he dug up, a bug caught, a sticker, a trophy, a quest or a level now gets one small card under the turn that earned it, with a way into each (a catch replays its battle). It stays in History, and a turn that only earned XP doesn't get one. Settings → Shellby can turn it off.
+- **He holds up what needs you.** A sign goes up in his claw when a conversation's tests are red, when a helper crab has been out more than 15 minutes, or when your 5-hour window is heading for empty (how full it is shows in his bubble). They sit beside the red CI and crashed dev server signs he already had.
+- **One Home tab for his things.** Finds, the Tank, Us and Stickers are now one Home tab on his screen, with a small row to move between them, so his screen is Outfits, Trophies, Bugdex and Home.
+- **The reef speaks up before Ship it.** If the project's reef is struggling, Ship it says which signal is worst and offers "Ship it anyway" or "Ask him to fix it", the same as it does for red checks.
+- **What you use counts what you do.** Settings → General → What you use now also lists what you do with him (dressing him, finds dug and kept, bugs caught, battles watched, stickers placed, the tank decorated, reward cards opened) and what you never have. It's still counted on this PC only.
+
+### Fixed
+- **Syncing your hours no longer overwrites a client's rate.** Two projects on one PC with the same folder name (`acme\api` and `beta\api`) could end up with one project's name, client, rate and "don't track" setting on both. Each now keeps its own. A rate already overwritten needs setting again on the Time page.
+- **Shipping again keeps the pull request honest.** Shipping new work from the same copy left the old commits, files and checks in the description, so it could still say the checks passed after you shipped past failing ones. They now update each time. The title, your summary and anything you added stay as they are, and if GitHub won't take the change the conversation says so.
+- **Both PCs' notes reach the timesheet.** When two PCs left a note on the same project and day, only one showed. Now both do, each once.
+- **"You've asked this before" sees past a long paste.** A log pasted into a conversation's first message could use up everything it read, hiding what you asked after it. Each message now gets its own share.
+- If a Shellby window crashes, it now comes back by itself instead of staying blank until a restart. If it keeps crashing, Shellby tells you.
+- Links from plugin listings and other outside sources only open if they're web pages, so a bad link can't start a program.
+- **Use a practice folder works again.** In First steps it now opens the practice project with its first task in the box. Before, it opened nothing, and the panel stumbled every time you switched conversations until Shellby was restarted.
+
+### Changed
+- **Updates arrive in stages.** A new version reaches some PCs first and everyone within a day, so a bad release can be stopped before it reaches you. If Settings says you're up to date while the website shows a newer version, your turn is coming.
+- **Work mode is quiet.** He says nothing in Work mode now, just a mark in his bubble, and his signs say what needs you. You can still pick "Just about work" under Personality to bring the words back.
+
 ## 0.95.6: 0.95.5, delivered
 
 ### Changed
