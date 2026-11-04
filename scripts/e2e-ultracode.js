@@ -17,6 +17,7 @@ const path = require('path');
 
 const { savePng } = require('./lib/shot');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9487;
@@ -58,21 +59,8 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     // The first task's trophy card would sit over the card: put it away first.
     const shot = async name => { if (SHOTS) { await ev("[...document.querySelectorAll('button')].filter(b => /^Dismiss all/.test(b.textContent.trim()) && b.offsetParent).forEach(b => b.click())"); await wait(400); fs.mkdirSync(SHOTS, { recursive: true }); await savePng(panel.send, path.join(SHOTS, `ultracode-${name}.png`)); } };
 
-    // The confirm window: what it says, then press `label`.
-    async function answer(label) {
-      let t;
-      for (let i = 0; i < 40 && !(t = (await targets()).find(x => x.url.endsWith('dialog.html'))); i++) await wait(250);
-      if (!t) return null;
-      const dlg = await cdp(t.webSocketDebuggerUrl);
-      const end = Date.now() + 10000;
-      while (Date.now() < end && !(await dlg.ev("(document.getElementById('title')?.textContent || '').length > 0 && document.activeElement?.tagName === 'BUTTON'"))) await wait(150);
-      const said = await dlg.ev("({ title: document.getElementById('title').textContent, detail: document.getElementById('detail')?.textContent || '', focused: document.activeElement?.textContent })");
-      // Click after this call returns: the click closes the window.
-      await dlg.ev(`{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}); setTimeout(() => b.click(), 0); }`);
-      dlg.close();
-      for (let i = 0; i < 40 && (await targets()).some(x => x.id === t.id); i++) await wait(250);
-      return said;
-    }
+    // The confirm window: what it says, then press `label` (lib/dialog.js).
+    const answer = label => answerDialog(PORT, { press: label });
 
     await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");

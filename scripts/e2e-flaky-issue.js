@@ -11,6 +11,7 @@ const os = require('os');
 const path = require('path');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9391;
@@ -70,23 +71,8 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({
     return { ev, close: () => ws.close() };
   };
   const until = async (c, expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await c.ev(expr)) return true; await wait(150); } return false; };
-  // The confirm window: what it asks, then press `button`.
-  async function answer(button) {
-    let d = null;
-    for (let i = 0; i < 50 && !d; i++) { d = (await targets()).find(t => t.url.includes('dialog.html')); if (!d) await wait(200); }
-    if (!d) return null;
-    const dlg = await connect(d.webSocketDebuggerUrl);
-    await until(dlg, "(document.getElementById('title')?.textContent || '').length > 0", 5000);
-    const said = await dlg.ev("({ title: document.getElementById('title').textContent, text: document.body.innerText })");
-    // Clicked once this call has answered: the click closes the window, and a page that closes
-    // before replying leaves the call with no answer at all.
-    await dlg.ev(`{ const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(button)}); setTimeout(() => b.click(), 0); true; }`);
-    dlg.close();
-    // Gone before the next one is looked for: a slow CI box still lists this one
-    // as it closes, and a connection to it never answers.
-    for (let i = 0; i < 50 && (await targets()).some(t => t.id === d.id); i++) await wait(200);
-    return said;
-  }
+  // The confirm window: what it asks, then press `button` (lib/dialog.js).
+  const answer = button => answerDialog(PORT, { press: button });
 
   try {
     let list = [];

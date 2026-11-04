@@ -15,6 +15,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
@@ -61,25 +62,8 @@ git('commit', '-qm', 'init');
     const menuClick = label => ev(`(b => { if (b) setTimeout(() => b.click(), 0); return !!b; })([...SB.$('rewindMenu').querySelectorAll('.menu-item')].find(b => b.textContent.includes(${JSON.stringify(label)}) && !b.disabled))`);
     const entry = tabId => ev(`shellby.listSessions().then(l => l.find(s => s.id === ${JSON.stringify(tabId)}) || null)`);
     const read = file => { try { return fs.readFileSync(file, 'utf8').trim(); } catch { return null; } };
-    // The confirm window: press one of its buttons.
-    const answerDialog = async label => {
-      let target = null;
-      for (let i = 0; i < 40 && !target; i++) {
-        target = (await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()).find(t => t.url.endsWith('dialog.html'));
-        if (!target) await wait(250);
-      }
-      if (!target) return false;
-      const dws = new WebSocket(target.webSocketDebuggerUrl);
-      await new Promise(r => { dws.onopen = r; });
-      let did = 0; const dp = new Map();
-      dws.onmessage = e => { const m = JSON.parse(e.data); dp.get(m.id)?.(m); };
-      const dev = expr => new Promise(r => { const i = ++did; dp.set(i, m => r(m.result?.result?.value)); dws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true } })); });
-      for (let i = 0; i < 40 && !(await dev("!!document.querySelector('#actions button')")); i++) await wait(150);
-      const text = await dev("document.body.innerText");
-      const ok = await dev(`(b => { if (b) b.click(); return !!b; })([...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}))`);
-      dws.close();
-      return ok ? text : false;
-    };
+    // The confirm window: press one of its buttons (lib/dialog.js). -> what it said, or false.
+    const answer = async label => (await answerDialog(PORT, { press: label }))?.text ?? false;
 
     await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true, worktrees: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");
@@ -203,7 +187,7 @@ git('commit', '-qm', 'init');
     // ---- 5. Keep this one: it comes home, the other tries' copies go
     await ev(`SB.activate(${JSON.stringify(tryA)})`);
     const keeping = ev(`shellby.keepBranch(${JSON.stringify(tryA)})`);
-    const dialog = await answerDialog('Keep this one');
+    const dialog = await answer('Keep this one');
     check(!!dialog && dialog.includes(b.worktree.branch) && dialog.includes(c.worktree.branch), 'it asks first, listing every copy that would be thrown away');
     const kept = await keeping;
     check(kept?.ok && kept.discarded === 3, `this try came home and the 3 others were thrown away (${JSON.stringify(kept)})`);

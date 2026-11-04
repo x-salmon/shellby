@@ -26,6 +26,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { savePng } = require('./lib/shot');
+const { answerDialog } = require('./lib/dialog');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { POSES } = require('../src/main/work-pose');
 
@@ -37,31 +38,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const PAINT = '#1a7a4c'; // a colour classic doesn't have, to find him by on the desktop
 const SEND_MS = 15000;    // a CDP call that takes longer than this is a window that went away
 
-/**
- * Press `label` in main's confirm window (dialog.html). The window can be
- * listed while it's still loading, or a moment before it closes, so each try
- * connects afresh and only counts once the button was really there to press.
- * -> true once pressed, false if it never turned up within ms.
- */
-async function answerDialog(label, shots, ms = 20000) {
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    const t = (await list()).find(x => x.url.includes('dialog.html'));
-    if (t) {
-      let d = null;
-      try {
-        d = await cdp(t.webSocketDebuggerUrl, shots);
-        // Clicked on the next tick, so the window closing doesn't swallow the answer.
-        const pressed = await d.ev(`(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(label)}); if (!b) return false; setTimeout(() => b.click(), 0); return true; })()`);
-        if (pressed) return true;
-      } catch { /* closing or not ready yet: look again */ } finally {
-        d?.close();
-      }
-    }
-    await wait(250);
-  }
-  return false;
-}
+/** Press `label` in main's confirm window (lib/dialog.js). -> true once pressed. */
+const confirmWith = async label => !!(await answerDialog(PORT, { press: label }));
 
 async function list() {
   try { return await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); } catch { return []; }
@@ -318,7 +296,7 @@ async function quit(app, ms = 20000) {
       check(await panel.ev("/@crabfan/.test(document.getElementById('ptShare').textContent)"), 'it says who it goes out as');
       await panel.ev("document.getElementById('ptShareGo').click()");
       // The confirm window main opens, as for any pack: Publish.
-      check(await answerDialog('Publish', profile), 'publishing asks first, in its own window');
+      check(await confirmWith('Publish'), 'publishing asks first, in its own window');
       await until("/Pull request opened/.test(document.getElementById('toast').textContent)", 'the pull request', 20000);
       const pr = mock.state.pulls[0];
       check(pr && /Add pack: My Classic v1\.0\.0/.test(pr.title), `a pull request to the gallery (${pr?.title})`);
@@ -358,8 +336,8 @@ async function quit(app, ms = 20000) {
       await panel.ev("document.getElementById('ptShareGo').click()");
       // Publish, then (once the pull request is open) whether to tell the wish.
       // A Publish window still closing has no Comment button, so this waits it out.
-      check(await answerDialog('Publish', profile), 'the Publish question');
-      check(await answerDialog('Comment', profile), 'the Comment question');
+      check(await confirmWith('Publish'), 'the Publish question');
+      check(await confirmWith('Comment'), 'the Comment question');
       const prEnd = Date.now() + 8000;
       while (Date.now() < prEnd && mock.state.pulls.length < 2) await wait(200);
       const wishPr = mock.state.pulls[1];

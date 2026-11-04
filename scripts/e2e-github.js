@@ -10,6 +10,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9358;
@@ -46,17 +47,11 @@ async function connect(url) {
     },
   });
   const until = async (ev, expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(200); } return false; };
-  const dialogs = async () => (await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()).filter(t => t.url.includes('dialog.html'));
+  // The confirm window (lib/dialog.js): what it asks, then press `button`.
   async function answer(button, titleRe) {
-    let d = null;
-    for (let i = 0; i < 40 && !d; i++) { d = (await dialogs())[0]; if (!d) await wait(200); }
-    if (!d) return check(false, `confirm window for ${titleRe}`);
-    const dlg = await connect(d.webSocketDebuggerUrl);
-    await wait(500);
-    const title = await dlg.ev("document.querySelector('h1, h2, .title')?.textContent || ''");
-    check(titleRe.test(title), `asks first: "${title}"`);
-    await dlg.ev(`{ const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(button)}); setTimeout(() => b.click(), 0); true; }`);
-    dlg.close();
+    const said = await answerDialog(PORT, { press: button });
+    if (!said) return check(false, `confirm window for ${titleRe}`);
+    check(titleRe.test(said.title), `asks first: "${said.title}"`);
   }
   try {
     let list = [];

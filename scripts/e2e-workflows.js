@@ -12,6 +12,7 @@ const os = require('os');
 const path = require('path');
 const { templates } = require('../src/main/workflows/templates');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
@@ -43,23 +44,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const ev = await connect(list.find(t => t.url.endsWith('panel.html')));
     const until = async (expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(150); } return false; };
     // The confirmation window is its own page: answer it like a person would.
-    const answerDialog = async index => {
-      const end = Date.now() + 8000;
-      while (Date.now() < end) {
-        const pages = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
-        const dlg = pages.find(t => t.url.includes('dialog.html'));
-        if (dlg) {
-          const dev = await connect(dlg);
-          await wait(300);
-          const text = await dev('document.body.innerText');
-          // A click that closes the window can close it before CDP answers.
-          await Promise.race([dev(`document.querySelectorAll('button')[${index}]?.click()`), wait(1000)]);
-          return text || '';
-        }
-        await wait(150);
-      }
-      return null;
-    };
+    // Press its button at `index` (lib/dialog.js). -> what it said, or null.
+    const answer = async index => (await answerDialog(PORT, { press: index }))?.text ?? null;
     const runOf = id => ev(`shellby.getRun(${JSON.stringify(id)}).then(r => r && JSON.stringify(r))`).then(t => (t ? JSON.parse(t) : null));
     const waitRun = async (id, statuses, ms = 15000) => {
       const end = Date.now() + ms;
@@ -113,11 +99,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       ],
     };
     const pendingNo = ev(`shellby.saveWorkflow(${JSON.stringify(risky)}).then(r => JSON.stringify(r))`);
-    const shown = await answerDialog(1);
+    const shown = await answer(1);
     check(shown !== null && /Write-Output/.test(shown), 'the confirmation window shows the command');
     check(JSON.parse(await pendingNo).ok === false, 'saying no saves nothing');
     const pendingYes = ev(`shellby.saveWorkflow(${JSON.stringify(risky)}).then(r => JSON.stringify(r))`);
-    await answerDialog(0);
+    await answer(0);
     const riskySaved = JSON.parse(await pendingYes);
     check(riskySaved.ok === true, 'saying yes saves it');
 

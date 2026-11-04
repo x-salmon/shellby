@@ -8,6 +8,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const os = require('os');
 const fs = require('fs');
+const { answerDialog } = require('./lib/dialog');
 
 const PORT = Number(process.env.E2E_CDP_PORT) || 9336;
 const ROOT = path.join(__dirname, '..');
@@ -96,16 +97,13 @@ async function until(fn, what, ms = 30000) {
         return r.querySelector('strong').textContent;
       })()`);
       if (!pick) { console.log(`(no ${official ? 'official' : 'third-party'} plugin to try)`); return; }
-      const dlg = await cdp((await target('dialog.html', 20)).webSocketDebuggerUrl);
-      await until(() => dlg.evaluate(`(document.getElementById('title')?.textContent || '').length > 0`).catch(() => false), 'confirm content');
-      const d = await dlg.evaluate(`({ title: document.getElementById('title').textContent, message: document.getElementById('message').textContent, note: document.getElementById('note').textContent, danger: document.getElementById('dialog').classList.contains('danger'), focused: document.activeElement?.textContent })`);
-      console.log('confirm:', JSON.stringify(d));
+      // Read and photographed, then Cancel (lib/dialog.js): safe to press before the checks.
+      const d = await answerDialog(PORT, { press: 'Cancel', shot: path.join(profile, shotName) });
+      if (!d) throw new Error('the confirm window never turned up');
+      console.log('confirm:', JSON.stringify({ title: d.title, message: d.message, note: d.note, danger: d.danger, focused: d.focused }));
       if (d.title !== 'Install plugin?' || !d.message.includes(pick) || !/hooks or MCP servers/.test(d.note)) throw new Error('confirm window content wrong');
       if (d.danger === official) throw new Error(`danger styling should be ${!official}`);
       if (d.focused !== 'Cancel') throw new Error('Cancel must be the default button');
-      await dlg.shot(path.join(profile, shotName));
-      await dlg.evaluate(`{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === 'Cancel'); setTimeout(() => b.click(), 0); true; }`);
-      dlg.close();
       await until(() => panel.evaluate(`!document.querySelector('#shopList .shop-row.is-busy')`), 'install to cancel');
       const still = await panel.evaluate(`[...document.querySelectorAll('#shopList .shop-row')].find(r => r.querySelector('strong').textContent === ${JSON.stringify(pick)})?.classList.contains('is-installed')`);
       if (still) throw new Error('plugin was installed despite Cancel');

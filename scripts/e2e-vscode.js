@@ -13,6 +13,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9384;
@@ -169,23 +170,9 @@ fs.mkdirSync(claudeConfig);
     check(/No checks have run/.test(await ev("document.getElementById('problemsSub').textContent")), 'before any checks it says so');
     await ev("document.getElementById('problemsRun').click()");
     // The first run in a project asks first, in the confirmation window.
-    let dlg = null;
-    for (let i = 0; i < 40 && !dlg; i++) {
-      try { dlg = (await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()).find(t => t.url.endsWith('dialog.html')); } catch { /* not yet */ }
-      if (!dlg) await wait(250);
-    }
-    if (dlg) {
-      const dws = new WebSocket(dlg.webSocketDebuggerUrl);
-      await new Promise(r => { dws.onopen = r; });
-      let did = 0; const dp = new Map();
-      dws.onmessage = e => { const m = JSON.parse(e.data); dp.get(m.id)?.(m); };
-      const dev = expr => new Promise(r => { const i = ++did; dp.set(i, m => r(m.result?.result?.value)); dws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, awaitPromise: true } })); });
-      for (let t = 0; t < 10000 && !(await dev("document.querySelectorAll('#actions button').length")); t += 150) await wait(150);
-      const detail = await dev("document.body.textContent");
-      check(/npm run typecheck/.test(detail), 'it asks first, naming the command');
-      await dev("{ const b = [...document.querySelectorAll('#actions button')][0]; setTimeout(() => b.click(), 0); true; }");
-      dws.close();
-    } else check(false, 'it asks first, naming the command');
+    // Its first button runs the checks (lib/dialog.js).
+    const asked = await answerDialog(PORT, { press: 0 });
+    check(/npm run typecheck/.test(asked?.text || ''), 'it asks first, naming the command');
     check(await until("document.querySelector('#problemsList .pb-row')", 30000), 'the typecheck\'s error is listed');
     check(await ev("document.querySelector('#problemsList .pb-name').textContent") === 'big.js', 'under its file');
     check(await ev("document.querySelector('#problemsList .pb-at').textContent") === '3:7', 'at its line and column');
