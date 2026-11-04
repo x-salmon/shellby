@@ -1,7 +1,7 @@
 // A classic script that shares critter.js's top-level scope (critter.html
 // loads it right after critter.js). The signs he holds up (red CI, a crashed
 // server, a call) and throwing his own held item out of the way for them.
-/* global ciFailing:writable, drawSelf:writable, flags:writable, flinging:writable, onCall:writable, outfit:writable, paintBody:writable, px:writable, serversDown:writable, skin:writable, state:writable, tossed:writable */
+/* global signals:writable, ciFailing:writable, drawSelf:writable, flags:writable, flinging:writable, onCall:writable, outfit:writable, paintBody:writable, px:writable, serversDown:writable, skin:writable, state:writable, tossed:writable */
 /* exported SIGNS, catchHeld, clawLoad, throwHeld */
 
 // The sign he holds up while CI is red. It goes in the held slot like any other
@@ -33,17 +33,53 @@ const SERVER_SIGN = {
     '.pp.....', '.pp.....', '.pp.....',
   ],
 };
+// ...when the last test run in one of your conversations failed: a flask gone red.
+const TESTS_SIGN = {
+  slot: 'held', anchor: 'claw', follows: 'claw', pivot: [2, 9],
+  palette: { K: '#3d2a00', w: '#fff4e4', k: '#5c677d', r: '#e63946', p: '#a0693a' },
+  pixels: [
+    'KKKKKKKK', 'KwwkkwwK', 'KwwkkwwK', 'KwkrrkwK', 'KkrrrrkK', 'KkkkkkkK', 'KKKKKKKK',
+    '.pp.....', '.pp.....', '.pp.....',
+  ],
+};
+// ...when a helper crab has been out a long while (work-signs.js STUCK_MS): an hourglass.
+const STUCK_SIGN = {
+  slot: 'held', anchor: 'claw', follows: 'claw', pivot: [2, 9],
+  palette: { K: '#3d2a00', w: '#fff4e4', k: '#5c677d', y: '#ffd23f', p: '#a0693a' },
+  pixels: [
+    'KKKKKKKK', 'KwkkkkwK', 'KwkyykwK', 'KwwkkwwK', 'KwkyykwK', 'KwkkkkwK', 'KKKKKKKK',
+    '.pp.....', '.pp.....', '.pp.....',
+  ],
+};
+// ...and when the 5-hour window is heading for empty before it resets: a battery running low.
+const LOW_SIGN = {
+  slot: 'held', anchor: 'claw', follows: 'claw', pivot: [2, 9],
+  palette: { K: '#3d2a00', w: '#fff4e4', k: '#5c677d', r: '#e63946', p: '#a0693a' },
+  pixels: [
+    'KKKKKKKK', 'KwwwwwwK', 'KkkkkkwK', 'KkrwwkkK', 'KkkkkkwK', 'KwwwwwwK', 'KKKKKKKK',
+    '.pp.....', '.pp.....', '.pp.....',
+  ],
+};
 const TOSS_MS = 620;  // how long what he was carrying stays in the air
 const GRAB_MS = 560;  // ...and when the sign takes its place, once it is clear
 const CATCH_MS = 520; // the drop back down once the build is green
 // He only holds the sign up on his feet: a nap, a molt or a throw has his claws busy.
 const settled = () => state === 'idle' || state === 'working';
-// Something worth putting his own things down for: red CI or a crashed server.
-const wantsSign = () => ciFailing > 0 || serversDown() > 0;
+// Something worth putting his own things down for: red CI, red tests, a crashed
+// server, a helper out a long while, or the window running low (work-signs.js).
+const wantsSign = () => ciFailing > 0 || signals.red > 0 || serversDown() > 0 || signals.stuck > 0 || signals.near != null;
 const holdingSign = () => (wantsSign() || onCall) && !flinging && settled();
-// Which sign, most urgent first: CI, then a server, then the call.
-const signKind = () => (ciFailing > 0 ? 'ci' : serversDown() > 0 ? 'server' : 'call');
-const SIGNS = { ci: CI_SIGN, server: SERVER_SIGN, call: CALL_SIGN };
+// Which sign, most urgent first: what's broken (CI, tests, a server), then what's
+// slow (a helper, the window), then the call.
+function signKind() {
+  if (ciFailing > 0) return 'ci';
+  if (signals.red > 0) return 'tests';
+  if (serversDown() > 0) return 'server';
+  if (signals.stuck > 0) return 'stuck';
+  if (signals.near != null) return 'low';
+  return 'call';
+}
+const SIGNS = { ci: CI_SIGN, tests: TESTS_SIGN, server: SERVER_SIGN, stuck: STUCK_SIGN, low: LOW_SIGN, call: CALL_SIGN };
 // Everything his claw can be carrying, so that a change of load triggers a redraw.
 const clawLoad = () => (holdingSign() ? signKind() : tossed ? 'empty' : 'own');
 

@@ -98,15 +98,17 @@ function registerProgressIpc(ipcMain, d) {
   // ---- the beach (beach.js): read-only, built from stickers, streaks and finds
   ipcMain.handle('beach:get', () => d.beachView());
   ipcMain.handle('beach:seen', () => d.beachSeen());
+  // A sticker put on or arranged by you: What you use counts it (feature-use.js).
+  const placed = r => { if (r.ok) d.featureAct?.('sticker-placed'); return r; };
   ipcMain.handle('stickers:place', (_e, { id, slot, shell } = {}) => {
     if (!stickerId(id) || slotOf(slot) === null) return { ok: false, error: 'That sticker or spot is not there.', view: d.stickersView() };
-    return d.editStickers(shell, (s, sh, _n, now) => stickers.place(s, sh, id, slot, now));
+    return placed(d.editStickers(shell, (s, sh, _n, now) => stickers.place(s, sh, id, slot, now)));
   });
   ipcMain.handle('stickers:remove', (_e, { id, shell } = {}) => (stickerId(id) ? d.editStickers(shell, (s, sh, _n, now) => stickers.remove(s, sh, id, now)) : { ok: false, view: d.stickersView() }));
   ipcMain.handle('stickers:restack', (_e, { id, dir, shell } = {}) => (stickerId(id) && (dir === 'up' || dir === 'down')
     ? d.editStickers(shell, (s, sh, _n, now) => stickers.restack(s, sh, id, dir, now)) : { ok: false, view: d.stickersView() }));
   ipcMain.handle('stickers:flip', (_e, { id, shell } = {}) => (stickerId(id) ? d.editStickers(shell, (s, sh, _n, now) => stickers.flip(s, sh, id, now)) : { ok: false, view: d.stickersView() }));
-  ipcMain.handle('stickers:arrange', (_e, { shell } = {}) => d.editStickers(shell, (s, sh, n, now) => stickers.arrange(s, sh, n, now)));
+  ipcMain.handle('stickers:arrange', (_e, { shell } = {}) => placed(d.editStickers(shell, (s, sh, n, now) => stickers.arrange(s, sh, n, now))));
   ipcMain.handle('stickers:hide', (_e, { id, hidden } = {}) => {
     if (stickerId(id)) d.config.set({ stickers: stickers.setHidden(d.config.get('stickers'), id, !!hidden, Date.now()) });
     return d.stickersView();
@@ -169,6 +171,8 @@ function registerProgressIpc(ipcMain, d) {
   ipcMain.handle('bugdex:battles', () => (d.bugdex.on() && d.config.get('bugBattles') !== false ? d.bugdex.battles() : []));
   ipcMain.on('bugdex:cue', (_e, name, opts) => {
     if (typeof name !== 'string' || name.length > 20) return;
+    // The catch or the escape comes once a battle, when it played out on screen: a battle watched (feature-use.js).
+    if (name === 'caught' || name === 'fled') d.featureAct?.('battle');
     d.bugdex.cue(name, { species: typeof opts?.species === 'string' ? opts.species.slice(0, 40) : null });
   });
   ipcMain.handle('week:get', () => d.weekView());

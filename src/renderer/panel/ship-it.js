@@ -21,9 +21,10 @@
 
   /**
    * @param {any} tab
-   * @param {{ draft?: boolean, force?: boolean }} [opts]  force: past red checks
+   * @param {{ draft?: boolean, force?: boolean, pastReef?: boolean }} [opts]
+   *   force: past red checks; pastReef: past the reef's warning alone (the tests still count)
    */
-  async function shipIt(tab, { draft = false, force = false } = {}) {
+  async function shipIt(tab, { draft = false, force = false, pastReef = false } = {}) {
     if (!tab?.worktree) return SB.toast('Ship it works on a conversation with a copy of its own (Settings → Claude → Copies of a project).', { ms: 8000 });
     if (tab.busy) return SB.toast('Let him finish first.');
     if (shipping.has(tab.id)) return SB.toast('Already shipping this one.');
@@ -32,7 +33,7 @@
     /** @type {any} */
     let r;
     try {
-      r = await api.shipWorktree(tab.id, { draft, force });
+      r = await api.shipWorktree(tab.id, { draft, force, pastReef });
     } catch {
       r = null;
     } finally {
@@ -43,6 +44,13 @@
       return SB.toast(r.error, { ms: 14000, actions: [
         { label: 'Ship it anyway', onAction: () => shipIt(tab, { draft, force: true }) },
         r.fix ? { label: 'Ask him to fix them', onAction: () => { SB.activate(tab.id); SB.send(r.fix); } } : null,
+      ].filter(Boolean) });
+    }
+    // The tests passed, but the project's reef is struggling (src/main/reef/index.js shipWarning).
+    if (r?.reef) {
+      return SB.toast(r.error, { ms: 14000, actions: [
+        { label: 'Ship it anyway', onAction: () => shipIt(tab, { draft, pastReef: true }) },
+        r.fix ? { label: 'Ask him to fix it', onAction: () => { SB.activate(tab.id); SB.send(r.fix); } } : null,
       ].filter(Boolean) });
     }
     if (r?.github) return SB.toast(r.error, { ms: 10000, action: 'Set up GitHub', onAction: setUpGithub });

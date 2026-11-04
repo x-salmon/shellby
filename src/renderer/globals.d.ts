@@ -155,6 +155,8 @@ interface ShellbyPanelExtras {
   focusKept: any;
   h: any;
   helperSprite: any;
+  HOME_ROOMS: any;
+  HOME_TAB: any;
   homeView: any;
   HUES: any;
   icon: any;
@@ -387,6 +389,7 @@ interface ShellbyPanelExtras {
   reviewCount: any;
   // rooms.js
   hasLockedRooms: any;
+  homeRoom: any;
   isGameWaiting: any;
   isRoomLocked: any;
   openAllRooms: any;
@@ -617,6 +620,8 @@ interface ShellbyPanelExtras {
   editorBar: any;
   renderChecks: any;
   renderShots: any;
+  // turn-rewards.js
+  renderRewards: any;
   // ultracode.js
   renderUltraChip: any;
   renderUltracode: any;

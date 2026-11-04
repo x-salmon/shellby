@@ -433,8 +433,8 @@ contextBridge.exposeInMainWorld('shellby', {
   // First steps for someone new (first-run.js): done by the real thing, never ticked
   getFirstRun: invoke('firstrun:get'), skipFirstStep: invoke('firstrun:skip'), hideFirstRun: invoke('firstrun:hide'),
   sawChanges: fire('firstrun:saw-changes'), onFirstRun: on('first-run'),
-  // what you use: screens opened, counted on this PC (feature-use.js)
-  featureUsed: fire('features:used'), featureReport: invoke('features:report'),
+  // what you use: screens opened and things done with him, counted on this PC (feature-use.js)
+  featureUsed: fire('features:used'), featureActed: fire('features:act'), featureReport: invoke('features:report'),
   getQuests: invoke('quests:get'), // quests: the features worth finding, one at a time (quests.js)
   hideQuests: invoke('quests:hide'),
   onQuests: on('quests'),

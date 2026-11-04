@@ -386,18 +386,22 @@ document.addEventListener('click', e => {
 
 SB.views = {};  // name -> { render?(), parent?() (where Back goes, when the view knows) }
 
-// Which navigation item a screen lives under (Trophies, Finds, Tank and Us are tabs
-// of the Shellby screen, Paint and Stickers open from Outfits, Routines sits beside
-// Workflows under Automate), and which screens sit one level down, so Back/Esc go
-// up to their parent.
+// Which navigation item a screen lives under (Trophies, Bugdex and the Home rooms are
+// tabs of the Shellby screen, Paint opens from Outfits, Routines sits beside Workflows
+// under Automate), and which screens sit one level down, so Back/Esc go up to their parent.
 SB.NAV_SECTION = { paint: 'wardrobe', trophies: 'wardrobe', stickers: 'wardrobe', finds: 'wardrobe', tank: 'wardrobe', us: 'wardrobe', routines: 'workflows', viewer: 'chat' };
-SB.PARENT_VIEW = { paint: 'wardrobe', stickers: 'wardrobe' };
+SB.PARENT_VIEW = { paint: 'wardrobe' };
 SB.homeView = () => (SB.state.settings.crabOnly ? 'health' : 'chat');
+// The Home tab on his screen is one door to these four rooms (html/home-tabs.html is
+// their own row). Their ids stay as they are: main/rooms.js opens each on its own.
+SB.HOME_ROOMS = Object.freeze(['finds', 'tank', 'us', 'stickers']);
+SB.HOME_TAB = 'home';
 // Screens folded into another one: the old name (from main, a quest, Ctrl+K, a toast)
 // goes to the screen it's on now, and the part after # comes into view there. A
-// function does the going itself (Crew: the Toolbox on its Agents tab, crew.js).
+// function does the going itself (Crew: the Toolbox on its Agents tab, crew.js;
+// Home: the room of its four you were in last, else the first that's open, rooms.js).
 /** @type {Record<string, string | (() => void)>} */
-SB.VIEW_ALIAS = { logbook: 'trophies#lbSection' };
+SB.VIEW_ALIAS = { logbook: 'trophies#lbSection', [SB.HOME_TAB]: () => SB.setView(SB.homeRoom?.() || SB.HOME_ROOMS[0]) };
 
 // Bring an element into view (and the keyboard to it, when it takes focus) once it has drawn.
 SB.reveal = id => requestAnimationFrame(() => {
@@ -428,9 +432,11 @@ SB.setView = target => {
     b.classList.toggle('active', on);
     if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
-  // The Shellby screen's tabs are one row repeated on each of its pages (html/shellby-tabs.html).
+  // The Shellby screen's tabs are one row repeated on each of its pages (html/shellby-tabs.html),
+  // and Home's own row under it on its four (html/home-tabs.html): Home is current on any of them.
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.shellby-tabs [data-goto]')).forEach(b => {
-    if (b.dataset.goto === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    const on = b.dataset.goto === view || (b.dataset.goto === SB.HOME_TAB && SB.HOME_ROOMS.includes(view));
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
   SB.closeMenus();
   SB.views[view]?.render?.();

@@ -87,7 +87,7 @@ async function connect(url) {
     await panel.ev("SB.setView('settings'); SB.showSettingsTab('shellby')");
     await wait(400);
     check(await panel.ev("document.getElementById('workModeToggle').checked"), 'Settings: the Work mode switch is on');
-    check(await panel.ev("document.getElementById('chatterSelect').value") === 'work', 'he talks "just about work"');
+    check(await panel.ev("document.getElementById('chatterSelect').value") === 'quiet', 'he keeps quiet: his signs say what needs you');
     check(await panel.ev("document.getElementById('colonySelect').value") === '0', 'no pals');
     check(await panel.ev("document.getElementById('perchSelect').value") === 'off', 'off your windows');
     await panel.shot('3-settings');

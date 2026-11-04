@@ -98,7 +98,8 @@ async function quit(app, ms = 20000) {
     await panel.ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; })");
 
     console.log('the tab');
-    check(await panel.ev('document.querySelectorAll(\'.shellby-tabs [data-goto="tank"]\').length === document.querySelectorAll(\'.shellby-tabs\').length'), 'every Shellby tab row has Tank');
+    check(await panel.ev('document.querySelectorAll(\'.home-tabs [data-goto="tank"]\').length === document.querySelectorAll(\'.home-tabs\').length && document.querySelectorAll(\'.home-tabs\').length > 0'), "every row of Home's tabs has Tank");
+    check(await panel.ev('document.querySelectorAll(\'.shellby-tabs:not(.home-tabs) [data-goto="home"]\').length === document.querySelectorAll(\'.shellby-tabs:not(.home-tabs)\').length'), 'and every Shellby tab row has Home');
     await panel.ev("SB.setView('tank')");
     await until("!!SB.tankView() && document.getElementById('tkSub').textContent.length > 0", 'the tank view');
     check(await panel.ev("document.getElementById('tkSub').textContent") === 'Nano tank · 0 of 10 pieces', 'a new tank is an empty nano tank');

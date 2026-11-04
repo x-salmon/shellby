@@ -18,6 +18,7 @@ function deps(over = {}) {
     canPr: rec('canPr', { ok: true }),
     status: rec('status', Promise.resolve({ ok: true, ahead: 1, uncommitted: 2 })),
     gate: rec('gate', Promise.resolve({ ok: true, verdict: PASS })),
+    reefWarn: rec('reefWarn', Promise.resolve(null)),
     commit: rec('commit', Promise.resolve({ ok: true })),
     git: rec('git', (_cwd, args) => Promise.resolve(args.includes('log')
       ? { ok: true, out: 'Fix the flaky login test\nAdd a retry helper\n' }
@@ -145,6 +146,47 @@ test('"Ship it anyway" goes past red checks and says so in the pull request', as
   assert.equal(r.ok, true, r.error);
   assert.equal(r.green, false);
   assert.match(calls.find(c => c[0] === 'openPr')[1].body, /⚠️ Shipped anyway, past checks that failed\./);
+});
+
+const REEF_WARN = { sig: 'lint', error: 'The reef on crab is pale: lint problems at 12, best 3, so nothing was pushed.', fix: 'Fix the lint problems in crab' };
+// deps() with a reef that has a word to say, recorded like the rest.
+function reefDeps() {
+  const made = deps();
+  made.d.reefWarn = (...args) => { made.calls.push(['reefWarn', ...args]); return Promise.resolve(REEF_WARN); };
+  return made;
+}
+
+test('a struggling reef stops it once the tests pass, before anything is committed, with its fix to offer', async () => {
+  const { d, calls, names } = reefDeps();
+  const r = await shipCopy('t1', {}, d);
+  assert.equal(r.ok, false);
+  assert.equal(r.reef, true);
+  assert.equal(r.red, undefined, 'the checks themselves were fine');
+  assert.equal(r.sig, 'lint');
+  assert.equal(r.fix, REEF_WARN.fix);
+  assert.equal(r.error, REEF_WARN.error);
+  assert.ok(names().indexOf('gate') < names().indexOf('reefWarn'), 'the reef speaks after the tests, not instead of them');
+  assert.deepEqual(calls.find(c => c[0] === 'reefWarn').slice(1), [W.root], 'about the repository the copy came from');
+  assert.ok(!names().includes('commit') && !names().includes('openPr') && !names().includes('note'));
+});
+
+test('"Ship it anyway" past the reef keeps the checks: they ran, and the pull request says they passed', async () => {
+  const { d, calls, names } = reefDeps();
+  const r = await shipCopy('t1', { pastReef: true }, d);
+  assert.equal(r.ok, true, r.error);
+  assert.equal(r.green, true);
+  assert.ok(!names().includes('reefWarn'), 'the reef is not asked again');
+  assert.deepEqual(calls.find(c => c[0] === 'gate').slice(1), ['t1', W, { check: true, force: false }]);
+  assert.match(calls.find(c => c[0] === 'openPr')[1].body, /✅ Checks passed/);
+});
+
+test('past red checks the reef has no say either, and a Ship it with no reef to ask ships as before', async () => {
+  const forced = reefDeps();
+  assert.equal((await shipCopy('t1', { force: true }, forced.d)).ok, true);
+  assert.ok(!forced.names().includes('reefWarn'));
+  const { d } = deps();
+  delete d.reefWarn;
+  assert.equal((await shipCopy('t1', {}, d)).ok, true);
 });
 
 test('stops early when there is nothing to ship, he is busy, or GitHub is not set up', async () => {

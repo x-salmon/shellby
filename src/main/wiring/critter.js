@@ -13,6 +13,7 @@ const { publicItem } = require('../wardrobe/service');
 const { packIdFor } = require('../wardrobe/wrap');
 const weatherRules = require('../weather');
 const workPose = require('../work-pose');
+const workSigns = require('../work-signs');
 const { levelFor, levelOf } = require('../progression/xp');
 
 /** d: what main shares (main.js `shared`). */
@@ -190,6 +191,32 @@ function wireCritter(d) {
     if (occasion === 'back') setTimeout(() => d.awayService.greet(now - state.lastRunAt), 2500);
   }
 
+  // The forecast, read at most this often: refreshCritter runs many times a second while he works.
+  const PACE_CACHE_MS = 30 * 1000;
+  let pace = { at: 0, value: null };
+  function paceNow(now) {
+    if (now - pace.at < PACE_CACHE_MS) return pace.value;
+    let value = null;
+    try { value = d.usageService?.outlookView?.().pace || null; } catch (err) { d.log.info(`crab signs: ${err.message}`); }
+    pace = { at: now, value };
+    return value;
+  }
+  // A helper that hasn't come back yet passes the stuck mark with nothing else
+  // changing, so he looks again then.
+  // refreshCritter runs many times a second while he works, so the timer is only
+  // set again when the time it's for moves.
+  let signsTimer = null;
+  let signsDue = null;
+  function recheckSigns(ms) {
+    const due = ms == null ? null : Date.now() + ms + 50;
+    if (due === signsDue || (due != null && signsDue != null && Math.abs(due - signsDue) < 1000)) return;
+    clearTimeout(signsTimer);
+    signsDue = due;
+    if (due == null) return;
+    signsTimer = setTimeout(() => { signsDue = null; refreshCritter(); }, due - Date.now());
+    signsTimer.unref?.();
+  }
+
   const dressCrew = crew => (crew.length && d.crewRoster ? d.crewRoster.dress(crew) : crew);
 
   // Rolls every tab up into one mood: asking > working > flash > idle/sleeping.
@@ -219,8 +246,12 @@ function wireCritter(d) {
     // whichever of your tabs and outside sessions moved last. The OBS overlay
     // shows the same (lastStatus below).
     const work = state === 'working' ? workPose.poseNow(workPose.latest([own, ext]), { compacting: own.compacting, talking: own.talking }) : null;
+    // What needs you, shown rather than said: a helper out a long while, red tests, the window running low (work-signs.js).
+    const signals = workSigns.signalsOf({ crew: own.crew, red: own.red, outlook: paceNow(Date.now()) }, Date.now());
+    recheckSigns(signals.recheckIn);
     d.send(d.critter, 'critter:state', {
       state,
+      signals: { stuck: signals.stuck, red: signals.red, near: signals.near },
       busy: agg.busy,
       work,
       // Each helper as its crew member: name, level, colour and hat (wiring/crew.js).

@@ -13,6 +13,8 @@ const checks = require('../checks');
 const confirm = require('../confirm');
 
 const SNAPSHOT_WAIT_MS = 10000;
+// Verdicts that leave a conversation red (lanes.js reads them the same way).
+const RED_VERDICTS = new Set(['fail', 'error', 'timeout']);
 
 /** d: what main shares (main.js `shared`). */
 function wireChecks(d) {
@@ -83,6 +85,7 @@ function wireChecks(d) {
     const tab = d.manager.tabs.get(tabId);
     if (!tab) return;
     tab.checks = { status: verdict.status, after: verdict.after, tree: verdict.tree, at: verdict.at };
+    tab.redTests = RED_VERDICTS.has(verdict.status); // the crab's red-tests sign (work-signs.js)
     d.manager.note(tabId, verdict);
     d.manager.changed();
     d.surprises?.noteChecks(tabId, verdict); // red, then a turn, then green: a crit

@@ -28,6 +28,8 @@ let state = 'idle';
 /** @type {any} */
 let health = null;
 let ciFailing = 0; // pull requests with red CI (src/main/github/ci.js)
+// What needs you, shown rather than said (src/main/work-signs.js): helpers out a long while, conversations with red tests, % of the window when it's running low.
+let signals = { stuck: 0, red: 0, near: /** @type {number | null} */ (null) };
 /** @type {{ up: number, upPort?: number, down: number } | null} */
 let servers = null; // { up, upPort, down }: your dev servers (src/main/devservers/service.js)
 const serversDown = () => servers?.down || 0;
@@ -151,6 +153,9 @@ api.onMolt(({ from, to, ms = 5200, fromStickers = [], toStickers = [] }) => {
   ];
 });
 
+const whole = n => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
+const signalsOf = s => ({ stuck: whole(s?.stuck), red: whole(s?.red), near: Number.isFinite(s?.near) ? Math.max(0, Math.min(100, Math.round(s.near))) : null });
+
 let level = 1;
 let marks = 0; // past level 99 (xp.js)
 function bubbleFor() {
@@ -160,7 +165,9 @@ function bubbleFor() {
   if (limit && state === 'sleeping') return `⏳ ${timeLeft(limit.resetsAt)}`;
   if (focusing && state === 'idle') return `${focusing.phase === 'break' ? 'break ' : ''}${minutesLeft()}`;
   if (ciFailing && state === 'idle') return ciFailing > 1 ? `CI ✗${ciFailing}` : 'CI ✗';
+  if (signals.red && state === 'idle') return signals.red > 1 ? `tests ✗${signals.red}` : 'tests ✗';
   if (serversDown() && state === 'idle') return 'server ✗';
+  if (signals.near != null && state === 'idle') return `${signals.near}%`;
   if (onCall && state === 'idle') return '🤫';
   // His own voice comes last of the things that mean something, and still beats
   // the bare mood glyph it replaces.
@@ -168,6 +175,7 @@ function bubbleFor() {
   // Planning reads differently from working, and a plan waiting differently from a yes/no.
   if (state === 'asking' && planReady) return 'plan?';
   if (state === 'working' && planning) return 'plan…';
+  if (state === 'working' && signals.stuck) return signals.stuck > 1 ? `⌛${signals.stuck}` : '⌛';
   return BUBBLES[state] ?? '';
 }
 const saying = () => !!say && say.until > Date.now();
@@ -240,6 +248,7 @@ api.onState(msg => {
   level = msg.level || level;
   if (Number.isFinite(msg.marks)) marks = msg.marks;
   ciFailing = msg.ci?.failing || 0;
+  signals = signalsOf(msg.signals);
   servers = msg.servers || null;
   limit = msg.limit || null;
   say = msg.say || null;

@@ -37,6 +37,7 @@ const { wireFirstRun } = require('./wiring/first-run');
 const { wireProgress } = require('./wiring/progress');
 const { wireQuestLine } = require('./wiring/quest-line');
 const { wireGameHooks } = require('./wiring/game-hooks');
+const { wireFeatureActs } = require('./wiring/feature-acts');
 const { wireLevels } = require('./wiring/levels');
 const { wireMolting } = require('./wiring/molting');
 const { wireReef } = require('./wiring/reef');
@@ -83,6 +84,7 @@ const { wireRemote } = require('./wiring/remote');
 const { wireJournal } = require('./wiring/journal');
 const { wireCrew } = require('./wiring/crew');
 const { wireSurprises } = require('./wiring/surprises');
+const { wireTurnRewards } = require('./wiring/turn-rewards');
 const { wireStepUndo } = require('./wiring/step-undo');
 const { wireNative } = require('./wiring/native');
 const { wireEvents } = require('./wiring/events');
@@ -170,6 +172,7 @@ const shared = {
   isStr: s => typeof s === 'string' && s.length > 0 && s.length < 10000,
   isFolder: d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } }, // missing or unreadable: not a folder
   send(win, channel, payload) {
+    shared.tapReward?.(channel, payload); // what a turn earned, for its card in Chat (wiring/turn-rewards.js)
     if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
   },
   statusFile: () => (ISOLATED ? path.join(app.getPath('userData'), 'shellby-status.txt') : statusLine.STATUS_FILE),
@@ -358,6 +361,7 @@ const { createManager, watchUsage } = share(wireSessions(shared));
 const { awardXp, checkWrapUp } = share(wireProgress(shared));
 share(wireFirstRun(shared)); // First steps for someone new, and the core loop that opens the game's rooms
 share(wireQuestLine(shared)); // quests, one feature at a time (quests/index.js)
+share(wireFeatureActs(shared)); // What you use: the things you do with him, counted on this PC (feature-use.js)
 share({ bugdex: wireBugdex(shared) }); // the bugs Claude has fixed for you, in jars
 const { createExternal, createHealth, createTimeTracker, stat } = share(wireTimetrack(shared));
 const { createCrabApi } = share(wireCrabApi(shared));
@@ -397,6 +401,7 @@ share(wireBgSessions(shared)); // Claude Code's background sessions (claude --bg
 const { createComputers } = share(wireRemote(shared)); // Claude Code on your other computers, over ssh
 const { journal } = share({ journal: wireJournal(shared) }); // handoff notes per project, read from Claude Code's own files
 share({ crewRoster: wireCrew(shared) }); // one lasting helper crab per agent type
+share(wireTurnRewards(shared)); // what each turn earned, as a card at its end in Chat
 share({ surprises: wireSurprises(shared) }); // crit hits and clean landings, now and then
 share(wireStepUndo(shared)); // a checkpoint before each step that changes files: Undo to here
 share({ native: wireNative(shared) }); // the crab noticing Claude's own to-dos, background commands, memories and skills

@@ -714,11 +714,12 @@ class SessionManager extends EventEmitter {
 
   // One state for the critter: asking beats working beats idle.
   get aggregate() {
-    let pending = 0, busy = 0, planning = 0, plans = 0, hiddenCrew = 0, compacting = 0, talking = 0;
+    let pending = 0, busy = 0, planning = 0, plans = 0, hiddenCrew = 0, compacting = 0, talking = 0, red = 0;
     const crew = [], tools = [], jobs = [], crewEnded = [];
     const now = Date.now();
     for (const t of this.tabs.values()) {
       pending += t.session.pending.size;
+      if (t.redTests) red++; // its last test run or check failed (work-signs.js)
       // A keep-warm ping is nobody's work: no crab at work, no "running" in the tray, no
       // Multitasker. What else the tab has going (its jobs, its helpers) still shows.
       const working = t.session.busy && !t.pinging;
@@ -732,7 +733,7 @@ class SessionManager extends EventEmitter {
       for (const p of t.session.pending.values()) if (p.toolName === 'ExitPlanMode') plans++;
       for (const j of t.session.jobView()) if (j.status === 'running') jobs.push({ ...j, tabId: t.id });
       for (const c of t.session.runningCrew()) {
-        crew.push({ id: c.taskId, tabId: t.id, label: c.activity || c.description || c.subagentType || 'helper', type: c.subagentType || 'general-purpose', bubble: talkOf(c) }); // Claude Code's own default
+        crew.push({ id: c.taskId, tabId: t.id, label: c.activity || c.description || c.subagentType || 'helper', type: c.subagentType || 'general-purpose', bubble: talkOf(c), startedAt: c.startedAt }); // Claude Code's own default
       }
       hiddenCrew += t.session.hiddenCrew?.() || 0; // an ultracode run's agents past the few out as crabs
       // Helpers that just finished, and how: one that did its job walks home with it, one that failed slumps.
@@ -740,7 +741,7 @@ class SessionManager extends EventEmitter {
     }
     // What the busy tab that moved last is doing, for how the crab works (work-pose.js).
     const latest = workPose.latest(tools);
-    return { state: pending ? 'asking' : (busy || crew.length) ? 'working' : 'idle', pending, busy, crew, hiddenCrew, crewEnded, jobs, planning, plans, tool: latest?.tool || null, kind: latest?.kind || null, toolAt: latest?.toolAt || null, compacting: compacting > 0, talking: talking > 0 };
+    return { state: pending ? 'asking' : (busy || crew.length) ? 'working' : 'idle', pending, busy, crew, hiddenCrew, crewEnded, jobs, planning, plans, tool: latest?.tool || null, kind: latest?.kind || null, toolAt: latest?.toolAt || null, compacting: compacting > 0, talking: talking > 0, red };
   }
 
   changed() {

@@ -1,4 +1,4 @@
-// ci: crit hits: red, a fix and green in one turn; the badge, the note, the trophy; cooldown; off
+// ci: crit hits: red, a fix and green in one turn; the badge, the note, the trophy and the turn's rewards card; cooldown; off
 // Crit hits and small surprises, end to end against the fake CLI: a turn that
 // runs the tests red, edits a file and runs them green is a critical hit, and
 // the crab shows it (his line, the CRIT! badge, the jump), the conversation
@@ -112,6 +112,13 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
     check(await until(panel, "!!document.querySelector('.surprise-mark.crit')"), 'the conversation keeps a note of it');
     check(/3 failing tests to green/.test(await panel.ev("document.querySelector('.surprise-mark.crit')?.textContent || ''")), 'saying what it was');
     await panel.shot('crit-note');
+    // What the turn earned, as a card under it (turn-rewards.js): the trophy, with its way in.
+    check(await until(panel, "/Trophy: Critical Hit/.test(document.querySelector('.reward-card')?.textContent || '')", 8000), 'the rewards card under the turn names the trophy it earned');
+    await panel.ev("document.querySelector('.reward-card').scrollIntoView({ block: 'center' })");
+    await panel.shot('reward-card');
+    await panel.ev("document.querySelector('.reward-card .reward-trophy .link-btn').click()");
+    check(await until(panel, "document.body.dataset.view === 'trophies'", 3000), 'and See it opens Trophies');
+    await panel.ev("SB.setView('chat')");
     const xp = await panel.ev('shellby.getXp().then(v => (v.log || []).map(e => e.kind))').catch(() => null);
     check(Array.isArray(xp) ? xp.includes('crit') : true, `XP pays for it (${JSON.stringify(xp)})`);
     check(await until(critter, '!document.querySelector("#surprise span")', 4000), 'and the badge goes away by itself');

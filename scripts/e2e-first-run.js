@@ -77,8 +77,10 @@ async function run(name, settings, body) {
   }
 }
 
-// His screen's doors: its tabs, and the Sticker Book's button on Outfits.
-const TABS = "[...document.querySelectorAll('#wardrobeView .shellby-tabs [data-goto], #wardrobeView .wd-make [data-goto]')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.dataset.goto).join()";
+// His screen's doors: its tabs as the Finds page has them (the main row, then Home's
+// own row under it), and the Sticker Book's button on Outfits.
+const TABS = "[...new Set([...document.querySelectorAll('#findsView .shellby-tabs [data-goto], #wardrobeView .wd-make [data-goto]')].filter(b => getComputedStyle(b).display !== 'none').map(b => b.dataset.goto))].join()";
+const DOOR = id => `document.querySelector('#findsView .home-tabs [data-goto="${id}"]')`;
 const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => getComputedStyle(b).display !== 'none' && !b.hidden).map(b => b.dataset.viewBtn || b.id).join()";
 const CARD = "document.querySelector('.feed:not([hidden]) .empty .first-run-card')";
 const NOW_STEP = `(${CARD}?.querySelector('.fr-step.now')?.dataset.step || null)`;
@@ -179,20 +181,36 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
       check(await seeCard(/You two are off/), 'a "First steps done" card says so');
       check(await seeCard(new RegExp(`${ROOMS.find(r => r.id === gameIds[0]).name}.* open`)), 'and a "New room" card opens the game rooms already earned');
       check(await until(`${JSON.stringify(gameIds)}.every(id => (${TABS}).split(',').includes(id))`), `${gameIds.join(' and ')} join his screen`);
-      check(await ev(`${JSON.stringify(gameIds)}.every(id => document.querySelector('#wardrobeView [data-goto="' + id + '"]').classList.contains('room-fresh'))`), 'each with a "new" on its tab');
+      check(await ev(`${JSON.stringify(gameIds)}.every(id => document.querySelector('#findsView .home-tabs [data-goto="' + id + '"]').classList.contains('room-fresh'))`), 'each with a "new" on its tab');
+      check(await ev("document.querySelector('#findsView .shellby-tabs [data-goto=\"home\"]').classList.contains('room-fresh')"), 'and Home carries the "new" on the main row');
       check(await until("!document.body.classList.contains('newcomer')"), 'the newcomer words go');
       await closeCards();
       await savePng(send, path.join(SHOTS, '3-new-rooms.png'));
 
       // 4. A visit takes its "new" off; Show everything now opens the rest.
       await ev(`SB.setView(${JSON.stringify(gameIds[0])})`);
-      check(await until(`!document.querySelector('#wardrobeView [data-goto="${gameIds[0]}"]').classList.contains('room-fresh')`), `visiting ${gameIds[0]} takes its "new" off`);
-      check(await ev(`document.querySelector('#wardrobeView [data-goto="${gameIds[1]}"]').classList.contains('room-fresh')`), `and leaves ${gameIds[1]}'s`);
+      check(await until(`!${DOOR(gameIds[0])}.classList.contains('room-fresh')`), `visiting ${gameIds[0]} takes its "new" off`);
+      check(await ev(`${DOOR(gameIds[1])}.classList.contains('room-fresh')`), `and leaves ${gameIds[1]}'s`);
       await ev("SB.setView('settings')");
       await ev("SB.$('showEverythingBtn').click()");
       check(await until("SB.$('showEverythingBtn').disabled"), 'Show everything now opens every screen');
       check(await ev(`(${SHOWN}) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes'`), `every button is on the bar (${await ev(SHOWN)})`);
       check(await ev("!SB.$('rmCard').classList.contains('room-locked')"), "and Review mastery's card is back");
+    });
+
+    // 4b. No project to hand: Use a practice folder opens one, with its first task
+    // in the box. It once handed the panel a bare path for settings, and every
+    // switch of conversation after that threw.
+    await run('practice', {}, async ({ ev, until }) => {
+      await until("SB.state.view === 'onboarding'");
+      await ev("document.querySelector('#onboardPaths [data-path=\"claude\"]').click()");
+      await until("!SB.$('letsGoBtn').disabled");
+      await ev("SB.$('letsGoBtn').click()");
+      check(await until(visible(CARD)), 'First steps offer a practice folder');
+      await ev(`${CARD}.querySelector('.fr-extra').click()`);
+      check(await until(`${NOW_STEP} === 'message'`), 'Use a practice folder opens a project');
+      check(await ev("!!SB.state.settings && typeof SB.state.settings === 'object' && !!SB.state.cwd"), `the panel keeps its settings and has the folder (${await ev('SB.state.cwd')})`);
+      check(await until("SB.$('input').value.length > 0"), 'its first task is waiting in the box');
     });
 
     // 5. Existing profiles: nothing changes for them.

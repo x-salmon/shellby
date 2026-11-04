@@ -238,6 +238,7 @@ function wireSessions(d) {
         const c = d.pendingCommands.get(item.id);
         d.pendingCommands.delete(item.id);
         const meant = classifyCommand(c.command);
+        if (meant === 'tests') tab.redTests = !!item.isError; // the crab's red-tests sign (work-signs.js)
         if (item.isError && meant === 'tests' && c.project && d.config && !d.CAPTURE) {
           d.config.set({ xp: markRed(d.config.get('xp'), c.project, Date.now()) });
           d.noteRed(`t:${c.project}`);
@@ -320,6 +321,8 @@ function wireSessions(d) {
 
   function beginTurn(tab) {
     turnStarts.delete(tab.id);
+    d.rewardsBegin?.(tab.id); // what it earns goes on a card at its end (wiring/turn-rewards.js)
+    tab.redTests = false; // the crab's red-tests sign waits for this turn's own test run (work-signs.js)
     const now = Date.now();
     touches = touches.filter(t => t.tabId !== tab.id && (t.end == null || now - t.end < TOUCH_KEEP_MS));
     touches.push({ tabId: tab.id, touch: changes.newTouch(), start: now, end: null });
@@ -344,6 +347,7 @@ function wireSessions(d) {
   // cutting what it had touched out of their diffs. It ends where the tab did.
   function forgetTurn(tabId) {
     turnStarts.delete(tabId);
+    d.rewardsForget?.(tabId);
     const mine = touchOf(tabId);
     if (mine) mine.end = Date.now();
   }

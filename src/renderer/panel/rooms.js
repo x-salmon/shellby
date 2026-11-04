@@ -5,17 +5,26 @@
    other road (Ctrl+K, a link) opens it for good. Just-the-crab mode has its own
    bar (crabonly.css) and ignores rooms, and so does Work mode (workmode.js),
    which shows every tool from the start. The Shellby screen's own tabs
-   (Trophies, Finds, Bugdex...) are rooms too, and open the same way. */
+   (Trophies, Bugdex, Home's rooms...) are rooms too, and open the same way. The
+   Home tab is one door for four rooms (core.js HOME_ROOMS): shut while all of
+   them are, new while any is, with a dot when any of theirs shows, and it opens
+   the one you were in last. */
 'use strict';
 (function () {
   const { api, state, $ } = SB;
   const GLOW_MS = 3400;
+  const HOME = SB.HOME_ROOMS;
+  const HOME_TAB = SB.HOME_TAB;
+  const HOME_BADGES = ['fd-badge', 'tk-badge', 'bc-badge', 'st-badge']; // what Home's rooms light on their own tabs
 
   /** @type {any} */
   let view = null; // main's roomsView(); null until it arrives (everything shows)
+  /** @type {string | null} */
+  let lastHome = null; // the Home room you were in last, where its tab goes next
 
   // Every door: the bar's buttons, the tabs along the top of his screen
-  // (repeated on each of its pages), and the Sticker Book's button on Outfits.
+  // (repeated on each of its pages, Home's own row included), and the Sticker
+  // Book's button on Outfits. Home is in the list too, and stands for its rooms.
   const doors = () => [
     ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.dock [data-view-btn]'))].map(b => ({ id: b.dataset.viewBtn, b })),
     ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.shellby-tabs [data-goto], .wd-make [data-goto]'))].map(b => ({ id: b.dataset.goto, b })),
@@ -26,19 +35,26 @@
     if (!view || view.all || SB.isCrabOnly() || SB.isWorkMode?.()) return [];
     if (Array.isArray(view.locked)) return view.locked;
     const open = new Set(view.open);
-    return [...new Set(doors().map(d => d.id))].filter(id => !open.has(id));
+    return [...new Set(doors().map(d => d.id))].filter(id => id !== HOME_TAB && !open.has(id));
   };
   SB.isRoomLocked = id => lockedIds().includes(id);
   // Someone new before the core loop (main/first-run.js): the game waits.
   SB.isGameWaiting = () => !!view && view.core === false && lockedIds().length > 0;
   const freshIds = () => (view && !SB.isCrabOnly() && !SB.isWorkMode?.() ? view.fresh || [] : []);
+  /** Where the Home tab goes: the room of its four you were in last, else the first that's open. */
+  SB.homeRoom = () => {
+    const open = HOME.filter(id => !SB.isRoomLocked(id));
+    return lastHome && open.includes(lastHome) ? lastHome : open[0] || HOME[0];
+  };
 
   function apply() {
     const locked = new Set(lockedIds());
     const fresh = new Set(freshIds());
+    const isLocked = id => (id === HOME_TAB ? HOME.every(r => locked.has(r)) : locked.has(id));
+    const isFresh = id => (id === HOME_TAB ? HOME.some(r => fresh.has(r)) : fresh.has(id));
     for (const { id, b } of doors()) {
-      b.classList.toggle('room-locked', locked.has(id));
-      b.classList.toggle('room-fresh', fresh.has(id));
+      b.classList.toggle('room-locked', isLocked(id));
+      b.classList.toggle('room-fresh', isFresh(id));
     }
     // Rooms that are a card on a screen rather than a door (data-room).
     /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-room]')).forEach(el => el.classList.toggle('room-locked', locked.has(el.dataset.room)));
@@ -79,6 +95,7 @@
     apply();
     if (SB.isCrabOnly() || SB.isWorkMode?.() || !opened.length) return;
     opened.forEach(r => glow(r.id));
+    if (opened.some(r => HOME.includes(r.id))) glow(HOME_TAB); // its door on the main row glows too
     const [first] = opened;
     // A quest chapter that teaches one of them gets a word (main/rooms.js chapter).
     const taught = opened.find(r => r.chapter);
@@ -113,7 +130,10 @@
   // Got there another way (Ctrl+K, a link, a notification): that room stays open.
   const setView = SB.setView;
   SB.setView = target => {
+    // Home picks its room (core.js VIEW_ALIAS) and comes back through here where it lands.
+    if (target === HOME_TAB) return setView(target);
     setView(target);
+    if (HOME.includes(state.view)) lastHome = state.view;
     // A card asked for by name (a quest, Ctrl+K) stays open, like a door would.
     if (PART_OF[target] && SB.isRoomLocked(target)) api.openRoom(target).then(v => received({ view: v })).catch(() => {});
     // A tab of his screen is its own door; the bar's button is the screen's.
@@ -135,6 +155,15 @@
     apply();
     if (SB.isRoomLocked(SB.NAV_SECTION[state.view] || state.view)) setView('chat');
   };
+
+  // Home's dot on the main row: on while any of its rooms' is (finds, tank, us and
+  // stickers each set theirs on every copy of their tab; one row stands for all).
+  function homeBadge() {
+    const on = HOME_BADGES.some(c => { const el = /** @type {HTMLElement | null} */ (document.querySelector(`.home-tabs .${c}`)); return !!el && !el.hidden; });
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll(`.shellby-tabs .hm-badge`)).forEach(el => { el.hidden = !on; });
+  }
+  const homeRow = document.querySelector('.home-tabs');
+  if (homeRow) new MutationObserver(homeBadge).observe(homeRow, { attributes: true, attributeFilter: ['hidden'], subtree: true });
 
   api.onRooms(received);
   // Never leave the bar hidden: if main can't answer, every screen shows.

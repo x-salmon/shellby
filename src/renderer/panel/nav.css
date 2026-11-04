@@ -90,8 +90,13 @@ body:not([data-view="chat"]) :is(.celebrate-host, .recap-host) { bottom: calc(va
 
 /* ================================================================ Shellby screen tabs */
 .view-head .shellby-tabs { flex: 1; min-width: 0; }
-/* Six tabs share the width by their words, so a short "Us" doesn't crowd out "Stickers". */
+/* Tabs share the width by their words, so a short "Us" doesn't crowd out "Stickers". */
 .shellby-tabs button { flex: 1 1 auto; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shellby-tabs .hm-badge { top: 3px; right: 4px; }
+/* Home's own row (html/home-tabs.html) sits under the main one on its four pages,
+   smaller and quieter, so it reads as the second level. */
+.home-tabs { margin: -4px 0 12px; padding: 2px; border-color: transparent; }
+.home-tabs button { height: 24px; font-size: var(--fs-11-5); font-weight: 600; }
 
 /* ================================================================ Settings tabs */
 /* The tabs stay pinned while a tab scrolls, so the fade-under-the-header mask is

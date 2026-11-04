@@ -17,7 +17,7 @@ test('off, the settings are exactly your own', () => {
 
 test('on, he is quiet: no pals, pranks or climbing, and a voice only for work', () => {
   const s = workmode.effective({ ...MINE, workMode: true });
-  assert.equal(s.chatter, 'work');
+  assert.equal(s.chatter, 'quiet');
   assert.equal(s.mischief, 'off');
   assert.equal(s.colony, 0);
   assert.equal(s.perch, 'off');
@@ -101,7 +101,7 @@ test('config: get() sees Work mode, the file keeps your own', () => {
     config.set({ colony: 3, chatter: 'chatty' });
     config.set(workmode.write(config.data, { workMode: true }));
     assert.equal(config.get('colony'), 0);
-    assert.equal(config.get('chatter'), 'work');
+    assert.equal(config.get('chatter'), 'quiet');
     const saved = JSON.parse(fs.readFileSync(path.join(dir, 'settings.json'), 'utf8'));
     assert.equal(saved.colony, 3);
     assert.equal(saved.chatter, 'chatty');

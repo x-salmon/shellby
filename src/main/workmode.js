@@ -17,7 +17,7 @@
 
 // What Work mode sets, over your own settings.
 const PRESET = Object.freeze({
-  chatter: 'work', // only what needs you: done, failed, a dev server down (voice.js WORK_OCCASIONS)
+  chatter: 'quiet', // not a word: a mark in his bubble, and his signs say what needs you (work-signs.js)
   mischief: 'off', // no pranks
   colony: 0,       // no pals on the floor
   perch: 'off',    // off your windows
