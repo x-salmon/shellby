@@ -15,6 +15,7 @@ const probe = require('../reef/probe');
 const gitinfo = require('../gitinfo');
 const flaky = require('../flaky');
 const nests = require('../bugdex/nests');
+const rooms = require('../rooms');
 const { speciesById } = require('../bugdex/species');
 
 const TICK_MS = 10 * 60 * 1000;   // how often the scheduler looks
@@ -270,7 +271,18 @@ function wireReef(d) {
   /** For the tank (ipc/tank.js): each reef's coral as tank.library({ coral }) wants it. */
   const reefCorals = () => reef.corals(d.config?.get('reef'), now());
 
-  return { reefCorals, reefTick: tick };
+  /**
+   * For Ship it (ipc/repo.js): a word of warning when the reef of the project
+   * `dir` is in is struggling (reef.shipWarning), else null. Never a word before
+   * the Reef room has opened (rooms.js), or about a project nobody watches.
+   */
+  async function reefWarn(dir) {
+    if (rooms.roomsView(d.config?.get('rooms')).locked.includes('reef')) return null;
+    const proj = await projectOf(dir);
+    return proj ? reef.shipWarning(d.config?.get('reef'), proj.id, now()) : null;
+  }
+
+  return { reefCorals, reefTick: tick, reefWarn };
 }
 
 module.exports = { wireReef };

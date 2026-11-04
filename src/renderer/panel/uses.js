@@ -22,11 +22,13 @@
     if (state.view !== was && !SB.solo) api.featureUsed(state.view);
   };
 
-  // A screen's way in: its button on the bar, its tab on his screen, or the
-  // bar button of the screen it lives under. Shown means you could get there.
+  // A screen's way in: its button on the bar, its tab on his screen (Home's own
+  // row for its rooms), or the bar button of the screen it lives under. Shown
+  // means you could get there.
   function doorShown(x) {
     const door = document.querySelector(`.dock [data-view-btn="${x.id}"]`)
       || document.querySelector(`#wardrobeView .shellby-tabs [data-goto="${x.id}"]`)
+      || document.querySelector(`.home-tabs [data-goto="${x.id}"]`)
       || (x.in && document.querySelector(`.dock [data-view-btn="${x.in}"]`));
     return !!door && !door.hidden && getComputedStyle(door).display !== 'none';
   }

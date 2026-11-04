@@ -138,6 +138,29 @@ test('reef: notes from the Bugdex by project id, and corals for the tank', async
   assert.ok(corals[0].art.pixels.length > 0);
 });
 
+test('reef: Ship it asks after a folder: nothing for a project nobody watches, a word once its reef slips, none before the Reef room opens', async t => {
+  t.after(restore);
+  stub(gitinfo, 'projectOf', async () => ({ id: ID, root: ROOT, name: 'shellby', remote: '' }));
+  stub(probe, 'coverage', async () => null);
+  stub(probe, 'escapes', async () => ({ skipped: 'no-repo' }));
+  const { d, store } = fakeD();
+  const { reefWarn } = wireReef(d);
+  assert.equal(await reefWarn(ROOT), null, 'not watched: nothing to say');
+  await d.gameHub.act('reef', 'watch', { root: ROOT });
+  d.gameHub.act('reef', 'dev-reading', { id: ID, sig: 'lint', value: 3, ctx: { cmd: 'npm run lint' } });
+  assert.equal(await reefWarn(ROOT), null, 'a reef at its best: nothing to say');
+  d.gameHub.act('reef', 'dev-reading', { id: ID, sig: 'lint', value: 40, ctx: { cmd: 'npm run lint' } });
+  const w = await reefWarn(ROOT);
+  assert.equal(w.sig, 'lint');
+  assert.match(w.error, /^The reef on shellby is \w+: lint problems at 40, best 3, so nothing was pushed\.$/);
+  assert.match(w.fix, /^Help shellby's reef: lint problems\./, 'the Fix this prompt for it');
+  store.rooms = { tasks: 0, open: [], all: false, core: true };
+  assert.equal(await reefWarn(ROOT), null, 'someone new whose Reef room is still shut hears nothing');
+  stub(gitinfo, 'projectOf', async () => null);
+  delete store.rooms;
+  assert.equal(await reefWarn('C:\\nope'), null, 'a folder that is no repository');
+});
+
 test('reef: unknown actions and a folder that is not a repo say so', async t => {
   t.after(restore);
   stub(gitinfo, 'projectOf', async () => null);

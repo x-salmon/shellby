@@ -679,14 +679,13 @@
   <main class="view view-wardrobe" id="wardrobeView">
     <div class="view-head">
       <h2 class="sr-only">Wardrobe</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one.
+           Home is one door to his finds, tank, beach and stickers (html/home-tabs.html under it; rooms.js) -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+        <button type="button" data-goto="home">Home <i class="dot-badge hm-badge" hidden></i></button>
       </nav>
       <button type="button" class="btn ghost slim-btn" id="markSeenBtn" title="Clear every new badge in the Wardrobe" hidden>Mark all seen</button>
       <button type="button" class="btn ghost slim-btn share-icon" data-share-card title="Share a picture of your Shellby" aria-label="Share a picture of your Shellby">📸</button>
@@ -873,14 +872,13 @@
   <main class="view view-trophies" id="trophiesView">
     <div class="view-head">
       <h2 class="sr-only">Trophies and XP</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one.
+           Home is one door to his finds, tank, beach and stickers (html/home-tabs.html under it; rooms.js) -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+        <button type="button" data-goto="home">Home <i class="dot-badge hm-badge" hidden></i></button>
       </nav>
       <button type="button" class="btn ghost slim-btn share-icon" data-share-card title="Make a shareable picture of your Shellby" aria-label="Make a shareable picture of your Shellby">📸</button>
     </div>
@@ -997,10 +995,25 @@
   <!-- ====================== STICKERS ====================== -->
   <main class="view view-stickers" id="stickersView">
     <div class="view-head">
-      <button type="button" class="back-btn" data-goto="wardrobe">← Outfits</button>
-      <h2>Sticker Book</h2>
+      <h2 class="sr-only">Sticker Book</h2>
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one.
+           Home is one door to his finds, tank, beach and stickers (html/home-tabs.html under it; rooms.js) -->
+      <nav class="seg shellby-tabs" aria-label="Shellby">
+        <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
+        <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
+        <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
+        <button type="button" data-goto="home">Home <i class="dot-badge hm-badge" hidden></i></button>
+      </nav>
       <button type="button" class="btn ghost slim-btn share-icon" data-share-card title="Share a picture of your Shellby" aria-label="Share a picture of your Shellby">📸</button>
     </div>
+    <!-- Home's own row, under the Shellby tabs on each of its pages: the room ids stay finds, tank, us and
+         stickers (main/rooms.js opens each on its own; rooms.js hides a shut one and lights Home for any) -->
+    <nav class="seg shellby-tabs home-tabs" aria-label="Home">
+      <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
+      <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
+      <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+      <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
+    </nav>
     <section class="st-hero" aria-label="His shell">
       <div class="st-bench" id="stBench">
         <div class="st-crab" id="stCrab"></div>
@@ -1041,16 +1054,23 @@
   <main class="view view-finds" id="findsView">
     <div class="view-head">
       <h2 class="sr-only">Finds</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one.
+           Home is one door to his finds, tank, beach and stickers (html/home-tabs.html under it; rooms.js) -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+        <button type="button" data-goto="home">Home <i class="dot-badge hm-badge" hidden></i></button>
       </nav>
     </div>
+    <!-- Home's own row, under the Shellby tabs on each of its pages: the room ids stay finds, tank, us and
+         stickers (main/rooms.js opens each on its own; rooms.js hides a shut one and lights Home for any) -->
+    <nav class="seg shellby-tabs home-tabs" aria-label="Home">
+      <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
+      <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
+      <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+      <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
+    </nav>
     <section class="fd-hero" aria-label="The shelf">
       <div class="fd-fav" id="fdFav"></div>
       <div class="fd-hero-text">
@@ -1073,14 +1093,13 @@
   <main class="view view-bugdex" id="bugdexView">
     <div class="view-head">
       <h2 class="sr-only">Bugdex</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one.
+           Home is one door to his finds, tank, beach and stickers (html/home-tabs.html under it; rooms.js) -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+        <button type="button" data-goto="home">Home <i class="dot-badge hm-badge" hidden></i></button>
       </nav>
     </div>
     <section class="fd-hero bd-hero" aria-label="The Bugdex">
@@ -1126,16 +1145,23 @@
   <main class="view view-us" id="usView">
     <div class="view-head">
       <h2 class="sr-only">You and Shellby</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one.
+           Home is one door to his finds, tank, beach and stickers (html/home-tabs.html under it; rooms.js) -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+        <button type="button" data-goto="home">Home <i class="dot-badge hm-badge" hidden></i></button>
       </nav>
     </div>
+    <!-- Home's own row, under the Shellby tabs on each of its pages: the room ids stay finds, tank, us and
+         stickers (main/rooms.js opens each on its own; rooms.js hides a shut one and lights Home for any) -->
+    <nav class="seg shellby-tabs home-tabs" aria-label="Home">
+      <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
+      <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
+      <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+      <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
+    </nav>
     <!-- Community news (news.js, src/main/news.js): one quiet card at a time, with ✕. -->
     <section class="nw-box" data-news="us" hidden aria-label="Community news"></section>
     <!-- Wrapped week (wrapped.js, src/main/yearbook.js wrappedWeek): January 2nd to 8th. -->
@@ -1239,16 +1265,23 @@
   <main class="view view-tank" id="tankView">
     <div class="view-head">
       <h2 class="sr-only">His tank</h2>
-      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one -->
+      <!-- the Shellby screen's tabs, at the top of each of its pages; core.js marks the current one.
+           Home is one door to his finds, tank, beach and stickers (html/home-tabs.html under it; rooms.js) -->
       <nav class="seg shellby-tabs" aria-label="Shellby">
         <button type="button" data-goto="wardrobe">Outfits <span class="n wd-count"></span></button>
         <button type="button" data-goto="trophies">Trophies <span class="n tr-count"></span></button>
-        <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
         <button type="button" data-goto="bugdex">Bugdex <span class="n bd-count"></span><i class="dot-badge bd-badge" hidden></i></button>
-        <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
-        <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+        <button type="button" data-goto="home">Home <i class="dot-badge hm-badge" hidden></i></button>
       </nav>
     </div>
+    <!-- Home's own row, under the Shellby tabs on each of its pages: the room ids stay finds, tank, us and
+         stickers (main/rooms.js opens each on its own; rooms.js hides a shut one and lights Home for any) -->
+    <nav class="seg shellby-tabs home-tabs" aria-label="Home">
+      <button type="button" data-goto="finds">Finds <span class="n fd-count"></span><i class="dot-badge fd-badge" hidden></i></button>
+      <button type="button" data-goto="tank">Tank <i class="dot-badge tk-badge" hidden></i></button>
+      <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
+      <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
+    </nav>
     <!-- One canvas for the scene; the buttons over it are what you can point at (and tab to). -->
     <section class="tk-hero" aria-labelledby="tkTitle">
       <div class="tk-head">

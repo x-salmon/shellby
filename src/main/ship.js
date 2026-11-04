@@ -7,8 +7,10 @@
 //   1. the copy has something to ship, and he isn't working in it
 //   2. its tests pass (wiring/checks.js gateHome, always on here, asking once
 //      per project as Run checks does); red stops unless you say "anyway"
-//   3. what's left is committed, named the way Bring it home names it
-//   4. the commits are looked over for secrets, the copy's own branch is
+//   3. the project's reef, when one is watched, isn't struggling (reef/index.js
+//      shipWarning); a word about its worst signal stops unless you say "anyway"
+//   4. what's left is committed, named the way Bring it home names it
+//   5. the commits are looked over for secrets, the copy's own branch is
 //      pushed (never --force) and a pull request is opened against the branch
 //      the copy came from (github/pullrequest.js)
 //
@@ -177,13 +179,15 @@ async function describe(w, git) {
 /**
  * Ship a conversation's copy.
  * @param {string} tabId
- * @param {{ draft?: boolean, force?: boolean }} opts  force: past red checks ("Ship it anyway")
+ * @param {{ draft?: boolean, force?: boolean, pastReef?: boolean }} opts
+ *   force: past red checks ("Ship it anyway"); pastReef: past the reef's warning alone, the checks still count
  * @param {{
  *   worktreeOf: (tabId: string) => any,
  *   isBusy: (tabId: string) => boolean,
  *   canPr: () => { ok: boolean, error?: string },
  *   status: (w: any) => Promise<any>,
  *   gate: (tabId: string, w: any, o: { check: boolean, force: boolean }) => Promise<any>,
+ *   reefWarn?: (root: string) => Promise<{ error: string, fix?: string, sig?: string } | null>,
  *   commit: (w: any) => Promise<{ ok: boolean, error?: string }>,
  *   git: (cwd: string, args: string[], opts?: any) => Promise<{ ok: boolean, out: string, error?: string }>,
  *   openPr: (req: { folder: string, title: string, body: string, draft: boolean, base: string, refresh: (body: string | null | undefined) => string }) => Promise<any>,
@@ -191,9 +195,9 @@ async function describe(w, git) {
  *   reply: (tabId: string) => string | null | undefined,
  *   note: (tabId: string, item: any) => void,
  * }} deps
- * -> { ok: true, url, number, repo, base, branch, draft, existing, green } | { ok: false, error, red?, checks?, fix?, nothing? }
+ * -> { ok: true, url, number, repo, base, branch, draft, existing, green } | { ok: false, error, red?, checks?, reef?, fix?, nothing? }
  */
-async function shipCopy(tabId, { draft = false, force = false } = {}, deps) {
+async function shipCopy(tabId, { draft = false, force = false, pastReef = false } = {}, deps) {
   const w = deps.worktreeOf(tabId);
   if (!w) return { ok: false, error: 'Ship it works on a conversation with a copy of its own.' };
   // Both go to git as revisions: never as something it could read as an option (History can be edited by hand).
@@ -213,6 +217,12 @@ async function shipCopy(tabId, { draft = false, force = false } = {}, deps) {
       ok: false, red: true, checks: gate.checks, fix: gate.fix,
       error: `${checks.redHeadline(gate.checks)} on this branch, so nothing was pushed.`,
     };
+  }
+  // The reef's word (reef/index.js shipWarning): a struggling project's worst signal, to fix
+  // first or ship past. Nothing to say where no reef is watched, or when you've said anyway.
+  if (!force && !pastReef && deps.reefWarn) {
+    const warn = await deps.reefWarn(w.root);
+    if (warn) return { ok: false, reef: true, sig: warn.sig, fix: warn.fix, error: warn.error };
   }
   // He may have started on something while the tests ran: what passed isn't what would ship.
   if (deps.isBusy(tabId)) return { ok: false, error: 'He started on something new while the tests ran, so nothing was pushed. Ship it once he has finished.' };

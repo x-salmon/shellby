@@ -60,13 +60,14 @@ function registerRepoIpc(ipcMain, d) {
     if (!d.isStr(tabId)) return { ok: false, error: 'That conversation has no copy of its own.' };
     retiring.add(tabId);
     try {
-      return await ship.shipCopy(tabId, { draft: opts?.draft === true, force: opts?.force === true }, {
+      return await ship.shipCopy(tabId, { draft: opts?.draft === true, force: opts?.force === true, pastReef: opts?.pastReef === true }, {
         worktreeOf,
         isBusy: id => d.manager.isBusy(id),
         canPr: () => (d.github?.can('claude') ? { ok: true }
           : { ok: false, github: true, error: 'Ship it needs “Let Claude tasks push code and open pull requests” on in Settings → GitHub.' }),
         status: w => worktrees.status(w),
         gate: (id, w, o) => d.gateHome(id, w, o),
+        reefWarn: root => (d.reefWarn ? d.reefWarn(root) : Promise.resolve(null)), // the project's reef, when one is watched (wiring/reef.js)
         commit: w => worktrees.commitCopy(w, { trailer: d.crabTrailer() }),
         git: worktrees.git,
         openPr: req => d.openIssuePr(req),
