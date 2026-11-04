@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.96.1: Honest about updates
+
+### Fixed
+- Settings no longer says you're on the latest version while a newer one is still rolling out to other PCs. It names the new version, how far it has reached, and offers **Get it now**. A release that has been put on hold says so and stays out of reach.
+- Wardrobe packs and the add-on schema now point at the schema's raw file, so your editor can check a pack against it. The startup apps list now says to use **Start with Windows** in Settings, the setting's real name.
+
 ## 0.96.0: The crab where you work
 
 ### New
