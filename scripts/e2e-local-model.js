@@ -75,7 +75,7 @@ function modelServer() {
     await panelBooted(ev);
     await ev("SB.setView('settings'); document.getElementById('setTab-claude').click()");
     check(await until("document.getElementById('localModelGroup')?.offsetParent !== null"), 'the Local model section is on the Claude tab');
-    check(await ev("document.getElementById('localModelUrl').value") === 'http://localhost:11434', 'a saved address off this PC shows as the default');
+    check(await ev("document.getElementById('localModelUrl').value") === 'http://127.0.0.1:11434', 'a saved address off this PC shows as the default');
     check(await ev("document.getElementById('localModelToggle').disabled && !document.getElementById('localModelToggle').checked"), 'it starts off, and can\'t be turned on before a model is picked');
     check(/Find models, then pick one/.test(await status()), `it says what to do first ("${await status()}")`);
 
@@ -106,6 +106,10 @@ function modelServer() {
     check(await until("document.getElementById('localModelUrl').value !== 'http://192.168.1.50:11434'"), 'an address off this PC is put back');
     check(/on this PC/.test(await status()), `...with a reason ("${await status()}")`);
     check((await saved()).url === fake.url, '...and the saved address is unchanged');
+    // ...and so is one on this PC with a path of its own: requests only ever go to /v1/...
+    await setUrl(`${fake.url}/admin`);
+    check(await until(`document.getElementById('localModelUrl').value === ${JSON.stringify(fake.url)}`), 'an address with a path of its own is put back too');
+    check((await saved()).url === fake.url, '...and the saved address is still unchanged');
 
     // a routine draft goes to the local model
     const draft = await ev("shellby.draftRoutine('check my pull requests every morning at 9').then(r => JSON.stringify(r))").then(JSON.parse);

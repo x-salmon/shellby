@@ -392,7 +392,7 @@
       asked = text;
       const by = typeof res.by === 'string' ? res.by : '';
       openEditor({ ...res.draft, isTemplate: true }, { greeting: by
-        ? `${by}, your local model, filled this in from “${text}”. Tell me what to change, or ask me to test it.`
+        ? `Your local model, \`${by}\`, filled this in from “${text}”. Tell me what to change, or ask me to test it.`
         : `I filled this in from “${text}”. Tell me what to change, or ask me to test it.` });
       if (res.workflow) askNote(`${res.workflow.why} The closest routine is below, or:`, false, true);
       else askNote(ASK_NOTE);

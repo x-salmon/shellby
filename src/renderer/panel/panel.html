@@ -2028,10 +2028,10 @@
       <section class="setting-group" id="localModelGroup" data-nav="Local model">
         <h3>Local model</h3>
         <label class="toggle"><input type="checkbox" id="localModelToggle" aria-describedby="localModelText localModelStatus"><span class="switch"></span>Write small drafts with a local model first</label>
-        <p class="muted small" id="localModelText">Routine drafts and the wording of learned rules go to Ollama or LM Studio on this PC before Claude, so they don't use your plan. If it isn't running, takes too long or gets one wrong, Claude writes it as usual. Nothing leaves this PC.</p>
+        <p class="muted small" id="localModelText">Routine drafts and the wording of learned rules go to Ollama or LM Studio on this PC before Claude, so they don't use your plan. If it isn't running, takes too long or gets one wrong, Claude writes it as usual. Nothing leaves this PC, but whatever answers at this address gets what a draft is about, including your projects' folder names.</p>
         <div class="row wrap">
           <label class="inline-label" for="localModelUrl">Server</label>
-          <input type="text" class="field slim" id="localModelUrl" placeholder="http://localhost:11434" spellcheck="false" autocomplete="off" maxlength="500">
+          <input type="text" class="field slim" id="localModelUrl" placeholder="http://127.0.0.1:11434" spellcheck="false" autocomplete="off" maxlength="500">
           <button type="button" class="btn slim-btn" id="localModelFind">Find models</button>
         </div>
         <div class="row">

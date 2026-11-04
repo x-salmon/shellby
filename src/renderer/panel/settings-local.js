@@ -5,9 +5,9 @@
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
-  const DEFAULT_URL = 'http://localhost:11434';
+  const DEFAULT_URL = 'http://127.0.0.1:11434'; // main's local/model.js DEFAULT_URL
   const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
-  const OFF_PC = 'Use an address on this PC, like http://localhost:11434.';
+  const OFF_PC = `Use the address of a server on this PC, like ${DEFAULT_URL}.`;
 
   /** @type {string[] | null} the models Find models last found, for the saved server */
   let found = null;
@@ -20,7 +20,8 @@
     let u;
     try { u = new URL(String(raw || '').trim()); } catch { return null; }
     if ((u.protocol !== 'http:' && u.protocol !== 'https:') || !LOOPBACK.has(u.hostname) || u.username || u.password) return null;
-    return `${u.protocol}//${u.host}${u.pathname.replace(/\/+$/, '').replace(/\/v1$/, '')}`;
+    if (u.pathname.replace(/\/+$/, '').replace(/\/v1$/, '')) return null; // the server itself or its /v1, as main takes
+    return `${u.protocol}//${u.host}`;
   }
 
   // What's saved. An address that isn't on this PC (a hand-edited file) reads

@@ -18,28 +18,78 @@ const LOCAL_SHARE = 0.5;      // ...or more than half the caller's budget, so Cl
 const MAX_MODEL_NAME = 200;
 const MODEL_NAME = /^[\w.:/@+-]+$/;
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+// Replies are read up to these sizes and no further: anything can listen on a
+// port on this PC, and one that never stops sending would fill main's memory.
+const MAX_REPLY_BYTES = 512 * 1024;
+const MAX_LIST_BYTES = 1024 * 1024;
+const PROXY_VARS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy'];
+
+/**
+ * Whether Node is set to send fetches through a proxy (NODE_USE_ENV_PROXY with
+ * a proxy set). The proxy would then reach "localhost" from wherever it runs,
+ * and the prompts would leave this PC, so no local model is used at all.
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+function proxied(env = process.env) {
+  return /^(1|true)$/i.test(String(env.NODE_USE_ENV_PROXY || '').trim()) && PROXY_VARS.some(k => !!env[k]);
+}
 
 /**
  * The saved setting -> { url, model } to use, or null when it's off or unusable.
  * @param {any} saved { on, url, model }
+ * @param {NodeJS.ProcessEnv} [env]
  */
-function checkSettings(saved) {
-  if (!saved || typeof saved !== 'object' || saved.on !== true) return null;
+function checkSettings(saved, env = process.env) {
+  if (!saved || typeof saved !== 'object' || saved.on !== true || proxied(env)) return null;
   const model = typeof saved.model === 'string' ? saved.model.trim() : '';
   if (!model || model.length > MAX_MODEL_NAME || !MODEL_NAME.test(model)) return null;
   const url = baseUrl(saved.url);
   return url ? { url, model } : null;
 }
 
-/** A server address -> its base (no trailing slash or /v1), or null unless it's http(s) on this PC. */
+/**
+ * A server address -> its base, or null unless it's http(s) on this PC. Only
+ * the server itself (or its /v1): requests always go to /v1/models and
+ * /v1/chat/completions, never to a path someone else picked.
+ */
 function baseUrl(raw) {
   if (typeof raw !== 'string') return null;
   let u;
   try { u = new URL(raw.trim()); } catch { return null; }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
   if (!LOOPBACK.has(u.hostname) || u.username || u.password) return null;
-  const path = u.pathname.replace(/\/+$/, '').replace(/\/v1$/, '');
-  return `${u.protocol}//${u.host}${path}`;
+  if (u.pathname.replace(/\/+$/, '').replace(/\/v1$/, '')) return null;
+  return `${u.protocol}//${u.host}`;
+}
+
+/**
+ * A reply's JSON, read no further than `max` bytes.
+ * -> { json } or { error: 'too large' | 'not JSON' }.
+ * @param {any} res a fetch Response
+ * @param {number} max
+ * @returns {Promise<{ json?: any, error?: 'too large' | 'not JSON' }>}
+ */
+async function readJson(res, max) {
+  const declared = Number(res.headers?.get?.('content-length'));
+  if (Number.isFinite(declared) && declared > max) return { error: 'too large' };
+  let text;
+  if (res.body?.getReader) {
+    const reader = res.body.getReader();
+    const chunks = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > max) { reader.cancel().catch(() => { /* already closed */ }); return { error: 'too large' }; }
+      chunks.push(value);
+    }
+    text = Buffer.concat(chunks).toString('utf8');
+  } else {
+    try { text = await res.text(); } catch { return { error: 'not JSON' }; }
+    if (Buffer.byteLength(text) > max) return { error: 'too large' };
+  }
+  try { return { json: JSON.parse(text) }; } catch { return { error: 'not JSON' }; }
 }
 
 /**
@@ -60,16 +110,27 @@ function cleanSettings(raw) {
 
 const LIST_TIMEOUT_MS = 5000;
 const MAX_MODELS = 200;
+const DEFAULT_URL = 'http://127.0.0.1:11434'; // not "localhost", which can mean ::1 first, where Ollama isn't
+let listing = false; // one search at a time: the panel never needs two, and a scan would
 
 /**
  * The models a local server has, for Settings' Find models.
  * -> { ok: true, models: string[] } or { ok: false, error } in words for the panel.
  * @param {unknown} rawUrl
  * @param {typeof fetch} [fetchFn]
+ * @param {NodeJS.ProcessEnv} [env]
  */
-async function listModels(rawUrl, fetchFn = globalThis.fetch) {
+async function listModels(rawUrl, fetchFn = globalThis.fetch, env = process.env) {
+  if (proxied(env)) return { ok: false, error: 'Shellby is set to send web requests through a proxy (NODE_USE_ENV_PROXY), so it won\'t use a local model.' };
   const url = baseUrl(rawUrl);
-  if (!url) return { ok: false, error: 'Use an address on this PC, like http://localhost:11434.' };
+  if (!url) return { ok: false, error: `Use the address of a server on this PC, like ${DEFAULT_URL}.` };
+  if (listing) return { ok: false, error: 'Still looking. Give it a moment.' };
+  listing = true;
+  try { return await listFrom(url, fetchFn); } finally { listing = false; }
+}
+
+/** @param {string} url @param {typeof fetch} fetchFn */
+async function listFrom(url, fetchFn) {
   let res;
   try {
     res = await fetchFn(`${url}/v1/models`, { redirect: 'error', signal: AbortSignal.timeout(LIST_TIMEOUT_MS) });
@@ -77,8 +138,9 @@ async function listModels(rawUrl, fetchFn = globalThis.fetch) {
     return { ok: false, error: err?.name === 'TimeoutError' ? `${url} didn't answer in time.` : `Nothing answered at ${url}. Is Ollama or LM Studio running?` };
   }
   if (!res.ok) return { ok: false, error: `${url} answered ${res.status}. Check the address.` };
-  let json;
-  try { json = await res.json(); } catch { return { ok: false, error: `${url} isn't a model server Shellby knows.` }; }
+  const read = await readJson(res, MAX_LIST_BYTES);
+  if (read.error) return { ok: false, error: `${url} isn't a model server Shellby knows.` };
+  const json = read.json;
   const ids = Array.isArray(json?.data) ? json.data.map((/** @type {any} */ m) => m?.id) : [];
   const models = [...new Set(ids.filter(id => typeof id === 'string' && id.length <= MAX_MODEL_NAME && MODEL_NAME.test(id)))].slice(0, MAX_MODELS);
   return models.length ? { ok: true, models } : { ok: false, error: 'The server has no models yet. Pull one first, e.g. ollama pull qwen3:8b.' };
@@ -186,16 +248,16 @@ async function ask(req, settings, timeoutMs, fetchFn) {
       body: JSON.stringify(body(req, settings.model)),
       // A redirect could send the prompt off this PC: refuse it, and Claude answers instead.
       redirect: 'error',
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: AbortSignal.timeout(Math.max(1, Math.floor(Number(timeoutMs) || 0))), // it throws on NaN or a negative
     });
   } catch (err) {
     const timedOut = err?.name === 'TimeoutError';
     return fail(timedOut ? 'timed out' : `couldn't reach ${settings.url} (${err?.message || err})`, timedOut);
   }
   if (!res.ok) return fail(`${settings.url} answered ${res.status}`);
-  let json;
-  try { json = await res.json(); } catch { return fail('the server\'s answer was not JSON'); }
-  const reply = replyFrom(json, req.schema);
+  const read = await readJson(res, MAX_REPLY_BYTES).catch(() => /** @type {{ json?: any, error?: 'not JSON' }} */ ({ error: 'not JSON' }));
+  if (read.error) return fail(read.error === 'too large' ? 'the server\'s answer was too large' : 'the server\'s answer was not JSON');
+  const reply = replyFrom(read.json, req.schema);
   return reply.error ? fail(reply.error) : { ok: true, stdout: reply.stdout, stderr: '', err: null, timedOut: false };
 }
 
@@ -245,4 +307,7 @@ function withLocal(runClaude, { settings, fetchFn = globalThis.fetch, log = null
   };
 }
 
-module.exports = { checkSettings, cleanSettings, listModels, baseUrl, requestFrom, body, fitsSchema, replyFrom, ask, withLocal, LOCAL_MAX_MS, LOCAL_SHARE, SLOW_FAIL_MS, QUICK_FAILS, REST_MS };
+module.exports = {
+  checkSettings, cleanSettings, listModels, baseUrl, proxied, readJson, requestFrom, body, fitsSchema, replyFrom, ask, withLocal,
+  DEFAULT_URL, LOCAL_MAX_MS, LOCAL_SHARE, SLOW_FAIL_MS, QUICK_FAILS, REST_MS, MAX_REPLY_BYTES, MAX_LIST_BYTES,
+};

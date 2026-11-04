@@ -3,6 +3,7 @@
 // Claude whenever it can't answer.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { ReadableStream } = require('node:stream/web');
 
 const local = require('../src/main/local/model');
 const routineDraft = require('../src/main/routines/draft');
@@ -13,7 +14,9 @@ const ON = { on: true, url: 'http://localhost:11434', model: 'qwen3:8b' };
 const SCHEMA = { type: 'object', properties: { rule: { type: 'string' } }, required: ['rule'] };
 const ARGS = ['-p', '--output-format', 'json', '--json-schema', JSON.stringify(SCHEMA), '--system-prompt', 'Be brief.', '--model', 'haiku', '--tools', '', '--strict-mcp-config', '--no-session-persistence'];
 
-const reply = content => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content } }] }) });
+// A fetch Response as the code reads it: text, read whole (readJson caps what it takes).
+const jsonRes = value => ({ ok: true, status: 200, text: async () => JSON.stringify(value) });
+const reply = content => jsonRes({ choices: [{ message: { content } }] });
 const fakeFetch = (answer, calls = []) => async (url, init) => { calls.push({ url, body: JSON.parse(init.body) }); return typeof answer === 'function' ? answer() : answer; };
 const fakeClaude = (calls = []) => async (args, timeoutMs, opts) => { calls.push({ args, timeoutMs, opts }); return { ok: true, stdout: JSON.stringify({ is_error: false, structured_output: { rule: 'from Claude' } }), stderr: '', timedOut: false }; };
 
@@ -160,7 +163,7 @@ test('a reply of the wrong shape goes to Claude instead', async () => {
 
 test('redirects are refused, and a body that is not JSON falls back', async () => {
   const seen = [];
-  const res = await local.ask({ system: '', prompt: 'p', schema: SCHEMA }, local.checkSettings(ON), 1000, async (url, init) => { seen.push(init.redirect); return { ok: true, status: 200, json: async () => { throw new SyntaxError('bad'); } }; });
+  const res = await local.ask({ system: '', prompt: 'p', schema: SCHEMA }, local.checkSettings(ON), 1000, async (url, init) => { seen.push(init.redirect); return { ok: true, status: 200, text: async () => '{not json' }; });
   assert.deepEqual(seen, ['error']);
   assert.equal(res.ok, false);
   assert.match(res.stderr, /not JSON/);
@@ -189,7 +192,7 @@ test('Find models lists what the server has, and says plainly when it cannot', a
   const urls = [];
   const ok = await local.listModels('http://localhost:11434/', async (url, init) => {
     urls.push([url, init.redirect]);
-    return { ok: true, status: 200, json: async () => ({ data: [{ id: 'qwen3:8b' }, { id: 'qwen3:8b' }, { id: 'bad name' }, { id: 7 }, { id: 'lmstudio-community/gemma-3' }] }) };
+    return jsonRes({ data: [{ id: 'qwen3:8b' }, { id: 'qwen3:8b' }, { id: 'bad name' }, { id: 7 }, { id: 'lmstudio-community/gemma-3' }] });
   });
   assert.deepEqual(ok, { ok: true, models: ['qwen3:8b', 'lmstudio-community/gemma-3'] });
   assert.deepEqual(urls, [['http://localhost:11434/v1/models', 'error']]);
@@ -197,7 +200,7 @@ test('Find models lists what the server has, and says plainly when it cannot', a
   assert.match((await local.listModels('http://example.com', async () => { throw new Error('never'); })).error, /on this PC/);
   assert.match((await local.listModels('http://localhost:1', async () => { throw new Error('ECONNREFUSED'); })).error, /Is Ollama or LM Studio running/);
   assert.match((await local.listModels('http://localhost:1', async () => ({ ok: false, status: 404 }))).error, /answered 404/);
-  assert.match((await local.listModels('http://localhost:1', async () => ({ ok: true, status: 200, json: async () => ({ data: [] }) }))).error, /no models yet/);
+  assert.match((await local.listModels('http://localhost:1', async () => jsonRes({ data: [] }))).error, /no models yet/);
 });
 
 test('a local answer says which model wrote it, and the drafts pass that on', async () => {
@@ -248,4 +251,52 @@ test('quick failures rest it only once they pile up, and a good answer or a new 
   settings = { ...ON, model: 'llama3.2:3b' };
   await call();
   assert.equal(fetches, 7, 'another model is tried at once');
+});
+
+test('only the server itself, or its /v1, is taken as an address', () => {
+  assert.equal(local.baseUrl('http://127.0.0.1:11434'), 'http://127.0.0.1:11434');
+  assert.equal(local.baseUrl('http://127.0.0.1:11434/v1'), 'http://127.0.0.1:11434');
+  assert.equal(local.baseUrl('http://127.0.0.1:8080/admin'), null);
+  assert.equal(local.baseUrl('http://127.0.0.1:8080/api/v1'), null);
+  assert.equal(local.cleanSettings({ on: false, url: 'http://127.0.0.1:8080/admin', model: '' }), null);
+  assert.equal(local.DEFAULT_URL, 'http://127.0.0.1:11434');
+});
+
+test('a reply is read no further than the cap, declared or streamed', async () => {
+  const big = 'x'.repeat(64);
+  assert.deepEqual(await local.readJson({ headers: new Headers({ 'content-length': '999999' }), text: async () => '{}' }, 100), { error: 'too large' });
+  const stream = n => new Response(new ReadableStream({
+    pull(c) { if (n-- > 0) c.enqueue(new TextEncoder().encode(big)); else c.close(); },
+  }));
+  assert.deepEqual(await local.readJson(stream(100), 1000), { error: 'too large' }, 'an endless-looking stream stops at the cap');
+  assert.deepEqual(await local.readJson(new Response('{"a":1}'), 1000), { json: { a: 1 } });
+  assert.deepEqual(await local.readJson(new Response('nope'), 1000), { error: 'not JSON' });
+  assert.deepEqual(await local.readJson({ text: async () => big.repeat(20) }, 100), { error: 'too large' }, 'without a body stream, the text is measured');
+  const res = await local.ask({ system: '', prompt: 'p', schema: SCHEMA }, local.checkSettings(ON), 1000,
+    async () => new Response(new ReadableStream({ pull(c) { c.enqueue(new TextEncoder().encode(big.repeat(1024))); } })));
+  assert.equal(res.ok, false);
+  assert.match(res.stderr, /too large/);
+});
+
+test('with Node sending fetches through a proxy, no local model is used', async () => {
+  const env = { NODE_USE_ENV_PROXY: '1', HTTPS_PROXY: 'http://proxy.corp:8080' };
+  assert.equal(local.proxied(env), true);
+  assert.equal(local.proxied({ NODE_USE_ENV_PROXY: '1' }), false, 'no proxy set');
+  assert.equal(local.proxied({ HTTP_PROXY: 'http://p:1' }), false, 'Node not told to use it');
+  assert.equal(local.checkSettings(ON, env), null);
+  let fetched = 0;
+  const r = await local.listModels('http://127.0.0.1:11434', async () => { fetched++; return jsonRes({ data: [] }); }, env);
+  assert.match(r.error, /proxy/);
+  assert.equal(fetched, 0);
+});
+
+test('Find models runs one search at a time', async () => {
+  let release;
+  const slow = () => new Promise(r => { release = () => r(jsonRes({ data: [{ id: 'm' }] })); });
+  const first = local.listModels('http://127.0.0.1:11434', slow);
+  const second = await local.listModels('http://127.0.0.1:11434', slow);
+  assert.match(second.error, /Still looking/);
+  release();
+  assert.deepEqual(await first, { ok: true, models: ['m'] });
+  assert.equal((await local.listModels('http://127.0.0.1:11434', async () => jsonRes({ data: [{ id: 'm' }] }))).ok, true, 'free again after');
 });
