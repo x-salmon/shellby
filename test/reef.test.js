@@ -99,6 +99,36 @@ test('a reef that has gone quiet pales but keeps its coral', () => {
   assert.equal(reef.corals(state, later)[0].polyps, 2);
 });
 
+test('Ship it is warned off a reef that slipped to settling or worse, naming the worst signal with its Fix this prompt', () => {
+  const good = run(watched(), [['escapes', 10], ['escapes', 9], ['escapes', 8], ['escapes', 7], ['lint', 4, { cmd: 'x' }], ['lint', 3, { cmd: 'x' }]]);
+  const now = T0 + 6 * DAY;
+  assert.equal(reef.shipWarning(good.state, ID, now), null, 'a reef at its best has nothing to say');
+  const bad = run(good.state, [['escapes', 30], ['lint', 40, { cmd: 'x' }]], now);
+  const w = reef.shipWarning(bad.state, ID, now + DAY);
+  assert.equal(w.sig, 'lint', 'the signal with the most room to get better');
+  assert.equal(w.label, 'Lint problems');
+  assert.ok(w.stage <= reef.SHIP_WARN_STAGE);
+  assert.equal(w.error, 'The reef on shellby is bleached: lint problems at 40, best 3, so nothing was pushed.');
+  assert.equal(w.fix, reef.fixPrompt(bad.state, ID, 'worst').prompt);
+});
+
+test('Ship it hears nothing from a young reef at its best, an unwatched one, or one with nothing read', () => {
+  const young = reef.reading(watched(), ID, 'lint', 5, T0, { cmd: 'x' }).state;
+  assert.equal(reef.healthOf(young.projects[ID], T0), 2, 'capped while it settles');
+  assert.equal(reef.shipWarning(young, ID, T0), null, 'but its readings are at their best, so no warning');
+  assert.equal(reef.shipWarning(watched(), ID, T0), null, 'nothing read yet');
+  assert.equal(reef.shipWarning(null, ID, T0), null, 'not watched');
+  const off = reef.enable(young, ID, {}, false, T0).state;
+  assert.equal(reef.shipWarning(off, ID, T0), null, 'watched no more');
+});
+
+test('a reef that has gone quiet warns Ship it with its last reading', () => {
+  const { state } = run(watched(), [['escapes', 10], ['escapes', 9], ['escapes', 8]]);
+  const w = reef.shipWarning(state, ID, T0 + 60 * DAY);
+  assert.equal(w.sig, 'escapes');
+  assert.match(w.error, /^The reef on shellby is pale: escape hatches at 8, best 8, so nothing was pushed\.$/);
+});
+
 test('a thriving reef needs sustained bests', () => {
   const { state } = run(watched(), [['escapes', 10], ['escapes', 9], ['escapes', 8], ['escapes', 7]]);
   const p = state.projects[ID];

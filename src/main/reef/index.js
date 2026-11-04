@@ -269,6 +269,13 @@ function trendOf(sig, s, now) {
  */
 function healthOf(p, now) {
   if (!p) return 0;
+  const days = new Set(Object.values(p.signals).flatMap(s => s.series.map(([d]) => d))).size;
+  const cap = days < 3 ? 2 : p.polyps < 1 ? 3 : p.polyps < 3 ? 4 : 5;
+  return Math.min(stageOf(p, now), cap);
+}
+
+/** The stage its readings alone say, before a young reef's cap (healthOf). */
+function stageOf(p, now) {
   const fresh = freshOf(p, now);
   if (!fresh.length) return Object.keys(p.signals).length ? 1 : 2; // gone quiet: pales, never vanishes
   let score = 0;
@@ -283,13 +290,36 @@ function healthOf(p, now) {
     const drops = nests.series.filter(([d], i, a) => d >= since && i > 0 && a[i][1] < a[i - 1][1]).length;
     share += Math.min(0.2, drops * 0.1);
   }
-  const stage = share >= 0.9 ? 5 : share >= 0.7 ? 4 : share >= 0.45 ? 3 : share >= 0.25 ? 2 : share > 0 ? 1 : 0;
-  const days = new Set(Object.values(p.signals).flatMap(s => s.series.map(([d]) => d))).size;
-  const cap = days < 3 ? 2 : p.polyps < 1 ? 3 : p.polyps < 3 ? 4 : 5;
-  return Math.min(stage, cap);
+  return share >= 0.9 ? 5 : share >= 0.7 ? 4 : share >= 0.45 ? 3 : share >= 0.25 ? 2 : share > 0 ? 1 : 0;
 }
 
 const thrivingCount = (state, now) => Object.values(normalize(state).projects).filter(p => p.on && healthOf(p, now) >= THRIVING).length;
+
+// Ship it's word of warning (ship.js): a reef this far down, by its readings alone
+// (a young reef's cap doesn't count against it), is Settling or worse: under half
+// its signals of the last two weeks are near their best.
+const SHIP_WARN_STAGE = 2;
+
+/**
+ * What Ship it says before pushing from a struggling project: the stage, the
+ * worst signal and the Fix this prompt for it. -> { sig, label, stage, error, fix },
+ * or null when the reef isn't watched, is well enough, or has nothing to fix.
+ */
+function shipWarning(state, id, now) {
+  const p = normalize(state).projects[id];
+  if (!p?.on || stageOf(p, now) > SHIP_WARN_STAGE) return null;
+  const f = fixPrompt(state, id, 'worst');
+  if (!f) return null;
+  const s = p.signals[f.sig];
+  const d = SIGNALS[f.sig];
+  const stage = healthOf(p, now);
+  const v = x => `${Number.isInteger(x) ? x : Number(x).toFixed(1)}${d.unit}`;
+  return {
+    sig: f.sig, label: d.label, stage,
+    error: `The reef on ${p.name} is ${STAGES[stage].toLowerCase()}: ${d.label.toLowerCase()} at ${v(s.last)}, best ${v(s.best)}, so nothing was pushed.`,
+    fix: f.prompt,
+  };
+}
 
 /** The one thing that would grow this reef next: { sig, text } or null (nothing read yet). */
 function nextImprovement(p) {
@@ -470,7 +500,7 @@ function corals(state, now) {
 }
 
 module.exports = {
-  STAGES, THRIVING, DELETED_SHARE, MAX_PROJECTS, FRESH_DAYS, ID_RE,
-  dayKey, normalize, enable, reading, noteCiRun, mark, setDetail, fixPrompt, healthOf, trendOf, thrivingCount,
+  STAGES, THRIVING, SHIP_WARN_STAGE, DELETED_SHARE, MAX_PROJECTS, FRESH_DAYS, ID_RE,
+  dayKey, normalize, enable, reading, noteCiRun, mark, setDetail, fixPrompt, healthOf, trendOf, thrivingCount, shipWarning,
   nextImprovement, biggestImprovement, coralArt, reefView, corals, signals, detail, prompts,
 };
