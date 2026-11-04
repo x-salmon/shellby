@@ -70,13 +70,13 @@ function fakeDeps({ rewardCards = true } = {}) {
     log: { info() {} },
   };
   const emit = (tabId, item) => listeners.forEach(fn => fn(tabId, item));
-  const settle = () => new Promise(r => setImmediate(() => setImmediate(r)));
+  const settle = () => new Promise(r => setTimeout(r, 60));
   return { d, emit, noted, settle };
 }
 
 test('a turn that earns a find gets a rewards card after its result', async () => {
   const { d, emit, noted, settle } = fakeDeps();
-  const w = wireTurnRewards(d);
+  const w = wireTurnRewards(d, { quietMs: 5 });
   w.rewardsBegin('t1');
   w.tapReward('critter:xp', { amount: 20 });
   w.tapReward('life:found', { id: 'c', name: 'Cowrie' });
@@ -93,7 +93,7 @@ test('the card waits for the turn\'s changes card, so it lands last', async () =
   const { d, emit, noted, settle } = fakeDeps();
   let release;
   d.turnEnds.set('t1', new Promise(r => { release = r; }));
-  const w = wireTurnRewards(d);
+  const w = wireTurnRewards(d, { quietMs: 5 });
   w.rewardsBegin('t1');
   w.tapReward('stickers:new', { id: 'p', name: 'shellby' });
   emit('t1', { kind: 'result', ok: true });
@@ -106,7 +106,7 @@ test('the card waits for the turn\'s changes card, so it lands last', async () =
 
 test('turned off in Settings, no card is written', async () => {
   const { d, emit, noted, settle } = fakeDeps({ rewardCards: false });
-  const w = wireTurnRewards(d);
+  const w = wireTurnRewards(d, { quietMs: 5 });
   w.rewardsBegin('t1');
   w.tapReward('life:found', { id: 'c', name: 'Cowrie' });
   emit('t1', { kind: 'result', ok: true });
@@ -116,11 +116,24 @@ test('turned off in Settings, no card is written', async () => {
 
 test('a tab closed mid-turn drops what it gathered', async () => {
   const { d, emit, noted, settle } = fakeDeps();
-  const w = wireTurnRewards(d);
+  const w = wireTurnRewards(d, { quietMs: 5 });
   w.rewardsBegin('t1');
   w.tapReward('life:found', { id: 'c', name: 'Cowrie' });
   w.rewardsForget('t1');
   emit('t1', { kind: 'result', ok: true });
   await settle();
   assert.equal(noted.length, 0);
+});
+
+test('a payout that comes after the turn\'s checks still makes its card', async () => {
+  const { d, emit, noted } = fakeDeps();
+  const w = wireTurnRewards(d, { quietMs: 30 });
+  w.rewardsBegin('t1');
+  w.tapReward('life:found', { id: 'c', name: 'Cowrie' });
+  emit('t1', { kind: 'result', ok: true });
+  await new Promise(r => setTimeout(r, 10));
+  w.tapReward('wardrobe:unlocked', { achievement: { id: 'crit', name: 'Critical Hit' }, rewards: [] }); // a crit on the checks' green
+  await new Promise(r => setTimeout(r, 120));
+  assert.equal(noted.length, 1);
+  assert.deepEqual(noted[0].item.items.map(e => e.kind), ['find', 'trophy']);
 });
