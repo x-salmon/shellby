@@ -59,12 +59,19 @@ async function launch(mode, profile) {
     await until(panel, '!!window.SB?.state?.updates');
     await panel.ev("SB.setView('settings')");
     check(await panel.ev("!document.getElementById('updateRow').hidden"), 'Settings → About has an update row');
-    check(await until(panel, "SB.state.updates.state === 'downloading'"), 'the check finds the new version and downloads it');
-    const status = await text(panel, 'updateStatus');
-    check(status === 'Downloading v99.0.0…', `it says what it is doing: "${status}"`);
-    check((await text(panel, 'updateBtn')).endsWith('%'), 'and how far along it is');
-    check(await panel.ev("!document.getElementById('updateBar').hidden"), 'a progress bar fills as it downloads');
-    check(await panel.ev("document.getElementById('updateBtn').disabled"), 'the button waits its turn');
+    // The whole row in one read, taken mid-download: on a busy PC one read at a
+    // time could land after the fake's few seconds of downloading were over.
+    const ROW = "({ state: SB.state.updates.state, status: document.getElementById('updateStatus').textContent, btn: document.getElementById('updateBtn').textContent, bar: !document.getElementById('updateBar').hidden, disabled: document.getElementById('updateBtn').disabled })";
+    let mid = null;
+    for (let i = 0; i < 20000 / 300 && !mid; i++) {
+      const r = await panel.ev(ROW);
+      if (r?.state === 'downloading' && r.btn.endsWith('%')) mid = r; else await wait(300);
+    }
+    check(!!mid, 'the check finds the new version and downloads it');
+    check(mid?.status === 'Downloading v99.0.0…', `it says what it is doing: "${mid?.status}"`);
+    check(!!mid?.btn.endsWith('%'), `and how far along it is (${mid?.btn})`);
+    check(!!mid?.bar, 'a progress bar fills as it downloads');
+    check(!!mid?.disabled, 'the button waits its turn');
     await shot(panel, '1-downloading');
 
     check(await until(panel, "SB.state.updates.state === 'ready'"), 'the download lands');
@@ -72,13 +79,12 @@ async function launch(mode, profile) {
     check(!(await panel.ev("document.getElementById('updateBtn').disabled")), 'and is pressable');
     check(/99\.0\.0 is downloaded and ready/.test(await text(panel, 'updateStatus')), 'the row names the version');
     check(await panel.ev("!document.getElementById('updateDot').hidden"), 'the gear carries a dot from any screen');
-    check(/Update 99\.0\.0 is ready/.test(await text(panel, 'toast')), 'a toast offers the restart');
-    check(await panel.ev("document.querySelector('#toast .toast-action').textContent") === 'Restart and update', 'with the restart on it');
+    // A toast comes and goes on its own timer, behind any other: wait for it, and read it with its button.
+    check(await until(panel, "document.getElementById('toast').textContent.includes('Update 99.0.0 is ready') && document.querySelector('#toast .toast-action')?.textContent === 'Restart and update'", 8000), 'a toast offers the restart, with the restart on it');
 
     // Where the tray item and the notification both land.
     await panel.ev("SB.setView('chat'); SB.jumpToSettingByName('About')");
-    await wait(1200);
-    check(await panel.ev("document.body.dataset.view") === 'settings', 'the tray route opens Settings');
+    check(await until(panel, "document.body.dataset.view === 'settings'", 5000), 'the tray route opens Settings');
     // The jump is a smooth scroll, so give it time to land.
     const onScreen = await until(panel, `(() => {
       const r = document.getElementById('updateRow').getBoundingClientRect();
@@ -95,7 +101,7 @@ async function launch(mode, profile) {
     check(/Looking for anything newer/.test(await text(panel, 'updateStatus')), 'and says so');
     check(!(await panel.ev("document.getElementById('updateBtn').disabled")), 'while "Restart and update" stays pressable');
     check(await until(panel, 'SB.state.updates.rechecking === false'), 'the look settles');
-    check(/99\.0\.0 is still the newest/.test(await text(panel, 'toast')), 'and says nothing newer is out');
+    check(await until(panel, "document.getElementById('toast').textContent.includes('99.0.0 is still the newest')", 8000), 'and says nothing newer is out');
 
     // The button really drives the installer (the fake logs instead of quitting).
     check(await panel.ev('window.shellby.installUpdate()') === true, 'pressing it starts the install');
