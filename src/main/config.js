@@ -124,6 +124,7 @@ const DEFAULTS = {
   checkups: null,     // each project's last dependency audit and outdated check (see checkup.js); this PC only
   weekly: null,       // what happened each day, for the week-in-review card (see weekly.js); this PC only
   flakyTests: true,   // spot tests that fail and then pass on the same code (see flaky/index.js)
+  rewardCards: true,  // what a turn earned (a find, a catch, a trophy...) as a card at its end in Chat (see turn-rewards.js)
   surprises: true,    // now and then a fanfare for a real outcome: a critical hit, a clean landing (see surprises.js)
   shareButtons: true, // a 📸 on celebrations, for the moment's own card (moment-card.js); off, cards stay on Trophies
   crits: null,        // the surprises' luck: when the last one was, misses since, how many (see surprises.js); this PC only

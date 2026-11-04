@@ -224,7 +224,10 @@ function registerIpc(electronIpcMain, d) {
   // ...and its live decor: Health and the dev servers, pushed as they change (tank-gauges.js)
   d.tankGauges = registerTankGaugesIpc(ipcMain, {
     config,
-    toPanel: (channel, payload) => { if (d.panel && !d.panel.isDestroyed() && d.panel.isVisible()) d.send(d.panel, channel, payload); },
+    toPanel: (channel, payload) => {
+      if (d.panel && !d.panel.isDestroyed() && d.panel.isVisible()) d.send(d.panel, channel, payload);
+      else d.tapReward?.(channel, payload); // a find made while the panel is hidden still goes on the turn's card
+    },
     health: () => d.health,
     moodsOn: () => d.health?.settings?.moods !== false,
     servers: () => d.devServers?.summary() || null,

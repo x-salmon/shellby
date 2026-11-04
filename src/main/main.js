@@ -83,6 +83,7 @@ const { wireRemote } = require('./wiring/remote');
 const { wireJournal } = require('./wiring/journal');
 const { wireCrew } = require('./wiring/crew');
 const { wireSurprises } = require('./wiring/surprises');
+const { wireTurnRewards } = require('./wiring/turn-rewards');
 const { wireStepUndo } = require('./wiring/step-undo');
 const { wireNative } = require('./wiring/native');
 const { wireEvents } = require('./wiring/events');
@@ -170,6 +171,7 @@ const shared = {
   isStr: s => typeof s === 'string' && s.length > 0 && s.length < 10000,
   isFolder: d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } }, // missing or unreadable: not a folder
   send(win, channel, payload) {
+    shared.tapReward?.(channel, payload); // what a turn earned, for its card in Chat (wiring/turn-rewards.js)
     if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
   },
   statusFile: () => (ISOLATED ? path.join(app.getPath('userData'), 'shellby-status.txt') : statusLine.STATUS_FILE),
@@ -397,6 +399,7 @@ share(wireBgSessions(shared)); // Claude Code's background sessions (claude --bg
 const { createComputers } = share(wireRemote(shared)); // Claude Code on your other computers, over ssh
 const { journal } = share({ journal: wireJournal(shared) }); // handoff notes per project, read from Claude Code's own files
 share({ crewRoster: wireCrew(shared) }); // one lasting helper crab per agent type
+share(wireTurnRewards(shared)); // what each turn earned, as a card at its end in Chat
 share({ surprises: wireSurprises(shared) }); // crit hits and clean landings, now and then
 share(wireStepUndo(shared)); // a checkpoint before each step that changes files: Undo to here
 share({ native: wireNative(shared) }); // the crab noticing Claude's own to-dos, background commands, memories and skills

@@ -371,6 +371,8 @@
         case 'surprise': return this.append(h('div', { class: `home-mark surprise-mark ${item.what === 'landing' ? 'landing' : 'crit'}` },
           h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: item.what === 'landing' ? '🛬' : '🎲' }),
           h('span', {}, h('b', { text: item.title || (item.what === 'landing' ? 'Clean landing' : 'Critical hit!') }), ` ${item.text || ''}`)));
+        // What the turn earned: finds, catches, trophies... (turn-rewards.js), kept with it.
+        case 'rewards': { const card = SB.renderRewards?.(item); return card ? this.append(card) : undefined; }
         case 'suggest': return this.renderSuggestion(item, replay); // feed-asks.js
         case 'handoff': return this.renderHandoff(item, replay);
         case 'cutoff': return this.renderCutOff(item, replay);
