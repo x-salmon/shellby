@@ -112,12 +112,21 @@ function modelServer() {
     check(fake.asked.length === 1, `the local model was asked once (${fake.asked.length})`);
     check(fake.asked[0]?.model === MODELS[0] && fake.asked[0]?.response_format?.type === 'json_schema', 'with the picked model and the draft\'s schema');
     check(draft.ok && draft.draft?.name === DRAFT.name, `the draft is the local model's (${JSON.stringify(draft).slice(0, 120)})`);
+    check(draft.by === MODELS[0], `...and says which model wrote it (${draft.by})`);
+
+    // the Routines page's own Draft it: the toast credits the local model
+    await ev("SB.setView('routines')");
+    await until("document.getElementById('routineAskText')?.offsetParent !== null");
+    await ev("(i => { i.value = 'check my pull requests every morning at 9'; document.getElementById('routineAsk').requestSubmit(); })(document.getElementById('routineAskText'))");
+    check(await until(`/Drafted by ${MODELS[0].replace(/[.]/g, '\\.')}/.test(SB.$('toast').textContent)`), `the toast says ${MODELS[0]} drafted it ("${await ev("SB.$('toast').textContent")}")`);
+    check(fake.asked.length === 2, `the local model was asked for that one too (${fake.asked.length})`);
+    await ev("document.getElementById('routineCancel')?.click(); SB.setView('settings')");
 
     // with the server gone, Claude (the fake CLI) writes it instead
     await new Promise(r => fake.server.close(r));
     fake.server.closeAllConnections?.();
     const fallback = await ev("shellby.draftRoutine('check my pull requests every morning at 9').then(r => JSON.stringify(r))").then(JSON.parse);
-    check(fake.asked.length === 1, 'nothing more reached the stopped server');
+    check(fake.asked.length === 2, 'nothing more reached the stopped server');
     check(fallback?.ok && fallback.draft?.name === 'Morning summary', `with the server gone, Claude answers instead (${JSON.stringify(fallback).slice(0, 120)})`);
 
     // another server: the old one's model doesn't come with it

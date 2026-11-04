@@ -44,6 +44,7 @@
     let shown = null;        // the last preview: { file, where, added, fresh }
     let asking = 0;          // the newest preview asked for, so a slow one can't land late
     let timer = null;
+    let wordedBy = '';       // the note when a local model worded it, kept until you change the words
 
     const ruleText = h('p', { class: 'lesson-rule', text: rule });
     const input = h('textarea', { class: 'field lesson-input', rows: '2', maxlength: '300', hidden: true, 'aria-label': 'The rule, in your words' });
@@ -77,12 +78,12 @@
         ? `${r.exists ? 'Changes' : 'Creates'} ${r.where} (other settings stay as they are):`
         : r.exists ? `${r.fresh ? 'Goes at the end of' : 'Goes under "Learned from your corrections" in'} ${r.where}:`
         : `Creates ${r.where} with:`;
-      note.textContent = '';
+      note.textContent = wordedBy;
       add.disabled = false;
     }
     const later = () => { clearTimeout(timer); add.disabled = true; timer = setTimeout(preview, PREVIEW_DELAY_MS); };
 
-    input.addEventListener('input', () => { rule = input.value.replace(/\s+/g, ' ').trim(); later(); });
+    input.addEventListener('input', () => { rule = input.value.replace(/\s+/g, ' ').trim(); wordedBy = ''; later(); });
     input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); }); // one line in the file
     edit.addEventListener('click', () => {
       input.value = rule;
@@ -94,12 +95,14 @@
     });
     word.addEventListener('click', async () => {
       word.disabled = true;
-      note.textContent = 'Asking Claude for the wording…';
+      // With a local model on (Settings → Local model) it may word this one, not Claude.
+      note.textContent = SB.state.settings?.localModel?.on ? 'Asking for the wording…' : 'Asking Claude for the wording…';
       const r = await api.draftLesson(item.id).catch(() => null);
       word.disabled = false;
       if (!r?.ok) { note.textContent = r?.error || "Claude couldn't word it. Your own words are still there."; return; }
       input.value = rule = r.rule;
-      note.textContent = '';
+      wordedBy = typeof r.by === 'string' && r.by ? `Worded by ${r.by}, your local model. Check it over.` : '';
+      note.textContent = wordedBy;
       preview();
     });
     add.addEventListener('click', async () => {

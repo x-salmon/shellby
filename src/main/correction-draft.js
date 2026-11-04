@@ -52,7 +52,8 @@ async function askClaude(offer, deps) {
     deps.log?.warn?.(`rule draft failed: ${String(res.stderr || res.err?.message || '').trim().split('\n').slice(-3).join(' ')}`);
     return { ok: false, error: "Claude Code didn't answer. Check it's signed in, in Settings." };
   }
-  return parse(res.stdout);
+  const r = parse(res.stdout);
+  return r.ok && res.by ? { ...r, by: res.by } : r; // by: the local model that worded it (local/model.js)
 }
 
 module.exports = { SCHEMA, prompt, parse, askClaude };

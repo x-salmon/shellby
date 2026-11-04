@@ -131,9 +131,10 @@ test('a local try gets at most half the budget, capped, and Claude keeps at leas
   try {
     const claude = [];
     let t = 0;
-    const run = local.withLocal(fakeClaude(claude), { settings: () => ON, fetchFn: async () => { t += 90000; throw Object.assign(new Error('t'), { name: 'TimeoutError' }); }, now: () => t });
-    await run(ARGS, 150000, { input: 'x', local: true });
-    await run(ARGS, 20000, { input: 'x', local: true });
+    // a runner each: a slow failure rests the model (below), and this is about one call's budget
+    const runner = () => local.withLocal(fakeClaude(claude), { settings: () => ON, fetchFn: async () => { t += 90000; throw Object.assign(new Error('t'), { name: 'TimeoutError' }); }, now: () => t });
+    await runner()(ARGS, 150000, { input: 'x', local: true });
+    await runner()(ARGS, 20000, { input: 'x', local: true });
     assert.deepEqual(timeouts, [local.LOCAL_MAX_MS, 10000]);
     assert.equal(claude[0].timeoutMs, 75000);
   } finally { AbortSignal.timeout = origTimeout; }
@@ -197,4 +198,54 @@ test('Find models lists what the server has, and says plainly when it cannot', a
   assert.match((await local.listModels('http://localhost:1', async () => { throw new Error('ECONNREFUSED'); })).error, /Is Ollama or LM Studio running/);
   assert.match((await local.listModels('http://localhost:1', async () => ({ ok: false, status: 404 }))).error, /answered 404/);
   assert.match((await local.listModels('http://localhost:1', async () => ({ ok: true, status: 200, json: async () => ({ data: [] }) }))).error, /no models yet/);
+});
+
+test('a local answer says which model wrote it, and the drafts pass that on', async () => {
+  const run = local.withLocal(fakeClaude(), { settings: () => ON, fetchFn: fakeFetch(reply('{"rule":"Keep it short."}')) });
+  const res = await run(ARGS, 1000, { input: 'x', local: true });
+  assert.equal(res.by, 'qwen3:8b');
+  const offer = { type: 'undo', label: 'a.js', count: 2, evidence: [], rule: 'keep it short', project: 'p' };
+  assert.deepEqual(await correctionDraft.askClaude(offer, { runClaude: run }), { ok: true, rule: 'Keep it short.', by: 'qwen3:8b' });
+  const claudeOnly = local.withLocal(fakeClaude(), { settings: () => null });
+  const fromClaude = await correctionDraft.askClaude(offer, { runClaude: claudeOnly });
+  assert.equal(fromClaude.by, undefined);
+});
+
+test('a slow failure rests the model for a while; Claude answers meanwhile', async () => {
+  let t = 0;
+  let fetches = 0;
+  const claude = [];
+  const run = local.withLocal(fakeClaude(claude), {
+    settings: () => ON, now: () => t,
+    fetchFn: async () => { fetches++; t += local.SLOW_FAIL_MS; return reply('not json'); },
+  });
+  await run(ARGS, 150000, { input: 'x', local: true });
+  assert.equal(fetches, 1);
+  t += local.REST_MS - 1; // the rest runs from when the slow call ended
+  await run(ARGS, 150000, { input: 'x', local: true });
+  assert.equal(fetches, 1, 'rested: not asked');
+  assert.equal(claude[1].timeoutMs, 150000, 'Claude gets the whole budget while it rests');
+  t += 2;
+  await run(ARGS, 150000, { input: 'x', local: true });
+  assert.equal(fetches, 2, 'asked again once the rest is over');
+});
+
+test('quick failures rest it only once they pile up, and a good answer or a new model starts afresh', async () => {
+  let fetches = 0;
+  let answer = () => { throw new Error('ECONNREFUSED'); };
+  let settings = ON;
+  const run = local.withLocal(fakeClaude(), { settings: () => settings, now: () => 0, fetchFn: async () => { fetches++; return answer(); } });
+  const call = () => run(ARGS, 150000, { input: 'x', local: true });
+  await call(); await call();
+  answer = () => reply('{"rule":"ok"}');
+  await call(); // a good answer clears the two quick failures
+  answer = () => { throw new Error('ECONNREFUSED'); };
+  await call(); await call();
+  assert.equal(fetches, 5, 'never rested so far');
+  await call(); // the third quick failure in a row
+  await call();
+  assert.equal(fetches, 6, 'rested after three in a row');
+  settings = { ...ON, model: 'llama3.2:3b' };
+  await call();
+  assert.equal(fetches, 7, 'another model is tried at once');
 });

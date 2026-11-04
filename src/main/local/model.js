@@ -199,28 +199,50 @@ async function ask(req, settings, timeoutMs, fetchFn) {
   return reply.error ? fail(reply.error) : { ok: true, stdout: reply.stdout, stderr: '', err: null, timedOut: false };
 }
 
+// A model that keeps failing is left out for a while, so every draft doesn't
+// wait on it first. A slow failure (it ran out of time, or took long to get it
+// wrong) counts at once; quick ones (the server isn't running) only once they
+// pile up, since those cost nothing. Any change to the server or model, or an
+// answer that works, starts afresh.
+const SLOW_FAIL_MS = 10000;
+const QUICK_FAILS = 3;
+const REST_MS = 10 * 60 * 1000;
+
 /**
  * runClaude with a local model in front of it. A call that passes
  * `local: true` and fits requestFrom() tries the local model first; if that
- * fails, Claude Code gets the call with what's left of the time budget.
+ * fails, Claude Code gets the call with what's left of the time budget. A
+ * local answer comes back with `by`: the model that wrote it.
  * @param {(args: string[], timeoutMs: number, opts?: any) => Promise<any>} runClaude
  * @param {{ settings: () => any, fetchFn?: typeof fetch, log?: any, now?: () => number }} deps
  */
 function withLocal(runClaude, { settings, fetchFn = globalThis.fetch, log = null, now = Date.now }) {
+  const rest = { key: '', fails: 0, until: 0 }; // the model being rested, and until when
   /** @param {string[]} args @param {number} timeoutMs @param {{ local?: boolean, input?: string | null, [k: string]: any }} [opts] */
   return async (args, timeoutMs, opts = {}) => {
-    const { local = false, ...rest } = opts || {};
+    const { local = false, ...cli } = opts || {};
     /** @type {{ url: string, model: string } | null} */
     let s = null;
     try { s = local ? checkSettings(settings()) : null; } catch (err) { log?.warn?.(`local model settings: ${err?.message || err}`); }
-    const req = s ? requestFrom(args, rest.input) : null;
-    if (!s || !req) return runClaude(args, timeoutMs, rest);
+    const req = s ? requestFrom(args, cli.input) : null;
+    if (!s || !req) return runClaude(args, timeoutMs, cli);
+    const key = `${s.url} ${s.model}`;
+    if (rest.key !== key) Object.assign(rest, { key, fails: 0, until: 0 });
+    if (now() < rest.until) return runClaude(args, timeoutMs, cli);
     const started = now();
     const res = await ask(req, s, Math.min(LOCAL_MAX_MS, timeoutMs * LOCAL_SHARE), fetchFn);
-    if (res.ok) return res;
-    log?.info?.(`local model ${s.model}: ${res.stderr}; asking Claude instead`);
-    return runClaude(args, Math.max(timeoutMs - (now() - started), timeoutMs * (1 - LOCAL_SHARE)), rest);
+    if (res.ok) { rest.fails = 0; return { ...res, by: s.model }; }
+    const took = now() - started;
+    rest.fails++;
+    if (took >= SLOW_FAIL_MS || rest.fails >= QUICK_FAILS) {
+      rest.until = now() + REST_MS;
+      rest.fails = 0;
+      log?.info?.(`local model ${s.model}: ${res.stderr}; asking Claude instead, and leaving it out for ${REST_MS / 60000} minutes`);
+    } else {
+      log?.info?.(`local model ${s.model}: ${res.stderr}; asking Claude instead`);
+    }
+    return runClaude(args, Math.max(timeoutMs - took, timeoutMs * (1 - LOCAL_SHARE)), cli);
   };
 }
 
-module.exports = { checkSettings, cleanSettings, listModels, baseUrl, requestFrom, body, fitsSchema, replyFrom, ask, withLocal, LOCAL_MAX_MS, LOCAL_SHARE };
+module.exports = { checkSettings, cleanSettings, listModels, baseUrl, requestFrom, body, fitsSchema, replyFrom, ask, withLocal, LOCAL_MAX_MS, LOCAL_SHARE, SLOW_FAIL_MS, QUICK_FAILS, REST_MS };

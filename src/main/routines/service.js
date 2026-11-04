@@ -224,7 +224,8 @@ function createRoutines(d) {
         d.log.warn('Routine draft failed', lastLines(res.stderr) || res.err?.message);
         return { ok: false, error: 'Claude Code didn\'t answer. Check it\'s signed in, in Settings.' };
       }
-      return routineDraft.parseDraft(res.stdout, { folderOk: d.isFolder });
+      const draft = routineDraft.parseDraft(res.stdout, { folderOk: d.isFolder });
+      return draft.ok && res.by ? { ...draft, by: res.by } : draft; // by: the local model that wrote it (local/model.js)
     } finally { routineDrafting = false; }
   }
 
