@@ -174,3 +174,27 @@ test('settings that throw, or are missing, leave the call to Claude', async () =
   assert.equal(claude.length, 2);
   assert.match(logs[0], /no config/);
 });
+
+test('Settings can save an address on this PC and a model; it only stays on with a model', () => {
+  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://127.0.0.1:1234/v1', model: ' llama3.2 ' }), { on: true, url: 'http://127.0.0.1:1234', model: 'llama3.2' });
+  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: '' }), { on: false, url: 'http://localhost:11434', model: '' });
+  assert.equal(local.cleanSettings({ on: true, url: 'http://192.168.1.5:11434', model: 'm' }), null);
+  assert.equal(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: 'rm -rf' }), null);
+  assert.equal(local.cleanSettings('on'), null);
+  assert.equal(local.cleanSettings({ on: 'yes', url: 'http://localhost:11434', model: 'm' }).on, false);
+});
+
+test('Find models lists what the server has, and says plainly when it cannot', async () => {
+  const urls = [];
+  const ok = await local.listModels('http://localhost:11434/', async (url, init) => {
+    urls.push([url, init.redirect]);
+    return { ok: true, status: 200, json: async () => ({ data: [{ id: 'qwen3:8b' }, { id: 'qwen3:8b' }, { id: 'bad name' }, { id: 7 }, { id: 'lmstudio-community/gemma-3' }] }) };
+  });
+  assert.deepEqual(ok, { ok: true, models: ['qwen3:8b', 'lmstudio-community/gemma-3'] });
+  assert.deepEqual(urls, [['http://localhost:11434/v1/models', 'error']]);
+
+  assert.match((await local.listModels('http://example.com', async () => { throw new Error('never'); })).error, /on this PC/);
+  assert.match((await local.listModels('http://localhost:1', async () => { throw new Error('ECONNREFUSED'); })).error, /Is Ollama or LM Studio running/);
+  assert.match((await local.listModels('http://localhost:1', async () => ({ ok: false, status: 404 }))).error, /answered 404/);
+  assert.match((await local.listModels('http://localhost:1', async () => ({ ok: true, status: 200, json: async () => ({ data: [] }) }))).error, /no models yet/);
+});

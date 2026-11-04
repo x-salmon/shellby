@@ -42,6 +42,48 @@ function baseUrl(raw) {
   return `${u.protocol}//${u.host}${path}`;
 }
 
+/**
+ * What Settings sends -> the setting to save, or null to refuse the change
+ * (an address off this PC, a model name that can't be one). It only stays on
+ * with a model picked.
+ * @param {any} raw { on, url, model }
+ * @returns {{ on: boolean, url: string, model: string } | null}
+ */
+function cleanSettings(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const url = baseUrl(raw.url);
+  const model = typeof raw.model === 'string' ? raw.model.trim() : '';
+  if (!url) return null;
+  if (model && (model.length > MAX_MODEL_NAME || !MODEL_NAME.test(model))) return null;
+  return { on: raw.on === true && !!model, url, model };
+}
+
+const LIST_TIMEOUT_MS = 5000;
+const MAX_MODELS = 200;
+
+/**
+ * The models a local server has, for Settings' Find models.
+ * -> { ok: true, models: string[] } or { ok: false, error } in words for the panel.
+ * @param {unknown} rawUrl
+ * @param {typeof fetch} [fetchFn]
+ */
+async function listModels(rawUrl, fetchFn = globalThis.fetch) {
+  const url = baseUrl(rawUrl);
+  if (!url) return { ok: false, error: 'Use an address on this PC, like http://localhost:11434.' };
+  let res;
+  try {
+    res = await fetchFn(`${url}/v1/models`, { redirect: 'error', signal: AbortSignal.timeout(LIST_TIMEOUT_MS) });
+  } catch (err) {
+    return { ok: false, error: err?.name === 'TimeoutError' ? `${url} didn't answer in time.` : `Nothing answered at ${url}. Is Ollama or LM Studio running?` };
+  }
+  if (!res.ok) return { ok: false, error: `${url} answered ${res.status}. Check the address.` };
+  let json;
+  try { json = await res.json(); } catch { return { ok: false, error: `${url} isn't a model server Shellby knows.` }; }
+  const ids = Array.isArray(json?.data) ? json.data.map((/** @type {any} */ m) => m?.id) : [];
+  const models = [...new Set(ids.filter(id => typeof id === 'string' && id.length <= MAX_MODEL_NAME && MODEL_NAME.test(id)))].slice(0, MAX_MODELS);
+  return models.length ? { ok: true, models } : { ok: false, error: 'The server has no models yet. Pull one first, e.g. ollama pull qwen3:8b.' };
+}
+
 /** The value after a flag, or null. */
 function flagValue(args, flag) {
   const i = args.indexOf(flag);
@@ -181,4 +223,4 @@ function withLocal(runClaude, { settings, fetchFn = globalThis.fetch, log = null
   };
 }
 
-module.exports = { checkSettings, baseUrl, requestFrom, body, fitsSchema, replyFrom, ask, withLocal, LOCAL_MAX_MS, LOCAL_SHARE };
+module.exports = { checkSettings, cleanSettings, listModels, baseUrl, requestFrom, body, fitsSchema, replyFrom, ask, withLocal, LOCAL_MAX_MS, LOCAL_SHARE };

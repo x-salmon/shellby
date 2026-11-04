@@ -404,6 +404,8 @@ interface ShellbyPanelExtras {
   renderClaudeUpdate: any;
   renderFacts: any;
   renderUpdates: any;
+  // settings-local.js
+  renderLocalModel: any;
   // settings-remote.js
   remoteNow: any;
   remoteRefresh: any;

@@ -90,6 +90,24 @@
         <p class="muted small">Claude can open pages, click and read them in your own Chrome, signed in as you, through the Claude in Chrome extension, which needs to be installed. Applies to new conversations.</p>
       </section>
 
+      <section class="setting-group" id="localModelGroup" data-nav="Local model">
+        <h3>Local model</h3>
+        <label class="toggle"><input type="checkbox" id="localModelToggle" aria-describedby="localModelText localModelStatus"><span class="switch"></span>Write small drafts with a local model first</label>
+        <p class="muted small" id="localModelText">Routine drafts and the wording of learned rules go to Ollama or LM Studio on this PC before Claude, so they don't use your plan. If it isn't running, takes too long or gets one wrong, Claude writes it as usual. Nothing leaves this PC.</p>
+        <div class="row wrap">
+          <label class="inline-label" for="localModelUrl">Server</label>
+          <input type="text" class="field slim" id="localModelUrl" placeholder="http://localhost:11434" spellcheck="false" autocomplete="off" maxlength="500">
+          <button type="button" class="btn slim-btn" id="localModelFind">Find models</button>
+        </div>
+        <div class="row">
+          <label class="inline-label" for="localModelSelect">Model</label>
+          <select id="localModelSelect" class="field slim">
+            <option value="">Find models first</option>
+          </select>
+        </div>
+        <p class="small" id="localModelStatus" role="status" aria-live="polite"></p>
+      </section>
+
       <section class="setting-group" id="limitGroup" data-nav="Usage limit">
         <h3>Your 5-hour limit</h3>
         <label class="toggle"><input type="checkbox" id="forecastToggle"><span class="switch"></span>Warn me when I'm on pace to hit my 5-hour limit before it resets</label>
