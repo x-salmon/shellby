@@ -74,8 +74,13 @@ async function answer(label, expect) {
   if (d.title !== expect.title || !d.detail.includes(expect.command)) throw new Error('confirm window content wrong');
   if (d.focused !== 'Cancel') throw new Error('Cancel must be the default button');
   // Click after this call returns: the click closes the window, and on a slow CI
-  // box it went before the reply did, leaving the call waiting forever.
-  await dlg.evaluate(`{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}); setTimeout(() => b.click(), 0); }`);
+  // box it went before the reply did, leaving the call waiting forever. Even a
+  // next-tick click can close it before the reply is sent; the window only
+  // closes once it's answered, so a close here is the click landing (what the
+  // click did is checked by the steps after this).
+  const pressed = await dlg.evaluate(`(() => { const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}); if (!b) return false; setTimeout(() => b.click(), 0); return true; })()`)
+    .catch(e => { if (/ closed$/.test(e.message)) return true; throw e; });
+  if (!pressed) throw new Error(`the confirm window has no ${label} button`);
   dlg.close();
   // Gone before the next one is looked for: a slow CI box still lists this one
   // as it closes, and a connection to it never answers.

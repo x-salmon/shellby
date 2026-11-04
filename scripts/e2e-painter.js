@@ -51,9 +51,14 @@ async function answerDialog(label, shots, ms = 20000) {
       let d = null;
       try {
         d = await cdp(t.webSocketDebuggerUrl, shots);
-        // Clicked on the next tick, so the window closing doesn't swallow the answer.
-        const pressed = await d.ev(`(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(label)}); if (!b) return false; setTimeout(() => b.click(), 0); return true; })()`);
-        if (pressed) return true;
+        const find = `[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(label)})`;
+        if (await d.ev(`!!${find}`)) {
+          // Clicked on the next tick, and still the window can close before the
+          // reply goes: it only closes once answered, so that's the click landing.
+          const pressed = await d.ev(`(() => { const b = ${find}; if (!b) return false; setTimeout(() => b.click(), 0); return true; })()`)
+            .catch(e => { if (/went away/.test(e.message)) return true; throw e; });
+          if (pressed) return true;
+        }
       } catch { /* closing or not ready yet: look again */ } finally {
         d?.close();
       }
