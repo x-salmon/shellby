@@ -2,15 +2,17 @@
 // stagingPercentage from latest.yml and lets that share of installs update, so
 // a bad release reaches some people, not everyone, and setting it to 0 stops it.
 //
-// A new release starts at the first of STAGES and climbs on its own (the
-// Rollout workflow steps it hourly), because a release nobody remembered to
-// promote would leave most people behind. 0 is a halt: the step leaves it alone
+// A new release starts at the first of STAGES (src/main/rollout-stages.js) and
+// climbs on its own (the Rollout workflow steps it every 15 minutes), because a
+// release nobody remembered to promote would leave most people behind. Shellby
+// itself also works the stage out from the release's age (since 0.96.1's
+// successor), so a run GitHub skipped only holds back versions older than that. 0 is a halt: the step leaves it alone
 // until someone sets a number by hand. No field at all means everyone, which is
 // how a finished rollout ends and what every older release already says.
 //
 //   node scripts/rollout.js start <latest.yml>   the release workflow, before publishing
 //   node scripts/rollout.js set <percent> [tag]  by hand: 0 halts, 100 finishes
-//   node scripts/rollout.js step                 hourly: the next stage, if it's due
+//   node scripts/rollout.js step                 every 15 minutes: the next stage, if it's due
 //
 // The pure parts are tested in test/rollout.test.js. set and step need gh.
 const { execFileSync } = require('child_process');
@@ -18,8 +20,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const HOUR = 60 * 60 * 1000;
-const STAGES = [{ after: 0, percent: 10 }, { after: 6, percent: 50 }, { after: 24, percent: 100 }];
+// The schedule lives with the app, which works the stage out for itself too.
+const { HOUR, STAGES, dueAt } = require('../src/main/rollout-stages');
+
 const FIELD = /^stagingPercentage:.*(\r?\n|$)/m;
 const UPLOAD_TRIES = 3;
 
@@ -36,11 +39,6 @@ function withPercent(text, percent) {
   if (!/^version:/m.test(bare)) throw new Error("That isn't a latest.yml: it names no version.");
   if (percent === 100) return bare;
   return `${bare.replace(/\s*$/, '')}\nstagingPercentage: ${percent}\n`;
-}
-
-/** The stage a release this old should be at. */
-function dueAt(hours) {
-  return STAGES.filter(s => hours >= s.after).at(-1).percent;
 }
 
 /** The percent to move to, or null to leave it: finished, halted, or not due. It never goes down. */

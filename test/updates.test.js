@@ -79,6 +79,7 @@ test('getting a staged release early lets this PC into the rollout and checks ag
   const { u, updater } = make();
   u.start();
   assert.equal(await u.getEarly(), false, 'nothing staged to get');
+  assert.equal(await updater.isUserWithinRollout({ version: '0.19.0', stagingPercentage: 10 }), false, 'not in the 10% before');
   updater.emit('update-not-available', { version: '0.19.0', stagingPercentage: 10 });
   const before = updater.checks;
   await u.getEarly();
@@ -97,7 +98,34 @@ test('a halted release is never offered early', async () => {
   const before = updater.checks;
   assert.equal(await u.getEarly(), false);
   assert.equal(updater.checks, before);
-  assert.equal(updater.isUserWithinRollout, undefined);
+  assert.equal(await updater.isUserWithinRollout({ version: '0.19.0', stagingPercentage: 0 }), false);
+});
+
+test('the rollout goes by the release\'s age, so a Rollout run GitHub skipped holds nobody back', async () => {
+  const released = Date.parse('2026-11-04T05:42:00Z');
+  const asked = [];
+  const updater = new FakeUpdater();
+  // electron-updater's own check: in, by this install's id, below 30%.
+  updater.isUserWithinRollout = info => { asked.push(info.stagingPercentage); return info.stagingPercentage > 30; };
+  let clock = released + 7 * 60 * 60 * 1000;
+  const u = new Updates({ updater, version: '0.18.0', timers: noTimers, log: () => {}, now: () => clock });
+  u.start();
+  const info = { version: '0.19.0', stagingPercentage: 10, releaseDate: new Date(released).toISOString() };
+  assert.equal(await updater.isUserWithinRollout(info), true, '7 hours on, the 50% stage, though the file still says 10');
+  assert.deepEqual(asked, [50], 'and the install id still decides who is in it');
+  clock = released + 60 * 60 * 1000;
+  assert.equal(await updater.isUserWithinRollout(info), false, 'an hour in, 10%');
+  clock = released + 25 * 60 * 60 * 1000;
+  assert.equal(await updater.isUserWithinRollout(info), true, 'a day on, everyone');
+  assert.equal(await updater.isUserWithinRollout({ ...info, stagingPercentage: 0 }), false, 'halted, whatever its age');
+  assert.equal(await updater.isUserWithinRollout({ version: '0.19.0' }), true, 'no field: everyone');
+  // Settings says how far it has really got.
+  clock = released + 7 * 60 * 60 * 1000;
+  updater.emit('update-not-available', info);
+  assert.deepEqual(u.view().staged, { version: '0.19.0', percent: 50 });
+  clock = released + 25 * 60 * 60 * 1000;
+  updater.emit('update-not-available', info);
+  assert.equal(u.view().staged, null, 'out to everyone and still not offered is not the rollout');
 });
 
 test('an available update downloads, reports progress and becomes installable', () => {
