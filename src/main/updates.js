@@ -6,6 +6,7 @@
 
 const { EventEmitter } = require('events');
 const { win32 } = require('path');
+const { rolloutPercent } = require('./rollout-stages');
 
 const EVERY = 6 * 60 * 60 * 1000;
 // After a failed check: try again sooner, then fall back to EVERY. Wi-Fi that
@@ -46,16 +47,17 @@ function isNewer(a, b) {
 }
 
 /**
- * A release out in stages (scripts/rollout.js) that hasn't reached this PC:
+ * A release out in stages (rollout-stages.js) that hasn't reached this PC:
  * electron-updater calls that "not available" and hands over the newer info.
  * -> { version, percent } or null. percent 0 is a halted release.
  */
-function stagedOf(info, current) {
+function stagedOf(info, current, now) {
   const version = versionOf(info);
   if (!isNewer(version, current)) return null;
-  // No percent: held back for another reason (an OS it doesn't support), not a rollout.
-  const percent = parseInt(info.stagingPercentage, 10);
-  return Number.isFinite(percent) ? { version, percent: clampPercent(percent) } : null;
+  // Out to everyone and still not offered: held back for another reason (an
+  // OS it doesn't support), not by the rollout.
+  const percent = rolloutPercent(info, now);
+  return percent === null || percent >= 100 ? null : { version, percent };
 }
 
 const SCOOP_APP =/[\\/]scoop[\\/]apps[\\/]shellby[\\/]/i;
@@ -83,8 +85,10 @@ function installedBy(execPath, env = process.env) {
  * along with `ready`: a look for anything newer, behind the install button.
  */
 class Updates extends EventEmitter {
-  constructor({ updater = null, managedBy = null, version = '', every = EVERY, prepare = null, timers = null, log = null } = {}) {
+  constructor({ updater = null, managedBy = null, version = '', every = EVERY, prepare = null, timers = null, log = null, now = Date.now } = {}) {
     super();
+    this.now = now;
+    this.early = false;      // "Get it now": this PC is in every rollout that isn't halted
     // A package manager owns this install: hold no updater, so check() and
     // install() are no-ops and start() schedules nothing.
     this.updater = managedBy ? null : updater;
@@ -120,6 +124,7 @@ class Updates extends EventEmitter {
   start() {
     const u = this.updater;
     if (!u) return this;
+    this.#judgeRollout(u);
     // While an update sits downloaded, later checks run quietly behind the
     // install button: only a release newer than the one on disk moves it.
     u.on('checking-for-update', () => {
@@ -135,7 +140,7 @@ class Updates extends EventEmitter {
     u.on('update-not-available', info => {
       this.#recovered();
       if (this.state === 'ready') return void this.#set('ready', { error: null });
-      this.#set('current', { offered: null, percent: 0, checkedAt: Date.now(), staged: stagedOf(info, this.version) });
+      this.#set('current', { offered: null, percent: 0, checkedAt: Date.now(), staged: stagedOf(info, this.version, this.now()) });
     });
     u.on('download-progress', p => {
       if (this.state === 'ready') return; // an already-cached file reports progress after the fact
@@ -186,9 +191,24 @@ class Updates extends EventEmitter {
    */
   async getEarly() {
     if (!this.updater || !this.staged || this.staged.percent === 0) return false;
-    this.updater.isUserWithinRollout = info => parseInt(info?.stagingPercentage, 10) !== 0;
+    this.early = true;
     await this.check();
     return true;
+  }
+
+  // Whether this PC is in a release's rollout, by the stage its age says it
+  // should be at rather than the one the last Rollout run got round to
+  // (rollout-stages.js). electron-updater's own check still decides who is in
+  // a given share, by this install's id, so the same PCs go first as before.
+  #judgeRollout(u) {
+    const builtIn = typeof u.isUserWithinRollout === 'function' ? u.isUserWithinRollout : null;
+    u.isUserWithinRollout = info => {
+      const percent = rolloutPercent(info, this.now());
+      if (percent === null || percent >= 100) return true;
+      if (percent === 0) return false;
+      if (this.early) return true;
+      return builtIn ? builtIn({ ...info, stagingPercentage: percent }) : false;
+    };
   }
 
   /** Install now: the installer runs silently and Shellby comes back on the new version. */
@@ -284,15 +304,18 @@ function reopenAfterUpdate(flag, version, now = Date.now()) {
  * or `staged` for a release whose rollout hasn't reached this PC.
  */
 function fakeUpdater({ version = '99.0.0', mode = 'ok', step = 600 } = {}) {
-  const u = /** @type {EventEmitter & { quitAndInstall: (...args: unknown[]) => void, checkForUpdates: () => Promise<unknown>, isUserWithinRollout?: unknown }} */ (new EventEmitter());
+  const u = /** @type {EventEmitter & { quitAndInstall: (...args: unknown[]) => void, checkForUpdates: () => Promise<unknown>, isUserWithinRollout?: (info: object) => boolean | Promise<boolean> }} */ (new EventEmitter());
   u.quitAndInstall =(...args) => console.log('[shellby] fake updater would install now', args);
   u.checkForUpdates = async () => {
     u.emit('checking-for-update');
     await new Promise(r => setTimeout(r, step));
     if (mode === 'fail') return u.emit('error', new Error('net::ERR_INTERNET_DISCONNECTED'));
     if (mode === 'current') return u.emit('update-not-available', { version });
-    // Out to 10%, and this PC isn't in it until "Get it now" lets it in.
-    if (mode === 'staged' && !u.isUserWithinRollout) return u.emit('update-not-available', { version, stagingPercentage: 10 });
+    // Out to 10% as of now, and this PC isn't in it until "Get it now" lets it in.
+    if (mode === 'staged') {
+      const info = { version, stagingPercentage: 10, releaseDate: new Date().toISOString() };
+      if (!(await u.isUserWithinRollout?.(info))) return u.emit('update-not-available', info);
+    }
     u.emit('update-available', { version });
     for (const percent of [8, 24, 51, 77, 96]) {
       await new Promise(r => setTimeout(r, step));

@@ -1,11 +1,18 @@
 name: Rollout
 
-# Moves the latest release through its stages (scripts/rollout.js), hourly. Run
-# it by hand with a percent to take over: 0 halts a bad release where it stands
-# and the hourly step leaves it there, 100 finishes one that can't wait.
+# Moves the latest release through its stages (scripts/rollout.js). Run it by
+# hand with a percent to take over: 0 halts a bad release where it stands and
+# the step leaves it there, 100 finishes one that can't wait.
+#
+# GitHub drops scheduled runs when it's busy (hourly ran 5 times in 31 hours,
+# and 0.96.0 sat at 10% for half a day), so it asks every 15 minutes: a step
+# that isn't due changes nothing and takes seconds. Shellby works the stage out
+# from the release's age as well (src/main/rollout-stages.js), so a skipped
+# run only holds back copies older than that; this keeps latest.yml honest for
+# them.
 on:
   schedule:
-    - cron: '41 * * * *'   # hourly, off the hour
+    - cron: '7,22,37,52 * * * *'   # every 15 minutes, off the busy quarter-hours
   workflow_dispatch:
     inputs:
       percent:
