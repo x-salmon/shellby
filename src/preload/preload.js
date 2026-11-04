@@ -690,6 +690,7 @@ contextBridge.exposeInMainWorld('shellby', {
   // updates
   checkUpdates: invoke('updates:check'),
   installUpdate: invoke('updates:install'),
+  getUpdateEarly: invoke('updates:early'),
 
   // routines
   listRoutines: invoke('routines:list'),

@@ -288,6 +288,11 @@ function registerPanelIpc(ipcMain, d) {
   // ---- updates
   ipcMain.handle('updates:check', () => (d.updates ? d.updates.check() : d.updateView()));
   ipcMain.handle('updates:install', () => !!d.updates?.install());
+  // A release still rolling out, fetched now rather than when this PC's turn comes.
+  ipcMain.handle('updates:early', async () => {
+    if (d.updates) await d.updates.getEarly();
+    return d.updateView();
+  });
 
   // ---- keeping Claude Code itself up to date (claude/update.js)
   ipcMain.handle('claude:tricks-dismiss', () => { d.dismissClaudeTricks(); return true; });
