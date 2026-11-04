@@ -322,6 +322,7 @@ function wireSessions(d) {
   function beginTurn(tab) {
     turnStarts.delete(tab.id);
     d.rewardsBegin?.(tab.id); // what it earns goes on a card at its end (wiring/turn-rewards.js)
+    tab.redTests = false; // the crab's red-tests sign waits for this turn's own test run (work-signs.js)
     const now = Date.now();
     touches = touches.filter(t => t.tabId !== tab.id && (t.end == null || now - t.end < TOUCH_KEEP_MS));
     touches.push({ tabId: tab.id, touch: changes.newTouch(), start: now, end: null });

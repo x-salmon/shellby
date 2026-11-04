@@ -203,10 +203,18 @@ function wireCritter(d) {
   }
   // A helper that hasn't come back yet passes the stuck mark with nothing else
   // changing, so he looks again then.
+  // refreshCritter runs many times a second while he works, so the timer is only
+  // set again when the time it's for moves.
   let signsTimer = null;
+  let signsDue = null;
   function recheckSigns(ms) {
+    const due = ms == null ? null : Date.now() + ms + 50;
+    if (due === signsDue || (due != null && signsDue != null && Math.abs(due - signsDue) < 1000)) return;
     clearTimeout(signsTimer);
-    if (ms != null) signsTimer = setTimeout(refreshCritter, ms + 50);
+    signsDue = due;
+    if (due == null) return;
+    signsTimer = setTimeout(() => { signsDue = null; refreshCritter(); }, due - Date.now());
+    signsTimer.unref?.();
   }
 
   const dressCrew = crew => (crew.length && d.crewRoster ? d.crewRoster.dress(crew) : crew);

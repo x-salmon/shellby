@@ -50,55 +50,65 @@ function entryOf(channel, p) {
 }
 
 /**
- * Which tabs are mid-turn and what each has earned. A reward rarely knows its
- * tab, so it goes to the turn that started most recently and is still going,
- * or to one whose result is in but whose card isn't written yet (a level-up
- * the turn's own XP brings lands after the result). With no turn going, it
- * isn't kept: the toast still showed it.
+ * Which turns are going and what each has earned. Each turn is its own entry
+ * (a token from begin), so a follow-up turn in the same tab never takes over
+ * one still settling its card. A reward rarely knows its tab, so it's only
+ * kept when exactly one live turn could have earned it: one still running
+ * (`live(tabId)` says its tab is busy), or one whose result is in but whose
+ * card isn't written yet (a level-up the turn's own XP brings lands after the
+ * result). With none, or more than one, it isn't kept: the toast still showed
+ * it, and a guess would put it under the wrong conversation for good.
  */
 function createLedger() {
-  /** @type {Map<string, { at: number, ending: boolean, entries: any[] }>} */
+  /** @type {Map<number, { tabId: string, ending: boolean, entries: any[] }>} */
   const turns = new Map();
   let seq = 0;
 
+  /** A turn starts in this tab. -> its token. One that never ended goes. */
   function begin(tabId) {
-    turns.set(tabId, { at: ++seq, ending: false, entries: [] });
+    for (const [k, t] of turns) if (t.tabId === tabId && !t.ending) turns.delete(k);
+    turns.set(++seq, { tabId, ending: false, entries: [] });
+    return seq;
   }
 
-  function target() {
-    /** @type {{ id: string, rank: number } | null} */
-    let best = null;
-    for (const [id, t] of turns) {
-      // A running turn beats one that's only waiting for its card.
-      const rank = (t.ending ? 0 : 1e12) + t.at;
-      if (!best || rank > best.rank) best = { id, rank };
-    }
-    return best?.id ?? null;
-  }
-
-  /** A reward seen now. -> the tab it went to, or null. */
-  function add(entry) {
+  /**
+   * A reward seen now. -> the token of the turn it went to, or null.
+   * @param {any} entry
+   * @param {(tabId: string) => boolean} [live]
+   */
+  function add(entry, live = () => true) {
     if (!entry) return null;
-    const id = target();
-    if (id == null) return null;
-    turns.get(id)?.entries.push(entry);
-    return id;
+    const could = [...turns].filter(([, t]) => t.ending || live(t.tabId));
+    if (could.length !== 1) return null;
+    const [k, t] = could[0];
+    t.entries.push(entry);
+    return k;
   }
 
-  /** The turn's result is in: rewards it brings still count until close(). */
+  /** The tab's turn has its result: rewards it brings still count until close(). -> its token, or null. */
   function ending(tabId) {
-    const t = turns.get(tabId);
-    if (t) t.ending = true;
+    for (const [k, t] of turns) {
+      if (t.tabId === tabId && !t.ending) { t.ending = true; return k; }
+    }
+    return null;
   }
 
   /** The turn is over. -> its card, or null when it earned nothing but XP. */
-  function close(tabId, now = 0) {
-    const t = turns.get(tabId);
-    turns.delete(tabId);
+  function close(token, now = 0) {
+    const t = turns.get(token);
+    turns.delete(token);
     return t ? cardOf(t.entries, now) : null;
   }
 
-  return { begin, add, ending, close, open: () => turns.size };
+  /** A tab closed: every turn of its goes, card unwritten. */
+  function forget(tabId) {
+    for (const [k, t] of turns) if (t.tabId === tabId) turns.delete(k);
+  }
+
+  /** How many rewards the turn has, to tell a quiet spell. */
+  const count = token => turns.get(token)?.entries.length ?? 0;
+
+  return { begin, add, ending, close, forget, count, open: () => turns.size };
 }
 
 /** The card for a turn's rewards, or null when there's nothing past XP to show. */

@@ -17,8 +17,10 @@ const pause = ms => new Promise(r => setTimeout(r, ms));
 
 function wireTurnRewards(d, { quietMs = QUIET_MS, maxSettleMs = MAX_SETTLE_MS } = {}) {
   const ledger = createLedger();
-  const added = new Map(); // tabId -> how many rewards it has gained, to tell a quiet spell
   let watching = false;
+
+  // A running turn only counts while its tab is still at work: one that never sent a result can't soak up idle finds.
+  const busy = tabId => !!d.manager?.tabs?.get(tabId)?.session?.busy;
 
   const on = () => !d.CAPTURE && d.config?.get('rewardCards') !== false;
 
@@ -27,27 +29,27 @@ function wireTurnRewards(d, { quietMs = QUIET_MS, maxSettleMs = MAX_SETTLE_MS } 
     watching = true;
     d.manager.on('item', (tabId, item) => {
       if (item?.kind !== 'result') return;
-      ledger.ending(tabId);
+      const token = ledger.ending(tabId);
+      if (token == null) return;
       // After every other listener's own payouts for this result (the turn's XP, a level it brings).
-      setImmediate(() => { finish(tabId).catch(err => d.log?.info?.(`turn rewards: ${err.message}`)); });
+      setImmediate(() => { finish(tabId, token).catch(err => d.log?.info?.(`turn rewards: ${err.message}`)); });
     });
   }
 
   // Until a quiet spell with nothing new for this turn, or the cap.
-  async function settle(tabId) {
+  async function settle(token) {
     const until = Date.now() + maxSettleMs;
     for (;;) {
-      const before = added.get(tabId) || 0;
+      const before = ledger.count(token);
       await pause(quietMs);
-      if ((added.get(tabId) || 0) === before || Date.now() >= until) return;
+      if (ledger.count(token) === before || Date.now() >= until) return;
     }
   }
 
-  async function finish(tabId) {
+  async function finish(tabId, token) {
     try { await d.turnEnds?.get(tabId); } catch { /* its changes card failed; the rewards still stand */ }
-    await settle(tabId);
-    added.delete(tabId);
-    const card = ledger.close(tabId, Date.now());
+    await settle(token);
+    const card = ledger.close(token, Date.now());
     if (!card || !on() || !d.manager?.tabs?.has(tabId)) return;
     d.manager.note(tabId, card);
   }
@@ -61,16 +63,14 @@ function wireTurnRewards(d, { quietMs = QUIET_MS, maxSettleMs = MAX_SETTLE_MS } 
 
   /** A tab closed mid-turn: what it was gathering goes with it. */
   function rewardsForget(tabId) {
-    added.delete(tabId);
-    ledger.close(tabId);
+    ledger.forget(tabId);
   }
 
   /** Every send passes here; the rewards among them are kept for the turn. */
   function tapReward(channel, payload) {
     if (!ledger.open()) return;
     try {
-      const id = ledger.add(entryOf(channel, payload));
-      if (id != null) added.set(id, (added.get(id) || 0) + 1);
+      ledger.add(entryOf(channel, payload), busy);
     } catch (err) {
       d.log?.info?.(`turn rewards: ${err.message}`);
     }

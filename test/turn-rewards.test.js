@@ -18,21 +18,52 @@ test('entryOf reads each reward channel and ignores the rest', () => {
   assert.equal(entryOf('life:found', null), null);
 });
 
-test('a reward goes to the turn that started most recently and is still running', () => {
+test('with one turn going, a reward goes to it', () => {
+  const ledger = createLedger();
+  const a = ledger.begin('a');
+  assert.equal(ledger.add({ kind: 'find', id: 'x', title: 'Dug up X' }), a);
+});
+
+test('with two turns that could have earned it, a reward is not guessed onto either', () => {
   const ledger = createLedger();
   ledger.begin('a');
   ledger.begin('b');
-  assert.equal(ledger.add({ kind: 'find', id: 'x', title: 'Dug up X' }), 'b');
-  ledger.ending('b');
-  assert.equal(ledger.add({ kind: 'find', id: 'y', title: 'Dug up Y' }), 'a', 'a running turn beats one only waiting for its card');
+  assert.equal(ledger.add({ kind: 'find', id: 'x', title: 'Dug up X' }), null);
+});
+
+test('a turn whose tab is no longer busy and has no result yet takes nothing', () => {
+  const ledger = createLedger();
+  ledger.begin('a');
+  const b = ledger.begin('b');
+  assert.equal(ledger.add({ kind: 'find', id: 'x', title: 'Dug up X' }, id => id === 'b'), b);
+});
+
+test('a follow-up turn in the same tab never takes over one still settling its card', () => {
+  const ledger = createLedger();
+  const first = ledger.begin('a');
+  ledger.add({ kind: 'find', id: 'x', title: 'Dug up X' });
+  assert.equal(ledger.ending('a'), first);
+  const second = ledger.begin('a');
+  assert.notEqual(second, first);
+  assert.equal(ledger.close(first).items[0].title, 'Dug up X', 'the first keeps what it earned');
+  ledger.add({ kind: 'sticker', id: 's', title: 'Sticker: p' });
+  assert.equal(ledger.ending('a'), second);
+  assert.equal(ledger.close(second).items[0].title, 'Sticker: p', 'and the second gets its own card');
+});
+
+test('a turn that never ended is dropped when its tab starts another', () => {
+  const ledger = createLedger();
+  ledger.begin('a');
+  ledger.begin('a');
+  assert.equal(ledger.open(), 1);
 });
 
 test('a turn whose result is in still collects until its card is written', () => {
   const ledger = createLedger();
   ledger.begin('a');
-  ledger.ending('a');
+  const token = ledger.ending('a');
   ledger.add({ kind: 'level', title: 'Level 3' });
-  const card = ledger.close('a', 5);
+  const card = ledger.close(token, 5);
   assert.equal(card.items[0].title, 'Level 3');
   assert.equal(card.at, 5);
 });
@@ -65,7 +96,7 @@ function fakeDeps({ rewardCards = true } = {}) {
   const noted = [];
   const d = {
     config: { get: k => (k === 'rewardCards' ? rewardCards : undefined) },
-    manager: { on: (ev, fn) => { if (ev === 'item') listeners.push(fn); }, tabs: new Map([['t1', {}]]), note: (id, item) => noted.push({ id, item }) },
+    manager: { on: (ev, fn) => { if (ev === 'item') listeners.push(fn); }, tabs: new Map([['t1', { session: { busy: true } }]]), note: (id, item) => noted.push({ id, item }) },
     turnEnds: new Map(),
     log: { info() {} },
   };
