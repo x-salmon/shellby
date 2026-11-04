@@ -12,6 +12,7 @@ const { savePng } = require('./lib/shot');
 const { COMMAND } = require('../src/main/statusline');
 const { AWARDS } = require('../src/main/progression/xp');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
@@ -79,16 +80,13 @@ const plain = s => s.replace(/\x1b\[[0-9;]*m/g, '');
     await wait(300);
     if (process.argv[2]) await savePng((m, p) => panel.send(m, p), process.argv[2]);
     panel.ev("document.getElementById('slBtn').click()");
-    let dialog = null;
-    for (let i = 0; i < 30 && !dialog; i++) { dialog = (await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()).find(t => t.url.includes('dialog.html')); if (!dialog) await wait(200); }
-    check(!!dialog, 'asks in the isolated confirm window first');
-    const dlg = await connect(dialog.webSocketDebuggerUrl);
-    await wait(500);
-    const title = await dlg.ev("document.querySelector('h1, h2, .title')?.textContent || ''");
-    check(/Add Shellby to Claude Code/.test(title), `dialog: "${title}"`);
-    await dlg.ev("{ const b = [...document.querySelectorAll('button')].find(b => /Add it/.test(b.textContent)); setTimeout(() => b.click(), 0); true; }");
-    await wait(1000);
-    const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+    const asked = await answerDialog(PORT, { press: /Add it/ }); // lib/dialog.js
+    check(!!asked, 'asks in the isolated confirm window first');
+    check(/Add Shellby to Claude Code/.test(asked?.title || ''), `dialog: "${asked?.title}"`);
+    // The write lands after the click: wait for it rather than for a fixed time.
+    const readSettings = () => { try { return JSON.parse(fs.readFileSync(settingsFile, 'utf8')); } catch { return {}; } };
+    for (let end = Date.now() + 10000; Date.now() < end && readSettings().statusLine?.command !== COMMAND;) await wait(150);
+    const settings = readSettings();
     check(settings.statusLine?.command === COMMAND && settings.theme === 'dark', 'statusLine added, other settings kept');
     check(fs.existsSync(`${settingsFile}.shellby-backup`), 'backup of the original settings kept');
     check(await panel.ev("document.getElementById('slBtn').textContent") === 'Remove', 'Settings now offers Remove');

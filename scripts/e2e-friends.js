@@ -13,6 +13,7 @@ const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { formatWave } = require('../src/main/github/mail');
 const { TEMPERAMENTS } = require('../src/main/banter');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
@@ -63,16 +64,11 @@ async function connect(url) {
   const until = async (ev, expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(200); } return false; };
   const waitFor = (fn, ms = 8000) => until(async () => fn(), null, ms); // a check on the mock, not the page
   const targets = async () => (await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json());
+  // The confirm window (lib/dialog.js): what it asks, then press `button`.
   async function answer(button, titleRe) {
-    let d = null;
-    for (let i = 0; i < 40 && !d; i++) { d = (await targets()).find(t => t.url.includes('dialog.html')); if (!d) await wait(200); }
-    if (!d) return check(false, `confirm window for ${titleRe}`);
-    const dlg = await connect(d.webSocketDebuggerUrl);
-    await wait(500);
-    const title = await dlg.ev("document.querySelector('h1, h2, .title')?.textContent || ''");
-    check(titleRe.test(title), `asks first: "${title}"`);
-    await dlg.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(button)}).click()`);
-    dlg.close();
+    const said = await answerDialog(PORT, { press: button });
+    if (!said) return check(false, `confirm window for ${titleRe}`);
+    check(titleRe.test(said.title), `asks first: "${said.title}"`);
   }
   const shot = async (target, file) => { if (file) await savePng((m, p) => target.send(m, p), file); };
   const myCard = () => [...mock.state.gists.values()].find(g => g.owner?.login === 'crabfan' && g.files['shellby-card.json']);

@@ -10,6 +10,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { answerDialog } = require('./lib/dialog');
 
 const PORT = Number(process.env.E2E_CDP_PORT) || 9341;
 const ROOT = path.join(__dirname, '..');
@@ -64,27 +65,13 @@ const readJson = f => JSON.parse(fs.readFileSync(f, 'utf8'));
 
 // Answer the confirm window: check what it says, then press `label`.
 async function answer(label, expect) {
-  const t = await target('dialog.html', 20);
-  const dlg = await cdp(t.webSocketDebuggerUrl);
-  await until(() => dlg.evaluate(`(document.getElementById('title')?.textContent || '').length > 0`).catch(() => false), 'confirm content');
-  // The default button is focused a frame after the content goes in.
-  await until(() => dlg.evaluate(`document.activeElement?.tagName === 'BUTTON'`).catch(() => false), 'default button focus', 5000);
-  const d = await dlg.evaluate(`({ title: document.getElementById('title').textContent, message: document.getElementById('message').textContent, detail: document.getElementById('detail')?.textContent || '', focused: document.activeElement?.textContent })`);
-  console.log('confirm:', JSON.stringify(d));
+  // Content first, then the press: a wrong window must never be answered.
+  const d = await answerDialog(PORT, { press: null });
+  if (!d) throw new Error('the confirm window never turned up');
+  console.log('confirm:', JSON.stringify({ title: d.title, message: d.message, detail: d.detail, focused: d.focused }));
   if (d.title !== expect.title || !d.detail.includes(expect.command)) throw new Error('confirm window content wrong');
   if (d.focused !== 'Cancel') throw new Error('Cancel must be the default button');
-  // Click after this call returns: the click closes the window, and on a slow CI
-  // box it went before the reply did, leaving the call waiting forever. Even a
-  // next-tick click can close it before the reply is sent; the window only
-  // closes once it's answered, so a close here is the click landing (what the
-  // click did is checked by the steps after this).
-  const pressed = await dlg.evaluate(`(() => { const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}); if (!b) return false; setTimeout(() => b.click(), 0); return true; })()`)
-    .catch(e => { if (/ closed$/.test(e.message)) return true; throw e; });
-  if (!pressed) throw new Error(`the confirm window has no ${label} button`);
-  dlg.close();
-  // Gone before the next one is looked for: a slow CI box still lists this one
-  // as it closes, and a connection to it never answers.
-  await until(async () => !(await list()).some(x => x.id === t.id), 'confirm window closed', 10000);
+  if (!(await answerDialog(PORT, { press: label }))) throw new Error(`the confirm window went before ${label} was pressed`);
 }
 
 (async () => {

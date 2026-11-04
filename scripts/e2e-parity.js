@@ -9,6 +9,7 @@ const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
@@ -102,23 +103,9 @@ function makeRepo() {
     // 5. ! runs a command yourself (asked once, in the confirm window); the output
     // goes to Claude with the next message.
     await type('!Write-Output parity-check');
-    let dlgTarget = null;
-    for (let i = 0; i < 40 && !dlgTarget; i++) {
-      dlgTarget = (await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()).find(t => t.url.endsWith('dialog.html'));
-      if (!dlgTarget) await wait(250);
-    }
-    check(!!dlgTarget, 'the first ! command asks first');
-    if (dlgTarget) {
-      const dws = new WebSocket(dlgTarget.webSocketDebuggerUrl);
-      await new Promise(r => { dws.onopen = r; });
-      let did = 0; const dp = new Map();
-      dws.onmessage = e => { const m = JSON.parse(e.data); dp.get(m.id)?.(m); };
-      const dev = expr => new Promise(r => { const i = ++did; dp.set(i, m => r(m.result?.result?.value)); dws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true } })); });
-      for (let i = 0; i < 40 && !(await dev("document.activeElement?.tagName === 'BUTTON'")); i++) await wait(150);
-      check(await dev("document.activeElement.textContent") === 'Cancel', '...with Cancel as the default');
-      await dev("{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === 'Let ! run commands'); setTimeout(() => b.click(), 0); true; }");
-      dws.close();
-    }
+    const asked = await answerDialog(PORT, { press: 'Let ! run commands' });
+    check(!!asked, 'the first ! command asks first');
+    if (asked) check(asked.focused === 'Cancel', '...with Cancel as the default');
     check(await until("[...SB.activeTab().el.querySelectorAll('.shell-run:not(.pending) .t-result')].some(e => e.textContent.includes('parity-check'))", 20000), '! command output shows in the conversation');
     await type('hello again');
     await idle();

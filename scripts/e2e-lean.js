@@ -12,6 +12,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
@@ -45,7 +46,7 @@ async function launch(port, env) {
     }
     throw new Error(`${suffix} never appeared`);
   };
-  return { app, target };
+  return { app, target, port };
 }
 
 (async () => {
@@ -136,15 +137,11 @@ async function launch(port, env) {
     })()`);
     if (!pick) check(false, 'no plugin to try turning off');
     else {
-      const dlg = await cdp((await run.target('dialog.html', 20)).webSocketDebuggerUrl);
-      await poll(dlg, "(document.getElementById('title')?.textContent || '').length > 0");
-      const d = await dlg.ev("({ title: document.getElementById('title').textContent, message: document.getElementById('message').textContent, focused: document.activeElement?.textContent })");
-      console.log('confirm:', JSON.stringify(d));
-      check(d.title === `Turn off "${pick}"?` && /stays installed/.test(d.message), 'the confirm window says it stays installed');
-      check(d.focused === 'Cancel', 'Cancel is the default');
-      await dlg.shot(path.join(real, 'lean-confirm.png'));
-      await dlg.ev("{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === 'Cancel'); setTimeout(() => b.click(), 0); true; }");
-      dlg.close();
+      // Read and photographed, then Cancel (lib/dialog.js).
+      const d = await answerDialog(run.port, { press: 'Cancel', shot: path.join(real, 'lean-confirm.png') });
+      console.log('confirm:', JSON.stringify(d && { title: d.title, message: d.message, focused: d.focused }));
+      check(d?.title === `Turn off "${pick}"?` && /stays installed/.test(d.message), 'the confirm window says it stays installed');
+      check(d?.focused === 'Cancel', 'Cancel is the default');
       check(await poll(panel, `!SB.state.lean.off.some(p => p.name === ${JSON.stringify(pick)}) && SB.state.lean.plugins.some(p => p.name === ${JSON.stringify(pick)})`), `${pick} is still on after Cancel`);
     }
     panel.close();

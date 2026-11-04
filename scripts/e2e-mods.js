@@ -16,6 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { findClaude } = require('../src/main/claude/cli');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
@@ -137,25 +138,19 @@ async function target(suffix, tries = 40) {
     await panel.shoot(out);
 
     // 2. Turn on asks in the confirm window; Cancel leaves it off.
-    const askOn = async () => {
+    // Turn on, then answer the confirm window with `press` (lib/dialog.js). It
+    // waits on claude plugin validate, so it gets a minute to turn up.
+    const askOn = async (press, shot = null) => {
       await ev(`${row}.querySelector('.mod-switch').click()`);
-      const t = await target('dialog.html', 60);
-      if (!t) return null;
-      const dlg = await connect(t.webSocketDebuggerUrl);
-      await dlg.until("(document.getElementById('title')?.textContent || '').length > 0");
-      return dlg;
+      return answerDialog(PORT, { press, shot, ms: 60000 });
     };
-    let dlg = await askOn();
-    check(!!dlg, 'Turn on opens the confirm window');
-    if (dlg) {
-      const d = await dlg.ev("({ title: title.textContent, detail: detail.textContent, note: note.textContent, danger: document.getElementById('dialog').classList.contains('danger'), focused: document.activeElement?.textContent })");
+    const d = await askOn('Cancel', out.replace(/\.png$/, '-confirm.png'));
+    check(!!d, 'Turn on opens the confirm window');
+    if (d) {
       check(d.title === `Turn on the mod ${MOD}?`, 'it names the mod');
       check(/⚠ Runs programs on your PC/.test(d.detail), 'it lists what the mod reaches for, worst marked');
       check(d.danger && d.focused === 'Cancel', 'it is red, and Cancel is the default');
       check(/can't show everything/.test(d.note), "it doesn't promise the mod is safe");
-      await dlg.shoot(out.replace(/\.png$/, '-confirm.png'));
-      await dlg.ev("{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === 'Cancel'); setTimeout(() => b.click(), 0); true; }");
-      dlg.close();
     }
     check(await until(`!${row}?.querySelector('.mod-switch')?.disabled`) && !(await ev(`SB.state.toolbox.mods.find(m => m.id === '${ID}').enabled`)), 'Cancel leaves it off');
 
@@ -166,11 +161,7 @@ async function target(suffix, tries = 40) {
       console.log(`SKIP  Turn it on / Turn it off: Claude Code here refuses mods in ~/.claude/skills (${blocked})`);
     } else {
       // 3. Turn it on: the real CLI writes it into the home's settings.
-      dlg = await askOn();
-      if (dlg) {
-        await dlg.ev("{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === 'Turn it on'); setTimeout(() => b.click(), 0); true; }");
-        dlg.close();
-      }
+      await askOn('Turn it on');
       check(await until(`SB.state.toolbox.mods.find(m => m.id === '${ID}')?.enabled === true`, 60000), 'Turn it on turns it on');
       // On is a skills-dir mod's default, so Claude Code takes the false out rather than writing true.
       check(settingsSay() !== false, "and Claude Code's settings no longer turn it off");
