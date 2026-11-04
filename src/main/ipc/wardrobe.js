@@ -36,14 +36,16 @@ const NOT_A_CODE = "That doesn't look like an outfit code.";
 function registerWardrobeIpc(ipcMain, d) {
   const W = () => d.wardrobe();
   const withView = r => ({ ...r, view: W().view() });
+  // You dressed him: What you use counts it (feature-use.js). Only what you asked for, never the season's own change.
+  const dressed = r => { if (r.ok) d.featureAct?.('outfit'); return r; };
 
   ipcMain.handle('skins:reload', () => d.reloadSkins());
 
   ipcMain.handle('wardrobe:view', () => W().view());
   ipcMain.handle('external:clear-background', () => d.clearBackground());
-  ipcMain.handle('wardrobe:set-outfit', (_e, patch) => withView(W().setOutfit(patch && typeof patch === 'object' ? patch : {})));
-  ipcMain.handle('wardrobe:wear-season', () => withView(W().wearSeason()));
-  ipcMain.handle('wardrobe:randomize', () => withView(W().randomize()));
+  ipcMain.handle('wardrobe:set-outfit', (_e, patch) => withView(dressed(W().setOutfit(patch && typeof patch === 'object' ? patch : {}))));
+  ipcMain.handle('wardrobe:wear-season', () => withView(dressed(W().wearSeason())));
+  ipcMain.handle('wardrobe:randomize', () => withView(dressed(W().randomize())));
   ipcMain.handle('wardrobe:set-voice', (_e, key) => {
     const r = W().setVoice(isStr(key) ? key : null);
     // His don't-repeat memory points into the old voice's lines: start it afresh.
@@ -83,6 +85,7 @@ function registerWardrobeIpc(ipcMain, d) {
     if (!isStr(text) || text.length > MAX_CODE) return { ok: false, error: NOT_A_CODE };
     const r = W().wearCode(text, d.builtinSkins());
     if (!r.ok) return r;
+    dressed(r);
     if (r.skin && r.skin !== d.config.get('skin')) {
       const sk = d.allSkins().find(x => x.id === r.skin);
       if (sk && !sk.locked) { d.config.set({ skin: r.skin }); d.broadcastSkin(); }

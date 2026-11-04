@@ -79,7 +79,9 @@ function registerTankIpc(ipcMain, d) {
 
   ipcMain.handle('tank:save', (_e, draft) => {
     if (!draft || typeof draft !== 'object' || Array.isArray(draft)) return { ok: false, error: 'That isn’t a tank.', view: view() };
-    return keep(draft);
+    const r = keep(draft);
+    if (r.ok) d.featureAct?.('tank'); // What you use: you decorated it (feature-use.js)
+    return r;
   });
 
   // ---- his life in it (tank/life.js): kept apart from the layout, per PC, never synced
