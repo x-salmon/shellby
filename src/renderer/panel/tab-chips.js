@@ -110,7 +110,7 @@
   SB.folderChanged = async (r) => {
     if (!r) return;
     if (r.error) return SB.toast(r.error);
-    state.settings = r.settings;
+    if (r.settings) state.settings = r.settings; // a reply without them must never leave the panel with none
     state.cwd = r.cwd;
     $('settingsFolder').textContent = SB.remotePlace(r.cwd) || r.cwd;
     // A blank tab moves to the new folder; a conversation in progress keeps its own.

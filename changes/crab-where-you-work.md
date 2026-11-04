@@ -7,3 +7,6 @@
 
 ### Changed
 - **Work mode is quiet.** He says nothing in Work mode now, just a mark in his bubble, and his signs say what needs you. You can still pick "Just about work" under Personality to bring the words back.
+
+### Fixed
+- **Use a practice folder works again.** In First steps it now opens the practice project with its first task in the box. Before, it opened nothing, and the panel stumbled every time you switched conversations until Shellby was restarted.

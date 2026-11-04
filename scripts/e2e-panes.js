@@ -194,6 +194,9 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     // while split. Only one strip ever holds a tab (the rest are emptied), so the first match is it.
     const tabAt = id => ev(`(() => { const r = [...document.querySelectorAll('.tabs [data-tab-id]')].find(e => e.dataset.tabId === '${id}').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
     const paneSpot = (id, fx, fy) => ev(`(() => { const r = SB.state.tabs.get('${id}').el.getBoundingClientRect(); return { x: r.left + r.width * ${fx}, y: r.top + r.height * ${fy} }; })()`);
+    // A spot in the pane with nothing to press under it, for a click that only focuses the pane: an empty
+    // conversation's middle is First steps, whose buttons (a practice project...) would do something.
+    const paneBlank = id => ev(`(() => { const el = SB.state.tabs.get('${id}').el; const r = el.getBoundingClientRect(); const PRESSABLE = 'button, a, input, select, textarea, label, summary, [role="button"], [tabindex]'; for (let fy = 0.5; fy < 0.98; fy += 0.04) for (const fx of [0.5, 0.2, 0.8, 0.05, 0.95]) { const x = r.left + r.width * fx, y = r.top + r.height * fy; const hit = document.elementFromPoint(x, y); if (hit && el.contains(hit) && !hit.closest(PRESSABLE)) return { x, y }; } return null; })()`);
     await panel.drag(await tabAt(C), await paneSpot(A, 0.5, 0.92));
     await wait(300);
     check(await isShape([[A, C], [D]]), 'C dragged from A\'s strip to the foot of A\'s pane splits off under it');
@@ -242,7 +245,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
 
     // ---- The box sits in the focused pane; the others show their own draft.
     await ev(`SB.activate('${C}'); document.getElementById('input').value = 'draft for C'`);
-    await panel.click(await paneSpot(D, 0.5, 0.5));
+    await panel.click(await paneBlank(D));
     check(await until(`SB.state.activeTab === '${D}'`), 'clicking D focuses it');
     check(await ev(`document.getElementById('composer').closest('.pane')?.dataset.tab === '${D}'`), 'the box moved into D\'s pane');
     check(await ev(`(() => { const s = document.querySelector('.pane[data-tab="${C}"] .pane-standin'); return !!s && s.textContent.includes('draft for C'); })()`), 'C\'s pane shows its draft in a stand-in');
@@ -256,7 +259,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await wait(150);
     const handed = await ev(`({ pane: document.getElementById('composer').closest('.pane')?.dataset.tab === '${C}', draft: document.getElementById('input').value, focus: document.activeElement.id || document.activeElement.tagName })`);
     check(handed.pane && handed.draft === 'draft for C' && handed.focus === 'input', `and the box moves there with C's draft, ready to type (${JSON.stringify(handed)})`);
-    await panel.click(await paneSpot(D, 0.5, 0.5));
+    await panel.click(await paneBlank(D));
     await until(`SB.state.activeTab === '${D}'`);
 
     // ---- A key typed on a stand-in lands in its conversation.
@@ -818,7 +821,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev(`SB.activate('${A}')`);
 
     // ---- A click into a pane gives it the box.
-    await panel.click(await paneSpot(C, 0.5, 0.5));
+    await panel.click(await paneBlank(C));
     check(await until(`SB.state.activeTab === '${C}'`), 'clicking into C focuses it');
     check(await ev(`SB.state.tabs.get('${C}').el.classList.contains('focused')`), 'and outlines it');
 

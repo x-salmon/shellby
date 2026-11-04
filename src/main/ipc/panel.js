@@ -220,7 +220,10 @@ function registerPanelIpc(ipcMain, d) {
   // First steps' practice folder, for someone with no project to hand (practice.js).
   ipcMain.handle('first-run:practice', () => {
     try {
-      return { ok: true, folder: practice.ensurePracticeFolder(app.getPath('userData')), task: practice.FIRST_TASK };
+      // Set here, like a folder you picked: the panel's folderChanged takes setFolder's reply ({ cwd, settings }).
+      // folder:set only takes recent folders, and this one isn't, yet.
+      const dir = practice.ensurePracticeFolder(app.getPath('userData'));
+      return { ok: true, folder: d.setFolder(dir), task: practice.FIRST_TASK };
     } catch (e) {
       d.log.warn('practice folder failed', e.message);
       return { ok: false, error: 'Shellby couldn’t make the practice folder.' };

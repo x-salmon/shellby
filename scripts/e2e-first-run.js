@@ -198,6 +198,21 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
       check(await ev("!SB.$('rmCard').classList.contains('room-locked')"), "and Review mastery's card is back");
     });
 
+    // 4b. No project to hand: Use a practice folder opens one, with its first task
+    // in the box. It once handed the panel a bare path for settings, and every
+    // switch of conversation after that threw.
+    await run('practice', {}, async ({ ev, until }) => {
+      await until("SB.state.view === 'onboarding'");
+      await ev("document.querySelector('#onboardPaths [data-path=\"claude\"]').click()");
+      await until("!SB.$('letsGoBtn').disabled");
+      await ev("SB.$('letsGoBtn').click()");
+      check(await until(visible(CARD)), 'First steps offer a practice folder');
+      await ev(`${CARD}.querySelector('.fr-extra').click()`);
+      check(await until(`${NOW_STEP} === 'message'`), 'Use a practice folder opens a project');
+      check(await ev("!!SB.state.settings && typeof SB.state.settings === 'object' && !!SB.state.cwd"), `the panel keeps its settings and has the folder (${await ev('SB.state.cwd')})`);
+      check(await until("SB.$('input').value.length > 0"), 'its first task is waiting in the box');
+    });
+
     // 5. Existing profiles: nothing changes for them.
     await run('mid-rooms', { onboarded: true, rooms: { tasks: 2, open: [], all: false } }, async ({ ev, until }) => {
       await until('!!SB.activeTab()');
