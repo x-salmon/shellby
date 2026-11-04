@@ -18,7 +18,7 @@ Packs hold **data only**: pixels, colours, short lines of text and a few setting
 
    ```json
    {
-     "$schema": "https://github.com/x-salmon/shellby/blob/main/docs/addon.schema.json",
+     "$schema": "https://raw.githubusercontent.com/x-salmon/shellby/main/docs/addon.schema.json",
      "format": 1,
      "id": "my-first-pack",
      "name": "My First Pack",
@@ -225,7 +225,7 @@ Keep sprites small. Up to 5×5 reads best, 7×7 for the one big piece in a set, 
 
 ## Skins
 
-Skins use the [SKINS.md](SKINS.md) format (up to 32 colours) and add two optional fields:
+Skins use the [SKINS.md](SKINS.md) format (up to 32 colours) and add a few optional fields:
 
 ```jsonc
 {
@@ -240,7 +240,7 @@ Skins use the [SKINS.md](SKINS.md) format (up to 32 colours) and add two optiona
 }
 ```
 
-Each anchor value is `[x, y]` with integers from −16 to 48. If your crab has the classic shape, leave out `anchors`. A skin painted from someone else's gallery skin can say so with `"basedOn": "<their pack id>"`, the credit CC BY 4.0 asks for (the Painter adds it for you).
+Each anchor value is `[x, y]` with integers from −16 to 48. If your crab has the classic shape, leave out `anchors`. A skin painted from someone else's gallery skin can say so with `"basedOn": "<their pack id>"`, the credit CC BY 4.0 asks for (the Painter adds it for you). There's also `"won": "YYYY-MM"`, the crab contest month a skin won, which only counts in a pack that ships with Shellby and is ignored anywhere else.
 
 ## Voices
 
@@ -384,7 +384,7 @@ Items are available right away unless you add `unlock`. You can use one of these
 | `{ "achievement": "<id>" }` | unlocked when the player earns that achievement |
 | `{ "season": "<id>" }` | can be unlocked while that season is running |
 | `{ "event": "<id>" }` | turns up while that tide event (or Molt Day) is on, and is the player's to keep after |
-| `{ "event": "<id>", "year": 2027 }` | the same, for that year's run only |
+| `{ "event": "<id>", "year": 2027 }` | the same, for that year's run only (a year from 2026 to 2100) |
 | `{ "level": 10 }` | unlocked once he's reached that level, a whole number from 2 to 99. It goes by the highest level he's ever reached, so a molt doesn't take it back |
 
 Event ids: `harvest`, `haunting`, `frostbite`, `penpal`, `spring-clean`, `low-tide` and `molt-day` (see [TIDES.md](TIDES.md)). That's how a pack makes Haunting outfits that only appear in the Haunting.

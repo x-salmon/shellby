@@ -340,9 +340,9 @@ class HealthService {
 
   startupLock(item) {
     // By the exe it runs, not the name: another Shellby build (com.someone.shellby)
-    // is just another app here, and Open at login doesn't control it.
+    // is just another app here, and Start with Windows doesn't control it.
     const exe = (this.deps.selfExe || process.execPath).toLowerCase();
-    if (item.command.toLowerCase().includes(exe)) return "That's Shellby: use Open at login in Settings.";
+    if (item.command.toLowerCase().includes(exe)) return "That's Shellby: use Start with Windows in Settings.";
     if (item.switch) return null;
     if (/everyone/.test(item.location)) return 'Entries for everyone need an administrator. Switch it in Task Manager → Startup apps.';
     return "Windows has no on/off switch for this one.";

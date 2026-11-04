@@ -478,7 +478,7 @@ test('only the entry that runs this Shellby is locked; another Shellby build is 
   };
   const { svc } = service({ startupReader: reader, selfExe: 'C:\\Programs\\Shellby\\Shellby.exe' });
   const { items } = await svc.startupItems();
-  assert.match(items[0].locked, /Open at login/);
+  assert.match(items[0].locked, /Start with Windows/);
   assert.equal(items[1].locked, null);
 });
 
