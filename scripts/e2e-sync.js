@@ -16,6 +16,7 @@ const { savePng } = require('./lib/shot');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { FINDS } = require('../src/main/gifts');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
@@ -74,15 +75,10 @@ async function connect(url) {
   }
 
   async function turnOnFriends() {
-    panel.ev("shellby.githubSetFeature('friends', true)");
-    let d = null;
-    for (let i = 0; i < 40 && !d; i++) { d = (await targets()).find(t => t.url.includes('dialog.html')); if (!d) await wait(200); }
-    if (!d) return check(false, 'confirm window for Visiting crabs');
-    const dlg = await connect(d.webSocketDebuggerUrl);
-    await wait(500);
-    await dlg.ev("{ const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Turn on'); setTimeout(() => b.click(), 0); true; }");
-    dlg.close();
-    await wait(1000);
+    await panel.ev("window.__friendsOn = shellby.githubSetFeature('friends', true); true");
+    if (!(await answerDialog(PORT, { press: 'Turn on' }))) return check(false, 'confirm window for Visiting crabs'); // lib/dialog.js
+    // Settled once the call that asked has its answer, not after a fixed wait.
+    await panel.ev('window.__friendsOn.then(() => true, () => true)');
   }
 
   // Quit the way a PC does, not a kill: Chromium writes the key the sign-in is

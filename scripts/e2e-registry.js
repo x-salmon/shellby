@@ -8,6 +8,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
@@ -18,33 +19,9 @@ let fails = 0;
 const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
 
 // Finds Shellby's confirmation window (its own isolated window), reports what it
-// shows, screenshots it, and clicks the named button inside that window.
+// shows, screenshots it, and clicks the named button inside that window (lib/dialog.js).
 async function clickInWindow(port, label = 'Install', shotName = null) {
-  for (let i = 0; i < 80; i++) {
-    let t;
-    try { t = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(x => x.url.endsWith('dialog.html')); } catch { /* not yet */ }
-    if (t) {
-      const ws = new WebSocket(t.webSocketDebuggerUrl);
-      await new Promise(r => { ws.onopen = r; });
-      let id = 0; const p = new Map();
-      ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
-      const send = (method, params = {}) => new Promise(r => { const n = ++id; p.set(n, m => r(m.result)); ws.send(JSON.stringify({ id: n, method, params })); });
-      const ev = async expr => (await send('Runtime.evaluate', { expression: expr, returnByValue: true }))?.result?.value;
-      for (let k = 0; k < 20 && !(await ev("document.getElementById('title').textContent")); k++) await wait(150);
-      await wait(400);
-      const info = JSON.parse(await ev(`JSON.stringify({ title: document.getElementById('title').textContent, message: document.getElementById('message').textContent,
-        items: [...document.querySelectorAll('.item .nm')].map(n => n.textContent), buttons: [...document.querySelectorAll('button')].map(b => b.textContent) })`));
-      if (shotName) {
-        const img = await send('Page.captureScreenshot', { format: 'png' });
-        fs.writeFileSync(path.join(os.tmpdir(), shotName), Buffer.from(img.data, 'base64'));
-      }
-      await ev(`[...document.querySelectorAll('button')].find(b => b.textContent === ${JSON.stringify(label)})?.click()`);
-      ws.close();
-      return info;
-    }
-    await wait(500);
-  }
-  return null;
+  return answerDialog(port, { press: label, shot: shotName ? path.join(os.tmpdir(), shotName) : null, ms: 40000 });
 }
 
 async function cdpPanel(port) {

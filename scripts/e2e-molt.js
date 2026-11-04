@@ -11,6 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { answerDialog } = require('./lib/dialog');
 const { xpForLevel } = require('../src/main/progression/levels');
 const { tierShell } = require('../src/main/progression/shells');
 const { ACHIEVEMENTS } = require('../src/main/wardrobe/achievements');
@@ -73,16 +74,9 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
 
     // 2. Molt: Shellby's own confirm window asks first.
     await panel.ev("document.getElementById('moltGo').click()");
-    let dlgT = null;
-    for (let i = 0; i < 40 && !dlgT; i++) { dlgT = (await targets()).find(t => t.url.endsWith('dialog.html')); await wait(250); }
-    check(!!dlgT, 'the confirm window opens');
-    if (dlgT) {
-      const dlg = await connect(dlgT.webSocketDebuggerUrl);
-      await until(dlg, "(document.getElementById('title')?.textContent || '').length > 0");
-      check(/^Molt into/.test(await dlg.ev("document.getElementById('title').textContent")), 'it asks to molt');
-      await dlg.ev("{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === 'Molt'); setTimeout(() => b.click(), 0); true; }");
-      dlg.close();
-    }
+    const asked = await answerDialog(PORT, { press: 'Molt' });
+    check(!!asked, 'the confirm window opens');
+    if (asked) check(/^Molt into/.test(asked.title), 'it asks to molt');
 
     // 3. Level 1 again, with the ring, the tier shell and everything kept.
     check(await until(panel, "document.getElementById('brandLevel').textContent === '1'"), `the badge shows level 1 (${await panel.ev("document.getElementById('brandLevel').textContent")})`);

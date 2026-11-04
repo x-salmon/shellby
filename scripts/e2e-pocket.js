@@ -17,6 +17,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const { DNS, LOGIN } = require('../test/fixtures/fake-tailscale');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9377;
@@ -119,20 +120,7 @@ const untilTrue = async (fn, ms = 12000) => { const end = Date.now() + ms; while
     await wait(500);
 
     // ---- 1. on, after a yes in the confirmation window
-    const pressInDialog = async label => {
-      let dlg = null;
-      for (let i = 0; i < 40 && !dlg; i++) {
-        try { dlg = (await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()).find(t => t.url.endsWith('dialog.html')); } catch { /* not yet */ }
-        if (!dlg) await wait(250);
-      }
-      if (!dlg) return null;
-      const d = await connect(dlg.webSocketDebuggerUrl);
-      await untilTrue(() => d.ev("document.activeElement?.tagName === 'BUTTON'"), 8000);
-      const seen = await d.ev("({ title: document.getElementById('title').textContent, message: document.getElementById('message').textContent })");
-      await d.ev(`{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}); setTimeout(() => b.click(), 0); true; }`);
-      d.close();
-      return seen;
-    };
+    const pressInDialog = label => answerDialog(PORT, { press: label }); // lib/dialog.js
     await panel.ev('window.__pocketOn = shellby.setPocket({ enabled: true }); true');
     const asked = await pressInDialog('Put him on my phone');
     check(asked?.title === 'Put Shellby on your phone?', `turning it on asks first (${asked?.title})`);

@@ -10,6 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
@@ -49,22 +50,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const ev = await connect(list.find(t => t.url.endsWith('panel.html')));
     const json = async expr => { const t = await ev(`(${expr}).then(r => JSON.stringify(r))`); return t ? JSON.parse(t) : null; };
     const until = async (expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(150); } return false; };
-    const answerDialog = async index => {
-      const end = Date.now() + 8000;
-      while (Date.now() < end) {
-        const pages = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
-        const dlg = pages.find(t => t.url.includes('dialog.html'));
-        if (dlg) {
-          const dev = await connect(dlg);
-          await wait(300);
-          const text = await dev('document.body.innerText');
-          await dev(`document.querySelectorAll('button')[${index}]?.click()`);
-          return text || '';
-        }
-        await wait(150);
-      }
-      return null;
-    };
+    // The confirm window: press its button at `index` (lib/dialog.js). -> what it said, or null.
+    const answer = async index => (await answerDialog(PORT, { press: index }))?.text ?? null;
     const waitRun = async (id, ms = 30000) => {
       const end = Date.now() + ms;
       while (Date.now() < end) {
@@ -91,7 +78,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       { type: 'set', values: { got: '{{ file.json.id }} / {{ file.text }}' } },
     ], inputs: [{ name: 'title', default: 'Build broke' }] };
     const pending = ev(`shellby.saveWorkflow(${JSON.stringify(fileIt)}).then(r => JSON.stringify(r))`);
-    const shown = await answerDialog(0);
+    const shown = await answer(0);
     check(shown !== null && /calls create_issue on the fake MCP server/.test(shown), 'the confirmation window names the tool call');
     const saved = JSON.parse(await pending);
     check(saved.ok === true, `it saves after a yes (${JSON.stringify(saved.errors || '')})`);
@@ -103,7 +90,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // 3. A Claude step with servers: the confirmation window says so, even in Plan mode.
     const post = { name: 'Post it', cwd: work, steps: [{ type: 'claude', mode: 'plan', prompt: 'Post a note', mcp: ['fake'], mcpOnly: true }] };
     const pending2 = ev(`shellby.saveWorkflow(${JSON.stringify(post)}).then(r => JSON.stringify(r))`);
-    const shown2 = await answerDialog(0);
+    const shown2 = await answer(0);
     check(shown2 !== null && /may use every tool of the fake MCP server without asking, and no other MCP servers/.test(shown2), 'the confirmation window names the servers a Claude step may use');
     const saved2 = JSON.parse(await pending2);
     check(saved2.ok === true, 'it saves after a yes');

@@ -12,6 +12,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
+const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
@@ -75,25 +76,11 @@ const ntfy = http.createServer((req, res) => {
     const ev = expr => new Promise(r => { const i = ++id; p.set(i, m => r(m.result?.result?.value)); ws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, awaitPromise: true } })); });
     const until = async (expr, ms = 10000) => { for (let t = 0; t < ms; t += 150) { if (await ev(expr)) return true; await wait(150); } return false; };
     const idle = () => until('!SB.activeTab().busy');
-    // The confirmation window is its own page: find it, read it, press a button.
-    const pressInDialog = async (label, title) => {
-      let dlg = null;
-      for (let i = 0; i < 40 && !dlg; i++) {
-        try { dlg = (await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json()).find(t => t.url.endsWith('dialog.html')); } catch { /* not yet */ }
-        if (!dlg) await wait(250);
-      }
-      if (!dlg) return null;
-      const dws = new WebSocket(dlg.webSocketDebuggerUrl);
-      await new Promise(r => { dws.onopen = r; });
-      let did = 0; const dp = new Map();
-      dws.onmessage = e => { const m = JSON.parse(e.data); dp.get(m.id)?.(m); };
-      const dev = expr => new Promise(r => { const i = ++did; dp.set(i, m => r(m.result?.result?.value)); dws.send(JSON.stringify({ id: i, method: 'Runtime.evaluate', params: { expression: expr, returnByValue: true, awaitPromise: true } })); });
-      for (let t = 0; t < 10000 && !(await dev(`document.getElementById('title')?.textContent === ${JSON.stringify(title)} && document.activeElement?.tagName === 'BUTTON'`)); t += 150) await wait(150);
-      const seen = await dev("({ message: document.getElementById('message').textContent, focused: document.activeElement?.textContent })");
-      await dev(`{ const b = [...document.querySelectorAll('#actions button')].find(b => b.textContent === ${JSON.stringify(label)}); setTimeout(() => b.click(), 0); true; }`);
-      dws.close();
-      return seen;
-    };
+    // The confirmation window is its own page: find it, read it, press a button (lib/dialog.js).
+    const pressInDialog = (label, title) => answerDialog(PORT, {
+      press: label,
+      ready: `document.getElementById('title')?.textContent === ${JSON.stringify(title)} && document.activeElement?.tagName === 'BUTTON'`,
+    });
     // E2E_SHOTS=<dir>: also save the panel at each step, to look at by eye.
     const shot = name => (process.env.E2E_SHOTS ? ev("document.querySelectorAll('.celebrate .cel-close').forEach(b => b.click())").then(() => wait(400)).then(() => new Promise(r => { const i = ++id; p.set(i, m => { fs.writeFileSync(path.join(process.env.E2E_SHOTS, `${name}.png`), Buffer.from(m.result.data, 'base64')); r(); }); ws.send(JSON.stringify({ id: i, method: 'Page.captureScreenshot', params: { format: 'png' } })); })) : null);
     await panelBooted(ev);

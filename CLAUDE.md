@@ -79,6 +79,11 @@ one lands under "Changed" word for word.
   now keep every window painting, skip the cover/game watch and ignore who has the
   mic (`src/main/test-desktop.js`). `SHELLBY_COVER_POLL=1` brings the watch back for
   a check about it (e2e-on-top).
+- **Confirm windows close before they answer.** Pressing a button in `dialog.html`
+  closes it, sometimes before CDP's reply goes out, and `/json/list` can name one
+  that's still loading or already closing. e2e answers them only through
+  `scripts/lib/dialog.js` (`answerDialog`), never with its own socket and a
+  next-tick click: hand-rolled ones hung `e2e-painter` and flaked `e2e-setup`.
 - **The mic reads as a call** on a dev PC with Discord or a game open, and he goes
   silent. e2e that expects speech or sound pins it off:
   `shellby.dev.life({ what: 'call', on: false })` (needs `SHELLBY_MOTION_TEST=1`).
