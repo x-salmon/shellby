@@ -173,7 +173,9 @@ async function windows() {
       check(on, `idle habit: ${bit}`);
       if (on) await critter.shot(`5-bit-${bit}`);
     }
-    check(await until(critter, "!/\\bbit-/.test(document.body.className)", 4000), '...and each one ends on its own');
+    // The last one played ends by itself (motion.js BIT_MS). Any bit-* at all
+    // could be a new habit of his own, which his idle loop may start meanwhile.
+    check(await until(critter, "!document.body.classList.contains('bit-flop')", 6000), '...and each one ends on its own');
     check(await panel.ev(`shellby.dev.bit('nonsense').then(b => ${JSON.stringify(BITS)}.includes(b))`), 'an unknown habit falls back to a real one');
 
     // --------------------------------------------- 7. on guard he keeps quiet
