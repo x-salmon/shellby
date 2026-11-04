@@ -61,6 +61,12 @@ test('updateStatus and updateButton follow the updater, with idle for anything u
   assert.equal(T.updateStatus({ state: 'downloading' }, relTime), 'Downloading the update…');
   assert.equal(T.updateStatus({ state: 'current', checkedAt: 7 }, relTime), "You're on the latest version, checked at 7.");
   assert.equal(T.updateStatus({ state: 'current' }, relTime), "You're on the latest version.");
+  assert.equal(T.updateStatus({ state: 'current', current: '0.95.6', staged: { version: '0.96.0', percent: 10 } }, relTime),
+    "You have v0.95.6. v0.96.0 is out to 10% of PCs so far, and this one's turn comes within a day.");
+  assert.equal(T.updateStatus({ state: 'current', current: '0.95.6', staged: { version: '0.96.0', percent: 0 } }, relTime),
+    "You're on v0.95.6. v0.96.0 is on hold while a problem with it is looked at.");
+  assert.equal(T.updateButton({ state: 'current', staged: { version: '0.96.0', percent: 10 } }), 'Get it now');
+  assert.equal(T.updateButton({ state: 'current', staged: { version: '0.96.0', percent: 0 } }), 'Check for updates');
   assert.equal(T.updateStatus({ state: 'error' }, relTime), "Couldn't check for updates.");
   assert.equal(T.updateStatus({ state: 'error', error: "Couldn't reach GitHub. Is this PC online?", retryAt: Date.now() + 10 * 60000 }, relTime),
     "Couldn't reach GitHub. Is this PC online? He'll try again in 10 minutes.");

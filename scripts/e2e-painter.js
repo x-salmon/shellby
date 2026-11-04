@@ -35,6 +35,33 @@ const ROOT = path.join(__dirname, '..');
 const electron = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const PAINT = '#1a7a4c'; // a colour classic doesn't have, to find him by on the desktop
+const SEND_MS = 15000;    // a CDP call that takes longer than this is a window that went away
+
+/**
+ * Press `label` in main's confirm window (dialog.html). The window can be
+ * listed while it's still loading, or a moment before it closes, so each try
+ * connects afresh and only counts once the button was really there to press.
+ * -> true once pressed, false if it never turned up within ms.
+ */
+async function answerDialog(label, shots, ms = 20000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    const t = (await list()).find(x => x.url.includes('dialog.html'));
+    if (t) {
+      let d = null;
+      try {
+        d = await cdp(t.webSocketDebuggerUrl, shots);
+        // Clicked on the next tick, so the window closing doesn't swallow the answer.
+        const pressed = await d.ev(`(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(label)}); if (!b) return false; setTimeout(() => b.click(), 0); return true; })()`);
+        if (pressed) return true;
+      } catch { /* closing or not ready yet: look again */ } finally {
+        d?.close();
+      }
+    }
+    await wait(250);
+  }
+  return false;
+}
 
 async function list() {
   try { return await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); } catch { return []; }
@@ -52,9 +79,26 @@ async function cdp(wsUrl, shots) {
   const ws = new WebSocket(wsUrl);
   let id = 0;
   const pending = new Map();
-  ws.onmessage = e => { const m = JSON.parse(e.data); if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } };
-  await new Promise(r => { ws.onopen = r; });
-  const send = (method, params = {}) => new Promise(r => { const i = ++id; pending.set(i, m => r(m.result)); ws.send(JSON.stringify({ id: i, method, params })); });
+  ws.onmessage = e => { const m = JSON.parse(e.data); if (pending.has(m.id)) { pending.get(m.id).ok(m); pending.delete(m.id); } };
+  // A window that closes (or never finishes opening) must fail the step, not
+  // hang the run: a dialog's target can be listed a moment before it's gone.
+  const gone = () => {
+    for (const p of pending.values()) p.fail(new Error('the window went away'));
+    pending.clear();
+  };
+  await new Promise((ok, fail) => {
+    ws.onopen = ok;
+    ws.onerror = () => fail(new Error(`couldn't connect to ${wsUrl}`));
+    ws.onclose = () => fail(new Error(`${wsUrl} closed before it opened`));
+  });
+  ws.onclose = gone;
+  ws.onerror = gone;
+  const send = (method, params = {}) => new Promise((ok, fail) => {
+    const i = ++id;
+    const timer = setTimeout(() => { pending.delete(i); fail(new Error(`${method} got no answer in ${SEND_MS / 1000}s`)); }, SEND_MS);
+    pending.set(i, { ok: m => { clearTimeout(timer); ok(m.result); }, fail: e => { clearTimeout(timer); fail(e); } });
+    ws.send(JSON.stringify({ id: i, method, params }));
+  });
   const ev = async expr => {
     const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
     if (r?.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || `eval failed: ${expr}`);
@@ -274,15 +318,7 @@ async function quit(app, ms = 20000) {
       check(await panel.ev("/@crabfan/.test(document.getElementById('ptShare').textContent)"), 'it says who it goes out as');
       await panel.ev("document.getElementById('ptShareGo').click()");
       // The confirm window main opens, as for any pack: Publish.
-      let dlg = null;
-      for (let i = 0; i < 60 && !dlg; i++) { dlg = (await list()).find(t => t.url.includes('dialog.html')); if (!dlg) await wait(250); }
-      check(!!dlg, 'publishing asks first, in its own window');
-      if (dlg) {
-        const d = await cdp(dlg.webSocketDebuggerUrl, profile);
-        await wait(400);
-        await d.ev("{ const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Publish'); setTimeout(() => b.click(), 0); true; }");
-        d.close();
-      }
+      check(await answerDialog('Publish', profile), 'publishing asks first, in its own window');
       await until("/Pull request opened/.test(document.getElementById('toast').textContent)", 'the pull request', 20000);
       const pr = mock.state.pulls[0];
       check(pr && /Add pack: My Classic v1\.0\.0/.test(pr.title), `a pull request to the gallery (${pr?.title})`);
@@ -320,17 +356,12 @@ async function quit(app, ms = 20000) {
       await panel.ev("document.getElementById('ptShareBtn').click()");
       await until("!!document.getElementById('ptShareGo') && !document.getElementById('ptShareGo').disabled", 'the share sheet for the wish');
       await panel.ev("document.getElementById('ptShareGo').click()");
-      for (const want of ['Publish', 'Comment']) {
-        let w = null;
-        for (let i = 0; i < 80 && !w; i++) { w = (await list()).find(t => t.url.includes('dialog.html')); if (!w) await wait(250); }
-        if (!w) { check(false, `the ${want} question`); continue; }
-        const d = await cdp(w.webSocketDebuggerUrl, profile);
-        await wait(400);
-        await d.ev(`{ const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(want)}); setTimeout(() => b.click(), 0); true; }`);
-        d.close();
-        await wait(800);
-      }
-      await until('true', 'settle', 500);
+      // Publish, then (once the pull request is open) whether to tell the wish.
+      // A Publish window still closing has no Comment button, so this waits it out.
+      check(await answerDialog('Publish', profile), 'the Publish question');
+      check(await answerDialog('Comment', profile), 'the Comment question');
+      const prEnd = Date.now() + 8000;
+      while (Date.now() < prEnd && mock.state.pulls.length < 2) await wait(200);
       const wishPr = mock.state.pulls[1];
       check(/For x-salmon\/shellby#42/.test(wishPr?.body || ''), 'the pull request says which wish it\'s for');
       const end = Date.now() + 8000;

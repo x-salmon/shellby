@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('events');
-const { Updates, trayLabel, installedBy, plainError, reopenAfterUpdate, RETRY_AFTER, EVERY, REOPEN_WAIT_MS } = require('../src/main/updates');
+const { Updates, trayLabel, installedBy, plainError, reopenAfterUpdate, isNewer, RETRY_AFTER, EVERY, REOPEN_WAIT_MS } = require('../src/main/updates');
 
 // Stands in for electron-updater: emits what it's told to, records the rest.
 class FakeUpdater extends EventEmitter {
@@ -33,7 +33,7 @@ test('idle until started, and a dev run with no updater stays off', () => {
   const { u } = make();
   assert.equal(u.view().state, 'idle');
   const off = new Updates({ version: '0.18.0' });
-  assert.deepEqual(off.view(), { state: 'off', version: null, percent: 0, error: null, checkedAt: null, current: '0.18.0', retryAt: null, rechecking: false, busy: false });
+  assert.deepEqual(off.view(), { state: 'off', version: null, percent: 0, error: null, checkedAt: null, current: '0.18.0', retryAt: null, rechecking: false, busy: false, staged: null });
   assert.equal(off.install(), false, 'nothing to install');
   assert.equal(trayLabel(off.view()), null, 'and nothing in the tray');
 });
@@ -48,6 +48,56 @@ test('a check that finds nothing ends up up to date', async () => {
   assert.ok(u.view().checkedAt, 'the "checked just now" timestamp is set');
   assert.deepEqual(views.map(v => v.state), ['checking', 'current']);
   assert.equal(trayLabel(u.view()), 'Check for updates');
+});
+
+test('a newer release this PC is not in the rollout for yet is named, not called the latest', async () => {
+  const { u, updater } = make();
+  u.start();
+  updater.emit('update-not-available', { version: '0.19.0', stagingPercentage: 10 });
+  assert.equal(u.view().state, 'current');
+  assert.deepEqual(u.view().staged, { version: '0.19.0', percent: 10 });
+  // The same version, or an older one, is just up to date.
+  updater.emit('update-not-available', { version: '0.18.0' });
+  assert.equal(u.view().staged, null);
+  updater.emit('update-not-available', { version: '0.17.9', stagingPercentage: 10 });
+  assert.equal(u.view().staged, null);
+  // Newer but with no rollout behind it (an unsupported OS): not ours to explain.
+  updater.emit('update-not-available', { version: '0.19.0' });
+  assert.equal(u.view().staged, null);
+});
+
+test('isNewer compares versions part by part', () => {
+  assert.equal(isNewer('0.96.0', '0.95.6'), true);
+  assert.equal(isNewer('0.100.0', '0.99.9'), true, 'not as text');
+  assert.equal(isNewer('1.0', '0.99.9'), true);
+  assert.equal(isNewer('0.95.6', '0.95.6'), false);
+  assert.equal(isNewer('0.95.6', '0.96.0'), false);
+  assert.equal(isNewer(null, '0.1.0'), false);
+});
+
+test('getting a staged release early lets this PC into the rollout and checks again', async () => {
+  const { u, updater } = make();
+  u.start();
+  assert.equal(await u.getEarly(), false, 'nothing staged to get');
+  updater.emit('update-not-available', { version: '0.19.0', stagingPercentage: 10 });
+  const before = updater.checks;
+  await u.getEarly();
+  assert.equal(updater.checks, before + 1);
+  assert.equal(await updater.isUserWithinRollout({ version: '0.19.0', stagingPercentage: 10 }), true);
+  assert.equal(await updater.isUserWithinRollout({ version: '0.19.0', stagingPercentage: 0 }), false, 'a halted release stays halted');
+  updater.emit('update-available', { version: '0.19.0' });
+  assert.equal(u.view().staged, null);
+});
+
+test('a halted release is never offered early', async () => {
+  const { u, updater } = make();
+  u.start();
+  updater.emit('update-not-available', { version: '0.19.0', stagingPercentage: 0 });
+  assert.deepEqual(u.view().staged, { version: '0.19.0', percent: 0 });
+  const before = updater.checks;
+  assert.equal(await u.getEarly(), false);
+  assert.equal(updater.checks, before);
+  assert.equal(updater.isUserWithinRollout, undefined);
 });
 
 test('an available update downloads, reports progress and becomes installable', () => {

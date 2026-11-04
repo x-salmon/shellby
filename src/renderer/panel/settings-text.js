@@ -66,12 +66,20 @@
     return ` He'll try again in ${m === 1 ? 'a minute' : `${m} minutes`}.`;
   }
 
+  // A newer release that goes out in stages (scripts/rollout.js) and hasn't
+  // reached this PC yet. 0% means it was halted.
+  const stagedStatus = ({ current, staged }) => (staged.percent === 0
+    ? `You're on v${current}. v${staged.version} is on hold while a problem with it is looked at.`
+    : `You have v${current}. v${staged.version} is out to ${staged.percent}% of PCs so far, and this one's turn comes within a day.`);
+  const canGetEarly = u => u.state === 'current' && !!u.staged && u.staged.percent > 0;
+
   // Shellby's own update, by the updater's state.
   const UPDATE_STATUS = {
     checking: () => 'Looking for a new version…',
     downloading: u => `Downloading ${u.version ? `v${u.version}` : 'the update'}…`,
     ready: u => (u.rechecking ? `Version ${u.version} is ready. Looking for anything newer…` : `Version ${u.version} is downloaded and ready.`),
-    current: (u, relTime) => `You're on the latest version${u.checkedAt ? `, checked ${relTime(u.checkedAt)}` : ''}.`,
+    current: (u, relTime) => (u.staged ? stagedStatus(u)
+      : `You're on the latest version${u.checkedAt ? `, checked ${relTime(u.checkedAt)}` : ''}.`),
     error: u => `${u.error || "Couldn't check for updates."}${retryNote(u.retryAt)}`,
     idle: () => 'Shellby updates himself from GitHub Releases.',
     off: () => 'Updates run in the installed app.',
@@ -79,7 +87,7 @@
   };
   const UPDATE_BUTTON = { checking: () => 'Checking…', downloading: u => `${u.percent}%`, ready: () => 'Restart and update' };
   const updateStatus = (u, relTime) => (UPDATE_STATUS[u.state] || UPDATE_STATUS.idle)(u, relTime);
-  const updateButton = u => (UPDATE_BUTTON[u.state] || (() => 'Check for updates'))(u);
+  const updateButton = u => (canGetEarly(u) ? 'Get it now' : (UPDATE_BUTTON[u.state] || (() => 'Check for updates'))(u));
 
   // ------------------------------------------------------------ connections
 
@@ -229,7 +237,7 @@
   }
 
   const api = {
-    accelerator, BILLING_GUARD, billingState, planLabel, claudeUpdateTitle, claudeUpdateNote, updateStatus, updateButton,
+    accelerator, BILLING_GUARD, billingState, planLabel, claudeUpdateTitle, claudeUpdateNote, updateStatus, updateButton, canGetEarly,
     sessionState, externalStatus, cliStatus, obsStatus, deckStatus, rgbStatus, discordStatus, nowPlayingStatus, typingStatus, minutesAgo, weatherStatus,
     phoneStatus, pocketSteps, pocketStatus, pocketCodeHint,
   };

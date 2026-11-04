@@ -132,6 +132,28 @@ async function launch(mode, profile) {
     check(false, e.message);
   } finally {
     run.app.kill();
+    await wait(1500);
+  }
+
+  // ---- a release still rolling out, not to this PC yet: never "the latest"
+  run = await launch('staged', newProfile());
+  try {
+    const panel = run;
+    await until(panel, '!!window.SB?.state?.updates');
+    await panel.ev("SB.setView('settings')");
+    check(await until(panel, "SB.state.updates.state === 'current' && !!SB.state.updates.staged"), 'a staged release is spotted');
+    const status = await text(panel, 'updateStatus');
+    check(/99\.0\.0 is out to 10% of PCs/.test(status) && !/latest/.test(status), `the row names it instead of saying "latest": "${status}"`);
+    check(await text(panel, 'updateBtn') === 'Get it now', 'the button offers it now');
+    await shot(panel, '4-staged');
+
+    await panel.ev("document.getElementById('updateBtn').click()");
+    check(await until(panel, "SB.state.updates.state === 'ready'"), 'pressing it lets this PC in, and the download lands');
+    check(!(await panel.ev("document.getElementById('toast').textContent.includes('is the latest version')")), 'with no "latest version" toast on the way');
+  } catch (e) {
+    check(false, e.message);
+  } finally {
+    run.app.kill();
   }
 
   console.log(`\nscreenshots: ${OUT}`);

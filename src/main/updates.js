@@ -34,7 +34,31 @@ function plainError(raw, { downloading = false } = {}) {
   return "Couldn't check for updates.";
 }
 
-const SCOOP_APP = /[\\/]scoop[\\/]apps[\\/]shellby[\\/]/i;
+/** Is version a later than b? Numbers part by part, so 0.100.0 beats 0.99.9. */
+function isNewer(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const parts = v => v.split(/[.+-]/).slice(0, 3).map(n => parseInt(n, 10) || 0);
+  const [x, y] = [parts(a), parts(b)];
+  for (let i = 0; i < 3; i++) {
+    if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  }
+  return false;
+}
+
+/**
+ * A release out in stages (scripts/rollout.js) that hasn't reached this PC:
+ * electron-updater calls that "not available" and hands over the newer info.
+ * -> { version, percent } or null. percent 0 is a halted release.
+ */
+function stagedOf(info, current) {
+  const version = versionOf(info);
+  if (!isNewer(version, current)) return null;
+  // No percent: held back for another reason (an OS it doesn't support), not a rollout.
+  const percent = parseInt(info.stagingPercentage, 10);
+  return Number.isFinite(percent) ? { version, percent: clampPercent(percent) } : null;
+}
+
+const SCOOP_APP =/[\\/]scoop[\\/]apps[\\/]shellby[\\/]/i;
 // Roots come from env vars, which may use forward slashes or end in one.
 const underRoot = (exe, root) => !!root
   && exe.startsWith(`${win32.normalize(root).toLowerCase().replace(/\\+$/, '')}\\apps\\shellby\\`);
@@ -81,6 +105,7 @@ class Updates extends EventEmitter {
     this.rechecking = false; // a check while `ready`, which never hides the install button
     this.announced = null;   // last version we fired `ready` for
     this.sent = null;        // last view we emitted, so idle progress stays quiet
+    this.staged = null;      // { version, percent }: newer, but this PC isn't in its rollout yet
   }
 
   view() {
@@ -88,6 +113,7 @@ class Updates extends EventEmitter {
       state: this.state, version: this.offered, percent: this.percent, error: this.error,
       checkedAt: this.checkedAt, current: this.version, retryAt: this.state === 'error' ? this.retryAt : null,
       rechecking: this.rechecking, busy: this.state === 'checking' || this.state === 'downloading',
+      staged: this.staged,
     };
   }
 
@@ -103,13 +129,13 @@ class Updates extends EventEmitter {
     u.on('update-available', info => {
       this.#recovered();
       const offered = versionOf(info) || this.offered;
-      if (this.state === 'ready' && offered === this.offered) return void this.#set('ready', { error: null }); // the cached file, found again
-      this.#set('downloading', { offered, percent: 0 });
+      if (this.state === 'ready' && offered === this.offered) return void this.#set('ready', { error: null, staged: null }); // the cached file, found again
+      this.#set('downloading', { offered, percent: 0, staged: null });
     });
-    u.on('update-not-available', () => {
+    u.on('update-not-available', info => {
       this.#recovered();
       if (this.state === 'ready') return void this.#set('ready', { error: null });
-      this.#set('current', { offered: null, percent: 0, checkedAt: Date.now() });
+      this.#set('current', { offered: null, percent: 0, checkedAt: Date.now(), staged: stagedOf(info, this.version) });
     });
     u.on('download-progress', p => {
       if (this.state === 'ready') return; // an already-cached file reports progress after the fact
@@ -152,6 +178,17 @@ class Updates extends EventEmitter {
       if (this.rechecking) this.#set(this.state, { rechecking: false });
     }
     return this.view();
+  }
+
+  /**
+   * "Get it now" on a release still rolling out: this PC joins the rollout for
+   * the rest of the run, and asks again. A halted one (0%) stays out of reach.
+   */
+  async getEarly() {
+    if (!this.updater || !this.staged || this.staged.percent === 0) return false;
+    this.updater.isUserWithinRollout = info => parseInt(info?.stagingPercentage, 10) !== 0;
+    await this.check();
+    return true;
   }
 
   /** Install now: the installer runs silently and Shellby comes back on the new version. */
@@ -243,16 +280,19 @@ function reopenAfterUpdate(flag, version, now = Date.now()) {
 /**
  * A scripted stand-in for electron-updater, so a dev run can walk the whole
  * sequence (offer → download → ready, or a failure) without cutting a release:
- * `SHELLBY_FAKE_UPDATE=1 npm start`. Set it to `fail` for the offline path.
+ * `SHELLBY_FAKE_UPDATE=1 npm start`. Set it to `fail` for the offline path,
+ * or `staged` for a release whose rollout hasn't reached this PC.
  */
 function fakeUpdater({ version = '99.0.0', mode = 'ok', step = 600 } = {}) {
-  const u = /** @type {EventEmitter & { quitAndInstall: (...args: unknown[]) => void, checkForUpdates: () => Promise<unknown> }} */ (new EventEmitter());
+  const u = /** @type {EventEmitter & { quitAndInstall: (...args: unknown[]) => void, checkForUpdates: () => Promise<unknown>, isUserWithinRollout?: unknown }} */ (new EventEmitter());
   u.quitAndInstall =(...args) => console.log('[shellby] fake updater would install now', args);
   u.checkForUpdates = async () => {
     u.emit('checking-for-update');
     await new Promise(r => setTimeout(r, step));
     if (mode === 'fail') return u.emit('error', new Error('net::ERR_INTERNET_DISCONNECTED'));
     if (mode === 'current') return u.emit('update-not-available', { version });
+    // Out to 10%, and this PC isn't in it until "Get it now" lets it in.
+    if (mode === 'staged' && !u.isUserWithinRollout) return u.emit('update-not-available', { version, stagingPercentage: 10 });
     u.emit('update-available', { version });
     for (const percent of [8, 24, 51, 77, 96]) {
       await new Promise(r => setTimeout(r, step));
@@ -265,4 +305,4 @@ function fakeUpdater({ version = '99.0.0', mode = 'ok', step = 600 } = {}) {
   return u;
 }
 
-module.exports = { Updates, trayLabel, fakeUpdater, installedBy, plainError, reopenAfterUpdate, EVERY, RETRY_AFTER, REOPEN_WAIT_MS };
+module.exports = { Updates, trayLabel, fakeUpdater, installedBy, plainError, reopenAfterUpdate, isNewer, EVERY, RETRY_AFTER, REOPEN_WAIT_MS };

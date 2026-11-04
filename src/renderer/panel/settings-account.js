@@ -191,12 +191,13 @@
   $('updateBtn').addEventListener('click', async () => {
     const u = state.updates || {};
     if (u.state === 'ready') return void api.installUpdate();
+    const early = T.canGetEarly(u);
     // Optimistic, so the button reacts before the network does; the live
     // 'updates' events in boot.js correct it either way.
     state.updates = { ...u, state: 'checking', error: null, busy: true };
     renderUpdates();
-    const after = await api.checkUpdates();
-    if (after.state === 'current') SB.toast(`v${after.current} is the latest version.`);
+    const after = await (early ? api.getUpdateEarly() : api.checkUpdates());
+    if (after.state === 'current' && !after.staged) SB.toast(`v${after.current} is the latest version.`);
     if (after.state === 'error') SB.toast(`Couldn't check for updates: ${after.error}`, { ms: 5000 });
   });
 
