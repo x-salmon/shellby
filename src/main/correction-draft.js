@@ -46,13 +46,14 @@ function parse(stdout) {
 
 /** deps: runClaude(args, timeoutMs, { input }), log. Nothing is saved here. */
 async function askClaude(offer, deps) {
-  const res = await deps.runClaude(draft.args(/** @type {any} */ (SCHEMA), { model: 'haiku' }), draft.DRAFT_TIMEOUT_MS, { input: prompt(offer), lean: true });
+  const res = await deps.runClaude(draft.args(/** @type {any} */ (SCHEMA), { model: 'haiku' }), draft.DRAFT_TIMEOUT_MS, { input: prompt(offer), lean: true, local: true });
   if (res.timedOut) return { ok: false, error: 'Claude took too long. Your own words are still there.' };
   if (!res.stdout?.trim()) {
     deps.log?.warn?.(`rule draft failed: ${String(res.stderr || res.err?.message || '').trim().split('\n').slice(-3).join(' ')}`);
     return { ok: false, error: "Claude Code didn't answer. Check it's signed in, in Settings." };
   }
-  return parse(res.stdout);
+  const r = parse(res.stdout);
+  return r.ok && res.by ? { ...r, by: res.by } : r; // by: the local model that worded it (local/model.js)
 }
 
 module.exports = { SCHEMA, prompt, parse, askClaude };

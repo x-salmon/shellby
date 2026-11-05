@@ -12,6 +12,7 @@
   const renderBillingGuard = () => SB.renderBillingGuard();
   const renderClaudeAccount = () => SB.renderClaudeAccount();
   const renderFacts = () => SB.renderFacts();
+  const renderLocalModel = () => SB.renderLocalModel();
 
   // ------------------------------------------------------------ shared: mode cards
 
@@ -147,6 +148,7 @@
     $('clashToggle').checked = state.settings.clashWarnings !== false;
     renderEditor();
     renderBillingGuard();
+    renderLocalModel();
     $('chatterSelect').value = ['quiet', 'work', 'normal', 'chatty'].includes(state.settings.chatter) ? state.settings.chatter : 'normal';
     $('workModeToggle').checked = !!SB.isWorkMode?.();
     $('soundsToggle').checked = !!state.settings.sounds;

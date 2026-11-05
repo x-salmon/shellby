@@ -1,7 +1,12 @@
 // Releases against real git in a temp folder (src/main/projects/release-git.js):
 // what's unreleased since the last tag, and Cut release (bump, CHANGELOG,
 // commit, tag, push), including every reason it stops before touching anything.
-const { test } = require('node:test');
+const { describe, test: nodeTest, after } = require('node:test');
+// Each test has its own repository and origin, so they run side by side (the
+// describe at the bottom): one after another they took 37 s, and under the whole
+// suite's load that ran past the 120 s limit.
+const queued = [];
+const test = (name, fn) => queued.push([name, fn]);
 const assert = require('node:assert/strict');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -13,9 +18,22 @@ const { secretGate } = require('../src/main/secret-gate');
 
 const PKG = { name: 'demo', version: '0.1.0', private: true };
 
-function setup({ changelog = '# Changelog\n\n## 0.1.0: First\n\n### New\n- It exists.\n' } = {}) {
-  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-release-')));
-  const g = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', windowsHide: true }).trim();
+const DEFAULT_CHANGELOG = '# Changelog\n\n## 0.1.0: First\n\n### New\n- It exists.\n';
+const gitIn = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', windowsHide: true }).trim();
+
+// The starting repository (v0.1.0 tagged and pushed to a bare origin) is built
+// once per CHANGELOG and copied for each test: building it is a dozen git runs,
+// which, fourteen times over under the whole suite's load, ran this file past
+// its time limit. Each copy is pointed at its own origin.
+/** @type {Map<string, string>} changelog -> template folder */
+const templates = new Map();
+after(() => { for (const dir of templates.values()) fs.rmSync(dir, { recursive: true, force: true }); });
+
+function template(changelog) {
+  const key = JSON.stringify(changelog);
+  if (templates.has(key)) return templates.get(key);
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-release-tpl-')));
+  const g = gitIn;
   const origin = path.join(base, 'origin.git');
   const dir = path.join(base, 'proj');
   fs.mkdirSync(dir);
@@ -34,6 +52,17 @@ function setup({ changelog = '# Changelog\n\n## 0.1.0: First\n\n### New\n- It ex
   g(dir, 'tag', '-a', 'v0.1.0', '-m', '0.1.0');
   g(dir, 'remote', 'add', 'origin', origin);
   g(dir, 'push', '-q', '-u', 'origin', 'main', '--tags');
+  templates.set(key, base);
+  return base;
+}
+
+function setup({ changelog = DEFAULT_CHANGELOG } = {}) {
+  const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-release-')));
+  fs.cpSync(template(changelog), base, { recursive: true });
+  const g = gitIn;
+  const origin = path.join(base, 'origin.git');
+  const dir = path.join(base, 'proj');
+  g(dir, 'remote', 'set-url', 'origin', origin);
   const work = (file, subject) => {
     fs.appendFileSync(path.join(dir, file), `${subject}\n`);
     g(dir, 'add', '-A');
@@ -361,3 +390,5 @@ test('parsers: status -z with renames, and log records', () => {
   const sha = 'c'.repeat(40);
   assert.deepEqual(rg.parseLog(`${sha}\x1fT\x1f1700000000\x1ffeat: x\x1fbody\n\x1e\n`), [{ sha, author: 'T', at: 1700000000000, subject: 'feat: x', body: 'body\n' }]);
 });
+
+describe('releases', { concurrency: true }, () => { for (const [name, fn] of queued) nodeTest(name, fn); });

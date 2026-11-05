@@ -12,7 +12,9 @@ const crashReport = require('../crash-report');
 const { COLONY_MAX } = require('../desktop/floor');
 const filelinks = require('../filelinks');
 const guard = require('../guard');
+const localModel = require('../local/model');
 const mischief = require('../mischief');
+const { str } = require('../ipc-args');
 const { isModel } = require('../models');
 const outputStyles = require('../outputstyles');
 const { SETTINGS: PERCH_SETTINGS } = require('../desktop/perch');
@@ -112,7 +114,7 @@ function registerSettingsIpc(ipcMain, d) {
 
   ipcMain.handle('settings:set', async (_e, patch = {}) => {
     const allowed = {};
-    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped']) {
+    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'localModel', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped']) {
       if (k in patch) allowed[k] = patch[k];
     }
     // Turning on Autonomous for the first time needs a confirmation that renderer
@@ -157,6 +159,7 @@ function registerSettingsIpc(ipcMain, d) {
     if ('effort' in allowed && allowed.effort !== '' && !EFFORTS.includes(allowed.effort)) delete allowed.effort;
     if ('outputStyle' in allowed) allowed.outputStyle = outputStyles.clean(allowed.outputStyle);
     for (const k of ['openAtLogin', 'notifications', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'sounds', 'soundFx', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effortPick', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'turnShots', 'spendGuard', 'holdBigTasks', 'selfAware', 'suggestions', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'communityNews', 'shareWrapped']) if (k in allowed) allowed[k] = !!allowed[k];
+    if ('localModel' in allowed) { const local = localModel.cleanSettings(allowed.localModel); if (local) allowed.localModel = local; else delete allowed.localModel; }
     if ('checkTimeoutMin' in allowed && !TIMEOUTS_MIN.includes(allowed.checkTimeoutMin)) delete allowed.checkTimeoutMin;
     if ('keybindings' in allowed) allowed.keybindings = shortcuts.sanitizeOverrides(allowed.keybindings);
     if ('spendReserve' in allowed && !guard.RESERVES.includes(allowed.spendReserve)) delete allowed.spendReserve;
@@ -205,6 +208,9 @@ function registerSettingsIpc(ipcMain, d) {
     if (allowed.onboarded && !before.onboarded) d.firstRunStep?.('welcome'); // through the welcome screen: First steps' hello (first-run.js)
     return { settings: d.panelSettings(), hotkeyError, pushToTalkError };
   });
+  // Settings' Find models: what the local server (Ollama, LM Studio) has. Only addresses on this PC are asked.
+  ipcMain.handle('local:models', (_e, url) => localModel.listModels(url), [str({ max: 500 })]);
+
   ipcMain.handle('folder:pick', async () => {
     const r = await dialog.showOpenDialog(d.panel, { title: 'Where should Shellby work?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
     return r.canceled || !r.filePaths[0] ? null : d.setFolder(r.filePaths[0]);

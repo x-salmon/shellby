@@ -12,6 +12,7 @@ const depwatch = require('../depwatch');
 const devFlow = require('../devservers/flow');
 const devRunner = require('../devservers/runner');
 const devScripts = require('../devservers/scripts');
+const localModel = require('../local/model');
 const mcpServers = require('../mcpservers');
 const { DevServers } = require('../devservers/service');
 const native = require('../desktop/native-windows');
@@ -275,7 +276,9 @@ function wireProjects(d) {
   // One tool-less `claude -p` call (drafts and the editors' chats), in your home
   // folder. Dev and screenshot runs: the fake CLI answers instead.
   // opts.lean: the call needs none of your settings, hooks or plugins (skipSettings).
-  function runClaudeOnce(args, timeoutMs, { lean = false, ...opts } = {}) {
+  // opts.local: a small draft a local model may answer first, when one is set up (local/model.js).
+  const runClaudeOnce = localModel.withLocal(runClaudeCli, { settings: () => d.config.get('localModel'), log: d.log });
+  function runClaudeCli(args, timeoutMs, { lean = false, ...opts } = {}) {
     if (d.FAKE_CLI) return runCli(process.env.SHELLBY_NODE || 'node', [d.FAKE_CLI, ...args], timeoutMs, { cwd: os.homedir(), ...opts });
     const exe = d.claudeExe();
     if (!exe) return Promise.resolve({ stdout: '', stderr: 'Claude Code isn\'t installed yet. Set it up in Settings first.', timedOut: false });

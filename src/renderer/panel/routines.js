@@ -383,16 +383,20 @@
     if (!text) { askNote('Say what you want done and when.', true); $('routineAskText').focus(); return; }
     ask.classList.add('busy');
     $('routineAskBtn').disabled = true;
-    askNote('Claude is drafting it…');
+    // With a local model on (Settings → Local model) it may write this one, not Claude.
+    askNote(state.settings.localModel?.on ? 'Drafting it…' : 'Claude is drafting it…');
     try {
       const res = await api.draftRoutine(text);
       if (!res.ok) { askNote(res.error, true); return; }
       $('routineAskText').value = '';
       asked = text;
-      openEditor({ ...res.draft, isTemplate: true }, { greeting: `I filled this in from “${text}”. Tell me what to change, or ask me to test it.` });
+      const by = typeof res.by === 'string' ? res.by : '';
+      openEditor({ ...res.draft, isTemplate: true }, { greeting: by
+        ? `Your local model, \`${by}\`, filled this in from “${text}”. Tell me what to change, or ask me to test it.`
+        : `I filled this in from “${text}”. Tell me what to change, or ask me to test it.` });
       if (res.workflow) askNote(`${res.workflow.why} The closest routine is below, or:`, false, true);
       else askNote(ASK_NOTE);
-      SB.toast('Drafted. Check it over, then press Save.');
+      SB.toast(by ? `Drafted by ${by}. Check it over, then press Save.` : 'Drafted. Check it over, then press Save.');
     } catch {
       askNote('Couldn\'t reach Claude. Try again.', true);
     } finally {
