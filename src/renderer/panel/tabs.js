@@ -47,6 +47,7 @@
       branchOf: summary.branchOf !== undefined ? summary.branchOf : tab.branchOf || null,
       context: summary.context !== undefined ? summary.context : tab.context || null,
       cache: summary.cache !== undefined ? summary.cache : tab.cache || null,
+      model: summary.model ?? tab.model ?? '', // the model it runs (the model chip, composer.js)
       // The tests' last verdict and the latest changes' review (main's review-inbox.js), for the review inbox.
       checks: summary.checks !== undefined ? summary.checks : tab.checks || null,
       ready: summary.ready !== undefined ? summary.ready : tab.ready || null,
@@ -80,6 +81,7 @@
     applyFolderLabel(tab.cwd || state.cwd, tab);
     syncContextUi();
     SB.applyEffort?.(); // its own effort (composer.js)
+    SB.applyModel?.();
     syncBusyUi();
     SB.renderBattleChip?.(); // a bug battle in this conversation (bugdex-battle.js)
     if (tab.unread) api.seenTab(tabId);
@@ -150,6 +152,7 @@
     if (active) applyFolderLabel(active.cwd || state.cwd, active); // its first change can move it into its own copy
     syncContextUi();
     SB.applyEffort?.();
+    SB.applyModel?.();
     SB.renderTabStrip();
   };
 

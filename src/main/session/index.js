@@ -421,6 +421,7 @@ class ClaudeSession extends Base {
         break;
       case 'init':
         if (item.sessionId) this.sessionId = item.sessionId;
+        this.initModel = item.model || this.initModel || null; // what Claude Code says it runs, before any reply
         this.resumeAt = null; // the fork is made: from here on it's an ordinary resume
         this.modeAsked = null;
         break;

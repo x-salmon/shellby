@@ -227,6 +227,7 @@ class SessionManager extends EventEmitter {
     tab.activeAt = Date.now();
     // A rewind's fork exists once Claude Code reports its id: from then on it's an ordinary resume.
     if (item.kind === 'init' && tab.saved) this.history.update(tab.id, { claudeSessionId: item.sessionId, resumeAt: null });
+    if (item.kind === 'init' && item.model) this.changed(); // the model chip shows it before the first reply
     if (item.kind === 'init' && tab.preambleSent) {
       tab.preamble = null;
       tab.preambleSent = false;
@@ -694,6 +695,8 @@ class SessionManager extends EventEmitter {
       pending: t.session.pending.size, crew: t.session.runningCrew().length,
       outcome: t.outcome, unread: t.unread, routineId: t.routineId, workflowRunId: t.workflowRunId || null, saved: t.saved, named: t.named, context: t.session.context, cache: t.session.cache,
       nudge: turncost.nudge(t.session.context, t.session.growths),
+      // The model it runs: the latest reply's, else init's, else the one asked for ('' = Claude Code's default).
+      model: t.session.lastModel || t.session.initModel || t.session.model || '',
       worktree: t.worktree ? { branch: t.worktree.branch, base: t.worktree.base, originalCwd: t.worktree.originalCwd } : null,
       claudeWorktree: t.claudeWorktree ? { branch: t.claudeWorktree.branch, path: t.claudeWorktree.path } : null, // Claude's own (EnterWorktree)
       branchOf: t.branchOf ? { id: t.branchOf.id, title: t.branchOf.title, at: t.branchOf.at, ...(t.branchOf.shared ? { shared: true } : {}) } : null,

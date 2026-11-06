@@ -405,6 +405,29 @@
       : `Effort: ${effortName(id)}${by === 'picked' ? ', picked to fit your first message' : ''}. How hard Claude thinks in this conversation (/effort)`;
   };
 
+  // The model chip: what this conversation runs. Claude Code reports full ids
+  // ('claude-opus-4-1-20250805'), which the picker may not list, so read the id itself.
+  const MODEL_DATE = /-\d{8}$/;
+  function modelName(id) {
+    const listed = (state.models || []).find(m => m.id === id);
+    if (listed) return listed.label;
+    const [family, ...version] = id.replace(/^claude-/, '').replace(/\[.*\]$/, '').replace(MODEL_DATE, '').split('-');
+    return family ? `${family[0].toUpperCase()}${family.slice(1)}${version.length ? ` ${version.join('.')}` : ''}` : id;
+  }
+
+  SB.applyModel = () => {
+    const tab = SB.activeTab();
+    const id = tab?.model || state.settings?.model || '';
+    const chip = $('modelChip');
+    chip.hidden = !tab;
+    $('modelLabel').textContent = id ? modelName(id) : 'default';
+    chip.title = id
+      ? `Model: ${id}. This conversation keeps it; new ones start on the model in Settings (/model)`
+      : 'Model: Claude Code picks the default. Change it for new conversations in Settings (/model)';
+  };
+
+  $('modelChip').addEventListener('click', () => SB.showSetting?.('modelSelect'));
+
   // This conversation only. With none open yet, it's what new ones start on.
   SB.chooseEffort = async (id) => {
     const tab = SB.activeTab();
