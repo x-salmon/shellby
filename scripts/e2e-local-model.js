@@ -79,6 +79,14 @@ function modelServer() {
     check(await ev("document.getElementById('localModelToggle').disabled && !document.getElementById('localModelToggle').checked"), 'it starts off, and can\'t be turned on before a model is picked');
     check(/Find models, then pick one/.test(await status()), `it says what to do first ("${await status()}")`);
 
+    // No model yet: Claude can set one up, in a task of its own that waits for you to send it
+    check(await ev("!document.getElementById('localModelSetup').hidden"), 'with no model, Let Claude set it up is offered');
+    await ev("document.getElementById('localModelSetup').click()");
+    check(await until("SB.state.view === 'chat' && /install Ollama/.test(document.getElementById('input').value)"), 'it fills in a task asking Claude to install Ollama and a model');
+    check(await ev("SB.activeTab()?.busy !== true"), '...without sending it');
+    await ev("document.getElementById('input').value = ''; SB.setView('settings'); document.getElementById('setTab-claude').click()");
+    await until("document.getElementById('localModelGroup')?.offsetParent !== null");
+
     // Find models against the stand-in server
     await setUrl(fake.url);
     await ev("document.getElementById('localModelFind').click()");
@@ -90,6 +98,7 @@ function modelServer() {
     const toggle = on => ev(`(t => { t.checked = ${on}; t.dispatchEvent(new Event('change')); })(document.getElementById('localModelToggle'))`);
     await pick(MODELS[0]);
     check(await until("!document.getElementById('localModelToggle').disabled"), 'picking a model lets the switch be used');
+    check(await ev("document.getElementById('localModelSetup').hidden"), '...and Let Claude set it up steps aside');
     check((await saved()).on === false && /Turn it on/.test(await status()), `...but leaves it off until you turn it on ("${await status()}")`);
     await toggle(true);
     check(await until('SB.state.settings.localModel.on === true'), 'the switch turns it on');

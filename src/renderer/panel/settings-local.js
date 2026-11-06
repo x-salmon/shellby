@@ -53,7 +53,22 @@
       ...names.map(n => h('option', { value: n, text: n })),
     );
     $('localModelSelect').value = lm.model;
+    // Only before there's a model, and only when Claude can do it.
+    $('localModelSetup').hidden = !!lm.model || SB.isCrabOnly();
     say(statusText(lm));
+  }
+
+  // Hand the install to Claude. The box is filled in, not sent: it runs winget
+  // and downloads a few GB, so you see what you're agreeing to first.
+  function setupPrompt() {
+    return [
+      'Set up a local model on this PC so Shellby can write small drafts with it instead of using my Claude plan.',
+      '1. Check whether Ollama or LM Studio is already installed or running (http://127.0.0.1:11434/api/tags for Ollama, http://127.0.0.1:1234/v1/models for LM Studio). If one already answers with a model, stop and tell me which.',
+      '2. If neither is installed, install Ollama with `winget install --id Ollama.Ollama -e --accept-source-agreements --accept-package-agreements` and make sure its server is running.',
+      '3. Look at my RAM and GPU memory, then pull one small instruct model that fits comfortably and is good at short JSON answers (around 3B parameters; smaller if I have under 8 GB of RAM). Tell me its download size before pulling.',
+      '4. Check the server lists the model, and send it one short test prompt.',
+      'Ask me before making anything start with Windows. When it works, tell me the server address and model name so I can press Find models in Shellby\'s Settings.',
+    ].join('\n') + '\n';
   }
 
   // -> whether main saved it as asked (it turns `on` off without a model).
@@ -99,6 +114,7 @@
   }
 
   $('localModelFind').addEventListener('click', findModels);
+  $('localModelSetup').addEventListener('click', () => SB.prefillNew(setupPrompt()));
   $('localModelUrl').addEventListener('change', async e => {
     const url = e.target.value.trim() || DEFAULT_URL;
     if (!serverKey(url)) { e.target.value = current().url; say(OFF_PC); return; }
