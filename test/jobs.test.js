@@ -63,6 +63,25 @@ test('a Monitor watch is a job of its own kind; a non-zero exit is a failure; a 
   assert.equal(jobs.view(st, 12)[0].status, 'stopped');
 });
 
+test('an MCP tool the server runs as a task is a job of its own kind, named for the tool, with no output', () => {
+  const st = jobs.create();
+  const started = sys({ subtype: 'task_started', task_id: 'mcp1', tool_use_id: 'tu9', description: 'slowtask brew_tea', task_type: 'mcp_task' });
+  assert.equal(jobs.isJob(started), true);
+  assert.equal(jobs.track(st, started, 1), true);
+  let [j] = jobs.view(st, 2);
+  assert.deepEqual([j.kind, j.status, j.description, j.command, j.hasOutput], ['mcp', 'running', 'slowtask brew_tea', '', false]);
+
+  jobs.track(st, sys({ subtype: 'task_notification', task_id: 'mcp1', status: 'completed', summary: 'slowtask brew_tea completed' }), 3);
+  [j] = jobs.view(st, 4);
+  assert.deepEqual([j.status, j.summary], ['done', 'slowtask brew_tea completed']);
+
+  const failed = jobs.create();
+  jobs.track(failed, sys({ subtype: 'task_started', task_id: 'mcp2', task_type: 'mcp_task' }), 1);
+  assert.equal(jobs.view(failed, 2)[0].description, 'an MCP tool', 'not "a background command"');
+  jobs.track(failed, sys({ subtype: 'task_notification', task_id: 'mcp2', status: 'failed', summary: 'slowtask brew_tea failed' }), 3);
+  assert.equal(jobs.view(failed, 4)[0].status, 'failed');
+});
+
 test('running ones come first, finished ones fade from the tray after two minutes, and a closed process stops the rest', () => {
   const st = jobs.create();
   const start = (id, at) => jobs.track(st, sys({ subtype: 'task_started', task_id: id, description: id, task_type: 'local_bash' }), at);

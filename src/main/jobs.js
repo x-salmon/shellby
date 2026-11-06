@@ -7,6 +7,10 @@
 //   task_started { task_id, tool_use_id, description, task_type: 'local_bash' }
 //   tool_result "Command running in background with ID: … Output is being written to: <file>."
 //   task_updated { patch: { status } } then task_notification { status, summary, output_file }
+// An MCP tool the server runs as a task (the io.modelcontextprotocol/tasks
+// extension) is task_type 'mcp_task' since 2.1.319: a job of its own kind, with
+// no command or output file. That name is from the CLI's source; 2.1.319 only
+// offers servers tasks in the terminal, so no live stream-json event has been seen.
 // Pure functions: no Electron, no I/O — see test/jobs.test.js.
 const path = require('path');
 
@@ -15,6 +19,7 @@ const MAX_FINISHED = 20;
 const MAX_TOOLS = 100;
 const MAX_SHOWN = 12;
 const TEXT = 300;
+const MCP_TASK = 'mcp_task';
 
 const text = v => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, TEXT) : '');
 
@@ -63,10 +68,10 @@ function track(state, item, now) {
   let job = state.byId.get(item.taskId);
   if (!job) {
     const tool = state.tools.get(item.toolUseId) || {};
+    const kind = item.taskType === MCP_TASK ? 'mcp' : tool.name === 'Monitor' ? 'monitor' : 'command';
     job = {
-      id: item.taskId, toolUseId: item.toolUseId || null,
-      kind: tool.name === 'Monitor' ? 'monitor' : 'command',
-      description: text(item.description) || tool.command || 'a background command',
+      id: item.taskId, toolUseId: item.toolUseId || null, kind,
+      description: text(item.description) || tool.command || (kind === 'mcp' ? 'an MCP tool' : 'a background command'),
       command: tool.command || '',
       outputFile: tool.outputFile || item.outputFile || null,
       status: 'running', startedAt: now, endedAt: null, summary: '',

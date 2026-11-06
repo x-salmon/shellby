@@ -48,10 +48,11 @@ test('keeps the end of a long paste', () => {
   assert.ok(out.endsWith('Error: the real one'));
 });
 
-test('finds the newest failed command, not watches or ones that passed', () => {
+test('finds the newest failed command, not watches, MCP tools or ones that passed', () => {
   const tabs = [
     { tabId: 'a', cwd: 'C:\\a', jobs: [{ status: 'failed', kind: 'command', endedAt: 10, command: 'npm test' }, { status: 'done', kind: 'command', endedAt: 50 }] },
     { tabId: 'b', cwd: 'C:\\b', jobs: [{ status: 'failed', kind: 'command', endedAt: 30, command: 'npm run build' }, { status: 'failed', kind: 'monitor', endedAt: 90 }] },
+    { tabId: 'c', cwd: 'C:\\c', jobs: [{ status: 'failed', kind: 'mcp', endedAt: 95, command: '', description: 'slowtask brew_tea' }] },
   ];
   const found = justSaw.lastFailedJob(tabs);
   assert.equal(found.tabId, 'b');

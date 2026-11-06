@@ -91,7 +91,7 @@
     const stopBtn = j.status === 'running' ? h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Ask Claude Code to stop it', onclick: e => stop(tab, j, e.currentTarget) }, 'Stop') : null;
     return h('li', { class: `job ${j.status}` },
       h('div', { class: 'job-row' },
-        h('span', { class: 'job-icon', 'aria-hidden': 'true', text: j.kind === 'monitor' ? '👁' : j.status === 'running' ? '⚙' : j.status === 'done' ? '✓' : j.status === 'failed' ? '✗' : '■' }),
+        h('span', { class: 'job-icon', 'aria-hidden': 'true', text: j.kind === 'monitor' ? '👁' : j.kind === 'mcp' && j.status === 'running' ? '🔌' : j.status === 'running' ? '⚙' : j.status === 'done' ? '✓' : j.status === 'failed' ? '✗' : '■' }),
         h('span', { class: 'job-what', title: j.command || j.description, text: j.description }),
         h('span', { class: 'job-state', dataset: { since: String(j.startedAt) }, text: statusText(j, now) }),
         j.hasOutput ? h('button', { class: 'btn ghost slim-btn', type: 'button', 'aria-expanded': String(!!o), onclick: () => toggleOutput(tab, j) }, o ? 'Hide output' : 'Output') : null,

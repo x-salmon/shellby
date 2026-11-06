@@ -75,7 +75,8 @@ function lastFailedJob(tabs) {
   let best = null;
   for (const t of Array.isArray(tabs) ? tabs : []) {
     for (const job of Array.isArray(t?.jobs) ? t.jobs : []) {
-      if (job?.status !== 'failed' || job.kind === 'monitor' || !Number.isFinite(job.endedAt)) continue;
+      // A watch or an MCP tool has no command or output to attach.
+      if (job?.status !== 'failed' || job.kind === 'monitor' || job.kind === 'mcp' || !Number.isFinite(job.endedAt)) continue;
       if (!best || job.endedAt > best.job.endedAt) best = { tabId: t.tabId, cwd: t.cwd || null, job };
     }
   }
