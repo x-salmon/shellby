@@ -40,6 +40,12 @@
 .btw-card .btw-body.msg.assistant::before { display: none; }
 .btw-card.err .btw-body { color: var(--danger); }
 .btw-card.pending .btw-body { animation: btw-wait 1.4s ease-in-out infinite; }
+.btw-card.pending .btw-body:not(:last-child) { animation: none; }
+.btw-follow { margin: 10px 0 0; padding-top: 8px; border-top: 1px dashed var(--line-soft); color: var(--sand-dim); }
+.btw-reply { margin-top: 8px; }
+.btw-reply[hidden] { display: none; }
+.btw-reply-input { width: 100%; box-sizing: border-box; padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--sand); font-size: var(--fs-12); }
+.btw-reply-input:focus { outline: none; border-color: var(--glass); }
 .btw-foot { margin-top: 6px; }
 @keyframes btw-wait { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .btw-card, .btw-card.pending .btw-body { animation: none; } }

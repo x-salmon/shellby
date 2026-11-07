@@ -103,7 +103,7 @@ contextBridge.exposeInMainWorld('shellby', {
   suggestFiles: (tabId, query) => ipcRenderer.invoke('files:suggest', { tabId, query }), context: { suggest: (tabId, query) => ipcRenderer.invoke('context:suggest', { tabId, query }), attach: (tabId, id) => ipcRenderer.invoke('context:attach', { tabId, id }), similar: (tabId, text) => ipcRenderer.invoke('context:similar', { tabId, text }) }, // @ files, and a dev server, red build, chat or note (wiring/mention-context.js)
   promptHistory: invoke('prompt:history'),
   runShell: (tabId, command) => ipcRenderer.invoke('shell:run', { tabId, command }),
-  askBtw: (tabId, question) => ipcRenderer.invoke('btw:ask', { tabId, question }),
+  askBtw: (tabId, question, history) => ipcRenderer.invoke('btw:ask', { tabId, question, history }),
   rewindPoints: invoke('rewind:points'),
   outline: invoke('outline:get'), trailTests: (tabId, files) => ipcRenderer.invoke('trail:tests', { tabId, files }), // every message and the files its turn touched (outline.js); the tests named after changed files (shared/trail.js)
   rewind: (tabId, turnId, opts) => ipcRenderer.invoke('rewind:run', { tabId, turnId, ...opts }),

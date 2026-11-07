@@ -151,7 +151,7 @@ function register(deps) {
       return runCli(c.exe, c.args, timeout, { cwd: os.homedir(), input, env: { ...process.env, ...remote.env } });
     };
   }
-  ipcMain.handle('btw:ask', async (_e, { tabId, question } = {}) => {
+  ipcMain.handle('btw:ask', async (_e, { tabId, question, history } = {}) => {
     const tab = tabOf(tabId);
     if (!tab) return { ok: false, error: 'That conversation is closed.' };
     if (tab.btwAsking) return { ok: false, error: 'One side question at a time: the last one is still being answered.' };
@@ -161,7 +161,7 @@ function register(deps) {
     let r;
     try {
       r = await btw.ask({
-        question, sessionId: s.sessionId, resumeAt: s.resumeAt, model: s.model, cwd: s.cwd, lean: remote ? [] : skipSettings(os.homedir()),
+        question, history, sessionId: s.sessionId, resumeAt: s.resumeAt, model: s.model, cwd: s.cwd, lean: remote ? [] : skipSettings(os.homedir()),
       }, btwRun(s, remote));
     } finally { tab.btwAsking = false; }
     if (r.detail) deps.log?.warn?.(`btw: ${r.detail}`);

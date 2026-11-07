@@ -331,10 +331,7 @@
   // from a fork of the conversation that Claude never sees (btw.js).
   async function askBtw(tab, question) {
     if (!question) return SB.toast('Ask something after /btw, like: /btw what was that file called?');
-    const card = tab.renderBtw(question);
-    const r = await api.askBtw(tab.id, question);
-    if (r?.ok) card.answer(r.answer);
-    else card.fail(r?.error || "Couldn't ask that.");
+    tab.renderBtw(question, (q, history) => api.askBtw(tab.id, q, history));
   }
 
   // The last thing you asked Claude, kept as a snippet: "that worked, keep it".

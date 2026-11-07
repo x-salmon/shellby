@@ -13,6 +13,8 @@ const remoteSsh = require('./remote/ssh');
 
 const MAX_QUESTION = 4000;
 const TIMEOUT_MS = 120000;
+const MAX_TURNS = 8;
+const MAX_TURN_TEXT = 4000;
 
 const NOTE = [
   'The user is asking a quick side question with /btw while this conversation carries on separately.',
@@ -46,6 +48,24 @@ function cleanQuestion(text) {
   return q && q.length <= MAX_QUESTION ? q : null;
 }
 
+/**
+ * Earlier turns of this side thread, as the renderer kept them: [{ q, a }].
+ * Each fork saves nothing, so a follow-up carries the thread in its prompt.
+ * Only the last MAX_TURNS answered turns, each clipped, to keep stdin small.
+ */
+function cleanHistory(list) {
+  if (!Array.isArray(list)) return [];
+  const clip = s => (typeof s === 'string' ? s.replace(/\r\n?/g, '\n').replace(/\u0000/g, '').trim().slice(0, MAX_TURN_TEXT) : '');
+  return list.map(t => ({ q: clip(t?.q), a: clip(t?.a) })).filter(t => t.q && t.a).slice(-MAX_TURNS);
+}
+
+/** What goes on stdin: the question, after the side thread so far. */
+function prompt(question, history = []) {
+  if (!history.length) return question;
+  const thread = history.map(t => `Me: ${t.q}\n\nYou: ${t.a}`).join('\n\n');
+  return `Our side thread so far:\n\n${thread}\n\nMy follow-up: ${question}`;
+}
+
 /** The CLI's reply -> { ok, answer } or { ok: false, error }. */
 function parse(stdout) {
   let reply;
@@ -75,10 +95,10 @@ function silence(detail) {
 }
 
 /** run(args, timeoutMs, { cwd, input }) -> the CLI's { stdout, stderr, timedOut }. */
-async function ask({ question, sessionId, resumeAt, model, cwd, lean }, run) {
+async function ask({ question, history, sessionId, resumeAt, model, cwd, lean }, run) {
   const q = cleanQuestion(question);
   if (!q) return { ok: false, error: 'Ask something after /btw, like: /btw what was that file called?' };
-  const res = await run(args({ sessionId, resumeAt, model, lean }), TIMEOUT_MS, { cwd, input: q });
+  const res = await run(args({ sessionId, resumeAt, model, lean }), TIMEOUT_MS, { cwd, input: prompt(q, cleanHistory(history)) });
   if (res.timedOut) return { ok: false, error: 'Claude took too long to answer. Try again.' };
   if (!String(res.stdout || '').trim()) {
     const detail = String(res.stderr || res.err?.message || '').trim().split('\n').slice(-3).join(' ');
@@ -87,4 +107,4 @@ async function ask({ question, sessionId, resumeAt, model, cwd, lean }, run) {
   return parse(res.stdout);
 }
 
-module.exports = { args, parse, ask, remoteCommand, cleanQuestion, NOTE, MAX_QUESTION, TIMEOUT_MS };
+module.exports = { args, parse, ask, remoteCommand, cleanQuestion, cleanHistory, prompt, NOTE, MAX_QUESTION, MAX_TURNS, TIMEOUT_MS };

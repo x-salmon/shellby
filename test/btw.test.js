@@ -87,3 +87,24 @@ test('remoteCommand: a conversation on another computer is asked there, over ssh
   assert.match(script, /claude '-p' .*'--resume' 'sess-9' '--fork-session'/);
   assert.match(script, /SHELLBY_OWNED='1'/);
 });
+
+test('prompt: a follow-up carries the side thread so far', () => {
+  assert.equal(btw.prompt('q1'), 'q1');
+  const p = btw.prompt('and then?', [{ q: 'what file?', a: 'app.js' }]);
+  assert.match(p, /Me: what file\?\n\nYou: app\.js/);
+  assert.match(p, /My follow-up: and then\?$/);
+});
+
+test('cleanHistory: only answered turns, the latest few, from whatever came in', () => {
+  assert.deepEqual(btw.cleanHistory('nope'), []);
+  assert.deepEqual(btw.cleanHistory([{ q: 'a', a: '' }, null, { q: ' b ', a: 'c\r\n' }]), [{ q: 'b', a: 'c' }]);
+  const many = Array.from({ length: btw.MAX_TURNS + 3 }, (_, i) => ({ q: `q${i}`, a: 'a' }));
+  assert.equal(btw.cleanHistory(many).length, btw.MAX_TURNS);
+  assert.equal(btw.cleanHistory(many)[0].q, 'q3');
+});
+
+test('ask: a follow-up sends the thread on stdin', async () => {
+  let input;
+  await btw.ask({ question: 'more?', history: [{ q: 'x', a: 'y' }] }, async (_a, _t, o) => { input = o.input; return { stdout: '{"result":"ok"}' }; });
+  assert.match(input, /Me: x[\s\S]*My follow-up: more\?/);
+});

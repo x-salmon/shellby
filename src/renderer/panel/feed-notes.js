@@ -133,27 +133,54 @@
 
     // ------------------------------------------------------------ /btw side questions (btw.js)
     // Not kept in the transcript, and Claude never sees it: × puts it away.
-    renderBtw(question) {
-      const body = h('div', { class: 'btw-body muted', text: 'Thinking…' });
-      const el = h('div', { class: 'btw-card pending', role: 'note', 'aria-busy': 'true' },
+    // ask(question, history) -> { ok, answer } | { ok: false, error }. Each answer
+    // opens a reply box; a follow-up carries the thread so far (btw.js prompt()).
+    renderBtw(question, ask) {
+      const turns = []; // [{ q, a }] answered so far
+      const thread = h('div', { class: 'btw-thread' });
+      const input = h('input', { class: 'btw-reply-input', type: 'text', placeholder: 'Ask a follow-up…', 'aria-label': 'Ask a follow-up side question', maxlength: '4000' });
+      const reply = h('form', { class: 'btw-reply', hidden: true }, input);
+      const el = h('div', { class: 'btw-card', role: 'note' },
         h('div', { class: 'btw-head' },
           h('span', { class: 'btw-tag', text: 'by the way' }),
           h('span', { class: 'btw-q', text: question, title: question }),
           h('button', { class: 'btw-close', type: 'button', title: 'Put it away', 'aria-label': 'Put this side question away', onclick: () => el.remove() }, '×')),
-        body,
-        h('div', { class: 'btw-foot small muted', text: 'A side question: Claude answered from the conversation, which carries on without it.' }));
-      this.stuck = true;
-      this.append(el);
-      const done = () => { el.classList.remove('pending'); el.removeAttribute('aria-busy'); };
-      return {
-        answer: text => {
-          done();
+        thread,
+        reply,
+        h('div', { class: 'btw-foot small muted', text: 'A side thread: Claude answers from the conversation, which carries on without it.' }));
+
+      const run = async q => {
+        if (turns.length) thread.append(h('div', { class: 'btw-follow small', text: q }));
+        const body = h('div', { class: 'btw-body muted', text: 'Thinking…' });
+        thread.append(body);
+        el.classList.add('pending'); el.setAttribute('aria-busy', 'true'); el.classList.remove('err');
+        reply.hidden = true;
+        const r = await ask(q, turns.slice());
+        el.classList.remove('pending'); el.removeAttribute('aria-busy');
+        if (r?.ok) {
           body.className = 'btw-body msg assistant';
           body.textContent = '';
-          SB.linkifyPaths(SB.renderMarkdownInto(body, text));
-        },
-        fail: error => { done(); el.classList.add('err'); body.textContent = error; },
+          SB.linkifyPaths(SB.renderMarkdownInto(body, r.answer));
+          turns.push({ q, a: r.answer });
+        } else {
+          el.classList.add('err');
+          body.className = 'btw-body';
+          body.textContent = r?.error || "Couldn't ask that.";
+        }
+        if (turns.length) { reply.hidden = false; input.focus({ preventScroll: true }); }
       };
+      reply.addEventListener('submit', e => {
+        e.preventDefault();
+        const q = input.value.trim();
+        if (!q || el.classList.contains('pending')) return;
+        input.value = '';
+        run(q);
+      });
+
+      this.stuck = true;
+      this.append(el);
+      run(question);
+      return el;
     }
 
     // Shown while a ! command runs; its result replaces it. null clears it.
