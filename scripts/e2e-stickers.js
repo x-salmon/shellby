@@ -92,7 +92,7 @@ commit('more.js', 'z\n', 'more');
     await crab.shot('stickers-2-landed');
     check(await crab.ev("document.querySelectorAll('#sprite [data-sticker]').length === 1"), 'the sticker is on his shell on the desktop');
     check(await crab.ev("document.querySelector('#sprite [data-sticker]').classList.contains('part-shell')"), 'and moves with the shell');
-    check(await crab.ev("/shipped tidepool/.test(document.getElementById('bubbleText').textContent)"), 'he says what shipped');
+    check(await until(crab, "/shipped tidepool/.test(document.getElementById('bubbleText')?.textContent || '')", 3000), 'he says what shipped');
     let v = await book();
     const p = v.projects[0];
     check(v.projects.length === 1 && p.name === 'tidepool', `one sticker, named for the repo (${p?.name})`);
