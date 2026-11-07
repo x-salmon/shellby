@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.97.1: Model indicator and btw follow-ups
+
+### New
+- A /btw answer now has a reply box under it, so you can ask follow-ups in the same side thread. Claude remembers what you asked before, and the conversation still never sees any of it.
+- **See which model a conversation runs.** A small chip beside the effort chip names the model, like "Sonnet 5.5". It shows what Claude Code is actually using, from the moment the conversation starts, and clicking it opens the model setting.
+- **Let Claude set up your local model.** No Ollama or LM Studio yet? Settings' Local model has a Let Claude set it up button: it opens a task, ready for you to read and send, that installs Ollama, picks a small model that fits your PC and checks it answers. Then press Find models.
+
+### Fixed
+- **MCP tools that work in the background get their own row in the tray.** When Claude Code hands a slow MCP tool off to run on its own, the tray above the box names the tool and shows a plug while it runs, instead of calling it "a background command".
+
 ## 0.97.0: Drafts on your own model
 
 ### New
