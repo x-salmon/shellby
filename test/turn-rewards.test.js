@@ -91,6 +91,8 @@ test('rewards cards are kept in History', () => {
 });
 
 // A manager double: 'item' listeners, the tabs it has and what was noted.
+const pause = ms => new Promise(r => setTimeout(r, ms));
+
 function fakeDeps({ rewardCards = true } = {}) {
   const listeners = [];
   const noted = [];
@@ -101,7 +103,11 @@ function fakeDeps({ rewardCards = true } = {}) {
     log: { info() {} },
   };
   const emit = (tabId, item) => listeners.forEach(fn => fn(tabId, item));
-  const settle = () => new Promise(r => setTimeout(r, 60));
+  // Until `want` cards are in (a loaded runner is slow), or a short spell when none should come.
+  const settle = async (want = 0) => {
+    if (!want) return pause(60);
+    for (const until = Date.now() + 3000; noted.length < want && Date.now() < until;) await pause(10);
+  };
   return { d, emit, noted, settle };
 }
 
@@ -113,7 +119,7 @@ test('a turn that earns a find gets a rewards card after its result', async () =
   w.tapReward('life:found', { id: 'c', name: 'Cowrie' });
   emit('t1', { kind: 'result', ok: true });
   w.tapReward('xp:levelup', { level: 4, title: 'Sandstepper' }); // the turn's own XP brought it, after the result
-  await settle();
+  await settle(1);
   assert.equal(noted.length, 1);
   assert.equal(noted[0].id, 't1');
   assert.deepEqual(noted[0].item.items.map(e => e.kind), ['find', 'level']);
@@ -131,7 +137,7 @@ test('the card waits for the turn\'s changes card, so it lands last', async () =
   await settle();
   assert.equal(noted.length, 0);
   release();
-  await settle();
+  await settle(1);
   assert.equal(noted.length, 1);
 });
 
