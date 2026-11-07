@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.97.2: Pictures on your phone
+
+### Fixed
+- Pictures show in conversations on your phone: the ones you attached, above your message, and the screenshots Claude reads, under the step that read them. Tap one to see it at full width.
+
 ## 0.97.1: Model indicator and btw follow-ups
 
 ### New
