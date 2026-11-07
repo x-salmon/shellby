@@ -127,6 +127,7 @@ interface ShellbyPanelExtras {
   resultBox: any;
   // composer.js
   applyEffort: any;
+  applyModel: any;
   chooseEffort: any;
   chooseNewEffort: any;
   clearConversation: any;
