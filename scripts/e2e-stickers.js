@@ -84,6 +84,8 @@ commit('more.js', 'z\n', 'more');
     check(pushed?.ok && pushed.pushed === 1, `the push goes (${JSON.stringify(pushed)})`);
     check(await until(panel, "[...document.querySelectorAll('.celebrate')].some(c => /New sticker/.test(c.textContent) && /tidepool/.test(c.textContent))"), 'the panel celebrates the new sticker');
     check(await until(crab, "window.__beats.includes('sticker-hold')", 3000), 'he holds it up in his claw');
+    // His line lasts the slap plus a beat (SLAP_MS + 1200), so it is read while he still holds the sticker up.
+    check(await until(crab, "/shipped tidepool/.test(document.getElementById('bubbleText')?.textContent || '')", 3000), 'he says what shipped');
     check(await crab.ev("!!document.querySelector('#sprite .acc-held')"), '…the sticker is in his claw');
     await crab.shot('stickers-1-hold');
     check(await until(crab, "window.__beats.includes('sticker-turn')", 3000), 'turns his shell to you');
@@ -92,7 +94,6 @@ commit('more.js', 'z\n', 'more');
     await crab.shot('stickers-2-landed');
     check(await crab.ev("document.querySelectorAll('#sprite [data-sticker]').length === 1"), 'the sticker is on his shell on the desktop');
     check(await crab.ev("document.querySelector('#sprite [data-sticker]').classList.contains('part-shell')"), 'and moves with the shell');
-    check(await until(crab, "/shipped tidepool/.test(document.getElementById('bubbleText')?.textContent || '')", 3000), 'he says what shipped');
     let v = await book();
     const p = v.projects[0];
     check(v.projects.length === 1 && p.name === 'tidepool', `one sticker, named for the repo (${p?.name})`);
