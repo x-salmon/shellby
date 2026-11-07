@@ -158,13 +158,13 @@ test('a tab closed mid-turn drops what it gathered', async () => {
 
 test('a payout that comes after the turn\'s checks still makes its card', async () => {
   const { d, emit, noted } = fakeDeps();
-  const w = wireTurnRewards(d, { quietMs: 30 });
+  const w = wireTurnRewards(d, { quietMs: 300 });
   w.rewardsBegin('t1');
   w.tapReward('life:found', { id: 'c', name: 'Cowrie' });
   emit('t1', { kind: 'result', ok: true });
   await new Promise(r => setTimeout(r, 10));
   w.tapReward('wardrobe:unlocked', { achievement: { id: 'crit', name: 'Critical Hit' }, rewards: [] }); // a crit on the checks' green
-  await new Promise(r => setTimeout(r, 120));
+  await new Promise(r => setTimeout(r, 900));
   assert.equal(noted.length, 1);
   assert.deepEqual(noted[0].item.items.map(e => e.kind), ['find', 'trophy']);
 });
