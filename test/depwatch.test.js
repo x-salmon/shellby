@@ -323,7 +323,7 @@ test('scanProject: Python reads the lockfile\'s pins into a file of its own, and
     assert.equal(r.hasTests, null);
     assert.deepEqual(r.vulnerable, [{ name: 'requests', severity: 'unrated', direct: null, fix: 'yes' }]);
     assert.equal(summaryOf(r), '1 known vulnerability');
-    await new Promise(res => setTimeout(res, 50));
+    for (const until = Date.now() + 5000; fs.existsSync(seen.file) && Date.now() < until;) await new Promise(res => setTimeout(res, 20)); // removed in the background
     assert.equal(fs.existsSync(seen.file), false, 'the pins file is gone');
 
     fs.writeFileSync(path.join(dir, 'requirements.txt'), 'flask>=2\n');
