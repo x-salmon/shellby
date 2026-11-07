@@ -530,7 +530,8 @@ src/main/        Electron main process
                    one may call), quiet.js (pure: the quiet hours window in the PC's local time, checked at the door),
                    notices.js (push notifications, with the deep link a tap opens), answers.js (pure: what goes with a
                    question's or a plan's answer), later.js (a task for after the reset or tonight, the queue's take out,
-                   reword and move, checks run again, and Try again or Branch from here); wiring/pocket.js ties it in and decides what each phone action may do
+                   reword and move, checks run again, and Try again or Branch from here), pictures.js (a step's or your
+                   message's picture, phone-sized, found by ids and never a path); wiring/pocket.js ties it in and decides what each phone action may do
   handoff.js       a conversation to a terminal and back (pure): the launch command per shell, ids, folders
   btw.js           /btw side questions: a tool-less -p on a fork of the conversation that saves nothing
   quiz.js          "Quiz me" on a turn's changes: Claude's questions from the diff (tool-less -p, --json-schema); main keeps the answers

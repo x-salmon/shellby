@@ -189,6 +189,22 @@ test('a diff names a conversation and a turn, nothing else', async () => {
   } finally { server.stop(); }
 });
 
+test('a picture is asked for by a step’s id or a message’s turn and place, never by a path', async () => {
+  const asks = [];
+  const { server, port } = await boot({ onPicture: async (device, q) => { asks.push(q); return { ok: true, url: 'data:image/png;base64,AA' }; } });
+  try {
+    const r = await request(port, { url: `${API}/picture?tab=t1&pic=toolu_1-0.png`, headers: auth });
+    assert.deepEqual(r.json, { ok: true, url: 'data:image/png;base64,AA' });
+    await request(port, { url: `${API}/picture?tab=t1&turn=u1&i=1`, headers: auth });
+    assert.deepEqual(asks, [{ tab: 't1', pic: 'toolu_1-0.png' }, { tab: 't1', turn: 'u1', i: 1 }]);
+    for (const q of ['tab=t1&pic=..%2F..%2Fx.png', 'tab=t1&pic=C%3A%5Cx.png', 'tab=t1&turn=u1&i=12', 'tab=t1&turn=u1', 'tab=..&pic=a-0.png', 'tab=t1']) {
+      assert.equal((await request(port, { url: `${API}/picture?${q}`, headers: auth })).status, 400, q);
+    }
+    assert.equal(asks.length, 2);
+    assert.equal((await request(port, { url: `${API}/picture?tab=t1&pic=a-0.png` })).status, 401);
+  } finally { server.stop(); }
+});
+
 function openStream(port, url) {
   return new Promise((resolve, reject) => {
     const req = http.request({ host: '127.0.0.1', port, path: url, headers: { Host: `127.0.0.1:${port}`, ...auth } }, res => {

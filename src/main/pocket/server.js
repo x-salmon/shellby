@@ -133,9 +133,10 @@ class PocketServer extends EventEmitter {
    * onOpen(device, { tab }) -> { view, items? }: the first thing a stream is sent
    * onAction(device, action, body) -> Promise<{ ok, ... }>
    * onDiff(device, { tab, after, file }) -> Promise<{ ok, patch } | { ok: false, error }>
+   * onPicture(device, { tab, pic } | { tab, turn, i }) -> Promise<{ ok, url } | { ok: false, error }>: a step's or a message's picture
    * onUpload(device, bytes) -> { ok, id } | { ok: false, error }: a photo for a new task
    */
-  constructor({ srcDir, assetsDir, port = DEFAULT_PORT, getPlace, ownerLogin, findDevice, onPair, onOpen, onAction, onDiff, onUpload, now = Date.now }) {
+  constructor({ srcDir, assetsDir, port = DEFAULT_PORT, getPlace, ownerLogin, findDevice, onPair, onOpen, onAction, onDiff, onPicture, onUpload, now = Date.now }) {
     super();
     this.routes = routeTable(srcDir, assetsDir);
     this.port = port;
@@ -146,6 +147,7 @@ class PocketServer extends EventEmitter {
     this.onOpen = onOpen;
     this.onAction = onAction;
     this.onDiff = onDiff;
+    this.onPicture = onPicture;
     this.onUpload = onUpload;
     this.now = now;
     this.server = null;
@@ -306,6 +308,7 @@ class PocketServer extends EventEmitter {
 
     if (name === 'events' && req.method === 'GET') { this.subscribe(req, res, device, url.searchParams.get('tab')); return; }
     if (name === 'diff' && req.method === 'GET') { this.diff(res, device, url.searchParams); return; }
+    if (name === 'picture' && req.method === 'GET') { this.picture(res, device, url.searchParams); return; }
     if (name === 'upload' && req.method === 'POST') { this.upload(req, res, device); return; }
     if (ACTIONS.includes(name) && req.method === 'POST') { this.action(req, res, device, name); return; }
     json(res, 404, { ok: false, error: 'unknown' });
@@ -367,6 +370,25 @@ class PocketServer extends EventEmitter {
     if (!this.allowed(device)) { json(res, 429, { ok: false, error: 'slow down' }); return; }
     let r;
     try { r = await this.onDiff?.(device, { tab, after, file: typeof file === 'string' ? file.slice(0, 500) : null }); } catch { r = { ok: false, error: 'failed' }; }
+    json(res, 200, r && typeof r === 'object' ? r : { ok: false });
+  }
+
+  /**
+   * A picture in a conversation: a step's, by the id its item names (tool-pictures.js),
+   * or one attached to your message, by its turn and its place among the message's pictures.
+   * Answered as a data URL in JSON: the token rides in a header, so an <img> can't fetch it.
+   */
+  async picture(res, device, q) {
+    const tab = q.get('tab'), pic = q.get('pic'), turn = q.get('turn'), i = q.get('i');
+    const ID = /^[\w-]{1,100}$/;
+    if (!ID.test(tab || '')) { json(res, 400, { ok: false, error: 'bad' }); return; }
+    const ask = pic != null
+      ? (/^[\w-]{1,80}-\d{1,2}\.(png|jpg|gif|webp)$/.test(pic) ? { tab, pic } : null)
+      : (ID.test(turn || '') && /^\d$/.test(i || '') ? { tab, turn, i: Number(i) } : null);
+    if (!ask) { json(res, 400, { ok: false, error: 'bad' }); return; }
+    if (!this.allowed(device)) { json(res, 429, { ok: false, error: 'slow down' }); return; }
+    let r;
+    try { r = await this.onPicture?.(device, ask); } catch { r = { ok: false, error: 'failed' }; }
     json(res, 200, r && typeof r === 'object' ? r : { ok: false });
   }
 

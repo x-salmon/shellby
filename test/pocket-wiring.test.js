@@ -463,6 +463,33 @@ test('undo and the diff name a turn by its changes; main finds the rest', async 
   } finally { stop(w); }
 });
 
+test('a picture comes by a step’s id or by your message’s turn and place, cut to a phone’s size', async () => {
+  const fsx = require('fs');
+  const os = require('os');
+  const dir = fsx.mkdtempSync(path.join(os.tmpdir(), 'pocket-pic-'));
+  const shot = path.join(dir, 'a.png');
+  fsx.writeFileSync(shot, 'png');
+  const sized = [];
+  const fakeImg = (w, h, tag) => ({ isEmpty: () => false, getSize: () => ({ width: w, height: h }), resize: o => { sized.push(o); return fakeImg(o.width, o.height, tag); }, toDataURL: () => `data:image/png;base64,${tag}${w}` });
+  const realImage = electron.nativeImage;
+  electron.nativeImage = { createFromPath: p => (p === shot ? fakeImg(2000, 1000, 'mine') : { isEmpty: () => true }), createFromDataURL: () => fakeImg(1280, 720, 'step') };
+  const msg = { kind: 'user', text: 'look', turnId: 'u1', attachments: ['C:\\notes.txt', shot] };
+  const w = await paired({ tabs: [tabOf('t1')], items: { t1: [msg] } });
+  w.d.toolPicture = (tab, id) => (tab === 't1' && id === 'x1-0.png' ? 'data:image/png;base64,AAAA' : null);
+  try {
+    assert.deepEqual(await w.d.pocket.onPicture(w.device, { tab: 't1', turn: 'u1', i: 0 }), { ok: true, url: 'data:image/png;base64,mine640' });
+    assert.equal((await w.d.pocket.onPicture(w.device, { tab: 't1', turn: 'u1', i: 1 })).ok, false);
+    assert.equal((await w.d.pocket.onPicture(w.device, { tab: 't1', turn: 'zz', i: 0 })).ok, false);
+    assert.deepEqual(await w.d.pocket.onPicture(w.device, { tab: 't1', pic: 'x1-0.png' }), { ok: true, url: 'data:image/png;base64,step640' });
+    assert.equal((await w.d.pocket.onPicture(w.device, { tab: 't1', pic: 'gone-0.png' })).ok, false);
+    assert.deepEqual(sized.map(o => o.width), [640, 640]);
+  } finally {
+    stop(w);
+    electron.nativeImage = realImage;
+    fsx.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('bring it home, stop, reviewed and the queue go through the desk’s own code', async () => {
   const t = tabOf('t1');
   t.session.busy = true;

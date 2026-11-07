@@ -765,7 +765,7 @@ function wirePocket(d) {
       getPlace: place,
       ownerLogin: () => settings().login,
       findDevice,
-      onPair, onOpen, onAction, onDiff,
+      onPair, onOpen, onAction, onDiff, onPicture: require('../pocket/pictures').createPocketPictures(d).onPicture,
       onUpload: (device, bytes) => {
         if (!settings().enabled) return no('Shellby on your phone is off.');
         const why = rights.refuseUpload(devices().find(dv => dv.id === device.id));

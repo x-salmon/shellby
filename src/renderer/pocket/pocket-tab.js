@@ -12,22 +12,69 @@
       h('span', { class: 'tool-g', 'aria-hidden': 'true', text: GLYPH[r.state] }),
       h('span', { class: 'tool-l', text: r.label }), h('span', { class: 'tool-d', text: r.detail }));
 
+    // Pictures: one you attached, or one a step handed Claude (a screenshot it read).
+    // Asked for once they scroll into view, as a data URL (the token rides in a header,
+    // so an <img> can't fetch them itself), and kept for the redraws the stream brings.
+    // A tap shows one at full width.
+    const pics = new Map(); // tab + ref -> Promise<url | null>
+    const picUrl = (tabId, ref) => {
+      const key = `${tabId}\n${JSON.stringify(ref)}`;
+      if (!pics.has(key)) {
+        pics.set(key, N.get('picture', { tab: tabId, ...ref }).then(r => (r?.ok && typeof r.url === 'string' && r.url.startsWith('data:image/') ? r.url : null), () => null));
+        pics.get(key).then(url => { if (!url) pics.delete(key); });
+      }
+      return pics.get(key);
+    };
+    function pictureStrip(tabId, refs, label) {
+      if (!tabId || !refs.length) return null;
+      const strip = h('div', { class: 'pics' });
+      for (const ref of refs) {
+        const img = h('img', { alt: label, decoding: 'async' });
+        const btn = h('button', { type: 'button', class: 'pic', 'aria-label': `${label}: show bigger`, 'aria-pressed': 'false' }, img);
+        btn.addEventListener('click', () => btn.setAttribute('aria-pressed', String(btn.classList.toggle('big'))));
+        btn.ref = ref;
+        strip.append(btn);
+      }
+      const load = () => {
+        for (const btn of [...strip.children]) {
+          picUrl(tabId, btn.ref).then(url => {
+            if (url) btn.firstChild.src = url; else btn.remove();
+            if (!strip.children.length) strip.remove();
+          });
+        }
+      };
+      if (typeof IntersectionObserver !== 'function') { load(); return strip; }
+      const seen = new IntersectionObserver(entries => {
+        if (!entries.some(e => e.isIntersecting)) return;
+        seen.disconnect();
+        load();
+      }, { rootMargin: '200px' });
+      seen.observe(strip);
+      return strip;
+    }
+
     // ctx: { tabId, md(text, at), readOnly }. Read-only (a closed conversation from
     // History) has no turn to open a diff of, so its changes have no link.
     function drawBlock(b, i, all, ctx) {
       switch (b.type) {
         // Yours, in a live conversation that may act: tap it to try again or branch from it.
-        case 'user': return ctx.onUser && b.turnId
-          ? h('button', { type: 'button', class: 'msg-user tappable', 'aria-label': `Your message: ${b.text}. Try again or branch from here`, onclick: () => ctx.onUser(b) }, h('p', { text: b.text }))
-          : h('div', { class: 'msg-user' }, h('p', { text: b.text }));
+        case 'user': {
+          const strip = b.pics ? pictureStrip(ctx.tabId, Array.from({ length: b.pics }, (_, n) => ({ turn: b.turnId, i: n })), 'A picture you attached') : null;
+          const msg = ctx.onUser && b.turnId
+            ? h('button', { type: 'button', class: 'msg-user tappable', 'aria-label': `Your message: ${b.text}. Try again or branch from here`, onclick: () => ctx.onUser(b) }, h('p', { text: b.text }))
+            : h('div', { class: 'msg-user' }, h('p', { text: b.text }));
+          return strip ? h('div', { class: 'msg-user-wrap' }, strip, msg) : msg;
+        }
         case 'text': return h('div', { class: 'msg-claude' }, ctx.md(b.text, i));
         case 'tools': {
           const many = b.tools.length > 4 && i < all.length - 1;
           const shown = many ? b.tools.slice(-2) : b.tools;
           const rows = shown.map(toolRow);
-          if (!many) return h('div', { class: 'tools' }, ...rows);
+          // Every step's pictures, folded ones too, under the group: they're seen as the work goes.
+          const strip = pictureStrip(ctx.tabId, b.tools.flatMap(t => (t.pics || []).map(pic => ({ pic }))).slice(-8), 'A picture from a step');
+          if (!many) return h('div', { class: 'tools' }, ...rows, strip);
           const det = h('details', { class: 'tools-more' }, h('summary', { text: `${L.plural(b.tools.length - 2, 'step')} before these` }), ...b.tools.slice(0, -2).map(toolRow));
-          return h('div', { class: 'tools' }, det, ...rows);
+          return h('div', { class: 'tools' }, det, ...rows, strip);
         }
         case 'crew': return h('div', { class: 'crew' }, ...b.lanes.map((lane, n) => h('div', { class: `lane ${lane.state} hue-${D.helperHue(n)}` },
           D.crab({ px: 1.4, state: lane.state === 'running' ? 'working' : lane.state === 'ok' ? 'success' : 'idle', hue: D.helperHue(n), label: '' }),

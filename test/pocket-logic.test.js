@@ -273,3 +273,17 @@ test("clashPrompt asks him to merge the branch in, sort out the clashes and test
   const desk = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'renderer', 'panel', 'tab-git.js'), 'utf8');
   assert.ok(desk.includes(L.clashPrompt('${tab.worktree.base}')), 'the phone and the desk ask the same way');
 });
+
+test('pictures fold onto your message and onto the step that made them', () => {
+  const blocks = L.fold([
+    { k: 'user', text: 'look', turnId: 'u1', pics: 2 },
+    { k: 'user', text: 'no turn', pics: 1 },
+    { k: 'tool', id: 'a', label: 'Read', detail: 'shot.png' },
+    { k: 'done', id: 'a', error: false, pics: ['a-0.png'] },
+    { k: 'tool', id: 'b', label: 'Run', detail: 'ls' },
+    { k: 'done', id: 'b', error: false },
+  ]);
+  assert.equal(blocks[0].pics, 2);
+  assert.equal(blocks[1].pics, 0);
+  assert.deepEqual(blocks[2].tools.map(t => t.pics), [['a-0.png'], []]);
+});

@@ -16,6 +16,7 @@ const { standing } = require('../../renderer/panel/tab-sort');
 const { appDeskOnlyReason, PLAN_MAX: MAX_PLAN } = require('../channels/replies');
 const { normalizeQuiet } = require('./quiet');
 const { normalizeRights } = require('./rights');
+const { validPicture } = require('../tool-pictures');
 
 const VERSION = 1;
 const MAX_TABS = 40;
@@ -24,6 +25,8 @@ const MAX_TEXT = 8000;          // Claude's reply, per item
 const MAX_FILES = 60;
 const MAX_PROJECTS = 60;
 const MAX_QUESTIONS = 4;
+const MAX_PICS = 4;              // pictures on one message or step (tool-pictures.js keeps 4 a result)
+const PICTURE_RE = /\.(png|jpe?g|gif|webp)$/i;
 const STANDINGS = ['asking', 'review', 'finished', 'working', 'quiet'];
 
 const clip = (s, n) => {
@@ -34,6 +37,15 @@ const clip = (s, n) => {
 const line = (s, n) => clip(String(s ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim(), n);
 const num = v => (Number.isFinite(v) ? v : null);
 const base = p => (typeof p === 'string' && p ? path.win32.basename(p) : '');
+
+/**
+ * The pictures among a message's attachments, in order. The phone is only told
+ * how many: it asks for each by the message's turn and its place here, and main
+ * finds the file (wiring/pocket.js onPicture).
+ */
+const pictureFiles = list => (Array.isArray(list) ? list : []).filter(f => typeof f === 'string' && PICTURE_RE.test(f)).slice(0, MAX_PICS);
+/** A step's saved pictures (tool-pictures.js ids, never a path), as the phone asks for them. */
+const toolPics = ids => (Array.isArray(ids) ? ids : []).filter(validPicture).slice(0, MAX_PICS);
 
 /** One conversation, for the beach and its header. */
 function phoneTab(t, extra = {}) {
@@ -250,7 +262,11 @@ function phoneItem(item) {
   if (!item || typeof item !== 'object') return null;
   const sub = item.sub ? { sub: true, parent: line(item.parent, 100) } : {};
   switch (item.kind) {
-    case 'user': return { k: 'user', text: clip(item.text, 4000), turnId: line(item.turnId, 80) || null };
+    case 'user': {
+      const turnId = line(item.turnId, 80) || null;
+      const pics = turnId ? pictureFiles(item.attachments).length : 0;
+      return { k: 'user', text: clip(item.text, 4000), turnId, ...(pics ? { pics } : {}) };
+    }
     case 'text': return { k: 'text', text: clip(item.text, MAX_TEXT), ...sub };
     // /context: the PC draws a bar; the phone shows Claude Code's own table, as it always has.
     case 'context-usage': return { k: 'text', text: clip(item.text, MAX_TEXT) };
@@ -261,7 +277,10 @@ function phoneItem(item) {
       if (item.agent) out.agent = { type: line(item.agent.type, 60), description: line(item.agent.description, 160) };
       return out;
     }
-    case 'tool_result': return { k: 'done', id: line(item.id, 100), error: !!item.isError, ...(item.isError ? { text: line(item.text, 300) } : {}), ...sub };
+    case 'tool_result': {
+      const pics = toolPics(item.pictures);
+      return { k: 'done', id: line(item.id, 100), error: !!item.isError, ...(item.isError ? { text: line(item.text, 300) } : {}), ...(pics.length ? { pics } : {}), ...sub };
+    }
     case 'task': return {
       k: 'task', phase: line(item.phase, 20), taskId: line(item.taskId, 100), toolUseId: line(item.toolUseId, 100),
       description: line(item.description, 160), type: line(item.subagentType, 60), taskType: line(item.taskType, 30),
@@ -315,4 +334,4 @@ function phoneItems(items) {
   return out.reverse();
 }
 
-module.exports = { MAX_ITEMS, STANDINGS, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };
+module.exports = { MAX_ITEMS, MAX_PICS, STANDINGS, pictureFiles, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };

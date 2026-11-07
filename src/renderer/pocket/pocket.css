@@ -299,6 +299,16 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
 .tools-more summary::before { content: "▸ "; }
 .tools-more[open] summary::before { content: "▾ "; }
 
+/* Pictures: yours above your message, a step's under its group. A tap shows one at full width. */
+.msg-user-wrap { align-self: flex-end; max-width: 86%; display: grid; gap: 6px; justify-items: end; }
+.msg-user-wrap .msg-user { max-width: 100%; }
+.pics { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; }
+.tools .pics { padding-left: 12px; }
+.pic { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--abyss); cursor: zoom-in; line-height: 0; }
+.pic img { display: block; width: auto; height: auto; max-width: 160px; max-height: 120px; min-width: 48px; min-height: 36px; object-fit: contain; }
+.pic.big { flex-basis: 100%; cursor: zoom-out; }
+.pic.big img { max-width: 100%; max-height: none; width: 100%; }
+
 .crew { display: grid; gap: 6px; }
 .lane { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--reef); border-left: 3px solid var(--lane, var(--coral)); }
 .lane-words { min-width: 0; display: grid; }

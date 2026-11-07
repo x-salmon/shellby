@@ -212,7 +212,7 @@
         continue;
       }
       switch (it.k) {
-        case 'user': blocks.push({ type: 'user', text: it.text || '', turnId: it.turnId || null }); break;
+        case 'user': blocks.push({ type: 'user', text: it.text || '', turnId: it.turnId || null, pics: Number.isInteger(it.pics) && it.turnId ? Math.min(it.pics, 4) : 0 }); break;
         case 'text': {
           const prev = last();
           if (prev && prev.type === 'text') prev.text += `\n\n${it.text}`;
@@ -228,7 +228,7 @@
             crew.lanes.push(lane);
             break;
           }
-          const row = { id: it.id, label: it.label || it.name || 'Tool', detail: it.detail || '', state: 'running', error: '' };
+          const row = { id: it.id, label: it.label || it.name || 'Tool', detail: it.detail || '', state: 'running', error: '', pics: [] };
           tools.set(it.id, row);
           let group = last();
           if (!group || group.type !== 'tools') { group = { type: 'tools', tools: [] }; blocks.push(group); }
@@ -237,7 +237,7 @@
         }
         case 'done': {
           const row = tools.get(it.id);
-          if (row) { row.state = it.error ? 'error' : 'ok'; row.error = it.text || ''; }
+          if (row) { row.state = it.error ? 'error' : 'ok'; row.error = it.text || ''; row.pics = Array.isArray(it.pics) ? it.pics.slice(0, 4) : []; }
           const lane = lanes.get(it.id);
           if (lane && lane.state === 'running') lane.state = it.error ? 'error' : 'ok';
           break;

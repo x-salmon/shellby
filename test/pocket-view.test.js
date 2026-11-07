@@ -196,3 +196,16 @@ test('a queued task on the phone carries its words, when it goes, and whether it
   assert.equal(t.started, false);
   assert.equal(v.phoneHeld({ id: 'h2', kind: 'task', prompt: 'x', tabId: 'tab1' }).started, true);
 });
+
+test('pictures go to the phone as a count on your message and as ids on a step, never as paths', () => {
+  const mine = v.phoneItem({ kind: 'user', text: 'look', turnId: 'u1', attachments: ['C:\\shots\\a.png', 'C:\\notes.txt', 'C:\\shots\\b.JPG'] });
+  assert.equal(mine.pics, 2);
+  assert.ok(!JSON.stringify(mine).includes('shots'));
+  // Without a turn the phone has nothing to ask for them by.
+  assert.equal(v.phoneItem({ kind: 'user', text: 'look', attachments: ['C:\\a.png'] }).pics, undefined);
+  assert.equal(v.phoneItem({ kind: 'user', text: 'plain', turnId: 'u2' }).pics, undefined);
+  const step = v.phoneItem({ kind: 'tool_result', id: 'x1', isError: false, pictures: ['x1-0.png', '../../evil.png', 'x1-1.jpg'] });
+  assert.deepEqual(step.pics, ['x1-0.png', 'x1-1.jpg']);
+  assert.equal(v.phoneItem({ kind: 'tool_result', id: 'x2', isError: false }).pics, undefined);
+  assert.deepEqual(v.pictureFiles(['a.png', 'b.gif', 'c.webp', 'd.jpeg', 'e.png']), ['a.png', 'b.gif', 'c.webp', 'd.jpeg']);
+});
