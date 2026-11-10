@@ -122,6 +122,20 @@ const control = {
   },
 
   /**
+   * Switch this conversation's model, as the terminal's /model does: the flag
+   * for the next start, and a running process told now (set_model), so the
+   * next turn runs on it. '' is Claude Code's default. Until a reply on the new
+   * model comes in, the one asked for is what the chip shows (sessions.js
+   * summary); lastModel stays, so the cache break the switch causes is put down to it.
+   */
+  setModel(model) {
+    this.model = model || null;
+    this.modelSwitched = true;
+    if (this.proc) return this.request('set_model', { model: model || 'default' });
+    return Promise.resolve({ ok: true });
+  },
+
+  /**
    * Make the next start pick the conversation up only as far as `anchor` (a
    * transcript entry from an earlier result), as a new fork. No anchor: the
    * next message starts a new conversation.

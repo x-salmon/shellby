@@ -91,8 +91,8 @@ class SessionManager extends EventEmitter {
       exe: () => this.getExe() || exe, argsPrefix: this.argsPrefix,
       cwd: historyEntry?.cwd || cwd,
       mode: mode || this.getMode(),
-      // Its own model, picked before its first message (setTabModel), or the default.
-      model: (historyEntry?.model && isModel(historyEntry.model) ? historyEntry.model : '') || this.getModel() || null,
+      // Its own model (setTabModel; '' is Claude Code's default, picked on purpose), or the Settings one.
+      model: historyEntry?.model === '' ? null : (historyEntry?.model && isModel(historyEntry.model) ? historyEntry.model : '') || this.getModel() || null,
       effort: ownEffort ?? (this.getEffort() || ''),
       outputStyle: this.getOutputStyle() || '',
       fallbackModel: this.getFallbackModel() || '',
@@ -649,19 +649,31 @@ class SessionManager extends EventEmitter {
   }
 
   /**
-   * A model of its own for a conversation that hasn't started: from the next
-   * start on (--model), kept in History. One that has started keeps its model,
-   * since switching would send it all again at full price (each model has its own cache).
+   * This conversation's own model, as the terminal's /model switches it ('' is
+   * Claude Code's default): from its next turn, kept in History. One that has
+   * started reads the whole conversation again on the next turn, at full price,
+   * since each model has its own cache: -> started, so the panel can say so.
+   * Set at once (a first message sent right after starts on it); only a
+   * running CLI's answer is waited for, and its no puts the old one back.
    */
   setTabModel(tabId, model) {
     const tab = this.require(tabId);
-    if (!model || !isModel(model)) throw new Error("Shellby doesn't know that model.");
-    if (tab.session.proc || tab.session.sessionId) return { ok: false, error: 'This conversation has started, so it keeps its model. A new tab can start on another.' };
-    tab.session.model = model;
+    if (typeof model !== 'string' || !isModel(model)) throw new Error("Shellby doesn't know that model.");
+    const started = !!(tab.session.proc || tab.session.sessionId);
+    const before = { model: tab.session.model, own: tab.ownModel };
+    const asked = tab.session.setModel(model);
     tab.ownModel = true;
     if (tab.saved) this.history.update(tab.id, { model });
     this.changed();
-    return { ok: true };
+    return asked.then(r => {
+      if (r.ok) return { ok: true, started };
+      tab.session.model = before.model;
+      tab.session.modelSwitched = false;
+      tab.ownModel = before.own;
+      if (tab.saved) this.history.update(tab.id, { model: before.own ? before.model || '' : undefined });
+      this.changed();
+      return { ok: false, error: `Claude Code didn't switch: ${r.error}` };
+    });
   }
 
   // Sized from what it was asked, once: only while it follows a default of
@@ -696,7 +708,10 @@ class SessionManager extends EventEmitter {
       outcome: t.outcome, unread: t.unread, routineId: t.routineId, workflowRunId: t.workflowRunId || null, saved: t.saved, named: t.named, context: t.session.context, cache: t.session.cache,
       nudge: turncost.nudge(t.session.context, t.session.growths),
       // The model it runs: the latest reply's, else init's, else the one asked for ('' = Claude Code's default).
-      model: t.session.lastModel || t.session.initModel || t.session.model || '',
+      // Just switched (/model): the one asked for, until a reply on it comes in.
+      model: (t.session.modelSwitched ? t.session.model : t.session.lastModel || t.session.initModel || t.session.model) || '',
+      // What it asked for ('' = Claude Code's default), so the panel can name the default it ran on.
+      modelAsked: t.session.model || '',
       worktree: t.worktree ? { branch: t.worktree.branch, base: t.worktree.base, originalCwd: t.worktree.originalCwd } : null,
       claudeWorktree: t.claudeWorktree ? { branch: t.claudeWorktree.branch, path: t.claudeWorktree.path } : null, // Claude's own (EnterWorktree)
       branchOf: t.branchOf ? { id: t.branchOf.id, title: t.branchOf.title, at: t.branchOf.at, ...(t.branchOf.shared ? { shared: true } : {}) } : null,

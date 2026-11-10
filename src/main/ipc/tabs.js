@@ -132,9 +132,9 @@ function registerTabsIpc(ipcMain, d) {
     try { d.isStr(tabId) && d.manager.setTabEffort(tabId, effort); return { ok: true }; } catch (err) { return { ok: false, error: err.message }; }
   });
 
-  // A model of its own for a conversation that hasn't started yet (outlook.js "Use Sonnet for this one").
-  ipcMain.handle('tab:model', (_e, { tabId, model } = {}) => {
-    try { return d.isStr(tabId) && d.isStr(model) ? d.manager.setTabModel(tabId, model) : { ok: false, error: 'Which conversation?' }; } catch (err) { return { ok: false, error: err.message }; }
+  // This conversation's model, from the model chip or /model ('' is Claude Code's default), or outlook.js "Use Sonnet for this one".
+  ipcMain.handle('tab:model', async (_e, { tabId, model } = {}) => {
+    try { return d.isStr(tabId) && typeof model === 'string' ? await d.manager.setTabModel(tabId, model) : { ok: false, error: 'Which conversation?' }; } catch (err) { return { ok: false, error: err.message }; }
   });
 
   // fromQueue: the panel's queue sending what you left behind a turn, by itself.

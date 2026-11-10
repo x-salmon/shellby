@@ -490,7 +490,7 @@ SB.anyMenuOpen = () => !!document.querySelector(OPEN_MENUS);
 SB.closeMenus = ({ refocus = false } = {}) => {
   const held = !!document.activeElement?.closest(OPEN_MENUS);
   for (const menu of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.popover'))) menu.hidden = true;
-  for (const id of ['modeChip', 'folderChip', 'branchChip', 'ctxChip', 'usage', 'effortChip', 'tabAllBtn', 'reviewBtn']) SB.$(id).setAttribute('aria-expanded', 'false');
+  for (const id of ['modeChip', 'folderChip', 'branchChip', 'ctxChip', 'usage', 'effortChip', 'modelChip', 'tabAllBtn', 'reviewBtn']) SB.$(id).setAttribute('aria-expanded', 'false');
   SB.hideSlash?.();
   SB.hidePick?.();
   menuAnchor?.setAttribute('aria-expanded', 'false');

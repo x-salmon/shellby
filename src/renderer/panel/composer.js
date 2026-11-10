@@ -253,7 +253,7 @@
     { name: 'effort', kind: 'shellby', description: 'How hard Claude thinks here: low, medium, high, xhigh, max or auto. /effort new <level|pick> for new conversations' },
     { name: 'permissions', kind: 'shellby', description: 'The allow, ask and deny rules Claude Code follows' },
     { name: 'mcp', kind: 'shellby', description: 'MCP servers: add, remove, reconnect, turn on or off' },
-    { name: 'model', kind: 'shellby', description: 'Pick the model for new conversations' },
+    { name: 'model', kind: 'shellby', description: 'Switch the model this conversation runs: /model, or /model sonnet, opus, haiku, default' },
     { name: 'output-style', kind: 'shellby', description: 'How Claude talks while it works (Explanatory, Learning…)' },
     { name: 'snippets', kind: 'shellby', description: 'Your saved prompts. /snippets save [name] keeps the last thing you sent; /snippets new writes one' },
   ];
@@ -285,7 +285,15 @@
     },
     permissions: () => SB.showToolbox?.('permissions'),
     mcp: () => SB.showToolbox?.('mcp'),
-    model: () => SB.showSetting?.('modelSelect'),
+    // As in the terminal: /model opens the picker, /model sonnet (or an id, a label, default) switches.
+    model: (tab, arg) => {
+      if (!arg) return SB.openMenu($('modelMenu'), $('modelChip'), modelItems);
+      const want = arg.toLowerCase().trim();
+      if (want === 'default') return SB.chooseModel('');
+      const hit = (state.models || []).find(m => m.id === want || m.label.toLowerCase() === want);
+      if (!hit) return SB.toast(`Shellby doesn't know "${arg}". Try /model opus, sonnet, haiku, default, or /model to pick.`, { ms: 6000 });
+      SB.chooseModel(hit.id);
+    },
     'output-style': () => SB.showSetting?.('styleSelect'),
     snippets: (tab, arg) => {
       if (!arg) return SB.showToolbox?.('snippet');
@@ -412,18 +420,65 @@
     return family ? `${family[0].toUpperCase()}${family.slice(1)}${version.length ? ` ${version.join('.')}` : ''}` : id;
   }
 
+  // Claude Code's default depends on your plan and isn't told before a
+  // conversation runs, so the last one a conversation on the default reported
+  // is kept, to name it ("default (Opus 5.5)") before the next one starts.
+  const DEFAULT_SEEN = 'shellby.defaultModelSeen';
+  const askedOf = tab => (typeof tab?.modelAsked === 'string' ? tab.modelAsked : state.settings?.model || '');
+  function defaultName(tab) {
+    const seen = askedOf(tab) === '' && tab?.model ? tab.model : SB.pref(DEFAULT_SEEN);
+    return seen ? `default (${modelName(seen)})` : 'default';
+  }
+
   SB.applyModel = () => {
     const tab = SB.activeTab();
-    const id = tab?.model || state.settings?.model || '';
+    const asked = askedOf(tab);
+    if (tab && asked === '' && tab.model) SB.pref.set(DEFAULT_SEEN, tab.model);
+    const id = asked === '' ? '' : tab?.model || asked;
     const chip = $('modelChip');
     chip.hidden = !tab;
-    $('modelLabel').textContent = id ? modelName(id) : 'default';
-    chip.title = id
-      ? `Model: ${id}. This conversation keeps it; new ones start on the model in Settings (/model)`
-      : 'Model: Claude Code picks the default. Change it for new conversations in Settings (/model)';
+    $('modelLabel').textContent = id ? modelName(id) : defaultName(tab);
+    chip.classList.toggle('on', !!id);
+    chip.title = `Model: ${id || `${defaultName(tab)}, what Claude Code picks for your plan`}. Click to switch this conversation (/model)`;
   };
 
-  $('modelChip').addEventListener('click', () => SB.showSetting?.('modelSelect'));
+  function modelItems() {
+    const tab = SB.activeTab();
+    const cur = askedOf(tab);
+    const started = !!tab?.saved;
+    const item = (id, title, sub) => h('button', { class: 'menu-item', role: 'menuitemradio', 'aria-checked': String(cur === id), onclick: () => { SB.closeMenus(); SB.chooseModel(id); } },
+      h('span', { class: 'mi-check', text: cur === id ? '●' : '' }),
+      h('span', {}, h('div', { class: 'mi-title', text: title }), sub ? h('div', { class: 'mi-sub', text: sub }) : null));
+    const models = state.models || [];
+    return [
+      h('div', { class: 'menu-label', text: started ? 'Model for this conversation, from its next turn' : 'Model for this conversation' }),
+      item('', defaultName(tab).replace(/^d/, 'D'), 'What Claude Code picks for your plan'),
+      ...[...new Set(models.map(m => m.group))].flatMap(g => [
+        h('div', { class: 'menu-sep' }),
+        ...models.filter(m => m.group === g).map(m => item(m.id, m.label)),
+      ]),
+      h('div', { class: 'menu-sep' }),
+      h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { SB.closeMenus(); SB.showSetting?.('modelSelect'); } },
+        h('span', { class: 'mi-check', text: '' }),
+        h('span', {}, h('div', { class: 'mi-title', text: 'New conversations…' }),
+          h('div', { class: 'mi-sub', text: `Start on ${state.settings?.model ? modelName(state.settings.model) : 'the default'}. Change it in Settings` }))),
+    ];
+  }
+
+  // This conversation only, as the terminal's /model. One that has started
+  // reads everything again on its next turn: each model keeps its own cache.
+  SB.chooseModel = async (id) => {
+    const tab = SB.activeTab();
+    if (!tab) return SB.showSetting?.('modelSelect');
+    const r = await api.setTabModel(tab.id, id).catch(() => null);
+    if (!r?.ok) return SB.toast(r?.error || "Couldn't change its model.", { ms: 6000 });
+    Object.assign(tab, { modelAsked: id, model: id }); // main's next summary says the same
+    SB.applyModel();
+    const name = id ? modelName(id) : defaultName(tab);
+    SB.toast(r.started ? `Switched to ${name}. Its next turn re-reads the conversation, so it costs more once.` : `This conversation starts on ${name}.`, { ms: 5000 });
+  };
+
+  $('modelChip').addEventListener('click', () => SB.openMenu($('modelMenu'), $('modelChip'), modelItems));
 
   // This conversation only. With none open yet, it's what new ones start on.
   SB.chooseEffort = async (id) => {

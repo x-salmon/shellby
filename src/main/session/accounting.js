@@ -122,6 +122,7 @@ const accounting = {
     const t = ctx.tokensFrom(event);
     if (!t) return;
     this.lastModel = t.model || this.lastModel;
+    if (t.model) this.modelSwitched = false; // a reply on the model it was switched to
     this.setContext(t.tokens, this.lastModel);
   },
 

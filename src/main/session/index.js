@@ -155,7 +155,8 @@ class ClaudeSession extends Base {
     this.lastUuid = null;          // the newest main-thread transcript entry this turn
     this.requests = new Map();     // request_id -> { resolve, timer } for Shellby's own control requests
     this.context = ctx.view(context?.tokens, context?.window);
-    this.windows = null;           // { model: contextWindow } as Claude Code last reported it
+    this.modelSwitched = false;    // set_model sent, and no reply on the new model yet (control.js setModel)
+    this.windows = null;          // { model: contextWindow } as Claude Code last reported it
     this.proc = null;
     this.busy = false;
     this.busySince = null;         // when the current turn started, for the panel's running clock

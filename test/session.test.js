@@ -467,6 +467,24 @@ test('setEffort reaches a running conversation before its next turn', async () =
   s.close();
 });
 
+test('setModel switches a running conversation before its next turn, as the terminal\'s /model does', async () => {
+  const { s, items } = makeSession({ model: 'opus' });
+  s.send('model');
+  await waitFor(s, i => i.kind === 'result');
+  assert.equal(lastText(items), 'model:opus');
+  assert.deepEqual(await s.setModel('haiku'), { ok: true, response: {} });
+  assert.equal(s.modelSwitched, true);
+  s.send('model');
+  await waitFor(s, i => i.kind === 'result' && texts(items).length === 2);
+  assert.equal(lastText(items), 'model:haiku');
+  assert.equal(s.modelSwitched, false, 'a reply came in on it');
+  await s.setModel('');
+  s.send('model');
+  await waitFor(s, i => i.kind === 'result' && texts(items).length === 3);
+  assert.equal(lastText(items), 'model:default');
+  s.close();
+});
+
 test('request: answers come back by id; errors and a stopped CLI never hang', async () => {
   const { s } = makeSession();
   assert.equal((await s.request('mcp_status')).ok, false, 'no process yet');

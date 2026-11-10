@@ -48,6 +48,7 @@
       context: summary.context !== undefined ? summary.context : tab.context || null,
       cache: summary.cache !== undefined ? summary.cache : tab.cache || null,
       model: summary.model ?? tab.model ?? '', // the model it runs (the model chip, composer.js)
+      modelAsked: summary.modelAsked ?? tab.modelAsked ?? '', // what it asked for: '' is Claude Code's default
       // The tests' last verdict and the latest changes' review (main's review-inbox.js), for the review inbox.
       checks: summary.checks !== undefined ? summary.checks : tab.checks || null,
       ready: summary.ready !== undefined ? summary.ready : tab.ready || null,

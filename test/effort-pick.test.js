@@ -95,19 +95,40 @@ test('the chip sets one conversation, the default only those following it, and r
   } finally { mgr.closeAll({ kill: true }); }
 });
 
-test('a conversation not started yet can start on its own model, kept on reopening; one that started keeps its model', () => {
+test('a conversation can start on its own model, switch it once started, and keep it on reopening', async () => {
   const { mgr, history } = makeManager();
   try {
     const a = mgr.open({ tabId: 'a', cwd: os.tmpdir() });
     assert.throws(() => mgr.setTabModel('a', 'gpt-9'));
-    assert.deepEqual(mgr.setTabModel('a', 'sonnet'), { ok: true });
+    assert.deepEqual(await mgr.setTabModel('a', 'sonnet'), { ok: true, started: false });
     assert.equal(a.session.model, 'sonnet');
     mgr.send('a', 'what is this?', { kind: 'user', text: 'what is this?' });
     assert.equal(history.get('a').model, 'sonnet');
-    assert.equal(mgr.setTabModel('a', 'opus').ok, false, 'started: switching would send it all again');
-    assert.equal(a.session.model, 'sonnet');
+    while (a.session.busy) await new Promise(r => setTimeout(r, 20)); // its reply in, so none lands after the switch
+    assert.deepEqual(await mgr.setTabModel('a', 'opus'), { ok: true, started: true });
+    assert.equal(a.session.model, 'opus');
+    assert.deepEqual([mgr.summary[0].model, mgr.summary[0].modelAsked], ['opus', 'opus'], 'the chip shows the switch before a reply on it');
+    assert.equal(history.get('a').model, 'opus');
     mgr.close('a', { kill: true });
     const again = mgr.open({ tabId: 'a', cwd: os.tmpdir(), historyEntry: history.get('a') });
-    assert.equal(again.session.model, 'sonnet');
+    assert.equal(again.session.model, 'opus');
+  } finally { mgr.closeAll({ kill: true }); }
+});
+
+test('switching to the default sticks on reopening, over the model in Settings', async () => {
+  const { mgr, history } = makeManager();
+  try {
+    mgr.open({ tabId: 'a', cwd: os.tmpdir() });
+    mgr.send('a', 'hi', { kind: 'user', text: 'hi' });
+    assert.equal((await mgr.setTabModel('a', '')).ok, true);
+    assert.equal(history.get('a').model, '');
+    mgr.close('a', { kill: true });
+    const reopened = new SessionManager({
+      getExe: () => process.execPath, argsPrefix: [path.join(__dirname, 'fixtures', 'fake-claude.js')], history,
+      getMode: () => 'ask', getModel: () => 'opus', getEffort: () => '', getEffortPick: () => false,
+    });
+    try {
+      assert.equal(reopened.open({ tabId: 'a', cwd: os.tmpdir(), historyEntry: history.get('a') }).session.model, null);
+    } finally { reopened.closeAll({ kill: true }); }
   } finally { mgr.closeAll({ kill: true }); }
 });

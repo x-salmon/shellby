@@ -17,6 +17,7 @@
 //   "mcp <tool> <json>" -> calls a tool on the in-app MCP server (see crabmcp.js)
 //                   and replies with its result; "mcp tools" lists them
 //   "effort"     -> replies with the effort level it was last told (flag or apply_flag_settings)
+//   "model"      -> replies with the model it was last told (--model or set_model)
 //   "stream <words>" -> the reply written word by word, then a prompt suggestion
 //   "/goal <condition>|clear" -> Claude Code's own note that a goal was set or cleared
 //   "helper says <words>" -> a helper whose words are forwarded (--forward-subagent-text)
@@ -81,6 +82,7 @@ let stepHooks = [];   // PostToolUse ones
 let inbox = null;     // messages that came in while a "steps" turn runs, not yet read
 const REPLAY = args.includes('--replay-user-messages');
 let effort = args.includes('--effort') ? args[args.indexOf('--effort') + 1] : '';
+let model = args.includes('--model') ? args[args.indexOf('--model') + 1] : ''; // and set_model's
 const bgJobs = new Map(); // task id -> { stop } for "bg" / "watch" commands still running
 
 // Like the real CLI, it keeps the conversation under <config>/projects/<folder>/<id>.jsonl,
@@ -300,6 +302,9 @@ function onLine(line) {
     } else if (sub === 'stop_task') {
       // Like the real CLI: the task is killed, then the answer.
       bgJobs.get(msg.request.task_id)?.stop();
+      out({ type: 'control_response', response: { subtype: 'success', request_id: msg.request_id, response: {} } });
+    } else if (sub === 'set_model') {
+      model = msg.request.model === 'default' ? '' : msg.request.model || '';
       out({ type: 'control_response', response: { subtype: 'success', request_id: msg.request_id, response: {} } });
     } else if (sub === 'apply_flag_settings') {
       effort = msg.request.settings?.effortLevel || '';
@@ -573,6 +578,7 @@ function onLine(line) {
     result(true);
     return;
   }
+  if (content === 'model') { text(`model:${model || 'default'}`); result(true); return; }
   if (content === 'effort') { text(`effort:${effort || 'default'}`); result(true); return; }
   // "stream <words>" -> the reply word by word first (--include-partial-messages), then whole;
   // "stream" also ends with a prompt suggestion, as the real CLI does when they're on.
