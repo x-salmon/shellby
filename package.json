@@ -52,15 +52,15 @@
   "dependencies": {
     "@sentry/electron": "^8.3.0",
     "electron-updater": "^6.8.11",
-    "koffi": "^3.3.3",
+    "koffi": "^3.3.7",
     "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.6.5",
-    "electron": "^45.2.0",
+    "@types/node": "^26.6.6",
+    "electron": "^45.2.3",
     "electron-builder": "^26.18.0",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "typescript": "^7.0.2"
   },
   "overrides": {
