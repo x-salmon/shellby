@@ -71,6 +71,21 @@ test('classify: what kind of change, and lines about other products or systems l
   assert.equal(tricks.classify(''), null);
 });
 
+test('classify: cloud-provider lines only for people whose Claude Code runs through that cloud', () => {
+  const vertex = 'Added fast mode on Vertex in the global, us and eu regions';
+  assert.equal(tricks.classify(vertex), null, 'on a Claude plan, Vertex news is noise');
+  assert.equal(tricks.classify('Fixed Bedrock auth refresh'), null);
+  assert.equal(tricks.classify(vertex, { clouds: ['vertex'] }).kind, 'added');
+  assert.equal(tricks.classify('Fixed a hang on Bedrock and Vertex', { clouds: ['bedrock'] }).kind, 'fixed', 'kept when any cloud it names is in use');
+  assert.equal(tricks.classify('Added Claude Fable 5.2').kind, 'added', 'no cloud named: kept');
+});
+
+test('cloudsIn: the providers Claude Code is set to use', () => {
+  assert.deepEqual(tricks.cloudsIn({}), []);
+  assert.deepEqual(tricks.cloudsIn({ CLAUDE_CODE_USE_VERTEX: '1', CLAUDE_CODE_USE_BEDROCK: '0', CLAUDE_CODE_USE_FOUNDRY: 'false' }), ['vertex']);
+  assert.deepEqual(tricks.cloudsIn({ CLAUDE_CODE_USE_BEDROCK: 'true', CLAUDE_CODE_USE_FOUNDRY: '1' }), ['bedrock', 'foundry']);
+});
+
 test('digest: new features first, each with a prompt to try it; fixes counted but not shown', () => {
   const dg = tricks.digest(tricks.parseChangelog(CHANGELOG), '2.1.290', '2.1.293');
   assert.equal(dg.from, '2.1.290');

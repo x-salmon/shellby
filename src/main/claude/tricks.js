@@ -57,10 +57,29 @@ const ELSEWHERE = /^(\[[^\]]+\]|(macOS|Mac|Linux|Self-hosted runner|SDK|Agent SD
 /** @type {[string, RegExp][]} */
 const KINDS = [['added', /^(Added|New|Introduced)\b/i], ['improved', /^Improved\b/i], ['changed', /^Changed\b/i], ['fixed', /^Fixed\b/i]];
 
+// Lines about a cloud provider ("fast mode on Vertex") are news only for people
+// whose Claude Code runs through it; on a Claude plan they're noise.
+/** @type {Record<string, RegExp>} */
+const CLOUDS = { vertex: /\bVertex\b/i, bedrock: /\bBedrock\b/i, foundry: /\bFoundry\b/i };
+/** @type {Record<string, string>} */
+const ENV_CLOUD = { vertex: 'CLAUDE_CODE_USE_VERTEX', bedrock: 'CLAUDE_CODE_USE_BEDROCK', foundry: 'CLAUDE_CODE_USE_FOUNDRY' };
+
+/** The cloud providers Claude Code is set to use, read from its environment. */
+function cloudsIn(env = /** @type {Record<string, string | undefined>} */ ({})) {
+  const isOn = (/** @type {unknown} */ v) => typeof v === 'string' && v !== '' && v !== '0' && v.toLowerCase() !== 'false';
+  return Object.keys(ENV_CLOUD).filter(k => isOn(env[ENV_CLOUD[k]]));
+}
+
+/** True when a line names a cloud provider and none of the ones it names is in use. */
+function otherCloud(text, clouds = /** @type {string[]} */ ([])) {
+  const named = Object.keys(CLOUDS).filter(k => CLOUDS[k].test(text));
+  return named.length > 0 && !named.some(k => clouds.includes(k));
+}
+
 /** One changelog line -> { text, kind } (kind: added, improved, changed, fixed, other), or null to leave out. */
-function classify(line) {
+function classify(line, { clouds = /** @type {string[]} */ ([]) } = {}) {
   const text = clip(String(line || '').replace(/^Windows\s*:\s*/i, ''), MAX_TEXT);
-  if (!text || ELSEWHERE.test(text) || /^Reverted\b/i.test(text)) return null;
+  if (!text || ELSEWHERE.test(text) || /^Reverted\b/i.test(text) || otherCloud(text, clouds)) return null;
   const kind = (KINDS.find(([, re]) => re.test(text)) || ['other'])[0];
   return { text, kind };
 }
@@ -76,9 +95,9 @@ function tryPrompt(text) {
  * nothing in them is worth a card (only fixes for other products, say).
  * { from, to, releases, added, total, highlights: [{ text, kind, tryIt? }] }
  */
-function digest(sections, from, to, { max = MAX_HIGHLIGHTS } = {}) {
+function digest(sections, from, to, { max = MAX_HIGHLIGHTS, clouds = /** @type {string[]} */ ([]) } = {}) {
   const releases = between(sections, from, to);
-  const lines = releases.flatMap(s => s.items.map(classify).filter(Boolean));
+  const lines = releases.flatMap(s => s.items.map(l => classify(l, { clouds })).filter(Boolean));
   if (!lines.length) return null;
   const rank = { added: 0, improved: 1, changed: 2, other: 3, fixed: 4 };
   const picked = lines.map((l, i) => ({ ...l, i }))
@@ -141,5 +160,5 @@ async function fetchChangelog({ fetchImpl = globalThis.fetch, url = CHANGELOG_UR
 
 module.exports = {
   CHANGELOG_URL, CHANGELOG_PAGE, MAX_HIGHLIGHTS,
-  between, classify, compare, digest, version, fetchChangelog, normalizeState, parseChangelog, tryPrompt,
+  between, classify, cloudsIn, compare, digest, version, fetchChangelog, normalizeState, parseChangelog, tryPrompt,
 };

@@ -50,7 +50,7 @@ function wireClaudeTricks(d, { fetchImpl } = {}) {
     }
     reading = tricks.fetchChangelog({ url: devUrl() || tricks.CHANGELOG_URL, fetchImpl })
       .then(text => {
-        const dg = tricks.digest(tricks.parseChangelog(text), s.lastSeen, now);
+        const dg = tricks.digest(tricks.parseChangelog(text), s.lastSeen, now, { clouds: tricks.cloudsIn(process.env) });
         save({ lastSeen: now, pending: dg });
         if (dg) announce(dg);
       })
