@@ -129,6 +129,7 @@ interface ShellbyPanelExtras {
   applyEffort: any;
   applyModel: any;
   chooseEffort: any;
+  chooseModel: any;
   chooseNewEffort: any;
   clearConversation: any;
   composerInput: any;
