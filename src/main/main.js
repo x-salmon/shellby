@@ -67,6 +67,7 @@ const { wireSentry } = require('./wiring/sentry');
 const { wireNotes } = require('./wiring/notes');
 const { wireClaudeUpdates } = require('./wiring/claude-updates');
 const { wireClaudeTricks } = require('./wiring/claude-tricks');
+const { wireModels } = require('./wiring/models');
 const { wireTray } = require('./wiring/tray');
 const { reopenAfterUpdate } = require('./updates');
 const { wireClashes } = require('./wiring/clashes');
@@ -385,6 +386,7 @@ share(wireSentry(shared)); // new production errors on Next up, once Sentry is c
 share(wireBacklog(shared)); // Next up on each project's page (docs/plans/next-up.md)
 share(wireNotes(shared)); // the Notes page: ideas per project and General, run as Plan, Build or Ask
 const { createClaudeUpdates } = share(wireClaudeUpdates(shared));
+const { refreshModels } = share(wireModels(shared)); // newer models the installed Claude Code knows (wiring/models.js)
 const { noteClaudeVersion } = share(wireClaudeTricks(shared)); // what Claude Code learned since the version he saw last
 const { createTray, drainCrashQueue, reportUncleanExit, setupUpdates } = share(wireTray(shared));
 const { watchClashes } = share(wireClashes(shared));
@@ -532,7 +534,7 @@ app.whenReady().then(() => {
   createClaudeUpdates();
   // Routines start either way: a failed CLI check must not silently leave them off.
   checkStatus({ configured: shared.claudePath() })
-    .then(s => { shared.claudeStatus = FAKE_CLI ? require('./capture').FAKE_STATUS : s; noteClaudeVersion(); })
+    .then(s => { shared.claudeStatus = FAKE_CLI ? require('./capture').FAKE_STATUS : s; noteClaudeVersion(); refreshModels(); })
     .catch(err => log.warn('Claude CLI status check failed at boot', err?.message || String(err)))
     .finally(startScheduler);
 

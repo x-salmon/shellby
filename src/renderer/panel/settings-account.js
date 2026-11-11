@@ -132,6 +132,13 @@
     renderClaudeUpdate(); // the gear's dot, from any screen
     if (state.view === 'settings') renderFacts();
   });
+  // A newer Claude Code knows more models (main's wiring/models.js): every
+  // picker reads state.models when it's drawn, so only an open Settings redraws.
+  api.onModels(list => {
+    if (!Array.isArray(list)) return;
+    state.models = list;
+    if (state.view === 'settings') renderSettings();
+  });
   // Pushed after the sign-in window closes, or a sign-out: follow it wherever it shows.
   api.onClaudeStatus(status => {
     const was = state.status || {};

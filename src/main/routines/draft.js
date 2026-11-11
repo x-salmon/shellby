@@ -11,7 +11,7 @@
 // starts on an event, or needs steps with decisions between them), so the
 // panel can offer to build it as one instead.
 const { validateRoutine } = require('./index');
-const { MODELS, isModel } = require('../models');
+const { models, isModel } = require('../models');
 
 const MAX_DESCRIPTION = 500;
 const DRAFT_TIMEOUT_MS = 90000;
@@ -20,7 +20,6 @@ const DRAFT_MODEL = 'haiku';
 // Autonomous is never offered: a routine only gets it from the user's own hand.
 const DRAFT_MODES = ['smart', 'ask', 'acceptEdits', 'plan'];
 // '' is the person's own default (Settings); the rest are what Settings offers.
-const ROUTINE_MODELS = ['', ...MODELS.map(m => m.id)];
 const modelOf = (m, fallback = '') => (typeof m === 'string' && isModel(m) ? m : fallback);
 const UNSAFE = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/g;
 
@@ -46,7 +45,8 @@ const SCHEMA = {
     },
     mode: { enum: DRAFT_MODES },
     folder: { type: 'string', description: 'Absolute path the task should run in, or "" for the default' },
-    model: { enum: ROUTINE_MODELS, description: '"" for the person\'s usual model; "sonnet" or "haiku" when a lighter model is plenty (tidy-ups, summaries, reports)' },
+    // A getter: the list grows when Claude Code knows a newer model (models.js setFound).
+    model: { get enum() { return ['', ...models().map(m => m.id)]; }, description: '"" for the person\'s usual model; "sonnet" or "haiku" when a lighter model is plenty (tidy-ups, summaries, reports)' },
     ...NEEDS_WORKFLOW,
   },
   required: ['name', 'prompt', 'schedule', 'mode', 'folder', 'model', 'needs_workflow', 'why'],
