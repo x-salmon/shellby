@@ -24,8 +24,10 @@
   function cleanLabel(s) {
     let t = String(s ?? '').trim();
     if (/^".*"$/s.test(t)) t = t.slice(1, -1);
-    t = t.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[a-z][^>]*>/gi, '')
-      .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Math.min(+n, 0x10ffff))).replace(/&amp;/g, '&')
+    t = t.replace(/<br\s*\/?>/gi, '\n');
+    // Until nothing changes, so a tag split by another ("<scr<b>ipt>") can't survive.
+    for (let prev = ''; prev !== t;) { prev = t; t = t.replace(/<\/?[a-z][^>]*>/gi, ''); }
+    t = t.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Math.min(+n, 0x10ffff))).replace(/&amp;/g, '&')
       .replace(/^`(.*)`$/s, '$1').replace(/\*\*(.+?)\*\*/g, '$1');
     return t.split('\n').map(l => l.trim()).join('\n').slice(0, 300);
   }

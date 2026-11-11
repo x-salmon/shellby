@@ -35,7 +35,7 @@ const PARTITION = 'turn-shots';
 function isUiFile(file) {
   const p = String(file || '').replace(/\\/g, '/');
   if (!p || /(^|\/)(node_modules|\.git|dist|build|coverage)\//.test(p)) return false;
-  if (/(^|\/)(test|tests|__tests__)\/|\.(test|spec)\.[a-z]+$/i.test(p)) return false;
+  if (/(?:(^|\/)(test|tests|__tests__)\/|\.(test|spec)\.[a-z]+$)/i.test(p)) return false;
   if (UI_EXT_RE.test(p)) return true;
   return CODE_EXT_RE.test(p) && UI_DIR_RE.test(p);
 }

@@ -375,7 +375,7 @@ function parseTodoLine(raw) {
   if (!file || SKIP_FILE.test(file) || !Number.isInteger(line) || line < 1 || text.length > MAX_TODO_LINE) return null;
   if (file.split(/[\\/]/).includes('..') || /^[\\/]|^[A-Za-z]:/.test(file)) return null; // git gives paths inside the repo; anything else isn't one
   // The comment's closer goes first, or `<!-- TODO -->` would leave a stray "-->".
-  const m = matchTodo(text.replace(/\s*(\*\/|-->)\s*$/, ''));
+  const m = matchTodo(text.replace(/\s*(\*\/|--!?>)\s*$/, ''));
   if (!m) return null;
   const note = oneLine(m[3], MAX_TODO_TEXT);
   // TODO(#42) or TODO(owner/name#42): the issue it's about, for Next up (backlog/rank.js).
