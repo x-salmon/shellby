@@ -193,6 +193,7 @@ const DEFAULTS = {
   attachWhatISaw: false, // the composer's "Attach what I just saw": reads the clipboard and failed commands only when pressed (just-saw.js)
   claudeTricks: true, // say what a new Claude Code can do, from its changelog (see claude/tricks.js)
   claudeTricksState: null, // { lastSeen, pending }: the version he last saw, and a card not yet dismissed
+  cliModels: null, // { exe, size, mtimeMs, ids }: the model ids last read from the Claude Code CLI (claude/models-scan.js)
   claudeUpdates: null, // { mode, latest, lastCheckAt, … }: keeping Claude Code itself current (see claude/update.js); null -> tell me
   notes: null,        // { general, projects }: ideas to plan, build or ask about (see notes.js)
   health: null,       // health monitor settings (see health/service.js); null -> defaults

@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { PocketServer } = require('../src/main/pocket/server');
 const view = require('../src/main/pocket/view');
-const { MODELS } = require('../src/main/models');
+const { models } = require('../src/main/models');
 
 const ROOT = path.join(__dirname, '..');
 const arg = (name, fallback) => {
@@ -115,7 +115,7 @@ const currentView = () => view.phoneView({
   crab: { state: prompts.length ? 'asking' : tabs.some(t => t.busy) ? 'working' : 'idle', say: null, crew: [{ label: 'mapping tab-sort callers', type: 'Explore' }, { label: 'writing tests', type: 'test-writer' }] },
   lastUsage: { fiveHour: { pct: 42, resetsAt: Date.now() + 2 * 60 * min } },
   limits: { perHour: 30, atOnce: 10, open: 1 },
-  models: MODELS, model: 'sonnet',
+  models: models(), model: 'sonnet',
   health: { cpu: { load: 34, temp: 62 }, gpus: [{ load: 12, temp: 48 }], ram: { pct: 58 }, battery: null },
   now: Date.now(),
 });

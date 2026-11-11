@@ -10,7 +10,7 @@ const attach = require('../attachments');
 const { checkStatus, signInLapsed, run: runCli, verifyClaude } = require('../claude/cli');
 const installer = require('../claude/install');
 const practice = require('../practice');
-const { MODELS } = require('../models');
+const { models } = require('../models');
 const processJob = require('../process-job');
 const snippets = require('../snippets');
 const { TASKKILL } = require('../system32');
@@ -118,7 +118,7 @@ function registerPanelIpc(ipcMain, d) {
       cwd: d.CAPTURE ? `${demoHome}\\Downloads` : d.currentCwd(),
       home: d.CAPTURE ? demoHome : os.homedir(),
       packaged: app.isPackaged,
-      models: MODELS,
+      models: models(),
       updates: d.updateView(),
       claudeUpdate: d.claudeUpdateView(),
       claudeTricks: d.claudeTricksPending(),

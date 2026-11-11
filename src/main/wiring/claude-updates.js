@@ -22,6 +22,7 @@ function wireClaudeUpdates(d) {
         d.refreshStatusLine();
         d.send(d.panel, 'claude:status', d.claudeStatus);
         d.noteClaudeVersion?.(); // new tricks, now it's updated
+        d.refreshModels?.(); // and any new models
         return d.claudeStatus;
       },
       notify: (title, body) => d.notify(title, body, showClaudeSetting),

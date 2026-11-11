@@ -17,7 +17,7 @@ const pt = require('../channels/phone-tasks');
 const { appDeskOnlyReason } = require('../channels/replies');
 const { EVENTS } = require('../channels/messages');
 const { MODES: PHONE_MODES } = require('../config');
-const { MODELS, isModel } = require('../models');
+const { models, isModel } = require('../models');
 const { qrRows } = require('../qr');
 
 // The app is paired to this PC, so it gets more room than Telegram or ntfy (pt.MAX_OPEN).
@@ -261,7 +261,7 @@ function wirePocket(d) {
       pushKey: vapid?.publicKey || null,
       allow: settings().allow,
       mode: d.config.get('mode'),
-      models: MODELS, model: d.config.get('model') || null,
+      models: models(), model: d.config.get('model') || null,
       focus: d.focusState?.() || null,
       guard: guard.settingsOf(k => d.config.get(k)),
       quiet: settings().quiet,

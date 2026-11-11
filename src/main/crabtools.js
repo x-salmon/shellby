@@ -11,12 +11,12 @@
 
 const path = require('path');
 const { validateRoutine, describeSchedule } = require('./routines');
-const { MODELS } = require('./models');
+const { models } = require('./models');
 const todo = require('./projects/todo');
 const { PIN_KINDS, MAX_PIN_TEXT } = require('./journal');
 const { safePath } = require('./handoff');
 
-const modelName = id => MODELS.find(m => m.id === id)?.label || id;
+const modelName = id => models().find(m => m.id === id)?.label || id;
 
 const MAX_TEXT = 120;
 const MAX_ITEM = 60;

@@ -78,6 +78,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onClaudeUpdate: on('claude:update'),
   dismissClaudeTricks: invoke('claude:tricks-dismiss'),
   onClaudeTricks: on('claude:tricks'), // what a newer Claude Code can do (claude/tricks.js)
+  onModels: on('models:changed'), // the picker's list, grown by models a newer Claude Code knows (wiring/models.js)
 
   // tabs + tasks
   newTab: invoke('tab:new'), setSafeMode: invoke('tab:safe'), // safe mode: { tabId, on } (sessions.js setSafeMode)
