@@ -262,7 +262,11 @@ function registerTabsIpc(ipcMain, d) {
     let r;
     try {
       r = await quiz.ask({ patch: p.patch, truncated: p.truncated, cwd: s.cwd, lean: skipSettings(os.homedir()) },
-        (args, timeout, opts) => runCli(s.exePath(), [...(s.argsPrefix || []), ...args], timeout, opts));
+        (args, timeout, opts) => {
+          const viaClaude = (a, t, o) => runCli(s.exePath(), [...(s.argsPrefix || []), ...a], t, o);
+          // The conversation's own CLI answers unless the local model is set to write quizzes (local/model.js).
+          return d.localDrafts ? d.localDrafts(args, timeout, { ...opts, local: 'quiz', via: viaClaude }) : viaClaude(args, timeout, opts);
+        });
     } finally { tab.quizAsking = false; }
     if (r.detail) d.log.warn(`quiz: ${r.detail}`);
     if (!r.ok) return { ok: false, error: r.error };

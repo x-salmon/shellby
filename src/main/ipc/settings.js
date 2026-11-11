@@ -14,7 +14,8 @@ const filelinks = require('../filelinks');
 const guard = require('../guard');
 const localModel = require('../local/model');
 const mischief = require('../mischief');
-const { str } = require('../ipc-args');
+const { str, obj, opt, text } = require('../ipc-args');
+const localTally = require('../local/tally');
 const { isModel } = require('../models');
 const outputStyles = require('../outputstyles');
 const { SETTINGS: PERCH_SETTINGS } = require('../desktop/perch');
@@ -210,6 +211,15 @@ function registerSettingsIpc(ipcMain, d) {
   });
   // Settings' Find models: what the local server (Ollama, LM Studio) has. Only addresses on this PC are asked.
   ipcMain.handle('local:models', (_e, url) => localModel.listModels(url), [str({ max: 500 })]);
+  // Detect: which of Ollama and LM Studio answer on their usual ports, with their models.
+  ipcMain.handle('local:detect', () => localModel.detect());
+  // Try it: one question to a model, shown in Settings with how long it took.
+  ipcMain.handle('local:try', (_e, req) => localModel.tryModel(req), [obj({ url: str({ max: 500 }), model: str({ max: 200 }), question: opt(text(2000)) })]);
+  // What it's saved so far, and whether a model is resting after failing.
+  ipcMain.handle('local:state', () => ({ ...localTally.totals(d.config.get('localModelTally')), jobs: localTally.clean(d.config.get('localModelTally')).jobs, ...(d.localDrafts?.state?.() || { resting: [], lastFail: null }) }));
+  // Try again now: the resting models are asked again from the next draft.
+  ipcMain.handle('local:wake', () => { d.localDrafts?.wake?.(); return true; });
+  ipcMain.handle('local:reset-tally', () => { d.config.set({ localModelTally: null }); return true; });
 
   ipcMain.handle('folder:pick', async () => {
     const r = await dialog.showOpenDialog(d.panel, { title: 'Where should Shellby work?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });

@@ -13,6 +13,7 @@ const devFlow = require('../devservers/flow');
 const devRunner = require('../devservers/runner');
 const devScripts = require('../devservers/scripts');
 const localModel = require('../local/model');
+const localTally = require('../local/tally');
 const mcpServers = require('../mcpservers');
 const { DevServers } = require('../devservers/service');
 const native = require('../desktop/native-windows');
@@ -277,7 +278,11 @@ function wireProjects(d) {
   // folder. Dev and screenshot runs: the fake CLI answers instead.
   // opts.lean: the call needs none of your settings, hooks or plugins (skipSettings).
   // opts.local: a small draft a local model may answer first, when one is set up (local/model.js).
-  const runClaudeOnce = localModel.withLocal(runClaudeCli, { settings: () => d.config.get('localModel'), log: d.log });
+  const runClaudeOnce = d.localDrafts = localModel.withLocal(runClaudeCli, {
+    settings: () => d.config.get('localModel'),
+    log: d.log,
+    record: e => d.config.set({ localModelTally: localTally.add(d.config.get('localModelTally'), e) }),
+  });
   function runClaudeCli(args, timeoutMs, { lean = false, ...opts } = {}) {
     if (d.FAKE_CLI) return runCli(process.env.SHELLBY_NODE || 'node', [d.FAKE_CLI, ...args], timeoutMs, { cwd: os.homedir(), ...opts });
     const exe = d.claudeExe();

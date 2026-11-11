@@ -21,7 +21,7 @@ const fakeFetch = (answer, calls = []) => async (url, init) => { calls.push({ ur
 const fakeClaude = (calls = []) => async (args, timeoutMs, opts) => { calls.push({ args, timeoutMs, opts }); return { ok: true, stdout: JSON.stringify({ is_error: false, structured_output: { rule: 'from Claude' } }), stderr: '', timedOut: false }; };
 
 test('settings are used only when on, with a model, at an address on this PC', () => {
-  assert.deepEqual(local.checkSettings(ON), { url: 'http://localhost:11434', model: 'qwen3:8b' });
+  assert.deepEqual(local.checkSettings(ON), { url: 'http://localhost:11434', model: 'qwen3:8b', jobs: { ...local.JOB_DEFAULTS }, models: {} });
   assert.equal(local.checkSettings({ ...ON, on: false }), null);
   assert.equal(local.checkSettings({ ...ON, model: '' }), null);
   assert.equal(local.checkSettings({ ...ON, model: 'a b' }), null);
@@ -180,8 +180,8 @@ test('settings that throw, or are missing, leave the call to Claude', async () =
 });
 
 test('Settings can save an address on this PC and a model; it only stays on with a model', () => {
-  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://127.0.0.1:1234/v1', model: ' llama3.2 ' }), { on: true, url: 'http://127.0.0.1:1234', model: 'llama3.2' });
-  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: '' }), { on: false, url: 'http://localhost:11434', model: '' });
+  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://127.0.0.1:1234/v1', model: ' llama3.2 ' }), { on: true, url: 'http://127.0.0.1:1234', model: 'llama3.2', jobs: { ...local.JOB_DEFAULTS }, models: {} });
+  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: '' }), { on: false, url: 'http://localhost:11434', model: '', jobs: { ...local.JOB_DEFAULTS }, models: {} });
   assert.equal(local.cleanSettings({ on: true, url: 'http://192.168.1.5:11434', model: 'm' }), null);
   assert.equal(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: 'rm -rf' }), null);
   assert.equal(local.cleanSettings('on'), null);

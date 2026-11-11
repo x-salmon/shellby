@@ -1,6 +1,6 @@
 // A local model (Ollama, LM Studio) for Shellby's own small drafts, so they
 // don't spend the user's Claude plan. Only callers that ask for it
-// (runClaudeOnce's `local: true`) and only tool-less, schema-shaped
+// (runClaudeOnce's `local: true` or a job's name, see JOBS) and only tool-less, schema-shaped
 // `claude -p` calls are sent here; anything else, and any local failure, goes
 // to Claude Code as before.
 //
@@ -23,6 +23,30 @@ const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
 const MAX_REPLY_BYTES = 512 * 1024;
 const MAX_LIST_BYTES = 1024 * 1024;
 const PROXY_VARS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy'];
+// The drafts a local model may write, each one it can be turned off for or
+// given its own model. 'other' is any caller that passes local: true.
+const JOBS = Object.freeze(['rules', 'routines', 'hooks', 'workflows', 'quiz']);
+// On unless turned off, apart from the quiz, whose questions need a model
+// that reads code well.
+const JOB_DEFAULTS = Object.freeze({ rules: true, routines: true, hooks: true, workflows: true, quiz: false });
+
+/** A model name as the server would take it, or ''. */
+function modelName(raw) {
+  const m = typeof raw === 'string' ? raw.trim() : '';
+  return m && m.length <= MAX_MODEL_NAME && MODEL_NAME.test(m) ? m : '';
+}
+
+/** -> { [job]: boolean } for every job, defaults filling the gaps. */
+function cleanJobs(raw) {
+  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  return Object.fromEntries(JOBS.map(j => [j, typeof src[j] === 'boolean' ? src[j] : JOB_DEFAULTS[j]]));
+}
+
+/** -> { [job]: model } for the jobs given a model of their own. */
+function cleanModels(raw) {
+  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  return Object.fromEntries(JOBS.map(j => [j, modelName(src[j])]).filter(([, m]) => m));
+}
 
 /**
  * Whether Node is set to send fetches through a proxy (NODE_USE_ENV_PROXY with
@@ -41,10 +65,20 @@ function proxied(env = process.env) {
  */
 function checkSettings(saved, env = process.env) {
   if (!saved || typeof saved !== 'object' || saved.on !== true || proxied(env)) return null;
-  const model = typeof saved.model === 'string' ? saved.model.trim() : '';
-  if (!model || model.length > MAX_MODEL_NAME || !MODEL_NAME.test(model)) return null;
+  const model = modelName(saved.model);
+  if (!model) return null;
   const url = baseUrl(saved.url);
-  return url ? { url, model } : null;
+  return url ? { url, model, jobs: cleanJobs(saved.jobs), models: cleanModels(saved.models) } : null;
+}
+
+/**
+ * The model for one job, or null when that job doesn't go to the local model.
+ * @param {{ model: string, jobs?: any, models?: any }} s checkSettings()'s answer
+ * @param {string} job
+ */
+function modelFor(s, job) {
+  if (JOBS.includes(job) && s.jobs?.[job] === false) return null;
+  return (JOBS.includes(job) && s.models?.[job]) || s.model;
 }
 
 /**
@@ -97,15 +131,15 @@ async function readJson(res, max) {
  * (an address off this PC, a model name that can't be one). It only stays on
  * with a model picked.
  * @param {any} raw { on, url, model }
- * @returns {{ on: boolean, url: string, model: string } | null}
+ * @returns {{ on: boolean, url: string, model: string, jobs: Record<string, boolean>, models: Record<string, string> } | null}
  */
 function cleanSettings(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const url = baseUrl(raw.url);
   const model = typeof raw.model === 'string' ? raw.model.trim() : '';
   if (!url) return null;
-  if (model && (model.length > MAX_MODEL_NAME || !MODEL_NAME.test(model))) return null;
-  return { on: raw.on === true && !!model, url, model };
+  if (model && !modelName(model)) return null;
+  return { on: raw.on === true && !!model, url, model, jobs: cleanJobs(raw.jobs), models: cleanModels(raw.models) };
 }
 
 const LIST_TIMEOUT_MS = 5000;
@@ -275,39 +309,132 @@ const REST_MS = 10 * 60 * 1000;
  * `local: true` and fits requestFrom() tries the local model first; if that
  * fails, Claude Code gets the call with what's left of the time budget. A
  * local answer comes back with `by`: the model that wrote it.
+ * `local` may name the job (JOBS), which Settings can turn off or give a
+ * model of its own; true is any other small draft. Every try goes to
+ * `record` ({ job, model, ok, why, ms, chars }) for Settings' tally. The
+ * returned function's .state() says which models are resting and why the
+ * last try failed; .wake() ends every rest.
  * @param {(args: string[], timeoutMs: number, opts?: any) => Promise<any>} runClaude
- * @param {{ settings: () => any, fetchFn?: typeof fetch, log?: any, now?: () => number }} deps
+ * @param {{ settings: () => any, fetchFn?: typeof fetch, log?: any, now?: () => number, record?: ((e: any) => void) | null }} deps
  */
-function withLocal(runClaude, { settings, fetchFn = globalThis.fetch, log = null, now = Date.now }) {
-  const rest = { key: '', fails: 0, until: 0 }; // the model being rested, and until when
-  /** @param {string[]} args @param {number} timeoutMs @param {{ local?: boolean, input?: string | null, [k: string]: any }} [opts] */
-  return async (args, timeoutMs, opts = {}) => {
-    const { local = false, ...cli } = opts || {};
-    /** @type {{ url: string, model: string } | null} */
+function withLocal(runClaude, { settings, fetchFn = globalThis.fetch, log = null, now = Date.now, record = null }) {
+  /** @type {Map<string, { fails: number, until: number }>} "url model" -> its rest: each model rests on its own */
+  const rests = new Map();
+  /** @type {{ model: string, why: string, at: number } | null} */
+  let lastFail = null;
+  const note = (/** @type {any} */ e) => { try { record?.(e); } catch (err) { log?.warn?.(`local model tally: ${err?.message || err}`); } };
+  /** @param {string[]} args @param {number} timeoutMs @param {{ local?: boolean | string, via?: Function | null, input?: string | null, [k: string]: any }} [opts] */
+  const run = async (args, timeoutMs, opts = {}) => {
+    const { local = false, via = null, ...cli } = opts || {};
+    // via: a caller's own CLI runner (the quiz uses its conversation's), in place of runClaude.
+    const claude = typeof via === 'function' ? via : runClaude;
+    const job = typeof local === 'string' ? local : 'other';
+    /** @type {ReturnType<typeof checkSettings>} */
     let s = null;
     try { s = local ? checkSettings(settings()) : null; } catch (err) { log?.warn?.(`local model settings: ${err?.message || err}`); }
-    const req = s ? requestFrom(args, cli.input) : null;
-    if (!s || !req) return runClaude(args, timeoutMs, cli);
-    const key = `${s.url} ${s.model}`;
-    if (rest.key !== key) Object.assign(rest, { key, fails: 0, until: 0 });
-    if (now() < rest.until) return runClaude(args, timeoutMs, cli);
+    const model = s ? modelFor(s, job) : null;
+    const req = s && model ? requestFrom(args, cli.input) : null;
+    if (!s || !model || !req) return claude(args, timeoutMs, cli);
+    const key = `${s.url} ${model}`;
+    const rest = rests.get(key) || { fails: 0, until: 0 };
+    rests.set(key, rest);
+    const chars = req.system.length + req.prompt.length;
+    if (now() < rest.until) {
+      note({ job, model, ok: false, why: 'resting', ms: 0, chars });
+      return claude(args, timeoutMs, cli);
+    }
     const started = now();
-    const res = await ask(req, s, Math.min(LOCAL_MAX_MS, timeoutMs * LOCAL_SHARE), fetchFn);
-    if (res.ok) { rest.fails = 0; return { ...res, by: s.model }; }
+    const res = await ask(req, { url: s.url, model }, Math.min(LOCAL_MAX_MS, timeoutMs * LOCAL_SHARE), fetchFn);
     const took = now() - started;
+    if (res.ok) {
+      rest.fails = 0;
+      note({ job, model, ok: true, why: '', ms: took, chars: chars + (res.stdout || '').length });
+      return { ...res, by: model };
+    }
     rest.fails++;
+    lastFail = { model, why: res.stderr, at: now() };
+    note({ job, model, ok: false, why: res.stderr, ms: took, chars });
     if (took >= SLOW_FAIL_MS || rest.fails >= QUICK_FAILS) {
       rest.until = now() + REST_MS;
       rest.fails = 0;
-      log?.info?.(`local model ${s.model}: ${res.stderr}; asking Claude instead, and leaving it out for ${REST_MS / 60000} minutes`);
+      log?.info?.(`local model ${model}: ${res.stderr}; asking Claude instead, and leaving it out for ${REST_MS / 60000} minutes`);
     } else {
-      log?.info?.(`local model ${s.model}: ${res.stderr}; asking Claude instead`);
+      log?.info?.(`local model ${model}: ${res.stderr}; asking Claude instead`);
     }
-    return runClaude(args, Math.max(timeoutMs - took, timeoutMs * (1 - LOCAL_SHARE)), cli);
+    return claude(args, Math.max(timeoutMs - took, timeoutMs * (1 - LOCAL_SHARE)), cli);
   };
+  run.state = () => {
+    const t = now();
+    const resting = [...rests].filter(([, r]) => r.until > t).map(([k, r]) => ({ model: k.slice(k.indexOf(' ') + 1), until: r.until }));
+    return { resting, lastFail };
+  };
+  run.wake = () => { for (const r of rests.values()) Object.assign(r, { fails: 0, until: 0 }); };
+  return run;
+}
+
+const TRY_MAX_MS = 60000;
+const MAX_TRY_TEXT = 2000;
+const TRY_MAX_TOKENS = 300;
+const TRY_SAMPLE = 'In one sentence, what is a hermit crab?';
+let trying = false;
+
+/**
+ * Settings' "Try it": one plain question to a model, and how long it took.
+ * The answer is only shown in Settings, labelled as the local model's.
+ * -> { ok: true, text, ms, model } or { ok: false, error } in words for the panel.
+ * @param {any} raw { url, model, question? }
+ * @param {{ fetchFn?: typeof fetch, env?: NodeJS.ProcessEnv, now?: () => number }} [deps]
+ */
+async function tryModel(raw, { fetchFn = globalThis.fetch, env = process.env, now = Date.now } = {}) {
+  if (proxied(env)) return { ok: false, error: 'Shellby is set to send web requests through a proxy (NODE_USE_ENV_PROXY), so it won\'t use a local model.' };
+  const url = baseUrl(raw?.url);
+  const model = modelName(raw?.model);
+  if (!url) return { ok: false, error: `Use the address of a server on this PC, like ${DEFAULT_URL}.` };
+  if (!model) return { ok: false, error: 'Pick a model first.' };
+  const question = (typeof raw?.question === 'string' ? raw.question.trim() : '').slice(0, MAX_TRY_TEXT) || TRY_SAMPLE;
+  if (trying) return { ok: false, error: 'Still waiting on the last try.' };
+  trying = true;
+  const started = now();
+  try {
+    let res;
+    try {
+      res = await fetchFn(`${url}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model, stream: false, temperature: 0.2, max_tokens: TRY_MAX_TOKENS, messages: [{ role: 'user', content: question }] }),
+        redirect: 'error',
+        signal: AbortSignal.timeout(TRY_MAX_MS),
+      });
+    } catch (err) {
+      return { ok: false, error: err?.name === 'TimeoutError' ? `${model} took over a minute. A smaller model suits drafts better.` : `Nothing answered at ${url}. Is Ollama or LM Studio running?` };
+    }
+    if (!res.ok) return { ok: false, error: `${url} answered ${res.status}. Is ${model} still installed?` };
+    const read = await readJson(res, MAX_REPLY_BYTES).catch(() => /** @type {{ json?: any }} */ ({}));
+    const text = read.json?.choices?.[0]?.message?.content;
+    if (typeof text !== 'string' || !text.trim()) return { ok: false, error: `${model} sent back no answer.` };
+    return { ok: true, text: text.trim().slice(0, MAX_TRY_TEXT), ms: now() - started, model };
+  } finally { trying = false; }
+}
+
+// The usual places a local server listens, for Settings' Detect.
+const SERVERS = Object.freeze([
+  Object.freeze({ name: 'Ollama', url: 'http://127.0.0.1:11434' }),
+  Object.freeze({ name: 'LM Studio', url: 'http://127.0.0.1:1234' }),
+]);
+
+/**
+ * Which of the usual local servers answer, with their models.
+ * -> [{ name, url, models }], only those with a model.
+ * @param {typeof fetch} [fetchFn]
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+async function detect(fetchFn = globalThis.fetch, env = process.env) {
+  if (proxied(env)) return [];
+  const answers = await Promise.all(SERVERS.map(async srv => ({ srv, r: await listFrom(srv.url, fetchFn).catch(() => ({ ok: false })) })));
+  return answers.filter(a => a.r.ok).map(a => ({ name: a.srv.name, url: a.srv.url, models: /** @type {any} */ (a.r).models }));
 }
 
 module.exports = {
-  checkSettings, cleanSettings, listModels, baseUrl, proxied, readJson, requestFrom, body, fitsSchema, replyFrom, ask, withLocal,
+  checkSettings, cleanSettings, cleanJobs, cleanModels, modelFor, listModels, tryModel, detect, JOBS, JOB_DEFAULTS, SERVERS, baseUrl, proxied, readJson, requestFrom, body, fitsSchema, replyFrom, ask, withLocal,
   DEFAULT_URL, LOCAL_MAX_MS, LOCAL_SHARE, SLOW_FAIL_MS, QUICK_FAILS, REST_MS, MAX_REPLY_BYTES, MAX_LIST_BYTES,
 };

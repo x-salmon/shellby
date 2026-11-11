@@ -7,7 +7,15 @@
   const { h, api, state, $ } = SB;
   const DEFAULT_URL = 'http://127.0.0.1:11434'; // main's local/model.js DEFAULT_URL
   const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
-  const OFF_PC = `Use the address of a server on this PC, like ${DEFAULT_URL}.`;
+  // main's local/model.js JOBS and JOB_DEFAULTS, in the order Settings lists them.
+  const JOBS = [
+    { id: 'rules', label: 'Wording of the rules Shellby learns', on: true },
+    { id: 'routines', label: 'Routine drafts', on: true },
+    { id: 'hooks', label: 'Hook drafts', on: true },
+    { id: 'workflows', label: 'Workflow drafts', on: true },
+    { id: 'quiz', label: 'Quiz me questions (best with a model that reads code well)', on: false },
+  ];
+  const OFF_PC =`Use the address of a server on this PC, like ${DEFAULT_URL}.`;
 
   /** @type {string[] | null} the models Find models last found, for the saved server */
   let found = null;
@@ -32,6 +40,8 @@
       on: lm.on === true,
       url: serverKey(lm.url) ? lm.url : DEFAULT_URL,
       model: typeof lm.model === 'string' ? lm.model : '',
+      jobs: Object.fromEntries(JOBS.map(j => [j.id, typeof lm.jobs?.[j.id] === 'boolean' ? lm.jobs[j.id] : j.on])),
+      models: lm.models && typeof lm.models === 'object' ? { ...lm.models } : {},
     };
   }
   const say = text => { $('localModelStatus').textContent = text; };
@@ -56,6 +66,118 @@
     // Only before there's a model, and only when Claude can do it.
     $('localModelSetup').hidden = !!lm.model || SB.isCrabOnly();
     say(statusText(lm));
+    renderJobs(lm, names);
+    $('localModelTry').hidden = !lm.model;
+    refreshTally();
+  }
+
+  // Each job: on or off, and a model of its own or the one above.
+  function renderJobs(lm, names) {
+    $('localModelJobs').hidden = !lm.model;
+    if (!lm.model) return;
+    $('localModelJobList').replaceChildren(...JOBS.map(j => {
+      const box = h('input', { type: 'checkbox' });
+      box.checked = lm.jobs[j.id];
+      box.addEventListener('change', async () => {
+        if (!(await save({ jobs: { ...current().jobs, [j.id]: box.checked } }))) say('Couldn\'t save that.');
+      });
+      const own = lm.models[j.id] || '';
+      const pick = h('select', { class: 'field slim', 'aria-label': `Model for ${j.label.toLowerCase()}` },
+        h('option', { value: '', text: 'Same model' }),
+        ...[...new Set([...names, ...(own ? [own] : [])])].map(n => h('option', { value: n, text: n })));
+      pick.value = own;
+      pick.disabled = !lm.jobs[j.id];
+      pick.addEventListener('change', async () => {
+        const models = { ...current().models, [j.id]: pick.value };
+        if (!pick.value) delete models[j.id];
+        if (!(await save({ models }))) say('Couldn\'t save that model.');
+      });
+      const label = h('label', { class: 'toggle' }, box, h('span', { class: 'switch' }), j.label);
+      return h('div', { class: 'local-job' }, label, pick);
+    }));
+  }
+
+  const plural = (n, one) => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
+  const tokens = n => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
+  const clock = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  // main's failure reasons (local/model.js ask()), as a clause after the model's name.
+  function why(text) {
+    const t = String(text || '');
+    if (t === 'timed out') return 'took too long';
+    if (t.startsWith('couldn\'t reach')) return 'wasn\'t running';
+    if (/schema|not JSON|not a JSON|no reply/.test(t)) return 'answered in the wrong shape';
+    if (t === 'resting') return 'was resting';
+    return `failed (${t})`;
+  }
+
+  // What it has saved so far, and why Claude last stepped in.
+  let tallySeq = 0;
+  async function refreshTally() {
+    const seq = ++tallySeq;
+    let st;
+    try { st = await api.localState(); } catch { return; } // the tally is extra: Settings works without it
+    if (seq !== tallySeq || !st) return;
+    const lm = current();
+    const any = st.local + st.claude > 0;
+    const rest = st.resting?.[0];
+    $('localModelTally').hidden = !lm.model || (!any && !rest && !st.lastFail);
+    $('localModelTallyText').textContent = !any ? 'Nothing written yet.'
+      : `Since ${new Date(st.since).toLocaleDateString()}: ${plural(st.local, 'draft')} written on this PC, about ${tokens(st.tokens)} tokens your plan didn't spend`
+        + `${st.local ? `, ${(st.avgMs / 1000).toFixed(1)} s each` : ''}.${st.claude ? ` Claude stepped in ${plural(st.claude, 'time')}.` : ''}`;
+    const fb = $('localModelFallback');
+    fb.hidden = !rest && !st.lastFail;
+    if (rest) fb.textContent = `${rest.model} is left out until ${clock(rest.until)}${st.lastFail ? ` after it ${why(st.lastFail.why)}` : ''}. Claude writes drafts until then.`;
+    else if (st.lastFail) fb.textContent = `Last time Claude stepped in (${clock(st.lastFail.at)}), ${st.lastFail.model} ${why(st.lastFail.why)}.`;
+    $('localModelWake').hidden = !rest;
+  }
+
+  // Detect: Ollama and LM Studio on their usual ports. The first with a model is used.
+  async function detectServers() {
+    const seq = ++findSeq;
+    $('localModelDetect').setAttribute('aria-busy', 'true');
+    say('Looking for Ollama and LM Studio…');
+    try {
+      const servers = await api.localDetect();
+      if (seq !== findSeq) return;
+      if (!servers?.length) {
+        say('Neither Ollama nor LM Studio answered with a model.');
+        $('localModelSetup').hidden = SB.isCrabOnly();
+        return;
+      }
+      const first = servers[0];
+      $('localModelUrl').value = first.url;
+      if (!(await useServer(first.url))) { say('Couldn\'t save that address.'); return; }
+      found = first.models;
+      renderLocalModel();
+      const others = servers.slice(1).map(f => f.name).join(' and ');
+      say(`Found ${first.name} with ${plural(first.models.length, 'model')}.${others ? ` ${others} is running too.` : ''} Pick one.`);
+    } catch {
+      say('Couldn\'t look for servers.');
+    } finally {
+      $('localModelDetect').removeAttribute('aria-busy');
+    }
+  }
+
+  // Try it: one question, answered on this PC.
+  let asking = false;
+  async function tryIt() {
+    if (asking) return;
+    const lm = current();
+    const out = $('localModelAnswer');
+    asking = true;
+    $('localModelAsk').setAttribute('aria-busy', 'true');
+    out.hidden = false;
+    out.textContent = `Asking ${lm.model}…`;
+    try {
+      const r = await api.localTry({ url: lm.url, model: lm.model, question: $('localModelQuestion').value.trim() || null });
+      out.textContent = r?.ok ? `${r.model} (${(r.ms / 1000).toFixed(1)} s): ${r.text}` : (r?.error || 'Couldn\'t ask it.');
+    } catch {
+      out.textContent = 'Couldn\'t ask it.';
+    } finally {
+      asking = false;
+      $('localModelAsk').removeAttribute('aria-busy');
+    }
   }
 
   // Hand the install to Claude. The box is filled in, not sent: it runs winget
@@ -114,6 +236,17 @@
   }
 
   $('localModelFind').addEventListener('click', findModels);
+  $('localModelDetect').addEventListener('click', detectServers);
+  $('localModelAsk').addEventListener('click', tryIt);
+  $('localModelQuestion').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tryIt(); } });
+  $('localModelWake').addEventListener('click', async () => {
+    try { await api.localWake(); } catch { say('Couldn\'t do that.'); }
+    refreshTally();
+  });
+  $('localModelResetTally').addEventListener('click', async () => {
+    try { await api.localResetTally(); } catch { say('Couldn\'t reset it.'); }
+    refreshTally();
+  });
   $('localModelSetup').addEventListener('click', () => SB.prefillNew(setupPrompt()));
   $('localModelUrl').addEventListener('change', async e => {
     const url = e.target.value.trim() || DEFAULT_URL;

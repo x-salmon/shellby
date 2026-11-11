@@ -135,11 +135,29 @@ function modelServer() {
     check(fake.asked.length === 2, `the local model was asked for that one too (${fake.asked.length})`);
     await ev("document.getElementById('routineCancel')?.click(); SB.setView('settings')");
 
+    // what it writes first: a row per job, and the tally of what it saved
+    await until("document.getElementById('localModelGroup')?.offsetParent !== null");
+    check(await until("!document.getElementById('localModelJobs').hidden && document.querySelectorAll('#localModelJobList .local-job').length === 5"), 'Settings lists the jobs it writes first');
+    check(await until("/2 drafts written on this PC/.test(document.getElementById('localModelTallyText').textContent)"), `the tally counts both routine drafts ("${await ev("document.getElementById('localModelTallyText').textContent")}")`);
+    // Try it: one plain question, answered by the stand-in
+    await ev("document.getElementById('localModelQuestion').value = 'hello?'; document.getElementById('localModelAsk').click()");
+    check(await until(`document.getElementById('localModelAnswer').textContent.startsWith(${JSON.stringify(MODELS[0])})`), `Try it shows the local model's answer ("${await ev("document.getElementById('localModelAnswer').textContent")}")`);
+    check(fake.asked.length === 3 && fake.asked[2]?.messages?.at(-1)?.content === 'hello?' && !fake.asked[2]?.response_format, 'Try it sent the question as it was typed, with no schema');
+    await ev("document.getElementById('localModelGroup').scrollIntoView({ block: 'start' })");
+    await savePng(send, path.join(OUT, 'local-model-jobs.png'));
+    // turning a job off saves it, and its drafts go to Claude
+    await ev("(b => { b.checked = false; b.dispatchEvent(new Event('change')); })(document.querySelectorAll('#localModelJobList input[type=checkbox]')[1])");
+    check(await until('SB.state.settings.localModel.jobs.routines === false'), 'turning Routine drafts off saves');
+    await ev("shellby.draftRoutine('check my pull requests every morning at 9')");
+    check(fake.asked.length === 3, 'with routines off, a routine draft skips the local model');
+    await ev("(b => { b.checked = true; b.dispatchEvent(new Event('change')); })(document.querySelectorAll('#localModelJobList input[type=checkbox]')[1])");
+    await until('SB.state.settings.localModel.jobs.routines === true');
+
     // with the server gone, Claude (the fake CLI) writes it instead
     await new Promise(r => fake.server.close(r));
     fake.server.closeAllConnections?.();
     const fallback = await ev("shellby.draftRoutine('check my pull requests every morning at 9').then(r => JSON.stringify(r))").then(JSON.parse);
-    check(fake.asked.length === 2, 'nothing more reached the stopped server');
+    check(fake.asked.length === 3, 'nothing more reached the stopped server');
     check(fallback?.ok && fallback.draft?.name === 'Morning summary', `with the server gone, Claude answers instead (${JSON.stringify(fallback).slice(0, 120)})`);
 
     // another server: the old one's model doesn't come with it

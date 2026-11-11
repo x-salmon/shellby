@@ -916,6 +916,13 @@ select.field option { background: var(--reef); }
 .mischief-group.on .fold-state { color: var(--coral); }
 .mischief-pranks { display: grid; gap: 4px; margin: 4px 0 6px; padding: 0; border: 0; }
 .mischief-pranks legend { padding: 0; margin-bottom: 2px; }
+.local-jobs { display: grid; gap: 4px; margin: 6px 0; padding: 0; border: 0; }
+.local-jobs legend { padding: 0; margin-bottom: 2px; }
+.local-job { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.local-job .toggle { flex: 1 1 auto; margin: 0; }
+.local-job select { max-width: 180px; }
+.local-tally, .local-try { margin-top: 6px; }
+.local-answer { white-space: pre-wrap; border-left: 2px solid var(--line, currentColor); padding-left: 8px; }
 .perch-app {
   display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px 0 10px;
   border: 1px solid var(--line); border-radius: 99px; background: var(--reef);

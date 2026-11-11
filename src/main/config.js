@@ -41,7 +41,8 @@ const DEFAULTS = {
   claudePath: null, // set only when the user points at the CLI by hand (see claude/cli.js)
   idleCompact: false, // compact a long conversation shortly before its hour-long cache runs out (wiring/idle-compact.js)
   planOnly: false,  // leave API keys and other providers out of Claude Code's environment (see claude/cli.js)
-  localModel: { on: false, url: 'http://127.0.0.1:11434', model: '' }, // small drafts on a local model first, Claude if it fails (local/model.js)
+  localModel: { on: false, url: 'http://127.0.0.1:11434', model: '', jobs: {}, models: {} }, // small drafts on a local model first, Claude if it fails (local/model.js)
+  localModelTally: null, // what the local model wrote and saved, for Settings (local/tally.js)
   onboarded: false,
   firstTour: false,  // a new install's first New task offers Show me around until it's opened once (onboarding.js, feed.js)
   rooms: null,       // which screens a new user has opened so far; null until first boot decides (see rooms.js)
