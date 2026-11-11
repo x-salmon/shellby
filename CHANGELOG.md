@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.97.3: Model picker and Fable 5.2
+
+### New
+- **Switch models mid-conversation, like `/model` in the terminal.** Click the model chip beside the box, or type `/model` (or `/model sonnet`, `opus`, `haiku`, `default`), and the conversation's next turn runs on the new model. It's kept when you reopen the conversation. The first turn after a switch re-reads the conversation, so it costs a little more once.
+- Fable 5.2 and Haiku 5.5 are in the model picker.
+
+### Fixed
+- Pictures show in conversations on your phone: the ones you attached, above your message, and the screenshots Claude reads, under the step that read them. Tap one to see it at full width.
+- The "What Claude Code learned" card no longer shows news about Vertex, Bedrock or Foundry unless your Claude Code runs through that cloud.
+
+### Changed
+- **"Default" names the model it means.** The model chip and the picker show which model Claude Code's default is for you, such as "default (Opus 5.5)".
+
 ## 0.97.2: Pictures on your phone
 
 ### Fixed
