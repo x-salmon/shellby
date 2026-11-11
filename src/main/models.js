@@ -34,7 +34,8 @@ const HIDDEN_FAMILIES = new Set(['mythos']);
 const RELEASE = /^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2}))?$/;
 
 const capital = s => s[0].toUpperCase() + s.slice(1);
-const versionOf = ([, , major, minor]) => Number(major) * 100 + Number(minor || 0);
+/** @param {ArrayLike<string | undefined>} r  a RELEASE match: [id, family, major, minor] */
+const versionOf = r => Number(r[2]) * 100 + Number(r[3] || 0);
 
 /**
  * Picker entries for the ids Claude Code knows that Shellby doesn't yet: only

@@ -8,16 +8,25 @@ const { models, setFound } = require('../models');
 function wireModels(d, { scan = scanModels } = {}) {
   // Screenshots and the fake CLI keep the built-in list: nothing real to read.
   const off = () => d.CAPTURE || d.FAKE_CLI;
+  /** @type {Promise<void> | null} */
   let scanning = null;
+  let seeded = false;
 
   // Last time's answer straight away, so a model picked from it is still
-  // accepted before the scan below has finished.
-  if (!off()) setFound(d.config.get('cliModels')?.ids);
+  // accepted before the scan has finished. main.js wires this before config
+  // loads, so then it waits for the first refresh instead.
+  function seed() {
+    if (seeded || off() || !d.config) return;
+    seeded = true;
+    setFound(d.config.get('cliModels')?.ids);
+  }
+  seed();
 
   /** Read the CLI Shellby last found. Resolves when done; never throws. */
   function refreshModels() {
     if (off()) return Promise.resolve();
     if (scanning) return scanning;
+    seed();
     const cache = d.config.get('cliModels');
     scanning = scan(d.claudeStatus?.exe || null, cache)
       .then(found => {
