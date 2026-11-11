@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.97.4: Model list sync and GitHub card level
+
+### Fixed
+- **New Claude models show up on their own.** The model pickers now also offer every newer model your installed Claude Code knows about, so a new release appears as soon as Claude Code updates, with no Shellby update needed.
+- The level badge's tooltip no longer closes the moment you hover it while a chat is working.
+
 ## 0.97.3: Model picker and Fable 5.2
 
 ### New
