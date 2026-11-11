@@ -22,11 +22,17 @@
     state.xp = v;
     if (v.rank?.color) document.documentElement.style.setProperty('--rank', v.rank.color);
     const marks = v.marks || 0;
-    $('brandLevel').hidden = false;
-    $('brandLevel').textContent = marks ? `${v.level}★${marks}` : String(v.level);
+    const badge = $('brandLevel');
+    badge.hidden = false;
+    // XP ticks in constantly while chats stream. Rewriting the badge's text or
+    // title, even to the same value, closes its open tooltip, so only touch them on change.
+    const text = marks ? `${v.level}★${marks}` : String(v.level);
+    if (badge.textContent !== text) badge.textContent = text;
     $('brandXp').style.transform = `scaleX(${v.progress.toFixed(3)})`;
-    $('brandLevel').title = `${levelLine(v)}${v.needed ? ` · ${fmt(v.into)}/${fmt(v.needed)} XP to ${nextName(v)}` : ''}. Open Trophies & XP`;
-    $('brandLevel').setAttribute('aria-label', `${levelLine(v)}: open Trophies and XP`);
+    const tip = `${levelLine(v)}${v.needed ? ` · ${fmt(v.into)}/${fmt(v.needed)} XP to ${nextName(v)}` : ''}. Open Trophies & XP`;
+    if (badge.title !== tip) badge.title = tip;
+    const label = `${levelLine(v)}: open Trophies and XP`;
+    if (badge.getAttribute('aria-label') !== label) badge.setAttribute('aria-label', label);
     moltRing($('brandLevel'), v);
     if (state.view === 'trophies') render();
   }
