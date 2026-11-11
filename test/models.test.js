@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { MODELS, isModel, helperEnv } = require('../src/main/models');
 
 test('the picker offers the aliases and pinned releases of every family', () => {
-  for (const id of ['opus', 'sonnet', 'haiku', 'claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-4-5']) assert.ok(isModel(id), id);
+  for (const id of ['opus', 'sonnet', 'haiku', 'claude-fable-5-2', 'claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-haiku-4-5']) assert.ok(isModel(id), id);
 });
 
 test('Claude Code default is always allowed; anything not listed is refused', () => {
