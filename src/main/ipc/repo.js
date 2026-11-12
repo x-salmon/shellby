@@ -2,7 +2,8 @@
 // throwing it away, pushing the checkout with a secret scan first, and
 // branching a conversation from any turn (branching.js).
 // Kept out of main.js, which only wires it up.
-const { ID, obj, opt } = require('../ipc-args');
+const { ID, PATH, list, obj, opt, str, text } = require('../ipc-args');
+const prReview = require('../github/pr-review');
 const path = require('path');
 const branching = require('../branching');
 const changes = require('../changes');
@@ -60,7 +61,7 @@ function registerRepoIpc(ipcMain, d) {
     if (!d.isStr(tabId)) return { ok: false, error: 'That conversation has no copy of its own.' };
     retiring.add(tabId);
     try {
-      return await ship.shipCopy(tabId, { draft: opts?.draft === true, force: opts?.force === true, pastReef: opts?.pastReef === true }, {
+      const r = await ship.shipCopy(tabId, { draft: opts?.draft === true, force: opts?.force === true, pastReef: opts?.pastReef === true }, {
         worktreeOf,
         isBusy: id => d.manager.isBusy(id),
         canPr: () => (d.github?.can('claude') ? { ok: true }
@@ -75,10 +76,34 @@ function registerRepoIpc(ipcMain, d) {
         reply: id => d.manager.tabs.get(id)?.lastReply,
         note: (id, item) => { if (d.manager.tabs.has(id)) d.manager.note(id, item); },
       });
+      // The pull request it went to: where its line comments can be posted, and its threads read (pr-review.js).
+      const tab = r.ok ? d.manager.tabs.get(tabId) : null;
+      if (tab && Number.isInteger(r.number) && d.isStr(r.repo)) { tab.pr = { repo: r.repo, number: r.number, url: r.url || null }; d.manager.changed?.(); }
+      return r;
     } finally {
       retiring.delete(tabId);
     }
   }, [ID, opt(obj())]);
+
+  // ---- line comments and the pull request a copy shipped (github/pr-review.js). Only the one main
+  // noted when it shipped: the panel never names a repository or a number.
+  const prOf = tabId => {
+    const pr = d.isStr(tabId) ? d.manager.tabs.get(tabId)?.pr : null;
+    if (!pr) return { error: 'Ship it first: this conversation has no pull request yet.' };
+    if (!d.github?.can('claude')) return { error: 'This needs “Let Claude tasks push code and open pull requests” on in Settings → GitHub.', github: true };
+    return { pr };
+  };
+  const COMMENT = obj({ file: PATH, side: str({ max: 3, re: /^(new|old)$/ }), start: Number.isInteger, end: Number.isInteger, body: text(4000) });
+  ipcMain.handle('pr:postReview', async (_e, tabId, comments, note) => {
+    const { pr, error, github } = prOf(tabId);
+    if (error) return { ok: false, error, github };
+    return prReview.postReview(d.github.gh(), { repo: pr.repo, number: pr.number, comments, note: note || '' });
+  }, [ID, list(COMMENT, prReview.MAX_COMMENTS), opt(text(2000))]);
+  ipcMain.handle('pr:pullThreads', async (_e, tabId) => {
+    const { pr, error, github } = prOf(tabId);
+    if (error) return { ok: false, error, github };
+    return prReview.pullThreads(d.github.gh(), { repo: pr.repo, number: pr.number });
+  }, [ID]);
   // Red checks: nothing merged, and what failed, for the panel to offer "anyway" or "fix them".
   const redResult = (gate, w) => ({
     ok: false, red: true, checks: gate.checks, fix: gate.fix, base: w.base, branch: w.branch,

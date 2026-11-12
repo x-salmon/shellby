@@ -278,6 +278,8 @@ interface ShellbyPanelExtras {
   latestTurnAfter: any;
   markReviewBlock: any;
   pendingComments: any;
+  postCommentsToPr: any;
+  pullPrComments: any;
   renderReview: any;
   reviewDiff: any;
   sendBack: any;

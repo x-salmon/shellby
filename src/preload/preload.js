@@ -145,7 +145,7 @@ contextBridge.exposeInMainWorld('shellby', {
   shotImage: invoke('shots:image'),                // a before/after picture, as a data URL (shots.js)
   toolPicture: invoke('pictures:tool'),            // a picture a tool handed Claude (tool-pictures.js)
   worktreeStatus: invoke('worktree:status'),
-  bringWorktreeHome: invoke('worktree:home'), shipWorktree: invoke('worktree:ship'), // ship: a pull request (src/main/ship.js)
+  bringWorktreeHome: invoke('worktree:home'), shipWorktree: invoke('worktree:ship'), postPrReview: invoke('pr:postReview'), pullPrThreads: invoke('pr:pullThreads'), // ship: a pull request (src/main/ship.js)
   discardWorktree: invoke('worktree:discard'),
   repoStatus: invoke('repo:status'),
   pushRepo: invoke('repo:push'),

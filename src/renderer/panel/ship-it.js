@@ -39,7 +39,15 @@
     } finally {
       shipping.delete(tab.id);
     }
-    if (r?.ok) return SB.toast(shippedText(r), { ms: 10000, action: 'Open it', onAction: () => api.openExternal(r.url) });
+    if (r?.ok) {
+      // Comments waiting on this conversation can go to the pull request too (line-comments-ui.js).
+      const waiting = SB.pendingComments?.(tab) || 0;
+      if (waiting && r.number) tab.pr = { repo: r.repo, number: r.number, url: r.url || null };
+      return SB.toast(shippedText(r), { ms: 12000, actions: [
+        { label: 'Open it', onAction: () => api.openExternal(r.url) },
+        waiting && r.number ? { label: `Post your ${waiting === 1 ? 'comment' : `${waiting} comments`} to it`, onAction: () => SB.postCommentsToPr?.(tab) } : null,
+      ].filter(Boolean) });
+    }
     if (r?.red) {
       return SB.toast(r.error, { ms: 14000, actions: [
         { label: 'Ship it anyway', onAction: () => shipIt(tab, { draft, force: true }) },

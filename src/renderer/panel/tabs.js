@@ -52,7 +52,8 @@
       // The tests' last verdict and the latest changes' review (main's review-inbox.js), for the review inbox.
       checks: summary.checks !== undefined ? summary.checks : tab.checks || null,
       ready: summary.ready !== undefined ? summary.ready : tab.ready || null,
-      risk: summary.risk !== undefined ? summary.risk : tab.risk || null, // "Look here first" (viewer:risk), by path
+      risk: summary.risk !== undefined ? summary.risk : tab.risk || null,
+      pr: summary.pr !== undefined ? summary.pr : tab.pr || null, // the pull request Ship it opened // "Look here first" (viewer:risk), by path
       nudge: summary.nudge !== undefined ? summary.nudge : tab.nudge || null,
       inTerminal: summary.inTerminal !== undefined ? summary.inTerminal : tab.inTerminal || null,
       effort: summary.effort ?? tab.effort, effortBy: summary.effortBy !== undefined ? summary.effortBy : tab.effortBy || null, // the effort chip

@@ -405,12 +405,13 @@
       armed = { tab, n: list.length, timer: setTimeout(() => { armed = null; renderBar(); }, DISARM_MS) };
       renderBar();
     });
-    bar.replaceChildren(
+    bar.replaceChildren(...[
       SB.icon('M3 3.5h10v7H7l-3 2.5v-2.5H3z', { width: 1.4 }),
       h('button', { class: 'review-text', type: 'button', title: 'Show where they are', onclick: () => reveal(tab) },
         `${plural(list.length, 'review comment')}${files > 1 ? ` on ${files} files` : ''}`),
       h('button', { class: 'btn primary slim-btn', type: 'button', disabled: !!tab.sendingReview, title: 'Sends every comment as one message. Anything in the box goes with it as an overall note.', onclick: () => sendReview(tab) }, 'Send review'),
-      discard);
+      tab.pr ? h('button', { class: 'btn ghost slim-btn', type: 'button', title: `Post them to pull request #${tab.pr.number} as one review, for your team to see`, onclick: () => SB.postCommentsToPr(tab) }, 'Post to PR') : null,
+      discard].filter(Boolean));
   }
   SB.renderReview = renderBar;
 
@@ -454,18 +455,20 @@
    * (main's viewer.js locate). They show on that file's diff in the file viewer.
    *   -> how many were added (one already waiting with the same words isn't added twice)
    */
-  SB.addFindingComments = async (tab, findings) => {
+  /**
+   * Comments waiting on lines of this conversation's repo, made for you: [{ file, line, body }] (a
+   * file as a link names it, main's viewer.js locate finds it in the repo). One already waiting
+   * with the same words on the same line isn't added twice. -> how many were added
+   */
+  async function addComments(tab, items) {
     const list = commentsOf(tab);
     const fresh = [];
-    for (const f of findings || []) {
-      const text = String(f?.summary || f?.short || '').trim();
-      if (!f?.file || !text) continue;
-      const at = await api.viewerLocate(tab.id, f.file).catch(() => null);
+    for (const it of items || []) {
+      const body = String(it?.body || '').trim().slice(0, R.MAX_BODY);
+      if (!it?.file || !body) continue;
+      const at = await api.viewerLocate(tab.id, it.file).catch(() => null);
       if (!at?.inside || typeof at.root !== 'string') continue;
-      const line = Number.isInteger(f.line) && f.line > 0 ? f.line : Number.isInteger(at.line) && at.line > 0 ? at.line : 1;
-      const body = `${text}${f.scenario ? `
-
-How it goes wrong: ${String(f.scenario).trim()}` : ''}`.slice(0, R.MAX_BODY);
+      const line = Number.isInteger(it.line) && it.line > 0 ? it.line : Number.isInteger(at.line) && at.line > 0 ? at.line : 1;
       if ([...list, ...fresh].some(c => c.file === at.rel && c.start === line && c.body === body)) continue;
       fresh.push({
         id: newId(), file: at.rel, root: at.root, before: VIEWER, after: SB.latestTurnAfter(tab) || VIEWER,
@@ -474,6 +477,38 @@ How it goes wrong: ${String(f.scenario).trim()}` : ''}`.slice(0, R.MAX_BODY);
     }
     if (fresh.length) setComments(tab, [...list, ...fresh]);
     return fresh.length;
+  }
+
+  /** A code review's findings (feed-native.js), each as a comment waiting on its line. */
+  SB.addFindingComments = (tab, findings) => addComments(tab, (findings || []).map(f => ({
+    file: f?.file, line: f?.line,
+    body: [String(f?.summary || f?.short || '').trim(), f?.scenario ? `How it goes wrong: ${String(f.scenario).trim()}` : ''].filter(Boolean).join('\n\n'),
+  })));
+
+  // ------------------------------------------------------------ the pull request Ship it opened
+
+  /**
+   * The comments waiting here, posted to the conversation's pull request as one review (main's
+   * github/pr-review.js). They stay here too, to send to Claude or discard.
+   */
+  SB.postCommentsToPr = async (tab) => {
+    const list = commentsOf(tab);
+    if (!list.length || !tab.pr) return;
+    const r = await api.postPrReview(tab.id, list.map(c => ({ file: c.file, side: c.side, start: c.start, end: c.end, body: c.body }))).catch(() => null);
+    if (!r?.ok) { SB.toast(r?.error || "Couldn't post them.", { ms: 7000 }); return; }
+    const where = r.inBody ? ` (${r.inBody} on lines it doesn't show went in the review's summary)` : '';
+    SB.toast(`Posted ${plural(r.inline + r.inBody, 'comment')} to pull request #${tab.pr.number}${where}. They're still here to send to Claude, or discard.`,
+      { ms: 9000, ...(r.url ? { action: 'Open it', onAction: () => api.openExternal(r.url) } : {}) });
+  };
+
+  /** The threads nobody has resolved on the conversation's pull request, as comments waiting for Claude. */
+  SB.pullPrComments = async (tab) => {
+    if (!tab?.pr) return;
+    const r = await api.pullPrThreads(tab.id).catch(() => null);
+    if (!r?.ok) { SB.toast(r?.error || "Couldn't read the pull request's comments.", { ms: 7000 }); return; }
+    const n = await addComments(tab, r.comments.map(c => ({ file: c.file, line: c.start, body: c.body })));
+    SB.toast(n ? `${plural(n, 'comment')} from the pull request ${n === 1 ? 'waits' : 'wait'} here. Read them, then Send review.`
+      : r.comments.length ? 'Those are already here.' : 'Nothing unresolved on the pull request.', { ms: 7000 });
   };
 
   // ------------------------------------------------------------ from the review inbox

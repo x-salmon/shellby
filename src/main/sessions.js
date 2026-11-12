@@ -718,6 +718,7 @@ class SessionManager extends EventEmitter {
       // The last time Shellby ran its tests (wiring/checks.js): for anything that wants a verdict at a glance.
       // errors: the failing checks' type and lint errors, for the review inbox (wiring/checks.js remember)
       checks: t.checks ? { status: t.checks.status, after: t.checks.after, at: t.checks.at, errors: t.checks.errors || null } : null,
+      pr: t.pr || null, // the pull request Ship it opened (ipc/repo.js): { repo, number, url }
       risk: t.risk || null, // "Look here first" (ipc/viewer.js viewer:risk): { [path]: 'high' | 'medium' | 'low' }
       // Its latest changes and whether you've reviewed them (review-inbox.js): the panel's review inbox.
       ready: t.ready ? { ...t.ready, paths: [...t.ready.paths] } : null,

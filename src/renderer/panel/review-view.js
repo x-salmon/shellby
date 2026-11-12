@@ -105,6 +105,7 @@
       actionBtn('Open', 'Enter', () => open(it.id), { primary: true, hint: 'Go to it, at its latest changes' }),
       isCopy ? actionBtn('Bring it home', 'B', () => bringHome(it.id), { hint: `Merge ${it.branch} into ${t.worktree.base}` }) : null,
       isCopy ? actionBtn('Ship it', 'P', () => shipIt(it.id), { hint: `Open a pull request from ${it.branch} into ${t.worktree.base}` }) : null,
+      t.pr ? actionBtn('PR comments', 'C', () => SB.pullPrComments?.(t), { hint: `Bring the unresolved comments on pull request #${t.pr.number} here, to send to him` }) : null,
       actionBtn('Send back', 'S', () => openSend(it.id), { hint: 'Tell him what should change' }),
       actionBtn('Look over', 'L', () => { lookingAt = lookingAt === it.id ? null : it.id; render({ force: true }); }, { hint: 'A read-only review: security, bugs, missing tests, or what you asked for' }),
       actionBtn('Mark reviewed', 'R', () => markReviewed(it.id), { hint: 'Takes it off this list' })),
@@ -266,6 +267,7 @@
     if (key === 'b' && state.tabs.get(id)?.worktree) { e.preventDefault(); bringHome(id); }
     else if (key === 'p' && state.tabs.get(id)?.worktree) { e.preventDefault(); shipIt(id); }
     else if (key === 'r') { e.preventDefault(); markReviewed(id); }
+    else if (key === 'c' && state.tabs.get(id)?.pr) { e.preventDefault(); SB.pullPrComments?.(state.tabs.get(id)); }
     else if (key === 's') { e.preventDefault(); openSend(id); }
     else if (key === 'l') { e.preventDefault(); lookingAt = lookingAt === id ? null : id; render({ force: true }); }
   });
