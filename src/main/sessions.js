@@ -62,9 +62,9 @@ class SessionManager extends EventEmitter {
   // one of its folders, or null (remote/service.js launch): read at each start.
   // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
   // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
-  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null }) {
+  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, onLocalModel = () => false }) {
     super();
-    Object.assign(this, { getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures });
+    Object.assign(this, { getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, onLocalModel });
     this.tabs = new Map();
   }
 
@@ -92,7 +92,8 @@ class SessionManager extends EventEmitter {
       cwd: historyEntry?.cwd || cwd,
       mode: mode || this.getMode(),
       // Its own model (setTabModel; '' is Claude Code's default, picked on purpose), or the Settings one.
-      model: historyEntry?.model === '' ? null : (historyEntry?.model && isModel(historyEntry.model) ? historyEntry.model : '') || this.getModel() || null,
+      // On a local model (local/agent.js) the environment names it: a Claude model kept in History would be refused there.
+      model: this.onLocalModel() || historyEntry?.model === '' ? null : (historyEntry?.model && isModel(historyEntry.model) ? historyEntry.model : '') || this.getModel() || null,
       effort: ownEffort ?? (this.getEffort() || ''),
       outputStyle: this.getOutputStyle() || '',
       fallbackModel: this.getFallbackModel() || '',

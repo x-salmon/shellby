@@ -2060,6 +2060,13 @@
           </div>
           <p class="muted small" id="localAnswersText">When Claude declines a question, a card under it offers to ask this model instead. Only your question goes, only when you press the button, and the answer is shown as the local model's, apart from Claude's conversation. Pick a model you trust with what you ask: an uncensored one answers anything, accurately or not.</p>
         </div>
+        <div class="local-answers" id="localAgent" hidden>
+          <div class="local-job">
+            <label class="toggle"><input type="checkbox" id="localAgentToggle" aria-describedby="localAgentText"><span class="switch"></span>Run new conversations on a local model</label>
+            <select id="localAgentModel" class="field slim" aria-label="Model new conversations run on"></select>
+          </div>
+          <p class="muted small" id="localAgentText">Claude Code does the work as usual, with every tool, but thinks with this model instead of Claude, so nothing is spent from your plan and nothing leaves this PC. Needs Ollama 0.14 or LM Studio 0.4.1 or newer, and a model made for coding and tool use with a long context (32K tokens or more; Ollama starts most models with less). Conversations already open keep the model they started on. Smaller models make more mistakes: watch what they change.</p>
+        </div>
         <div class="local-tally" id="localModelTally" hidden>
           <p class="small" id="localModelTallyText"></p>
           <p class="small muted" id="localModelFallback" hidden></p>

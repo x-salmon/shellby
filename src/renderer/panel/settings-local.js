@@ -43,6 +43,7 @@
       jobs: Object.fromEntries(JOBS.map(j => [j.id, typeof lm.jobs?.[j.id] === 'boolean' ? lm.jobs[j.id] : j.on])),
       models: lm.models && typeof lm.models === 'object' ? { ...lm.models } : {},
       answers: { on: lm.answers?.on === true, model: typeof lm.answers?.model === 'string' ? lm.answers.model : '' },
+      agent: { on: lm.agent?.on === true, model: typeof lm.agent?.model === 'string' ? lm.agent.model : '' },
     };
   }
   const say = text => { $('localModelStatus').textContent = text; };
@@ -69,6 +70,7 @@
     say(statusText(lm));
     renderJobs(lm, names);
     renderAnswers(lm, names);
+    renderAgent(lm, names);
     $('localModelTry').hidden = !lm.model;
     refreshTally();
   }
@@ -111,6 +113,19 @@
       ...[...new Set([...names, ...(own ? [own] : [])])].map(n => h('option', { value: n, text: n })));
     $('localAnswersModel').value = own;
     $('localAnswersModel').disabled = !lm.answers.on;
+  }
+
+  // Conversations on a local model (main's local/agent.js): its own on/off and model.
+  function renderAgent(lm, names) {
+    $('localAgent').hidden = !lm.model;
+    if (!lm.model) return;
+    $('localAgentToggle').checked = lm.agent.on;
+    const own = lm.agent.model;
+    $('localAgentModel').replaceChildren(
+      h('option', { value: '', text: 'Same model' }),
+      ...[...new Set([...names, ...(own ? [own] : [])])].map(n => h('option', { value: n, text: n })));
+    $('localAgentModel').value = own;
+    $('localAgentModel').disabled = !lm.agent.on;
   }
 
   const plural = (n, one) => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
@@ -222,7 +237,7 @@
   // A new server: the old one's model and list don't apply to it.
   async function useServer(url) {
     if (serverKey(url) === serverKey(current().url)) return true;
-    const ok = await save({ url, model: '', on: false, answers: { ...current().answers, model: '' } });
+    const ok = await save({ url, model: '', on: false, answers: { ...current().answers, model: '' }, agent: { on: false, model: '' } });
     if (ok) found = null;
     return ok;
   }
@@ -279,6 +294,12 @@
   });
   $('localAnswersModel').addEventListener('change', async e => {
     if (!(await save({ answers: { ...current().answers, model: e.target.value } }))) say('Couldn\'t save that model.');
+  });
+  $('localAgentToggle').addEventListener('change', async e => {
+    if (!(await save({ agent: { ...current().agent, on: e.target.checked } }))) say('Couldn\'t save that.');
+  });
+  $('localAgentModel').addEventListener('change', async e => {
+    if (!(await save({ agent: { ...current().agent, model: e.target.value } }))) say('Couldn\'t save that model.');
   });
   $('localModelToggle').addEventListener('change', async e => {
     if (!(await save({ on: e.target.checked }))) say('Couldn\'t save that.');

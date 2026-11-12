@@ -180,8 +180,8 @@ test('settings that throw, or are missing, leave the call to Claude', async () =
 });
 
 test('Settings can save an address on this PC and a model; it only stays on with a model', () => {
-  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://127.0.0.1:1234/v1', model: ' llama3.2 ' }), { on: true, url: 'http://127.0.0.1:1234', model: 'llama3.2', jobs: { ...local.JOB_DEFAULTS }, models: {}, answers: { on: false, model: '' } });
-  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: '' }), { on: false, url: 'http://localhost:11434', model: '', jobs: { ...local.JOB_DEFAULTS }, models: {}, answers: { on: false, model: '' } });
+  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://127.0.0.1:1234/v1', model: ' llama3.2 ' }), { on: true, url: 'http://127.0.0.1:1234', model: 'llama3.2', jobs: { ...local.JOB_DEFAULTS }, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '' } });
+  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: '' }), { on: false, url: 'http://localhost:11434', model: '', jobs: { ...local.JOB_DEFAULTS }, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '' } });
   assert.equal(local.cleanSettings({ on: true, url: 'http://192.168.1.5:11434', model: 'm' }), null);
   assert.equal(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: 'rm -rf' }), null);
   assert.equal(local.cleanSettings('on'), null);

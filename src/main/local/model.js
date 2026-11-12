@@ -140,8 +140,8 @@ async function readJson(res, max) {
  * What Settings sends -> the setting to save, or null to refuse the change
  * (an address off this PC, a model name that can't be one). It only stays on
  * with a model picked.
- * @param {any} raw { on, url, model, jobs, models, answers }
- * @returns {{ on: boolean, url: string, model: string, jobs: Record<string, boolean>, models: Record<string, string>, answers: { on: boolean, model: string } } | null}
+ * @param {any} raw { on, url, model, jobs, models, answers, agent }
+ * @returns {{ on: boolean, url: string, model: string, jobs: Record<string, boolean>, models: Record<string, string>, answers: { on: boolean, model: string }, agent: { on: boolean, model: string } } | null}
  */
 function cleanSettings(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
@@ -149,7 +149,7 @@ function cleanSettings(raw) {
   const model = typeof raw.model === 'string' ? raw.model.trim() : '';
   if (!url) return null;
   if (model && !modelName(model)) return null;
-  return { on: raw.on === true && !!model, url, model, jobs: cleanJobs(raw.jobs), models: cleanModels(raw.models), answers: cleanAnswers(raw.answers) };
+  return { on: raw.on === true && !!model, url, model, jobs: cleanJobs(raw.jobs), models: cleanModels(raw.models), answers: cleanAnswers(raw.answers), agent: require('./agent').cleanAgent(raw.agent) };
 }
 
 const LIST_TIMEOUT_MS = 5000;
@@ -502,6 +502,6 @@ async function detect(fetchFn = globalThis.fetch, env = process.env) {
 }
 
 module.exports = {
-  checkSettings, cleanSettings, cleanJobs, cleanModels, cleanAnswers, answerSettings, answerInstead, modelFor, listModels, tryModel, detect, JOBS, JOB_DEFAULTS, SERVERS, baseUrl, proxied, readJson, requestFrom, body, fitsSchema, replyFrom, ask, withLocal,
+  modelName, checkSettings, cleanSettings, cleanJobs, cleanModels, cleanAnswers, answerSettings, answerInstead, modelFor, listModels, tryModel, detect, JOBS, JOB_DEFAULTS, SERVERS, baseUrl, proxied, readJson, requestFrom, body, fitsSchema, replyFrom, ask, withLocal,
   DEFAULT_URL, LOCAL_MAX_MS, LOCAL_SHARE, SLOW_FAIL_MS, QUICK_FAILS, REST_MS, MAX_REPLY_BYTES, MAX_LIST_BYTES,
 };
