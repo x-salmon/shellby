@@ -101,7 +101,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(await ev("shellby.setSettings({ mode: 'acceptEdits' }).then(r => r.settings.mode === 'acceptEdits')"), 'the app is on Accept edits');
     check(await ev("shellby.reviewProject('not-a-project').then(r => r.ok === false)"), 'a folder Shellby does not track is refused');
     const tabsNow = await ev('SB.state.tabs.size');
+    // The shield asks what to look for (review-lenses-ui.js): a project gets every lens but "what I asked".
     await ev("document.querySelector('#streakProjects .sp-review').click()");
+    check(await until("!document.getElementById('lensMenu').hidden && [...document.querySelectorAll('#lensMenu .mi-title')].map(t => t.textContent).join('|') === 'Security|Bugs|Missing tests'"), 'the shield asks what to look for');
+    await ev("[...document.querySelectorAll('#lensMenu .menu-item')].find(b => b.textContent.includes('Security')).click()");
     check(await until(`SB.state.tabs.size === ${tabsNow + 1}`), 'the review opens its own tab');
     check(await ev('/^Look over /.test(SB.activeTab().title)'), `the tab is titled after the project (${await ev('SB.activeTab().title')})`);
     check(await ev('SB.activeTab().cwd').then(c => c && c.toLowerCase() === repo.toLowerCase()), 'the review runs in that project, not the current folder');
