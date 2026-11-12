@@ -39,6 +39,7 @@ function diffLines(patch) {
   for (const l of String(patch || '').split('\n')) {
     const h = HUNK.exec(l);
     if (h) { a = Number(h[1]); b = Number(h[3]); continue; }
+    if (l === '') continue; // the end of the patch: a real line of context starts with a space
     if (!a && !b) continue;
     if (l.startsWith('+')) right.add(b++);
     else if (l.startsWith('-')) left.add(a++);
@@ -87,7 +88,7 @@ function reviewBody(rest, note = '') {
  * Post comments to a pull request as one review (event COMMENT: no approval, no changes asked).
  *   -> { ok: true, url, inline, inBody } | { ok: false, error }
  */
-async function postReview(gh, { repo, number, comments, note = '' }) {
+async function postReview(gh, { repo, number, comments, note = '', head = null }) {
   if (!REPO_RE.test(String(repo)) || !Number.isInteger(number) || number < 1) return { ok: false, error: 'Which pull request?' };
   if (!Array.isArray(comments) || !comments.length) return { ok: false, error: 'There are no comments to post.' };
   const base = `/repos/${repo}/pulls/${number}`;
@@ -99,13 +100,18 @@ async function postReview(gh, { repo, number, comments, note = '' }) {
   }
   const sha = pull?.head?.sha;
   if (!SHA_RE.test(String(sha))) return { ok: false, error: "GitHub didn't say which commit that pull request is on." };
-  const { inline, rest } = placeComments(Array.isArray(files) ? files : [], comments);
+  // head: the copy's own HEAD, and null when it has uncommitted changes. Its line numbers are the
+  // pull request's only when it is still at the commit the pull request shows; otherwise every
+  // comment goes in the body, under the place it was left, rather than on a line it doesn't mean.
+  const same = head === sha;
+  const placed = placeComments(same && Array.isArray(files) ? files : [], comments);
+  const { inline, rest } = placed;
   if (!inline.length && !rest.length) return { ok: false, error: 'There are no comments to post.' };
   const post = (onLines, inBody) => gh.post(`${base}/reviews`, { commit_id: sha, event: 'COMMENT', body: reviewBody(inBody, note), comments: onLines });
   const urlOf = r => (typeof r?.html_url === 'string' ? r.html_url : null);
   try {
     const r = await post(inline, rest);
-    return { ok: true, url: urlOf(r), inline: inline.length, inBody: rest.length };
+    return { ok: true, url: urlOf(r), inline: inline.length, inBody: rest.length, moved: !same };
   } catch (e) {
     // A line GitHub wouldn't take after all (the pull request moved on): all of them in the body instead.
     if (e?.status !== 422 || !inline.length) return { ok: false, error: e?.status === 403 || e?.status === 404 ? "GitHub won't let Shellby comment there. Check Settings → GitHub." : "Couldn't post the review." };

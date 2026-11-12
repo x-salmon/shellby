@@ -14,6 +14,11 @@ const MAX_SIDE = 200;      // lines of one side of one clash
 const MAX_BLOB = 2 * 1024 * 1024;
 const REF = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;
 const OID = /^[0-9a-f]{40,64}$/;
+// git's markers: seven characters, then a space and a label, or nothing (the divider never has one).
+const OPEN = /^<{7}(?: |$)/;
+const BASE = /^\|{7}(?: |$)/;
+const SPLIT = /^={7}$/;
+const CLOSE = /^>{7}(?: |$)/;
 
 /**
  * `git merge-tree --write-tree --name-only -z` -> { tree, files }: the merged tree (conflict markers
@@ -44,11 +49,11 @@ function parseConflicts(text) {
   /** @type {'ours' | 'base' | 'theirs' | null} */
   let part = null;
   lines.forEach((l, i) => {
-    if (!cur && l.startsWith('<<<<<<<')) { cur = { at: i + 1, ours: [], base: null, theirs: [] }; part = 'ours'; return; }
+    if (!cur && OPEN.test(l)) { cur = { at: i + 1, ours: [], base: null, theirs: [] }; part = 'ours'; return; }
     if (!cur) return;
-    if (l.startsWith('|||||||') && part === 'ours') { cur.base = []; part = 'base'; return; }
-    if (l.startsWith('=======') && part !== 'theirs') { part = 'theirs'; return; }
-    if (l.startsWith('>>>>>>>') && part === 'theirs') { hunks.push(cur); cur = null; part = null; return; }
+    if (BASE.test(l) && part === 'ours') { cur.base = []; part = 'base'; return; }
+    if (SPLIT.test(l) && part !== 'theirs') { part = 'theirs'; return; }
+    if (CLOSE.test(l) && part === 'theirs') { hunks.push(cur); cur = null; part = null; return; }
     const side = part ? cur[part] : null;
     if (side && side.length < MAX_SIDE) side.push(l);
   });

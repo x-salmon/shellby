@@ -80,3 +80,9 @@ test('resolvePrompt quotes both sides as code, for one clash or all of them', ()
   assert.match(all, /gone\.js: changed on one side and deleted/);
   assert.match(all, /Don't merge into the base branch yourself/);
 });
+
+test('a line of code that looks like a divider stays in its side', () => {
+  const h = C.parseConflicts('<<<<<<< main\nTitle\n=======\n======= note\n=======\nOther\n========\n>>>>>>> copy\n');
+  assert.deepEqual(h[0].ours, ['Title']);
+  assert.deepEqual(h[0].theirs, ['======= note', '=======', 'Other', '========']);
+});

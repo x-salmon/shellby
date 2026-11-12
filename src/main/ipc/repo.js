@@ -111,7 +111,11 @@ function registerRepoIpc(ipcMain, d) {
   ipcMain.handle('pr:postReview', async (_e, tabId, comments, note) => {
     const { pr, error, github } = prOf(tabId);
     if (error) return { ok: false, error, github };
-    return prReview.postReview(d.github.gh(), { repo: pr.repo, number: pr.number, comments, note: note || '' });
+    // Where the copy stands: its HEAD, or null with uncommitted changes (their line numbers aren't the PR's).
+    const w = worktreeOf(tabId);
+    const [at, dirty] = w ? await Promise.all([worktrees.git(w.path, ['rev-parse', 'HEAD'], { timeout: 10000 }), worktrees.git(w.path, ['status', '--porcelain', '--untracked-files=no'], { timeout: 15000 })]) : [null, null];
+    const head = at?.ok && dirty?.ok && !dirty.out.trim() ? at.out.trim() : null;
+    return prReview.postReview(d.github.gh(), { repo: pr.repo, number: pr.number, comments, note: note || '', head });
   }, [ID, list(COMMENT, prReview.MAX_COMMENTS), opt(text(2000))]);
   ipcMain.handle('pr:pullThreads', async (_e, tabId) => {
     const { pr, error, github } = prOf(tabId);

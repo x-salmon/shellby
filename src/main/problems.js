@@ -122,13 +122,14 @@ const TYPE_CMD = /\b(tsc|typecheck|type-check|check-types|mypy|pyright|vue-tsc)\
 const LINT_CMD = /\b(eslint|lint|ruff|flake8|pylint|stylelint|biome|clippy)\b/i;
 const COMPILER_CMD = /\b(cargo|rustc|go|gcc|g\+\+|clang|make|cmake|javac|dotnet)\b/i;
 const TS_CODE = /^TS\d+$/;
-const RULE_CODE = /^[a-z][\w-]*(\/[\w-]+)?$/;  // ESLint's no-unused-vars, @typescript-eslint/x
+const PLUGIN_RULE = /^@?[a-z][\w-]*\/[\w-]+$/; // a linter plugin's rule: react/jsx-key, @typescript-eslint/x
 const LINT_CODE = /^[A-Z]{1,4}\d{2,5}$/;      // flake8 and ruff's F401, E501
 function kindOf(p) {
   const code = String(p?.code || '');
   if (TS_CODE.test(code) || TYPE_CMD.test(p?.cmd || '')) return 'type';
   if (COMPILER_CMD.test(p?.cmd || '') && !LINT_CMD.test(p?.cmd || '')) return 'other'; // rustc's E0308 isn't a lint rule
-  if (RULE_CODE.test(code) || LINT_CODE.test(code) || LINT_CMD.test(p?.cmd || '')) return 'lint';
+  // A bare lowercase code (no-unused-vars) is a linter's only when a linter printed it.
+  if (LINT_CMD.test(p?.cmd || '') || PLUGIN_RULE.test(code) || LINT_CODE.test(code)) return 'lint';
   return 'other';
 }
 

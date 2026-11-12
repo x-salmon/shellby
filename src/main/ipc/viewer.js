@@ -83,9 +83,16 @@ function registerViewerIpc(ipcMain, d) {
   ipcMain.handle('viewer:blame', (_e, id, rel, line) => viewer.blameOf(id, rel, line), [ID, PATH, nat]); // who last changed one line
   // The one write the viewer makes: a hunk of a changed file in a conversation's own folder put back,
   // never mid-turn (viewer.js undoHunk). A nudge after, so every viewer on the folder looks again.
+  // Under the same guard as a turn's Undo this part (ipc/tabs.js): the conversation must still be
+  // open, not working, and not already putting something back.
   ipcMain.handle('viewer:undoHunk', async (_e, id, rel, hunk, header) => {
-    const busy = tabId => !!d.manager.tabs.get(tabId)?.session?.busy;
-    const r = await viewer.undoHunk(id, rel, { hunk, header }, busy);
+    const tab = d.manager.tabs.get(viewer.get(id)?.tabId);
+    if (!tab) return { ok: false, error: 'That conversation is closed.' };
+    if (tab.undoingStep) return { ok: false, error: 'Already undoing.' };
+    const busy = tabId => d.manager.isBusy?.(tabId) ?? !!d.manager.tabs.get(tabId)?.session?.busy;
+    tab.undoingStep = true;
+    let r;
+    try { r = await viewer.undoHunk(id, rel, { hunk, header }, busy); } finally { tab.undoingStep = false; }
     const h = r.ok ? viewer.get(id) : null;
     if (h) nudge(h.root);
     return r;

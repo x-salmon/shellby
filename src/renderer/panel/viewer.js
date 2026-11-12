@@ -309,7 +309,8 @@
       if (cur !== me) return;
       setViewed(me, f, box.checked);
       draw();
-      const next = box.checked ? V.nextUnviewed(me.files, seenOf(me), rel) : null;
+      const shown = me.riskOn && me.risk ? V.byRisk(me.files, me.risk) : me.files;
+      const next = box.checked ? V.nextUnviewed(shown, seenOf(me), rel) : null;
       if (next) showFile(next);
     });
     return h('label', { class: 'vw-viewed', title: 'Mark it viewed. It loses the tick if it changes again.' }, box, 'Viewed');
@@ -387,7 +388,7 @@
       return h('div', { class: 'vw-code vw-big' }, h('pre', { class: 'vw-gutter', text: lines.map((_l, i) => i + 1).join('\n') }), text);
     }
     const tk = S.lineTokenizer(S.langFromPath(rel));
-    return h('pre', { class: `vw-code diff${wrapOn() ? '' : ' nowrap'}` }, lines.map((l, i) => h('span', { class: `dl ctx${line === i + 1 ? ' hit' : ''}` },
+    return h('pre', { class: `vw-code diff${wrapOn() ? '' : ' nowrap'}` }, lines.map((l, i) => h('span', { class: `dl ctx${line === i + 1 ? ' hit' : ''}`, dataset: { n: i + 1 } },
       h('span', { class: 'vw-ln', text: i + 1 }),
       SB.paintTokens(h('span', { class: 'code' }), tk.line(l)))));
   }
@@ -536,8 +537,8 @@
       if (!cur?.file || !Number.isInteger(n) || n < 1) return;
       const scroll = $('viewerMain').querySelector('.vw-scroll');
       const rows = [...(scroll?.querySelectorAll('.vw-code .dl') || [])];
-      // A diff row's new-side number is its second; a whole file's row has only that one.
-      const hit = rows.find(r => { const ns = r.querySelectorAll(':scope > .vw-ln'); return ns.length && ns[ns.length - 1].textContent === String(n); });
+      // Each row says which line of the file now it shows (data-n), whichever side's number is on it.
+      const hit = rows.find(r => /** @type {HTMLElement} */ (r).dataset.n === String(n));
       if (!hit || scroll?.querySelector('.vw-big')) { showFile(cur.file, { line: n }); return; }
       for (const r of scroll.querySelectorAll('.dl.hit')) r.classList.remove('hit');
       hit.classList.add('hit');

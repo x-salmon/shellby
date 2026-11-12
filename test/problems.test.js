@@ -84,3 +84,10 @@ test('tally counts the failing commands\' errors by kind: type, lint, other', ()
   assert.equal(P.kindOf({ code: 'F401' }), 'lint', "a flake8/ruff code");
   assert.equal(P.kindOf({ code: 'TS7006', cmd: 'npm test' }), 'type');
 });
+
+test('a lowercase code counts as lint only from a linter, or when it names its plugin', () => {
+  const P = require('../src/main/problems');
+  assert.equal(P.kindOf({ code: 'error', cmd: 'npm test' }), 'other');
+  assert.equal(P.kindOf({ code: 'no-unused-vars', cmd: 'npm run lint' }), 'lint');
+  assert.equal(P.kindOf({ code: '@typescript-eslint/no-explicit-any', cmd: 'npm test' }), 'lint');
+});

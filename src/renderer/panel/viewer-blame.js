@@ -11,11 +11,10 @@
   let shown = null;
   const drop = () => { shown?.remove(); shown = null; };
 
-  // The line a row is in the file as it is now: a diff row's new-side number (its last), a whole
-  // file's only one. A removed line has none.
+  // The line a row is in the file as it is now (its data-n, set by DiffView and the whole-file view),
+  // whichever side's number it shows in Side by side. A removed line has none.
   function lineOf(row) {
-    const nums = row.querySelectorAll(':scope > .vw-ln');
-    const n = Number(nums[nums.length - 1]?.textContent || '');
+    const n = Number(row.dataset.n || '');
     return Number.isInteger(n) && n > 0 ? n : null;
   }
 

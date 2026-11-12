@@ -128,3 +128,7 @@ body[data-view="viewer"] .view-viewer { display: flex; flex-direction: column; p
 .vw-risk-dot.risk-high { background: var(--coral); }
 .vw-risk-dot.risk-medium { background: var(--amber); }
 .vw-risk-dot.risk-low { background: var(--line); }
+/* The hint and the Inline / Side by side switch over a viewer diff: they wrap in a narrow panel
+   (review.css has an .rv-head of its own, for the inbox, that would otherwise hold them on one line). */
+.vw-scroll > .rv-wrap > .rv-head { flex-wrap: wrap; align-items: center; justify-content: flex-start; }
+.vw-scroll > .rv-wrap > .rv-head .rv-hint { flex: 1 1 180px; min-width: 0; }

@@ -159,15 +159,18 @@
       };
       const num = (r, side) => h('span', { class: viewer ? 'vw-ln ln' : 'ln', 'aria-hidden': 'true', text: R.commentable(r) ? String(r[side] ?? '') : '' });
       const sign = r => h('span', { class: 'vw-sign', 'aria-hidden': 'true', text: r.kind === 'add' ? '+' : r.kind === 'del' ? '−' : '' });
+      // In the viewer each row says which line of the file as it is now it shows (data-n), whichever
+      // side's number it has on screen: Go to line and blame read that (viewer.js, viewer-blame.js).
+      const at = r => (viewer && R.commentable(r) && r.new != null ? { n: r.new } : {});
       const line = (i) => {
         const r = rows[i];
         const nums = viewer ? [num(r, 'old'), num(r, 'new'), sign(r)] : [num(r, r.kind === 'del' ? 'old' : 'new')];
-        const el = h('div', { class: `dl ${r.kind}`, dataset: { i }, title: r.kind === 'del' ? `Removed: line ${r.old} before ${viewer ? 'these changes' : 'this turn'}` : null },
+        const el = h('div', { class: `dl ${r.kind}`, dataset: { i, ...at(r) }, title: r.kind === 'del' ? `Removed: line ${r.old} before ${viewer ? 'these changes' : 'this turn'}` : null },
           ...nums, code(i));
         if (r.kind === 'hunk' && undoable) nums[nums.length - 1].after(this.undoButton(R.hunkOf(rows, i), r.text));
         return el;
       };
-      const half = (i, side) => h('div', { class: `dl sx-half ${rows[i].kind}`, dataset: { i } }, num(rows[i], side), ...(viewer ? [sign(rows[i])] : []), code(i));
+      const half = (i, side) => h('div', { class: `dl sx-half ${rows[i].kind}`, dataset: { i, ...at(rows[i]) } }, num(rows[i], side), ...(viewer ? [sign(rows[i])] : []), code(i));
       let kids;
       if (!split) {
         this.lines = rows.map((_r, i) => line(i));
@@ -496,7 +499,8 @@
     if (!list.length || !tab.pr) return;
     const r = await api.postPrReview(tab.id, list.map(c => ({ file: c.file, side: c.side, start: c.start, end: c.end, body: c.body }))).catch(() => null);
     if (!r?.ok) { SB.toast(r?.error || "Couldn't post them.", { ms: 7000 }); return; }
-    const where = r.inBody ? ` (${r.inBody} on lines it doesn't show went in the review's summary)` : '';
+    const where = r.moved ? " (in the review's summary: this copy has changed since it was shipped, so its line numbers aren't the pull request's)"
+      : r.inBody ? ` (${r.inBody} on lines it doesn't show went in the review's summary)` : '';
     SB.toast(`Posted ${plural(r.inline + r.inBody, 'comment')} to pull request #${tab.pr.number}${where}. They're still here to send to Claude, or discard.`,
       { ms: 9000, ...(r.url ? { action: 'Open it', onAction: () => api.openExternal(r.url) } : {}) });
   };
