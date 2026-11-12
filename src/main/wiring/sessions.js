@@ -102,18 +102,18 @@ function wireSessions(d) {
       history: d.history,
       getExe: () => (d.FAKE_CLI ? process.env.SHELLBY_NODE || 'node' : d.claudeExe()),
       getMode: () => d.config.get('mode'),
-      // A local coding agent (local/agent.js) names its model through the environment instead.
-      getModel: () => (localAgent.agentTarget(d.config.get('localModel')) ? '' : d.config.get('model')),
+      getModel: () => d.config.get('model'),
       getEffort: () => d.config.get('effort'),
       getEffortPick: () => d.config.get('effortPick') !== false,
       getOutputStyle: () => outputStyles.clean(d.config.get('outputStyle')),
-      onLocalModel: () => !!localAgent.agentTarget(d.config.get('localModel')),
-      getFallbackModel: () => (localAgent.agentTarget(d.config.get('localModel')) ? '' : d.config.get('fallbackModel') || ''),
+      // A new conversation's local model (local/agent.js), never for a folder on another computer: it keeps it for good (sessions.js).
+      getLocalTarget: cwd => (d.remoteService?.placeOf(cwd) ? null : localAgent.agentTarget(d.config.get('localModel'))),
+      getFallbackModel: () => d.config.get('fallbackModel') || '',
       getChrome: () => d.config.get('claudeInChrome') === true,
       // The newer flags go only to a Claude Code whose --help lists them (main.js claudeSupports).
       supports: flag => d.claudeSupports(flag),
       // GitHub access, where Claude Code sends its metrics (telemetry-service.js), and the helpers' model.
-      getEnv: () => ({ ...(d.github?.claudeEnv() || {}), ...(d.telemetry?.env() || {}), ...helperEnv(d.config.get('helperModel')), ...localAgent.agentEnv(d.config.get('localModel')) }),
+      getEnv: () => ({ ...(d.github?.claudeEnv() || {}), ...(d.telemetry?.env() || {}), ...helperEnv(d.config.get('helperModel')) }),
       // A folder on another computer: Claude Code runs there, over ssh (remote/service.js).
       getRemote: cwd => {
         const place = d.remoteService?.placeOf(cwd);

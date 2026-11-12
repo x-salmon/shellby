@@ -12,6 +12,7 @@ const turncost = require('./turncost');
 const turnwatch = require('./turnwatch');
 const { classify } = require('./usage/ledger');
 const { isModel } = require('./models');
+const localAgent = require('./local/agent');
 const planPace = require('./plan-pace');
 const mods = require('./mods');
 const todos = require('../renderer/shared/todos');
@@ -62,9 +63,9 @@ class SessionManager extends EventEmitter {
   // one of its folders, or null (remote/service.js launch): read at each start.
   // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
   // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
-  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, onLocalModel = () => false }) {
+  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null }) {
     super();
-    Object.assign(this, { getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, onLocalModel });
+    Object.assign(this, { getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget });
     this.tabs = new Map();
   }
 
@@ -80,6 +81,10 @@ class SessionManager extends EventEmitter {
     // A folder on another computer needs Claude Code there, not here.
     if (!exe && !this.getRemote(historyEntry?.cwd || cwd)) throw new Error('Claude Code is not installed.');
     const aware = this.getSelfAware();
+    // Local model or Claude (local/agent.js), decided once: a saved conversation
+    // keeps what it began on, a new one takes Settings' choice now. Never moved
+    // later, so a local conversation is never carried on at Anthropic.
+    const localTarget = historyEntry ? localAgent.cleanTarget(historyEntry.local) : this.getLocalTarget(cwd);
     let tab = null; // the tools are only ever called once it exists
     // Its own effort, kept in History: you chose it, or Shellby picked it.
     const ownEffort = ['you', 'picked'].includes(historyEntry?.effortBy) && (historyEntry.effort === '' || EFFORTS.includes(historyEntry.effort)) ? historyEntry.effort : null;
@@ -93,10 +98,10 @@ class SessionManager extends EventEmitter {
       mode: mode || this.getMode(),
       // Its own model (setTabModel; '' is Claude Code's default, picked on purpose), or the Settings one.
       // On a local model (local/agent.js) the environment names it: a Claude model kept in History would be refused there.
-      model: this.onLocalModel() || historyEntry?.model === '' ? null : (historyEntry?.model && isModel(historyEntry.model) ? historyEntry.model : '') || this.getModel() || null,
+      model: localTarget || historyEntry?.model === '' ? null : (historyEntry?.model && isModel(historyEntry.model) ? historyEntry.model : '') || this.getModel() || null,
       effort: ownEffort ?? (this.getEffort() || ''),
       outputStyle: this.getOutputStyle() || '',
-      fallbackModel: this.getFallbackModel() || '',
+      fallbackModel: localTarget ? '' : this.getFallbackModel() || '',
       chrome: !!this.getChrome(),
       // Safe mode lasts as long as the conversation, restarts and all, until it's turned off.
       safeMode: historyEntry?.safeMode === true,
@@ -106,7 +111,7 @@ class SessionManager extends EventEmitter {
       supports: flag => this.supports(flag),
       resumeId: historyEntry?.claudeSessionId || null,
       resumeAt: historyEntry?.resumeAt || null,
-      extraEnv: () => this.getEnv(),
+      extraEnv: () => ({ ...this.getEnv(), ...localAgent.envFor(localTarget) }),
       context: historyEntry?.context || null,
       allowedTools, mcpConfig,
       systemNote: aware?.note || null,
@@ -123,6 +128,7 @@ class SessionManager extends EventEmitter {
       // down mid-turn (history.takeCutOff), until a turn here finishes.
       outcome: historyEntry?.lastOutcome === 'cut' ? 'cut' : null,
       unread: false,
+      localTarget,                 // { url, model } on a local model, else null; kept in History
       worktree: historyEntry?.worktree || null, // its own copy of the repo (worktrees/index.js)
       // A branch of another conversation (branch.js): where it came from, the
       // folders it must keep out of, and what Claude is told before its first
@@ -310,6 +316,7 @@ class SessionManager extends EventEmitter {
       // ...and so would the agent it was opened with, or safe mode turned on before it.
       if (tab.session.agent) this.history.update(tab.id, { agent: tab.session.agent });
       if (tab.session.safeMode) this.history.update(tab.id, { safeMode: true });
+      if (tab.localTarget) this.history.update(tab.id, { local: tab.localTarget });
       tab.title = this.history.get(tab.id).title;
       tab.saved = true;
       if (tab.effortBy) this.keepEffort(tab); // chosen on the chip before its first message

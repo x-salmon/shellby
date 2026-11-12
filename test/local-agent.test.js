@@ -1,6 +1,6 @@
-const test = require('node:test');
+const { test, describe } = require('node:test');
 const assert = require('node:assert');
-const { agentEnv, agentTarget, cleanAgent, ALIAS_VARS } = require('../src/main/local/agent');
+const { agentEnv, agentTarget, cleanAgent, cleanTarget, ALIAS_VARS } = require('../src/main/local/agent');
 const { cleanSettings } = require('../src/main/local/model');
 
 const base = { on: false, url: 'http://127.0.0.1:11434', model: 'qwen3-coder:30b' };
@@ -41,11 +41,51 @@ test('saved settings keep the agent', () => {
   assert.deepStrictEqual(cleanSettings(base).agent, { on: false, model: '' });
 });
 
-test('a saved conversation reopened on a local model drops its Claude model', () => {
+test('cleanTarget only takes a server on this PC and a real model name', () => {
+  assert.deepStrictEqual(cleanTarget({ url: 'http://127.0.0.1:11434', model: 'devstral' }), { url: 'http://127.0.0.1:11434', model: 'devstral' });
+  assert.strictEqual(cleanTarget({ url: 'http://example.com', model: 'devstral' }), null);
+  assert.strictEqual(cleanTarget({ url: 'http://127.0.0.1:11434', model: '' }), null);
+  assert.strictEqual(cleanTarget('nope'), null);
+});
+
+describe('a conversation keeps local or Claude for good', () => {
   const { SessionManager } = require('../src/main/sessions');
   const os = require('os');
-  const make = local => new SessionManager({ getExe: () => 'claude', history: { load: () => null }, getMode: () => 'ask', getModel: () => '', onLocalModel: () => local });
-  const entry = { cwd: os.tmpdir(), model: 'claude-opus-5-5' };
-  assert.strictEqual(make(true).open({ tabId: 'local1', historyEntry: entry }).session.model, null);
-  assert.strictEqual(make(false).open({ tabId: 'claude1', historyEntry: entry }).session.model, 'claude-opus-5-5');
+  const target = { url: 'http://127.0.0.1:11434', model: 'devstral' };
+  // settingNow: what Settings would give a new conversation at this moment.
+  const make = settingNow => new SessionManager({
+    getExe: () => 'claude', history: { load: () => null }, getMode: () => 'ask', getModel: () => 'opus',
+    getFallbackModel: () => 'sonnet', getLocalTarget: () => settingNow.value,
+  });
+
+  test('a new conversation takes Settings\' local model, with no Claude model on its line', () => {
+    const tab = make({ value: target }).open({ tabId: 'new1', cwd: os.tmpdir() });
+    assert.deepStrictEqual(tab.localTarget, target);
+    assert.strictEqual(tab.session.model, null);
+    assert.strictEqual(tab.session.fallbackModel, '');
+    assert.strictEqual(tab.session.extraEnv().ANTHROPIC_BASE_URL, target.url);
+  });
+
+  test('turning the setting off never moves an open local conversation to Claude', () => {
+    const now = { value: target };
+    const tab = make(now).open({ tabId: 'open1', cwd: os.tmpdir() });
+    now.value = null;
+    assert.strictEqual(tab.session.extraEnv().ANTHROPIC_BASE_URL, target.url, 'a restart still goes local');
+  });
+
+  test('a saved local conversation reopens local with the setting off, its Claude model dropped', () => {
+    const entry = { cwd: os.tmpdir(), model: 'claude-opus-5-5', local: target };
+    const tab = make({ value: null }).open({ tabId: 'saved1', historyEntry: entry });
+    assert.deepStrictEqual(tab.localTarget, target);
+    assert.strictEqual(tab.session.model, null);
+    assert.strictEqual(tab.session.extraEnv().ANTHROPIC_BASE_URL, target.url);
+  });
+
+  test('a saved Claude conversation stays on Claude with the setting on', () => {
+    const entry = { cwd: os.tmpdir(), model: 'claude-opus-5-5' };
+    const tab = make({ value: target }).open({ tabId: 'saved2', historyEntry: entry });
+    assert.strictEqual(tab.localTarget, null);
+    assert.strictEqual(tab.session.model, 'claude-opus-5-5');
+    assert.strictEqual(tab.session.extraEnv().ANTHROPIC_BASE_URL, undefined);
+  });
 });

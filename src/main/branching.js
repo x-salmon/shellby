@@ -139,6 +139,8 @@ function register(deps) {
       history.update(newId, {
         claudeSessionId: sessionId, resumeAt: p.fresh ? null : p.anchor, context: null,
         worktree: copy, fence,
+        // A branch of a local conversation stays local (local/agent.js): it carries the same words.
+        ...(entry.local ? { local: entry.local } : {}),
         // tree: where its copy started, so a comparison can say which try changed what.
         branchOf: { id: tabId, title: sourceTitle, turnId, at, ...(tree ? { tree } : {}), ...(shared ? { shared: true } : {}) },
         preamble: preambleFor({ p, copy, shared, filesNow, sourceCwd, fence, packages }),

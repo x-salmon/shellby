@@ -57,6 +57,9 @@ function wireHandoff(d) {
       sessionId, resumeAt: s ? s.resumeAt : entry?.resumeAt,
     });
     if (!check.ok) return check;
+    // A conversation on a local model (local/agent.js) stays here: a terminal
+    // would start Claude Code without its environment and carry it on at Anthropic.
+    if (tab?.localTarget || entry?.local) return { ok: false, error: 'This conversation runs on your local model, so it can only carry on here in Shellby.' };
     // A conversation on another computer carries on in a terminal over there.
     const place = d.remoteService?.placeOf(s?.cwd || entry?.cwd);
     if (place) {

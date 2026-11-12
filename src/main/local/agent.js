@@ -36,9 +36,31 @@ function agentTarget(settings) {
   return agent.on && url && model ? { url, model } : null;
 }
 
-/** -> the environment that sends Claude Code to the local server, or {}. */
+/**
+ * A conversation's own target as kept in History, checked again (it's read
+ * from a file): the same rules as Settings, or null.
+ * @param {any} raw
+ * @returns {{ url: string, model: string } | null}
+ */
+function cleanTarget(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const url = baseUrl(raw.url);
+  const model = modelName(raw.model);
+  return url && model ? { url, model } : null;
+}
+
+/** -> the environment the settings would give a new conversation, or {}. */
 function agentEnv(settings) {
-  const t = agentTarget(settings);
+  return envFor(agentTarget(settings));
+}
+
+/**
+ * The environment that sends Claude Code to a local server, or {} for Claude.
+ * A conversation keeps the target it opened with (sessions.js), so turning the
+ * setting off or on never moves one that's already under way.
+ * @param {{ url: string, model: string } | null} t
+ */
+function envFor(t) {
   if (!t) return {};
   return {
     ANTHROPIC_BASE_URL: t.url,
@@ -50,4 +72,4 @@ function agentEnv(settings) {
   };
 }
 
-module.exports = { cleanAgent, agentTarget, agentEnv, ALIAS_VARS, LOCAL_TOKEN };
+module.exports = { cleanAgent, cleanTarget, agentTarget, agentEnv, envFor, ALIAS_VARS, LOCAL_TOKEN };
