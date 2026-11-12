@@ -112,6 +112,13 @@
           <legend class="small muted">What it writes first</legend>
           <div id="localModelJobList"></div>
         </fieldset>
+        <div class="local-answers" id="localAnswers" hidden>
+          <div class="local-job">
+            <label class="toggle"><input type="checkbox" id="localAnswersToggle" aria-describedby="localAnswersText"><span class="switch"></span>Ask a local model when Claude won't answer</label>
+            <select id="localAnswersModel" class="field slim" aria-label="Model to ask when Claude won't answer"></select>
+          </div>
+          <p class="muted small" id="localAnswersText">When Claude declines a question, a card under it offers to ask this model instead. Only your question goes, only when you press the button, and the answer is shown as the local model's, apart from Claude's conversation. Pick a model you trust with what you ask: an uncensored one answers anything, accurately or not.</p>
+        </div>
         <div class="local-tally" id="localModelTally" hidden>
           <p class="small" id="localModelTallyText"></p>
           <p class="small muted" id="localModelFallback" hidden></p>

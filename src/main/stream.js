@@ -607,6 +607,9 @@ function toItems(ev) {
       if (ev.subtype === 'hook_started' || ev.subtype === 'hook_progress') return hookRunningOf(ev);
       if (ev.subtype === 'hook_response') return hookFailedOf(ev);
       if (MOD_UI[ev.subtype]) return modItem(ev);
+      // The API's safety check stopped the reply (stop_reason "refusal") and no
+      // fallback model retried it. The panel can offer your local model instead.
+      if (ev.subtype === 'model_refusal_no_fallback') return [{ kind: 'refusal', category: oneLine(ev.api_refusal_category, 40) || null }];
       // Every command the conversation has now, with what each one does: how a
       // command a mod registers after the session started becomes known.
       if (ev.subtype === 'commands_changed') {
@@ -680,6 +683,8 @@ function toItems(ev) {
       const denials = denialsOf(ev.permission_denials);
       return [...(said ? [{ kind: 'text', text: said }] : []), {
         kind: 'result', ok: !ev.is_error, subtype: ev.subtype || null,
+        // The last reply ended in a refusal (the API's safety check, not Claude's own words).
+        ...(ev.stop_reason === 'refusal' ? { refused: true } : {}),
         durationMs: ev.duration_ms ?? null, turns: ev.num_turns ?? null,
         error: ev.is_error ? (ev.result || (ev.errors || []).join('\n') || null) : null,
         sessionId: ev.session_id || null,

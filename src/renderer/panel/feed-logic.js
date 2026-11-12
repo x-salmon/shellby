@@ -200,6 +200,36 @@
     return { label: item.interrupted ? 'stopped' : waiting || (item.ok ? 'done' : 'ended with an error'), waiting };
   }
 
+  // A turn Claude didn't answer, for the offer to ask your local model instead.
+  // The API's own safety stop is certain. Words are a guess, kept narrow: a
+  // short reply, with no step taken, that opens by declining to help. "I can't
+  // find that file", "I can't write files in plan mode" and "I can't say without
+  // the logs" are about what it could do, not what it would, and aren't one.
+  const REFUSAL_MAX_CHARS = 1200;
+  const WONT = "(?:can(?:'|no)t|won't|will not|am not able to|'m not able to|'m unable to|am unable to|unable to|not able to|'m not going to|am not going to)";
+  // What it won't do: help with it, or hand over what was asked.
+  const DECLINE = "(?:(?:help|assist)(?: you)?(?: with\\b| write| create| make)|provide|write|create|give|share|support|generate|produce|explain|comply|do that|do this|go into|walk you)";
+  // ...unless the rest of the sentence says what's missing: then it's a can't, not a won't.
+  const UNLESS = "(?![^.!?\\n]*\\b(?:without|until|unless|in plan mode|permission|access|from here|before I)\\b)";
+  const REFUSAL_OPENING = new RegExp([
+    `^(?:I'm sorry|I am sorry|Sorry|I apologi[sz]e)\\b[^.!?\\n]{0,80}?\\b${WONT} ${DECLINE}${UNLESS}`,
+    `^I ?${WONT} ${DECLINE}${UNLESS}`, // "I can't", "I'm not able to"
+    "^(?:I need to|I have to|I'll have to|I must) (?:decline|pass on)",
+  ].join('|'), 'i');
+
+  function refusalLike(text) {
+    const t = String(text || '').trim().replace(/^[*_>\s]+/, '').replace(/[‘’]/g, "'");
+    return !!t && t.length <= REFUSAL_MAX_CHARS && REFUSAL_OPENING.test(t);
+  }
+
+  // -> 'api' (the API's safety check stopped it), 'words' (Claude declined in
+  // its own words) or null. turn: { refused, reply, tools } as feed.js keeps it.
+  function refusalOf(turn) {
+    if (!turn?.ask?.trim()) return null; // nothing to hand on
+    if (turn.refused) return 'api';
+    return !turn.tools && refusalLike(turn.reply) ? 'words' : null;
+  }
+
   // ------------------------------------------------------------ diffs
 
   const MAX_DIFF_LINES = 4000;
@@ -334,7 +364,7 @@
   const api = {
     contextSegments, insightsReportIn, subtaskPrompt,
     files, storySteps, markFor, compactingLine, retryLine, hookLine, denialsLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
-    decisionVerdict, questionVerdict, resultLabel, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
+    decisionVerdict, questionVerdict, resultLabel, refusalLike, refusalOf, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

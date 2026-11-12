@@ -67,7 +67,7 @@ contextBridge.exposeInMainWorld('shellby', {
   viewerOpen: invoke('viewer:open'), viewerTree: invoke('viewer:tree'), viewerChanges: invoke('viewer:changes'), viewerRead: invoke('viewer:read'), viewerDiff: invoke('viewer:diff'), viewerLocate: invoke('viewer:locate'), viewerBranch: invoke('viewer:branch'), viewerBranches: invoke('viewer:branches'), viewerCheckout: invoke('viewer:checkout'),viewerClose: invoke('viewer:close'), viewerPlaces: invoke('viewer:places'), viewerSwitch: invoke('viewer:switch'), viewerStatus: invoke('viewer:status'), onViewerStale: on('viewer:stale'), // the file viewer (main's viewer.js), read-only
   claudeStatus: invoke('claude:status'),
   // Settings' local model: Detect, Try it, its tally and resting models (local/model.js, local/tally.js)
-  localDetect: invoke('local:detect'), localTry: invoke('local:try'), localState: invoke('local:state'), localWake: invoke('local:wake'), localResetTally: invoke('local:reset-tally'),
+  localDetect: invoke('local:detect'), localTry: invoke('local:try'), localState: invoke('local:state'), localWake: invoke('local:wake'), localResetTally: invoke('local:reset-tally'), localAnswerInstead: invoke('local:answer-instead'),
   localModels: invoke('local:models'), // Settings' Find models: what a local server on this PC has (local/model.js)
   claudeLogin: invoke('claude:login'), installClaude: invoke('claude:install'), practiceFolder: invoke('first-run:practice'), // onboarding's installer; First steps' practice folder
   claudeLogout: (opts = {}) => ipcRenderer.invoke('claude:logout', { thenSignIn: !!opts.thenSignIn }), // thenSignIn: "Switch account"

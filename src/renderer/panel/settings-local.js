@@ -42,6 +42,7 @@
       model: typeof lm.model === 'string' ? lm.model : '',
       jobs: Object.fromEntries(JOBS.map(j => [j.id, typeof lm.jobs?.[j.id] === 'boolean' ? lm.jobs[j.id] : j.on])),
       models: lm.models && typeof lm.models === 'object' ? { ...lm.models } : {},
+      answers: { on: lm.answers?.on === true, model: typeof lm.answers?.model === 'string' ? lm.answers.model : '' },
     };
   }
   const say = text => { $('localModelStatus').textContent = text; };
@@ -67,6 +68,7 @@
     $('localModelSetup').hidden = !!lm.model || SB.isCrabOnly();
     say(statusText(lm));
     renderJobs(lm, names);
+    renderAnswers(lm, names);
     $('localModelTry').hidden = !lm.model;
     refreshTally();
   }
@@ -95,6 +97,20 @@
       const label = h('label', { class: 'toggle' }, box, h('span', { class: 'switch' }), j.label);
       return h('div', { class: 'local-job' }, label, pick);
     }));
+  }
+
+  // Asking it when Claude won't answer (feed-local.js): its own on/off and model,
+  // apart from the drafts', so an uncensored model needn't write them.
+  function renderAnswers(lm, names) {
+    $('localAnswers').hidden = !lm.model;
+    if (!lm.model) return;
+    $('localAnswersToggle').checked = lm.answers.on;
+    const own = lm.answers.model;
+    $('localAnswersModel').replaceChildren(
+      h('option', { value: '', text: 'Same model' }),
+      ...[...new Set([...names, ...(own ? [own] : [])])].map(n => h('option', { value: n, text: n })));
+    $('localAnswersModel').value = own;
+    $('localAnswersModel').disabled = !lm.answers.on;
   }
 
   const plural = (n, one) => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
@@ -206,7 +222,7 @@
   // A new server: the old one's model and list don't apply to it.
   async function useServer(url) {
     if (serverKey(url) === serverKey(current().url)) return true;
-    const ok = await save({ url, model: '', on: false });
+    const ok = await save({ url, model: '', on: false, answers: { ...current().answers, model: '' } });
     if (ok) found = null;
     return ok;
   }
@@ -257,6 +273,12 @@
   });
   $('localModelSelect').addEventListener('change', async e => {
     if (!(await save({ model: e.target.value }))) say('Couldn\'t save that model.');
+  });
+  $('localAnswersToggle').addEventListener('change', async e => {
+    if (!(await save({ answers: { ...current().answers, on: e.target.checked } }))) say('Couldn\'t save that.');
+  });
+  $('localAnswersModel').addEventListener('change', async e => {
+    if (!(await save({ answers: { ...current().answers, model: e.target.value } }))) say('Couldn\'t save that model.');
   });
   $('localModelToggle').addEventListener('change', async e => {
     if (!(await save({ on: e.target.checked }))) say('Couldn\'t save that.');

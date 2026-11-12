@@ -437,7 +437,10 @@
     const id = asked === '' ? '' : tab?.model || asked;
     const chip = $('modelChip');
     chip.hidden = !tab;
-    $('modelLabel').textContent = id ? modelName(id) : defaultName(tab);
+    // "default (Sonnet 5.5)": in a narrow panel only the name shows (panel.css .model-default).
+    const seen = !id && defaultName(tab).match(/^default \((.+)\)$/);
+    if (seen) $('modelLabel').replaceChildren(h('span', { class: 'model-default', text: 'default (' }), seen[1], h('span', { class: 'model-default', text: ')' }));
+    else $('modelLabel').textContent = id ? modelName(id) : defaultName(tab);
     chip.classList.toggle('on', !!id);
     chip.title = `Model: ${id || `${defaultName(tab)}, what Claude Code picks for your plan`}. Click to switch this conversation (/model)`;
   };
