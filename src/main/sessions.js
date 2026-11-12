@@ -716,7 +716,8 @@ class SessionManager extends EventEmitter {
       claudeWorktree: t.claudeWorktree ? { branch: t.claudeWorktree.branch, path: t.claudeWorktree.path } : null, // Claude's own (EnterWorktree)
       branchOf: t.branchOf ? { id: t.branchOf.id, title: t.branchOf.title, at: t.branchOf.at, ...(t.branchOf.shared ? { shared: true } : {}) } : null,
       // The last time Shellby ran its tests (wiring/checks.js): for anything that wants a verdict at a glance.
-      checks: t.checks ? { status: t.checks.status, after: t.checks.after, at: t.checks.at } : null,
+      // errors: the failing checks' type and lint errors, for the review inbox (wiring/checks.js remember)
+      checks: t.checks ? { status: t.checks.status, after: t.checks.after, at: t.checks.at, errors: t.checks.errors || null } : null,
       // Its latest changes and whether you've reviewed them (review-inbox.js): the panel's review inbox.
       ready: t.ready ? { ...t.ready, paths: [...t.ready.paths] } : null,
       inTerminal: t.inTerminal || null,

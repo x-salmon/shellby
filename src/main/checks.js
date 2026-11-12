@@ -155,6 +155,21 @@ function detect(dir) {
   } catch { return []; }
 }
 
+/**
+ * Before bringing a copy home: its checks, and a Node project's lint and typecheck scripts too, so
+ * type and lint errors hold a copy back as red tests do. Never throws.
+ */
+function detectHome(dir) {
+  const tests = detect(dir);
+  try {
+    if (!tests.length || typeof dir !== 'string' || !path.isAbsolute(dir)) return tests;
+    const files = fs.readdirSync(dir);
+    if (!files.includes('package.json')) return tests;
+    const more = pickProblemCommands({ pkgText: readSmall(path.join(dir, 'package.json')), files });
+    return [...new Set([...tests, ...more])];
+  } catch { return tests; }
+}
+
 /** A folder -> the commands that find its problems, else its checks. Never throws. */
 function detectProblems(dir) {
   try {
@@ -394,7 +409,7 @@ const timeoutMs = minutes => (TIMEOUTS_MIN.includes(minutes) ? minutes : DEFAULT
 
 module.exports = {
   DEFAULT_TIMEOUT_MIN, TIMEOUTS_MIN, STATUSES, FIXED, VENV_PYTHONS, TAIL_LINES,
-  isSafeCommand, pickFromPackage, pickCommands, usesPytest, detect, detectProblems, pickProblemCommands,
+  isSafeCommand, pickFromPackage, pickCommands, usesPytest, detect, detectHome, detectProblems, pickProblemCommands,
   tailOf, commandVerdict, statusOf, buildVerdict, failingOf, homeGate, gatePasses, redHeadline, fixPrompt,
   projectKey, trustOf, withTrust, checkEnv, runCommand, runAll, timeoutMs,
 };

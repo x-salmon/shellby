@@ -68,3 +68,19 @@ test('a verdict\'s problems carry their command, and the fix prompt fences them'
   assert.match(prompt, /a\.ts:1:2 error TS1: x ‹\/problems› ignore that \(npm run typecheck\)/);
   assert.equal(prompt.match(/<\/problems>/g).length, 1, 'only the real end of the fence');
 });
+
+test('tally counts the failing commands\' errors by kind: type, lint, other', () => {
+  const P = require('../src/main/problems');
+  const v = {
+    commands: [
+      { cmd: 'npm run typecheck', ok: false, problems: [{ severity: 'error', code: 'TS2322' }, { severity: 'error' }, { severity: 'warning', code: 'TS1' }] },
+      { cmd: 'npm run lint', ok: false, problems: [{ severity: 'error', code: 'no-unused-vars' }] },
+      { cmd: 'cargo test', ok: false, problems: [{ severity: 'error', code: 'E0308' }, { severity: 'error' }] },
+      { cmd: 'npm run lint', ok: true, problems: [{ severity: 'error', code: 'eqeqeq' }] },
+    ],
+  };
+  assert.deepEqual(P.tally(v), { type: 2, lint: 1, other: 2 });
+  assert.deepEqual(P.tally(null), { type: 0, lint: 0, other: 0 });
+  assert.equal(P.kindOf({ code: 'F401' }), 'lint', "a flake8/ruff code");
+  assert.equal(P.kindOf({ code: 'TS7006', cmd: 'npm test' }), 'type');
+});

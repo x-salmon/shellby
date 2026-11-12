@@ -53,6 +53,16 @@
         h('b', { text: t.name }),
         h('span', { class: 'muted small', text: [plural(t.points, 'point'), t.caught && plural(t.caught, 'catch', 'catches'), t.quizBest && `quiz run of ${t.quizBest}`].filter(Boolean).join(' · ') }),
         t.reward ? h('span', { class: 'rm-reward small', text: t.reward }) : null))));
+    // Where your comments led to a fix (review-mastery.js catchRates): the folders worth your attention.
+    const rates = view.rates || [];
+    $('rmRates').hidden = !rates.length;
+    $('rmRates').replaceChildren(...(rates.length ? [
+      h('p', { class: 'small rm-rates-head', text: 'Where your comments led to a fix' }),
+      h('ul', { class: 'rm-rates-list small' }, rates.map(r => h('li', {},
+        h('code', { class: 'rm-rate-folder', text: r.folder }),
+        h('span', { class: 'rm-rate-bar', 'aria-hidden': 'true' }, h('span', { style: `width: ${Math.round(r.rate * 100)}%` })),
+        h('span', { class: 'rm-rate-n', text: `${Math.round(r.rate * 100)}%`, title: `${r.caught} of ${plural(r.reviewed, 'reviewed turn')} led to a fix` })))),
+    ] : []));
     const log = view.log || [];
     $('rmLog').hidden = !log.length && !view.watching;
     $('rmLog').replaceChildren(

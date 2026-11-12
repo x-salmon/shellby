@@ -10,6 +10,7 @@
 const path = require('path');
 const changes = require('../changes');
 const checks = require('../checks');
+const problems = require('../problems');
 const confirm = require('../confirm');
 
 const SNAPSHOT_WAIT_MS = 10000;
@@ -84,7 +85,8 @@ function wireChecks(d) {
     while (verdicts.size > MAX_VERDICTS) verdicts.delete(verdicts.keys().next().value);
     const tab = d.manager.tabs.get(tabId);
     if (!tab) return;
-    tab.checks = { status: verdict.status, after: verdict.after, tree: verdict.tree, at: verdict.at };
+    // errors: the failing commands' type and lint errors by kind, for the review inbox (problems.js tally)
+    tab.checks = { status: verdict.status, after: verdict.after, tree: verdict.tree, at: verdict.at, errors: problems.tally(verdict) };
     tab.redTests = RED_VERDICTS.has(verdict.status); // the crab's red-tests sign (work-signs.js)
     d.manager.note(tabId, verdict);
     d.manager.changed();
@@ -185,14 +187,17 @@ function wireChecks(d) {
     const gate = typeof check === 'boolean' ? check : checksOn();
     if (!gate || force) return { ok: true };
     const cwd = d.manager.tabs.has(tabId) ? folderFor(tabId, w.path) : w.cwd || w.path;
-    const commands = checks.detect(cwd);
+    // Its tests and, for a Node project, its lint and typecheck: type errors hold it back too.
+    const commands = checks.detectHome(cwd);
     if (!commands.length) return { ok: true };
     const snap = await snapshotWithin(cwd);
-    const last = verdicts.get(tabId) || null;
+    // The last run counts only if it ran all of these (a turn's own checks are its tests alone).
+    const had = verdicts.get(tabId) || null;
+    const last = had && commands.every(c => had.commands?.some(x => x.cmd === c)) ? had : null;
     const decision = checks.homeGate({ gate, force, commands, last, tree: snap?.tree || null });
     let verdict = last;
     if (decision === 'run') {
-      const r = await run(tabId, { cwd, after: null, project: w.root });
+      const r = await run(tabId, { cwd, after: null, project: w.root, commands });
       if (r.none) return { ok: true };
       if (r.declined) return { ok: false, error: "Not brought home: its tests weren't run. Untick \"Check before bringing home\" on the branch chip to skip them." };
       if (r.cancelled) return { ok: false, error: 'Stopped checking: he started on something new.' };

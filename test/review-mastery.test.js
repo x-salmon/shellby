@@ -153,3 +153,19 @@ test('normalize survives junk; the view says what the next tier needs', () => {
   assert.equal(v.flair, null);
   assert.equal(m.masteryView({ points: 150, caught: 15, quiz: { best: 5 } }).flair, 'Guardian');
 });
+
+test('catch rates: each folder counts the turns reviewed in it and the ones a comment there caught', () => {
+  let s = null;
+  for (let n = 1; n <= 4; n++) {
+    s = m.onComments(s, { turnId: turn(n), tabId: 'tab-1', comments: [comment({ file: 'src/main/a.js' }), comment({ file: 'src/main/b.js', start: 40, end: 40 }), comment({ file: 'README.md' })], diffLines: 40 }, T0 + n).state;
+    if (n <= 3) s = m.onNextTurn(s, { forTurn: turn(n), turnId: turn(n + 100), edits: [['src/main/a.js', 11, 11]] }, T0 + n + 1).state;
+  }
+  assert.deepEqual(s.folders['src/main/'], { reviewed: 4, caught: 3 }, 'two files in one folder: one reviewed turn');
+  assert.deepEqual(s.folders['(top)'], { reviewed: 4, caught: 0 });
+  const rates = m.catchRates(s);
+  assert.deepEqual(rates.map(r => [r.folder, r.reviewed, r.caught]), [['src/main/', 4, 3], ['(top)', 4, 0]]);
+  assert.equal(rates[0].rate, 0.75);
+  assert.deepEqual(m.masteryView(s, T0).rates, rates);
+  assert.deepEqual(m.catchRates(m.onComments(null, { turnId: turn(9), tabId: 'tab-1', comments: [comment()], diffLines: 40 }, T0).state), [], 'one review says nothing yet');
+  assert.deepEqual(m.normalize({ folders: { 'x/': { reviewed: 2, caught: 9 }, '': { reviewed: 1 }, y: 'no' } }).folders, { 'x/': { reviewed: 2, caught: 2 } });
+});

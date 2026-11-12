@@ -341,3 +341,22 @@ test('a command\'s verdict keeps the problems its output names', () => {
   const clean = C.buildVerdict([{ cmd: 'npm test', exitCode: 0, output: 'ok' }], { after: 'x', root: 'C:\\r' });
   assert.equal('problems' in clean.commands[0], false);
 });
+
+test('detectHome adds a Node project\'s lint and typecheck to its tests, once each', () => {
+  const C = require('../src/main/checks');
+  const fsx = require('fs');
+  const osx = require('os');
+  const px = require('path');
+  const dir = fsx.realpathSync.native(fsx.mkdtempSync(px.join(osx.tmpdir(), 'shellby-home-')));
+  try {
+    fsx.writeFileSync(px.join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'node --test', lint: 'eslint .', typecheck: 'tsc' } }));
+    const tests = C.detect(dir);
+    const home = C.detectHome(dir);
+    assert.ok(tests.length >= 1);
+    assert.deepEqual(home.slice(0, tests.length), tests);
+    assert.ok(home.some(c => /lint/.test(c)) && home.some(c => /typecheck/.test(c)));
+    assert.equal(new Set(home).size, home.length);
+    fsx.writeFileSync(px.join(dir, 'package.json'), JSON.stringify({ scripts: { lint: 'eslint .' } }));
+    assert.deepEqual(C.detectHome(dir), C.detect(dir), 'no tests: nothing gates it, as before');
+  } finally { fsx.rmSync(dir, { recursive: true, force: true }); }
+});

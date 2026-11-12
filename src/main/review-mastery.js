@@ -11,7 +11,10 @@
 //
 // State (config `reviewMastery`, this PC only):
 //   { points, tier, caught, quiz: { streak, best, lastTurnIds: [≤20] },
-//     comments: { turns: { [turnId]: { at, tabId, n, files, lines: [[file, a, b]], open } } }, log: [≤30] }
+//     comments: { turns: { [turnId]: { at, tabId, n, files, lines: [[file, a, b]], open } } }, log: [≤30],
+//     folders: { [folder]: { reviewed, caught } } }
+// folders: where your comments led to a fix. A reviewed turn counts once for each folder it had
+// comments in, and its catch for the folder of the line that caught (catchRates says it as a rate).
 // turnId: "<tabId>:<tree after the turn>", the same for a turn's quiz and its comments.
 //
 // Pure: no I/O, no clock (callers pass `now`). See test/review-mastery.test.js.
@@ -30,6 +33,9 @@ const MAX_QUIZ_TURNS = 20;
 const MAX_LOG = 30;
 const MAX_LINES_PER_TURN = 40;
 const TURN_RE = /^[^:\s]{1,80}:[0-9a-f]{40}$/;
+const MAX_FOLDERS = 100;
+const MIN_RATE_REVIEWS = 3;      // a folder needs this many reviewed turns before its rate means anything
+const FOLDER_DEPTH = 2;          // src/main/x.js counts under src/main/
 
 // What's said to mean "fine" without saying anything.
 const STOPLIST = new Set([
@@ -65,6 +71,32 @@ function normalizeTurn(raw) {
   };
 }
 
+/** The folder a file's comment counts under: its first FOLDER_DEPTH folders, or '(top)' for one at the root. */
+function folderOf(file) {
+  const parts = String(file || '').replace(/\\/g, '/').replace(/^\.\//, '').split('/').filter(Boolean);
+  const dirs = parts.slice(0, -1).slice(0, FOLDER_DEPTH);
+  return dirs.length ? `${dirs.join('/')}/`.slice(0, 300) : '(top)';
+}
+
+function normalizeFolders(raw) {
+  if (!isObj(raw)) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(raw).slice(-MAX_FOLDERS)) {
+    if (typeof k !== 'string' || !k || k.length > 300 || !isObj(v)) continue;
+    const reviewed = nat(v.reviewed, 1e6);
+    out[k] = { reviewed, caught: Math.min(reviewed, nat(v.caught, 1e6)) };
+  }
+  return out;
+}
+
+const bump = (folders, folder, field) => {
+  const had = folders[folder] || { reviewed: 0, caught: 0 };
+  const next = { ...folders };
+  delete next[folder]; // to the end: the folders touched least recently go first when it's full
+  next[folder] = { ...had, [field]: had[field] + 1 };
+  return Object.fromEntries(Object.entries(next).slice(-MAX_FOLDERS));
+};
+
 function normalizeLog(raw) {
   return (Array.isArray(raw) ? raw : []).filter(e => isObj(e) && typeof e.kind === 'string' && typeof e.text === 'string')
     .slice(-MAX_LOG).map(e => ({ at: pos(e.at), kind: e.kind.slice(0, 20), text: e.text.slice(0, 200), points: nat(e.points, 100) }));
@@ -86,6 +118,7 @@ function normalize(raw) {
     quiz: { streak, best: Math.max(streak, nat(q.best, 1000)), lastTurnIds: (Array.isArray(q.lastTurnIds) ? q.lastTurnIds : []).filter(isTurn).slice(-MAX_QUIZ_TURNS) },
     comments: { turns },
     log: normalizeLog(r.log),
+    folders: normalizeFolders(r.folders),
   };
 }
 
@@ -161,7 +194,9 @@ function onComments(state, { turnId, tabId, comments, diffLines } = {}, now = 0)
   const entry = { at: now, tabId: String(tabId || '').slice(0, 80), n: real.length, files: [...new Set(real.map(c => c.file.slice(0, 1000)))].slice(0, 20), lines, open: lines.length > 0 };
   const turns = Object.fromEntries(Object.entries({ ...s.comments.turns, [turnId]: entry }).slice(-MAX_TURNS));
   const n = real.length;
-  const next = { ...s, points: s.points + COMMENT_POINTS, comments: { turns }, log: logged(s.log, { at: now, kind: 'comment', text: `Reviewed a turn (${n} ${n === 1 ? 'comment' : 'comments'})`, points: COMMENT_POINTS }) };
+  let folders = s.folders;
+  for (const f of new Set(lines.map(l => folderOf(l[0])))) folders = bump(folders, f, 'reviewed');
+  const next = { ...s, points: s.points + COMMENT_POINTS, comments: { turns }, folders, log: logged(s.log, { at: now, kind: 'comment', text: `Reviewed a turn (${n} ${n === 1 ? 'comment' : 'comments'})`, points: COMMENT_POINTS }) };
   const r = settle(next);
   return { state: r.state, points: COMMENT_POINTS, tierUp: r.tierUp, reason: null };
 }
@@ -198,7 +233,7 @@ function onNextTurn(state, { forTurn, turnId, edits, shipped = false } = {}, now
   if (!hit) return shut('missed');
   const file = hit[0].split(/[\\/]/).pop();
   const next = {
-    ...closed, points: s.points + CAUGHT_POINTS, caught: s.caught + 1,
+    ...closed, points: s.points + CAUGHT_POINTS, caught: s.caught + 1, folders: s.folders[folderOf(hit[0])] ? bump(s.folders, folderOf(hit[0]), 'caught') : s.folders,
     log: logged(s.log, { at: now, kind: 'caught', text: `Caught something in ${file} before it merged`, points: CAUGHT_POINTS }),
   };
   const r = settle(next);
@@ -241,6 +276,19 @@ function editsOf(patch) {
   return out.slice(0, 500);
 }
 
+/**
+ * Where your comments led to a fix: [{ folder, reviewed, caught, rate }] for each folder with at
+ * least MIN_RATE_REVIEWS reviewed turns, the most reviewed first. rate: caught / reviewed, 0 to 1.
+ */
+function catchRates(state) {
+  const s = normalize(state);
+  return Object.entries(s.folders)
+    .filter(([, v]) => v.reviewed >= MIN_RATE_REVIEWS)
+    .map(([folder, v]) => ({ folder, reviewed: v.reviewed, caught: v.caught, rate: v.reviewed ? v.caught / v.reviewed : 0 }))
+    .sort((a, b) => b.reviewed - a.reviewed || b.rate - a.rate || a.folder.localeCompare(b.folder))
+    .slice(0, 8);
+}
+
 // ------------------------------------------------------------------ the view
 
 /** Everything the Trophies card and the Logbook show. */
@@ -261,10 +309,11 @@ function masteryView(state, now = 0) {
     tiers: TIERS.map(t => ({ ...t, reached: t.n <= tier })),
     watching: Object.values(s.comments.turns).filter(t => t.open && now - t.at <= CAUGHT_WINDOW).length,
     log: [...s.log].reverse().slice(0, 10),
+    rates: catchRates(s),
   };
 }
 
 module.exports = {
   TIERS, STOPLIST, QUIZ_POINTS, COMMENT_POINTS, CAUGHT_POINTS, MIN_COMMENT_CHARS, MIN_DIFF_LINES, MIN_QUIZ_LINES, NEAR_LINES, CAUGHT_WINDOW,
-  normalize, tierOf, substantive, onQuiz, onComments, openTurns, onNextTurn, editsOf, masteryView,
+  normalize, tierOf, substantive, onQuiz, onComments, openTurns, onNextTurn, editsOf, masteryView, catchRates, folderOf, MIN_RATE_REVIEWS,
 };

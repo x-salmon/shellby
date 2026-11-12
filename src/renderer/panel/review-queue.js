@@ -31,6 +31,17 @@
     return 'fail';  // fail, or ran out of time
   }
 
+  /**
+   * The type and lint errors the failing checks on exactly these changes printed: "2 type errors ·
+   * 1 lint error", or '' (none, passed, or a verdict on another turn's tree).
+   */
+  function errorsLine(t) {
+    const c = t.checks;
+    if (!c || !t.ready?.after || c.after !== t.ready.after || c.status === 'pass' || !c.errors) return '';
+    const n = k => (Number.isInteger(c.errors[k]) && c.errors[k] > 0 ? c.errors[k] : 0);
+    return [n('type') ? plural(n('type'), 'type error') : '', n('lint') ? plural(n('lint'), 'lint error') : ''].filter(Boolean).join(' · ');
+  }
+
   /** Tabs waiting for review, the longest-waiting first; ties keep strip order. */
   function queue(tabs) {
     return tabs
@@ -55,7 +66,7 @@
       branch: t.worktree?.branch || null,
       files: r.files || paths.length, added: r.added || 0, removed: r.removed || 0,
       paths, more: Math.max(0, (r.files || 0) - paths.length),
-      verdict: v, clash: clash || '',
+      verdict: v, errors: errorsLine(t), clash: clash || '',
       // Red tests or a clash: shown loud, but it still waits its turn in the queue.
       flagged: v === 'fail' || !!clash,
     };
@@ -70,6 +81,7 @@
       it.branch ? `on branch ${it.branch}` : null,
       `${plural(it.files, 'file')} changed, ${it.added} added, ${it.removed} removed`,
       VERDICTS[it.verdict].text,
+      it.errors || null,
       it.clash ? `Warning: ${it.clash}` : null,
       age ? `Finished ${age}` : null,
     ].filter(Boolean).join('. ');
@@ -85,7 +97,7 @@
     return order[at + 1] ?? order[at - 1] ?? null;
   }
 
-  const api = { VERDICTS, verdict, queue, item, filesLine, label, countLine, landOn };
+  const api = { VERDICTS, verdict, errorsLine, queue, item, filesLine, label, countLine, landOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyReviewQueue = api;
 })(typeof window !== 'undefined' ? window : globalThis);

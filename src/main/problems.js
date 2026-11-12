@@ -115,6 +115,36 @@ function ofVerdict(verdict) {
 // Inside the fence nothing can look like a tag (as devservers/output.js does it).
 const fence = s => String(s).replace(/[\p{Cf}\p{Zl}\p{Zp}]/gu, '').replace(/[<＜]/g, '‹').replace(/[>＞]/g, '›');
 
+// What kind of check found a problem: a type checker (tsc's TS codes, mypy, or a command that
+// typechecks), a linter (an ESLint or ruff/flake8 rule, or a lint command), or something else
+// (a compiler, a test). For the review inbox's "2 type errors · 3 lint errors".
+const TYPE_CMD = /\b(tsc|typecheck|type-check|check-types|mypy|pyright|vue-tsc)\b/i;
+const LINT_CMD = /\b(eslint|lint|ruff|flake8|pylint|stylelint|biome|clippy)\b/i;
+const COMPILER_CMD = /\b(cargo|rustc|go|gcc|g\+\+|clang|make|cmake|javac|dotnet)\b/i;
+const TS_CODE = /^TS\d+$/;
+const RULE_CODE = /^[a-z][\w-]*(\/[\w-]+)?$/;  // ESLint's no-unused-vars, @typescript-eslint/x
+const LINT_CODE = /^[A-Z]{1,4}\d{2,5}$/;      // flake8 and ruff's F401, E501
+function kindOf(p) {
+  const code = String(p?.code || '');
+  if (TS_CODE.test(code) || TYPE_CMD.test(p?.cmd || '')) return 'type';
+  if (COMPILER_CMD.test(p?.cmd || '') && !LINT_CMD.test(p?.cmd || '')) return 'other'; // rustc's E0308 isn't a lint rule
+  if (RULE_CODE.test(code) || LINT_CODE.test(code) || LINT_CMD.test(p?.cmd || '')) return 'lint';
+  return 'other';
+}
+
+/**
+ * A checks verdict's errors by kind: { type, lint, other } (warnings left out). Only commands that
+ * failed count: a linter that printed errors and still passed isn't stopping anything.
+ */
+function tally(verdict) {
+  const out = { type: 0, lint: 0, other: 0 };
+  for (const c of verdict?.commands || []) {
+    if (c?.ok) continue;
+    for (const p of c?.problems || []) if (p?.severity === 'error') out[kindOf({ ...p, cmd: c.cmd })]++;
+  }
+  return out;
+}
+
 /** The message that asks Claude to fix them, quoting each one as output. */
 function fixPrompt(list) {
   const items = (list || []).slice(0, 50);
@@ -132,4 +162,4 @@ function fixPrompt(list) {
   ].join('\n');
 }
 
-module.exports = { parse, ofVerdict, fixPrompt, looksLikeFile, MAX_PROBLEMS };
+module.exports = { parse, ofVerdict, fixPrompt, looksLikeFile, kindOf, tally, MAX_PROBLEMS };

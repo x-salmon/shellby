@@ -83,3 +83,14 @@ test('the overview puts ready-to-review after asking and before finished', () =>
   assert.equal(S.standing(tab('s', { ready: ready(1, { reviewed: true }) })), 'quiet');
   assert.equal(S.closable(tab('r', { ready: ready(1) }), 'x'), false, 'unreviewed work is not swept away');
 });
+
+test('a row says how many type and lint errors failed its checks, for these changes only', () => {
+  const t = { id: 'x', ready: { after: 'a1', at: 1, files: 1, paths: ['a.ts'] }, checks: { status: 'fail', after: 'a1', errors: { type: 2, lint: 1, other: 4 } } };
+  assert.equal(Q.errorsLine(t), '2 type errors · 1 lint error');
+  assert.equal(Q.item(t).errors, '2 type errors · 1 lint error');
+  assert.match(Q.label(Q.item(t)), /2 type errors · 1 lint error/);
+  assert.equal(Q.errorsLine({ ...t, checks: { ...t.checks, after: 'old' } }), '', "another turn's verdict says nothing about these");
+  assert.equal(Q.errorsLine({ ...t, checks: { ...t.checks, status: 'pass' } }), '');
+  assert.equal(Q.errorsLine({ ...t, checks: { ...t.checks, errors: { type: 0, lint: 0, other: 3 } } }), '');
+  assert.equal(Q.errorsLine({ ...t, checks: { status: 'fail', after: 'a1' } }), '');
+});
