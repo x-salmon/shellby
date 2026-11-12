@@ -106,16 +106,19 @@
       const rows = D.rows(e, { line: i === 0 ? line : null });
       const paint = file ? SB.diffPainter?.(file) : null; // each edit is its own run of the file
       if (i && shown < MAX_DIFF_ROWS) box.append(h('div', { class: 'er fold', text: '⋯' }));
-      for (const r of rows) {
-        if (shown >= MAX_DIFF_ROWS) { left++; continue; }
+      const kind = r => (r.t === '+' ? 'add' : r.t === '-' ? 'del' : 'ctx');
+      const words = D.wordMarks(rows.map(r => ({ kind: r.t === '…' ? 'fold' : kind(r), text: r.s || '' })));
+      rows.forEach((r, k) => {
+        if (shown >= MAX_DIFF_ROWS) { left++; return; }
         shown++;
-        if (r.t === '…') { box.append(h('div', { class: 'er fold', text: `⋯ ${r.n} unchanged line${r.n === 1 ? '' : 's'}` })); continue; }
-        box.append(h('div', { class: `er ${r.t === '+' ? 'add' : r.t === '-' ? 'del' : 'ctx'}` },
+        if (r.t === '…') { box.append(h('div', { class: 'er fold', text: `⋯ ${r.n} unchanged line${r.n === 1 ? '' : 's'}` })); return; }
+        const text = paint && r.s ? SB.paintTokens(h('span', { class: 'et' }), paint(kind(r), r.s)) : h('span', { class: 'et', text: r.s || ' ' });
+        box.append(h('div', { class: `er ${kind(r)}` },
           h('span', { class: 'en', 'aria-hidden': 'true', text: r.a ?? '' }),
           h('span', { class: 'en', 'aria-hidden': 'true', text: r.b ?? '' }),
           h('span', { class: 'eg', text: r.t === ' ' ? ' ' : r.t === '-' ? '−' : '+' }),
-          paint && r.s ? SB.paintTokens(h('span', { class: 'et' }), paint(r.t === '+' ? 'add' : r.t === '-' ? 'del' : 'ctx', r.s)) : h('span', { class: 'et', text: r.s || ' ' })));
-      }
+          SB.markWords ? SB.markWords(text, words.get(k)) : text));
+      });
     });
     if (left) box.append(h('div', { class: 'er fold', text: `… ${left} more line${left === 1 ? '' : 's'}` }));
     return box;

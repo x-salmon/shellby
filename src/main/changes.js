@@ -284,13 +284,16 @@ function checkRef({ root, before, after, file, paths } = {}) {
   return null;
 }
 
-/** One file's diff for a turn, as unified-diff text. opts.noFetch: a look only. -> { patch, truncated } | { error } */
-async function patchFor(ref, { noFetch = false } = {}) {
+/**
+ * One file's diff for a turn, as unified-diff text. opts.noFetch: a look only. opts.ignoreSpace: git
+ * diff -w, whitespace changes left out (the file viewer's switch). -> { patch, truncated } | { error }
+ */
+async function patchFor(ref, { noFetch = false, ignoreSpace = false } = {}) {
   const bad = checkRef(ref);
   if (bad) return { error: bad };
   const root = await rootOf(ref.root);
   if (!sameRoot(root, ref.root)) return { error: 'That project has moved.' };
-  const r = await git(root, ['diff', '--no-renames', '--no-ext-diff', '--no-textconv', '--no-color', '-U3', ref.before, ref.after, '--', ...(ref.file ? [ref.file] : ref.paths || [])], { maxBuffer: 16 * 1024 * 1024, noFetch });
+  const r = await git(root, ['diff', '--no-renames', '--no-ext-diff', '--no-textconv', '--no-color', '-U3', ...(ignoreSpace ? ['-w'] : []), ref.before, ref.after, '--', ...(ref.file ? [ref.file] : ref.paths || [])], { maxBuffer: 16 * 1024 * 1024, noFetch });
   if (!r.ok) return { error: /bad object|not a tree|unknown revision/i.test(r.error) ? 'Those changes have been tidied away by git since.' : r.error || "Couldn't read the diff." };
   return r.out.length > MAX_PATCH ? { patch: r.out.slice(0, MAX_PATCH), truncated: true } : { patch: r.out, truncated: false };
 }

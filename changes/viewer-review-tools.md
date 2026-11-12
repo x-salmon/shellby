@@ -1,0 +1,11 @@
+### New
+- **Review a whole branch in the file viewer.** Click a line number in any diff there to leave a comment, as you can on a turn's diff. Comments pile up with your others and go back to Claude in one message.
+- **See what changed inside a line.** Every diff now marks the words that changed on a changed line, so a one-argument edit no longer means hunting through the whole line.
+- **Viewed ticks.** Tick a file once you've read it: it steps back on the list, the next file opens, and the footer counts "3 of 9 viewed". A file that changes again loses its tick.
+- **Find in file and go to line.** In the viewer, Ctrl+F searches the file on screen and Ctrl+G jumps to a line.
+- **Ignore whitespace.** One switch hides changes that are only spaces and indentation, so a reformat doesn't drown out the real edit.
+- **Who changed this line?** Right-click a line in the viewer to see the commit that last touched it, when, and whether Claude Code made it. A line not committed yet says so.
+- **Previews.** A Markdown file can be read as it renders, and pictures (PNG, JPEG, GIF, WebP, SVG and more) show as themselves instead of "a binary file".
+- **Undo a part of the branch's changes.** In a conversation's own folder, each hunk of a changed file in the viewer has Undo this part, two presses, never while Claude is working.
+- **Look over my changes, your way.** Choose what to look for: security, bugs, missing tests, or (from a conversation) whether it does what you asked. Pick it from the shield, the viewer's Look over button, or Look over (L) in the review inbox.
+- **Findings become comments.** Each finding from a code review has Add as comment, and a list has All as comments. They wait on their lines in the viewer, to edit, drop or send back with your own.

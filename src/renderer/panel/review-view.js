@@ -22,6 +22,7 @@
   let picked = null;            // the highlighted row, by id so a redraw keeps it
   let drawn = '';               // what the list last showed
   let sendingTo = null;         // the row whose Send back box is open
+  let lookingAt = null;         // the row whose Look over choices are open
   const drafts = new Map();     // tabId -> what you'd typed into its box
 
   const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -64,6 +65,17 @@
       comments ? h('p', { class: 'rv-send-note', text: `Your ${comments === 1 ? 'line comment goes' : `${comments} line comments go`} with it.` }) : null);
   }
 
+  // "Look over": what to look for, inline in the row (a menu would close this list, which is one).
+  function lookBox(t) {
+    const L = window.ShellbyReviewLenses;
+    return h('div', { class: 'rv-look', role: 'group', 'aria-label': 'Look over the changes for' },
+      h('span', { class: 'rv-look-label', text: 'Look over for' }),
+      ...L.lensesFor({ goal: true }).map(l => h('button', {
+        class: 'btn ghost slim-btn', type: 'button', title: `${l.sub}. He reads and reports back, and changes nothing.`,
+        onclick: () => { lookingAt = null; render({ force: true }); SB.lookOverTab(t.id, l.id); },
+      }, l.label)));
+  }
+
   function row(t) {
     const it = itemOf(t);
     const age = SB.relTime(it.at);
@@ -93,8 +105,10 @@
       isCopy ? actionBtn('Bring it home', 'B', () => bringHome(it.id), { hint: `Merge ${it.branch} into ${t.worktree.base}` }) : null,
       isCopy ? actionBtn('Ship it', 'P', () => shipIt(it.id), { hint: `Open a pull request from ${it.branch} into ${t.worktree.base}` }) : null,
       actionBtn('Send back', 'S', () => openSend(it.id), { hint: 'Tell him what should change' }),
+      actionBtn('Look over', 'L', () => { lookingAt = lookingAt === it.id ? null : it.id; render({ force: true }); }, { hint: 'A read-only review: security, bugs, missing tests, or what you asked for' }),
       actionBtn('Mark reviewed', 'R', () => markReviewed(it.id), { hint: 'Takes it off this list' })),
-    sendingTo === it.id ? sendBox(t) : null);
+    sendingTo === it.id ? sendBox(t) : null,
+    lookingAt === it.id ? lookBox(t) : null);
   }
 
   // ------------------------------------------------------------ the list
@@ -103,7 +117,7 @@
     h('h2', { class: 'rv-heading', id: 'rvHeading', text: 'Ready to review' }),
     h('span', { class: 'rv-sub', text: 'Oldest first' }));
   const rowsEl = h('ul', { class: 'rv-items', 'aria-labelledby': 'rvHeading' });
-  const foot = h('p', { class: 'rv-hint', text: '↑↓ move · Enter opens · B brings home · S sends back · R reviewed' });
+  const foot = h('p', { class: 'rv-hint', text: '↑↓ move · Enter opens · B brings home · S sends back · L looks over · R reviewed' });
   const empty = h('p', { class: 'rv-empty', tabindex: '-1', text: "Nothing waiting for you. He'll put finished work here." });
 
   // Rebuilt only when what it shows changes, and never under your typing.
@@ -252,6 +266,7 @@
     else if (key === 'p' && state.tabs.get(id)?.worktree) { e.preventDefault(); shipIt(id); }
     else if (key === 'r') { e.preventDefault(); markReviewed(id); }
     else if (key === 's') { e.preventDefault(); openSend(id); }
+    else if (key === 'l') { e.preventDefault(); lookingAt = lookingAt === id ? null : id; render({ force: true }); }
   });
 
   list.addEventListener('keydown', e => {

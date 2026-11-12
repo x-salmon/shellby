@@ -186,3 +186,29 @@ test('totals and totalsText: files, lines added and removed; a binary file count
   assert.equal(V.totalsText(files, 8), '4 of 12 files · +30 −52', 'a capped list says how many it shows, and the sums are of those');
   assert.equal(V.totalsText(files, 0), '4 files · +30 −52');
 });
+
+test('a Viewed tick holds only while the file ends at the blob it was ticked at', () => {
+  const files = [{ path: 'a.js', sig: 'M:1' }, { path: 'b.js', sig: 'M:2' }, { path: 'c.js' }];
+  let seen = V.tick({}, files, files[0], true);
+  assert.equal(V.isViewed(files[0], seen), true);
+  assert.equal(V.viewedText(files, seen), '1 of 3 viewed');
+  assert.equal(V.viewedText(files, seen, 2), '1 of 5 viewed');
+  const changed = [{ path: 'a.js', sig: 'M:9' }, files[1], files[2]];
+  assert.equal(V.isViewed(changed[0], seen), false, 'a file that changed again loses its tick');
+  assert.equal(V.viewedText(changed, seen), '');
+  seen = V.tick(seen, files, files[2], true);
+  assert.equal(V.isViewed(files[2], seen), false, 'a file with no sig is never ticked');
+  seen = V.tick(seen, files, files[1], true);
+  seen = V.tick(seen, files, files[0], false);
+  assert.deepEqual(seen, { 'b.js': 'M:2' });
+  assert.equal(V.tick({ 'gone.js': 'A:1' }, files, files[0], true)['gone.js'], undefined, 'ticks for files off the list are dropped');
+  assert.equal(V.isViewed({ path: 'toString', sig: 'x' }, {}), false);
+});
+
+test('nextUnviewed steps to the next file without a tick, wrapping round', () => {
+  const files = [{ path: 'a', sig: '1' }, { path: 'b', sig: '2' }, { path: 'c', sig: '3' }];
+  assert.equal(V.nextUnviewed(files, { b: '2' }, 'a'), 'c');
+  assert.equal(V.nextUnviewed(files, {}, 'c'), 'a');
+  assert.equal(V.nextUnviewed(files, { a: '1', b: '2', c: '3' }, 'a'), null);
+  assert.equal(V.nextUnviewed(files, { b: '2', c: '3' }, 'a'), null);
+});

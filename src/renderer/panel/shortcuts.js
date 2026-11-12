@@ -35,7 +35,8 @@
     { id: 'reopenTab', group: 'Conversations', keys: ['Ctrl+Shift+T'], what: 'Bring back the conversation you closed last (again for the one before)' },
 
     { id: 'stop', fixed: true, group: 'This conversation', keys: ['Esc'], what: 'Stop, while he’s working' },
-    { id: 'find', group: 'This conversation', keys: ['Ctrl+F'], what: 'Find text in it (Enter and Shift+Enter step through)' },
+    { id: 'find', group: 'This conversation', keys: ['Ctrl+F'], what: 'Find text in it, or in the file the viewer shows (Enter and Shift+Enter step through)' },
+    { id: 'goToLine', group: 'This conversation', keys: ['Ctrl+G'], what: 'Go to a line of the file the viewer shows' },
     { id: 'rewind', fixed: true, group: 'This conversation', keys: ['Esc Esc'], what: 'Rewind to an earlier message (with the box empty)' },
     { id: 'tryAgain', group: 'This conversation', keys: ['Ctrl+Shift+B'], what: 'Try your last message another way, in a new tab' },
     { id: 'showChanges', group: 'This conversation', keys: ['Ctrl+Shift+D'], what: 'Show what the last turn changed' },

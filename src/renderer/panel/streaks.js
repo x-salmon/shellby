@@ -9,8 +9,8 @@
 
   // A read-only look over what's pending in one project. Deliberately never a
   // verdict, and never a fix: see src/main/review.js for why.
-  async function review(key) {
-    const r = await api.reviewProject(key);
+  async function review(key, lens) {
+    const r = await api.reviewProject(key, lens);
     if (r?.needsClaude) return SB.claudeUpsell('review');
     if (!r?.ok) return SB.toast(r?.error || "Couldn't start that.");
     SB.toast('Shellby is looking over your changes');
@@ -62,8 +62,8 @@
       return h('li', { class: `streak-project${late ? ' late' : ''}${p.muted ? ' muted' : ''}` },
         h('button', { class: 'sp-name', type: 'button', title: 'Open a new conversation in this project', onclick: () => api.openProject(p.key) }, p.name),
         h('span', { class: 'sp-quiet', text: W.quiet(p) }),
-        h('button', { class: 'sp-review icon-btn', type: 'button', title: 'Have Shellby look over the changes here for security problems. He reads and reports back, and changes nothing',
-          'aria-label': `Look over the changes in ${p.name}`, onclick: () => review(p.key) }, SB.icon(SB.ICONS.shield)),
+        h('button', { class: 'sp-review icon-btn', type: 'button', title: 'Have Shellby look over the changes here: for security problems, bugs or missing tests. He reads and reports back, and changes nothing', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+          'aria-label': `Look over the changes in ${p.name}`, onclick: e => SB.pickReviewLens(e.currentTarget, lens => review(p.key, lens)) }, SB.icon(SB.ICONS.shield)),
         h('button', { class: 'sp-mute icon-btn', type: 'button', title: p.muted ? 'Nudges are off for this project. Click to turn them back on' : 'Stop nudging me about this project',
           'aria-label': p.muted ? `Unmute ${p.name}` : `Mute ${p.name}`, onclick: async () => render(await api.muteProject(p.key, !p.muted)) }, p.muted ? '🔕' : '🔔'));
     }) : [h('li', { class: 'xp-empty', text: 'Projects show up here once Shellby sees you working in a git repo.' })]));

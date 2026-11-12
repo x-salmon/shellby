@@ -61,3 +61,45 @@ test('a huge rewrite falls back to "all removed, all added" instead of a huge ta
   assert.equal(rows[0].t, '-');
   assert.equal(rows.at(-1).t, '+');
 });
+
+test('wordDiff marks just the argument that changed', () => {
+  const a = 'call(foo, 1, bar)';
+  const b = 'call(foo, 2, bar)';
+  const d = D.wordDiff(a, b);
+  assert.deepEqual(d.a.map(([s, e]) => a.slice(s, e)), ['1']);
+  assert.deepEqual(d.b.map(([s, e]) => b.slice(s, e)), ['2']);
+});
+
+test('wordDiff joins two changed words across the space between them', () => {
+  const a = 'const total = price * count;';
+  const b = 'const total = netPrice + tax;';
+  const d = D.wordDiff(a, b);
+  assert.deepEqual(d.b.map(([s, e]) => b.slice(s, e)), ['netPrice + tax']);
+});
+
+test('wordDiff marks an insertion on one side only', () => {
+  const d = D.wordDiff('let x = 1;', 'let x = 1 + y;');
+  assert.deepEqual(d.a, []);
+  assert.equal(d.b.length, 1);
+});
+
+test('wordDiff gives up on lines with little in common, or none at all', () => {
+  assert.equal(D.wordDiff('return render(view);', 'import fs from "fs";'), null);
+  assert.equal(D.wordDiff('same line', 'same line'), null);
+  assert.equal(D.wordDiff('', 'x'), null);
+  assert.equal(D.wordDiff('a '.repeat(300), 'b '.repeat(300)), null, 'too long to compare');
+});
+
+test('wordMarks pairs each run of removed lines with the added run after it', () => {
+  const rows = [
+    { kind: 'ctx', text: 'a' },
+    { kind: 'del', text: 'x = f(1)' },
+    { kind: 'del', text: 'y = g(2)' },
+    { kind: 'add', text: 'x = f(3)' },
+    { kind: 'hunk', text: '@@' },
+    { kind: 'add', text: 'z = 1' },
+  ];
+  const m = D.wordMarks(rows);
+  assert.deepEqual([...m.keys()].sort(), [1, 3]);
+  assert.deepEqual(m.get(3).map(([s, e]) => rows[3].text.slice(s, e)), ['3']);
+});

@@ -20,6 +20,7 @@ const fileIndex = require('./fileindex');
 const { parseTarget } = require('./filelinks');
 const { parseWorktrees, okDir } = require('./leaving');
 const { readStatus } = require('./viewer-status');
+const { IMAGE_TYPES, parseRaw, parseBlame, signFiles, blameLine } = require('./viewer-review');
 
 const { TREE } = changes;
 const HEADS = 'refs/heads/';
@@ -104,8 +105,11 @@ const PATCH_SAID = new Set([
   'Those changes have been tidied away by git since.', "Couldn't read the diff.",
 ]);
 
-/** A file under root, as text. rel: as git names it (forward slashes) or the OS does. */
-async function readInside(root, rel) {
+/**
+ * A file under root, as text. rel: as git names it (forward slashes) or the OS does.
+ * opts.raw: its bytes ({ ok, buf, size }) instead, NUL or not (a picture, for its preview).
+ */
+async function readInside(root, rel, { raw = false } = {}) {
   const top = typeof root === 'string' ? longPath(root) : null;
   if (!top) return { ok: false, gone: true };
   if (!plainRel(rel)) return { ...NOT_HERE };
@@ -126,6 +130,7 @@ async function readInside(root, rel) {
     const size = Number(st.size);
     if (size > MAX_BYTES) return { ok: false, tooBig: true, size };
     const buf = await fh.readFile();
+    if (raw) return { ok: true, buf, size };
     if (buf.subarray(0, SNIFF_BYTES).includes(0)) return { ok: false, binary: true, size };
     let text = buf.toString('utf8');
     if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
@@ -230,7 +235,9 @@ async function locate(cwd, target, { home = os.homedir() } = {}) {
   const file = longPath(t.file);
   if (!file || !isUnder(root, file)) return { inside: false };
   try { if (!fs.statSync(file).isFile()) return { inside: false }; } catch { return { inside: false }; }
-  return { inside: true, rel: path.relative(root, file).split(path.sep).join('/'), line: t.line };
+  // root: the folder a viewer handle on this conversation opens (open() resolves it the same way), so a
+  // comment made from a link (a review's finding) lands on the viewer's own diff of that file.
+  return { inside: true, rel: path.relative(root, file).split(path.sep).join('/'), line: t.line, root };
 }
 
 /**
@@ -367,6 +374,7 @@ function createViewer({ home = os.homedir() } = {}) {
       const fresh = new Set(String(out || '').split('\0').filter(s => s.startsWith('?? ')).map(s => s.slice(3).toLowerCase()));
       for (const f of files) if (f.status === 'A' && fresh.has(f.path.toLowerCase())) f.status = '?';
     }
+    await signFiles(git, snap.root, before, snap.tree, files);
     h.slots[key] = { ref: { root: snap.root, before, after: snap.tree }, files: new Map(files.map(f => [f.path.toLowerCase(), f])) };
     return { ok: true, files, more: sum?.more || 0, against: fork ? h.base : 'HEAD' };
   }
@@ -398,6 +406,7 @@ function createViewer({ home = os.homedir() } = {}) {
     const sum = await changes.summarize({ root: at, tree: before }, { root: at, tree: commit }, { noFetch: true, info: diff });
     if (diff.failed) return { ok: false, error: "Couldn't read changes." }; // a missing object, a timeout: not "nothing changed"
     const files = sum?.files || [];
+    await signFiles(git, at, before, commit, files);
     // Git's own spelling: a branch can hold A.txt and a.txt, and nothing on disk folds them.
     h.slots.base = { ref: { root: at, before, after: commit }, files: new Map(files.map(f => [f.path, f])) };
     return { ok: true, files, more: sum?.more || 0, against: h.base };
@@ -428,20 +437,76 @@ function createViewer({ home = os.homedir() } = {}) {
     return p.then(shown);
   }
 
-  async function diffOf(id, rel) {
+  // A file on the list the panel was last handed, by its path there. -> { h, slot, f } | an answer to give
+  function onList(id, rel) {
     const h = handles.get(id);
-    if (!h) return { ok: false, expired: true };
+    if (!h) return { answer: { ok: false, expired: true } };
     const slot = h.slots[h.shown];
     const f = typeof rel === 'string' ? slot?.files.get(h.kind === 'branch' ? rel : rel.toLowerCase()) : null;
-    if (!f) return { ok: false, error: 'Not a file in these changes.' };
+    if (!f) return { answer: { ok: false, error: 'Not a file in these changes.' } };
+    return { h, slot, f };
+  }
+
+  // opts.ignoreSpace: git diff -w, so a reformatted file shows only what really changed.
+  async function diffOf(id, rel, { ignoreSpace = false } = {}) {
+    const { answer, h, slot, f } = onList(id, rel);
+    if (answer) return answer;
     // A branch's diff is commit to commit: any live folder of the repo makes it, not only the one the
     // list was taken in, which may have gone since.
     const root = h.kind === 'branch' ? await liveRoot(h) : slot.ref.root;
     if (!root) return { ok: false, gone: true, error: 'This folder is gone.' };
-    const r = await changes.patchFor({ ...slot.ref, root, file: f.path }, { noFetch: true });
+    const r = await changes.patchFor({ ...slot.ref, root, file: f.path }, { noFetch: true, ignoreSpace: !!ignoreSpace });
     // patchFor's own words stand; anything else is git's stderr (a blob it lacks: "fatal: unable to read ...").
     if (r.error) return { ok: false, error: PATCH_SAID.has(r.error) ? r.error : "Couldn't read that." };
-    return { ok: true, patch: r.patch, truncated: r.truncated, binary: f.binary };
+    return { ok: true, patch: r.patch, truncated: r.truncated, binary: f.binary, sig: f.sig || null };
+  }
+
+  /**
+   * Take one hunk of a changed file back, in a conversation's own folder only (never a branch, which
+   * has no files on disk, and never a folder the Project page opened). changes.undoHunk checks the
+   * hunk is still the one shown and the file hasn't changed since the list was taken, and refuses
+   * rather than half-applies. busy(tabId): the conversation is mid-turn, when files are still moving.
+   * @param {string} id
+   * @param {string} rel
+   * @param {{ hunk?: number, header?: string }} part
+   * @param {(tabId: string) => boolean} [busy]
+   */
+  async function undoHunk(id, rel, { hunk, header } = {}, busy = () => false) {
+    const { answer, h, slot, f } = onList(id, rel);
+    if (answer) return answer;
+    if (h.kind !== 'folder' || !h.tabId) return { ok: false, error: 'Only a conversation\'s own folder can be changed from here.' };
+    if (busy(h.tabId)) return { ok: false, error: 'Let him finish first: this conversation is working.' };
+    if (f.status !== 'M') return { ok: false, error: 'Only a changed file can be taken back a part at a time.' };
+    const r = await changes.undoHunk({ ...slot.ref, file: f.path }, { hunk, header });
+    if (!r.ok) return { ok: false, error: r.error || "Couldn't take that part back." };
+    h.gen++; h.last = {}; h.pending = {}; // the list and the diff it answered are out of date now
+    return { ok: true };
+  }
+
+  /**
+   * Who last changed one line of a file (git blame -L n,n), and whether Claude Code made that commit
+   * (its trailer in the message). A folder's file as it is on disk, so a line not committed yet says
+   * so; a branch's at its tip. Only a file inside the handle, as read() checks.
+   */
+  async function blameOf(id, rel, line) {
+    const h = handles.get(id);
+    if (!h) return { ok: false, expired: true };
+    if (!h.git) return { ok: false, error: 'Not a git repository.' };
+    if (!Number.isInteger(line) || line < 1 || line > 10_000_000) return { ok: false, error: 'Which line?' };
+    const at = h.kind === 'branch' ? await liveRoot(h) : longPath(h.root);
+    if (!at) return { ok: false, gone: true };
+    /** @type {string | null} */
+    let name = null;
+    if (h.kind === 'branch') {
+      const t = typeof rel === 'string' && rel ? await pathsAt(h, h.commit, at) : null;
+      if (t && t.set.has(rel)) name = rel;
+    } else if (plainRel(rel)) {
+      const abs = path.resolve(at, rel);
+      const file = isUnder(at, abs) ? longPath(abs) : null;
+      if (file && isUnder(at, file)) name = path.relative(at, file).split(path.sep).join('/');
+    }
+    if (!name) return { ...NOT_HERE };
+    return blameLine(git, at, name, line, h.kind === 'branch' ? h.commit : null);
   }
 
   // The paths in a branch's tree at a commit: one ls-tree per commit, shared by every ask while it runs,
@@ -462,7 +527,7 @@ function createViewer({ home = os.homedir() } = {}) {
 
   // A file of a branch, from its newest commit read. Only a path its own tree lists (git's spelling, case
   // and all): cat-file would answer for a folder or another revision too. Size first, so a huge blob is never read.
-  async function readBlob(h, rel) {
+  async function readBlob(h, rel, { raw = false } = {}) {
     if (typeof rel !== 'string' || !rel) return { ...NOT_HERE };
     const root = await liveRoot(h);
     if (!root) return { ok: false, gone: true };
@@ -476,6 +541,7 @@ function createViewer({ home = os.homedir() } = {}) {
     // cat-file blob runs no clean or smudge filter: the bytes as committed.
     const buf = await git(root, ['cat-file', 'blob', at], { buffer: true, env: { GIT_LITERAL_PATHSPECS: '1' }, maxBuffer: MAX_BYTES + 1024 });
     if (!buf) return { ok: false, error: "Couldn't read that." };
+    if (raw) return { ok: true, buf, size };
     if (buf.subarray(0, SNIFF_BYTES).includes(0)) return { ok: false, binary: true, size };
     let text = buf.toString('utf8');
     if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
@@ -486,6 +552,21 @@ function createViewer({ home = os.homedir() } = {}) {
     const h = handles.get(id);
     if (!h) return { ok: false, expired: true };
     return h.kind === 'branch' ? readBlob(h, rel) : readInside(h.root, rel);
+  }
+
+  /**
+   * A picture for the viewer's preview, as a data: URL the panel puts in an <img> (which runs
+   * nothing, an SVG's scripts included). Only by its name's extension (IMAGE_TYPES), never sniffed,
+   * and within MAX_BYTES, read as read() reads: inside the folder, or from the branch's own tree.
+   */
+  async function imageOf(id, rel) {
+    const h = handles.get(id);
+    if (!h) return { ok: false, expired: true };
+    const type = typeof rel === 'string' ? IMAGE_TYPES[path.extname(rel).slice(1).toLowerCase()] : null;
+    if (!type) return { ok: false, error: 'Not a picture Shellby can show.' };
+    const r = h.kind === 'branch' ? await readBlob(h, rel, { raw: true }) : await readInside(h.root, rel, { raw: true });
+    if (!r.ok) return r;
+    return { ok: true, url: `data:${type};base64,${r.buf.toString('base64')}`, size: r.size };
   }
 
   /** All files: fileindex.js's list for a folder (fresh: not the cached one); a branch's own tree, with its folders. */
@@ -685,13 +766,13 @@ function createViewer({ home = os.homedir() } = {}) {
   }
 
   return {
-    open, openBranch, get: id => handles.get(id) || null, changesOf, diffOf, read, treeOf, statusOf,
+    open, openBranch, get: id => handles.get(id) || null, changesOf, diffOf, undoHunk, blameOf, read, imageOf, treeOf, statusOf,
     placesOf, switchTo, close: id => { handles.delete(id); }, staleFor, keepTabs,
   };
 }
 
 module.exports = {
-  readInside, sameDir, isUnder, longPath, tooWide, createViewer, locate, selectedNote, branchOf, writeWatch, countStatus, checkoutBranch, limiter,
+  readInside, sameDir, isUnder, longPath, tooWide, createViewer, locate, selectedNote, branchOf, writeWatch, countStatus, checkoutBranch, limiter, parseRaw, parseBlame,
   MAX_BYTES, SNIFF_BYTES, MAX_HANDLES, REFRESH_MS, EMPTY_TREE, TREE_MAX, HEAD_REF, MAX_PLACE_TREES, MAX_PLACE_BRANCHES, PLACES_MS,
-  PICK_UNSAFE, MAX_PICKED,
+  PICK_UNSAFE, MAX_PICKED, IMAGE_TYPES,
 };

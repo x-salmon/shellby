@@ -178,3 +178,10 @@ pre.drawing .cell.w2 { width: 2ch; }
 }
 .pb-fix:hover, .pb-fix:focus-visible { color: var(--sand); border-color: var(--sand-faint); outline: none; }
 .pb-empty { margin: 4px 0 0; }
+
+/* ---------- what changed inside a changed line (SB.markWords) */
+mark.wd { color: inherit; border-radius: 2px; padding: 0; }
+.diff .dl.add mark.wd, .er.add mark.wd { background: rgba(127, 214, 194, .34); }
+.diff .dl.del mark.wd, .er.del mark.wd { background: rgba(255, 122, 92, .34); }
+.diff .dl.ctx mark.wd, .er.ctx mark.wd { background: none; }
+@media (forced-colors: active) { mark.wd { background: Mark; color: MarkText; } }

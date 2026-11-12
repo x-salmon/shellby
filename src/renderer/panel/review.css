@@ -73,3 +73,5 @@
 .rv-empty { margin: 0; padding: 18px 9px; color: var(--sand-dim); font-size: var(--fs-12-5); line-height: 1.4; }
 .rv-empty:focus { outline: none; }
 .rv-hint { flex: none; margin: 4px 0 0; padding: 7px 6px 1px; border-top: 1px solid var(--line); color: var(--sand-faint); font-size: var(--fs-11); }
+.rv-look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; padding: 6px 0 2px; border-top: 1px solid var(--line-soft); }
+.rv-look-label { margin-right: 4px; font-size: var(--fs-11); color: var(--sand-faint); }

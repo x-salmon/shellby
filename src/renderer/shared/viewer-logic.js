@@ -188,7 +188,47 @@
     return [open, remembered].find(f => typeof f === 'string' && f && has(f)) || null;
   }
 
-  const api = { buildTree, visibleRows, numberDiff, splitLines, whereText, tooWide, liveState, totals, totalsText, statusWord, statusClass, placeSub, findPlace, placeKey, tabAt, keepFile, STATUS_WORDS };
+  // ---- Viewed ticks: { [path]: sig } per place. A tick holds while the file still ends at the
+  // blob it was ticked at (main's viewer.js signFiles); one that changed again has lost it.
+
+  const MAX_VIEWED = 2000; // ticks kept per place
+
+  /** Is this file ticked, and still as it was when it was? */
+  const isViewed = (f, seen) => !!f?.sig && !!seen && Object.prototype.hasOwnProperty.call(seen, f.path) && seen[f.path] === f.sig;
+
+  /** "3 of 9 viewed", or '' before anything is ticked. more: files the capped list left out. */
+  function viewedText(files, seen, more = 0) {
+    const list = files || [];
+    const n = list.filter(f => isViewed(f, seen)).length;
+    return n ? `${n} of ${list.length + (more > 0 ? more : 0)} viewed` : '';
+  }
+
+  /**
+   * The ticks after one is set or cleared: a new object, ticks for files no longer on the list
+   * (or changed since) left out, so a place's ticks never outgrow its changes.
+   */
+  function tick(seen, files, f, on) {
+    const out = {};
+    for (const x of files || []) if (x.path !== f?.path && isViewed(x, seen)) out[x.path] = x.sig;
+    if (on && f?.sig) out[f.path] = f.sig;
+    return Object.fromEntries(Object.entries(out).slice(-MAX_VIEWED));
+  }
+
+  /** The next file on the list after `at` (wrapping) that isn't ticked, or null when all are. */
+  function nextUnviewed(files, seen, at) {
+    const list = files || [];
+    const from = list.findIndex(f => f.path === at);
+    for (let k = 1; k <= list.length; k++) {
+      const f = list[(from + k + list.length) % list.length];
+      if (f && !isViewed(f, seen) && f.path !== at) return f.path;
+    }
+    return null;
+  }
+
+  const api = {
+    buildTree, visibleRows, numberDiff, splitLines, whereText, tooWide, liveState, totals, totalsText, statusWord, statusClass, placeSub, findPlace, placeKey, tabAt, keepFile,
+    isViewed, viewedText, tick, nextUnviewed, STATUS_WORDS,
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyViewer = api;
 })(typeof window !== 'undefined' ? window : globalThis);

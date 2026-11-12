@@ -279,3 +279,5 @@
 /* /mobile's QR code (native-more.js) */
 .mobile-box { max-width: 340px; text-align: center; }
 .mobile-qr { display: block; margin: 6px auto 10px; image-rendering: pixelated; border-radius: var(--r-sm); }
+.finding-comment { margin-left: 10px; }
+.findings-comment-all { margin-left: 6px; }

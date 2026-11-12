@@ -51,9 +51,18 @@
 
     // A code review's findings (ReportFindings): one row each, its place in
     // the code a link, and Fix this, which puts a prompt in the box (nothing is
-    // sent until you press Enter).
+    // sent until you press Enter). Add as comment makes one a line comment waiting
+    // on its line (line-comments-ui.js), to send back with your own.
     renderFindings(item, replay) {
       const { list, level } = item.findings;
+      const comment = async (fs, btn) => {
+        btn.disabled = true;
+        const n = await SB.addFindingComments?.(this, fs) ?? 0;
+        btn.disabled = false;
+        if (n) btn.textContent = fs.length === 1 ? 'Added' : `Added ${n}`;
+        SB.toast(n ? `${n === 1 ? 'It waits' : `${n} wait`} as review comments: edit or drop them in the file viewer, then Send review.`
+          : fs.length === 1 ? "That one is already a comment, or isn't in a file of this project." : "Those are already comments, or aren't in files of this project.", { ms: 5000 });
+      };
       const where = f => (f.file ? `${f.file}${f.line ? `:${f.line}` : ''}` : '');
       const ask = fs => SB.prefill(fs.length === 1
         ? `Fix this finding${where(fs[0]) ? ` in ${where(fs[0])}` : ''}: ${fs[0].summary || fs[0].short}`
@@ -64,7 +73,8 @@
           h('div', { class: 'finding-head' },
             f.verdict ? h('span', { class: `finding-verdict ${f.verdict.toLowerCase()}`, text: f.verdict === 'CONFIRMED' ? 'Confirmed' : 'Plausible' }) : null,
             f.file ? SB.fileLink(f.file, { line: f.line, text: `${SB.relPath(f.file, this.cwd)}${f.line ? `:${f.line}` : ''}`, cls: 'finding-where' }) : null,
-            h('button', { class: 'link-btn inline finding-fix', type: 'button', onclick: () => ask([f]) }, 'Fix this')),
+            h('button', { class: 'link-btn inline finding-fix', type: 'button', onclick: () => ask([f]) }, 'Fix this'),
+            f.file ? h('button', { class: 'link-btn inline finding-comment', type: 'button', title: 'Leave it as a comment on its line, to send back with your own', onclick: e => comment([f], e.currentTarget) }, 'Add as comment') : null),
           h('div', { class: 'finding-text', text: f.summary || f.short }),
           scenario);
       };
@@ -74,7 +84,8 @@
           h('span', { class: 'agent-msg-icon', 'aria-hidden': 'true', text: '🔎' }),
           h('b', { text: n ? `${n} finding${n === 1 ? '' : 's'}` : 'No findings' }),
           level ? h('span', { class: 'muted', text: ` · ${level} effort` }) : null,
-          n > 1 ? h('button', { class: 'btn slim-btn findings-fix-all', type: 'button', onclick: () => ask(list) }, 'Fix all') : null),
+          n > 1 ? h('button', { class: 'btn slim-btn findings-fix-all', type: 'button', onclick: () => ask(list) }, 'Fix all') : null,
+          n > 1 && list.some(f => f.file) ? h('button', { class: 'btn ghost slim-btn findings-comment-all', type: 'button', title: 'Each one as a comment on its line', onclick: e => comment(list, e.currentTarget) }, 'All as comments') : null),
         n ? h('ol', { class: 'findings-list' }, list.map(row)) : null);
       this.tools.set(item.id, el);
       this.append(el, item.parent);

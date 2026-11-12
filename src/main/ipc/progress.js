@@ -8,7 +8,7 @@ const path = require('path');
 const confirm = require('../confirm');
 const recap = require('../recap');
 const { repoOf } = require('../gitinfo');
-const { reviewPrompt } = require('../review');
+const { reviewPrompt, LENSES } = require('../review');
 const selfaware = require('../selfaware');
 const stickers = require('../stickers');
 const streaks = require('../progression/streaks');
@@ -57,24 +57,41 @@ function registerProgressIpc(ipcMain, d) {
   // project, in that project's own folder. Only a folder Shellby already tracks
   // is accepted, and the task runs in Ask-first mode whatever mode you're in, so
   // a review can't change anything without you.
-  ipcMain.handle('review:start', (_e, key) => {
+  // lens: what to look for (review.js LENSES); security when it isn't one of them.
+  const lensOf = lens => (d.isStr(lens) && Object.prototype.hasOwnProperty.call(LENSES, lens) ? lens : 'security');
+  const titleOf = (lens, name) => (lens === 'security' ? `Look over ${name}` : `Look over ${name}: ${LENSES[lens].label.replace(/\?$/, '')}`);
+  ipcMain.handle('review:start', (_e, key, lens) => {
     const s = streaks.normalize(d.config.get('streaks'));
     const p = d.isStr(key) && s.projects[key];
     if (!p || !fs.existsSync(key)) return { ok: false, error: "Shellby can't find that folder any more." };
-    const r = d.startTask(reviewPrompt(p.name), `Look over ${p.name}`, { mode: 'ask', cwd: key });
+    const l = lensOf(lens) === 'goal' ? 'correctness' : lensOf(lens); // a project has no one request to compare with
+    const r = d.startTask(reviewPrompt(p.name, { lens: l }), titleOf(l, p.name), { mode: 'ask', cwd: key });
     if (r.ok) d.showPanel({ focusInput: false, tabId: r.tabId });
     if (r.ok) d.questDone?.('look-over');
     return r;
   });
 
+  // A conversation's first message of your own since it was last cleared: what it was asked to do.
+  function firstAsk(tabId) {
+    const items = d.history?.load(tabId) || [];
+    const from = items.findLastIndex(i => i?.kind === 'cleared') + 1;
+    const first = items.slice(from).find(i => i?.kind === 'user' && typeof i.text === 'string' && i.text.trim() && !i.steerId);
+    return first ? first.text.trim() : '';
+  }
+
   // ---- suggestion cards (wiring/crab-api.js suggestCard): the user tapped one
   // A review from a card runs on the conversation's own folder, under the same
   // rules as the shield button: read-only prompt, Ask-first mode.
-  ipcMain.handle('suggest:review', async (_e, tabId) => {
+  // The review inbox and the viewer ask for one too, with a lens; "Does it do what I asked?" compares
+  // the changes with the conversation's first message.
+  ipcMain.handle('suggest:review', async (_e, tabId, lens) => {
     const tab = d.isStr(tabId) && d.manager.tabs.get(tabId);
     const repo = tab && await repoOf(tab.session.cwd);
     if (!repo) return { ok: false, error: "That folder isn't a git repository any more." };
-    const r = d.startTask(reviewPrompt(repo.name), `Look over ${repo.name}`, { mode: 'ask', cwd: repo.root });
+    const l = lensOf(lens);
+    const goal = l === 'goal' ? firstAsk(tabId) : '';
+    if (l === 'goal' && !goal) return { ok: false, error: "This conversation has no request to compare with yet." };
+    const r = d.startTask(reviewPrompt(repo.name, { lens: l, goal }), titleOf(l, repo.name), { mode: 'ask', cwd: repo.root });
     if (r.ok) d.showPanel({ focusInput: false, tabId: r.tabId });
     return r;
   });

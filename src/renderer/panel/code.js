@@ -25,6 +25,37 @@
   };
 
   /**
+   * Marks what changed inside a changed line (ShellbyDiff.wordMarks): each [from, to]
+   * range of el's text, offset by `skip` characters (a leading +/− the ranges don't
+   * count), goes in a <mark class="wd">, splitting colours where it has to.
+   */
+  SB.markWords = (el, ranges, skip = 0) => {
+    if (!ranges?.length) return el;
+    const nodes = [];
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) nodes.push(n);
+    let at = 0;
+    for (const node of nodes) {
+      const len = node.data.length;
+      const from = at, to = at + len;
+      at = to;
+      const cuts = ranges.map(([s, e]) => [s + skip, e + skip]).filter(([s, e]) => s < to && e > from)
+        .map(([s, e]) => [Math.max(s, from) - from, Math.min(e, to) - from]);
+      if (!cuts.length) continue;
+      const parts = [];
+      let pos = 0;
+      for (const [s, e] of cuts) {
+        if (s > pos) parts.push(document.createTextNode(node.data.slice(pos, s)));
+        parts.push(h('mark', { class: 'wd', text: node.data.slice(s, e) }));
+        pos = e;
+      }
+      if (pos < len) parts.push(document.createTextNode(node.data.slice(pos)));
+      node.replaceWith(...parts);
+    }
+    return el;
+  };
+
+  /**
    * Colours for a diff, one line at a time. The old and new sides each keep
    * their place (a comment opened on a removed line stays open only there),
    * and an unchanged line moves both on.

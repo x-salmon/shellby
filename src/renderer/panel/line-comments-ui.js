@@ -47,7 +47,12 @@
     refresh(tab);
   }
 
-  const sameChange = (c, ref) => c.root === ref.root && c.before === ref.before && c.after === ref.after;
+  // A comment left in the file viewer (viewer.js) is on the branch as it is now, not on one turn:
+  // its `before` says so, and its `after` is the conversation's latest turn when it was left (so
+  // review mastery can still see whether the next turn caught it). It stays on that file's diff
+  // in the viewer whatever turns come after.
+  const VIEWER = SB.VIEWER_COMMENTS = 'viewer';
+  const sameChange = (c, ref) => c.root === ref.root && c.before === ref.before && (c.before === VIEWER || c.after === ref.after);
   const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   const { plural } = SB;
 
@@ -82,8 +87,11 @@
    * One file's diff for a turn, with its lines open to comments. status: the
    * file's (A, M, D…); a changed file's hunks can each be taken back, and
    * onChanged is called once one has been, to read the diff again.
+   * The file viewer (viewer.js) draws its diffs here too, with look 'viewer' (both
+   * sides' numbers in their own columns), its own undo(n, header) for a hunk, and
+   * no tab when it isn't showing a conversation's folder (no comments then).
    */
-  SB.reviewDiff = (tab, patch, { file, ref, binary, status = null, onChanged = null }) => {
+  SB.reviewDiff = (tab, patch, { file, ref, binary, status = null, onChanged = null, look = 'feed', undo = null, nowrap = false }) => {
     const rows = R.numberLines(patch);
     if (!rows.some(R.commentable)) return SB.renderDiff(patch, { binary, file });
     const wrap = h('div', { class: 'rv-wrap' });
@@ -91,8 +99,9 @@
     let view = null;
     const show = () => {
       const split = SB.pref(LAYOUT_KEY, 'inline') === 'split';
-      view = new DiffView(tab, rows, file, ref, { split, undoable: !!ref && status === 'M' && !!onChanged, onChanged });
-      (tab.reviewViews ||= new Set()).add(view);
+      const undoable = status === 'M' && !!onChanged && (!!undo || (!!ref && look === 'feed'));
+      view = new DiffView(tab, rows, file, ref, { split, undoable, onChanged, look, undo, nowrap });
+      if (tab) (tab.reviewViews ||= new Set()).add(view);
       view.draw();
       const seg = (key, label) => h('button', {
         class: `rv-seg${(key === 'split') === split ? ' on' : ''}`, type: 'button', 'aria-pressed': String((key === 'split') === split),
@@ -104,7 +113,7 @@
       }, label);
       wrap.replaceChildren(
         h('div', { class: 'rv-head' },
-          h('p', { class: 'rv-hint small muted', text: 'Click a line number to comment · Shift+click for several' }),
+          h('p', { class: 'rv-hint small muted', text: [tab ? 'Click a line number to comment · Shift+click for several' : '', look === 'viewer' ? 'Right-click a line to see who changed it' : ''].filter(Boolean).join(' · ') }),
           h('div', { class: 'rv-layout', role: 'group', 'aria-label': 'Show the diff' }, seg('inline', 'Inline'), seg('split', 'Side by side'))),
         view.el, view.live);
     };
@@ -118,36 +127,47 @@
      * @param {any[]} rows
      * @param {string} file
      * @param {any} ref
-     * @param {{ split?: boolean, undoable?: boolean, onChanged?: (() => void) | null }} [opts]
+     * @param {{ split?: boolean, undoable?: boolean, onChanged?: (() => void) | null, look?: string, undo?: ((n: number, header: string) => Promise<any>) | null, nowrap?: boolean | (() => boolean) }} [opts]
      */
-    constructor(tab, rows, file, ref, { split = false, undoable = false, onChanged = null } = {}) {
+    constructor(tab, rows, file, ref, { split = false, undoable = false, onChanged = null, look = 'feed', undo = null, nowrap = false } = {}) {
       this.tab = tab;
       this.rows = rows;
       this.file = file;
       this.ref = ref;
       this.onChanged = onChanged;
+      this.undo = undo;
       /** @type {{ a: number, b: number } | null} */
       this.pick = null;    // { a, b }: rows picked, a where it started
       /** @type {{ el: any, text: any, editing: any, pristine: () => boolean } | null} */
       this.box = null;     // the comment being written, if any
+      const viewer = look === 'viewer';
       // Colours, worked out in the file's own order whichever way it's laid out (code.js).
       const paint = SB.diffPainter?.(file);
+      const bare = r => (r.kind === 'hunk' || r.kind === 'meta' ? r.text || '' : (r.text || '').slice(1));
       const toks = rows.map(r => (paint && r.kind !== 'meta' ? paint(r.kind, (r.text || '').slice(1)) : null));
+      // What changed inside each changed line (ShellbyDiff.wordMarks), marked over the colours.
+      const words = window.ShellbyDiff?.wordMarks(rows.map(r => ({ kind: r.kind, text: bare(r) }))) || new Map();
       const code = (i) => {
         const r = rows[i];
-        if (!toks[i]) return h('span', { class: 'code', text: r.text || ' ' });
-        // The +, − or space stays the first character, so the line reads (and copies) as the diff's.
-        return SB.paintTokens(h('span', { class: 'code' }, r.text ? r.text[0] : ' '), toks[i]);
+        // The viewer has a column for the +/−; a turn's diff keeps it as the first character,
+        // so the line reads (and copies) as the diff's.
+        const lead = viewer || r.kind === 'hunk' || r.kind === 'meta' ? '' : r.text ? r.text[0] : ' ';
+        const el = !toks[i] || r.kind === 'hunk'
+          ? h('span', { class: 'code', text: (viewer ? bare(r) : r.text) || ' ' })
+          : SB.paintTokens(h('span', { class: 'code' }, lead), toks[i]);
+        return SB.markWords ? SB.markWords(el, words.get(i), lead.length) : el;
       };
-      const num = (r, side) => h('span', { class: 'ln', 'aria-hidden': 'true', text: R.commentable(r) ? String(r[side] ?? '') : '' });
+      const num = (r, side) => h('span', { class: viewer ? 'vw-ln ln' : 'ln', 'aria-hidden': 'true', text: R.commentable(r) ? String(r[side] ?? '') : '' });
+      const sign = r => h('span', { class: 'vw-sign', 'aria-hidden': 'true', text: r.kind === 'add' ? '+' : r.kind === 'del' ? '−' : '' });
       const line = (i) => {
         const r = rows[i];
-        const el = h('div', { class: `dl ${r.kind}`, dataset: { i }, title: r.kind === 'del' ? `Removed: line ${r.old} before this turn` : null },
-          num(r, r.kind === 'del' ? 'old' : 'new'), code(i));
-        if (r.kind === 'hunk' && undoable) el.querySelector('.ln').after(this.undoButton(R.hunkOf(rows, i), r.text));
+        const nums = viewer ? [num(r, 'old'), num(r, 'new'), sign(r)] : [num(r, r.kind === 'del' ? 'old' : 'new')];
+        const el = h('div', { class: `dl ${r.kind}`, dataset: { i }, title: r.kind === 'del' ? `Removed: line ${r.old} before ${viewer ? 'these changes' : 'this turn'}` : null },
+          ...nums, code(i));
+        if (r.kind === 'hunk' && undoable) nums[nums.length - 1].after(this.undoButton(R.hunkOf(rows, i), r.text));
         return el;
       };
-      const half = (i, side) => h('div', { class: `dl sx-half ${rows[i].kind}`, dataset: { i } }, num(rows[i], side), code(i));
+      const half = (i, side) => h('div', { class: `dl sx-half ${rows[i].kind}`, dataset: { i } }, num(rows[i], side), ...(viewer ? [sign(rows[i])] : []), code(i));
       let kids;
       if (!split) {
         this.lines = rows.map((_r, i) => line(i));
@@ -167,8 +187,9 @@
         });
       }
       this.el = h('div', {
-        class: `diff reviewable${split ? ' split' : ''}`, tabindex: '0',
-        'aria-label': `Changes to ${file}${split ? ', side by side' : ''}. Up and Down to move between lines, Shift to pick several, Enter to comment.`,
+        // nowrap: asked each time it's laid out (the viewer's Wrap can change between two layouts)
+        class: `${viewer ? 'vw-code ' : ''}diff reviewable${split ? ' split' : ''}${(typeof nowrap === 'function' ? nowrap() : nowrap) ? ' nowrap' : ''}`, tabindex: '0',
+        'aria-label': `Changes to ${file}${split ? ', side by side' : ''}.${tab ? ' Up and Down to move between lines, Shift to pick several, Enter to comment.' : ''}`,
       }, kids);
       this.live = h('span', { class: 'sr-only', 'aria-live': 'polite' });
       this.el.addEventListener('mousedown', e => {
@@ -177,7 +198,7 @@
       });
       this.el.addEventListener('click', e => {
         const ln = e.target.closest('.ln');
-        if (!ln) return;
+        if (!ln || !this.tab) return;
         const i = Number(ln.closest('[data-i]')?.dataset.i);
         if (!R.commentable(this.rows[i]) || this.busyWriting()) return;
         this.select(e.shiftKey && this.pick ? this.pick.a : i, i);
@@ -203,7 +224,7 @@
     }
 
     keydown(e) {
-      if (e.target !== this.el) return; // typing in a comment box
+      if (e.target !== this.el || !this.tab) return; // typing in a comment box, or nowhere to send one
       const step = { ArrowDown: 1, ArrowUp: -1 }[e.key];
       if (step) {
         e.preventDefault();
@@ -311,7 +332,8 @@
         disarm();
         b.disabled = true;
         b.textContent = 'Undoing…';
-        const r = await api.undoHunk({ tabId: this.tab.id, ...this.ref, file: this.file, hunk: n, header });
+        const r = this.undo ? await this.undo(n, header).catch(() => null)
+          : await api.undoHunk({ tabId: this.tab.id, ...this.ref, file: this.file, hunk: n, header });
         if (!r?.ok) {
           b.disabled = false;
           b.textContent = idle;
@@ -336,6 +358,7 @@
     // ---- the comments already left here
 
     draw() {
+      if (!this.tab) return;
       for (const n of this.el.querySelectorAll('.rv-note')) n.remove();
       for (const el of this.lines) el.classList.remove('commented');
       const mine = c => c.file === this.file && sameChange(c, this.ref);
@@ -394,6 +417,8 @@
   // Open the first turn with comments waiting and bring it into view.
   function reveal(tab) {
     const block = tab.el.querySelector('details.changes .chg-notes')?.closest('details.changes');
+    const inViewer = commentsOf(tab).find(c => c.before === VIEWER);
+    if (!block && inViewer && SB.viewer) { SB.viewer.openTab(tab.id, { file: inViewer.file }); return; }
     if (!block) { SB.toast('Those changes are further back than this conversation shows.'); return; }
     block.open = true;
     block.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -417,6 +442,39 @@
     tab.sentReview = [...(tab.sentReview || []), ...list];
     setComments(tab, commentsOf(tab).filter(c => !ids.has(c.id)));
   }
+
+  // ------------------------------------------------------------ from a review's findings
+
+  /** The conversation's latest turn, by the tree it left: a viewer comment's "after" (see VIEWER above). */
+  SB.latestTurnAfter = tab => [...(tab?.el?.querySelectorAll('details.changes[data-after]') || [])].pop()?.dataset.after || null;
+
+  /**
+   * A code review's findings (feed-native.js), each as a comment waiting on its line, to edit, drop
+   * or keep and send back with your own. Only findings in a file of this conversation's repo
+   * (main's viewer.js locate). They show on that file's diff in the file viewer.
+   *   -> how many were added (one already waiting with the same words isn't added twice)
+   */
+  SB.addFindingComments = async (tab, findings) => {
+    const list = commentsOf(tab);
+    const fresh = [];
+    for (const f of findings || []) {
+      const text = String(f?.summary || f?.short || '').trim();
+      if (!f?.file || !text) continue;
+      const at = await api.viewerLocate(tab.id, f.file).catch(() => null);
+      if (!at?.inside || typeof at.root !== 'string') continue;
+      const line = Number.isInteger(f.line) && f.line > 0 ? f.line : Number.isInteger(at.line) && at.line > 0 ? at.line : 1;
+      const body = `${text}${f.scenario ? `
+
+How it goes wrong: ${String(f.scenario).trim()}` : ''}`.slice(0, R.MAX_BODY);
+      if ([...list, ...fresh].some(c => c.file === at.rel && c.start === line && c.body === body)) continue;
+      fresh.push({
+        id: newId(), file: at.rel, root: at.root, before: VIEWER, after: SB.latestTurnAfter(tab) || VIEWER,
+        side: 'new', start: line, end: line, quote: [], body, at: Date.now(),
+      });
+    }
+    if (fresh.length) setComments(tab, [...list, ...fresh]);
+    return fresh.length;
+  };
 
   // ------------------------------------------------------------ from the review inbox
 

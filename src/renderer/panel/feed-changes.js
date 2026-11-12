@@ -221,9 +221,13 @@
   // file: its name, for the language's colours (code.js).
   SB.renderDiff = (patch, { binary = false, file = null } = {}) => {
     const paint = file ? SB.diffPainter?.(file) : null;
-    const rows = F.diffRows(patch).map((r) => {
+    const lines = F.diffRows(patch);
+    // What changed inside each changed line, past its +/− (ShellbyDiff.wordMarks).
+    const words = window.ShellbyDiff?.wordMarks(lines.map(r => ({ kind: r.cls, text: r.text.slice(1) }))) || new Map();
+    const rows = lines.map((r, i) => {
       const toks = paint && r.cls !== 'meta' ? paint(r.cls, r.text.slice(1)) : null;
-      return toks ? SB.paintTokens(h('span', { class: `dl ${r.cls}` }, r.text[0] || ''), toks) : h('span', { class: `dl ${r.cls}`, text: r.text });
+      const el = toks ? SB.paintTokens(h('span', { class: `dl ${r.cls}` }, r.text[0] || ''), toks) : h('span', { class: `dl ${r.cls}`, text: r.text });
+      return SB.markWords ? SB.markWords(el, words.get(i), 1) : el;
     });
     if (!rows.length) return h('p', { class: 'small muted', text: binary ? 'A binary file: nothing to show line by line.' : 'No line changes (a mode or line-ending change).' });
     return h('pre', { class: 'diff' }, rows);

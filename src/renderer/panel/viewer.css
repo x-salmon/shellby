@@ -68,3 +68,56 @@ body[data-view="viewer"] .view-viewer { display: flex; flex-direction: column; p
 .vw-empty p, .vw-gone p { margin: 0; }
 .vw-gone { gap: 10px; }
 @media (prefers-reduced-motion: reduce) { body[data-view="viewer"] .view-viewer { animation: none; } }
+
+/* Its diffs are line-comments-ui.js's DiffView, laid out with both sides' numbers. Notes and the
+   comment box size to the scroller, not to a code block that may be wider than it (Wrap off). */
+.vw-scroll { container-type: inline-size; }
+.vw-code.diff.reviewable { container-type: normal; }
+.vw-code.diff .dl { padding-left: 0; }
+.vw-code.diff .ln { display: block; margin-right: 0; padding-right: 1ch; border-radius: 0; }
+.vw-code .hunk-undo { flex: none; margin: 0 6px 0 0; }
+.vw-code.diff.split .dl.sx-half { display: flex; }
+.vw-file-head + .rv-wrap, .vw-scroll > .rv-wrap > .rv-head { padding: 4px 10px 0; }
+
+/* Viewed: a ticked file steps back on the list until it changes again. */
+.vw-row.seen:not(.on) { opacity: .55; }
+.vw-row.seen .vw-path { text-decoration: line-through; text-decoration-color: var(--sand-faint); }
+.vw-seen { flex: none; color: var(--glass); font-size: var(--fs-11); }
+.vw-viewed { display: inline-flex; align-items: center; gap: 5px; padding: 0 6px; height: 24px; border-radius: var(--r-sm); color: var(--sand-dim); font-size: var(--fs-11-5); cursor: pointer; user-select: none; }
+.vw-viewed:hover { color: var(--sand); background: var(--line-soft); }
+.vw-viewed input { margin: 0; accent-color: var(--glass); }
+.vw-viewed:has(input:checked) { color: var(--glass); }
+.vw-space[aria-pressed="true"], .vw-preview[aria-pressed="true"] { color: var(--sand); box-shadow: inset 0 -2px 0 var(--glass); }
+
+/* Find in file and Go to line (viewer-find.js): over the code's top right corner, under its head. */
+.vw-body { position: relative; }
+.vw-find { position: absolute; top: 42px; right: 14px; z-index: 4; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+.vw-find.line .field { width: 120px; }
+::highlight(vw-find) { background-color: rgba(255, 193, 94, .32); color: inherit; }
+::highlight(vw-find-current) { background-color: #ffc15e; color: #1a1206; }
+
+/* Who last changed a line (viewer-blame.js), under it. */
+.vw-blame {
+  position: sticky; left: 0; box-sizing: border-box; width: 100cqi; display: flex; align-items: flex-start; gap: 8px;
+  margin: 3px 0 5px; padding: 6px 9px; border-left: 2px solid var(--glass); border-radius: var(--r-sm);
+  background: var(--reef-2); font: var(--fs-12)/1.45 var(--font-body); color: var(--sand-dim); white-space: normal;
+}
+.vw-blame-body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.vw-who { color: var(--sand); font-weight: 600; }
+.vw-sha { font: var(--fs-11) var(--font-mono); color: var(--glass); }
+.vw-msg { color: var(--sand); }
+.vw-claude {
+  display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 999px;
+  background: rgba(201, 163, 255, .16); color: #c9a3ff; font: 600 var(--fs-10)/1.7 var(--font-mono); letter-spacing: .04em; text-transform: uppercase;
+}
+
+/* Previews (viewer-preview.js): a Markdown file as it reads, a picture as itself. */
+.vw-preview-box { padding: 12px 16px 20px; }
+.vw-md { max-width: 78ch; }
+.vw-img-frame {
+  display: inline-block; max-width: 100%; padding: 8px; border: 1px solid var(--line-soft); border-radius: var(--r-sm);
+  background: repeating-conic-gradient(rgba(255, 255, 255, .06) 0 25%, transparent 0 50%) 0 0 / 16px 16px;
+}
+.vw-img { display: block; max-width: 100%; max-height: 70vh; height: auto; image-rendering: auto; }
+.vw-img-size, .vw-img-note { margin: 6px 0 0; }
+.vw-img-note { margin: 10px 16px 0; }

@@ -14,8 +14,30 @@
   const REFRESH_MS = 2000;         // at most one look again in this long
   const WRAP_KEY = 'shellby.viewer.wrap'; // '0' once you turn Wrap off; lines wrap until then
   const wrapOn = () => SB.pref(WRAP_KEY) !== '0';
+  const SPACE_KEY = 'shellby.viewer.ignoreSpace'; // '1' while Ignore whitespace is on
+  const spaceOff = () => SB.pref(SPACE_KEY) === '1';
+  const VIEWED_KEY = 'shellby.viewer.viewed.v1';  // { [placeKey]: { [path]: sig } }, newest place last
+  const MAX_VIEWED_PLACES = 40;
   const ICON = 'M1.8 4.2c0-.7.5-1.2 1.2-1.2h3l1.4 1.5H13c.7 0 1.2.5 1.2 1.2v6.1c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z';
   const lastFile = new Map(); // a place (V.placeKey) -> the file last open there, while Shellby runs
+
+  // ---- Viewed ticks, kept per place (V.tick says which hold)
+  const viewedAll = () => {
+    try {
+      const all = JSON.parse(window.localStorage.getItem(VIEWED_KEY) || '{}');
+      return all && typeof all === 'object' && !Array.isArray(all) ? all : {};
+    } catch { return {}; }
+  };
+  const seenOf = me => { const s = viewedAll()[V.placeKey(me)]; return s && typeof s === 'object' ? s : {}; };
+  function setViewed(me, f, on) {
+    const key = V.placeKey(me);
+    const all = viewedAll();
+    const seen = V.tick(all[key] || {}, me.files, f, on);
+    delete all[key]; // to the end: the places used least recently go first
+    if (Object.keys(seen).length) all[key] = seen;
+    const keep = Object.fromEntries(Object.entries(all).slice(-MAX_VIEWED_PLACES));
+    try { window.localStorage.setItem(VIEWED_KEY, JSON.stringify(keep)); } catch { /* lasts until the list redraws */ }
+  }
   /** @type {any} */
   let cur = null;             // what's open: the handle, the lists and the file on screen
   let shownAt = 0;
@@ -78,7 +100,7 @@
     const me = cur = {
       ...r, req, from, place, tabId: place ? null : req.tabId || null, side, only: false, files: [], more: 0, against: null, note: null,
       gone: false, branchGone: false, dirty: false, entries: [], open: new Set(), filter: '',
-      file: file || remembered, line, whole: !!line,
+      file: file || remembered, line, whole: !!line, preview: false,
     };
     $('viewerFilter').value = '';
     $('viewerMain').replaceChildren();
@@ -134,6 +156,7 @@
     where.title = cur.root;
     where.disabled = !cur.git; // a folder that isn't a repo has nothing to switch to: plain text, as before
     drawLive();
+    $('viewerLook').hidden = !(cur.git && cur.kind !== 'branch' && cur.tabId && !cur.gone); // a review runs in a conversation's folder
     if (cur.gone) {
       $('viewerSide').hidden = true;
       $('viewerEditor').hidden = true;
@@ -161,7 +184,8 @@
     $('viewerNote').replaceChildren(said, ...(cur.side === 'changes' && cur.note?.retry
       ? [' ', h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Retry', onclick: () => refresh() })] : []));
     $('viewerList').replaceChildren(...(cur.side === 'changes' ? changeRows() : treeRows()));
-    const sums = cur.git ? V.totalsText(cur.files, cur.more) : '';
+    const viewed = cur.git ? V.viewedText(cur.files, seenOf(cur), cur.more) : '';
+    const sums = cur.git ? [V.totalsText(cur.files, cur.more), viewed].filter(Boolean).join(' · ') : '';
     $('viewerFoot').hidden = !sums || cur.side !== 'changes'; // the totals belong to the Changes list
     $('viewerFoot').textContent = sums;
     for (const el of document.querySelectorAll('#viewerMain .vw-totals')) el.textContent = sums;
@@ -171,11 +195,16 @@
     : h('span', { class: 'vw-n' }, f.added ? h('span', { class: 'add', text: `+${f.added}` }) : null, f.removed ? h('span', { class: 'del', text: ` −${f.removed}` }) : null));
 
   function changeRows() {
-    return cur.files.map(f => h('li', {},
-      h('button', { type: 'button', class: `vw-row${f.path === cur.file ? ' on' : ''}`, dataset: { path: f.path }, title: `${V.statusWord(f.status)}: ${f.path}`, onclick: () => showFile(f.path) },
-        h('span', { class: `vw-st st-${V.statusClass(f.status)}`, text: f.status }),
-        h('span', { class: 'vw-path', text: f.path }),
-        counts(f))));
+    const seen = seenOf(cur);
+    return cur.files.map(f => {
+      const viewed = V.isViewed(f, seen);
+      return h('li', {},
+        h('button', { type: 'button', class: `vw-row${f.path === cur.file ? ' on' : ''}${viewed ? ' seen' : ''}`, dataset: { path: f.path }, title: `${V.statusWord(f.status)}${viewed ? ', viewed' : ''}: ${f.path}`, onclick: () => showFile(f.path) },
+          h('span', { class: `vw-st st-${V.statusClass(f.status)}`, text: f.status }),
+          h('span', { class: 'vw-path', text: f.path }),
+          viewed ? h('span', { class: 'vw-seen', 'aria-hidden': 'true', text: '✓' }) : null,
+          counts(f)));
+    });
   }
 
   function treeRows() {
@@ -215,7 +244,7 @@
    */
   async function showFile(rel, { line = null, keep = false } = {}) {
     const me = cur;
-    if (me.file !== rel || line) me.whole = !!line;
+    if (me.file !== rel || line) { me.whole = !!line; me.preview = false; }
     me.file = rel; me.line = line;
     lastFile.set(V.placeKey(me), rel);
     for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#viewerList .vw-row'))) b.classList.toggle('on', b.dataset.path === rel);
@@ -223,7 +252,8 @@
     const main = $('viewerMain');
     const was = main.querySelector('.vw-scroll');
     const top = was?.scrollTop || 0, left = was?.scrollLeft || 0;
-    const body = !f || me.whole ? await wholeFile(rel, line) : await diffOf(f);
+    const body = me.preview && SB.viewerPreview?.can(rel) ? await SB.viewerPreview.render(me, rel, call)
+      : !f || me.whole ? await wholeFile(rel, line) : await diffOf(f);
     if (cur !== me || me.file !== rel) return;
     if (me.gone) return draw(); // the read found the folder gone: that screen stays
     const scroll = h('div', { class: 'vw-scroll' }, body);
@@ -243,9 +273,15 @@
       f ? h('span', { class: `vw-st st-${V.statusClass(f.status)}`, text: f.status, title: V.statusWord(f.status) }) : null,
       f ? counts(f) : null,
       h('span', { class: 'vw-tools' },
+        SB.viewerPreview?.button(cur, rel, f) || null,
+        f && !cur.whole && !f.binary ? h('button', {
+          type: 'button', class: 'btn ghost slim-btn vw-space', text: 'Ignore whitespace', 'aria-pressed': String(spaceOff()),
+          title: 'Hide changes that are only spaces, tabs and indentation (git diff -w)',
+          onclick: () => { SB.pref.set(SPACE_KEY, spaceOff() ? '0' : '1'); showFile(rel, { keep: true }); },
+        }) : null,
         f ? h('button', {
           type: 'button', class: 'btn ghost slim-btn', text: cur.whole ? 'Diff' : 'Whole file',
-          disabled: f.status === 'D' && !cur.whole, onclick: () => { cur.whole = !cur.whole; cur.line = null; showFile(rel); },
+          disabled: f.status === 'D' && !cur.whole, onclick: () => { cur.whole = cur.preview ? cur.whole : !cur.whole; cur.preview = false; cur.line = null; showFile(rel); },
         }) : null,
         rows || big ? h('button', {
           type: 'button', class: 'btn ghost slim-btn vw-wrap', text: 'Wrap',
@@ -255,7 +291,22 @@
           'aria-label': big ? "Wrap, unavailable: long files show as plain text, which can't wrap" : null,
           title: big ? "Long files show as plain text, which can't wrap." : 'Wrap long lines',
           onclick: e => { if (!big) setWrap(/** @type {HTMLElement} */ (e.currentTarget), !wrapOn()); },
-        }) : null));
+        }) : null,
+        f?.sig ? viewedBox(rel, f) : null));
+  }
+
+  // GitHub's "Viewed": ticked, the file dims on the list and the next one without a tick opens.
+  function viewedBox(rel, f) {
+    const me = cur;
+    const box = h('input', { type: 'checkbox', checked: V.isViewed(f, seenOf(me)) });
+    box.addEventListener('change', () => {
+      if (cur !== me) return;
+      setViewed(me, f, box.checked);
+      draw();
+      const next = box.checked ? V.nextUnviewed(me.files, seenOf(me), rel) : null;
+      if (next) showFile(next);
+    });
+    return h('label', { class: 'vw-viewed', title: 'Mark it viewed. It loses the tick if it changes again.' }, box, 'Viewed');
   }
 
   function setWrap(btn, on) {
@@ -264,31 +315,57 @@
     for (const c of document.querySelectorAll('#viewerMain .vw-code.diff')) c.classList.toggle('nowrap', !on);
   }
 
+  // The conversation whose folder this is: comments left here go back to it (line-comments-ui.js).
+  // A branch, another worktree picked from the menu, or a folder the Project page opened has none.
+  const commentTab = me => (me.kind !== 'branch' && me.tabId ? state.tabs.get(me.tabId) || null : null);
+  // A comment's ref: this folder, marked as the viewer's, with the conversation's latest turn as its
+  // "after", so review mastery can tell whether the next turn caught what it says.
+  const VIEWER_REF = () => SB.VIEWER_COMMENTS || 'viewer';
+  const commentRef = (me, tab) => ({
+    root: me.root, before: VIEWER_REF(),
+    after: SB.latestTurnAfter?.(tab) || VIEWER_REF(),
+  });
+
   async function diffOf(f) {
-    if (f.binary) return note('A binary file: nothing to show line by line.', true);
-    const r = await call(id => api.viewerDiff(id, f.path));
+    const me = cur;
+    if (f.binary) return (await SB.viewerPreview?.binary(me, f, call)) || note('A binary file: nothing to show line by line.', true);
+    const ignoreSpace = spaceOff();
+    const r = await call(id => api.viewerDiff(id, f.path, { ignoreSpace }));
     if (!r.ok) return note(r.error || "Couldn't read the diff.", true);
     const rows = V.numberDiff(r.patch);
-    if (!rows.length) return note('No line changes (a mode or line-ending change).');
-    const paint = rows.length > MAX_COLOUR_LINES ? null : SB.diffPainter?.(f.path); // plain past the cap, as wholeFile
-    const pre = h('pre', { class: `vw-code diff${wrapOn() ? '' : ' nowrap'}` }, rows.map(row => {
-      const code = h('span', { class: 'code' });
-      const toks = paint && row.cls !== 'meta' ? paint(row.cls, row.text) : null;
-      if (toks) SB.paintTokens(code, toks); else code.textContent = row.text;
-      return h('span', { class: `dl ${row.cls}` },
-        h('span', { class: 'vw-ln', text: row.oldNo ?? '' }),
-        h('span', { class: 'vw-ln', text: row.newNo ?? '' }),
-        h('span', { class: 'vw-sign', text: row.cls === 'add' ? '+' : row.cls === 'del' ? '−' : '' }),
-        code);
-    }));
-    return r.truncated ? h('div', {}, pre, note('This diff is too big to show in full.', true)) : pre;
+    if (!rows.length) {
+      return note(ignoreSpace ? 'Only whitespace changed here. Turn Ignore whitespace off to see it.' : 'No line changes (a mode or line-ending change).');
+    }
+    // Past the cap: plain rows, no colours and no comments (DiffView numbers at most that many).
+    const body = rows.length > MAX_COLOUR_LINES ? plainDiff(rows) : reviewable(me, f, r.patch, ignoreSpace);
+    return r.truncated ? h('div', {}, body, note('This diff is too big to show in full.', true)) : body;
+  }
+
+  // Lines open to comments, and (in a conversation's own folder, with every space shown, so the
+  // hunks are the real ones) each changed file's hunks can be taken back, two presses each.
+  function reviewable(me, f, patch, ignoreSpace) {
+    const tab = commentTab(me);
+    const undoable = me.kind === 'folder' && !!me.tabId && !ignoreSpace && f.status === 'M';
+    return SB.reviewDiff(tab, patch, {
+      file: f.path, ref: commentRef(me, tab), status: f.status, look: 'viewer', nowrap: () => !wrapOn(),
+      onChanged: undoable ? () => { if (cur === me) refresh({ tree: false }); } : null,
+      undo: undoable ? (n, header) => call(id => api.viewerUndoHunk(id, f.path, n, header)) : null,
+    });
+  }
+
+  function plainDiff(rows) {
+    return h('pre', { class: `vw-code diff${wrapOn() ? '' : ' nowrap'}` }, rows.map(row => h('span', { class: `dl ${row.cls}` },
+      h('span', { class: 'vw-ln', text: row.oldNo ?? '' }),
+      h('span', { class: 'vw-ln', text: row.newNo ?? '' }),
+      h('span', { class: 'vw-sign', text: row.cls === 'add' ? '+' : row.cls === 'del' ? '−' : '' }),
+      h('span', { class: 'code', text: row.text }))));
   }
 
   async function wholeFile(rel, line) {
     const r = await call(id => api.viewerRead(id, rel));
     if (r.missing) return note('This file is gone.');
     if (r.tooBig) return note('This file is too big to show here.', true);
-    if (r.binary) return note('A binary file: nothing to show as text.', true);
+    if (r.binary) return (await SB.viewerPreview?.whole(cur, rel, call)) || note('A binary file: nothing to show as text.', true);
     if (!r.ok) return note(r.error || "Couldn't read that.", true);
     const lines = V.splitLines(r.text);
     if (lines.length > MAX_COLOUR_LINES) {
@@ -383,6 +460,10 @@
   $('filesBtn').addEventListener('click', () => SB.viewer.openTab(state.activeTab));
   $('viewerBack').addEventListener('click', () => SB.goBack());
   $('viewerRefresh').addEventListener('click', () => refresh());
+  $('viewerLook').addEventListener('click', e => {
+    const tabId = cur?.tabId;
+    if (tabId) SB.pickReviewLens(/** @type {HTMLElement} */ (e.currentTarget), lens => SB.lookOverTab(tabId, lens), { goal: true });
+  });
   $('viewerWhere').addEventListener('click', openPlaces);
   $('viewerEditor').addEventListener('click', openInEditor);
   $('viewerTabChanges').addEventListener('click', async () => { if (!cur) return; cur.side = 'changes'; cur.dirty = false; draw(); await loadChanges(); draw(); });
@@ -419,7 +500,26 @@
       }
       if (cur && state.view === 'viewer') drawLive();
     },
-    current: () => (cur ? { id: cur.id, root: cur.root, file: cur.file, side: cur.side, files: cur.files, kind: cur.kind, branch: cur.branch, gone: cur.gone, looking: cur.looking || 0 } : null),
+    // Go to line (viewer-find.js): the row with that line in the file now, here if the diff on
+    // screen has it, else the whole file opened there.
+    // The file head's Preview (viewer-preview.js): the file as it reads, and back.
+    togglePreview() {
+      if (!cur?.file) return;
+      cur.preview = !cur.preview;
+      showFile(cur.file);
+    },
+    goToLine(n) {
+      if (!cur?.file || !Number.isInteger(n) || n < 1) return;
+      const scroll = $('viewerMain').querySelector('.vw-scroll');
+      const rows = [...(scroll?.querySelectorAll('.vw-code .dl') || [])];
+      // A diff row's new-side number is its second; a whole file's row has only that one.
+      const hit = rows.find(r => { const ns = r.querySelectorAll(':scope > .vw-ln'); return ns.length && ns[ns.length - 1].textContent === String(n); });
+      if (!hit || scroll?.querySelector('.vw-big')) { showFile(cur.file, { line: n }); return; }
+      for (const r of scroll.querySelectorAll('.dl.hit')) r.classList.remove('hit');
+      hit.classList.add('hit');
+      hit.scrollIntoView({ block: 'center' });
+    },
+    current: () => (cur ? { id: cur.id, root: cur.root, git: !!cur.git, file: cur.file, side: cur.side, files: cur.files, kind: cur.kind, branch: cur.branch, gone: cur.gone, looking: cur.looking || 0 } : null),
     // All files (files-dock.js) uses the header menu's rows for its own branch row, and opens a
     // place it picked there, or a file in one: main issued the handle, or opens it again (reopen).
     placeRows,

@@ -133,7 +133,12 @@
 
   document.addEventListener('keydown', e => {
     if (state.view === 'onboarding' || SB.isCrabOnly?.()) return;
-    if (SB.shortcuts.matches(e, 'find')) { e.preventDefault(); SB.find.open(); return; }
+    if (SB.shortcuts.matches(e, 'find')) {
+      e.preventDefault();
+      // In the file viewer, Ctrl+F looks in the file on screen (viewer-find.js), not the conversation.
+      if (state.view === 'viewer' && SB.viewerFind) SB.viewerFind.open(); else SB.find.open();
+      return;
+    }
     if (e.key === 'F3' && !bar.hidden) { e.preventDefault(); go(e.shiftKey ? -1 : 1); }
   });
 })();

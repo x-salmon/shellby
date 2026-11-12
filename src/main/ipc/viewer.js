@@ -2,6 +2,9 @@
 // folder, or on a worktree of a project the Project page showed (or a place picked from its header's menu), then read
 // inside it. Read-only. Kept out of main.js, which only wires it up.
 const { ID, PATH, obj, opt, str } = require('../ipc-args');
+
+const nat = v => Number.isInteger(v) && v >= 0 && v <= 10_000_000;
+const HUNK_HEADER = str({ max: 2000, re: /^@@ / });
 const changes = require('../changes');
 const fileIndex = require('../fileindex');
 const leaving = require('../leaving');
@@ -51,7 +54,18 @@ function registerViewerIpc(ipcMain, d) {
   ipcMain.handle('viewer:status', (_e, id) => viewer.statusOf(id), [opt(ID)]); // the file tree's marks (viewer-status.js); a folder handle only
   ipcMain.handle('viewer:changes', (_e, id, opts) => viewer.changesOf(id, { uncommittedOnly: !!opts?.uncommittedOnly }));
   ipcMain.handle('viewer:read', (_e, id, rel) => viewer.read(id, rel), [opt(ID), opt(PATH)]);
-  ipcMain.handle('viewer:diff', (_e, id, rel) => viewer.diffOf(id, rel), [opt(ID), opt(PATH)]);
+  ipcMain.handle('viewer:diff', (_e, id, rel, opts) => viewer.diffOf(id, rel, { ignoreSpace: !!opts?.ignoreSpace }), [opt(ID), opt(PATH), opt(obj())]);
+  ipcMain.handle('viewer:image', (_e, id, rel) => viewer.imageOf(id, rel), [ID, PATH]); // a picture's preview, as a data: URL
+  ipcMain.handle('viewer:blame', (_e, id, rel, line) => viewer.blameOf(id, rel, line), [ID, PATH, nat]); // who last changed one line
+  // The one write the viewer makes: a hunk of a changed file in a conversation's own folder put back,
+  // never mid-turn (viewer.js undoHunk). A nudge after, so every viewer on the folder looks again.
+  ipcMain.handle('viewer:undoHunk', async (_e, id, rel, hunk, header) => {
+    const busy = tabId => !!d.manager.tabs.get(tabId)?.session?.busy;
+    const r = await viewer.undoHunk(id, rel, { hunk, header }, busy);
+    const h = r.ok ? viewer.get(id) : null;
+    if (h) nudge(h.root);
+    return r;
+  }, [ID, PATH, nat, HUNK_HEADER]);
   ipcMain.handle('viewer:locate', async (_e, tabId, target) => {
     const f = folderOf(tabId);
     return f.error ? { inside: false } : locate(f.cwd, target);

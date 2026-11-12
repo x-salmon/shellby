@@ -45,6 +45,7 @@ interface Window {
   ShellbyPixelGrid: any;
   ShellbyProjectsLogic: any;
   ShellbyRemoteLogic: any;
+  ShellbyReviewLenses: any;
   ShellbyReviewQueue: any;
   ShellbySettingsSearch: any;
   ShellbySettingsText: any;
@@ -122,6 +123,7 @@ interface ShellbyPanelExtras {
   copyButton: any;
   diffPainter: any;
   enhanceCode: any;
+  markWords: any;
   paintTokens: any;
   restoreCodeView: any;
   resultBox: any;
@@ -272,11 +274,14 @@ interface ShellbyPanelExtras {
   levelCeremony: any;
   levelsUi: any;
   // line-comments-ui.js
+  addFindingComments: any;
+  latestTurnAfter: any;
   markReviewBlock: any;
   pendingComments: any;
   renderReview: any;
   reviewDiff: any;
   sendBack: any;
+  VIEWER_COMMENTS: any;
   // logbook.js
   go: any;
   setView: any;
@@ -383,6 +388,9 @@ interface ShellbyPanelExtras {
   releasesCard: any;
   // reset-queue.js
   renderResetQueue: any;
+  // review-lenses-ui.js
+  lookOverTab: any;
+  pickReviewLens: any;
   // review-mastery.js
   reviewMastery: any;
   // review-view.js
@@ -630,6 +638,10 @@ interface ShellbyPanelExtras {
   renderUltraChip: any;
   renderUltracode: any;
   ultraWords: any;
+  // viewer-find.js
+  viewerFind: any;
+  // viewer-preview.js
+  viewerPreview: any;
   // viewer.js
   viewer: any;
   // wardrobe.js
