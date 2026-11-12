@@ -220,6 +220,9 @@ function registerSettingsIpc(ipcMain, d) {
   // Try again now: the resting models are asked again from the next draft.
   ipcMain.handle('local:wake', () => { d.localDrafts?.wake?.(); return true; });
   ipcMain.handle('local:reset-tally', () => { d.config.set({ localModelTally: null }); return true; });
+  // A question Claude didn't answer, to the local model you set up for it. Main
+  // reads the server and model from your settings: the panel only sends the question.
+  ipcMain.handle('local:answer-instead', (_e, question) => localModel.answerInstead(question, { settings: () => d.config.get('localModel') }), [text(20000)]);
 
   ipcMain.handle('folder:pick', async () => {
     const r = await dialog.showOpenDialog(d.panel, { title: 'Where should Shellby work?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });

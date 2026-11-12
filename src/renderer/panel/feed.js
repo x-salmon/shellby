@@ -215,6 +215,7 @@
     render(item, { replay = false } = {}) {
       SB.trailTake?.(this, item, replay); // where he's been in the files (trail.js)
       SB.filesTake?.(this, item, replay); // and lit up in All files (files-dock.js)
+      this.noteTurn?.(item); // what the turn was, in case Claude didn't answer it (feed-local.js)
       // Claude's to-do list moves with its tool calls, replayed or live (native-strip.js draws it;
       // an unfocused pane keeps a line of it, tab-panes.js).
       if ((item.kind === 'tool' || item.kind === 'tool_result') && T.apply(this.todos, item)) {
@@ -339,7 +340,8 @@
         case 'decision': return this.markDecision(item);
         case 'result':
           if (!replay && this.isActive) SB.announce(item.interrupted ? 'Claude stopped' : item.ok ? 'Claude finished' : 'Claude ended with an error');
-          return this.renderResult(item, replay);
+          this.renderResult(item, replay);
+          return this.offerLocal?.(item, replay); // Claude didn't answer: your local model can (feed-local.js)
         case 'changes': return this.renderChanges(item);
         case 'undone': return this.markUndone(item);
         case 'checks': return SB.renderChecks?.(this, item);   // turn-checks.js

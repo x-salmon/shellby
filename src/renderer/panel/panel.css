@@ -120,6 +120,9 @@ body.busy .brand-crab svg { animation: hop .4s ease-in-out infinite; }
   font-size: var(--fs-12);
 }
 body:not([data-view="chat"]) .subbar { display: none; }
+/* Its own gap can't follow its container query below (a box can't query itself);
+   the panel's window is the subbar's width, so the window's does. */
+@media (max-width: 520px) { .subbar { gap: 7px; } }
 .folder-chip {
   display: inline-flex; align-items: center; gap: 6px; min-width: 0;
   border: 0; background: none; padding: 3px 6px; margin-left: -6px; border-radius: var(--r-sm);
@@ -128,6 +131,21 @@ body:not([data-view="chat"]) .subbar { display: none; }
 .folder-chip:hover { background: var(--reef); color: var(--sand); }
 .folder-chip svg { width: 14px; height: 14px; flex: none; }
 #folderLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+/* Short of room, the model's name gives way ("default (son…"), never wrapping
+   over its neighbours; the effort is a word or two and keeps its place. */
+#effortLabel, #modelLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.effort-chip { flex: none; }
+.model-chip { flex: 0 1 auto; }
+#folderChip { flex: 0 8 auto; } /* gives way first: the tab's title and tooltip name the folder too */
+/* A narrow panel: the meters say the same with less (their % and the menu say the rest). */
+.subbar { container-type: inline-size; container-name: subbar; }
+@container subbar (max-width: 520px) {
+  .ctx-chip .meter-label, .ctx-chip .meter-track { display: none; } /* its % says it */
+  .model-default { display: none; } /* "Sonnet 5.5", not "default (Sonnet 5.5)": the tooltip says it's the default */
+  .model-chip svg { display: none; }
+  .usage { gap: 7px; }
+  .usage .meter-track { width: 24px; }
+}
 .branch-chip { margin-left: -8px; color: var(--glass); }
 .branch-chip:hover { color: var(--glass); }
 .ctx-chip {
@@ -636,6 +654,31 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
 /* Claude offering a Shellby feature: calmer than a permission prompt, since nothing is waiting on it. */
 .ask.suggest { border-color: rgba(127, 214, 194, .5); background: linear-gradient(180deg, rgba(127, 214, 194, .1), rgba(127, 214, 194, .02) 60%), var(--reef); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
 .ask.suggest .ask-title { color: var(--glass); }
+/* Claude didn't answer: ask the local model instead (feed-local.js). Its answer
+   is amber and dashed, never Claude's look, so it can't pass for his. */
+.ask.local-instead { border-color: color-mix(in srgb, var(--amber) 45%, transparent); background: linear-gradient(180deg, color-mix(in srgb, var(--amber) 9%, transparent), transparent 60%), var(--reef); }
+.ask.local-instead .ask-title { color: var(--amber); }
+.local-instead-note { border-left-color: var(--amber); align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.local-instead-note .link-btn { color: var(--amber); }
+/* The answer itself: the model's name on a pixel tag (a visitor's badge) is
+   the one loud thing; the box around it only tints it apart from Claude's. */
+.local-instead-answer {
+  margin: 4px 0 16px; padding: 10px 14px 4px;
+  border: 1px solid color-mix(in srgb, var(--amber) 28%, transparent); border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--amber) 5%, transparent);
+  animation: rise .25s var(--ease-out); /* it arrives when you press Ask, like a reply */
+}
+.local-instead-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 9px; margin-bottom: 7px; }
+.local-tag {
+  font: 600 var(--fs-13-5) / 1 var(--font-pixel); color: var(--ink);
+  background: var(--amber); padding: 3px 7px 4px; border-radius: 3px;
+  box-shadow: 2px 2px 0 color-mix(in srgb, var(--amber) 35%, transparent); /* a pixel step, not a blur */
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.local-instead-who { font-size: var(--fs-12); color: var(--sand-dim); }
+.local-instead-body.msg.assistant { margin: 0; padding-left: 0; background: none; animation: none; }
+.local-instead-body.msg.assistant::before { display: none; } /* the crab's mark is for Claude's replies */
+@media (prefers-reduced-motion: reduce) { .local-instead-answer { animation: none; } }
 .suggest-draft { font-size: var(--fs-13); color: var(--sand); }
 .suggest-draft span { color: var(--sand-dim); }
 .ask-verdict.allow { color: var(--glass); }
@@ -921,6 +964,7 @@ select.field option { background: var(--reef); }
 .local-job { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .local-job .toggle { flex: 1 1 auto; margin: 0; }
 .local-job select { max-width: 180px; }
+.local-answers { margin: 10px 0 6px; }
 .local-tally, .local-try { margin-top: 6px; }
 .local-answer { white-space: pre-wrap; border-left: 2px solid var(--line, currentColor); padding-left: 8px; }
 .perch-app {

@@ -556,6 +556,14 @@ function onLine(line) {
     result(true);
     return;
   }
+  // "refuse ..." -> the API's safety stop with no fallback model, as Claude Code 2.1.3xx reports it;
+  // "decline ..." -> Claude declining in its own words
+  if (/^\/?refuse/.test(content)) {
+    out({ type: 'system', subtype: 'model_refusal_no_fallback', original_model: 'claude-sonnet-5-5', request_id: null, api_refusal_category: 'cyber', content: '', uuid: `refusal-${turn}`, session_id: sessionId });
+    result(true, { stop_reason: 'refusal' });
+    return;
+  }
+  if (content.startsWith('decline')) { text("I can't help with that."); result(true, { stop_reason: 'end_turn' }); return; }
   if (content.startsWith('look')) { text(`saw ${images.length}: ${images.map(i => i.source.media_type).join(',')}`); result(true); return; }
   // "gitenv" -> reports whether Shellby gave this process GitHub access
   if (content === 'args') { text(JSON.stringify(args)); result(true); return; }

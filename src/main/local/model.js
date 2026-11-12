@@ -49,6 +49,16 @@ function cleanModels(raw) {
 }
 
 /**
+ * Asking the local model when Claude didn't answer (answerInstead): off unless
+ * turned on, with a model of its own or the drafts' one.
+ * @returns {{ on: boolean, model: string }}
+ */
+function cleanAnswers(raw) {
+  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  return { on: src.on === true, model: modelName(src.model) };
+}
+
+/**
  * Whether Node is set to send fetches through a proxy (NODE_USE_ENV_PROXY with
  * a proxy set). The proxy would then reach "localhost" from wherever it runs,
  * and the prompts would leave this PC, so no local model is used at all.
@@ -130,8 +140,8 @@ async function readJson(res, max) {
  * What Settings sends -> the setting to save, or null to refuse the change
  * (an address off this PC, a model name that can't be one). It only stays on
  * with a model picked.
- * @param {any} raw { on, url, model }
- * @returns {{ on: boolean, url: string, model: string, jobs: Record<string, boolean>, models: Record<string, string> } | null}
+ * @param {any} raw { on, url, model, jobs, models, answers }
+ * @returns {{ on: boolean, url: string, model: string, jobs: Record<string, boolean>, models: Record<string, string>, answers: { on: boolean, model: string } } | null}
  */
 function cleanSettings(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
@@ -139,7 +149,7 @@ function cleanSettings(raw) {
   const model = typeof raw.model === 'string' ? raw.model.trim() : '';
   if (!url) return null;
   if (model && !modelName(model)) return null;
-  return { on: raw.on === true && !!model, url, model, jobs: cleanJobs(raw.jobs), models: cleanModels(raw.models) };
+  return { on: raw.on === true && !!model, url, model, jobs: cleanJobs(raw.jobs), models: cleanModels(raw.models), answers: cleanAnswers(raw.answers) };
 }
 
 const LIST_TIMEOUT_MS = 5000;
@@ -394,26 +404,83 @@ async function tryModel(raw, { fetchFn = globalThis.fetch, env = process.env, no
   const question = (typeof raw?.question === 'string' ? raw.question.trim() : '').slice(0, MAX_TRY_TEXT) || TRY_SAMPLE;
   if (trying) return { ok: false, error: 'Still waiting on the last try.' };
   trying = true;
-  const started = now();
   try {
-    let res;
-    try {
-      res = await fetchFn(`${url}/v1/chat/completions`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model, stream: false, temperature: 0.2, max_tokens: TRY_MAX_TOKENS, messages: [{ role: 'user', content: question }] }),
-        redirect: 'error',
-        signal: AbortSignal.timeout(TRY_MAX_MS),
-      });
-    } catch (err) {
-      return { ok: false, error: err?.name === 'TimeoutError' ? `${model} took over a minute. A smaller model suits drafts better.` : `Nothing answered at ${url}. Is Ollama or LM Studio running?` };
-    }
-    if (!res.ok) return { ok: false, error: `${url} answered ${res.status}. Is ${model} still installed?` };
-    const read = await readJson(res, MAX_REPLY_BYTES).catch(() => /** @type {{ json?: any }} */ ({}));
-    const text = read.json?.choices?.[0]?.message?.content;
-    if (typeof text !== 'string' || !text.trim()) return { ok: false, error: `${model} sent back no answer.` };
-    return { ok: true, text: text.trim().slice(0, MAX_TRY_TEXT), ms: now() - started, model };
+    return await chat({ url, model, question, maxTokens: TRY_MAX_TOKENS, maxMs: TRY_MAX_MS, maxText: MAX_TRY_TEXT,
+      slow: `${model} took over a minute. A smaller model suits drafts better.` }, fetchFn, now);
   } finally { trying = false; }
+}
+
+/**
+ * One plain question to a model on this PC, no tools, no history.
+ * -> { ok: true, text, ms, model } or { ok: false, error } in words for the panel.
+ * @param {{ url: string, model: string, question: string, maxTokens: number, maxMs: number, maxText: number, slow: string }} q
+ * @param {typeof fetch} fetchFn
+ * @param {() => number} now
+ */
+async function chat(q, fetchFn, now) {
+  const started = now();
+  let res;
+  try {
+    res = await fetchFn(`${q.url}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: q.model, stream: false, temperature: 0.2, max_tokens: q.maxTokens, messages: [{ role: 'user', content: q.question }] }),
+      redirect: 'error', // a redirect could send the question off this PC
+      signal: AbortSignal.timeout(q.maxMs),
+    });
+  } catch (err) {
+    return { ok: false, error: err?.name === 'TimeoutError' ? q.slow : `Nothing answered at ${q.url}. Is Ollama or LM Studio running?` };
+  }
+  if (!res.ok) return { ok: false, error: `${q.url} answered ${res.status}. Is ${q.model} still installed?` };
+  const read = await readJson(res, MAX_REPLY_BYTES).catch(() => /** @type {{ json?: any }} */ ({}));
+  const raw = read.json?.choices?.[0]?.message?.content;
+  // A reasoning model (qwen3, deepseek-r1) puts its thinking first: the answer is what's after it.
+  const text = typeof raw === 'string' ? raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim() : '';
+  if (!text) return { ok: false, error: `${q.model} sent back no answer.` };
+  return { ok: true, text: text.slice(0, q.maxText), ms: now() - started, model: q.model };
+}
+
+// Asking the local model instead when Claude didn't answer: only the question,
+// only when you press the button, and the answer is only ever shown as the
+// local model's, never put into Claude's conversation.
+const ANSWER_MAX_MS = 5 * 60 * 1000; // a big uncensored model on a home GPU can be slow
+const ANSWER_MAX_TOKENS = 4000;
+const MAX_ANSWER_TEXT = 40000;
+const MAX_QUESTION = 20000;
+let answering = false;
+
+/**
+ * The saved setting -> { url, model } to ask instead, or null when it's off.
+ * Independent of the drafts' own on/off: you may want one without the other.
+ * @param {any} saved config's localModel
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+function answerSettings(saved, env = process.env) {
+  if (!saved || typeof saved !== 'object' || proxied(env)) return null;
+  const answers = cleanAnswers(saved.answers);
+  const model = answers.model || modelName(saved.model);
+  const url = baseUrl(saved.url);
+  return answers.on && model && url ? { url, model } : null;
+}
+
+/**
+ * The question Claude didn't answer, to the local model set up for it.
+ * -> { ok: true, text, ms, model } or { ok: false, error } in words for the panel.
+ * @param {unknown} rawQuestion
+ * @param {{ settings: () => any, fetchFn?: typeof fetch, env?: NodeJS.ProcessEnv, now?: () => number }} deps
+ */
+async function answerInstead(rawQuestion, { settings, fetchFn = globalThis.fetch, env = process.env, now = Date.now }) {
+  const question = typeof rawQuestion === 'string' ? rawQuestion.trim().slice(0, MAX_QUESTION) : '';
+  if (!question) return { ok: false, error: 'There was no question to ask.' };
+  if (proxied(env)) return { ok: false, error: 'Shellby is set to send web requests through a proxy (NODE_USE_ENV_PROXY), so it won\'t use a local model.' };
+  const s = answerSettings(settings(), env);
+  if (!s) return { ok: false, error: 'Turn on "Ask a local model when Claude won\'t answer" in Settings → Local model first.' };
+  if (answering) return { ok: false, error: 'Still waiting on the last answer.' };
+  answering = true;
+  try {
+    return await chat({ ...s, question, maxTokens: ANSWER_MAX_TOKENS, maxMs: ANSWER_MAX_MS, maxText: MAX_ANSWER_TEXT,
+      slow: `${s.model} took over ${ANSWER_MAX_MS / 60000} minutes.` }, fetchFn, now);
+  } finally { answering = false; }
 }
 
 // The usual places a local server listens, for Settings' Detect.
@@ -435,6 +502,6 @@ async function detect(fetchFn = globalThis.fetch, env = process.env) {
 }
 
 module.exports = {
-  checkSettings, cleanSettings, cleanJobs, cleanModels, modelFor, listModels, tryModel, detect, JOBS, JOB_DEFAULTS, SERVERS, baseUrl, proxied, readJson, requestFrom, body, fitsSchema, replyFrom, ask, withLocal,
+  checkSettings, cleanSettings, cleanJobs, cleanModels, cleanAnswers, answerSettings, answerInstead, modelFor, listModels, tryModel, detect, JOBS, JOB_DEFAULTS, SERVERS, baseUrl, proxied, readJson, requestFrom, body, fitsSchema, replyFrom, ask, withLocal,
   DEFAULT_URL, LOCAL_MAX_MS, LOCAL_SHARE, SLOW_FAIL_MS, QUICK_FAILS, REST_MS, MAX_REPLY_BYTES, MAX_LIST_BYTES,
 };
