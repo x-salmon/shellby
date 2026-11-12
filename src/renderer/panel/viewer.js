@@ -175,6 +175,9 @@
     $('viewerCount').textContent = cur.files.length ? String(cur.files.length + cur.more) : '';
     $('viewerOnlyRow').hidden = cur.side !== 'changes' || !cur.base || cur.kind === 'branch'; // a branch is all commits
     $('viewerOnly').checked = cur.only;
+    $('viewerRisk').hidden = cur.side !== 'changes' || !cur.git || cur.files.length < 2;
+    $('viewerRisk').setAttribute('aria-pressed', String(!!cur.riskOn));
+    if (!cur.rating) $('viewerRisk').textContent = cur.riskOn ? 'Back to A–Z' : 'Look here first';
     $('viewerFilter').hidden = cur.side !== 'files';
     const said = cur.side !== 'changes' ? ''
       : cur.note ? cur.note.text
@@ -196,11 +199,14 @@
 
   function changeRows() {
     const seen = seenOf(cur);
-    return cur.files.map(f => {
+    const files = cur.riskOn && cur.risk ? V.byRisk(cur.files, cur.risk) : cur.files;
+    return files.map(f => {
+      const rated = cur.riskOn ? cur.risk?.get(f.path) : null;
       const viewed = V.isViewed(f, seen);
       return h('li', {},
         h('button', { type: 'button', class: `vw-row${f.path === cur.file ? ' on' : ''}${viewed ? ' seen' : ''}`, dataset: { path: f.path }, title: `${V.statusWord(f.status)}${viewed ? ', viewed' : ''}: ${f.path}`, onclick: () => showFile(f.path) },
           h('span', { class: `vw-st st-${V.statusClass(f.status)}`, text: f.status }),
+          rated ? h('span', { class: `vw-risk-dot risk-${rated.risk}`, title: `${rated.risk[0].toUpperCase()}${rated.risk.slice(1)} risk: ${rated.why}`, 'aria-label': `${rated.risk} risk` }) : null,
           h('span', { class: 'vw-path', text: f.path }),
           viewed ? h('span', { class: 'vw-seen', 'aria-hidden': 'true', text: '✓' }) : null,
           counts(f)));
@@ -460,6 +466,24 @@
   $('filesBtn').addEventListener('click', () => SB.viewer.openTab(state.activeTab));
   $('viewerBack').addEventListener('click', () => SB.goBack());
   $('viewerRefresh').addEventListener('click', () => refresh());
+  // "Look here first" (main's risk.js): the list riskiest first, and back. Rated once per list.
+  $('viewerRisk').addEventListener('click', async () => {
+    const me = cur;
+    if (!me || me.rating) return;
+    if (me.riskOn) { me.riskOn = false; draw(); return; }
+    const btn = $('viewerRisk');
+    me.rating = true;
+    btn.disabled = true;
+    btn.textContent = 'Rating the files…';
+    const r = await call(id => api.viewerRisk(id));
+    me.rating = false;
+    btn.disabled = false;
+    if (cur !== me) return;
+    if (!r?.ok) { draw(); SB.toast(r?.error || "Couldn't rate them this time."); return; }
+    me.risk = new Map(r.ranks.map(x => [x.path, x]));
+    me.riskOn = true;
+    draw();
+  });
   $('viewerLook').addEventListener('click', e => {
     const tabId = cur?.tabId;
     if (tabId) SB.pickReviewLens(/** @type {HTMLElement} */ (e.currentTarget), lens => SB.lookOverTab(tabId, lens), { goal: true });

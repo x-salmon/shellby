@@ -42,6 +42,11 @@
     return [n('type') ? plural(n('type'), 'type error') : '', n('lint') ? plural(n('lint'), 'lint error') : ''].filter(Boolean).join(' · ');
   }
 
+  const RISK_ORDER = { high: 0, medium: 1, low: 2 };
+  /** [{ path, risk }] the riskiest first; ties, and files never rated, keep their order. */
+  const byRisk = list => list.map((x, i) => ({ x, i }))
+    .sort((a, b) => (RISK_ORDER[a.x.risk] ?? 3) - (RISK_ORDER[b.x.risk] ?? 3) || a.i - b.i).map(({ x }) => x);
+
   /** Tabs waiting for review, the longest-waiting first; ties keep strip order. */
   function queue(tabs) {
     return tabs
@@ -59,13 +64,16 @@
    */
   function item(t, { title = t.title || 'Untitled', running = null, clash = '' } = {}) {
     const r = t.ready;
-    const paths = (r.paths || []).slice(0, 5);
+    // Rated in the viewer ("Look here first"): the riskiest files lead the row, each with its rating.
+    const all = byRisk((r.paths || []).map(path => ({ path, risk: t.risk?.[path] || null })));
+    const paths = all.slice(0, 5).map(p => p.path);
+    const risks = all.slice(0, 5).map(p => p.risk);
     const v = verdict(t, running);
     return {
       id: t.id, title, at: r.at || 0, after: r.after, turnId: r.turnId || null,
       branch: t.worktree?.branch || null,
       files: r.files || paths.length, added: r.added || 0, removed: r.removed || 0,
-      paths, more: Math.max(0, (r.files || 0) - paths.length),
+      paths, risks, more: Math.max(0, (r.files || 0) - paths.length),
       verdict: v, errors: errorsLine(t), clash: clash || '',
       // Red tests or a clash: shown loud, but it still waits its turn in the queue.
       flagged: v === 'fail' || !!clash,
@@ -97,7 +105,7 @@
     return order[at + 1] ?? order[at - 1] ?? null;
   }
 
-  const api = { VERDICTS, verdict, errorsLine, queue, item, filesLine, label, countLine, landOn };
+  const api = { VERDICTS, verdict, errorsLine, byRisk, queue, item, filesLine, label, countLine, landOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyReviewQueue = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -225,7 +225,18 @@
     return null;
   }
 
+  const RISK_ORDER = { high: 0, medium: 1, low: 2 };
+  /**
+   * The changes list, riskiest first ("Look here first"): risk is Map(path -> { risk, why }). Files
+   * it hasn't rated (new since) come last; ties keep the list's own order.
+   */
+  function byRisk(files, risk) {
+    const rank = f => RISK_ORDER[risk?.get(f.path)?.risk] ?? 3;
+    return (files || []).map((f, i) => ({ f, i })).sort((a, b) => rank(a.f) - rank(b.f) || a.i - b.i).map(({ f }) => f);
+  }
+
   const api = {
+    byRisk,
     buildTree, visibleRows, numberDiff, splitLines, whereText, tooWide, liveState, totals, totalsText, statusWord, statusClass, placeSub, findPlace, placeKey, tabAt, keepFile,
     isViewed, viewedText, tick, nextUnviewed, STATUS_WORDS,
   };

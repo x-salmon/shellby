@@ -10,6 +10,7 @@ const fileIndex = require('../fileindex');
 const leaving = require('../leaving');
 const branchSwitch = require('../branch-switch');
 const { createViewer, locate, branchOf, sameDir, writeWatch } = require('../viewer');
+const risk = require('../risk');
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
@@ -56,6 +57,29 @@ function registerViewerIpc(ipcMain, d) {
   ipcMain.handle('viewer:read', (_e, id, rel) => viewer.read(id, rel), [opt(ID), opt(PATH)]);
   ipcMain.handle('viewer:diff', (_e, id, rel, opts) => viewer.diffOf(id, rel, { ignoreSpace: !!opts?.ignoreSpace }), [opt(ID), opt(PATH), opt(obj())]);
   ipcMain.handle('viewer:image', (_e, id, rel) => viewer.imageOf(id, rel), [ID, PATH]); // a picture's preview, as a data: URL
+  // "Look here first" (risk.js): the files on the handle's list, rated by a small model from the first
+  // lines of each one's diff. Asked again for the same list (each file's sig), the last answer stands.
+  // A conversation's own folder keeps the rating on its tab too, for the review inbox's rows.
+  ipcMain.handle('viewer:risk', async (_e, id) => {
+    const h = viewer.get(id);
+    if (!h) return { ok: false, expired: true };
+    const slot = h.slots[h.shown];
+    if (!slot) return { ok: false, error: 'Look at the changes first.' };
+    const files = [...slot.files.values()].filter(f => !f.binary).slice(0, risk.MAX_FILES);
+    const key = files.map(f => f.sig || `${f.path}:${f.added}/${f.removed}`).join('|');
+    if (h.risk?.key === key) return { ok: true, ranks: h.risk.ranks };
+    const patches = [];
+    for (const f of files) {
+      const r = await viewer.diffOf(id, f.path);
+      if (r.ok) patches.push({ path: f.path, status: f.status, added: f.added, removed: f.removed, patch: r.patch });
+    }
+    const r = await risk.ask(patches, d.localDrafts || d.runClaudeOnce);
+    if (!r.ok || !r.ranks) return r;
+    h.risk = { key, ranks: r.ranks };
+    const tab = h.tabId ? d.manager.tabs.get(h.tabId) : null;
+    if (tab) { tab.risk = Object.fromEntries(r.ranks.map(x => [x.path, x.risk])); d.manager.changed?.(); }
+    return r;
+  }, [ID]);
   ipcMain.handle('viewer:blame', (_e, id, rel, line) => viewer.blameOf(id, rel, line), [ID, PATH, nat]); // who last changed one line
   // The one write the viewer makes: a hunk of a changed file in a conversation's own folder put back,
   // never mid-turn (viewer.js undoHunk). A nudge after, so every viewer on the folder looks again.

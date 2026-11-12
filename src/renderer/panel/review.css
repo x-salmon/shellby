@@ -76,3 +76,8 @@
 .rv-look { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; padding: 6px 0 2px; border-top: 1px solid var(--line-soft); }
 .rv-look-label { margin-right: 4px; font-size: var(--fs-11); color: var(--sand-faint); }
 .rv-errors { color: var(--coral); font-size: var(--fs-11-5); font-weight: 600; }
+/* Rated in the viewer ("Look here first"): a dot before each rated path. */
+.rv-paths li[class^="risk-"]::before { content: '●'; margin-right: 5px; font-size: 8px; vertical-align: 2px; }
+.rv-paths li.risk-high::before { color: var(--coral); }
+.rv-paths li.risk-medium::before { color: var(--amber); }
+.rv-paths li.risk-low::before { color: var(--sand-faint); }

@@ -121,3 +121,10 @@ body[data-view="viewer"] .view-viewer { display: flex; flex-direction: column; p
 .vw-img { display: block; max-width: 100%; max-height: 70vh; height: auto; image-rendering: auto; }
 .vw-img-size, .vw-img-note { margin: 6px 0 0; }
 .vw-img-note { margin: 10px 16px 0; }
+
+/* "Look here first": the rating before each file, the riskiest at the top. */
+.vw-risk { margin: 2px 6px 4px; }
+.vw-risk-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; }
+.vw-risk-dot.risk-high { background: var(--coral); }
+.vw-risk-dot.risk-medium { background: var(--amber); }
+.vw-risk-dot.risk-low { background: var(--line); }

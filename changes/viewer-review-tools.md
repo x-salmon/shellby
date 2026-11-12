@@ -11,3 +11,4 @@
 - **Findings become comments.** Each finding from a code review has Add as comment, and a list has All as comments. They wait on their lines in the viewer, to edit, drop or send back with your own.
 - **Type and lint errors in the review inbox.** A row now says "2 type errors · 1 lint error" next to its checks, and with checks on, Bring it home runs a project's lint and typecheck scripts too, so type errors hold a copy back the way red tests do.
 - **Where your review pays off.** The review mastery card shows, folder by folder, how often your comments there led Claude to fix something.
+- **Look here first.** In the viewer, one click has a small model (your local one if it's set up, else Haiku) rate each changed file from "needs a human" to "boilerplate" and puts the risky ones at the top. The review inbox lists them that way too.

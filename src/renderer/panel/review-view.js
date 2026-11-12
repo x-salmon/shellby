@@ -98,7 +98,7 @@
       verdictPill(it),
       it.errors ? h('span', { class: 'rv-errors', text: it.errors, title: 'From the checks that failed on these changes. Problems (Ctrl+Shift+M) lists each one.' }) : null),
     it.paths.length ? h('ul', { class: 'rv-paths', 'aria-label': 'Files changed' },
-      it.paths.map(p => h('li', { title: p, text: p })),
+      it.paths.map((p, k) => h('li', { title: it.risks?.[k] ? `${p} · ${it.risks[k]} risk` : p, class: it.risks?.[k] ? `risk-${it.risks[k]}` : null, text: p })),
       it.more ? h('li', { class: 'rv-more', text: `…and ${it.more} more` }) : null) : null,
     it.clash ? h('p', { class: 'rv-clash' }, h('span', { 'aria-hidden': 'true', text: '⚠ ' }), it.clash) : null,
     h('div', { class: 'rv-actions' },
