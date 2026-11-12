@@ -1,13 +1,13 @@
 {
-    "version": "0.98.0",
+    "version": "0.98.1",
     "description": "A Windows desktop app for Claude Code, on your own Claude plan, with a pixel hermit crab who does the work.",
     "homepage": "https://getshellby.com/",
     "license": "GPL-3.0-only",
     "notes": "Shellby runs tasks through Claude Code: npm install -g @anthropic-ai/claude-code, then claude auth login. Scoop keeps him up to date (scoop update shellby).",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/x-salmon/shellby/releases/download/v0.98.0/Shellby-Setup-0.98.0.exe#/dl.7z",
-            "hash": "53b806e770ba2c13fd25546e797719eda75f26d12c39f4944fcd6aa9713bdaa8"
+            "url": "https://github.com/x-salmon/shellby/releases/download/v0.98.1/Shellby-Setup-0.98.1.exe#/dl.7z",
+            "hash": "0305021269ff6df20c1c15f13c6bbb444d8a7d3b814cd7fcba7e5315492cdbcf"
         }
     },
     "installer": {
