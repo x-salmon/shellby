@@ -185,3 +185,19 @@ mark.wd { color: inherit; border-radius: 2px; padding: 0; }
 .diff .dl.del mark.wd, .er.del mark.wd { background: rgba(255, 122, 92, .34); }
 .diff .dl.ctx mark.wd, .er.ctx mark.wd { background: none; }
 @media (forced-colors: active) { mark.wd { background: Mark; color: MarkText; } }
+
+/* ---------- what clashes when a copy can't come home (feed-conflicts.js) */
+.conflicts > summary .chg-icon { color: var(--amber); }
+.cf-lede { margin: 6px 0 8px; }
+.cf-file { margin: 10px 0 0; }
+.cf-path { margin: 0 0 4px; font: 600 var(--fs-12) var(--font-mono); color: var(--sand); }
+.cf-hunk { margin: 0 0 10px; border: 1px solid var(--line-soft); border-radius: var(--r-sm); overflow: hidden; }
+.cf-hunk-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 4px 3px 8px; background: var(--line-soft); }
+.cf-sides { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.cf-side + .cf-side { border-left: 1px solid var(--line-soft); }
+.cf-side-head { padding: 2px 8px; font: 600 var(--fs-10) var(--font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--sand-dim); }
+.cf-side:first-child .cf-side-head { color: var(--glass); }
+.cf-side:last-child .cf-side-head { color: #ffb37a; }
+.cf-code { margin: 0; padding: 2px 8px 6px; max-height: 260px; overflow: auto; font: var(--fs-11)/1.55 var(--font-mono); font-stretch: 85%; color: var(--sand-dim); }
+.cf-line { display: block; white-space: pre; min-width: max-content; }
+@container (max-width: 420px) { .cf-sides { grid-template-columns: minmax(0, 1fr); } .cf-side + .cf-side { border-left: 0; border-top: 1px solid var(--line-soft); } }

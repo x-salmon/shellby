@@ -378,7 +378,10 @@
     if (r?.conflict) {
       // Nothing was merged; the copy's own branch is the safe place to sort it
       // out, in turn with any other copy doing the same.
-      SB.toast(r.error, { ms: 12000, action: 'Ask him to sort it out', onAction: () => sortOut(tab, { push }) });
+      SB.toast(r.error, { ms: 14000, actions: [
+        { label: 'Show where', onAction: () => SB.showConflicts?.(tab) }, // feed-conflicts.js: each clash, both sides
+        { label: 'Ask him to sort it out', onAction: () => sortOut(tab, { push }) },
+      ] });
       return;
     }
     if (r?.fixable) return offerFix(tab, r, tab.worktree.base);

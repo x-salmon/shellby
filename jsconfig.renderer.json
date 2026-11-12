@@ -33,6 +33,7 @@
     "src/renderer/panel/crew.js",
     "src/renderer/panel/feed-asks.js",
     "src/renderer/panel/feed-changes.js",
+    "src/renderer/panel/feed-conflicts.js",
     "src/renderer/panel/feed-logic.js",
     "src/renderer/panel/feed-native.js",
     "src/renderer/panel/feed-notes.js",

@@ -4,6 +4,7 @@
 // Kept out of main.js, which only wires it up.
 const { ID, PATH, list, obj, opt, str, text } = require('../ipc-args');
 const prReview = require('../github/pr-review');
+const conflicts = require('../worktrees/conflicts');
 const path = require('path');
 const branching = require('../branching');
 const changes = require('../changes');
@@ -84,6 +85,19 @@ function registerRepoIpc(ipcMain, d) {
       retiring.delete(tabId);
     }
   }, [ID, opt(obj())]);
+
+  // What would clash bringing a copy home (worktrees/conflicts.js): read from git's object store
+  // alone, so it never touches your checkout. Its own copy only, as Bring it home.
+  ipcMain.handle('worktree:conflicts', async (_e, tabId) => {
+    const w = worktreeOf(tabId);
+    if (!w) return { ok: false, error: 'That conversation has no copy of its own.' };
+    const r = await conflicts.clashOf(worktrees.git, w.root, w.base, w.branch);
+    if (!r.ok || r.clean || !r.files) return r.ok ? { ...r, base: w.base, branch: w.branch } : r;
+    const found = r.files;
+    // The follow-ups for Claude, made here: each clash's own, and one for all of them.
+    const files = found.map(f => ({ ...f, hunks: f.hunks.map((h, index) => ({ ...h, prompt: conflicts.resolvePrompt({ base: w.base, files: found, only: { path: f.path, index } }) })) }));
+    return { ...r, files, base: w.base, branch: w.branch, prompt: conflicts.resolvePrompt({ base: w.base, files: found }) };
+  }, [ID]);
 
   // ---- line comments and the pull request a copy shipped (github/pr-review.js). Only the one main
   // noted when it shipped: the panel never names a repository or a number.

@@ -206,6 +206,8 @@ interface ShellbyPanelExtras {
   startDebug: any;
   // feed-changes.js
   renderDiff: any;
+  // feed-conflicts.js
+  showConflicts: any;
   // feed-lanes.js
   Lane: any;
   // feed-native.js
