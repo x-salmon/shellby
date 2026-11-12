@@ -221,8 +221,9 @@ test('locate: a link relative to a subfolder, absolute inside, outside, and miss
   const r = repo();
   try {
     const sub = path.join(r.dir, 'src');
-    assert.deepEqual(await locate(sub, 'keep.js:3'), { inside: true, rel: 'src/keep.js', line: 3 });
-    assert.deepEqual(await locate(sub, path.join(r.dir, 'a.txt')), { inside: true, rel: 'a.txt', line: null });
+    // root: the folder a viewer handle on the conversation opens, so a finding's comment lands on its diff
+    assert.deepEqual(await locate(sub, 'keep.js:3'), { inside: true, rel: 'src/keep.js', line: 3, root: r.dir });
+    assert.deepEqual(await locate(sub, path.join(r.dir, 'a.txt')), { inside: true, rel: 'a.txt', line: null, root: r.dir });
     assert.deepEqual(await locate(sub, os.homedir()), { inside: false });
     assert.deepEqual(await locate(sub, 'nope.js'), { inside: false });
     assert.deepEqual(await locate(sub, '\\\\server\\share\\x.js'), { inside: false });

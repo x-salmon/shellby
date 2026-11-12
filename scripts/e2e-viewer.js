@@ -131,6 +131,15 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     check(await until(`[...document.querySelectorAll('#viewerMain .dl.add .code')].some(c => c.textContent === ${JSON.stringify(MADE[0].words)})`), 'its diff shows the line coming');
     check(await ev("document.querySelector('#viewerMain .dl.add .vw-ln:nth-child(2)').textContent") === '1', 'with the new side numbered');
     await shot('1-changes');
+
+    // ---- a comment on a line of it, as on a turn's diff (line-comments-ui.js DiffView), going back to this conversation
+    const pending = `SB.pendingComments(SB.state.tabs.get(${JSON.stringify(copyTab)}))`;
+    await ev("document.querySelector('#viewerMain .dl.add .vw-ln:nth-child(2)').click()");
+    check(await until("!!document.querySelector('#viewerMain .rv-box textarea')"), "clicking a line's number in the viewer opens a comment box");
+    await ev("(() => { const t = document.querySelector('#viewerMain .rv-box textarea'); t.value = 'say why it is made here'; t.dispatchEvent(new Event('input')); [...document.querySelectorAll('#viewerMain .rv-box button')].find(b => b.textContent === 'Add comment').click(); })()");
+    check(await until(`!!document.querySelector('#viewerMain .rv-note') && ${pending} === 1`), 'the comment waits on its line, counted with the conversation\'s others');
+    await ev("[...document.querySelector('#viewerMain .rv-note').querySelectorAll('button')].find(b => b.textContent === 'Delete').click()");
+    check(await until(`!document.querySelector('#viewerMain .rv-note') && ${pending} === 0`), 'and Delete takes it away');
     check(await ev("document.querySelector('#viewerMain .vw-file-head .vw-wrap')?.getAttribute('aria-pressed')") === 'true', 'the file header has a Wrap button, on by default');
 
     // ---- a second edit shows up on its own. SB.send goes back to the chat (tab-send.js), so the
@@ -241,6 +250,24 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     // A 1px border computes to a fraction of a pixel at display scales above 100% (0.8px at 125%).
     check(parseFloat(edges[0].top) === 0 && parseFloat(edges[1].top) > 0 && edges[1].line !== edges[1].bar, `the second hunk has a border of its own colour, the first none (${edges[1].top} ${edges[1].line} on ${edges[1].bar})`);
     await shot('1d-two-hunks');
+
+    // ---- what changed inside a changed line is marked (shared/diff.js wordMarks)
+    check(await until("[...document.querySelectorAll('#viewerMain .dl.add mark.wd')].some(m => m.textContent.trim() === 'changed')"), 'the word added to a line is marked, not the whole line');
+
+    // ---- Ctrl+F finds in the file on screen, Ctrl+G goes to a line (viewer-find.js)
+    await ev("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true }))");
+    check(await until("!document.getElementById('viewerFind').hidden && document.getElementById('findBar').hidden"), "Ctrl+F in the viewer opens the file's find bar, not the conversation's");
+    await ev("(() => { const i = document.querySelector('#viewerFind input'); i.value = 'changed'; i.dispatchEvent(new Event('input')); })()");
+    check(await until("document.querySelector('#viewerFind .find-count').textContent === '1 of 2'"), 'it counts the matches in the file');
+    await ev("document.querySelector('#viewerFind input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))");
+    check(await until("document.getElementById('viewerFind').hidden && SB.state.view === 'viewer'"), 'Esc closes it and stays in the viewer');
+    await ev("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'g', ctrlKey: true, bubbles: true, cancelable: true }))");
+    await ev("(() => { const i = document.querySelector('#viewerFind input'); i.value = '38'; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()");
+    check(await until("document.querySelector('#viewerMain .dl.hit .code')?.textContent === 'line 38 changed'"), 'Ctrl+G goes to the line, on the diff when it shows it');
+
+    // ---- Viewed: ticked, the file steps back on the list and the footer counts it
+    await ev("document.querySelector('#viewerMain .vw-viewed input').click()");
+    check(await until("document.querySelector('#viewerList .vw-row[data-path=\"multi.txt\"]')?.classList.contains('seen') && /1 of \\d+ viewed/.test(document.getElementById('viewerFoot').textContent)"), 'a Viewed tick dims the file on the list and the footer counts it');
     await ev("SB.setView('projects')");
     await ev("[...document.querySelectorAll('#pjDetailScreen .pj-clone-head button')].find(b => b.textContent === 'Browse files').click()");
     check(await until(`SB.state.view === 'viewer' && SB.viewer.current()?.root.toLowerCase() === ${JSON.stringify(repo)}.toLowerCase() && SB.viewer.current().side === 'files' && SB.viewer.current().files.length === 0`), 'Browse files opens the checkout itself, clean, on All files');
