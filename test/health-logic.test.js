@@ -61,6 +61,25 @@ test('heroWords words a mood from its check and offers to ask about it', () => {
   assert.deepEqual(w.ask, { check: 'gpu-temp:0', text: 'Ask Shellby why' });
 });
 
+test('heroWords says it is cooling down while a held level outlasts the reading', () => {
+  const view = {
+    settings: { enabled: true }, sample: sample(), thresholds: T,
+    mood: { id: 'cpu-temp', mood: 'scorching', level: 'critical' },
+    checks: { 'cpu-temp': { reading: { value: 77.2, kind: 'cpu-temp', label: 'CPU' } } },
+  };
+  const w = L.heroWords(view);
+  assert.equal(w.eyebrow, 'Heads up');
+  assert.equal(w.title, 'Cooling down');
+  assert.equal(w.sub, 'CPU is back to 77°C, under your 85°C line. Shellby will settle once it stays there.');
+  const hot = L.heroCopy({ mood: 'hot' }, { value: 82, kind: 'cpu-temp', label: 'CPU' }, T);
+  assert.equal(hot.title, 'Cooling down');
+});
+
+test('heroCopy never shows a negative distance past the warning', () => {
+  const at = L.heroCopy({ mood: 'scorching' }, { value: 85, kind: 'cpu-temp', label: 'CPU' }, T);
+  assert.equal(at.line, "CPU is at 85°C, right at your warning. Check what's using it.");
+});
+
 test('heroCopy names a hot drive by model and a full drive by letter', () => {
   const hot = L.heroCopy({ mood: 'hot' }, { value: 64, kind: 'storage-temp', label: 'Drive 1', model: 'Samsung 990' }, T);
   assert.equal(hot.line, 'Drive 1 (Samsung 990) is at 64°C, over your 60°C line. Shellby is fanning himself.');

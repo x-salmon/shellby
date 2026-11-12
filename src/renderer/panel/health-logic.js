@@ -25,11 +25,23 @@
   function heroCopy(mood, reading, t) {
     const r = reading || {};
     const v = Math.round(r.value);
+    const isTemp = mood.mood === 'hot' || mood.mood === 'scorching';
+    // A level holds for a while after the reading drops (rules.js), so he
+    // doesn't flap; by then the reading can be back under the warning line.
+    if (isTemp && v < warnFor(r.kind, t)) {
+      return {
+        title: 'Cooling down', cooling: true,
+        line: `${named(r)} is back to ${v}°C, under your ${warnFor(r.kind, t)}°C line. Shellby will settle once it stays there.`,
+      };
+    }
     switch (mood.mood) {
       case 'hot':
         return { title: 'Running hot', line: `${named(r)} is at ${v}°C, over your ${warnFor(r.kind, t)}°C line. Shellby is fanning himself.` };
-      case 'scorching':
-        return { title: 'Overheating!', line: `${named(r)} is at ${v}°C, ${v - warnFor(r.kind, t)}°C past your warning. Check what's using it.` };
+      case 'scorching': {
+        const over = v - warnFor(r.kind, t);
+        const past = over > 0 ? `${over}°C past your warning` : 'right at your warning';
+        return { title: 'Overheating!', line: `${named(r)} is at ${v}°C, ${past}. Check what's using it.` };
+      }
       case 'dizzy':
         return { title: "Memory's nearly full", line: `${v}% of ${gb(r.total)} in use. Shellby is seeing stars.` };
       case 'stuffed':
@@ -66,7 +78,7 @@
     if (view.mood) {
       const copy = heroCopy(view.mood, view.checks?.[view.mood.id]?.reading || null, view.thresholds || {});
       return {
-        eyebrow: view.mood.level === 'critical' ? 'Needs attention' : 'Heads up',
+        eyebrow: view.mood.level === 'critical' && !copy.cooling ? 'Needs attention' : 'Heads up',
         title: copy.title, sub: copy.line, ask: { check: view.mood.id, text: copy.ask || 'Ask Shellby why' },
       };
     }
