@@ -11,8 +11,8 @@
 // Every change is told to:
 //   - agents waiting on it (wait_for_tasks)
 //   - workflows, as a "board" event (workflows/triggers.js), unless the task is
-//     quiet: one a workflow's conversation posted, or a helper of a quiet task
-//     did, so no workflow can set itself off again through the board
+//     quiet: one a workflow's conversation posted, so no workflow can set itself
+//     off again through the board (and such a conversation starts no helpers)
 //   - the panel ('taskboard:changed')
 // A conversation that closes gives back what it had claimed, and stops waiting.
 // Kept out of main.js, which only wires it up.
@@ -116,8 +116,8 @@ function wireTaskBoard(d) {
   }
 
   const who = tab => ({ tab: tab.id, title: tab.title || '' });
-  // A workflow's own conversation, or a helper of a quiet task: what it posts starts no workflow.
-  const isQuiet = tab => !!(tab.workflowRunId || tab.boardQuiet);
+  // A workflow's own conversation: what it posts starts no workflow.
+  const isQuiet = tab => !!tab.workflowRunId;
 
   /** Ids on the board that aren't this project's: refused as if they weren't there. */
   const elsewhere = (ids, key) => ids.filter(id => {
@@ -184,8 +184,10 @@ function wireTaskBoard(d) {
     const gate = helpers.helperGate({ starts: helperStarts, open: helperTabs.size + helpersStarting, now });
     if (!gate.ok) return gate.reason || 'No helper right now. The task stays on the board.';
     if (d.usageService?.limitWait()) return 'No helper: the usage window is at its limit. The task stays on the board.';
-    const mode = tab.session.mode || null;
-    if (mode === 'autonomous' && !d.config.get('autonomousAcknowledged')) return 'No helper: Autonomous is off in Settings.';
+    // A workflow's or routine's conversation runs with the tools it was given; a helper would get the usual
+    // set, so neither may start one. They can still post the task for a conversation to pick up.
+    if (tab.workflowRunId || tab.routineId) return "No helper: a workflow's or routine's conversation can't start one. The task stays on the board.";
+    const mode = helpers.helperMode(tab.session.mode);
     const title = helpers.helperTitle(task);
     helpersStarting++;
     let r;
@@ -198,8 +200,6 @@ function wireTaskBoard(d) {
     helperStarts = [...helpers.recent(helperStarts, Date.now()), Date.now()];
     const tabId = String(r.tabId);
     helperTabs.add(tabId);
-    const helperTab = d.manager.tabs.get(tabId);
-    if (helperTab && task.quiet) helperTab.boardQuiet = true;
     commit(board.setHelper(state, task.id, { tab: tabId, title, branch: r.worktree?.branch || '' }), []);
     d.log.info('taskboard: started a helper for', task.id);
     return `A helper conversation started on it${r.worktree?.branch ? `, on the branch ${r.worktree.branch}` : ''}.`;

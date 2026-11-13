@@ -131,15 +131,25 @@ test('a task that needs another gets no helper until that one is done', async ()
   assert.equal(started.length, 0);
 });
 
-test('no helper at the usage limit, or in Autonomous before it is turned on', async () => {
+test('no helper at the usage limit, and never one in Autonomous: an Autonomous poster gets a Smart helper', async () => {
   const limited = setup();
   limited.d.usageService.limitWait = () => ({ until: Date.now() + 1000 });
   const r = await limited.call(limited.tabOf('tab-a', 'A'), 'post_task', { title: 'x', start: true });
   assert.match(r.text, /usage window is at its limit/);
-  const auto = setup({ mode: 'autonomous' });
-  const r2 = await auto.call(auto.tabOf('tab-a', 'A'), 'post_task', { title: 'x', start: true });
-  assert.match(r2.text, /Autonomous is off/);
-  assert.equal(auto.started.length, 0);
+  const auto = setup({ mode: 'autonomous', settings: { autonomousAcknowledged: true } });
+  await auto.call(auto.tabOf('tab-a', 'A'), 'post_task', { title: 'x', start: true });
+  assert.equal(auto.started[0].mode, 'smart');
+});
+
+test("a workflow's or routine's conversation can post a task but not start a helper", async () => {
+  for (const mark of [{ workflowRunId: 'run-1' }, { routineId: 'r-1' }]) {
+    const { tabOf, call, idOf, started } = setup();
+    const tab = Object.assign(tabOf('tab-a', 'Scheduled'), mark);
+    const r = await call(tab, 'post_task', { title: 'Follow-up', start: true });
+    assert.ok(idOf(r), 'the task is still posted');
+    assert.match(r.text, /can't start one/);
+    assert.equal(started.length, 0);
+  }
 });
 
 test('the board is refused while it is off', async () => {
@@ -229,16 +239,15 @@ test("waiting ends when what it waits on can never start, or when the waiter clo
   assert.match((await orphan).text, /Still waiting/, 'a closed conversation stops waiting at once');
 });
 
-test("tasks a workflow's conversation posts never start workflows, nor do its helpers'", async () => {
-  const { tabOf, call, idOf, events, manager } = setup();
+test("tasks a workflow's conversation posts never start workflows, whoever finishes them", async () => {
+  const { tabOf, call, idOf, events } = setup();
   const wf = tabOf('tab-wf', '⚡ Review');
   wf.workflowRunId = 'run-1';
-  const id = idOf(await call(wf, 'post_task', { title: 'Follow-up', start: true }));
+  const id = idOf(await call(wf, 'post_task', { title: 'Follow-up' }));
   assert.ok(id);
-  const helper = manager.tabs.get('helper-1');
-  assert.equal(helper.boardQuiet, true);
-  await call(helper, 'post_task', { title: 'Sub-part' });
-  await call(helper, 'update_task', { id, action: 'done', result: 'ok' });
+  const worker = tabOf('tab-b', 'Worker');
+  await call(worker, 'update_task', { id, action: 'claim' });
+  await call(worker, 'update_task', { id, action: 'done', result: 'ok' });
   assert.deepEqual(events, [], 'nothing reached workflows');
   await call(tabOf('tab-a', 'Person'), 'post_task', { title: 'Mine' });
   assert.equal(events.length, 1, "a person's own conversation still does");

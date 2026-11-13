@@ -18,8 +18,8 @@
 // describe() fences them (no tag can be closed from inside) and the tools say
 // they are data, not instructions.
 //
-// A quiet task (posted by a workflow's conversation, or a helper of a quiet
-// task) never starts workflows, so a workflow can't set itself off again.
+// A quiet task (posted by a workflow's conversation) never starts workflows,
+// so a workflow can't set itself off again.
 //
 // Pure: callers pass `now` and `id`. test/taskboard.test.js.
 const { fence } = require('../devservers/output');
@@ -179,11 +179,11 @@ function claim(state, id, { by, now }) {
   const who = whoOf(by);
   if (!who) return no('Only a conversation can claim a task.');
   if (task.status === 'claimed') {
-    return sameTab(task.claimedBy, who) ? ok({ state, task, event: null }) : no(`${id} is already claimed by "${task.claimedBy.title || 'another conversation'}".`);
+    return sameTab(task.claimedBy, who) ? ok({ state, task, event: null }) : no(`${id} is already claimed by "${quote(task.claimedBy.title) || 'another conversation'}".`);
   }
   if (task.status !== 'open') return no(`${id} is ${task.status}.`);
   const blocked = blockedBy(state, task);
-  if (blocked) return no(`${id} can't start: ${blocked.id} (${blocked.title}) ${blocked.status === 'failed' ? 'failed' : 'was cancelled'}.`);
+  if (blocked) return no(`${id} can't start: ${blocked.id} ("${quote(blocked.title)}") ${blocked.status === 'failed' ? 'failed' : 'was cancelled'}.`);
   const waiting = waitingOn(state, task);
   if (waiting.length) return no(`${id} is waiting on ${waiting.map(w => w.id).join(', ')}. wait_for_tasks can wait for them.`);
   const claimed = { ...task, status: 'claimed', claimedBy: who, claimedAt: now };
@@ -213,7 +213,7 @@ function complete(state, id, { outcome, result, by, now }) {
     task = c.task;
   }
   if (task.status !== 'claimed') return no(`${id} is already ${task.status}.`);
-  if (!sameTab(task.claimedBy, who)) return no(`${id} is claimed by "${task.claimedBy.title || 'another conversation'}", not you.`);
+  if (!sameTab(task.claimedBy, who)) return no(`${id} is claimed by "${quote(task.claimedBy.title) || 'another conversation'}", not you.`);
   const text = block(result, MAX_RESULT);
   if (!text) return no('Say what you did (or why it failed): the conversation that posted it reads that.');
   const done = { ...task, status: outcome, result: text, finishedAt: now };

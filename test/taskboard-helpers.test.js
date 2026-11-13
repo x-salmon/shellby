@@ -28,3 +28,9 @@ test("a helper's prompt names the task and branch, and fences the other conversa
   assert.equal(p.match(/<\/task>/g).length, 1, 'the task cannot close its own block');
   assert.ok(!p.includes('<system>'), 'no tags from inside the task');
 });
+
+test("a helper runs in its poster's mode, but never past Smart", () => {
+  assert.equal(h.helperMode('autonomous'), 'smart');
+  for (const m of ['ask', 'smart', 'acceptEdits', 'plan']) assert.equal(h.helperMode(m), m);
+  assert.equal(h.helperMode(undefined), null);
+});

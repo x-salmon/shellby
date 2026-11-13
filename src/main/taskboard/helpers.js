@@ -34,6 +34,16 @@ function helperGate({ starts = [], open = 0, now }) {
   return { ok: true };
 }
 
+/**
+ * The mode a helper runs in: its poster's, but never past Smart. An Autonomous
+ * conversation that's been talked into something by what it read can't hand
+ * that on to more conversations with no checks at all.
+ * @param {string | null | undefined} posterMode
+ */
+function helperMode(posterMode) {
+  return posterMode === 'autonomous' ? 'smart' : posterMode || null;
+}
+
 /** A helper's tab title: the task's own, with a crab in front. */
 function helperTitle(task) {
   const t = String(task?.title || 'A task').trim();
@@ -63,4 +73,4 @@ function helperPrompt(task, { branch = null } = {}) {
   ].join('\n');
 }
 
-module.exports = { HELPERS_OPEN, HELPERS_PER_HOUR, helperGate, helperTitle, helperPrompt, recent };
+module.exports = { HELPERS_OPEN, HELPERS_PER_HOUR, helperGate, helperMode, helperTitle, helperPrompt, recent };
