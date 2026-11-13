@@ -66,7 +66,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .phone { container: phone / inline-size; width: 460px; height: 700px; max-width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; display: flex; flex-direction: column; font-size: 13px; box-shadow: 0 24px 60px rgba(0, 0, 0, .45); position: relative; transition: width .3s var(--ease-out), height .3s var(--ease-out); }
 [data-size="wide"] .phone { width: min(1280px, 100%); height: 800px; }
 .bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--reef); flex: none; }
-.bar h3 { margin: 0; font-family: var(--font-pixel); font-weight: 600; font-size: 17px; flex: 1; }
+.bar .ttl { margin: 0; font-family: var(--font-pixel); font-weight: 600; font-size: 17px; flex: 1; }
 .scroll { flex: 1; overflow-y: auto; padding: 14px 16px 22px; scrollbar-width: thin; scrollbar-color: var(--reef-3) transparent; }
 @container phone (min-width: 860px) { .scroll { padding: 20px 28px 28px; } }
 
@@ -87,7 +87,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .seg { display: inline-flex; background: var(--abyss); border: 1px solid var(--line); border-radius: 8px; padding: 2px; flex: none; }
 .seg button { background: none; border: 0; padding: 3px 10px; border-radius: 6px; font-size: 12px; color: var(--sand-dim); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--reef-3); color: var(--sand); }
-.pill { font-size: 11.5px; padding: 2px 8px; border-radius: 99px; background: var(--glass-dim); color: var(--glass); white-space: nowrap; }
+.pill { font-size: 11.5px; padding: 3px 10px; border-radius: 99px; background: var(--glass-dim); color: var(--glass); white-space: nowrap; }
 .pill.coral { background: var(--coral-dim); color: var(--coral); }
 .pill.amber { background: var(--amber-dim); color: var(--amber); }
 .pill.off { background: var(--reef-2); color: var(--sand-faint); }
@@ -128,7 +128,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .mk.future .dot { background: var(--ink); border: 2px solid var(--glass); }
 .mk.future[data-src="limit"] .dot { border-color: #b9a7ff; }
 .mk.ghost { opacity: .35; }
-.mk .lbl { font-size: 11px; color: var(--sand-dim); white-space: nowrap; background: var(--ink); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line-soft); }
+.mk .lbl { font-size: 11px; color: var(--sand-dim); white-space: nowrap; background: var(--ink); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--line-soft); }
 .mk .stem { width: 1px; background: var(--line); }
 .mk:hover .lbl, .mk[aria-pressed="true"] .lbl { color: var(--sand); border-color: var(--glass); }
 .mk.tiny .lbl { display: none; }
@@ -137,10 +137,6 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .listen { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--sand-dim); }
 .ear { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 99px; background: var(--reef-2); color: var(--sand); cursor: pointer; border: 0; font-size: 12px; }
 .ear::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--glass); }
-@media (prefers-reduced-motion: no-preference) {
-  .ear::before { animation: listen 2.4s ease-in-out infinite; }
-  @keyframes listen { 0%, 100% { box-shadow: 0 0 0 0 rgba(127, 214, 194, .5); } 50% { box-shadow: 0 0 0 4px rgba(127, 214, 194, 0); } }
-}
 .m1-body { margin-top: 4px; }
 @container phone (min-width: 860px) { .m1-body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; } }
 .alist { display: flex; flex-direction: column; }
@@ -153,7 +149,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .arow .when { font-size: 12px; color: var(--sand-dim); text-align: right; white-space: nowrap; }
 .arow.off .t b, .arow.off .glyph { opacity: .55; }
 .detail { padding: 16px; position: sticky; top: 0; }
-.detail h4 { margin: 0 0 4px; font-size: 17px; }
+.detail h3 { margin: 0 0 4px; font-size: 17px; }
 .detail .sent { color: var(--sand-dim); line-height: 1.5; margin: 0 0 14px; }
 .detail .row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 .detail .lab { font-size: 12px; color: var(--sand-faint); margin: 14px 0 6px; }
@@ -165,7 +161,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .compose { background: var(--reef); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 18px 14px; }
 .sentence { font-size: 19px; line-height: 2.05; margin: 0; }
 @container phone (min-width: 860px) { .sentence { font-size: 26px; line-height: 1.95; } }
-.blank { display: inline; font: inherit; border: 0; border-bottom: 2px solid var(--glass); background: var(--glass-dim); color: var(--glass); padding: 0 6px; border-radius: 6px 6px 0 0; cursor: pointer; position: relative; }
+.blank { display: inline; font: inherit; border: 0; border-bottom: 2px solid var(--glass); background: var(--glass-dim); color: var(--glass); padding: 1px 10px; border-radius: 6px 6px 0 0; cursor: pointer; position: relative; }
 .blank[data-k="trigger"] { color: var(--coral); background: var(--coral-dim); border-color: var(--coral); }
 .blank[data-k="then"] { color: var(--amber); background: var(--amber-dim); border-color: var(--amber); }
 .blank::after { content: "▾"; font-size: .55em; margin-left: 4px; vertical-align: .25em; opacity: .7; }
@@ -209,7 +205,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .upnext { display: flex; flex-direction: column; gap: 2px; }
 .upnext div { display: flex; gap: 10px; padding: 6px 2px; font-size: 12.5px; color: var(--sand-dim); }
 .upnext div time { width: 70px; flex: none; color: var(--sand); }
-.aside h5 { margin: 0 0 8px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+.aside h3 { margin: 0 0 8px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
 .mini { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-top: 1px solid var(--line-soft); }
 .mini:first-child { border-top: 0; }
 .mini .t { flex: 1; min-width: 0; font-size: 12.5px; }
@@ -322,7 +318,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 <!-- ============ 1 ============ -->
 <section class="mock" id="m1">
   <div class="phone" id="p1">
-    <div class="bar"><h3>Automate</h3><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
+    <div class="bar"><b class="ttl">Automate</b><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
     <div class="scroll">
       <div class="tide">
         <div class="tide-head"><b>This week</b>
@@ -357,7 +353,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 <!-- ============ 2 ============ -->
 <section class="mock" id="m2">
   <div class="phone" id="p2">
-    <div class="bar"><h3>Automate</h3><button class="btn ghost" type="button">Import</button><button class="btn ghost" type="button">Secrets</button></div>
+    <div class="bar"><b class="ttl">Automate</b><button class="btn ghost" type="button">Import</button><button class="btn ghost" type="button">Secrets</button></div>
     <div class="scroll">
       <div class="m2-grid">
         <div>
@@ -394,7 +390,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 <!-- ============ 3 ============ -->
 <section class="mock" id="m3">
   <div class="phone" id="p3">
-    <div class="bar"><h3>Automate</h3><button class="btn primary" type="button">New</button></div>
+    <div class="bar"><b class="ttl">Automate</b><button class="btn primary" type="button">New</button></div>
     <div class="scroll">
       <div class="m3-grid">
         <div>
@@ -408,7 +404,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
           <div class="upnext card" style="padding:4px 12px" id="m3Next"></div>
         </div>
         <div class="aside">
-          <h5>All automations <button class="btn ghost" type="button">Templates</button></h5>
+          <h3>All automations <button class="btn ghost" type="button">Templates</button></h3>
           <div class="card" id="m3All"></div>
         </div>
       </div>
@@ -432,7 +428,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 <!-- ============ 4 ============ -->
 <section class="mock" id="m4">
   <div class="phone" id="p4">
-    <div class="bar"><h3>Automate</h3><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
+    <div class="bar"><b class="ttl">Automate</b><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
     <div class="scroll">
       <div class="board-top"><p>Each column is something Shellby can listen to. A lit plug means something you made is listening there.</p><input type="search" class="own" style="margin:0;background:var(--abyss);border:1px solid var(--line);border-radius:var(--r);padding:7px 12px;min-width:200px" placeholder="Find an automation"></div>
       <div class="lanes" id="m4Lanes"></div>
@@ -456,7 +452,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 <!-- ============ 5 ============ -->
 <section class="mock" id="m5">
   <div class="phone" id="p5">
-    <div class="bar"><h3>Automate</h3><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
+    <div class="bar"><b class="ttl">Automate</b><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
     <div class="scroll">
       <p class="sum" id="m5Sum"></p>
       <div class="ltools">
@@ -618,7 +614,7 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
   }
   const FILTERS = [['all', 'All', () => true], ['clock', 'On a schedule', a => a.src === 'clock'], ['listen', 'Listening', a => a.next === 'Listening'], ['limit', 'Waiting for reset', a => a.src === 'limit'], ['off', 'Paused', a => !m1.on[a.id]]];
   function detailHtml(a) {
-    return `<h4>${esc(a.name)}</h4><p class="sent">${esc(a.when)}, Claude ${a.verb}.</p>
+    return `<h3>${esc(a.name)}</h3><p class="sent">${esc(a.when)}, Claude ${a.verb}.</p>
       <div class="lab">Last run, ${esc(a.lastAt)}</div><div class="quote ${a.r}">${esc(a.result)}</div>
       <div class="lab">Last 14 runs</div>${runs(a.runs)}
       <div class="row"><button class="btn glass" type="button">Run now</button><button class="btn" type="button">Edit</button><button class="btn ghost" type="button">Open last tab</button></div>`;
