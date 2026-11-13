@@ -41,6 +41,7 @@ Triggers:
 - { "type": "folder", "path": "absolute", "pattern": "*.pdf" or "", "events": "added"|"changed"|"any" }  data: folder, files (list of full paths)
 - { "type": "workflow", "name": "another workflow", "status": "ok"|"error"|"any" }  data: name, status, vars
 - { "type": "server", "on": "up"|"crashed"|"stopped"|"any", "project": "" or a project name, "script": "" or "dev" }  (a dev server started from Shellby's Projects page) data: event, project, script, port, url, exitCode, root, framework
+- { "type": "board", "on": "posted"|"done"|"failed"|"any", "project": "" or a project name }  (a task on a project's task board, where Shellby's conversations hand each other work) data: event, id, title, detail, result, project, folder, by
 - { "type": "startup" }  { "type": "webhook" }  { "type": "claude" } (Claude Code or the shellby command may start it)
 
 Steps (each may have "id" (snake_case, how later steps refer to it), "label", "if" (condition), "retry": { "times": 0-5, "delaySec": n }, "timeoutMin", "continueOnError"):

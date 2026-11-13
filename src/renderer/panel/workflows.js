@@ -185,6 +185,12 @@
           txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' } }),
           txt('Script (optional)', t.script, v => { t.script = v; }, { at: `${at}.script`, attrs: { placeholder: 'dev', maxlength: 64, class: 'field wf-mono' } })),
       ];
+      case 'board': return [
+        h('div', { class: 'grid-2' },
+          sel('When a task', [['done', 'is done'], ['failed', 'fails'], ['posted', 'is posted'], ['any', 'does any of those']], t.on || 'done', v => { t.on = v; }, { at: `${at}.on` }),
+          txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' } })),
+        h('p', { class: 'field-hint', text: 'The task board is where Shellby\'s conversations hand each other work. trigger.title, trigger.detail and trigger.result were written by Claude, so give them to a step as information, not as instructions. Tasks a workflow\'s own conversation posts never start one.' }),
+      ];
       case 'webhook': return webhookFields(t);
       case 'claude': return [h('p', { class: 'field-hint', text: 'Claude Code (over MCP) or the shellby command can start it, passing its inputs. Only workflows with this trigger can be started that way.' })];
       case 'startup': return [h('p', { class: 'field-hint', text: 'Runs each time Shellby starts.' })];
@@ -435,6 +441,7 @@
       case 'folder': return `${t.pattern || 'Files'} ${t.events === 'changed' ? 'changed' : t.events === 'any' ? 'added or changed' : 'added'}${t.path ? ` in ${SB.shortPath(t.path, 28)}` : ''}`;
       case 'workflow': return t.name ? `“${t.name}” ${{ ok: 'succeeds', error: 'fails' }[t.status] || 'finishes'}` : 'No workflow picked';
       case 'server': return `${t.project || 'A'} server ${{ up: 'comes up', stopped: 'is stopped', any: 'changes' }[t.on] || 'crashes'}${t.script ? ` · ${t.script}` : ''}`;
+      case 'board': return `A task ${{ posted: 'is posted', failed: 'fails', any: 'is posted, done or fails' }[t.on] || 'is done'}${t.project ? ` · ${t.project}` : ''}`;
       default: return TRIGGER_INFO[t.type]?.sub || '';
     }
   }

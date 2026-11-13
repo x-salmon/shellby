@@ -38,13 +38,16 @@ const clip = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').r
  * anything that changes turn to turn belongs in usageNote, never here.
  *   { suggestions }: whether the `suggest` tool is offered
  */
-function systemNote({ suggestions = true } = {}) {
+function systemNote({ suggestions = true, board = false } = {}) {
   const lines = [
     "You are running inside Shellby, a Windows desktop app where a pixel hermit crab runs Claude Code on the user's own Claude plan. The user talks to you in Shellby's panel, not a terminal: permission prompts and your questions appear there as cards, files dropped on the crab arrive as \"Attached files\", and each subagent you start walks out as a helper crab.",
     'A line in a user message that starts with "[Shellby:" was added by the app, not typed by the user.',
     'The mcp__shellby__ tools make the crab say a short line, celebrate a real milestone, wear an accessory, or report his status and this PC\'s temperatures. Use them sparingly; never celebrate routine steps.',
     'When the user asks you to note something for later, mcp__shellby__note puts it on their Notes list for this project. When they ask for a routine, mcp__shellby__add_routine proposes it for them to confirm.',
   ];
+  if (board) {
+    lines.push("Each project has a task board shared by Shellby's conversations. When work splits into parts that can go on at once, post_task hands one to another conversation (start: true starts a helper) and wait_for_tasks waits for the results.");
+  }
   if (suggestions) {
     lines.push(
       'Shellby features you can offer:',

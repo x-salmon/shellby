@@ -26,6 +26,7 @@ const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').
  *   health, startup: any data
  *   workflow: data { name, status, chain }
  *   server:   data { event: 'up'|'crashed'|'stopped', project, script, ... }
+ *   board:    data { event: 'posted'|'claimed'|'released'|'done'|'failed'|'cancelled', id, title, project, ... }
  */
 function matchEvent(workflows, type, data = {}) {
   const out = [];
@@ -46,6 +47,8 @@ function matches(t, data, wf) {
     case 'task': return t.outcome === 'any' || t.outcome === data.outcome;
     case 'flaky': return !t.project || same(t.project, data.project);
     case 'server': return (t.on === 'any' || t.on === data.event) && (!t.project || same(t.project, data.project)) && (!t.script || same(t.script, data.script));
+    // Only the three a trigger can pick: claims and releases come and go too often to start anything.
+    case 'board': return (t.on === data.event || (t.on === 'any' && ['posted', 'done', 'failed'].includes(data.event))) && (!t.project || same(t.project, data.project));
     case 'workflow':
       return same(t.name, data.name) && !same(wf.name, data.name)
         && (t.status === 'any' || t.status === data.status)

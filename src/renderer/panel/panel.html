@@ -1974,6 +1974,8 @@
         </div>
         <label class="toggle"><input type="checkbox" id="selfAwareToggle"><span class="switch"></span>Tell Claude it's running in Shellby</label>
         <label class="toggle"><input type="checkbox" id="suggestToggle"><span class="switch"></span>Let Claude offer Shellby features</label>
+        <label class="toggle"><input type="checkbox" id="taskBoardToggle" aria-describedby="taskBoardText"><span class="switch"></span>Task board</label>
+        <p class="small muted" id="taskBoardText">Conversations can hand each other work on each project's task board, and start a helper for a task: in its own copy, in the same mode (Smart at most), at most three at once, never at your usage limit. Applies to new conversations.</p>
         <p class="small muted">Claude gets a short note about Shellby and can make him talk, celebrate or dress up. The note never changes, so Claude Code caches it and it costs very little of your plan. When your usage passes 80%, Claude is told so it can keep things lean. Offers show up as cards and nothing happens unless you tap them. Changes apply to new conversations.</p>
         <label class="toggle"><input type="checkbox" id="plainCardsToggle"><span class="switch"></span>Say what Claude is doing in plain words</label>
         <p class="small muted">Permission cards and the Working bar say what a step does ("Run your tests in its own copy of the repo") and point out deletes, files outside the project, installs and anything that goes online. The command itself is still shown. Worked out by Shellby from the step itself, so it costs no usage.</p>
@@ -3157,6 +3159,7 @@
 <script src="focus.js"></script>
 <script src="startfrom.js"></script>
 <script src="backlog.js"></script>
+<script src="taskboard.js"></script>
 <script src="project-facts.js"></script>
 <script src="inbox.js"></script>
 <script src="releases.js"></script>
