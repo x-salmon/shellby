@@ -144,6 +144,8 @@ require('./session').setLogger(log);
 
 // Dev/e2e only: drive the app with the fake CLI from test/fixtures (no Claude account, no usage).
 const FAKE_CLI = !app.isPackaged && process.env.SHELLBY_FAKE_CLAUDE ? path.resolve(process.env.SHELLBY_FAKE_CLAUDE) : null;
+// The same for Gemini CLI, OpenCode and Codex (harness/): one script stands in for every ACP agent.
+const FAKE_ACP = !app.isPackaged && process.env.SHELLBY_FAKE_ACP ? path.resolve(process.env.SHELLBY_FAKE_ACP) : null;
 require('./lighter').lighten(app); // one process fewer: the network service runs inside main
 require('./test-desktop').keepPainting(app); // test runs only: keep covered windows painting, so screenshots and rendering work on a busy desktop
 // Isolated dev/test runs (SHELLBY_USER_DATA) never touch the real status file
@@ -165,7 +167,7 @@ let claudeRecheck = null; // a status check after Claude Code moved (shared.clau
 const shared = {
   ROOT, RENDERER, PRELOAD, CRITTER_PRELOAD, TOY_PRELOAD, FLOOR_PRELOAD, NOTE_PRELOAD, ICON, CAPTURE,
   BASE_PX, MAX_CREW_SHOWN, SLEEP_AFTER_MS, LONG_TASK_MS, CREW_WORTH_MENTIONING, TAB_IDLE_STOP_MS,
-  TAB_IDLE_CHECK_MS, IDLE_BIT_CHANCE, TRICKS_KIND, CARD_MAX_BYTES, PNG_SIGNATURE, FAKE_CLI, ISOLATED,
+  TAB_IDLE_CHECK_MS, IDLE_BIT_CHANCE, TRICKS_KIND, CARD_MAX_BYTES, PNG_SIGNATURE, FAKE_CLI, FAKE_ACP, ISOLATED,
   LOG_DIR, log, every, repeating, randomUUID,
   PRIMARY: false, lastRun: null, sentry: null, // crash reports, started below
   captureClock: { now: null }, // screenshot runs can pretend it's Halloween

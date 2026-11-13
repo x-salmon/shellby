@@ -96,3 +96,67 @@ test('the branch-naming request asks for one "Branch:" line', () => {
   // The first word is the commit type workMessage reads, so the work comes home typed.
   assert.match(NAME_THE_BRANCH, /first word its kind: feat, fix/);
 });
+
+// ---- another agent's conversation (harness/): its copy comes before its first message
+
+const fs = require('fs');
+const { execFileSync } = require('child_process');
+
+function repoAndHome() {
+  // realpath: CI's temp folder is an 8.3 short name and git reports the long one.
+  const repo = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-cf-repo-')));
+  const home = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-cf-home-')));
+  const git = (...a) => execFileSync('git', ['-C', repo, ...a], { stdio: 'ignore' });
+  git('init', '-q', '-b', 'main');
+  git('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '--allow-empty', '-m', 'first');
+  return { repo, home, cleanup: () => { for (const d of [repo, home]) fs.rmSync(d, { recursive: true, force: true }); } };
+}
+
+function harnessSetup({ home, data = { worktrees: true } }) {
+  const notes = [];
+  const tabs = new Map();
+  const d = {
+    config: { get: k => data[k] },
+    manager: { tabs, note: (id, item) => notes.push(item), changed: () => {} },
+    history: { load: () => [], get: () => null, update: () => {} },
+    CAPTURE: false,
+    log: { info: () => {}, warn: () => {} },
+    worktreeHome: () => home,
+  };
+  const tabOf = (session) => { const tab = { id: 'h1', title: 'Gemini task', harness: 'gemini', session }; tabs.set('h1', tab); return tab; };
+  return { copies: createCopies(d), notes, tabOf };
+}
+
+test("another agent's new conversation in a repository gets its copy before its first message", async t => {
+  const { repo, home, cleanup } = repoAndHome();
+  t.after(cleanup);
+  const { copies, notes, tabOf } = harnessSetup({ home });
+  const tab = tabOf({ cwd: repo, sessionId: null });
+
+  await copies.copyFirst(tab);
+
+  assert.ok(tab.worktree, 'it has a copy');
+  assert.ok(tab.session.cwd.toLowerCase().startsWith(home.toLowerCase()), `and works in it (${tab.session.cwd})`);
+  assert.equal(notes[0].kind, 'moved');
+});
+
+test("one whose session began in the checkout, or with copies off, or outside a repository, stays put", async t => {
+  const { repo, home, cleanup } = repoAndHome();
+  t.after(cleanup);
+  const started = harnessSetup({ home });
+  const a = started.tabOf({ cwd: repo, sessionId: 'sess-1' });
+  await started.copies.copyFirst(a);
+  assert.equal(a.session.cwd, repo);
+  assert.equal(a.staysPut, true);
+
+  const off = harnessSetup({ home, data: { worktrees: false } });
+  const b = off.tabOf({ cwd: repo, sessionId: null });
+  await off.copies.copyFirst(b);
+  assert.equal(b.session.cwd, repo);
+
+  const plain = harnessSetup({ home });
+  const c = plain.tabOf({ cwd: home, sessionId: null });
+  await plain.copies.copyFirst(c);
+  assert.equal(c.session.cwd, home);
+  assert.equal(c.staysPut, true);
+});
