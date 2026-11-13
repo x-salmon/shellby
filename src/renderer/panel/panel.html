@@ -62,9 +62,9 @@
     <button type="button" class="brand" id="brandBtn" title="Shellby's outfits and trophies" aria-label="Shellby: outfits and trophies">
       <span class="brand-crab" id="brandCrab"></span>
       <span class="brand-name">Shellby</span>
-      <span class="brand-xp" aria-hidden="true"><i id="brandXp"></i></span>
     </button>
-    <button type="button" class="brand-level" id="brandLevel" hidden></button>
+    <!-- the nameplate: "Lv" (CSS), the level, its marks, and ten XP cells (xp.js). Its text is only the level and marks. -->
+    <button type="button" class="brand-level" id="brandLevel" hidden><span class="lv-num" id="brandLevelNum"></span><span class="lv-mark" id="brandLevelMark"></span><span class="lv-cells" id="brandXp" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
     <span class="win-title" id="winTitle"></span>
     <button class="mode-chip" id="modeChip" type="button" aria-haspopup="menu" title="Permission mode (Shift+Tab in the message box cycles it)" aria-keyshortcuts="Shift+Tab">
       <span class="mode-dot"></span><span id="modeLabel">Ask</span>
@@ -128,11 +128,11 @@
       <span id="branchLabel">own copy</span>
     </button>
     <button type="button" class="folder-chip effort-chip" id="effortChip" aria-haspopup="menu" title="How hard Claude thinks (effort)">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 9.4 6l3.9.3-3 2.5 1 3.9L8 10.6l-3.3 2.1 1-3.9-3-2.5L6.6 6z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      <svg class="effort-dial" viewBox="0 0 16 16" aria-hidden="true"><path class="dial-track" d="M1.8 12A6.2 6.2 0 0 1 14.2 12"/><path class="dial-fill" d="M1.8 12A6.2 6.2 0 0 1 14.2 12" pathLength="100"/><path class="dial-needle" d="M8 12H2.8"/><circle class="dial-hub" cx="8" cy="12" r="1.5"/></svg>
       <span id="effortLabel">auto</span>
     </button>
     <button type="button" class="folder-chip model-chip" id="modelChip" aria-haspopup="menu" title="The model this conversation runs (/model)" hidden>
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 14 8l-6 6.2L2 8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      <svg class="model-tier" id="modelTier" viewBox="0 0 13 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".5"/><rect x="5" y="4" width="3" height="8" rx=".5"/><rect x="10" y="0" width="3" height="12" rx=".5"/></svg>
       <span id="modelLabel"></span>
     </button>
     <button type="button" class="ctx-chip" id="ctxChip" aria-haspopup="menu" hidden>

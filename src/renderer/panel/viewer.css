@@ -87,7 +87,10 @@ body[data-view="viewer"] .view-viewer { display: flex; flex-direction: column; p
 .vw-viewed:hover { color: var(--sand); background: var(--line-soft); }
 .vw-viewed input { margin: 0; accent-color: var(--glass); }
 .vw-viewed:has(input:checked) { color: var(--glass); }
-.vw-space[aria-pressed="true"], .vw-preview[aria-pressed="true"] { color: var(--sand); box-shadow: inset 0 -2px 0 var(--glass); }
+.vw-space[aria-pressed="true"], .vw-preview[aria-pressed="true"], .vw-mode[aria-pressed="true"] { color: var(--sand); box-shadow: inset 0 -2px 0 var(--glass); }
+/* Diff | Whole file: one control, two sides, the one showing underlined. */
+.vw-modes { display: inline-flex; gap: 1px; }
+.vw-mode[aria-pressed="true"] { cursor: default; }
 
 /* Find in file and Go to line (viewer-find.js): over the code's top right corner, under its head. */
 .vw-body { position: relative; }

@@ -405,6 +405,7 @@
     const waiting = !by && !id && picking();
     $('effortLabel').textContent = id ? effortName(id).toLowerCase() : waiting ? 'fits' : 'auto';
     $('effortChip').classList.toggle('on', !!id);
+    $('effortChip').dataset.level = String(Math.max(0, EFFORTS.findIndex(x => x.id === id))); // the dial (composer.css)
     $('effortChip').title = waiting
       ? 'Effort: picked from your first message, to fit the job. Click to choose it yourself (/effort)'
       : `Effort: ${effortName(id)}${by === 'picked' ? ', picked to fit your first message' : ''}. How hard Claude thinks in this conversation (/effort)`;
@@ -428,11 +429,33 @@
   const DEFAULT_SEEN = 'shellby.defaultModelSeen';
   const isClaude = id => typeof id === 'string' && (/^claude-/.test(id) || (state.models || []).some(m => m.id === id));
   const askedOf = tab => (typeof tab?.modelAsked === 'string' ? tab.modelAsked : state.settings?.model || '');
-  function defaultName(tab) {
+  function defaultSeen(tab) {
     const mine = !tab?.local && askedOf(tab) === '' && isClaude(tab?.model) ? tab.model : null;
     const kept = SB.pref(DEFAULT_SEEN);
-    const seen = mine || (isClaude(kept) ? kept : null);
+    return mine || (isClaude(kept) ? kept : null);
+  }
+  function defaultName(tab) {
+    const seen = defaultSeen(tab);
     return seen ? `default (${modelName(seen)})` : 'default';
+  }
+
+  // The chip's tier bars: how heavy the model is, one bar for Haiku to three
+  // for Opus and Fable (the same top tier as routines.js TOP_MODEL). A local
+  // model, or one Shellby can't place, lights none.
+  const MODEL_TIERS = [[/haiku/i, 1], [/sonnet/i, 2], [/opus|fable/i, 3]];
+  const tierOf = name => MODEL_TIERS.find(([re]) => re.test(name))?.[1] || 0;
+  function showTier(n) {
+    $('modelTier').querySelectorAll('rect').forEach((bar, i) => bar.classList.toggle('lit', i < n));
+  }
+  // "Opus 5.5" → a bold "Opus", the version beside it, then a tag ("default",
+  // "local"). In a narrow panel only the name stays (panel.css @container subbar).
+  function chipLabel(name, tag, local = false) {
+    const [family, ...rest] = name.split(' ');
+    const version = rest.join(' ').replace(/^\((.*)\)$/, '$1'); // "(latest)" → "latest"
+    $('modelLabel').replaceChildren(
+      h('b', { class: 'model-name', text: family }),
+      version && h('span', { class: 'model-ver', text: version }),
+      tag && h('span', { class: local ? 'model-tag local' : 'model-tag', text: tag }));
   }
 
   SB.applyModel = () => {
@@ -441,19 +464,24 @@
     if (tab && !tab.local && asked === '' && isClaude(tab.model)) SB.pref.set(DEFAULT_SEEN, tab.model);
     const chip = $('modelChip');
     chip.hidden = !tab;
+    chip.classList.toggle('local', !!tab?.local);
     if (tab?.local) {
-      $('modelLabel').textContent = tab.local;
+      chipLabel(tab.local, 'local', true);
+      showTier(0);
       chip.classList.add('on');
+      chip.setAttribute('aria-label', `Model: ${tab.local}, on this PC`);
       chip.title = `Model: ${tab.local}, on this PC. ${tab.canLocal ? 'Click to switch it before its first message' : 'It stays on this PC for good'} (/model)`;
       return;
     }
     const id = asked === '' ? '' : tab?.model || asked;
-    // "default (Sonnet 5.5)": in a narrow panel only the name shows (panel.css .model-default).
-    const seen = !id && defaultName(tab).match(/^default \((.+)\)$/);
-    if (seen) $('modelLabel').replaceChildren(h('span', { class: 'model-default', text: 'default (' }), seen[1], h('span', { class: 'model-default', text: ')' }));
-    else $('modelLabel').textContent = id ? modelName(id) : defaultName(tab);
+    const seen = id ? null : defaultSeen(tab);
+    const name = id ? modelName(id) : seen ? modelName(seen) : 'default';
+    chipLabel(name, !id && seen ? 'default' : '');
+    showTier(tierOf(`${name} ${id || seen || ''}`)); // the id too: a listed label may not name its family
     chip.classList.toggle('on', !!id);
     chip.title = `Model: ${id || `${defaultName(tab)}, what Claude Code picks for your plan`}. Click to switch this conversation (/model)`;
+    // A narrow panel hides the version and the "default" tag; the button's name keeps them.
+    chip.setAttribute('aria-label', `Model: ${id ? name : defaultName(tab)}`);
   };
 
   // The local server's models (main's local/model.js listModels), asked for

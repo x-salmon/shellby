@@ -44,7 +44,7 @@ html, body {
   background: radial-gradient(closest-side, rgba(0,0,0,.35), transparent);
 }
 .helper .tag {
-  position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: calc(100% + var(--tag-lift, 6px)); transform: translateX(-50%);
   max-width: 100px; padding: 2px 6px; border-radius: var(--r-sm);
   font: 600 var(--fs-10)/1.2 "Pixelify Sans", monospace; color: var(--ink); background: var(--sand);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -53,10 +53,19 @@ html, body {
 }
 .helper:hover .tag, .helper.fresh .tag { opacity: 1; }
 /* a message between helpers (SendMessage): the tag shows it while it's fresh */
+/* Its words sit clear above its head, a crab-pixel higher at every size (the
+   stalks and the hop reach past the sprite's box), with a tail down to it. */
+.helper.talking { --tag-lift: calc(10px + var(--px, 4px)); }
 .helper.talking .tag { opacity: 1; max-width: 160px; background: var(--glass); z-index: 3; }
 .helper.talking.heard .tag { background: #cfe8ff; color: #10324f; }
+.helper.talking::before {
+  content: ""; position: absolute; left: 50%; bottom: calc(100% + var(--tag-lift) - 9px); z-index: 3;
+  transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--glass); pointer-events: none;
+}
+.helper.talking.heard::before { border-top-color: #cfe8ff; }
 /* stagger neighbouring labels so they never overlap */
-.helper:nth-child(even) .tag { bottom: calc(100% + 26px); }
+.helper:nth-child(even) .tag { bottom: calc(100% + var(--tag-lift, 6px) + 20px); }
+.helper.talking:nth-child(even)::before { bottom: calc(100% + var(--tag-lift) + 11px); }
 .helper:hover .tag { z-index: 2; }
 .helper.leaving { position: absolute; bottom: 0; animation: helper-out .9s ease-in forwards; pointer-events: none; }
 .more {

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby level badge: 5 directions</title>
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../assets/fonts/AtkinsonHyperlegible-Bold.ttf"); font-weight: 700; }
+
+:root {
+  --abyss: #071012; --reef: #11232a; --line: #214049;
+  --sand: #f3e6cc; --sand-dim: #b3a892; --glass: #7fd6c2; --danger: #ff5a4a;
+  --font-pixel: "Pixelify Sans", monospace; --font-body: "Atkinson Hyperlegible", sans-serif;
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 40px 64px; background: var(--abyss); color: var(--sand); font: 15px/1.5 var(--font-body); }
+h1 { font: 600 28px/1.1 var(--font-pixel); margin: 0 0 6px; }
+.lede { color: var(--sand-dim); max-width: 64ch; margin: 0 0 32px; }
+.dir { display: grid; grid-template-columns: 300px 1fr; gap: 28px; padding: 26px 0; border-top: 1px solid var(--line); }
+.dir h2 { font: 600 20px/1.2 var(--font-pixel); margin: 0 0 6px; }
+.dir h2 small { color: var(--sand-dim); font: 400 14px var(--font-pixel); margin-right: 6px; }
+.dir p { color: var(--sand-dim); margin: 0 0 8px; font-size: 14px; }
+.dir .why { color: var(--sand); }
+
+/* titlebar replica at real size */
+.bar { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; width: 420px; background: #0d1a1d; border-radius: 6px; }
+.crab { width: 33px; height: 20px; display: grid; place-items: end center; position: relative; }
+.crab svg { width: 33px; }
+.name { font: 600 17px/1 var(--font-pixel); letter-spacing: .02em; }
+.chip { margin-left: 4px; display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 99px;
+  border: 1px solid rgba(255, 90, 74, .55); background: rgba(255, 90, 74, .12); color: #ff8f80; font: 700 13px var(--font-body); }
+.chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
+.under { position: absolute; left: 0; width: 33px; bottom: -3px; height: 2px; background: color-mix(in srgb, var(--c) 15%, transparent); }
+.under b { display: block; height: 100%; width: var(--p); background: var(--c); }
+
+.states { display: flex; flex-wrap: wrap; gap: 28px 40px; align-items: center; margin-top: 22px; }
+.state { display: grid; justify-items: start; gap: 10px; margin: 0; }
+.zoom { zoom: 3; min-width: 40px; height: 28px; display: flex; align-items: center; padding-left: 4px; }
+.state figcaption { font-size: 12px; color: var(--sand-dim); }
+
+button.lv { -webkit-appearance: none; appearance: none; border: 0; padding: 0; cursor: pointer; flex: none; }
+button.lv:focus-visible { outline: 2px solid var(--glass); outline-offset: 3px; }
+
+/* 1. Shell coin: a stepped pixel token; XP fills its bottom edge */
+.d1 { height: 18px; min-width: 22px; padding: 0 6px; margin-left: -6px;
+  font: 600 13px/18px var(--font-pixel); color: #1f1604; text-align: center;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--c) 40%, #fff) var(--p), color-mix(in srgb, var(--c) 55%, #000) var(--p)) left bottom / 100% 2px no-repeat,
+    var(--c);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.45);
+  clip-path: polygon(2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px), 0 2px, 2px 2px);
+  transition: transform .15s steps(2); }
+.d1:hover { transform: translateY(-2px); }
+.d1 .mk { font-size: 10px; margin-left: 1px; }
+
+/* 2. Tide ring: XP is a ring round the number */
+.d2 { position: relative; width: 24px; height: 24px; margin-left: -4px; border-radius: 50%;
+  background: conic-gradient(var(--c) var(--p), color-mix(in srgb, var(--c) 18%, transparent) 0); transition: transform .15s var(--ease-spring); }
+.d2::before { content: ""; position: absolute; inset: 2.5px; border-radius: 50%; background: var(--reef); }
+.d2 .n { position: relative; display: grid; place-items: center; height: 100%; font: 700 11px/1 var(--font-pixel); color: var(--c); }
+.d2 .mk { position: absolute; right: -10px; bottom: -4px; padding: 0 3px; border-radius: 4px; background: var(--c); color: #1f1604; font: 700 8px/11px var(--font-pixel); }
+.d2:hover { transform: rotate(-8deg) scale(1.08); }
+
+/* 3. Nameplate: Lv + number + segmented XP cells, RPG style */
+.d3 { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px 0 8px; margin-left: -4px; background: transparent; border-left: 1px solid var(--line); }
+.d3 .lvw { font: 400 10px/1 var(--font-pixel); color: var(--sand-dim); }
+.d3 .n { font: 700 15px/1 var(--font-pixel); color: var(--sand); transition: color .15s; }
+.d3 .mk { font: 700 10px/1 var(--font-pixel); color: var(--c); margin-left: -2px; }
+.d3 .cells { display: inline-grid; grid-auto-flow: column; gap: 1px; margin-left: 2px; }
+.d3 .cells i { width: 3px; height: 8px; background: color-mix(in srgb, var(--c) 20%, transparent); }
+.d3 .cells i.on { background: var(--c); }
+.d3 .cells i.edge { background: color-mix(in srgb, var(--c) 55%, #fff); animation: blink 1.2s steps(1) infinite; }
+.d3:hover .n { color: var(--c); }
+@keyframes blink { 50% { background: color-mix(in srgb, var(--c) 20%, transparent); } }
+
+/* 4. Brass tag: an engraved plate with pixel rivets, cast in the rank colour */
+.d4 { position: relative; height: 18px; padding: 0 9px; margin-left: -4px;
+  font: 700 12px/18px var(--font-pixel); color: color-mix(in srgb, var(--c) 25%, #1a1203);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--c) 40%, #fff);
+  background:
+    radial-gradient(circle at 4px 50%, color-mix(in srgb, var(--c) 30%, #000) 1px, transparent 1.6px),
+    radial-gradient(circle at calc(100% - 4px) 50%, color-mix(in srgb, var(--c) 30%, #000) 1px, transparent 1.6px),
+    linear-gradient(180deg, color-mix(in srgb, var(--c) 55%, #fff) 0 2px, var(--c) 2px 55%, color-mix(in srgb, var(--c) 72%, #000) 100%);
+  border-radius: 2px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 35%, #000), 0 2px 0 rgba(0,0,0,.45);
+  transition: transform .12s, box-shadow .12s; }
+.d4 .lvw { font-weight: 500; font-size: 10px; margin-right: 2px; opacity: .8; }
+.d4:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 35%, #000), 0 3px 0 rgba(0,0,0,.45); }
+.d4:active { transform: translateY(1px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 35%, #000), 0 1px 0 rgba(0,0,0,.45); }
+
+/* 5. Bubble: a tidepool bubble that fills with water as XP rises */
+.wrap5 { position: relative; display: inline-flex; margin-left: -6px; margin-top: -8px; }
+.wrap5::after { content: ""; position: absolute; left: -6px; bottom: -5px; width: 4px; height: 4px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(200,240,232,.5); }
+.d5 { position: relative; width: 24px; height: 24px; border-radius: 50%;
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--c) 70%, transparent) var(--p), transparent var(--p)),
+    radial-gradient(circle at 50% 60%, rgba(127,214,194,.06), rgba(127,214,194,.16));
+  box-shadow: inset 0 0 0 1px rgba(200,240,232,.55), inset -2px -3px 4px rgba(0,0,0,.25);
+  transition: transform .3s var(--ease-spring); }
+.d5::before { content: ""; position: absolute; left: 5px; top: 4px; width: 5px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.75); transform: rotate(-30deg); }
+.d5 .n { position: relative; display: grid; place-items: center; height: 100%; font: 700 11px/1 var(--font-pixel); color: var(--sand); text-shadow: 0 1px 1px rgba(0,0,0,.7); }
+.d5 .mk { position: absolute; top: -4px; right: -9px; font: 700 8px/1 var(--font-pixel); color: var(--c); }
+.d5:hover { transform: translateY(-3px); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<h1>The level badge, five ways</h1>
+<p class="lede">Each one sits in the real titlebar at real size, then at 3× in three states: an early level, your level 75, and past 99 with marks. Every badge takes the rank colour, so it keeps changing as he climbs. Hover them; Tab reaches them too.</p>
+<div id="out"></div>
+
+<script>
+const CRAB = `<svg viewBox="0 0 11 7" shape-rendering="crispEdges"><g fill="#ff7a5c">
+<rect x="0" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="2" y="2" width="7" height="3"/>
+<rect x="1" y="5" width="1" height="2"/><rect x="3" y="5" width="1" height="2"/><rect x="7" y="5" width="1" height="2"/><rect x="9" y="5" width="1" height="2"/></g>
+<g fill="#f3e6cc"><rect x="3" y="0" width="1" height="2"/><rect x="7" y="0" width="1" height="2"/></g><rect x="4" y="2" width="3" height="1" fill="#e2573a"/></svg>`;
+
+const STATES = [
+  { level: 3,  marks: 0, p: 18, c: '#7fd6c2', note: 'Lv 3, sea-glass rank, 18%' },
+  { level: 75, marks: 0, p: 62, c: '#ffd23f', note: 'Lv 75, gold rank, 62%' },
+  { level: 99, marks: 3, p: 88, c: '#ff9ad5', note: 'Lv 99 with 3 marks, 88%' },
+];
+const CELLS = 10;
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const label = s => `Level ${s.level}${s.marks ? `, ${s.marks} marks` : ''}, ${s.p}% to next: open Trophies and XP`;
+const vars = s => `--c:${s.c};--p:${s.p}%`;
+const mark = (s, cls = 'mk') => (s.marks ? `<span class="${cls}">★${s.marks}</span>` : '');
+
+const DIRS = [
+  { id: 1, name: 'Shell coin', tag: 'Pixel token',
+    blurb: "The pill becomes a stepped pixel coin in Pixelify, the same face as his name. XP fills the coin's bottom edge, so the 2px bar under the crab goes.",
+    why: 'Smallest change. Ties the badge to his pixel art without taking more room.',
+    badge: s => `<button class="lv d1" style="${vars(s)}" aria-label="${esc(label(s))}">${s.level}${mark(s)}</button>` },
+  { id: 2, name: 'Tide ring', tag: 'Progress ring',
+    blurb: 'A dark disc with the level in the rank colour, and a ring that closes as XP comes in. Marks hang off it in a small tab.',
+    why: 'You can read your progress at a glance without hovering.',
+    badge: s => `<button class="lv d2" style="${vars(s)}" aria-label="${esc(label(s))}"><span class="n">${s.level}</span>${mark(s)}</button>` },
+  { id: 3, name: 'Nameplate', tag: 'RPG health bar',
+    blurb: '"Lv 75" in plain sand, then ten XP cells; the next cell blinks while you earn it. No fill behind it, so it reads as part of his name, not a chip.',
+    why: 'Most game-like, and the word Lv tells a new user what the number means.',
+    badge: s => {
+      const on = Math.floor(s.p / CELLS);
+      const cells = Array.from({ length: CELLS }, (_, i) => `<i class="${i < on ? 'on' : i === on ? 'edge' : ''}"></i>`).join('');
+      return `<button class="lv d3" style="${vars(s)}" aria-label="${esc(label(s))}"><span class="lvw">Lv</span><span class="n">${s.level}</span>${mark(s)}<span class="cells">${cells}</span></button>`;
+    } },
+  { id: 4, name: 'Brass tag', tag: 'Engraved plate',
+    blurb: 'A small metal plate with rivets and stamped lettering, cast in the rank colour (sea-glass, gold, pink gold). It presses in when you click it.',
+    why: 'Feels like something he earned. XP stays in the bar under the crab, so the plate has room for "Lv".',
+    under: true,
+    badge: s => `<button class="lv d4" style="${vars(s)}" aria-label="${esc(label(s))}"><span class="lvw">Lv</span>${s.level}${s.marks ? ` ★${s.marks}` : ''}</button>` },
+  { id: 5, name: 'Bubble', tag: 'Tidepool bubble',
+    blurb: 'A glass bubble rising off the crab, filling with water in the rank colour as XP comes in. On a level up it could pop and a fresh one float up.',
+    why: 'Most on-theme with the tidepool look, and it sets up the best level-up moment.',
+    badge: s => `<span class="wrap5"><button class="lv d5" style="${vars(s)}" aria-label="${esc(label(s))}"><span class="n">${s.level}</span>${mark(s)}</button></span>` },
+];
+
+const bar = (d, s) => `<div class="bar"><span class="crab">${CRAB}${d.under ? `<span class="under" style="${vars(s)}"><b></b></span>` : ''}</span>
+  <span class="name">Shellby</span>${d.badge(s)}<span class="chip"><i></i>Autonomous ⌄</span></div>`;
+
+document.getElementById('out').innerHTML = DIRS.map(d => `
+<section class="dir">
+  <div><h2><small>${d.id}</small>${d.name}</h2><p>${d.tag}</p><p>${d.blurb}</p><p class="why">${d.why}</p></div>
+  <div>${bar(d, STATES[1])}
+    <div class="states">${STATES.map(s => `<figure class="state"><div class="zoom">${d.badge(s)}</div><figcaption>${s.note}</figcaption></figure>`).join('')}</div>
+  </div>
+</section>`).join('');
+</script>
+</body>
+</html>

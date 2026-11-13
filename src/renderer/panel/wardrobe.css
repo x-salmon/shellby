@@ -192,16 +192,33 @@ body[data-view="trophies"] .view-trophies { display: block; overflow-y: auto; pa
 
 /* ---------- XP: titlebar badge + Trophies card ---------- */
 .brand { position: relative; }
-/* its own button right after the logo: it opens Trophies & XP, and never covers the crab */
+/* The nameplate, its own button right after the logo (it opens Trophies & XP):
+   "Lv", the level, its marks in the rank colour, and ten XP cells like a game's
+   health bar. "Lv" is CSS so the button's text stays the level alone. */
 .brand-level {
   -webkit-app-region: no-drag;
-  flex: none; min-width: 18px; height: 18px; padding: 0 5px; margin-left: -6px; border: 0; border-radius: 99px;
-  font: 700 var(--fs-10)/18px var(--font-mono); text-align: center; color: #1f1604; background: var(--rank, #ffd23f);
-  transition: transform .15s var(--ease-spring), box-shadow .15s;
+  flex: none; display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 6px 0 8px; margin-left: -4px;
+  border: 0; border-left: 1px solid var(--line); border-radius: 0; background: none;
+  font-family: var(--font-pixel); color: var(--sand); cursor: pointer;
 }
-.brand-level:hover { transform: scale(1.12); box-shadow: 0 0 0 3px rgba(255, 210, 63, .22); }
-.brand-xp { position: absolute; left: 6px; width: 33px; bottom: 0; height: 2px; border-radius: 2px; background: rgba(255, 210, 63, .15); overflow: hidden; }
-.brand-xp i { display: block; height: 100%; background: var(--rank, #ffd23f); transform-origin: left; transform: scaleX(0); transition: transform .6s var(--ease-out); }
+.brand-level[hidden] { display: none; }
+.brand-level::before { content: "Lv"; font-size: var(--fs-10); line-height: 1; color: var(--sand-dim); }
+.lv-num { font-weight: 700; font-size: var(--fs-15); line-height: 1; transition: color .15s; }
+.lv-mark { font-weight: 700; font-size: var(--fs-10); line-height: 1; color: var(--rank, #ffd23f); margin-left: -3px; }
+.lv-mark:empty { display: none; }
+.lv-cells { display: inline-grid; grid-auto-flow: column; gap: 1px; margin-left: 2px; }
+.lv-cells i { width: 3px; height: 8px; background: color-mix(in srgb, var(--rank, #ffd23f) 20%, transparent); }
+.lv-cells i.on { background: var(--rank, #ffd23f); }
+.lv-cells i.edge { background: color-mix(in srgb, var(--rank, #ffd23f) 55%, #fff); }
+/* the cell being earned blinks only while Claude works, so an idle panel paints nothing */
+body.busy .lv-cells i.edge { animation: lv-edge 1.2s steps(1) infinite; }
+@keyframes lv-edge { 50% { background: color-mix(in srgb, var(--rank, #ffd23f) 20%, transparent); } }
+.brand-level:hover .lv-num { color: var(--rank, #ffd23f); }
+.brand-level:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { body.busy .lv-cells i.edge { animation: none; } }
+/* very narrow panels keep "Lv" and the number, and drop the cells */
+@container titlebar (max-width: 380px) { .lv-cells { display: none; } }
 
 .xp-card {
   margin: 0 0 14px; padding: 14px; border-radius: var(--r-lg);
