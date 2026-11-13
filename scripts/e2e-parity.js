@@ -146,6 +146,7 @@ function makeRepo() {
     check(await until("!SB.$('effortMenu').hidden"), 'the effort chip opens its menu');
     await ev("[...SB.$('effortMenu').querySelectorAll('.menu-item')].find(b => b.textContent.startsWith('High')).click()");
     check(await until("SB.activeTab().effort === 'high' && SB.$('effortLabel').textContent === 'high'"), 'picking High sets it for this conversation and shows it');
+    check(await ev("SB.$('effortChip').dataset.level === String(SB.EFFORTS.findIndex(x => x.id === 'high'))"), 'the effort dial points at High');
     await type('effort');
     await idle();
     check((await lastReply()).includes('effort:high'), 'the running conversation thinks at the new effort');

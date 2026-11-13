@@ -5,6 +5,32 @@
 .effort-chip { margin-left: 2px; }
 .effort-chip.on { color: var(--amber); }
 .effort-chip.on:hover { color: var(--amber); }
+/* Max spends the plan's limits fastest: coral rather than amber. */
+.effort-chip[data-level="5"], .effort-chip[data-level="5"]:hover { color: var(--coral); }
+
+/* The dial: the needle swings from left (low) to right (max) and the arc fills
+   behind it. data-level (0 auto, 1 low … 5 max) sets --turn, the fraction of
+   the half circle; the needle points left at rest, so it turns by --turn × 180°. */
+.effort-chip { --turn: .5; }
+.effort-chip[data-level="1"] { --turn: .1; }
+.effort-chip[data-level="2"] { --turn: .3; }
+.effort-chip[data-level="3"] { --turn: .5; }
+.effort-chip[data-level="4"] { --turn: .7; }
+.effort-chip[data-level="5"] { --turn: .9; }
+.effort-dial path { fill: none; stroke: currentColor; stroke-linecap: round; }
+.dial-track { stroke-width: 1.6; opacity: .3; }
+.dial-fill { stroke-width: 1.6; stroke-dasharray: calc(var(--turn) * 100) 100; }
+.dial-needle { stroke-width: 1.4; transform-box: view-box; transform-origin: 8px 12px; transform: rotate(calc(var(--turn) * 180deg)); }
+.dial-hub { fill: currentColor; }
+@media (prefers-reduced-motion: no-preference) {
+  .dial-needle { transition: transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+  .dial-fill { transition: stroke-dasharray .35s ease-out; }
+}
+/* Auto (and "fits", before the first message picks one): no reading yet, so a
+   dashed empty dial with just the hub. */
+.effort-chip[data-level="0"] .dial-track { stroke-dasharray: 1.4 1.6; opacity: .55; }
+.effort-chip[data-level="0"] .dial-fill, .effort-chip[data-level="0"] .dial-needle { visibility: hidden; }
+.effort-chip[data-level="0"] .dial-hub { opacity: .6; transform-box: view-box; transform-origin: 8px 12px; transform: scale(.85); }
 
 /* ================================================================ @ files and Ctrl+R */
 .k-shellby { --k: var(--amber); }
