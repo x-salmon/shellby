@@ -285,10 +285,7 @@
           title: 'Hide changes that are only spaces, tabs and indentation (git diff -w)',
           onclick: () => { SB.pref.set(SPACE_KEY, spaceOff() ? '0' : '1'); showFile(rel, { keep: true }); },
         }) : null,
-        f ? h('button', {
-          type: 'button', class: 'btn ghost slim-btn', text: cur.whole ? 'Diff' : 'Whole file',
-          disabled: f.status === 'D' && !cur.whole, onclick: () => { cur.whole = cur.preview ? cur.whole : !cur.whole; cur.preview = false; cur.line = null; showFile(rel); },
-        }) : null,
+        f ? modeSwitch(rel, f) : null,
         rows || big ? h('button', {
           type: 'button', class: 'btn ghost slim-btn vw-wrap', text: 'Wrap',
           'aria-pressed': String(rows && wrapOn()),
@@ -299,6 +296,26 @@
           onclick: e => { if (!big) setWrap(/** @type {HTMLElement} */ (e.currentTarget), !wrapOn()); },
         }) : null,
         f?.sig ? viewedBox(rel, f) : null));
+  }
+
+  // Diff | Whole file for a changed file: the one showing is pressed (neither while Preview is),
+  // and pressing either shows that one, so it never reads as a switch that only turns on.
+  function modeSwitch(rel, f) {
+    const me = cur;
+    const pick = whole => {
+      if (cur !== me || (me.whole === whole && !me.preview)) return;
+      me.whole = whole; me.preview = false; me.line = null;
+      showFile(rel);
+    };
+    const btn = (text, whole, title) => h('button', {
+      type: 'button', class: 'btn ghost slim-btn vw-mode', text, title,
+      'aria-pressed': String(!me.preview && me.whole === whole),
+      // A deleted file has nothing to show whole; its diff is all there is.
+      disabled: whole && f.status === 'D' && !me.whole, onclick: () => pick(whole),
+    });
+    return h('span', { class: 'vw-modes', role: 'group', 'aria-label': 'Show' },
+      btn('Diff', false, 'Just what changed'),
+      btn('Whole file', true, 'The file as it is now'));
   }
 
   // GitHub's "Viewed": ticked, the file dims on the list and the next one without a tick opens.

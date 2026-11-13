@@ -181,11 +181,15 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev("document.querySelector('#viewerMain .vw-wrap').click()");
     check(await ev("!document.querySelector('#viewerMain .vw-code').classList.contains('nowrap') && window.localStorage.getItem('shellby.viewer.wrap') === '1'"), 'Wrap on again puts it back');
 
-    // ---- Whole file on a changed file, and back to its diff
+    // ---- Whole file on a changed file, and back to its diff: the side showing is the one pressed
+    const pressed = "[...document.querySelectorAll('#viewerMain .vw-mode[aria-pressed=\"true\"]')].map(b => b.textContent).join()";
+    check(await ev(pressed) === 'Diff', 'a changed file opens on Diff, pressed');
     await ev("[...document.querySelectorAll('#viewerMain .vw-file-head button')].find(b => b.textContent === 'Whole file').click()");
     check(await until(`[...document.querySelectorAll('#viewerMain .dl.ctx .code')].some(c => c.textContent === ${JSON.stringify(MADE[0].words)})`), 'Whole file shows the changed file as text');
+    check(await until(`${pressed} === 'Whole file'`), 'and Whole file is the one pressed');
     await ev("[...document.querySelectorAll('#viewerMain .vw-file-head button')].find(b => b.textContent === 'Diff').click()");
     check(await until("!!document.querySelector('#viewerMain .dl.add')"), 'and Diff goes back');
+    check(await until(`${pressed} === 'Diff'`), 'with Diff pressed again');
 
     // ---- a file that didn't change, read whole
     await ev("document.getElementById('viewerTabFiles').click()");
