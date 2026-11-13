@@ -338,10 +338,13 @@ class ToolboxWatcher extends EventEmitter {
    * ({ id, marketplace, dir, enabled, scope }), for the mods among them.
    * getSettings: () => [user, project, local] Claude Code settings objects, for
    * which of your own mods are turned off.
+   * whenStill: (key, fn) => runs fn now, or once the crab stops walking
+   * (desktop/still.js): a scan is 20-50 ms of the main process, a stop mid-stride.
    */
-  constructor({ home, getCwd, getPlugins, getInstalled, getSettings, debounceMs = 800, pollMs = 60000, fsImpl = fs, seenFile = null, log = null } = {}) {
+  constructor({ home, getCwd, getPlugins, getInstalled, getSettings, debounceMs = 800, pollMs = 60000, fsImpl = fs, seenFile = null, log = null, whenStill = null } = {}) {
     super();
     this.home = home;
+    this.whenStill = typeof whenStill === 'function' ? whenStill : (_key, fn) => fn();
     this.getCwd = typeof getCwd === 'function' ? getCwd : () => null;
     this.getPlugins = typeof getPlugins === 'function' ? getPlugins : () => [];
     this.getInstalled = typeof getInstalled === 'function' ? getInstalled : () => [];
@@ -384,7 +387,10 @@ class ToolboxWatcher extends EventEmitter {
     if (this.pollMs > 0) {
       // Plugin dirs are read again every so often: a local plugin can be edited in place.
       let polls = 0;
-      this.poll = setInterval(() => this.rescan({ plugins: ++polls % PLUGIN_EVERY_POLLS === 0 }), this.pollMs);
+      this.poll = setInterval(() => {
+        const plugins = ++polls % PLUGIN_EVERY_POLLS === 0;
+        this.whenStill('toolbox-poll', () => { if (this.started) this.rescan({ plugins }); });
+      }, this.pollMs);
       this.poll.unref?.();
     }
   }
@@ -571,7 +577,10 @@ class ToolboxWatcher extends EventEmitter {
   schedule() {
     if (!this.started) return;
     clearTimeout(this.debounce);
-    this.debounce = setTimeout(() => { this.debounce = null; if (this.started) this.refresh(false); }, this.debounceMs);
+    this.debounce = setTimeout(() => {
+      this.debounce = null;
+      this.whenStill('toolbox-change', () => { if (this.started) this.refresh(false); });
+    }, this.debounceMs);
     this.debounce.unref?.();
   }
 }

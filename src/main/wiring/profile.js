@@ -7,6 +7,7 @@ const path = require('path');
 const attach = require('../attachments');
 const { setPlanOnly } = require('../claude/cli');
 const { Config } = require('../config');
+const { createStillGate, isMoving } = require('../desktop/still');
 const { History } = require('../history');
 const firstRun = require('../first-run');
 const rooms = require('../rooms');
@@ -29,7 +30,13 @@ function wireProfile(d) {
   function openProfile() {
     const { log } = d;
     const userData = app.getPath('userData');
-    const config = d.config = new Config(userData);
+    // Saves wait while he walks (desktop/still.js). The motion is made later, so
+    // it's read when asked; until then he isn't moving.
+    d.stillGate = createStillGate({
+      moving: () => isMoving(d.motion, { climbing: !!d.climbing?.busy(), dragging: !!d.dragging }),
+      onError: (key, err) => log.warn(`held ${key} failed`, err instanceof Error ? err.message : String(err)),
+    });
+    const config = d.config = new Config(userData, { whenStill: d.stillGate.when });
     if (config.restoredFrom) log.warn(`settings.json ${config.recoveredFrom ? 'could not be read' : 'was missing'}; brought back from the backup`, config.recoveredFrom ? `the damaged copy is at ${config.recoveredFrom}` : '');
     else if (config.recoveredFrom) log.error('settings.json could not be read and there was no backup; started from defaults', `the old copy is at ${config.recoveredFrom}`);
     if (config.unreadable) log.error('settings.json is locked; running on defaults and not saving this session', config.unreadable);
