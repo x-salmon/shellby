@@ -238,6 +238,7 @@ const shared = {
   cancelHeld: null,                // taking one out of the reset queue, set by ipc/routines.js
   dictation: null, ptt: null,      // push-to-talk: hold the hotkey and say the task (see dictation.js)
   motion: null,                    // throws and strolls (see desktop/motion.js)
+  stillGate: null,                 // saves and scans wait while he walks (desktop/still.js, set by wiring/profile.js)
   perching: null,                  // up on your windows (see desktop/perching.js)
   climbing: null,                  // up the edges of the screen and across the top (see desktop/climbing.js)
   pranks: null,                    // mischief, if you asked for it (see pranks.js)
@@ -467,7 +468,7 @@ app.whenReady().then(() => {
   // Forced ("Shut down anyway") there's no session-end, only the question before it.
   let ending = null;
   for (const w of [critter, panel]) {
-    w?.on('session-end', () => crashReport.endRun(LOG_DIR));
+    w?.on('session-end', () => { shared.stillGate?.flush(); crashReport.endRun(LOG_DIR); }); // a save held mid-walk lands first
     w?.on('query-session-end', () => {
       if (!ending) crashReport.markEnding(LOG_DIR);
       clearTimeout(ending);
