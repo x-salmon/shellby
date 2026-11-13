@@ -21,6 +21,9 @@
     sandFaint: '#7d7566', glass: '#7fd6c2', coral: '#ff7a5c', amber: '#ffc15e',
   };
   const REPO = 'https://github.com/x-salmon/shellby';
+  // A stat tile's number: 46px, shrinking as far as 22px before it's cut short
+  // (ten million tasks still fit a wide card's tile whole).
+  const TILE_NUM_FONT = '500 {px}px "Martian Mono"', TILE_NUM_PX = 46, TILE_NUM_MIN_PX = 22;
 
   // The title is the most impressive trophy earned (first match wins).
   const TITLE_ORDER = ['centurion', 'fleet', 'inventor', 'quarter-century', 'loyal', 'keep-your-cool', 'all-hands',
@@ -89,6 +92,16 @@
     let t = text;
     while (t.length > 1 && ctx.measureText(`${t}…`).width > maxWidth) t = t.slice(0, -1);
     return `${t.trimEnd()}…`;
+  }
+
+  // A number has to show whole: shrink the font a pixel at a time down to a
+  // floor, and only past that cut it short. `font` is a template like
+  // '500 {px}px "Martian Mono"'. Leaves the fitted font on ctx.
+  function fitNumber(ctx, text, maxWidth, font, size, minSize) {
+    let px = size;
+    ctx.font = font.replace('{px}', px);
+    while (px > minSize && ctx.measureText(text).width > maxWidth) ctx.font = font.replace('{px}', --px);
+    return fitText(ctx, text, maxWidth, ctx.font);
   }
 
   // ------------------------------------------------------------ shared by every card (week-card.js too)
@@ -245,7 +258,7 @@
       ctx.fillStyle = col;
       ctx.fillRect(x, ty + 18, 4, th - 36);
       ctx.fillStyle = C.sand;
-      ctx.fillText(fitText(ctx, num, tw - 36, '500 46px "Martian Mono"'), x + 22, ty + th * 0.55);
+      ctx.fillText(fitNumber(ctx, num, tw - 36, TILE_NUM_FONT, TILE_NUM_PX, TILE_NUM_MIN_PX), x + 22, ty + th * 0.55);
       ctx.fillStyle = C.sandDim;
       ctx.fillText(fitText(ctx, label, tw - 36, '17px "Atkinson Hyperlegible"'), x + 22, ty + th * 0.8);
     });
@@ -605,5 +618,5 @@
   $('cardBsky').addEventListener('click', () => last && postOn(`https://bsky.app/intent/compose?text=${encodeURIComponent(withLink(last.post))}`));
 
   SB.crabCard = { render, share };
-  SB.cardKit = { W, H, C, SIZES, TANK, SQUARE_TANK, SQUARE_DROP, svgImage, roundRect, fitText, loadFonts, newCanvas, drawWater, drawTank, drawTiles, drawFooter, present };
+  SB.cardKit = { W, H, C, SIZES, TANK, SQUARE_TANK, SQUARE_DROP, svgImage, roundRect, fitText, fitNumber, loadFonts, newCanvas, drawWater, drawTank, drawTiles, drawFooter, present };
 })();
