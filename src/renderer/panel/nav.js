@@ -1,6 +1,6 @@
 /* Shellby panel — navigation: the bottom bar and Settings gear, Back/Esc going
-   up one level, Ctrl+1…8, the Ctrl+K "jump anywhere" palette, and the Settings
-   tabs. */
+   up one level, Ctrl+1…8, and the Ctrl+K "jump anywhere" palette. The
+   Settings rail is settings-rail.js. */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
@@ -26,7 +26,9 @@
       if (state.view !== target) return SB.setView(target);
       // Already here: back to the composer, or back to the top, rather than nothing.
       if (target === 'chat') return $('input').focus();
-      document.querySelector(`.view-${target}`)?.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
+      // Settings scrolls in the column beside its rail; every other screen scrolls itself.
+      const scroller = target === 'settings' ? SB.settingsScroller : document.querySelector(`.view-${target}`);
+      scroller?.scrollTo({ top: 0, behavior: reducedMotion() ? 'auto' : 'smooth' });
     });
   }
 
@@ -43,128 +45,6 @@
     closePalette();
     b.click();
   });
-
-  // ------------------------------------------------------------ Settings tabs
-
-  // Five tabs instead of one long page, each named for what it changes: the crab,
-  // what he does around your PC, Claude, the outside world, the app itself.
-  // Settings reopens on the last tab you looked at; the first time, Claude users
-  // start on Claude and just-the-crab users on Shellby.
-  const settingsView = $('settingsView');
-  const tabBar = $('settingsTabs');
-  const tabs = [...tabBar.querySelectorAll('[role="tab"]')];
-  const allGroups = () => [...settingsView.querySelectorAll('.setting-group[data-nav]')];
-  const tabOf = group => group.closest('.settings-panel')?.dataset.tab;
-  const tabIndex = tab => tabs.findIndex(b => b.dataset.tab === tab);
-  let currentTab = null;
-
-  // The highlight under the chosen tab slides to the next one. The tabs are as
-  // wide as their names, so it's measured, not worked out from the count.
-  function placeInk() {
-    const b = tabs[tabIndex(currentTab)];
-    if (!b || !b.offsetWidth) return;
-    tabBar.style.setProperty('--ink-x', `${b.offsetLeft}px`);
-    tabBar.style.setProperty('--ink-w', `${b.offsetWidth}px`);
-    // ::before only transitions once has-ink is on, so the first placement lands
-    // in place instead of sliding in from the left edge.
-    if (!tabBar.classList.contains('has-ink')) {
-      void tabBar.offsetWidth;
-      tabBar.classList.add('has-ink');
-    }
-  }
-  new ResizeObserver(placeInk).observe(tabBar);
-  document.fonts.ready.then(placeInk);
-
-  function showTab(tab, { focus = false } = {}) {
-    const changed = tab !== currentTab;
-    // The new tab's page comes in from the side its tab is on.
-    if (changed && currentTab) settingsView.dataset.dir = tabIndex(tab) > tabIndex(currentTab) ? 'next' : 'prev';
-    currentTab = tab;
-    for (const b of tabs) {
-      const on = b.dataset.tab === tab;
-      b.setAttribute('aria-selected', String(on));
-      b.tabIndex = on ? 0 : -1;
-      if (on && focus) b.focus();
-    }
-    for (const p of settingsView.querySelectorAll('.settings-panel')) p.hidden = p.dataset.tab !== tab;
-    if (changed) settingsView.scrollTop = 0;
-    placeInk();
-  }
-
-  SB.showSettingsTab = tab => showTab(tab);
-  SB.settingsTab = () => currentTab;
-  // /model, /output-style: the setting itself, in view and focused.
-  SB.showSetting = id => {
-    const el = $(id);
-    const group = el?.closest('.setting-group');
-    if (!el || !group) return;
-    SB.setView('settings');
-    showTab(tabOf(group));
-    if (group.tagName === 'DETAILS') group.open = true;
-    placeInk(); // opening it can bring in a scrollbar and shift the tabs
-    requestAnimationFrame(() => { group.scrollIntoView({ block: 'center' }); el.focus(); });
-  };
-
-  // The extras fold to one line each. The line says On or Off, read from the
-  // body each section already shows only while its feature is on.
-  for (const fold of settingsView.querySelectorAll('.setting-fold[data-fold-on]')) {
-    const body = $(fold.dataset.foldOn);
-    const label = fold.querySelector('.fold-state');
-    if (!body || !label) continue;
-    const sync = () => {
-      label.textContent = body.hidden ? 'Off' : 'On';
-      label.classList.toggle('on', !body.hidden);
-    };
-    new MutationObserver(sync).observe(body, { attributes: true, attributeFilter: ['hidden'] });
-    sync();
-  }
-  for (const b of tabs) b.addEventListener('click', () => showTab(b.dataset.tab));
-  // A setting that talks about one on another tab links straight to it.
-  settingsView.addEventListener('click', e => {
-    const link = e.target.closest('[data-jump-setting]');
-    if (link) SB.showSetting(link.dataset.jumpSetting);
-  });
-  // Arrow keys walk the tabs, the usual way for a tab list.
-  tabBar.addEventListener('keydown', e => {
-    const i = tabs.indexOf(document.activeElement);
-    if (i < 0) return;
-    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
-    if (next === undefined) return;
-    e.preventDefault();
-    showTab(tabs[(next + tabs.length) % tabs.length].dataset.tab, { focus: true });
-  });
-
-  // main.js points here by section name (the tray's update item, the "update
-  // ready" notification), and the palette by section.
-  SB.jumpToSettingByName = name => {
-    const group = allGroups().find(g => g.dataset.nav === name);
-    if (group) SB.jumpToSetting(group);
-  };
-
-  SB.jumpToSetting = group => {
-    if (state.view !== 'settings') SB.setView('settings');
-    showTab(tabOf(group));
-    if (group.tagName === 'DETAILS') group.open = true;
-    placeInk(); // opening it can bring in a scrollbar and shift the tabs
-    requestAnimationFrame(() => {
-      group.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
-      // A brief glow says which section you were sent to.
-      group.classList.remove('arrived');
-      void group.offsetWidth;
-      group.classList.add('arrived');
-    });
-  };
-  settingsView.addEventListener('animationend', e => {
-    e.target.classList.remove('arrived');
-    // The slide is for a tab change only: coming back to Settings just fades in.
-    if (e.target.classList.contains('settings-panel')) delete settingsView.dataset.dir;
-  });
-
-  const renderSettings = SB.views.settings.render;
-  SB.views.settings.render = () => {
-    renderSettings();
-    if (!currentTab) showTab(SB.isCrabOnly() ? 'shellby' : 'claude');
-  };
 
   // ------------------------------------------------------------ Ctrl+K palette
 
@@ -339,15 +219,16 @@
     ].filter(Boolean).map(e => ({ ...e, group: 'Screens' }));
   }
 
-  // Every section, whichever tab it's on: the palette is how you find one without
+  // Every section, whichever area it's in: the palette is how you find one without
   // knowing where it lives.
+  const areaName = g => $(`setTab-${g.closest('.settings-panel')?.dataset.tab}`)?.querySelector('.rail-name')?.textContent || '';
   function settingEntries() {
-    return allGroups().filter(g => !g.hidden).map(g => {
+    return [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#settingsView .setting-group[data-nav]'))].filter(g => !g.hidden).map(g => {
       const heading = g.querySelector('h3')?.textContent || '';
-      const tab = tabs.find(b => b.dataset.tab === tabOf(g))?.textContent.trim() || '';
+      const tab = areaName(g);
       return {
         group: 'Settings', icon: '⚙️', title: `Settings › ${g.dataset.nav}`,
-        sub: [tab, heading.toLowerCase() === g.dataset.nav.toLowerCase() ? '' : heading].filter(Boolean).join(' · '),
+        sub: [tab, heading.toLowerCase() === (g.dataset.nav || '').toLowerCase() ? '' : heading].filter(Boolean).join(' · '),
         keys: g.textContent.slice(0, 400), run: () => SB.jumpToSetting(g),
       };
     });

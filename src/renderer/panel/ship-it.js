@@ -25,7 +25,7 @@
    *   force: past red checks; pastReef: past the reef's warning alone (the tests still count)
    */
   async function shipIt(tab, { draft = false, force = false, pastReef = false } = {}) {
-    if (!tab?.worktree) return SB.toast('Ship it works on a conversation with a copy of its own (Settings → Claude → Copies of a project).', { ms: 8000 });
+    if (!tab?.worktree) return SB.toast('Ship it works on a conversation with a copy of its own (Settings → Code → Copies of a project).', { ms: 8000 });
     if (tab.busy) return SB.toast('Let him finish first.');
     if (shipping.has(tab.id)) return SB.toast('Already shipping this one.');
     shipping.add(tab.id);

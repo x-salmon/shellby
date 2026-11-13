@@ -5,7 +5,7 @@
 // ({ on, items, contest }); closing an item marks it seen, which syncs.
 // Never a toast, a notification or anything on the desktop: the Us page and
 // About show it quietly, and the Painter reads the current contest.
-// Off (Settings → Shellby → Community news) means no fetch at all.
+// Off (Settings → Games → Community news) means no fetch at all.
 // See docs/plans/community-events.md §2.
 const { app } = require('electron');
 const news = require('../news');

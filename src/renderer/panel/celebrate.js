@@ -117,7 +117,7 @@
     setTimeout(() => { el.remove(); if (!queue.length) document.body.classList.remove('celebrating'); show(); }, 220);
   }
 
-  // Settings → Shellby → Share buttons on celebrations: off hides every 📸 a celebration would show.
+  // Settings → Games → Share buttons on celebrations: off hides every 📸 a celebration would show.
   SB.shareButtons = () => SB.state.settings?.shareButtons !== false;
 
   /** c: { icon, title, text, rewards: [public items], eyebrow?, action?: { label, run }, card?: { kind, m, opts } } */

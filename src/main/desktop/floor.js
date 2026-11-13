@@ -1,6 +1,6 @@
 // The floor beside him: one transparent strip along the bottom of his screen,
 // on the desktop layer like he is, where his colony lives and his footprints
-// go. Pals (Settings → Shellby → Colony) are little crabs of his own who hang
+// go. Pals (Settings → Look → Colony) are little crabs of his own who hang
 // out with him between tasks: they wander, dig, nap when he naps, gather under
 // him when he climbs, and cheer when a task goes well. Footprints are mischief
 // (see mischief.js): sandy tracks wherever he walks, fading as the tide comes in.

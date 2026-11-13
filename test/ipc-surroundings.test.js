@@ -313,7 +313,7 @@ test('card:post-discord only uses a Discord channel that is switched on and conf
     const { ipc } = setup({ fetchImpl: net.fetchImpl, askOnce: async spec => { asked.push(spec); return 0; } }, initial);
     const saved = await ipc.invoke('card:save', png(), 'crab');
     assert.equal(saved.discord, false, 'not offered');
-    assert.match((await ipc.invoke('card:post-discord', saved.path, 'x')).error, /Settings → Connections/);
+    assert.match((await ipc.invoke('card:post-discord', saved.path, 'x')).error, /Settings → Alerts/);
     assert.equal(net.sent.length + asked.length, 0, 'nothing asked, nothing sent');
   }
 });
@@ -321,7 +321,7 @@ test('card:post-discord only uses a Discord channel that is switched on and conf
 test('card:post-discord with no Discord webhook says where to set one up', async () => {
   const { ipc } = setup({ askOnce: async () => 0 });
   const saved = await ipc.invoke('card:save', png(), 'crab');
-  assert.match((await ipc.invoke('card:post-discord', saved.path, 'x')).error, /Settings → Connections/);
+  assert.match((await ipc.invoke('card:post-discord', saved.path, 'x')).error, /Settings → Alerts/);
 });
 
 test('every moment card has a file name of its own (moment-card.js MOMENT_KINDS)', () => {

@@ -6,7 +6,7 @@ Shellby has no servers, and running its community doesn't change that. The news 
 
 A small feed, `news.json`, sits on the gallery's site beside `index.json` and `catalog.json`: `https://x-salmon.github.io/shellby-packs/news.json`. It's built from `news/*.json` in [`x-salmon/shellby-packs`](https://github.com/x-salmon/shellby-packs), so adding an item is a pull request there, and the gallery's own Pages build publishes it.
 
-Shellby reads it 30 seconds after it starts and then at most once a day, with nothing about you in the request. What's current shows as one quiet card at the top of the **Us** page and on **Settings → General → About**, with ✕ to put it away for good (synced with Sync on). Never a toast, a notification or anything on the desktop. **Settings → Shellby → Community news** off fetches nothing at all.
+Shellby reads it 30 seconds after it starts and then at most once a day, with nothing about you in the request. What's current shows as one quiet card at the top of the **Us** page and on **Settings → System → About**, with ✕ to put it away for good (synced with Sync on). Never a toast, a notification or anything on the desktop. **Settings → Games → Community news** off fetches nothing at all.
 
 ### An item
 
@@ -75,7 +75,7 @@ No entries:
 
 ## Credits
 
-`src/community/credits.json` lists everyone who has made Shellby, and ships in each release. **Settings → General → About → Made by** shows it: contest winners, pack makers and code, each name a link to their GitHub profile.
+`src/community/credits.json` lists everyone who has made Shellby, and ships in each release. **Settings → System → About → Made by** shows it: contest winners, pack makers and code, each name a link to their GitHub profile.
 
 ```jsonc
 { "format": 1, "people": [

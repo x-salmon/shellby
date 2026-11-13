@@ -1,8 +1,9 @@
 // ci: finding things: Settings search, what you use
-// Finding what's there: the search box on Settings shows every tab at once, cut
-// down to the sections and rows that match, opens a fold that matches and
-// closes it again, says when nothing matches, and Esc puts the tabs back.
-// What you use (Settings → General) counts the screens you go to, on this PC
+// Finding what's there: the search box on Settings shows every area at once, cut
+// down to the sections and rows that match, counts them on the rail, opens a
+// fold that matches and closes it again, says when nothing matches, and Esc
+// puts the area you were in back.
+// What you use (Settings → System) counts the screens you go to, on this PC
 // only, and suggests the ones you haven't opened. Runs against the fake CLI;
 // no account needed.
 //   node scripts/e2e-find-features.js
@@ -49,14 +50,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const line = () => ev("document.getElementById('settingsSearchLine').textContent");
 
     const before = await visiblePanels();
-    check(before.length === 1, 'one tab shows before searching');
+    check(before.length === 1, 'one area shows before searching');
 
     await search('discord');
     const navs = await visibleNavs();
     check(navs.includes('Discord'), 'a search finds the Discord section');
     check(navs.length < 6, `and leaves most sections out (${navs.length} left)`);
     check(await ev("document.querySelector('#settingsView .setting-group[data-nav=\"Discord\"]').open") === true, 'its fold opens');
-    check(await ev(`${shown('.settings-tabs')}.length`) === 0, 'the tabs step aside while searching');
+    const railCounts = () => ev("[...document.querySelectorAll('#settingsRail [role=tab]')].filter(b => !b.querySelector('.rail-count').hidden).map(b => b.dataset.tab)");
+    const counted = await railCounts();
+    check(await ev(`${shown('#settingsRail')}.length`) === 1 && counted.includes('apps'), `the rail stays, counting what each area found (${counted.join(', ')})`);
     check(/match/.test(await line()), `the line says what matched ("${await line()}")`);
 
     await search('stroll idle');
@@ -69,9 +72,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
     await ev("document.getElementById('settingsSearch').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))");
     check(await ev("document.getElementById('settingsSearch').value") === '', 'Esc clears the box');
-    check((await visiblePanels()).join() === before.join(), 'and the tab you were on comes back');
+    check((await visiblePanels()).join() === before.join(), 'and the area you were in comes back');
     check(await ev("document.querySelector('#settingsView .setting-group[data-nav=\"Discord\"]').open") === false, 'the fold the search opened closes again');
-    check(await ev(`${shown('.settings-tabs')}.length`) === 1, 'the tabs are back');
+    check((await railCounts()).length === 0, 'and the rail stops counting');
 
     await ev("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', ctrlKey: true, bubbles: true }))");
     check(await ev("document.activeElement.id") === 'settingsSearch', 'Ctrl+F on Settings goes to the search box');
@@ -83,7 +86,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const saved = JSON.parse(fs.readFileSync(path.join(data, 'settings.json'), 'utf8')).featureUse;
     check(saved?.views?.projects?.n === 3 && saved.views.tank?.n === 1, `each arrival at a screen is counted, staying put is not (${JSON.stringify(saved?.views)})`);
     check(!saved?.views?.settings, 'Settings itself is not');
-    await ev("SB.showSettingsTab('general'); SB.views.settings.render()");
+    await ev("SB.showSettingsTab('system'); SB.views.settings.render()");
     await wait(600);
     const top = await ev("document.getElementById('usesTop').textContent");
     check(/^Most: Projects 3/.test(top), `What you use leads with the most opened (${top})`);
@@ -100,7 +103,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await wait(300);
     const uses = JSON.parse(fs.readFileSync(path.join(data, 'settings.json'), 'utf8')).featureUse?.uses;
     check(uses?.['reward-opened']?.n === 2 && !uses.petted, `a thing done with him is counted, an unknown one is not (${JSON.stringify(uses)})`);
-    await ev("SB.showSettingsTab('general'); SB.views.settings.render()");
+    await ev("SB.showSettingsTab('system'); SB.views.settings.render()");
     await wait(600);
     const doesTop = await ev("document.getElementById('doesTop').textContent");
     check(/^Most: Opened a reward 2/.test(doesTop), `What you do leads with the most done (${doesTop})`);

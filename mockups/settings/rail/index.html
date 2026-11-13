@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A rail down the side: Shellby settings prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../shared/sizes.css">
+</head>
+<body>
+<main class="page">
+  <article class="notes">
+    <a class="up" href="../index.html#m2">‹ All ten mockups</a>
+    <h1>A rail down the side</h1>
+    <p>All of today's settings, sorted into nine areas on a rail that never scrolls away. Each group's heading sticks while you're in it, and the chips at the top show only what you've changed, or the switches you haven't tried.</p>
+    <h2>Things to try</h2>
+    <ul class="try">
+      <li>Rest the cursor on a rail icon. A peek opens with that area's groups: click one to land right on it.</li>
+      <li>Change a few things in Code. Each gets a coral dot, the count lands on the rail, and the Changed chip fills up.</li>
+      <li>Pick Changed, then "Put these back". Change your mind with Undo.</li>
+      <li>Hover a changed row and press ↺ to put just that one back.</li>
+      <li>In Alerts, turn on "Send me these when I'm not at the desk" and watch its settings slide in.</li>
+      <li>Search "phone", "ssh" or "quieter". The rail dims the areas with nothing, and counts the rest. Enter opens the first.</li>
+      <li>Switch to Window or Full screen at the top right. The rail opens out with labels and lists the groups in the area you're in. Full screen adds a column of everything you've changed, in every area.</li>
+      <li>Keys: <kbd>/</kbd> or <kbd>Ctrl</kbd>+<kbd>K</kbd> to search, <kbd>Alt</kbd>+<kbd>1</kbd>–<kbd>9</kbd> for an area, arrows along the rail and <kbd>→</kbd> into its peek. Back and Forward step through the areas you've visited.</li>
+    </ul>
+    <h2>How it's sorted</h2>
+    <dl class="map" id="map"></dl>
+  </article>
+
+  <div class="phone">
+    <div class="bar">
+      <h2 class="title">Settings</h2>
+      <input id="q" class="search" type="search" placeholder="Search" aria-label="Search settings" aria-keyshortcuts="/ Control+K" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="split">
+      <nav class="rail" id="rail" aria-label="Settings areas"></nav>
+      <div class="peek" id="peek" hidden></div>
+      <div class="scroll" id="scroll"></div>
+      <aside class="aside" id="aside" aria-label="Changed in every area"></aside>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+</main>
+<script src="../shared/sizes.js"></script>
+<script src="../point-at-him/skins.js"></script>
+<script src="../point-at-him/settings-data.js"></script>
+<script src="../point-at-him/scene.js"></script>
+<script src="areas.js"></script>
+<script src="controls.js"></script>
+<script src="app.js"></script>
+<script>
+  // The side notes list each area with what's in it, straight from areas.js.
+  document.getElementById('map').innerHTML = PAH.RAIL.map(a =>
+    `<dt>${a.name}</dt><dd>${a.groups.map(g => g.as).join(', ')} <span class="n">${a.groups.reduce((n, g) => n + g.items.length, 0)}</span></dd>`).join('');
+</script>
+</body>
+</html>

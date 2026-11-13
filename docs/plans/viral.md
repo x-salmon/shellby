@@ -127,7 +127,7 @@ send them, with the download link.
   Open eggs go on your public calling card: `eggs: [{ id, laidAt }]` (ids
   only).
 - **Hatching** (the friend, after installing): paste the code in onboarding or
-  Settings → GitHub → **Hatch an egg**, or open the link. Shellby reads the
+  Settings → Accounts → GitHub → **Hatch an egg**, or open the link. Shellby reads the
   parent's public card (no sign-in needed), checks the egg is listed and
   unhatched, and it hatches: a crack, a wobble, a little crab. The friend gets:
   - **a hatchling** (see below), and the parent added as a friend once they

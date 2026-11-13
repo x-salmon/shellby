@@ -92,7 +92,7 @@ async function connect(url) {
     await typed('/workflows');
     check(await toastSays(/No workflow runs in this conversation yet/), '/workflows with no runs points at Ultracode');
     await typed('/autofix-pr');
-    check(await toastSays(/Settings → Connections → GitHub/), '/autofix-pr without GitHub says where to turn it on');
+    check(await toastSays(/Settings → Accounts → GitHub/), '/autofix-pr without GitHub says where to turn it on');
     await typed('/ultraplan');
     check(await toastSays(/Say what to plan/), '/ultraplan on its own asks what to plan, and opens nothing');
     await typed('/subtask');

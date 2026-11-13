@@ -84,7 +84,7 @@ preview waits on its first frame with a play button.
 ## Not nagging
 
 A share is offered, never pushed: the 📸 on a celebration, and the sheet when
-you press it. No pop-up asks you to share. **Settings → Shellby → Share buttons
+you press it. No pop-up asks you to share. **Settings → Games → Share buttons
 on celebrations** (on by default) hides every 📸 on celebrations; a trophy's
 card stays on the Trophies page.
 

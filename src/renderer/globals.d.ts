@@ -310,14 +310,9 @@ interface ShellbyPanelExtras {
   renderTodos: any;
   // nav.js
   goBack: any;
-  jumpToSetting: any;
-  jumpToSettingByName: any;
   openPalette: any;
   openShortcuts: any;
   retitleDock: any;
-  settingsTab: any;
-  showSetting: any;
-  showSettingsTab: any;
   // news.js
   news: any;
   // notes.js
@@ -420,6 +415,14 @@ interface ShellbyPanelExtras {
   renderUpdates: any;
   // settings-local.js
   renderLocalModel: any;
+  // settings-rail.js
+  jumpToSetting: any;
+  jumpToSettingByName: any;
+  markSettingsRail: any;
+  settingsScroller: any;
+  settingsTab: any;
+  showSetting: any;
+  showSettingsTab: any;
   // settings-remote.js
   remoteNow: any;
   remoteRefresh: any;

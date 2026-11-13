@@ -99,7 +99,7 @@
     if (!phone.enabled || phone.problem) {
       return p.replaceChildren('Results land in their tabs and a notification. ', go('Send them to your phone', () => {
         SB.setView('settings');
-        SB.showSettingsTab('connect');
+        SB.showSettingsTab('alerts');
         $('channelsGroup').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }));
     }

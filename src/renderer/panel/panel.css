@@ -245,7 +245,6 @@ body:not([data-view="chat"]) .subbar { display: none; }
 .view { display: none; flex: 1; min-height: 0; position: relative; z-index: 1; overflow-x: hidden; }
 body[data-view="chat"] .view-chat { display: flex; flex-direction: column; }
 body[data-view="history"] .view-history,
-body[data-view="settings"] .view-settings,
 body[data-view="toolbox"] .view-toolbox,
 body[data-view="routines"] .view-routines,
 body[data-view="notes"] .view-notes,
@@ -254,7 +253,7 @@ body[data-view="onboarding"] .view-onboarding { display: block; overflow-y: auto
 /* Scroll areas get their own compositor layer and fade out under the header
    instead of being sliced by it (avoids repaint artifacts in frameless windows). */
 .view, .feed { transform: translateZ(0); }
-.view-history, .view-settings, .view-toolbox, .view-routines, .view-notes, .view-onboarding, .feed {
+.view-history, .view-toolbox, .view-routines, .view-notes, .view-onboarding, .feed {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
   mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
 }

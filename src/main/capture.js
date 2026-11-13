@@ -382,8 +382,8 @@ async function captureLife({ critter, panel, send, out, wardrobe, config, broadc
   send(panel, 'demo', { ...base, tabs: DEMO_TABS, active: 'demo-crew', view: 'settings' });
   await wait(900);
   const js = code => panel.webContents.executeJavaScript(code);
-  // Phone notifications live on the Connections tab; Settings opens on another.
-  await js("document.getElementById('setTab-connect').click()");
+  // Phone notifications live in Alerts; Settings opens on another area.
+  await js("document.getElementById('setTab-alerts').click()");
   await wait(400);
   await js("document.getElementById('chEnabled').click()");
   await wait(1400);

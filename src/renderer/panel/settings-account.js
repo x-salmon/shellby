@@ -46,7 +46,7 @@
     renderUpdateDots();
     const row = $('claudeUpdateRow');
     row.hidden = !u || !st.installed || SB.isCrabOnly?.();
-    // The Claude tab only mentions it when there's something to do; the
+    // The Claude area only mentions it when there's something to do; the
     // choices live in About.
     const hint = $('claudeUpdateHint');
     hint.hidden = row.hidden || (!u.available && !u.updating);
@@ -115,7 +115,7 @@
     if (v?.error) SB.toast(`Couldn't check: ${v.error}`, { ms: 5000 });
     else if (v && !v.available) SB.toast(`Claude Code v${v.installed || '?'} is the latest.`);
   });
-  // Update in About and the Claude tab's notice do the same thing.
+  // Update in About and the Claude area's notice do the same thing.
   async function updateClaude() {
     const r = await api.updateClaude();
     if (r?.cancelled) return;

@@ -100,7 +100,7 @@
       h('div', { class: 'card-box mobile-box' },
         h('div', { class: 'card-head' }, h('h2', { id: 'mobileTitle', text: 'Claude on your phone' }), close),
         canvas,
-        h('p', { class: 'small muted', text: "Scan it with your phone's camera to get the Claude app. To follow these conversations on your phone as well: Settings → Connections → Put Shellby on my phone." }),
+        h('p', { class: 'small muted', text: "Scan it with your phone's camera to get the Claude app. To follow these conversations on your phone as well: Settings → Alerts → Put Shellby on my phone." }),
         h('p', { class: 'small' }, h('button', { type: 'button', class: 'link-btn', text: r.url, onclick: () => api.openExternal(r.url) }))));
     sheet = box;
     box.addEventListener('click', e => { if (e.target === box) closeMobile(); });

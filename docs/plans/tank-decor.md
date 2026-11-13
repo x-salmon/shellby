@@ -84,7 +84,7 @@
   (a newer Shellby's decor) is drawn as a rock, and the peek says how many.
   `sticker:` refs don't exist yet (stickers on the glass are Phase 3), so none
   go on the card.
-- **Peek at their tank** opens under the friend's row in Settings → GitHub →
+- **Peek at their tank** opens under the friend's row in Settings → Accounts → GitHub →
   Visiting crabs, with their crab in it and the pieces listed in words.
 - **The gallery category** is `decor` in the gallery catalog
   (`registry.js` `fetchRegistryCatalog`), next to accessories, effects and

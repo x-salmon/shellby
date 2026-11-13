@@ -167,7 +167,7 @@
         txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' } }),
       ];
       case 'task': return [sel('When a task', [['any', 'finishes'], ['ok', 'succeeds'], ['error', 'fails']], t.outcome || 'any', v => { t.outcome = v; }, { at: `${at}.outcome`, hint: 'Your own conversations, not a workflow\'s.' })];
-      case 'flaky': return [txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' }, hint: 'Needs “Spot flaky tests” on in Settings → Claude. trigger.test names the test, trigger.folder its project.' })];
+      case 'flaky': return [txt('Project (optional)', t.project, v => { t.project = v; }, { at: `${at}.project`, attrs: { placeholder: 'Any project' }, hint: 'Needs “Spot flaky tests” on in Settings → Code. trigger.test names the test, trigger.folder its project.' })];
       case 'folder': return [
         folderField('Folder to watch', t.path, v => { t.path = v; }, { at: `${at}.path`, placeholder: 'C:\\Users\\you\\Downloads' }),
         h('div', { class: 'grid-2' },
