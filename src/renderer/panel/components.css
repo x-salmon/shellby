@@ -179,7 +179,7 @@ body.solo .win-title {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--sand-dim);
 }
 body.solo .brand { pointer-events: none; }
-body.solo .brand-name, body.solo .brand-xp, body.solo .brand-level,
+body.solo .brand-name, body.solo .brand-level,
 body.solo .tabstrip, body.solo .dock, body.solo .usage, body.solo .pop-btn,
 body.solo #paletteBtn, body.solo #settingsBtn, body.solo .win-btns .sep { display: none; }
 .tab-add, .tab-files, .tab-warm {

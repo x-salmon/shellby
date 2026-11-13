@@ -62,9 +62,9 @@
     <button type="button" class="brand" id="brandBtn" title="Shellby's outfits and trophies" aria-label="Shellby: outfits and trophies">
       <span class="brand-crab" id="brandCrab"></span>
       <span class="brand-name">Shellby</span>
-      <span class="brand-xp" aria-hidden="true"><i id="brandXp"></i></span>
     </button>
-    <button type="button" class="brand-level" id="brandLevel" hidden></button>
+    <!-- the nameplate: "Lv" (CSS), the level, its marks, and ten XP cells (xp.js). Its text is only the level and marks. -->
+    <button type="button" class="brand-level" id="brandLevel" hidden><span class="lv-num" id="brandLevelNum"></span><span class="lv-mark" id="brandLevelMark"></span><span class="lv-cells" id="brandXp" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
     <span class="win-title" id="winTitle"></span>
     <button class="mode-chip" id="modeChip" type="button" aria-haspopup="menu" title="Permission mode (Shift+Tab in the message box cycles it)" aria-keyshortcuts="Shift+Tab">
       <span class="mode-dot"></span><span id="modeLabel">Ask</span>

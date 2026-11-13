@@ -26,15 +26,27 @@
     badge.hidden = false;
     // XP ticks in constantly while chats stream. Rewriting the badge's text or
     // title, even to the same value, closes its open tooltip, so only touch them on change.
-    const text = marks ? `${v.level}★${marks}` : String(v.level);
-    if (badge.textContent !== text) badge.textContent = text;
-    $('brandXp').style.transform = `scaleX(${v.progress.toFixed(3)})`;
+    const num = $('brandLevelNum'), mark = $('brandLevelMark');
+    const markText = marks ? `★${marks}` : '';
+    if (num.textContent !== String(v.level)) num.textContent = String(v.level);
+    if (mark.textContent !== markText) mark.textContent = markText;
+    fillCells($('brandXp').children, v.progress);
     const tip = `${levelLine(v)}${v.needed ? ` · ${fmt(v.into)}/${fmt(v.needed)} XP to ${nextName(v)}` : ''}. Open Trophies & XP`;
     if (badge.title !== tip) badge.title = tip;
     const label = `${levelLine(v)}: open Trophies and XP`;
     if (badge.getAttribute('aria-label') !== label) badge.setAttribute('aria-label', label);
     moltRing($('brandLevel'), v);
     if (state.view === 'trophies') render();
+  }
+
+  // The nameplate's XP cells: whole tenths lit, and the one being earned marked
+  // as the edge (it blinks while Claude works). Only classes that change are touched.
+  function fillCells(cells, progress) {
+    const lit = Math.min(cells.length, Math.floor(Math.max(0, progress) * cells.length));
+    for (let i = 0; i < cells.length; i++) {
+      cells[i].classList.toggle('on', i < lit);
+      cells[i].classList.toggle('edge', i === lit);
+    }
   }
 
   // After a molt, a ring round the level badge in the tier's colour, with its numeral (molting.js moltBadge).

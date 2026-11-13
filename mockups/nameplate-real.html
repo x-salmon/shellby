@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../src/renderer/shared/tokens.css">
+<link rel="stylesheet" href="../src/renderer/shared/fonts.css">
+<link rel="stylesheet" href="../src/renderer/panel/panel.css">
+<link rel="stylesheet" href="../src/renderer/panel/components.css">
+<link rel="stylesheet" href="../src/renderer/panel/wardrobe.css">
+<link rel="stylesheet" href="../src/renderer/panel/molt.css">
+<style>
+  body { background: #000; padding: 16px; display: grid; gap: 14px; justify-items: start; color: var(--sand); font-family: var(--font-body); }
+  .titlebar { width: 520px; } .narrow .titlebar { width: 360px; }
+  p { margin: 0; font-size: 12px; color: var(--sand-dim); }
+</style></head>
+<body>
+<template id="t"><header class="titlebar">
+  <button type="button" class="brand"><span class="brand-crab"><svg viewBox="0 0 11 7" shape-rendering="crispEdges"><g fill="#ff7a5c"><rect x="0" y="1" width="2" height="2"/><rect x="9" y="1" width="2" height="2"/><rect x="2" y="2" width="7" height="3"/><rect x="1" y="5" width="1" height="2"/><rect x="9" y="5" width="1" height="2"/></g></svg></span><span class="brand-name">Shellby</span></button>
+  <button type="button" class="brand-level"><span class="lv-num"></span><span class="lv-mark"></span><span class="lv-cells"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
+  <button class="mode-chip" type="button"><span class="mode-dot"></span><span>Autonomous</span></button>
+</header></template>
+<script>
+const CASES = [
+  { note: 'Lv 75, gold, 62%', level: 75, p: .62, rank: '#ffd23f' },
+  { note: 'Lv 3, 18%', level: 3, p: .18, rank: '#7fd6c2' },
+  { note: 'Lv 99 with 3 marks, 88%', level: 99, marks: 3, p: .88, rank: '#ff9ad5' },
+  { note: 'Molted (II), Lv 12', level: 12, p: .4, rank: '#ffd23f', molt: 'II', moltColor: '#b48cff' },
+  { note: 'Narrow panel (360px): cells drop', level: 75, p: .62, rank: '#ffd23f', narrow: true },
+];
+for (const c of CASES) {
+  const wrap = document.createElement('div'); wrap.dataset.mode = 'autonomous'; if (c.narrow) wrap.className = 'narrow';
+  wrap.append(document.getElementById('t').content.cloneNode(true));
+  const p = document.createElement('p'); p.textContent = c.note; wrap.append(p);
+  wrap.style.setProperty('--rank', c.rank);
+  const b = wrap.querySelector('.brand-level');
+  b.querySelector('.lv-num').textContent = c.level;
+  b.querySelector('.lv-mark').textContent = c.marks ? `★${c.marks}` : '';
+  const cells = b.querySelectorAll('.lv-cells i'), lit = Math.floor(c.p * cells.length);
+  cells.forEach((el, i) => { el.classList.toggle('on', i < lit); el.classList.toggle('edge', i === lit); });
+  if (c.molt) { b.classList.add('molted'); b.dataset.molt = c.molt; b.style.setProperty('--molt', c.moltColor); }
+  document.body.append(wrap);
+}
+</script>
+</body></html>
