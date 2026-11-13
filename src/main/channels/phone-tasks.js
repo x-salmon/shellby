@@ -96,11 +96,15 @@ function newPassphrase(randomInt = crypto.randomInt) {
 
 const PASSPHRASE = /^[a-z2-9]{4}(?:-[a-z2-9]{4}){3}$/;
 
-/** Constant-time: how long a wrong guess takes says nothing about how close it was. */
+/**
+ * Constant-time: how long a wrong guess takes says nothing about how close it was. Every
+ * passphrase has the same public shape (PASSPHRASE), so a length mismatch gives nothing away.
+ */
 function samePassphrase(a, b) {
   if (typeof a !== 'string' || typeof b !== 'string' || !a || !b) return false;
-  const h = s => crypto.createHash('sha256').update(s).digest();
-  return crypto.timingSafeEqual(h(a), h(b));
+  const x = Buffer.from(a, 'utf8');
+  const y = Buffer.from(b, 'utf8');
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 
 // ------------------------------------------------------------------ what arrived

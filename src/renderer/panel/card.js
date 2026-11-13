@@ -600,7 +600,7 @@
   $('cardSizes').addEventListener('click', e => { const b = e.target.closest('[data-size]'); if (b) switchSize(b.dataset.size); });
   $('cardClip').addEventListener('click', makeClip);
   // A moment card's post already ends with the link (moment-card.js postFor); the others get it here.
-  const withLink = text => (text.includes(REPO) ? text : `${text} ${REPO}`);
+  const withLink = text => (text.split(/\s+/).includes(REPO) ? text : `${text} ${REPO}`);
   $('cardX').addEventListener('click', () => last && postOn(`https://x.com/intent/post?text=${encodeURIComponent(withLink(last.post))}`));
   $('cardBsky').addEventListener('click', () => last && postOn(`https://bsky.app/intent/compose?text=${encodeURIComponent(withLink(last.post))}`));
 
