@@ -1,0 +1,67 @@
+    <div class="settings-panel" role="tabpanel" id="setPanel-code" data-tab="code" aria-labelledby="setTab-code" hidden>
+      <section class="setting-group" data-nav="Folder">
+        <h3>Working folder</h3>
+        <div class="row"><code class="path" id="settingsFolder">~</code><button type="button" class="btn" id="changeFolderBtn">Change…</button></div>
+        <p class="muted small">New conversations start here and load any CLAUDE.md they find.</p>
+      </section>
+
+      <section class="setting-group" id="copiesGroup" data-nav="Copies">
+        <h3>Copies of a project</h3>
+        <label class="toggle"><input type="checkbox" id="worktreeToggle"><span class="switch"></span>Give a conversation its own copy of a git project when it starts changing things</label>
+        <p class="muted small">Tabs in the same repository stop stepping on each other. The first time a conversation changes a file, it moves into its own copy (a git worktree) on a new branch; your checkout stays as it is. <b>Bring it home</b>, on the branch chip above the chat, merges it back. Ignored folders like node_modules aren't copied, so a copy may need its own install.</p>
+        <label class="toggle"><input type="checkbox" id="clashToggle"><span class="switch"></span>Warn me when two copies change the same file</label>
+        <p class="muted small">Two copies (or a copy and your own uncommitted work) that both change a file will clash when they come home. Shellby looks after each turn, marks both tabs with ⚠ and says so once, so you can sort it out early.</p>
+        <label class="toggle"><input type="checkbox" id="signCommitsToggle"><span class="switch"></span>Sign Shellby's bring-home commits</label>
+        <p class="muted small">Adds one line at the end of the commits Shellby makes bringing a copy home: <code>Shipped-with: Shellby (Lv 12 Abyssal Admin)</code>. Only his level and title. Claude Code's own commits keep their own sign-off.</p>
+      </section>
+
+      <section class="setting-group" id="checksGroup" data-nav="Checks">
+        <h3>Checking Claude's work</h3>
+        <label class="toggle"><input type="checkbox" id="checkEachTurnToggle"><span class="switch"></span>Run the tests after a turn that changed files</label>
+        <div class="row wrap" id="checkEachTurnOptions">
+          <label class="inline-label" for="checkTimeoutSelect">Give up after
+            <select id="checkTimeoutSelect" class="field slim">
+              <option value="2">2 minutes</option>
+              <option value="5">5 minutes</option>
+              <option value="10">10 minutes</option>
+              <option value="20">20 minutes</option>
+            </select>
+          </label>
+        </div>
+        <p class="muted small">This runs the project's own scripts on this PC: its test script, and a typecheck or build if it has one. He asks once per project before the first run, and keeps sign-in tokens and keys out of their environment. The verdict is stamped on the turn's changes. It also checks a copy before bringing it home, and won't merge red without asking. Off by default: tests use your CPU. "Run checks" on any turn works either way.</p>
+        <label class="toggle"><input type="checkbox" id="flakyToggle"><span class="switch"></span>Spot flaky tests: ones that fail, then pass with the code unchanged</label>
+        <p class="muted small">Watches tests Claude runs in Shellby's tabs, and in Claude Code elsewhere with the Shellby plugin. Keeps test names only, never their output, on this PC. The list is on the Projects page.</p>
+      </section>
+
+      <section class="setting-group" id="devServersGroup" data-nav="Dev servers">
+        <h3>Dev servers</h3>
+        <p class="muted small">The servers you start from the Projects page. Shellby watches each one and holds up a sign if it crashes.</p>
+        <p class="field-label" id="setOnQuitLabel">When Shellby quits</p>
+        <div class="pj-quit-choices" role="group" aria-labelledby="setOnQuitLabel">
+          <label class="pj-radio"><input type="radio" name="setOnQuit" value="keep"> Leave dev servers running</label>
+          <label class="pj-radio"><input type="radio" name="setOnQuit" value="stop"> Stop them</label>
+        </div>
+        <p class="muted small">Left running, they carry on after Shellby closes, and Shellby picks them back up, log and all, when it starts again.</p>
+        <label class="toggle"><input type="checkbox" id="srvCrabToggle"><span class="switch"></span>Show running servers on the crab (":5173")</label>
+        <label class="toggle"><input type="checkbox" id="srvSignToggle"><span class="switch"></span>Hold up a sign when one crashes</label>
+        <label class="toggle"><input type="checkbox" id="srvToastToggle"><span class="switch"></span>Notify me when one crashes</label>
+        <label class="toggle"><input type="checkbox" id="turnShotsToggle"><span class="switch"></span>Before/after pictures of your dev server</label>
+        <p class="muted small">When a conversation works in a folder Shellby is running a dev server from, he photographs the page as the turn starts and again if it changed anything you'd see. Kept on this PC: the last 50 per conversation, for two weeks.</p>
+      </section>
+
+      <section class="setting-group" id="editorGroup" data-nav="Editor">
+        <h3>Editor</h3>
+        <div class="row">
+          <label class="inline-label" for="editorSelect">Open file links in</label>
+          <select id="editorSelect" class="field slim">
+            <option value="auto" data-label="Automatic">Automatic</option>
+            <option value="vscode" data-label="VS Code">VS Code</option>
+            <option value="cursor" data-label="Cursor">Cursor</option>
+            <option value="windsurf" data-label="Windsurf">Windsurf</option>
+            <option value="insiders" data-label="VS Code Insiders">VS Code Insiders</option>
+            <option value="system" data-label="Windows' default app">Windows' default app</option>
+          </select>
+        </div>
+        <p class="muted small" id="editorNote"></p>
+      </section>
+    </div>

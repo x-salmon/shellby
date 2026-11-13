@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby settings: ten ways to sort them</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Bold.ttf"); font-weight: 700; }
+@font-face { font-family: "Martian Mono"; src: url("../../assets/fonts/MartianMono.ttf"); font-weight: 100 800; }
+
+:root {
+  --abyss: #071012; --ink: #0c1719; --reef: #11232a; --reef-2: #173039; --reef-3: #1e3d47;
+  --line: #214049; --line-soft: rgba(127, 214, 194, .10);
+  --sand: #f3e6cc; --sand-dim: #b3a892; --sand-faint: #9d9482;
+  --glass: #7fd6c2; --glass-dim: rgba(127, 214, 194, .14);
+  --coral: #ff7a5c; --coral-dim: rgba(255, 122, 92, .14); --amber: #ffc15e; --danger: #ff5a4a;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  --font-pixel: "Pixelify Sans", monospace;
+  --font-mono: "Martian Mono", Consolas, monospace;
+  --r-sm: 6px; --r: 10px; --r-lg: 14px;
+}
+* { box-sizing: border-box; font-variant-ligatures: no-common-ligatures; } /* Pixelify's "fi" reads as "A" */
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--abyss); color: var(--sand); font-family: var(--font-body); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+
+/* ---------- gallery chrome ---------- */
+.intro { max-width: 1120px; margin: 0 auto; padding: 56px 32px 24px; }
+.intro h1 { font-family: var(--font-pixel); font-weight: 600; font-size: 40px; line-height: 1.1; margin: 0 0 16px; }
+.intro p { max-width: 64ch; color: var(--sand-dim); font-size: 16px; line-height: 1.55; margin: 0 0 12px; }
+.facts { display: flex; gap: 32px; flex-wrap: wrap; margin: 28px 0 8px; }
+.facts div { font-size: 14px; color: var(--sand-dim); }
+.facts b { display: block; font-family: var(--font-pixel); font-size: 30px; color: var(--sand); font-weight: 500; }
+.ia { margin: 28px 0 0; border-top: 1px solid var(--line); padding-top: 20px; }
+.ia h2 { font-size: 15px; margin: 0 0 10px; }
+.ia ol { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px 24px; padding-left: 20px; margin: 0; color: var(--sand-dim); font-size: 14px; line-height: 1.45; }
+.ia ol b { color: var(--sand); }
+.jump { position: sticky; top: 0; z-index: 5; background: rgba(7, 16, 18, .92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.jump nav { max-width: 1120px; margin: 0 auto; padding: 10px 32px; display: flex; gap: 6px; flex-wrap: wrap; }
+.jump a { color: var(--sand-dim); text-decoration: none; font-size: 13px; padding: 4px 10px; border-radius: 99px; }
+.jump a:hover { color: var(--sand); background: var(--reef-2); }
+
+.mock { max-width: 1120px; margin: 0 auto; padding: 56px 32px; display: grid; grid-template-columns: 460px 1fr; gap: 48px; align-items: start; border-bottom: 1px solid var(--line-soft); }
+.notes { padding-top: 8px; max-width: 54ch; }
+.notes .num { font-family: var(--font-pixel); color: var(--glass); font-size: 18px; }
+.notes h2 { font-family: var(--font-pixel); font-weight: 600; font-size: 30px; line-height: 1.15; margin: 4px 0 14px; }
+.notes p { color: var(--sand-dim); line-height: 1.6; margin: 0 0 12px; font-size: 15px; }
+.notes dl { margin: 20px 0 0; display: grid; grid-template-columns: 7.5em 1fr; gap: 10px 14px; font-size: 14px; line-height: 1.5; }
+.notes dt { color: var(--sand-faint); }
+.notes dd { margin: 0; color: var(--sand); }
+.notes .try { margin-top: 18px; font-size: 13px; color: var(--glass); }
+@media (max-width: 980px) { .mock { grid-template-columns: 1fr; } .phone { margin: 0 auto; } }
+
+/* ---------- the panel ---------- */
+.phone { width: 460px; height: 700px; max-width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; display: flex; flex-direction: column; font-size: 13px; box-shadow: 0 24px 60px rgba(0, 0, 0, .45); position: relative; }
+.bar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--reef); flex: none; }
+.bar h3 { margin: 0; font-size: 16px; font-weight: 700; flex: 1; }
+.bar .back { background: none; border: 0; color: var(--glass); cursor: pointer; padding: 2px 6px 2px 0; font-size: 15px; }
+.scroll { flex: 1; overflow-y: auto; padding: 14px 16px 20px; scrollbar-width: thin; scrollbar-color: var(--reef-3) transparent; }
+.search { width: 100%; background: var(--abyss); border: 1px solid var(--line); border-radius: var(--r); padding: 9px 12px 9px 34px; outline: none; background-image: radial-gradient(circle at 15px 50%, transparent 5px, var(--sand-faint) 5.5px, var(--sand-faint) 6.5px, transparent 7px); }
+.search:focus { border-color: var(--glass); }
+.search::placeholder { color: var(--sand-faint); }
+.grp { font-size: 12px; color: var(--sand-faint); margin: 18px 0 6px; font-weight: 700; }
+.grp:first-child { margin-top: 0; }
+.card { background: var(--reef); border: 1px solid var(--line-soft); border-radius: var(--r); }
+.row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-top: 1px solid var(--line-soft); }
+.row:first-child { border-top: 0; }
+.row .t { flex: 1; min-width: 0; line-height: 1.35; }
+.row .t small { display: block; color: var(--sand-faint); font-size: 12px; margin-top: 2px; }
+.muted { color: var(--sand-faint); }
+.chev { color: var(--sand-faint); font-size: 16px; }
+
+.tog { appearance: none; width: 34px; height: 20px; border-radius: 99px; background: var(--reef-3); position: relative; cursor: pointer; flex: none; transition: background .15s; margin: 0; }
+.tog::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--sand-dim); transition: transform .18s var(--ease, ease), background .15s; }
+.tog:checked { background: var(--glass); }
+.tog:checked::after { transform: translateX(14px); background: var(--ink); }
+.seg { display: inline-flex; background: var(--abyss); border: 1px solid var(--line); border-radius: 8px; padding: 2px; flex: none; }
+.seg button { background: none; border: 0; padding: 4px 9px; border-radius: 6px; font-size: 12px; color: var(--sand-dim); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--reef-3); color: var(--sand); }
+.pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--glass-dim); color: var(--glass); white-space: nowrap; }
+.pill.coral { background: var(--coral-dim); color: var(--coral); }
+.pill.off { background: var(--reef-2); color: var(--sand-faint); }
+.btn { background: var(--reef-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12.5px; }
+.btn.primary { background: var(--glass); color: var(--ink); border-color: var(--glass); font-weight: 700; }
+.crabimg { image-rendering: pixelated; }
+.glyph { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; font-family: var(--font-pixel); font-size: 15px; }
+
+/* M1 hub */
+.hubrow { display: flex; gap: 12px; align-items: center; padding: 12px; cursor: pointer; border-top: 1px solid var(--line-soft); background: none; border-left: 0; border-right: 0; border-bottom: 0; width: 100%; text-align: left; }
+.hubrow:first-child { border-top: 0; }
+.hubrow:hover { background: var(--reef-2); }
+.hubrow .t { flex: 1; min-width: 0; }
+.hubrow .t b { display: block; font-size: 14px; }
+.hubrow .t span { color: var(--sand-faint); font-size: 12px; }
+.recent { display: flex; flex-wrap: wrap; gap: 6px; }
+.recent button { background: var(--reef); border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; font-size: 12px; cursor: pointer; color: var(--sand-dim); }
+.view[hidden] { display: none; }
+
+/* M2 rail */
+.split { flex: 1; display: flex; min-height: 0; }
+.rail { width: 64px; flex: none; background: var(--abyss); border-right: 1px solid var(--line); padding: 8px 6px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.rail button { background: none; border: 0; border-radius: 8px; padding: 7px 2px 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: var(--sand-faint); line-height: 1.1; }
+.rail button .g { width: 22px; height: 22px; border-radius: 6px; background: var(--reef-2); display: grid; place-items: center; font-family: var(--font-pixel); font-size: 12px; color: var(--sand-dim); }
+.rail button[aria-current="true"] { color: var(--sand); background: var(--reef-2); }
+.rail button[aria-current="true"] .g { background: var(--glass); color: var(--ink); }
+.split .scroll h4 { margin: 0 0 2px; font-size: 18px; }
+.chips { display: flex; gap: 6px; margin: 10px 0 4px; }
+.chips button { background: none; border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; font-size: 12px; color: var(--sand-dim); cursor: pointer; }
+.chips button[aria-pressed="true"] { border-color: var(--glass); color: var(--glass); }
+.sticky { position: sticky; top: -14px; background: var(--ink); padding: 8px 0 6px; margin: 14px 0 4px; font-weight: 700; font-size: 13px; z-index: 1; display: flex; justify-content: space-between; }
+.changed::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--coral); margin-right: 6px; vertical-align: 2px; }
+
+/* M3 search */
+.bigsearch { font-size: 17px; padding: 14px 14px 14px 40px; border-radius: var(--r-lg); background-position: 0 0; background-image: radial-gradient(circle at 19px 50%, transparent 6px, var(--sand-faint) 6.5px, var(--sand-faint) 7.5px, transparent 8px); }
+.hit { padding: 10px 12px; border-top: 1px solid var(--line-soft); }
+.hit:first-child { border-top: 0; }
+.hit .crumb { font-size: 11px; color: var(--sand-faint); margin-bottom: 3px; }
+.hit .line { display: flex; align-items: center; gap: 10px; }
+.hit .line > span:first-child { flex: 1; }
+.hit mark { background: none; color: var(--glass); font-weight: 700; }
+.tip { border: 1px dashed var(--line); border-radius: var(--r); padding: 10px 12px; color: var(--sand-dim); font-size: 12.5px; margin-top: 10px; line-height: 1.45; }
+
+/* M4 essentials */
+.more { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--abyss); margin-top: 16px; }
+details.area { border-top: 1px solid var(--line-soft); }
+details.area summary { list-style: none; padding: 11px 12px; display: flex; justify-content: space-between; cursor: pointer; }
+details.area summary::-webkit-details-marker { display: none; }
+details.area[open] summary { color: var(--glass); }
+details.area .inner { padding: 0 12px 10px; color: var(--sand-faint); font-size: 12px; line-height: 1.6; }
+
+/* M5 mixer */
+.presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.preset { background: var(--reef); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 6px 8px; text-align: center; cursor: pointer; }
+.preset img { width: 34px; height: 34px; display: block; margin: 0 auto 6px; }
+.preset b { display: block; font-size: 12.5px; }
+.preset small { color: var(--sand-faint); font-size: 10.5px; }
+.preset[aria-pressed="true"] { border-color: var(--glass); background: var(--reef-2); box-shadow: inset 0 0 0 1px var(--glass); }
+.fader { padding: 12px; border-top: 1px solid var(--line-soft); }
+.fader:first-child { border-top: 0; }
+.fader .head { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.fader .head output { color: var(--glass); font-size: 12px; }
+.notches { display: grid; gap: 4px; }
+.notches button { height: 14px; border: 0; border-radius: 3px; background: var(--reef-3); cursor: pointer; padding: 0; }
+.notches button.on { background: var(--glass); }
+.notches.hot button.on { background: var(--coral); }
+.fader .fine { font-size: 11.5px; color: var(--sand-faint); margin-top: 6px; }
+
+/* M6 anatomy */
+.stage { position: relative; height: 250px; background: radial-gradient(ellipse at 50% 85%, #2a4a52 0, var(--reef) 55%, var(--ink) 100%); border-bottom: 1px solid var(--line); flex: none; }
+.stage .sand { position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: repeating-linear-gradient(90deg, #c9b38a 0 6px, #bfa77d 6px 12px); opacity: .25; }
+.stage img { position: absolute; left: 50%; top: 40px; width: 176px; height: 176px; transform: translateX(-50%); }
+.spot { position: absolute; transform: translate(-50%, -50%); background: var(--abyss); border: 1px solid var(--glass); color: var(--glass); border-radius: 99px; padding: 3px 9px; font-size: 11.5px; cursor: pointer; white-space: nowrap; }
+.spot::before { content: ""; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--glass); top: 50%; transform: translateY(-50%); }
+.spot.l::before { right: -12px; } .spot.r::before { left: -12px; }
+.spot[aria-pressed="true"] { background: var(--glass); color: var(--ink); }
+
+/* M7 ledger */
+.band { border-radius: var(--r); border: 1px solid var(--line-soft); margin-bottom: 12px; overflow: hidden; }
+.band > header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--reef-2); }
+.band > header b { flex: 1; }
+.band .row { background: var(--reef); align-items: flex-start; }
+.band .row .tog { margin-top: 2px; }
+.flow { font-family: var(--font-mono); font-size: 10.5px; color: var(--sand-faint); margin-top: 4px; line-height: 1.5; }
+.dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.summary div { background: var(--reef); border-radius: var(--r); padding: 10px; font-size: 11.5px; color: var(--sand-faint); }
+.summary b { display: block; font-family: var(--font-pixel); font-size: 24px; color: var(--sand); font-weight: 500; }
+
+/* M8 sentences */
+.prose { font-size: 15.5px; line-height: 2.05; color: var(--sand-dim); margin: 0 0 6px; }
+.prose select { field-sizing: content; appearance: none; background: none; border: 0; border-bottom: 2px dotted var(--glass); color: var(--sand); padding: 0 2px; cursor: pointer; font-weight: 700; border-radius: 0; }
+.prose select:hover { background: var(--glass-dim); }
+.prose select option { background: var(--ink); }
+.prose .h5 { font-size: 12px; color: var(--sand-faint); margin: 18px 0 0; line-height: 1.4; }
+.prose .h5:first-child { margin-top: 0; }
+
+/* M9 timeline */
+.tl { position: relative; padding-left: 34px; }
+.tl::before { content: ""; position: absolute; left: 12px; top: 10px; bottom: 10px; width: 2px; background: var(--line); }
+.stagebox { position: relative; margin-bottom: 14px; }
+.stagebox .n { position: absolute; left: -34px; top: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--reef-2); border: 2px solid var(--glass); display: grid; place-items: center; font-family: var(--font-pixel); font-size: 13px; color: var(--glass); }
+.stagebox .h5 { font-size: 14px; margin: 3px 0 6px; }
+
+/* M10 shelf */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.tile { background: var(--reef); border: 1px solid var(--line-soft); border-radius: var(--r); padding: 10px; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-height: 86px; }
+.tile:hover { border-color: var(--line); background: var(--reef-2); }
+.tile .glyph { width: 28px; height: 28px; }
+.tile b { font-size: 12.5px; }
+.tile small { font-size: 10.5px; color: var(--sand-faint); }
+.tile small.on { color: var(--glass); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--reef); border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; padding: 8px 16px 18px; transform: translateY(105%); transition: transform .26s cubic-bezier(.2, .8, .2, 1); box-shadow: 0 -20px 40px rgba(0, 0, 0, .4); z-index: 3; }
+.sheet.open { transform: none; }
+.sheet .grab { width: 36px; height: 4px; border-radius: 4px; background: var(--reef-3); margin: 0 auto 12px; }
+.sheet h4 { margin: 0 0 4px; font-size: 17px; display: flex; gap: 10px; align-items: center; }
+.sheet p { color: var(--sand-faint); font-size: 12.5px; margin: 0 0 10px; line-height: 1.45; }
+.scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 2; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <h1>Ten ways to sort Shellby's settings</h1>
+  <p>Settings today is five tabs on one long page. You have to know which tab a setting lives in, and the tabs are named after where things came from (Around you, Connections) rather than what you're trying to do. Search helps only if you already know the setting's wording.</p>
+  <p>Each mockup below is a different answer to "where would I look first?" They're drawn at the panel's real size, 460 by 700, in his own colours and type. Most are clickable.</p>
+  <div class="facts">
+    <div><b>207</b>controls</div>
+    <div><b>35</b>sections</div>
+    <div><b>5</b>tabs, one scroll each</div>
+    <div><b>64</b>controls in the Claude tab alone</div>
+  </div>
+  <section class="ia">
+    <h2>The regrouping most of them share</h2>
+    <ol>
+      <li><b>Look and personality</b>: size, skin, talk, sound, moving, pals, mischief</li>
+      <li><b>Games and rewards</b>: Bugdex, tide events, celebrations, sharing</li>
+      <li><b>Claude</b>: account, billing, model, helpers, style, autonomy, Chrome</li>
+      <li><b>Your code</b>: working folder, copies, tests, dev servers, editor</li>
+      <li><b>Usage and limits</b>: 5-hour limit, compacting, local model</li>
+      <li><b>Notifications</b>: desktop, phone, quiet hours, recaps</li>
+      <li><b>Apps and devices</b>: Discord, OBS, Stream Deck, lighting, phone, other PCs</li>
+      <li><b>Accounts and sync</b>: GitHub, GitLab, syncing between PCs</li>
+      <li><b>System</b>: startup, shortcut, updates, crash reports, about</li>
+    </ol>
+  </section>
+</header>
+
+<div class="jump"><nav aria-label="Mockups">
+  <a href="#m1">1 Ask first</a><a href="#m2">2 Side rail</a><a href="#m3">3 Just type it</a><a href="#m4">4 Essentials</a><a href="#m5">5 Mixing desk</a><a href="#m6">6 Point at him</a><a href="#m7">7 What leaves the PC</a><a href="#m8">8 Sentences</a><a href="#m9">9 When it happens</a><a href="#m10">10 The shelf</a>
+</nav></div>
+
+<!-- ======================= 1 ======================= -->
+<section class="mock" id="m1">
+  <div class="phone" data-m1>
+    <div class="view" data-view="home">
+      <div class="bar"><h3>Settings</h3></div>
+      <div class="scroll">
+        <input class="search" placeholder="Search, or say what you want to change" aria-label="Search settings">
+        <p class="grp" style="margin-top:16px">You changed lately</p>
+        <div class="recent"><button>Model: Opus 5.5</button><button>Mischief: Cheeky</button><button>Tests stop after 5 min</button></div>
+        <p class="grp">What do you want to change?</p>
+        <div class="card">
+          <button class="hubrow" data-go="look"><span class="glyph" style="background:var(--coral-dim);color:var(--coral)">S</span><span class="t"><b>How he looks and acts</b><span>Medium, strolls sometimes, talks about work</span></span><span class="chev">›</span></button>
+          <button class="hubrow"><span class="glyph" style="background:var(--glass-dim);color:var(--glass)">C</span><span class="t"><b>How Claude works</b><span>Opus 5.5, asks before edits, your Max plan</span></span><span class="chev">›</span></button>
+          <button class="hubrow"><span class="glyph" style="background:#26324a;color:#9db7ff">&lt;/&gt;</span><span class="t"><b>Your code and projects</b><span>Own copy per conversation, tests after turns</span></span><span class="chev">›</span></button>
+          <button class="hubrow"><span class="glyph" style="background:#3b3220;color:var(--amber)">%</span><span class="t"><b>Usage and limits</b><span>Warns at 75%, keeps 25% back</span></span><span class="chev">›</span></button>
+          <button class="hubrow"><span class="glyph" style="background:#332236;color:#e4a3ff">!</span><span class="t"><b>What reaches me</b><span>Desktop on, phone off</span></span><span class="chev">›</span></button>
+          <button class="hubrow"><span class="glyph" style="background:#1f3326;color:#8fe0a0">+</span><span class="t"><b>Apps, devices and accounts</b><span>GitHub and Discord connected</span></span><span class="chev">›</span></button>
+          <button class="hubrow"><span class="glyph" style="background:var(--reef-3);color:var(--sand-dim)">*</span><span class="t"><b>Games and rewards</b><span>Bugdex on, tide events on</span></span><span class="chev">›</span></button>
+          <button class="hubrow"><span class="glyph" style="background:var(--reef-3);color:var(--sand-dim)">=</span><span class="t"><b>System and about</b><span>Starts with Windows, version 0.98.1</span></span><span class="chev">›</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="view" data-view="look" hidden>
+      <div class="bar"><button class="back" data-go="home" aria-label="Back to Settings">‹ Settings</button></div>
+      <div class="scroll">
+        <h4 style="margin:0 0 2px;font-size:18px">How he looks and acts</h4>
+        <p class="muted" style="margin:0 0 4px">Four short groups instead of one long scroll.</p>
+        <p class="grp">Look</p>
+        <div class="card">
+          <div class="row"><span class="t">Size</span><span class="seg"><button>S</button><button aria-pressed="true">M</button><button>L</button><button>XL</button></span></div>
+          <div class="row"><span class="t">Skin<small>Default shell</small></span><span class="chev">›</span></div>
+        </div>
+        <p class="grp">Moving around</p>
+        <div class="card">
+          <div class="row"><span class="t">Stroll when idle</span><input type="checkbox" class="tog" checked aria-label="Stroll when idle"></div>
+          <div class="row"><span class="t">Climb windows</span><span class="seg"><button>Never</button><button aria-pressed="true">Sometimes</button><button>Often</button></span></div>
+          <div class="row"><span class="t">Pals on the floor</span><span class="seg"><button aria-pressed="true">0</button><button>1</button><button>2</button><button>3+</button></span></div>
+        </div>
+        <p class="grp">Talking and sound</p>
+        <div class="card">
+          <div class="row"><span class="t">How much he talks</span><span class="seg"><button>Quiet</button><button aria-pressed="true">Work</button><button>Chatty</button></span></div>
+          <div class="row"><span class="t">Sound<small>Chirps on, rolling surf, soft</small></span><span class="chev">›</span></div>
+        </div>
+        <p class="grp">Mischief</p>
+        <div class="card"><div class="row"><span class="t">How cheeky<small>Pinches, shoves, footprints, notes</small></span><span class="pill coral">Cheeky</span><span class="chev">›</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 1</div>
+    <h2>Ask first, file later</h2>
+    <p>The opening screen is a short list of questions in your words, and each one tells you what it's set to now. You can see your whole setup without opening anything, and you only go a level deeper when you want to change something.</p>
+    <p>"You changed lately" puts the thing you fiddled with yesterday one tap away.</p>
+    <dl><dt>Fixes</dt><dd>Tab names that only make sense once you've learned them. Scrolling past 60 controls to find one.</dd><dt>Costs</dt><dd>One extra tap for everything. Each summary line has to be kept up to date by code.</dd></dl>
+    <p class="try">Click "How he looks and acts".</p>
+  </div>
+</section>
+
+<!-- ======================= 2 ======================= -->
+<section class="mock" id="m2">
+  <div class="phone">
+    <div class="bar"><h3>Settings</h3><input class="search" style="width:170px;padding:6px 10px 6px 30px;background-image:radial-gradient(circle at 13px 50%, transparent 4px, var(--sand-faint) 4.5px, var(--sand-faint) 5.5px, transparent 6px)" placeholder="Search" aria-label="Search settings"></div>
+    <div class="split">
+      <nav class="rail" aria-label="Areas">
+        <button><span class="g">S</span>Look</button>
+        <button><span class="g">*</span>Games</button>
+        <button><span class="g">C</span>Claude</button>
+        <button aria-current="true"><span class="g">&lt;&gt;</span>Code</button>
+        <button><span class="g">%</span>Limits</button>
+        <button><span class="g">!</span>Alerts</button>
+        <button><span class="g">+</span>Apps</button>
+        <button><span class="g">@</span>Accounts</button>
+        <button><span class="g">=</span>System</button>
+      </nav>
+      <div class="scroll">
+        <h4>Your code</h4>
+        <div class="chips"><button aria-pressed="true">All 24</button><button>Changed 3</button><button>Off 9</button></div>
+        <div class="sticky">Working folder</div>
+        <div class="card"><div class="row"><span class="t">Start new conversations in<small>~\Documents\GitHub</small></span><button class="btn">Change</button></div></div>
+        <div class="sticky">Copies of a project</div>
+        <div class="card">
+          <div class="row"><span class="t">Own copy when it changes files</span><input type="checkbox" class="tog" checked aria-label="Own copy"></div>
+          <div class="row"><span class="t changed">Warn when two copies clash</span><input type="checkbox" class="tog" checked aria-label="Warn on clash"></div>
+          <div class="row"><span class="t">Sign bring-home commits</span><input type="checkbox" class="tog" aria-label="Sign commits"></div>
+        </div>
+        <div class="sticky">Checking Claude's work</div>
+        <div class="card">
+          <div class="row"><span class="t">Run tests after a turn</span><input type="checkbox" class="tog" checked aria-label="Run tests"></div>
+          <div class="row"><span class="t changed">Give up after</span><span class="seg"><button>2m</button><button aria-pressed="true">5m</button><button>10m</button></span></div>
+          <div class="row"><span class="t">Spot flaky tests</span><input type="checkbox" class="tog" checked aria-label="Flaky tests"></div>
+        </div>
+        <div class="sticky">Dev servers <span class="muted" style="font-weight:400">5</span></div>
+        <div class="card">
+          <div class="row"><span class="t">When Shellby quits</span><span class="seg"><button aria-pressed="true">Leave</button><button>Stop</button></span></div>
+          <div class="row"><span class="t">Sign when one crashes</span><input type="checkbox" class="tog" checked aria-label="Sign on crash"></div>
+        </div>
+        <div class="sticky">Editor</div>
+        <div class="card"><div class="row"><span class="t changed">Open file links in</span><span class="pill">VS Code</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 2</div>
+    <h2>A rail down the side</h2>
+    <p>Nine areas sit in a thin rail that's always there, so you can jump between them without scrolling back to the top. Inside an area, each group's heading sticks as you scroll, so you always know where you are.</p>
+    <p>The filter chips are the main draw. "Changed" shows only what you've moved off the default, marked with a coral dot. "Off" shows what you haven't tried.</p>
+    <dl><dt>Fixes</dt><dd>Losing your place in a long scroll. Not knowing what you've changed.</dd><dt>Costs</dt><dd>Takes 64px of a 460px panel. Nine one-word labels have to carry a lot.</dd></dl>
+    <p class="try"><a href="rail/index.html" style="color:var(--glass)">Open the interactive version</a>, with every setting in it.</p>
+  </div>
+</section>
+
+<!-- ======================= 3 ======================= -->
+<section class="mock" id="m3">
+  <div class="phone">
+    <div class="bar"><h3>Settings</h3><span class="muted" style="font-size:12px">Ctrl+, from anywhere</span></div>
+    <div class="scroll">
+      <input class="search bigsearch" id="m3q" value="quieter" placeholder="What do you want to change?" aria-label="Search settings" autocomplete="off">
+      <div id="m3out" style="margin-top:12px"></div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 3</div>
+    <h2>Just type it</h2>
+    <p>Settings opens with a search box, and the box understands what you mean as well as what you type. "Quieter", "stop climbing" or "phone" each find every setting that does that, wherever it lives, and you can change it right there in the result.</p>
+    <p>Each result shows the path to it, so you learn where things live as you go. When the box is empty it shows what you changed lately and what other people change most.</p>
+    <dl><dt>Fixes</dt><dd>Today's search only matches exact wording, and you still have to change the setting in its tab.</dd><dt>Costs</dt><dd>Someone has to write and keep up the list of other words for each setting. Doesn't help anyone who just wants to look around.</dd></dl>
+    <p class="try">Try "phone", "sound", "tests", "git" or clear the box.</p>
+  </div>
+</section>
+
+<!-- ======================= 4 ======================= -->
+<section class="mock" id="m4">
+  <div class="phone">
+    <div class="bar"><h3>Settings</h3><span class="seg"><button aria-pressed="true">Essentials</button><button>Everything</button></span></div>
+    <div class="scroll">
+      <p class="muted" style="margin:0 0 4px;line-height:1.45">The twelve settings people change most. Everything else is one tap away.</p>
+      <p class="grp">Him</p>
+      <div class="card">
+        <div class="row"><span class="t">Size</span><span class="seg"><button>S</button><button aria-pressed="true">M</button><button>L</button><button>XL</button></span></div>
+        <div class="row"><span class="t">How much he talks</span><span class="seg"><button>Quiet</button><button aria-pressed="true">Work</button><button>Chatty</button></span></div>
+        <div class="row"><span class="t">Sound</span><input type="checkbox" class="tog" checked aria-label="Sound"></div>
+        <div class="row"><span class="t">Work mode<small>A quiet crab and your tools first</small></span><input type="checkbox" class="tog" aria-label="Work mode"></div>
+      </div>
+      <p class="grp">Claude</p>
+      <div class="card">
+        <div class="row"><span class="t">Model</span><span class="pill">Opus 5.5</span></div>
+        <div class="row"><span class="t">How much can it do</span><span class="seg"><button aria-pressed="true">Ask</button><button>Edits</button><button>All</button></span></div>
+        <div class="row"><span class="t">Working folder<small>~\Documents\GitHub</small></span><span class="chev">›</span></div>
+        <div class="row"><span class="t">Run tests after a turn</span><input type="checkbox" class="tog" checked aria-label="Run tests"></div>
+      </div>
+      <p class="grp">You</p>
+      <div class="card">
+        <div class="row"><span class="t">Notify me on my desktop</span><input type="checkbox" class="tog" checked aria-label="Desktop notifications"></div>
+        <div class="row"><span class="t">Tell me on my phone when I'm away</span><input type="checkbox" class="tog" aria-label="Phone"></div>
+        <div class="row"><span class="t">Start with Windows</span><input type="checkbox" class="tog" checked aria-label="Start with Windows"></div>
+        <div class="row"><span class="t">Shortcut</span><span class="pill off">Ctrl+Alt+Space</span></div>
+      </div>
+      <div class="more"><span class="t" style="flex:1"><b>195 more settings</b><br><span class="muted" style="font-size:12px">Sorted into 9 areas</span></span><span class="chev">›</span></div>
+      <div class="card" style="margin-top:8px">
+        <details class="area"><summary>Look and personality <span class="muted">28</span></summary><div class="inner">Climbing, pals, mischief, background sound, skins, helpers' side</div></details>
+        <details class="area"><summary>Your code <span class="muted">24</span></summary><div class="inner">Copies, clashes, flaky tests, dev servers, editor, signing</div></details>
+        <details class="area"><summary>Apps and devices <span class="muted">31</span></summary><div class="inner">Discord, OBS, Stream Deck, lighting, music, typing, weather</div></details>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 4</div>
+    <h2>Essentials first</h2>
+    <p>Most people only ever touch about a dozen settings. Put those on one screen you never have to scroll, and tuck the other 195 behind a single, honest "195 more".</p>
+    <p>Shellby already counts which screens you open. It could count which settings you change and move your own favourites into Essentials over time.</p>
+    <dl><dt>Fixes</dt><dd>A new user facing 207 controls on day one. Matches what the bar already does by adding screens as you go.</dd><dt>Costs</dt><dd>Power users will go straight to Everything, so it still has to be well sorted.</dd></dl>
+  </div>
+</section>
+
+<!-- ======================= 5 ======================= -->
+<section class="mock" id="m5">
+  <div class="phone">
+    <div class="bar"><h3>His personality</h3></div>
+    <div class="scroll">
+      <p class="grp">Start from</p>
+      <div class="presets" id="m5p">
+        <button class="preset" data-p="work"><img class="crabimg" src="../../assets/icon.png" alt=""><b>At work</b><small>Quiet, still</small></button>
+        <button class="preset" aria-pressed="true" data-p="pal"><img class="crabimg" src="../../assets/icon.png" alt=""><b>Desk pal</b><small>The default</small></button>
+        <button class="preset" data-p="stream"><img class="crabimg" src="../../assets/icon.png" alt=""><b>On stream</b><small>Loud, lively</small></button>
+        <button class="preset" data-p="gremlin"><img class="crabimg" src="../../assets/icon.png" alt=""><b>Gremlin</b><small>Trouble</small></button>
+      </div>
+      <p class="grp">Then nudge it</p>
+      <div class="card" id="m5f"></div>
+      <p class="muted" style="font-size:12px;line-height:1.45;margin-top:10px">Moving a slider makes it your own mix. Each slider's fine print opens the separate switches behind it.</p>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 5</div>
+    <h2>A mixing desk for his personality</h2>
+    <p>About 30 of today's switches answer one question: how lively should he be? So answer it once with a preset, then nudge five sliders. Each slider stands for a handful of today's switches, and "fine-tune" opens them.</p>
+    <p>This grows out of Work mode, which is already a preset in all but name.</p>
+    <dl><dt>Fixes</dt><dd>The Shellby tab's 31 controls, most of which people only ever change together.</dd><dt>Costs</dt><dd>Only covers personality. Claude and code settings still need sorting some other way.</dd></dl>
+    <p class="try">Pick a preset, then move a slider.</p>
+  </div>
+</section>
+
+<!-- ======================= 6 ======================= -->
+<section class="mock" id="m6">
+  <div class="phone">
+    <div class="bar"><h3>Settings</h3><span class="muted" style="font-size:12px">Point at the part to change</span></div>
+    <div class="stage">
+      <div class="sand"></div>
+      <img class="crabimg" src="../../assets/icon.png" alt="Shellby">
+      <button class="spot l" style="left:20%;top:22%" data-s="look">His shell</button>
+      <button class="spot r" style="left:80%;top:22%" data-s="talk" aria-pressed="true">His voice</button>
+      <button class="spot l" style="left:18%;top:56%" data-s="claws">His claws</button>
+      <button class="spot r" style="left:82%;top:56%" data-s="eyes">What he sees</button>
+      <button class="spot l" style="left:20%;top:86%" data-s="legs">His legs</button>
+      <button class="spot r" style="left:80%;top:86%" data-s="far">Beyond the desk</button>
+    </div>
+    <div class="scroll" id="m6out"></div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 6</div>
+    <h2>Point at him</h2>
+    <p>The crab is the menu. His shell is how he looks, his voice is talking and sound, his legs are moving and climbing, his claws are what Claude may do, his eyes are what he notices around you, and "beyond the desk" is your phone, Discord and other PCs.</p>
+    <p>It's the one idea here that only Shellby could have. It works best as the first level, with a plain list behind each part.</p>
+    <dl><dt>Fixes</dt><dd>Makes Settings feel like part of him, and is easy to remember once seen.</dd><dt>Costs</dt><dd>Some settings don't belong to a body part (updates, crash reports), so a plain "System" link is still needed. Needs search beside it.</dd></dl>
+    <p class="try">Click the labels around him, or <a href="point-at-him/index.html" style="color:var(--glass)">open the interactive version</a>.</p>
+  </div>
+</section>
+
+<!-- ======================= 7 ======================= -->
+<section class="mock" id="m7">
+  <div class="phone">
+    <div class="bar"><h3>What Shellby can see and do</h3></div>
+    <div class="scroll">
+      <div class="summary"><div><b>6</b>stay on this PC</div><div><b>3</b>use the internet</div><div><b>2</b>run things here</div></div>
+      <div class="band">
+        <header><span class="dot" style="background:var(--glass)"></span><b>Stays on this PC</b><span class="muted" style="font-size:12px">Nothing is sent</span></header>
+        <div class="row"><span class="t">Listening along<div class="flow">reads: what's playing (Windows media)</div></span><input type="checkbox" class="tog" checked aria-label="Listening along"></div>
+        <div class="row"><span class="t">Typing along<div class="flow">reads: that you're typing, never what</div></span><input type="checkbox" class="tog" aria-label="Typing along"></div>
+        <div class="row"><span class="t">Spot flaky tests<div class="flow">keeps: test names, never output</div></span><input type="checkbox" class="tog" checked aria-label="Flaky tests"></div>
+      </div>
+      <div class="band">
+        <header><span class="dot" style="background:var(--amber)"></span><b>Uses the internet</b><span class="muted" style="font-size:12px">Says what goes where</span></header>
+        <div class="row"><span class="t">The weather outside<div class="flow">sends: your town → open-meteo.com</div></span><input type="checkbox" class="tog" checked aria-label="Weather"></div>
+        <div class="row"><span class="t">Discord profile<div class="flow">sends: level, task title → Discord app</div></span><input type="checkbox" class="tog" checked aria-label="Discord"></div>
+        <div class="row"><span class="t">Sync between PCs<div class="flow">sends: progress, settings → private gist</div></span><input type="checkbox" class="tog" checked aria-label="Sync"></div>
+        <div class="row"><span class="t">Community news<div class="flow">reads: one file a day, nothing about you</div></span><input type="checkbox" class="tog" aria-label="Community news"></div>
+      </div>
+      <div class="band">
+        <header><span class="dot" style="background:var(--coral)"></span><b>Runs things on this PC</b><span class="muted" style="font-size:12px">Asks first</span></header>
+        <div class="row"><span class="t">Run tests after a turn<div class="flow">runs: the project's test script</div></span><input type="checkbox" class="tog" checked aria-label="Run tests"></div>
+        <div class="row"><span class="t">Autonomous mode<div class="flow">runs: anything, without asking</div></span><input type="checkbox" class="tog" aria-label="Autonomous"></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 7</div>
+    <h2>Sorted by what leaves the PC</h2>
+    <p>Half of today's fine print is explaining what a feature reads and where it goes. This mockup sorts by that instead: stays here, uses the internet, runs things. Each line says what goes where in a line of type rather than a paragraph.</p>
+    <p>It isn't meant to be all of Settings. It's a second view, "What Shellby can see and do", that sits next to the main one and covers every feature that touches your data.</p>
+    <dl><dt>Fixes</dt><dd>The long privacy paragraphs under every switch. Gives a privacy-minded user one place to check.</dd><dt>Costs</dt><dd>Some settings would show up in two places. Look and sound settings don't fit at all.</dd></dl>
+  </div>
+</section>
+
+<!-- ======================= 8 ======================= -->
+<section class="mock" id="m8">
+  <div class="phone">
+    <div class="bar"><h3>Settings</h3><span class="seg"><button aria-pressed="true">Read</button><button>List</button></span></div>
+    <div class="scroll">
+      <div class="prose">
+        <h4 class="h5">Him</h4>
+        Shellby is <select aria-label="Size"><option>small</option><option selected>medium</option><option>large</option><option>huge</option></select> and his helpers line up on his <select aria-label="Helpers side"><option>left</option><option selected>right</option></select>. When he's idle he <select aria-label="Idle"><option selected>strolls about</option><option>stays put</option></select>, climbs your windows <select aria-label="Climb windows"><option>never</option><option selected>sometimes</option><option>often</option></select> and is <select aria-label="Mischief"><option selected>well behaved</option><option>cheeky now and then</option><option>a gremlin</option></select>.
+        <h4 class="h5">His voice</h4>
+        He talks <select aria-label="Talk"><option>only with a mark</option><option selected>just about work</option><option>normally</option><option>a lot</option></select>, <select aria-label="Chirp"><option selected>chirps</option><option>stays silent</option></select> when he does, and plays <select aria-label="Background"><option>silence</option><option selected>rolling surf</option><option>a rock pool</option></select> at a <select aria-label="Volume"><option selected>soft</option><option>normal</option><option>loud</option></select> volume.
+        <h4 class="h5">Claude</h4>
+        New conversations use <select aria-label="Model"><option>the default model</option><option selected>Opus 5.5</option><option>Sonnet 5.5</option></select>, start in <select aria-label="Folder"><option selected>Documents\GitHub</option><option>Change…</option></select> and get <select aria-label="Copies"><option selected>their own copy</option><option>no copy</option></select> of the repo once they change a file. After each turn he runs the tests for up to <select aria-label="Test time"><option>2 minutes</option><option selected>5 minutes</option><option>10 minutes</option></select>.
+        <h4 class="h5">When you're away</h4>
+        He <select aria-label="Phone"><option>doesn't</option><option selected>does</option></select> message your phone, <select aria-label="Focus"><option selected>except</option><option>even</option></select> while he's guarding your focus.
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 8</div>
+    <h2>Read it like a sentence</h2>
+    <p>Your setup, written as a short paragraph about him, with each underlined word a choice you can change. Reading it tells you exactly how things stand, without decoding a column of switches.</p>
+    <p>It suits his voice: Shellby already talks about himself in plain sentences. A "List" switch keeps the ordinary layout for people who want it.</p>
+    <dl><dt>Fixes</dt><dd>Seeing your whole setup at once. Settings that only make sense together, like volume and background sound.</dd><dt>Costs</dt><dd>Gets long fast, so it only works for the 30 or so main choices. Harder to translate.</dd></dl>
+    <p class="try">Change any underlined word.</p>
+  </div>
+</section>
+
+<!-- ======================= 9 ======================= -->
+<section class="mock" id="m9">
+  <div class="phone">
+    <div class="bar"><h3>How a task goes</h3></div>
+    <div class="scroll">
+      <p class="muted" style="margin:0 0 14px;line-height:1.45">Claude's settings, in the order they come into play.</p>
+      <div class="tl">
+        <div class="stagebox"><span class="n">1</span><h4 class="h5">You ask for something</h4>
+          <div class="card">
+            <div class="row"><span class="t">Model<small>Opus 5.5, retries when busy</small></span><span class="chev">›</span></div>
+            <div class="row"><span class="t">Try a local model first</span><input type="checkbox" class="tog" aria-label="Local model"></div>
+            <div class="row"><span class="t">Hold big tasks near my limit</span><input type="checkbox" class="tog" checked aria-label="Hold big tasks"></div>
+          </div></div>
+        <div class="stagebox"><span class="n">2</span><h4 class="h5">Claude works</h4>
+          <div class="card">
+            <div class="row"><span class="t">How much can it do</span><span class="seg"><button aria-pressed="true">Ask</button><button>Edits</button><button>All</button></span></div>
+            <div class="row"><span class="t">Its own copy of the repo</span><input type="checkbox" class="tog" checked aria-label="Own copy"></div>
+            <div class="row"><span class="t">Explain steps in plain words</span><input type="checkbox" class="tog" checked aria-label="Plain words"></div>
+          </div></div>
+        <div class="stagebox"><span class="n">3</span><h4 class="h5">The turn ends</h4>
+          <div class="card">
+            <div class="row"><span class="t">Run tests<small>Up to 5 minutes</small></span><input type="checkbox" class="tog" checked aria-label="Run tests"></div>
+            <div class="row"><span class="t">Before and after pictures</span><input type="checkbox" class="tog" aria-label="Pictures"></div>
+            <div class="row"><span class="t">Show what it earned</span><input type="checkbox" class="tog" checked aria-label="Earned"></div>
+          </div></div>
+        <div class="stagebox"><span class="n">4</span><h4 class="h5">You step away</h4>
+          <div class="card">
+            <div class="row"><span class="t">Tell my phone</span><input type="checkbox" class="tog" aria-label="Phone"></div>
+            <div class="row"><span class="t">Compact while idle</span><input type="checkbox" class="tog" checked aria-label="Compact"></div>
+            <div class="row"><span class="t">Sum up when I'm back</span><input type="checkbox" class="tog" checked aria-label="Sum up"></div>
+          </div></div>
+        <div class="stagebox"><span class="n">5</span><h4 class="h5">It comes home</h4>
+          <div class="card">
+            <div class="row"><span class="t">Warn about clashing copies</span><input type="checkbox" class="tog" checked aria-label="Clash"></div>
+            <div class="row"><span class="t">Sign the commit</span><input type="checkbox" class="tog" aria-label="Sign"></div>
+          </div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 9</div>
+    <h2>In the order things happen</h2>
+    <p>The Claude tab is 64 controls with no clear order. But almost all of them come into play at one point in a task: before it starts, while it runs, when it ends, while you're away, or when the copy comes home. Laying them along that path makes "where is the tests setting?" easy: it's at the end of a turn.</p>
+    <p>The numbers are earned here, because these are real steps in order.</p>
+    <dl><dt>Fixes</dt><dd>The most crowded tab. Shows why a setting matters by showing when it kicks in.</dd><dt>Costs</dt><dd>Only fits Claude and code settings. His look, accounts and system need their own pages.</dd></dl>
+  </div>
+</section>
+
+<!-- ======================= 10 ======================= -->
+<section class="mock" id="m10">
+  <div class="phone">
+    <div class="bar"><h3>Apps and devices</h3></div>
+    <div class="scroll">
+      <input class="search" placeholder="Find an app or device" aria-label="Find an app">
+      <p class="grp" style="margin-top:16px">Connected</p>
+      <div class="tiles" id="m10on"></div>
+      <p class="grp">Add one</p>
+      <div class="tiles" id="m10off"></div>
+    </div>
+    <div class="scrim" id="m10scrim"></div>
+    <div class="sheet" id="m10sheet" role="dialog" aria-modal="true" aria-labelledby="m10title"><div class="grab"></div><h4 id="m10title"></h4><p id="m10desc"></p><div class="card" id="m10rows"></div><div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end"><button class="btn" id="m10close">Done</button></div></div>
+  </div>
+  <div class="notes">
+    <div class="num">Mockup 10</div>
+    <h2>Connections as a shelf</h2>
+    <p>The Connections and Around you tabs, plus the Claude Code everywhere section, are really fifteen separate add-ons. Show them as a shelf of tiles: the ones you've connected at the top, the rest below. Tapping one opens just its settings in a sheet.</p>
+    <p>Each add-on's setup steps (the QR code, the GitHub device code, the four-step profile card) live inside its own sheet instead of filling the page for everyone.</p>
+    <dl><dt>Fixes</dt><dd>The biggest tab, 69 controls, most of which only matter once you've set that thing up.</dd><dt>Costs</dt><dd>Changing something deep inside an add-on takes a tap more. Works as one area of Settings, not all of it.</dd></dl>
+    <p class="try">Click a tile.</p>
+  </div>
+</section>
+
+<header class="intro" style="padding-bottom:72px">
+  <h1 style="font-size:30px">What I'd build</h1>
+  <p>Combine them rather than pick one. Use the nine areas from <b>1</b> as the base, open Settings on the search box from <b>3</b> with the "Changed" filter from <b>2</b>, turn his personality into the presets from <b>5</b>, and turn Apps and devices into the shelf from <b>10</b>. Keep <b>6</b> (point at him) and <b>7</b> (what leaves the PC) as extra ways in. They're the memorable parts, and they work best on top of a plain structure.</p>
+</header>
+
+<script>
+/* ---- ?only=m3 shows one mockup by itself (for screenshots) ---- */
+(() => {
+  const only = new URLSearchParams(location.search).get('only');
+  if (!only) return;
+  document.querySelectorAll('body > header, .jump, .mock').forEach((el) => { el.hidden = el.id !== only; });
+})();
+
+/* ---- M1: drill in ---- */
+(() => {
+  const root = document.querySelector('[data-m1]');
+  root.addEventListener('click', (e) => {
+    const go = e.target.closest('[data-go]');
+    if (!go) return;
+    root.querySelectorAll('.view').forEach((v) => { v.hidden = v.dataset.view !== go.dataset.go; });
+  });
+})();
+
+/* ---- shared: segmented buttons ---- */
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.seg button');
+  if (!b) return;
+  b.parentElement.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+});
+document.querySelectorAll('.chips').forEach((c) => c.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (b) c.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+}));
+document.querySelectorAll('.rail').forEach((r) => r.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (b) r.querySelectorAll('button').forEach((x) => x.setAttribute('aria-current', String(x === b)));
+}));
+
+/* ---- M3: search ---- */
+(() => {
+  const INDEX = [
+    ['How much he talks', 'Look and personality › Talking', 'seg:Quiet|Work|Chatty', 'quiet quieter talk chatty silent shut up speak bubble'],
+    ['Chirp when he speaks', 'Look and personality › Sound', 'tog:1', 'sound chirp quiet quieter noise audio'],
+    ['Footsteps, bumps and ta-das', 'Look and personality › Sound', 'tog:1', 'sound noise quiet quieter footsteps audio'],
+    ['Background sound', 'Look and personality › Sound', 'pill:Rolling surf', 'sound background surf ambient quiet quieter music'],
+    ['Mischief', 'Look and personality › Mischief', 'pill:Off', 'cheeky prank goose mischief quiet quieter behave'],
+    ['Climb onto windows', 'Look and personality › Moving', 'seg:Never|Some|Often', 'climb climbing windows stop move'],
+    ['Climb screen edges', 'Look and personality › Moving', 'seg:Never|Some|Often', 'climb climbing edges stop move'],
+    ['Stroll when idle', 'Look and personality › Moving', 'tog:1', 'move walk stroll idle still stop'],
+    ['Tell me when I\'m away', 'Notifications › Phone', 'tog:0', 'phone away ntfy mobile notification push'],
+    ['Shellby on your phone', 'Apps and devices › Phone', 'pill:Not paired', 'phone mobile tailnet pair app'],
+    ['Let my phone start tasks', 'Notifications › Phone', 'tog:0', 'phone tasks remote mobile'],
+    ['Quiet hours', 'Notifications › Phone', 'pill:10pm to 7am', 'phone quiet quieter night sleep hours'],
+    ['Allow and Deny from my phone', 'Notifications › Phone', 'tog:0', 'phone permission allow deny mobile'],
+    ['Run the tests after a turn', 'Your code › Checking', 'tog:1', 'tests test check verify ci'],
+    ['Give up after', 'Your code › Checking', 'seg:2m|5m|10m', 'tests timeout time limit'],
+    ['Spot flaky tests', 'Your code › Checking', 'tog:1', 'tests flaky flake'],
+    ['Own copy of a git project', 'Your code › Copies', 'tog:1', 'git worktree copy branch repo'],
+    ['Warn when two copies clash', 'Your code › Copies', 'tog:1', 'git clash conflict worktree'],
+    ['Sign bring-home commits', 'Your code › Copies', 'tog:0', 'git commit sign trailer'],
+    ['Watch CI on my pull requests', 'Accounts › GitHub', 'tog:1', 'git github ci pull request build'],
+    ['Let Claude tasks push code', 'Accounts › GitHub', 'tog:0', 'git github push pr'],
+    ['GitLab merge requests', 'Accounts › GitLab', 'tog:0', 'git gitlab merge pipeline'],
+    ['Volume', 'Look and personality › Sound', 'seg:Soft|Normal|Loud', 'sound volume loud quiet quieter'],
+    ['Model', 'Claude › Model', 'pill:Opus 5.5', 'model opus sonnet haiku claude'],
+    ['Start with Windows', 'System', 'tog:1', 'startup boot windows launch'],
+  ];
+  const POPULAR = ['How much he talks', 'Model', 'Tell me when I\'m away', 'Climb onto windows'];
+  const RECENT = ['Give up after', 'Mischief'];
+  const q = document.getElementById('m3q');
+  const out = document.getElementById('m3out');
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const control = (spec) => {
+    const [kind, val] = spec.split(':');
+    if (kind === 'tog') return `<input type="checkbox" class="tog" ${val === '1' ? 'checked' : ''} aria-label="Toggle">`;
+    if (kind === 'seg') return `<span class="seg">${val.split('|').map((v, i) => `<button aria-pressed="${i === 1}">${esc(v)}</button>`).join('')}</span>`;
+    return `<span class="pill">${esc(val)}</span>`;
+  };
+  const hit = ([name, crumb, spec], term) => {
+    const label = term ? esc(name).replace(new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i'), '<mark>$1</mark>') : esc(name);
+    return `<div class="hit"><div class="crumb">${esc(crumb)}</div><div class="line"><span>${label}</span>${control(spec)}</div></div>`;
+  };
+  const byName = (n) => INDEX.find((r) => r[0] === n);
+  const render = () => {
+    const term = q.value.trim().toLowerCase();
+    if (!term) {
+      out.innerHTML = `<p class="grp">You changed lately</p><div class="card">${RECENT.map((n) => hit(byName(n))).join('')}</div>`
+        + `<p class="grp">Most people change</p><div class="card">${POPULAR.map((n) => hit(byName(n))).join('')}</div>`;
+      return;
+    }
+    const words = term.split(/\s+/);
+    const found = INDEX.filter((r) => words.every((w) => (r[0] + ' ' + r[3]).toLowerCase().includes(w)));
+    let html = found.length
+      ? `<p class="grp">${found.length} setting${found.length === 1 ? '' : 's'}</p><div class="card">${found.map((r) => hit(r, words[0])).join('')}</div>`
+      : `<div class="tip">Nothing matches "${esc(term)}". Try a word for what you want him to do, like "quieter" or "stop climbing".</div>`;
+    if (/quiet/.test(term)) html += '<div class="tip"><b style="color:var(--sand)">Work mode</b> turns all of these down at once, and puts them back when you switch it off. <button class="btn" style="margin-left:4px">Turn on Work mode</button></div>';
+    out.innerHTML = html;
+  };
+  q.addEventListener('input', render);
+  render();
+})();
+
+/* ---- M5: mixer ---- */
+(() => {
+  const FADERS = [
+    ['Chattiness', ['Mark only', 'Work only', 'Normal', 'Chatty'], 'Talk level, remarks on music, weather and typing', false],
+    ['Moving around', ['Still', 'Strolls', 'Climbs', 'Everywhere'], 'Stroll, climb windows, climb edges, on top', false],
+    ['Sound', ['Silent', 'Soft', 'Normal', 'Loud'], 'Chirps, footsteps, background, volume', false],
+    ['Company', ['Alone', '1 pal', '3 pals', '5 pals'], 'Pals on the floor, visiting crabs', false],
+    ['Mischief', ['Behaves', 'Cheeky', 'Gremlin'], 'Pinch, shove, footprints, desk notes', true],
+  ];
+  const PRESETS = { work: [0, 0, 0, 0, 0], pal: [1, 1, 1, 0, 0], stream: [3, 2, 3, 3, 1], gremlin: [2, 3, 2, 2, 2] };
+  const state = [...PRESETS.pal];
+  const root = document.getElementById('m5f');
+  const presets = document.getElementById('m5p');
+  const draw = () => {
+    root.innerHTML = FADERS.map(([name, steps, fine, hot], i) => `
+      <div class="fader"><div class="head"><span>${name}</span><output>${steps[state[i]]}</output></div>
+      <div class="notches ${hot ? 'hot' : ''}" style="grid-template-columns:repeat(${steps.length},1fr)" role="radiogroup" aria-label="${name}">
+        ${steps.map((s, j) => `<button role="radio" aria-checked="${j === state[i]}" aria-label="${s}" class="${j <= state[i] ? 'on' : ''}" data-f="${i}" data-v="${j}"></button>`).join('')}
+      </div><div class="fine">Fine-tune: ${fine}</div></div>`).join('');
+  };
+  const match = () => Object.keys(PRESETS).find((k) => PRESETS[k].every((v, i) => v === state[i]));
+  const mark = () => { const m = match(); presets.querySelectorAll('.preset').forEach((p) => p.setAttribute('aria-pressed', String(p.dataset.p === m))); };
+  root.addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; state[+b.dataset.f] = +b.dataset.v; draw(); mark(); });
+  presets.addEventListener('click', (e) => { const p = e.target.closest('.preset'); if (!p) return; PRESETS[p.dataset.p].forEach((v, i) => { state[i] = v; }); draw(); mark(); });
+  draw();
+})();
+
+/* ---- M6: anatomy ---- */
+(() => {
+  const PARTS = {
+    look: ['His shell', 'Size, skin and where his helpers stand.', [['Size', 'seg:S|M|L|XL'], ['Skin', 'pill:Default shell'], ['Helpers line up on his', 'seg:Left|Right'], ['Open skins folder', 'btn']]],
+    talk: ['His voice', 'How much he says, and what he sounds like.', [['How much he talks', 'seg:Quiet|Work|Normal|Chatty'], ['Chirp when he speaks', 'tog:1'], ['Footsteps and ta-das', 'tog:1'], ['Background', 'pill:Rolling surf'], ['Volume', 'seg:Soft|Normal|Loud']]],
+    legs: ['His legs', 'Where he goes when he isn\'t working.', [['Stroll when idle', 'tog:1'], ['Climb windows', 'seg:Never|Some|Often'], ['Climb screen edges', 'seg:Never|Some|Often'], ['Stay on top of apps', 'tog:0']]],
+    claws: ['His claws', 'What he and Claude may do on this PC.', [['How much can Shellby do', 'seg:Ask|Edits|All'], ['Run tests after a turn', 'tog:1'], ['Own copy of the repo', 'tog:1'], ['Let Claude use Chrome', 'tog:0']]],
+    eyes: ['What he sees', 'Each is off until you turn it on.', [['What\'s playing', 'tog:1'], ['That you\'re typing', 'tog:0'], ['The weather in your town', 'tog:1']]],
+    far: ['Beyond the desk', 'Where he shows up away from this screen.', [['Your phone', 'pill:Not set up'], ['Discord profile', 'tog:1'], ['Stream overlay', 'tog:0'], ['Other computers', 'pill:1 added']]],
+  };
+  const out = document.getElementById('m6out');
+  const ctl = (s) => { const [k, v] = s.split(':'); if (k === 'tog') return `<input type="checkbox" class="tog" ${v === '1' ? 'checked' : ''} aria-label="Toggle">`; if (k === 'seg') return `<span class="seg">${v.split('|').map((x, i) => `<button aria-pressed="${i === 1}">${x}</button>`).join('')}</span>`; if (k === 'btn') return '<button class="btn">Open</button>'; return `<span class="pill">${v}</span>`; };
+  const show = (key) => {
+    const [title, desc, rows] = PARTS[key];
+    out.innerHTML = `<h4 style="margin:0 0 2px;font-size:17px">${title}</h4><p class="muted" style="margin:0 0 10px">${desc}</p><div class="card">${rows.map(([n, s]) => `<div class="row"><span class="t">${n}</span>${ctl(s)}</div>`).join('')}</div><p class="muted" style="font-size:12px;margin-top:12px">Updates, shortcut and crash reports are under <span style="color:var(--glass)">System</span>.</p>`;
+    document.querySelectorAll('.spot').forEach((s) => s.setAttribute('aria-pressed', String(s.dataset.s === key)));
+  };
+  document.querySelectorAll('.spot').forEach((s) => s.addEventListener('click', () => show(s.dataset.s)));
+  show('talk');
+})();
+
+/* ---- M10: shelf ---- */
+(() => {
+  const APPS = [
+    ['GitHub', 'G', '#24292f', '#fff', true, 'Signed in as you', 'Sync, CI on your pull requests, and pushing code.', [['Sync progress between PCs', 'tog:1'], ['Watch CI on my pull requests', 'tog:1'], ['Let Claude tasks push code', 'tog:0'], ['Profile card', 'pill:Set up']]],
+    ['Discord', 'D', '#5865f2', '#fff', true, 'On your profile', 'His level and what he\'s doing, under your name.', [['Show Shellby on my profile', 'tog:1'], ['Say what the task is', 'tog:0']]],
+    ['Claude Code', 'C', 'var(--coral-dim)', 'var(--coral)', true, 'Plugin installed', 'He reacts to Claude Code in your terminal and editor.', [['React to sessions outside Shellby', 'tog:1'], ['Status line', 'pill:Added'], ['The shellby command', 'pill:On PATH']]],
+    ['Phone alerts', 'N', '#3b3220', 'var(--amber)', false, 'ntfy', 'A line on your phone when he needs you.', [['Send me these when I\'m away', 'tog:0'], ['Answer Allow or Deny', 'tog:0']]],
+    ['Shellby app', 'P', '#332236', '#e4a3ff', false, 'Your tailnet', 'Your conversations on your phone.', [['Pair a phone', 'pill:Start']]],
+    ['GitLab', 'L', '#3a2416', '#fc6d26', false, 'Needs glab', 'Merge requests and pipelines.', [['Watch my merge requests', 'tog:0']]],
+    ['OBS', 'O', '#1d1d1d', '#ddd', false, 'Stream overlay', 'Serve him as a browser source.', [['Serve the overlay', 'tog:0']]],
+    ['Stream Deck', 'K', '#1b2b44', '#7fb2ff', false, 'Hardware keys', 'Allow, Deny and Stop on a key.', [['Answer from a Stream Deck', 'tog:0']]],
+    ['Desk lighting', 'R', '#2a1d33', '#ff8ad8', false, 'OpenRGB', 'His mood on your keyboard and fans.', [['Follow his mood', 'tog:0'], ['Find my devices', 'pill:Scan']]],
+    ['Music', 'M', '#16301f', '#1ed760', false, 'Windows media', 'Headphones on while something plays.', [['Notice what I\'m listening to', 'tog:0']]],
+    ['Weather', 'W', '#1d3242', '#8ecae6', false, 'open-meteo', 'He dresses for the weather in your town.', [['Dress him for the weather', 'tog:0']]],
+    ['Local model', 'L', '#26324a', '#9db7ff', false, 'Ollama, LM Studio', 'Drafts on this PC, without your plan.', [['Write small drafts locally first', 'tog:0']]],
+    ['Other PCs', 'S', 'var(--reef-3)', 'var(--sand-dim)', false, 'Over ssh', 'Run Claude Code on another computer.', [['Add a computer', 'pill:Add']]],
+    ['Editor', 'E', '#14304a', '#4fa8ff', true, 'VS Code', 'Where file links open.', [['Open file links in', 'pill:VS Code']]],
+    ['Chrome', 'B', '#2a2f1c', '#f4c20d', false, 'Claude in Chrome', 'Claude opens and reads pages as you.', [['Let Claude use Chrome', 'tog:0']]],
+  ];
+  const on = document.getElementById('m10on');
+  const off = document.getElementById('m10off');
+  const sheet = document.getElementById('m10sheet');
+  const scrim = document.getElementById('m10scrim');
+  const ctl = (s) => { const [k, v] = s.split(':'); return k === 'tog' ? `<input type="checkbox" class="tog" ${v === '1' ? 'checked' : ''} aria-label="Toggle">` : `<span class="pill">${v}</span>`; };
+  APPS.forEach((a, i) => {
+    const [name, g, bg, fg, isOn, sub] = a;
+    const html = `<button class="tile" data-i="${i}"><span class="glyph" style="background:${bg};color:${fg}">${g}</span><b>${name}</b><small class="${isOn ? 'on' : ''}">${sub}</small></button>`;
+    (isOn ? on : off).insertAdjacentHTML('beforeend', html);
+  });
+  const close = () => { sheet.classList.remove('open'); scrim.classList.remove('open'); };
+  document.querySelectorAll('#m10 .tile').forEach((t) => t.addEventListener('click', () => {
+    const [name, g, bg, fg, , , desc, rows] = APPS[+t.dataset.i];
+    document.getElementById('m10title').innerHTML = `<span class="glyph" style="background:${bg};color:${fg}">${g}</span>${name}`;
+    document.getElementById('m10desc').textContent = desc;
+    document.getElementById('m10rows').innerHTML = rows.map(([n, s]) => `<div class="row"><span class="t">${n}</span>${ctl(s)}</div>`).join('');
+    sheet.classList.add('open'); scrim.classList.add('open');
+    document.getElementById('m10close').focus();
+  }));
+  scrim.addEventListener('click', close);
+  document.getElementById('m10close').addEventListener('click', close);
+  sheet.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+})();
+</script>
+</body>
+</html>

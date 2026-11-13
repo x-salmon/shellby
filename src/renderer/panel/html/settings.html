@@ -1,25 +1,44 @@
   <!-- ====================== SETTINGS ====================== -->
+  <!-- A rail of nine areas down the side (settings-rail.js), and the column
+       beside it that scrolls. The rail's icons are drawn from its RAIL_ICONS. -->
   <main class="view view-settings" id="settingsView">
-    <div class="view-head">
-      <h2>Settings</h2>
-    </div>
-    <input type="search" id="settingsSearch" class="field settings-search" placeholder="Search settings…" aria-label="Search settings" aria-describedby="settingsSearchLine" autocomplete="off" spellcheck="false">
-    <p class="small muted settings-search-line" id="settingsSearchLine" role="status" hidden></p>
-    <nav class="seg settings-tabs" id="settingsTabs" role="tablist" aria-label="Settings">
-      <button type="button" role="tab" id="setTab-shellby" data-tab="shellby" aria-controls="setPanel-shellby" aria-selected="false" tabindex="-1">Shellby</button>
-      <button type="button" role="tab" id="setTab-around" data-tab="around" aria-controls="setPanel-around" aria-selected="false" tabindex="-1">Around you</button>
-      <button type="button" role="tab" id="setTab-claude" data-tab="claude" aria-controls="setPanel-claude" aria-selected="false" tabindex="-1">Claude</button>
-      <button type="button" role="tab" id="setTab-connect" data-tab="connect" aria-controls="setPanel-connect" aria-selected="false" tabindex="-1">Connections</button>
-      <button type="button" role="tab" id="setTab-general" data-tab="general" aria-controls="setPanel-general" aria-selected="false" tabindex="-1">General<span class="dot-badge tab-dot" id="updateTabDot" hidden></span></button>
+    <nav class="settings-rail" id="settingsRail" role="tablist" aria-orientation="vertical" aria-label="Settings">
+      <span class="rail-mark" aria-hidden="true"></span>
+      <button type="button" role="tab" id="setTab-look" data-tab="look" data-what="Skin and size, moving about, talking, sound, mischief and what he notices" aria-controls="setPanel-look" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">Look</span><span class="rail-count" hidden></span></button>
+      <button type="button" role="tab" id="setTab-games" data-tab="games" data-what="Bugdex, battles, tide events and what you earn" aria-controls="setPanel-games" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">Games</span><span class="rail-count" hidden></span></button>
+      <button type="button" role="tab" id="setTab-claude" data-tab="claude" data-what="Account, mode, what it may do, and which model" aria-controls="setPanel-claude" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">Claude</span><span class="rail-count" hidden></span></button>
+      <button type="button" role="tab" id="setTab-code" data-tab="code" data-what="Folders, copies, checks, dev servers and your editor" aria-controls="setPanel-code" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">Code</span><span class="rail-count" hidden></span></button>
+      <button type="button" role="tab" id="setTab-limits" data-tab="limits" data-what="Your 5-hour window, and what Shellby may spend of it" aria-controls="setPanel-limits" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">Limits</span><span class="rail-count" hidden></span></button>
+      <button type="button" role="tab" id="setTab-alerts" data-tab="alerts" data-what="On this PC, on your phone, and while you're away" aria-controls="setPanel-alerts" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">Alerts</span><span class="rail-count" hidden></span></button>
+      <button type="button" role="tab" id="setTab-apps" data-tab="apps" data-what="Desk lighting, Discord, OBS, Stream Deck and Claude Code everywhere" aria-controls="setPanel-apps" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">Apps</span><span class="rail-count" hidden></span></button>
+      <button type="button" role="tab" id="setTab-accounts" data-tab="accounts" data-what="GitHub, GitLab and your other computers" aria-controls="setPanel-accounts" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">Accounts</span><span class="rail-count" hidden></span></button>
+      <button type="button" role="tab" id="setTab-system" data-tab="system" data-what="Startup, shortcuts, screens, updates and about" aria-controls="setPanel-system" aria-selected="false" tabindex="-1"><span class="rail-ico" aria-hidden="true"></span><span class="rail-name">System</span><span class="rail-count" hidden></span><span class="dot-badge tab-dot" id="updateTabDot" hidden></span></button>
     </nav>
+    <div class="settings-peek" id="settingsPeek" hidden></div>
 
-    <!-- @include settings-shellby.html -->
+    <div class="settings-main" id="settingsMain">
+      <div class="view-head">
+        <h2>Settings</h2>
+      </div>
+      <input type="search" id="settingsSearch" class="field settings-search" placeholder="Search settings…" aria-label="Search settings" aria-describedby="settingsSearchLine" autocomplete="off" spellcheck="false">
+      <p class="small muted settings-search-line" id="settingsSearchLine" role="status" hidden></p>
 
-    <!-- @include settings-around.html -->
+    <!-- @include settings-look.html -->
+
+    <!-- @include settings-games.html -->
 
     <!-- @include settings-claude.html -->
 
-    <!-- @include settings-connect.html -->
+    <!-- @include settings-code.html -->
 
-    <!-- @include settings-general.html -->
+    <!-- @include settings-limits.html -->
+
+    <!-- @include settings-alerts.html -->
+
+    <!-- @include settings-apps.html -->
+
+    <!-- @include settings-accounts.html -->
+
+    <!-- @include settings-system.html -->
+    </div>
   </main>

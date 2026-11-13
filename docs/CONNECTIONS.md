@@ -2,7 +2,7 @@
 
 Your phone, your stream, your desk lights, your Discord profile, your pull requests and your GitHub account. All optional, all off until you turn them on. Back to the [README](../README.md).
 
-<p align="center"><img src="img/screenshot-away.png" width="420" alt="Settings → Tell me when I'm away: ntfy selected, a QR code to scan with your phone, and a topic Shellby picked"></p>
+<p align="center"><img src="img/screenshot-away.png" width="420" alt="Settings → Alerts → Tell me when I'm away: ntfy selected, a QR code to scan with your phone, and a topic Shellby picked"></p>
 
 ## 📱 Your phone
 
@@ -10,11 +10,11 @@ Your phone, your stream, your desk lights, your Discord profile, your pull reque
 - **Answer from your phone (optional):** with Telegram or ntfy, **Let me answer Allow or Deny from my phone** puts the two buttons on the notification. Each prompt gets its own single-use code that expires after 30 minutes. Only your private chat with the bot counts, and an ntfy topic has to be one nobody will guess. Questions, plans, **Always allow**, long commands, and anything the card would warn you about still wait for you at the desk.
 - **Start a task from your phone (optional):** with Telegram or ntfy, **Let my phone start tasks** turns a message into a Claude Code task. Pick the folder they go to first; name another project with `in <project>: <task>` or `@<project> <task>`. `/status` says what's running and what's waiting for you, and `/help` says how. Every phone task runs in **Ask first**, whatever mode you use at the desk, in its own copy when the folder is a git repository, so each edit and command comes back to your phone for Allow or Deny. Its tab is marked 📱 and it always tells your phone when it's done. On Telegram only your own private chat with the bot counts. On ntfy you post to `<topic>-tasks`, and since anyone who knows an ntfy topic can post to it, each message starts with a passphrase Shellby makes up and shows you once. At most 10 an hour and 3 at once; past your spending guard's share, it waits for the reset. `!` commands, Claude Code's `/` commands, modes and settings never come from the phone.
 
-- **Shellby on your phone (optional):** the whole thing as an app on your phone, served by your PC over your own [Tailscale](https://tailscale.com) network: every conversation live, Allow and Deny, new tasks, the diff of a turn, Undo and Bring it home, and notifications that open the right card. Pair it with a code from **Settings → Connections → On your phone**. **[How it works →](PHONE.md)**
+- **Shellby on your phone (optional):** the whole thing as an app on your phone, served by your PC over your own [Tailscale](https://tailscale.com) network: every conversation live, Allow and Deny, new tasks, the diff of a turn, Undo and Bring it home, and notifications that open the right card. Pair it with a code from **Settings → Alerts → On your phone**. **[How it works →](PHONE.md)**
 
 ## 🎥 On a stream
 
-**Settings → Around you → On a stream** serves him as an OBS browser source on a transparent background: the same crab, outfit and animations, reacting live in the corner. It's the critter's own stylesheet behind it, on 127.0.0.1 only.
+**Settings → Apps → On a stream** serves him as an OBS browser source on a transparent background: the same crab, outfit and animations, reacting live in the corner. It's the critter's own stylesheet behind it, on 127.0.0.1 only.
 
 ## 💡 Desk lighting
 
@@ -22,7 +22,7 @@ Through [OpenRGB](https://openrgb.org): coral while he works, amber when he need
 
 ## 🎮 On your Discord profile
 
-**Settings → Around you → On your Discord profile** puts him under your name the way a game shows up: *Lv 12 Abyssal Admin · working with Claude Code*, with a clock for how long he's been at it. Shellby talks to the Discord app on your PC, so there's nothing to sign in to. **Say what the task is** shows the running task's title instead, never in Work mode. With Visiting crabs on, a **Visit my crab** button links your calling card, so the people who see it can add you.
+**Settings → Apps → On your Discord profile** puts him under your name the way a game shows up: *Lv 12 Abyssal Admin · working with Claude Code*, with a clock for how long he's been at it. Shellby talks to the Discord app on your PC, so there's nothing to sign in to. **Say what the task is** shows the running task's title instead, never in Work mode. With Visiting crabs on, a **Visit my crab** button links your calling card, so the people who see it can add you.
 
 ## ✅ CI on your pull requests
 

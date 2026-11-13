@@ -227,7 +227,7 @@
     const pcs = view.otherPcs || 0;
     $('timeSyncHint').textContent = !on
       ? 'Adds the hours from your other PCs to these, once it’s on there too. Clients and rates follow whichever PC changed them last.'
-      : !view.syncable ? 'Waiting for sync: sign in to GitHub and tick Sync in Settings, Connections.'
+      : !view.syncable ? 'Waiting for sync: sign in to GitHub and tick Sync in Settings, Accounts.'
         : pcs ? `Counting hours from ${pcs} other PC${pcs === 1 ? '' : 's'}. Each PC still sends only its own hours to a time tracker.`
           : 'On. Hours from your other PCs show here once they sync with it on there too.';
     $('timePrivacy').textContent = on

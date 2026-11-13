@@ -29,7 +29,7 @@ at the bottom of the panel) and, on Outfits, pick **🎨 Paint**. No JSON, no te
    tip and shell top) to where they belong on him, so a hat sits on his head
    and not in the air. **Try him on the desk** puts your drawing on the real
    crab for a minute.
-6. **Save** puts him in Settings → Shellby → Look (and under Colors in the Wardrobe);
+6. **Save** puts him in Settings → Look (and under Colors in the Wardrobe);
    **Save and wear** puts him on. Every change is kept as a draft as you go,
    so closing the panel loses nothing.
 
@@ -51,7 +51,7 @@ his tank's tray straight away.
 ([getshellby.com/community](https://getshellby.com/community/)) as a pull
 request from your GitHub account, so anyone can add it to their Shellby once
 it's reviewed. You need to be signed in to GitHub with **Publish my Wardrobe
-packs to the community gallery** on (Settings → Connections → GitHub). It wraps your skin in a pack of its own
+packs to the community gallery** on (Settings → Accounts → GitHub). It wraps your skin in a pack of its own
 (`skin-<id>`), checks it the way the gallery's Pack check will, and shows the
 same confirm window as any pack you publish. Afterwards the skin says **In
 review** until the gallery lists it, then **In the gallery**. Sharing again
@@ -79,7 +79,7 @@ A skin is one JSON file in `%APPDATA%\Shellby\skins`: a pixel grid, a palette,
 and a map that says which body part each colour belongs to. The Painter writes
 these for you; you can also write one by hand:
 
-1. Right-click Shellby → **Data folder (history, skins)**, then open `skins/` (or **Settings → Shellby → Look → Open skins folder**).
+1. Right-click Shellby → **Data folder (history, skins)**, then open `skins/` (or **Settings → Look → Open skins folder**).
 2. Copy [`src/skins/classic.json`](../src/skins/classic.json) in, rename it `my-crab.json`, and change `"id"` to `"my-crab"`.
 3. Change some colours, then hit **Reload** in Settings and pick your skin.
 

@@ -14,4 +14,4 @@ bash -c 'd="${TEMP:-${TMPDIR:-/tmp}}"; f="$d/shellby-status.txt"; if [ "$OS" = W
 - If I already have one, keep it: make the status line print my existing output first, then " · " and Shellby's segment. Don't drop anything I already show.
 - Don't change any other settings. Afterwards, tell me what changed and that I'll see Shellby in new sessions while the Shellby app is running.
 
-(The Shellby app can also do this for me from Settings → Claude Code everywhere → Status line.)
+(The Shellby app can also do this for me from Settings → Apps → Claude Code everywhere → Status line.)

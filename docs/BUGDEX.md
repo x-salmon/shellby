@@ -159,7 +159,7 @@ There are no battles between friends: that would rank people by how many bugs th
 
 ## Settings
 
-All under **Settings → Shellby → Games**:
+All under **Settings → Games**:
 
 - **Catch bugs for the Bugdex** (on): the whole thing.
 - **Bug battles: watch Claude take on each bug while it's loose** (on)

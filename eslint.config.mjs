@@ -71,7 +71,7 @@ const BROWSER_GLOBALS = {
 };
 
 export default [
-  { ignores: ['node_modules/**', 'dist/**', 'packaging/**', '.claude-flow/**'] },
+  { ignores: ['node_modules/**', 'dist/**', 'packaging/**', '.claude-flow/**', 'mockups/**'] },
   js.configs.recommended,
   {
     files: ['**/*.js'],

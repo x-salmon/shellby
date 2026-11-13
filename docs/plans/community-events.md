@@ -85,7 +85,7 @@ broadcast):
   never a notification, never on the desktop. A `contest` item also shows in
   the Painter. A `featured` or `winner` item with a `pack` gets **Get it**
   (the existing `shellby://install?pack=` path, with its sha256 check).
-- **Off switch**: Settings → Shellby → **Community news** (on by default).
+- **Off switch**: Settings → Games → **Community news** (on by default).
   Off means no fetch at all. Crab-only mode follows the same switch.
 - `SHELLBY_TODAY` already sets "today" for every season and event; the news
   picker reads the same `d.today()`, and `SHELLBY_NEWS_URL` (dev and tests
