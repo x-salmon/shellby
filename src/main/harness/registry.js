@@ -2,11 +2,12 @@
 // through session/; the others speak the Agent Client Protocol and run through
 // harness/acp-session.js.
 //
-// Each lists, for every Shellby mode, the agent's own session modes that mean
-// it, best first: the session picks the first one the agent offers and leaves
-// the agent's default alone when it offers none of them. What a mode allows is
-// still the agent's to decide (OpenCode's permission rules, Codex's sandbox):
-// Shellby's card shows whatever it asks.
+// Each lists, for every Shellby mode, the agent's own session modes that are
+// at least as strict, best first: never one that asks less than Shellby's mode
+// says. With none listed (or none offered), the session falls back to the
+// agent's mode for Ask first and says so in the conversation. What a mode
+// allows is still the agent's to decide (OpenCode's permission rules, Codex's
+// sandbox): Shellby's card shows whatever it asks.
 //
 // Aider has no protocol to speak (it has no machine-readable mode at all), so
 // it isn't one of these.
@@ -36,14 +37,16 @@ const HARNESSES = [
     install: 'npm install -g @opencode/cli',
     signIn: 'Run opencode auth login in a terminal.',
     site: 'https://opencode.ai',
-    modes: { ask: ['build'], smart: ['build'], acceptEdits: ['build'], plan: ['plan'], autonomous: ['build'] },
+    // OpenCode asks as its own permission rules say (opencode.json), whatever the mode: only Plan is its own.
+    modes: { ask: [], smart: [], acceptEdits: [], plan: ['plan'], autonomous: ['build'] },
   },
   {
     id: 'codex', name: 'Codex CLI', short: 'Codex', command: 'codex-acp', args: [],
     install: 'npm install -g @openai/codex @agentclientprotocol/codex-acp',
     signIn: 'Run codex login in a terminal.',
     site: 'https://github.com/openai/codex',
-    modes: { ask: ['read-only', 'auto'], smart: ['auto'], acceptEdits: ['auto'], plan: ['read-only'], autonomous: ['full-access'] },
+    // Codex's auto runs commands in its sandbox without asking: looser than Auto-edit, which asks before commands.
+    modes: { ask: ['read-only'], smart: ['auto'], acceptEdits: [], plan: ['read-only'], autonomous: ['full-access'] },
   },
 ];
 

@@ -24,9 +24,16 @@ const SELF_CONFIG = [
   { re: /(?:^|[\s"'=>\\/])\.mcp\.json\b/i, what: 'MCP server config' },
   { re: /(?:^|[\s"'=>\\/])\.claude\.json\b/i, what: "Claude Code's config" },
   { re: /(?:^|[\s"'=>\\/])CLAUDE\.md\b/i, what: 'CLAUDE.md instructions' },
+  // The other agents' own setup and instructions (harness/): the same kind of thing, for them.
+  { re: /(?:^|[\s"'=>\\/])\.gemini[\\/]/i, what: "Gemini CLI's settings" },
+  { re: /(?:^|[\s"'=>\\/])GEMINI\.md\b/i, what: 'GEMINI.md instructions' },
+  { re: /(?:^|[\s"'=>\\/])\.codex[\\/]/i, what: "Codex's settings" },
+  { re: /(?:^|[\s"'=>\\/])AGENTS\.md\b/i, what: 'AGENTS.md instructions' },
+  { re: /(?:^|[\s"'=>\\/])\.?opencode(?:\.jsonc?\b|[\\/])/i, what: "OpenCode's settings" },
   // The CLI's own ways of changing its setup, in a shell command.
   { re: /(?:^|[\s;&|("'\\/])claude(?:\.exe|\.cmd)?["']?\s+mcp\s+add/i, what: 'MCP server config' },
   { re: /(?:^|[\s;&|("'\\/])claude(?:\.exe|\.cmd)?["']?\s+config\b/i, what: "Claude Code's config" },
+  { re: /(?:^|[\s;&|("'\\/])(?:gemini|codex|opencode)(?:\.exe|\.cmd)?["']?\s+mcp\s+add/i, what: 'MCP server config' },
 ];
 
 const norm = p => String(p).replace(/\//g, '\\').toLowerCase();

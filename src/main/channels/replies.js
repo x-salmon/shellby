@@ -53,6 +53,8 @@ const PLAN_MAX = 30000;
 
 function deskOnlyReason(item) {
   if (!item || typeof item !== 'object') return 'Answer it at the desk.';
+  // What the card itself can't show (another agent's command Shellby can't read, an edit to several files).
+  if (typeof item.deskOnly === 'string' && item.deskOnly) return item.deskOnly;
   const full = String(item.input?.command ?? item.input?.file_path ?? item.detail ?? '');
   if (full.length > PHONE_MAX || String(item.detail || '').length >= 400) return 'It is too long to read on a phone: check it at the desk.';
   if (item.toolName === 'AskUserQuestion') return 'It has a question for you: answer it at the desk.';

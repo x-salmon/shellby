@@ -32,6 +32,21 @@ function textOf(content) {
   return '';
 }
 
+/** An argv list as one command line, each part quoted when it holds a space or a quote, so it reads as what runs. */
+function argvText(argv) {
+  return argv.map(a => {
+    const s = String(a ?? '');
+    return /[\s"']/.test(s) || !s ? `"${s.replace(/"/g, '\\"')}"` : s;
+  }).join(' ').slice(0, MAX_TEXT);
+}
+
+/** Every file a tool call says it touches: its diffs and its locations. */
+function pathsOf(call) {
+  const out = [...(Array.isArray(call?.content) ? call.content : []).filter(c => c?.type === 'diff').map(c => c.path),
+    ...(Array.isArray(call?.locations) ? call.locations : []).map(l => l?.path)];
+  return [...new Set(out.filter(p => typeof p === 'string' && p))].slice(0, 200);
+}
+
 const diffsOf = call => (Array.isArray(call?.content) ? call.content.filter(c => c?.type === 'diff' && typeof c.path === 'string') : []);
 const firstPath = call => str(call?.locations?.find?.(l => typeof l?.path === 'string')?.path, 2000);
 
@@ -48,7 +63,10 @@ function toolOf(call) {
   }
   switch (call?.kind) {
     case 'execute': {
-      const cmd = Array.isArray(raw.command) ? raw.command.join(' ') : str(raw.command) || str(raw.cmd) || title;
+      // The command itself, whole, never the title in its place: a card that
+      // reads "run tests" over a command nobody can see would be a lie.
+      const cmd = Array.isArray(raw.command) ? argvText(raw.command) : str(raw.command, MAX_TEXT) || str(raw.cmd, MAX_TEXT);
+      if (!cmd) return { name: 'Run a command', input: { description: title }, unseen: true };
       return { name: 'Bash', input: { command: cmd, description: title } };
     }
     case 'edit': {
@@ -141,7 +159,8 @@ function createTranslator() {
         const merged = { ...(tools.get(id) || {}), ...Object.fromEntries(Object.entries(u).filter(([, v]) => v != null)) };
         tools.set(id, merged);
         // A tool we never heard start: say it started, so its result has a row to land in.
-        const start = known ? [] : [...flush(), assistant([{ type: 'tool_use', id, ...toolOf(merged) }])];
+        const { name, input } = toolOf(merged);
+        const start = known ? [] : [...flush(), assistant([{ type: 'tool_use', id, name, input }])];
         if (merged.status !== 'completed' && merged.status !== 'failed') return start;
         return [...start, ...result(id, merged)];
       }
@@ -181,7 +200,22 @@ function createTranslator() {
 function permissionEvent(params, requestId) {
   const call = params?.toolCall || {};
   const { name, input } = toolOf(call);
-  return { type: 'control_request', request_id: requestId, request: { subtype: 'can_use_tool', tool_name: name, tool_use_id: str(call.toolCallId, 200) || null, input, description: str(call.title, 400) || null } };
+  const files = diffsOf(call).length;
+  const description = files > 1 ? `${str(call.title, 300) || 'An edit'} (changes ${files} files)` : str(call.title, 400) || null;
+  return { type: 'control_request', request_id: requestId, request: { subtype: 'can_use_tool', tool_name: name, tool_use_id: str(call.toolCallId, 200) || null, input, description } };
+}
+
+/**
+ * What a card can't show of a request, as the reason to answer it only at the
+ * desk (channels/replies.js deskOnly), or null: a command Shellby can't read,
+ * or an edit to more files than the card's one diff.
+ */
+function unseenOf(params) {
+  const call = params?.toolCall || {};
+  if (toolOf(call).unseen) return "Shellby can't see the command it would run: check it at the desk.";
+  const files = diffsOf(call).length;
+  if (files > 1) return `It changes ${files} files and the card shows one: check it at the desk.`;
+  return null;
 }
 
 /**
@@ -200,4 +234,4 @@ function permissionOutcome(options, { decision, always = false }) {
   return opt ? { outcome: { outcome: 'selected', optionId: opt.optionId } } : { outcome: { outcome: 'cancelled' } };
 }
 
-module.exports = { createTranslator, toolOf, todosOf, usageOf, textOf, permissionEvent, permissionOutcome };
+module.exports = { createTranslator, toolOf, todosOf, usageOf, textOf, pathsOf, argvText, permissionEvent, permissionOutcome, unseenOf };

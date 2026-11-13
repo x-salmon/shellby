@@ -4,9 +4,13 @@ const path = require('path');
 const reg = require('../src/main/harness/registry');
 const { MODES } = require('../src/main/config');
 
-test('every harness names its agent mode for each of Shellby\'s modes', () => {
+test('every harness lists its modes for each of Shellby\'s, and never a looser one for a stricter mode', () => {
   for (const h of reg.HARNESSES) {
-    for (const m of MODES) assert.ok(Array.isArray(h.modes[m]) && h.modes[m].length, `${h.id} ${m}`);
+    for (const m of MODES) assert.ok(Array.isArray(h.modes[m]), `${h.id} ${m}`);
+    // Ask first and Plan only ask before everything: no auto, build, auto-edit, yolo or full access.
+    for (const m of ['ask', 'plan']) assert.ok(!h.modes[m].some(id => ['auto', 'build', 'auto_edit', 'yolo', 'full-access'].includes(id)), `${h.id} ${m} asks at least as much`);
+    // Auto-edit still asks before commands: not a mode that runs them unasked.
+    assert.ok(!h.modes.acceptEdits.some(id => ['auto', 'build', 'yolo', 'full-access'].includes(id)), `${h.id} acceptEdits still asks before commands`);
     assert.match(h.install, /^npm install -g /, h.id);
     assert.match(h.command, /^[a-z][a-z0-9-]*$/, h.id);
   }

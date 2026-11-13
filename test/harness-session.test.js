@@ -257,3 +257,39 @@ test("its plan becomes the to-do list the tab's glance reads", async () => {
   await until(s, items, i => i.kind === 'result');
   assert.equal(seen.at(-1).total, 2);
 });
+
+// ---- what the security review found
+
+test("an edit to several files is checked file by file, and kept for the desk", async () => {
+  const { deskOnlyReason } = require('../src/main/channels/replies');
+  const { s, items } = make();
+  s.send('multiedit');
+  const card = await until(s, items, i => i.kind === 'permission');
+  assert.equal(card.selfConfig, "Gemini CLI's settings", 'the second file is the one that matters');
+  assert.deepEqual(card.otherFiles, ['.gemini/settings.json']);
+  assert.match(card.description, /changes 2 files/);
+  assert.match(deskOnlyReason(card), /changes 2 files and the card shows one/);
+  s.respond(card.requestId, 'deny');
+  await until(s, items, i => i.kind === 'result');
+});
+
+test("a command Shellby can't read is never shown as its title, and stays at the desk", async () => {
+  const { deskOnlyReason } = require('../src/main/channels/replies');
+  const { s, items } = make();
+  s.send('nocmd');
+  const card = await until(s, items, i => i.kind === 'permission');
+  assert.notEqual(card.toolName, 'Bash');
+  assert.ok(!card.input.command, 'no made-up command');
+  assert.match(deskOnlyReason(card), /can't see the command/);
+  s.respond(card.requestId, 'deny');
+  await until(s, items, i => i.kind === 'result');
+});
+
+test('with no mode as strict as yours, the agent goes in its Ask first mode and says so', async () => {
+  const strict = { ...HARNESS, modes: { ...HARNESS.modes, acceptEdits: [] } };
+  const { s, items } = make({ harness: strict, mode: 'acceptEdits' });
+  s.send('mode');
+  await until(s, items, i => i.kind === 'result');
+  assert.equal(items.filter(i => i.kind === 'text').at(-1).text, 'mode: default');
+  assert.match(items.find(i => i.kind === 'error').text, /runs in its Ask first mode \(its own "default"\)/);
+});

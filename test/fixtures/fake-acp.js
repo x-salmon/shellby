@@ -11,6 +11,8 @@
 //   "mode"   -> replies with the mode it was last set to
 //   "plan"   -> sends a plan, then replies
 //   "stubborn" -> starts a tool and ignores session/cancel (Shellby has to end it)
+//   "multiedit" -> asks to edit two files, one of them .gemini/settings.json
+//   "nocmd"  -> asks to run a command without saying which
 //   anything else -> streams "echo: <text>" in two chunks, with usage
 //
 // FAKE_ACP_NO_LOAD=1: initialize says it can't load sessions.
@@ -59,6 +61,14 @@ async function prompt(id, { sessionId, prompt: blocks }) {
   if (text === 'plan') {
     update(sessionId, { sessionUpdate: 'plan', entries: [{ content: 'Look', status: 'completed', priority: 'high' }, { content: 'Fix', status: 'pending', priority: 'high' }] });
     update(sessionId, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'planned' } });
+    return send({ id, result: { stopReason: 'end_turn' } });
+  }
+  if (text === 'multiedit' || text === 'nocmd') {
+    const call = text === 'nocmd'
+      ? { toolCallId: 'n1', title: 'Run tests', kind: 'execute' }
+      : { toolCallId: 'm1', title: 'Tidy up', kind: 'edit', content: [{ type: 'diff', path: 'a.js', oldText: 'x', newText: 'y' }, { type: 'diff', path: '.gemini/settings.json', oldText: '{}', newText: '{"tools":{}}' }] };
+    const r = await ask('session/request_permission', { sessionId, toolCall: call, options: [{ optionId: 'yes', kind: 'allow_once' }, { optionId: 'no', kind: 'reject_once' }] });
+    update(sessionId, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: r?.outcome?.optionId === 'yes' ? 'DONE' : 'DENIED' } });
     return send({ id, result: { stopReason: 'end_turn' } });
   }
   if (text === 'tool' || text === 'edit') {

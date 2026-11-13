@@ -105,3 +105,16 @@ test("the card's answer picks the agent's own option for it, or cancels", () => 
   assert.deepEqual(acp.permissionOutcome(alwaysOnly, { decision: 'allow' }), { outcome: { outcome: 'cancelled' } }, 'a one-time Allow never becomes Always');
   assert.deepEqual(acp.permissionOutcome([{ optionId: 'once', kind: 'allow_once' }], { decision: 'allow', always: true }), { outcome: { outcome: 'selected', optionId: 'once' } }, 'Always falls back to once');
 });
+
+test('a command given as a list keeps its parts apart, quoted where they need it', () => {
+  assert.equal(acp.toolOf({ kind: 'execute', rawInput: { command: ['git', 'commit', '-m', 'fix the "thing"'] } }).input.command, 'git commit -m "fix the \\"thing\\""');
+  assert.equal(acp.toolOf({ kind: 'execute', rawInput: { command: ['rm', 'my file.txt'] } }).input.command, 'rm "my file.txt"');
+});
+
+test("an execute call with no command isn't a Bash card with its title for a command", () => {
+  const t = acp.toolOf({ kind: 'execute', title: 'npm test' });
+  assert.notEqual(t.name, 'Bash');
+  assert.equal(t.input.command, undefined);
+  assert.match(acp.unseenOf({ toolCall: { kind: 'execute', title: 'npm test' } }), /can't see the command/);
+  assert.equal(acp.unseenOf({ toolCall: { kind: 'execute', rawInput: { command: 'npm test' } } }), null);
+});

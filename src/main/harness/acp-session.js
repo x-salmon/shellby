@@ -24,7 +24,7 @@ const { EventEmitter } = require('events');
 const { randomUUID } = require('crypto');
 const { toItems } = require('../stream');
 const { troubleOf } = require('../trouble');
-const { annotatePermission } = require('../safety');
+const { annotatePermission, selfConfigTarget } = require('../safety');
 const { plainPermission } = require('../plain-words');
 const { TASKKILL } = require('../system32');
 const { createPeer } = require('./rpc');
@@ -217,17 +217,25 @@ class AcpSession extends EventEmitter {
    * when the agent really is in its plan mode.
    */
   async applyMode() {
-    const id = this.agentMode();
+    // Its own mode for Shellby's, or failing that its mode for Ask first: never a looser one (registry.js).
+    let id = this.agentMode();
+    const exact = !!id;
+    if (!id) id = this.agentMode('ask');
     let applied = false;
     if (id && this.sessionId && this.peer) {
       applied = await this.peer.request('session/set_mode', { sessionId: this.sessionId, modeId: id }, { timeout: SETTING_TIMEOUT_MS }).then(() => true, () => false);
     }
     const planning = applied && id === this.agentMode('plan');
     if (planning !== this.planning) { this.planning = planning; this.emit('planning', planning); }
-    if (!applied && this.mode !== 'ask' && this.unsetMode !== this.mode) {
-      this.unsetMode = this.mode;
-      this.emitItem({ kind: 'error', text: `${this.harness.name} has no mode Shellby could match to ${MODE_WORDS[this.mode] || this.mode}, so it runs in its own default mode and asks as that mode says.` });
-    }
+    if ((applied && exact) || this.unsetMode === this.mode) return;
+    this.unsetMode = this.mode;
+    const want = MODE_WORDS[this.mode] || this.mode;
+    this.emitItem({
+      kind: 'error',
+      text: applied
+        ? `${this.harness.name} has no mode that matches ${want}, so it runs in its Ask first mode (its own "${id}") instead.`
+        : `${this.harness.name} has no mode Shellby could match to ${want}, so it asks as its own settings say.`,
+    });
   }
 
   setMode(mode) {
@@ -322,7 +330,9 @@ class AcpSession extends EventEmitter {
   async onAgentRequest(method, params) {
     if (method !== 'session/request_permission') throw Object.assign(new Error(`Shellby doesn't offer ${method}.`), { code: -32601 });
     const requestId = randomUUID();
-    const answered = new Promise(resolve => this.answers.set(requestId, { options: params?.options || [], resolve }));
+    // What the card's own fields don't carry: every file it touches, and what it can't show.
+    const extra = { paths: acp.pathsOf(params?.toolCall), unseen: acp.unseenOf(params) };
+    const answered = new Promise(resolve => this.answers.set(requestId, { options: params?.options || [], resolve, extra }));
     this.emitEvent(acp.permissionEvent(params, requestId));
     return answered;
   }
@@ -414,6 +424,7 @@ class AcpSession extends EventEmitter {
       case 'permission':
         Object.assign(item, annotatePermission(item, { createdFiles: this.createdFiles, tasks: this.tasks }));
         Object.assign(item, plainPermission(item, { cwd: this.cwd, inCopy: !!this.inCopy?.(), originalCwd: this.copyOf?.() || null }));
+        this.annotateExtra(item);
         this.pending.set(item.requestId, item);
         break;
       case 'result':
@@ -444,6 +455,22 @@ class AcpSession extends EventEmitter {
     clearTimeout(p.timer);
     this.partial = null;
     if (p.text) this.emitItem({ kind: 'partial', text: p.text });
+  }
+
+  /**
+   * The checks a Claude card gets from its one file, run on every file the
+   * agent said it touches, and what the card can't show kept for the desk
+   * (channels/replies.js deskOnly): never answered from a phone by what it hides.
+   */
+  annotateExtra(item) {
+    const extra = this.answers.get(item.requestId)?.extra;
+    if (!extra) return;
+    if (!item.selfConfig) {
+      const hit = extra.paths.map(selfConfigTarget).find(Boolean);
+      if (hit) item.selfConfig = hit;
+    }
+    if (extra.paths.length > 1) item.otherFiles = extra.paths.filter(p => p !== item.filePath).slice(0, 50);
+    if (extra.unseen) item.deskOnly = extra.unseen;
   }
 
   emitItem(item) { this.emit('item', item); }
