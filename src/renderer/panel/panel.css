@@ -135,14 +135,27 @@ body:not([data-view="chat"]) .subbar { display: none; }
    over its neighbours; the effort is a word or two and keeps its place. */
 #effortLabel, #modelLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .effort-chip { flex: none; }
-.model-chip { flex: 0 1 auto; }
+.model-chip { flex: 0 1 auto; gap: 7px; }
+/* Tier bars: lit by composer.js showTier, sand while the plan picks, sea-glass once you do. */
+.model-chip .model-tier { width: 13px; height: 12px; }
+.model-tier rect { fill: var(--line); transition: fill .15s; }
+@media (prefers-reduced-motion: reduce) { .model-tier rect { transition: none; } }
+.model-tier rect.lit { fill: var(--sand-dim); }
+.model-chip.on:not(.local) .model-tier rect.lit { fill: var(--glass); }
+.model-name { font: 700 var(--fs-12-5) var(--font-body); color: var(--sand); }
+.model-ver { margin-left: 5px; color: var(--sand-faint); }
+.model-tag {
+  display: inline-block; margin-left: 6px; padding: 0 4px; vertical-align: 1px;
+  border: 1px solid var(--line); border-radius: 4px;
+  font: 400 var(--fs-9-5)/14px var(--font-body); color: var(--sand-faint);
+}
+.model-tag.local { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, transparent); font-weight: 700; }
 #folderChip { flex: 0 8 auto; } /* gives way first: the tab's title and tooltip name the folder too */
 /* A narrow panel: the meters say the same with less (their % and the menu say the rest). */
 .subbar { container-type: inline-size; container-name: subbar; }
 @container subbar (max-width: 520px) {
   .ctx-chip .meter-label, .ctx-chip .meter-track { display: none; } /* its % says it */
-  .model-default { display: none; } /* "Sonnet 5.5", not "default (Sonnet 5.5)": the tooltip says it's the default */
-  .model-chip svg { display: none; }
+  .model-ver, .model-tag:not(.local) { display: none; } /* bars and "Opus": the tooltip names the version and the default */
   .usage { gap: 7px; }
   .usage .meter-track { width: 24px; }
 }
