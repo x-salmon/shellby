@@ -5,7 +5,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { installFakeElectron, fakeConfig } = require('./helpers/fake-ipc');
 
-installFakeElectron();
+const electron = installFakeElectron();
 const { guardIpc, windowPolicy } = require('../src/main/ipc-guard');
 const { registerTabsIpc } = require('../src/main/ipc/tabs');
 
@@ -64,6 +64,25 @@ test('back to one pane clears the saved layout, whether it comes as one pane or 
   save(panel, { grid: [['a'], ['b']] });
   save(panel, null);
   assert.equal(config.get('paneLayout'), null);
+});
+
+// Updating (wiring/tray.js prepare) and quitting close every tab while the
+// panel is still up: it drops them from its panes one by one and sends each
+// smaller grid. None of that is you closing panes, so the split stays saved.
+test('quitting keeps the split as it was left, as tabs close on the way out', () => {
+  const { panel, config, save, orders } = setup();
+  save(panel, { grid: [[pane('p1', ['a', 'b'])], [pane('p2', ['c'])]] });
+  const left = config.get('paneLayout');
+  const ordersBefore = orders.length;
+  electron.app.isQuitting = true;
+  try {
+    save(panel, { grid: [[pane('p1', ['a', 'b'])]] });
+    save(panel, null);
+  } finally {
+    delete electron.app.isQuitting;
+  }
+  assert.deepEqual(config.get('paneLayout'), left);
+  assert.equal(orders.length, ordersBefore, 'and main\'s tab order is left alone');
 });
 
 test('main keeps its tab order as each pane\'s tabs in turn, one pane\'s included', () => {

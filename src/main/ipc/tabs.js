@@ -1,5 +1,6 @@
 // Conversation tabs: opening, ordering, compacting, and what each turn changed
 // (changes.js). Kept out of main.js, which only wires it up.
+const { app } = require('electron');
 const { ID, PATH, obj, opt, str } = require('../ipc-args');
 const fs = require('fs');
 const os = require('os');
@@ -90,8 +91,12 @@ function registerTabsIpc(ipcMain, d) {
   // here too, against the conversations open: config only ever holds a grid
   // within the caps, of tabs that exist, and only a split (one pane writes
   // nothing). Main's tab order becomes each pane's tabs in turn, one pane's
-  // included, so openTabs comes back in that order.
+  // included, so openTabs comes back in that order. Quitting and updating
+  // close every tab with the panel still up (wiring/quit.js, wiring/tray.js),
+  // and it sends the grid shrinking as they go: that's not you closing panes,
+  // so, as with openTabs (wiring/sessions.js), the split stays as it was.
   ipcMain.on('panes:layout', (e, layout) => {
+    if (/** @type {{ isQuitting?: boolean }} */ (app).isQuitting) return;
     if (d.popoutTabOf(e.sender)) return; // a conversation in its own window has no grid
     const clean = panes.clean(layout, [...d.manager.tabs.keys()]);
     if (clean) d.manager.setOrder(panes.tabIds(clean.grid));
