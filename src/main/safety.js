@@ -52,7 +52,11 @@ function referencedFiles(command, createdFiles) {
   return hits;
 }
 
-// Returns the flags to merge into a permission item.
+/**
+ * Returns the flags to merge into a permission item.
+ * @param {any} item
+ * @param {{ createdFiles?: Iterable<string>, tasks?: Map<string, any> }} [o]
+ */
 function annotatePermission(item, { createdFiles = [], tasks = new Map() } = {}) {
   const flags = {};
   const command = SHELL_TOOLS.has(item.toolName) ? String(item.input?.command ?? '') : '';

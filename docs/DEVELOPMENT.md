@@ -145,6 +145,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/e2e-context.js` | The context meter with the fake CLI: a reply's tokens filling the hairline under its tab and the chip, what each turn cost, a quieter "filling up" offer and then "getting crowded" past 80%, the chip's menu (the running total, the costliest turns, Not now, Compact), Start fresh with a summary, and `/clear` (the next message starts without `--resume`) |
 | `node scripts/e2e-keepwarm.js` | Keep warm with the fake CLI: off with nothing cached, then a reply cached for an hour, the mug pressed with the time left beside it, a ping just before the cache expires that leaves one dim line (not your message in the feed, the tab not left working), the tooltip's countdown, and coming back after an absence turning it off. `SHELLBY_KEEPWARM_LEAD_MS` makes the ping due a second after the reply |
 | `node scripts/e2e-attachments.js` | Screenshots as tasks with the fake CLI: a snip pasted into the box, or a picture with no file behind it dropped on the panel or the crab, is saved, shown as a thumbnail chip and reaches Claude as an image block. The pastes and drops are synthetic events with real PNG bytes, so the clipboard is never touched |
+| `node scripts/e2e-harness.js [folder]` | Other agents' CLIs, with the fake ACP agent: the palette offers each, a new tab says which runs it, a reply streams, a permission card's Allow reaches the agent, and Claude's model chip is refused for it |
 | `node scripts/e2e-cli-features.js [folder]` | The Claude Code features Shellby passes through, with the fake CLI: a reply shown as it's written, the next-prompt suggestion (Tab puts it in, unsent), `/goal` pinned above the box and cleared, a helper's words in its crab's bubble, safe mode from the tab (`--safe-mode` on the next start), Settings' fallback model and Chrome reaching a new conversation with its name, and Toolbox → Chat as one of your agents. Screenshots go in `[folder]` |
 | `node scripts/e2e-parity.js` | The Claude Code terminal's conveniences with the fake CLI, in a small git project: rewind (conversation and code), `!` commands, @ file mentions, Up and Ctrl+R through what you've sent, the effort chip and `/effort`, `/export`, the Rules tab, MCP statuses and the output style setting |
 | `node scripts/e2e-branch.js` | Branching a conversation with the fake CLI: Try again from here opens a new tab, resumed as a fork up to just before that message, in its own copy with the files as they were, the message back in the box and the original untouched; the note Claude gets and the fence keeping its edits out of the original's folder; Branch from here and Run it again; comparing two tries and keeping one (it comes home, the others go) |
@@ -220,6 +221,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 |---|---|---|
 | `SHELLBY_USER_DATA=<folder>` | main.js, ipc/surroundings.js, the `shellby` command, the plugin's MCP server | Dev only. A profile of its own (settings, history, single-instance lock). The run is then isolated: its own status file and Claude settings, a pretend home for the Toolbox and ssh, a free hook port, and never away |
 | `SHELLBY_FAKE_CLAUDE=<file>` | main.js | Dev only. The fake CLI (`test/fixtures/fake-claude.js`) in place of Claude Code: no account, no usage. Makes it a test run |
+| `SHELLBY_FAKE_ACP=<file>` | main.js | Dev only. The fake ACP agent (`test/fixtures/fake-acp.js`) in place of Gemini CLI, OpenCode and Codex, which all count as installed |
 | `SHELLBY_NODE=<exe>` | wiring/sessions.js, wiring/remote.js, wiring/bg-sessions.js, wiring/projects.js, ipc/life.js, ipc/native.js | The node that runs the fake CLI and the fake ssh (default `node`) |
 | `SHELLBY_HOOK_PORT=<port>` | wiring/timetrack.js | Dev only. The port for the plugin's hook events, so a dev run stays off the installed Shellby's |
 | `SHELLBY_POCKET_PORT=<port>` | wiring/pocket.js | Any build. The phone app's port on `127.0.0.1` (default 47916); `0` takes whichever is free (the tests) |
@@ -504,6 +506,11 @@ src/main/        Electron main process
                    templates.js (the built-in routines) and service.js (starting a run, making room, holding it)
   corrections.js   learning from corrections (pure): the same comment, Deny or undo twice in a project -> a rule offered;
                    learned-rules.js appends it to that project's CLAUDE.md, correction-draft.js lets Claude word it
+  harness/         other agents' CLIs a conversation can run on (Gemini CLI, OpenCode, Codex), over the Agent Client
+                   Protocol: registry.js (each one: its command, install line, and its own name for each Shellby mode),
+                   launch.js (finding it, reading npm's .cmd shim so nothing runs through a shell), rpc.js (JSON-RPC over
+                   ndjson), acp-translate.js (its updates as Claude Code's own events, so stream.js makes the items),
+                   acp-session.js (ClaudeSession's counterpart for sessions.js), index.js (makeHarness)
   local/           model.js: a local model (Ollama, LM Studio, over /v1/chat/completions) answers the small drafts that
                    ask for it (runClaudeOnce's `local: true`) before Claude; any failure falls back to Claude, a failing
                    model is rested for a while, and only addresses on this PC are taken. Settings → Claude → Local model

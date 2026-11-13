@@ -319,6 +319,11 @@
       })),
       claude() && { icon: '💬', title: 'Chat', sub: 'Give Shellby a task', keys: 'home task conversation', run: go('chat') },
       claude() && { icon: '➕', title: 'New conversation', sub: 'A fresh tab, in the usual folder', keys: 'tab chat', shortcut: 'newTab', run: () => { SB.setView('chat'); SB.newTab(); } },
+      // On another agent's CLI: the installed ones, and the rest with how to install them.
+      ...(claude() ? SB.harnesses : []).map(hn => ({
+        icon: '🔌', title: `New conversation in ${hn.name}`, sub: hn.installed ? 'A fresh tab, run by its CLI' : `Not installed: ${hn.install}`,
+        keys: `tab chat agent harness other cli ${hn.id} ${hn.short}`, run: () => SB.newTabOn(hn),
+      })),
       claude() && { icon: '🧰', title: 'Toolbox', sub: 'Skills, agents, commands, MCP servers, mods, hooks and memory', keys: 'tools mcp mods plugins hooks memory claude.md', run: go('toolbox') },
       claude() && { icon: '🛒', title: 'Skill Shop', sub: 'Install skills from plugin marketplaces', keys: 'get more plugins install marketplace', run: () => SB.openShop() },
       claude() && { icon: '⚡', title: 'Workflows', sub: 'Triggers that start a list of steps', keys: 'automate automation flow trigger steps webhook', run: go('workflows') },
@@ -558,6 +563,7 @@
 
   function openPalette() {
     if (state.view === 'onboarding' || SB.solo) return;
+    SB.refreshHarnesses?.().then(() => { if (!sheet.hidden) update(); });
     SB.closeMenus();
     returnFocus = /** @type {HTMLElement | null} */ (document.activeElement);
     sheet.hidden = false;

@@ -152,6 +152,24 @@ More out of your Claude plan, without asking Claude to do any less. Nothing here
 - **On your other computers:** keep Claude Code and your files on a server or a PC that stays on, and work with it from here. **Settings → Connections → Other computers** connects over ssh, through a VPS or any other computer in between, and walks you through the rest: Windows' ssh agent switched on for a key with a passphrase, a key set up from your password, Claude Code installed and signed in over there. Add a folder there, and conversations in it run there. Claude Code doesn't have to be on this PC at all (a locked-down work PC, say): pick **Claude Code on another computer** when Shellby first starts.
 - **Claude Code stays current.** The CLI checks for its own updates only in an interactive terminal session, and the sessions Shellby starts aren't interactive. So once a day he asks the npm registry which version is newest; when yours is older he says so once, and **Settings → General → About** shows **Claude Code v2.1.290 is out** with an **Update** button that runs Claude Code's own `claude update` (native and npm installs alike). Conversations already running keep the copy they started with; new ones get the update. **Update it for me** has him do it himself, once per release and only while nothing is running. **Leave it to me** and he never asks the registry. **Check now** asks straight away.
 
+### 🔌 Other agents: Gemini CLI, OpenCode, Codex
+
+A conversation can run on another coding agent's CLI instead of Claude Code: press <kbd>Ctrl</kbd>+<kbd>K</kbd> and choose **New conversation in Gemini CLI**, **in OpenCode** or **in Codex**. It's a tab like any other: the reply as it's written, each tool it runs, its plan as the to-do list, its permission prompts as cards here (with the same plain words and warnings as Claude's), Stop, History, and picking up where it left off when you reopen it. It keeps the agent it began on for good.
+
+Shellby talks to each one over the [Agent Client Protocol](https://agentclientprotocol.com), so it uses the agent's own model, tools, settings and sign-in. Shellby keeps no keys and gives it nothing of its own: not your GitHub access, not the crab's tools. Install and sign in to them yourself first:
+
+| Agent | Install | Sign in |
+|---|---|---|
+| Gemini CLI | `npm install -g @google/gemini-cli` | run `gemini` once and choose Log in with Google, or set `GEMINI_API_KEY` |
+| OpenCode | `npm install -g @opencode/cli` | `opencode auth login` |
+| Codex | `npm install -g @openai/codex @agentclientprotocol/codex-acp` | `codex login` |
+
+Your mode goes to the agent as its own nearest one (Plan only as its plan mode, Auto-edit as its auto-edit, Autonomous as its yolo or full-access mode), and what each mode allows is still that agent's to decide. When an agent has no mode to match yours, the conversation says so once and the agent runs in its own default. **Allow** on its card only ever allows that once; **Always allow** is the agent's own "always", and only when you press it.
+
+With **Give a conversation its own copy of a git project** on (Settings → Claude), a new conversation on another agent gets its own copy of the repository before its first message, since it can't be stopped halfway through an edit to move into one the way Claude can. One already under way stays where it began.
+
+Claude Code's own extras don't apply to them: its models and effort, keep warm, compacting idle conversations, local models, rewinding, branching, continuing in a terminal, helper crabs and the crab's tools. Aider has no way for an app to drive it yet, so it isn't one of them.
+
 ### ⌨️ From any terminal
 
 ```powershell

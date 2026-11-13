@@ -553,6 +553,7 @@ interface ShellbyPanelExtras {
   closeTab: any;
   closeTabSafely: any;
   ensureTab: any;
+  harnesses: any;
   hasChanges: any;
   hasClosed: any;
   inChat: any;
@@ -561,8 +562,10 @@ interface ShellbyPanelExtras {
   newTab: any;
   newTabAs: any;
   newTabIn: any;
+  newTabOn: any;
   nudgeTab: any;
   orderTabs: any;
+  refreshHarnesses: any;
   reopenClosed: any;
   showChanges: any;
   stripIds: any;

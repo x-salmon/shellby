@@ -83,7 +83,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onModels: on('models:changed'), // the picker's list, grown by models a newer Claude Code knows (wiring/models.js)
 
   // tabs + tasks
-  newTab: invoke('tab:new'), setSafeMode: invoke('tab:safe'), // safe mode: { tabId, on } (sessions.js setSafeMode)
+  newTab: invoke('tab:new'), harnessList: invoke('harness:list'), setSafeMode: invoke('tab:safe'), // safe mode: { tabId, on } (sessions.js setSafeMode); harnessList: Gemini CLI, OpenCode, Codex
   closeTab: invoke('tab:close'),
   moveTab: (tabId, beforeId) => ipcRenderer.invoke('tab:reorder', { tabId, beforeId }),
   // a conversation in a window of its own (x/y: where it was dropped, in screen pixels)

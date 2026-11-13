@@ -301,6 +301,10 @@
         case 'agent':
           return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: '🤖' }),
             h('span', {}, 'Your ', h('b', { text: item.name }), " agent runs this conversation: its own instructions, tools and model, from the first message.")));
+        // Another agent's CLI runs this conversation (main's harness/): Gemini CLI, OpenCode, Codex.
+        case 'harness':
+          return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: '🔌' }),
+            h('span', {}, h('b', { text: item.name }), ' runs this conversation, with its own model, tools and sign-in. Permission prompts still come here.')));
         // Safe mode turned on or off for this conversation (sessions.js setSafeMode).
         case 'safe':
           return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: item.on ? '🛟' : '🧩' }),
