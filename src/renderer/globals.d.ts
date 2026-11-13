@@ -585,6 +585,8 @@ interface ShellbyPanelExtras {
   tankApply: any;
   tankEditing: any;
   tankView: any;
+  // taskboard.js
+  taskBoard: any;
   // tide.js
   tide: any;
   // together.js

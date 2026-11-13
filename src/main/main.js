@@ -48,6 +48,7 @@ const { wireYearbook } = require('./wiring/yearbook');
 const { wireBugdex } = require('./wiring/bugdex');
 const { wireTimetrack } = require('./wiring/timetrack');
 const { wireCrabApi } = require('./wiring/crab-api');
+const { wireTaskBoard } = require('./wiring/taskboard');
 const { wireChannels } = require('./wiring/channels');
 const { wireDeck } = require('./wiring/deck');
 const { wirePhoneTasks } = require('./wiring/phone-tasks');
@@ -366,6 +367,7 @@ share(wireFeatureActs(shared)); // What you use: the things you do with him, cou
 share({ bugdex: wireBugdex(shared) }); // the bugs Claude has fixed for you, in jars
 const { createExternal, createHealth, createTimeTracker, stat } = share(wireTimetrack(shared));
 const { createCrabApi } = share(wireCrabApi(shared));
+share(wireTaskBoard(shared)); // the task board: conversations handing each other work (taskboard/)
 const { channelPlace, channelSettings, confirmChannelPlace, createObs, createRemote, loadChannelSecret } = share(wireChannels(shared));
 const { createPhoneTasks } = share(wirePhoneTasks(shared));
 const { createDeck } = share(wireDeck(shared));
@@ -439,6 +441,7 @@ app.whenReady().then(() => {
   createGitHub();
   createComputers(); // before the tabs: a reopened one may be on another computer
   createManager();
+  shared.taskBoard.watchTabs(); // a conversation that closes gives back what it claimed
   watchClashes();
   createCorrections();
   createHealth();

@@ -438,6 +438,10 @@ body[data-view="projects"] .view-projects {
 /* Linear and Jira: keys run longer than #42, and the setup sits quietly under the list. */
 .bl-tag.ticket { max-width: 52px; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link-btn.bl-tracker-link { margin-left: auto; color: var(--sand-faint); }
+
+/* The task board (taskboard.js): what conversations handed each other in this project */
+.tb-intro { margin: -4px 0 8px; line-height: 1.45; }
+.tb-row .bl-where { display: block; }
 .bl-tracker { margin-top: 8px; padding: 8px; border: 1px solid var(--line-soft); border-radius: 6px; }
 .bl-tracker-row { gap: 6px; align-items: center; }
 .bl-tracker-row + .bl-tracker-row { margin-top: 6px; }

@@ -122,6 +122,7 @@ Shellby remembers which you used last.
 | From a script | a web hook: when a script calls its address (see below) |
 | When Claude Code asks | lets Claude Code (`run_workflow`) and `shellby flow run` start it |
 | When a dev server changes | when a dev server started from the [Projects page](PROJECTS.md) comes up, crashes or is stopped, optionally only one project's or one script's. The steps get its project, script, port and exit code as `trigger.*` |
+| When the task board changes | when one of Shellby's conversations posts a task on a project's [task board](PROJECTS.md#task-board), or one is done or fails, optionally only one project's. The steps get its id, title, detail, result and the conversation that posted or did it as `trigger.*` |
 
 Every workflow can also be run by hand with **Run**.
 

@@ -204,3 +204,16 @@ test('dev server steps: an action, a project, a checked script, and starting one
   bad([{ type: 'server', project: 'site', script: 'dev && calc' }], /script name/);
   bad([{ type: 'server', project: '{{ nope.project }}' }], /“nope” isn't a step/);
 });
+
+test('board triggers: an event and an optional project, described in words', () => {
+  const { validateWorkflow: v, describeTrigger } = require('../src/main/workflows/schema');
+  const ok = v({ name: 'Review', when: [{ type: 'board', on: 'done', project: 'site' }], steps: [
+    { type: 'claude', mode: 'plan', prompt: 'Review what {{ trigger.by }} did for {{ trigger.title }}: {{ trigger.result }}' },
+  ] });
+  assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+  assert.equal(describeTrigger(ok.workflow.when[0]), "When a task on site's board is done");
+  assert.equal(describeTrigger(v({ name: 'F', when: [{ type: 'board', on: 'failed' }], steps: [{ type: 'tell', text: 'x' }] }).workflow.when[0]), 'When a task on a board fails');
+  const bad = v({ name: 'B', when: [{ type: 'board', on: 'exploded' }], steps: [{ type: 'tell', text: 'x' }] });
+  assert.equal(bad.ok, false);
+  assert.match(bad.errors.map(e => e.message).join('; '), /posted, done, failed or any/);
+});

@@ -385,7 +385,7 @@ contextBridge.exposeInMainWorld('shellby', {
   // Linear or Jira on Next up (backlog/trackers.js): set it up, and hear when a read in the background lands.
   backlogTrackerChoices: invoke('backlog:tracker-choices'),
   backlogTrackerSet: invoke('backlog:tracker-set'),
-  onBacklogChanged: on('backlog:changed'),
+  onBacklogChanged: on('backlog:changed'), taskBoardView: invoke('taskboard:view'), taskBoardCancel: invoke('taskboard:cancel'), onTaskBoardChanged: on('taskboard:changed'), // and the task board's (wiring/taskboard.js)
   // A project's next release (src/main/projects/releases-ipc.js): nothing is pushed unless you say so.
   getRelease: invoke('releases:get'),
   cutRelease: invoke('releases:cut'),

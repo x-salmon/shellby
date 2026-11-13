@@ -19,6 +19,9 @@ const { FEATURE_IDS, FOCUS_MINUTES } = require('./selfaware');
 const { MAX_TEXT: MAX_NOTE } = require('./notes');
 const { MODES } = require('./config');
 
+// The longest one wait_for_tasks call waits; an agent calls again to wait longer.
+const MAX_WAIT_SECONDS = 300;
+
 const SERVER = 'shellby';
 const VERSION = '1.0.0';
 const PROTOCOL = '2025-06-18';
@@ -75,6 +78,36 @@ const CRAB_TOOLS = [
   },
 ];
 
+// The task board (taskboard/board.js): Shellby's conversations handing each
+// other work in a project. ids look like "b-k3j9x0". Four tools, kept terse:
+// their schemas ride along on every turn of every conversation, so lengths and
+// counts are left to board.js, which cuts and checks everything it's given.
+const STR = { type: 'string' };
+const IDS = { type: 'array', items: STR };
+const BOARD_TOOLS = [
+  {
+    name: 'post_task',
+    description: "Post a task on this project's board for another conversation. detail must stand alone. start: true starts a helper on it.",
+    inputSchema: obj({ title: STR, detail: STR, needs: IDS, start: { type: 'boolean' } }, ['title']),
+  },
+  {
+    name: 'list_tasks',
+    description: "This project's task board.",
+    inputSchema: obj({ status: { type: 'string', enum: ['active', 'ready', 'done', 'all'] } }),
+  },
+  {
+    name: 'update_task',
+    description: 'claim a ready task; then done or failed with a result for the poster (what changed, which branch), or release it. cancel one you posted.',
+    inputSchema: obj({ id: STR, action: { type: 'string', enum: ['claim', 'done', 'failed', 'release', 'cancel'] }, result: STR }, ['id', 'action']),
+  },
+  {
+    name: 'wait_for_tasks',
+    description: `Wait until these tasks finish (or timeout_seconds, at most ${MAX_WAIT_SECONDS}), then get their results.`,
+    inputSchema: obj({ ids: IDS, timeout_seconds: { type: 'integer' } }, ['ids']),
+  },
+];
+const BOARD_TOOL_NAMES = BOARD_TOOLS.map(t => t.name);
+
 const SUGGEST_TOOL = {
   name: 'suggest',
   description: 'Offer the user a Shellby feature as a card they can tap. Nothing happens unless they tap it. The reply says whether it was shown.',
@@ -88,9 +121,9 @@ const SUGGEST_TOOL = {
   }, ['feature', 'why']),
 };
 
-/** The tools a conversation gets: the crab's, plus `suggest` when suggestions are on. */
-function toolsFor({ suggestions = true } = {}) {
-  return suggestions ? [...CRAB_TOOLS, SUGGEST_TOOL] : CRAB_TOOLS;
+/** The tools a conversation gets: the crab's, the task board's when it's on, and `suggest` when suggestions are on. */
+function toolsFor({ suggestions = true, board = true } = {}) {
+  return [...CRAB_TOOLS, ...(board ? BOARD_TOOLS : []), ...(suggestions ? [SUGGEST_TOOL] : [])];
 }
 
 /** The mcpServers entry for the one server Shellby hosts itself. */
@@ -136,4 +169,4 @@ async function handle(message, { tools, call }) {
   }
 }
 
-module.exports = { SERVER, toolsFor, servers, handle };
+module.exports = { SERVER, BOARD_TOOL_NAMES, MAX_WAIT_SECONDS, toolsFor, servers, handle };

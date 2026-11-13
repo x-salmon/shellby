@@ -575,7 +575,10 @@ src/main/        Electron main process
   keepwarm.js      keep warm (docs/plans/keep-warm.md, pure): which conversations get a ping just before their cache expires,
                    and when you're back; keepwarm-service.js runs it against the open tabs and keeps the PC awake
   selfaware.js     what Claude is told about Shellby (a fixed note, the usage line at 80% and 95%) and the feature offers it may make;
-                   crabmcp.js serves the crab's tools (say, celebrate, wear, status, note, suggest) to Shellby's own conversations
+                   crabmcp.js serves the crab's tools (say, celebrate, wear, status, note, suggest, and the task board's) to Shellby's own conversations
+  taskboard/       the task board, where Shellby's conversations hand each other work: board.js (pure: post, claim, done,
+                   failed, release, cancel, needs), helpers.js (the limits on helpers a post can start, and their prompt);
+                   wiring/taskboard.js runs the tools, keeps taskboard.json, frees a closed tab's claims and feeds the board trigger
   usage/           index.js (the usage meter without a prompt: a short-lived `claude -p` asked for its /usage data),
                    ledger.js (what each turn cost, pure: the per-turn ledger, a prompt's kind of ask, and the estimate the
                    composer shows, Sonnet for a small ask in a conversation not started yet, and what each branch cost; wiring/usageplan.js brackets each turn

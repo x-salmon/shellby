@@ -61,6 +61,7 @@
     webhook: { name: 'From a script', sub: 'A web hook on this PC only' },
     claude: { name: 'When Claude Code asks', sub: 'Claude Code (MCP) or the shellby command' },
     server: { name: 'When a dev server changes', sub: 'One started from the Projects page comes up, crashes or is stopped' },
+    board: { name: 'When the task board changes', sub: 'A conversation posts a task, or one is done or fails' },
   };
   const ONCE_TRIGGERS = ['claude', 'startup', 'health', 'webhook'];
   const MAX = { triggers: 8, steps: 60, depth: 4, inputs: 10, choices: 4 };
@@ -77,6 +78,7 @@
     folder: { folder: 'The folder', files: 'The files (a list)' },
     workflow: { name: 'Workflow name', status: 'ok or error', runId: 'Its run', vars: 'Its values' },
     server: { event: 'up, crashed or stopped', project: 'Project', script: 'The script (dev, start…)', port: 'Its port, if known', url: 'Its address, if known', exitCode: 'Exit code, if it crashed', root: 'The clone it runs in', framework: 'vite, next…' },
+    board: { event: 'posted, done or failed', id: 'The task (b-…)', title: 'Its title', detail: 'What it asks for', result: 'What the conversation that did it said', project: 'Project', folder: 'Its folder', by: 'The conversation that posted or did it' },
   };
   // What each step type hands on as <id>.*
   const STEP_OUTPUTS = {
@@ -120,6 +122,7 @@
     worktree: 'M4.5 2.5v11M4.5 9.5c0-2 1.6-3 3.5-3h1c1.4 0 2.5-1.1 2.5-2.5V2.5',
     pr: 'M4.5 2.5v11M11.5 13.5V7c0-1.4-1.1-2.5-2.5-2.5H7M8.5 3l-1.8 1.5L8.5 6',
     server: 'M2.5 3h11v4h-11zM2.5 9h11v4h-11zM5 5h.01M5 11h.01',
+    board: 'M2.5 2.5h11v11h-11zM5 5.5l1 1 2-2M5 10l1 1 2-2M9.5 6h2M9.5 10.5h2',
     play: 'M5 3.5v9l7-4.5z',
     up: 'M4 10l4-4 4 4',
     down: 'M4 6l4 4 4-4',
