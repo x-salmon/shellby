@@ -332,17 +332,22 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev(`(() => { SB.state.tabs.get('${C}').draft = 'changed while away'; SB.renderTabStrip(); })()`);
     check(await until(`document.querySelector('.pane[data-tab="${C}"] .pane-standin')?.textContent.includes('changed while away')`), 'a stand-in shows a draft that changed while its pane was out of focus');
 
-    // ---- What a conversation left running stays in sight in its pane out of focus,
-    // and a click on that line brings the whole tray, with Output and Stop, to it.
+    // ---- Every pane shows its own tray, focused or not: what its conversation
+    // left running (Output and Stop included) and what Claude guessed you'd ask next.
     await ev(`SB.activate('${A}')`);
-    await ev(`(() => { SB.state.tabs.get('${C}').jobs = [{ id: 'j1', status: 'running', description: 'npm run watch', startedAt: Date.now() }]; SB.renderTabStrip(); })()`);
-    check(await until(`document.querySelector('.pane[data-tab="${C}"] .pane-tray')?.textContent.includes('1 in the background: npm run watch')`), 'an unfocused pane shows what its conversation has running in the background');
-    check(await ev(`!document.querySelector('.pane[data-tab="${A}"] .pane-tray')`), 'and the focused pane has the full tray instead of the line');
-    const trayOf = id => ev(`(() => { const r = document.querySelector('.pane[data-tab="${id}"] .pane-tray').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
-    await panel.click(await trayOf(C));
-    check(await until(`SB.state.activeTab === '${C}'`), 'clicking the line focuses its pane');
-    check(await until(`!document.getElementById('jobs').hidden && document.getElementById('jobs').textContent.includes('npm run watch') && !document.querySelector('.pane[data-tab="${C}"] .pane-tray')`), 'and its background tray opens in the box there');
-    await ev(`(() => { SB.state.tabs.get('${C}').jobs = []; SB.syncBusyUi(); })()`);
+    await ev(`(() => { const t = SB.state.tabs.get('${C}'); t.jobs = [{ id: 'j1', status: 'running', description: 'npm run watch', startedAt: Date.now() }]; t.nextPrompt = 'Now add a test for it'; SB.renderTabStrip(); })()`);
+    const paneJobs = `document.querySelector('.pane[data-tab="${C}"] .pane-extras [data-tray="jobs"]')`;
+    const paneNext = `document.querySelector('.pane[data-tab="${C}"] .pane-extras [data-tray="nextPrompt"]')`;
+    check(await until(`!${paneJobs}?.hidden && ${paneJobs}.textContent.includes('npm run watch') && !!${paneJobs}.querySelector('.job.running')`), 'an unfocused pane shows the full background tray of its conversation');
+    check(await ev(`[...${paneJobs}.querySelectorAll('button')].some(b => b.textContent === 'Stop')`), 'with its Stop there too');
+    check(await until(`!${paneNext}?.hidden && ${paneNext}.textContent.includes('Now add a test for it')`), 'and the prompt Claude Code suggested for it');
+    check(await ev(`!document.querySelector('.pane[data-tab="${A}"] .pane-extras')`), 'while the focused pane keeps its tray over the box');
+    const chipOf = () => ev(`(() => { const r = ${paneNext}.querySelector('.next-chip').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    await panel.click(await chipOf());
+    check(await until(`SB.state.activeTab === '${C}'`), 'clicking the suggestion focuses its pane');
+    check(await until(`document.getElementById('input').value === 'Now add a test for it' && document.getElementById('nextPrompt').hidden`), 'and puts it in the box there, unsent');
+    check(await until(`!document.getElementById('jobs').hidden && document.getElementById('jobs').textContent.includes('npm run watch') && !document.querySelector('.pane[data-tab="${C}"] .pane-extras')`), 'and its background tray moves over the box');
+    await ev(`(() => { document.getElementById('input').value = ''; SB.state.tabs.get('${C}').jobs = []; SB.syncBusyUi(); })()`);
 
     // ---- Closing the focused pane keeps the box.
     await ev(`SB.activate('${B}')`);

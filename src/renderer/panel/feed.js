@@ -217,10 +217,9 @@
       SB.filesTake?.(this, item, replay); // and lit up in All files (files-dock.js)
       this.noteTurn?.(item); // what the turn was, in case Claude didn't answer it (feed-local.js)
       // Claude's to-do list moves with its tool calls, replayed or live (native-strip.js draws it;
-      // an unfocused pane keeps a line of it, tab-panes.js).
+      // an unfocused pane shows its own over its stand-in, tab-panes.js).
       if ((item.kind === 'tool' || item.kind === 'tool_result') && T.apply(this.todos, item)) {
-        if (this.isActive) SB.renderTodos?.(this);
-        else if (!replay && this.isShown) SB.refreshPaneHeads?.();
+        if (this.isActive || !replay) SB.renderTodos?.(this);
       }
       // The reply as it was being written gives way to whatever comes next on
       // the main thread: the finished words themselves, usually. Those keep the
@@ -268,7 +267,7 @@
           // Something you just sent always comes into view, even if you'd scrolled up.
           if (!replay) { this.stuck = true; this.dropCutOff(); }
           // What Claude guessed you'd ask next is spent once you've asked something.
-          if (!replay && this.nextPrompt) { this.nextPrompt = null; if (this.isActive) SB.renderNextPrompt?.(this); }
+          if (!replay && this.nextPrompt) { this.nextPrompt = null; SB.renderNextPrompt?.(this); } // over the box or its pane's stand-in
           return this.renderUser(item);
         // Claude's reply as it's written (--include-partial-messages), formatted
         // as it goes, so the finished one takes its place without a jump.
@@ -290,7 +289,7 @@
         case 'next':
           if (replay) return;
           this.nextPrompt = item.text;
-          if (this.isActive) SB.renderNextPrompt?.(this);
+          SB.renderNextPrompt?.(this); // in whichever pane shows it (native-cli.js)
           return;
         // A goal Claude checks before it stops (/goal), pinned by the box until it's met or cleared.
         case 'goal':
@@ -356,7 +355,7 @@
         // conversation reopened later shows only what came after it.
         case 'cleared':
           this.wipe();
-          if (this.isActive) SB.renderTodos?.(this);
+          SB.renderTodos?.(this); // in whichever pane shows it (native-strip.js)
           // falls through
         case 'moved': case 'wt-in': case 'wt-out': case 'phone': case 'home': case 'home-wait': case 'pushed': case 'compacted': case 'fresh': case 'rewound': case 'hook-failed': {
           const mark = F.markFor(item, SB.compact);
@@ -445,7 +444,7 @@
     reset(items) {
       this.wipe();
       for (const item of items) this.render(item, { replay: true });
-      if (this.isActive) SB.renderTodos?.(this);
+      SB.renderTodos?.(this);
       this.scrollToEnd();
     }
 

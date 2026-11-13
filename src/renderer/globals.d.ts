@@ -495,6 +495,7 @@ interface ShellbyPanelExtras {
   paneDir: any;
   paneEls: any;
   paneStripOf: any;
+  paneTrayBox: any;
   placeTab: any;
   popOut: any;
   refreshJump: any;
