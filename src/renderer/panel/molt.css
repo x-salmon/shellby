@@ -8,7 +8,9 @@
   content: attr(data-molt); position: absolute; right: -8px; bottom: -6px; padding: 0 4px; border-radius: 99px;
   font: 700 var(--fs-10)/14px var(--font-mono); color: #12081f; background: var(--molt); box-shadow: 0 0 0 2px var(--reef);
 }
-.brand-level.molted::after { right: -10px; bottom: -8px; font-size: 9px; line-height: 11px; }
+/* the nameplate has no disc to ring: its divider takes the molt colour and the numeral sits at the end of the row */
+.brand-level.molted { box-shadow: none; border-left: 2px solid var(--molt); }
+.brand-level.molted::after { position: static; font-size: 9px; line-height: 11px; box-shadow: none; }
 
 /* ---- weekends off */
 .xp-boosts li.xp-rest { padding: 0; background: none; border: 0; }
