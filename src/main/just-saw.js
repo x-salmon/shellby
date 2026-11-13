@@ -1,5 +1,5 @@
 // "Attach what I just saw": one press hands a new task the thing you were
-// probably about to paste in. Off unless you turn it on (Settings → General,
+// probably about to paste in. Off unless you turn it on (Settings → Alerts,
 // attachWhatISaw), and it only looks when you press it.
 //
 // What it offers, best first:

@@ -39,11 +39,11 @@ In Claude Code:
 /plugin install shellby@shellby
 ```
 
-Then make sure the Shellby app is running (**Settings → Claude Code everywhere** shows your connected sessions).
+Then make sure the Shellby app is running (**Settings → Apps → Claude Code everywhere** shows your connected sessions).
 
 ## Status line
 
-Run `/shellby:statusline` to put Shellby in Claude Code's status line (mood, level, XP and health), for example `🦀💨 Shellby working · Lv 5 Claw Coder ▰▰▰▱▱`. It asks Claude's statusline-setup agent to add it, keeping any status line you already have. You can also turn it on in the Shellby app: **Settings → Claude Code everywhere → Status line**.
+Run `/shellby:statusline` to put Shellby in Claude Code's status line (mood, level, XP and health), for example `🦀💨 Shellby working · Lv 5 Claw Coder ▰▰▰▱▱`. It asks Claude's statusline-setup agent to add it, keeping any status line you already have. You can also turn it on in the Shellby app: **Settings → Apps → Claude Code everywhere → Status line**.
 
 ## Where did we leave off?
 
@@ -51,7 +51,7 @@ When a session ends, Shellby writes a short handoff note for its project: what w
 
 ## Handing a session to Shellby
 
-Run `/shellby:handoff` to carry the conversation you're in on in a Shellby tab. It runs `shellby take`, which needs the `shellby` command (**Settings → Claude Code everywhere → the shellby command**). Type `/exit` in the terminal before you send anything in Shellby: two copies of one conversation trip over each other. Going the other way, **Continue in a terminal** on a Shellby tab opens it here with `claude --resume`.
+Run `/shellby:handoff` to carry the conversation you're in on in a Shellby tab. It runs `shellby take`, which needs the `shellby` command (**Settings → Apps → Claude Code everywhere → the shellby command**). Type `/exit` in the terminal before you send anything in Shellby: two copies of one conversation trip over each other. Going the other way, **Continue in a terminal** on a Shellby tab opens it here with `claude --resume`.
 
 ## How it works
 

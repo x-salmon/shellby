@@ -98,57 +98,132 @@ body:not([data-view="chat"]) :is(.celebrate-host, .recap-host) { bottom: calc(va
 .home-tabs { margin: -4px 0 12px; padding: 2px; border-color: transparent; }
 .home-tabs button { height: 24px; font-size: var(--fs-11-5); font-weight: 600; }
 
-/* ================================================================ Settings tabs */
-/* The tabs stay pinned while a tab scrolls, so the fade-under-the-header mask is
-   off here: the bar itself is the edge. The ink band around it hides whatever
-   scrolls up behind it. */
+/* ================================================================ Settings rail */
+/* Settings is a rail of nine areas beside a column that scrolls (settings-rail.js).
+   The column carries the fade under the header; the rail never scrolls away.
+   clip, not hidden: a jump's scrollIntoView would scroll a hidden view too,
+   carrying the rail off the top with it. */
+body[data-view="settings"] .view-settings { display: flex; overflow: clip; padding: 0; container: settings / inline-size; animation: fadein .18s var(--ease-out); }
 .view-settings { -webkit-mask-image: none; mask-image: none; }
-.settings-tabs {
-  position: sticky; top: -14px; z-index: 3;
-  margin: -4px 0 12px;
-  box-shadow: 0 -10px 0 2px var(--ink);
+/* relative: what's positioned inside a setting scrolls with it, not with the view. */
+.settings-main {
+  position: relative; flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; padding: 14px 16px 20px 14px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
 }
-/* text scrolling up fades out under the bar instead of being sliced off */
-.settings-tabs::after {
-  content: ""; position: absolute; left: -2px; right: -2px; top: 100%; height: 18px;
-  background: linear-gradient(var(--ink), transparent); pointer-events: none;
+
+.settings-rail {
+  --rail-w: 60px;
+  position: relative; flex: none; width: var(--rail-w); display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 5px; overflow-y: auto; scrollbar-width: none;
+  background: var(--abyss); border-right: 1px solid var(--line-soft);
 }
-/* Five names of different lengths: each tab is as wide as its name, sharing out
-   what's left, so "Connections" fits a 400px panel. */
-.settings-tabs button {
-  position: relative; z-index: 1; flex: 1 1 auto; padding: 0 8px; white-space: nowrap;
-  transition: color .12s, background .15s var(--ease-out);
+.settings-rail [role="tab"] {
+  position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 2px 5px; border: 0; border-radius: var(--r-sm); background: none; cursor: pointer;
+  font: var(--fs-10-5)/1.1 var(--font-body); color: var(--sand-faint);
+  transition: color .12s, opacity .2s;
 }
-.settings-tabs button:focus-visible { outline: 2px solid var(--glass); outline-offset: -2px; }
-.settings-tabs .tab-dot { top: 5px; right: 4px; }
-/* The highlight under the chosen tab, placed by nav.js. Until it's measured, the
-   tab's own background (from .seg) shows instead. */
-.settings-tabs::before {
-  content: ""; position: absolute; top: 3px; bottom: 3px; left: 0;
-  width: var(--ink-w, 0); transform: translateX(var(--ink-x, 0));
-  border-radius: 7px; background: var(--reef-2); box-shadow: 0 1px 0 rgba(0, 0, 0, .3);
-  opacity: 0; pointer-events: none;
+.rail-ico {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; background: var(--reef-2);
+  transition: background .15s, transform .2s var(--ease-spring);
 }
-.settings-tabs.has-ink::before { opacity: 1; transition: transform .24s var(--ease-out), width .24s var(--ease-out); }
-.settings-tabs.has-ink button[aria-selected="true"] { background: none; box-shadow: none; }
-/* A tab's page comes in from the side you moved towards. */
+.rail-ico .px-l { fill: var(--sand-dim); }
+.rail-ico .px-o { fill: var(--glass); }
+.settings-rail [role="tab"]:hover, .settings-rail [role="tab"].peeking { color: var(--sand); }
+.settings-rail [role="tab"]:hover .rail-ico, .settings-rail [role="tab"].peeking .rail-ico { background: var(--reef-3); transform: translateY(-1px); }
+.settings-rail [role="tab"]:active .rail-ico { transform: translateY(1px) scale(.96); }
+.settings-rail [aria-selected="true"] { color: var(--glass); }
+.settings-rail [aria-selected="true"] .rail-ico { background: var(--glass); }
+.settings-rail [aria-selected="true"] .px-l { fill: var(--ink); }
+.settings-rail [aria-selected="true"] .px-o { fill: var(--reef); }
+.settings-rail [role="tab"]:focus-visible { outline: 2px solid var(--glass); outline-offset: -2px; }
+.settings-rail .tab-dot { top: 4px; right: 9px; }
+/* While searching: what each area found, and the ones with nothing dimmed. */
+.rail-count {
+  position: absolute; top: 2px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px;
+  background: var(--amber); color: var(--ink); font: 700 var(--fs-10)/16px var(--font-body); text-align: center;
+  box-shadow: 0 0 0 2px var(--abyss);
+}
+.settings-rail [role="tab"].match { color: var(--amber); }
+.settings-rail [role="tab"].dim { opacity: .4; }
+/* The marker behind the chosen area, slid there by settings-rail.js. */
+.rail-mark {
+  position: absolute; left: 5px; right: 5px; top: 0; height: var(--mark-h, 0); transform: translateY(var(--mark-y, 0));
+  border-radius: var(--r-sm); background: var(--reef-2); opacity: 0; pointer-events: none;
+}
+.rail-mark::before { content: ""; position: absolute; left: -5px; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--glass); }
+.settings-rail.has-mark .rail-mark { opacity: 1; transition: transform .3s var(--ease-spring), height .2s var(--ease-out); }
+.view-settings.searching .rail-mark { opacity: 0; }
+/* A search is across every area, so none of them reads as the one you are in. */
+.view-settings.searching .settings-rail [aria-selected="true"]:not(.match) { color: var(--sand-faint); }
+.view-settings.searching .settings-rail [aria-selected="true"] .rail-ico { background: var(--reef-2); }
+.view-settings.searching .settings-rail [aria-selected="true"] .px-l { fill: var(--sand-dim); }
+.view-settings.searching .settings-rail [aria-selected="true"] .px-o { fill: var(--glass); }
+
+/* The peek beside the narrow rail. */
+.settings-peek {
+  position: absolute; z-index: 6; top: 0; left: calc(60px + 6px); width: 232px; transform: translateY(var(--peek-y, 0));
+  padding: 10px 6px 6px; border: 1px solid var(--line); border-radius: var(--r); background: var(--reef);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .55); animation: peek-in .16s var(--ease-out);
+}
+@keyframes peek-in { from { opacity: 0; translate: -6px 0; } }
+.peek-name { display: block; padding: 0 8px; font-size: var(--fs-13-5); color: var(--sand); }
+.peek-what { margin: 2px 8px 8px; font-size: var(--fs-11-5); line-height: 1.35; color: var(--sand-faint); }
+.peek-list { display: grid; gap: 1px; }
+.peek-list button {
+  padding: 6px 8px; border: 0; border-radius: 6px; background: none; cursor: pointer; text-align: left;
+  font-size: var(--fs-12-5); color: var(--sand-dim);
+}
+.peek-list button:hover, .peek-list button:focus-visible { background: var(--reef-2); color: var(--sand); outline: none; }
+.peek-list button.here { color: var(--glass); }
+
+/* A wider panel: the rail opens out with names, and lists the sections of the
+   area you're in, the one you're reading lit. */
+.rail-toc { display: none; }
+@container settings (min-width: 720px) {
+  .settings-rail { --rail-w: 204px; padding: 14px 10px; gap: 1px; }
+  .settings-rail [role="tab"] { flex-direction: row; gap: 11px; padding: 6px 10px; font-size: var(--fs-13); text-align: left; }
+  .rail-name { flex: 1; }
+  .rail-count { position: static; box-shadow: none; }
+  .settings-rail .tab-dot { position: static; flex: none; }
+  .rail-mark { left: 10px; right: 10px; }
+  .rail-mark::before { left: -10px; }
+  .settings-peek { display: none !important; }
+  .rail-toc { display: grid; gap: 1px; margin: 2px 0 8px; padding-left: 42px; }
+  .rail-toc button {
+    position: relative; padding: 5px 8px; border: 0; border-radius: 6px; background: none; cursor: pointer; text-align: left;
+    font-size: var(--fs-12); color: var(--sand-faint);
+  }
+  .rail-toc button::before { content: ""; position: absolute; left: -10px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: var(--line); }
+  .rail-toc button:hover { background: var(--reef-2); color: var(--sand); }
+  .rail-toc button.on { color: var(--glass); }
+  .rail-toc button.on::before { background: var(--glass); }
+  .settings-main { padding: 22px 32px 32px; }
+  .view-settings .settings-main > * { max-width: 780px; margin-inline: auto; }
+}
+@container settings (min-width: 1400px) {
+  .settings-rail { --rail-w: 236px; }
+  .view-settings .settings-main > * { max-width: 860px; }
+}
+
+/* An area's page comes in from the side you moved towards. */
 .settings-panel { animation: fadein .14s var(--ease-out); }
 .view-settings[data-dir="next"] .settings-panel { animation: tab-in-next .22s var(--ease-out); }
 .view-settings[data-dir="prev"] .settings-panel { animation: tab-in-prev .22s var(--ease-out); }
 @keyframes tab-in-next { from { opacity: 0; transform: translateX(10px); } }
 @keyframes tab-in-prev { from { opacity: 0; transform: translateX(-10px); } }
-.view-settings .setting-group { scroll-margin-top: 50px; }
-/* A line about the whole tab, above its first section. */
+.view-settings .setting-group { scroll-margin-top: 12px; }
+/* A line about the whole area, above its first section. */
 .settings-lede { margin: 0 0 2px; }
 /* A chapter label carries the divider, so the section under it needs none. */
 .settings-panel > .settings-lede + .settings-sub { margin-top: 0; padding-top: 10px; border-top: 0; }
 .settings-sub + .setting-group { border-top: 0; }
 
-/* Searching Settings (settings-search.js): every tab at once, each under its
+/* Searching Settings (settings-search.js): every area at once, each under its
    name, cut down to what matches. */
-.settings-search { width: 100%; margin: 0 0 18px; }
+.settings-search { display: block; width: 100%; margin: 0 0 18px; }
 .settings-search-line { margin: -4px 0 10px; }
-.view-settings.searching .settings-tabs,
 .view-settings.searching .settings-sub,
 .view-settings.searching .settings-lede,
 .view-settings .search-out { display: none !important; }
@@ -272,9 +347,10 @@ body:not([data-view="chat"]) :is(.celebrate-host, .recap-host) { bottom: calc(va
 .keys-status:empty { margin: 0; min-height: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .dock-btn, .dock-btn > svg, .dock-crab, .settings-tabs button, .setting-fold > summary::before { transition: none; }
+  .dock-btn, .dock-btn > svg, .dock-crab, .settings-rail [role="tab"], .rail-ico, .setting-fold > summary::before { transition: none; }
   .settings-panel, .view-settings[data-dir] .settings-panel, .setting-group.arrived { animation: none; }
-  .settings-tabs.has-ink::before { transition: none; }
+  .settings-rail.has-mark .rail-mark { transition: none; }
+  .settings-peek, body[data-view="settings"] .view-settings { animation: none; }
   .dock-shellby:hover .dock-crab svg, body.busy .dock-crab svg, .dock-btn.room-new > svg, .shellby-tabs button.room-new { animation: none; }
   .palette-sheet, .palette { animation: none; }
 }

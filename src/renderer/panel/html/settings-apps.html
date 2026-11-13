@@ -1,43 +1,5 @@
-    <div class="settings-panel" role="tabpanel" id="setPanel-around" data-tab="around" aria-labelledby="setTab-around" hidden>
+    <div class="settings-panel" role="tabpanel" id="setPanel-apps" data-tab="apps" aria-labelledby="setTab-apps" hidden>
       <p class="small muted settings-lede">Each of these is off until you turn it on, and says what it reads and where anything goes.</p>
-      <p class="settings-sub">What he notices</p>
-      <details class="setting-group setting-fold" id="musicGroup" data-nav="Music" data-fold-on="npBody">
-        <summary><h3>Listening along</h3><span class="fold-state"></span></summary>
-        <p class="small muted ext-lede">Shellby notices what's playing on this PC — Spotify, a browser tab, anything that shows up in the volume flyout — and puts his headphones on. Read from Windows itself: no account, and nothing leaves the PC.</p>
-        <label class="toggle"><input type="checkbox" id="npEnabled"><span class="switch"></span>Notice what I'm listening to</label>
-        <div class="np-body" id="npBody" hidden>
-          <label class="toggle"><input type="checkbox" id="npHeadphones"><span class="switch"></span>Put his headphones on while it plays</label>
-          <label class="toggle"><input type="checkbox" id="npRemarks"><span class="switch"></span>Let him remark on it now and then</label>
-          <p class="small ext-status" id="npStatus"></p>
-        </div>
-      </details>
-
-      <details class="setting-group setting-fold" id="typingGroup" data-nav="Typing along" data-fold-on="typingBody">
-        <summary><h3>Typing along</h3><span class="fold-state"></span></summary>
-        <p class="small muted ext-lede">While you type, in any app, he taps along on a little keyboard, bobs to keep up when you're quick, and watches a long fast burst with stars in his eyes. He hears <em>that</em> a key was pressed, never which one, and none of it leaves the PC.</p>
-        <label class="toggle"><input type="checkbox" id="typingEnabled"><span class="switch"></span>Tap along while I type</label>
-        <div id="typingBody" hidden>
-          <label class="toggle"><input type="checkbox" id="typingRemarks"><span class="switch"></span>Tell me how fast a burst was</label>
-          <p class="small ext-status" id="typingStatus"></p>
-        </div>
-      </details>
-
-      <details class="setting-group setting-fold" id="weatherGroup" data-nav="Weather" data-fold-on="weatherBody">
-        <summary><h3>The weather outside</h3><span class="fold-state"></span></summary>
-        <p class="small muted ext-lede">Pick your town and he dresses for the real weather: a sou'wester and umbrella in the rain, a bobble hat in the snow, shades on a hot afternoon. Every 30 minutes Shellby asks <a data-href="https://open-meteo.com" href="#">Open-Meteo</a> (free, no account) about your town's rough position, to within about 11 km. It also tells him which half of the world you're in, so spring comes when yours does.</p>
-        <label class="toggle"><input type="checkbox" id="weatherEnabled"><span class="switch"></span>Dress him for the weather</label>
-        <div class="weather-body" id="weatherBody" hidden>
-          <form class="row weather-search" id="weatherSearch">
-            <input type="search" class="field" id="weatherQuery" placeholder="Your town" aria-label="Your town" maxlength="80" autocomplete="off" spellcheck="false">
-            <button type="submit" class="btn slim-btn" id="weatherFind">Find</button>
-          </form>
-          <div class="row wrap" id="weatherPlaces" role="group" aria-label="Towns found" hidden></div>
-          <label class="toggle"><input type="checkbox" id="weatherRemarks"><span class="switch"></span>Let him say so when the weather turns</label>
-          <p class="small ext-status" id="weatherStatus" aria-live="polite"></p>
-        </div>
-      </details>
-
-      <p class="settings-sub">Where he shows up</p>
       <details class="setting-group setting-fold" id="rgbGroup" data-nav="Desk lighting" data-fold-on="rgbBody">
         <summary><h3>Desk lighting</h3><span class="fold-state"></span></summary>
         <p class="small muted ext-lede">Put his mood on your keyboard and fans through <a data-href="https://openrgb.org" href="#">OpenRGB</a>: coral while he works, amber when he needs you, red when a build goes red, and orange running to red-hot when something overheats. Shellby can install it for you and starts it in the tray whenever the lighting is on.</p>
@@ -86,4 +48,58 @@
           <p class="small muted">Stream Deck asks before it installs them. Then drag the keys you want from <b>Shellby</b> in its list of actions.</p>
         </div>
       </details>
-      </div>
+
+      <section class="setting-group" id="externalGroup" data-nav="Everywhere">
+        <h3>Claude Code everywhere</h3>
+        <p class="small muted ext-lede">Shellby can react to Claude Code in your terminal or editor too: he works while Claude works, raises a claw when it needs permission, celebrates finished turns, and sends out helper crabs for subagents. That needs the Shellby plugin in Claude Code on this PC.</p>
+        <div class="sl-card" id="pluginCard">
+          <div class="sl-head">
+            <b>Shellby plugin</b>
+            <button type="button" class="btn primary slim-btn" id="pluginBtn">Install the plugin</button>
+          </div>
+          <p class="small muted" id="pluginText">Checking…</p>
+        </div>
+        <p class="small muted ext-lede">Or add it yourself from inside Claude Code:</p>
+        <div class="cmd-row"><code id="cmdMarket">/plugin marketplace add x-salmon/shellby</code><button type="button" class="btn ghost slim-btn" data-copy="cmdMarket">Copy</button></div>
+        <div class="cmd-row"><code id="cmdInstall">/plugin install shellby@shellby</code><button type="button" class="btn ghost slim-btn" data-copy="cmdInstall">Copy</button></div>
+        <label class="toggle"><input type="checkbox" id="externalToggle"><span class="switch"></span>React to Claude Code sessions outside Shellby</label>
+        <p class="small ext-status" id="externalStatus"></p>
+        <ul class="ext-sessions" id="externalList"></ul>
+        <div class="bg-left" id="bgLeft" hidden>
+          <div class="bg-head">
+            <b>Left running</b>
+            <button type="button" class="btn ghost slim-btn" id="bgClear">I've checked</button>
+          </div>
+          <p class="small muted">Commands a turn put in the background. Shellby hears when they start, never when they stop, so these are worth a look rather than a promise.</p>
+          <ul class="bg-list" id="bgList"></ul>
+        </div>
+        <div class="bg-left bgs" id="bgsBox" hidden>
+          <div class="bg-head">
+            <b>Background sessions</b>
+            <button type="button" class="btn ghost slim-btn" id="bgsRefresh">Refresh</button>
+          </div>
+          <p class="small muted">Claude Code working on its own: <code>claude --bg</code>, or /fork in a terminal. He tells you when one needs you or finishes. Open carries the conversation on in Shellby.</p>
+          <ul class="bgs-list" id="bgsList"></ul>
+          <div class="bgs-logs" id="bgsLogs" hidden>
+            <div class="bg-head"><b id="bgsLogsTitle">Logs</b><button type="button" class="btn ghost slim-btn" id="bgsLogsClose">Close</button></div>
+            <pre id="bgsLogsText"></pre>
+          </div>
+        </div>
+        <div class="sl-card" id="slCard">
+          <div class="sl-head">
+            <b>Status line</b>
+            <button type="button" class="btn slim-btn" id="slBtn">Add to Claude Code</button>
+          </div>
+          <p class="small muted" id="slText">Show Shellby's mood, level and XP under Claude Code's prompt, in the terminal and VS Code.</p>
+          <code class="sl-preview" id="slPreview"></code>
+        </div>
+        <div class="sl-card" id="cliCard">
+          <div class="sl-head">
+            <b>The <code>shellby</code> command</b>
+            <button type="button" class="btn slim-btn" id="cliBtn">Add to my PATH</button>
+          </div>
+          <p class="small muted" id="cliText">Hand Shellby a task from any terminal: <code>shellby do "tidy my Downloads"</code>. He asks before starting it, the same as always.</p>
+          <p class="small ext-status" id="cliStatus"></p>
+        </div>
+      </section>
+    </div>

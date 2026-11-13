@@ -84,7 +84,7 @@ async function connect(url) {
     let s = saved();
     check(s.workMode === true && s.onboarded === true && s.crabOnly === false, 'choice saved (workMode, onboarded)');
     check(s.colony === 3 && s.chatter === 'chatty' && s.perch === 'often', 'your own settings are untouched on disk');
-    await panel.ev("SB.setView('settings'); SB.showSettingsTab('shellby')");
+    await panel.ev("SB.setView('settings'); SB.showSettingsTab('look')");
     await wait(400);
     check(await panel.ev("document.getElementById('workModeToggle').checked"), 'Settings: the Work mode switch is on');
     check(await panel.ev("document.getElementById('chatterSelect').value") === 'quiet', 'he keeps quiet: his signs say what needs you');

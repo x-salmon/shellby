@@ -149,7 +149,7 @@ That's 3 or 4 requests per page open, combined by key (`owner/name#n`) as `issue
 
 Failures stay on the card and never break it: the other sources still show.
 
-- 404 on a private repository → "Shellby can't see this repository's issues with your sign-in. Turn on Let Claude tasks push in Settings → GitHub."
+- 404 on a private repository → "Shellby can't see this repository's issues with your sign-in. Turn on Let Claude tasks push in Settings → Accounts → GitHub."
 - 401 → the GitHub service's own sign-out handling.
 - Rate-limited or offline → the last list, marked as old.
 

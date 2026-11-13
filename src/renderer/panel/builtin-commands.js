@@ -11,7 +11,7 @@
 
   const CLAUDE_ISSUES = 'https://github.com/anthropics/claude-code/issues';
 
-  // A setting, in view; or the Settings tab it lives on when it's not showing.
+  // A setting, in view; or the Settings area it lives in when it's not showing.
   const setting = (id, tab) => () => {
     if ($(id)?.closest('.setting-group')) return SB.showSetting(id);
     SB.setView('settings');
@@ -52,7 +52,7 @@
   const autofix = async () => {
     const ci = await api.getCi().catch(() => null);
     if (!ci?.enabled && !ci?.githubEnabled) {
-      return SB.toast('Shellby fixes failing builds once it watches your pull requests: Settings → Connections → GitHub.', { ms: 7000, action: 'Open', onAction: setting('githubGroup', 'connect') });
+      return SB.toast('Shellby fixes failing builds once it watches your pull requests: Settings → Accounts → GitHub.', { ms: 7000, action: 'Open', onAction: setting('githubGroup', 'connect') });
     }
     const failing = (ci.prs || []).filter(p => p.state === 'failing');
     const name = p => p.ref || `${p.repo}#${p.number}`;
@@ -103,8 +103,8 @@
     doctor: () => SB.setView('health'),
     help: () => SB.showToolbox?.('command'),
     hooks: () => SB.showToolbox?.('hook'),
-    install: setting('claudeUpdateCheck', 'general'),
-    restart: setting('claudeUpdateCheck', 'general'),
+    install: setting('claudeUpdateCheck', 'system'),
+    restart: setting('claudeUpdateCheck', 'system'),
     keybindings: () => SB.openShortcuts?.(),
     login: async () => { if (await api.claudeLogin()) SB.toast('Finish signing in in the window that opened. Shellby notices when you’re done.', { ms: 6000 }); },
     logout: setting('claudeSignOut', 'claude'),

@@ -2,7 +2,7 @@
 
 Your conversations, on your phone, live: what he's doing, what he's waiting on you for, and what's ready to review. Answer Allow or Deny from the sofa, start a task from the bus, read a turn's diff and bring it home. Your PC serves the app itself over your own [Tailscale](https://tailscale.com) network, so there's no account of ours and no server in the middle. Back to [Out in the world](CONNECTIONS.md).
 
-It's off until you turn it on, in **Settings → Connections → On your phone**.
+It's off until you turn it on, in **Settings → Alerts → On your phone**.
 
 <p align="center">
 <img src="img/screenshot-phone-beach.png" width="200" alt="The beach on a phone: Shellby at the top saying 'can I?', the 5-hour window at 42%, a permission card asking to run npm test with Deny and Allow, and a conversation ready to review with +18 −3">
@@ -77,7 +77,7 @@ Those say why they wait for the desk (*"It is too long to read on a phone: check
 
 ### Several phones, each with its own rights
 
-Every paired phone gets a level in Settings → On your phone, beside its **Forget** button:
+Every paired phone gets a level in Settings → Alerts → On your phone, beside its **Forget** button:
 
 - **Full** is everything above. It's what a phone has when you pair it, and what every phone paired before this had.
 - **Read only** sees everything (the beach, every conversation as it happens, what changed, the queue, routines, notes, trophies) and changes nothing: it can't answer a prompt, start a task, reply, stop a turn, undo one, run checks, try a message again or branch from it, change the queue, bring a copy home, push, run a routine or a look-over, change your focus or dress him up. Its notifications come without Allow and Deny. It can still turn its own notifications on or off, and forget itself.
@@ -86,11 +86,11 @@ The level is checked on your PC for every call, not just hidden on the phone, so
 
 ### Quiet hours
 
-On the phone's **Phone** screen, or in Settings → On your phone: on or off, and from when to when, in your PC's own time (22:00 to 07:00 crosses midnight as you'd expect). During quiet hours nothing buzzes: a permission prompt still arrives, quietly, so the app icon's badge counts it and the card is a tap away in the morning; a finished task, the usage limit and the rest aren't sent at all, as when he's guarding your focus. One schedule covers every phone paired with that PC.
+On the phone's **Phone** screen, or in Settings → Alerts → On your phone: on or off, and from when to when, in your PC's own time (22:00 to 07:00 crosses midnight as you'd expect). During quiet hours nothing buzzes: a permission prompt still arrives, quietly, so the app icon's badge counts it and the card is a tap away in the morning; a finished task, the usage limit and the rest aren't sent at all, as when he's guarding your focus. One schedule covers every phone paired with that PC.
 
 ### What you can allow
 
-Settings → On your phone has three more things a paired phone may do, each off until you turn it on:
+Settings → Alerts → On your phone has three more things a paired phone may do, each off until you turn it on:
 
 - **Read a conversation's files**, read-only. `.git`, `node_modules`, `.env` files, keys and other likely secrets are never shown, and nothing outside the conversation's folder is.
 - **Push after bringing a copy home**, with the secret scan and the question about other people's commits on your PC first.

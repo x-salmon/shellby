@@ -2,7 +2,7 @@
    start screen (main/first-run.js decides what's done). Each step finishes when
    the real thing happens (a folder chosen, a task sent, his changes opened, a
    pet), so the buttons only help you get there; Skip moves past one, and ×
-   puts the card away with its progress kept (Settings → General → Screens
+   puts the card away with its progress kept (Settings → System → Screens
    brings it back). The quest card waits until First steps are out of the
    way, so the start screen holds one card at a time. Just-the-crab mode has no
    chat, so no card. Settings' "Show everything now" lives here too. */
@@ -99,10 +99,10 @@
   async function skip(id) { received(await api.skipFirstStep(id)); }
   async function hide(hidden) {
     received(await api.hideFirstRun(hidden));
-    if (hidden) SB.toast('First steps are put away. Settings → General → Screens brings them back.', { action: 'Undo', onAction: () => hide(false), ms: 5000 });
+    if (hidden) SB.toast('First steps are put away. Settings → System → Screens brings them back.', { action: 'Undo', onAction: () => hide(false), ms: 5000 });
   }
 
-  // Settings → General → Screens: the way round rooms, and First steps back.
+  // Settings → System → Screens: the way round rooms, and First steps back.
   function renderSettings() {
     const all = !SB.hasLockedRooms?.();
     const btn = $('showEverythingBtn');

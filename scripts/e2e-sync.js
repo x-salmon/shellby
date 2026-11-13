@@ -131,11 +131,11 @@ async function connect(url) {
     check(await until("document.getElementById('chatterSelect').value === 'quiet' && document.getElementById('soundsToggle').checked && document.getElementById('scaleSelect').value === '1.5'"), 'PC B: the Settings view shows them');
     check(await until("/Shift/.test(document.getElementById('hotkeyBtn').textContent)"), `PC B: the hotkey is ${HOTKEY}`);
     check(await until("[...document.querySelectorAll('#frList .fr-friend')].filter(li => li.querySelector('svg.fr-crab')).length === 2", 15000), "PC B: both friends' crabs fetched");
-    await panel.ev("document.getElementById('setTab-shellby').click()");
+    await panel.ev("document.getElementById('setTab-look').click()");
     await wait(400);
     await panel.ev("document.getElementById('chatterSelect').scrollIntoView({ block: 'center' })");
     if (process.argv[2]) await savePng((m, p) => panel.send(m, p), process.argv[2]);
-    await panel.ev("document.getElementById('setTab-connect').click()");
+    await panel.ev("document.getElementById('setTab-accounts').click()");
     await wait(400);
     await panel.ev("document.getElementById('frList').scrollIntoView({ block: 'center' })");
     if (process.argv[3]) await savePng((m, p) => panel.send(m, p), process.argv[3]);

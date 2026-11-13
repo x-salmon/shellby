@@ -162,7 +162,7 @@ molt, the sheet gets **🎞 Clip** beside the size switch.
   (a sparkly, a legendary catch, a molt, a medal). Today's celebrations already
   carry the 📸, so the nudge is the celebration itself; this rule is about not
   adding more.
-- Settings → Shellby → **Share buttons on celebrations** (on by default). Off
+- Settings → Games → **Share buttons on celebrations** (on by default). Off
   hides every 📸 on celebrations; the cards stay reachable from Trophies.
 - `card-shared` stays the one stat for Show-Off. Add `card-shared:<kind>` as
   a sub-stat so later trophies can ask for variety ("share 5 kinds of card"),
