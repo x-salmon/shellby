@@ -405,6 +405,7 @@
     const waiting = !by && !id && picking();
     $('effortLabel').textContent = id ? effortName(id).toLowerCase() : waiting ? 'fits' : 'auto';
     $('effortChip').classList.toggle('on', !!id);
+    $('effortChip').dataset.level = String(Math.max(0, EFFORTS.findIndex(x => x.id === id))); // the dial (composer.css)
     $('effortChip').title = waiting
       ? 'Effort: picked from your first message, to fit the job. Click to choose it yourself (/effort)'
       : `Effort: ${effortName(id)}${by === 'picked' ? ', picked to fit your first message' : ''}. How hard Claude thinks in this conversation (/effort)`;
