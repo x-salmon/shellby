@@ -49,6 +49,8 @@
       cache: summary.cache !== undefined ? summary.cache : tab.cache || null,
       model: summary.model ?? tab.model ?? '', // the model it runs (the model chip, composer.js)
       modelAsked: summary.modelAsked ?? tab.modelAsked ?? '', // what it asked for: '' is Claude Code's default
+      local: summary.local !== undefined ? summary.local : tab.local || null, // the local model it runs on (main's local/agent.js)
+      canLocal: summary.canLocal ?? tab.canLocal ?? !(summary.saved ?? tab.saved), // still free to move between local and Claude
       // The tests' last verdict and the latest changes' review (main's review-inbox.js), for the review inbox.
       checks: summary.checks !== undefined ? summary.checks : tab.checks || null,
       ready: summary.ready !== undefined ? summary.ready : tab.ready || null,

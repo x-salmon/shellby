@@ -1,6 +1,6 @@
 // Conversation tabs: opening, ordering, compacting, and what each turn changed
 // (changes.js). Kept out of main.js, which only wires it up.
-const { ID, PATH, obj, opt } = require('../ipc-args');
+const { ID, PATH, obj, opt, str } = require('../ipc-args');
 const fs = require('fs');
 const os = require('os');
 const changes = require('../changes');
@@ -134,8 +134,13 @@ function registerTabsIpc(ipcMain, d) {
 
   // This conversation's model, from the model chip or /model ('' is Claude Code's default), or outlook.js "Use Sonnet for this one".
   ipcMain.handle('tab:model', async (_e, { tabId, model } = {}) => {
-    try { return d.isStr(tabId) && typeof model === 'string' ? await d.manager.setTabModel(tabId, model) : { ok: false, error: 'Which conversation?' }; } catch (err) { return { ok: false, error: err.message }; }
+    try { return d.isStr(tabId) && typeof model === 'string' ? await d.manager.setTabModel(tabId, model, { byYou: true }) : { ok: false, error: 'Which conversation?' }; } catch (err) { return { ok: false, error: err.message }; }
   });
+
+  // The model chip's On this PC section: this conversation on a local model, before its first message (sessions.js setTabLocal).
+  ipcMain.handle('tab:local', (_e, { tabId, model }) => {
+    try { return d.manager.setTabLocal(tabId, model); } catch (err) { return { ok: false, error: err.message }; }
+  }, [obj({ tabId: ID, model: str({ max: 200 }) })]);
 
   // fromQueue: the panel's queue sending what you left behind a turn, by itself.
   ipcMain.handle('task:send', async (_e, { tabId, text, attachments, selected, fromQueue } = {}) => {

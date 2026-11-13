@@ -423,20 +423,31 @@
   // Claude Code's default depends on your plan and isn't told before a
   // conversation runs, so the last one a conversation on the default reported
   // is kept, to name it ("default (Opus 5.5)") before the next one starts.
+  // Only a Claude model names the default: a conversation on a local model
+  // (main's local/agent.js) asks for none and reports the local one.
   const DEFAULT_SEEN = 'shellby.defaultModelSeen';
+  const isClaude = id => typeof id === 'string' && (/^claude-/.test(id) || (state.models || []).some(m => m.id === id));
   const askedOf = tab => (typeof tab?.modelAsked === 'string' ? tab.modelAsked : state.settings?.model || '');
   function defaultName(tab) {
-    const seen = askedOf(tab) === '' && tab?.model ? tab.model : SB.pref(DEFAULT_SEEN);
+    const mine = !tab?.local && askedOf(tab) === '' && isClaude(tab?.model) ? tab.model : null;
+    const kept = SB.pref(DEFAULT_SEEN);
+    const seen = mine || (isClaude(kept) ? kept : null);
     return seen ? `default (${modelName(seen)})` : 'default';
   }
 
   SB.applyModel = () => {
     const tab = SB.activeTab();
     const asked = askedOf(tab);
-    if (tab && asked === '' && tab.model) SB.pref.set(DEFAULT_SEEN, tab.model);
-    const id = asked === '' ? '' : tab?.model || asked;
+    if (tab && !tab.local && asked === '' && isClaude(tab.model)) SB.pref.set(DEFAULT_SEEN, tab.model);
     const chip = $('modelChip');
     chip.hidden = !tab;
+    if (tab?.local) {
+      $('modelLabel').textContent = tab.local;
+      chip.classList.add('on');
+      chip.title = `Model: ${tab.local}, on this PC. ${tab.canLocal ? 'Click to switch it before its first message' : 'It stays on this PC for good'} (/model)`;
+      return;
+    }
+    const id = asked === '' ? '' : tab?.model || asked;
     // "default (Sonnet 5.5)": in a narrow panel only the name shows (panel.css .model-default).
     const seen = !id && defaultName(tab).match(/^default \((.+)\)$/);
     if (seen) $('modelLabel').replaceChildren(h('span', { class: 'model-default', text: 'default (' }), seen[1], h('span', { class: 'model-default', text: ')' }));
@@ -445,14 +456,45 @@
     chip.title = `Model: ${id || `${defaultName(tab)}, what Claude Code picks for your plan`}. Click to switch this conversation (/model)`;
   };
 
+  // The local server's models (main's local/model.js listModels), asked for
+  // each time the menu opens; until it answers, the ones Settings names.
+  let localFound = { url: '', models: /** @type {string[]} */ ([]) };
+  let findSeq = 0;
+  function localNames(tab) {
+    const lm = state.settings?.localModel;
+    if (!lm?.url) return tab?.local ? [tab.local] : [];
+    const found = localFound.url === lm.url ? localFound.models : [];
+    return [...new Set([tab?.local, lm.agent?.model, lm.model, ...found].filter(Boolean))];
+  }
+  async function findLocal() {
+    const url = state.settings?.localModel?.url;
+    if (!url) return;
+    const seq = ++findSeq;
+    const r = await api.localModels(url).catch(() => null);
+    if (seq !== findSeq || !r?.ok || !Array.isArray(r.models)) return; // a later look, or nothing there
+    const tab = SB.activeTab();
+    const before = localNames(tab).join('\n');
+    localFound = { url, models: r.models };
+    const menu = $('modelMenu');
+    // Only when the list grew, so the menu you're moving through isn't rebuilt under you.
+    if (menu.hidden || localNames(tab).join('\n') === before) return;
+    menu.replaceChildren(...modelItems().filter(Boolean));
+    /** @type {HTMLElement | null} */ (menu.querySelector('.menu-item:not([disabled])'))?.focus();
+  }
+
   function modelItems() {
     const tab = SB.activeTab();
-    const cur = askedOf(tab);
+    const local = tab?.local || null;
+    const cur = local ? null : askedOf(tab);
     const started = !!tab?.saved;
-    const item = (id, title, sub) => h('button', { class: 'menu-item', role: 'menuitemradio', 'aria-checked': String(cur === id), onclick: () => { SB.closeMenus(); SB.chooseModel(id); } },
-      h('span', { class: 'mi-check', text: cur === id ? '●' : '' }),
+    // Local or Claude is decided for good at its first message (main's sessions.js canMoveLocal).
+    const fixed = !!tab && !tab.canLocal;
+    const radio = (on, disabled, title, sub, pick) => h('button', { class: 'menu-item', role: 'menuitemradio', 'aria-checked': String(on), disabled, onclick: () => { SB.closeMenus(); pick(); } },
+      h('span', { class: 'mi-check', text: on ? '●' : '' }),
       h('span', {}, h('div', { class: 'mi-title', text: title }), sub ? h('div', { class: 'mi-sub', text: sub }) : null));
+    const item = (id, title, sub) => radio(cur === id, fixed && !!local, title, sub, () => SB.chooseModel(id));
     const models = state.models || [];
+    const names = tab ? localNames(tab) : [];
     return [
       h('div', { class: 'menu-label', text: started ? 'Model for this conversation, from its next turn' : 'Model for this conversation' }),
       item('', defaultName(tab).replace(/^d/, 'D'), 'What Claude Code picks for your plan'),
@@ -460,6 +502,13 @@
         h('div', { class: 'menu-sep' }),
         ...models.filter(m => m.group === g).map(m => item(m.id, m.label)),
       ]),
+      ...(names.length ? [
+        h('div', { class: 'menu-sep' }),
+        h('div', { class: 'menu-label', text: 'On this PC' }),
+        ...names.map((n, i) => radio(local === n, fixed && local !== n, n,
+          i === 0 ? (fixed ? (local ? 'Stays on this PC for good' : 'Only before a conversation starts') : 'Free, and nothing leaves this PC') : null,
+          () => SB.chooseLocal(n))),
+      ] : []),
       h('div', { class: 'menu-sep' }),
       h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { SB.closeMenus(); SB.showSetting?.('modelSelect'); } },
         h('span', { class: 'mi-check', text: '' }),
@@ -475,13 +524,27 @@
     if (!tab) return SB.showSetting?.('modelSelect');
     const r = await api.setTabModel(tab.id, id).catch(() => null);
     if (!r?.ok) return SB.toast(r?.error || "Couldn't change its model.", { ms: 6000 });
-    Object.assign(tab, { modelAsked: id, model: id }); // main's next summary says the same
+    Object.assign(tab, { modelAsked: id, model: id, local: null }); // main's next summary says the same
     SB.applyModel();
     const name = id ? modelName(id) : defaultName(tab);
     SB.toast(r.started ? `Switched to ${name}. Its next turn re-reads the conversation, so it costs more once.` : `This conversation starts on ${name}.`, { ms: 5000 });
   };
 
-  $('modelChip').addEventListener('click', () => SB.openMenu($('modelMenu'), $('modelChip'), modelItems));
+  // A local model instead of Claude, before its first message (main's sessions.js setTabLocal).
+  SB.chooseLocal = async (name) => {
+    const tab = SB.activeTab();
+    if (!tab) return;
+    const r = await api.setTabLocal(tab.id, name).catch(() => null);
+    if (!r?.ok) return SB.toast(r?.error || "Couldn't put it on that model.", { ms: 6000 });
+    Object.assign(tab, { local: name, model: name, modelAsked: '' }); // main's next summary says the same
+    SB.applyModel();
+    SB.toast(`This conversation runs on ${name}, on this PC. Its first message settles it for good.`, { ms: 5000 });
+  };
+
+  $('modelChip').addEventListener('click', () => {
+    SB.openMenu($('modelMenu'), $('modelChip'), modelItems);
+    if (!$('modelMenu').hidden) findLocal();
+  });
 
   // This conversation only. With none open yet, it's what new ones start on.
   SB.chooseEffort = async (id) => {

@@ -131,6 +131,7 @@ interface ShellbyPanelExtras {
   applyEffort: any;
   applyModel: any;
   chooseEffort: any;
+  chooseLocal: any;
   chooseModel: any;
   chooseNewEffort: any;
   clearConversation: any;

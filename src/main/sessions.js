@@ -3,7 +3,7 @@
 // up into one state for the desktop critter.
 const { EventEmitter } = require('events');
 const { randomUUID } = require('crypto');
-const { ClaudeSession, EFFORTS, TALK_MS } = require('./session');
+const { ClaudeSession, EFFORTS } = require('./session');
 const { pickEffort } = require('./effort-pick');
 const workPose = require('./work-pose');
 const { cleanTitle } = require('./history');
@@ -13,25 +13,10 @@ const turnwatch = require('./turnwatch');
 const { classify } = require('./usage/ledger');
 const { isModel } = require('./models');
 const localAgent = require('./local/agent');
+const localTab = require('./local/tab');
 const planPace = require('./plan-pace');
 const mods = require('./mods');
-const todos = require('../renderer/shared/todos');
-
-// What a helper is saying, or was just told, for a few seconds (session/crew.js noteMessage): null when quiet.
-function talkOf(c, now = Date.now()) {
-  const said = c.said && now - c.said.at < TALK_MS ? c.said : null;
-  const heard = c.heard && now - c.heard.at < TALK_MS ? c.heard : null;
-  const last = said && (!heard || said.at >= heard.at) ? 'said' : heard ? 'heard' : null;
-  if (last === 'said') return { kind: 'said', text: said.text.slice(0, 80), to: said.to };
-  if (last === 'heard') return { kind: 'heard', text: heard.text.slice(0, 80), from: heard.from };
-  return null;
-}
-
-// A tab's to-do list in the summary: the counts and what Claude is on, or null with none.
-function todoGlance(list) {
-  const s = todos.summary(list);
-  return s.total ? { total: s.total, done: s.done, current: s.current } : null;
-}
+const { talkOf, todoGlance } = require('./tab-glance');
 
 // Tabs left quiet shed their process (stopIdle), so an open tab is cheap; a busy
 // one is a running CLI, and nothing limits how many of those run at once. The cap
@@ -63,9 +48,9 @@ class SessionManager extends EventEmitter {
   // one of its folders, or null (remote/service.js launch): read at each start.
   // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
   // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
-  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null }) {
+  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null }) {
     super();
-    Object.assign(this, { getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget });
+    Object.assign(this, { getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer });
     this.tabs = new Map();
   }
 
@@ -111,7 +96,8 @@ class SessionManager extends EventEmitter {
       supports: flag => this.supports(flag),
       resumeId: historyEntry?.claudeSessionId || null,
       resumeAt: historyEntry?.resumeAt || null,
-      extraEnv: () => ({ ...this.getEnv(), ...localAgent.envFor(localTarget) }),
+      // tab's: it can still move until its first message (local/tab.js).
+      extraEnv: () => ({ ...this.getEnv(), ...localAgent.envFor(tab ? tab.localTarget : localTarget) }),
       context: historyEntry?.context || null,
       allowedTools, mcpConfig,
       systemNote: aware?.note || null,
@@ -129,6 +115,7 @@ class SessionManager extends EventEmitter {
       outcome: historyEntry?.lastOutcome === 'cut' ? 'cut' : null,
       unread: false,
       localTarget,                 // { url, model } on a local model, else null; kept in History
+      localBy: null,               // 'you' once picked on the model chip: Settings no longer decides it
       worktree: historyEntry?.worktree || null, // its own copy of the repo (worktrees/index.js)
       // A branch of another conversation (branch.js): where it came from, the
       // folders it must keep out of, and what Claude is told before its first
@@ -308,6 +295,8 @@ class SessionManager extends EventEmitter {
     if (tab.inTerminal) throw new Error(IN_TERMINAL);
     tab.activeAt = Date.now();
     tab.idleCompacting = false; // set again by wiring/idle-compact.js when the turn is its /compact
+    // Opened before Settings changed (an empty tab left waiting): local or Claude is read again now.
+    localTab.settle(tab, this.getLocalTarget(tab.session.cwd), this.claudeModels());
     if (!tab.saved) {
       this.history.create({ id: tab.id, title: tab.named ? tab.title : userItem.title || userItem.text || tab.title, cwd: tab.session.cwd, mode: tab.session.mode, routineId: tab.routineId });
       // A tab that opened in its own copy before its first message (a Next up draft):
@@ -663,10 +652,15 @@ class SessionManager extends EventEmitter {
    * since each model has its own cache: -> started, so the panel can say so.
    * Set at once (a first message sent right after starts on it); only a
    * running CLI's answer is waited for, and its no puts the old one back.
+   * byYou: you picked it (chip, /model); Shellby's own picks leave a local one local.
    */
-  setTabModel(tabId, model) {
+  setTabModel(tabId, model, { byYou = false } = {}) {
     const tab = this.require(tabId);
     if (typeof model !== 'string' || !isModel(model)) throw new Error("Shellby doesn't know that model.");
+    if (!byYou && tab.localTarget) return Promise.resolve({ ok: true, started: false });
+    // Before its first message, yours goes to Claude whatever Settings says. It can only
+    // move with no process, where setModel never says no, so the revert below never undoes it.
+    localTab.pickClaude(tab, this.claudeModels());
     const started = !!(tab.session.proc || tab.session.sessionId);
     const before = { model: tab.session.model, own: tab.ownModel };
     const asked = tab.session.setModel(model);
@@ -682,6 +676,16 @@ class SessionManager extends EventEmitter {
       this.changed();
       return { ok: false, error: `Claude Code didn't switch: ${r.error}` };
     });
+  }
+
+  claudeModels() { return { model: this.getModel(), fallbackModel: this.getFallbackModel() }; }
+
+  // The model chip's On this PC: a local model, before its first message (local/tab.js).
+  setTabLocal(tabId, model) {
+    const tab = this.require(tabId);
+    localTab.pick(tab, this.getLocalServer(tab.session.cwd), model);
+    this.changed();
+    return { ok: true, started: false };
   }
 
   // Sized from what it was asked, once: only while it follows a default of
@@ -720,6 +724,8 @@ class SessionManager extends EventEmitter {
       model: (t.session.modelSwitched ? t.session.model : t.session.lastModel || t.session.initModel || t.session.model) || '',
       // What it asked for ('' = Claude Code's default), so the panel can name the default it ran on.
       modelAsked: t.session.model || '',
+      // The local model it runs on (local/agent.js), else null; canLocal: it can still move between local and Claude.
+      local: t.localTarget ? t.localTarget.model : null, canLocal: localTab.canMove(t),
       worktree: t.worktree ? { branch: t.worktree.branch, base: t.worktree.base, originalCwd: t.worktree.originalCwd } : null,
       claudeWorktree: t.claudeWorktree ? { branch: t.claudeWorktree.branch, path: t.claudeWorktree.path } : null, // Claude's own (EnterWorktree)
       branchOf: t.branchOf ? { id: t.branchOf.id, title: t.branchOf.title, at: t.branchOf.at, ...(t.branchOf.shared ? { shared: true } : {}) } : null,

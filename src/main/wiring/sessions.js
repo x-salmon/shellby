@@ -108,6 +108,8 @@ function wireSessions(d) {
       getOutputStyle: () => outputStyles.clean(d.config.get('outputStyle')),
       // A new conversation's local model (local/agent.js), never for a folder on another computer: it keeps it for good (sessions.js).
       getLocalTarget: cwd => (d.remoteService?.placeOf(cwd) ? null : localAgent.agentTarget(d.config.get('localModel'))),
+      // The local server a conversation can be put on from the model chip (sessions.js setTabLocal), the same rule.
+      getLocalServer: cwd => (d.remoteService?.placeOf(cwd) ? null : d.config.get('localModel')?.url || null),
       getFallbackModel: () => d.config.get('fallbackModel') || '',
       getChrome: () => d.config.get('claudeInChrome') === true,
       // The newer flags go only to a Claude Code whose --help lists them (main.js claudeSupports).
