@@ -49,6 +49,7 @@
     const routines = state.routines || [];
     SB.renderResetQueue?.();
     SB.renderCloudRoutines?.(); // Claude Code's own, in the cloud (routines-cloud.js)
+    SB.renderTide?.(); // the week on one line (automate-tide.js)
     // The explainer is for before your first routine; after that the list says it.
     $('routinesView').querySelector('.view-lede').hidden = routines.length > 0;
     if (!routines.length) {
@@ -60,7 +61,7 @@
     // The ones you haven't set up yet stay a click away.
     const have = new Set(routines.map(r => r.name.toLowerCase()));
     const more = templates.filter(t => !have.has(t.name.toLowerCase()));
-    list.replaceChildren(...routines.map(r => h('li', { class: `ar-row routine${r.enabled ? '' : ' paused'}` }, h('div', { class: 'ar-top' },
+    list.replaceChildren(...routines.map(r => h('li', { class: `ar-row routine${r.enabled ? '' : ' paused'}`, 'data-routine-id': r.id }, h('div', { class: 'ar-top' },
       h('span', { class: 'ar-icon', 'aria-hidden': 'true' }, SB.icon(SB.ICONS.clock, { width: 1.4 })),
       h('div', { class: 'ar-main' },
         h('div', { class: 'ar-name' },

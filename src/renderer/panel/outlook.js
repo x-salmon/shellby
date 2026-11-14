@@ -18,6 +18,7 @@
     SB.refreshUsage?.();
     SB.renderQueue?.(); // held chips, and the banner with them
     if (state.view === 'routines') SB.views.routines?.render();
+    else if (state.view === 'workflows') SB.renderTide?.(); // the reset's shading and held tasks
   };
 
   // Which note, which actions and the words for them live in shared/outlook-format.js.

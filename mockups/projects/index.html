@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby Projects: six full-screen redesigns</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../../src/renderer/shared/tokens.css">
+<link rel="stylesheet" href="projects.css">
+</head>
+<body>
+<header class="switcher" aria-label="Mockups">
+  <b class="sw-title">Projects, redesigned</b>
+  <nav id="tabs" role="tablist"></nav>
+  <button class="sw-notes" id="notesBtn" aria-pressed="false">Notes <kbd>N</kbd></button>
+</header>
+<main class="app" id="app">
+  <aside class="rail" aria-label="Shellby">
+    <div class="rail-crab" id="railCrab"></div>
+    <a>Chat</a><a>Toolbox</a><a>Automate</a><a>Health</a><a>History</a><a class="on" aria-current="page">Projects</a><a>Notes</a>
+    <span class="rail-lv">Lv 76</span>
+  </aside>
+  <section class="stage" id="stage"></section>
+  <aside class="notes" id="notes" hidden></aside>
+</main>
+<script src="data.js"></script>
+<script src="views.js"></script>
+<script src="views2.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

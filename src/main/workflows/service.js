@@ -10,7 +10,8 @@
 const path = require('path');
 const { validateWorkflow, describeTrigger, capabilities, riskSignature } = require('./schema');
 const { RunStore, SecretStore, summary } = require('./store');
-const { byWebhook, nextStart, RateLimit, ScheduleTicker, FolderWatch } = require('./triggers');
+const { TIDE } = require('../routines');
+const { byWebhook, nextStart, startsBetween, RateLimit, ScheduleTicker, FolderWatch } = require('./triggers');
 const { templates } = require('./templates');
 const fx = require('./effects');
 const { same, clean, mixin } = require('./util');
@@ -24,6 +25,12 @@ const PROPOSE_COOLDOWN_MS = 30000; // after a no to Claude's proposal
 const MAX_IMPORT = 256 * 1024;
 const MAX_HOOK_DATA = 64 * 1024;
 const PUSH_MS = 150;
+// What starts a workflow besides the clock, in words (the tide chart's listening line), or null.
+function listensFor(wf) {
+  const t = wf.enabled ? wf.when.find(x => x.type !== 'schedule') : null;
+  return t ? describeTrigger(t) : null;
+}
+
 class WorkflowService {
   /**
    * deps: {
@@ -139,6 +146,12 @@ class WorkflowService {
       lastRun: this.store.last(wf.id),
       capabilities: capabilities(wf),
       claudeCanRun: wf.when.some(t => t.type === 'claude'),
+      // For the tide chart (shared/tide-chart.js): the week ahead, the two days behind,
+      // and whether something other than the clock can start it.
+      upcoming: startsBetween(wf, now, now + TIDE.aheadMs),
+      recent: this.store.list(wf.id, TIDE.max).filter(s => s.startedAt >= now - TIDE.behindMs && s.startedAt <= now)
+        .map(s => ({ at: s.startedAt, status: s.status, runId: s.id })).reverse(),
+      listening: listensFor(wf),
     };
   }
 

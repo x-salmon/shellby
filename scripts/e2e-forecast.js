@@ -59,6 +59,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(await until("!document.getElementById('outlook').hidden"), 'the composer shows the warning');
     check(/at this pace, full around/.test(await ev("document.getElementById('meter5h').title")), 'the 5-hour meter says when it fills');
     check(await ev("document.getElementById('meter5h').classList.contains('warn')"), '...and is marked as worth a glance at 60%');
+    check(await ev("document.querySelector('#meter5h .meter-num').textContent") === '60%', '...with its number beside the bar');
+    check(/^full in (\d+h \d{2}m|\d+m)$/.test(await ev("document.getElementById('usageWhen').textContent")) && await ev("!document.getElementById('usageWhen').hidden"), `...and how long until it fills (${await ev("document.getElementById('usageWhen').textContent")})`);
     check(/Ctrl\+Shift\+Enter/.test(await ev("document.getElementById('outlook').textContent")), 'an empty box gets the shortcut as a hint');
 
     // Turned off in Settings, it stops warning; on again, it's back.

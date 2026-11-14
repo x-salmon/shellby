@@ -7,6 +7,26 @@ decide whether the next step fixes it or tells you about it.
 
 They live on the **Automate** page (the bottom bar, or <kbd>Ctrl</kbd>+<kbd>4</kbd>, or <kbd>Ctrl</kbd>+<kbd>6</kbd> in Work mode, which puts the tools first on the bar).
 
+## The week at a glance
+
+Once anything is scheduled, a **tide chart** sits at the top of both Automate
+pages: the week of routines, workflows and tasks waiting for your usage reset,
+on one line.
+
+- Runs that already happened sit behind **now**, as dots: teal when they went
+  fine, red when they failed, amber when one waits for you, and grey for a
+  routine's earlier runs (Shellby keeps only how its last one went). Runs still to come
+  are rings ahead of it, and the next start of each one is named.
+- Something that runs every few minutes or hours is one dotted streak, named
+  with how often ("Site watch, every 15 min"), not a ring per start.
+- Near your limit, the 5-hour window you're in is shaded and says when it
+  resets, so a task queued for the reset shows where it will really run.
+- Workflows that wait for something other than the clock (a red build, a file
+  arriving) can't go on a timeline. They're under it, on the **Listening** line.
+- **Press** a mark to go to it: a routine is picked out in the list, a
+  workflow's run opens, and a queued task takes you to the queue. **Next day**
+  zooms in on the next 24 hours.
+
 ## Three ways to make one
 
 - **Describe it.** Type what should happen and when ("when a pull request
