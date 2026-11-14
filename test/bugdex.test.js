@@ -54,6 +54,18 @@ test('candidates match by project and key only', () => {
   assert.equal(life.candidates(s.open, { project: P, key: '222222222222' }).length, 0);
 });
 
+test('a narrow failure is a candidate for a whole-project run of its kind; a broad one only for its own keys', () => {
+  const narrow = b.spot(null, enc({ kind: 'tests', narrow: true }), T0).state;
+  const broadRun = { project: P, key: '999999999999', kind: 'tests', broad: true };
+  assert.equal(life.candidates(narrow.open, broadRun).length, 1);
+  assert.equal(life.candidates(narrow.open, { ...broadRun, kind: 'lint' }).length, 0, 'a lint pass says nothing about tests');
+  assert.equal(life.candidates(narrow.open, { ...broadRun, broad: false }).length, 0);
+  assert.equal(life.couldCatch(narrow.open, broadRun), true);
+  const wide = b.spot(null, enc({ kind: 'tests', narrow: false }), T0).state;
+  assert.equal(life.candidates(wide.open, broadRun).length, 0);
+  assert.equal(life.candidates(wide.open, { project: P, key: '000000000000', scriptKey: '111111111111' }).length, 1, 'by the script it ran');
+});
+
 test('encounters slip away after a day, and the oldest drop past the cap', () => {
   let s = b.spot(null, enc(), T0).state;
   assert.equal(b.prune(s, T0 + DAY + 1).open.length, 0);

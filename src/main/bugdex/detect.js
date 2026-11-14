@@ -71,18 +71,155 @@ function outcomeOf({ cmd, output, isError, background = false, complete = true }
   return isError ? 'fail' : 'pass';
 }
 
+// Every check below goes word by word, with no nested repeats in a regex: these
+// run on the main process for every command, up to 2,000 characters of one.
+const MAX_ENV = 8;
+const ENV_WORD = /^\w+=\S*$/;
+const PS_ENV = /^\$env:\w+[ \t]*=[ \t]*[^;]*;[ \t]*/i;
+
+/** The command without the environment settings in front (`FOO=1 node a.js`, `$env:X='1'; node a.js`). */
+function stripEnv(c) {
+  let out = c;
+  for (let i = 0; i < MAX_ENV; i++) {
+    const next = PS_ENV.test(out) ? out.replace(PS_ENV, '') : ENV_WORD.test(out.split(' ', 1)[0]) ? out.slice(out.indexOf(' ') + 1 || out.length) : out;
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+const bare = w => w.toLowerCase().replace(/^["']|["']$/g, '').replace(/\.exe$/, '');
+const NODEISH = new Set(['node', 'bun', 'deno']);
+const PYTHONISH = /^(python[\d.]*|py)$/;
+const EVAL_FLAG = /^(-e|-p|-pe|--eval|--print)(=|$)/;
+const TEMP_DIR = /(^|[\\/])(tmp|temp)[\\/]|^(%temp%|%tmp%|\$env:te?mp|\$tmpdir|\$te?mp)[\\/]/i;
+const TEMP_RUNNERS = new Set(['node', 'bun', 'deno', 'tsx', 'ts-node', 'ruby', 'perl', 'bash', 'sh', 'pwsh', 'powershell']);
+
+/**
+ * Claude's own scratch work: code typed on the command line (`node -e`,
+ * `python -c`), a script fed in on stdin (`node -`, `python - <<'PY'`), or a
+ * script in a temp folder. A failure there is a slip in the probe, not a bug
+ * in your code, and nothing could ever run it again to prove it fixed.
+ */
+function isScratch(cmd) {
+  const c = stripEnv(normalizeCmd(cmd));
+  if (!c) return false;
+  const words = c.split(' ');
+  const run = bare(words[0]);
+  const python = PYTHONISH.test(run);
+  if (run === 'deno' && bare(words[1] || '') === 'eval') return true;
+  if (!NODEISH.has(run) && !python && run !== 'ruby' && run !== 'perl' && !TEMP_RUNNERS.has(run)) return false;
+  for (const w of words.slice(1)) {
+    if (w === '-' || w.startsWith('<<')) return true;
+    if (!w.startsWith('-')) return TEMP_RUNNERS.has(run) || python ? TEMP_DIR.test(w.replace(/^["']/, '')) : false;
+    if (NODEISH.has(run) && EVAL_FLAG.test(w)) return true;
+    if (python && /^-[A-Za-z]*c$/.test(w)) return true;
+    if ((run === 'ruby' || run === 'perl') && /^-\w*e$/.test(w)) return true;
+  }
+  return false;
+}
+
+// Runs a script file: what the run is, whatever arguments it was given.
+const SCRIPT_RUNNER = /^(node|bun|deno[ \t]+run|tsx|ts-node|python[\d.]*|py|ruby|perl|php|bash|sh|pwsh|powershell)(\.exe)?$/i;
+const SCRIPT_FILE = /^[^-][^ \t]*\.(c?m?[jt]sx?|py|rb|pl|php|sh|ps1)$/i;
+const PM_RUN = /^(npm|pnpm|yarn|bun)[ \t]+(run[ \t]+|run-script[ \t]+)?([\w:.@/-]+)/i;
+// A rehearsal or a look at the help: passing proves nothing about the real run.
+const REHEARSAL = /^(--dry-run|-n|--whatif|--check|--help|-h|--version|-v)(=|$)/i;
+
+/**
+ * The script a one-off command runs, as a key: `node scripts/seed.js --fresh`
+ * and `node scripts/seed.js` are the same run with different arguments, and so
+ * are `npm run seed -- --fresh` and `npm run seed`. Null when it isn't one, or
+ * when it's only a rehearsal (`--dry-run`), which can't vouch for the real run.
+ */
+function scriptKey(cmd) {
+  const c = stripEnv(normalizeCmd(cmd));
+  if (!c || commandKind(c) !== 'run' || isScratch(c)) return null;
+  const words = c.split(' ');
+  if (words.some(w => REHEARSAL.test(w))) return null;
+  for (let i = 1; i <= 2 && i < words.length; i++) {
+    if (!SCRIPT_RUNNER.test(words.slice(0, i).join(' '))) continue;
+    const file = words.slice(i).find(w => !w.startsWith('-'));
+    if (file && SCRIPT_FILE.test(file)) return cmdKey(`script: ${bare(words[0])} ${file.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase()}`);
+  }
+  const pm = PM_RUN.exec(c);
+  if (pm && !/^(i|install|ci|add|exec|dlx|x)$/i.test(pm[3])) return cmdKey(`script: run ${pm[3].toLowerCase()}`);
+  return null;
+}
+
+// The kinds of command that check the whole project when run without a filter.
+const WIDE_KINDS = new Set(['tests', 'lint', 'typecheck', 'build']);
+// The package scripts that are a project's whole check of their kind.
+const DEFAULT_SCRIPTS = new Set(['test', 'lint', 'typecheck', 'type-check', 'check-types', 'tsc', 'build', 'check']);
+// What a whole-project run may say besides the tool's name. Anything else (a
+// file, a folder, a test name, a flag not listed here) might narrow it, so it
+// isn't one: an unknown flag must never let a narrower run vouch for more.
+const LAUNCHERS = new Set(['npx', 'bunx', 'pnpx']);
+const SUBCOMMANDS = new Set(['test', 'run', 'check', 'build', 'clippy', 'lint', 'vet', 'compile', 'package', 'verify']);
+const WHOLE = new Set(['.', './...']);
+const SAFE_FLAGS = new Set(['--test', '--ci', '--color', '--no-color', '--colors', '-q', '--quiet', '--silent', '-s', '-v', '--verbose',
+  '--runinband', '-i', '--passwithnotests', '--coverage', '--all', '--workspace', '--workspaces', '--noemit', '--pretty', '--release',
+  '--locked', '--frozen', '--offline', '--no-cache', '--cache', '--fix', '--no-fix', '--incremental', '--no-watch', '--watch=false', '--build', '-b']);
+const VALUE_FLAGS = new Set(['-p', '--project', '-c', '--config', '--reporter', '--test-reporter', '--format', '-f', '--max-warnings', '--ext', '--profile']);
+
+/**
+ * Whether a test, lint, typecheck or build command checks the whole project:
+ * nothing after the tool but a subcommand, `.` and flags known not to narrow
+ * it. `npm test`, `node --test`, `eslint .`, `tsc -p jsconfig.json` and
+ * `cargo test` do; `node --test test/a.test.js`, `npm test -- auth`,
+ * `pytest -k login` and `npm run test:e2e` don't.
+ */
+function isBroad(cmd) {
+  const c = stripEnv(normalizeCmd(cmd));
+  if (!c || !WIDE_KINDS.has(commandKind(c))) return false;
+  const words = c.split(' ');
+  // A package script only when it's the project's own check of that kind, and given nothing.
+  const pm = PM_RUN.exec(c);
+  if (pm && !LAUNCHERS.has(bare(words[0]))) return DEFAULT_SCRIPTS.has(pm[3].toLowerCase()) && words.length === (pm[2] ? 3 : 2);
+  let i = LAUNCHERS.has(bare(words[0])) ? 2 : 1;
+  if (PYTHONISH.test(bare(words[0])) && words[1] === '-m') i = 3; // python -m pytest
+  if (SUBCOMMANDS.has((words[i] || '').toLowerCase())) i++;
+  for (; i < words.length; i++) {
+    const w = words[i].toLowerCase();
+    if (WHOLE.has(w) || SAFE_FLAGS.has(w)) continue;
+    if (VALUE_FLAGS.has(w)) { i++; continue; }
+    const [flag] = w.split('=', 1);
+    if (w.includes('=') && VALUE_FLAGS.has(flag)) continue;
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Whether a failing command ran only some of its kind's checks, so a
+ * whole-project run (isBroad) can vouch for it. A package script narrowed with
+ * arguments isn't: its own broader run already can (matchKeys), and another
+ * script's can't (an e2e run is not the unit tests).
+ */
+function isNarrow(cmd) {
+  const c = stripEnv(normalizeCmd(cmd));
+  return !!c && WIDE_KINDS.has(commandKind(c)) && !(PM_RUN.test(c) && !LAUNCHERS.has(bare(c.split(' ', 1)[0]))) && !isBroad(c);
+}
+
+/** What a command could catch with, before it runs: { key, scriptKey, kind, broad }. */
+function startOf(cmd) {
+  return { key: cmdKey(cmd), scriptKey: scriptKey(cmd), kind: commandKind(cmd), broad: isBroad(cmd) };
+}
+
 /**
  * The keys a later command can match this one by: its own, and (for a test,
  * lint, typecheck, build or install command) each shorter run of it, so
  * `npm test -- auth` failing is caught by `npm test` passing. The reverse
- * isn't: a narrower run can't vouch for the rest.
+ * isn't: a narrower run can't vouch for the rest. A one-off run is matched by
+ * the script it ran too (scriptKey).
  */
 function matchKeys(cmd) {
   const n = normalizeCmd(cmd);
   if (!n) return [];
   const own = cmdKey(n);
   const kind = commandKind(n);
-  if (kind === 'run' || kind === 'git') return [own];
+  if (kind === 'run') { const s = scriptKey(n); return s ? [own, s] : [own]; }
+  if (kind === 'git') return [own];
   const words = n.split(' ');
   const keys = [];
   for (let i = 2; i < words.length; i++) {
@@ -358,9 +495,10 @@ function fingerprintsIn(output, { cmd = '', live = /** @type {Set<string> | null
 function read({ cmd, output, isError, background = false, complete = true, live = null }) {
   const outcome = outcomeOf({ cmd, output, isError, background, complete });
   if (!outcome) return null;
-  const hit = outcome === 'fail' ? classify(output, { cmd, source: 'bash', live }) : null;
+  // Scratch code failing is Claude's slip, not your bug: it's never even seen.
+  const hit = outcome === 'fail' && !isScratch(cmd) ? classify(output, { cmd, source: 'bash', live }) : null;
   return {
-    outcome, key: cmdKey(cmd), keys: matchKeys(cmd), kind: commandKind(cmd), hit,
+    outcome, ...startOf(cmd), keys: matchKeys(cmd), narrow: outcome === 'fail' && isNarrow(cmd), hit,
     fps: outcome === 'pass' ? fingerprintsIn(output, { cmd, live }) : [],
     passed: passedCount(output),
     failed: outcome === 'fail' ? failedCount(output) : null,
@@ -417,6 +555,6 @@ function conflictFiles(output) {
 
 module.exports = {
   TIER1, TIER2, TIER3, REMEDY,
-  commandKind, gate, outcomeOf, matchKeys, remedyOf, isResolve, isFlee, isFairPush, isHookedCommit,
+  WIDE_KINDS, commandKind, gate, outcomeOf, matchKeys, isScratch, scriptKey, isBroad, isNarrow, startOf, remedyOf, isResolve, isFlee, isFairPush, isHookedCommit,
   classify, stillShows, fingerprintsIn, read, fingerprint, normMessage, fileBase, windowOf, fullOutput, passedCount, failedCount, conflictFiles,
 };
