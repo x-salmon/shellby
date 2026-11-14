@@ -82,9 +82,7 @@ body:not(.rooms-ready) .dock-btn:not(.dock-shellby):not([data-view-btn="chat"]) 
 .shellby-tabs button[aria-current="page"] { background: var(--reef-2); color: var(--sand); box-shadow: 0 1px 0 rgba(0, 0, 0, .3); }
 .shellby-tabs button { position: relative; } /* for the badges' dots */
 
-/* popups clear the bar (and the composer, in chat) */
-.toast { bottom: calc(var(--dock-h) + 96px); }
-body:not(.celebrating):not([data-view="chat"]) .toast { bottom: calc(var(--dock-h) + 16px); } /* card.css lifts toasts to the top during a celebration */
+/* popups clear the bar (and the composer, in chat); toasts sit at the top (panel.css) */
 .celebrate-host, .recap-host { bottom: calc(var(--dock-h) + 92px); }
 body:not([data-view="chat"]) :is(.celebrate-host, .recap-host) { bottom: calc(var(--dock-h) + 14px); }
 
