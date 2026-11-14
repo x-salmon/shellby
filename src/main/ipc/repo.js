@@ -41,12 +41,14 @@ function registerRepoIpc(ipcMain, d) {
     bringHome: (id, opts) => bringTabHome(id, opts),
     caughtUp: w => worktrees.caughtUp(w),
     tell: e => d.send(d.panel, 'home:line', e),
+    onPlaces: p => d.send(d.panel, 'home:places', p), // each tab's place in line, for its badge
     log: d.log,
   });
   d.homeTurnEnded = tabId => line.turnEnded(tabId); // wiring/timetrack.js onResult
   d.manager.on?.('tabs', summary => line.prune(new Set(summary.map(t => t.id))));
   // Another copy is merging into (or pushing from) this checkout: say why this one waits.
   const waitNote = (tabId, w) => { if (line.busy(w.root) && d.manager.tabs.has(tabId)) d.manager.note(tabId, { kind: 'home-wait', base: w.base }); };
+  ipcMain.handle('home:places', () => line.places()); // a panel that reloaded asks
   ipcMain.handle('worktree:status', (_e, tabId) => {
     const w = worktreeOf(tabId);
     return w ? worktrees.status(w) : { ok: false, error: 'That conversation has no copy of its own.' };

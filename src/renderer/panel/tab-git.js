@@ -148,6 +148,19 @@
     if (r.lined > 1) SB.toast(`Lined up ${r.lined}: each sorts out its clash once the one before it is home.`, { ms: 8000 });
   }
 
+  // Each copy's place in line, drawn on its tab (tab-strip.js) for as long as it waits or is being sorted out.
+  SB.homePlaces = {};
+  const takePlaces = p => { SB.homePlaces = p && typeof p === 'object' ? p : {}; SB.renderTabStrip(); };
+  api.onHomePlaces(takePlaces);
+  api.homePlaces().then(takePlaces, () => {});
+  /** The badge for a tab in line, or null: { text, title } */
+  SB.homePlaceOf = tabId => {
+    const p = SB.homePlaces[tabId];
+    if (!p) return null;
+    if (p.sorting || !p.position) return { text: '⇄', waiting: false, title: 'Sorting out its merge conflict: it comes home by itself when he is done.' };
+    return { text: `⧗${p.position}`, waiting: true, title: `In line to sort out its merge conflict: #${p.position} behind "${p.ahead}", which goes home first.` };
+  };
+
   api.onHomeLine(e => {
     const name = `"${e.title}"`;
     if (e.status === 'sorting') {

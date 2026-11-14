@@ -140,3 +140,29 @@ test('a closed conversation cannot join the line', () => {
 test('the prompt tells him not to merge into the base himself', () => {
   assert.match(sortPrompt(copy('a')), /^Merge main into this branch \(git merge main\).*Don't merge into main yourself/);
 });
+
+test('places() says where each copy stands, and onPlaces fires as the line moves', async () => {
+  const snaps = [];
+  const merged = new Set();
+  const line = createHomeLine({
+    isOpen: () => true, isBusy: () => false, send: () => {},
+    bringHome: async () => ({ ok: true, merged: true, commits: 1 }),
+    caughtUp: async w => merged.has(w.branch),
+    onPlaces: p => snaps.push(p),
+  });
+  line.sortOut('a', copy('a'), 'A');
+  line.sortOut('b', copy('b'), 'B');
+  assert.deepEqual(line.places(), {
+    a: { position: 0, ahead: null, sorting: true },
+    b: { position: 1, ahead: 'A', sorting: false },
+  });
+  assert.deepEqual(snaps.at(-1), line.places(), 'the panel got the latest line');
+  merged.add('shellby/a');
+  await line.turnEnded('a');
+  assert.deepEqual(line.places(), { b: { position: 0, ahead: null, sorting: true } }, 'a went home and b moved to the front');
+  assert.deepEqual(snaps.at(-1), line.places());
+  merged.add('shellby/b');
+  await line.turnEnded('b');
+  assert.deepEqual(line.places(), {});
+  assert.deepEqual(snaps.at(-1), {}, 'an empty line clears the badges');
+});

@@ -759,7 +759,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onTabItem: on('tab:item'),
   onTabSteering: on('tab:steering'), onTabQueue: on('tab:queue'), // queued messages handed to Claude mid-turn; a phone reply joining the queue (wiring/pocket.js)
   onTabs: on('tabs'), keepWarmSet: invoke('keepwarm:set'), keepWarmGet: invoke('keepwarm:get'), onKeepWarm: on('keepwarm'), // Keep warm (keepwarm-service.js)
-  onHomeLine: on('home:line'), // { tabId, title, base, status: 'sorting' | 'home' | 'stuck', ... }
+  onHomeLine: on('home:line'), homePlaces: invoke('home:places'), onHomePlaces: on('home:places'), // home:line { tabId, title, base, status: 'sorting' | 'home' | 'stuck' }; home:places { [tabId]: { position, ahead, sorting } }
   onLaneTrain: on('lanes:train'), // { tabId, index, phase, of } while lining copies up, then { done: true }
   onClashes: on('clashes'), // { clashes, fresh: [key] }: copies that changed the same files
   onTabOpened: on('tab:opened'),
