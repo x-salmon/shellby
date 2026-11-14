@@ -134,6 +134,10 @@ if (!app.isPackaged && process.env.SHELLBY_USER_DATA) app.setPath('userData', pr
 if (process.argv.includes('--capture-screenshots') && !process.env.SHELLBY_USER_DATA) {
   app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-capture-')));
 }
+// ...and a stand-in Tailscale, so Settings never shows this PC's real tailnet name.
+if (process.argv.includes('--capture-screenshots') && !process.env.SHELLBY_FAKE_TAILSCALE) {
+  process.env.SHELLBY_FAKE_TAILSCALE = path.join(__dirname, '..', '..', 'test', 'fixtures', 'fake-tailscale.js');
+}
 
 // ---------------------------------------------------------------- the log
 // Shellby runs all day with no console attached, so until now a crash left

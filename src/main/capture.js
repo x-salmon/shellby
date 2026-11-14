@@ -133,13 +133,14 @@ async function panelReady(panel, timeoutMs = 20000) {
   await wait(800); // first paints and the welcome toasts settle
 }
 
-async function shot(win, file) {
+async function shot(win, file, { maxWidth = Infinity } = {}) {
   // Hide transient toasts so they never cover README screenshots.
   await win.webContents.executeJavaScript("{ const t = document.getElementById('toast'); if (t) t.hidden = true; }");
   win.webContents.invalidate();
   await wait(120);
   const img = await win.webContents.capturePage();
-  fs.writeFileSync(file, img.toPNG());
+  const fit = img.getSize().width > maxWidth ? img.resize({ width: maxWidth, quality: 'best' }) : img;
+  fs.writeFileSync(file, fit.toPNG());
   console.log('wrote', path.relative(process.cwd(), file));
 }
 
@@ -311,6 +312,7 @@ async function run({ app, critter, panel, showPanel, send, ROOT, setCrewSlots, w
 
     await captureLife({ critter, panel, send, out, wardrobe, config, broadcastSkin, base });
     await capturePages({ panel, send, out, config, base, makeTimeTracker });
+    await captureWide({ panel, send, out, base });
   } catch (e) {
     console.error('capture failed:', e);
   }
@@ -493,6 +495,35 @@ async function capturePages({ panel, send, out, config, base, makeTimeTracker })
   const beachCard = await js('SB.beachCard.render().then(r => r.canvas.toDataURL("image/png"))');
   fs.writeFileSync(path.join(out, 'beach-card.png'), Buffer.from(beachCard.split(',')[1], 'base64'));
   console.log('wrote', path.relative(process.cwd(), path.join(out, 'beach-card.png')));
+}
+
+// The panel full screen, as on a 4K monitor at 150% (2560x1440 DIPs, or as much
+// of it as this screen's work area has). Runs after capturePages, whose IPC
+// fakes and seeded pages it reuses. Saved at WIDE_OUT_WIDTH px so the README
+// doesn't carry 4K PNGs; each is the `-wide` twin of the panel-sized shot.
+const WIDE_SIZE = { width: 2560, height: 1440 };
+const WIDE_OUT_WIDTH = 1920;
+const WIDE_VIEWS = ['crew', 'toolbox', 'time', 'projects', 'us'];
+
+async function captureWide({ panel, send, out, base }) {
+  const { screen } = require('electron');
+  const js = code => panel.webContents.executeJavaScript(code);
+  const bounds = panel.getBounds();
+  const wa = screen.getDisplayMatching(bounds).workArea;
+  const width = Math.min(WIDE_SIZE.width, wa.width);
+  const height = Math.min(WIDE_SIZE.height, wa.height);
+  panel.setBounds({ x: wa.x, y: wa.y, width, height });
+  await wait(800);
+  try {
+    for (const name of WIDE_VIEWS) {
+      send(panel, 'demo', { ...base, tabs: DEMO_TABS, active: 'demo-crew', ...(name === 'crew' ? {} : { view: name }) });
+      await wait(1500);
+      await js('document.activeElement?.blur(); 1');
+      await shot(panel, path.join(out, `screenshot-${name}-wide.png`), { maxWidth: WIDE_OUT_WIDTH });
+    }
+  } finally {
+    panel.setBounds(bounds);
+  }
 }
 
 const FAKE_STATUS = {

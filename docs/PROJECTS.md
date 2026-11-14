@@ -4,6 +4,9 @@ The repos you work in, the dev servers in them, the hours you spend, the tests t
 
 ## Projects and dev servers
 
+<img src="img/screenshot-projects-wide.png" alt="Projects at full screen: the repo list on the left, 3d-rack open beside it with Next up, Pulse, Where you left off, Health, Helpers, Conversations, a standup report and its dev servers side by side, and Dependency watch on the right">
+<p align="center"><sub>At full screen your projects stay in a list on the left and the one you pick opens beside it. In the panel's usual size:</sub></p>
+
 <table>
 <tr>
 <td width="50%"><img src="img/screenshot-projects.png" alt="The Projects page: 3 need you, updated just now, and each repo with its path and what Shellby knows about it: unpushed commits, a flaky test, failing CI, a vulnerability, a dev server up on :5173 and one down"></td>
@@ -150,13 +153,17 @@ Notes stay on this PC: up to 100 a list, and they don't sync. If you already use
 
 ## Time on each project
 
-<p align="center"><img src="img/screenshot-time.png" width="420" alt="History → Time: hours and what they come to this week, a bar for each day, and each project with its client and rate"></p>
+<img src="img/screenshot-time-wide.png" alt="History → Time at full screen: November on a calendar with each day's hours, darker the longer the day, a total for each week, 54 hours and $5,640 billable for the month, and today open beside it with a line per project, + and − buttons and Write up the day">
+<p align="center"><sub>Full screen, the day you pick opens beside the calendar. In the panel's usual size it opens under it:</sub></p>
+<p align="center"><img src="img/screenshot-time.png" width="420" alt="History → Time in a narrow panel: the month's hours and billable amount, the calendar, and the picked day under it"></p>
 
 - **History → Time** keeps track of how long you spend on each project, for timesheets and invoices. Shellby works it out from what he already sees: an editor or terminal showing a project's folder, the project's page on GitHub or GitLab, Claude working in it, and git moving in it. The clock stops when you're away from the keyboard or the screen is locked. It's off until you turn it on.
+- **A month on a calendar.** Each day shows its hours and gets darker the longer you worked, with a total for each week, and the month's hours, billable amount and usual day at the top. The arrows step back through earlier months.
+- **Pick a day to fix it.** The day opens beside the calendar (under it on a narrow panel) with a line per project: **+** and **−** for 15 minutes, what goes on the timesheet, and its commits. Add time for a call or a meeting right there, with a note for the invoice. Arrow keys walk the days.
 - **Clients and rates.** Give each project a client and an hourly rate, mark it billable or not, and round each day to the nearest (or next) 6, 10, 15, 30 or 60 minutes.
-- **Time by hand.** Add a meeting or take off a break on any day, with a note for the invoice.
-- **From your commits.** Days you committed but weren't keeping time can be filled in from the commits, marked as estimates wherever they show.
-- **Timesheets.** **Save PDF** makes a clean timesheet for a client, one project or everything, **Save CSV** gives one row per project per day for your invoicing tool, and **Copy as text** is ready to paste into an email. `shellby time last-week` prints the same summary in a terminal.
+- **From your commits.** A day with commits but no time kept has a dashed ring, and its line offers to keep the time the commits suggest, marked as an estimate wherever it shows.
+- **Write up the day.** Pick a day and press **Write up the day**: each project gets a line in plain words, from your commit messages and what you asked Claude there, written for the client when it's a client's project. It stays a dashed draft until you **Keep** it, **Edit** it into your own words, or **Drop** it, and a line you wrote yourself is never touched. **How it was written** lays the day out hour by hour (time kept, conversations, commits) and lights up what each sentence came from. With a local model set up (Settings → Claude) it's written on your PC; otherwise it's one short Claude call. It sends commit messages, conversation titles and your messages, never your code, files or window titles.
+- **Timesheets** cover the month on show (one for a whole month is titled with its name). **Save PDF** makes a clean timesheet for a client, one project or everything, **Save CSV** gives one row per project per day for your invoicing tool, and **Copy as text** is ready to paste into an email. `shellby time last-week` prints the same summary in a terminal.
 - **Send to your time tracker.** Under the timesheet, connect Toggl Track, Clockify or Harvest with an API token. Each project is matched to one of yours there, by its name or else its client, and you can change the match in the project's details. Pick a day and **Send**: each project's billed hours go over as one entry, with the day's note (or your commit messages) as its description. Sending a day again updates those entries rather than adding more. Nothing goes until you press it, and the token is kept encrypted by Windows.
 - **On all your PCs.** Switch on **Sync my hours between PCs** under *How time is kept* on each PC where you work, with Sync on in Settings → Accounts → GitHub. Each PC's hours then count on all of them, so the totals, timesheets and exports cover your whole week wherever you worked. The same repo in a different folder on another PC counts as one project when the folder names match. A project's client, rate and name follow whichever PC changed them last. Each PC still sends only its own hours to Toggl, Clockify or Harvest, so nothing goes over twice. Switch it off and that PC's hours leave the others at their next sync.
 - **Private:** everything stays on this PC, except the days you send to your time tracker and, if you switch it on, your hours going to your other PCs. The title of the window in front is read only to tell which project it shows, and then forgotten: all that's kept is the project, the day and the minutes.

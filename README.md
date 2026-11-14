@@ -20,7 +20,7 @@ On the **Pro or Max plan you already pay for**, on Windows 10 and 11. No API key
 
 **1.** Tell him what you want &nbsp;→&nbsp; **2.** Helper crabs work on it side by side &nbsp;→&nbsp; **3.** He brings it home, and you both level up
 
-<sub>([MP4 version](docs/img/shellby-demo.mp4))</sub>
+<sub>([MP4 version](docs/img/shellby-demo.mp4) · [at full screen](docs/img/shellby-demo-wide.gif), [MP4](docs/img/shellby-demo-wide.mp4))</sub>
 
 </div>
 
@@ -159,7 +159,11 @@ Already use Claude Code on this PC? The tool screens are on the bar from the sta
 - **Workflows and routines:** a schedule, a red build, a release or a file landing in a folder starts a list of steps: Claude, commands, web requests, a question for you. [Workflows](docs/WORKFLOWS.md).
 - **Your MCP servers in them:** tick the servers a step may use and Claude files the Linear issue or posts to Slack without stopping to ask, or call one tool directly with no Claude turn at all. Pair it with [n8n](docs/N8N.md) for everything else.
 
-<p align="center"><img src="docs/img/screenshot-time.png" width="420" alt="History → Time: 26 hours this week, $2,730 billable, a bar for each day, and each project with its client"></p>
+<img src="docs/img/screenshot-time-wide.png" alt="History → Time at full screen: a month on a calendar, each day darker the longer you worked, 54 hours and $5,640 billable this month, and the picked day open beside it with a line per project and Write up the day">
+<p align="center"><sub>Time at full screen: a month of hours, and any day open beside it to fix or write up</sub></p>
+
+<img src="docs/img/screenshot-projects-wide.png" alt="Projects at full screen: the repo list on the left and 3d-rack open beside it, with Next up, Pulse, Health, Helpers, a standup report and its dev server side by side">
+<p align="center"><sub>Projects at full screen: the list on the left, the one you pick beside it with its cards side by side</sub></p>
 
 **[Projects, time, tests and dependencies →](docs/PROJECTS.md)**
 

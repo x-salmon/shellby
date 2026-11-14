@@ -13,6 +13,9 @@ Everything Shellby does with Claude Code, on your own Claude Pro or Max plan. Ba
 </tr>
 </table>
 
+<img src="img/screenshot-crew-wide.png" alt="The panel at full screen: three helpers in their lanes, one asking to run a cleanup script it wrote, with Allow and Deny">
+<p align="center"><sub>The same conversation at full screen</sub></p>
+
 ## Conversations
 
 - **Helper crabs:** each subagent gets its own lane in the panel and its own crab on your desktop. One that finished its job holds up a little scroll before it walks back into Shellby; one that failed trudges home, slumped and grey.
@@ -87,6 +90,9 @@ A new tier pays the *review tier* XP and counts toward trophies. A tier you've r
 - **Look over my changes:** the shield next to a project in **Trophies** sends the work you haven't pushed yet for a read-only security read. He reports what looks risky, worst first, and changes nothing, and he won't tell you you're secure.
 
 ## Toolbox
+
+<img src="img/screenshot-toolbox-wide.png" alt="The Toolbox at full screen: where things come from (Yours, Built in, each plugin) and the order in a rail on the left, skills one line each with how often Claude used them, a line flagging an MCP server that's down, and a pane on the right for the row you open">
+<p align="center"><sub>At full screen, where things come from and the order sit in a rail, and the row you open shows in a pane beside the list</sub></p>
 
 - **Everything Claude Code can use:** every skill, agent, command and MCP server, plus the hooks and `CLAUDE.md` memory files that set it up, with an editor for each. When he writes himself a new tool, he celebrates, even if he wrote it while Shellby was closed. New skills and agents are tagged **new** and can be pinned as one-click chips on the start screen, and <kbd>/</kbd> in the composer autocompletes all of them.
 - **Hundreds of skills, still findable:** show just yours, the project's, the built-in ones or one plugin's, and sort by **Most used** or **Unused first** (the unused ones costing the most in every conversation come first). Long lists are drawn 150 at a time, with **Show more**. Your own skills, agents and commands open in an editor right there, which won't save over a change made somewhere else. The Toolbox reopens on the tab, source filter and order you left it on.

@@ -11,6 +11,8 @@ const path = require('path');
 const { panelReady } = require('./capture');
 
 const FPS = 15;
+const WIDE = process.argv.includes('--wide');
+const WIDE_PANEL = { width: 1600, height: 840 }; // 16:9 once make-reel.py adds its caption band
 const TAB = 'reel';
 const HOME = 'C:\\Users\\you';
 const TASK = 'Send three helpers to audit my Documents, Desktop and Downloads';
@@ -51,10 +53,16 @@ async function run({ app, critter, panel, showPanel, send, setCrewSlots, wardrob
     // Lay the scene out: the panel on the left, Shellby on the "desktop" to its right.
     const { screen } = require('electron');
     const wa = screen.getPrimaryDisplay().workArea;
-    const pb = { x: wa.x + 80, y: wa.y + 80, width: 440, height: 620 };
+    // --wide: the panel full screen (as most people run it on a big monitor),
+    // with Shellby standing on its lower right instead of beside it.
+    const pb = WIDE
+      ? { x: wa.x, y: wa.y, width: Math.min(WIDE_PANEL.width, wa.width), height: Math.min(WIDE_PANEL.height, wa.height) }
+      : { x: wa.x + 80, y: wa.y + 80, width: 440, height: 620 };
     panel.setBounds(pb);
     const cb = critter.getBounds();
-    critter.setBounds({ x: pb.x + pb.width + 620 - cb.width, y: pb.y + pb.height - cb.height, width: cb.width, height: cb.height });
+    const crabX = WIDE ? pb.x + pb.width - 360 - cb.width : pb.x + pb.width + 620 - cb.width;
+    const crabY = WIDE ? pb.y + pb.height - 140 - cb.height : pb.y + pb.height - cb.height;
+    critter.setBounds({ x: crabX, y: crabY, width: cb.width, height: cb.height });
     send(panel, 'demo', { tabs: [{ id: TAB, title: 'New task', cwd: HOME, items: [] }], active: TAB, learned: [], pinned: [] });
     mood('idle');
     await wait(1500);
@@ -159,7 +167,7 @@ async function run({ app, critter, panel, showPanel, send, setCrewSlots, wardrob
 
     recording = false;
     await recorder;
-    fs.writeFileSync(path.join(dir, 'frames.json'), JSON.stringify({ fps: FPS, frames, marks }, null, 1));
+    fs.writeFileSync(path.join(dir, 'frames.json'), JSON.stringify({ fps: FPS, wide: WIDE, frames, marks }, null, 1));
     console.log(`reel: ${frames.length} frames over ${(frames.at(-1).t / 1000).toFixed(1)}s -> ${dir}`);
   } catch (e) {
     console.error('reel failed:', e);

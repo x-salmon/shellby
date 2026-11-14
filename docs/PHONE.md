@@ -100,7 +100,11 @@ Settings → Alerts → On your phone has three more things a paired phone may d
 
 There's also a quiet **"working on it"** notification for tasks the phone started, which the "done" replaces. iPhones show it like any other notification; on Android it sits silently.
 
-**On a tablet** the app turns sideways with it, in a wider layout. **With a screen reader**, a new prompt and a conversation that just finished are read out as they happen.
+**On a tablet or a computer's browser** the beach stays on the left and the conversation you pick opens beside it. With other PCs in the [hub](HUB.md), they sit beside this one at the top; tap one to open that PC's own Shellby.
+
+<img src="img/screenshot-phone-wide.png" alt="Shellby on your phone in a laptop's browser: DESK-PC, LAPTOP and MEDIA-PC along the top, the beach on the left with a permission card to Allow or Deny, and a finished conversation on the right with Changed 2 files, Undo turn and Bring it home">
+
+**With a screen reader**, a new prompt and a conversation that just finished are read out as they happen.
 
 **When the PC sleeps** the app keeps what it last knew, says how old it is ("This is how things were at 09:12"), and comes back by itself the moment the PC answers. You can still write: a new task, a reply or a word on a line waits on the phone, in a **waiting to send** card on the beach with **Don't send** for each, and goes in order the moment the PC answers. Each one carries a key, so one that reached the PC just as the connection dropped is never done twice. Pictures need the PC there to take them.
 
