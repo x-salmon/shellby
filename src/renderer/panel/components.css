@@ -332,6 +332,8 @@ body.reordering .tab-edge { pointer-events: none; }
 }
 .tl-group.asking { color: var(--amber); }
 .tl-group.finished { color: var(--glass); }
+.tl-group.pages { align-items: center; }
+.tl-page .tl-icon { font-size: var(--fs-13); line-height: 1; }
 .tl-n { font: 600 var(--fs-10-5) var(--font-mono); font-variant-numeric: tabular-nums; }
 .tl-row {
   position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr) 22px; align-items: center; gap: 9px;

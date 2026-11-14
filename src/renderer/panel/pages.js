@@ -289,6 +289,7 @@
     on = !!r?.on;
     list = r?.pages || [];
     state.pages = list;
+    SB.refreshTabList?.(); // its Pinned pages row (tab-overview.js)
     if (!openId) renderShelf();
   }
 

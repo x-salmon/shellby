@@ -141,6 +141,16 @@ const ESCAPE = [
     await ev("document.querySelector('#pgOpen .back-btn').click()");
     check(await until("!!document.querySelector('#pgGrid .pg-tile[data-id=\"print-queue\"] img.pg-thumb')"), 'and its tile shows it');
     await shot('7-shelf-with-miniatures');
+
+    // ---- pinned, it's in the open-conversations list, between asking and the rest
+    await ev("shellby.pages.set('print-queue', { pinned: true })");
+    await until("SB.state.pages?.some(p => p.id === 'print-queue' && p.pinned)");
+    await ev("SB.setView('chat'); SB.openTabList()");
+    check(await until("!!document.getElementById('tl-page:print-queue')"), 'a pinned page shows under Pinned pages in the conversations list');
+    await shot('8-pinned-in-list');
+    await ev("document.getElementById('tl-page:print-queue').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))");
+    check(await until("SB.state.view === 'pages' && !!document.querySelector('#pgOpen:not([hidden]) iframe.pg-frame')"), 'and opens from there');
+
     await ev("SB.setView('settings')");
     check(await until("document.querySelectorAll('#pgSetList .pg-set-row').length === 2"), 'Settings › Pages lists both pages');
     await ev("document.getElementById('pgSetOff').click()");

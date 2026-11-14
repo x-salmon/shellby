@@ -115,20 +115,64 @@
     }, '×'));
   }
 
+  // Pinned pages (pages.js keeps state.pages): up to three, after what's waiting
+  // on you and before what's ready to review, so a page you check every day is
+  // in reach without ever pushing a permission prompt down. Rows like the
+  // conversations', keyed `page:<id>`, so the arrows and Enter reach them too.
+  const PINNED_SHOWN = 3;
+  function pinnedPages() {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    return (state.pages || [])
+      .filter(p => p.pinned && p.enabled && !p.wants && !p.draft)
+      .filter(p => words.every(w => `${p.name} ${p.description || ''}`.toLowerCase().includes(w)))
+      .slice(0, PINNED_SHOWN);
+  }
+
+  function pageRow(p) {
+    const key = `page:${p.id}`;
+    return h('div', {
+      class: 'tl-row tl-page', role: 'option', id: `tl-${key}`, 'aria-selected': 'false',
+      onmousemove: () => { if (picked !== key) { picked = key; paintPick(); } },
+      onmousedown: e => { e.preventDefault(); go(key); },
+    },
+    h('span', { class: 'tl-icon', text: p.icon || '▦', 'aria-hidden': 'true' }),
+    h('span', { class: 'tl-text' },
+      h('span', { class: 'tl-title', text: p.name }),
+      h('span', { class: 'tl-sub', text: p.lastChange?.text ? `${p.lastChange.text}, ${SB.relTime(p.lastChange.at)}` : 'Page' })),
+    h('span'));
+  }
+
+  function pinnedGroup(pages) {
+    return h('div', { role: 'group', 'aria-labelledby': 'tlg-pages' },
+      h('div', { class: 'tl-group pages', id: 'tlg-pages' }, h('span', { text: 'Pinned pages' }),
+        h('button', {
+          type: 'button', class: 'link-btn small faint tl-all-pages', text: 'All pages', tabindex: '-1',
+          onmousedown: e => e.preventDefault(),
+          onclick: () => { SB.closeMenus(); SB.setView('pages'); },
+        })),
+      ...pages.map(pageRow));
+  }
+
+  const groupEl = g => h('div', { role: 'group', 'aria-labelledby': `tlg-${g.standing}` },
+    h('div', { class: `tl-group ${g.standing}`, id: `tlg-${g.standing}` }, h('span', { text: g.title }), h('span', { class: 'tl-n', text: String(g.tabs.length) })),
+    ...g.tabs.map(row));
+
   // Rebuilt only when what it shows changes, so a click isn't lost to a rebuild
   // between press and release, and the list doesn't jump while you scroll it.
   function renderRows({ force = false } = {}) {
     const tabs = [...state.tabs.values()];
-    const now = JSON.stringify([query, state.activeTab, tabs.map(t => [t.id, S.standing(t), SB.shownTitle(t), t.cwd, S.closable(t, state.activeTab), SB.clashLine(t.id), SB.laneLine?.(t.id)])]);
+    const pins = pinnedPages();
+    const now = JSON.stringify([query, state.activeTab, tabs.map(t => [t.id, S.standing(t), SB.shownTitle(t), t.cwd, S.closable(t, state.activeTab), SB.clashLine(t.id), SB.laneLine?.(t.id)]),
+      pins.map(p => [p.id, p.name, p.icon, p.lastChange?.text])]);
     if (!force && now === drawn) return;
     drawn = now;
     const gs = S.groups(tabs, query);
-    order = gs.flatMap(g => g.tabs.map(t => t.id));
+    const asking = gs.filter(g => g.standing === 'asking');
+    const rest = gs.filter(g => g.standing !== 'asking');
+    order = [...asking.flatMap(g => g.tabs.map(t => t.id)), ...pins.map(p => `page:${p.id}`), ...rest.flatMap(g => g.tabs.map(t => t.id))];
     if (!order.includes(picked)) picked = order[0] ?? null;
-    rowsEl.replaceChildren(...(gs.length
-      ? gs.map(g => h('div', { role: 'group', 'aria-labelledby': `tlg-${g.standing}` },
-        h('div', { class: `tl-group ${g.standing}`, id: `tlg-${g.standing}` }, h('span', { text: g.title }), h('span', { class: 'tl-n', text: String(g.tabs.length) })),
-        ...g.tabs.map(row)))
+    rowsEl.replaceChildren(...(order.length
+      ? [...asking.map(groupEl), pins.length ? pinnedGroup(pins) : null, ...rest.map(groupEl)].filter(Boolean)
       : [h('p', { class: 'tl-empty', text: `No open conversation matches "${query.trim()}". Ctrl+K searches History too.` })]));
     paintPick();
     renderFoot(tabs);
@@ -167,10 +211,12 @@
 
   function go(id) {
     SB.closeMenus();
-    SB.activate(id);
+    if (id.startsWith('page:')) SB.openPage?.(id.slice(5));
+    else SB.activate(id);
   }
 
   async function close(id) {
+    if (id.startsWith('page:')) return; // a pinned page isn't a conversation to close
     // Taken first: closing the open tab activates another, which redraws the list.
     const was = order.slice();
     const at = was.indexOf(id);
