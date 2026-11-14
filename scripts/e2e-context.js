@@ -3,7 +3,12 @@
 // the fake Claude CLI (test/fixtures/fake-claude.js): no account, no usage.
 //   1. A reply's token counts fill the hairline under its tab and the chip,
 //      and the turn ends with what it cost
-//   2. Filling fast: a quieter "filling up" offer before it's crowded
+//   2. Filling fast: a quieter "filling up" offer before it's crowded; and a
+//      new topic sent into it draws a dashed line in the feed where the topic
+//      turned, offering a fresh tab with a summary Shellby writes himself (the
+//      message waits under the line; Stay sends it here and leaves the line;
+//      Start takes the summary as edited and the message to a new tab), once
+//      per conversation, the chip's menu bringing it back, the old one left as it was
 //   3. Past 80% he says it's getting crowded, and the composer offers room
 //      even after "filling up" was waved away
 //   4. The chip's menu: the running total, and the costliest turns, each a
@@ -53,6 +58,8 @@ function connect(url) {
     const until = (expr, ms = 10000) => poll({ ev }, expr, ms);
     until.in = (w, expr, ms = 10000) => poll(w, expr, ms);
     const type = async text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))`);
+    // Into the box without sending: what shows while you type.
+    const typeOnly = text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); })(SB.$('input'))`);
     await panelBooted(ev);
     await ev("SB.setView('chat')");
     await critter.ev("window.__said = []; const bt = document.getElementById('bubbleText'); new MutationObserver(() => window.__said.push(bt.textContent)).observe(bt, { childList: true, characterData: true, subtree: true }); true");
@@ -79,6 +86,34 @@ function connect(url) {
     await ev("SB.$('crowded').querySelector('[aria-label=\"Not now\"]').click()");
     check(await ev("SB.$('crowded').hidden"), '"Not now" hides "filling up"');
 
+    // 2b. A new topic sent into a well-filled conversation: a dashed line in the feed where the topic
+    // turned, with a fresh tab offered on it and the message waiting under it (src/main/freshtab.js, handoff.js).
+    const oldTab = await ev('SB.activeTab().id');
+    const feed = 'SB.activeTab().el';
+    check(await ev(`!${feed}.querySelector('.cut-divider')`), 'no line in the feed before anything new is sent');
+    await type('Explain how the weather widget fetches its forecast and caches it');
+    check(await until(`${feed}.querySelector('.cut-divider .cut-rule')?.textContent === 'New topic · 70% full'`), 'a new topic at 70% draws the line where the topic turned');
+    check(await ev(`!SB.activeTab().busy && ${feed}.querySelector('.msg.user.pending')?.textContent.includes('weather widget') && /Waiting on the line above/.test(${feed}.querySelector('.cut-pending')?.textContent || '')`), 'the message waits under it, unsent');
+    check(await ev(`(c => /per message, here/.test(c.textContent) && /on every message after this one/.test(c.textContent) && /^Everything above is “/.test(c.querySelector('.saver-title').textContent))(${feed}.querySelector('.cut-card'))`), 'the card says what each message carries here, fresh, and the difference');
+    check(await ev(`(t => !!t && /^# Handoff: /.test(t.value) && /- big 140000/.test(t.value) && /not by Claude/.test(t.value))(${feed}.querySelector('.cut-box'))`), "the summary is Shellby's own, there to edit");
+    await ev(`${feed}.querySelector('.cut-stay').click()`);
+    check(await until(`${feed}.querySelector('.cut-rule') && !${feed}.querySelector('.cut-card') && !${feed}.querySelector('.cut-pending') && !${feed}.querySelector('.msg.user.pending') && [...${feed}.querySelectorAll('.msg.user')].some(m => /weather widget/.test(m.textContent))`), '"Stay in this one" sends it here and leaves the line');
+    check(await until(`!SB.activeTab().busy && [...${feed}.querySelectorAll('.msg.assistant')].some(m => /echo: Explain how the weather/.test(m.textContent))`, 15000), 'and Claude answers it here');
+    // From the context chip's menu: the summary whatever the box says, with the box's text as the ask.
+    await typeOnly('Describe the moon phase drawing on the beach scene');
+    await ev('SB.offerHandoff(SB.activeTab())');
+    check(await until(`${feed}.querySelectorAll('.cut-divider').length === 2 && ${feed}.querySelector('.cut-card') && ${feed}.querySelector('.msg.user.pending')?.textContent.includes('moon phase')`), 'the chip menu brings the line back, with the box as the message under it');
+    await ev(`(t => { t.value += '\\n- (edited by hand)'; t.dispatchEvent(new Event('input')); })(${feed}.querySelector('.cut-box'))`);
+    await ev(`${feed}.querySelector('.cut-start').click()`);
+    check(await until(`SB.activeTab().id !== ${JSON.stringify(oldTab)} && [...SB.activeTab().el.querySelectorAll('.msg.user')].some(m => /started this tab fresh/.test(m.textContent) && /edited by hand/.test(m.textContent) && /moon phase/.test(m.textContent))`, 15000), 'a new tab starts with the summary as edited, then the ask');
+    check(await until("!SB.activeTab().busy && [...SB.activeTab().el.querySelectorAll('.msg.assistant')].some(m => /echo:/.test(m.textContent))", 15000), 'and Claude answers it there');
+    check(await ev(`SB.$('input').value === '' && SB.state.tabs.has(${JSON.stringify(oldTab)})`), 'the box is clear, and the old conversation is still open');
+    await ev(`SB.activate(${JSON.stringify(oldTab)})`);
+    check(await ev(`SB.activeTab().id === ${JSON.stringify(oldTab)} && /carried on in a fresh tab/.test([...${feed}.querySelectorAll('.cut-rule')].at(-1).textContent) && !${feed}.querySelector('.cut-card') && !${feed}.querySelector('.msg.user.pending')`), 'back in the old one, the line marks where it carried on, and nothing waits');
+    await type('Tell me about the tide chart colours and the moon drawing');
+    check(await until(`!SB.activeTab().busy && [...${feed}.querySelectorAll('.msg.assistant')].some(m => /echo: Tell me about the tide/.test(m.textContent))`, 15000), 'another new topic goes straight through');
+    check(await ev(`${feed}.querySelectorAll('.cut-divider').length === 2`), 'it is offered once per conversation');
+
     // 3. Past the mark.
     await type('big 170000');
     check(await until("SB.activeTab().context?.pct === 85 && !SB.activeTab().busy"), 'the tab is 85% full');
@@ -91,7 +126,7 @@ function connect(url) {
 
     // 4. The chip's menu: what the conversation has cost so far, then Not now, then Compact from it.
     await ev("SB.$('ctxChip').click()");
-    check(await until("!SB.$('ctxMenu').hidden && /So far: [\\d.]+k? tokens over 3 turns/.test(SB.$('ctxMenu').textContent)"), 'the chip menu has the running total');
+    check(await until("!SB.$('ctxMenu').hidden && /So far: [\\d.]+k? tokens over \\d+ turns/.test(SB.$('ctxMenu').textContent)"), 'the chip menu has the running total');
     check(await ev("SB.$('ctxMenu').textContent.includes('Costliest turns') && SB.$('ctxMenu').querySelectorAll('.cost-turn').length === 3"), 'and the costliest turns');
     await ev("SB.$('ctxMenu').querySelector('.cost-turn').click()");
     check(await until("SB.$('ctxMenu').hidden && SB.activeTab().el.querySelector('.turn-foot.flash .tf-open')?.getAttribute('aria-expanded') === 'true'"), 'a costliest turn scrolls back to it, opened');

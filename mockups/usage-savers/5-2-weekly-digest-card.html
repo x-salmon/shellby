@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Repeated reads 2: a weekly digest card on a new tab</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding-bottom: 20px; }
+  .home .crab { width: 72px; height: 56px; image-rendering: pixelated; background:
+    linear-gradient(var(--coral), var(--coral)) 14px 14px / 44px 24px no-repeat,
+    linear-gradient(var(--coral), var(--coral)) 4px 24px / 10px 10px no-repeat,
+    linear-gradient(var(--coral), var(--coral)) 58px 24px / 10px 10px no-repeat,
+    linear-gradient(var(--coral), var(--coral)) 20px 38px / 8px 12px no-repeat,
+    linear-gradient(var(--coral), var(--coral)) 44px 38px / 8px 12px no-repeat,
+    linear-gradient(var(--sand), var(--sand)) 24px 4px / 6px 12px no-repeat,
+    linear-gradient(var(--sand), var(--sand)) 42px 4px / 6px 12px no-repeat; }
+  .home h1 { font: 500 48px/1.1 var(--font-pixel); }
+  .home .sub { color: var(--sand-dim); font-size: 19px; }
+  .home .sub b { color: var(--sand); }
+  .digest { width: 1180px; margin-top: 20px; padding: 28px 32px 24px; display: grid; gap: 18px; text-align: left; border-color: rgba(255, 193, 94, .35); }
+  .digest .top { display: flex; align-items: baseline; gap: 16px; }
+  .digest h3 { font: 500 26px/1.2 var(--font-pixel); }
+  .digest .top small { color: var(--sand-faint); font-size: 15px; margin-left: auto; }
+  .digest > p { font-size: 17px; }
+  .digest > p b { color: var(--amber); }
+  .fixes { display: grid; gap: 8px; }
+  .fx { display: grid; grid-template-columns: 1fr 150px auto auto; gap: 18px; align-items: center; padding: 14px 18px; background: var(--reef); border: 1px solid var(--line); border-radius: var(--r); font-size: 16px; }
+  .fx .what b { font: 500 15px var(--font-mono); color: var(--sand); }
+  .fx .what small { display: block; color: var(--sand-dim); font-size: 14px; margin-top: 2px; }
+  .fx .n { text-align: right; color: var(--sand-dim); font-size: 14px; }
+  .fx .n b { display: block; font: 500 17px var(--font-mono); color: var(--sand); }
+  .fx .link { color: var(--glass); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+  .fx.done { opacity: .6; }
+  .fx.done .btn { background: var(--glass-dim); color: var(--glass); border-color: transparent; }
+  .shown { padding: 12px 18px 16px; background: var(--reef); border: 1px solid var(--line); border-radius: var(--r); display: grid; grid-template-columns: 1fr 360px; gap: 18px; margin-top: -4px; }
+  .shown .diff { font-size: 13px; }
+  .shown p { color: var(--sand-dim); font-size: 14px; align-self: center; }
+  .shown p b { color: var(--sand); }
+  .digest .acts { padding-top: 4px; }
+  .keys { display: flex; gap: 48px; color: var(--sand-faint); font-size: 15px; margin-top: 10px; }
+  .keys kbd { margin-right: 8px; }
+</style>
+</head>
+<body>
+<div class="note"><b>5-2 · Weekly digest card.</b> Once a week, a new tab opens with a card: what Claude re-read, what it cost, and the fixes with one tap each. <span class="trade">one quiet card instead of a stream of nudges, but the fix arrives days after the waste</span></div>
+<main class="app">
+  <div data-kit="tabs" data-opts='{"tabs":[{"name":"queue races"},{"name":"Lean tab cache rate"},{"name":"release 0.98.2","busy":true},{"name":"New conversation","on":true}]}'></div>
+  <div data-kit="subbar" data-opts='{"ctx":0}'></div>
+
+  <section class="feed"><div class="home">
+    <div class="crab"></div>
+    <h1>What should I scuttle off and do?</h1>
+    <p class="sub">I'm Claude Code in a shell. I work in <b>~/Documents/GitHub/shellby</b> on your own Claude plan.</p>
+
+    <section class="card digest" aria-label="This week's re-reads">
+      <div class="top"><h3>This week, read more than once</h3><small>Nov 7 to 13 · shellby · from Claude Code's transcripts</small></div>
+      <p>Claude read the same three files <b>11 times</b> and ran <b>npm test</b> 11 times with 6k of output each: about <b>260k tokens</b> on things it had already seen, roughly half a 5-hour window.</p>
+      <div class="fixes">
+        <div class="fx"><span class="what"><b>package-lock.json</b><small>Read 4 times, 38k each, never edited. A deny rule keeps it out; Claude can still run <code>npm ls</code>.</small></span><span class="n"><b>152k</b>this week</span><span class="link">Show the diff</span><span class="btn small glass">Apply</span></div>
+        <div class="shown">
+          <div class="diff"><span class="f">.claude/settings.json</span><span class="ctx">  "permissions": {</span><span class="add">+   "deny": ["Read(./package-lock.json)"],</span><span class="ctx">    "allow": ["Bash(npm test:*)"]</span></div>
+          <p>Claude is told the file is off limits. If it needs a version it runs <b>npm ls &lt;pkg&gt;</b>: about 80 tokens instead of 38k. Undo under Setup → Rules.</p>
+        </div>
+        <div class="fx"><span class="what"><b>dist/panel.html</b><small>Read twice, 22k each. It's built from <code>src/renderer/panel/html/</code>, which CLAUDE.md already says.</small></span><span class="n"><b>44k</b></span><span class="link">Show the diff</span><span class="btn small glass">Apply</span></div>
+        <div class="fx done"><span class="what"><b>npm test</b><small>11 runs, 6.2k of output each. A CLAUDE.md line asks for <code>--test-reporter=dot</code>, the full log only on a failure.</small></span><span class="n"><b>68k</b></span><span class="link">Applied</span><span class="btn small">Undo</span></div>
+      </div>
+      <div class="acts"><span class="btn primary">Apply the other two</span><span class="btn ghost">Not this week</span><span class="fine">Comes back next Friday if there's something new. Turn it off in Settings → Alerts.</span></div>
+    </section>
+
+    <div class="keys"><span><kbd>/</kbd>Run a skill</span><span><kbd>Ctrl+K</kbd>Jump to any screen</span><span><kbd>Shift+Tab</kbd>Switch mode</span><span><kbd>Ctrl+/</kbd>Every shortcut</span></div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{}'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

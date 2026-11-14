@@ -99,6 +99,14 @@ body[data-view="workflows"] .view-workflows {
 
 .ar-actions { grid-column: 3; grid-row: 1; display: flex; align-items: center; gap: 1px; }
 .ar-actions .icon-btn:disabled { opacity: .35; }
+/* Run, with what a run usually costs on it (wf-list.js runButton): amber when it would pass the limit. */
+.wf-run { height: 26px; padding: 0 9px 0 7px; gap: 4px; font-size: var(--fs-12); }
+.wf-run svg { width: 13px; height: 13px; }
+.wf-run .pct { font: 600 var(--fs-11) var(--font-mono); color: var(--sand-dim); }
+.wf-run.over { border-color: color-mix(in srgb, var(--amber) 60%, var(--line)); color: var(--amber); }
+.wf-run.over .pct { color: var(--amber); }
+.wf-list { container-type: inline-size; }
+@container (max-width: 560px) { .wf-run .pct-long { display: none; } }
 .ar-actions .toggle.mini { padding: 0 4px 0 8px; margin-left: 4px; border-left: 1px solid var(--line-soft); }
 
 /* Off: the row steps back, but its switch stays readable so you can turn it on. */
@@ -127,6 +135,16 @@ body[data-view="workflows"] .view-workflows {
 
 .wf-runform { margin: 10px 0 2px 43px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: grid; gap: 8px; }
 .wf-runform .row.end { margin-top: 2px; }
+/* A run that would pass the limit (wf-list.js estimateBox, src/main/usage/runcost.js): the warning, the reset, and Run anyway. */
+.wf-estimate {
+  margin: 10px 0 2px 43px; padding: 9px 12px; border-radius: var(--r-sm); display: grid; gap: 8px;
+  background: var(--abyss); border: 1px solid var(--line); border-left: 2px solid var(--amber);
+}
+.wf-estimate-text { margin: 0; font-size: var(--fs-12-5); line-height: 1.45; color: var(--sand); overflow-wrap: anywhere; }
+.wf-estimate .slim-btn { height: 26px; }
+/* Held for after the usage reset: the pill on its row takes it out again. */
+.ar-held { border: 0; padding: 0; background: none; font: inherit; color: var(--amber); cursor: pointer; }
+.ar-held:hover { text-decoration: underline; }
 
 /* ---------------------------------------------------------------- templates
    Two to a row where there's room, so the whole gallery fits in a glance. */

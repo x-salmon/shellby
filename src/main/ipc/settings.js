@@ -17,6 +17,7 @@ const mischief = require('../mischief');
 const { str, obj, opt, text } = require('../ipc-args');
 const localTally = require('../local/tally');
 const { isModel } = require('../models');
+const modelPick = require('../model-pick');
 const outputStyles = require('../outputstyles');
 const { SETTINGS: PERCH_SETTINGS } = require('../desktop/perch');
 const { EFFORTS } = require('../session');
@@ -115,7 +116,7 @@ function registerSettingsIpc(ipcMain, d) {
 
   ipcMain.handle('settings:set', async (_e, patch = {}) => {
     const allowed = {};
-    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'localModel', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'taskBoard', 'handoffAsk', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped']) {
+    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'localModel', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'taskBoard', 'handoffAsk', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest', 'modelAlways']) {
       if (k in patch) allowed[k] = patch[k];
     }
     // Turning on Autonomous for the first time needs a confirmation that renderer
@@ -159,8 +160,9 @@ function registerSettingsIpc(ipcMain, d) {
     if ('helperModel' in allowed && !isModel(allowed.helperModel)) delete allowed.helperModel;
     if ('effort' in allowed && allowed.effort !== '' && !EFFORTS.includes(allowed.effort)) delete allowed.effort;
     if ('outputStyle' in allowed) allowed.outputStyle = outputStyles.clean(allowed.outputStyle);
-    for (const k of ['openAtLogin', 'notifications', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'sounds', 'soundFx', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effortPick', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'turnShots', 'spendGuard', 'holdBigTasks', 'selfAware', 'suggestions', 'taskBoard', 'handoffAsk', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'communityNews', 'shareWrapped']) if (k in allowed) allowed[k] = !!allowed[k];
+    for (const k of ['openAtLogin', 'notifications', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'sounds', 'soundFx', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effortPick', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'turnShots', 'spendGuard', 'holdBigTasks', 'selfAware', 'suggestions', 'taskBoard', 'handoffAsk', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest']) if (k in allowed) allowed[k] = !!allowed[k];
     if ('localModel' in allowed) { const local = localModel.cleanSettings(allowed.localModel); if (local) allowed.localModel = local; else delete allowed.localModel; }
+    if ('modelAlways' in allowed) allowed.modelAlways = modelPick.cleanAlways(allowed.modelAlways, isModel); // the kinds of small message that go to a model by themselves
     if ('checkTimeoutMin' in allowed && !TIMEOUTS_MIN.includes(allowed.checkTimeoutMin)) delete allowed.checkTimeoutMin;
     if ('keybindings' in allowed) allowed.keybindings = shortcuts.sanitizeOverrides(allowed.keybindings);
     if ('spendReserve' in allowed && !guard.RESERVES.includes(allowed.spendReserve)) delete allowed.spendReserve;

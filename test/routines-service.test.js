@@ -20,7 +20,7 @@ function fakeManager() {
 
 function setup(over = {}) {
   const data = { routines: over.routines || [], ...over.data };
-  const calls = { opened: [], notify: [], held: [], asked: 0, stats: [] };
+  const calls = { opened: [], notify: [], held: [], saved: [], said: [], asked: 0, stats: [] };
   const manager = fakeManager();
   let ids = 0;
   const d = {
@@ -34,7 +34,7 @@ function setup(over = {}) {
     send: () => {},
     notify: (title, body) => calls.notify.push({ title, body }),
     showPanel: () => {},
-    sayText: () => {},
+    sayText: text => calls.said.push(text),
     wake: () => {},
     openTab: opts => { calls.opened.push(opts); manager.tabs.set(opts.tabId, { id: opts.tabId }); },
     currentCwd: () => 'C:\\code',
@@ -46,10 +46,12 @@ function setup(over = {}) {
     isFolder: () => true,
     randomUUID: () => `tab-${++ids}`,
     limitWait: () => over.limit || null,
-    guardSettings: () => ({ on: true, reserve: 25, maxMinutes: 60 }),
+    guardSettings: () => over.guard || { on: true, reserve: 25, maxMinutes: 60 },
+    forecastNow: () => over.outlook || null,
     clockTime: t => `at ${t}`,
-    heldList: () => [],
+    heldList: () => over.heldList || [],
     holdForReset: raw => { calls.held.push(raw); return { ok: true, added: calls.held.length === 1, atText: 'soon' }; },
+    saveHeld: list => calls.saved.push(list),
     scheduleHeld: () => {},
     syncKeepAwake: () => {},
     queueTabs: new Map(),
@@ -117,6 +119,64 @@ test('a routine due at the limit is held for the reset, and you are told once', 
   assert.equal(calls.held[0].auto, true);
   assert.equal(calls.notify.length, 1);
   assert.deepEqual(calls.opened, []);
+});
+
+test('a routine due with the window nearly full waits for the reset, and he says so once', t => {
+  t.mock.timers.enable({ apis: ['Date'], now: NOW });
+  const lastUsage = { fiveHour: { pct: 90, resetsAt: NOW + H }, at: NOW };
+  const { svc, calls } = setup({ routines: [nightly], data: { lastUsage }, guard: { on: false, reserve: 25, maxMinutes: 60 } });
+
+  const first = svc.runOrHoldRoutine(nightly, 'scheduled');
+  const again = svc.runOrHoldRoutine(nightly, 'scheduled'); // the next slot, still waiting
+
+  assert.deepEqual(first, { ok: true, held: true });
+  assert.deepEqual(again, { ok: true, held: true });
+  assert.deepEqual(calls.opened, [], 'it did not start');
+  assert.equal(calls.held.length, 2, 'asked to hold both times (held.js keeps the first)');
+  assert.equal(calls.held[0].why, 'near');
+  assert.equal(calls.held[0].auto, true);
+  assert.equal(calls.notify.length, 1, 'told once');
+  assert.match(calls.notify[0].body, /at 90%, close to the limit/);
+  assert.equal(calls.said.length, 1, 'the crab says it once');
+  assert.match(calls.said[0], /"Nightly" waits for the reset at soon/);
+});
+
+test('the forecast alone can hold a routine: the window fills before a run could finish', t => {
+  t.mock.timers.enable({ apis: ['Date'], now: NOW });
+  const lastUsage = { fiveHour: { pct: 60, resetsAt: NOW + 2 * H }, at: NOW };
+  const outlook = { pct: 60, hitAt: NOW + 10 * 60 * 1000, resetsAt: NOW + 2 * H };
+  const { svc, calls } = setup({ routines: [nightly], data: { lastUsage }, outlook, guard: { on: false, reserve: 25, maxMinutes: 60 } });
+
+  const res = svc.runOrHoldRoutine(nightly, 'scheduled');
+
+  assert.deepEqual(res, { ok: true, held: true });
+  assert.equal(calls.held[0].why, 'pace');
+  assert.match(calls.notify[0].body, /fills around at \d+, before a run could finish/);
+});
+
+test('"Run even near the limit" runs it anyway, and takes the run Shellby held off the list', t => {
+  t.mock.timers.enable({ apis: ['Date'], now: NOW });
+  const lastUsage = { fiveHour: { pct: 90, resetsAt: NOW + H }, at: NOW };
+  const heldList = [{ id: 'h1', kind: 'routine', routineId: 'r1', auto: true, at: NOW + H }, { id: 'h2', kind: 'routine', routineId: 'other', auto: true, at: NOW + H }];
+  const brave = { ...nightly, runNearLimit: true };
+  const { svc, calls } = setup({ routines: [brave], data: { lastUsage }, heldList });
+
+  const res = svc.runOrHoldRoutine(brave, 'scheduled');
+
+  assert.equal(res.ok, true);
+  assert.equal(calls.opened.length, 1, 'it ran');
+  assert.deepEqual(calls.held, [], 'nothing new held');
+  assert.deepEqual(calls.saved[0].map(h => h.id), ['h2'], 'its own held run is gone; another routine\'s stays');
+});
+
+test('a run you held yourself stays when the routine runs on schedule', () => {
+  const heldList = [{ id: 'h1', kind: 'routine', routineId: 'r1', auto: false, at: NOW + H }];
+  const { svc, calls } = setup({ routines: [nightly], heldList });
+
+  svc.runOrHoldRoutine(nightly, 'scheduled');
+
+  assert.equal(calls.opened.length, 1);
+  assert.deepEqual(calls.saved, [], 'your hold is yours');
 });
 
 test('after a routine is turned down, Claude must wait before proposing another', async t => {

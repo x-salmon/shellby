@@ -15,6 +15,12 @@
   let drafting = false;
   let runFormFor = null;     // workflow id whose inputs form is open
   let runValues = {};
+  /** @type {{ id: string, inputs: Record<string, string>, est: any } | null} */
+  let estimateFor = null;    // the workflow whose run would pass the limit: its box, with "Run after the reset"
+  /** @type {Map<string, any>} */
+  const estimates = new Map(); // workflow id -> what a run usually costs (src/main/usage/runcost.js), for its Run button
+  let estSeq = 0;
+  let estSeen = { key: '', outlook: undefined }; // what the estimates were last asked for
 
   const workflows = () => state.workflows?.workflows || [];
   const DEF_KEYS = ['id', 'name', 'description', 'enabled', 'cwd', 'concurrency', 'inputs', 'when', 'steps', 'createdAt'];
@@ -42,6 +48,7 @@
       list.rows,
       list.gallery,
       list.secrets);
+    estSeen = { key: '', outlook: undefined }; // a fresh look at the page asks again once
     fillList();
     if (focusDescribe) requestAnimationFrame(takeDescribeFocus);
   }
@@ -67,6 +74,7 @@
     if (state.view === 'workflows' || state.view === 'routines') SB.renderTide?.();
   }
   const refreshList = throttle(() => { if (state.view === 'workflows' && current().name === 'list') fillList(); }, 600);
+  SB.refreshWorkflowRows = refreshList; // a run held for the reset, or let go (outlook.js applyOutlook)
 
   // Live updates refill the rows, but never under your cursor: if you're typing
   // in a run form or the secrets box, it waits until you leave.
@@ -82,6 +90,7 @@
       fillGallery();
       fillSecrets();
     });
+    if (estimatesStale()) refreshEstimates();
   }
   screen.addEventListener('focusout', e => {
     if (list.pending && !(editing(e.relatedTarget) && screen.contains(e.relatedTarget))) setTimeout(fillList, 0);
@@ -184,12 +193,16 @@
     return { tone, text: at ? `${word} ${SB.relTime(at)}` : word };
   }
 
+  // A run of it held for after the usage reset, from its cost estimate (outlook.js brings the list).
+  const heldRun = w => (state.outlook?.held || []).find(x => x.kind === 'workflow' && x.workflowId === w.id) || null;
+
   function workflowRow(w) {
     const last = w.lastRun;
     const note = lastRunNote(w);
     const when = [w.triggers?.length ? w.triggers.join(' · ') : 'Run by hand'];
     if (!w.enabled) when.push('off');
     else if (w.next) when.push(`next ${SB.untilTime(w.next)}`);
+    const held = heldRun(w);
     const firstTrigger = w.when?.[0]?.type;
     return h('li', { class: `ar-row wf-row${w.enabled ? '' : ' paused'}${last?.waiting ? ' waiting' : ''}`, 'data-workflow-id': w.id },
       h('div', { class: 'ar-top' },
@@ -198,16 +211,54 @@
           h('div', { class: 'ar-name' }, h('button', { type: 'button', class: 'ar-title', 'aria-label': `Edit “${w.name}”`, 'data-fk': `edit-${w.id}`, onclick: () => openEditor(toDef(w)) }, w.name)),
           h('div', { class: 'ar-meta' },
             h('span', { class: `ar-status ${note.tone}` }, h('span', { class: 'ar-dot', 'aria-hidden': 'true' }), note.text),
-            h('span', { class: 'ar-when', text: when.join(' · ') })),
+            h('span', { class: 'ar-when', text: when.join(' · ') }),
+            held ? h('button', { type: 'button', class: 'ar-held', title: 'Held until your usage resets. Click to take it out of the queue.', 'data-fk': `held-${w.id}`, onclick: () => unholdRun(w, held) }, `runs after the reset · ${held.atText}`) : null),
           w.description ? h('div', { class: 'ar-desc', text: w.description, title: w.description }) : null),
         h('div', { class: 'ar-actions' },
-          iconBtn('play', `Run “${w.name}” now`, () => startRun(w), { 'data-fk': `run-${w.id}`, 'aria-expanded': w.inputs?.length ? String(runFormFor === w.id) : null }),
+          runButton(w),
           iconBtn('more', `More for “${w.name}”`, e => rowMenu(w, e.currentTarget), { 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'data-fk': `more-${w.id}` }),
           h('label', { class: 'toggle mini', title: w.enabled ? 'Turn off' : 'Turn on' },
             h('input', { type: 'checkbox', checked: w.enabled, 'aria-label': `Run “${w.name}” automatically`, 'data-fk': `en-${w.id}`, onchange: e => setEnabled(w, e.target) }),
             h('span', { class: 'switch' })))),
       last?.waiting ? waitingBox(last) : null,
-      runFormFor === w.id ? runForm(w) : null);
+      runFormFor === w.id ? runForm(w) : null,
+      estimateFor?.id === w.id ? estimateBox(w) : null);
+  }
+
+  // Run, with what a run usually costs on it ("Run · ~3% of your window"); amber when it
+  // would pass the limit. The plain play button until the estimate has come.
+  function runButton(w) {
+    const est = estimates.get(w.id) || null;
+    const attrs = { 'data-fk': `run-${w.id}`, 'aria-expanded': w.inputs?.length ? String(runFormFor === w.id) : null };
+    if (!est) return iconBtn('play', `Run “${w.name}” now`, () => startRun(w), attrs);
+    return h('button', { type: 'button', class: `btn slim-btn wf-run${est.over ? ' over' : ''}`, title: est.text, 'aria-label': `Run “${w.name}” now, ${est.label}${est.over ? ', past your limit' : ''}`, onclick: () => startRun(w), ...attrs },
+      icon('play'), 'Run', h('span', { class: 'pct' }, ` · ${est.share}`, h('span', { class: 'pct-long', text: ' of your window' })));
+  }
+
+  // What each run would cost is asked for when the list first shows, and again only
+  // when something that moves the guess has changed: a workflow added or gone, a
+  // run ending, or a fresh usage reading (each comes with a new outlook). Never on
+  // every redraw: that would be one call to main per workflow each time.
+  function estimatesStale() {
+    const key = workflows().map(w => `${w.id}:${w.lastRun?.endedAt || w.lastRun?.startedAt || ''}:${w.running ? 1 : 0}`).join('|');
+    if (key === estSeen.key && state.outlook === estSeen.outlook) return false;
+    estSeen = { key, outlook: state.outlook };
+    return true;
+  }
+
+  async function refreshEstimates() {
+    const ids = new Set(workflows().map(w => w.id));
+    for (const id of [...estimates.keys()]) if (!ids.has(id)) estimates.delete(id);
+    const seq = ++estSeq;
+    const got = await Promise.all(workflows().map(w => api.estimateRun({ kind: 'workflow', workflowId: w.id }).then(e => [w.id, e || null], () => [w.id, null])));
+    if (seq !== estSeq) return;
+    let changed = false;
+    for (const [id, e] of got) {
+      const was = estimates.get(id);
+      if (was?.label !== e?.label || !!was?.over !== !!e?.over) changed = true;
+      estimates.set(id, e);
+    }
+    if (changed) fillList();
   }
 
   function waitingBox(last) {
@@ -307,12 +358,53 @@
     runNow(w, {});
   }
 
-  async function runNow(w, inputs) {
+  // One tap runs it. Only a run that would pass your limit stops first, in a box on
+  // its row that offers the reset (src/main/usage/runcost.js); estimated: you said
+  // to run it anyway.
+  async function runNow(w, inputs, { estimated = false } = {}) {
+    if (!estimated) {
+      let est;
+      try { est = await api.estimateRun({ kind: 'workflow', workflowId: w.id }); } catch { est = null; }
+      estimates.set(w.id, est || null);
+      if (est?.over && est.text) {
+        estimateFor = { id: w.id, inputs, est };
+        runFormFor = null;
+        fillList();
+        requestAnimationFrame(() => list.rows?.querySelector('.wf-estimate .wf-run-go')?.focus());
+        return false;
+      }
+    }
     let res;
     try { res = await api.runWorkflow(w.id, inputs); } catch { res = { ok: false, error: 'Couldn\'t start it. Try again.' }; }
     if (!res?.ok) { SB.toast(res?.error || 'Couldn\'t start it.'); return false; }
     SB.toast(`Started “${w.name}”`, { action: 'Watch', onAction: () => go('run', { runId: res.runId }) });
     return true;
+  }
+
+  // Past the limit: the warning, "Run after the reset" first, and the way to run it anyway.
+  function estimateBox(w) {
+    const { est, inputs } = estimateFor;
+    const close = () => { estimateFor = null; fillList(); focusFk(`run-${w.id}`); };
+    return h('div', { class: 'wf-estimate over', role: 'group', 'aria-label': `What “${w.name}” would cost` },
+      h('p', { class: 'wf-estimate-text', text: est.text }),
+      h('div', { class: 'row wrap' },
+        est.resetText ? h('button', { type: 'button', class: 'btn slim-btn primary wf-run-later', title: 'Held until your usage resets, then run by hand with these inputs', onclick: () => holdRun(w, inputs) }, `Run after the reset (${est.resetText})`) : null,
+        h('button', { type: 'button', class: 'btn slim-btn wf-run-go', onclick: () => { estimateFor = null; runNow(w, inputs, { estimated: true }); } }, 'Run anyway'),
+        h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: close }, 'Cancel')));
+  }
+
+  async function holdRun(w, inputs) {
+    let r;
+    try { r = await api.holdForReset({ kind: 'workflow', workflowId: w.id, inputs }); } catch { r = { ok: false, error: 'Couldn\'t hold it. Try again.' }; }
+    estimateFor = null;
+    fillList();
+    SB.toast(r?.ok ? `“${w.name}” runs after the reset, at ${r.atText}.` : r?.error || 'Couldn\'t hold it.');
+  }
+
+  async function unholdRun(w, held) {
+    let r;
+    try { r = await api.cancelHeld(held.id); } catch { r = { ok: false }; }
+    SB.toast(r?.ok ? `“${w.name}” won't run after the reset.` : 'That one has already gone.');
   }
 
   function runForm(w) {

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Run cost 3: a live meter projects the run onto the usage bar</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .meter .track.proj { overflow: visible; width: 160px; }
+  .meter .track.proj .fill { border-radius: 4px 0 0 4px; }
+  .meter .track.proj .ghost { position: absolute; top: -2px; bottom: -2px; left: 54%; width: 8%; background: repeating-linear-gradient(-45deg, var(--amber) 0 3px, transparent 3px 6px); border: 1px solid var(--amber); border-radius: 0 4px 4px 0; }
+  .meter .num .plus { color: var(--amber); margin-left: 6px; }
+  .chip.lit .meter .when { color: var(--sand-dim); }
+
+  .card-proj { position: absolute; right: 136px; top: 118px; width: 600px; padding: 22px 24px 20px; display: grid; gap: 16px; z-index: 3; }
+  .pointer { position: absolute; right: 540px; top: 110px; width: 16px; height: 16px; background: var(--ink); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); z-index: 4; }
+  .card-proj h3 { font: 500 22px/1.2 var(--font-pixel); }
+  .card-proj p { color: var(--sand-dim); font-size: 15px; }
+  .card-proj p b { color: var(--sand); }
+  .big-track { position: relative; height: 26px; border-radius: 13px; background: var(--reef-3); overflow: hidden; }
+  .big-track .now { position: absolute; inset: 0 auto 0 0; width: 54%; background: var(--glass); }
+  .big-track .run { position: absolute; top: 0; bottom: 0; left: 54%; width: 8%; background: var(--amber); }
+  .big-track .rng { position: absolute; top: 0; bottom: 0; left: 59%; width: 7%; background: repeating-linear-gradient(-45deg, var(--amber) 0 4px, transparent 4px 8px); opacity: .55; }
+  .big-track .son { position: absolute; top: 0; bottom: 0; left: 57%; width: 2px; background: var(--sand); }
+  .lab { display: grid; grid-template-columns: 1fr 1fr 1fr; font: 500 13px var(--font-mono); color: var(--sand-faint); }
+  .lab b { display: block; font-size: 15px; color: var(--sand); font-weight: 600; }
+  .lab .mid { text-align: center; } .lab .mid b { color: var(--amber); }
+  .lab .end { text-align: right; }
+  .alt { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 12px 14px; background: var(--reef); border: 1px solid var(--line); border-radius: var(--r); font-size: 15px; color: var(--sand-dim); }
+  .alt b { color: var(--sand); }
+  .card-proj .fine { color: var(--sand-faint); font-size: 13px; }
+  .ultra-note { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-radius: var(--r); background: var(--coral-dim); color: var(--sand); font-size: 16px; }
+  .ultra-note b { color: var(--coral); }
+  .ultra-note .look { margin-left: auto; color: var(--sand-dim); font-size: 15px; }
+  .ultra-note .look i { font-style: normal; color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="note"><b>4-3 · Live meter.</b> As you type or switch Ultracode on, the 5-hour meter in the subbar grows a hatched piece: where the run would leave it. Hover for the range, the reset and a cheaper way. <span class="trade">never blocks and shows where you'd land, not just the cost, but the meter is small and the detail is a hover away</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar" data-opts='{"usage":"<span class=\"chip lit\" id=\"usageChip\"><span class=\"meter\"><span>5h</span><span class=\"track proj\"><span class=\"fill\" style=\"--p:54%\"></span><span class=\"ghost\"></span></span><span class=\"num\">54%<span class=\"plus\">→ ~62%</span></span><span class=\"when\">resets 4:15</span></span><span class=\"meter\" style=\"margin-left:14px\"><span>7d</span><span class=\"track\"><span class=\"fill\" style=\"--p:31%\"></span></span><span class=\"num\">31%</span></span></span>"}'></div>
+
+  <span class="pointer"></span>
+  <div class="pop card-proj" role="tooltip">
+    <h3>If you send what's in the box</h3>
+    <div class="big-track"><i class="now"></i><i class="run"></i><i class="rng"></i><i class="son"></i></div>
+    <div class="lab"><span>now<b>54%</b></span><span class="mid">this run<b>+8%, 5 to 12</b></span><span class="end">resets<b>4:15 · 2h 40m</b></span></div>
+    <p>An Ultracode run across <b>scripts/e2e-*.js</b> with helpers and a full e2e at the end. Runs like it took 5% to 12% of your window before, so it would end <b>about 62% full</b>. Enough room for the afternoon.</p>
+    <div class="alt"><span>Helpers on <b>Sonnet</b> instead: about <b>3%</b>, the white mark. Same result 9 times out of 10 for ports.</span><span class="btn small glass">Use Sonnet helpers</span></div>
+    <span class="fine">Updates as you type. The meter goes back to plain when you clear the box or turn Ultracode off.</span>
+  </div>
+
+  <section class="feed"><div class="col">
+    <div data-kit="thread"></div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{
+    "text": "ultracode: port the e2e dialog helpers in scripts/e2e-*.js to the new CDP session API. Keep every check green and run the full e2e once at the end.",
+    "ultra": true,
+    "before": "<div class=\"ultra-note\" role=\"status\"><b>Ultracode is on.</b> Claude may send out many agents, and they use a lot of tokens.<span class=\"look\">The 5h meter up top shows where this would leave you: <i>about 62% full</i>.</span></div>"
+  }'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

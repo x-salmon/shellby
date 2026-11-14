@@ -4,13 +4,17 @@
 // Saves workflows through the panel's bridge, runs them, and checks the
 // Automate page shows what happened: typed Claude output steering an If, a
 // command, an Ask answered from the run view, a stop and a resume, a web hook
-// on the local port, and the confirmation window guarding risky saves.
+// on the local port, the confirmation window guarding risky saves, and the
+// Run button carrying what a run usually costs ("Run · ~6% of your window")
+// and running in one tap, except past the limit, where it turns to a warning
+// and offers the reset (5-hour readings come from dev:usage, SHELLBY_FORECAST_TEST).
 //   node scripts/e2e-workflows.js
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { templates } = require('../src/main/workflows/templates');
+const { DEFAULTS } = require('../src/main/usage/runcost');
 const { panelBooted } = require('./lib/boot');
 const { answerDialog } = require('./lib/dialog');
 
@@ -26,7 +30,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-wf-work-'));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: String(HOOK_PORT) },
+    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: String(HOOK_PORT), SHELLBY_FORECAST_TEST: '1' },
   });
   try {
     let list = [];
@@ -79,13 +83,43 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const saved = JSON.parse(await ev(`shellby.saveWorkflow(${JSON.stringify(triage)}).then(r => JSON.stringify(r))`));
     check(saved.ok === true, `a plan-only workflow saves without a confirmation (${JSON.stringify(saved.errors || '')})`);
     check(await until("document.querySelectorAll('#workflowsView [data-workflow-id]').length === 1 || /Triage/.test(document.getElementById('workflowsView').innerText)"), 'it is listed on the Automate page');
-    const run1 = JSON.parse(await ev(`shellby.runWorkflow(${JSON.stringify(saved.workflow.id)}, {}).then(r => JSON.stringify(r))`));
-    check(run1.ok, 'it runs');
+    // The Run button carries what a run usually costs (src/main/usage/runcost.js): no run yet, so a rough guess, labelled. One tap runs it.
+    const runBtn = `document.querySelector('#workflowsView [data-fk="run-${saved.workflow.id}"]')`;
+    const [lo, hi] = DEFAULTS.workflow;
+    const mid = Math.round((lo + hi) / 2);
+    check(await until(`${runBtn}?.classList.contains('wf-run') && ${runBtn}.textContent.trim() === 'Run · ~${mid}% of your window'`), `the row's Run button says what a run usually costs: "Run · ~${mid}% of your window"`);
+    const estText = await ev(`${runBtn}.title`);
+    check(new RegExp(`^“Triage” hasn't run here yet; a rough guess is ${lo} to ${hi}% of your 5-hour window\\.$`).test(estText), `a rough guess, labelled, is its tooltip (${estText})`);
+    await ev(`${runBtn}.click()`);
+    check(await until(`shellby.listRuns(${JSON.stringify(saved.workflow.id)}).then(l => l.length === 1)`), 'one tap runs it');
+    check(await ev("!document.querySelector('#workflowsView .wf-estimate')"), 'with nothing to confirm first');
+    const run1 = { runId: (await ev(`shellby.listRuns(${JSON.stringify(saved.workflow.id)}).then(l => l[0].id)`)) };
     const r1 = await waitRun(run1.runId, ['ok', 'error']);
     check(r1?.status === 'ok', `the run finishes ok (${r1?.status}: ${r1?.error || ''})`);
     check(r1?.steps?.look?.output?.fixable === true && r1?.steps?.look?.output?.cause === 'a typo', 'Claude handed back typed fields');
     check(r1?.vars?.verdict === 'fix a typo', `the If took the right branch (${r1?.vars?.verdict})`);
     check(!!r1?.steps?.look?.output?.tabId && await ev('/⚡ Triage/.test(document.body.textContent)'), 'its Claude step ran in a ⚡ tab');
+    // Past the limit (the guard off, so the line is 100%), Run turns to a warning and stops to offer the reset:
+    // Cancel starts nothing, and Run anyway runs it.
+    await ev("SB.api.setSettings({ spendGuard: false }).then(() => SB.api.devUsage({ pct: 97, resetsAt: Date.now() + 3 * 3600e3 }))");
+    await ev("SB.setView('workflows')");
+    check(await until(`${runBtn}?.classList.contains('over')`), 'near the limit the Run button turns to a warning');
+    await ev(`${runBtn}.click()`);
+    check(await until("!!document.querySelector('#workflowsView .wf-estimate .wf-run-later')"), 'a tap offers to run it after the reset instead');
+    const overText = await ev("document.querySelector('#workflowsView .wf-estimate-text')?.textContent || ''");
+    check(/likely runs past your 5-hour limit/.test(overText), `and says why (${overText})`);
+    await ev("[...document.querySelectorAll('#workflowsView .wf-estimate button')].find(b => b.textContent === 'Cancel').click()");
+    check(await until("!document.querySelector('#workflowsView .wf-estimate')"), 'Cancel puts it away');
+    check((await ev(`shellby.listRuns(${JSON.stringify(saved.workflow.id)}).then(l => l.length)`)) === 1, 'and nothing ran');
+    await ev(`${runBtn}.click()`);
+    check(await until("!!document.querySelector('#workflowsView .wf-estimate .wf-run-go')"), 'the warning again');
+    await ev("document.querySelector('#workflowsView .wf-estimate .wf-run-go').click()");
+    check(await until(`shellby.listRuns(${JSON.stringify(saved.workflow.id)}).then(l => l.length === 2)`), 'Run anyway runs it');
+    check(await until("!document.querySelector('#workflowsView .wf-estimate')"), 'and the warning is gone');
+    const again = JSON.parse(await ev(`shellby.listRuns(${JSON.stringify(saved.workflow.id)}).then(l => JSON.stringify(l[0]))`));
+    check((await waitRun(again.id, ['ok', 'error']))?.status === 'ok', 'that run finishes too');
+    await ev("SB.api.devUsage({ pct: 10, resetsAt: Date.now() + 3 * 3600e3 }).then(() => SB.api.setSettings({ spendGuard: true }))");
+    check(await until(`${runBtn} && !${runBtn}.classList.contains('over')`), 'back under the limit, Run is plain again');
 
     // 3. A risky save asks in the confirmation window: No keeps nothing, Yes saves.
     const plan = path.join(work, 'plan.md');

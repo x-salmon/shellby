@@ -25,7 +25,9 @@ const WINDOW_SLACK_MS = 10 * 60 * 1000;
 
 const CATEGORIES = ['question', 'review', 'tests', 'fix', 'feature', 'refactor', 'docs', 'tidy', 'other'];
 const SIZES = ['s', 'm', 'l'];
-const KINDS = ['tab', 'routine', 'workflow'];
+// 'ultracode' is a run, not a turn (runcost.js): it leaves a row when it ends, and turn estimates leave it out.
+const KINDS = ['tab', 'routine', 'workflow', 'ultracode'];
+const RUN_ID = /^[\w-]{1,80}$/;
 
 // First match wins, so the order settles "fix the failing test" (a fix) and
 // "review the docs" (a review).
@@ -92,6 +94,10 @@ function normalizeRow(r) {
     size: SIZES.includes(r.size) ? r.size : 's',
     kind: KINDS.includes(r.kind) ? r.kind : 'tab',
     rid: typeof r.rid === 'string' && /^[\w-]{1,64}$/.test(r.rid) ? r.rid : null,
+    // A workflow step's workflow and run, or an Ultracode run's id, so past runs can be added up (runcost.js).
+    wf: typeof r.wf === 'string' && RUN_ID.test(r.wf) ? r.wf : null,
+    run: typeof r.run === 'string' && RUN_ID.test(r.run) ? r.run : null,
+    helpers: Number.isInteger(r.helpers) && r.helpers > 0 ? r.helpers : 0, // subagents the turn sent
     branch: clip(r.branch, 200) || null,
     weight: Math.round(weight),
     pctRise,
@@ -190,7 +196,8 @@ const round1 = n => Math.round(n * 10) / 10;
  * Within a tier, rows on the same model family are preferred when there are enough.
  */
 function estimate(ledger, { pk = null, category = 'other', model = '', now = Date.now() } = {}) {
-  const rows = (Array.isArray(ledger) ? ledger : []).filter(r => now - r.at < KEEP_MS && r.ok !== false);
+  // An Ultracode run's row is a run of many agents, not a turn like this one (runcost.js has those).
+  const rows = (Array.isArray(ledger) ? ledger : []).filter(r => now - r.at < KEEP_MS && r.ok !== false && r.kind !== 'ultracode');
   const ratio = ratioOf(rows);
   const key = pk ? String(pk).toLowerCase() : null;
   const family = modelFamily(model);
@@ -280,6 +287,6 @@ function modelSuggestion(ledger, { pk = null, category = 'other', model = '', no
 }
 
 module.exports = {
-  classify, sizeOf, modelFamily, normalize, normalizeRow, record, byBranch, riseOf, ratioOf, estimate, advise, shouldHold,
-  routineSuggestion, modelSuggestion, quantile, CATEGORIES, KEEP_MS, MAX_ROWS, MIN_SAMPLES, SMALL_RUN_PCT,
+  classify, sizeOf, modelFamily, normalize, normalizeRow, record, byBranch, riseOf, ratioOf, pctOf, estimate, advise, shouldHold,
+  routineSuggestion, modelSuggestion, quantile, CATEGORIES, KINDS, KEEP_MS, MAX_ROWS, MIN_SAMPLES, SMALL_RUN_PCT,
 };

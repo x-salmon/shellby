@@ -4,7 +4,11 @@
    and sending (src/main/forecast.js, held.js); this only shows it. The same
    banner carries two quieter tips while you type: a cold cache this message
    would pay for, and, for a conversation that hasn't started, a past one
-   that asked much the same (src/main/history/similar.js) or Sonnet. */
+   that asked much the same (src/main/history/similar.js) or Sonnet. The run
+   this message would start (Ultracode on, or several helpers asked for) sits
+   on the Send button itself, with a line under the box saying where your
+   window would end (src/main/usage/runcost.js); only past the limit does it
+   become the banner, with "Send after the reset". */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
@@ -18,7 +22,7 @@
     SB.refreshUsage?.();
     SB.renderQueue?.(); // held chips, and the banner with them
     if (state.view === 'routines') SB.views.routines?.render();
-    else if (state.view === 'workflows') SB.renderTide?.(); // the reset's shading and held tasks
+    else if (state.view === 'workflows') { SB.renderTide?.(); SB.refreshWorkflowRows?.(); } // the reset's shading and held tasks; a run held or let go
   };
 
   // Which note, which actions and the words for them live in shared/outlook-format.js.
@@ -33,12 +37,15 @@
     const tab = SB.activeTab();
     const big = liveEstimate();
     renderCostHint(big);
-    // At the limit beats an estimate that this message would go over, which beats
-    // a warning, which beats a tip. A warning you closed lets a tip through.
+    renderSendEstimate(big);
+    renderUltraNote(big);
+    // At the limit beats an estimate that this message would go over (or the run it
+    // starts would: an Ultracode run, several helpers), which beats a warning, which
+    // beats a tip. A warning you closed lets a tip through.
     const warned = W.noteFor(o);
     const tip = tipFor(big);
-    const note = !o?.limit && big?.over && dismissedEstimate !== big.tabId
-      ? { text: overText(big), key: null, cls: 'warning', estimate: true }
+    const note = !o?.limit && (big?.over || big?.run?.over) && dismissedEstimate !== big.tabId
+      ? { text: big.run?.over ? big.run.text : overText(big), key: null, cls: 'warning', estimate: true }
       : warned && dismissed !== warned.key ? warned : tip;
     const show = !!note && !!tab && (note.estimate || note.tip || dismissed !== note.key) && !SB.isCrabOnly?.();
     box.hidden = !show;
@@ -90,14 +97,16 @@
     refactor: 'refactors', docs: 'docs tasks', tidy: 'tidy-ups', other: 'tasks',
   };
   const typedNow = () => input.value.trim();
-  // A /model switch is looked at too: it can throw a warm cache away.
-  const estimable = t => /^\/model\s+\S/i.test(t) || (t.length >= EST_MIN_CHARS && !t.startsWith('!') && !t.startsWith('/'));
+  // A /model switch is looked at too: it can throw a warm cache away. With Ultracode
+  // on, any message at all starts a run worth a word (usage/runcost.js).
+  const estimable = (t, tab = SB.activeTab()) => /^\/model\s+\S/i.test(t)
+    || ((t.length >= EST_MIN_CHARS || (!!tab?.ultracode && t.length > 0)) && !t.startsWith('!') && !t.startsWith('/'));
 
   // The estimate, while it's still about what's in the box of the tab on screen.
   function liveEstimate() {
     const e = state.estimate;
     const tab = SB.activeTab();
-    return e && tab && e.tabId === tab.id && estimable(typedNow()) ? e : null;
+    return e && tab && e.tabId === tab.id && estimable(typedNow(), tab) ? e : null;
   }
 
   // "from 12 similar fixes in shellby": what the guess is drawn from.
@@ -179,13 +188,53 @@
     renderOutlook();
   }
 
+  // The line under the box: what a message like this usually costs, or, for the run
+  // this one would start, a small meter (your window now, and what the run adds)
+  // and where it would end. The whole sentence, range and all, is the tooltip.
   function renderCostHint(e = liveEstimate()) {
     const el = $('costHint');
-    const show = !!e && e.basis !== 'none' && !e.over && !SB.isCrabOnly?.();
+    const run = e?.run || null;
+    const show = !!e && (!!run || (e.basis !== 'none' && !e.over)) && !SB.isCrabOnly?.();
     el.hidden = !show;
-    if (!show) { el.textContent = ''; el.removeAttribute('title'); return; }
-    el.textContent = `usually ${aboutPct(e.pct)} of your window`;
-    el.title = `${basisText(e)}. Most land between ${pctText(e.low)} and ${pctText(e.high)}.`;
+    el.classList.toggle('is-run', show && !!run);
+    el.classList.toggle('over', show && !!run?.over);
+    if (!show) { el.replaceChildren(); el.removeAttribute('title'); return; }
+    if (!run) {
+      el.textContent = `usually ${aboutPct(e.pct)} of your window`;
+      el.title = `${basisText(e)}. Most land between ${pctText(e.low)} and ${pctText(e.high)}.`;
+      return;
+    }
+    el.title = run.text;
+    const now = Number.isFinite(run.nowPct) ? Math.min(100, Math.max(0, run.nowPct)) : null;
+    const add = now === null || !Number.isFinite(run.pct) ? 0 : Math.max(0, Math.min(100 - now, run.pct));
+    const meter = now === null ? null : h('span', { class: 'mini', 'aria-hidden': 'true' },
+      h('i', { class: 'now', style: `width: ${now}%` }),
+      h('i', { class: 'add', style: `width: ${add}%` }));
+    el.replaceChildren(...[meter, h('span', { class: 'cost-hint-text', text: run.hint })].filter(Boolean));
+  }
+
+  // The Send button carries the run's share ("Send · ~8% of your window"); past the
+  // limit it turns amber and says so, and the banner above offers the reset.
+  const sendBtn = $('sendBtn');
+  function renderSendEstimate(e = liveEstimate()) {
+    const run = e?.run || null;
+    const show = !!run && !SB.isCrabOnly?.();
+    sendBtn.classList.toggle('wide', show);
+    sendBtn.classList.toggle('over', show && !!run.over);
+    sendBtn.querySelector('.send-label')?.remove();
+    if (!show) { sendBtn.setAttribute('aria-label', 'Send'); return; }
+    const verb = run.over ? 'Send anyway' : 'Send';
+    sendBtn.prepend(h('span', { class: 'send-label' }, verb, h('b', { class: 'pct' }, ` · ${run.share}`, h('span', { class: 'pct-long', text: ' of your window' }))));
+    // As it reads, long form: "Send · ~8% of your window", and the warning when there is one.
+    sendBtn.setAttribute('aria-label', `${verb} · ${run.label}${run.over ? ', past your limit' : ''}`);
+  }
+
+  // The Ultracode strip's right-hand note: what runs like this took before, and where you are.
+  function renderUltraNote(e = liveEstimate()) {
+    const est = $('ultraEst');
+    const run = e?.run?.kind === 'ultracode' ? e.run : null;
+    est.hidden = !run;
+    est.textContent = run ? run.note : '';
   }
 
   function scheduleEstimate() {
@@ -215,18 +264,21 @@
     const tab = SB.activeTab();
     const text = typedNow();
     const seq = ++estSeq;
-    if (!tab || !estimable(text) || SB.isCrabOnly?.()) return;
+    if (!tab || !estimable(text, tab) || SB.isCrabOnly?.()) return;
     const [r, similar] = await Promise.all([
-      api.estimateUsage({ tabId: tab.id, text }).catch(() => null),
+      // ultracode: the chip is on, so this message starts a run of many agents (usage/runcost.js).
+      api.estimateUsage({ tabId: tab.id, text, ultracode: !!tab.ultracode }).catch(() => null),
       // Only before the first message: main says the same (ipc/mentions.js).
       !tab.saved && state.settings?.askedBefore !== false ? api.context.similar(tab.id, text).catch(() => []) : [],
     ]);
     if (seq !== estSeq) return; // you've typed on since
     const before = Array.isArray(similar) && similar[0] ? similar[0] : null;
-    state.estimate = (r && (r.basis !== 'none' || r.rebuild || r.cold || r.suggest)) || before
+    state.estimate = (r && (r.basis !== 'none' || r.rebuild || r.cold || r.suggest || r.run)) || before
       ? { basis: 'none', ...r, before, tabId: tab.id, text } : null;
     renderOutlook();
   }
+  // The Ultracode chip went on or off: what this message would start has changed (ultracode.js).
+  SB.refreshEstimate = () => { if (state.estimate) { state.estimate = null; renderOutlook(); } scheduleEstimate(); };
 
   // ------------------------------------------------------------ "You've asked this before" (src/main/history/similar.js)
 
@@ -290,12 +342,19 @@
   async function holdTyped() {
     const tab = SB.activeTab();
     if (!tab || holding) return;
-    const text = input.value.trim();
+    let text = input.value.trim();
     const attachments = [...tab.attachments];
     if (!text && !attachments.length) return;
     // Not before the reset time is known, and never a ! command (composer.js runs those now).
     const refusal = W.holdRefusal(text, state.outlook?.resetAt);
     if (refusal) return SB.toast(refusal.text, refusal.ms ? { ms: refusal.ms } : undefined);
+    // Ultracode on: the held message goes out by itself later, so it gets the word now
+    // (and the first one in a conversation asks first, as sending does: ultracode.js).
+    if (SB.ultraWords) {
+      const words = await SB.ultraWords(tab, text);
+      if (words === null) return;
+      text = words;
+    }
     holding = true;
     SB.clearComposer(tab);
     try {

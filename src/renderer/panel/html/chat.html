@@ -70,8 +70,9 @@
       </div>
       <div class="box-extras">
         <div class="crowded" id="crowded" role="status" hidden></div>
+        <!-- A fresh tab for a new topic in a well-filled conversation is a dashed line in the feed itself (handoff.js, feed-savers.js) -->
         <!-- Ultracode on for this conversation: what it means, in a line (ultracode.js) -->
-        <div class="ultra-note" id="ultraNote" role="status" hidden>Ultracode is on: Claude may send out many agents, and they use a lot of tokens.</div>
+        <div class="ultra-note" id="ultraNote" role="status" hidden><span class="ultra-note-text"><b>Ultracode is on.</b> Claude may send out many agents, and they use a lot of tokens.</span><span class="ultra-note-est" id="ultraEst" hidden></span></div>
         <div class="mod-status" id="modStatus" role="status" aria-label="What your mods say" hidden></div>
         <div class="outlook" id="outlook" role="status" hidden></div>
         <div class="review-bar" id="review" role="region" aria-label="Review comments waiting to be sent" hidden></div>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixed cost 3: a checklist that walks the setup one part at a time</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .sheet { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1560px; height: 1040px; display: grid; grid-template-columns: 440px 1fr; z-index: 3; overflow: hidden; }
+  .sheet .side { background: var(--reef); border-right: 1px solid var(--line); padding: 36px 32px; display: flex; flex-direction: column; gap: 8px; }
+  .sheet .side h3 { font: 500 28px/1.15 var(--font-pixel); margin-bottom: 6px; }
+  .sheet .side p { color: var(--sand-dim); font-size: 15px; margin-bottom: 22px; }
+  .stp { display: grid; grid-template-columns: 34px 1fr auto; gap: 14px; align-items: center; padding: 14px 12px; border-radius: var(--r); font-size: 16px; color: var(--sand-dim); }
+  .stp .n { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font: 700 13px var(--font-mono); }
+  .stp.done .n { background: var(--glass); border-color: var(--glass); color: var(--abyss); }
+  .stp.done .n::before { content: "✓"; }
+  .stp.now { background: var(--ink); color: var(--sand); }
+  .stp.now .n { border-color: var(--coral); color: var(--coral); }
+  .stp .k { font: 500 14px var(--font-mono); color: var(--sand-faint); }
+  .stp.done .k { color: var(--glass); }
+  .stp.skipped .k { text-decoration: line-through; }
+  .total { margin-top: auto; padding: 22px 0 0; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+  .total .big { font: 500 40px/1 var(--font-pixel); color: var(--glass); }
+  .total .big small { font: 15px var(--font-body); color: var(--sand-dim); margin-left: 8px; }
+  .total .t { height: 12px; border-radius: 6px; background: var(--reef-3); overflow: hidden; display: flex; }
+  .total .t i { display: block; height: 100%; }
+  .total .t .keep { background: var(--sand-faint-deco); flex-grow: 28.1; }
+  .total .t .gone { background: var(--glass); flex-grow: 5.5; }
+  .total .t .maybe { background: repeating-linear-gradient(-45deg, var(--glass) 0 4px, transparent 4px 8px); flex-grow: 4.9; opacity: .7; }
+  .total p { color: var(--sand-dim); font-size: 15px; }
+
+  .main { min-width: 0; overflow: hidden; padding: 40px 48px 32px; display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+  .main .eyebrow { color: var(--sand-faint); font: 500 14px var(--font-mono); }
+  .main h2 { font: 500 36px/1.15 var(--font-pixel); display: flex; align-items: center; gap: 16px; }
+  .main h2 .tok { font: 500 36px var(--font-pixel); color: var(--sky); }
+  .main > p { color: var(--sand-dim); font-size: 17px; max-width: 80ch; }
+  .tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 22px; padding: 18px 22px; background: var(--abyss); border: 1px solid var(--line); border-radius: var(--r); font: 500 14px/1.7 var(--font-mono); color: var(--sand-faint); }
+  .tools b { color: var(--sand); font-weight: 600; }
+  .tools b::after { content: " ✓"; color: var(--glass); }
+  .choices { display: grid; gap: 10px; }
+  .ch { display: grid; grid-template-columns: 26px 1fr auto; gap: 16px; align-items: center; padding: 16px 20px; border: 1px solid var(--line); border-radius: var(--r); font-size: 17px; color: var(--sand-dim); }
+  .ch .r { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--sand-faint-deco); }
+  .ch.on { border-color: var(--glass); background: var(--glass-dim); color: var(--sand); }
+  .ch.on .r { border-color: var(--glass); background: radial-gradient(var(--glass) 45%, transparent 48%); }
+  .ch small { display: block; color: var(--sand-faint); font-size: 14px; }
+  .ch .less { font: 600 15px var(--font-mono); color: var(--glass); white-space: nowrap; }
+  .ch .less.none { color: var(--sand-faint); }
+  .preview { flex: 1; min-height: 0; }
+  .preview .diff { font-size: 13.5px; white-space: pre-wrap; }
+  .nav { display: flex; align-items: center; gap: 10px; padding-top: 6px; }
+  .nav .fine { color: var(--sand-faint); font-size: 14px; margin-right: auto; }
+</style>
+</head>
+<body>
+<div class="note"><b>2-3 · Checklist wizard.</b> "Trim the setup" walks the six parts one at a time: what each costs, a choice, the diff, and a running total. <span class="trade">it holds your hand and ends with a number, but it's a sit-down ceremony, and the setup grows back</span></div>
+<main class="app">
+  <div data-kit="tabs" data-opts='{"tabs":[{"name":"queue races"},{"name":"Lean tab cache rate"},{"name":"release 0.98.2","busy":true}]}'></div>
+  <section class="view">
+    <div class="view-head"><h2>Toolbox</h2><span class="spacer"></span><span class="btn small ghost">Rescan</span></div>
+    <span class="seg"><span>Tools</span><span>Setup</span><span class="on">Lean <span class="n">4</span></span><span>Team <span class="n">1</span></span><span>Get more</span></span>
+  </section>
+  <div class="scrim"></div>
+
+  <div class="pop sheet" role="dialog" aria-label="Trim the setup">
+    <aside class="side">
+      <h3>Trim the setup</h3>
+      <p>Six parts go with every call. Pick what to keep. Nothing changes until the last step, and every change is a file you can read first.</p>
+      <div class="stp done"><span class="n"></span><span>Output style</span><span class="k">-1.2k</span></div>
+      <div class="stp done"><span class="n"></span><span>Plugin hooks</span><span class="k">-0.5k</span></div>
+      <div class="stp done skipped"><span class="n"></span><span>CLAUDE.md and rules</span><span class="k">kept</span></div>
+      <div class="stp now"><span class="n">4</span><span>MCP tool schemas</span><span class="k">9.4k</span></div>
+      <div class="stp"><span class="n">5</span><span>Skill descriptions</span><span class="k">6.8k</span></div>
+      <div class="stp"><span class="n">6</span><span>Review and apply</span><span class="k"></span></div>
+      <div class="total">
+        <div class="big">-1.7k<small>a call so far · this step would make it -6.6k</small></div>
+        <div class="t"><i class="keep"></i><i class="maybe"></i><i class="gone"></i></div>
+        <p>33.6k now. 11.2k of it is Claude Code's own and stays.</p>
+      </div>
+    </aside>
+
+    <section class="main">
+      <span class="eyebrow">STEP 4 OF 6 · SENT WITH EVERY CALL</span>
+      <h2>MCP tool schemas <span class="tok">9.4k</span></h2>
+      <p>Each MCP server's tools are described to Claude on every call, used or not. <b>github</b> is the big one: 41 tools, 5.8k tokens, and you used six of them in the last 30 days.</p>
+      <div class="tools">
+        <span><b>get_me</b></span><span><b>list_pull_requests</b></span><span><b>pull_request_read</b></span>
+        <span><b>create_pull_request</b></span><span><b>list_issues</b></span><span><b>issue_read</b></span>
+        <span>add_comment_to_pending_review</span><span>create_repository</span><span>delete_repository</span>
+        <span>fork_repository</span><span>get_team_members</span><span>list_tags</span>
+        <span>run_secret_scanning</span><span>search_users</span><span>and 26 more, unused</span>
+      </div>
+      <div class="choices">
+        <div class="ch on"><span class="r"></span><span>Allow only the six github tools you used<small>The other 35 stay installed. Claude is told they exist and can ask for one.</small></span><span class="less">-4.9k a call</span></div>
+        <div class="ch"><span class="r"></span><span>Turn github on only in projects with a GitHub remote<small>Here it stays. In rack-builder and label-cloud it goes.</small></span><span class="less">-5.8k there</span></div>
+        <div class="ch"><span class="r"></span><span>Keep it as it is</span><span class="less none">0</span></div>
+      </div>
+      <div class="preview"><div class="diff"><span class="f">~/.claude/settings.json</span><span class="ctx">  "enabledMcpjsonServers": ["github", "context7"],</span><span class="add">+ "mcpToolAllowlist": {</span><span class="add">+   "github": ["get_me", "list_pull_requests", "pull_request_read", "create_pull_request", "list_issues", "issue_read"]</span><span class="add">+ },</span></div></div>
+      <div class="nav"><span class="fine">The draft is applied at step 6, after you've read all of them.</span><span class="btn ghost">Back</span><span class="btn">Skip this one</span><span class="btn primary">Next: skill descriptions</span></div>
+    </section>
+  </div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

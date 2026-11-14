@@ -48,6 +48,21 @@ test('report: answers with an error when Claude Code never does, and the next tr
   assert.equal(again.ok, true, "the hung report doesn't hold up the next one");
 });
 
+test('report: what every turn carries, with its one-line summary, and the fixes drafted for the folder', async () => {
+  const shop = { list: async () => ({ ok: true, plugins: PLUGINS.slice(0, 1) }), details: async () => ({ alwaysOnTokens: 1200, hooks: 0, lsp: 0 }) };
+  const config = fakeConfig();
+  config.store.outputStyle = 'Explanatory';
+  config.store.setupWeights = { 'c:\\x': { name: 'x', tokens: 20000, at: Date.now() } };
+  const r = await leanWith({ shop, config }).report();
+  assert.equal(r.ok, true);
+  assert.equal(r.fixed.total, 20000, 'the measured setup is the total');
+  assert.equal(r.fixed.line, 'setup ~20k/turn');
+  assert.deepEqual(r.fixed.items.map(i => i.kind), ['plugin', 'style']);
+  assert.equal(r.fixed.items[0].tokens, 1200, "Claude Code's own estimate");
+  assert.equal(r.fixed.suggestions[0].id, 'style-off');
+  assert.deepEqual(r.fixes, [], 'the home folder is no project, so nothing to fix there');
+});
+
 test('report: plugin estimates are kept batch by batch, not only at the end', async () => {
   const config = fakeConfig();
   const shop = { list: async () => ({ ok: true, plugins: PLUGINS }), details: async () => ({ alwaysOnTokens: 10, hooks: 0, lsp: 0 }) };

@@ -1,14 +1,16 @@
 // Routines: the saved list, running one (on schedule, by hand, as a test, or
-// after the reset), the scheduler, and Claude's help writing and fixing them
-// (routines/draft.js) or adding one over MCP (crabtools.js).
+// after the reset), the scheduler, pacing a run around the limit (pace.js), and
+// Claude's help writing and fixing them (routines/draft.js) or adding one over
+// MCP (crabtools.js).
 // Moved out of main.js; holding a run for the reset is held-service.js.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crabtools = require('../crabtools');
-const guard = require('../guard');
+const held = require('../held');
 const limits = require('../limits');
 const mcpServers = require('../mcpservers');
+const pace = require('./pace');
 const routineDraft = require('./draft');
 const { isModel } = require('../models');
 const { MAX_TABS } = require('../sessions');
@@ -34,8 +36,8 @@ const lastLines = s => String(s).trim().split('\n').slice(-3).join(' ');
  *   log, send, notify, showPanel, sayText, wake, openTab, currentCwd, stat,
  *   dialogLook, confirm ({ ask }), runClaudeOnce, knownProjects, isFolder,
  *   randomUUID,
- *   from usage/service.js: limitWait, guardSettings, clockTime,
- *   from held-service.js: heldList, holdForReset, scheduleHeld, syncKeepAwake, queueTabs
+ *   from usage/service.js: limitWait, guardSettings, clockTime, forecastNow,
+ *   from held-service.js: heldList, holdForReset, saveHeld, scheduleHeld, syncKeepAwake, queueTabs
  */
 function createRoutines(d) {
   const routineTabs = new Map();     // tabId -> routine id (for lastStatus bookkeeping)
@@ -77,10 +79,19 @@ function createRoutines(d) {
     }));
   }
 
-  // A run of this routine waiting for the usage reset: { id, at, atText } or null.
+  // A run of this routine waiting for the usage reset: { id, at, atText, why } or
+  // null. why: 'limit', or pace.js's reason, when Shellby held it; null when you did.
   function heldFor(routineId) {
     const h = d.heldList().find(x => x.kind === 'routine' && x.routineId === routineId);
-    return h ? { id: h.id, at: h.at, atText: d.clockTime(h.at) } : null;
+    return h ? { id: h.id, at: h.at, atText: d.clockTime(h.at), why: h.why || null } : null;
+  }
+
+  // A run Shellby held earlier (not one you asked for) is the run starting now:
+  // it comes off the list, so the reset doesn't bring a second one.
+  function dropAutoHold(routineId) {
+    const list = d.heldList();
+    const h = list.find(x => x.kind === 'routine' && x.routineId === routineId && x.auto);
+    if (h) d.saveHeld(held.without(list, h.id));
   }
 
   function saveRoutines(list) {
@@ -150,20 +161,28 @@ function createRoutines(d) {
   }
 
   // A scheduled routine that comes due while you're at your limit would only
-  // fail, and one past the spending guard's ceiling would eat the share you kept
-  // for yourself: either way it waits for the reset, and says so the first time.
+  // fail, and one due while the window is nearly full (the share you keep, a
+  // line near the top, or a pace that fills it before the run could end) would
+  // run into it partway: either way it waits for the reset and runs then, once,
+  // and says so the first time. "Run even near the limit" on the routine skips
+  // the nearly-full part (pace.js); the limit itself still holds it.
   function runOrHoldRoutine(r, reason) {
+    const now = Date.now();
     const w = d.limitWait();
-    const usage = d.config.get('lastUsage');
-    const saving = !w && guard.holdBeforeStart(d.guardSettings(), usage, Date.now());
-    if (!w && !saving) return runRoutine(r, { reason });
-    const res = d.holdForReset({ kind: 'routine', routineId: r.id, name: r.name, auto: true });
+    const settings = d.guardSettings();
+    const near = w ? null : pace.waitFor(r, { usage: d.config.get('lastUsage'), outlook: d.forecastNow?.() || null, settings, now, runMs: settings.maxMinutes * 60 * 1000 });
+    if (!w && !near) {
+      dropAutoHold(r.id);
+      return runRoutine(r, { reason });
+    }
+    const why = near ? near.reason : 'limit';
+    const res = d.holdForReset({ kind: 'routine', routineId: r.id, name: r.name, auto: true, why });
     if (!res.ok) return { ok: false, skipped: true, error: res.error };
     if (res.added) {
-      d.log.info('Routine held for the reset', `${r.name}${saving ? ' (spending guard)' : ''}`);
-      const why = w ? `You're at your ${limits.windowName(w.window)} limit.`
-        : `Your 5-hour window is at ${usage.fiveHour.pct}%, and you asked to keep ${d.guardSettings().reserve}% for yourself.`;
-      d.notify(`Routine "${r.name}" will run after the reset`, `${why} It runs at ${res.atText}.`, () => d.showPanel({ focusInput: false }));
+      d.log.info('Routine held for the reset', `${r.name} (${why})`);
+      const text = near ? pace.message(near, d.clockTime) : `You're at your ${limits.windowName(w.window)} limit.`;
+      d.notify(`Routine "${r.name}" will run after the reset`, `${text} It runs at ${res.atText}.`, () => d.showPanel({ focusInput: false }));
+      if (near) d.sayText(pace.line(r.name, near, res.atText), 'routine');
     }
     return { ok: true, held: true };
   }
@@ -211,8 +230,9 @@ function createRoutines(d) {
     if ((current?.id || null) !== (replacing?.id || null)) {
       return { ok: false, error: "The user's routines changed while they were deciding, so nothing was saved. Check list_routines and try again.", status: 409 };
     }
+    // Claude's add_routine never names "Run even near the limit" (pace.js): a routine being changed keeps its choice.
     const saved = current
-      ? { ...routine, id: current.id, createdAt: current.createdAt, lastRunAt: current.lastRunAt, lastStatus: current.lastStatus, enabled: current.enabled }
+      ? { ...routine, id: current.id, createdAt: current.createdAt, lastRunAt: current.lastRunAt, lastStatus: current.lastStatus, enabled: current.enabled, ...(current.runNearLimit && routine.runNearLimit === undefined ? { runNearLimit: true } : {}) }
       : routine;
     if (!current && routines().length >= MAX_ROUTINES) return { ok: false, error: `The user already has ${MAX_ROUTINES} routines, which is the limit.`, status: 400 };
     saveRoutines(current ? routines().map(r => (r.id === current.id ? saved : r)) : [...routines(), saved]);

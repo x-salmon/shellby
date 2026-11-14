@@ -162,6 +162,8 @@ function wireSessions(d) {
     });
 
     d.manager.on('spend', (_tabId, s, tab) => d.usageService.onSpend(s, tab));
+    // An Ultracode run ended: its cost goes in the per-turn ledger as a run, for the estimate before the next (usage/runcost.js).
+    d.manager.on('run', (_tabId, r, tab) => { try { d.usagePlan?.endRun(tab, r); } catch (err) { d.log.info(`usage plan: ${err.message}`); } });
     d.manager.on('call', (_tabId, c, tab) => { if (!d.CAPTURE) d.lean?.onCall(c, tab); });
     // A conversation past the crowded mark: he says so, and the panel offers to make room.
     d.manager.on('context', (_tabId, now, before, tab) => {
@@ -209,6 +211,7 @@ function wireSessions(d) {
       d.send(win, 'tab:item', { tabId, item, continues });
       // The reply as it's written and what you might ask next: only the panel shows them.
       if (item.kind === 'partial' || item.kind === 'next') return;
+      d.readNudge?.onItem(tabId, item, tab); // a whole read, and its result: worth a card under the step? (wiring/read-nudge.js)
       d.workflows?.onTabItem(tabId, item);
       if (item.kind === 'text' && !item.sub) tab.lastReply = item.text;
       if (item.kind === 'decision') d.remote?.settle(item.requestId, item.decision);

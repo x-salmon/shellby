@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixed cost 1: a stacked bar in the Lean tab, with a cut per part</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 640px; gap: 32px; }
+  .left { display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+  .before { padding: 30px 36px 26px; display: grid; gap: 18px; }
+  .before .top { display: flex; align-items: baseline; gap: 22px; }
+  .before h3 { font: 500 26px/1 var(--font-pixel); }
+  .before .top .sum { color: var(--sand-dim); font-size: 17px; }
+  .before .top .sum b { color: var(--sand); font: 500 30px/1 var(--font-pixel); margin-right: 6px; }
+  .bar { display: flex; height: 36px; border-radius: var(--r); overflow: hidden; gap: 3px; }
+  .bar i { display: block; background: var(--c); flex-grow: var(--g); position: relative; }
+  .bar i::after { content: attr(data-l); position: absolute; inset: 0; display: grid; place-items: center; font: 600 13px var(--font-mono); color: var(--abyss); white-space: nowrap; overflow: hidden; }
+  .bar i.is-rest::after { color: var(--sand); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 26px; font-size: 15px; color: var(--sand-dim); }
+  .legend b { color: var(--sand); font-weight: 700; }
+
+  .items { padding: 8px 36px 10px; }
+  .items li { display: grid; grid-template-columns: 24px 300px 110px 220px 1fr auto; gap: 22px; align-items: center; padding: 18px 0; font-size: 17px; }
+  .items .name b { display: block; }
+  .items .name small { color: var(--sand-faint); font-size: 14px; }
+  .items .tok { font: 500 17px var(--font-mono); text-align: right; }
+  .items .share { display: flex; align-items: center; gap: 10px; color: var(--sand-faint); font-size: 14px; }
+  .items .share .t { flex: 1; height: 8px; border-radius: 4px; background: var(--reef-2); overflow: hidden; }
+  .items .share .t i { display: block; height: 100%; width: var(--w); background: var(--c); border-radius: 4px; }
+  .items .cut { color: var(--sand-dim); font-size: 16px; }
+  .items .cut b { color: var(--sand); font-weight: 700; }
+  .items .cut .less { color: var(--glass); font: 600 14px var(--font-mono); margin-left: 8px; }
+  .items .none { color: var(--sand-faint); }
+
+  .right { display: flex; flex-direction: column; gap: 22px; }
+  .take { padding: 30px 34px; display: grid; gap: 16px; background: var(--reef-2); border-color: var(--reef-3); }
+  .take h3 { font: 500 24px/1.2 var(--font-pixel); }
+  .take .numbers { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 14px; padding: 8px 0; }
+  .take .numbers .n { font: 500 46px/1 var(--font-pixel); }
+  .take .numbers .n small { display: block; font: 15px var(--font-body); color: var(--sand-dim); margin-top: 8px; }
+  .take .numbers .arrow { color: var(--sand-faint); font-size: 28px; }
+  .take .numbers .after .n { color: var(--glass); }
+  .take p { color: var(--sand-dim); font-size: 16px; }
+  .take .btn.primary { height: 56px; font-size: 19px; }
+  .cache { padding: 26px 34px; display: grid; gap: 12px; }
+  .cache h3 { font: 500 22px/1.2 var(--font-pixel); }
+  .cache dl { display: grid; grid-template-columns: 180px 1fr; gap: 10px 16px; font-size: 16px; }
+  .cache dt { color: var(--sand-faint); }
+  .cache dd b { color: var(--sand); }
+</style>
+</head>
+<body>
+<div class="note"><b>2-1 · Stacked bar in the Lean tab.</b> One bar for everything a turn carries before your first word, a row per part with its tokens, its share of each turn and a drafted cut, and the total you'd get back. <span class="trade">the whole picture in one place, but only when you go and look</span></div>
+<main class="app">
+  <div data-kit="tabs" data-opts='{"tabs":[{"name":"queue races"},{"name":"Lean tab cache rate"},{"name":"release 0.98.2","busy":true}]}'></div>
+  <section class="view">
+    <div class="view-head"><h2>Toolbox</h2><span class="spacer"></span><span class="btn small ghost">Rescan</span></div>
+    <span class="seg"><span>Tools</span><span>Setup</span><span class="on">Lean <span class="n">4</span></span><span>Team <span class="n">1</span></span><span>Get more</span></span>
+
+    <div class="body">
+      <div class="left">
+        <section class="panel before">
+          <div class="top"><h3>Before your first word</h3><span class="sum"><b>33.6k</b> tokens on every call · 17% of a 200k window · cached after the first call, carried on all 14 in this conversation</span></div>
+          <div class="bar">
+            <i class="is-rest" style="--g:11.2" data-l="Claude Code 11.2k"></i>
+            <i class="is-mcp" style="--g:9.4" data-l="MCP 9.4k"></i>
+            <i class="is-skills" style="--g:6.8" data-l="skills 6.8k"></i>
+            <i class="is-memory" style="--g:4.1" data-l="CLAUDE.md 4.1k"></i>
+            <i class="is-style" style="--g:1.2" data-l="style"></i>
+            <i class="is-hooks" style="--g:.9" data-l=""></i>
+          </div>
+          <div class="legend">
+            <span><span class="key is-rest"></span>Claude Code's own prompt and tools <b>11.2k</b></span>
+            <span><span class="key is-mcp"></span>MCP tool schemas <b>9.4k</b></span>
+            <span><span class="key is-skills"></span>skill descriptions <b>6.8k</b></span>
+            <span><span class="key is-memory"></span>CLAUDE.md and rules <b>4.1k</b></span>
+            <span><span class="key is-style"></span>output style <b>1.2k</b></span>
+            <span><span class="key is-hooks"></span>plugin hooks <b>0.9k</b></span>
+          </div>
+        </section>
+
+        <ul class="panel items rows">
+          <li class="is-mcp"><span class="key"></span><span class="name"><b>MCP tool schemas</b><small>github 41 tools · claude-in-chrome 19 · shellby 8 · context7 2</small></span><span class="tok">9.4k</span><span class="share"><span class="t"><i style="--w:28%"></i></span>10% of a turn</span><span class="cut">You used <b>6 of github's 41 tools</b> this month. Allow only those six.<span class="less">-4.9k</span></span><span class="btn small glass">Draft it</span></li>
+          <li class="is-skills"><span class="key"></span><span class="name"><b>Skill descriptions</b><small>112 skills listed, 23 used this month</small></span><span class="tok">6.8k</span><span class="share"><span class="t"><i style="--w:20%"></i></span>7% of a turn</span><span class="cut"><b>ansible-*, frequentis-*, vcs-*</b> only matter in other projects. Move them into those projects.<span class="less">-2.1k</span></span><span class="btn small glass">Draft it</span></li>
+          <li class="is-memory"><span class="key"></span><span class="name"><b>CLAUDE.md and rules</b><small>global 1.3k · rules/ecc/common 0.9k · this project 1.9k</small></span><span class="tok">4.1k</span><span class="share"><span class="t"><i style="--w:12%"></i></span>4% of a turn</span><span class="cut">Move the <b>Harbor Tree routing table</b> out of the global CLAUDE.md into that project.<span class="less">-0.6k</span></span><span class="btn small glass">Draft it</span></li>
+          <li class="is-style"><span class="key"></span><span class="name"><b>Output style: explanatory</b><small>settings.json · outputStyle</small></span><span class="tok">1.2k</span><span class="share"><span class="t"><i style="--w:4%"></i></span>1% of a turn</span><span class="cut">Turn it off. Claude explains when you ask anyway.<span class="less">-1.2k</span></span><span class="btn small glass">Turn off</span></li>
+          <li class="is-hooks"><span class="key"></span><span class="name"><b>Plugin hooks</b><small>impeccable session-start.sh 0.5k · security-guidance 0.4k</small></span><span class="tok">0.9k</span><span class="share"><span class="t"><i style="--w:3%"></i></span>1% of a turn</span><span class="cut">impeccable's start note repeats its skill description.<span class="less">-0.5k</span></span><span class="btn small glass">Draft it</span></li>
+          <li class="is-rest"><span class="key"></span><span class="name"><b>Claude Code's own prompt and tools</b><small>the same for everyone</small></span><span class="tok">11.2k</span><span class="share"><span class="t"><i style="--w:33%"></i></span>12% of a turn</span><span class="cut none">Nothing to cut here.</span><span></span></li>
+        </ul>
+      </div>
+
+      <aside class="right">
+        <section class="panel take">
+          <h3>If you take all five</h3>
+          <div class="numbers">
+            <span><span class="n">33.6k</span><small>on every call now</small></span>
+            <span class="arrow">→</span>
+            <span class="after"><span class="n">24.3k</span><small>after</small></span>
+          </div>
+          <p>About <b>9.3k less on every call</b>. A conversation like <i>queue races</i> (14 calls) would carry about 130k less, and the first call in each new tab would be cheaper too.</p>
+          <p>Each draft opens in a new tab for you to read before anything changes. Nothing here edits a file by itself.</p>
+          <span class="btn primary">Draft all five changes</span>
+        </section>
+        <section class="panel cache">
+          <h3>What the cache does</h3>
+          <dl>
+            <dt>Cached</dt><dd>After the first call, this setup is read from the prompt cache: <b>about a tenth</b> of the price.</dd>
+            <dt>Still counts</dt><dd>It's in every call's input all the same, and after 5 minutes idle the cache goes cold and it's full price again.</dd>
+            <dt>This week</dt><dd><b>78%</b> of your input came from the cache.</dd>
+          </dl>
+        </section>
+      </aside>
+    </div>
+  </section>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

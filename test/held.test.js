@@ -27,6 +27,22 @@ test('a queued task keeps a model Shellby offers and drops anything else', () =>
   assert.equal('model' in task('gpt-5'), false);
 });
 
+test('a workflow run is held with its inputs cleaned, once per workflow, and counted in the summary', () => {
+  const raw = { kind: 'workflow', workflowId: 'wf-1', name: 'Nightly tidy', at: RESET, inputs: { who: 'Jo', 'bad key': 'x', n: 5, long: 'y'.repeat(3000) } };
+  const r = held.hold([], raw, NOW);
+  assert.equal(r.item.kind, 'workflow');
+  assert.equal(r.item.workflowId, 'wf-1');
+  assert.equal(r.item.name, 'Nightly tidy');
+  assert.deepEqual(Object.keys(r.item.inputs), ['who', 'long']);
+  assert.equal(r.item.inputs.long.length, 2000);
+  const again = held.hold(r.list, { ...raw, inputs: { who: 'Sam' } }, NOW + 1000);
+  assert.equal(again.list.length, 1, 'held once');
+  assert.equal(again.item.id, r.item.id, 'the earlier one stands');
+  assert.ok(held.hold([], { kind: 'workflow', at: RESET }, NOW).error, 'no workflow id: refused');
+  assert.equal(held.normalize([{ ...r.item }], NOW)[0].inputs.who, 'Jo');
+  assert.equal(held.summary([r.item, routine({ id: 'r' }), r.item]), 'a routine and 2 workflows');
+});
+
 test('nothing to send, or nowhere to send it, is refused', () => {
   assert.ok(held.hold([], msg({ text: '   ' }), NOW).error);
   assert.ok(held.hold([], msg({ tabId: '../etc' }), NOW).error);
@@ -42,6 +58,13 @@ test('a routine remembers whether it was held for you or by you', () => {
   assert.equal(held.hold([], routine({ auto: true }), NOW).item.auto, true);
   assert.equal(held.hold([], routine(), NOW).item.auto, false);
   assert.equal(held.hold([], routine({ auto: 'yes' }), NOW).item.auto, false);
+});
+
+test('a routine Shellby held says why; one you held, or an odd reason, carries none', () => {
+  assert.equal(held.hold([], routine({ auto: true, why: 'near' }), NOW).item.why, 'near');
+  assert.equal(held.hold([], routine({ auto: true, why: 'pace' }), NOW).item.why, 'pace');
+  assert.equal('why' in held.hold([], routine({ why: 'near' }), NOW).item, false);
+  assert.equal('why' in held.hold([], routine({ auto: true, why: 'because' }), NOW).item, false);
 });
 
 test('a routine is held once; holding it again keeps the first', () => {

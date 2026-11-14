@@ -96,12 +96,13 @@ contextBridge.exposeInMainWorld('shellby', {
   setTabEffort: (tabId, effort) => ipcRenderer.invoke('tab:effort', { tabId, effort }), // the effort chip, for one conversation
   setTabModel: (tabId, model) => ipcRenderer.invoke('tab:model', { tabId, model }), setTabLocal: (tabId, model) => ipcRenderer.invoke('tab:local', { tabId, model }), // a model of its own, before a conversation starts
   markReviewed: (tabId, reviewed = true, after = null) => ipcRenderer.invoke('tab:reviewed', { tabId, reviewed, after }), // the review inbox
-  sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true }), // opts.selected: the file picked in All files (files-select.js); opts.fromQueue: the queue sent it (Keep warm)
+  sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true, model: opts?.model, modelBy: opts?.modelBy, modelCls: opts?.modelCls }), // opts.selected: the file picked in All files (files-select.js); opts.fromQueue: the queue sent it (Keep warm); opts.model: this one turn on a cheaper model, as picked on the card (savers.js)
+  modelSuggest: invoke('tab:model-suggest'), nudgeAnswer: invoke('lean:nudge-answer'), // the card offering Haiku for a small message (model-pick.js); the nudge under a repeated read waved away, 'not' | 'never' (read-nudge.js)
   stopTask: fire('task:stop'), pauseTask: invoke('task:pause'), resumeTask: invoke('task:resume'), // Stop, Pause and Continue (session/pause.js): -> { ok } | { ok: false, error }
   steerTask: (tabId, turnId, items) => ipcRenderer.send('task:steer', { tabId, turnId, items }),
   unsteerTask: (tabId, id) => ipcRenderer.invoke('task:unsteer', { tabId, id }), // a queued message taken back, unless Claude has it
-  freshTab: invoke('tab:fresh'),
-  tabCost: invoke('tab:cost'),
+  freshTab: invoke('tab:fresh'), tabCost: invoke('tab:cost'),
+  handoffOffer: invoke('tab:handoff-offer'), handoffStart: invoke('tab:handoff-start'), // a fresh tab with a summary Shellby writes himself (freshtab.js): the offer while you type ({ tabId, text, force? }), then the new tab ({ tabId, summary, text, attachments })
   // the terminal's conveniences (parity.js)
   suggestFiles: (tabId, query) => ipcRenderer.invoke('files:suggest', { tabId, query }), context: { suggest: (tabId, query) => ipcRenderer.invoke('context:suggest', { tabId, query }), attach: (tabId, id) => ipcRenderer.invoke('context:attach', { tabId, id }), similar: (tabId, text) => ipcRenderer.invoke('context:similar', { tabId, text }) }, // @ files, and a dev server, red build, chat or note (wiring/mention-context.js)
   promptHistory: invoke('prompt:history'),
@@ -287,11 +288,10 @@ contextBridge.exposeInMainWorld('shellby', {
   toggleMcp: (tabId, name, enabled) => ipcRenderer.invoke('mcp:toggle', { tabId, name, enabled }),
   addMcp: invoke('mcp:add'),
   removeMcp: (tabId, name) => ipcRenderer.invoke('mcp:remove', { tabId, name }),
-  // Lean Shell: what every conversation carries, and the prompt cache (lean.js)
-  leanReport: (refresh = false) => ipcRenderer.invoke('lean:report', { refresh }),
-  leanPlugin: (id, on) => ipcRenderer.invoke('lean:plugin', { id, on }),
-  leanMcpRemoved: invoke('lean:mcp-removed'),
-  leanUsage: (refresh = false) => ipcRenderer.invoke('lean:usage', { refresh }),
+  // Lean Shell: what every conversation carries and the prompt cache (lean.js); its one-tap fixes and the output-style switch, each asked in the confirm window and undoable (lean-fixes.js)
+  leanReport: (refresh = false) => ipcRenderer.invoke('lean:report', { refresh }), leanUsage: (refresh = false) => ipcRenderer.invoke('lean:usage', { refresh }),
+  leanPlugin: (id, on) => ipcRenderer.invoke('lean:plugin', { id, on }), leanMcpRemoved: invoke('lean:mcp-removed'),
+  leanFixApply: id => ipcRenderer.invoke('lean:fix-apply', { id }), leanFixUndo: id => ipcRenderer.invoke('lean:fix-undo', { id }), leanStyleOff: invoke('lean:style-off'),
 
   // skill shop (Claude Code plugin marketplaces)
   shopList: invoke('shop:list'),
@@ -411,7 +411,7 @@ contextBridge.exposeInMainWorld('shellby', {
   devCheckNudges: invoke('dev:check-nudges'), // dev builds with SHELLBY_NUDGE_TEST only
   devAway: invoke('dev:away'), // dev builds with SHELLBY_RECAP_TEST only: a fake idle reading
   devQuit: invoke('dev:quit'), // dev builds with SHELLBY_E2E or SHELLBY_MOTION_TEST only: quit as the tray does
-  devUsage: invoke('dev:usage'), // dev builds with SHELLBY_FORECAST_TEST only: a backdated 5-hour reading
+  devUsage: invoke('dev:usage'), devRoutineDue: invoke('dev:routine-due'), // dev builds with SHELLBY_FORECAST_TEST only: a backdated 5-hour reading, a routine coming due now
   dev: { throw: invoke('dev:throw'), stroll: invoke('dev:stroll'), focusEnd: invoke('dev:focus-end'), critterPos: invoke('dev:critter-pos'), say: invoke('dev:say'), bit: invoke('dev:bit'), temperament: invoke('dev:temperament'), perch: invoke('dev:perch'), perchState: invoke('dev:perch-state'), climb: invoke('dev:climb'), prank: invoke('dev:prank'), edges: invoke('dev:edges'), scene: invoke('dev:scene'), life: invoke('dev:life'), quest: invoke('dev:quest') }, // SHELLBY_MOTION_TEST only
   onNewTabIn: on('tab:new-in'),
   // focus sessions
@@ -716,7 +716,7 @@ contextBridge.exposeInMainWorld('shellby', {
   depRoutine: invoke('depwatch:routine'),
   onDepWatch: on('depwatch'),
   usageBreakdown: invoke('usage:breakdown'),
-  estimateUsage: invoke('usage:estimate'), // { tabId, text } -> what a message like it usually costs (usage/ledger.js)
+  estimateUsage: invoke('usage:estimate'), estimateRun: invoke('usage:estimate-run'), // { tabId, text, ultracode? } -> what a message like it usually costs (usage/ledger.js) and the run it starts; { kind: 'ultracode' | 'workflow' | 'fanout', workflowId? } -> what such a run usually costs before it starts (usage/runcost.js)
   // usage forecast, and work held for after the reset (forecast.js, held.js)
   getOutlook: invoke('outlook:get'),
   holdForReset: invoke('held:add'),

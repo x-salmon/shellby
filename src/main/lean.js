@@ -2,10 +2,12 @@
 // prompt-cache ledger, each project's setup weight and what Claude Code has
 // used lately, and answers the Toolbox's Lean tab.
 //
-// The only change it ever makes is turning a plugin off or back on through
-// `claude plugin`, and turning one off is asked in the confirm window first.
-// It never edits a prompt, a setting or a file: the CLAUDE.md "suggest a trim"
-// button only puts a prompt in a new tab for you to read and send.
+// The changes it makes are each asked in the confirm window first: turning a
+// plugin off or back on through `claude plugin`, and the one-tap fixes and the
+// output-style switch in lean-fixes.js (a line in the project's CLAUDE.md, a
+// deny rule in its settings, each shown as a diff first and undoable). It never
+// edits a prompt: the CLAUDE.md "suggest a trim" button only puts a prompt in a
+// new tab for you to read and send. fixedcost.js sizes what every turn carries.
 const fs = require('fs');
 const path = require('path');
 const eff = require('./efficiency');
@@ -16,6 +18,10 @@ const { scanHotFiles } = require('./usage/hotfiles');
 const rulefit = require('./rulefit');
 const { quietOutputFor } = require('./hooks/recipes');
 const { scanToolbox } = require('./toolbox');
+const { readMemory } = require('./claude/setup');
+const fixedcost = require('./fixedcost');
+const { createLeanFixes } = require('./lean-fixes');
+const { ID, obj, opt } = require('./ipc-args');
 
 const SAVE_MS = 5000;                        // calls come in bursts; one write when they settle
 const RESCAN_MS = 6 * 60 * 60 * 1000;        // transcripts: at most this often, unless asked
@@ -29,6 +35,7 @@ const MAX_SEEN = 300;                        // MCP servers whose first sighting
 const MAX_MANIFEST = 1024 * 1024;
 const PLUGIN_ID_RE = /^[A-Za-z0-9][\w.-]{0,79}@[A-Za-z0-9][\w.-]{0,79}$/;
 const isStr = v => typeof v === 'string' && v.length > 0 && v.length < 300;
+const bool = v => typeof v === 'boolean';
 const HEAD_BYTES = 4096;                     // enough of a memory file to see its frontmatter
 const HOT_MS = 10 * 60 * 1000;               // a project's hot files: read again at most this often, unless asked
 const HOT_WAIT_MS = 10 * 1000;               // how long a report waits for them
@@ -92,6 +99,8 @@ function mine(tb) {
  */
 function createLean(deps) {
   const { config } = deps;
+  // The one-tap fixes and the output-style switch: the only writes here, each asked first.
+  const fixes = createLeanFixes({ config, askOnce: deps.askOnce, setupWhere: deps.setupWhere, log: deps.log });
   let days = null;
   let breaks = null;      // warm caches that missed, per day (cachebreak.js)
   let setups = null;
@@ -256,12 +265,30 @@ function createLean(deps) {
     // Rules for a language or framework this project shows none of (rulefit.js).
     const where = deps.setupWhere().cwd;
     const signals = where ? rulefit.projectSignals(where) : null;
+    const memory = deps.memory();
     last = eff.leanReport({
       plugins, mcp, mcpSeen: mcpSeen(mcp, now), tools: pluginTools(plugins), mine: mine(deps.toolbox()?.current), uses: totalUses(u.counts),
-      memory: deps.memory().map(m => (m.exists ? { ...m, onDemand: eff.loadsOnDemand(head(m.path), m.scope), misfit: rulefit.misfit(m.path, signals) } : m)),
+      memory: memory.map(m => (m.exists ? { ...m, onDemand: eff.loadsOnDemand(head(m.path), m.scope), misfit: rulefit.misfit(m.path, signals) } : m)),
       used: u.used, hookStart: hotRows?.hookStart || 0, watchedSince: u.from, setups, projectKey: deps.currentProject(), days, now,
     });
-    return { ok: true, ...last, breaks: cachebreak.breakSummary(breaks, now), hot: hotRows, quietRecipe: quietOutputFor((hotRows?.loud || []).map(r => r.key)), branches: deps.branchCosts?.() || [], telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })) };
+    return {
+      ok: true, ...last, breaks: cachebreak.breakSummary(breaks, now), hot: hotRows, quietRecipe: quietOutputFor((hotRows?.loud || []).map(r => r.key)), branches: deps.branchCosts?.() || [], telemetry: deps.telemetry?.summary() || null, off: plugins.filter(p => !p.enabled).map(p => ({ id: p.id, name: p.name })),
+      fixed: fixedFor(last, hotRows, memory, where),
+      fixes: fixes.drafts(hotRows),
+    };
+  }
+
+  // What every turn carries, item by item, with suggestions (fixedcost.js): the
+  // report's rows, the active output style, the hooks seen adding text, and the
+  // global CLAUDE.md's text for sections about one project only.
+  function fixedFor(rep, hotRows, memory, cwd) {
+    const global = memory.find(m => m.scope === 'user' && m.exists);
+    const read = global ? readMemory(global.path) : null;
+    const projects = [...new Set([...Object.values(setups).map(s => s.name), cwd ? path.basename(cwd) : null].filter(n => n && n !== 'No folder'))];
+    return fixedcost.fixedCost({
+      setup: rep.setup, memory: rep.memory, plugins: rep.plugins, skills: rep.skills, mcp: rep.mcp, hooks: hotRows?.hooks || [],
+      style: fixes.activeStyle(), globalMd: read?.ok && global ? { path: global.path, text: read.text } : null, projects, idleDays: rep.idleDays,
+    });
   }
 
   // XP for turning off something that sat idle, once per thing ever, so turning
@@ -331,13 +358,14 @@ function createLean(deps) {
   }
 
   function register(ipcMain) {
-    ipcMain.handle('lean:report', (_e, a) => report({ refresh: !!a?.refresh }));
-    ipcMain.handle('lean:usage', (_e, a) => usage(!!a?.refresh));
-    ipcMain.handle('lean:plugin', (_e, a) => (isStr(a?.id) ? setPlugin(a.id, !!a.on) : { ok: false, error: "That plugin isn't installed." }));
-    ipcMain.handle('lean:mcp-removed', (_e, name) => (isStr(name) ? removedMcp(name) : { ok: false }));
+    ipcMain.handle('lean:report', (_e, a) => report({ refresh: !!a?.refresh }), [opt(obj({ refresh: opt(bool) }))]);
+    ipcMain.handle('lean:usage', (_e, a) => usage(!!a?.refresh), [opt(obj({ refresh: opt(bool) }))]);
+    ipcMain.handle('lean:plugin', (_e, a) => (isStr(a?.id) ? setPlugin(a.id, !!a.on) : { ok: false, error: "That plugin isn't installed." }), [obj({ id: ID, on: opt(bool) })]);
+    ipcMain.handle('lean:mcp-removed', (_e, name) => (isStr(name) ? removedMcp(name) : { ok: false }), [ID]);
+    fixes.register(ipcMain);
   }
 
-  return { onCall, report, usage, register, save, last: () => last };
+  return { onCall, report, usage, register, save, last: () => last, fixes };
 }
 
 module.exports = { createLean, worksQuietly, mine };

@@ -1,10 +1,12 @@
-// ci: the usage forecast, and messages and routines held for after the reset
+// ci: the usage forecast, messages and routines held for after the reset, and a routine paced around the limit
 // End-to-end check of the usage forecast and "after the reset" against the dev
 // app over CDP, with the fake CLI. 5-hour readings come from dev:usage
 // (SHELLBY_FORECAST_TEST), backdated so a pace builds without an hour's wait.
 // A climbing window warns in the composer and on the meter; Ctrl+Shift+Enter
-// holds a message, which can be edited back or dropped; at the limit, a held
-// message and a held routine both go by themselves once it resets.
+// holds a message, which can be edited back or dropped; a routine due with the
+// window nearly full waits for the reset (once, and runs now with "Run even
+// near the limit"); at the limit, a held message and a held routine both go by
+// themselves once it resets.
 //   node scripts/e2e-forecast.js [screenshot.png]
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -89,6 +91,32 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev("document.querySelector('#queued .queue-item.held .queue-x').click()");
     check(await until("!document.querySelector('#queued .queue-item.held')"), '✕ drops a held message');
     check((await ev('SB.api.getOutlook().then(o => o.held.length)')) === 0, '...in main too');
+
+    // ---- pacing a routine (routines/pace.js): due with the window nearly full, it
+    // waits for the reset and runs then, once. dev:routine-due stands in for the scheduler.
+    await usage({ pct: 90, minsAgo: 0, resetsAt: reset });
+    const paced = await ev("SB.api.saveRoutine({ name: 'Pace check', prompt: 'echo pace', schedule: { type: 'daily', time: '04:00' }, mode: 'ask' })");
+    check(paced?.ok, 'a routine to pace');
+    const pacedId = JSON.stringify(paced.routine.id);
+    const due = await ev(`SB.api.devRoutineDue(${pacedId})`);
+    check(due?.held === true, 'due at 90%, it waits for the reset instead of starting');
+    const again = await ev(`SB.api.devRoutineDue(${pacedId})`);
+    const heldRoutines = await ev("SB.api.getOutlook().then(o => o.held.filter(h => h.kind === 'routine'))");
+    check(again?.held === true && heldRoutines.length === 1 && heldRoutines[0].why === 'reserve', `the next slot adds no second run (${JSON.stringify(heldRoutines.map(h => h.why))})`);
+    check(await ev('[...SB.state.tabs.values()].every(t => !/Pace check/.test(t.title))'), 'no run opened');
+    await ev("SB.setView('routines')");
+    check(await until("/waiting for the reset/.test(document.querySelector('.r-pill.held.waiting')?.textContent || '')"), 'the Routines page says it is waiting for the reset, and when');
+    // "Run even near the limit": due again, it runs now, and the run that was waiting comes off the list.
+    const brave = await ev(`SB.api.saveRoutine(${JSON.stringify({ ...paced.routine, runNearLimit: true })})`);
+    check(brave?.ok, 'set to run even near the limit');
+    const ran = await ev(`SB.api.devRoutineDue(${pacedId})`);
+    check(ran?.ok === true && !ran.held, 'due again, it runs');
+    check(await until('[...SB.state.tabs.values()].some(t => /Pace check/.test(t.title))'), '...in its own tab');
+    check((await ev("SB.api.getOutlook().then(o => o.held.filter(h => h.kind === 'routine').length)")) === 0, '...and the waiting run is gone, so it runs once, not twice');
+    await until('[...SB.state.tabs.values()].filter(t => /Pace check/.test(t.title)).every(t => !t.busy)', 15000);
+    await ev(`SB.api.deleteRoutine(${pacedId})`); // the limit step below holds a routine of its own
+    await ev("SB.setView('chat')");
+    await ev(`SB.activate(${JSON.stringify(tabId)})`);
 
     // ---- at the limit: hold a message and a routine, and both go at the reset
     const limitReset = Date.now() + 8000;
