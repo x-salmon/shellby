@@ -69,6 +69,7 @@ function wireServices(d) {
     get currentCwd() { return d.currentCwd; },
     get dialogLook() { return d.dialogLook; },
     get adoptPhoneTab() { return d.adoptPhoneTab; },
+    get workflows() { return d.workflows; },
     worktreeHome: () => d.worktreeHome(),
     limitWait: usageService.limitWait, resetTarget: usageService.resetTarget,
     clockTime: usageService.clockTime, sendOutlook: usageService.sendOutlook,

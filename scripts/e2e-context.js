@@ -3,7 +3,10 @@
 // the fake Claude CLI (test/fixtures/fake-claude.js): no account, no usage.
 //   1. A reply's token counts fill the hairline under its tab and the chip,
 //      and the turn ends with what it cost
-//   2. Filling fast: a quieter "filling up" offer before it's crowded
+//   2. Filling fast: a quieter "filling up" offer before it's crowded; and a
+//      new topic typed into it offers a fresh tab with a summary Shellby writes
+//      himself (shown for editing, then the new tab's first message with the
+//      ask), once per conversation, the old one left as it was
 //   3. Past 80% he says it's getting crowded, and the composer offers room
 //      even after "filling up" was waved away
 //   4. The chip's menu: the running total, and the costliest turns, each a
@@ -53,6 +56,8 @@ function connect(url) {
     const until = (expr, ms = 10000) => poll({ ev }, expr, ms);
     until.in = (w, expr, ms = 10000) => poll(w, expr, ms);
     const type = async text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))`);
+    // Into the box without sending: what shows while you type.
+    const typeOnly = text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); })(SB.$('input'))`);
     await panelBooted(ev);
     await ev("SB.setView('chat')");
     await critter.ev("window.__said = []; const bt = document.getElementById('bubbleText'); new MutationObserver(() => window.__said.push(bt.textContent)).observe(bt, { childList: true, characterData: true, subtree: true }); true");
@@ -78,6 +83,27 @@ function connect(url) {
     check(await ev(`(f => f.classList.contains('is-filling') && f.querySelector('.tf-change')?.textContent === '+40' && f.querySelector('.tf-act')?.textContent === 'Compact')(${foot})`), "the turn's footer turns amber, +40, and offers to compact");
     await ev("SB.$('crowded').querySelector('[aria-label=\"Not now\"]').click()");
     check(await ev("SB.$('crowded').hidden"), '"Not now" hides "filling up"');
+
+    // 2b. A new topic typed into a well-filled conversation: a fresh tab with Shellby's own summary (src/main/freshtab.js).
+    const oldTab = await ev('SB.activeTab().id');
+    check(await ev("SB.$('handoff').hidden"), 'no fresh-tab offer before anything new is typed');
+    await typeOnly('Explain how the weather widget fetches its forecast and caches it');
+    check(await until("!SB.$('handoff').hidden && /new topic/.test(SB.$('handoff').textContent) && /70% full/.test(SB.$('handoff').textContent)"), 'a new topic at 70% offers a fresh tab with a summary');
+    check(await ev("/saves about [\\d.]+k tokens on every message/.test(SB.$('handoff').textContent)"), 'and says what each message would save');
+    check(await ev("!SB.$('handoff').querySelector('.handoff-summary')"), 'the summary is folded until asked for');
+    await ev("SB.$('handoff').querySelector('.handoff-edit').click()");
+    check(await until("(t => !!t && /^# Handoff: /.test(t.value) && /- big 140000/.test(t.value) && /not by Claude/.test(t.value))(SB.$('handoff').querySelector('.handoff-summary'))"), "the summary is Shellby's own, shown for editing");
+    await ev("(t => { t.value += '\\n- (edited by hand)'; t.dispatchEvent(new Event('input')); })(SB.$('handoff').querySelector('.handoff-summary'))");
+    await ev("SB.$('handoff').querySelector('.handoff-start').click()");
+    check(await until(`SB.activeTab().id !== ${JSON.stringify(oldTab)} && [...SB.activeTab().el.querySelectorAll('.msg.user')].some(m => /started this tab fresh/.test(m.textContent) && /edited by hand/.test(m.textContent) && /weather widget fetches/.test(m.textContent))`, 15000), 'a new tab starts with the summary as edited, then the ask');
+    check(await until("!SB.activeTab().busy && [...SB.activeTab().el.querySelectorAll('.msg.assistant')].some(m => /echo:/.test(m.textContent))", 15000), 'and Claude answers it there');
+    check(await ev(`SB.$('handoff').hidden && SB.$('input').value === '' && SB.state.tabs.has(${JSON.stringify(oldTab)})`), 'the offer and the box are clear, and the old conversation is still open');
+    await ev(`SB.activate(${JSON.stringify(oldTab)})`);
+    check(await ev(`SB.activeTab().id === ${JSON.stringify(oldTab)} && SB.activeTab().context?.pct === 70`), 'back in the old one, still 70% full');
+    await typeOnly('Describe the moon phase drawing on the beach scene');
+    await wait(1200); // past the moment's pause after typing, and the lookup it would start
+    check(await ev("SB.$('handoff').hidden"), 'it is offered once per conversation');
+    await typeOnly('');
 
     // 3. Past the mark.
     await type('big 170000');

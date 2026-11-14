@@ -160,6 +160,7 @@ class SessionManager extends EventEmitter {
     // crab's suggestions) is the tab's as ever. Its usage readings go through.
     session.on('item', item => (tab.pinging && item.kind !== 'usage' ? this.onPingItem(tab, item) : this.onItem(tab, item)));
     session.on('spend', s => this.emit('spend', tab.id, s, tab));
+    session.on('run', r => this.emit('run', tab.id, r, tab)); // an Ultracode run ended, with what it cost (session/ultra.js)
     session.on('call', c => this.emit('call', tab.id, c, tab));
     session.on('cache', () => this.changed());
     session.on('context', (now, before) => { this.emit('context', tab.id, now, before, tab); this.changed(); });

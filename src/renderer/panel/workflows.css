@@ -127,6 +127,17 @@ body[data-view="workflows"] .view-workflows {
 
 .wf-runform { margin: 10px 0 2px 43px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: grid; gap: 8px; }
 .wf-runform .row.end { margin-top: 2px; }
+/* What a run usually costs, before it starts (wf-list.js, src/main/usage/runcost.js): one tap goes ahead. */
+.wf-estimate {
+  margin: 10px 0 2px 43px; padding: 9px 12px; border-radius: var(--r-sm); display: grid; gap: 8px;
+  background: var(--abyss); border: 1px solid var(--line); border-left: 2px solid var(--glass);
+}
+.wf-estimate.over { border-left-color: var(--amber); }
+.wf-estimate-text { margin: 0; font-size: var(--fs-12-5); line-height: 1.45; color: var(--sand); overflow-wrap: anywhere; }
+.wf-estimate .slim-btn { height: 26px; }
+/* Held for after the usage reset: the pill on its row takes it out again. */
+.ar-held { border: 0; padding: 0; background: none; font: inherit; color: var(--amber); cursor: pointer; }
+.ar-held:hover { text-decoration: underline; }
 
 /* ---------------------------------------------------------------- templates
    Two to a row where there's room, so the whole gallery fits in a glance. */

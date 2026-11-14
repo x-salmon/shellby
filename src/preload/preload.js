@@ -100,8 +100,8 @@ contextBridge.exposeInMainWorld('shellby', {
   stopTask: fire('task:stop'),
   steerTask: (tabId, turnId, items) => ipcRenderer.send('task:steer', { tabId, turnId, items }),
   unsteerTask: (tabId, id) => ipcRenderer.invoke('task:unsteer', { tabId, id }), // a queued message taken back, unless Claude has it
-  freshTab: invoke('tab:fresh'),
-  tabCost: invoke('tab:cost'),
+  freshTab: invoke('tab:fresh'), tabCost: invoke('tab:cost'),
+  handoffOffer: invoke('tab:handoff-offer'), handoffStart: invoke('tab:handoff-start'), // a fresh tab with a summary Shellby writes himself (freshtab.js): the offer while you type ({ tabId, text, force? }), then the new tab ({ tabId, summary, text, attachments })
   // the terminal's conveniences (parity.js)
   suggestFiles: (tabId, query) => ipcRenderer.invoke('files:suggest', { tabId, query }), context: { suggest: (tabId, query) => ipcRenderer.invoke('context:suggest', { tabId, query }), attach: (tabId, id) => ipcRenderer.invoke('context:attach', { tabId, id }), similar: (tabId, text) => ipcRenderer.invoke('context:similar', { tabId, text }) }, // @ files, and a dev server, red build, chat or note (wiring/mention-context.js)
   promptHistory: invoke('prompt:history'),
@@ -716,7 +716,7 @@ contextBridge.exposeInMainWorld('shellby', {
   depRoutine: invoke('depwatch:routine'),
   onDepWatch: on('depwatch'),
   usageBreakdown: invoke('usage:breakdown'),
-  estimateUsage: invoke('usage:estimate'), // { tabId, text } -> what a message like it usually costs (usage/ledger.js)
+  estimateUsage: invoke('usage:estimate'), estimateRun: invoke('usage:estimate-run'), // { tabId, text, ultracode? } -> what a message like it usually costs (usage/ledger.js) and the run it starts; { kind: 'ultracode' | 'workflow' | 'fanout', workflowId? } -> what such a run usually costs before it starts (usage/runcost.js)
   // usage forecast, and work held for after the reset (forecast.js, held.js)
   getOutlook: invoke('outlook:get'),
   holdForReset: invoke('held:add'),

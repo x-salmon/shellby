@@ -18,7 +18,7 @@
     SB.refreshUsage?.();
     SB.renderQueue?.(); // held chips, and the banner with them
     if (state.view === 'routines') SB.views.routines?.render();
-    else if (state.view === 'workflows') SB.renderTide?.(); // the reset's shading and held tasks
+    else if (state.view === 'workflows') { SB.renderTide?.(); SB.refreshWorkflowRows?.(); } // the reset's shading and held tasks; a run held or let go
   };
 
   // Which note, which actions and the words for them live in shared/outlook-format.js.
@@ -33,12 +33,13 @@
     const tab = SB.activeTab();
     const big = liveEstimate();
     renderCostHint(big);
-    // At the limit beats an estimate that this message would go over, which beats
-    // a warning, which beats a tip. A warning you closed lets a tip through.
+    // At the limit beats an estimate that this message would go over (or the run it
+    // starts would: an Ultracode run, several helpers), which beats a warning, which
+    // beats a tip. A warning you closed lets a tip through.
     const warned = W.noteFor(o);
     const tip = tipFor(big);
-    const note = !o?.limit && big?.over && dismissedEstimate !== big.tabId
-      ? { text: overText(big), key: null, cls: 'warning', estimate: true }
+    const note = !o?.limit && (big?.over || big?.run?.over) && dismissedEstimate !== big.tabId
+      ? { text: big.run?.over ? big.run.text : overText(big), key: null, cls: 'warning', estimate: true }
       : warned && dismissed !== warned.key ? warned : tip;
     const show = !!note && !!tab && (note.estimate || note.tip || dismissed !== note.key) && !SB.isCrabOnly?.();
     box.hidden = !show;
@@ -90,14 +91,16 @@
     refactor: 'refactors', docs: 'docs tasks', tidy: 'tidy-ups', other: 'tasks',
   };
   const typedNow = () => input.value.trim();
-  // A /model switch is looked at too: it can throw a warm cache away.
-  const estimable = t => /^\/model\s+\S/i.test(t) || (t.length >= EST_MIN_CHARS && !t.startsWith('!') && !t.startsWith('/'));
+  // A /model switch is looked at too: it can throw a warm cache away. With Ultracode
+  // on, any message at all starts a run worth a word (usage/runcost.js).
+  const estimable = (t, tab = SB.activeTab()) => /^\/model\s+\S/i.test(t)
+    || ((t.length >= EST_MIN_CHARS || (!!tab?.ultracode && t.length > 0)) && !t.startsWith('!') && !t.startsWith('/'));
 
   // The estimate, while it's still about what's in the box of the tab on screen.
   function liveEstimate() {
     const e = state.estimate;
     const tab = SB.activeTab();
-    return e && tab && e.tabId === tab.id && estimable(typedNow()) ? e : null;
+    return e && tab && e.tabId === tab.id && estimable(typedNow(), tab) ? e : null;
   }
 
   // "from 12 similar fixes in shellby": what the guess is drawn from.
@@ -123,6 +126,11 @@
   function tipFor(e) {
     if (!e || dismissedTip === e.tabId) return null;
     const tab = SB.activeTab();
+    // The run this message starts (Ultracode on, or several helpers asked for): what
+    // such runs have cost here, before it goes. Over the limit it's the warning above instead.
+    if (e.run && !e.run.over) {
+      return { tip: true, cls: 'quiet', key: null, text: e.run.text, actions: [], run: true };
+    }
     // A model switch mid-conversation: each model has a cache of its own.
     if (e.rebuild) {
       return {
@@ -181,7 +189,8 @@
 
   function renderCostHint(e = liveEstimate()) {
     const el = $('costHint');
-    const show = !!e && e.basis !== 'none' && !e.over && !SB.isCrabOnly?.();
+    // The run's estimate is the banner's: the hint under the box would say the message's cost twice over.
+    const show = !!e && e.basis !== 'none' && !e.over && !e.run && !SB.isCrabOnly?.();
     el.hidden = !show;
     if (!show) { el.textContent = ''; el.removeAttribute('title'); return; }
     el.textContent = `usually ${aboutPct(e.pct)} of your window`;
@@ -215,18 +224,21 @@
     const tab = SB.activeTab();
     const text = typedNow();
     const seq = ++estSeq;
-    if (!tab || !estimable(text) || SB.isCrabOnly?.()) return;
+    if (!tab || !estimable(text, tab) || SB.isCrabOnly?.()) return;
     const [r, similar] = await Promise.all([
-      api.estimateUsage({ tabId: tab.id, text }).catch(() => null),
+      // ultracode: the chip is on, so this message starts a run of many agents (usage/runcost.js).
+      api.estimateUsage({ tabId: tab.id, text, ultracode: !!tab.ultracode }).catch(() => null),
       // Only before the first message: main says the same (ipc/mentions.js).
       !tab.saved && state.settings?.askedBefore !== false ? api.context.similar(tab.id, text).catch(() => []) : [],
     ]);
     if (seq !== estSeq) return; // you've typed on since
     const before = Array.isArray(similar) && similar[0] ? similar[0] : null;
-    state.estimate = (r && (r.basis !== 'none' || r.rebuild || r.cold || r.suggest)) || before
+    state.estimate = (r && (r.basis !== 'none' || r.rebuild || r.cold || r.suggest || r.run)) || before
       ? { basis: 'none', ...r, before, tabId: tab.id, text } : null;
     renderOutlook();
   }
+  // The Ultracode chip went on or off: what this message would start has changed (ultracode.js).
+  SB.refreshEstimate = () => { if (state.estimate) { state.estimate = null; renderOutlook(); } scheduleEstimate(); };
 
   // ------------------------------------------------------------ "You've asked this before" (src/main/history/similar.js)
 
@@ -290,12 +302,19 @@
   async function holdTyped() {
     const tab = SB.activeTab();
     if (!tab || holding) return;
-    const text = input.value.trim();
+    let text = input.value.trim();
     const attachments = [...tab.attachments];
     if (!text && !attachments.length) return;
     // Not before the reset time is known, and never a ! command (composer.js runs those now).
     const refusal = W.holdRefusal(text, state.outlook?.resetAt);
     if (refusal) return SB.toast(refusal.text, refusal.ms ? { ms: refusal.ms } : undefined);
+    // Ultracode on: the held message goes out by itself later, so it gets the word now
+    // (and the first one in a conversation asks first, as sending does: ultracode.js).
+    if (SB.ultraWords) {
+      const words = await SB.ultraWords(tab, text);
+      if (words === null) return;
+      text = words;
+    }
     holding = true;
     SB.clearComposer(tab);
     try {
