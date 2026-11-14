@@ -2104,33 +2104,27 @@
           </select>
         </div>
         <p class="small" id="localModelStatus" role="status" aria-live="polite"></p>
-        <fieldset class="local-jobs" id="localModelJobs" hidden>
+        <fieldset class="local-more" id="localModelMore" aria-describedby="localModelNeeds">
+        <p class="small muted local-needs" id="localModelNeeds">Pick a model above to use these.</p>
+        <fieldset class="local-jobs" id="localModelJobs">
           <legend class="small muted">What it writes first</legend>
           <div id="localModelJobList"></div>
         </fieldset>
-        <div class="local-answers" id="localAnswers" hidden>
+        <div class="local-answers" id="localAnswers">
           <div class="local-job">
             <label class="toggle"><input type="checkbox" id="localAnswersToggle" aria-describedby="localAnswersText"><span class="switch"></span>Ask a local model when Claude won't answer</label>
             <select id="localAnswersModel" class="field slim" aria-label="Model to ask when Claude won't answer"></select>
           </div>
           <p class="muted small" id="localAnswersText">When Claude declines a question, a card under it offers to ask this model instead. Only your question goes, only when you press the button, and the answer is shown as the local model's, apart from Claude's conversation. Pick a model you trust with what you ask: an uncensored one answers anything, accurately or not.</p>
         </div>
-        <div class="local-answers" id="localAgent" hidden>
+        <div class="local-answers" id="localAgent">
           <div class="local-job">
             <label class="toggle"><input type="checkbox" id="localAgentToggle" aria-describedby="localAgentText"><span class="switch"></span>Run new conversations on a local model</label>
             <select id="localAgentModel" class="field slim" aria-label="Model new conversations run on"></select>
           </div>
           <p class="muted small" id="localAgentText">Claude Code does the work as usual, with every tool, but thinks with this model instead of Claude, so nothing is spent from your plan and nothing leaves this PC. Needs Ollama 0.14 or LM Studio 0.4.1 or newer, and a model made for coding and tool use with a long context (32K tokens or more; Ollama starts most models with less). Each conversation keeps what it started on for good, reopened or branched later too, and a local one can't be sent to a terminal. Smaller models make more mistakes: watch what they change.</p>
         </div>
-        <div class="local-tally" id="localModelTally" hidden>
-          <p class="small" id="localModelTallyText"></p>
-          <p class="small muted" id="localModelFallback" hidden></p>
-          <div class="row wrap">
-            <button type="button" class="btn ghost slim-btn" id="localModelWake" hidden>Try it again now</button>
-            <button type="button" class="btn ghost slim-btn" id="localModelResetTally">Reset the count</button>
-          </div>
-        </div>
-        <div class="local-try" id="localModelTry" hidden>
+        <div class="local-try" id="localModelTry">
           <div class="row wrap">
             <label class="inline-label" for="localModelQuestion">Try it</label>
             <input type="text" class="field slim" id="localModelQuestion" placeholder="Ask it anything, or leave blank for a sample" maxlength="2000" spellcheck="true" autocomplete="off">
@@ -2138,6 +2132,15 @@
           </div>
           <p class="small muted">Answered on this PC, without your plan. Shellby only shows the answer here.</p>
           <p class="small local-answer" id="localModelAnswer" role="status" aria-live="polite" hidden></p>
+        </div>
+        </fieldset>
+        <div class="local-tally" id="localModelTally" hidden>
+          <p class="small" id="localModelTallyText"></p>
+          <p class="small muted" id="localModelFallback" hidden></p>
+          <div class="row wrap">
+            <button type="button" class="btn ghost slim-btn" id="localModelWake" hidden>Try it again now</button>
+            <button type="button" class="btn ghost slim-btn" id="localModelResetTally">Reset the count</button>
+          </div>
         </div>
       </section>
     </div>

@@ -978,6 +978,11 @@ select.field option { background: var(--reef); }
 .mischief-group.on .fold-state { color: var(--coral); }
 .mischief-pranks { display: grid; gap: 4px; margin: 4px 0 6px; padding: 0; border: 0; }
 .mischief-pranks legend { padding: 0; margin-bottom: 2px; }
+/* Everything a model unlocks: shown before there is one, so you can see what it does, but greyed and inert. */
+.local-more { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.local-more:disabled > :not(.local-needs) { opacity: .5; }
+.local-more:not(:disabled) .local-needs { display: none; }
+.local-needs { margin: 8px 0 2px; }
 .local-jobs { display: grid; gap: 4px; margin: 6px 0; padding: 0; border: 0; }
 .local-jobs legend { padding: 0; margin-bottom: 2px; }
 .local-job { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
