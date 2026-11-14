@@ -99,7 +99,11 @@ body[data-view="notes"] .view-notes { display: flex; flex-direction: column; ove
 .notes-clear { margin-left: auto; color: var(--sand-faint); }
 @media (min-width: 820px) { .notes-done > .note-list { margin: 0 -14px; border: 0; border-radius: 0; background: none; border-top: 1px solid var(--line-soft); } }
 
-.note-empty { padding: 14px 4px; color: var(--sand-dim); font-size: 13px; }
+/* Nothing to list: a short heading and a hint, centred with room to breathe. */
+.note-empty { display: grid; gap: 8px; justify-items: center; padding: clamp(36px, 9vh, 96px) 24px; text-align: center; }
+.note-empty p { margin: 0; max-width: 40ch; }
+.note-empty-title { font: 600 clamp(15px, .85vw, 20px) var(--font-pixel); color: var(--sand); letter-spacing: .02em; }
+.note-empty-hint { font-size: clamp(13px, .7vw, 16px); line-height: 1.55; color: var(--sand-dim); }
 
 /* ------------------------------------------------------------ the open note */
 

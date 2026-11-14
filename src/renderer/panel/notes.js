@@ -128,13 +128,15 @@
   function renderList(notes, groups, want) {
     const list = $('noteList');
     if (!notes.length) {
-      list.replaceChildren(h('li', { class: 'note-empty', text: scope === GENERAL
-        ? "Nothing here yet. Jot down an idea that isn't tied to one project."
-        : `Nothing noted for ${listName()} yet. What would you like to do here?` }));
+      list.replaceChildren(scope === GENERAL
+        ? empty('Nothing here yet', "Jot down an idea that isn't tied to one project.")
+        : empty(`Nothing noted for ${listName()} yet`, 'What would you like to do here?'));
       return;
     }
     if (!groups.some(g => g.notes.length)) {
-      list.replaceChildren(h('li', { class: 'note-empty', text: want ? 'No note matches that.' : 'All done here. Nice.' }));
+      list.replaceChildren(want
+        ? empty('No note matches that', 'Try fewer words, or clear the search.')
+        : empty('All done here', 'Nice. Ticked-off notes wait under Done.'));
       return;
     }
     // Headings only when there's more than one kind of note to tell apart.
@@ -143,6 +145,12 @@
       heads ? h('li', { class: 'note-group', role: 'presentation', text: g.label }) : null,
       ...g.notes.map(row),
     ]).filter(Boolean));
+  }
+
+  function empty(title, hint) {
+    return h('li', { class: 'note-empty' },
+      h('p', { class: 'note-empty-title', text: title }),
+      h('p', { class: 'note-empty-hint', text: hint }));
   }
 
   function renderDone(done, searching, isOpen) {
