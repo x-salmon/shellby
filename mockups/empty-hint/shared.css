@@ -1,0 +1,45 @@
+/* Shared base for the empty-chat hint mockups: Shellby's own tokens and fonts.
+   Each page shows one concept twice: the default 460px panel and a wide
+   full-screen panel, so it's judged at both sizes. */
+@import url("../../src/renderer/shared/tokens.css");
+@import url("../../src/renderer/shared/fonts.css");
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 2000px; height: 820px; overflow: hidden; }
+body {
+  background: #081013; color: var(--sand);
+  font: 14px/1.5 var(--font-body); -webkit-font-smoothing: antialiased;
+  display: grid; grid-template-columns: 460px 1fr; gap: 40px; padding: 40px;
+}
+.cap { position: absolute; top: 12px; left: 40px; color: var(--sand-faint-deco); font-size: 13px; }
+
+/* A panel: the end of the empty chat state, then the composer. */
+.panel {
+  height: 740px; border: 1px solid var(--line); border-radius: var(--r-lg);
+  background: var(--ink); display: flex; flex-direction: column; overflow: hidden;
+}
+.feed { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px 18px 8px; text-align: center; }
+.wide .feed { padding: 20px 18% 8px; }
+.crab { width: 64px; height: 52px; margin: 0 auto 10px; background:
+  radial-gradient(circle at 50% 70%, var(--coral) 0 40%, transparent 41%),
+  radial-gradient(circle at 30% 30%, var(--sand) 0 10%, transparent 11%),
+  radial-gradient(circle at 70% 30%, var(--sand) 0 10%, transparent 11%); image-rendering: pixelated; }
+.feed h1 { font: 600 21px/1.2 var(--font-pixel); margin-bottom: 6px; }
+.sub { color: var(--sand-dim); font-size: 13.5px; margin-bottom: 18px; }
+.sub b { font: 700 11.5px var(--font-mono); color: var(--sand); }
+.sugs { display: flex; flex-direction: column; gap: 7px; text-align: left; }
+.wide .sugs { display: grid; grid-template-columns: repeat(3, 1fr); }
+.sug { padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--reef); font-size: 13.5px; }
+.sug::before { content: "›"; color: var(--coral); font: 600 13px var(--font-pixel); margin-right: 10px; }
+
+.composer { margin: 8px 14px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--reef); padding: 12px 14px 10px; }
+.wide .composer { margin: 8px 18% 18px; }
+.composer .ph { color: var(--sand-faint); font-size: 14px; height: 40px; }
+.composer .bar { display: flex; align-items: center; gap: 10px; color: var(--sand-faint); font-size: 12px; }
+.composer .bar .grow { flex: 1; }
+.mode { padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--sand-dim); }
+
+kbd {
+  font: 600 10.5px/1 var(--font-mono); padding: 2px 5px; border-radius: 4px; white-space: nowrap;
+  border: 1px solid var(--line); border-bottom-width: 2px; background: var(--reef); color: var(--sand-dim);
+}

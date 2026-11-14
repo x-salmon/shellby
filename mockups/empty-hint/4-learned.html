@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>4 · Learn them, lose them: keys you've used tick off, and the line vanishes once you know them all</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .learn { margin: 22px auto 0; max-width: 380px; text-align: left; }
+  .wide .learn { max-width: 720px; }
+  .learn .top { display: flex; align-items: baseline; gap: 10px; font-size: 12px; color: var(--sand-faint); margin-bottom: 8px; }
+  .learn .top b { font: 600 13px var(--font-pixel); color: var(--amber); }
+  .learn .meter { flex: 1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; align-self: center; }
+  .learn .meter i { display: block; width: 40%; height: 100%; background: var(--amber); }
+  .learn ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  .learn li { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--sand-dim);
+    padding: 5px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--reef); }
+  .learn li.done { background: none; border-color: transparent; color: var(--sand-faint-deco); text-decoration: line-through; text-decoration-color: rgba(157,148,130,.5); }
+  .learn li.done kbd { opacity: .5; }
+  .learn li.done::before { content: "✓"; color: var(--glass); text-decoration: none; display: inline-block; }
+</style>
+</head>
+<body>
+<template id="hint">
+  <div class="learn">
+    <div class="top"><b>2 of 5</b> keys learned <span class="meter"><i></i></span> <span>+10 XP each</span></div>
+    <ul>
+      <li><kbd>Ctrl K</kbd> Jump to any screen</li>
+      <li><kbd>Shift Tab</kbd> Switch mode</li>
+      <li><kbd>Ctrl Alt Space</kbd> Open me from anywhere</li>
+      <li class="done"><kbd>/</kbd> Skills</li>
+      <li class="done">Paste a screenshot</li>
+    </ul>
+  </div>
+</template>
+<script src="shared.js"></script>
+</body>
+</html>

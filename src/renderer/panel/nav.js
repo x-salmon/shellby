@@ -560,6 +560,7 @@
     keysStatus.textContent = said;
     (id && keysList.querySelector(`.keys-edit[data-id="${id}"]`) || keysList).focus({ preventScroll: true });
     SB.renderTabStrip?.(); // its × says how to close
+    SB.refreshEmptyStates?.(); // the empty chat's key legend
   }
 
   editBtn.addEventListener('click', () => {

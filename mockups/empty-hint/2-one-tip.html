@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>2 · One tip at a time: the crab teaches a single key per conversation, in his own voice</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .tip { margin: 22px auto 0; max-width: 340px; display: flex; align-items: center; gap: 12px; text-align: left;
+    padding: 10px 12px; border-radius: var(--r); background: rgba(127,214,194,.06); border: 1px solid var(--line-soft); }
+  .wide .tip { max-width: 560px; }
+  .tip .mark { font: 600 16px/1 var(--font-pixel); color: var(--glass); }
+  .tip p { flex: 1; font-size: 13px; color: var(--sand-dim); }
+  .tip p kbd { font-size: 11.5px; color: var(--sand); }
+  .tip button { font: inherit; font-size: 12px; color: var(--sand-faint); background: none; border: 0; padding: 4px 6px; border-radius: 6px; white-space: nowrap; }
+  .tip button:hover { color: var(--glass); }
+  .tip .count { font-size: 11px; color: var(--sand-faint-deco); white-space: nowrap; }
+</style>
+</head>
+<body>
+<template id="hint">
+  <div class="tip" role="note">
+    <span class="mark" aria-hidden="true">?</span>
+    <p>Press <kbd>Ctrl K</kbd> and I'll jump you to any screen or past conversation.</p>
+    <span class="count">2 of 5</span>
+    <button type="button">Next tip</button>
+  </div>
+</template>
+<script src="shared.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>3 · Where they work: no hint line; each key sits on the control it drives</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .composer { position: relative; border-style: solid; }
+  .composer .ph kbd { margin: 0 2px; }
+  .composer .drop { position: absolute; inset: -1px; border: 1px dashed rgba(127,214,194,.0); border-radius: var(--r-lg); pointer-events: none; }
+  .bar .mode kbd { margin-left: 6px; font-size: 9.5px; padding: 1px 4px; }
+  .bar .clip { display: inline-flex; align-items: center; gap: 6px; }
+  .bar .clip::before { content: ""; width: 14px; height: 11px; border: 1px dashed var(--sand-faint); border-radius: 2px; }
+  .anywhere { margin-top: 22px; font-size: 12px; color: var(--sand-faint); }
+  .anywhere kbd { color: var(--glass); border-color: rgba(127,214,194,.35); }
+  .jump { position: absolute; top: 14px; right: 16px; display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--sand-faint);
+    padding: 5px 8px 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--reef); }
+  .panel { position: relative; }
+</style>
+</head>
+<body>
+<template id="hint">
+  <div class="jump">Jump to… <kbd>Ctrl K</kbd></div>
+  <p class="anywhere">Open me from anywhere with <kbd>Ctrl Alt Space</kbd></p>
+</template>
+<template id="composer">
+  <div class="composer">
+    <div class="ph">Ask me anything, or type <kbd>/</kbd> for a skill</div>
+    <div class="bar">
+      <span class="mode">Ask first<kbd>Shift Tab</kbd></span>
+      <span class="clip">Drop or paste files</span>
+      <span class="grow"></span><span>Opus 5.5</span>
+    </div>
+  </div>
+</template>
+<script src="shared.js"></script>
+</body>
+</html>
