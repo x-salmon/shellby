@@ -212,6 +212,7 @@ const DEFAULTS = {
   hubPeers: [],        // your other PCs, for the hub: address, name, token sealed by Windows (hub/peers.js)
   hubSeen: {},         // what each of them last said about itself, shown while it's asleep (wiring/hub.js)
   hubName: '',         // what the hub calls this PC; empty: its computer name
+  pagesSync: true,     // your pages go to your other PCs through Sync between PCs (sync/pages.js); each PC's own switch
   pocketVapid: null,   // the key push notifications to them are signed with, encrypted by Windows (pocket/push.js)
   rgb: null,          // { enabled, port }: his mood on the desk lighting (see rgb.js)
   rgbSaved: null,     // [{ id, name, saved }]: each device's own mode before Shellby painted it, put back on switching off

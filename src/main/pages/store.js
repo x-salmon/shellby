@@ -555,7 +555,7 @@ function createStore(root, { now = Date.now } = {}) {
       if (!format.isDataKey(k) || !e || typeof e !== 'object' || jsonBytes(e.v) > LIMITS.VALUE_BYTES) continue;
       const was = next[k];
       next[k] = JSON.parse(JSON.stringify(e.v));
-      nextBy[k] = { who: whoOf(e.by?.who), at: num(e.by?.at) || now(), op: e.by?.op === 'append' ? 'append' : 'set' };
+      nextBy[k] = { who: whoOf(e.by?.who), at: num(e.by?.at) || now(), op: e.by?.op === 'append' ? 'append' : 'set', pc: format.line(e.by?.pc, 64) || from?.name || 'another PC' };
       delete nextGone[k];
       touched.push(k);
       const grew = Array.isArray(was) && Array.isArray(next[k]) && next[k].length > was.length;

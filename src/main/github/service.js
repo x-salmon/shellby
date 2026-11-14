@@ -81,18 +81,21 @@ class GitHubService extends EventEmitter {
   /** @type {() => number} */ now;
   /** @type {(before: any) => void} */ onSynced;
   /** @type {((gh: GitHubClient) => Promise<any>) | null} */ syncHistory;
+  /** @type {{ file: string, run: (remoteFile: any, gh: GitHubClient) => Promise<any> } | null} */ syncPages;
 
   /**
    * config: Shellby's Config. store: TokenStore. web/api/clientId: GitHub (or a
    * mock in tests). openUrl/copy: shell helpers. onSynced(before): called after a pull,
    * with the settings (config.data) from before the sync. syncHistory(gh): one
    * history sync (history-gist.js), resolving to its result; null where there's none.
+   * syncPages: the pages file's handler in the sync gist (github/sync.js runSecond), or null.
    * @param {{ config: Config, store: TokenStore, web?: string, api?: string, clientId?: string, fetchImpl?: typeof fetch,
-   *   now?: () => number, onSynced?: (before: any) => void, syncHistory?: ((gh: GitHubClient) => Promise<any>) | null }} opts
+   *   now?: () => number, onSynced?: (before: any) => void, syncHistory?: ((gh: GitHubClient) => Promise<any>) | null,
+   *   syncPages?: { file: string, run: (remoteFile: any, gh: GitHubClient) => Promise<any> } | null }} opts
    */
-  constructor({ config, store, web = 'https://github.com', api = 'https://api.github.com', clientId = CLIENT_ID, fetchImpl = fetch, now = () => Date.now(), onSynced = () => {}, syncHistory = null }) {
+  constructor({ config, store, web = 'https://github.com', api = 'https://api.github.com', clientId = CLIENT_ID, fetchImpl = fetch, now = () => Date.now(), onSynced = () => {}, syncHistory = null, syncPages = null }) {
     super();
-    Object.assign(this, { config, store, web, api, clientId, fetchImpl, now, onSynced, syncHistory });
+    Object.assign(this, { config, store, web, api, clientId, fetchImpl, now, onSynced, syncHistory, syncPages });
     this.auth = this.store.load();
     this.flow = null;       // { user_code, verification_uri, expiresAt, features, abort }
     this.syncing = null;
@@ -291,8 +294,9 @@ class GitHubService extends EventEmitter {
         let r = {};
         if (this.can('sync')) {
           const before = this.config.data;
-          r = await syncNow(this.gh(), { get: k => this.config.get(k), set: p => this.config.set(p), data: () => this.config.data });
+          r = await syncNow(this.gh(), { get: k => this.config.get(k), set: p => this.config.set(p), data: () => this.config.data, pages: this.syncPages });
           if (r.pulled) this.onSynced(before);
+          if (r.pages?.error) this.emit('error', `Your pages didn't sync this time: ${r.pages.error}`);
         }
         // History has its own gist: progress has synced whatever happens to it.
         if (this.can('history') && this.syncHistory) {

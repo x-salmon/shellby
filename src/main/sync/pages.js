@@ -60,9 +60,10 @@ function cleanData(raw) {
   if (!isObj(raw)) return null;
   const keys = {};
   let total = 0;
+  /** @type {[string, { v: any, at: number, who: any, op: string, pc: string | null }][]} */
   const entries = Object.entries(isObj(raw.keys) ? raw.keys : {})
     .filter(([k, e]) => format.isDataKey(k) && isObj(e) && e.v !== undefined)
-    .map(([k, e]) => [k, { v: Array.isArray(e.v) ? e.v.slice(-LIMITS.LIST_ITEMS) : e.v, at: num(e.at) || 1, who: whoOf(e.who), op: e.op === 'append' ? 'append' : 'set' }])
+    .map(([k, e]) => /** @type {[string, { v: any, at: number, who: any, op: string, pc: string | null }]} */ ([k, { v: Array.isArray(e.v) ? e.v.slice(-LIMITS.LIST_ITEMS) : e.v, at: num(e.at) || 1, who: whoOf(e.who), op: e.op === 'append' ? 'append' : 'set', pc: format.line(e.pc, 64) || null }]))
     .sort(([, a], [, b]) => b.at - a.at); // the newest first, so those are what fits
   for (const [k, e] of entries) {
     const s = json(e.v);
@@ -137,15 +138,15 @@ function clean(raw) {
  * @typedef {{ me: { pc: string, name: string }, gone: Record<string, number>, pages: LocalPage[] }} Local
  */
 
-/** A local page's data as it travels, or null when it stays here. */
-function dataOf(page) {
+/** A local page's data as it travels, or null when it stays here. Each key names the PC that wrote it (this one, unless it arrived). */
+function dataOf(page, me) {
   if (page.state.sync.data === 'here') return null;
   const { values, by, gone } = page.data || { values: {}, by: {}, gone: {} };
   const keys = {};
   for (const [k, v] of Object.entries(isObj(values) ? values : {})) {
     if (!format.isDataKey(k)) continue;
     const b = isObj(by?.[k]) ? by[k] : {};
-    keys[k] = { v, at: num(b.at) || 1, who: whoOf(b.who), op: b.op === 'append' ? 'append' : 'set' };
+    keys[k] = { v, at: num(b.at) || 1, who: whoOf(b.who), op: b.op === 'append' ? 'append' : 'set', pc: format.line(b.pc, 64) || me.name };
   }
   return { keys, gone: isObj(gone) ? gone : {} };
 }
@@ -157,7 +158,7 @@ function itemOf(page, me) {
   const thumb = page.thumb && Buffer.isBuffer(page.thumb) && page.thumb.length <= LIMITS.SYNC_THUMB_BYTES ? page.thumb.toString('base64') : null;
   return cleanItem(page.id, {
     at: s.sync.at, from: s.sync.from || me, manifest: page.manifest, files: page.files,
-    why: page.version?.why || '', who: page.version?.who, thumb, data: dataOf(page),
+    why: page.version?.why || '', who: page.version?.who, thumb, data: dataOf(page, me),
   });
 }
 
@@ -223,7 +224,7 @@ function mergeData(x, y) {
   for (const k of new Set([...Object.keys(x.keys), ...Object.keys(y.keys), ...Object.keys(x.gone), ...Object.keys(y.gone)])) {
     const ex = x.keys[k], ey = y.keys[k];
     const goneAt = Math.max(num(x.gone[k]), num(y.gone[k]));
-    let e = null;
+    let e;
     if (ex && ey) {
       if (ex.at === ey.at) e = same(ex.v, ey.v) ? ex : tieBreak(ex, ey);
       else if (Array.isArray(ex.v) && Array.isArray(ey.v) && ex.op === 'append' && ey.op === 'append') {
@@ -271,7 +272,7 @@ function dataDiff(local, merged) {
   for (const [k, e] of Object.entries(merged.keys)) {
     const have = Object.hasOwn(values, k);
     if (have && at(k) > e.at) continue; // this PC's is newer and wasn't in the file: it stays
-    if (!have || at(k) !== e.at || !same(values[k], e.v)) set[k] = { v: e.v, by: { who: e.who, at: e.at, op: e.op } };
+    if (!have || at(k) !== e.at || !same(values[k], e.v)) set[k] = { v: e.v, by: { who: e.who, at: e.at, op: e.op, pc: e.pc } };
   }
   for (const [k, goneAt] of Object.entries(merged.gone)) if (Object.hasOwn(values, k) && !(k in merged.keys) && goneAt >= at(k)) remove.push(k);
   if (!Object.keys(set).length && !remove.length) return null;

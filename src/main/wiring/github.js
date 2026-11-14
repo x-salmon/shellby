@@ -36,6 +36,7 @@ const syncLife = require('../sync/life');
 const syncPrefs = require('../sync/prefs');
 const syncPlans = require('../sync/plans');
 const syncHours = require('../sync/hours');
+const syncPages = require('../sync/pages');
 const tankShare = require('../tank/share');
 const voice = require('../voice');
 const { KNOWN_ACHIEVEMENTS } = require('../wardrobe/achievements');
@@ -78,6 +79,8 @@ function wireGithub(d) {
         if (d.friends && friendsChanged(d.config.data, before)) { d.friends.emit('change', d.friends.view()); d.friends.refresh().catch(() => {}); }
       },
       syncHistory: d.history ? gh => runHistorySync(gh) : null,
+      // Your pages, in the gist's second file (sync/pages.js), read and written in the same pass.
+      syncPages: { file: syncPages.FILE, run: (remoteFile, gh) => d.pages.syncRun(remoteFile, gh) },
     });
     // Conversations you delete go to Recently deleted on your other PCs too.
     if (d.history) d.history.onGone = (ids, at) => { if (d.github?.can('history')) historyState.save({ gone: Object.fromEntries(ids.map(id => [id, at])) }); };
