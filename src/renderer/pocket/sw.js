@@ -6,7 +6,7 @@
    that it never touches /pocket/v1: what Shellby is doing always comes live
    from the PC. */
 'use strict';
-const CACHE = 'shellby-pocket-5';
+const CACHE = 'shellby-pocket-6';
 // A tap, kept for a moment: a phone can drop a message to an app it has
 // paused, and an iPhone may open the start page instead of the URL. The app
 // looks here whenever it comes to the front (pocket.js).
@@ -19,17 +19,20 @@ const KEY_URL = '/__key';
 // What another app shared (the manifest's share_target), until the app takes it.
 const SHARED = 'shellby-pocket-shared';
 const SHARED_URL = '/__shared';
+// The shelf and each page's last look (a picture and its data as text, never
+// its code), which the app writes (pocket-pages.js) and shows while the PC sleeps.
+const PAGES = 'shellby-pocket-pages';
 const MAX_SHARED_PHOTOS = 4;
 const MAX_SHARED_TEXT = 4000;
 const ID = /^[\w-]{1,100}$/;
 
 const SHELL = [
-  '/', '/pocket.css', '/pocket.js', '/pocket-logic.js', '/pocket-stream.js', '/pocket-draw.js', '/pocket-tab.js', '/pocket-more.js', '/pocket-bits.js', '/pocket-find.js', '/pocket-phone.js', '/pocket-new.js', '/pocket-later.js', '/manifest.webmanifest',
+  '/', '/pocket.css', '/pocket.js', '/pocket-logic.js', '/pocket-stream.js', '/pocket-draw.js', '/pocket-tab.js', '/pocket-more.js', '/pocket-bits.js', '/pocket-find.js', '/pocket-phone.js', '/pocket-new.js', '/pocket-later.js', '/pocket-pages.js', '/manifest.webmanifest',
   '/shared/sprite.js', '/shared/tokens.css', '/shared/fonts.css',
   '/assets/fonts/PixelifySans.ttf', '/assets/fonts/AtkinsonHyperlegible-Regular.ttf', '/assets/fonts/AtkinsonHyperlegible-Bold.ttf', '/assets/fonts/MartianMono.ttf',
   '/icons/icon-192.png', '/icons/badge-96.png', '/skin.json',
 ];
-const KEEP = [CACHE, TAPPED, KEY, SHARED];
+const KEEP = [CACHE, TAPPED, KEY, SHARED, PAGES];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting()));
@@ -52,7 +55,8 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
   if (e.request.method === 'POST' && url.pathname === '/share') { e.respondWith(takeShare(e.request)); return; }
-  if (e.request.method !== 'GET' || url.pathname.startsWith('/pocket/')) return;
+  // A page's files (/pages/<cap>/) always come live from the PC: a page never runs from a copy here.
+  if (e.request.method !== 'GET' || url.pathname.startsWith('/pocket/') || url.pathname.startsWith('/pages/')) return;
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     try {

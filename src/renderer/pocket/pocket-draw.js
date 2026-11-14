@@ -63,6 +63,7 @@
     up: 'M4 10l4-4 4 4',
     down: 'M4 6l4 4 4-4',
     chip: 'M4.5 4.5h7v7h-7zM6.5 1.5v3M9.5 1.5v3M6.5 11.5v3M9.5 11.5v3M1.5 6.5h3M1.5 9.5h3M11.5 6.5h3M11.5 9.5h3',
+    pages: 'M2.5 2.5h4.5v4.5H2.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5H2.5zM9 9h4.5v4.5H9z',
   };
   function icon(name, cls = '') {
     const s = document.createElementNS(SVG, 'svg');

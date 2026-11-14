@@ -642,3 +642,86 @@ button.msg-user:active { filter: brightness(1.15); }
 .quote { margin: 0; padding: 10px 12px; border-left: 3px solid var(--line); color: var(--sand-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
 .cmd.line-add { color: var(--add-fg); }
 .cmd.line-del { color: var(--del-fg); }
+
+/* ---------------------------------------------------------------- pages (pocket-pages.js) */
+/* The shelf: the desk's tiles, two across, a miniature over the name. */
+.pg-shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+.pg-tile {
+  position: relative; display: grid; gap: 0; padding: 0; text-align: left; overflow: hidden; cursor: pointer; font: inherit; color: var(--sand);
+  border-radius: 12px; background: var(--reef); border: 1px solid var(--line); transition: transform .12s var(--ease-out);
+}
+.pg-tile:active { transform: scale(.985); }
+.pg-mini { display: block; height: 84px; overflow: hidden; border-bottom: 1px solid var(--line-soft); background: var(--reef-2); }
+.pg-mini img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.pg-mini-blank { display: grid; place-items: center; height: 100%; font: 700 28px/1 var(--font-pixel); color: var(--sand-faint); }
+.pg-mini-blank.big { font-size: 44px; }
+.pg-tile.off .pg-mini { filter: grayscale(1) brightness(.55); }
+.pg-tile.off .pg-meta b { color: var(--sand-dim); }
+.pg-pin { position: absolute; top: 6px; right: 6px; font-size: 11px; padding: 1px 5px; border-radius: 5px; background: rgba(7, 16, 18, .7); }
+.pg-over { position: absolute; inset: 0 0 auto 0; height: 84px; display: grid; place-items: center; pointer-events: none; }
+.pg-chip { padding: 4px 9px; border-radius: 99px; font: 700 11px/1 var(--font-body); background: var(--abyss); color: var(--sand); box-shadow: inset 0 0 0 1px var(--line), 0 4px 12px rgba(0, 0, 0, .4); }
+.pg-meta { display: grid; gap: 1px; min-width: 0; padding: 7px 10px 8px; }
+.pg-meta b { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 13.5px; line-height: 1.25; }
+.pg-meta b span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-meta > span { font-size: 12px; color: var(--sand-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pg-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.pg-dot.live { background: var(--glass); }
+.pg-dot.pulse { animation: pg-pulse .9s var(--ease-out); }
+@keyframes pg-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.8); } 100% { transform: scale(1); } }
+.pg-stale { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--amber); }
+.pg-stale .ic { width: 15px; height: 15px; }
+
+/* Pinned on the beach: three across, smaller. */
+.pg-sect .pg-all { margin-left: auto; font: 700 11px var(--font-body); letter-spacing: 0; text-transform: none; color: var(--sand-faint); text-decoration: none; }
+.pg-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.pg-strip .pg-mini, .pg-strip .pg-over { height: 54px; }
+.pg-strip .pg-meta { padding: 6px 8px 7px; }
+.pg-strip .pg-meta b { font-size: 12.5px; }
+.pg-strip .pg-meta > span { font-size: 11px; }
+
+/* A page running: a 40px header, then the page gets the whole screen. */
+.pg-screen { background: var(--abyss); }
+.ph { flex: none; display: flex; align-items: center; gap: 6px; height: calc(40px + var(--safe-t)); padding: var(--safe-t) 8px 0 6px; background: var(--abyss); border-bottom: 1px solid var(--line-soft); }
+.ph-back { width: 34px; height: 34px; border: 0; background: none; color: var(--glass); border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
+.ph-back .ic { width: 20px; height: 20px; stroke-width: 2; }
+.ph-name { font-weight: 700; font-size: 14px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-end { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.ph-more { width: 34px; height: 34px; border: 0; background: none; color: var(--sand-dim); border-radius: 8px; display: grid; place-items: center; cursor: pointer; }
+.pg-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.pg-note-slot:empty { display: none; }
+.pg-note { margin: 8px 10px 0; display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 9px; font-size: 13.5px; background: rgba(255, 193, 94, .07); border: 1px solid rgba(255, 193, 94, .22); }
+.pg-note .ic { width: 15px; height: 15px; color: var(--amber); margin-top: 2px; flex: none; }
+.pg-stage { flex: 1; min-height: 0; position: relative; }
+.pg-frame { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.pg-gone { padding-top: 48px; }
+
+/* Built for the desk */
+.pg-desk { display: grid; gap: 12px; align-content: start; padding-top: 10px; }
+.pg-desk-thumb { position: relative; height: 150px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--reef-2); }
+.pg-desk-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; filter: grayscale(.6) brightness(.7); }
+.pg-desk-thumb .pg-over { inset: 0; height: auto; }
+.pg-desk-name { margin: 4px 0 0; font: 600 19px/1.2 var(--font-pixel); }
+
+/* The PC asleep: a dated snapshot, read-only */
+.pg-snap-note { flex: none; margin: 10px 12px 0; border-color: rgba(255, 193, 94, .35); }
+.pg-snap-note b { display: block; font-size: 13.5px; color: var(--amber); }
+.pg-snap-note p { margin: 2px 0 0; font-size: 12.5px; color: var(--sand-dim); }
+.pg-snap-pic { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); filter: saturate(.5) brightness(.78); }
+.pg-snap-pic img { display: block; width: 100%; }
+.pg-snap-pic::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(7, 16, 18, .08) 3px 4px); }
+.pg-snap-text { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); font: 12.5px/1.45 var(--font-mono); font-stretch: 87%; color: var(--sand-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Its data and History */
+.pg-info { display: grid; gap: 10px; }
+.pg-key { display: grid; gap: 4px; }
+.pg-key code { font: 600 13px var(--font-mono); font-stretch: 87%; color: var(--glass); }
+.pg-val { margin: 0; padding: 8px 10px; border-radius: 9px; background: var(--abyss); border: 1px solid var(--line); font: 12.5px/1.45 var(--font-mono); font-stretch: 87%; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 9em; overflow: auto; }
+.pg-menu { display: grid; gap: 8px; }
+
+/* The ask, as the phone's own sheet */
+.pg-ask { display: grid; gap: 10px; }
+.pg-who { margin: -6px 0 0; }
+.pg-quote { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--abyss); border: 1px solid var(--line); border-left: 3px solid var(--coral); font-size: 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40vh; overflow: auto; }
+.pg-ask .lbl { margin: 0; font-size: 12px; font-weight: 700; color: var(--sand-faint); }
+.pg-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pg-modes .proj { text-align: center; }

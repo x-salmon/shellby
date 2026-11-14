@@ -21,6 +21,7 @@ interface Window {
   PocketMore: any;
   PocketNet: any;
   PocketNew: any;
+  PocketPages: any;
   PocketPhone: any;
   PocketTab: any;
   ShellbyAmbient: any;
