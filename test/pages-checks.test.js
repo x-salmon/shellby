@@ -100,3 +100,11 @@ test('the tag scan still finds what the old patterns did', () => {
   assert.equal(run({ 'index.html': '<!doctype html><script src="./shellby.js"></script><script>if (a < b) {}</script>' }).errors.some(e => /must load the bridge/.test(e)), false);
   assert.match(run({ 'index.html': '<!doctype html><!-- <script src="shellby.js"></script> -->' }).errors.join(), /must load the bridge/, 'a commented-out bridge is no bridge');
 });
+
+test('a page holds no frames of any kind, and no shadow roots from HTML', () => {
+  for (const tag of ['iframe', 'frame', 'object', 'embed', 'portal', 'fencedframe']) {
+    assert.match(run({ 'index.html': `<!doctype html><script src="shellby.js"></script><${tag}></${tag}>` }).errors.join(), /frames of its own/, tag);
+  }
+  assert.match(run({ 'index.html': '<!doctype html><script src="shellby.js"></script><div><template shadowrootmode="closed"><p>x</p></template></div>' }).errors.join(), /shadow roots from HTML/);
+  assert.equal(run({ 'index.html': '<!doctype html><script src="shellby.js"></script><p>An object lesson in embedding</p>' }).ok, true, 'words are fine');
+});

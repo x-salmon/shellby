@@ -118,7 +118,11 @@ function htmlProblems(name, src) {
   }
   if (handler) out.push(`${name}: inline handlers like ${handler}="..." are blocked by the page's CSP. Use addEventListener in a .js file.`);
   if (/\b(?:href|src|action)\s*=\s*["']?\s*javascript:/i.test(html)) out.push(`${name}: javascript: links are blocked by the page's CSP. Use addEventListener.`);
-  if (/<iframe\b/i.test(html)) out.push(`${name}: a page can't hold frames of its own.`);
+  // Anything that makes a window of its own (guard.js only reaches the page's), and shadow
+  // roots from HTML, which can be closed to it.
+  const framed = /<(iframe|frame|object|embed|portal|fencedframe)\b/i.exec(html);
+  if (framed) out.push(`${name}: a page can't hold frames of its own (<${framed[1].toLowerCase()}>).`);
+  if (/\sshadowroot(?:mode)?\s*=/i.test(html)) out.push(`${name}: shadow roots from HTML (shadowrootmode) aren't allowed. Use attachShadow in a .js file.`);
   return out;
 }
 

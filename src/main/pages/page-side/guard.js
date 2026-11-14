@@ -43,11 +43,19 @@
     Object.defineProperty(Document.prototype, 'createElement', { configurable: false, value: function (tag, ...rest) { refuse(tag); return make.call(this, tag, ...rest); } });
     Object.defineProperty(Document.prototype, 'createElementNS', { configurable: false, value: function (ns, tag, ...rest) { refuse(String(tag).split(':').pop()); return makeNS.call(this, ns, tag, ...rest); } });
   } catch { /* left as it is */ }
+  // Every shadow root a page makes is open (attachShadow below), so a sweep can go into each.
+  const SEL = 'iframe, frame, object, embed, portal, fencedframe';
   const sweep = root => {
     if (!root || typeof root !== 'object') return;
     if (root.nodeType === 1 && FRAMES.test(root.nodeName)) { root.remove?.(); return; }
-    for (const el of root.querySelectorAll?.('iframe, frame, object, embed, portal, fencedframe') || []) el.remove();
+    for (const el of root.querySelectorAll?.(SEL) || []) el.remove();
+    if (root.shadowRoot) sweep(root.shadowRoot);
+    for (const el of root.querySelectorAll?.('*') || []) if (el.shadowRoot) sweep(el.shadowRoot);
   };
+  // Declarative shadow roots (<template shadowrootmode>) can be closed, out of a sweep's
+  // reach: HTML asking for one is refused wherever HTML is parsed with them on.
+  const DECLARATIVE = /shadowroot(mode)?\s*=/i;
+  const noDeclarative = html => { if (DECLARATIVE.test(String(html))) throw new Error("A page can't make shadow roots from HTML."); };
   const isFrame = n => !!n && n.nodeType === 1 && FRAMES.test(n.nodeName);
   // Inserting a node: frames inside it go first, and a frame itself is refused,
   // before it's connected (a connected frame has a window the page could reach).
@@ -88,16 +96,40 @@
       } catch { /* left as it is */ }
     }
   };
+  // HTML parsed with declarative shadow roots on: refused if it asks for one, then swept.
+  /** @type {any[]} */
+  const parsers = [Element.prototype, typeof ShadowRoot !== 'undefined' ? ShadowRoot.prototype : null];
+  for (const proto of parsers) {
+    const name = 'setHTMLUnsafe';
+    const orig = proto && Object.getOwnPropertyDescriptor(proto, name)?.value;
+    if (typeof orig !== 'function') continue;
+    try { Object.defineProperty(proto, name, { configurable: false, writable: false, value: function (html, ...rest) { noDeclarative(html); const r = orig.call(this, html, ...rest); sweep(this); return r; } }); } catch { /* left as it is */ }
+  }
+  if (typeof Document.parseHTMLUnsafe === 'function') {
+    const parse = Document.parseHTMLUnsafe;
+    try { Object.defineProperty(Document, 'parseHTMLUnsafe', { configurable: false, writable: false, value: function (html, ...rest) { noDeclarative(html); return parse.call(this, html, ...rest); } }); } catch { /* left as it is */ }
+  }
+  // A page's shadow roots are open, so a sweep can see into them, and watched like the document.
+  const attach = Element.prototype.attachShadow;
+  try {
+    Object.defineProperty(Element.prototype, 'attachShadow', { configurable: false, writable: false, value: function (init, ...rest) { const root = attach.call(this, { ...(init || {}), mode: 'open' }, ...rest); watch(root); return root; } });
+  } catch { /* left as it is */ }
+  // Editing commands that insert HTML (a contentEditable page): refused.
+  const exec = Document.prototype.execCommand;
+  try {
+    Object.defineProperty(Document.prototype, 'execCommand', { configurable: false, writable: false, value: function (cmd, ...rest) { if (/^insert(html|image)$/i.test(String(cmd))) return false; const r = exec.call(this, cmd, ...rest); sweep(this); return r; } });
+  } catch { /* left as it is */ }
   guardHtml(Element.prototype, ['innerHTML', 'outerHTML'], true);
   guardHtml(typeof ShadowRoot !== 'undefined' ? ShadowRoot.prototype : null, ['innerHTML'], true);
-  guardHtml(Element.prototype, ['insertAdjacentHTML', 'setHTMLUnsafe'], false);
-  guardHtml(typeof ShadowRoot !== 'undefined' ? ShadowRoot.prototype : null, ['setHTMLUnsafe'], false);
+  guardHtml(Element.prototype, ['insertAdjacentHTML'], false);
   guardHtml(Range.prototype, ['createContextualFragment'], false);
   guardHtml(Document.prototype, ['write', 'writeln'], false);
-  new MutationObserver(list => {
+  const observer = new MutationObserver(list => {
     for (const m of list) for (const n of m.addedNodes) {
       if (n.nodeType !== 1) continue;
       if (FRAMES.test(n.nodeName)) /** @type {Element} */ (n).remove(); else sweep(n);
     }
-  }).observe(document, { childList: true, subtree: true });
+  });
+  function watch(root) { try { observer.observe(root, { childList: true, subtree: true }); } catch { /* not a node */ } }
+  watch(document);
 })();
