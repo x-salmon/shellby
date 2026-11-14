@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="painter.css">
 <link rel="stylesheet" href="stickers.css">
 <link rel="stylesheet" href="together.css">
+<link rel="stylesheet" href="us-road.css">
 <link rel="stylesheet" href="bugdex.css">
 <link rel="stylesheet" href="bugdex-battle.css">
 <link rel="stylesheet" href="tide.css">
@@ -1238,12 +1239,12 @@
     <!-- Tide events (tide.js, src/main/events.js): the event going on, or the next one. -->
     <section class="ev-banner" data-ev-banner="us" hidden aria-label="Tide event"></section>
     <!-- Your beach, a scene that only grows: one canvas, and the buttons over it are what you can point at (and tab to). He's on it, to pet. -->
-    <section class="us-hero" id="usHero" aria-labelledby="usLevelName">
+    <section class="us-hero" id="usHero" aria-labelledby="usTitle">
       <div class="bc-stage" id="bcStage" data-time="night">
         <canvas class="bc-canvas" id="bcCanvas" role="img" aria-label="Your beach"></canvas>
         <div class="bc-hits" id="bcHits" role="group" aria-label="On the beach"></div>
         <div class="bc-title">
-          <h3 id="usLevelName"></h3>
+          <h3 id="usTitle"></h3>
           <p class="bc-sub" id="usSub"></p>
         </div>
         <div class="bc-empty" id="bcEmpty" hidden>
@@ -1258,75 +1259,60 @@
       </div>
       <p class="sr-only" id="bcLive" aria-live="polite"></p>
       <div class="bc-detail" id="bcDetail" hidden aria-live="polite"></div>
-      <div class="us-bond">
-        <ol class="us-path" id="usPath" role="progressbar" aria-label="How close you are" aria-valuemin="0" aria-valuemax="100"></ol>
-        <p class="us-next" id="usNext"></p>
-      </div>
-      <p class="us-temper" id="usTemper"></p>
     </section>
 
-    <section class="us-sec us-play" aria-labelledby="usPlayTitle">
-      <div class="us-h"><h3 id="usPlayTitle">Play with him</h3><span class="us-h-meta">Right-click him on the desktop for these too</span></div>
-      <div class="us-games">
-        <button type="button" class="us-game" data-play="hide" data-hue="glass"><span class="us-game-icon" aria-hidden="true">🙈</span><b>Hide and seek</b><span class="us-game-stat" id="usStatHide"></span></button>
-        <button type="button" class="us-game" data-play="fetch" data-hue="amber"><span class="us-game-icon" aria-hidden="true">🎾</span><b>Fetch</b><span class="us-game-stat" id="usStatFetch"></span></button>
-        <button type="button" class="us-game" data-play="dig" data-hue="sand"><span class="us-game-icon" aria-hidden="true">⛏️</span><b>Dig for treasure</b><span class="us-game-stat" id="usStatDig"></span></button>
-      </div>
-      <button type="button" class="btn ghost us-stop" data-play="stop" hidden>Stop playing</button>
+    <!-- The road (us-road.js, src/main/bond.js stagesOf): a stage per level, each with what it opened and what you did
+         while you were there. Where you are now is the big one, with today's ways to get closer. Across at full width, down in the panel. -->
+    <section class="us-road-wrap" aria-labelledby="usRoadTitle">
+      <h3 class="sr-only" id="usRoadTitle">How close you are</h3>
+      <ol class="us-road" id="usRoad"></ol>
     </section>
 
-    <section class="us-sec" aria-labelledby="bcKeyTitle">
-      <div class="us-h"><h3 id="bcKeyTitle">How your beach grows</h3><span class="us-h-meta" id="bcSub"></span></div>
-      <p class="us-lede">Nothing on it ever washes away.</p>
-      <ul class="bc-key" id="bcKey"></ul>
-    </section>
+    <!-- What you keep, quieter, under the road. -->
+    <div class="us-keep">
+      <section class="us-sec us-scenes-sec" aria-labelledby="usScenesTitle">
+        <div class="us-h"><h3 id="usScenesTitle">His little scenes</h3><span class="us-h-meta" id="usScenesCount"></span></div>
+        <p class="us-lede">What he gets up to when nothing's happening. Some only at night, at the weekend, or while you play music.</p>
+        <ul class="us-scenes" id="usScenes"></ul>
+      </section>
 
-    <section class="us-sec" aria-labelledby="usUnlocksTitle">
-      <div class="us-h"><h3 id="usUnlocksTitle">As you get closer</h3><span class="us-h-meta">Your bond never goes back down</span></div>
-      <ul class="us-unlocks" id="usUnlocks"></ul>
-    </section>
+      <section class="us-sec us-clutch" id="usClutch" hidden aria-labelledby="usClutchTitle">
+        <div class="us-h"><h3 id="usClutchTitle">Eggs and the clutch</h3><span class="us-h-meta" id="usClutchMeta"></span></div>
+        <p class="us-lede">He can lay an egg for someone who doesn't have Shellby yet. They install it, paste the code, and it hatches into a baby crab you both keep. You become friends, too.</p>
+        <div id="usEggs"></div>
+        <ul class="eg-babies" id="usBabies" aria-label="The clutch"></ul>
+        <div id="usHatchRow">
+          <form class="row wrap eg-hatch" id="usHatchForm">
+            <input type="text" class="field" id="usHatchInput" placeholder="EGG-…" aria-label="Egg code" spellcheck="false" autocomplete="off" maxlength="300">
+            <button type="submit" class="btn slim-btn" id="usHatchGo">Hatch it</button>
+          </form>
+          <p class="small muted" id="usHatchNote"></p>
+        </div>
+      </section>
 
-    <section class="us-sec us-birthday" aria-labelledby="usBdTitle">
-      <div class="us-h"><h3 id="usBdTitle">Your birthday</h3><span class="us-h-meta us-bd-when" id="usBdWhen"></span></div>
-      <p class="us-lede">He'll make a fuss on the day and dig up something you can't find any other way. It stays on this PC.</p>
-      <div class="row wrap us-bd-row">
-        <select class="field slim" id="usBdMonth" aria-label="Month"></select>
-        <select class="field slim" id="usBdDay" aria-label="Day"></select>
-        <button type="button" class="btn slim-btn" id="usBdSave">Save</button>
-        <button type="button" class="btn ghost slim-btn" id="usBdForget" hidden>Forget it</button>
-      </div>
-    </section>
+      <section class="us-sec us-medals" id="usMedals" hidden aria-labelledby="usMedalsTitle">
+        <div class="us-h"><h3 id="usMedalsTitle">Tide event medals</h3><span class="us-h-meta" id="usMedalCount"></span></div>
+        <p class="us-lede">One for each tide event you finished while it was on. A year's medal never comes back.</p>
+        <ul class="ev-medals" id="usMedalList"></ul>
+      </section>
 
-    <section class="us-sec" aria-labelledby="usScenesTitle">
-      <div class="us-h"><h3 id="usScenesTitle">His little scenes</h3><span class="us-h-meta" id="usScenesCount"></span></div>
-      <p class="us-lede">What he gets up to when nothing's happening. Some only at night, at the weekend, or while you play music.</p>
-      <ul class="us-scenes" id="usScenes"></ul>
-    </section>
+      <section class="us-sec us-birthday" aria-labelledby="usBdTitle">
+        <div class="us-h"><h3 id="usBdTitle">Your birthday</h3><span class="us-h-meta us-bd-when" id="usBdWhen"></span></div>
+        <p class="us-lede">He'll make a fuss on the day and dig up something you can't find any other way. It stays on this PC.</p>
+        <div class="row wrap us-bd-row">
+          <select class="field slim" id="usBdMonth" aria-label="Month"></select>
+          <select class="field slim" id="usBdDay" aria-label="Day"></select>
+          <button type="button" class="btn slim-btn" id="usBdSave">Save</button>
+          <button type="button" class="btn ghost slim-btn" id="usBdForget" hidden>Forget it</button>
+        </div>
+      </section>
 
-    <section class="us-sec us-clutch" id="usClutch" hidden aria-labelledby="usClutchTitle">
-      <div class="us-h"><h3 id="usClutchTitle">Eggs and the clutch</h3><span class="us-h-meta" id="usClutchMeta"></span></div>
-      <p class="us-lede">He can lay an egg for someone who doesn't have Shellby yet. They install it, paste the code, and it hatches into a baby crab you both keep. You become friends, too.</p>
-      <div id="usEggs"></div>
-      <ul class="eg-babies" id="usBabies" aria-label="The clutch"></ul>
-      <div id="usHatchRow">
-        <form class="row wrap eg-hatch" id="usHatchForm">
-          <input type="text" class="field" id="usHatchInput" placeholder="EGG-…" aria-label="Egg code" spellcheck="false" autocomplete="off" maxlength="300">
-          <button type="submit" class="btn slim-btn" id="usHatchGo">Hatch it</button>
-        </form>
-        <p class="small muted" id="usHatchNote"></p>
-      </div>
-    </section>
-
-    <section class="us-sec us-medals" id="usMedals" hidden aria-labelledby="usMedalsTitle">
-      <div class="us-h"><h3 id="usMedalsTitle">Tide event medals</h3><span class="us-h-meta" id="usMedalCount"></span></div>
-      <p class="us-lede">One for each tide event you finished while it was on. A year's medal never comes back.</p>
-      <ul class="ev-medals" id="usMedalList"></ul>
-    </section>
-
-    <section class="us-sec" aria-labelledby="usStoryTitle">
-      <div class="us-h"><h3 id="usStoryTitle">Our story</h3><span class="us-h-meta">Every so often he brings one up</span></div>
-      <ol class="us-story" id="usStory"></ol>
-    </section>
+      <details class="us-sec us-key">
+        <summary class="us-h"><h3 id="bcKeyTitle">How your beach grows</h3><span class="us-h-meta" id="bcSub"></span></summary>
+        <p class="us-lede">Nothing on it ever washes away.</p>
+        <ul class="bc-key" id="bcKey"></ul>
+      </details>
+    </div>
   </main>
 
 
@@ -3234,6 +3220,7 @@
 <script src="painter.js"></script>
 <script src="stickers.js"></script>
 <script src="crew.js"></script>
+<script src="us-road.js"></script>
 <script src="together.js"></script>
 <script src="bugdex.js"></script>
 <script src="bugdex-battle.js"></script>

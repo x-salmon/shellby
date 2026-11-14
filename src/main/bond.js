@@ -88,7 +88,8 @@ const MEMORIES = Object.freeze({
 const FIRSTS = new Set(Object.keys(MEMORIES).filter(k => MEMORIES[k].first));
 
 // Newest first, as the journal is kept. Firsts always stay (there are only a
-// handful, each written once, oldest copy kept); the rest stop at JOURNAL_MAX.
+// handful, each written once, oldest copy kept), and so do level-ups (five at
+// most, and they date the Us road); the rest stop at JOURNAL_MAX.
 function trim(journal) {
   const seen = new Set();
   let kept = 0;
@@ -98,7 +99,7 @@ function trim(journal) {
     if (FIRSTS.has(e.kind)) { if (!seen.has(e.kind)) { seen.add(e.kind); out.push(e); } } else out.push(e);
   }
   out.reverse();
-  return out.filter(e => FIRSTS.has(e.kind) || ++kept <= JOURNAL_MAX);
+  return out.filter(e => FIRSTS.has(e.kind) || e.kind === 'level' || ++kept <= JOURNAL_MAX);
 }
 
 const fmtTime = ms => { const s = Math.max(0, Math.round((ms || 0) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -304,12 +305,53 @@ function recall(stateIn, now, rand = Math.random, { throws = 0 } = {}) {
   return { text: pick.text, state: { ...state, recalled: [...state.recalled, pick.at].slice(-12) } };
 }
 
+const PACE_AFTER_DAYS = 7; // a week together before "at your pace" means anything
+
+// The road on the Us page: one stage per level, with when you got there (the
+// day he moved in, then each level-up in the journal; a level skipped in one
+// jump has none), what it opened, and the moments from while you were at it.
+function stagesOf(state, lvl, memories) {
+  const reachedAt = LEVELS.map((l, i) => {
+    if (i === 0) return state.hatchedAt || null;
+    if (i > lvl.index) return null;
+    const ups = memories.filter(m => m.kind === 'level' && m.data?.name === l.name).map(m => m.at);
+    return ups.length ? Math.min(...ups) : null;
+  });
+  // The last stage you'd reached by then, among the ones with a date.
+  const stageAt = t => reachedAt.reduce((at, r, i) => (r !== null && r <= t && i <= lvl.index ? i : at), 0);
+  const kept = memories.filter(m => m.kind !== 'level').sort((a, b) => b.at - a.at);
+  return LEVELS.map((l, i) => ({
+    index: i, name: l.name, icon: l.icon, at: l.at,
+    state: i < lvl.index ? 'past' : i === lvl.index ? 'here' : 'ahead',
+    reachedAt: reachedAt[i],
+    unlocks: UNLOCKS.filter(u => u.level === i).map(u => ({ text: u.text, open: lvl.index >= i })),
+    memories: kept.filter(m => stageAt(m.at) === i).map(m => ({ kind: m.kind, at: m.at, icon: m.icon, text: m.text })),
+  }));
+}
+
+// Today's ways to get closer: what each is worth and how much of its cap is used.
+function earnToday(state, now) {
+  const today = state.today.date === dayKey(now) ? state.today : {};
+  return Object.fromEntries(Object.entries(EARN).map(([k, r]) => [k, { points: r.points, perDay: 'perDay' in r ? r.perDay : null, today: today[k] || 0 }]));
+}
+
+// Days to the next level at the rate you've kept so far, or null.
+function paceOf(state, lvl) {
+  if (lvl.next === null || state.days < PACE_AFTER_DAYS || !state.points) return null;
+  const perDay = state.points / state.days;
+  return { perDay: Math.round(perDay * 10) / 10, days: Math.ceil((lvl.next - lvl.points) / perDay) };
+}
+
 /** Everything the Us page shows. */
 function view(stateIn, now = Date.now()) {
   const state = normalize(stateIn);
   const lvl = levelFor(state.points);
   const nextMilestone = DAY_MILESTONES.find(n => n > state.days) || null;
+  const memories = state.journal.map(e => ({ kind: e.kind, at: e.at, data: e.data, icon: MEMORIES[e.kind].icon, text: MEMORIES[e.kind].text(e.data) }));
   return {
+    stages: stagesOf(state, lvl, memories),
+    earn: earnToday(state, now),
+    pace: paceOf(state, lvl),
     level: lvl,
     levels: LEVELS.map((l, i) => ({ ...l, index: i, reached: i <= lvl.index })),
     unlocks: UNLOCKS.map(u => ({ ...u, open: lvl.index >= u.level, levelName: LEVELS[u.level].name })),

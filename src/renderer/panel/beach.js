@@ -13,6 +13,8 @@
   const P = SB.beachPaint;
   const VIEW = 'us';        // the screen it's on
   const ART = 3;            // css px per art pixel, rounded to whole device pixels
+  const ART_WIDE = [[2000, 5], [1300, 4]]; // ...and bigger on a wide panel, so a full screen isn't a thin strip
+  const ROOM_MIN = 48;      // art px of bare sand past everything before it says there's room for more
   const FPS = 12;           // the pixel world moves in steps, like the crab
   const RISE_MS = 1100;     // one castle coming up out of the sand
   const RISE_GAP = 420;     // ...and the next one starting
@@ -79,9 +81,9 @@
 
   function size() {
     const dpr = window.devicePixelRatio || 1;
-    K = Math.max(2, Math.round(ART * dpr));
-    u = K / dpr;
     const cssW = stage.clientWidth || 420;
+    K = Math.max(2, Math.round((ART_WIDE.find(([at]) => cssW >= at)?.[1] ?? ART) * dpr));
+    u = K / dpr;
     const H = v?.world.height || 100;
     canvas.width = Math.round(cssW * dpr);
     canvas.height = H * K;
@@ -240,8 +242,20 @@
       'aria-label': it.label,
       'aria-pressed': it.kind === 'crab' ? null : String(selected?.kind === it.kind && selected.id === it.id),
       dataset: { name: it.name, kind: it.kind, id: it.id, x: String(it.x), w: String(it.w) },
-    })), h('span', { class: 'bc-tag', id: 'bcTag', 'aria-hidden': 'true', hidden: true }));
+    })), ...[room()].filter(Boolean), h('span', { class: 'bc-tag', id: 'bcTag', 'aria-hidden': 'true', hidden: true }));
     if (had?.kind) hitFor({ kind: had.kind, id: had.id })?.focus({ preventScroll: true });
+  }
+
+  // Bare sand past the newest castle, on a beach wider than what's on it:
+  // where the next one goes. (No castles yet says so on its own, bcEmpty.)
+  function room() {
+    const spare = scene().paintWidth - v.world.width;
+    if (!v.castles.length || spare < ROOM_MIN) return null;
+    const w = Math.min(120, spare - 16);
+    return h('span', {
+      class: 'bc-room', 'aria-hidden': 'true', text: 'Room for the next one. Ship something and he builds it here.',
+      style: `left:${(v.world.width + 6) * u}px;top:${62 * u}px;width:${w * u}px;height:${30 * u}px`,
+    });
   }
 
   function tag(btn) {
@@ -647,6 +661,6 @@
   });
 
   SB.beachCard = { render: snapshot, share };
-  SB.beachScene = { open, refresh };
+  SB.beachScene = { open, refresh, pet };
   api.getBeach().then(apply);
 })();

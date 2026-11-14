@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Us, concept 2: postcard and logbook</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  main { display: grid; grid-template-columns: 1fr 820px; gap: 48px; padding: 44px 64px 40px; }
+  .left { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
+
+  .head { display: flex; align-items: flex-end; gap: 28px; }
+  .head h1 { font: 500 60px/1 var(--font-pixel); }
+  .head .sub { font-size: 20px; color: var(--sand-dim); padding-bottom: 6px; }
+  .head .sub b { color: var(--sand); }
+  .head .btn { margin-left: auto; }
+
+  /* The postcard: the beach, framed, with its stamp */
+  .card { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); }
+  .stamp { position: absolute; right: 26px; top: 24px; width: 132px; padding: 12px 10px 10px; text-align: center;
+    background: var(--sand); color: #2b211a; border-radius: 4px; transform: rotate(4deg);
+    outline: 3px dashed rgba(43, 33, 26, .25); outline-offset: -8px; box-shadow: 0 8px 0 rgba(0, 0, 0, .25); }
+  .stamp .emoji { font-size: 38px; display: block; }
+  .stamp b { display: block; font: 500 19px/1.1 var(--font-pixel); margin-top: 4px; }
+  .stamp small { font-size: 13px; color: #6a5d4c; }
+  .temper { position: absolute; left: 24px; top: 22px; display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px 9px 12px;
+    border-radius: 22px; background: rgba(5, 13, 23, .7); font-size: 17px; }
+  .temper .emoji { font-size: 22px; }
+
+  /* How close you are: one line, named stops, what the next one brings */
+  .bond { display: grid; grid-template-columns: 1fr 360px; gap: 40px; align-items: center; }
+  .track { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); }
+  .track::before { content: ""; position: absolute; left: 8.33%; right: 8.33%; top: 23px; height: 4px; background: var(--reef-3); border-radius: 2px; }
+  .track::after { content: ""; position: absolute; left: 8.33%; width: calc(83.33% * .87); top: 23px; height: 4px; background: #ff8fab; border-radius: 2px; }
+  .stop { position: relative; z-index: 1; display: grid; justify-items: center; gap: 8px; font-size: 16px; color: var(--sand-dim); }
+  .stop i { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); border: 3px solid #ff8fab; font-size: 22px; font-style: normal; }
+  .stop.here { color: var(--sand); font-weight: 700; }
+  .stop.here i { box-shadow: 0 0 0 7px rgba(255, 143, 171, .22); }
+  .stop.ahead i { border-color: var(--line); filter: grayscale(1); opacity: .6; }
+  .next { padding: 18px 22px; border-radius: 14px; background: var(--reef); border: 1px solid var(--line); }
+  .next b { font-size: 20px; }
+  .next p { font-size: 16px; color: var(--sand-dim); margin-top: 4px; }
+
+  /* Play */
+  .play { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 18px; }
+  .tile { display: grid; grid-template-columns: 56px 1fr; grid-template-rows: auto auto; column-gap: 16px; align-items: center; text-align: left;
+    padding: 20px 22px; border-radius: 14px; background: var(--reef); border: 1px solid var(--line); }
+  .tile .emoji { grid-row: 1 / 3; font-size: 40px; text-align: center; }
+  .tile b { font-size: 21px; }
+  .tile span:last-child { font-size: 15px; color: var(--sand-faint); }
+  .tile.pet { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+  .tile.pet span:last-child { color: #6b2a17; }
+  .tile.off { opacity: .55; }
+
+  /* The logbook: one place for everything you keep */
+  .log { display: flex; flex-direction: column; min-height: 0; border-radius: 16px; background: var(--ink); border: 1px solid var(--line); overflow: hidden; }
+  .log header { padding: 30px 32px 0; }
+  .log h2 { font: 500 34px/1 var(--font-pixel); }
+  .tabs { display: flex; gap: 30px; margin-top: 24px; border-bottom: 1px solid var(--line); }
+  .tabs span { padding: 0 0 14px; font-weight: 700; font-size: 17px; color: var(--sand-dim); border-bottom: 3px solid transparent; margin-bottom: -1px; }
+  .tabs span.on { color: var(--sand); border-color: var(--glass); }
+  .tabs span i { font-style: normal; font-weight: 400; color: var(--sand-faint); margin-left: 6px; }
+  .log-body { flex: 1; padding: 24px 32px; overflow: hidden; }
+  .lede { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+  .lede p { font-size: 17px; color: var(--sand-dim); }
+  .meter { width: 180px; height: 8px; border-radius: 4px; background: var(--reef-3); overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 45%; background: var(--glass); }
+  .scenes { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  .scene { display: flex; align-items: center; gap: 14px; padding: 12px 4px; border-bottom: 1px solid var(--line-soft); font-size: 17px; }
+  .scene .pic { width: 48px; height: 44px; font-size: 24px; flex: none; border-radius: 6px; display: grid; place-items: center; background: #050d17; overflow: hidden; }
+  .scene.locked { color: var(--sand-faint); }
+  .scene.locked .pic { background: var(--reef); font: 500 20px var(--font-pixel); color: var(--sand-faint-deco); }
+  .scene.new span:last-child { color: var(--glass); }
+  .scene small { display: block; font-size: 14px; color: var(--sand-faint); }
+  .log footer { display: flex; gap: 12px; align-items: center; padding: 18px 32px; border-top: 1px solid var(--line); font-size: 16px; color: var(--sand-dim); }
+  .log footer .emoji { font-size: 22px; }
+  .log footer .grow { flex: 1; }
+</style>
+</head>
+<body>
+<main>
+  <section class="left">
+    <div class="head">
+      <h1>Best friends</h1>
+      <p class="sub"><b>187 days</b> together, since 10 May</p>
+      <button class="btn ghost">Share a snapshot</button>
+    </div>
+
+    <div class="card">
+      <canvas id="b" data-beach='{"k":8,"from":66,"cols":195,"top":4,"rows":96,"time":"dusk","orbAt":110}'></canvas>
+      <span class="temper"><span class="emoji">🌞</span>Chipper: delighted by everything</span>
+      <div class="stamp"><span class="emoji">💞</span><b>Best friends</b><small>since 9 Nov</small></div>
+    </div>
+
+    <div class="bond">
+      <ol class="track" aria-label="How close you are">
+        <li class="stop"><i class="emoji">🥚</i>New friends</li>
+        <li class="stop"><i class="emoji">🐚</i>Pals</li>
+        <li class="stop"><i class="emoji">🦀</i>Buddies</li>
+        <li class="stop"><i class="emoji">💛</i>Close friends</li>
+        <li class="stop here"><i class="emoji">💞</i>Best friends</li>
+        <li class="stop ahead"><i class="emoji">🌟</i>Inseparable</li>
+      </ol>
+      <div class="next"><b>176 points to Inseparable</b><p>Then he leaves golden hearts when you pet him.</p></div>
+    </div>
+
+    <div class="play">
+      <button class="tile pet"><span class="emoji">♥</span><b>Pet him</b><span>3 of 10 pets count today</span></button>
+      <button class="tile"><span class="emoji">🙈</span><b>Hide and seek</b><span>Found him 23 times, best 0:41</span></button>
+      <button class="tile"><span class="emoji">🎾</span><b>Fetch</b><span>212 fetches, longest 1,840 px</span></button>
+      <button class="tile off"><span class="emoji">⛏️</span><b>Dig</b><span>He can dig again in 2h 10m</span></button>
+    </div>
+  </section>
+
+  <aside class="log" aria-label="Logbook">
+    <header>
+      <h2>Logbook</h2>
+      <nav class="tabs"><span>Story<i>48</i></span><span class="on">Scenes<i>14 of 31</i></span><span>Medals<i>3</i></span><span>Clutch<i>2</i></span></nav>
+    </header>
+    <div class="log-body">
+      <div class="lede"><p>What he gets up to when nothing's happening.</p><span class="meter"><i></i></span></div>
+      <ul class="scenes">
+        <li class="scene new"><span class="pic emoji">🤹</span><span>Juggles pebbles<small>New, caught tonight</small></span></li>
+        <li class="scene"><span class="pic emoji">🌠</span><span>Watches the stars<small>Caught 6 times</small></span></li>
+        <li class="scene"><span class="pic emoji">🏰</span><span>Builds a sandcastle<small>Caught 11 times</small></span></li>
+        <li class="scene"><span class="pic emoji">🖱️</span><span>Pounces on your cursor<small>Caught 9 times</small></span></li>
+        <li class="scene"><span class="pic emoji">💧</span><span>Blows bubbles<small>Caught 4 times</small></span></li>
+        <li class="scene"><span class="pic emoji">🎸</span><span>Plays air guitar<small>Caught twice</small></span></li>
+        <li class="scene"><span class="pic emoji">💗</span><span>Draws you a heart<small>Caught 3 times</small></span></li>
+        <li class="scene"><span class="pic emoji">😮</span><span>Gets the hiccups<small>Caught once</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Only at the weekend, in the sun</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Only while you play music</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Only on a Monday morning</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Once you're Inseparable</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Only in winter</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Only on a Friday</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Only during the day</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Only at Halloween</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>He's a bit too chipper for this one</small></span></li>
+        <li class="scene locked"><span class="pic">?</span><span>Not caught yet<small>Only at night</small></span></li>
+      </ul>
+    </div>
+    <footer><span class="emoji">🎂</span><span class="grow">Your birthday: 24 December, in 41 days</span><button class="btn small ghost">Change</button></footer>
+  </aside>
+</main>
+<p class="caption">Concept 2, postcard and logbook: what you do on the left, everything you keep in one tabbed book on the right</p>
+<script src="beach-data.js"></script>
+<script>window.SB = {};</script>
+<script src="../../src/renderer/shared/sprite.js"></script>
+<script src="../../src/renderer/panel/beach-paint.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>
