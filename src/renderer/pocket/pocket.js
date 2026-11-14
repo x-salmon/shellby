@@ -714,8 +714,9 @@
       pages: ev => Pages.onShelfEvent(ev),
       live(on) {
         S.live = on;
-        // Back: what was written while the PC was away goes now.
-        if (on) Later.flush();
+        // Back: what was written while the PC was away goes now, and the shelf is asked
+        // for again (a cold start asks before the stream is up, and gets only the cache).
+        if (on) { Later.flush(); Pages.loadShelf(); }
         document.body.classList.toggle('offline-mode', !on);
         refresh();
       },
