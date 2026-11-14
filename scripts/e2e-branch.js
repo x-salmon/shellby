@@ -58,6 +58,14 @@ git('commit', '-qm', 'init');
     const send = text => ev(`SB.send(${JSON.stringify(text)}).then(() => true)`);
     const idle = () => until('!SB.activeTab().busy', 15000);
     const lastReply = () => ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant')].at(-1)?.textContent || ''");
+    // Send and wait for its reply: a new answer AND an idle tab. idle() alone can read the tab
+    // in the beat before the turn starts, and lastReply() then returns the previous answer.
+    const replyCount = "SB.activeTab().el.querySelectorAll('.msg.assistant').length";
+    const turn = async text => {
+      const before = await ev(replyCount);
+      await send(text);
+      return until(`${replyCount} > ${before} && !SB.activeTab().busy`, 15000);
+    };
     const active = () => ev('SB.state.activeTab');
     const menuClick = label => ev(`(b => { if (b) setTimeout(() => b.click(), 0); return !!b; })([...SB.$('rewindMenu').querySelectorAll('.menu-item')].find(b => b.textContent.includes(${JSON.stringify(label)}) && !b.disabled))`);
     const entry = tabId => ev(`shellby.listSessions().then(l => l.find(s => s.id === ${JSON.stringify(tabId)}) || null)`);
@@ -109,26 +117,21 @@ git('commit', '-qm', 'init');
 
     // Its first message: Claude hears where it is now, and resumes as a fork.
     await ev("SB.$('input').value = ''");
-    await send('hello from the branch');
-    await idle();
+    await turn('hello from the branch');
     const replies = await ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant')].map(e => e.textContent).join('\\n')");
     check(replies.includes('noted: Shellby has branched this conversation') && replies.includes(a.worktree.path), 'Claude is told it is in a new copy, and where, ahead of the message');
     check((await lastReply()).startsWith('echo: hello from the branch ('), '...and gets the message exactly as typed');
-    await send('args');
-    await idle();
+    await turn('args');
     const args = await lastReply();
     check(/--resume-session-at=uuid-/.test(args) && args.includes('--fork-session'), 'Claude Code resumed up to the branch point, as a fork');
-    await send('more');
-    await idle();
+    await turn('more');
     check(await ev("![...SB.activeTab().el.querySelectorAll('.msg.assistant')].slice(-1)[0].textContent.includes('noted:')") && (await lastReply()).startsWith('echo: more ('), 'that note only goes once');
 
     // The fence: its edits can't reach the original's folder; its own copy is fine.
-    await send(`editabs ${path.join(origCopy, 'a.txt')} hacked`);
-    await idle();
+    await turn(`editabs ${path.join(origCopy, 'a.txt')} hacked`);
     check((await lastReply()).startsWith('fenced:'), 'an edit to the original\'s folder is refused, with the reason');
     check(read(path.join(origCopy, 'a.txt')) === 'second', "the original's file was not touched");
-    await send('edit a.txt branch-take');
-    await idle();
+    await turn('edit a.txt branch-take');
     // As above: idle comes a beat before the file settles on a loaded PC.
     for (let i = 0; i < 100 && read(path.join(a.worktree.path, 'a.txt')) !== 'branch-take'; i++) await wait(100);
     check(read(path.join(a.worktree.path, 'a.txt')) === 'branch-take', 'its own edits land in its own copy');
