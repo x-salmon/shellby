@@ -203,7 +203,10 @@ function wireSessions(d) {
         return;
       }
       const win = d.tabWindow(tabId); // the panel, or the conversation's own window (wiring/popouts.js)
-      d.send(win, 'tab:item', { tabId, item });
+      // A turn that ends into a move to its own copy carries on in a turn of Shellby's own: the panel
+      // keeps the tab busy across the gap, so a message typed meanwhile queues instead of being refused.
+      const continues = item.kind === 'result' && !item.interrupted && !!tab.copyWanted;
+      d.send(win, 'tab:item', { tabId, item, continues });
       // The reply as it's written and what you might ask next: only the panel shows them.
       if (item.kind === 'partial' || item.kind === 'next') return;
       d.workflows?.onTabItem(tabId, item);
