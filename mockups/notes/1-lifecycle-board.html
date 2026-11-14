@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notes, concept 1: where each note has got to</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .capture { height: 64px; }
+  .board { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 300px; gap: 0; }
+  .col { display: flex; flex-direction: column; min-height: 0; padding: 0 22px; border-left: 1px solid var(--line-soft); }
+  .col:first-child { padding-left: 0; border-left: 0; }
+  .col-head { display: flex; align-items: baseline; gap: 14px; padding: 6px 0 18px; position: relative; }
+  .col-head h2 { font: 500 26px/1 var(--font-pixel); }
+  .col-head .n { font: 500 26px/1 var(--font-pixel); color: var(--sand-faint-deco); }
+  .col-head .what { margin-left: auto; color: var(--sand-faint); font-size: 15px; }
+  /* the stage arrow: these columns really are a sequence */
+  .col + .col .col-head::before {
+    content: ""; position: absolute; left: -31px; top: 8px; width: 16px; height: 16px;
+    border-top: 2px solid var(--line); border-right: 2px solid var(--line); transform: rotate(45deg);
+    background: var(--abyss);
+  }
+  .cards { display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+  .card {
+    background: var(--reef); border: 1px solid var(--line); border-radius: var(--r-lg);
+    padding: 20px 22px 18px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .card.pinned { border-color: rgba(255,122,92,.55); }
+  .pin-tag { color: var(--coral); font-size: 14px; font-weight: 700; }
+  .card p { font-size: 19px; line-height: 1.45; }
+  .card .answer { border-left: 2px solid var(--glass); padding: 2px 0 2px 14px; color: var(--sand-dim); font-size: 16px; }
+  .card .answer b { color: var(--amber); font-weight: 700; }
+  .meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--sand-faint); font-size: 14px; }
+  .meta .grow { flex: 1; }
+  .next { display: flex; gap: 8px; }
+  .card.dragging { transform: rotate(-1.6deg) translateY(-4px); box-shadow: 0 24px 50px rgba(0,0,0,.55); border-color: var(--coral); }
+  .drop { border: 2px dashed var(--coral); border-radius: var(--r-lg); height: 120px; display: grid; place-items: center; color: var(--coral); font-size: 16px; background: var(--coral-dim); }
+  .running { display: flex; align-items: center; gap: 10px; color: var(--glass); font-size: 15px; }
+  .running .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--glass-dim); overflow: hidden; }
+  .running .bar i { display: block; height: 100%; width: 62%; background: var(--glass); }
+  .done-col .card { background: none; padding: 12px 0; border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; gap: 6px; }
+  .done-col .card p { font-size: 16px; color: var(--sand-dim); text-decoration: line-through; text-decoration-color: var(--sand-faint-deco); }
+  .branch { font: 13px var(--font-mono); color: var(--sand-faint); }
+  .empty-hint { color: var(--sand-faint); font-size: 15px; padding: 10px 2px; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <h1>Notes</h1>
+    <span class="picker"><b>shellby</b> <span class="sub">where you're working</span> <span class="caret">▾</span></span>
+    <span class="spacer"></span>
+    <span class="picker"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg> <span class="sub">Find a note</span> <span class="mono">Ctrl F</span></span>
+    <button class="btn">Ask about the 2 unasked</button>
+  </header>
+
+  <form class="capture">
+    <span class="ph">Something you'd like to do… drop a screenshot here too</span>
+    <div class="tools">
+      <button class="icon-btn" aria-label="Attach a screenshot"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="m21 17-5-5-8 7"/></svg></button>
+      <button class="icon-btn" aria-label="Say it"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    </div>
+    <button class="btn primary">Add note <kbd>Enter</kbd></button>
+  </form>
+
+  <section class="board">
+    <!-- IDEA -->
+    <div class="col">
+      <div class="col-head"><h2>Ideas</h2><span class="n">2</span><span class="what">Not run yet</span></div>
+      <div class="cards">
+        <article class="card pinned">
+          <p>Notes page: let me drag notes to reorder them, and pin the one I want next.</p>
+          <div class="meta"><span class="verdict v-none">Not asked</span><span class="pin-tag">Pinned</span><span class="grow"></span>Added Tue</div>
+          <div class="next"><button class="btn small">Ask</button><button class="btn small">Plan</button><button class="btn small ghost">Build</button></div>
+        </article>
+        <article class="card dragging">
+          <p>Show the winget install command on the download page, with a copy button.</p>
+          <div class="meta"><span class="verdict v-none">Not asked</span><span class="grow"></span>Added Nov 8</div>
+        </article>
+        <div class="empty-hint">Drag a note right to move it along, or use its buttons.</div>
+      </div>
+    </div>
+
+    <!-- ASKED -->
+    <div class="col">
+      <div class="col-head"><h2>Asked</h2><span class="n">3</span><span class="what">Claude has answered</span></div>
+      <div class="cards">
+        <article class="card">
+          <p>I'm already at level 42 and it's been a little over a week. What level should we actually cap at? Should we add a prestige style, like Call of Duty?</p>
+          <div class="answer"><b>Do it differently.</b> Cap the bar at 50 and make Molt the prestige: it resets the bar, keeps every unlock and adds a ring to the shell.</div>
+          <div class="meta"><span class="verdict v-diff">Do it differently</span><span class="grow"></span>Asked Oct 11</div>
+          <div class="next"><button class="btn small">Plan Claude's version</button><button class="btn small ghost">Read the answer</button></div>
+        </article>
+        <article class="card">
+          <p>We have Tank, Us and the Beach. These three feel kind of redundant. What do you think?</p>
+          <div class="answer"><b>Do it differently.</b> Fold the Beach into the Tank as a second scene; Us stays the social screen.</div>
+          <div class="meta"><span class="verdict v-diff">Do it differently</span><span class="grow"></span>Asked Oct 11</div>
+        </article>
+        <article class="card">
+          <p>Should Work mode turn off all the game features? People at work would use this.</p>
+          <div class="answer"><b>Do it differently.</b> A separate "Hide the game" switch, so Work mode keeps meaning quiet.</div>
+          <div class="meta"><span class="verdict v-diff">Do it differently</span><span class="grow"></span>Asked Oct 11</div>
+        </article>
+      </div>
+    </div>
+
+    <!-- PLANNED -->
+    <div class="col">
+      <div class="col-head"><h2>Planned</h2><span class="n">2</span><span class="what">A plan waits for you</span></div>
+      <div class="cards">
+        <div class="drop">Let go to plan it</div>
+        <article class="card">
+          <p>Agent hub: a task board that can hand notes to Codex or Gemini as well as Claude.</p>
+          <div class="meta"><span class="from-claude">From Claude</span><span class="grow"></span>Planned yesterday</div>
+          <span class="branch">shellby/feat-task-board · 6 steps</span>
+          <div class="next"><button class="btn small primary">Review the plan</button></div>
+        </article>
+        <article class="card">
+          <p>Routines: show the next run time on each card, not only in the editor.</p>
+          <div class="running"><span>Planning now</span><span class="bar"><i></i></span></div>
+          <span class="branch">shellby/feat-routine-next-run</span>
+        </article>
+      </div>
+    </div>
+
+    <!-- BUILT -->
+    <div class="col">
+      <div class="col-head"><h2>Built</h2><span class="n">1</span><span class="what">Ready to bring home</span></div>
+      <div class="cards">
+        <article class="card">
+          <p>Bugdex battles: the spider crab wins about 80% of fights. Balance it.</p>
+          <div class="meta"><span class="verdict v-do">Do it</span><span class="grow"></span>Built Nov 9</div>
+          <span class="branch">shellby/fix-bugdex-balance · 4 files · checks passed</span>
+          <div class="next"><button class="btn small primary">Bring it home</button><button class="btn small ghost">See the changes</button></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- DONE -->
+    <div class="col done-col">
+      <div class="col-head"><h2>Done</h2><span class="n">2</span></div>
+      <div class="cards">
+        <article class="card"><p>Helper crab speech sits clear above its head</p><span class="branch">today</span></article>
+        <article class="card"><p>Effort chip shows a dial that reads the level</p><span class="branch">today</span></article>
+      </div>
+    </div>
+  </section>
+</main>
+<div class="caption">Concept 1: lifecycle board</div>
+</body>
+</html>

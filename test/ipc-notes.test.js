@@ -130,3 +130,25 @@ test('Clear done takes the ticked-off notes, and Undo puts them back in place', 
   await call('notes:restore', { scope: GENERAL, removed: r.removed });
   assert.deepEqual(notes.normalize(store.notes).general.map(x => x.id), [b, a]);
 });
+
+test("Plan Claude's version plans from the Ask's answer, as a draft you read first", async () => {
+  const { call, add, store, started, startsIn } = setup();
+  const id = await add(KEY, 'cap the level?');
+  assert.equal((await call('notes:run', { scope: KEY, id, kind: 'plan', version: 'claude' })).ok, false, 'nothing to plan from before Claude has answered');
+  await call('notes:run', { scope: KEY, id, kind: 'ask' });
+  store.notes = notes.markVerdict(store.notes, 'tab1', 'Do it differently\n- cap at 50');
+  const r = await call('notes:run', { scope: KEY, id, kind: 'plan', version: 'claude' });
+  assert.equal(r.ok, true);
+  assert.equal(r.draft, true, "Claude's words wait in the box until you send them");
+  const last = started.at(-1);
+  assert.equal(last.mode, 'plan');
+  assert.match(last.prompt, /cap at 50/);
+  assert.ok(startsIn.includes(r.tabId));
+  // Only Plan takes Claude's version, and only once Claude said to do it differently.
+  assert.equal((await call('notes:run', { scope: KEY, id, kind: 'build', version: 'claude' })).ok, false);
+  const other = await add(KEY, 'add an export');
+  await call('notes:run', { scope: KEY, id: other, kind: 'ask' });
+  store.notes = notes.markVerdict(store.notes, `tab${started.length}`, 'Skip it\n- exists');   // that Ask's tab
+  assert.equal(notes.answerOf(notes.find(store.notes, KEY, other)).verdict, 'skip');
+  assert.equal((await call('notes:run', { scope: KEY, id: other, kind: 'plan', version: 'claude' })).ok, false);
+});

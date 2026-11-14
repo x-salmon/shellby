@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notes, concept 2: read what Claude said, then decide</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .split { flex: 1; min-height: 0; display: grid; grid-template-columns: 820px 1fr; gap: 0;
+    border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--ink); }
+
+  /* ---- left: the list ---- */
+  .list { display: flex; flex-direction: column; border-right: 1px solid var(--line); min-height: 0; }
+  .list .capture { margin: 20px; height: 64px; background: var(--abyss); }
+  .filters { display: flex; gap: 8px; padding: 0 20px 16px; }
+  .chip { height: 34px; padding: 0 14px; border-radius: 17px; border: 1px solid var(--line); font-size: 15px; color: var(--sand-dim); display: inline-flex; align-items: center; gap: 8px; }
+  .chip.on { background: var(--sand); color: var(--abyss); border-color: var(--sand); font-weight: 700; }
+  .chip .c { color: var(--sand-faint); font-weight: 400; }
+  .chip.on .c { color: #5c5546; }
+  .rows { list-style: none; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 26px 1fr auto; gap: 18px; align-items: start; padding: 20px 24px; border-top: 1px solid var(--line-soft); }
+  .row .t { font-size: 18px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .row .sub { margin-top: 8px; display: flex; gap: 12px; align-items: center; color: var(--sand-faint); font-size: 14px; }
+  .row .when { color: var(--sand-faint); font-size: 14px; white-space: nowrap; padding-top: 3px; }
+  .row.sel { background: var(--reef-2); box-shadow: inset 4px 0 0 var(--coral); }
+  .row .check { margin-top: 1px; }
+  .group { padding: 22px 24px 8px; color: var(--sand-faint); font-size: 15px; border-top: 1px solid var(--line-soft); }
+
+  /* ---- right: the open note ---- */
+  .detail { display: grid; grid-template-columns: 1fr 520px; min-height: 0; }
+  .read { padding: 48px 64px; overflow: hidden; display: flex; flex-direction: column; gap: 34px; }
+  .note-title { font-size: 34px; line-height: 1.3; max-width: 30ch; font-weight: 700; letter-spacing: -.005em; }
+  .note-meta { display: flex; gap: 16px; color: var(--sand-faint); font-size: 16px; align-items: center; }
+  .claude { background: var(--reef); border: 1px solid var(--line); border-radius: 18px; padding: 32px 36px; position: relative; max-width: 1000px; }
+  .claude::before { content: ""; position: absolute; left: 44px; top: -11px; width: 20px; height: 20px; background: var(--reef);
+    border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+  .claude .who { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .claude .who b { color: var(--glass); font-size: 17px; }
+  .claude .who span { color: var(--sand-faint); font-size: 15px; }
+  .claude h3 { font: 500 28px/1.2 var(--font-pixel); color: var(--amber); margin-bottom: 14px; }
+  .claude p { font-size: 20px; line-height: 1.6; color: var(--sand); max-width: 68ch; }
+  .claude p + p { margin-top: 14px; }
+  .claude ul { margin: 16px 0 0 0; list-style: none; display: grid; gap: 10px; }
+  .claude li { font-size: 18px; padding-left: 26px; position: relative; color: var(--sand-dim); }
+  .claude li::before { content: ""; position: absolute; left: 4px; top: 11px; width: 8px; height: 8px; background: var(--glass); border-radius: 2px; }
+  .claude .src { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .claude .src span { font: 13px var(--font-mono); color: var(--sand-faint); background: var(--abyss); border-radius: 6px; padding: 5px 10px; }
+
+  .act { display: flex; gap: 14px; align-items: center; }
+  .act .btn { height: 56px; padding: 0 26px; font-size: 18px; }
+  .act .hint { color: var(--sand-faint); font-size: 15px; margin-left: 8px; }
+
+  /* ---- right rail: history, which is a real sequence ---- */
+  .rail { border-left: 1px solid var(--line); padding: 48px 40px; display: flex; flex-direction: column; gap: 40px; background: var(--abyss); }
+  .rail h4 { font: 500 22px/1 var(--font-pixel); margin-bottom: 22px; }
+  .timeline { list-style: none; position: relative; padding-left: 34px; }
+  .timeline::before { content: ""; position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+  .timeline li { position: relative; padding-bottom: 26px; }
+  .timeline li::before { content: ""; position: absolute; left: -32px; top: 6px; width: 14px; height: 14px; border-radius: 50%; background: var(--abyss); border: 2px solid var(--sand-faint); }
+  .timeline li.on::before { border-color: var(--amber); background: var(--amber); }
+  .timeline li.next::before { border-style: dashed; border-color: var(--coral); }
+  .timeline b { display: block; font-size: 17px; }
+  .timeline span { color: var(--sand-faint); font-size: 15px; }
+  .timeline li.next b { color: var(--coral); }
+  .related { display: grid; gap: 12px; }
+  .related a { display: block; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); color: var(--sand-dim); text-decoration: none; font-size: 16px; }
+  .related a small { display: block; color: var(--sand-faint); font-size: 14px; margin-top: 4px; }
+  .keys { margin-top: auto; color: var(--sand-faint); font-size: 14px; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; }
+  .keys kbd { font: 12px var(--font-mono); border: 1px solid var(--line); border-radius: 5px; padding: 2px 8px; color: var(--sand-dim); justify-self: start; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <h1>Notes</h1>
+    <span class="picker"><b>shellby</b> <span class="sub">7 open</span> <span class="caret">▾</span></span>
+    <span class="spacer"></span>
+    <span class="picker"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg> <span class="sub">Find a note</span></span>
+  </header>
+
+  <section class="split">
+    <aside class="list">
+      <form class="capture"><span class="ph">Add a note…</span><button class="btn primary small">Add</button></form>
+      <div class="filters">
+        <span class="chip on">Open <span class="c">7</span></span>
+        <span class="chip">Needs a decision <span class="c">3</span></span>
+        <span class="chip">Not asked <span class="c">2</span></span>
+        <span class="chip">From Claude <span class="c">1</span></span>
+        <span class="chip">Done <span class="c">2</span></span>
+      </div>
+      <ul class="rows">
+        <li class="group">Claude answered. Your move</li>
+        <li class="row sel"><span class="check"></span><div><div class="t">I'm already at level 42 and it's been a little over a week. What level should we actually cap at? Should we add a prestige style?</div><div class="sub"><span class="verdict v-diff">Do it differently</span></div></div><span class="when">Oct 11</span></li>
+        <li class="row"><span class="check"></span><div><div class="t">We have Tank, Us and the Beach. These three feel kind of redundant. What do you think?</div><div class="sub"><span class="verdict v-diff">Do it differently</span></div></div><span class="when">Oct 11</span></li>
+        <li class="row"><span class="check"></span><div><div class="t">Should Work mode turn off all the game features? People at work would use this.</div><div class="sub"><span class="verdict v-diff">Do it differently</span></div></div><span class="when">Oct 11</span></li>
+        <li class="group">Waiting on you to review</li>
+        <li class="row"><span class="check"></span><div><div class="t">Agent hub: a task board that can hand notes to Codex or Gemini as well as Claude.</div><div class="sub"><span class="from-claude">From Claude</span><span>Plan ready</span></div></div><span class="when">Yesterday</span></li>
+        <li class="row"><span class="check"></span><div><div class="t">Bugdex battles: the spider crab wins about 80% of fights. Balance it.</div><div class="sub"><span>Built, checks passed</span></div></div><span class="when">Nov 9</span></li>
+        <li class="group">Not started</li>
+        <li class="row"><span class="check"></span><div><div class="t">Notes page: let me drag notes to reorder them, and pin the one I want next.</div></div><span class="when">Tue</span></li>
+        <li class="row"><span class="check"></span><div><div class="t">Show the winget install command on the download page, with a copy button.</div></div><span class="when">Nov 8</span></li>
+      </ul>
+    </aside>
+
+    <section class="detail">
+      <article class="read">
+        <div>
+          <h2 class="note-title">I'm already at level 42 and it's been a little over a week. What level should we actually cap at? Should we add a prestige style, like Call of Duty?</h2>
+          <div class="note-meta" style="margin-top:18px"><span>You wrote this Oct 11</span><span>Click to edit</span></div>
+        </div>
+
+        <div class="claude">
+          <div class="who"><b>Claude's answer</b><span>read 9 files, changed nothing</span></div>
+          <h3>Do it differently</h3>
+          <p>A cap is right, but 100 is too far: at your pace the bar stops meaning anything by level 60. Cap it at 50 and make Molt the prestige. Molting resets the bar to 1, keeps every unlock, and adds a ring to the shell so the history shows.</p>
+          <ul>
+            <li>The XP curve flattens past 40 already, so 50 lands in about three weeks of daily use.</li>
+            <li>Molt exists as a screen with nothing to do yet. This gives it a job.</li>
+            <li>Rings stack visibly up to five, then turn gold. No separate prestige number to learn.</li>
+          </ul>
+          <div class="src"><span>src/renderer/panel/xp.js</span><span>src/renderer/panel/molt.js</span><span>src/main/levels.js</span></div>
+        </div>
+
+        <div class="act">
+          <button class="btn primary">Plan Claude's version</button>
+          <button class="btn">Plan mine as written</button>
+          <button class="btn ghost">Reply to Claude</button>
+          <span class="hint">Plans run in a copy on their own branch.</span>
+        </div>
+      </article>
+
+      <aside class="rail">
+        <div>
+          <h4>So far</h4>
+          <ol class="timeline">
+            <li><b>Noted</b><span>Oct 11, 9:14 pm</span></li>
+            <li class="on"><b>Asked Claude</b><span>Oct 11, 9:16 pm. Do it differently</span></li>
+            <li class="next"><b>Plan</b><span>Not yet</span></li>
+            <li><b>Build</b><span>Not yet</span></li>
+          </ol>
+        </div>
+        <div>
+          <h4>Touches the same thing</h4>
+          <div class="related">
+            <a href="#">Should Work mode turn off all the game features?<small>Also about the game layer. Plan them together?</small></a>
+            <a href="#">Level 30 reward shows twice <small>Done Sep 28</small></a>
+          </div>
+        </div>
+        <div class="keys">
+          <kbd>J K</kbd><span>Next and previous note</span>
+          <kbd>P</kbd><span>Plan</span>
+          <kbd>A</kbd><span>Ask</span>
+          <kbd>X</kbd><span>Mark as done</span>
+        </div>
+      </aside>
+    </section>
+  </section>
+</main>
+<div class="caption">Concept 2: read and decide</div>
+</body>
+</html>

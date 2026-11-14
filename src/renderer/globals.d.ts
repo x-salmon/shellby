@@ -40,6 +40,7 @@ interface Window {
   ShellbyMarkdown: any;
   ShellbyMermaid: any;
   ShellbyMiniShell: any;
+  ShellbyNotesLogic: any;
   ShellbyOutlookFormat: any;
   ShellbyPanes: any;
   ShellbyPixelGrid: any;
@@ -321,6 +322,8 @@ interface ShellbyPanelExtras {
   showSettingsTab: any;
   // news.js
   news: any;
+  // notes-detail.js
+  noteDetail: any;
   // notes.js
   openNotes: any;
   // onboarding.js

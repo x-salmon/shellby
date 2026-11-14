@@ -1,0 +1,69 @@
+/* Shared base for the Notes mockups: Shellby's own tokens and fonts, scaled
+   for a full-screen 4K panel (2560x1440 CSS px at 150%). */
+@import url("../../src/renderer/shared/tokens.css");
+@import url("../../src/renderer/shared/fonts.css");
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 2560px; height: 1440px; overflow: hidden; }
+body {
+  background: var(--abyss);
+  color: var(--sand);
+  font: 18px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+.frame { height: 1440px; padding: 44px 56px 40px; display: flex; flex-direction: column; gap: 28px; }
+
+/* Screen head: title + list picker, shared by every concept */
+.head { display: flex; align-items: center; gap: 28px; }
+.head h1 { font: 500 44px/1 var(--font-pixel); letter-spacing: .01em; }
+.head .sub { color: var(--sand-dim); font-size: 18px; }
+.head .spacer { flex: 1; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  height: 44px; padding: 0 20px; border-radius: var(--r);
+  background: var(--reef-2); border: 1px solid var(--line); font-weight: 700; font-size: 17px;
+}
+.btn.primary { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+.btn.ghost { background: none; }
+.btn.small { height: 36px; padding: 0 14px; font-size: 15px; }
+.btn kbd { font: 12px var(--font-mono); color: var(--sand-faint); }
+.btn.primary kbd { color: #5a2414; }
+
+.picker {
+  display: inline-flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--ink); font-size: 17px;
+}
+.picker b { font-weight: 700; }
+.picker .caret { color: var(--sand-faint); }
+
+.mono { font-family: var(--font-mono); font-size: 13px; color: var(--sand-faint); }
+
+/* Verdicts: what Claude said when asked */
+.verdict { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px;
+  border-radius: 14px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.verdict::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: currentColor; }
+.v-do { color: var(--glass); background: var(--glass-dim); }
+.v-diff { color: var(--amber); background: rgba(255, 193, 94, .13); }
+.v-skip { color: var(--sand-faint); background: rgba(243, 230, 204, .07); }
+.v-none { color: var(--sand-faint); background: none; border: 1px dashed var(--line); }
+
+.from-claude { color: var(--glass); font-size: 14px; font-weight: 700; }
+
+/* Capture box */
+.capture {
+  display: flex; align-items: center; gap: 16px; padding: 0 12px 0 24px; height: 72px;
+  background: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg);
+}
+.capture .ph { flex: 1; color: var(--sand-faint); font-size: 20px; }
+.capture .tools { display: flex; gap: 6px; }
+.icon-btn { width: 44px; height: 44px; border-radius: var(--r); display: grid; place-items: center; color: var(--sand-dim); }
+.icon-btn:hover { background: var(--reef-2); }
+.icon-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.check { width: 26px; height: 26px; flex: none; border: 2px solid var(--sand-faint); border-radius: 50%; }
+
+/* Mockup caption strip, bottom-right, so screenshots are self-describing */
+.caption { position: fixed; right: 24px; bottom: 16px; font: 13px var(--font-mono); color: var(--sand-faint-deco); }
