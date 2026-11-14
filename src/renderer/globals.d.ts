@@ -587,6 +587,8 @@ interface ShellbyPanelExtras {
   tankPaint: any;
   // tank-render.js
   tankRender: any;
+  // tank-room.js
+  tankRoom: any;
   // tank-tidy.js
   tankTidy: any;
   tankUndo: any;
