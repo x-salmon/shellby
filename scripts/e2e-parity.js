@@ -52,7 +52,8 @@ function makeRepo() {
     const setBox = async text => ev(`(i => { i.focus(); i.value = ${JSON.stringify(text)}; i.setSelectionRange(i.value.length, i.value.length); i.dispatchEvent(new Event('input')); })(SB.$('input'))`);
     const key = async (k, opts = {}) => ev(`SB.$('input').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true, ...${JSON.stringify(opts)} }))`);
     const type = async text => { await setBox(text); await key('Enter'); };
-    const idle = () => until('!SB.activeTab().busy', 15000);
+    // Not idle while a typed message still waits out the merge window (queue-turns.js).
+    const idle = () => until('!SB.activeTab().busy && !SB.activeTab().queue.length', 15000);
     const users = () => ev("JSON.stringify([...SB.activeTab().el.querySelectorAll('.msg.user')].map(e => e.textContent.trim()))").then(JSON.parse);
     const lastReply = () => ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant')].at(-1)?.textContent || ''");
     const file = name => fs.readFileSync(path.join(repo, name), 'utf8').trim();
