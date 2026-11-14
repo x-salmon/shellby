@@ -490,6 +490,8 @@
       <p class="routine-model-suggest" id="routineModelSuggest" role="status" hidden></p>
       <div id="routineMcp"></div>
       <label class="toggle"><input type="checkbox" name="catchUp" checked><span class="switch"></span>If the PC was off, run once when Shellby starts</label>
+      <label class="toggle"><input type="checkbox" name="runNearLimit"><span class="switch"></span>Run even near the limit</label>
+      <p class="muted small">Off, a run due while your 5-hour window is nearly full waits for the reset and runs then, once. The list says it's waiting and when.</p>
       <p class="form-errors" id="routineErrors" role="alert" hidden></p>
       <div class="row end">
         <button type="button" class="btn ghost" id="routineCancel">Cancel</button>
@@ -2271,6 +2273,8 @@
         <p class="muted small">A routine due past that point waits for the reset; one already running stops, and its conversation is kept so you can carry on. Autonomous tabs stop too, but only once you've been away from the PC for 15 minutes. Runs you start by hand aren't held back.</p>
         <label class="toggle"><input type="checkbox" id="holdBigToggle"><span class="switch"></span>Hold big tasks for the reset when I'm close to the limit</label>
         <p class="muted small">Shellby learns what tasks like yours usually take. When a message would carry you past the line (the share you keep, or the limit with the guard off), it waits for the reset instead, with a "Send now" if you change your mind. It needs a few similar tasks to go on first, and it's all worked out on this PC.</p>
+        <label class="toggle"><input type="checkbox" id="mergeSendsToggle"><span class="switch"></span>Send messages typed close together as one turn</label>
+        <p class="muted small">A message waits a moment and a half for company, with a chip above the box saying so, and anything else you type then goes with it as one turn, each message its own paragraph. Messages that pile up behind a running turn go together when it ends, too. Each turn you save is usage you keep. Enter on an empty box or Ctrl+Enter sends now; a /command always goes on its own.</p>
       </section>
     </div>
 
@@ -3184,6 +3188,7 @@
 <script src="turn-rewards.js"></script>
 <script src="lessons.js"></script>
 <script src="tab-logic.js"></script>
+<script src="queue-turns.js"></script>
 <script src="tabs.js"></script>
 <script src="tab-strip.js"></script>
 <script src="tab-panes.js"></script>

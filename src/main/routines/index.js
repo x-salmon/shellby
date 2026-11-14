@@ -189,6 +189,8 @@ function validateRoutine(input, { allowAutonomous = false } = {}) {
   };
   const enabled = bool('enabled', true);
   const catchUp = bool('catchUp', true);
+  // Off (the default), a run due while the 5-hour window is nearly full waits for the reset (pace.js).
+  const runNearLimit = bool('runNearLimit', false);
 
   const createdAt = Number.isFinite(input.createdAt) && input.createdAt > 0 ? input.createdAt : Date.now();
   const lastRunAt = Number.isFinite(input.lastRunAt) && input.lastRunAt >= 0 ? input.lastRunAt : null;
@@ -196,6 +198,7 @@ function validateRoutine(input, { allowAutonomous = false } = {}) {
 
   if (errors.length) return { routine: null, errors };
   const routine = { id, name, prompt, cwd, mode, model, schedule, enabled, catchUp, createdAt, lastRunAt, lastStatus };
+  if (runNearLimit) routine.runNearLimit = true;
   if (servers.list.length) {
     routine.mcp = servers.list;
     if (input.mcpOnly === true) routine.mcpOnly = true;

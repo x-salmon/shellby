@@ -47,6 +47,7 @@ interface Window {
   ShellbyPanes: any;
   ShellbyPixelGrid: any;
   ShellbyProjectsLogic: any;
+  ShellbyQueueTurns: any;
   ShellbyRemoteLogic: any;
   ShellbyReviewLenses: any;
   ShellbyReviewQueue: any;
@@ -523,8 +524,12 @@ interface ShellbyPanelExtras {
   swapPanes: any;
   takeCarry: any;
   // tab-queue.js
+  armMerge: any;
+  clearMerge: any;
   editQueued: any;
+  flushMerge: any;
   handBack: any;
+  isMerging: any;
   onSteered: any;
   onSteering: any;
   onTurnEnded: any;

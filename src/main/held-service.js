@@ -71,7 +71,7 @@ function createHeldQueue(d) {
   function heldView(h) {
     const base = { id: h.id, kind: h.kind, at: h.at, atText: d.clockTime(h.at) };
     if (h.kind === 'message') return { ...base, tabId: h.tabId, text: h.text, attachments: h.attachments };
-    if (h.kind === 'routine') return { ...base, routineId: h.routineId, name: h.name };
+    if (h.kind === 'routine') return { ...base, routineId: h.routineId, name: h.name, why: h.why || null };
     return {
       ...base, name: h.name, prompt: h.prompt, cwd: h.cwd, folder: h.cwd ? path.basename(h.cwd) : null, mode: h.mode, model: h.model || '', when: h.when || 'reset', fromPhone: !!h.fromPhone,
       tabId: h.tabId, running: !!h.tabId && queueWaits.has(h.tabId),

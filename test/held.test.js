@@ -44,6 +44,13 @@ test('a routine remembers whether it was held for you or by you', () => {
   assert.equal(held.hold([], routine({ auto: 'yes' }), NOW).item.auto, false);
 });
 
+test('a routine Shellby held says why; one you held, or an odd reason, carries none', () => {
+  assert.equal(held.hold([], routine({ auto: true, why: 'near' }), NOW).item.why, 'near');
+  assert.equal(held.hold([], routine({ auto: true, why: 'pace' }), NOW).item.why, 'pace');
+  assert.equal('why' in held.hold([], routine({ why: 'near' }), NOW).item, false);
+  assert.equal('why' in held.hold([], routine({ auto: true, why: 'because' }), NOW).item, false);
+});
+
 test('a routine is held once; holding it again keeps the first', () => {
   const a = held.hold([], routine(), NOW);
   const b = held.hold(a.list, routine({ at: RESET + H }), NOW + 1000);

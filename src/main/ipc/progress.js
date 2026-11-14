@@ -6,6 +6,7 @@ const { dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const confirm = require('../confirm');
+const { ID } = require('../ipc-args');
 const recap = require('../recap');
 const { repoOf } = require('../gitinfo');
 const { reviewPrompt, LENSES } = require('../review');
@@ -31,6 +32,11 @@ function registerProgressIpc(ipcMain, d) {
     d.refreshOutlook();
     return d.outlookView();
   });
+  // A routine comes due now, as the scheduler would have it: run, or held near the limit (routines/pace.js).
+  if (d.FORECAST_TEST) ipcMain.handle('dev:routine-due', (_e, id) => {
+    const r = d.routines().find(x => x.id === id);
+    return r ? d.runOrHoldRoutine(r, 'scheduled') : { ok: false, error: 'Routine not found.' };
+  }, [ID]);
   if (d.RECAP_TEST) ipcMain.handle('dev:away', (_e, r = {}) => d.checkAway({ idleMs: Number(r.idleMs) || 0, locked: !!r.locked }));
   ipcMain.handle('streaks:set', (_e, patch = {}) => {
     const s = streaks.normalize(d.config.get('streaks'));
