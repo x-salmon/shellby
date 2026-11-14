@@ -136,7 +136,29 @@ function words(view) {
 }
 
 /**
- * Everything the panel shows: the estimate, the ending, the verdict and the words.
+ * The short forms that sit on and under the button: the share for the button
+ * itself ("~8% of your window"), the line under the box, and the note for the
+ * Ultracode strip ("Runs like this took 5% to 12% … Yours is 54% full.").
+ * view: as view() builds it, before the words.
+ */
+function labels(view) {
+  const share = `~${pctWord(view.pct)}`;
+  const past = view.over ? (view.guardOn && view.line < 100 ? ', past the share you keep' : ', past your limit') : '';
+  const hint = [
+    view.basis === 'history' ? `about ${pctWord(view.pct)} of your 5-hour window` : `a rough guess: about ${pctWord(view.pct)} of your 5-hour window`,
+    Number.isFinite(view.endPct) ? `it would end about ${pctWord(view.endPct)} full${past}` : null,
+    view.resetText ? `resets ${view.resetText}` : null,
+  ].filter(Boolean).join(' · ');
+  const yours = Number.isFinite(view.nowPct) ? ` Yours is ${pctWord(view.nowPct)} full.` : '';
+  const note = view.basis === 'history'
+    ? `Runs like this took ${pctWord(view.low)} to ${pctWord(view.high)} of your 5-hour window before.${yours}`
+    : `Nothing like it has run here yet; a rough guess is ${rangeWord(view.low, view.high)} of your 5-hour window.${yours}`;
+  return { share, label: `${share} of your window`, hint, note };
+}
+
+/**
+ * Everything the panel shows: the estimate, the ending, the verdict, the words
+ * and the short forms for the button (labels()).
  * @param {ReturnType<typeof estimateRun>} est
  * @param {{ over: boolean, line: number, now: number | null, left: number | null, resetsAt: number | null }} advice
  * @param {{ name?: string | null, resetText?: string | null, guardOn?: boolean }} [extra]
@@ -148,7 +170,7 @@ function view(est, advice, { name = null, resetText = null, guardOn = false } = 
     over: !!advice?.over, line: Number.isFinite(advice?.line) ? advice.line : 100, left: Number.isFinite(advice?.left) ? advice.left : null,
     resetsAt: Number.isFinite(advice?.resetsAt) ? advice.resetsAt : null, resetText, name, guardOn: !!guardOn,
   };
-  return { ...v, text: words(v) };
+  return { ...v, text: words(v), ...labels(v) };
 }
 
-module.exports = { fanout, runsOf, estimateRun, ending, words, view, nameOf, KINDS, DEFAULTS, RECENT, FEW, FEW_SLACK, FANOUT_HELPERS };
+module.exports = { fanout, runsOf, estimateRun, ending, words, labels, view, nameOf, KINDS, DEFAULTS, RECENT, FEW, FEW_SLACK, FANOUT_HELPERS };

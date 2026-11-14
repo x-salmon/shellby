@@ -4,7 +4,11 @@
    and sending (src/main/forecast.js, held.js); this only shows it. The same
    banner carries two quieter tips while you type: a cold cache this message
    would pay for, and, for a conversation that hasn't started, a past one
-   that asked much the same (src/main/history/similar.js) or Sonnet. */
+   that asked much the same (src/main/history/similar.js) or Sonnet. The run
+   this message would start (Ultracode on, or several helpers asked for) sits
+   on the Send button itself, with a line under the box saying where your
+   window would end (src/main/usage/runcost.js); only past the limit does it
+   become the banner, with "Send after the reset". */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
@@ -33,6 +37,8 @@
     const tab = SB.activeTab();
     const big = liveEstimate();
     renderCostHint(big);
+    renderSendEstimate(big);
+    renderUltraNote(big);
     // At the limit beats an estimate that this message would go over (or the run it
     // starts would: an Ultracode run, several helpers), which beats a warning, which
     // beats a tip. A warning you closed lets a tip through.
@@ -126,11 +132,6 @@
   function tipFor(e) {
     if (!e || dismissedTip === e.tabId) return null;
     const tab = SB.activeTab();
-    // The run this message starts (Ultracode on, or several helpers asked for): what
-    // such runs have cost here, before it goes. Over the limit it's the warning above instead.
-    if (e.run && !e.run.over) {
-      return { tip: true, cls: 'quiet', key: null, text: e.run.text, actions: [], run: true };
-    }
     // A model switch mid-conversation: each model has a cache of its own.
     if (e.rebuild) {
       return {
@@ -187,14 +188,53 @@
     renderOutlook();
   }
 
+  // The line under the box: what a message like this usually costs, or, for the run
+  // this one would start, a small meter (your window now, and what the run adds)
+  // and where it would end. The whole sentence, range and all, is the tooltip.
   function renderCostHint(e = liveEstimate()) {
     const el = $('costHint');
-    // The run's estimate is the banner's: the hint under the box would say the message's cost twice over.
-    const show = !!e && e.basis !== 'none' && !e.over && !e.run && !SB.isCrabOnly?.();
+    const run = e?.run || null;
+    const show = !!e && (!!run || (e.basis !== 'none' && !e.over)) && !SB.isCrabOnly?.();
     el.hidden = !show;
-    if (!show) { el.textContent = ''; el.removeAttribute('title'); return; }
-    el.textContent = `usually ${aboutPct(e.pct)} of your window`;
-    el.title = `${basisText(e)}. Most land between ${pctText(e.low)} and ${pctText(e.high)}.`;
+    el.classList.toggle('is-run', show && !!run);
+    el.classList.toggle('over', show && !!run?.over);
+    if (!show) { el.replaceChildren(); el.removeAttribute('title'); return; }
+    if (!run) {
+      el.textContent = `usually ${aboutPct(e.pct)} of your window`;
+      el.title = `${basisText(e)}. Most land between ${pctText(e.low)} and ${pctText(e.high)}.`;
+      return;
+    }
+    el.title = run.text;
+    const now = Number.isFinite(run.nowPct) ? Math.min(100, Math.max(0, run.nowPct)) : null;
+    const add = now === null || !Number.isFinite(run.pct) ? 0 : Math.max(0, Math.min(100 - now, run.pct));
+    const meter = now === null ? null : h('span', { class: 'mini', 'aria-hidden': 'true' },
+      h('i', { class: 'now', style: `width: ${now}%` }),
+      h('i', { class: 'add', style: `width: ${add}%` }));
+    el.replaceChildren(...[meter, h('span', { class: 'cost-hint-text', text: run.hint })].filter(Boolean));
+  }
+
+  // The Send button carries the run's share ("Send · ~8% of your window"); past the
+  // limit it turns amber and says so, and the banner above offers the reset.
+  const sendBtn = $('sendBtn');
+  function renderSendEstimate(e = liveEstimate()) {
+    const run = e?.run || null;
+    const show = !!run && !SB.isCrabOnly?.();
+    sendBtn.classList.toggle('wide', show);
+    sendBtn.classList.toggle('over', show && !!run.over);
+    sendBtn.querySelector('.send-label')?.remove();
+    if (!show) { sendBtn.setAttribute('aria-label', 'Send'); return; }
+    const verb = run.over ? 'Send anyway' : 'Send';
+    sendBtn.prepend(h('span', { class: 'send-label' }, verb, h('b', { class: 'pct' }, ` · ${run.share}`, h('span', { class: 'pct-long', text: ' of your window' }))));
+    // As it reads, long form: "Send · ~8% of your window", and the warning when there is one.
+    sendBtn.setAttribute('aria-label', `${verb} · ${run.label}${run.over ? ', past your limit' : ''}`);
+  }
+
+  // The Ultracode strip's right-hand note: what runs like this took before, and where you are.
+  function renderUltraNote(e = liveEstimate()) {
+    const est = $('ultraEst');
+    const run = e?.run?.kind === 'ultracode' ? e.run : null;
+    est.hidden = !run;
+    est.textContent = run ? run.note : '';
   }
 
   function scheduleEstimate() {

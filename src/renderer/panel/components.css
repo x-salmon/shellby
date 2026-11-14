@@ -564,21 +564,65 @@ body:not(.newcomer) .newcomer-only { display: none; }
 .lean-loading.err { color: var(--danger); }
 .lean-wait { min-height: 18px; font: 600 var(--fs-12-5)/18px var(--font-mono); color: var(--glass); font-variant-numeric: tabular-nums; }
 .lean-wait-hint { font-size: var(--fs-11-5); color: var(--sand-faint); }
-.lean-budget { display: grid; gap: 4px; }
-.lean-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
-.lean-seg { flex-basis: 0; min-width: 2px; }
-.lean-key { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
-.lean-seg.is-memory, .lean-key.is-memory { background: var(--amber); }
-.lean-seg.is-plugins, .lean-key.is-plugins { background: var(--coral); }
-.lean-seg.is-skills, .lean-key.is-skills { background: var(--glass); }
-.lean-seg.is-hooks, .lean-key.is-hooks { background: var(--done); }
-.lean-seg.is-rest, .lean-key.is-rest { background: var(--sand-faint-deco); }
 .lean-warn { font-size: var(--fs-12-5); color: var(--amber); }
+/* The bar (lean-bar.js): the setup's parts, one colour each, as one stacked bar, a
+   row per part, and the cards that add the cuts up and explain the cache. One
+   column on the panel; wide, the cards sit beside the rows (toolbox.css). */
+.lean-fc { display: grid; gap: 10px; margin-bottom: 6px; --lilac: #c3b6f2; --sky: #8fb8ff; --leaf: #7bd389; }
+.lean-fc .is-memory { --c: var(--glass); } .lean-fc .is-style { --c: var(--amber); } .lean-fc .is-skills { --c: var(--lilac); }
+.lean-fc .is-mcp { --c: var(--sky); } .lean-fc .is-hooks { --c: var(--coral); } .lean-fc .is-plugins { --c: var(--leaf); } .lean-fc .is-rest { --c: var(--sand-faint-deco); }
+.lean-fc .lean-key { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 2px; background: var(--c, var(--sand-faint-deco)); vertical-align: -1px; }
+.lean-fc h3 { margin: 0; font: 500 var(--fs-16)/1.2 var(--font-pixel); letter-spacing: .01em; color: var(--sand); }
+.lean-fc-before { display: grid; gap: 10px; padding: 14px 14px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--reef); }
+.lean-fc-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.lean-fc-sum { margin: 0; font-size: var(--fs-12); color: var(--sand-dim); line-height: 1.45; }
+.lean-fc-sum b { font: 500 var(--fs-18)/1 var(--font-pixel); color: var(--sand); margin-right: 3px; }
+.lean-fc-bar { display: flex; gap: 2px; height: 22px; border-radius: var(--r-sm); overflow: hidden; }
+.lean-fc-bar i { display: block; flex: var(--g) 1 0; min-width: 3px; position: relative; background: var(--c); container-type: inline-size; }
+.lean-fc-bar i::after { content: attr(data-l); position: absolute; inset: 0; display: grid; place-items: center; padding: 0 4px; font: 600 var(--fs-10-5) var(--font-mono); color: var(--abyss); white-space: nowrap; overflow: hidden; }
+.lean-fc-bar i.is-rest::after { color: var(--sand); }
+/* A segment too narrow for its words shows its colour alone; the legend has the words. */
+@container (max-width: 72px) { .lean-fc-bar i::after { content: none; } }
+.lean-fc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--fs-11-5); color: var(--sand-dim); }
+.lean-fc-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.lean-fc-legend b { color: var(--sand); }
+.lean-parts { list-style: none; margin: 0; padding: 2px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--reef); }
+.lean-part { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; grid-template-areas: "key name tok" ". share share" ". cuts cuts"; gap: 4px 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line-soft); }
+.lean-part:first-child { border-top: 0; }
+.lean-part > .lean-key { grid-area: key; align-self: center; }
+.lean-part-name { grid-area: name; min-width: 0; display: grid; gap: 1px; }
+.lean-part-name b { font-size: var(--fs-13); color: var(--sand); }
+.lean-part-name small { font-size: var(--fs-11); color: var(--sand-faint); overflow-wrap: anywhere; }
+.lean-part-tok { grid-area: tok; font: 500 var(--fs-13) var(--font-mono); color: var(--sand); text-align: right; white-space: nowrap; }
+.lean-part-tok.is-unsized { font: var(--fs-11) var(--font-mono); color: var(--sand-faint); }
+.lean-share { grid-area: share; display: flex; align-items: center; gap: 8px; min-width: 0; font: var(--fs-10-5) var(--font-mono); color: var(--sand-faint); white-space: nowrap; }
+.lean-share .t { flex: 1 1 60px; max-width: 160px; height: 6px; border-radius: 3px; background: var(--reef-2); overflow: hidden; }
+.lean-share .t i { display: block; height: 100%; width: var(--w, 0%); border-radius: 3px; background: var(--c); }
+.lean-part-cuts { grid-area: cuts; display: grid; gap: 6px; min-width: 0; }
+.lean-cut { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.lean-cut-text { min-width: 0; font-size: var(--fs-12); line-height: 1.4; color: var(--sand-dim); }
+.lean-cut.is-none .lean-cut-text { color: var(--sand-faint); }
+.lean-less { color: var(--glass); font: 600 var(--fs-11) var(--font-mono); white-space: nowrap; }
+.lean-cut-btn { flex: none; }
+.lean-fc-side { display: grid; gap: 10px; align-content: start; }
+.lean-take { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--reef-3); border-radius: var(--r); background: var(--reef-2); }
+.lean-take-numbers { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 2px 0; }
+.lean-take-numbers .n { display: block; font: 500 var(--fs-19)/1 var(--font-pixel); color: var(--sand); font-size: 26px; }
+.lean-take-numbers small { display: block; margin-top: 4px; font-size: var(--fs-11); color: var(--sand-dim); }
+.lean-take-numbers .arrow { color: var(--sand-faint); font-size: var(--fs-18); }
+.lean-take-numbers .after .n { color: var(--glass); }
+.lean-take p { margin: 0; font-size: var(--fs-12); line-height: 1.45; color: var(--sand-dim); }
+.lean-take p b { color: var(--sand); }
+.lean-take-btn { height: 36px; }
+.lean-cache-card { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--reef); }
+.lean-cache-card dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: var(--fs-12); line-height: 1.45; }
+.lean-cache-card dt { color: var(--sand-faint); }
+.lean-cache-card dd { margin: 0; color: var(--sand-dim); }
+.lean-cache-card dd b { color: var(--sand); }
 .lean-telemetry { align-items: center; }
 .lean-hot-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 /* What every turn carries, and the one-tap fixes (lean-fixes.js) */
 .lean-kind { flex: none; font: var(--fs-10) var(--font-mono); color: var(--sand-faint); padding: 0 5px; border: 1px solid var(--line-soft); border-radius: 99px; }
-.lean-note { list-style: none; margin: 0; padding: 2px 10px 4px; font-size: var(--fs-11-5); color: var(--sand-faint); }
 .lean-fix .lean-fix-line code, .lean-fix .lean-fix-sugg { white-space: pre-wrap; word-break: break-word; }
 .lean-fix .lean-fix-line code { font-size: var(--fs-11); color: var(--sand-dim); }
 .lean-diff { margin-top: 6px; max-height: 220px; }

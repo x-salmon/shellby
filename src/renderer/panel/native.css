@@ -223,7 +223,12 @@
 .ultra-chip.on { --px: var(--amber); --px-bevel: color-mix(in srgb, var(--amber) 72%, var(--ink)); color: var(--ink); }
 .ultra-chip.on svg { color: var(--ink); }
 .ultra-chip.on:hover { --px: color-mix(in srgb, var(--amber) 88%, var(--sand)); }
-.ultra-note { margin: 0 0 8px; padding: 4px 10px; border-radius: var(--r-sm); background: var(--reef); border: 1px solid var(--line); border-left: 2px solid var(--amber); font-size: var(--fs-12); color: var(--sand-dim); }
+.ultra-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; margin: 0 0 8px; padding: 4px 10px; border-radius: var(--r-sm); background: var(--reef); border: 1px solid var(--line); border-left: 2px solid var(--amber); font-size: var(--fs-12); color: var(--sand-dim); }
+.ultra-note[hidden] { display: none; }
+.ultra-note b { color: var(--coral); }
+/* What runs like this took before (outlook.js renderUltraNote): on the right while there's room. */
+.ultra-note-est { margin-left: auto; font-size: var(--fs-11-5); color: var(--sand-faint); }
+.ultra-note-est[hidden] { display: none; }
 .ultra-card { margin: 6px 0 14px 16px; padding: 8px 11px 9px; border: 1px solid var(--line-soft); border-left: 2px solid var(--amber); border-radius: var(--r-sm); background: var(--ink); font-size: var(--fs-12); color: var(--sand-dim); }
 .ultra-card.status-completed { border-left-color: var(--glass); }
 .ultra-card.status-failed { border-left-color: var(--coral); }
