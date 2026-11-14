@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time, concept 5: the month as a calendar, a picked day as its timesheet lines</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 740px; gap: 40px; }
+  .left { display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+
+  .stats { display: flex; gap: 56px; align-items: flex-end; padding: 0 4px; }
+  .stat b { display: block; font: 700 46px/1 var(--font-body); }
+  .stat span { color: var(--sand-dim); font-size: 17px; }
+  .stats .legend { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--sand-faint); font-size: 15px; }
+  .stats .legend i { width: 26px; height: 18px; border-radius: 4px; background: var(--glass); }
+
+  .cal { flex: 1; display: grid; grid-template-rows: auto repeat(5, 1fr); grid-template-columns: repeat(7, 1fr) 120px; gap: 10px; min-height: 0; }
+  .dow { color: var(--sand-faint); font-size: 16px; padding: 0 4px 2px; }
+  .day { position: relative; border-radius: 12px; padding: 16px 18px; border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--glass) calc(var(--h) * 3.2%), var(--ink)); display: flex; flex-direction: column; }
+  .day .n { font-size: 16px; color: var(--sand-dim); }
+  .day .t { margin-top: auto; font: 700 26px/1 var(--font-body); }
+  .day .mix { display: flex; height: 8px; gap: 2px; margin-top: 12px; border-radius: 4px; overflow: hidden; }
+  .day .mix i { background: var(--pc); }
+  .day.out { background: none; border-style: dashed; border-color: var(--line-soft); }
+  .day.out .n { color: var(--sand-faint-deco); }
+  .day.ahead { background: none; border-color: var(--line-soft); }
+  .day.empty .t { color: var(--sand-faint-deco); font-weight: 400; font-size: 20px; }
+  .day.today { border-color: var(--glass); }
+  .day.today .n { color: var(--glass); font-weight: 700; }
+  .day.sel { box-shadow: 0 0 0 3px var(--coral); border-color: var(--coral); }
+  .day .flag { position: absolute; top: 14px; right: 14px; width: 12px; height: 12px; border-radius: 50%; border: 2px dashed var(--amber); }
+  .wk { display: flex; flex-direction: column; justify-content: center; align-items: flex-end; padding-right: 4px; }
+  .wk b { font-size: 22px; }
+  .wk span { color: var(--sand-faint); font-size: 14px; }
+
+  /* ---- right: the picked day ---- */
+  .dayview { padding: 36px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .dayview .top { display: flex; align-items: baseline; justify-content: space-between; }
+  .dayview h2 { font: 500 34px/1.1 var(--font-pixel); }
+  .dayview .top b { font: 700 34px/1 var(--font-body); }
+  .dayview .sub { color: var(--sand-dim); font-size: 17px; margin-top: -12px; }
+  .line { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 20px 22px; display: grid; gap: 12px; background: var(--abyss); }
+  .line .hd { display: flex; align-items: center; gap: 12px; }
+  .line .hd b { font-size: 20px; }
+  .line .hd small { color: var(--sand-faint); font-size: 15px; }
+  .line .hd .dur { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--ink); }
+  .line .hd .dur span { padding: 6px 12px; font-weight: 700; font-size: 19px; }
+  .line .hd .dur button { width: 34px; height: 36px; color: var(--sand-dim); font-size: 20px; }
+  .line .txt { font-size: 17px; line-height: 1.45; color: var(--sand); padding: 10px 14px; border-radius: var(--r); background: var(--ink); }
+  .line .txt.auto { color: var(--sand-dim); font-style: italic; }
+  .line .meta { display: flex; gap: 16px; flex-wrap: wrap; }
+  .line .meta .src { font-size: 14px; }
+  .adder { border: 1.5px dashed var(--line); border-radius: var(--r-lg); padding: 18px 22px; display: flex; align-items: center; gap: 14px; color: var(--sand-dim); font-size: 17px; }
+  .adder .picker { height: 40px; font-size: 16px; }
+  .dayview .act { display: flex; gap: 12px; margin-top: auto; align-items: center; }
+  .dayview .act .muted { margin-left: auto; font-size: 15px; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="now"><span class="live"></span><b>shellby</b><span class="why">1h 40m today, Claude at work</span></span>
+    <span class="spacer"></span>
+    <span class="picker"><span class="arrows">‹ ›</span><b>November 2026</b><span class="caret">▾</span></span>
+    <button class="btn">Timesheet…</button>
+    <button class="btn ghost">⛑️ Guard my focus</button>
+  </header>
+
+  <section class="body">
+    <div class="left">
+      <div class="stats">
+        <div class="stat"><b>58h 10m</b><span>so far in November</span></div>
+        <div class="stat"><b>23h 45m</b><span>billable, $2,380</span></div>
+        <div class="stat"><b>5h 43m</b><span>on an average workday</span></div>
+        <div class="legend">Lighter to darker: 0 to 9 hours <i style="opacity:.15"></i><i style="opacity:.45"></i><i style="opacity:.8"></i></div>
+      </div>
+      <div class="cal" id="cal"></div>
+    </div>
+
+    <aside class="panel dayview">
+      <div class="top"><h2>Thursday, Nov 12</h2><b>8:20</b></div>
+      <p class="sub">Three projects. This is what each timesheet says for the day.</p>
+
+      <div class="line p1">
+        <div class="hd"><span class="sw"></span><b>shellby</b><small>Your own</small><span class="dur"><button>−</button><span>5:05</span><button>+</button></span></div>
+        <p class="txt auto">feat: merge queue tab badge; fix: notes null under Done; test: e2e for time ranges</p>
+        <div class="meta"><span class="src cl"><i>C</i>3:20</span><span class="src win"><i>W</i>1:45</span><span class="muted" style="font-size:14px">Commit messages until you write a line</span></div>
+      </div>
+
+      <div class="line p2">
+        <div class="hd"><span class="sw"></span><b>booking-app</b><small>Northwind Dental</small><span class="dur"><button>−</button><span>2:45</span><button>+</button></span></div>
+        <p class="txt">Google Calendar sync, booking reminders</p>
+        <div class="meta"><span class="src win"><i>W</i>1:50</span><span class="src cl"><i>C</i>0:40</span><span class="src"><i style="background:var(--glass)">+</i>0:15 by you</span></div>
+      </div>
+
+      <div class="line p4">
+        <div class="hd"><span class="sw"></span><b>label-cloud</b><small>Pike &amp; Co</small><span class="dur"><button>−</button><span>0:30</span><button>+</button></span></div>
+        <p class="txt">Review fixes</p>
+        <div class="meta"><span class="src win"><i>W</i>0:30</span><span class="muted" style="font-size:14px">Sent to Toggl on Nov 13</span></div>
+      </div>
+
+      <div class="adder"><b style="color:var(--glass);white-space:nowrap">+ Add time</b> <span class="picker"><b>Pick a project</b><span class="caret">▾</span></span><span class="picker"><b>0:30</b></span><span class="muted">for a call or a meeting</span></div>
+
+      <div class="act"><button class="btn">Copy the day</button><button class="btn ghost">Move it all to another project…</button><span class="muted">Changes save as you go</span></div>
+    </aside>
+  </section>
+</main>
+<div class="caption">Concept 5: month and day</div>
+<script>
+  // Minutes per project for each day of November 2026 (p1 shellby, p2 booking-app, p3 rack-builder, p4 label-cloud).
+  const DAYS = {
+    2: { p1: 180, p4: 120 }, 3: { p1: 150, p4: 105, p2: 60 }, 4: { p1: 240, p2: 90 }, 5: { p1: 200, p4: 135 },
+    6: { p2: 150, p1: 90 }, 7: { p1: 60 }, 9: { p1: 190, p2: 120, p3: 40 }, 10: { p1: 265, p2: 90, p4: 130 },
+    11: { p1: 170, p4: 180, p3: 75 }, 12: { p1: 305, p2: 165, p4: 30 }, 13: { p1: 100, p2: 50 },
+  };
+  const TODAY = 13, PICKED = 12, GUESS = 11;
+  const hm = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  const cal = document.getElementById('cal');
+  const add = (cls, html, style) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; if (style) d.style.cssText = style; cal.append(d); };
+  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', ''].forEach(n => add('dow', n, n ? '' : 'text-align:right'));
+  // Weeks start Monday Oct 26; Nov 1 is a Sunday.
+  for (let w = 0; w < 5; w++) {
+    let week = 0;
+    for (let i = 0; i < 7; i++) {
+      const date = w * 7 + i - 5;            // day of November; <1 is October
+      if (date < 1) { add('day out', `<span class="n">Oct ${31 + date}</span>`); continue; }
+      const mins = DAYS[date] || {};
+      const total = Object.values(mins).reduce((a, b) => a + b, 0);
+      week += total;
+      const cls = ['day', date > TODAY ? 'ahead' : '', !total && date <= TODAY ? 'empty' : '', date === TODAY ? 'today' : '', date === PICKED ? 'sel' : ''].join(' ');
+      const mix = Object.entries(mins).map(([p, m]) => `<i class="${p}" style="flex:${m}"></i>`).join('');
+      const label = date === TODAY ? 'Today' : `Nov ${date}`;
+      const body = date > TODAY ? '' : total ? `<span class="t">${hm(total)}</span><span class="mix">${mix}</span>` : '<span class="t">–</span>';
+      add(cls, `<span class="n">${label}</span>${date === GUESS ? '<span class="flag" title="Commits with no time kept"></span>' : ''}${body}`, `--h:${total / 60}`);
+    }
+    add('wk', week ? `<b>${hm(week)}</b><span>week</span>` : '<span>–</span>');
+  }
+</script>
+</body>
+</html>

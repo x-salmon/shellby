@@ -1,0 +1,75 @@
+/* Shared base for the Time mockups: Shellby's own tokens and fonts, scaled
+   for a full-screen 4K panel (2560x1440 CSS px at 150%). */
+@import url("../../src/renderer/shared/tokens.css");
+@import url("../../src/renderer/shared/fonts.css");
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 2560px; height: 1440px; overflow: hidden; }
+body {
+  background: var(--abyss);
+  color: var(--sand);
+  font: 18px/1.5 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+.frame { height: 1440px; padding: 40px 56px 40px; display: flex; flex-direction: column; gap: 28px; }
+
+/* History's own tab row, as today */
+.seg { display: inline-flex; padding: 4px; gap: 4px; background: var(--ink); border: 1px solid var(--line); border-radius: var(--r); }
+.seg span { height: 38px; padding: 0 18px; display: inline-flex; align-items: center; border-radius: 7px; color: var(--sand-dim); font-size: 16px; font-weight: 700; }
+.seg span.on { background: var(--reef-2); color: var(--sand); }
+
+/* Screen head: title, what the clock is doing now, the period */
+.head { display: flex; align-items: center; gap: 28px; }
+.head h1 { font: 500 44px/1 var(--font-pixel); letter-spacing: .01em; }
+.head .spacer { flex: 1; }
+
+.now { display: inline-flex; align-items: center; gap: 12px; height: 44px; padding: 0 18px;
+  border-radius: 22px; background: var(--glass-dim); color: var(--sand); font-size: 17px; }
+.now b { font-weight: 700; }
+.now .why { color: var(--sand-dim); }
+.live { width: 10px; height: 10px; border-radius: 50%; background: var(--glass); box-shadow: 0 0 0 4px rgba(127, 214, 194, .2); }
+.live.off { background: var(--sand-faint-deco); box-shadow: none; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  height: 44px; padding: 0 20px; border-radius: var(--r);
+  background: var(--reef-2); border: 1px solid var(--line); font-weight: 700; font-size: 17px; white-space: nowrap;
+}
+.btn.primary { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+.btn.ghost { background: none; }
+.btn.small { height: 36px; padding: 0 14px; font-size: 15px; }
+.btn svg, .icon svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.picker {
+  display: inline-flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--ink); font-size: 17px; white-space: nowrap;
+}
+.picker b { font-weight: 700; }
+.picker .caret { color: var(--sand-faint); }
+.picker .arrows { color: var(--sand-faint); letter-spacing: 10px; }
+
+.muted { color: var(--sand-faint); }
+.big { font: 500 64px/1 var(--font-pixel); letter-spacing: .01em; }
+
+/* A project's colour, used as a mark beside its name (always named in words too) */
+.p1 { --pc: var(--glass); }
+.p2 { --pc: var(--amber); }
+.p3 { --pc: #c3b6f2; }
+.p4 { --pc: var(--coral); }
+.p5 { --pc: #8fb8ff; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--pc); flex: none; }
+
+/* Where a minute came from: the three things Shellby reads */
+.src { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--sand-dim); }
+.src i { width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font: 700 11px/1 var(--font-body); font-style: normal; color: var(--abyss); }
+.src.win i { background: var(--sand-dim); }
+.src.cl i { background: var(--coral); }
+.src.git i { background: #c3b6f2; }
+
+.panel { background: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg); }
+
+/* Mockup caption strip, bottom-right, so screenshots are self-describing */
+.caption { position: fixed; right: 24px; bottom: 14px; font: 13px var(--font-mono); color: var(--sand-faint-deco); }

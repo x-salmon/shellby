@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time, concept 3: by who pays, with the timesheet they'll get</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 900px; gap: 40px; }
+  .left { display: flex; flex-direction: column; gap: 26px; min-height: 0; }
+
+  .owed { display: flex; align-items: flex-end; gap: 40px; padding: 8px 4px 6px; }
+  .owed .amt { font: 700 92px/1 var(--font-body); letter-spacing: -.02em; }
+  .owed p { color: var(--sand-dim); font-size: 21px; line-height: 1.45; max-width: 34ch; padding-bottom: 8px; }
+  .owed p b { color: var(--sand); }
+
+  /* one row per client: a ledger line, not a card grid */
+  .client { display: grid; grid-template-columns: 8px 1fr 300px 220px; gap: 0 30px; align-items: center; padding: 30px 32px 30px 0; }
+  .client .edge { align-self: stretch; background: var(--pc); border-radius: 0 4px 4px 0; }
+  .client h2 { font-size: 28px; line-height: 1.2; }
+  .client .meta { color: var(--sand-dim); font-size: 17px; margin-top: 6px; }
+  .client .projects { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .client .projects span { font-size: 15px; padding: 5px 12px; border-radius: 14px; background: var(--abyss); color: var(--sand-dim); }
+  .client .wk { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; font-size: 16px; color: var(--sand-dim); }
+  .client .wk .bars { grid-column: 1 / -1; display: flex; align-items: flex-end; gap: 8px; height: 70px; margin-bottom: 6px; }
+  .client .wk .bars i { flex: 1; background: var(--pc); border-radius: 4px 4px 0 0; opacity: .35; }
+  .client .wk .bars i.unsent { opacity: 1; }
+  .client .due { text-align: right; }
+  .client .due b { display: block; font: 700 40px/1 var(--font-body); }
+  .client .due span { color: var(--sand-dim); font-size: 16px; display: block; margin: 8px 0 16px; }
+  .client.sel { background: var(--reef-2); border-color: var(--reef-3); }
+  .client .act { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .own { padding: 26px 32px; display: grid; grid-template-columns: 1fr auto; gap: 14px 30px; align-items: center; background: none; border-style: dashed; }
+  .own h3 { font-size: 21px; }
+  .own p { color: var(--sand-dim); font-size: 17px; }
+  .own ul { list-style: none; display: flex; gap: 28px; font-size: 18px; }
+  .own li { display: flex; align-items: center; gap: 10px; }
+  .own li b { margin-left: 4px; }
+  .own .btn { grid-row: span 2; }
+
+  .sent { padding: 28px 32px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .sent h3 { font: 500 24px/1.2 var(--font-pixel); margin-bottom: 12px; }
+  .sent ol { list-style: none; }
+  .sent li { display: grid; grid-template-columns: 150px 1fr 200px 130px 110px; gap: 20px; align-items: center; padding: 16px 0; border-top: 1px solid var(--line-soft); font-size: 18px; }
+  .sent li .d { color: var(--sand-dim); }
+  .sent li .h { color: var(--sand-dim); text-align: right; }
+  .sent li b { text-align: right; }
+  .sent li a { color: var(--glass); text-align: right; font-size: 16px; }
+
+  /* ---- right: the timesheet as Pike & Co will see it ---- */
+  .preview { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+  .preview .bar { display: flex; align-items: center; gap: 14px; }
+  .preview .bar h3 { font: 500 24px/1 var(--font-pixel); flex: 1; }
+  .paper { flex: 1; background: #f6efe0; color: #1f2a2c; border-radius: 6px; padding: 56px 60px; box-shadow: 0 30px 60px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 26px; font-size: 17px; }
+  .paper header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .paper h4 { font-size: 30px; letter-spacing: -.01em; }
+  .paper .from { text-align: right; color: #5c6466; line-height: 1.5; font-size: 15px; }
+  .paper .for { color: #5c6466; }
+  .paper .for b { color: #1f2a2c; }
+  .paper table { width: 100%; border-collapse: collapse; }
+  .paper th { text-align: left; font-size: 14px; color: #6b7375; font-weight: 700; padding: 0 0 10px; border-bottom: 2px solid #1f2a2c; }
+  .paper td { padding: 13px 0; border-bottom: 1px solid #ddd3bf; vertical-align: top; }
+  .paper td:last-child, .paper th:last-child { text-align: right; }
+  .paper td:first-child { width: 110px; color: #5c6466; }
+  .paper .edit { outline: 2px dashed var(--coral); outline-offset: 4px; border-radius: 2px; }
+  .paper .sum { margin-top: auto; display: grid; grid-template-columns: 1fr auto; gap: 8px 40px; justify-items: end; font-size: 18px; }
+  .paper .sum span { color: #5c6466; justify-self: end; }
+  .paper .sum .tot { font-size: 30px; font-weight: 700; }
+  .paper .note { color: #6b7375; font-size: 14px; }
+  .preview .hint { color: var(--sand-faint); font-size: 15px; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="now"><span class="live"></span><b>booking-app</b><span class="why">for Northwind Dental, VS Code in front</span></span>
+    <span class="spacer"></span>
+    <span class="seg"><span>Week</span><span class="on">Month</span><span>Since last sent</span></span>
+    <span class="picker"><span class="arrows">‹ ›</span><b>November</b><span class="caret">▾</span></span>
+  </header>
+
+  <section class="body">
+    <div class="left">
+      <div class="owed">
+        <span class="amt">$2,380</span>
+        <p>not yet sent this month, across <b>2 clients</b>. 21h 45m billable, out of 41h 20m you kept.</p>
+      </div>
+
+      <article class="panel client p2">
+        <span class="edge"></span>
+        <div>
+          <h2>Northwind Dental</h2>
+          <p class="meta">$95 an hour · last sent to Harvest on Nov 6</p>
+          <div class="projects"><span>booking-app</span></div>
+        </div>
+        <div class="wk">
+          <div class="bars"><i style="height:62%"></i><i style="height:80%"></i><i class="unsent" style="height:55%"></i><i class="unsent" style="height:100%"></i></div>
+          <span>Month 18h 20m</span><span>Unsent 9h 35m</span>
+        </div>
+        <div class="due">
+          <b>$910</b><span>since Nov 6</span>
+          <div class="act"><button class="btn small">Preview</button><button class="btn small primary">Send to Harvest</button></div>
+        </div>
+      </article>
+
+      <article class="panel client p4 sel">
+        <span class="edge"></span>
+        <div>
+          <h2>Pike &amp; Co</h2>
+          <p class="meta">$120 an hour · nothing sent yet this month</p>
+          <div class="projects"><span>label-cloud</span><span>label-cloud-docs</span></div>
+        </div>
+        <div class="wk">
+          <div class="bars"><i class="unsent" style="height:40%"></i><i class="unsent" style="height:100%"></i><i class="unsent" style="height:95%"></i><i class="unsent" style="height:8%"></i></div>
+          <span>Month 12h 10m</span><span>Unsent 12h 10m</span>
+        </div>
+        <div class="due">
+          <b>$1,470</b><span>all of November</span>
+          <div class="act"><button class="btn small">Save PDF</button><button class="btn small primary">Send to Toggl</button></div>
+        </div>
+      </article>
+
+      <article class="panel own">
+        <div><h3>Your own work</h3><p>No client, so it stays off every timesheet.</p></div>
+        <button class="btn">Bill a project…</button>
+        <ul>
+          <li class="p1"><span class="sw"></span>shellby <b>17h 10m</b></li>
+          <li class="p3"><span class="sw"></span>rack-builder <b>2h 25m</b></li>
+        </ul>
+      </article>
+      <section class="panel sent">
+        <h3>Sent before</h3>
+        <ol>
+          <li><span class="d">Nov 6</span><span class="p2"><span class="sw"></span>&nbsp; Northwind Dental</span><span class="h">Harvest, 8h 45m</span><b>$831</b><a href="#">Open</a></li>
+          <li><span class="d">Oct 31</span><span class="p4"><span class="sw"></span>&nbsp; Pike &amp; Co</span><span class="h">PDF, 31h 15m</span><b>$3,750</b><a href="#">Open</a></li>
+          <li><span class="d">Oct 30</span><span class="p2"><span class="sw"></span>&nbsp; Northwind Dental</span><span class="h">Harvest, 22h 30m</span><b>$2,138</b><a href="#">Open</a></li>
+        </ol>
+      </section>
+    </div>
+
+    <aside class="preview">
+      <div class="bar"><h3>What Pike &amp; Co get</h3><button class="btn small ghost">Copy as text</button><button class="btn small">Save CSV</button></div>
+      <div class="paper">
+        <header>
+          <div><h4>Timesheet</h4><p class="for">for <b>Pike &amp; Co</b>, November 1 to 13, 2026</p></div>
+          <p class="from">Your name<br>you@example.com</p>
+        </header>
+        <table>
+          <thead><tr><th>Day</th><th>Work</th><th>Hours</th></tr></thead>
+          <tbody>
+            <tr><td>Mon, Nov 2</td><td>Label template import from CSV</td><td>2.00</td></tr>
+            <tr><td>Tue, Nov 3</td><td>Zebra printer driver, first pass</td><td>1.75</td></tr>
+            <tr><td>Thu, Nov 5</td><td>Batch print queue and retries</td><td>2.25</td></tr>
+            <tr><td>Mon, Nov 9</td><td>Call: printing workflow walkthrough</td><td>0.50</td></tr>
+            <tr><td>Tue, Nov 10</td><td><span class="edit">fix: barcode quiet zone at 203 dpi; feat: label preview</span></td><td>2.25</td></tr>
+            <tr><td>Wed, Nov 11</td><td>Docs site for the label API</td><td>3.00</td></tr>
+            <tr><td>Thu, Nov 12</td><td>Review fixes</td><td>0.50</td></tr>
+          </tbody>
+        </table>
+        <div class="sum">
+          <span>12.25 h at $120.00</span><b class="tot">$1,470.00</b>
+        </div>
+        <p class="note">Each day rounded up to 15 minutes.</p>
+      </div>
+      <p class="hint">Tuesday's line is still your commit messages. Click it to write what Pike &amp; Co should read instead.</p>
+    </aside>
+  </section>
+</main>
+<div class="caption">Concept 3: client desk</div>
+</body>
+</html>

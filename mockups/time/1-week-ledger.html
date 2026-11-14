@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time, concept 1: the week as a timesheet you can edit</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 560px; gap: 32px; }
+
+  /* ---- the ledger ---- */
+  .ledger { padding: 8px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+  table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+  th, td { height: 92px; padding: 0 22px; border-bottom: 1px solid var(--line-soft); text-align: right; font-size: 22px; }
+  thead th { height: 72px; font-size: 16px; color: var(--sand-dim); font-weight: 700; vertical-align: bottom; padding-bottom: 14px; }
+  thead th small { display: block; font-weight: 400; color: var(--sand-faint); font-size: 14px; }
+  thead th.today { color: var(--sand); }
+  thead th.today small { color: var(--glass); }
+  th:first-child, td:first-child { text-align: left; width: 420px; }
+  .proj { display: flex; align-items: center; gap: 16px; }
+  .proj b { font-size: 21px; }
+  .proj small { display: block; color: var(--sand-faint); font-size: 15px; }
+  td.zero { color: var(--sand-faint-deco); }
+  td.wkend { background: rgba(7, 16, 18, .5); color: var(--sand-faint-deco); }
+  td.today { background: rgba(127, 214, 194, .05); }
+  td.running { color: var(--glass); }
+  td.running::after { content: ""; display: inline-block; width: 8px; height: 8px; margin-left: 10px; border-radius: 50%; background: var(--glass); vertical-align: middle; }
+  td .note { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); margin: 0 0 4px auto; }
+  td.ghost { color: var(--amber); }
+  td.ghost span { border: 1.5px dashed rgba(255, 193, 94, .55); border-radius: 8px; padding: 6px 10px; font-size: 18px; }
+  td.sel { box-shadow: inset 0 0 0 2px var(--coral); border-radius: 6px; background: var(--reef-2); }
+  td.total, th.total { color: var(--sand); font-weight: 700; border-left: 1px solid var(--line); }
+  td.money { color: var(--sand-dim); font-size: 19px; }
+  tfoot td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--line); height: 84px; }
+  tfoot td:first-child { color: var(--sand-dim); font-size: 17px; font-weight: 400; }
+  tr.chart td { height: 420px; vertical-align: bottom; border-bottom: 0; padding-bottom: 0; }
+  tr.chart td:first-child { vertical-align: top; padding-top: 28px; color: var(--sand-faint); font-size: 16px; line-height: 1.6; }
+  .stack { display: flex; flex-direction: column-reverse; gap: 3px; width: 64%; margin-left: auto; }
+  .stack i { display: block; background: var(--pc); border-radius: 4px; }
+  .stack i.g { background: none; border: 2px dashed rgba(255,193,94,.55); }
+  .eight { position: relative; }
+  .addrow { margin-top: 18px; color: var(--sand-faint); font-size: 17px; display: flex; gap: 12px; align-items: center; padding-left: 22px; }
+  .addrow b { color: var(--glass); }
+
+  /* ---- right: the picked cell ---- */
+  .cell { padding: 36px 36px 32px; display: flex; flex-direction: column; gap: 26px; }
+  .cell h2 { font: 500 28px/1.2 var(--font-pixel); }
+  .cell .when { color: var(--sand-dim); font-size: 17px; margin-top: 6px; }
+  .stepper { display: flex; align-items: center; gap: 14px; }
+  .stepper .val { font: 700 58px/1 var(--font-body); min-width: 150px; text-align: center; }
+  .stepper .btn { width: 56px; padding: 0; justify-content: center; font-size: 24px; }
+  .stepper .was { color: var(--sand-faint); font-size: 16px; }
+  .why { display: grid; gap: 10px; }
+  .why .bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
+  .why .bar i { display: block; }
+  .why ul { list-style: none; display: grid; gap: 8px; }
+  .why li { display: flex; justify-content: space-between; font-size: 17px; }
+  .field { background: var(--abyss); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; font-size: 18px; color: var(--sand); }
+  .lbl { font-size: 15px; color: var(--sand-dim); font-weight: 700; display: grid; gap: 8px; }
+  .lbl em { font-style: normal; font-weight: 400; color: var(--sand-faint); }
+  .commits { font-weight: 400; list-style: none; display: grid; gap: 6px; font-size: 16px; color: var(--sand-dim); }
+  .commits li::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 2px solid #c3b6f2; margin-right: 12px; }
+  .cell .act { display: flex; gap: 12px; margin-top: auto; }
+
+  .foot { display: flex; align-items: center; gap: 16px; }
+  .foot .sum { font-size: 20px; color: var(--sand-dim); }
+  .foot .sum b { color: var(--sand); font: 700 34px/1 var(--font-body); margin-right: 10px; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="now"><span class="live"></span><b>shellby</b><span class="why">1h 40m today, Claude at work</span></span>
+    <span class="spacer"></span>
+    <span class="picker"><span class="arrows">‹ ›</span><b>This week</b><span class="muted">Nov 9 – 15</span><span class="caret">▾</span></span>
+    <button class="btn ghost">⛑️ Guard my focus</button>
+  </header>
+
+  <section class="body">
+    <div class="ledger">
+      <table>
+        <thead><tr>
+          <th>Project</th>
+          <th>Mon<small>Nov 9</small></th><th>Tue<small>Nov 10</small></th><th>Wed<small>Nov 11</small></th><th>Thu<small>Nov 12</small></th>
+          <th class="today">Fri<small>Today</small></th><th>Sat<small>Nov 14</small></th><th>Sun<small>Nov 15</small></th>
+          <th class="total">Week</th><th>Billed</th>
+        </tr></thead>
+        <tbody>
+          <tr class="p1"><td><span class="proj"><span class="sw"></span><span><b>shellby</b><small>Your own</small></span></span></td>
+            <td>3:10</td><td>4:25</td><td>2:50</td><td>5:05</td><td class="today running">1:40</td><td class="wkend">–</td><td class="wkend">–</td>
+            <td class="total">17:10</td><td class="money zero">–</td></tr>
+          <tr class="p2"><td><span class="proj"><span class="sw"></span><span><b>booking-app</b><small>Northwind Dental · $95/h</small></span></span></td>
+            <td>2:00</td><td>1:30</td><td class="ghost"><span>~1:00?</span></td><td class="sel"><span class="note"></span>2:45</td><td class="today">0:50</td><td class="wkend">–</td><td class="wkend">–</td>
+            <td class="total">7:05</td><td class="money">$673</td></tr>
+          <tr class="p4"><td><span class="proj"><span class="sw"></span><span><b>label-cloud</b><small>Pike &amp; Co · $120/h</small></span></span></td>
+            <td class="zero">–</td><td><span class="note"></span>2:10</td><td>3:00</td><td>0:30</td><td class="today zero">–</td><td class="wkend">–</td><td class="wkend">–</td>
+            <td class="total">5:40</td><td class="money">$680</td></tr>
+          <tr class="p3"><td><span class="proj"><span class="sw"></span><span><b>rack-builder</b><small>Your own</small></span></span></td>
+            <td>0:40</td><td class="zero">–</td><td>1:15</td><td class="zero">–</td><td class="today zero">–</td><td class="wkend">–</td><td class="wkend">–</td>
+            <td class="total">1:55</td><td class="money zero">–</td></tr>
+        </tbody>
+<tbody><tr class="chart"><td>Each day, by project.<br>A day of 8h reaches the top.</td><td><div class="stack"><i class="p1" style="height:133px"></i><i class="p2" style="height:84px"></i><i class="p3" style="height:28px"></i></div></td><td><div class="stack"><i class="p1" style="height:186px"></i><i class="p2" style="height:63px"></i><i class="p4" style="height:91px"></i></div></td><td><div class="stack"><i class="p1" style="height:119px"></i><i class="p2 g" style="height:42px"></i><i class="p4" style="height:126px"></i><i class="p3" style="height:53px"></i></div></td><td><div class="stack"><i class="p1" style="height:214px"></i><i class="p2" style="height:115px"></i><i class="p4" style="height:21px"></i></div></td><td class="today"><div class="stack"><i class="p1" style="height:70px"></i><i class="p2" style="height:35px"></i></div></td><td class="wkend"></td><td class="wkend"></td><td class="total"></td><td></td></tr></tbody>
+        <tfoot><tr>
+          <td>Each day</td><td>5:50</td><td>8:05</td><td>7:05</td><td>8:20</td><td class="today">2:30</td><td class="wkend">–</td><td class="wkend">–</td>
+          <td class="total">31:50</td><td>$1,353</td>
+        </tr></tfoot>
+      </table>
+      <p class="addrow"><b>+ Add a project row</b><span>· a dashed cell is a day with commits but no time. Click it to keep the guess.</span></p>
+    </div>
+
+    <aside class="panel cell p2">
+      <div>
+        <h2>booking-app, Thursday</h2>
+        <p class="when">Nov 12 · Northwind Dental · billed at $95/h</p>
+      </div>
+      <div class="stepper">
+        <button class="btn">−</button><span class="val">2:45</span><button class="btn">+</button>
+        <span class="was">kept 2:30, you added 15m</span>
+      </div>
+      <div class="why">
+        <span class="lbl">Where it came from</span>
+        <div class="bar"><i style="flex:110;background:var(--sand-dim)"></i><i style="flex:40;background:var(--coral)"></i><i style="flex:15;background:var(--glass)"></i></div>
+        <ul>
+          <li><span class="src win"><i>W</i>VS Code on the booking-app folder</span><span>1:50</span></li>
+          <li><span class="src cl"><i>C</i>Claude working there, your terminal</span><span>0:40</span></li>
+          <li><span class="src"><i style="background:var(--glass)">+</i>Added by you</span><span>0:15</span></li>
+        </ul>
+      </div>
+      <label class="lbl">Timesheet line <em>(otherwise the commits below)</em>
+        <span class="field">Google Calendar sync, booking reminders</span></label>
+      <div class="lbl">Commits that day
+        <ul class="commits">
+          <li>feat: two-way Google Calendar sync</li>
+          <li>fix: reminder sent twice across time zones</li>
+          <li>test: calendar webhook retries</li>
+        </ul>
+      </div>
+      <div class="act"><button class="btn primary">Save</button><button class="btn ghost">Move to another project…</button></div>
+    </aside>
+  </section>
+
+  <footer class="foot">
+    <span class="sum"><b>31h 50m</b>this week, 12h 45m billable, $1,353</span>
+    <span class="spacer" style="flex:1"></span>
+    <span class="picker"><b>Every project</b><span class="caret">▾</span></span>
+    <button class="btn">Save PDF</button><button class="btn">Save CSV</button><button class="btn ghost">Copy as text</button>
+    <button class="btn primary">Send to Harvest</button>
+  </footer>
+</main>
+<div class="caption">Concept 1: week ledger</div>
+</body>
+</html>
