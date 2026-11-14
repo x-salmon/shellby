@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: access and safety, full screen</title>
+<link rel="stylesheet" href="../mock.css">
+<link rel="stylesheet" href="full.css">
+<style>
+  /* a page's header, grown up */
+  .page-head.xl { height: 60px; gap: 12px; padding: 0 20px 0 14px; }
+  .page-head.xl .back { width: 36px; height: 36px; font-size: var(--fs-20); }
+  .page-head.xl .nm { font-size: var(--fs-17); }
+  .page-head.xl .dot { width: 9px; height: 9px; }
+  .page-head.xl .state { color: var(--sand-faint); font-size: var(--fs-13); }
+  .page-head.xl .end { gap: 8px; }
+  .page .blur { filter: blur(2px) brightness(.75); }
+  .page .scrim { z-index: 8; background: rgba(4, 10, 11, .55); }
+
+  /* the access sheet: one set of parts, floating over a frozen page or docked beside a running one */
+  .access { display: flex; flex-direction: column; gap: 14px; }
+  .access .bar { display: flex; align-items: center; gap: 10px; color: var(--sand-faint); font: 600 var(--fs-14) var(--font-pixel); }
+  .access .bar .px-crab { width: 30px; height: 21px; }
+  .access .bar .sw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .12); }
+  .access h3 { margin: 0; font: 600 var(--fs-24)/1.2 var(--font-pixel); color: var(--sand); }
+  .access > p { margin: 0; color: var(--sand-dim); font-size: var(--fs-15); line-height: 1.5; }
+  .access .rights { margin: 0; gap: 6px; }
+  .access .rights li { padding: 14px 16px; grid-template-columns: 36px 1fr; gap: 3px 12px; border-radius: 10px; }
+  .access .rights li .g { font-size: var(--fs-21); }
+  .access .rights li b { font-size: var(--fs-16); }
+  .access .rights li span { font-size: var(--fs-14); line-height: 1.45; }
+  .access .rights li .host { font: 600 var(--fs-15) var(--font-mono); font-stretch: 90%; color: var(--sand); }
+  .access .always { color: var(--sand-faint); font-size: var(--fs-13-5); }
+  .access .acts { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+  .screen .rights li.new b::after { font-size: var(--fs-11); line-height: 1.5; padding: 0 6px; margin-left: 8px; }
+  .float {
+    position: absolute; z-index: 9; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 640px; padding: 26px 28px;
+    border-radius: 16px; background: var(--ink); border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+  }
+  .aside.docked { width: 660px; padding: 34px 36px; gap: 14px; }
+
+  /* the facts of a web host, inside its access entry */
+  .terms { grid-column: 2; display: grid; grid-template-columns: auto 1fr; gap: 7px 18px; margin: 10px 0 2px; font-size: var(--fs-14); }
+  .terms dt { color: var(--sand-faint); white-space: nowrap; }
+  .terms dd { margin: 0; color: var(--sand); }
+
+  /* a strip under the page's header, which the page can't draw over; Shellby's cards go there */
+  .strip { flex: none; padding: 14px 20px; background: var(--abyss); border-bottom: 1px solid var(--line-soft); }
+  .page-card.xl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 40px; align-items: start; padding: 18px 22px; }
+  .page-card.xl h3 { margin: 0 0 6px; font-size: var(--fs-17); }
+  .page-card.xl p { margin: 0; font-size: var(--fs-14-5); max-width: 90ch; }
+  .page-card.xl .acts { margin: 0; gap: 10px; align-self: center; }
+  .page-card.xl .r { display: grid; gap: 8px; width: 520px; }
+  .page-card.xl .r .acts { margin-top: 8px; }
+  .page-card.xl.limit { grid-template-columns: minmax(0, 1fr) 620px auto; align-items: center; }
+  .prompt { margin: 0 0 8px; padding: 12px 16px; border-radius: 10px; background: var(--abyss); border: 1px solid var(--line-soft); color: var(--sand); font-size: var(--fs-15); line-height: 1.5; max-width: 1100px; }
+  .sec { font: 700 var(--fs-13) var(--font-body); color: var(--sand-faint); }
+
+  /* limits, as meters */
+  .meters { display: grid; gap: 14px; }
+  .meter { display: grid; grid-template-columns: 56px 1fr 130px; gap: 14px; align-items: center; font-size: var(--fs-14); color: var(--sand-dim); }
+  .meter i { display: block; height: 10px; border-radius: 5px; background: var(--reef-3); overflow: hidden; }
+  .meter i b { display: block; height: 100%; background: var(--amber); }
+  .meter .v { color: var(--sand); font: var(--fs-13) var(--font-mono); text-align: right; }
+
+  /* Settings: the Pages tab */
+  .tabs { display: flex; gap: 6px; margin-top: 14px; }
+  .tabs span { padding: 7px 16px; border-radius: 99px; font-size: var(--fs-14); font-weight: 700; color: var(--sand-dim); }
+  .tabs span.on { background: var(--glass-dim); color: var(--glass); }
+  .ptable { display: grid; gap: 4px; align-content: start; }
+  .ptable .th, .ptable .tr { display: grid; grid-template-columns: 22px 280px minmax(0, 1fr) 200px 230px 60px; gap: 0 20px; align-items: center; padding: 0 18px; }
+  .ptable .th { font: 700 var(--fs-13) var(--font-body); color: var(--sand-faint); padding-bottom: 6px; }
+  .ptable .tr { min-height: 66px; padding: 12px 18px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); font-size: var(--fs-14-5); }
+  .ptable .tr:hover { border-color: var(--glass); }
+  .ptable .tr.on { background: var(--reef-2); border-color: var(--glass); }
+  .ptable .sw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .12); }
+  .ptable .tr b { font-size: var(--fs-16); }
+  .ptable .ch { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ptable .when { color: var(--sand-dim); }
+  .ptable .tr.off b, .ptable .tr.off .when { color: var(--sand-faint); }
+  .ptable .tr.off .ch, .ptable .tr.off .sw { opacity: .6; }
+  .ptable .switch { width: 40px; height: 22px; }
+  .ptable .switch::after { width: 16px; height: 16px; }
+  .ptable .switch.on::after { transform: translateX(18px); }
+  .kill { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; padding: 18px 22px; margin-top: 14px; border-radius: 12px; border: 1px solid rgba(255, 90, 74, .4); background: rgba(255, 90, 74, .06); }
+  .kill b { display: block; font-size: var(--fs-16); }
+  .kill span { color: var(--sand-dim); font-size: var(--fs-14); }
+  .aside.detail { width: 560px; padding: 30px; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; margin: 0; font-size: var(--fs-14); }
+  .facts dt { color: var(--sand-faint); }
+  .facts dd { margin: 0; }
+
+  /* "Dependency radar": light, tabular, traffic-light pills, at full size */
+  .pg-deps { height: 100%; padding: 40px 56px; background: #f6f6f2; color: #1f2a24; font-family: var(--font-body); }
+  .pg-deps h4 { margin: 0 0 4px; font: 800 30px/1.2 var(--font-body); letter-spacing: -.01em; }
+  .pg-deps .sub { margin: 0 0 18px; color: #5f6a63; font-size: 15px; }
+  .pg-deps .dep { display: grid; grid-template-columns: 1fr 180px 130px; gap: 16px; align-items: center; padding: 13px 0; border-bottom: 1px solid #e3e5df; font-size: 16px; max-width: 1200px; }
+  .pg-deps .dep code { font-size: 14px; color: #46514a; }
+  .pg-deps .pill { justify-self: start; font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: #9bd7a2; color: #123d1b; }
+  .pg-deps .pill.w { background: #f5c451; color: #4a3300; }
+  .pg-deps .pill.b { background: #c4452c; color: #fff; }
+
+  /* the other pages at this size, and what each shows when a call comes back refused: its own words, its own look */
+  .pg-print.xl ol { max-width: 1500px; }
+  .pg-print.xl .own-btn { display: inline-block; margin-top: 22px; padding: 12px 20px; border-radius: 5px; background: #2b2723; color: #ece6d9; font: 700 15px var(--font-body); }
+  .pg-radar.xl.tall .bars { height: 320px; gap: 8px; max-width: 1400px; }
+  .pg-radar.xl .row { max-width: 1400px; }
+  .pg-radar.xl .own-err { margin-top: 26px; max-width: 900px; padding: 14px 18px; border-radius: 8px; background: #2a2140; color: #d7c8ff; font: 15px/1.5 var(--font-body); }
+  .pg-radar.xl .own-err code { color: #fff; font-size: 14px; }
+  .pg-read.xl .bk { max-width: 1100px; }
+  .pg-read.xl .own-note { margin-top: 26px; max-width: 900px; padding: 14px 18px; border-radius: 8px; background: #2a3b31; color: #c8d6cc; font: 16px/1.5 var(--font-body); }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- 29. First run -->
+  <section class="screen" data-n="29" data-title="First run" data-note="The page sits frozen behind the sheet: it hasn't run yet, so the sheet is the first thing you see, not something that pops over a page already working. Each entry says what it lets the page do in one line, not the key from page.json. &quot;Let it&quot; is glass, not coral: agreeing is a calm, deliberate act, and coral is for things that need you. &quot;Not now&quot; leaves the page on the shelf, off, to come back to. Full screen, the sheet is a 640-pixel card in the middle of the frozen page instead of a strip across the bottom.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="print" data-live="" data-off="print"></nav>
+      <main class="main">
+        <div class="page-head xl"><button class="back" aria-label="Back">‹</button><span class="nm">Print queue</span><span class="dot off"></span><span class="state">Hasn't run yet</span><div class="end"><button class="btn">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></div></div>
+        <div class="page">
+          <div class="pg-print xl blur">
+            <h4>Print queue</h4><p class="sub">Nothing queued yet</p>
+            <ol><li><span class="n">1</span><span><b>Benchy, 0.12 layer</b><small>An example row</small></span><span class="why"></span><span class="st">Queued</span></li></ol>
+          </div>
+          <div class="scrim"></div>
+          <div class="float access">
+            <div class="bar"><span class="px-crab" aria-hidden="true"></span>Shellby</div>
+            <h3>Before Print queue runs</h3>
+            <p>Claude built it. It asked for these, and gets nothing else: no web, no files, nothing of Shellby's it didn't list.</p>
+            <ul class="rights">
+              <li><span class="g">📊</span><b>Read your usage</b><span>How much of your 5-hour and weekly windows is used. A snapshot, read-only.</span></li>
+              <li><span class="g">💬</span><b>Ask Claude</b><span>Start a turn with Claude. You see the prompt and pick the mode each time, and it's never Autonomous.</span></li>
+              <li><span class="g">🔔</span><b>Notify</b><span>A toast at the desk and a notification on your phone, at most one a minute.</span></li>
+            </ul>
+            <p class="always">Its own data: always. Anything else it tries: refused, and you'll see it in the page's header.</p>
+            <div class="acts"><button class="btn lg">Not now</button><button class="btn lg allow">Let it</button></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 30. A new version asks for more -->
+  <section class="screen" data-n="30" data-title="A new version asks for more" data-note="The whole list is shown again, since that's what you'd be agreeing to, but only the new entry is marked, so you read one line and not three. The sheet names who changed the page and when, because &quot;it wants more&quot; is a different question when it was a routine at 3am. The old version keeps running: saying nothing costs you nothing. At this width the sheet docks beside the page instead of covering it, so Tuesday's version stays readable while you decide.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="deps"></nav>
+      <main class="main">
+        <div class="page-head xl"><button class="back" aria-label="Back">‹</button><span class="nm">Dependency radar</span><span class="dot live"></span><span class="state">Running Tuesday's version</span><div class="end"><button class="btn">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></div></div>
+        <div class="page">
+          <div class="pg-deps">
+            <h4>Dependency radar</h4><p class="sub">3 projects, checked 07:00. Worst first.</p>
+            <div class="dep"><span>shellby: <code>electron</code></span><code>44.1.0</code><span class="pill b">critical</span></div>
+            <div class="dep"><span>rack-builder: <code>three</code></span><code>0.171.0</code><span class="pill w">behind</span></div>
+            <div class="dep"><span>shellby: <code>pixi.js</code></span><code>8.6.0</code><span class="pill w">behind</span></div>
+            <div class="dep"><span>shellby: <code>ws</code></span><code>8.18.0</code><span class="pill">fine</span></div>
+            <div class="dep"><span>rack-builder: <code>zod</code></span><code>3.23.8</code><span class="pill">fine</span></div>
+            <div class="dep"><span>shellby: <code>electron-builder</code></span><code>26.0.12</code><span class="pill">fine</span></div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside docked access">
+        <div class="bar"><span class="px-crab" aria-hidden="true"></span>Shellby</div>
+        <h3>Dependency radar wants more</h3>
+        <p>Claude changed it 2 min ago, in "Check npm for each package". The new version asks for one thing the old one didn't.</p>
+        <ul class="rights">
+          <li><span class="g">📁</span><b>Read your projects</b><span>Their names and folders. Already allowed.</span></li>
+          <li class="new"><span class="g">🌐</span><b>Reach <span class="host">registry.npmjs.org</span></b><span>GET and POST to that host only, through Shellby. No cookies. 1 MB and 15 seconds a request, 20 a minute.</span></li>
+        </ul>
+        <p class="always">Until you decide, Tuesday's version keeps running.</p>
+        <div class="acts"><button class="btn lg">Not now</button><button class="btn lg allow">Let it</button></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 31. A web host -->
+  <section class="screen" data-n="31" data-title="A web host, with exactly what goes through" data-note="The host is written the way main will check it, so what you agree to is what gets enforced, and the four facts under it are the same numbers in rights.js: the methods, what never goes along, the size and time of one request, the rate. Nothing about the page's purpose is taken on trust; the one line it wrote about why sits above the facts, in a different voice.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="radar" data-live="" data-off="radar"></nav>
+      <main class="main">
+        <div class="page-head xl"><button class="back" aria-label="Back">‹</button><span class="nm">Release radar</span><span class="dot off"></span><span class="state">Hasn't run yet</span><div class="end"><button class="btn">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></div></div>
+        <div class="page">
+          <div class="pg-radar xl tall blur">
+            <h4>release radar</h4>
+            <div class="bars"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:70%"></i><i style="height:44%"></i><i class="hi" style="height:74%"></i><i style="height:50%"></i><i style="height:38%"></i></div>
+            <div class="row"><span>electron</span><span class="v">44.2.0</span><span class="tag major">major</span></div>
+            <div class="row"><span>node</span><span class="v">24.3.1</span><span class="tag">patch</span></div>
+          </div>
+          <div class="scrim"></div>
+          <div class="float access">
+            <div class="bar"><span class="px-crab" aria-hidden="true"></span>Shellby</div>
+            <h3>Release radar wants to reach the web</h3>
+            <p>One host. The page itself can't touch the network: each request goes through Shellby, which checks the host and the limits first.</p>
+            <ul class="rights">
+              <li class="new"><span class="g">🌐</span><b>Reach <span class="host">api.github.com</span></b><span>To read release lists for the projects you follow.</span>
+                <dl class="terms">
+                  <dt>Through Shellby</dt><dd>GET and POST to that host over https, nothing else</dd>
+                  <dt>Never sent</dt><dd>Your cookies, logins or tokens</dd>
+                  <dt>Each request</dt><dd>Up to 1 MB, 15 seconds</dd>
+                  <dt>Rate</dt><dd>20 a minute, then it waits</dd>
+                </dl>
+              </li>
+            </ul>
+            <div class="acts"><button class="btn lg">Not now</button><button class="btn lg allow">Let it</button></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 32. shellby.ask() -->
+  <section class="screen" data-n="32" data-title="A page asks Claude something" data-note="The page pressed its own button, but the card is Shellby's, above the frame where the page can't draw: a page can't fake it. The prompt is shown in full because it spends your plan, and the mode is yours to pick each time because a page shouldn't decide how much freedom Claude gets; Autonomous isn't on the list at all. Coral here because it starts work, and work is what coral means. Wide, the card is one strip under the page's header, prompt on the left and the mode and buttons on the right.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="print"></nav>
+      <main class="main">
+        <div class="page-head xl"><button class="back" aria-label="Back">‹</button><span class="nm">Print queue</span><span class="dot live"></span><span class="state">Running</span><div class="end"><button class="btn">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></div></div>
+        <div class="strip">
+          <div class="card ask page-card xl">
+            <div class="l">
+              <h3>Print queue wants to ask Claude</h3>
+              <blockquote class="prompt">Summarise this week's failed prints and suggest one change to the printer settings.</blockquote>
+              <p class="faint">A new conversation, on your plan. Autonomous isn't offered to pages.</p>
+            </div>
+            <div class="r">
+              <div class="sec">Mode</div>
+              <div class="seg"><button aria-selected="true">Ask first</button><button>Smart</button><button>Auto-edit</button><button>Plan only</button></div>
+              <div class="acts"><button class="btn">Not now</button><button class="btn primary">Ask Claude</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="page">
+          <div class="pg-print xl">
+            <h4>Print queue</h4><p class="sub">5 queued, 2 failed this week</p>
+            <ol>
+              <li><span class="n">1</span><span><b>6 cable clips</b><small>PLA · 22 min</small></span><span class="why"></span><span class="st go">Printing</span></li>
+              <li><span class="n">2</span><span><b>Desk hook</b><small>PETG · 1 h 10</small></span><span class="why"></span><span class="st">Next</span></li>
+              <li><span class="n">3</span><span><b>Benchy, 0.12 layer</b><small>PLA · 1 h 48</small></span><span class="why">Stringing on the hull, stopped at layer 14</span><span class="st fail">Failed</span></li>
+              <li><span class="n">4</span><span><b>Funnel, PETG</b><small>PETG · 55 min</small></span><span class="why">Came loose from the bed at layer 3</span><span class="st fail">Failed</span></li>
+              <li><span class="n">5</span><span><b>Lid for the parts box</b><small>PLA · 2 h 05</small></span><span class="why"></span><span class="st">Waiting</span></li>
+              <li><span class="n">6</span><span><b>Phone stand v2</b><small>PETG · 3 h 20</small></span><span class="why"></span><span class="st">Waiting</span></li>
+              <li><span class="n">7</span><span><b>Benchy in PETG</b><small>PETG · 1 h 55</small></span><span class="why"></span><span class="st">Waiting</span></li>
+            </ol>
+            <span class="own-btn">Ask Claude about the failures</span>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 33. Tried something it wasn't given -->
+  <section class="screen" data-n="33" data-title="It tried something it wasn't given" data-note="Amber, not red: the boundary held, and that's the system working. The page keeps running and shows the error in its own words, since the call failed with a message rather than a blank. The card appears once, not on every retry. &quot;Let it&quot; opens the access sheet with the host marked new, so granting it reads exactly like agreeing to it would have; &quot;Fix it with Claude&quot; is for when the page shouldn't have tried.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="radar"></nav>
+      <main class="main">
+        <div class="page-head xl"><button class="back" aria-label="Back">‹</button><span class="nm">Release radar</span><span class="dot live"></span><span class="state">Running</span><div class="end"><button class="btn">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></div></div>
+        <div class="strip">
+          <div class="card warn page-card xl">
+            <div class="l">
+              <h3>It tried to reach api.example.com, which it didn't ask for</h3>
+              <p>Shellby refused it and the page got a clear error. Nothing left this PC. Letting it adds the host to its access, the same as any other entry.</p>
+            </div>
+            <div class="acts"><button class="btn ghost">Fix it with Claude</button><button class="btn">Not now</button><button class="btn allow">Let it</button></div>
+          </div>
+        </div>
+        <div class="page">
+          <div class="pg-radar xl tall">
+            <h4>release radar</h4>
+            <div class="bars"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:70%"></i><i style="height:44%"></i><i class="hi" style="height:74%"></i><i style="height:50%"></i><i style="height:38%"></i></div>
+            <div class="row"><span>electron</span><span class="v">44.2.0</span><span class="tag major">major</span></div>
+            <div class="row"><span>node</span><span class="v">24.3.1</span><span class="tag">patch</span></div>
+            <div class="row"><span>pixi.js</span><span class="v">8.9.0</span><span class="tag">minor</span></div>
+            <div class="own-err">Couldn't load the example feed: <code>api.example.com</code> isn't in this page's access.</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 34. Settings, the Pages tab -->
+  <section class="screen" data-n="34" data-title="Settings: every page's access on one screen" data-note="One row per page, access as glass chips, so the question &quot;what can my pages reach&quot; has a single answer without opening each one. A request still waiting on you is the one coral chip. The switch is the gentle control; the red one at the bottom is the only danger-styled thing in Pages, because stopping every page at once is the action you want when something feels wrong, and it says what it doesn't do. The wide screen adds a detail column: the selected row's full access list, with the waiting entry answerable right there.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="settings" data-off="dinner"></nav>
+      <main class="main">
+        <div class="main-head">
+          <div><h1>Settings</h1><div class="tabs"><span>Shellby</span><span>Claude</span><span>Connect</span><span class="on">Pages</span></div></div>
+        </div>
+        <div class="main-body">
+          <p class="lede" style="margin:-4px 0 -6px;color:var(--sand-dim);font-size:var(--fs-15)">Every page's access in one place.</p>
+          <div class="ptable">
+            <div class="th"><span></span><span>Page</span><span>Access</span><span>Agents</span><span>Status</span><span>On</span></div>
+            <div class="tr"><span class="sw" style="background:#ece6d9"></span><b>Print queue</b><span class="ch"><span class="chip glass">Read usage</span><span class="chip glass">Ask Claude</span><span class="chip glass">Notify</span></span><span>Any</span><span class="when">On since Monday</span><span class="switch on"></span></div>
+            <div class="tr"><span class="sw" style="background:#0f1630"></span><b>Release radar</b><span class="ch"><span class="chip glass">api.github.com</span><span class="chip glass">Notify</span></span><span>Shellby's tabs</span><span class="when">On</span><span class="switch on"></span></div>
+            <div class="tr on"><span class="sw" style="background:#f6f6f2"></span><b>Dependency radar</b><span class="ch"><span class="chip glass">Read projects</span><span class="chip coral">Wants registry.npmjs.org</span></span><span>Any</span><span class="when">On, old version</span><span class="switch on"></span></div>
+            <div class="tr"><span class="sw" style="background:#1d2a22"></span><b>Reading list</b><span class="ch"><span class="chip glass">Notify</span></span><span>Nobody</span><span class="when">On</span><span class="switch on"></span></div>
+            <div class="tr off"><span class="sw" style="background:#3b1f2b"></span><b>Dinner plan</b><span class="ch"><span class="chip">Only its own data</span></span><span class="when">—</span><span class="when">Off since October</span><span class="switch"></span></div>
+          </div>
+          <div class="kill"><div><b>Turn every page off</b><span>All five stop now, until you turn each one on again. Nothing is deleted.</span></div><button class="btn danger lg">Turn every page off</button></div>
+        </div>
+      </main>
+      <aside class="aside detail access">
+        <div class="bar"><span class="sw" style="background:#f6f6f2"></span>Dependency radar</div>
+        <h3>Wants more</h3>
+        <p>Claude changed it 2 min ago, in "Check npm for each package". The new version asks for one thing the old one didn't.</p>
+        <ul class="rights">
+          <li><span class="g">📁</span><b>Read your projects</b><span>Their names and folders. Already allowed.</span></li>
+          <li class="new"><span class="g">🌐</span><b>Reach <span class="host">registry.npmjs.org</span></b><span>GET and POST to that host only, through Shellby. No cookies. 1 MB and 15 seconds a request, 20 a minute.</span></li>
+        </ul>
+        <p class="always">Until you decide, Tuesday's version keeps running.</p>
+        <div class="acts"><button class="btn">Not now</button><button class="btn allow">Let it</button></div>
+        <div class="sec-h" style="margin-top:18px">About it</div>
+        <dl class="facts">
+          <dt>Agents</dt><dd>Any agent can read and write it</dd>
+          <dt>Other PCs</dt><dd>Goes to them</dd>
+          <dt>Versions</dt><dd>6 of 20 kept</dd>
+          <dt>Data</dt><dd>0.3 of 1 MB, 41 of 200 keys</dd>
+        </dl>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 35. A limit reached -->
+  <section class="screen" data-n="35" data-title="A limit reached" data-note="Two meters, because a page can hit either, and the sentence says what happens next (writes refused, nothing lost) before what to do about it. &quot;Fix it with Claude&quot; starts a conversation with the limits and the five biggest keys, so Claude can fold old rows into one key or trim the summaries; &quot;Show its data&quot; is for doing it yourself. An agent that writes now gets this same sentence as the tool's error.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="read"></nav>
+      <main class="main">
+        <div class="page-head xl"><button class="back" aria-label="Back">‹</button><span class="nm">Reading list</span><span class="dot amber"></span><span class="state">Running, writes refused</span><div class="end"><button class="btn">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></div></div>
+        <div class="strip">
+          <div class="card warn page-card xl limit">
+            <div class="l">
+              <h3>Reading list's data is full</h3>
+              <p>A page holds 1 MB and 200 keys, and this one is at both, so new writes are refused until there's room. Nothing already on it is lost.</p>
+            </div>
+            <div class="meters">
+              <div class="meter"><span>Data</span><i><b style="width:100%"></b></i><span class="v">1.0 of 1 MB</span></div>
+              <div class="meter"><span>Keys</span><i><b style="width:100%"></b></i><span class="v">200 of 200</span></div>
+            </div>
+            <div class="acts"><button class="btn">Show its data</button><button class="btn primary">Fix it with Claude</button></div>
+          </div>
+        </div>
+        <div class="page">
+          <div class="pg-read xl">
+            <h4>Reading list</h4>
+            <div class="bk"><span class="spine"></span><span>The Mythical Man-Month<small>Yours, from the phone. Half read.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#7fa88a"></span><span>Working in Public<small>Yours, Tuesday. Claude's summary is ready.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#b86a5a"></span><span>A Philosophy of Software Design<small>Yours, last week. 198 other links below.</small></span></div>
+            <div class="own-note">Couldn't save the new link: this page's data is full.</div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+</div>
+<script src="deck.js"></script>
+</body>
+</html>

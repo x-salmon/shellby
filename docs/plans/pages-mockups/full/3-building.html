@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: building a page with Claude, full screen</title>
+<link rel="stylesheet" href="../mock.css">
+<link rel="stylesheet" href="full.css">
+<style>
+  /* the build: conversation | preview, with the aside for versions and checks */
+  .build { grid-template-columns: 820px minmax(0, 1fr); }
+  .screen .pane-tab { height: 44px; padding: 0 18px; gap: 10px; font-size: var(--fs-14-5); }
+  .screen .pane-tab .end { font-size: var(--fs-13); font-weight: 600; }
+  .screen .pane-tab .ico { color: var(--sand-faint); font-weight: 400; }
+  .screen .pane-body { padding: 24px 26px 22px; gap: 14px; }
+  .screen .msg-claude { max-width: 92%; }
+  .screen .tool-row .t { flex: 1; min-width: 0; }
+  .screen .tool-row .v { margin-left: auto; font: var(--fs-12) var(--font-mono); color: var(--sand-faint); }
+  .tool-row .ok { color: var(--glass); }
+  .tool-row .no { color: #ff9b8f; }
+  .tool-row.live { border-color: rgba(127, 214, 194, .35); }
+  .tool-row.bad { border-color: rgba(255, 90, 74, .45); }
+  .check-card p code { color: var(--sand); }
+  .sys { display: flex; gap: 10px; align-items: center; padding: 4px 2px; color: var(--sand-faint); font-size: var(--fs-13); }
+  .sys::before, .sys::after { content: ""; flex: 1; border-top: 1px solid var(--line-soft); }
+  .screen .btn.sm.icon { width: 30px; }
+  .screen .composer { align-items: center; }
+  .draft-bar { flex: none; display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--line); background: var(--ink); font-size: var(--fs-14); color: var(--sand-dim); }
+  .draft-bar .btn { margin-left: auto; }
+  .reloading { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: linear-gradient(90deg, var(--glass) 0 70%, transparent 70%); z-index: 2; }
+
+  /* the aside's lists: versions, checks, files */
+  .vers { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .vers li { display: grid; grid-template-columns: 46px 1fr; gap: 1px 12px; padding: 10px 12px; border-radius: 10px; background: var(--reef); border: 1px solid var(--line-soft); }
+  .vers .v { grid-row: span 2; align-self: center; padding: 5px 0; border-radius: 6px; text-align: center; background: var(--abyss); font: 600 var(--fs-12-5) var(--font-mono); color: var(--sand-faint); }
+  .vers li.now { border-color: rgba(127, 214, 194, .35); }
+  .vers li.now .v { color: var(--glass); background: var(--glass-dim); }
+  .vers li.live .v { color: var(--amber); background: rgba(255, 193, 94, .14); }
+  .vers li.bad .v { color: #ff9b8f; background: rgba(255, 90, 74, .14); }
+  .vers b { font-size: var(--fs-14); font-weight: 600; }
+  .vers span { color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .checks li { display: grid; grid-template-columns: 20px 1fr; gap: 0 10px; padding: 8px 10px; border-radius: 8px; font-size: var(--fs-14); }
+  .checks li i { font-style: normal; font-weight: 700; color: var(--glass); }
+  .checks li.no i { color: #ff9b8f; }
+  .checks li span { grid-column: 2; color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .checks li.hot { background: var(--reef); }
+  .kv { display: flex; gap: 12px; align-items: baseline; padding: 9px 12px; border-radius: 8px; background: var(--reef); font-size: var(--fs-14); }
+  .kv code { font-size: var(--fs-13); }
+  .kv .end { margin-left: auto; color: var(--sand-faint); font: var(--fs-12-5) var(--font-mono); }
+  .aside .sec-h { margin: 8px 0 -6px; }
+  .aside .note { margin: auto 0 0; color: var(--sand-faint); font-size: var(--fs-13); line-height: 1.5; }
+
+  /* "Agents' checklist": the dark task board from 4-agents, one look everywhere */
+  .pg-check { height: 100%; background: #14171c; color: #e7e9ee; font-family: var(--font-body); overflow: hidden; }
+  .pg-check.xl { padding: 48px 64px; }
+  .pg-check .wrap { max-width: 1320px; margin: 0 auto; }
+  .pg-check h4 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 22px; font: 700 34px/1.15 var(--font-mono); color: #9aa4b8; letter-spacing: -.015em; }
+  .pg-check h4 small { font-weight: 600; font-size: 15px; color: #808a9f; font-family: var(--font-body); }
+  .pg-check .post { display: grid; grid-template-columns: 26px 1fr; gap: 18px; align-items: start; padding: 18px 0; margin-bottom: 0; background: transparent; border-radius: 0; border-bottom: 1px solid #232834; }
+  .pg-check .post .tick { width: 24px; height: 24px; margin-top: 2px; border-radius: 7px; border: 2.5px solid #4a5468; }
+  .pg-check .post .tick.on { background: #e7e9ee; border-color: #e7e9ee; box-shadow: inset 0 0 0 4px #14171c; }
+  .pg-check .post b { display: block; font-size: 17px; line-height: 1.35; }
+  .pg-check .post span { display: block; margin-top: 4px; color: #98a1b5; font-size: 13.5px; }
+  .pg-check .post.read b { color: #98a1b5; }
+  .pg-check .post.read span { color: #808a9f; }
+  .pg-check .sec { margin: 28px 0 12px; font: 700 12.5px/1 inherit; letter-spacing: .08em; text-transform: uppercase; color: #808a9f; }
+  .mini.check { background: #14171c; padding: 18px 20px; }
+  .mini.check i { display: block; height: 26px; margin-bottom: 10px; border-radius: 7px; background: #1b1f26; box-shadow: 0 0 0 1px #232834, inset 32px 0 0 -22px #4a5468; }
+
+  /* the New page sheet, a window in the middle of the shelf */
+  .scrim { z-index: 20; }
+  .newpage, .sheet-mid { position: absolute; z-index: 21; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 16px; background: var(--ink); border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); }
+  .newpage { width: 800px; padding: 26px 28px 24px; display: grid; gap: 14px; }
+  .newpage h3, .sheet-mid h3 { margin: 0; font: 600 var(--fs-24) var(--font-pixel); }
+  .newpage .lede { margin: -8px 0 0; color: var(--sand-dim); font-size: var(--fs-14-5); }
+  .newpage .field.area { min-height: 132px; font-size: var(--fs-16); line-height: 1.5; }
+  .ideas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .ideas .chip { border: 1px solid var(--line); background: transparent; color: var(--sand-dim); cursor: pointer; }
+  .ideas .chip:hover { border-color: var(--glass); color: var(--sand); }
+  .lbl { font-size: var(--fs-13); font-weight: 700; color: var(--sand-dim); }
+  .newpage .row { display: flex; gap: 44px; align-items: center; }
+  .newpage .row > div { display: grid; gap: 6px; }
+  .newpage .seg { display: inline-flex; }
+  .sheet-foot { display: flex; align-items: center; gap: 14px; margin-top: 4px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+  .sheet-foot .hint { color: var(--sand-faint); font-size: var(--fs-13); }
+  .sheet-foot .btn { margin-left: auto; }
+
+  /* "Claude's done": the sheet over the build */
+  .sheet-mid { width: 560px; padding: 26px 28px 24px; display: grid; gap: 10px; }
+  .sheet-mid p { margin: 0; color: var(--sand-dim); font-size: var(--fs-14-5); }
+  .sheet-mid .acts { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
+
+  /* point at it */
+  .pg-print.xl.pt li { grid-template-columns: 56px 1fr auto; }
+  .pg-print li .st.aim { position: relative; outline: 3px dashed var(--coral); outline-offset: 5px; }
+  .pg-print li .st.aim::after { content: "Failed badge"; position: absolute; right: calc(100% + 18px); top: 50%; transform: translateY(-50%); padding: 3px 9px; border-radius: 5px; background: var(--coral); color: #2a0f0a; font: 700 13px/1.6 var(--font-body); white-space: nowrap; }
+  .aiming { cursor: crosshair; }
+  .aiming .cross { position: absolute; width: 18px; height: 18px; pointer-events: none; z-index: 3; }
+  .aiming .cross::before, .aiming .cross::after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 0 1px #1a0d09; }
+  .aiming .cross::before { left: 8px; top: 0; width: 2px; height: 18px; }
+  .aiming .cross::after { top: 8px; left: 0; width: 18px; height: 2px; }
+  .composer.has-aim { flex-direction: column; align-items: stretch; gap: 8px; }
+  .composer .aim-chip { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; height: 28px; padding: 0 10px 0 8px; border-radius: 7px; background: var(--coral-dim); color: var(--coral); font-size: var(--fs-13); font-weight: 700; }
+  .composer .aim-chip code { font-size: var(--fs-12); color: var(--sand-dim); }
+  .composer .aim-chip .x { color: var(--sand-faint); font-weight: 400; }
+  .composer .line { display: flex; gap: 8px; align-items: center; }
+  .composer .typed { flex: 1; padding: 6px 4px; font-size: var(--fs-15); color: var(--sand); }
+  .composer .typed i { display: inline-block; width: 1px; height: 16px; margin-left: 1px; background: var(--sand); vertical-align: -3px; }
+  .pane-tab .seg { flex: none; margin-left: auto; padding: 3px; }
+  .screen .pane-tab .seg button { flex: none; height: 26px; padding: 0 11px; font-size: var(--fs-13); }
+  .pane-tab .seg + .end { margin-left: 12px; }
+
+  /* the radar's new chart */
+  .pg-radar.xl .sub { margin: -12px 0 26px; color: #8d9bd0; font: 13px var(--font-mono); }
+  .pg-radar.xl .bars.fresh { outline: 2px solid #7fd6c2; outline-offset: 10px; border-radius: 4px; }
+
+  /* a page on its own, saved */
+  .screen .page-head { height: 52px; padding: 0 16px 0 10px; gap: 12px; }
+  .screen .page-head .back { width: 36px; height: 36px; font-size: var(--fs-18); }
+  .screen .page-head .nm { font-size: var(--fs-16); }
+  .screen .page-head .end { gap: 8px; }
+  .screen .cheer { left: auto; right: 36px; bottom: 36px; width: 620px; padding: 16px 20px; align-items: flex-start; font-size: var(--fs-14); z-index: 9; }
+  .cheer .crab-wrap { position: relative; flex: none; width: 60px; height: 42px; margin-top: 2px; }
+  .cheer .crab-wrap .px-crab { width: 60px; height: 42px; }
+  .cheer .spark { position: absolute; width: 5px; height: 5px; background: var(--amber); }
+  .cheer .spark.g { background: var(--glass); }
+  .cheer .spark.c { background: var(--coral); }
+  .cheer .say { display: grid; gap: 8px; }
+  .cheer .say p { margin: 0; color: var(--sand-dim); font-size: var(--fs-14); line-height: 1.5; }
+
+  /* starters */
+  .starters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .starter { display: grid; padding: 0; overflow: hidden; text-align: left; border-radius: 12px; border: 1px solid var(--line); background: var(--reef); }
+  .starter:hover, .starter.hot { border-color: var(--glass); }
+  .starter .mini { height: 300px; }
+  .starter .mini.deps i { height: 36px; }
+  .starter .mini.read i { height: 14px; margin-bottom: 18px; }
+  .starter .txt { padding: 14px 18px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 16px; align-items: center; }
+  .starter .txt > b, .starter .txt > .d, .starter .txt > .asks { grid-column: 1; }
+  .starter .txt b { font-size: var(--fs-17); }
+  .starter .txt .d { color: var(--sand-dim); font-size: var(--fs-14); }
+  .starter .txt .asks { color: var(--sand-faint); font-size: var(--fs-13); }
+  .starter .txt .asks em { font-style: normal; color: var(--sand-dim); }
+  .starter .txt > .btn { grid-column: 2; grid-row: 1 / span 3; }
+  .starter-foot { margin-top: 4px; color: var(--sand-faint); font-size: var(--fs-13-5); }
+  .prompt { padding: 14px 16px; border-radius: 12px; border: 1px dashed var(--line); color: var(--sand); font-size: var(--fs-15); line-height: 1.5; }
+  .aside .mini.check { border-radius: 10px; border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- 15. New page -->
+  <section class="screen" data-n="15" data-title="New page" data-note="One box, in your words, is the whole form. The starters fill the box rather than skipping it, so you can still change the idea before Build it. Project and phone are asked now because they change what Claude builds; access isn't, because it comes from what the page turns out to need. Full screen, the sheet is a window in the middle of the shelf rather than a drawer over it.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages"></nav>
+      <main class="main">
+        <div class="main-head">
+          <div><h1>Pages</h1><p class="lede">5 pages, 2 pinned. 3 changed today.</p></div>
+          <div class="end"><button class="btn icon ghost" aria-label="Search">⌕</button><button class="btn primary">New page</button></div>
+        </div>
+        <div class="main-body">
+          <div class="sec-h">Pinned</div>
+          <div class="shelf">
+            <button class="tile big"><div class="mini print" style="height:260px"><i></i><i class="n"></i><i class="n"></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>Claude added 2 prints in "Tune the Benchy profile", 4 min ago</span></span></button>
+            <button class="tile big"><div class="mini radar" style="height:260px"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:58%"></i><i style="height:44%"></i><i class="hi" style="height:74%"></i><i style="height:50%"></i><i style="height:38%"></i></div><span class="pin">📌</span><span class="meta"><b>Release radar</b><span>Morning routine posted 3 releases, 07:02</span></span></button>
+          </div>
+          <div class="sec-h">Everything else</div>
+          <div class="shelf">
+            <button class="tile"><div class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dependency radar</b><span>1 critical in shellby</span></span></button>
+            <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i><i style="width:58%"></i></div><span class="meta"><b>Reading list</b><span>You, from the phone, yesterday</span></span></button>
+            <button class="tile"><div class="mini dinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dinner plan</b><span>Not opened in 3 weeks</span></span></button>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div class="scrim"></div>
+    <div class="newpage" role="dialog" aria-labelledby="np-h">
+      <h3 id="np-h">New page</h3>
+      <p class="lede">Say what it's for. Claude builds it in a new conversation, with a preview beside the chat.</p>
+      <textarea class="field area" aria-label="Describe the page">A board where every helper crab posts what it found, newest first, with a tick I can press when I've read it.</textarea>
+      <div class="ideas"><span class="faint" style="font-size:var(--fs-13)">Or start from</span><button class="chip">Dependency radar</button><button class="chip">Agents' checklist</button><button class="chip">Reading list</button><button class="chip">Gym log</button><button class="chip">Release radar</button><button class="chip">More…</button></div>
+      <div class="row">
+        <div><span class="lbl">Belongs to</span><div class="seg"><button aria-selected="true">No project</button><button>website</button><button>api-server</button><button>shellby</button></div></div>
+        <div><span class="lbl">Where it runs</span><label class="toggle" style="padding:2px 0"><span class="switch on"></span>Make it fit the phone too</label></div>
+      </div>
+      <div class="sheet-foot"><span class="hint">It asks for access only if the page needs it, before it first runs.</span><button class="btn primary lg">Build it</button></div>
+    </div>
+  </section>
+
+  <!-- 16. Building, with the preview -->
+  <section class="screen" data-n="16" data-title="Claude builds it, the preview keeps up" data-note="Each update_page is a tool row in the chat and a reload in the preview, so &quot;what did he just change&quot; has an answer on both sides. The preview runs with sample data in the same sandbox as a real page, which is why a page that would break later breaks here instead. The wide screen adds a column for the versions and the checks, so neither has to cover the preview.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat" data-who="Shellby is building"></nav>
+      <main class="main">
+        <div class="split build">
+          <div class="pane">
+            <div class="pane-tab">New page: Agents' checklist<span class="end"><span class="dot amber"></span></span></div>
+            <div class="pane-body">
+              <div class="chat">
+                <div class="msg-you">A board where every helper crab posts what it found, newest first, with a tick I can press when I've read it.</div>
+                <div class="msg-claude">A list of posts with who posted each one and a tick. Agents add posts with write_page's append, so two of them never overwrite each other. Starting with the list.</div>
+                <div class="tool-row"><span class="ok">✓</span><span class="t">Created <b>Agents' checklist</b> as a draft</span><span class="v">v1</span></div>
+                <div class="tool-row"><span class="ok">✓</span><span class="t">Saved version 2 of <b>Agents' checklist</b>: unread posts first</span><span class="v">v2</span></div>
+                <div class="tool-row live"><span class="dot amber"></span><span class="t">Saving version 3: a tick that stays ticked on your other PCs</span></div>
+              </div>
+              <div class="composer"><span class="placeholder">Tell him what to change</span><button class="btn sm ghost icon" aria-label="Send">↑</button></div>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="pane-tab"><span class="ico">▦</span>Preview<span class="chip amber">Draft</span><span class="end">Reloaded 2 s ago</span></div>
+            <div class="page">
+              <div class="reloading"></div>
+              <div class="pg-check xl">
+                <h4>Agents' checklist<small>3 unread</small></h4>
+                <div class="post"><span class="tick"></span><span><b>The retry hides a real timeout in the uploader, line 88</b><span>Fix flaky upload test, 2 min ago</span></span></div>
+                <div class="post"><span class="tick"></span><span><b>44.2 needs the clipboard change in 3 places</b><span>Bump electron to 44.2, 9 min ago</span></span></div>
+                <div class="post"><span class="tick"></span><span><b>2 deps behind in website: vite, esbuild</b><span>Morning routine, 07:02</span></span></div>
+                <div class="sec">Read</div>
+                <div class="post read"><span class="tick on"></span><span><b>Release notes drafted for 0.98.1</b><span>Write the release notes, yesterday</span></span></div>
+                <div class="post read"><span class="tick on"></span><span><b>Lockfile is clean again</b><span>a terminal in shellby, yesterday</span></span></div>
+              </div>
+            </div>
+            <div class="draft-bar">A draft until you save it. The preview runs with sample data and no access.<button class="btn primary">Save to my pages</button></div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>This build</h3>
+        <p class="lede">Every save is a version. None of them is on the shelf until you save it.</p>
+        <ul class="vers">
+          <li class="live"><span class="v">v3</span><b>A tick that stays ticked on your other PCs</b><span>Saving now</span></li>
+          <li><span class="v">v2</span><b>Unread posts first</b><span>40 s ago</span></li>
+          <li><span class="v">v1</span><b>Created as a draft</b><span>1 min ago · index.html, page.css, page.js</span></li>
+        </ul>
+        <div class="sec-h">Checks on every save</div>
+        <ul class="checks">
+          <li><i>✓</i>Size: 14 KB of 512 KB</li>
+          <li><i>✓</i>Files: 3, all in the page's folder</li>
+          <li><i>✓</i>No remote scripts or styles</li>
+          <li><i>✓</i>No eval or inline handlers</li>
+          <li><i>✓</i>Access matches the calls<span>Nothing beyond its own data</span></li>
+        </ul>
+        <p class="note">The preview has no access of its own: a call it isn't allowed gets a "draft" refusal it can show, instead of failing quietly.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 17. The draft -->
+  <section class="screen" data-n="17" data-title="A draft until you say so" data-note="Claude can save versions all day; none of them is a page until you press Save to my pages. The Draft chip in the header and the sheet say the same thing, so there's no way to think it's live when it isn't. If it asked for access, the access sheet would come next instead of this line. The sheet sits over the whole build, so the preview it's about stays in view around it.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat"></nav>
+      <main class="main">
+        <div class="split build">
+          <div class="pane">
+            <div class="pane-tab">New page: Agents' checklist<span class="end"><span class="dot"></span></span></div>
+            <div class="pane-body">
+              <div class="chat">
+                <div class="msg-you">A board where every helper crab posts what it found, newest first, with a tick I can press when I've read it.</div>
+                <div class="msg-claude">A list of posts with who posted each one and a tick. Agents add posts with write_page's append, so two of them never overwrite each other. Starting with the list.</div>
+                <div class="tool-row"><span class="ok">✓</span><span class="t">Created <b>Agents' checklist</b> as a draft</span><span class="v">v1</span></div>
+                <div class="tool-row"><span class="ok">✓</span><span class="t">Saved version 2 of <b>Agents' checklist</b>: unread posts first</span><span class="v">v2</span></div>
+                <div class="tool-row"><span class="ok">✓</span><span class="t">Saved version 3 of <b>Agents' checklist</b>: a tick that stays ticked on your other PCs</span><span class="v">v3</span></div>
+                <div class="tool-row"><span class="ok">✓</span><span class="t">Saved version 4 of <b>Agents' checklist</b>: read posts drop to the bottom</span><span class="v">v4</span></div>
+                <div class="msg-claude">That's the board. Unread posts sit on top, a tick stays ticked everywhere, and agents post with append so nobody overwrites anyone. It needs nothing beyond its own data.</div>
+              </div>
+              <div class="composer"><span class="placeholder">Tell him what to change</span><button class="btn sm ghost icon" aria-label="Send">↑</button></div>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="pane-tab"><span class="ico">▦</span>Preview<span class="chip amber">Draft</span><span class="end">Version 4 · reloaded 12 s ago</span></div>
+            <div class="page">
+              <div class="pg-check xl">
+                <h4>Agents' checklist<small>3 unread</small></h4>
+                <div class="post"><span class="tick"></span><span><b>The retry hides a real timeout in the uploader, line 88</b><span>Fix flaky upload test, 2 min ago</span></span></div>
+                <div class="post"><span class="tick"></span><span><b>44.2 needs the clipboard change in 3 places</b><span>Bump electron to 44.2, 9 min ago</span></span></div>
+                <div class="post"><span class="tick"></span><span><b>2 deps behind in website: vite, esbuild</b><span>Morning routine, 07:02</span></span></div>
+                <div class="sec">Read</div>
+                <div class="post read"><span class="tick on"></span><span><b>Release notes drafted for 0.98.1</b><span>Write the release notes, yesterday</span></span></div>
+                <div class="post read"><span class="tick on"></span><span><b>Lockfile is clean again</b><span>a terminal in shellby, yesterday</span></span></div>
+              </div>
+            </div>
+            <div class="draft-bar">A draft until you save it.<button class="btn primary">Save to my pages</button></div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>This build</h3>
+        <p class="lede">4 versions, all drafts. Nothing has left this conversation.</p>
+        <ul class="vers">
+          <li class="now"><span class="v">v4</span><b>Read posts drop to the bottom</b><span>12 s ago · what the preview shows</span></li>
+          <li><span class="v">v3</span><b>A tick that stays ticked on your other PCs</b><span>1 min ago</span></li>
+          <li><span class="v">v2</span><b>Unread posts first</b><span>2 min ago</span></li>
+          <li><span class="v">v1</span><b>Created as a draft</b><span>3 min ago</span></li>
+        </ul>
+        <div class="sec-h">Checks on version 4</div>
+        <ul class="checks">
+          <li><i>✓</i>Size: 16 KB of 512 KB</li>
+          <li><i>✓</i>Files: 3, all in the page's folder</li>
+          <li><i>✓</i>No remote scripts or styles</li>
+          <li><i>✓</i>No eval or inline handlers</li>
+          <li><i>✓</i>Access matches the calls<span>Nothing beyond its own data</span></li>
+        </ul>
+      </aside>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet-mid" role="dialog" aria-labelledby="done-h">
+      <h3 id="done-h">Claude's done</h3>
+      <p>Version 4 is a draft. It isn't on the shelf, your phone or your other PCs yet, and agents can't write to it until it is.</p>
+      <p class="faint" style="font-size:var(--fs-13-5)">It asks for nothing beyond its own data, so saving is one press.</p>
+      <div class="acts"><button class="btn">Keep changing it</button><button class="btn primary">Save to my pages</button></div>
+    </div>
+  </section>
+
+  <!-- 18. Point at it -->
+  <section class="screen" data-n="18" data-title="Change with Claude, pointing at it" data-note="Like line comments in the viewer: a click on the page becomes a chip in the composer with the element's text and selector, so &quot;this&quot; means one thing. Point at it swallows the page's own clicks while it's on; Use it hands them back, so you can open a menu on the page and then point at what came up. The side column shows the files, data and versions Claude has in front of him.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat" data-who="Shellby is listening"></nav>
+      <main class="main">
+        <div class="split build">
+          <div class="pane">
+            <div class="pane-tab">Change Print queue<span class="end">v7</span></div>
+            <div class="pane-body">
+              <div class="chat">
+                <div class="sys">Changing Print queue from version 7</div>
+                <div class="msg-claude">I've got the page's files and its data. Point at any part of it on the right, or just tell me.</div>
+              </div>
+              <div class="composer has-aim">
+                <span class="aim-chip">◎ Failed badge on #3 Funnel <code>li:nth-child(3) .st</code><span class="x">✕</span></span>
+                <div class="line"><span class="typed">Put why it failed under the name, in the same red, and drop the badge<i></i></span><button class="btn sm ghost icon" aria-label="Send">↑</button></div>
+              </div>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="pane-tab"><span class="ico">▦</span>Print queue<div class="seg"><button aria-selected="true">Point at it</button><button>Use it</button></div><span class="end">Click anything to name it</span></div>
+            <div class="page aiming">
+              <div class="pg-print xl pt">
+                <h4>Print queue</h4>
+                <p class="sub">Desk PC's printer. 3 queued, 1 failed this week.</p>
+                <ol>
+                  <li><span class="n">1</span><span><b>Benchy</b><small>PLA, 0.2 layer, 42 min left</small></span><span class="st go">Printing</span></li>
+                  <li><span class="n">2</span><span><b>Cable clip, 4 of them</b><small>PETG, about 1 h 10</small></span><span class="st">Next</span></li>
+                  <li><span class="n">3</span><span><b>Funnel</b><small>Stringing on the spout at 0.12</small></span><span class="st fail aim">Failed</span></li>
+                  <li><span class="n">4</span><span><b>Phone stand</b><small>Queued by you, Tuesday</small></span><span class="st">Queued</span></li>
+                  <li><span class="n">5</span><span><b>Lid for the parts box</b><small>PLA, about 2 h 05</small></span><span class="st">Queued</span></li>
+                </ol>
+              </div>
+              <span class="cross" style="right:102px;top:355px"></span>
+            </div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Print queue</h3>
+        <p class="lede">What Claude has in front of him.</p>
+        <div class="sec-h">Files<span class="end faint">13 KB of 512 KB</span></div>
+        <div class="kv"><code>index.html</code><span class="end">6.1 KB</span></div>
+        <div class="kv"><code>page.css</code><span class="end">2.3 KB</span></div>
+        <div class="kv"><code>page.js</code><span class="end">4.8 KB</span></div>
+        <div class="sec-h">Data</div>
+        <div class="kv">queue<span class="end">5 rows · 1.1 KB</span></div>
+        <div class="kv">profiles<span class="end">2 rows · 0.3 KB</span></div>
+        <div class="sec-h">Versions</div>
+        <ul class="vers">
+          <li class="now"><span class="v">v7</span><b>Show time left on the print</b><span>Claude, Monday · running</span></li>
+          <li><span class="v">v6</span><b>A queued row for the phone</b><span>Claude, last week</span></li>
+          <li><span class="v">v5</span><b>Failed prints in red</b><span>Claude, 3 weeks ago</span></li>
+        </ul>
+        <p class="note">Every save becomes version 8. Version 7 keeps running until then, here and on your other PCs.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 19. A save check fails -->
+  <section class="screen" data-n="19" data-title="A save check fails" data-note="The checks run on every save (size, the file list, no remote scripts or styles, no eval or inline handlers, access that matches the calls), and a failure is the tool's error, not a broken page. Claude reads the reason and fixes it in the same turn; you see the same words in the chat, and the running version never changed. On the right, the version list keeps the refused save between v3 and v4.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat" data-sub="radar" data-who="Shellby is building"></nav>
+      <main class="main">
+        <div class="split build">
+          <div class="pane">
+            <div class="pane-tab">Change Release radar<span class="end">v4</span></div>
+            <div class="pane-body">
+              <div class="chat">
+                <div class="msg-you">Add a chart of releases per week above the list.</div>
+                <div class="msg-claude">Adding a bar chart over the last eight weeks.</div>
+                <div class="tool-row bad"><span class="no">✕</span><span class="t">Couldn't save version 4 of <b>Release radar</b></span></div>
+                <div class="card bad check-card">
+                  <h3>The save check said no</h3>
+                  <p><code>index.html</code> loads a script from <code>cdn.example.com</code>. Pages can't reach the web from their own code, so it would never load and the page would go blank. Draw the chart in the page's own files instead.</p>
+                  <p class="faint" style="margin:0;font-size:var(--fs-13)">Sent back to Claude as the tool's error. Version 3 is still what's running.</p>
+                </div>
+                <div class="msg-claude">Right. I'll draw the bars with the page's own code, no library.</div>
+                <div class="tool-row"><span class="ok">✓</span><span class="t">Saved version 4 of <b>Release radar</b>: a chart drawn in the page</span><span class="v">v4</span></div>
+              </div>
+              <div class="composer"><span class="placeholder">Tell him what to change</span><button class="btn sm ghost icon" aria-label="Send">↑</button></div>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="pane-tab"><span class="ico">▦</span>Release radar<span class="end">Version 4 · reloaded just now</span></div>
+            <div class="page">
+              <div class="pg-radar xl">
+                <h4>Release radar</h4>
+                <p class="sub">releases per week, last 8 weeks</p>
+                <div class="bars fresh"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i style="height:62%"></i><i style="height:46%"></i><i style="height:35%"></i><i style="height:58%"></i><i class="hi" style="height:88%"></i></div>
+                <div class="row"><span>electron</span><span class="v">44.2.1</span><span class="tag">minor</span></div>
+                <div class="row"><span>vite</span><span class="v">7.1.0</span><span class="tag major">major</span></div>
+                <div class="row"><span>esbuild</span><span class="v">0.25.4</span><span class="tag">patch</span></div>
+                <div class="row"><span>node</span><span class="v">24.3.0</span><span class="tag">minor</span></div>
+                <div class="row"><span>electron-builder</span><span class="v">26.1.0</span><span class="tag">minor</span></div>
+                <div class="row"><span>typescript</span><span class="v">5.9.2</span><span class="tag">patch</span></div>
+                <div class="row"><span>eslint</span><span class="v">9.30.0</span><span class="tag">minor</span></div>
+                <div class="row"><span>@anthropic-ai/claude-code</span><span class="v">2.1.291</span><span class="tag">patch</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Release radar</h3>
+        <p class="lede">Every save is checked before it runs.</p>
+        <ul class="vers">
+          <li class="now"><span class="v">v4</span><b>A chart drawn in the page</b><span>Just now · running</span></li>
+          <li class="bad"><span class="v">✕</span><b>Refused: a script from cdn.example.com</b><span>1 min ago · sent back to Claude, nothing changed</span></li>
+          <li><span class="v">v3</span><b>Tag majors in amber</b><span>Monday · ran until just now</span></li>
+          <li><span class="v">v2</span><b>Sort by date</b><span>2 weeks ago</span></li>
+        </ul>
+        <div class="sec-h">Checks on version 4</div>
+        <ul class="checks">
+          <li><i>✓</i>Size: 38 KB of 512 KB</li>
+          <li><i>✓</i>Files: 4, all in the page's folder</li>
+          <li class="hot"><i>✓</i>No remote scripts or styles<span>Failed on the first try: cdn.example.com</span></li>
+          <li><i>✓</i>No eval or inline handlers</li>
+          <li><i>✓</i>Access matches the calls<span>Reaches api.github.com, as before</span></li>
+        </ul>
+        <p class="note">A failed check is the tool's error, in the same words you see in the chat. The running version never changes until a save passes.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 20. The first save -->
+  <section class="screen" data-n="20" data-title="The first save" data-note="The crab's real-milestone celebrate, the one he keeps for a first anything: one bubble, four pixels of glitter, and a line about where the page now lives, gone in a few seconds. The Draft chip is gone from the header and Change with Claude has taken its place, which is the real signal. Saved, the page gets the whole main column and joins the rail.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="checklist" data-pages="checklist,print,radar,deps,read,dinner" data-live="print" data-who="Shellby is pleased"></nav>
+      <main class="main">
+        <div class="page-head"><button class="back" aria-label="Back to Pages">←</button><span class="nm">Agents' checklist</span><span class="faint" style="font-size:var(--fs-13)">Saved just now · version 4</span><div class="end"><button class="btn">Change with Claude</button><button class="btn icon ghost" aria-label="More">⋯</button></div></div>
+        <div class="page">
+          <div class="pg-check xl">
+            <div class="wrap">
+              <h4>Agents' checklist<small>3 unread</small></h4>
+              <div class="post"><span class="tick"></span><span><b>The retry hides a real timeout in the uploader, line 88</b><span>Fix flaky upload test, 2 min ago</span></span></div>
+              <div class="post"><span class="tick"></span><span><b>44.2 needs the clipboard change in 3 places</b><span>Bump electron to 44.2, 9 min ago</span></span></div>
+              <div class="post"><span class="tick"></span><span><b>2 deps behind in website: vite, esbuild</b><span>Morning routine, 07:02</span></span></div>
+              <div class="sec">Read</div>
+              <div class="post read"><span class="tick on"></span><span><b>Release notes drafted for 0.98.1</b><span>Write the release notes, yesterday</span></span></div>
+              <div class="post read"><span class="tick on"></span><span><b>Lockfile is clean again</b><span>a terminal in shellby, yesterday</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="toast cheer">
+          <span class="crab-wrap"><span class="px-crab"></span><i class="spark" style="left:-9px;top:2px"></i><i class="spark g" style="right:-8px;top:-5px"></i><i class="spark c" style="left:12px;top:-10px"></i><i class="spark g" style="right:5px;bottom:-7px"></i></span>
+          <span class="say"><span class="bubble">Your first page!</span><p>It's on the shelf now, and on your phone and your other PCs once they've synced. Agents can write to it from here on.</p></span>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 21. Starters -->
+  <section class="screen" data-n="21" data-title="Starters" data-note="A starter is a whole page Claude builds and then adapts, not a template with blanks. Each one says up front what access it will ask for, so the access sheet after the first save never comes as a surprise, and &quot;nothing beyond its own data&quot; is the common case. The side column shows the prompt the highlighted starter would put in the box.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages"></nav>
+      <main class="main">
+        <div class="main-head">
+          <button class="page-head back" aria-label="Back" style="margin:0 0 4px -6px">←</button>
+          <div><h1>Start from one of these</h1><p class="lede">Claude builds the starter for you, then changes it however you like.</p></div>
+        </div>
+        <div class="main-body">
+          <div class="starters">
+            <button class="starter"><span class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="txt"><b>Dependency radar</b><span class="d">A routine posts what's behind, each morning.</span><span class="asks">Asks to <em>read projects and git</em></span></span></button>
+            <button class="starter hot"><span class="mini check"><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="txt"><b>Agents' checklist</b><span class="d">Helper crabs post, you tick them off.</span><span class="asks">Asks for <em>nothing</em> beyond its data</span><span class="btn primary">Build it</span></span></button>
+            <button class="starter"><span class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i><i style="width:58%"></i><i style="width:76%"></i><i style="width:66%"></i></span><span class="txt"><b>Reading list</b><span class="d">Links from the phone, with Claude's summary.</span><span class="asks">Asks to <em>notify</em> you when a summary is ready</span></span></button>
+            <button class="starter"><span class="mini radar"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:58%"></i><i style="height:44%"></i><i class="hi" style="height:74%"></i><i style="height:50%"></i><i style="height:38%"></i></span><span class="txt"><b>Release radar</b><span class="d">New versions of what you depend on.</span><span class="asks">Asks to <em>reach api.github.com</em></span></span></button>
+            <button class="starter"><span class="mini dinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="txt"><b>Dinner plan</b><span class="d">The week's meals and one shopping list.</span><span class="asks">Asks for <em>nothing</em> beyond its own data</span></span></button>
+            <button class="starter"><span class="mini gym"><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i></span><span class="txt"><b>Gym log</b><span class="d">Sets from the phone, a chart on the desk.</span><span class="asks">Asks for <em>nothing</em> beyond its own data</span></span></button>
+          </div>
+          <p class="starter-foot">A starter fills the box; you can still change the idea before Build it. Access is asked for once, after the first save, and only what the card says.</p>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Agents' checklist</h3>
+        <p class="lede">What pressing it puts in the box.</p>
+        <div class="mini check"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="prompt">A board where every helper crab posts what it found, newest first, with a tick I can press when I've read it.</div>
+        <div class="sec-h">Claude will build</div>
+        <ul class="checks">
+          <li><i>▦</i>A list of posts, unread first<span>Agents add with append, so two never collide</span></li>
+          <li><i>▦</i>A tick that stays ticked everywhere</li>
+          <li><i>▦</i>A phone layout, one column</li>
+        </ul>
+        <div class="sec-h">It asks for</div>
+        <ul class="checks">
+          <li><i>✓</i>Nothing beyond its own data<span>No web, no files, no notifications</span></li>
+        </ul>
+        <p class="note">A starter is a prompt, not a file, so it never needs its own review. Claude writes the page fresh, and you change it from there.</p>
+      </aside>
+    </div>
+  </section>
+
+</div>
+<script src="deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- The panel's CSP, plus the one thing Pages adds: frame-src shellby-page: -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; media-src blob:; base-uri 'none'; form-action 'none'; frame-src shellby-page:">
+<title>Pages sandbox spike</title>
+</head>
+<body>
+<p id="secret">panel-only text</p>
+<iframe id="alpha" sandbox="allow-scripts" src="shellby-page://alpha/index.html" width="400" height="300"></iframe>
+<iframe id="gamma" sandbox="allow-scripts" src="shellby-page://gamma/index.html" width="200" height="100"></iframe>
+<script src="host.js"></script>
+</body>
+</html>

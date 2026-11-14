@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: on your phone, full screen</title>
+<link rel="stylesheet" href="../mock.css">
+<link rel="stylesheet" href="full.css">
+<style>
+  /* the deck's .screen rules also reach the phone's inner .screen: undo what matters */
+  .phone .screen { font-size: var(--fs-14); isolation: auto; inset: auto; }
+  .phone .screen::before { content: none; }
+  .phone .btn { height: 44px; padding: 0 14px; border-radius: 10px; font-size: var(--fs-14); }
+  .phone .chip { height: 22px; padding: 0 8px; font-size: var(--fs-11-5); }
+  .phone .card { padding: 10px 12px; border-radius: var(--r); }
+  .screen.deep { background: var(--abyss); }
+  .screen.deep::before { background: radial-gradient(34% 36% at 18% 8%, rgba(127, 214, 194, .09), transparent 70%), radial-gradient(42% 40% at 74% 98%, rgba(255, 122, 92, .07), transparent 70%); }
+
+  /* a phone at 1.9x: drawn at its real size, then scaled, so its text stays crisp */
+  .big { position: absolute; left: 150px; top: 131px; width: 570px; height: 1178px; z-index: 6; }
+  .big .phone { transform-origin: 0 0; transform: scale(1.9); box-shadow: 0 50px 120px rgba(0, 0, 0, .7), inset 0 0 0 2px #121a1a; }
+
+  /* who's who, and the ties between the two sides */
+  .lbl-on { position: absolute; z-index: 8; display: flex; align-items: center; gap: 12px; font: 600 var(--fs-20) var(--font-pixel); color: var(--sand-dim); }
+  .lbl-on .dot { width: 10px; height: 10px; }
+  .lbl-on small { font: 400 var(--fs-13-5) var(--font-body); color: var(--sand-faint); }
+  .tie { position: absolute; z-index: 7; height: 0; display: flex; align-items: center; justify-content: center; border-top: 2px dashed rgba(127, 214, 194, .45); }
+  .tie.r::after { content: ""; position: absolute; right: -2px; top: -6px; border: 7px solid transparent; border-right: 0; border-left: 11px solid rgba(127, 214, 194, .8); }
+  .tie.l::after { content: ""; position: absolute; left: -2px; top: -6px; border: 7px solid transparent; border-left: 0; border-right: 11px solid rgba(127, 214, 194, .8); }
+  .tie.l::before, .tie.r::before { content: ""; position: absolute; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--glass); }
+  .tie.r::before { left: -5px; }
+  .tie.l::before { right: -5px; }
+  .pill { position: relative; z-index: 8; padding: 10px 18px; border-radius: 99px; background: var(--abyss); border: 1px solid rgba(127, 214, 194, .55); color: var(--glass); font: 700 var(--fs-14)/1.35 var(--font-body); text-align: center; white-space: nowrap; box-shadow: 0 12px 34px rgba(0, 0, 0, .6); }
+  .pill small { display: block; max-width: 230px; margin: 0 auto; color: var(--sand-faint); font-weight: 400; font-size: var(--fs-12-5); white-space: normal; }
+  .pill.abs { position: absolute; }
+  .wire { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 7; pointer-events: none; fill: none; stroke: rgba(127, 214, 194, .6); stroke-width: 2; stroke-dasharray: 8 8; }
+  .wire circle { fill: var(--glass); stroke: none; }
+  .hilite { outline: 2px dashed rgba(127, 214, 194, .55); outline-offset: 12px; border-radius: 4px; }
+  .phone .hilite { outline-offset: 6px; }
+  .phone .strip .tile .meta b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Desk PC: a Shellby window that isn't maximised */
+  .pcwin { position: absolute; z-index: 2; display: flex; flex-direction: column; overflow: hidden; isolation: isolate; background: var(--ink); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 34px 90px rgba(0, 0, 0, .6), 0 0 0 1px rgba(0, 0, 0, .45); }
+  .pcwin::before { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(40% 30% at 20% 10%, rgba(127, 214, 194, .07), transparent 70%), radial-gradient(50% 35% at 60% 100%, rgba(255, 122, 92, .05), transparent 70%); }
+  .pcwin.asleep { filter: saturate(.25) brightness(.5); }
+  .zz { position: absolute; z-index: 8; font: 600 54px/1 var(--font-pixel); color: var(--sand-faint); letter-spacing: 4px; }
+  .zz span:nth-child(2) { font-size: 40px; vertical-align: 14px; margin-left: 6px; }
+  .zz span:nth-child(3) { font-size: 28px; vertical-align: 32px; margin-left: 6px; }
+  .pcwin .page-head { height: 48px; padding: 0 12px 0 10px; gap: 10px; }
+  .pcwin .page-head .nm { font-size: var(--fs-15); }
+  .pcwin .page-head .end { gap: 8px; }
+  .pcwin .writes { flex: none; display: flex; gap: 10px; align-items: center; padding: 10px 16px; background: var(--abyss); border-bottom: 1px solid var(--line-soft); color: var(--sand-dim); font-size: var(--fs-13-5); }
+  .pcwin .writes b { color: var(--sand); }
+  .pcwin .writes code { color: var(--glass); font-size: var(--fs-13); }
+  .pcwin .writes .end { margin-left: auto; color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .pcwin .dialog-float { position: absolute; z-index: 9; }
+  .dialog.float { position: absolute; z-index: 9; }
+  .pg-print.xl li.fresh { outline: 3px solid #7fd6c2; outline-offset: 2px; }
+  .pg-print li .st.done { background: #7fd6c2; color: #06201b; }
+  .pg-print.xl .wk { margin-top: 26px; padding: 16px 18px; border-top: 1px dashed #c9bfae; font-size: 15px; color: #6f665b; display: flex; justify-content: space-between; }
+  .pg-print.xl .wk b { color: #2b2723; }
+  .pg-radar .row.fresh { box-shadow: inset 3px 0 0 #7fd6c2; padding-left: 8px; }
+
+  /* "Drive space", the wide page the phone can't show */
+  .pg-drive { height: 100%; padding: 44px 64px; background: #f4f1ea; color: #2a2a2a; font-family: var(--font-body); }
+  .pg-drive h4 { margin: 0 0 4px; font: 700 40px/1.1 var(--font-body); letter-spacing: -.02em; }
+  .pg-drive .sub { margin: 0 0 26px; color: #6b6b66; font-size: 16px; }
+  .pg-drive .drv { display: grid; grid-template-columns: 240px 1fr 260px; gap: 26px; align-items: center; padding: 15px 0; border-bottom: 1px solid #e2ded4; font-size: 17px; }
+  .pg-drive .drv small { display: block; color: #6b6b66; font-size: 14px; }
+  .pg-drive .bar { position: relative; height: 22px; border-radius: 11px; background: #e4e0d6; overflow: hidden; }
+  .pg-drive .bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); border-radius: 11px; background: #3f7ae8; }
+  .pg-drive .drv.hot .bar::after { background: #e5644e; }
+  .pg-drive .drv .v { text-align: right; font: 500 15px var(--font-mono); color: #444; }
+  .pg-drive .drv.hot .v { color: #ad3a22; font-weight: 700; }
+  .pg-drive .sec { margin: 32px 0 14px; font-size: 14px; font-weight: 700; color: #6b6b66; }
+  .pg-drive .map { display: flex; gap: 6px; height: 180px; }
+  .pg-drive .map i { flex: var(--f); min-width: 0; display: flex; align-items: flex-end; padding: 12px 14px; border-radius: 8px; background: #2b55ad; color: #fff; font-style: normal; font-size: 15px; font-weight: 700; overflow: hidden; }
+  .pg-drive .map i:nth-child(2n) { background: #3a66c4; }
+  .pg-drive .map i.hot { background: #c4452c; }
+  .pg-drive .map i small { display: block; font-weight: 400; font-size: 13px; }
+
+  /* the desk's Beach and chat, as in the other decks */
+  .pcwin .convo { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); font-size: var(--fs-15); }
+  .pcwin .convo .what { color: var(--sand-dim); font-size: var(--fs-13-5); }
+  .pcwin .convo .end { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--sand-faint); font-size: var(--fs-13); }
+  .pcwin .convo.wait { border-color: color-mix(in srgb, var(--coral) 55%, var(--line)); }
+  .pcwin .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .pcwin .strip .mini { height: 150px; }
+  .beach2 { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 36px; }
+  .beach2 .col { display: grid; gap: 14px; align-content: start; }
+  .crab-say { display: flex; gap: 14px; align-items: flex-end; padding: 18px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line-soft); }
+  .crab-say .px-crab { width: 60px; height: 42px; }
+  .chat-wide { width: 940px; margin: 0 0 0 676px; padding-top: 24px; display: grid; gap: 18px; }
+  .main-head.offset { padding-left: 732px; padding-top: 120px; }
+  .from { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dim { position: absolute; inset: 0; z-index: 5; background: rgba(4, 10, 11, .55); }
+
+  /* ================================================================ the phone app's own pieces */
+  .phone .p-head { min-height: 46px; }
+  .phone .p-head .brand { display: flex; align-items: center; gap: 7px; font: 700 var(--fs-18)/1 var(--font-pixel); }
+  .phone .p-head .brand .px-crab { width: 30px; height: 21px; }
+  .phone .p-head .back { display: inline-flex; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: var(--glass); font-weight: 700; font-size: var(--fs-14); }
+  .phone .p-head .pc { margin-left: auto; display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px; border-radius: 99px; background: var(--glass-dim); color: var(--glass); font-size: var(--fs-11-5); font-weight: 700; white-space: nowrap; }
+  .phone .p-head .pc i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .phone .p-dock .dock-btn { position: relative; }
+  .phone .p-dock .dock-btn .px-crab { width: 28px; height: 19px; }
+  .phone .p-dock .bdg { position: absolute; top: 6px; left: calc(50% + 10px); min-width: 17px; height: 17px; padding: 0 5px; border-radius: 99px; background: var(--coral); color: #1a0d09; font: 700 var(--fs-11)/17px var(--font-body); }
+
+  /* the shelf on a phone: the same tiles, two across */
+  .phone .p-shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+  .phone .tile { position: relative; display: grid; gap: 0; padding: 0; text-align: left; overflow: hidden; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); }
+  .phone .tile .meta { padding: 7px 10px 8px; display: grid; gap: 1px; min-width: 0; }
+  .phone .tile .meta b { display: block; font-size: var(--fs-13-5); line-height: 1.25; }
+  .phone .tile .meta b .dot { display: inline-block; vertical-align: 1px; margin-right: 5px; }
+  .phone .tile .meta span { font-size: var(--fs-12); color: var(--sand-faint); }
+  .phone .tile .pin { top: 6px; right: 6px; font-size: 11px; padding: 1px 5px; border-radius: 5px; color: var(--sand); }
+  .phone .tile .over { height: 72px; }
+  .phone .tile .over .chip { background: var(--abyss); color: var(--sand); box-shadow: inset 0 0 0 1px var(--line), 0 4px 12px rgba(0, 0, 0, .4); }
+  .phone .mini { height: 72px; }
+  .phone .mini.print { padding: 8px 9px; }
+  .phone .mini.print i { height: 10px; margin-bottom: 4px; border-radius: 2px; }
+  .phone .mini.print i:first-child { width: 60%; height: 7px; margin-bottom: 6px; }
+  .phone .mini.print i.f { box-shadow: inset 16px 0 0 #c4452c; }
+  .phone .mini.radar { padding: 8px 9px; gap: 2px; }
+  .phone .mini.radar i { border-radius: 1px; }
+  .phone .mini.read { padding: 9px; }
+  .phone .mini.read i { height: 6px; margin: 0 0 6px 9px; border-radius: 2px; box-shadow: -9px 0 0 -1px #c9a35b; }
+  .phone .mini.read i:first-child { width: 50%; height: 8px; margin-left: 0; box-shadow: none; }
+  .phone .mini.deps { padding: 8px 9px; grid-template-columns: repeat(6, 1fr); gap: 3px; }
+  .phone .mini.deps i { height: 11px; border-radius: 2px; }
+  .phone .mini.gym { padding: 8px 9px; gap: 3px; }
+  .phone .mini.gym i { border-radius: 2px; }
+  .mini.drive { background: #f4f1ea; padding: 10px 9px; display: grid; gap: 7px; align-content: center; }
+  .mini.drive i { position: relative; display: block; height: 9px; border-radius: 5px; background: #dcd8cf; overflow: hidden; }
+  .mini.drive i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w, 50%); background: #3f7ae8; }
+  .mini.drive i.hot::after { background: #e5644e; }
+  .pcwin .mini.drive { padding: 30px 24px; gap: 16px; }
+  .pcwin .mini.drive i { height: 18px; border-radius: 9px; }
+
+  /* a page running on the phone: a 40px header, then the page */
+  .phone .ph { flex: none; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 8px 0 6px; background: var(--abyss); border-bottom: 1px solid var(--line-soft); }
+  .phone .ph .back { width: 32px; height: 32px; border: 0; background: none; color: var(--glass); font-size: 22px; line-height: 1; border-radius: 8px; display: grid; place-items: center; }
+  .phone .ph .nm { font-weight: 700; font-size: var(--fs-14); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .phone .ph .end { margin-left: auto; display: flex; gap: 2px; align-items: center; }
+  .phone .ph .ib { width: 34px; height: 34px; border: 0; background: none; color: var(--sand-dim); border-radius: 8px; font-size: 18px; line-height: 1; display: grid; place-items: center; }
+  .phone .pg-print .wk { margin-top: 14px; padding: 10px 12px; border-top: 1px dashed #c9bfae; font-size: 12.5px; color: #6f665b; display: flex; justify-content: space-between; }
+  .phone .pg-print .wk b { color: #2b2723; }
+
+  /* built for the desk */
+  .phone .desk-only { display: grid; gap: 12px; align-content: start; padding-top: 10px; }
+  .phone .desk-only .thumb { position: relative; height: 150px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+  .phone .desk-only .thumb .mini { height: 100%; border: 0; filter: grayscale(.6) brightness(.7); }
+  .phone .desk-only .thumb .over { position: absolute; inset: 0; display: grid; place-items: center; }
+  .phone .desk-only .thumb .over .chip { background: var(--abyss); color: var(--sand); box-shadow: inset 0 0 0 1px var(--line), 0 4px 12px rgba(0, 0, 0, .4); }
+  .phone .desk-only h3 { margin: 4px 0 0; font: 600 var(--fs-19)/1.2 var(--font-pixel); }
+  .phone .desk-only p { margin: 0; color: var(--sand-dim); font-size: var(--fs-14); }
+  .phone .desk-only .note { font-size: var(--fs-12-5); color: var(--sand-faint); }
+
+  /* the PC asleep: a dated snapshot, read-only */
+  .phone .snap-note { flex: none; margin: 10px 12px; }
+  .phone .snap-note b { display: block; font-size: var(--fs-13-5); color: var(--amber); }
+  .phone .snap-note p { margin: 2px 0 0; font-size: var(--fs-12-5); color: var(--sand-dim); }
+  .phone .snap { filter: saturate(.5) brightness(.78); pointer-events: none; }
+  .phone .snap::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(7, 16, 18, .08) 3px 4px); }
+
+  /* the beach */
+  .phone .tide { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; padding: 11px 14px 12px; border-radius: 18px; background: linear-gradient(170deg, var(--reef) 0%, rgba(17, 35, 42, .55) 100%); border: 1px solid var(--line-soft); }
+  .phone .tide .px-crab { width: 48px; height: 33px; }
+  .phone .tide b { display: block; font: 700 var(--fs-16)/1.1 var(--font-pixel); white-space: nowrap; }
+  .phone .tide span { display: block; margin-top: 2px; color: var(--sand-dim); font-size: var(--fs-12-5); }
+  .phone .tide .bar { grid-column: 1 / -1; height: 6px; border-radius: 99px; background: var(--abyss); overflow: hidden; }
+  .phone .tide .bar i { display: block; height: 100%; width: 42%; border-radius: 99px; background: var(--glass); }
+  .phone .sect { display: flex; align-items: center; margin: 9px 2px 5px; font: 700 var(--fs-12) var(--font-body); color: var(--sand-faint); }
+  .phone .sect.asking { color: var(--amber); }
+  .phone .sect .end { margin-left: auto; }
+  .phone .pask { display: grid; gap: 7px; padding: 11px 12px 12px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 122, 92, .10), rgba(17, 35, 42, .95) 40%), var(--reef); border: 1px solid rgba(255, 122, 92, .5); }
+  .phone .pask b { font: 700 var(--fs-15)/1.1 var(--font-pixel); color: var(--coral); }
+  .phone .pask small { color: var(--sand-dim); font-size: var(--fs-12-5); }
+  .phone .pask .btns { display: flex; gap: 8px; }
+  .phone .pask .btn { flex: 1; height: 38px; font-size: var(--fs-13-5); }
+  .phone .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .phone .strip .tile .mini { height: 54px; }
+  .phone .strip .mini.gym { grid-template-columns: repeat(5, 1fr); }
+  .phone .strip .tile .meta { padding: 6px 8px 7px; }
+  .phone .strip .tile .meta b { font-size: var(--fs-12-5); }
+  .phone .strip .tile .meta span { font-size: var(--fs-11); }
+  .phone .convo { display: flex; gap: 9px; align-items: center; padding: 11px 12px; border-radius: 14px; background: var(--reef); border: 1px solid rgba(127, 214, 194, .35); font-size: var(--fs-13-5); }
+  .phone .convo span { color: var(--sand-faint); font-size: var(--fs-12); margin-left: auto; white-space: nowrap; }
+
+  /* the ask, as the phone's own sheet */
+  .phone .sheet-up { border-radius: 24px 24px 0 0; padding: 14px 16px 24px; background: var(--reef); border-top-color: rgba(255, 122, 92, .35); display: grid; gap: 10px; }
+  .phone .sheet-up .grab { margin: -4px auto 2px; width: 44px; height: 5px; background: var(--line); }
+  .phone .sheet-up h3 { font-size: var(--fs-18); line-height: 1.2; margin: 0; }
+  .phone .sheet-up .who { margin: -6px 0 0; color: var(--sand-dim); font-size: var(--fs-12-5); }
+  .phone .quote { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--abyss); border: 1px solid var(--line); font-size: var(--fs-14); line-height: 1.4; box-shadow: inset 3px 0 0 var(--coral); }
+  .phone .lbl { font-size: var(--fs-12); font-weight: 700; color: var(--sand-faint); margin: 0; }
+  .phone .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .phone .modes .m { height: 34px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--reef-2); color: var(--sand-dim); font-weight: 700; font-size: var(--fs-13); }
+  .phone .modes .m.on { background: var(--glass-dim); border-color: rgba(127, 214, 194, .55); color: var(--glass); }
+  .phone .rule { margin: 0; font-size: var(--fs-12-5); color: var(--sand-faint); }
+  .phone .acts2 { display: flex; gap: 8px; }
+  .phone .acts2 .btn { flex: 1; }
+  .phone .acts2 .btn.primary { flex: 1.5; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- 36. The Pages tab -->
+  <section class="screen deep" data-n="36" data-title="The Pages tab" data-note="The same shelf as the desk, in the same order, pinned first. Pages built only for the desk still show, greyed with one chip, so the shelf never looks shorter on the phone than it is; what to do about one is a tap away. Beside it, Desk PC's own shelf at the same moment: six tiles there, six here.">
+    <div class="lbl-on" style="left:150px;top:76px"><span class="dot live"></span>Your phone<small>on your own network</small></div>
+    <div class="lbl-on" style="left:980px;top:214px"><span class="dot live"></span>Desk PC<small>holds the pages and their data</small></div>
+    <div class="big">
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span>5G ▮</span></div>
+        <div class="p-head"><h2>Pages</h2><span class="pc"><i></i>Desk PC</span></div>
+        <div class="p-body">
+          <div class="p-shelf">
+            <button class="tile"><div class="mini print"><i></i><i></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>2 new, 4 min ago</span></span></button>
+            <button class="tile"><div class="mini radar"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i></div><span class="pin">📌</span><span class="meta"><b>Release radar</b><span>Routine, 07:02</span></span></button>
+            <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i></div><span class="meta"><b>Reading list</b><span>You, yesterday</span></span></button>
+            <button class="tile"><div class="mini gym"><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i></i><i class="d"></i></div><span class="meta"><b>Gym log</b><span>You, Tuesday</span></span></button>
+            <button class="tile off"><div class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i></div><span class="over"><span class="chip">Built for the desk</span></span><span class="meta"><b>Dependency radar</b><span>1 critical in shellby</span></span></button>
+            <button class="tile off"><div class="mini drive"><i style="--w:72%"></i><i class="hot" style="--w:91%"></i><i style="--w:38%"></i></div><span class="over"><span class="chip">Built for the desk</span></span><span class="meta"><b>Drive space</b><span>D: is 91% full</span></span></button>
+          </div>
+        </div>
+        <div class="p-dock"><button class="dock-btn"><span class="px-crab"></span>Beach<b class="bdg">1</b></button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>≣</i>Queue</button><button class="dock-btn"><i>⋯</i>More</button><button class="dock-btn"><i>▭</i>Phone</button></div>
+        <div class="home-ind"></div>
+      </div></div>
+    </div>
+    <div class="tie r" style="left:724px;top:720px;width:254px"><span class="pill">Same shelf, same order<small>six tiles there, six here</small></span></div>
+    <div class="pcwin" style="left:980px;top:270px;width:1460px;height:900px">
+      <header class="tb"></header>
+      <div class="body">
+        <nav class="rail" data-on="pages" data-pages="print,radar,read,gym,deps,drive" data-live="print"></nav>
+        <main class="main">
+          <div class="main-head">
+            <div><h1>Pages</h1><p class="lede">6 pages, 2 pinned. 3 changed today.</p></div>
+            <div class="end"><div class="seg"><button aria-selected="true">Last changed</button><button>Last opened</button><button>Name</button></div><button class="btn icon ghost" aria-label="Search">⌕</button><button class="btn primary">New page</button></div>
+          </div>
+          <div class="main-body">
+            <div class="sec-h">Pinned</div>
+            <div class="shelf" style="grid-template-columns:repeat(2, 1fr)">
+              <button class="tile"><div class="mini print" style="height:250px"><i></i><i class="n"></i><i class="n"></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>Claude added 2 prints in "Tune the Benchy profile", 4 min ago</span></span></button>
+              <button class="tile"><div class="mini radar" style="height:250px"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:58%"></i><i style="height:44%"></i><i class="hi" style="height:74%"></i><i style="height:50%"></i><i style="height:38%"></i></div><span class="pin">📌</span><span class="meta"><b>Release radar</b><span>Morning routine posted 3 releases, 07:02</span></span></button>
+            </div>
+            <div class="sec-h">Everything else</div>
+            <div class="shelf" style="grid-template-columns:repeat(4, 1fr)">
+              <button class="tile"><div class="mini read" style="height:180px"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i><i style="width:58%"></i></div><span class="meta"><b>Reading list</b><span>You, from the phone, yesterday</span></span></button>
+              <button class="tile"><div class="mini gym" style="height:180px"><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i></i></div><span class="meta"><b>Gym log</b><span>You, Tuesday</span></span></button>
+              <button class="tile"><div class="mini deps" style="height:180px"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dependency radar</b><span>1 critical in shellby, 07:01</span></span></button>
+              <button class="tile"><div class="mini drive" style="height:180px"><i style="--w:72%"></i><i class="hot" style="--w:91%"></i><i style="--w:38%"></i><i style="--w:55%"></i></div><span class="meta"><b>Drive space</b><span>D: is 91% full, checked 09:40</span></span></button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- 37. A page, full-screen -->
+  <section class="screen deep" data-n="37" data-title="A page, full-screen" data-note="Under a 40px header the page gets the whole screen, in its own look. The dot means its data is live from the PC. Change with Claude, its data and History sit in the menu: on a phone the page needs the width more than the header does. The desk shows the same rows, and its header has room for the buttons.">
+    <div class="lbl-on" style="left:150px;top:76px"><span class="dot live"></span>Your phone<small>the page runs here, in the same sandbox</small></div>
+    <div class="lbl-on" style="left:980px;top:214px"><span class="dot live"></span>Desk PC<small>its data lives here; every bridge call comes back for the same checks</small></div>
+    <div class="big">
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span>5G ▮</span></div>
+        <div class="ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Print queue</span><span class="dot live"></span><span class="end"><button class="ib" aria-label="Menu">⋯</button></span></div>
+        <div class="page">
+          <div class="pg-print">
+            <h4>Print queue</h4>
+            <p class="sub">3 queued, 1 failed this week</p>
+            <ol>
+              <li class="fresh"><span class="n">1</span><span><b>Benchy, PETG</b><small>0.12 layer, 42 min left</small></span><span class="st go">Printing</span></li>
+              <li><span class="n">2</span><span><b>Funnel</b><small>PLA, 1 h 10</small></span><span class="st">Next</span></li>
+              <li><span class="n">3</span><span><b>6 cable clips</b><small>PLA, 25 min</small></span><span class="st">Queued</span></li>
+              <li><span class="n">4</span><span><b>Phone stand</b><small>Stringing on the arm</small></span><span class="st fail">Failed</span></li>
+            </ol>
+            <div class="wk"><span>This week</span><span><b>4</b> done, <b>6 h 12</b> printing</span></div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div></div>
+    </div>
+    <div class="tie r" style="left:724px;top:720px;width:254px"><span class="pill">One page, live from the PC<small>the dot is the same dot</small></span></div>
+    <div class="pcwin" style="left:980px;top:270px;width:1460px;height:900px">
+      <header class="tb"></header>
+      <div class="body">
+        <nav class="rail" data-on="pages" data-sub="print" data-pages="print,radar,read,gym,deps,drive" data-live="print"></nav>
+        <main class="main">
+          <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Print queue</span><span class="dot live" title="Its data changed since you last looked"></span><div class="end"><button class="btn sm">Change with Claude</button><button class="btn sm ghost">Its data</button><button class="btn sm ghost">History</button><button class="btn sm ghost icon" aria-label="More">⋯</button></div></div>
+          <div class="page">
+            <div class="pg-print xl">
+              <h4>Print queue</h4>
+              <p class="sub">Prusa MK4 · 0.4 nozzle · 3 queued, 1 failed this week</p>
+              <ol>
+                <li class="fresh"><span class="n">1</span><span><b>Benchy, PETG</b><small>0.12 layer · 42 min left</small></span><span class="why"></span><span class="st go">Printing</span></li>
+                <li><span class="n">2</span><span><b>Funnel</b><small>PLA · 1 h 10</small></span><span class="why"></span><span class="st">Next</span></li>
+                <li><span class="n">3</span><span><b>6 cable clips</b><small>PLA · 25 min</small></span><span class="why"></span><span class="st">Queued</span></li>
+                <li><span class="n">4</span><span><b>Phone stand</b><small>PETG · 2 h 10</small></span><span class="why">Stringing on the arm</span><span class="st fail">Failed</span></li>
+              </ol>
+              <div class="wk"><span>This week</span><span><b>4</b> done, <b>6 h 12</b> printing</span></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- 38. Built for the desk -->
+  <section class="screen deep" data-n="38" data-title="Built for the desk" data-note="Nothing is squeezed to fit and shown broken. The page's own miniature says what it is, and the one button starts the fix as a task on the PC, so you can ask from the sofa and find it ready when you're back. On the desk the page is a wide table and a map of what fills D:, which is why it doesn't open here yet.">
+    <div class="lbl-on" style="left:150px;top:76px"><span class="dot live"></span>Your phone<small>300 pixels wide</small></div>
+    <div class="lbl-on" style="left:980px;top:214px"><span class="dot live"></span>Desk PC<small>where this page was drawn, 1,200 pixels wide</small></div>
+    <div class="big">
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span>5G ▮</span></div>
+        <div class="p-head"><button class="back">‹ Pages</button><span class="pc"><i></i>Desk PC</span></div>
+        <div class="p-body">
+          <div class="desk-only">
+            <div class="thumb"><div class="mini drive"><i style="--w:72%"></i><i class="hot" style="--w:91%"></i><i style="--w:38%"></i><i style="--w:55%"></i></div><span class="over"><span class="chip">Built for the desk</span></span></div>
+            <h3>Drive space</h3>
+            <p>Claude built this one for a wide screen, so it doesn't open here yet. Ask him to make it fit a phone and it opens here next time.</p>
+            <button class="btn primary">Change with Claude</button>
+            <p class="note">Starts as a task on Desk PC, in Ask first, like any task from your phone. The page keeps working at the desk meanwhile.</p>
+          </div>
+        </div>
+        <div class="p-dock"><button class="dock-btn"><span class="px-crab"></span>Beach<b class="bdg">1</b></button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>≣</i>Queue</button><button class="dock-btn"><i>⋯</i>More</button><button class="dock-btn"><i>▭</i>Phone</button></div>
+        <div class="home-ind"></div>
+      </div></div>
+    </div>
+    <div class="tie r" style="left:724px;top:720px;width:254px"><span class="pill">Change with Claude<small>starts a task on Desk PC, Ask first</small></span></div>
+    <div class="pcwin" style="left:980px;top:270px;width:1460px;height:900px">
+      <header class="tb"></header>
+      <div class="body">
+        <nav class="rail" data-on="pages" data-sub="drive" data-pages="print,radar,read,gym,deps,drive" data-live="print"></nav>
+        <main class="main">
+          <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Drive space</span><div class="end"><span class="chip">This PC only</span><button class="btn sm">Change with Claude</button><button class="btn sm ghost icon" aria-label="More">⋯</button></div></div>
+          <div class="page">
+            <div class="pg-drive">
+              <h4>Drive space</h4>
+              <p class="sub">Desk PC · 4 drives · checked 09:40, next at 10:40</p>
+              <div class="drv"><span><b>C: Windows</b><small>1 TB NVMe</small></span><span class="bar" style="--w:72%"></span><span class="v">72% · 283 GB free</span></div>
+              <div class="drv hot"><span><b>D: Data</b><small>2 TB SSD</small></span><span class="bar" style="--w:91%"></span><span class="v">91% · 176 GB free</span></div>
+              <div class="drv"><span><b>E: Games</b><small>2 TB SSD</small></span><span class="bar" style="--w:38%"></span><span class="v">38% · 1.2 TB free</span></div>
+              <div class="drv"><span><b>F: Backup</b><small>4 TB HDD</small></span><span class="bar" style="--w:55%"></span><span class="v">55% · 1.8 TB free</span></div>
+              <div class="sec">What fills D:</div>
+              <div class="map">
+                <i style="--f:640"><span>Videos<small>640 GB</small></span></i>
+                <i style="--f:410"><span>Projects<small>410 GB</small></span></i>
+                <i class="hot" style="--f:210"><span>node_modules<small>210 GB, in 31 folders</small></span></i>
+                <i style="--f:180"><span>Downloads<small>180 GB</small></span></i>
+                <i style="--f:150"><span>Steam<small>150 GB</small></span></i>
+                <i style="--f:230"><span>Other<small>230 GB</small></span></i>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- 39. Lock screen -->
+  <section class="screen deep" data-n="39" data-title="A page on the lock screen" data-note="The morning routine wrote to the page, and the page's notify call turned that into one notification, named after the page, so you can tell a page talking from Shellby himself. At most one a minute, only for a page that asked for notify, and tapping opens the page on the phone. The second one is Shellby: a conversation on the PC waiting for an answer.">
+    <div class="lbl-on" style="left:150px;top:76px"><span class="dot live"></span>Your phone<small>07:04, still on the nightstand</small></div>
+    <div class="lbl-on" style="left:980px;top:94px"><span class="dot live"></span>Desk PC<small>awake: the morning routine ran at 07:02</small></div>
+    <div class="big">
+      <div class="phone lock"><div class="screen">
+        <div class="island"></div>
+        <div class="status"><span></span><span>5G ▮</span></div>
+        <div class="lock-time">07:04</div>
+        <div class="lock-date">Tuesday 3 March</div>
+        <div class="notif">
+          <div class="top"><span class="app-ico"></span>Shellby<span class="when">now</span></div>
+          <b>Print queue</b>
+          Benchy finished in 42 min. The funnel is next.
+        </div>
+        <div class="notif">
+          <div class="top"><span class="app-ico"></span>Shellby<span class="when">6 min ago</span></div>
+          <b>Fix flaky upload test</b>
+          Can I run npm test?
+        </div>
+      </div></div>
+    </div>
+    <svg class="wire" viewBox="0 0 2560 1440" aria-hidden="true">
+      <defs><marker id="arw39" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="rgba(127,214,194,.8)" stroke="none"/></marker></defs>
+      <circle cx="724" cy="548" r="5"/><path d="M724 548 C 880 548 830 265 978 265" marker-end="url(#arw39)"/>
+      <circle cx="724" cy="728" r="5"/><path d="M724 728 C 900 728 880 1080 1058 1080" marker-end="url(#arw39)"/>
+    </svg>
+    <span class="pill abs" style="left:742px;top:372px">The page, talking<small>its notify call, named after the page</small></span>
+    <span class="pill abs" style="left:742px;top:870px">Shellby himself<small>a conversation waiting on you</small></span>
+    <div class="pcwin" style="left:980px;top:150px;width:1460px;height:780px">
+      <header class="tb"></header>
+      <div class="body">
+        <nav class="rail" data-on="pages" data-sub="print" data-pages="print,radar,read,gym,deps,drive" data-live="print" data-who="Shellby is working"></nav>
+        <main class="main">
+          <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Print queue</span><span class="dot live"></span><div class="end"><button class="btn sm">Change with Claude</button><button class="btn sm ghost icon" aria-label="More">⋯</button></div></div>
+          <div class="writes"><span class="dot live"></span>Routine <b>Morning check</b> marked #1 done at 07:03, and the page called <code>notify</code>: one notification to your phone, this page's name on it.<span class="end">At most one a minute</span></div>
+          <div class="page">
+            <div class="pg-print xl">
+              <h4>Print queue</h4>
+              <p class="sub">Prusa MK4 · 0.4 nozzle · 2 queued, 1 failed this week</p>
+              <ol>
+                <li class="fresh"><span class="n">1</span><span><b>Benchy, PETG</b><small>0.12 layer · took 42 min</small></span><span class="why"></span><span class="st done">Done 07:03</span></li>
+                <li><span class="n">2</span><span><b>Funnel</b><small>PLA · 1 h 10</small></span><span class="why"></span><span class="st">Next</span></li>
+                <li><span class="n">3</span><span><b>6 cable clips</b><small>PLA · 25 min</small></span><span class="why"></span><span class="st">Queued</span></li>
+                <li><span class="n">4</span><span><b>Phone stand</b><small>PETG · 2 h 10</small></span><span class="why">Stringing on the arm</span><span class="st fail">Failed</span></li>
+              </ol>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    <div class="dialog float" style="left:1060px;top:960px">
+      <div class="bar"><span class="px-crab" aria-hidden="true"></span><span class="app">Shellby</span></div>
+      <div class="content"><div class="badge">⌨</div><h1>Can I run npm test?</h1><p class="msg">Fix flaky upload test wants to run a command in shellby.</p><p class="detail">npm test · asked 06:58, waiting since</p></div>
+      <div class="actions"><button class="btn ghost">Not now</button><button class="btn allow">Let it</button></div>
+    </div>
+  </section>
+
+  <!-- 40. PC asleep -->
+  <section class="screen deep" data-n="40" data-title="The PC is asleep" data-note="The service worker keeps the last screen of every phone-ready page, so a sleeping PC still shows something true, with the time it was true. It's dimmed and read-only on purpose: nothing you tap can pretend to have happened.">
+    <div class="lbl-on" style="left:150px;top:76px"><span class="dot live"></span>Your phone<small>23:58, showing what it kept</small></div>
+    <div class="lbl-on" style="left:980px;top:214px"><span class="dot amber"></span>Desk PC<small>asleep since 23:41. Nothing runs, so nothing can change.</small></div>
+    <div class="zz" style="left:2300px;top:150px"><span>z</span><span>z</span><span>z</span></div>
+    <div class="big">
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="status"><span>23:58</span><span>5G ▮</span></div>
+        <div class="ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Release radar</span><span class="end"><span class="chip amber">Desk PC is asleep</span></span></div>
+        <div class="card warn snap-note"><b>As it was at 23:41.</b><p>You can read it, not change it, until Desk PC wakes up.</p></div>
+        <div class="page snap">
+          <div class="pg-radar">
+            <h4>Release radar</h4>
+            <div class="bars"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:70%"></i></div>
+            <div class="row"><span>electron</span><span class="v">44.2.0</span><span class="tag major">major</span></div>
+            <div class="row"><span>node</span><span class="v">24.11.1</span><span class="tag">patch</span></div>
+            <div class="row"><span>eslint</span><span class="v">9.40.0</span><span class="tag">minor</span></div>
+            <div class="row"><span>typescript</span><span class="v">6.0.3</span><span class="tag">patch</span></div>
+            <div class="row"><span>vite</span><span class="v">8.1.0</span><span class="tag">minor</span></div>
+          </div>
+        </div>
+        <div class="home-ind"></div>
+      </div></div>
+    </div>
+    <div class="tie l" style="left:724px;top:720px;width:254px"><span class="pill">The last screen, 23:41<small>a picture and the data's text, kept by the service worker</small></span></div>
+    <div class="pcwin asleep" style="left:980px;top:270px;width:1460px;height:900px">
+      <header class="tb"></header>
+      <div class="body">
+        <nav class="rail" data-on="pages" data-sub="radar" data-pages="print,radar,read,gym,deps,drive" data-live="" data-who="Shellby is asleep"></nav>
+        <main class="main">
+          <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Release radar</span><div class="end"><button class="btn sm">Change with Claude</button><button class="btn sm ghost icon" aria-label="More">⋯</button></div></div>
+          <div class="page">
+            <div class="pg-radar xl">
+              <h4>Release radar · 23:41</h4>
+              <div class="bars"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:70%"></i><i style="height:44%"></i><i class="hi" style="height:74%"></i><i style="height:50%"></i><i style="height:38%"></i></div>
+              <div class="row"><span>electron</span><span class="v">44.2.0</span><span class="tag major">major</span></div>
+              <div class="row"><span>node</span><span class="v">24.11.1</span><span class="tag">patch</span></div>
+              <div class="row"><span>eslint</span><span class="v">9.40.0</span><span class="tag">minor</span></div>
+              <div class="row"><span>typescript</span><span class="v">6.0.3</span><span class="tag">patch</span></div>
+              <div class="row"><span>vite</span><span class="v">8.1.0</span><span class="tag">minor</span></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- 41. Pinned pages on the beach -->
+  <section class="screen deep" data-n="41" data-title="Pinned pages on the beach" data-note="The same row as the desk's Beach, in the same place: after what's waiting on you, before what's ready to review. A page you check every morning is one tap from the first screen, and on Android the first pinned one is in the app icon's long-press menu too.">
+    <div class="lbl-on" style="left:150px;top:76px"><span class="dot live"></span>Your phone<small>the Beach, first screen in the app</small></div>
+    <div class="lbl-on" style="left:980px;top:214px"><span class="dot live"></span>Desk PC<small>the same Beach, at the desk</small></div>
+    <div class="big">
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span>5G ▮</span></div>
+        <div class="p-head"><span class="brand"><span class="px-crab"></span>Shellby</span><span class="pc"><i></i>Desk PC</span></div>
+        <div class="p-body">
+          <div class="tide"><span class="px-crab" aria-hidden="true"></span><div><b>Working on 2 things</b><span>42% of your 5-hour window</span></div><div class="bar"><i></i></div></div>
+          <div class="sect asking">Waiting on you</div>
+          <div class="pask"><b>Can I run the tests?</b><small>Fix flaky upload test</small><div class="btns"><button class="btn ghost">Deny</button><button class="btn allow">Allow</button></div></div>
+          <div class="sect" style="margin-bottom:12px">Pinned pages<span class="end"><button class="link-btn small faint">All pages</button></span></div>
+          <div class="strip hilite">
+            <button class="tile"><div class="mini print"><i></i><i></i><i class="f"></i></div><span class="meta"><b><span class="dot live"></span>Prints</b><span>2 new</span></span></button>
+            <button class="tile"><div class="mini radar"><i style="height:30%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i></div><span class="meta"><b>Releases</b><span>07:02</span></span></button>
+            <button class="tile"><div class="mini gym"><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i></div><span class="meta"><b>Gym log</b><span>Tuesday</span></span></button>
+          </div>
+          <div class="sect" style="margin-top:18px">Ready to review</div>
+          <div class="convo"><span class="dot"></span>Add drive-space gauge<span>+48 −6</span></div>
+        </div>
+        <div class="p-dock"><button class="dock-btn active"><span class="px-crab"></span>Beach<b class="bdg">1</b></button><button class="dock-btn"><i>▦</i>Pages</button><button class="dock-btn"><i>≣</i>Queue</button><button class="dock-btn"><i>⋯</i>More</button><button class="dock-btn"><i>▭</i>Phone</button></div>
+        <div class="home-ind"></div>
+      </div></div>
+    </div>
+    <svg class="wire" viewBox="0 0 2560 1440" aria-hidden="true">
+      <circle cx="724" cy="876" r="5"/><path d="M724 876 C 880 876 840 716 978 716"/><circle cx="978" cy="716" r="5"/>
+    </svg>
+    <span class="pill abs" style="left:742px;top:766px">Same row, same place<small>after what's waiting, before what's ready</small></span>
+    <div class="pcwin" style="left:980px;top:270px;width:1460px;height:900px">
+      <header class="tb"></header>
+      <div class="body">
+        <nav class="rail" data-on="beach" data-pages="print,radar,read,gym,deps,drive" data-live="print"></nav>
+        <main class="main">
+          <div class="main-head"><div><h1>Beach</h1><p class="lede">Thursday. 1 waiting on you, 2 working, 1 ready to review.</p></div></div>
+          <div class="main-body">
+            <div class="beach2">
+              <div class="col">
+                <div class="sec-h">Waiting on you</div>
+                <div class="convo wait"><span class="dot coral"></span><span>Fix flaky upload test<br><span class="what">Can I run the tests?</span></span><span class="end"><button class="btn sm ghost">Not now</button><button class="btn sm allow">Let it</button></span></div>
+                <div class="sec-h" style="margin:18px 0 2px">Pinned pages<span class="end"><button class="link-btn small faint">All pages</button></span></div>
+                <div class="strip hilite">
+                  <button class="tile"><div class="mini print"><i></i><i class="n"></i><i class="n"></i><i class="f"></i></div><span class="meta"><b><span class="dot live"></span>Print queue</b><span>2 new from Claude</span></span></button>
+                  <button class="tile"><div class="mini radar"><i style="height:30%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:40%"></i><i style="height:52%"></i></div><span class="meta"><b>Release radar</b><span>3 releases, 07:02</span></span></button>
+                  <button class="tile"><div class="mini gym"><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i></i><i class="d"></i></div><span class="meta"><b>Gym log</b><span>You, Tuesday</span></span></button>
+                </div>
+                <div class="sec-h" style="margin-top:24px">Ready to review</div>
+                <div class="convo"><span class="dot"></span><span>Add drive-space gauge<br><span class="what">4 files changed</span></span><span class="end">+48 −6</span></div>
+                <div class="sec-h" style="margin-top:14px">Working</div>
+                <div class="convo"><span class="dot amber"></span><span>Bump electron to 44.2<br><span class="what">Running the e2e checks</span></span><span class="end">3 min</span></div>
+              </div>
+              <div class="col">
+                <div class="crab-say"><span class="px-crab" aria-hidden="true"></span><span class="bubble">Two prints went on the queue while you were out.</span></div>
+                <div class="card quiet"><h3>Today</h3><p>3 conversations, 2 routines ran, 9 writes to pages.</p></div>
+                <div class="card quiet"><h3>Android</h3><p>Long-press the app icon: Print queue is the first shortcut, because it's pinned first.</p></div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- 42. The ask, as a sheet -->
+  <section class="screen" data-n="42" data-title="A page asks Claude, from the phone" data-note="A page can't start a conversation by itself. Its ask comes up as the phone's own task sheet, with the prompt in full and the mode picker every phone task gets: Ask first is picked, Autonomous isn't offered, and it obeys the phone's hourly limit. The page never draws this itself. Behind, the conversation it becomes on Desk PC.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat" data-pages="print,radar,read,gym,deps,drive" data-live="print"></nav>
+      <main class="main">
+        <div class="main-head offset"><div><h1>Why do these fail?</h1><p class="lede">shellby · just now · a task from your phone, in Ask first</p></div></div>
+        <div class="main-body">
+          <div class="chat-wide chat">
+            <div class="from"><span class="chip glass">From your phone</span><span class="chip">Print queue pressed its button</span><span class="chip">Ask first</span><span class="chip">1 of your 30 this hour</span></div>
+            <div class="msg-you">Summarise this week's failed prints and say what they have in common.</div>
+            <div class="tool-row"><b>Read</b> Print queue's data · 4 rows<span class="end">0.2 s</span></div>
+            <div class="msg-claude">One print failed this week, the phone stand: PETG at 0.12, stringing on the arm. I'll check it against the four that finished and look back a few weeks for the pattern.</div>
+            <div class="tool-row"><span class="dot amber"></span>Reading History: the last 20 versions of the queue<span class="end">working</span></div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div class="dim"></div>
+    <div class="lbl-on" style="left:944px;top:90px"><span class="dot live"></span>Desk PC, a moment after Ask Claude<small>a conversation of its own, behind the phone</small></div>
+    <div class="big">
+      <div class="phone"><div class="screen">
+        <div class="island"></div>
+        <div class="status"><span>9:41</span><span>5G ▮</span></div>
+        <div class="ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Print queue</span><span class="dot live"></span><span class="end"><button class="ib" aria-label="Menu">⋯</button></span></div>
+        <div class="page">
+          <div class="pg-print">
+            <h4>Print queue</h4>
+            <p class="sub">3 queued, 1 failed this week</p>
+            <ol>
+              <li><span class="n">1</span><span><b>Benchy, PETG</b><small>0.12 layer, 42 min left</small></span><span class="st go">Printing</span></li>
+              <li><span class="n">4</span><span><b>Phone stand</b><small>Stringing on the arm</small></span><span class="st fail">Failed</span></li>
+            </ol>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="sheet-up">
+          <div class="grab"></div>
+          <h3>Print queue wants to ask Claude</h3>
+          <p class="who">The page pressed its "Why do these fail?" button.</p>
+          <p class="quote">Summarise this week's failed prints and say what they have in common.</p>
+          <p class="lbl">Mode</p>
+          <div class="modes"><button class="m on">Ask first</button><button class="m">Smart</button><button class="m">Auto-edit</button><button class="m">Plan only</button></div>
+          <p class="rule">Runs as a task on Desk PC, in its own conversation, and counts as one of your 30 an hour.</p>
+          <div class="acts2"><button class="btn ghost">Not now</button><button class="btn primary">Ask Claude</button></div>
+        </div>
+        <div class="home-ind"></div>
+      </div></div>
+    </div>
+    <svg class="wire" viewBox="0 0 2560 1440" aria-hidden="true">
+      <defs><marker id="arw42" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="rgba(127,214,194,.8)" stroke="none"/></marker></defs>
+      <circle cx="724" cy="1236" r="5"/><path d="M724 1236 C 900 1236 760 294 990 294" marker-end="url(#arw42)"/>
+    </svg>
+    <span class="pill abs" style="left:742px;top:760px">Ask Claude<small>one task on Desk PC, Ask first, its own conversation</small></span>
+  </section>
+
+</div>
+<script src="deck.js"></script>
+</body>
+</html>

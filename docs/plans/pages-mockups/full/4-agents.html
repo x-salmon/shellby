@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: agents and pages, full screen</title>
+<link rel="stylesheet" href="../mock.css">
+<link rel="stylesheet" href="full.css">
+<style>
+  /* conversation | page splits at this size */
+  .main > .split { grid-template-columns: 800px minmax(0, 1fr); }
+  .screen .pane-tab { height: 46px; gap: 10px; padding: 0 20px; font-size: var(--fs-14-5); }
+  .screen .pane-tab .end { font-weight: 400; font-size: var(--fs-13); display: flex; gap: 10px; align-items: center; }
+  .screen .pane-body { padding: 28px 28px 24px; gap: 16px; }
+  .pane > .page { flex: 1; }
+  .screen .link-btn { font-size: var(--fs-13-5); }
+
+  /* tool rows: the label, the words, who */
+  .tool-row .t { flex: none; width: 46px; color: var(--sand-faint); font: 700 var(--fs-11-5) var(--font-mono); }
+  .tool-row .txt { flex: 1; min-width: 0; line-height: 1.45; }
+  .tool-row .px-crab { width: 24px; height: 17px; }
+  .tool-row .end { display: flex; gap: 8px; align-items: center; color: var(--sand-faint); font-size: var(--fs-13); }
+  .tool-row.held { border-color: rgba(255, 193, 94, .4); box-shadow: inset 3px 0 0 var(--amber); }
+  .tool-row.fresh { border-color: rgba(127, 214, 194, .35); box-shadow: inset 3px 0 0 var(--glass); }
+  .links { margin: 0; padding: 0 0 0 22px; font-size: var(--fs-15); color: var(--sand-dim); display: grid; gap: 6px; }
+  .links b { color: var(--sand); font-weight: 400; text-decoration: underline dotted; }
+
+  /* the confirmation window over the dimmed app */
+  .scrim { z-index: 20; }
+  .lift { position: absolute; inset: 0; z-index: 21; display: grid; place-items: center; }
+  .screen .dialog .content { padding: 22px 24px 8px; }
+  .screen .dialog .badge { font-size: var(--fs-30); }
+  .screen .dialog h1 { font-size: var(--fs-22); }
+  .screen .dialog .msg { font-size: var(--fs-15); }
+  .screen .dialog .detail { font-size: var(--fs-14); }
+  .screen .dialog .note { font-size: var(--fs-13); padding: 10px 13px; }
+  .screen .dialog .actions { padding: 12px 24px 20px; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0 0 14px; font-size: var(--fs-13-5); }
+  .facts dt { color: var(--sand-faint); }
+  .facts dd { margin: 0; color: var(--sand); }
+  .facts dd code { font-size: var(--fs-12); }
+  .dialog .rights { margin-bottom: 14px; }
+  .dialog .rights li { background: var(--reef); }
+  .run { width: 960px; display: grid; gap: 16px; align-content: start; }
+
+  /* a page open on its own: the slim header, grown up */
+  .screen .page-head { height: 54px; gap: 12px; padding: 0 16px 0 12px; }
+  .screen .page-head .back { width: 36px; height: 36px; font-size: var(--fs-20); }
+  .screen .page-head .nm { font-size: var(--fs-16); }
+  .screen .page-head .end { gap: 8px; }
+
+  /* "Print queue" rows carry who added them */
+  .pg-print.xl li { grid-template-columns: 56px 1fr 420px auto; }
+  .pg-print.xl li .why .by { color: #2b2723; font-weight: 700; }
+  .pg-print.xl li.fresh { outline-width: 3px; outline-offset: 2px; }
+
+  /* activity: who wrote, what, when */
+  .act { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .act li { display: grid; grid-template-columns: 30px 1fr auto; gap: 1px 12px; align-items: start; padding: 11px 12px; border-radius: 10px; background: var(--reef); }
+  .act li .g { grid-row: span 2; font-size: var(--fs-18); line-height: 1.4; text-align: center; }
+  .act li .g.mono { font: 700 var(--fs-12)/2.1 var(--font-mono); color: var(--sand-dim); }
+  .act li b { font-size: var(--fs-14-5); }
+  .act li .when { color: var(--sand-faint); font-size: var(--fs-12-5); white-space: nowrap; padding-top: 3px; }
+  .act li .when .chip { height: 22px; padding: 0 9px; font-size: var(--fs-11-5); margin-top: -3px; }
+  .act li .what { grid-column: 2 / span 2; color: var(--sand-dim); font-size: var(--fs-13-5); }
+  .act li.fresh { box-shadow: inset 3px 0 0 var(--glass); }
+  .act li.refused { box-shadow: inset 3px 0 0 var(--amber); }
+  .act li.refused .what { color: var(--amber); }
+  .aside .foot { margin-top: auto; display: flex; justify-content: flex-end; gap: 8px; }
+  .aside h3 .chip { margin-left: 12px; vertical-align: 3px; font-family: var(--font-body); }
+
+  /* the Agents setting: a wider column beside the page */
+  .aside.wide { width: 720px; gap: 22px; }
+  .aside .lede .link-btn { font-size: inherit; color: var(--sand-dim); }
+  .sec { font: 700 var(--fs-13) var(--font-body); color: var(--sand-faint); margin: 0 0 8px; }
+  .sec-p { margin: 0 0 12px; color: var(--sand-dim); font-size: var(--fs-14); }
+  .means { margin-top: 12px; }
+  .means p { margin: 0; color: var(--sand); font-size: var(--fs-15); line-height: 1.55; }
+  .meaning { display: grid; gap: 10px; margin-top: 16px; }
+  .meaning .row { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; font-size: var(--fs-14); color: var(--sand-dim); line-height: 1.5; }
+  .meaning .row .g { text-align: center; font-size: var(--fs-16); }
+  .meaning .row.no { color: var(--sand-faint); }
+  .screen .toggle { padding: 9px 0; gap: 14px; }
+  .screen .switch { width: 40px; height: 22px; }
+  .screen .switch::after { width: 16px; height: 16px; }
+  .screen .switch.on::after { transform: translateX(18px); }
+
+  /* a chat on its own, and a toast in the corner */
+  .column { width: 960px; margin: 0 auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 16px; padding-top: 10px; }
+  .column .chat { flex: 1; min-height: 0; }
+  .screen .toast { left: auto; right: 40px; bottom: 124px; width: 620px; padding: 14px 16px; gap: 14px; border-radius: 12px; font-size: var(--fs-14-5); }
+
+  /* "Agents' checklist": a dark task board, each tick signed */
+  .pg-check { height: 100%; padding: 48px 64px; background: #14171c; color: #e7e9ee; font-family: var(--font-body); }
+  .pg-check h4 { margin: 0 0 4px; font: 700 28px/1.2 var(--font-mono); letter-spacing: -.02em; color: #9aa4b8; }
+  .pg-check .sub { margin: 0 0 24px; font-size: 16px; color: #808a9f; }
+  .pg-check .it { display: grid; grid-template-columns: 30px 1fr; gap: 3px 18px; padding: 18px 0; border-bottom: 1px solid #232834; font-size: 20px; }
+  .pg-check .bx { width: 28px; height: 28px; margin-top: 1px; border-radius: 6px; border: 2px solid #4a5468; text-align: center; font: 700 18px/24px var(--font-body); }
+  .pg-check .it.done .bx { background: #e7e9ee; border-color: #e7e9ee; color: #14171c; }
+  .pg-check .it.done .t { color: #98a1b5; text-decoration: line-through; }
+  .pg-check .it.busy .bx { border-style: dashed; border-color: #f2a65a; }
+  .pg-check .by { grid-column: 2; display: flex; align-items: center; gap: 8px; font-size: 14px; color: #98a1b5; }
+  .pg-check .by i, .helper b i { width: 10px; height: 10px; border-radius: 50%; background: #9fb4ff; flex: none; }
+  .pg-check .by i.h2, .helper b i.h2 { background: #7cc6a4; }
+  .pg-check .by i.h3, .helper b i.h3 { background: #f2a65a; }
+
+  /* the helper crabs, one card each */
+  .helpers { display: grid; gap: 12px; }
+  .helper { display: grid; grid-template-columns: 46px 1fr; gap: 3px 14px; padding: 14px 16px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); }
+  .helper .px-crab { grid-row: span 3; width: 46px; height: 32px; margin-top: 4px; }
+  .helper b { display: flex; gap: 9px; align-items: center; font-size: var(--fs-15); }
+  .helper p { margin: 0; color: var(--sand-dim); font-size: var(--fs-13-5); }
+  .helper .st { display: flex; gap: 8px; align-items: center; color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .helper.busy { border-color: rgba(255, 193, 94, .35); }
+  .helper.done .px-crab { opacity: .7; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- 22. create_page from a routine: the confirmation window -->
+  <section class="screen" data-n="22" data-title="A page you didn't ask for" data-note="A routine or a terminal calling create_page gets the same isolated window as add_routine: anything on this PC can reach the port, so nothing on this PC can press the button for you. One yes covers the page and its access, so it never asks twice for the same thing. A page from a conversation in Shellby's own tabs skips this: you're already in the room. Behind it, dimmed, the routine's run shows the call that is waiting.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="routines" data-pages="print,radar,read,dinner" data-live=""></nav>
+      <main class="main">
+        <div class="main-head">
+          <div><h1>Morning dependency check</h1><p class="lede">Routine · every morning at 07:00 · running since 07:01</p></div>
+          <div class="end"><span class="chip amber">Waiting on you</span></div>
+        </div>
+        <div class="main-body">
+          <div class="run chat">
+            <div class="tool-row"><span class="t">read</span><span class="txt">Read the lockfiles in <b>4 projects</b></span><span class="end">1.2 s</span></div>
+            <div class="msg-claude">Two of your four projects have a dependency with a known problem, and shellby's is critical. There's no page to put these on yet, so I'll make one and post to it each morning.</div>
+            <div class="tool-row"><span class="t">write</span><span class="txt">Wrote <b>index.html</b>, <b>radar.js</b>, <b>radar.css</b></span><span class="end">38 KB</span></div>
+            <div class="tool-row held"><span class="t">create</span><span class="txt">Add a page: <b>Dependency radar</b></span><span class="end"><span class="dot amber"></span>Waiting on you</span></div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div class="scrim"></div>
+    <div class="lift">
+      <div class="dialog">
+        <div class="bar"><span class="px-crab"></span><span class="app">Shellby</span></div>
+        <div class="content">
+          <div class="badge">▦</div>
+          <h1>Add a page?</h1>
+          <p class="msg">The routine "Morning dependency check" wants to add <b>Dependency radar</b>.</p>
+          <p class="detail">What it's for: which of your projects have a dependency with a known problem, checked each morning and listed worst first.</p>
+          <dl class="facts">
+            <dt>Files</dt><dd><code>index.html</code>, <code>radar.js</code>, <code>radar.css</code>, 38 KB</dd>
+            <dt>Agents</dt><dd>Any conversation may write to it</dd>
+            <dt>Phone</dt><dd>Opens on your phone too</dd>
+          </dl>
+          <p class="detail" style="margin-bottom:8px">It asks for:</p>
+          <ul class="rights">
+            <li><span class="g">📁</span><b>Read your projects</b><span>Their names and folders. A snapshot, read-only.</span></li>
+            <li><span class="g">🔔</span><b>Notify</b><span>A toast at the desk and a notification on your phone, at most one a minute.</span></li>
+          </ul>
+          <p class="note">A page is code a model wrote, running in Shellby's sandbox. It gets its own data and the access above, nothing else. You can turn it off or delete it from Pages.</p>
+        </div>
+        <div class="actions"><button class="btn">Not now</button><button class="btn primary">Add page</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 23. Tool rows beside the page updating live -->
+  <section class="screen" data-n="23" data-title="The write and the page, side by side" data-note="A write is a tool row like any other, in plain words (&quot;Added 2 rows&quot;, not the JSON) with the page's name as the link. On the page, the dot pulses once and the new rows flash, and the rows themselves say which conversation added them, so the receipt in the chat and the rows on the page match without reading either closely. At this size the page has room for a column saying who added each row and when.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat" data-sub="print"></nav>
+      <main class="main">
+        <div class="split">
+          <div class="pane">
+            <div class="pane-tab">💬 Sort out the failed prints<span class="end">Ask first</span></div>
+            <div class="pane-body">
+              <div class="chat">
+                <div class="msg-you">Two prints failed overnight. Work out why and queue them again with fixes.</div>
+                <div class="tool-row"><span class="t">read</span><span class="txt">Read <b>Print queue</b></span><span class="end">3 keys</span></div>
+                <div class="msg-claude">Both failed in the first layers: the Benchy at 0.12 and the funnel in PETG. The bed was at 60° for PETG, which is too low for it to stick. I'll queue both again at 80° with a brim.</div>
+                <div class="tool-row fresh"><span class="t">write</span><span class="txt">Added 2 rows to <b>Print queue</b></span><span class="end"><button class="link-btn">Open</button></span></div>
+                <div class="msg-claude">They're at the top of the queue. Want me to note the PETG bed temperature in the page's settings too, so the next one starts right?</div>
+              </div>
+              <div class="composer"><span class="placeholder">Reply, or say what to do next</span><button class="btn sm primary">Send</button></div>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="pane-tab">▦ Print queue<span class="dot live"></span><span class="end">⋯</span></div>
+            <div class="page">
+              <div class="pg-print xl">
+                <h4>Print queue</h4>
+                <p class="sub">Prusa MK4 · 0.4 nozzle · 5 queued, 2 failed this week</p>
+                <ol>
+                  <li class="fresh"><span class="n">8</span><span><b>Benchy, 0.12 layer</b><small>PLA · 1 h 48 · bed at 80° with a brim</small></span><span class="why"><span class="by">Sort out the failed prints</span>, just now</span><span class="st">queued</span></li>
+                  <li class="fresh"><span class="n">9</span><span><b>Funnel, PETG</b><small>PETG · 2 h 10 · bed at 80° with a brim</small></span><span class="why"><span class="by">Sort out the failed prints</span>, just now</span><span class="st">queued</span></li>
+                  <li><span class="n">6</span><span><b>Drawer pull, PLA</b><small>Started 07:02, about 40 min left</small></span><span class="why">Morning print check, 07:02</span><span class="st go">printing</span></li>
+                  <li><span class="n">7</span><span><b>Phone stand v2, PETG</b><small>PETG · 3 h 20</small></span><span class="why">A terminal in shellby, yesterday</span><span class="st">queued</span></li>
+                  <li><span class="n">2</span><span><b>Lid for the parts box</b><small>PLA · 2 h 05</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st">queued</span></li>
+                  <li><span class="n">1</span><span><b>6 cable clips</b><small>PLA · 22 min</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st">queued</span></li>
+                  <li><span class="n">3</span><span><b>Benchy, 0.12 layer</b><small>Stringing on the hull, stopped at layer 14</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st fail">failed</span></li>
+                  <li><span class="n">4</span><span><b>Funnel, PETG</b><small>Came loose from the bed at layer 3</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st fail">failed</span></li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 24. Activity -->
+  <section class="screen" data-n="24" data-title="Activity: who wrote, in their own words" data-note="Every writer gets a name you'd recognise: a conversation's title, a routine's name, &quot;a terminal in shellby&quot;, your other PC, you, or the page itself. One glyph per kind, so you can tell a routine's 3am write from your own at a glance. Shellby's conversations aren't named &quot;Claude&quot; here: three of them writing to one page need telling apart. Full screen, Activity is a column beside the page instead of a sheet over it, so each receipt sits next to the row it made.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="print"></nav>
+      <main class="main">
+        <div class="page-head"><button class="back" aria-label="Back">‹</button><span class="nm">Print queue</span><span class="dot live"></span><div class="end"><button class="btn sm">Change with Claude</button><button class="btn sm ghost icon" aria-label="Menu">⋯</button></div></div>
+        <div class="page">
+          <div class="pg-print xl">
+            <h4>Print queue</h4>
+            <p class="sub">Prusa MK4 · 0.4 nozzle · 5 queued, 2 failed this week</p>
+            <ol>
+              <li class="fresh"><span class="n">8</span><span><b>Benchy, 0.12 layer</b><small>PLA · 1 h 48 · bed at 80° with a brim</small></span><span class="why"><span class="by">Sort out the failed prints</span>, just now</span><span class="st">queued</span></li>
+              <li class="fresh"><span class="n">9</span><span><b>Funnel, PETG</b><small>PETG · 2 h 10 · bed at 80° with a brim</small></span><span class="why"><span class="by">Sort out the failed prints</span>, just now</span><span class="st">queued</span></li>
+              <li><span class="n">6</span><span><b>Drawer pull, PLA</b><small>Started 07:02, about 40 min left</small></span><span class="why">Morning print check, 07:02</span><span class="st go">printing</span></li>
+              <li><span class="n">7</span><span><b>Phone stand v2, PETG</b><small>PETG · 3 h 20</small></span><span class="why">A terminal in shellby, yesterday</span><span class="st">queued</span></li>
+              <li><span class="n">2</span><span><b>Lid for the parts box</b><small>PLA · 2 h 05</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st">queued</span></li>
+              <li><span class="n">1</span><span><b>6 cable clips</b><small>PLA · 22 min</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st">queued</span></li>
+              <li><span class="n">3</span><span><b>Benchy, 0.12 layer</b><small>Stringing on the hull, stopped at layer 14</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st fail">failed</span></li>
+              <li><span class="n">4</span><span><b>Funnel, PETG</b><small>Came loose from the bed at layer 3</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st fail">failed</span></li>
+            </ol>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Activity</h3>
+        <p class="lede">The last 200 writes to Print queue, and who made them.</p>
+        <ul class="act">
+          <li class="fresh"><span class="g">💬</span><b>Sort out the failed prints</b><span class="when">just now</span><span class="what">Added 2 rows, #8 and #9</span></li>
+          <li><span class="g">⟳</span><b>Morning print check</b><span class="when">07:02</span><span class="what">Set #6 to printing</span></li>
+          <li><span class="g">✎</span><b>You</b><span class="when">yesterday</span><span class="what">Removed #5, from the data drawer</span></li>
+          <li><span class="g mono">&gt;_</span><b>A terminal in shellby</b><span class="when">yesterday</span><span class="what">Added 1 row, #7</span></li>
+          <li><span class="g">🖥</span><b>Desk PC</b><span class="when">Tuesday</span><span class="what">Changed 3 keys, merged when they arrived</span></li>
+          <li><span class="g">▦</span><b>The page</b><span class="when">Tuesday</span><span class="what">Set printer to Prusa MK4, from its own settings</span></li>
+          <li><span class="g">💬</span><b>Plan the weekend prints</b><span class="when">Monday</span><span class="what">Added 4 rows, #1 to #4</span></li>
+        </ul>
+        <div class="foot"><button class="btn">Show its data</button></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 25. The Agents setting -->
+  <section class="screen" data-n="25" data-title="Who may write: three choices, not a list of names" data-note="Conversations come and go, so you can't allow them by name. The three choices follow the two doors a write can come through: Shellby's own MCP (its tabs and routines) or the plugin in any Claude Code. The card under the seg says what the chosen one means in practice, and the two others are a line each, so the choice is made with all three in view. Full screen the setting is a column beside the page it governs, ending with who has written this week and which of them the current choice turns away.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="print" data-live=""></nav>
+      <main class="main">
+        <div class="page-head"><button class="back" aria-label="Back">‹</button><span class="nm">Print queue</span><div class="end"><button class="btn sm">Change with Claude</button><button class="btn sm ghost icon" aria-label="Menu">⋯</button></div></div>
+        <div class="page">
+          <div class="pg-print xl">
+            <h4>Print queue</h4>
+            <p class="sub">Prusa MK4 · 0.4 nozzle · 5 queued, 2 failed this week</p>
+            <ol>
+              <li><span class="n">8</span><span><b>Benchy, 0.12 layer</b><small>PLA · 1 h 48 · bed at 80° with a brim</small></span><span class="why">Sort out the failed prints, 6 min ago</span><span class="st">queued</span></li>
+              <li><span class="n">9</span><span><b>Funnel, PETG</b><small>PETG · 2 h 10 · bed at 80° with a brim</small></span><span class="why">Sort out the failed prints, 6 min ago</span><span class="st">queued</span></li>
+              <li><span class="n">6</span><span><b>Drawer pull, PLA</b><small>Started 07:02, about 30 min left</small></span><span class="why">Morning print check, 07:02</span><span class="st go">printing</span></li>
+              <li><span class="n">7</span><span><b>Phone stand v2, PETG</b><small>PETG · 3 h 20</small></span><span class="why">A terminal in shellby, yesterday</span><span class="st">queued</span></li>
+              <li><span class="n">2</span><span><b>Lid for the parts box</b><small>PLA · 2 h 05</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st">queued</span></li>
+              <li><span class="n">1</span><span><b>6 cable clips</b><small>PLA · 22 min</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st">queued</span></li>
+              <li><span class="n">3</span><span><b>Benchy, 0.12 layer</b><small>Stringing on the hull, stopped at layer 14</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st fail">failed</span></li>
+              <li><span class="n">4</span><span><b>Funnel, PETG</b><small>Came loose from the bed at layer 3</small></span><span class="why">Plan the weekend prints, Monday</span><span class="st fail">failed</span></li>
+            </ol>
+          </div>
+        </div>
+      </main>
+      <aside class="aside wide">
+        <h3>Agents</h3>
+        <p class="lede">What this page lets agents do. Its access to Shellby is under <button class="link-btn">Access</button>.</p>
+        <div>
+          <p class="sec-p">Who may write to it over MCP. Any conversation can always read it.</p>
+          <div class="seg"><button>Any conversation</button><button aria-selected="true">Only Shellby's tabs</button><button>Nobody</button></div>
+          <div class="card quiet means"><p>Conversations Shellby runs itself can add and change rows: its tabs and its routines. Claude Code in a terminal or an editor can read the page, but a write comes back refused, and the refusal shows in Activity.</p></div>
+          <div class="meaning">
+            <div class="row"><span class="g">💬</span><span><b>Any conversation</b> is the default: anything with the Shellby plugin may write, including a terminal and your other PCs' agents.</span></div>
+            <div class="row no"><span class="g">⊘</span><span><b>Nobody</b> makes it yours alone: agents read it, and only you and the page itself write. Good for a list you curate.</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="sec">Also</div>
+          <label class="toggle"><span class="switch on"></span>Toast at the desk when an agent writes while you're elsewhere</label>
+          <label class="toggle"><span class="switch on"></span>Open on your phone</label>
+          <label class="toggle"><span class="switch"></span>This PC only: doesn't go to your other PCs</label>
+        </div>
+        <div>
+          <div class="sec">Who's written this week</div>
+          <p class="sec-p">With Only Shellby's tabs, the terminal is refused next time.</p>
+          <ul class="act">
+            <li><span class="g">💬</span><b>Sort out the failed prints</b><span class="when"><span class="chip glass">Writes</span></span><span class="what">One of Shellby's tabs · added 2 rows today</span></li>
+            <li><span class="g">⟳</span><b>Morning print check</b><span class="when"><span class="chip glass">Writes</span></span><span class="what">One of Shellby's routines · set #6 to printing, 07:02</span></li>
+            <li><span class="g">💬</span><b>Plan the weekend prints</b><span class="when"><span class="chip glass">Writes</span></span><span class="what">One of Shellby's tabs · added 4 rows, Monday</span></li>
+            <li class="refused"><span class="g mono">&gt;_</span><b>A terminal in shellby</b><span class="when"><span class="chip amber">Refused</span></span><span class="what">Through the plugin · added #7 yesterday</span></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 26. A toast at the desk -->
+  <section class="screen" data-n="26" data-title="A write to a page you aren't looking at" data-note="Only a page with notify access can do this, at most once a minute, and only while the page is off screen: on screen the rows flashing is enough. The toast names the page and the writer, nothing of the content, and Open puts the page beside this chat so you keep your place in it. The rail shows the same dot beside Print queue, so it stays visible after the toast has gone.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat"></nav>
+      <main class="main">
+        <div class="main-head"><div><h1>Bump electron to 44.2</h1><p class="lede">shellby · main · 3 min · Auto-edit</p></div></div>
+        <div class="main-body">
+          <div class="column">
+            <div class="chat">
+              <div class="msg-you">Bump electron to 44.2 and run the checks.</div>
+              <div class="tool-row"><span class="t">edit</span><span class="txt">package.json</span><span class="end">+1 −1</span></div>
+              <div class="tool-row"><span class="t">run</span><span class="txt"><code>npm ci</code></span><span class="end">41 s</span></div>
+              <div class="msg-claude">Installed. 44.2 drops the sync <code>clipboard.readImage</code>, which <code>src/main/clip.js</code> still calls on line 88. I'll move it to the async one before running the tests.</div>
+              <div class="tool-row"><span class="t">edit</span><span class="txt">src/main/clip.js</span><span class="end">+6 −3</span></div>
+              <div class="tool-row"><span class="t">run</span><span class="txt"><code>npm test</code></span><span class="end"><span class="dot amber"></span>running</span></div>
+              <div class="msg-claude">Running the tests now. The clipboard ones pass; 4 of 9 files left.</div>
+            </div>
+            <div class="composer"><span class="placeholder">Reply, or say what to do next</span><button class="btn sm primary">Send</button></div>
+          </div>
+        </div>
+        <div class="toast"><span class="dot live"></span><span><b>Print queue</b> got 2 rows from the routine Morning print check.</span><span class="end"><button class="btn sm">Open</button></span></div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 27. Three helper crabs on one checklist -->
+  <section class="screen" data-n="27" data-title="Three helper crabs, one checklist" data-note="Each helper ticks its own item with write_page, and append and per-key writes mean none of them has to read the whole list first, so two ticks a second apart don't undo each other. The page signs every tick with the helper that made it and when, so a stuck item is a question for one crab, not three. Helpers are named by their number and the conversation that sent them, because that's how the chat names them. The third column is the helpers themselves, so a stuck tick is one card away from its crab.">
+    <header class="tb" data-mode="Auto-edit"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat" data-pages="print,radar,deps,read,checklist" data-sub="checklist" data-live="checklist" data-who="3 helpers out"></nav>
+      <main class="main">
+        <div class="split">
+          <div class="pane">
+            <div class="pane-tab">💬 Ship 0.99<span class="end">Auto-edit</span></div>
+            <div class="pane-body">
+              <div class="chat">
+                <div class="msg-you">Ship 0.99: bump electron, run the checks and write the notes. Use helpers, and tick the Agents' checklist page as you go.</div>
+                <div class="tool-row"><span class="t">read</span><span class="txt">Read <b>Agents' checklist</b></span><span class="end">5 items</span></div>
+                <div class="msg-claude">Three helpers, one each for the bump, the checks and the notes. The checklist is on the right; each of them ticks its own items.</div>
+                <div class="tool-row"><span class="px-crab"></span><span class="txt">Sent out 3 helper crabs</span></div>
+                <div class="tool-row fresh"><span class="t">write</span><span class="txt">Helper 1 ticked <b>Bump electron to 44.2</b> on Agents' checklist</span><span class="end">2 min ago</span></div>
+                <div class="tool-row fresh"><span class="t">write</span><span class="txt">Helper 2 ticked <b>Run the unit tests</b> on Agents' checklist</span><span class="end">1 min ago</span></div>
+                <div class="tool-row"><span class="t">write</span><span class="txt">Helper 2 took <b>Run e2e queue voice</b></span><span class="end"><span class="dot amber"></span>just now</span></div>
+                <div class="tool-row"><span class="t">write</span><span class="txt">Helper 3 took <b>Write the changes note</b></span><span class="end"><span class="dot amber"></span>2 min ago</span></div>
+              </div>
+              <div class="composer"><span class="placeholder">Reply, or say what to do next</span><button class="btn sm primary">Send</button></div>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="pane-tab">▦ Agents' checklist<span class="dot live"></span><span class="end">⋯</span></div>
+            <div class="page">
+              <div class="pg-check">
+                <h4>agents' checklist</h4>
+                <p class="sub">Ship 0.99. 2 of 5 done, 2 in hand.</p>
+                <div class="it done"><span class="bx">✓</span><span class="t">Bump electron to 44.2</span><span class="by"><i></i>Helper 1 of Ship 0.99, 2 min ago</span></div>
+                <div class="it done"><span class="bx">✓</span><span class="t">Run the unit tests</span><span class="by"><i class="h2"></i>Helper 2 of Ship 0.99, 1 min ago</span></div>
+                <div class="it busy"><span class="bx"></span><span class="t">Run e2e queue voice</span><span class="by"><i class="h2"></i>Helper 2 of Ship 0.99, started just now</span></div>
+                <div class="it busy"><span class="bx"></span><span class="t">Write the changes note</span><span class="by"><i class="h3"></i>Helper 3 of Ship 0.99, started 2 min ago</span></div>
+                <div class="it"><span class="bx"></span><span class="t">Push the branch</span><span class="by">Waiting on the four above</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Helper crabs</h3>
+        <p class="lede">Three, sent by Ship 0.99. Each ticks its own items on the checklist.</p>
+        <div class="helpers">
+          <div class="helper done"><span class="px-crab" aria-hidden="true"></span><b><i></i>Helper 1 of Ship 0.99</b><p>Bumped electron to 44.2 and ticked it.</p><span class="st">Done · 2 min ago</span></div>
+          <div class="helper busy"><span class="px-crab" aria-hidden="true"></span><b><i class="h2"></i>Helper 2 of Ship 0.99</b><p>Ran the unit tests. Now on Run e2e queue voice.</p><span class="st"><span class="dot amber"></span>Working · started just now</span></div>
+          <div class="helper busy"><span class="px-crab" aria-hidden="true"></span><b><i class="h3"></i>Helper 3 of Ship 0.99</b><p>Writing the changes note.</p><span class="st"><span class="dot amber"></span>Working · started 2 min ago</span></div>
+        </div>
+        <div class="card quiet"><h3>Push the branch</h3><p style="margin:0">Nobody has taken it. It waits on the four items above it.</p></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 28. Refused: the page is set to Nobody -->
+  <section class="screen" data-n="28" data-title="Refused, and both sides know" data-note="A page set to Nobody refuses in one sentence that the agent gets as the tool's error and you get in the tool row, amber because it's a boundary doing its job, not a fault. Claude can then do the sensible thing (put the links in the chat) instead of guessing. The attempt still lands in Activity, so a page you keep to yourself also tells you who's been knocking. Activity sits beside the page here, so the refusal in the chat, the untouched list and the knock are all in view at once.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat" data-sub="read" data-live=""></nav>
+      <main class="main">
+        <div class="split">
+          <div class="pane">
+            <div class="pane-tab">💬 Tidy my reading list<span class="end">Ask first</span></div>
+            <div class="pane-body">
+              <div class="chat">
+                <div class="msg-you">Add the three articles from today's standup to my Reading list page.</div>
+                <div class="tool-row held"><span class="t">write</span><span class="txt">Refused by <b>Reading list</b>: closed to agents</span><span class="end"><button class="link-btn">Change</button></span></div>
+                <div class="msg-claude">Reading list is closed to agents (its Agents setting is Nobody), so I've left it alone. Here are the three to add yourself, or change that setting and ask me again:</div>
+                <ol class="links">
+                  <li><b>Why the 3D Benchy is a torture test</b>, 8 min</li>
+                  <li><b>Electron 44: what the async clipboard changes</b>, 5 min</li>
+                  <li><b>A field guide to flaky e2e tests</b>, 12 min</li>
+                </ol>
+              </div>
+              <div class="composer"><span class="placeholder">Reply, or say what to do next</span><button class="btn sm primary">Send</button></div>
+            </div>
+          </div>
+          <div class="pane">
+            <div class="pane-tab">▦ Reading list<span class="end"><span class="chip">Agents: nobody</span>⋯</span></div>
+            <div class="page">
+              <div class="pg-read xl">
+                <h4>Reading list</h4>
+                <div class="bk"><span class="spine"></span><span>The Mythical Man-Month<small>Yours, from the phone. Half read.</small></span></div>
+                <div class="bk"><span class="spine" style="background:#7fa88a"></span><span>Working in Public<small>Yours, Tuesday. Claude's summary is ready.</small></span></div>
+                <div class="bk"><span class="spine" style="background:#b86a5a"></span><span>A Philosophy of Software Design<small>Yours, last week.</small></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Activity</h3>
+        <p class="lede">The last 200 writes to Reading list, and who tried.</p>
+        <ul class="act">
+          <li class="refused"><span class="g">💬</span><b>Tidy my reading list</b><span class="when">just now</span><span class="what">Tried to add 3 rows. Refused: closed to agents.</span></li>
+          <li class="refused"><span class="g mono">&gt;_</span><b>A terminal in shellby</b><span class="when">yesterday</span><span class="what">Tried to set 2 keys. Refused: closed to agents.</span></li>
+          <li><span class="g">✎</span><b>You</b><span class="when">Tuesday</span><span class="what">Added 1 row, from the phone</span></li>
+          <li><span class="g">▦</span><b>The page</b><span class="when">Tuesday</span><span class="what">Set summary on Working in Public</span></li>
+        </ul>
+        <div class="card quiet"><h3>Closed to agents</h3><p style="margin:0">Only you and the page write here. Agents still read it. Change that under Agents.</p></div>
+      </aside>
+    </div>
+  </section>
+
+</div>
+<script src="deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: every screen, full size</title>
+<link rel="stylesheet" href="../mock.css">
+<style>
+  .sheet { max-width: 1680px; }
+  .how { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 36px; color: var(--sand-dim); font-size: var(--fs-14); }
+  .how kbd { margin-right: 4px; }
+  .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 28px 24px; }
+  .grp h2 { margin: 0 0 10px; font: 600 var(--fs-19) var(--font-pixel); display: flex; gap: 10px; align-items: baseline; }
+  .grp h2 .ph { font: 700 var(--fs-12) var(--font-body); color: var(--sand-faint); }
+  .grp ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .grp a {
+    display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 9px 12px;
+    border-radius: 10px; background: var(--reef); border: 1px solid var(--line-soft); color: var(--sand); text-decoration: none; font-size: var(--fs-14);
+  }
+  .grp a:hover { border-color: var(--glass); }
+  .grp a .n { font: 600 var(--fs-14) var(--font-mono); color: var(--coral); }
+  .grp a .core { font-size: var(--fs-12); color: var(--glass); font-weight: 700; }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header class="sheet-head">
+    <span class="px-crab" aria-hidden="true"></span>
+    <h1>Every screen, full size</h1>
+    <p>The 49 mockups as the whole Shellby window on a 4K monitor (2560 × 1440 at 150%). Pick any number to start; the arrow keys walk through all of them.</p>
+  </header>
+  <nav class="sheet-nav" aria-label="Elsewhere">
+    <a href="../index.html">Overview</a>
+    <a href="../1-shelf.html">The small panel mockups</a>
+    <a href="../../shellby-pages.md">The plan</a>
+  </nav>
+  <p class="how"><span><kbd>←</kbd><kbd>→</kbd> previous and next, across files</span><span><kbd>N</kbd> notes on or off</span><span><kbd>F</kbd> or <kbd>F11</kbd> full screen</span><span><kbd>Esc</kbd> back here</span></p>
+
+  <div class="groups" id="groups"></div>
+</main>
+<script>
+  'use strict';
+  // number, title, core (needed for the feature to work)
+  const GROUPS = [
+    ['1-shelf.html', 'The shelf', 'Phase 1', [[1, 'First visit', 1], [2, 'The shelf', 1], [3, 'Tile states', 1], [4, 'Right-click a tile', 1], [5, 'Search inside pages', 0], [6, 'Pinned on the Beach', 0], [7, 'Ctrl+K', 0]]],
+    ['2-running.html', 'Running a page', 'Phase 1', [[8, 'Full-screen', 1], [9, 'Beside the chat', 1], [10, 'Its data', 0], [11, 'History', 1], [12, 'When it breaks', 1], [13, 'It asks for something', 1], [14, 'The page\'s menu', 0]]],
+    ['3-building.html', 'Building with Claude', 'Phase 1', [[15, 'New page', 1], [16, 'Live preview', 1], [17, 'Draft until saved', 1], [18, 'Point at it', 0], [19, 'A save check fails', 1], [20, 'The first save', 0], [21, 'Starters', 0]]],
+    ['4-agents.html', 'Agents and pages', 'Phase 1', [[22, 'A page you didn\'t ask for', 1], [23, 'Write and page side by side', 1], [24, 'Activity', 0], [25, 'Who may write', 1], [26, 'A write while you\'re away', 0], [27, 'Three helper crabs, one checklist', 0], [28, 'Refused', 1]]],
+    ['5-access.html', 'Access and safety', 'Phase 1', [[29, 'First run', 1], [30, 'A new version asks for more', 1], [31, 'A web host', 1], [32, 'A page asks Claude', 1], [33, 'Tried something it wasn\'t given', 1], [34, 'Settings: all access', 0], [35, 'A limit reached', 1]]],
+    ['6-phone.html', 'On your phone', 'Phase 2', [[36, 'Pages tab', 1], [37, 'Full-screen', 1], [38, 'Built for the desk', 0], [39, 'Lock screen', 0], [40, 'PC is asleep', 1], [41, 'Pinned on the Beach', 0], [42, 'Ask Claude from the phone', 0]]],
+    ['7-sync.html', 'Other PCs', 'Phase 3', [[43, 'Two pages arrived', 1], [44, 'Looking at an arrival', 1], [45, 'Where it goes', 0], [46, 'Too big for the budget', 1], [47, 'Changed on two PCs', 1], [48, 'Data that arrived', 0], [49, 'Settings: other PCs', 0]]],
+  ];
+  const root = document.getElementById('groups');
+  for (const [file, name, phase, items] of GROUPS) {
+    const sec = document.createElement('section');
+    sec.className = 'grp';
+    const h = document.createElement('h2');
+    h.textContent = name;
+    const ph = document.createElement('span');
+    ph.className = 'ph';
+    ph.textContent = phase;
+    h.append(ph);
+    const ol = document.createElement('ol');
+    for (const [n, title, core] of items) {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = `${file}#${n}`;
+      const num = document.createElement('span'); num.className = 'n'; num.textContent = n;
+      const t = document.createElement('span'); t.textContent = title;
+      const c = document.createElement('span'); c.className = 'core'; c.textContent = core ? 'Core' : '';
+      a.append(num, t, c);
+      li.append(a);
+      ol.append(li);
+    }
+    sec.append(h, ol);
+    root.append(sec);
+  }
+</script>
+</body>
+</html>

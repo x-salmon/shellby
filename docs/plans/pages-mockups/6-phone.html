@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: on your phone</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  /* the phone app's own top bar: the brand or a back link, the PC pill */
+  .p-head { min-height: 46px; }
+  .p-head .brand { display: flex; align-items: center; gap: 7px; font: 700 var(--fs-18)/1 var(--font-pixel); }
+  .p-head .brand .px-crab { width: 30px; height: 21px; }
+  .p-head .back { display: inline-flex; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: var(--glass); font-weight: 700; font-size: var(--fs-14); }
+  .p-head .pc { margin-left: auto; display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px; border-radius: 99px; background: var(--glass-dim); color: var(--glass); font-size: var(--fs-11-5); font-weight: 700; white-space: nowrap; }
+  .p-head .pc i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+  .p-head .pc.off { background: var(--reef); color: var(--sand-faint); }
+  .p-head .pc.off i { box-shadow: none; background: var(--amber); }
+
+  /* the dock with a Pages tab, and the Beach's badge */
+  .p-dock .dock-btn { position: relative; }
+  .p-dock .dock-btn .px-crab { width: 28px; height: 19px; }
+  .p-dock .bdg { position: absolute; top: 6px; left: calc(50% + 10px); min-width: 17px; height: 17px; padding: 0 5px; border-radius: 99px; background: var(--coral); color: #1a0d09; font: 700 var(--fs-10-5)/17px var(--font-body); }
+
+  /* the shelf on a phone: the same tiles, two across, bigger text */
+  .p-shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+  .tile {
+    position: relative; display: grid; gap: 0; padding: 0; text-align: left; overflow: hidden;
+    border-radius: 12px; background: var(--reef); border: 1px solid var(--line);
+  }
+  .tile .meta { padding: 7px 10px 8px; display: grid; gap: 1px; min-width: 0; }
+  .tile .meta b { font-size: var(--fs-13-5); line-height: 1.25; }
+  .tile .meta b .dot { display: inline-block; vertical-align: 1px; margin-right: 5px; }
+  .tile .meta span { font-size: var(--fs-12); color: var(--sand-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .pin { position: absolute; top: 6px; right: 6px; font-size: 11px; padding: 1px 5px; border-radius: 5px; background: rgba(7, 16, 18, .7); color: var(--sand); }
+  .tile.off .mini { filter: grayscale(1) brightness(.55); }
+  .tile.off .meta b { color: var(--sand-dim); }
+  .tile .over { position: absolute; inset: 0 0 auto 0; height: 72px; display: grid; place-items: center; }
+  .tile .over .chip { background: var(--abyss); color: var(--sand); box-shadow: inset 0 0 0 1px var(--line), 0 4px 12px rgba(0, 0, 0, .4); }
+
+  /* miniatures: each page in its own look, tiny */
+  .mini { height: 72px; position: relative; overflow: hidden; border-bottom: 1px solid var(--line-soft); }
+  .mini.print { background: #ece6d9; padding: 8px 9px; }
+  .mini.print i { display: block; height: 10px; margin-bottom: 4px; border-radius: 2px; background: #fbf8f2; border: 1px solid #d7cfc0; }
+  .mini.print i:first-child { width: 60%; height: 7px; background: #2b2723; border: 0; }
+  .mini.print i.f { box-shadow: inset 16px 0 0 #c4452c; }
+  .mini.radar { background: #0f1630; padding: 8px 9px; display: flex; gap: 2px; align-items: flex-end; }
+  .mini.radar i { flex: 1; background: #3a4ba8; border-radius: 1px; }
+  .mini.radar i.hi { background: #ffb02e; }
+  .mini.read { background: #1d2a22; padding: 9px; }
+  .mini.read i { display: block; height: 6px; margin: 0 0 6px 9px; border-radius: 2px; background: #3d5245; box-shadow: -9px 0 0 -1px #c9a35b; }
+  .mini.read i:first-child { width: 50%; background: #e8efe5; box-shadow: none; margin-left: 0; height: 8px; }
+  .mini.deps { background: #f6f6f2; padding: 8px 9px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; align-content: start; }
+  .mini.deps i { height: 11px; border-radius: 2px; background: #9bd7a2; }
+  .mini.deps i.w { background: #f5c451; }
+  .mini.deps i.b { background: #e5644e; }
+  .mini.gym { background: #2a1f3d; padding: 9px; display: flex; gap: 3px; align-items: flex-end; }
+  .mini.gym i { flex: 1; background: #8b6fc9; border-radius: 2px 2px 0 0; }
+  .mini.gym i.t { background: #f28cb8; }
+  .mini.drive { background: #f4f1ea; padding: 10px 9px; display: grid; gap: 7px; align-content: center; }
+  .mini.drive i { position: relative; display: block; height: 9px; border-radius: 5px; background: #dcd8cf; overflow: hidden; }
+  .mini.drive i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w, 50%); background: #3f7ae8; }
+  .mini.drive i.hot::after { background: #e5644e; }
+
+  /* a page running on the phone: a 40px header, then the page */
+  .ph { flex: none; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 8px 0 6px; background: var(--abyss); border-bottom: 1px solid var(--line-soft); }
+  .ph .back { width: 32px; height: 32px; border: 0; background: none; color: var(--glass); font-size: 22px; line-height: 1; border-radius: 8px; display: grid; place-items: center; }
+  .ph .nm { font-weight: 700; font-size: var(--fs-14); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ph .end { margin-left: auto; display: flex; gap: 2px; align-items: center; }
+  .ph .ib { width: 34px; height: 34px; border: 0; background: none; color: var(--sand-dim); border-radius: 8px; font-size: 18px; line-height: 1; display: grid; place-items: center; }
+  .pg-print li .n { color: #776d61; } /* the kit's pencil grey is too faint on a phone in daylight */
+  .pg-print .wk { margin-top: 14px; padding: 10px 12px; border-top: 1px dashed #c9bfae; font-size: 12.5px; color: #6f665b; display: flex; justify-content: space-between; }
+  .pg-print .wk b { color: #2b2723; }
+  .pg-radar .row.fresh { box-shadow: inset 3px 0 0 #7fd6c2; padding-left: 8px; }
+
+  /* built for the desk */
+  .desk-only { display: grid; gap: 12px; align-content: start; padding-top: 10px; }
+  .desk-only .thumb { position: relative; height: 150px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+  .desk-only .thumb .mini { height: 100%; border: 0; filter: grayscale(.6) brightness(.7); }
+  .desk-only .thumb .over { position: absolute; inset: 0; display: grid; place-items: center; }
+  .desk-only .thumb .over .chip { background: var(--abyss); color: var(--sand); box-shadow: inset 0 0 0 1px var(--line), 0 4px 12px rgba(0, 0, 0, .4); }
+  .desk-only h3 { margin: 4px 0 0; font: 600 var(--fs-19)/1.2 var(--font-pixel); }
+  .desk-only p { margin: 0; color: var(--sand-dim); font-size: var(--fs-14); }
+  .desk-only .note { font-size: var(--fs-12-5); color: var(--sand-faint); }
+
+  /* the PC asleep: a dated snapshot, read-only */
+  .snap-note { flex: none; margin: 10px 12px; padding: 10px 12px; }
+  .snap-note b { display: block; font-size: var(--fs-13-5); color: var(--amber); }
+  .snap-note p { margin: 2px 0 0; font-size: var(--fs-12-5); color: var(--sand-dim); }
+  .snap { filter: saturate(.5) brightness(.78); pointer-events: none; }
+  .snap::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(7, 16, 18, .08) 3px 4px); }
+
+  /* the beach */
+  .tide { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; padding: 11px 14px 12px; border-radius: 18px; background: linear-gradient(170deg, var(--reef) 0%, rgba(17, 35, 42, .55) 100%); border: 1px solid var(--line-soft); }
+  .tide .px-crab { width: 48px; height: 33px; }
+  .tide b { display: block; font: 700 var(--fs-16)/1.1 var(--font-pixel); white-space: nowrap; }
+  .tide span { display: block; margin-top: 2px; color: var(--sand-dim); font-size: var(--fs-12-5); }
+  .tide .bar { grid-column: 1 / -1; height: 6px; border-radius: 99px; background: var(--abyss); overflow: hidden; }
+  .tide .bar i { display: block; height: 100%; width: 42%; border-radius: 99px; background: var(--glass); }
+  .sect { display: flex; align-items: center; margin: 9px 2px 5px; font: 700 var(--fs-12) var(--font-body); color: var(--sand-faint); }
+  .sect.asking { color: var(--amber); }
+  .sect .end { margin-left: auto; }
+  .pask { display: grid; gap: 7px; padding: 11px 12px 12px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 122, 92, .10), rgba(17, 35, 42, .95) 40%), var(--reef); border: 1px solid rgba(255, 122, 92, .5); }
+  .pask b { font: 700 var(--fs-15)/1.1 var(--font-pixel); color: var(--coral); }
+  .pask small { color: var(--sand-dim); font-size: var(--fs-12-5); }
+  .pask p { margin: 0; font-size: var(--fs-13-5); }
+  .pask .btns { display: flex; gap: 8px; }
+  .pask .btn { flex: 1; height: 38px; font-size: var(--fs-13-5); }
+  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .strip .tile .mini { height: 54px; }
+  .strip .tile .meta { padding: 6px 8px 7px; }
+  .strip .tile .meta b { font-size: var(--fs-12-5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .strip .tile .meta span { font-size: var(--fs-11); }
+  .convo { display: flex; gap: 9px; align-items: center; padding: 11px 12px; border-radius: 14px; background: var(--reef); border: 1px solid rgba(127, 214, 194, .35); font-size: var(--fs-13-5); }
+  .convo span { color: var(--sand-faint); font-size: var(--fs-12); margin-left: auto; white-space: nowrap; }
+
+  /* the ask, as the phone's own sheet */
+  .phone .sheet-up { border-radius: 24px 24px 0 0; padding: 14px 16px 24px; background: var(--reef); border-top-color: rgba(255, 122, 92, .35); display: grid; gap: 10px; }
+  .phone .sheet-up .grab { margin: -4px auto 2px; width: 44px; height: 5px; background: var(--line); }
+  .phone .sheet-up h3 { font-size: var(--fs-18); line-height: 1.2; margin: 0; }
+  .phone .sheet-up .who { margin: -6px 0 0; color: var(--sand-dim); font-size: var(--fs-12-5); }
+  .quote { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--abyss); border: 1px solid var(--line); font-size: var(--fs-14); line-height: 1.4; box-shadow: inset 3px 0 0 var(--coral); }
+  .lbl { font-size: var(--fs-12); font-weight: 700; color: var(--sand-faint); margin: 0; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .modes .m { height: 34px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--reef-2); color: var(--sand-dim); font-weight: 700; font-size: var(--fs-13); }
+  .modes .m.on { background: var(--glass-dim); border-color: rgba(127, 214, 194, .55); color: var(--glass); }
+  .rule { margin: 0; font-size: var(--fs-12-5); color: var(--sand-faint); }
+  .acts2 { display: flex; gap: 8px; }
+  .acts2 .btn { flex: 1; }
+  .acts2 .btn.primary { flex: 1.5; }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header class="sheet-head">
+    <span class="px-crab" aria-hidden="true"></span>
+    <h1>On your phone</h1>
+    <p>A Pages tab in the phone app: the same page, in the same sandbox, with every call checked on your PC.</p>
+  </header>
+  <nav class="sheet-nav" aria-label="Features">
+    <a href="index.html">Overview</a>
+    <a href="1-shelf.html">1 The shelf</a>
+    <a href="2-running.html">2 Running a page</a>
+    <a href="3-building.html">3 Building with Claude</a>
+    <a href="4-agents.html">4 Agents and pages</a>
+    <a href="5-access.html">5 Access and safety</a>
+    <a href="6-phone.html" aria-current="page">6 On your phone</a>
+    <a href="7-sync.html">7 Other PCs</a>
+  </nav>
+  <p class="sheet-intro">The phone <strong>runs the page, your PC decides</strong>. The page's files come from the PC over your own network, and every bridge call goes back there to the same checks the desk uses, so a page can't do more from the sofa than it can at the desk. Anything the phone can't do honestly (run a desk-sized page, change a page while the PC sleeps) says so, rather than pretending.</p>
+
+  <div class="board">
+
+    <!-- 1. The Pages tab -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span>5G ▮</span></div>
+          <div class="p-head"><h2>Pages</h2><span class="pc"><i></i>Desk PC</span></div>
+          <div class="p-body">
+            <div class="p-shelf">
+              <button class="tile"><div class="mini print"><i></i><i></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>2 new, 4 min ago</span></span></button>
+              <button class="tile"><div class="mini radar"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i></div><span class="pin">📌</span><span class="meta"><b>Release radar</b><span>Routine, 07:02</span></span></button>
+              <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i></div><span class="meta"><b>Reading list</b><span>You, yesterday</span></span></button>
+              <button class="tile"><div class="mini gym"><i style="height:40%"></i><i style="height:55%"></i><i class="t" style="height:90%"></i><i style="height:62%"></i><i style="height:48%"></i><i style="height:70%"></i></div><span class="meta"><b>Gym log</b><span>You, Tuesday</span></span></button>
+              <button class="tile off"><div class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i></div><span class="over"><span class="chip">Built for the desk</span></span><span class="meta"><b>Dependency radar</b><span>1 critical in shellby</span></span></button>
+              <button class="tile off"><div class="mini drive"><i style="--w:72%"></i><i class="hot" style="--w:91%"></i><i style="--w:38%"></i></div><span class="over"><span class="chip">Built for the desk</span></span><span class="meta"><b>Drive space</b><span>D: is 91% full</span></span></button>
+            </div>
+          </div>
+          <div class="p-dock"><button class="dock-btn"><span class="px-crab"></span>Beach<b class="bdg">1</b></button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>≣</i>Queue</button><button class="dock-btn"><i>⋯</i>More</button><button class="dock-btn"><i>▭</i>Phone</button></div>
+          <div class="home-ind"></div>
+        </div>
+      </div>
+      <figcaption><b>The Pages tab</b><span>The same shelf as the desk, in the same order, pinned first. Pages built only for the desk still show, greyed with one chip, so the shelf never looks shorter on the phone than it is; what to do about one is a tap away.</span></figcaption>
+    </figure>
+
+    <!-- 2. A page running -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span>5G ▮</span></div>
+          <div class="ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Print queue</span><span class="dot live"></span><span class="end"><button class="ib" aria-label="Menu">⋯</button></span></div>
+          <div class="page">
+            <div class="pg-print">
+              <h4>Print queue</h4>
+              <p class="sub">3 queued, 1 failed this week</p>
+              <ol>
+                <li class="fresh"><span class="n">1</span><span><b>Benchy, PETG</b><small>0.12 layer, 42 min left</small></span><span class="st go">Printing</span></li>
+                <li><span class="n">2</span><span><b>Funnel</b><small>PLA, 1 h 10</small></span><span class="st">Next</span></li>
+                <li><span class="n">3</span><span><b>6 cable clips</b><small>PLA, 25 min</small></span><span class="st">Queued</span></li>
+                <li><span class="n">4</span><span><b>Phone stand</b><small>Stringing on the arm</small></span><span class="st fail">Failed</span></li>
+              </ol>
+              <div class="wk"><span>This week</span><span><b>4</b> done, <b>6 h 12</b> printing</span></div>
+            </div>
+          </div>
+          <div class="home-ind"></div>
+        </div>
+      </div>
+      <figcaption><b>A page, full-screen</b><span>Under a 40px header the page gets the whole screen, in its own look. The dot means its data is live from the PC. Change with Claude, its data and History sit in the menu: on a phone the page needs the width more than the header does.</span></figcaption>
+    </figure>
+
+    <!-- 3. Built for the desk -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span>5G ▮</span></div>
+          <div class="p-head"><button class="back">‹ Pages</button><span class="pc"><i></i>Desk PC</span></div>
+          <div class="p-body">
+            <div class="desk-only">
+              <div class="thumb"><div class="mini drive"><i style="--w:72%"></i><i class="hot" style="--w:91%"></i><i style="--w:38%"></i><i style="--w:55%"></i></div><span class="over"><span class="chip">Built for the desk</span></span></div>
+              <h3>Drive space</h3>
+              <p>Claude built this one for a wide screen, so it doesn't open here yet. Ask him to make it fit a phone and it opens here next time.</p>
+              <button class="btn primary">Change with Claude</button>
+              <p class="note">Starts as a task on Desk PC, in Ask first, like any task from your phone. The page keeps working at the desk meanwhile.</p>
+            </div>
+          </div>
+          <div class="p-dock"><button class="dock-btn"><span class="px-crab"></span>Beach<b class="bdg">1</b></button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>≣</i>Queue</button><button class="dock-btn"><i>⋯</i>More</button><button class="dock-btn"><i>▭</i>Phone</button></div>
+          <div class="home-ind"></div>
+        </div>
+      </div>
+      <figcaption><b>Built for the desk</b><span>Nothing is squeezed to fit and shown broken. The page's own miniature says what it is, and the one button starts the fix as a task on the PC, so you can ask from the sofa and find it ready when you're back.</span></figcaption>
+    </figure>
+
+    <!-- 4. Lock screen -->
+    <figure class="shot">
+      <div class="phone lock">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="status"><span></span><span>5G ▮</span></div>
+          <div class="lock-time">07:04</div>
+          <div class="lock-date">Tuesday 3 March</div>
+          <div class="notif">
+            <div class="top"><span class="app-ico"></span>Shellby<span class="when">now</span></div>
+            <b>Print queue</b>
+            Benchy finished in 42 min. The funnel is next.
+          </div>
+          <div class="notif">
+            <div class="top"><span class="app-ico"></span>Shellby<span class="when">6 min ago</span></div>
+            <b>Fix flaky upload test</b>
+            Can I run npm test?
+          </div>
+        </div>
+      </div>
+      <figcaption><b>A page on the lock screen</b><span>The morning routine wrote to the page, and the page's notify call turned that into one notification, named after the page, so you can tell a page talking from Shellby himself. At most one a minute, only for a page that asked for notify, and tapping opens the page on the phone.</span></figcaption>
+    </figure>
+
+    <!-- 5. PC asleep -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="status"><span>23:58</span><span>5G ▮</span></div>
+          <div class="ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Release radar</span><span class="end"><span class="chip amber">Desk PC is asleep</span></span></div>
+          <div class="card warn snap-note"><b>As it was at 23:41.</b><p>You can read it, not change it, until Desk PC wakes up.</p></div>
+          <div class="page snap">
+            <div class="pg-radar">
+              <h4>Release radar</h4>
+              <div class="bars"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:70%"></i></div>
+              <div class="row"><span>electron</span><span class="v">44.2.0</span><span class="tag major">major</span></div>
+              <div class="row"><span>node</span><span class="v">24.11.1</span><span class="tag">patch</span></div>
+              <div class="row"><span>eslint</span><span class="v">9.40.0</span><span class="tag">minor</span></div>
+              <div class="row"><span>typescript</span><span class="v">6.0.3</span><span class="tag">patch</span></div>
+              <div class="row"><span>vite</span><span class="v">8.1.0</span><span class="tag">minor</span></div>
+            </div>
+          </div>
+          <div class="home-ind"></div>
+        </div>
+      </div>
+      <figcaption><b>The PC is asleep</b><span>The service worker keeps the last screen of every phone-ready page, so a sleeping PC still shows something true, with the time it was true. It's dimmed and read-only on purpose: nothing you tap can pretend to have happened.</span></figcaption>
+    </figure>
+
+    <!-- 6. Pinned pages on the beach -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span>5G ▮</span></div>
+          <div class="p-head"><span class="brand"><span class="px-crab"></span>Shellby</span><span class="pc"><i></i>Desk PC</span></div>
+          <div class="p-body">
+            <div class="tide"><span class="px-crab" aria-hidden="true"></span><div><b>Working on 2 things</b><span>42% of your 5-hour window</span></div><div class="bar"><i></i></div></div>
+            <div class="sect asking">Waiting on you</div>
+            <div class="pask"><b>Can I run the tests?</b><small>Fix flaky upload test</small><div class="btns"><button class="btn ghost">Deny</button><button class="btn allow">Allow</button></div></div>
+            <div class="sect">Pinned pages<span class="end"><button class="link-btn small faint">All pages</button></span></div>
+            <div class="strip">
+              <button class="tile"><div class="mini print"><i></i><i></i><i class="f"></i></div><span class="meta"><b><span class="dot live"></span>Prints</b><span>2 new</span></span></button>
+              <button class="tile"><div class="mini radar"><i style="height:30%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i></div><span class="meta"><b>Releases</b><span>07:02</span></span></button>
+              <button class="tile"><div class="mini gym"><i style="height:40%"></i><i class="t" style="height:90%"></i><i style="height:62%"></i><i style="height:48%"></i></div><span class="meta"><b>Gym log</b><span>Tuesday</span></span></button>
+            </div>
+            <div class="sect">Ready to review</div>
+            <div class="convo"><span class="dot"></span>Add drive-space gauge<span>+48 −6</span></div>
+          </div>
+          <div class="p-dock"><button class="dock-btn active"><span class="px-crab"></span>Beach<b class="bdg">1</b></button><button class="dock-btn"><i>▦</i>Pages</button><button class="dock-btn"><i>≣</i>Queue</button><button class="dock-btn"><i>⋯</i>More</button><button class="dock-btn"><i>▭</i>Phone</button></div>
+          <div class="home-ind"></div>
+        </div>
+      </div>
+      <figcaption><b>Pinned pages on the beach</b><span>The same row as the desk's Beach, in the same place: after what's waiting on you, before what's ready to review. A page you check every morning is one tap from the first screen, and on Android the first pinned one is in the app icon's long-press menu too.</span></figcaption>
+    </figure>
+
+    <!-- 7. The ask, as a sheet -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="screen">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span>5G ▮</span></div>
+          <div class="ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Print queue</span><span class="dot live"></span><span class="end"><button class="ib" aria-label="Menu">⋯</button></span></div>
+          <div class="page">
+            <div class="pg-print">
+              <h4>Print queue</h4>
+              <p class="sub">3 queued, 1 failed this week</p>
+              <ol>
+                <li><span class="n">1</span><span><b>Benchy, PETG</b><small>0.12 layer, 42 min left</small></span><span class="st go">Printing</span></li>
+                <li><span class="n">4</span><span><b>Phone stand</b><small>Stringing on the arm</small></span><span class="st fail">Failed</span></li>
+              </ol>
+            </div>
+          </div>
+          <div class="scrim"></div>
+          <div class="sheet-up">
+            <div class="grab"></div>
+            <h3>Print queue wants to ask Claude</h3>
+            <p class="who">The page pressed its "Why do these fail?" button.</p>
+            <p class="quote">Summarise this week's failed prints and say what they have in common.</p>
+            <p class="lbl">Mode</p>
+            <div class="modes"><button class="m on">Ask first</button><button class="m">Smart</button><button class="m">Auto-edit</button><button class="m">Plan only</button></div>
+            <p class="rule">Runs as a task on Desk PC, in its own conversation, and counts as one of your 30 an hour.</p>
+            <div class="acts2"><button class="btn ghost">Not now</button><button class="btn primary">Ask Claude</button></div>
+          </div>
+          <div class="home-ind"></div>
+        </div>
+      </div>
+      <figcaption><b>A page asks Claude, from the phone</b><span>A page can't start a conversation by itself. Its ask comes up as the phone's own task sheet, with the prompt in full and the mode picker every phone task gets: Ask first is picked, Autonomous isn't offered, and it obeys the phone's hourly limit. The page never draws this itself.</span></figcaption>
+    </figure>
+
+  </div>
+</main>
+</body>
+</html>

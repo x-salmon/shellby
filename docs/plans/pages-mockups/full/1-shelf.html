@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: the shelf, full screen</title>
+<link rel="stylesheet" href="../mock.css">
+<link rel="stylesheet" href="full.css">
+<style>
+  /* first visit */
+  .hello { display: flex; gap: 18px; align-items: flex-end; }
+  .hello .px-crab { width: 78px; height: 54px; }
+  .first { width: 860px; display: grid; gap: 18px; }
+  .first h2 { margin: 6px 0 0; font: 600 var(--fs-34)/1.15 var(--font-pixel); }
+  .first > p { margin: 0; color: var(--sand-dim); font-size: var(--fs-16); max-width: 64ch; }
+  .first .go { display: flex; justify-content: space-between; align-items: center; }
+  .starters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 10px; }
+  .starter { display: grid; gap: 0; padding: 0; overflow: hidden; text-align: left; border-radius: 12px; border: 1px dashed var(--line); background: none; }
+  .starter:hover { border-style: solid; border-color: var(--glass); }
+  .starter .mini { height: 120px; opacity: .75; }
+  .starter .t { padding: 12px 14px 14px; display: grid; gap: 2px; }
+  .starter b { font-size: var(--fs-15); }
+  .starter span { color: var(--sand-faint); font-size: var(--fs-13); }
+  .steps { display: flex; gap: 28px; justify-content: center; margin-top: 18px; color: var(--sand-faint); font-size: var(--fs-13-5); }
+  .steps b { color: var(--sand-dim); margin-right: 6px; font-family: var(--font-mono); }
+
+  /* the activity column */
+  .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .feed li { display: grid; grid-template-columns: 14px 1fr; gap: 3px 12px; padding: 11px 12px; border-radius: 10px; }
+  .feed li:hover { background: var(--reef); }
+  .feed .sw { grid-row: span 2; width: 14px; height: 14px; margin-top: 4px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .12); }
+  .feed b { font-size: var(--fs-14); font-weight: 600; }
+  .feed span { color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .feed em { font-style: normal; color: var(--glass); }
+
+  /* needs you */
+  .need { display: grid; grid-template-columns: 60px 1fr; gap: 4px 14px; padding: 14px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); }
+  .need .mini { grid-row: span 3; height: 60px; border-radius: 8px; border: 1px solid var(--line); padding: 6px; }
+  .need .mini.off { filter: grayscale(1) brightness(.55); }
+  .need b { font-size: var(--fs-15); }
+  .need p { margin: 0; color: var(--sand-dim); font-size: var(--fs-13); }
+  .need .acts { display: flex; gap: 8px; margin-top: 6px; }
+
+  /* search */
+  .search-big { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 980px; height: 52px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--glass); background: var(--abyss); font-size: var(--fs-18); box-shadow: 0 0 0 4px var(--glass-dim); }
+  .search-big .q { flex: 1; }
+  .split2 { flex: 1; min-height: 0; display: grid; grid-template-columns: 860px 1fr; gap: 28px; }
+  .hits { display: grid; gap: 18px; align-content: start; }
+  .hit-grp { border-radius: 12px; background: var(--reef); border: 1px solid var(--line); overflow: hidden; }
+  .hit-grp > header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line-soft); }
+  .hit-grp > header .sw { width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(255, 255, 255, .12); }
+  .hit-grp > header b { font-size: var(--fs-15); }
+  .hit-grp > header .end { margin-left: auto; color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .hit { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line-soft); font-size: var(--fs-14); }
+  .hit:first-of-type { border-top: 0; }
+  .hit.hot { background: var(--reef-2); }
+  .hit small { color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .hit mark, .preview mark { background: var(--coral-dim); color: var(--coral); border-radius: 3px; padding: 0 3px; }
+  .preview { min-width: 0; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+  .preview .pg-print li.hit-row { outline: 3px solid #ff7a5c; outline-offset: 2px; }
+  .preview mark { background: #ffd8cc; color: #7a2410; }
+
+  /* the beach */
+  .beach { display: grid; grid-template-columns: minmax(0, 1fr) 520px; gap: 40px; }
+  .beach .col { display: grid; gap: 14px; align-content: start; }
+  .convo { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); font-size: var(--fs-15); }
+  .convo .what { color: var(--sand-dim); font-size: var(--fs-13-5); }
+  .convo .end { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--sand-faint); font-size: var(--fs-13); }
+  .convo.wait { border-color: color-mix(in srgb, var(--coral) 55%, var(--line)); }
+  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .strip .mini { height: 170px; }
+  .strip .tile .over { height: 170px; }
+  .crab-say { display: flex; gap: 14px; align-items: flex-end; padding: 18px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line-soft); }
+  .crab-say .px-crab { width: 60px; height: 42px; }
+
+  /* the palette */
+  .chat-wide { width: 940px; margin: 0 auto; padding-top: 30px; display: grid; gap: 18px; }
+  .scrim { z-index: 20; }
+  .palette { position: absolute; z-index: 21; top: 120px; left: 50%; width: 880px; margin-left: -440px; border-radius: 16px; background: var(--reef); border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); overflow: hidden; }
+  .palette .q { display: flex; gap: 12px; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line-soft); font-size: var(--fs-20); }
+  .palette .grp { padding: 12px 20px 4px; font-size: var(--fs-12-5); color: var(--sand-faint); font-weight: 700; }
+  .palette .opt { display: flex; gap: 14px; align-items: center; padding: 10px 20px; font-size: var(--fs-15); }
+  .palette .opt .sw { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .12); }
+  .palette .opt.hot { background: var(--reef-2); }
+  .palette .opt .k { margin-left: auto; color: var(--sand-faint); font-size: var(--fs-13); }
+  .palette .foot { display: flex; gap: 18px; padding: 10px 20px; border-top: 1px solid var(--line-soft); color: var(--sand-faint); font-size: var(--fs-12-5); }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- 1. First visit -->
+  <section class="screen" data-n="1" data-title="First visit" data-note="Nothing on the shelf yet. One box to describe a page, three starters that each show a different reason to have one: a routine posts to it, agents share it, the phone feeds it. At this size the empty state sits in the middle instead of stretching across 2,000 pixels.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-pages="" data-live=""></nav>
+      <main class="main">
+        <div class="main-body center">
+          <div class="first">
+            <div class="hello"><span class="px-crab" aria-hidden="true"></span><span class="bubble">Tell me what you keep losing track of.</span></div>
+            <h2>Pages are small apps Claude builds for you</h2>
+            <p>One stays here, on your phone and on your other PCs, and every conversation, routine and helper crab can read it and add to it.</p>
+            <textarea class="field area" placeholder="A list of what's next on the 3D printer, with what failed and why"></textarea>
+            <div class="go"><span class="faint small">Claude builds it beside a live preview. Nothing runs until you save it.</span><button class="btn primary lg">Build it</button></div>
+            <div class="sec-h" style="margin:14px 0 0">Or start from one of these</div>
+            <div class="starters">
+              <button class="starter"><div class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i></div><span class="t"><b>📦 Dependency radar</b><span>A routine checks your projects each morning and posts here</span></span></button>
+              <button class="starter"><div class="mini print"><i></i><i></i><i></i><i></i></div><span class="t"><b>✅ Agents' checklist</b><span>One list that every helper crab ticks off</span></span></button>
+              <button class="starter"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i></div><span class="t"><b>📚 Reading list</b><span>Links you send from the phone, with Claude's summary</span></span></button>
+            </div>
+            <div class="steps"><span><b>1</b>Describe it</span><span><b>2</b>Claude builds it</span><span><b>3</b>It stays, everywhere</span></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 2. The shelf -->
+  <section class="screen" data-n="2" data-title="The shelf" data-note="Pinned pages take the first row at double width. Each tile's line says what changed last and who did it, which is the reason to open it; the dot means its data changed since you last looked. The wide screen buys a column of what changed across every page, newest first.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages"></nav>
+      <main class="main">
+        <div class="main-head">
+          <div><h1>Pages</h1><p class="lede">5 pages, 2 pinned. 3 changed today.</p></div>
+          <div class="end"><div class="seg"><button aria-selected="true">Last changed</button><button>Last opened</button><button>Name</button></div><button class="btn icon ghost" aria-label="Search">⌕</button><button class="btn primary">New page</button></div>
+        </div>
+        <div class="main-body">
+          <div class="sec-h">Pinned</div>
+          <div class="shelf">
+            <button class="tile big"><div class="mini print" style="height:260px"><i></i><i class="n"></i><i class="n"></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>Claude added 2 prints in "Tune the Benchy profile", 4 min ago</span></span></button>
+            <button class="tile big"><div class="mini radar" style="height:260px"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:58%"></i><i style="height:44%"></i><i class="hi" style="height:74%"></i><i style="height:50%"></i><i style="height:38%"></i></div><span class="pin">📌</span><span class="meta"><b>Release radar</b><span>Morning routine posted 3 releases, 07:02</span></span></button>
+          </div>
+          <div class="sec-h">Everything else</div>
+          <div class="shelf">
+            <button class="tile"><div class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dependency radar</b><span>1 critical in shellby</span></span></button>
+            <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i><i style="width:58%"></i></div><span class="meta"><b>Reading list</b><span>You, from the phone, yesterday</span></span></button>
+            <button class="tile"><div class="mini dinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dinner plan</b><span>Not opened in 3 weeks</span></span></button>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>What changed</h3>
+        <p class="lede">Every write to every page, newest first.</p>
+        <ul class="feed">
+          <li><span class="sw" style="background:#ece6d9"></span><b>Print queue: 2 prints added</b><span>Claude, in <em>Tune the Benchy profile</em> · 4 min ago</span></li>
+          <li><span class="sw" style="background:#ece6d9"></span><b>Print queue: #3 marked failed</b><span>You · 22 min ago</span></li>
+          <li><span class="sw" style="background:#0f1630"></span><b>Release radar: 3 releases</b><span>Routine <em>Morning check</em> · 07:02</span></li>
+          <li><span class="sw" style="background:#f6f6f2"></span><b>Dependency radar: 1 critical</b><span>Routine <em>Morning check</em> · 07:01</span></li>
+          <li><span class="sw" style="background:#1d2a22"></span><b>Reading list: 1 link</b><span>You, from the phone · yesterday</span></li>
+          <li><span class="sw" style="background:#1d2a22"></span><b>Reading list: summary added</b><span>Claude, in <em>Summarise my reading list</em> · yesterday</span></li>
+          <li><span class="sw" style="background:#ece6d9"></span><b>Print queue: 4 prints done</b><span>A helper crab · Monday</span></li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 3. Tile states -->
+  <section class="screen" data-n="3" data-title="Every state a tile can be in" data-note="Being built, from another PC, wanting more access, broken, off, and this PC only. Anything that won't run until you act is greyed out with one chip saying why, and the side column collects the ones that need you, each with its one action.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-pages="standup,gym,deps,read,dinner,drive" data-live="" data-off="gym,deps,dinner"></nav>
+      <main class="main">
+        <div class="main-head">
+          <div><h1>Pages</h1><p class="lede">6 pages. 3 need you before they run.</p></div>
+          <div class="end"><button class="btn icon ghost" aria-label="Search">⌕</button><button class="btn primary">New page</button></div>
+        </div>
+        <div class="main-body">
+          <div class="shelf" style="grid-template-columns:repeat(3, 1fr)">
+            <button class="tile"><div class="mini build"></div><span class="over"><span class="chip glass">Claude is building it</span></span><span class="meta"><b>Standup notes</b><span>Started 1 min ago in "Make me a standup page"</span></span></button>
+            <button class="tile off"><div class="mini gym"><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i></i><i class="d"></i></div><span class="over"><span class="chip amber">From your laptop</span></span><span class="meta"><b>Gym log</b><span>Off: look before it runs</span></span></button>
+            <button class="tile off"><div class="mini deps"><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i></div><span class="over"><span class="chip coral">Wants more access</span></span><span class="meta"><b>Dependency radar</b><span>New version asks to reach registry.npmjs.org</span></span></button>
+            <button class="tile"><div class="mini read" style="filter:blur(2px) brightness(.6)"><i></i><i></i><i></i></div><span class="over"><span class="chip danger">Didn't load</span></span><span class="meta"><b>Reading list</b><span>An error on line 41</span></span></button>
+            <button class="tile off"><div class="mini dinner"><i></i><i></i><i></i><i></i><i></i></div><span class="over"><span class="chip">Off</span></span><span class="meta"><b>Dinner plan</b><span>You turned it off</span></span></button>
+            <button class="tile"><div class="mini print"><i></i><i></i><i></i><i></i></div><span class="over"><span class="chip">This PC only</span></span><span class="meta"><b>Drive space</b><span>Doesn't go to your other PCs</span></span></button>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Needs you</h3>
+        <p class="lede">Nothing here runs until you've looked.</p>
+        <div class="need"><div class="mini gym off"><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i></div><b>Gym log</b><p>Came from your laptop, 10 min ago.</p><div class="acts"><button class="btn sm">Look at it</button></div></div>
+        <div class="need"><div class="mini deps off"><i></i><i class="w"></i><i></i><i class="b"></i></div><b>Dependency radar</b><p>Version 6 asks to reach one more host.</p><div class="acts"><button class="btn sm">See what's new</button></div></div>
+        <div class="need"><div class="mini read" style="filter:blur(1px) brightness(.6)"><i></i><i></i></div><b>Reading list</b><p>Cannot read properties of undefined, line 41.</p><div class="acts"><button class="btn sm primary">Fix it with Claude</button><button class="btn sm ghost">Go back to the last version</button></div></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 4. Right-click -->
+  <section class="screen" data-n="4" data-title="Right-click a tile" data-note="Opening it comes first, then changing it, then the things about it. Delete asks first and says that its data goes too, on every PC. Keys are shown so the menu teaches them.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="print"></nav>
+      <main class="main">
+        <div class="main-head">
+          <div><h1>Pages</h1><p class="lede">5 pages, 2 pinned. 3 changed today.</p></div>
+          <div class="end"><button class="btn icon ghost" aria-label="Search">⌕</button><button class="btn primary">New page</button></div>
+        </div>
+        <div class="main-body">
+          <div class="sec-h">Pinned</div>
+          <div class="shelf">
+            <button class="tile big hot"><div class="mini print" style="height:260px"><i></i><i class="n"></i><i class="n"></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>Claude added 2 prints in "Tune the Benchy profile", 4 min ago</span></span></button>
+            <button class="tile big"><div class="mini radar" style="height:260px"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:58%"></i></div><span class="pin">📌</span><span class="meta"><b>Release radar</b><span>Morning routine posted 3 releases, 07:02</span></span></button>
+          </div>
+          <div class="sec-h">Everything else</div>
+          <div class="shelf">
+            <button class="tile"><div class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i></div><span class="meta"><b>Dependency radar</b><span>1 critical in shellby</span></span></button>
+            <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i></div><span class="meta"><b>Reading list</b><span>Yesterday</span></span></button>
+            <button class="tile"><div class="mini dinner"><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dinner plan</b><span>Not opened in 3 weeks</span></span></button>
+          </div>
+          <div class="menu" style="top:250px;left:520px">
+            <button class="hot">Open<span class="k">Enter</span></button>
+            <button>Open beside the chat<span class="k">Shift Enter</span></button>
+            <button>Change with Claude<span class="k">E</span></button>
+            <hr>
+            <button>Unpin<span class="k">P</span></button>
+            <button>Show its data</button>
+            <button>History<span class="k">7 versions</span></button>
+            <button>Access<span class="k">2 things</span></button>
+            <button>Goes to your other PCs<span class="k">On</span></button>
+            <hr>
+            <button>Turn off</button>
+            <button class="bad">Delete…<span class="k">Del</span></button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 5. Search -->
+  <section class="screen" data-n="5" data-title="Search what's on them" data-note="Page data is indexed like History, so search finds the row inside a page, not just its name. Hits group by page; the highlighted one previews on the right, scrolled to the row, so you often don't need to open anything.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages"></nav>
+      <main class="main">
+        <div class="main-head">
+          <div class="search-big"><span class="faint">⌕</span><span class="q">benchy</span><span class="faint small">3 found on 2 pages</span></div>
+          <div class="end"><div class="seg"><button aria-selected="true">Everything<span class="n">3</span></button><button>Names<span class="n">0</span></button><button>What's on them<span class="n">3</span></button></div></div>
+        </div>
+        <div class="main-body">
+          <div class="split2">
+            <div class="hits">
+              <section class="hit-grp">
+                <header><span class="sw" style="background:#ece6d9"></span><b>Print queue</b><span class="end">2 rows</span></header>
+                <div class="hit hot"><span>#3 <mark>Benchy</mark> at 0.12 layer, failed: stringing on the funnel<br><small>Marked failed by you, 22 min ago</small></span><kbd>Enter</kbd></div>
+                <div class="hit"><span>#7 <mark>Benchy</mark> in PETG, queued<br><small>Added by Claude in "Tune the Benchy profile", 4 min ago</small></span></div>
+              </section>
+              <section class="hit-grp">
+                <header><span class="sw" style="background:#1d2a22"></span><b>Reading list</b><span class="end">1 row</span></header>
+                <div class="hit"><span>"Why the 3D <mark>Benchy</mark> is a torture test", with Claude's summary<br><small>Sent from your phone, yesterday</small></span></div>
+              </section>
+            </div>
+            <div class="preview">
+              <div class="page-head"><button class="back" aria-label="Back">←</button><span class="nm">Print queue</span><span class="end"><span class="faint small">Preview · Enter opens it</span></span></div>
+              <div class="page">
+                <div class="pg-print xl">
+                  <h4>Print queue</h4>
+                  <p class="sub">Prusa MK4 · 0.4 nozzle · 6 waiting</p>
+                  <ol>
+                    <li><span class="n">1</span><span><b>6 cable clips</b><small>PLA · 22 min</small></span><span class="why"></span><span class="st go">Printing</span></li>
+                    <li><span class="n">2</span><span><b>Desk hook</b><small>PETG · 1 h 10</small></span><span class="why"></span><span class="st">Next</span></li>
+                    <li class="hit-row"><span class="n">3</span><span><b><mark>Benchy</mark> at 0.12</b><small>PLA · 1 h 48</small></span><span class="why">Stringing on the funnel</span><span class="st fail">Failed</span></li>
+                    <li><span class="n">4</span><span><b>Lid for the parts box</b><small>PLA · 2 h 05</small></span><span class="why"></span><span class="st">Waiting</span></li>
+                    <li><span class="n">5</span><span><b>Phone stand v2</b><small>PETG · 3 h 20</small></span><span class="why"></span><span class="st">Waiting</span></li>
+                    <li><span class="n">7</span><span><b><mark>Benchy</mark> in PETG</b><small>PETG · 1 h 55</small></span><span class="why"></span><span class="st">Waiting</span></li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 6. Beach -->
+  <section class="screen" data-n="6" data-title="Pinned pages on the Beach" data-note="Up to three, after what's waiting on you and before what's ready to review: something you check every day shouldn't be a screen away, but it never pushes a permission prompt down. Full screen gives them real miniatures you can read from across the room.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="beach"></nav>
+      <main class="main">
+        <div class="main-head"><div><h1>Beach</h1><p class="lede">Thursday. 1 waiting on you, 2 working, 1 ready to review.</p></div></div>
+        <div class="main-body">
+          <div class="beach">
+            <div class="col">
+              <div class="sec-h">Waiting on you</div>
+              <div class="convo wait"><span class="dot coral"></span><span>Fix flaky upload test<br><span class="what">Can I run npm test?</span></span><span class="end"><button class="btn sm ghost">Not now</button><button class="btn sm allow">Let it</button></span></div>
+              <div class="sec-h" style="margin-top:14px">Pinned pages<span class="end"><button class="link-btn small faint">All pages</button></span></div>
+              <div class="strip">
+                <button class="tile"><div class="mini print"><i></i><i class="n"></i><i class="n"></i><i class="f"></i></div><span class="meta"><b><span class="dot live"></span>Print queue</b><span>2 new from Claude</span></span></button>
+                <button class="tile"><div class="mini radar"><i style="height:30%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:40%"></i><i style="height:52%"></i></div><span class="meta"><b>Release radar</b><span>3 releases, 07:02</span></span></button>
+                <button class="tile"><div class="mini deps"><i></i><i class="b"></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dependency radar</b><span>1 critical</span></span></button>
+              </div>
+              <div class="sec-h" style="margin-top:14px">Ready to review</div>
+              <div class="convo"><span class="dot"></span><span>Add drive-space gauge<br><span class="what">4 files changed</span></span><span class="end">+48 −6</span></div>
+              <div class="sec-h" style="margin-top:14px">Working</div>
+              <div class="convo"><span class="dot amber"></span><span>Bump electron to 44.2<br><span class="what">Running the e2e checks</span></span><span class="end">3 min</span></div>
+              <div class="convo"><span class="dot amber"></span><span>Tune the Benchy profile<br><span class="what">Writing to Print queue</span></span><span class="end">12 min</span></div>
+            </div>
+            <div class="col">
+              <div class="crab-say"><span class="px-crab" aria-hidden="true"></span><span class="bubble">Two prints went on the queue while you were out.</span></div>
+              <div class="card quiet"><h3>Today</h3><p>3 conversations, 2 routines ran, 9 writes to pages.</p></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 7. Ctrl+K -->
+  <section class="screen" data-n="7" data-title="Ctrl+K finds pages" data-note="Each page brings three actions to the jump palette. &quot;Beside the chat&quot; is the one you'll want while Claude is filling it in. The conversation behind stays where it was.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="chat"></nav>
+      <main class="main">
+        <div class="main-head"><div><h1>Why did the release fail?</h1><p class="lede">shellby · main · 14 min</p></div></div>
+        <div class="main-body">
+          <div class="chat-wide chat">
+            <div class="msg-you">Why did the release workflow fail?</div>
+            <div class="msg-claude">The tag step ran before CI finished on main, so the release guard refused it. Pushing main first and waiting for the green run fixes it.</div>
+            <div class="tool-row"><b>Read</b> .github/workflows/release.yml<span class="end">0.4 s</span></div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="palette">
+          <div class="q"><span class="faint">⌕</span>print<span class="faint small" style="margin-left:auto">Esc closes</span></div>
+          <div class="grp">Pages</div>
+          <div class="opt hot"><span class="sw" style="background:#ece6d9"></span>Print queue<span class="k">Open · Enter</span></div>
+          <div class="opt"><span class="sw" style="background:#ece6d9"></span>Print queue<span class="k">Open beside the chat · Shift Enter</span></div>
+          <div class="opt"><span class="sw" style="background:#ece6d9"></span>Change Print queue with Claude</div>
+          <div class="grp">Conversations</div>
+          <div class="opt">💬 Tune the Benchy profile<span class="k">12 min</span></div>
+          <div class="grp">Screens</div>
+          <div class="opt">⚙ Settings: Printing a conversation</div>
+          <div class="foot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Shift</kbd> <kbd>Enter</kbd> beside the chat</span></div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+</div>
+<script src="deck.js"></script>
+</body>
+</html>

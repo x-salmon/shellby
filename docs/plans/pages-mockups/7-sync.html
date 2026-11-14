@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: on your other PCs</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  /* tiles on the shelf, as in 1-shelf */
+  .shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
+  .tile {
+    position: relative; display: grid; gap: 0; padding: 0; text-align: left; overflow: hidden;
+    border-radius: var(--r); background: var(--reef); border: 1px solid var(--line);
+  }
+  .tile .meta { padding: 8px 10px 9px; display: grid; gap: 1px; min-width: 0; }
+  .tile .meta b { font-size: var(--fs-13); display: flex; gap: 6px; align-items: center; }
+  .tile .meta span { font-size: var(--fs-11-5); color: var(--sand-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .pin { position: absolute; top: 6px; right: 6px; font-size: 11px; padding: 1px 5px; border-radius: 5px; background: rgba(7, 16, 18, .7); color: var(--sand); }
+  .tile.off .mini { filter: grayscale(1) brightness(.55); }
+  .tile.off .meta b { color: var(--sand-dim); }
+  .tile .over { position: absolute; inset: 0 0 auto 0; height: 92px; display: grid; place-items: center; }
+  .tile .over .chip { background: var(--abyss); box-shadow: inset 0 0 0 1px currentColor, 0 4px 12px rgba(0, 0, 0, .4); }
+  .tile .over .chip:not(.glass):not(.amber):not(.coral):not(.danger) { color: var(--sand); box-shadow: inset 0 0 0 1px var(--line), 0 4px 12px rgba(0, 0, 0, .4); }
+
+  /* miniatures: each page in its own look, tiny */
+  .mini { height: 92px; position: relative; overflow: hidden; border-bottom: 1px solid var(--line-soft); }
+  .mini.print { background: #ece6d9; padding: 9px 10px; }
+  .mini.print i { display: block; height: 11px; margin-bottom: 5px; border-radius: 2px; background: #fbf8f2; border: 1px solid #d7cfc0; }
+  .mini.print i:first-child { width: 60%; height: 8px; background: #2b2723; border: 0; }
+  .mini.print i.f { box-shadow: inset 18px 0 0 #c4452c; }
+  .mini.radar { background: #0f1630; padding: 9px 10px; display: flex; gap: 2px; align-items: flex-end; }
+  .mini.radar i { flex: 1; background: #3a4ba8; border-radius: 1px; }
+  .mini.radar i.hi { background: #ffb02e; }
+  .mini.read { background: #1d2a22; padding: 10px; }
+  .mini.read i { display: block; height: 7px; margin: 0 0 7px 10px; border-radius: 2px; background: #3d5245; box-shadow: -10px 0 0 -1px #c9a35b; }
+  .mini.read i:first-child { width: 50%; background: #e8efe5; box-shadow: none; margin-left: 0; height: 9px; }
+  .mini.deps { background: #f6f6f2; padding: 8px 10px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; align-content: start; }
+  .mini.deps i { height: 12px; border-radius: 2px; background: #9bd7a2; }
+  .mini.deps i.w { background: #f5c451; }
+  .mini.deps i.b { background: #e5644e; }
+  .mini.gym { background: #2a1f3d; padding: 10px; display: flex; gap: 4px; align-items: flex-end; }
+  .mini.gym i { flex: 1; background: #8b6fc9; border-radius: 2px 2px 0 0; }
+  .mini.gym i.t { background: #f28cb8; }
+
+  /* the arrivals notice */
+  .arrive { margin-bottom: 10px; padding: 10px 12px 11px; }
+  .arrive h3 { margin: 0 0 6px; }
+  .arrive .row { display: flex; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--line-soft); font-size: var(--fs-13); }
+  .arrive .row .g { width: 22px; text-align: center; }
+  .arrive .row span.w { margin-left: auto; color: var(--sand-faint); font-size: var(--fs-12); white-space: nowrap; }
+  .arrive .acts { margin-top: 8px; }
+
+  /* looking at a page that arrived: a preview behind glass, then the facts */
+  .glass-box { position: relative; height: 150px; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); margin-bottom: 12px; }
+  .glass-box .pg { height: 100%; filter: blur(1.5px) saturate(.7) brightness(.75); transform: scale(1.02); }
+  .glass-box .over { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(7, 16, 18, .25); }
+  .glass-box .over .chip { background: var(--abyss); box-shadow: inset 0 0 0 1px currentColor, 0 4px 12px rgba(0, 0, 0, .4); }
+  .facts { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; font-size: var(--fs-13); }
+  .facts li { display: grid; grid-template-columns: 74px 1fr; gap: 10px; }
+  .facts li span:first-child { color: var(--sand-faint); }
+  .pg-gym { height: 100%; padding: 14px 16px; background: #2a1f3d; color: #f1eaff; font-family: var(--font-body); }
+  .pg-gym h4 { margin: 0 0 8px; font: 700 18px/1.1 var(--font-body); letter-spacing: -.01em; }
+  .pg-gym .wk { display: flex; gap: 5px; align-items: flex-end; height: 70px; }
+  .pg-gym .wk i { flex: 1; background: #8b6fc9; border-radius: 3px 3px 0 0; }
+  .pg-gym .wk i.t { background: #f28cb8; }
+  .pg-gym .tot { margin-top: 10px; font-size: 13px; color: #c9b8ea; }
+  .pg-gym .tot b { color: #fff; font-size: 20px; }
+
+  /* where it goes: option rows with a radio */
+  .opt { display: grid; grid-template-columns: 20px 1fr; gap: 2px 10px; width: 100%; padding: 9px 11px; border-radius: var(--r); border: 1px solid var(--line); background: var(--reef); text-align: left; }
+  .opt + .opt { margin-top: 6px; }
+  .opt .radio { grid-row: span 2; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--sand-faint); }
+  .opt.on { border-color: rgba(127, 214, 194, .55); }
+  .opt.on .radio { border-color: var(--glass); box-shadow: inset 0 0 0 3px var(--ink); background: var(--glass); }
+  .opt b { font-size: var(--fs-13-5); }
+  .opt span { color: var(--sand-dim); font-size: var(--fs-12-5); }
+  .opt.dim { opacity: .5; }
+  .grp { margin: 12px 0 6px; font: 700 var(--fs-12) var(--font-body); color: var(--sand-faint); }
+  .grp:first-of-type { margin-top: 4px; }
+
+  /* the budget bar */
+  .budget { display: grid; gap: 5px; margin: 8px 0 2px; }
+  .budget .bar { display: flex; height: 10px; border-radius: 99px; background: var(--abyss); overflow: hidden; border: 1px solid var(--line-soft); }
+  .budget .bar i { display: block; height: 100%; }
+  .budget .bar i.used { background: var(--glass); }
+  .budget .bar i.this { background: repeating-linear-gradient(-45deg, var(--amber) 0 4px, rgba(255, 193, 94, .45) 4px 8px); }
+  .budget .lg { display: flex; gap: 14px; font-size: var(--fs-11-5); color: var(--sand-faint); }
+  .budget .lg i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .budget .lg i.used { background: var(--glass); }
+  .budget .lg i.this { background: var(--amber); }
+  .budget .lg .end { margin-left: auto; }
+
+  /* history: versions */
+  .ver { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 9px 11px; border-radius: var(--r); background: var(--reef); border: 1px solid var(--line); }
+  .ver + .ver { margin-top: 6px; }
+  .ver.now { border-color: rgba(127, 214, 194, .4); }
+  .ver b { font-size: var(--fs-13); }
+  .ver p { grid-column: 1; margin: 0; color: var(--sand-dim); font-size: var(--fs-12-5); }
+  .ver .end { grid-row: span 2; }
+  .ver.kept { box-shadow: inset 3px 0 0 var(--amber); }
+
+  /* data arriving: the strip under the header, the rows that glow */
+  .arrived { flex: none; display: flex; gap: 8px; align-items: center; height: 30px; padding: 0 12px; background: var(--glass-dim); color: var(--glass); font-size: var(--fs-12-5); font-weight: 700; border-bottom: 1px solid rgba(127, 214, 194, .2); }
+  .arrived .end { margin-left: auto; font-weight: 400; color: var(--sand-dim); }
+  .pg-read .bk.fresh { margin: 0 -8px; padding: 8px; border-radius: 4px; background: rgba(127, 214, 194, .12); box-shadow: inset 3px 0 0 #7fd6c2; border-bottom-color: transparent; }
+  .pg-read .bk.fresh + .bk.fresh { margin-top: 2px; }
+
+  /* settings */
+  .set-h { margin: 14px 0 6px; font: 700 var(--fs-12) var(--font-body); color: var(--sand-faint); }
+  .set-h:first-child { margin-top: 0; }
+  .srow { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 8px; background: var(--reef); font-size: var(--fs-13); }
+  .srow + .srow { margin-top: 4px; }
+  .srow .g { width: 20px; text-align: center; }
+  .srow .end { margin-left: auto; display: flex; gap: 6px; align-items: center; color: var(--sand-dim); font-size: var(--fs-12); white-space: nowrap; }
+  .set-note { margin: 6px 0 0; color: var(--sand-faint); font-size: var(--fs-12-5); }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header class="sheet-head">
+    <span class="px-crab" aria-hidden="true"></span>
+    <h1>On your other PCs</h1>
+    <p>Pages travel through the same private gist as the rest of Sync between PCs, each on its own, and arrive switched off.</p>
+  </header>
+  <nav class="sheet-nav" aria-label="Features">
+    <a href="index.html">Overview</a>
+    <a href="1-shelf.html">1 The shelf</a>
+    <a href="2-running.html">2 Running a page</a>
+    <a href="3-building.html">3 Building with Claude</a>
+    <a href="4-agents.html">4 Agents and pages</a>
+    <a href="5-access.html">5 Access and safety</a>
+    <a href="6-phone.html">6 On your phone</a>
+    <a href="7-sync.html" aria-current="page">7 Other PCs</a>
+  </nav>
+  <p class="sheet-intro">A page that arrives is <strong>code from a file on the internet</strong>, even when you wrote it yourself yesterday on your laptop. So it comes switched off, with its access not agreed, and runs only once you've looked at it here and said so. Everything else about sync is designed so that one page can never hold the rest up: each page goes on its own, a page too big stays home and says so, and a clash keeps both versions.</p>
+
+  <div class="board">
+
+    <!-- 1. The notice -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view">
+          <div class="view-head"><h2>Pages</h2><div class="end"><button class="btn sm primary">New page</button></div></div>
+          <div class="card warn arrive">
+            <h3>2 pages came from your laptop</h3>
+            <div class="row"><span class="g">🏋️</span>Gym log, new<span class="w">10 min ago</span></div>
+            <div class="row"><span class="g">📚</span>Reading list, changed there<span class="w">10 min ago</span></div>
+            <p style="margin:8px 0 0">The new one stays off, and the changed one keeps its old version, until you've looked here.</p>
+            <div class="acts"><button class="btn sm">Look at them</button></div>
+          </div>
+          <div class="shelf">
+            <button class="tile"><div class="mini print"><i></i><i></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b>Print queue</b><span>Claude added 2, 4 min ago</span></span></button>
+            <button class="tile"><div class="mini radar"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i></div><span class="meta"><b>Release radar</b><span>Morning routine, 07:02</span></span></button>
+            <button class="tile off"><div class="mini gym"><i style="height:40%"></i><i style="height:55%"></i><i class="t" style="height:90%"></i><i style="height:62%"></i><i style="height:48%"></i></div><span class="over"><span class="chip amber">From your laptop</span></span><span class="meta"><b>Gym log</b><span>Off: look before it runs</span></span></button>
+            <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i></div><span class="over"><span class="chip amber">New version from your laptop</span></span><span class="meta"><b>Reading list</b><span>Your version still runs</span></span></button>
+          </div>
+        </div>
+        <div class="dock"><button class="dock-btn"><span class="px-crab"></span>Shellby</button><button class="dock-btn"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>Two pages came from your laptop</b><span>The notice names each page, says whether it's new or changed, and when, so you know what you're about to look at. A changed page keeps running the version you agreed to here, and the new one waits on its tile: new code still gets a look, but a change on the laptop never switches the desk's page off. Nothing else on the shelf is touched.</span></figcaption>
+    </figure>
+
+    <!-- 2. Looking at one -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Gym log</span><span class="chip amber">From your laptop</span></div>
+        <div class="view">
+          <div class="glass-box">
+            <div class="pg pg-gym"><h4>Gym log</h4><div class="wk"><i style="height:40%"></i><i style="height:55%"></i><i class="t" style="height:90%"></i><i style="height:62%"></i><i style="height:48%"></i><i style="height:70%"></i><i style="height:30%"></i></div><div class="tot">This week <b>12,400 kg</b></div></div>
+            <span class="over"><span class="chip amber">Off: a preview, not running</span></span>
+          </div>
+          <ul class="facts">
+            <li><span>What it is</span><span>Sets and weights by day, with a weekly total.</span></li>
+            <li><span>From</span><span>Your laptop, 10 min ago. Claude made it there: "a gym log like the print queue".</span></li>
+            <li><span>Files</span><span>3 files, 14 KB, checked like a new page.</span></li>
+          </ul>
+          <p class="muted small" style="margin:0 0 6px">It asks for</p>
+          <ul class="rights">
+            <li><span class="g">🔔</span><b>Notifications</b><span>A toast here and a notification on your phone, at most one a minute.</span></li>
+            <li><span class="g">💬</span><b>Ask Claude</b><span>Start a turn with Claude. You see the prompt first, every time.</span></li>
+          </ul>
+          <div class="card acts" style="margin-top:auto;padding:0;border:0;background:none"><button class="btn ghost">Not on this PC</button><button class="btn allow">Turn it on</button></div>
+        </div>
+      </div>
+      <figcaption><b>Looking at a page that arrived</b><span>The access sheet, with where it came from on top. The preview is behind glass because the page isn't running: a miniature from the laptop, not the code. Turn it on is the same agreement as Let it on a new page; Not on this PC leaves it off here, and the notice stops, without touching the laptop's copy.</span></figcaption>
+    </figure>
+
+    <!-- 3. Where it goes -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Dependency radar</span><span class="dot live"></span><span class="end"><button class="btn sm ghost">Change with Claude</button><button class="btn sm ghost icon" aria-label="Menu">⋯</button></span></div>
+        <div class="view" style="position:relative;padding:0">
+          <div class="mini deps" style="height:100%;border:0;opacity:.5;grid-template-columns:repeat(8,1fr);gap:6px;padding:16px;align-content:start"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="scrim"></div>
+          <div class="sheet-up">
+            <div class="grab"></div>
+            <h3>Where it goes</h3>
+            <div class="grp">The page</div>
+            <button class="opt on"><span class="radio"></span><b>Everywhere</b><span>Goes to your other PCs, switched off until you look at it there.</span></button>
+            <button class="opt"><span class="radio"></span><b>This PC only</b><span>Stays here. Your other PCs never see it.</span></button>
+            <div class="grp">Its data</div>
+            <button class="opt"><span class="radio"></span><b>Goes with it</b><span>One set of data, merged key by key.</span></button>
+            <button class="opt on"><span class="radio"></span><b>Stays on this PC</b><span>Each PC keeps its own radar of its own projects.</span></button>
+            <p class="muted small" style="margin:12px 0 10px">Takes 48 KB of the 2 MB your pages share.</p>
+            <div style="display:flex;justify-content:flex-end"><button class="btn">Done</button></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Where it goes</b><span>The page and its data are two choices, because a page can make sense everywhere while its data is about one PC. Dependency radar's code goes to the laptop; what it found about this PC's projects stays put, and the laptop's radar scans its own.</span></figcaption>
+    </figure>
+
+    <!-- 4. Too big -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Reading list</span><span class="dot live"></span><span class="end"><button class="btn sm ghost">Change with Claude</button><button class="btn sm ghost icon" aria-label="Menu">⋯</button></span></div>
+        <div class="view" style="flex:none;padding:10px 12px 12px">
+          <div class="card warn">
+            <h3>Too big to go to your other PCs</h3>
+            <p>Your pages share 2 MB between them. This one comes to 1.3 MB, mostly the saved articles, and 0.6 MB is left. It stays on this PC; every other page still goes.</p>
+            <div class="budget">
+              <div class="bar"><i class="used" style="width:45%"></i><i class="this" style="width:55%"></i></div>
+              <div class="lg"><span><i class="used"></i>Other pages, 0.9 MB</span><span><i class="this"></i>This one, 1.3 MB</span><span class="end">2 MB</span></div>
+            </div>
+            <div class="acts"><button class="btn sm">Show its data</button><button class="btn sm primary">Change with Claude</button></div>
+          </div>
+        </div>
+        <div class="page" style="flex:1">
+          <div class="pg-read">
+            <h4>Reading list</h4>
+            <div class="bk"><span class="spine"></span><span>Why the 3D Benchy is a torture test<small>Saved in full, 212 KB. Claude: it tests overhangs and bridging.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#7fa88a"></span><span>Hermit crabs and their shells<small>Saved in full, 340 KB. Claude: they trade up in queues.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#b86b6b"></span><span>A field guide to flaky tests<small>Saved in full, 188 KB.</small></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>A page too big for the budget</b><span>The budget is checked per page, so one heavy page stays home and says so, instead of stopping every page's sync. The bar shows what's taken and by what. The fix is a smaller page, which is why Change with Claude is right there: "keep the links, not the articles".</span></figcaption>
+    </figure>
+
+    <!-- 5. Changed on two PCs -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Gym log</span><span class="dot live"></span><span class="end"><button class="btn sm ghost">Change with Claude</button><button class="btn sm ghost icon" aria-label="Menu">⋯</button></span></div>
+        <div class="view" style="position:relative;padding:0">
+          <div class="pg-gym" style="opacity:.5"><h4>Gym log</h4><div class="wk"><i style="height:40%"></i><i style="height:55%"></i><i class="t" style="height:90%"></i><i style="height:62%"></i><i style="height:48%"></i><i style="height:70%"></i><i style="height:30%"></i></div><div class="tot">This week <b>12,400 kg</b></div></div>
+          <div class="scrim"></div>
+          <div class="sheet-up">
+            <div class="grab"></div>
+            <h3>History</h3>
+            <div class="card quiet" style="margin:8px 0 10px;padding:9px 11px"><p style="margin:0;color:var(--sand)">Changed here and on your laptop this morning. Your laptop's was later, so that's the one showing. The one from this PC is kept below.</p></div>
+            <div class="ver now"><b>Showing now</b><p>Your laptop, 10:14. Claude: added a weekly total.</p><span class="end chip glass">Current</span></div>
+            <div class="ver kept"><b>Kept from this PC</b><p>This PC, 09:58. Claude: changed the colours to match Shellby.</p><span class="end"><button class="btn sm">Go back to this one</button></span></div>
+            <div class="ver"><b>Version 10</b><p>This PC, yesterday. You: the first version.</p><span class="end"><button class="btn sm">Go back to this one</button></span></div>
+            <p class="muted small" style="margin:10px 0 0">Its data wasn't part of this: data merges key by key, so both mornings' sets are here.</p>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Changed on two PCs</b><span>No merge to resolve: the later save wins per page, and the other save is a version like any other, one press from coming back. The card says what happened in plain words, and the data is handled separately, merged key by key, so neither PC's rows are lost.</span></figcaption>
+    </figure>
+
+    <!-- 6. Data arrived -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="page-head"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Reading list</span><span class="dot live"></span><span class="end"><button class="btn sm ghost">Change with Claude</button><button class="btn sm ghost icon" aria-label="Menu">⋯</button></span></div>
+        <div class="arrived"><span class="dot live"></span>2 links from your laptop<span class="end">just now</span></div>
+        <div class="page">
+          <div class="pg-read">
+            <h4>Reading list</h4>
+            <div class="bk fresh"><span class="spine"></span><span>Why the 3D Benchy is a torture test<small>From the laptop's phone share. Claude: it tests overhangs and bridging.</small></span></div>
+            <div class="bk fresh"><span class="spine" style="background:#7fa88a"></span><span>Hermit crabs and their shells<small>From the laptop. No summary yet.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#b86b6b"></span><span>A field guide to flaky tests<small>Yesterday. Claude: isolate, then retry, never the other way round.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#c9a35b"></span><span>Pixel fonts that still read at 11px<small>Tuesday.</small></span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Data that just arrived</b><span>Data moves on its own, with no switching on: the header's dot pulses, the strip says from where and when, and the new rows glow once, exactly as they do when an agent writes. The page did nothing special; onChange fired like it does for any write.</span></figcaption>
+    </figure>
+
+    <!-- 7. Settings -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view">
+          <div class="view-head"><button class="btn sm ghost icon" aria-label="Back to Settings">‹</button><h2>Pages</h2></div>
+          <div class="set-h">On your other PCs</div>
+          <label class="toggle"><span class="switch on"></span>Pages go to my other PCs</label>
+          <p class="set-note" style="margin:0 0 8px">Through the same private gist as Sync between PCs, in its own file. Each page arrives switched off.</p>
+          <div class="budget" style="margin:0 0 4px">
+            <div class="bar"><i class="used" style="width:55%"></i></div>
+            <div class="lg"><span><i class="used"></i>1.1 MB of 2 MB</span><span class="end">Last synced 2 min ago</span></div>
+          </div>
+          <div class="set-h">Which pages travel</div>
+          <div class="srow"><span class="g">🖨️</span>Print queue<span class="end">Everywhere</span></div>
+          <div class="srow"><span class="g">📡</span>Release radar<span class="end">Everywhere</span></div>
+          <div class="srow"><span class="g">📦</span>Dependency radar<span class="end">Everywhere, data stays here</span></div>
+          <div class="srow"><span class="g">🏋️</span>Gym log<span class="end">Everywhere</span></div>
+          <div class="srow"><span class="g">💽</span>Drive space<span class="end">This PC only</span></div>
+          <div class="srow"><span class="g">📚</span>Reading list<span class="end"><span class="chip amber">Too big, stays here</span></span></div>
+          <p class="set-note">Change one from the page's menu, under Where it goes.</p>
+          <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center"><span class="muted small">Stops them all running on this PC.</span><button class="btn sm ghost">Turn every page off</button></div>
+        </div>
+        <div class="dock"><button class="dock-btn"><span class="px-crab"></span>Shellby</button><button class="dock-btn"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn"><i>▦</i>Pages</button><button class="dock-btn active"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>Settings: on your other PCs</b><span>One place to see which pages travel, which stay and why, with the shared budget as a bar. Its own switch, apart from Sync between PCs, so your crab's progress can sync while pages stay home. Turn every page off is here too, from Access and safety.</span></figcaption>
+    </figure>
+
+  </div>
+</main>
+</body>
+</html>

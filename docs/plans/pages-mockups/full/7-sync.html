@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: on your other PCs, full screen</title>
+<link rel="stylesheet" href="../mock.css">
+<link rel="stylesheet" href="full.css">
+<style>
+  /* the slim page header, grown for the wide window */
+  .ph { height: 54px; padding: 0 22px 0 14px; gap: 12px; }
+  .ph .back { width: 34px; height: 34px; font-size: var(--fs-18); }
+  .ph .nm { font-size: var(--fs-17); }
+  .ph .end { gap: 8px; }
+  .ph .hint { color: var(--sand-faint); font-size: var(--fs-13); }
+  .pad { padding-top: 24px; }
+  .framed { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+
+  /* the arrivals notice, one wide card */
+  .arrive { display: flex; align-items: center; gap: 40px; padding: 18px 24px; }
+  .arrive .say { flex: 1; }
+  .arrive .say h3 { margin: 0 0 3px; font-size: var(--fs-18); }
+  .arrive .say p { margin: 0; font-size: var(--fs-14); }
+  .arrive .rows { display: grid; gap: 8px; padding-left: 36px; border-left: 1px solid var(--line-soft); }
+  .arrive .row { display: flex; gap: 10px; align-items: center; font-size: var(--fs-14-5); white-space: nowrap; }
+  .arrive .row .g { width: 26px; text-align: center; }
+  .arrive .row .w { color: var(--sand-faint); font-size: var(--fs-13); margin-left: 6px; }
+  .arrive .acts { margin: 0; }
+
+  /* the side column: what arrived, what needs you */
+  .need { display: grid; grid-template-columns: 60px 1fr; gap: 4px 14px; padding: 14px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); }
+  .need .mini { grid-row: span 3; height: 60px; border-radius: 8px; border: 1px solid var(--line); padding: 6px; }
+  .need .mini.off { filter: grayscale(1) brightness(.55); }
+  .need b { font-size: var(--fs-15); }
+  .need p { margin: 0; color: var(--sand-dim); font-size: var(--fs-13); }
+  .need .acts { display: flex; gap: 8px; margin-top: 6px; }
+  .aside .acts { margin-top: auto; display: flex; gap: 10px; justify-content: flex-end; }
+  .aside .foot { margin-top: auto; display: grid; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line-soft); }
+  .aside .foot .l { display: flex; justify-content: space-between; color: var(--sand-faint); font-size: var(--fs-13); }
+  .aside .sec-h { margin: 8px 0 -6px; }
+  .facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: var(--fs-14); }
+  .facts li { display: grid; grid-template-columns: 84px 1fr; gap: 12px; }
+  .facts li span:first-child { color: var(--sand-faint); }
+  .facts li .num { font-family: var(--font-mono); font-size: var(--fs-13); }
+
+  /* a page that isn't running: a preview behind glass */
+  .glass-box { position: relative; flex: 1; min-height: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); }
+  .glass-box .pg-gym { filter: blur(2px) saturate(.7) brightness(.7); transform: scale(1.01); }
+  .glass-box .over { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(7, 16, 18, .3); }
+  .glass-box .over .chip { height: 36px; padding: 0 18px; font-size: var(--fs-14-5); background: var(--abyss); box-shadow: inset 0 0 0 1px currentColor, 0 6px 18px rgba(0, 0, 0, .5); }
+  .came { flex: none; display: flex; align-items: center; gap: 36px; padding: 14px 22px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line-soft); font-size: var(--fs-14); }
+  .came .f { display: flex; gap: 10px; align-items: baseline; font-family: var(--font-mono); font-size: var(--fs-13); }
+  .came .f small { color: var(--sand-faint); font-size: var(--fs-12-5); font-family: var(--font-body); }
+  .came .end { margin-left: auto; color: var(--sand-faint); font-size: var(--fs-13); }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: var(--fs-13-5); color: var(--sand-dim); }
+  .checks li { display: flex; gap: 10px; }
+  .checks li::before { content: "✓"; color: var(--glass); font-weight: 700; }
+
+  /* "Gym log": dark, a calendar of lifts. The version kept on this PC wears Shellby's colours. */
+  .pg-gym { height: 100%; padding: 44px 56px 40px; background: #18181b; color: #f4f4f0; font-family: var(--font-body); display: flex; flex-direction: column; }
+  .pg-gym h4 { margin: 0 0 4px; font: 700 40px/1.1 var(--font-body); letter-spacing: -.02em; }
+  .pg-gym .sub { margin: 0 0 26px; color: #8f8f9a; font-size: 16px; }
+  .pg-gym .days { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: auto repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .pg-gym .dow { font-size: 12px; font-weight: 700; color: #8f8f9a; text-transform: uppercase; letter-spacing: .08em; padding: 0 0 4px 4px; }
+  .pg-gym .day { min-height: 0; padding: 12px 14px; border-radius: 10px; background: #2a2a30; display: grid; align-content: start; gap: 3px; }
+  .pg-gym .day .n { font-size: 14px; color: #a6a6b2; font-weight: 700; }
+  .pg-gym .day b { font-size: 21px; letter-spacing: -.01em; }
+  .pg-gym .day .s { font-size: 13px; color: #cfcfd8; }
+  .pg-gym .day.d { background: #c6f36b; color: #16200a; }
+  .pg-gym .day.d .n { color: #4a6318; }
+  .pg-gym .day.d .s { color: #2f4210; }
+  .pg-gym .tot { margin-top: auto; padding-top: 26px; display: flex; gap: 48px; font-size: 15px; color: #a6a6b2; }
+  .pg-gym .tot b { display: block; color: #fff; font-size: 34px; letter-spacing: -.02em; line-height: 1.1; }
+  .pg-gym.reef { background: var(--ink); color: var(--sand); }
+  .pg-gym.reef .sub, .pg-gym.reef .dow { color: var(--sand-faint); }
+  .pg-gym.reef .day { background: var(--reef); }
+  .pg-gym.reef .day .n { color: var(--sand-faint); }
+  .pg-gym.reef .day .s { color: var(--sand-dim); }
+  .pg-gym.reef .day.d { background: var(--glass); color: #06201b; }
+  .pg-gym.reef .day.d .n, .pg-gym.reef .day.d .s { color: #1f4a41; }
+  .two .pg-gym { padding: 30px 34px 28px; }
+  .two .pg-gym h4 { font-size: 30px; }
+  .two .pg-gym .sub { margin-bottom: 18px; font-size: 14px; }
+  .two .pg-gym .days { flex: none; grid-template-rows: auto repeat(4, 150px); }
+  .two .pg-gym .day { padding: 10px 12px; }
+  .two .pg-gym .day b { font-size: 18px; }
+  .two .pg-gym .tot { margin-top: 0; }
+  .two .pg-gym .tot b { font-size: 28px; }
+
+  /* "Dependency radar": paper and tiles */
+  .pg-deps { height: 100%; padding: 44px 64px; background: #f6f6f2; color: #1f2a24; font-family: var(--font-body); }
+  .pg-deps h4 { margin: 0 0 4px; font: 700 40px/1.1 var(--font-mono); letter-spacing: -.03em; }
+  .pg-deps .sub { margin: 0 0 24px; color: #5f6963; font-size: 16px; }
+  .pg-deps .proj { display: grid; grid-template-columns: 300px 1fr auto; gap: 28px; align-items: center; padding: 22px 0; border-top: 1px solid #dcdcd4; }
+  .pg-deps .proj b { font-size: 19px; }
+  .pg-deps .proj small { display: block; color: #5f6963; font-size: 13.5px; margin-top: 2px; }
+  .pg-deps .tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pg-deps .tiles i { width: 38px; height: 30px; border-radius: 4px; background: #9bd7a2; }
+  .pg-deps .tiles i.w { background: #f5c451; }
+  .pg-deps .tiles i.b { background: #e5644e; }
+  .pg-deps .st { font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 99px; background: #e4e8e2; color: #3f4a43; white-space: nowrap; }
+  .pg-deps .st.bad { background: #b83a26; color: #fff; }
+  .pg-deps .st.warn { background: #f5c451; color: #3a2a00; }
+
+  /* where it goes: a sheet over the page, two choices side by side, then what goes */
+  .scrim { z-index: 20; }
+  .where { position: absolute; z-index: 21; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1180px; padding: 30px 34px 26px; border-radius: 18px; background: var(--ink); border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); }
+  .where h3 { margin: 0; font: 600 var(--fs-26) var(--font-pixel); }
+  .where .lede { margin: 4px 0 22px; color: var(--sand-dim); font-size: var(--fs-15); }
+  .where .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .where .foot { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-top: 22px; }
+  .grp { margin: 0 0 8px; font: 700 var(--fs-13) var(--font-body); color: var(--sand-faint); }
+  .opt { display: grid; grid-template-columns: 22px 1fr; gap: 3px 14px; width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--reef); text-align: left; }
+  .opt + .opt { margin-top: 8px; }
+  .opt .radio { grid-row: span 2; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--sand-faint); }
+  .opt.on { border-color: rgba(127, 214, 194, .55); }
+  .opt.on .radio { border-color: var(--glass); box-shadow: inset 0 0 0 4px var(--ink); background: var(--glass); }
+  .opt b { font-size: var(--fs-15); }
+  .opt span { color: var(--sand-dim); font-size: var(--fs-13-5); }
+  .goes { width: 100%; border-collapse: collapse; font-size: var(--fs-14); }
+  .goes th { text-align: left; padding: 0 14px 8px; font: 700 var(--fs-12-5) var(--font-body); color: var(--sand-faint); }
+  .goes td { padding: 12px 14px; border-top: 1px solid var(--line-soft); }
+  .goes td:first-child, .goes th:first-child { padding-left: 0; }
+  .goes td:last-child, .goes th:last-child { text-align: right; padding-right: 0; }
+  .goes .num { font-family: var(--font-mono); font-size: var(--fs-13); color: var(--sand-dim); white-space: nowrap; }
+  .goes .faint { color: var(--sand-faint); }
+  .where .goes { margin-top: 26px; }
+
+  /* the budget bar */
+  .budget { display: grid; gap: 8px; }
+  .budget .bar { display: flex; height: 14px; border-radius: 99px; background: var(--abyss); overflow: hidden; border: 1px solid var(--line-soft); }
+  .budget .bar i { display: block; height: 100%; }
+  .budget .bar i.used { background: var(--glass); }
+  .budget .bar i.this { background: repeating-linear-gradient(-45deg, var(--amber) 0 5px, rgba(255, 193, 94, .45) 5px 10px); }
+  .budget .lg { display: flex; gap: 18px; font-size: var(--fs-13); color: var(--sand-faint); white-space: nowrap; }
+  .budget .lg i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .budget .lg i.used { background: var(--glass); }
+  .budget .lg i.this { background: var(--amber); }
+  .budget .lg .end { margin-left: auto; }
+
+  /* too big: the notice across the top, the page under it, the breakdown beside */
+  .toobig { display: grid; grid-template-columns: minmax(0, 1fr) 560px auto; gap: 48px; align-items: center; padding: 18px 24px; }
+  .toobig h3 { font-size: var(--fs-18); }
+  .toobig p { margin: 0; font-size: var(--fs-14); max-width: 70ch; }
+  .toobig .acts { margin: 0; }
+  .space { display: grid; gap: 12px; }
+  .space .r { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: var(--fs-14); }
+  .space .r small { grid-column: 1 / -1; color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .space .r .num { font-family: var(--font-mono); font-size: var(--fs-13); color: var(--sand-dim); }
+  .space .r .bar { grid-column: 1 / -1; height: 6px; border-radius: 99px; background: var(--abyss); overflow: hidden; }
+  .space .r .bar i { display: block; height: 100%; background: var(--amber); }
+  .order { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+  .order li { display: grid; grid-template-columns: 22px 1fr auto auto; gap: 12px; align-items: center; padding: 8px 10px; border-radius: 8px; font-size: var(--fs-14); }
+  .order li .i { font: 600 var(--fs-12-5) var(--font-mono); color: var(--sand-faint); }
+  .order li .num { font-family: var(--font-mono); font-size: var(--fs-12-5); color: var(--sand-dim); }
+  .order li .ok { color: var(--glass); font-size: var(--fs-13); }
+  .order li.stay { background: rgba(255, 193, 94, .08); }
+  .order li.stay .ok { color: var(--amber); }
+  .pg-read.xl .bk b { font-weight: 400; }
+  .pg-read.xl .bk .kb { margin-left: auto; flex: none; font: 13px var(--font-mono); color: #9db3a4; padding-top: 4px; }
+
+  /* changed on two PCs: both saves side by side */
+  .two { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .vpane { min-height: 0; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--reef); }
+  .vpane.now { border-color: rgba(127, 214, 194, .45); }
+  .vpane.kept { border-color: rgba(255, 193, 94, .45); }
+  .vpane > header { flex: none; display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line-soft); }
+  .vpane > header b { font-size: var(--fs-16); display: block; }
+  .vpane > header p { margin: 2px 0 0; color: var(--sand-dim); font-size: var(--fs-13-5); }
+  .vpane > header .end { margin-left: auto; flex: none; }
+  .vpane .page { flex: 1; }
+  .vpane > footer { flex: none; display: grid; gap: 6px; padding: 12px 18px 14px; border-top: 1px solid var(--line-soft); font-size: var(--fs-13-5); }
+  .vpane > footer .h { font: 700 var(--fs-12-5) var(--font-body); color: var(--sand-faint); }
+  .vpane > footer .d { display: flex; gap: 14px; align-items: baseline; }
+  .vpane > footer .d code { font-size: var(--fs-12-5); color: var(--sand-dim); }
+  .vpane > footer .pm { font: 600 var(--fs-12) var(--font-mono); white-space: nowrap; }
+  .vpane > footer .pm .p { color: var(--glass); }
+  .vpane > footer .pm .m { color: #ff9b8f; }
+  .banner { display: flex; align-items: center; gap: 14px; }
+  .banner p { margin: 0; color: var(--sand); font-size: var(--fs-14-5); }
+  .ver { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; padding: 12px 14px; border-radius: 10px; background: var(--reef); border: 1px solid var(--line); }
+  .ver b { font-size: var(--fs-14-5); }
+  .ver p { grid-column: 1; margin: 0; color: var(--sand-dim); font-size: var(--fs-13); }
+  .ver .end { grid-row: span 2; }
+  .ver.now { border-color: rgba(127, 214, 194, .4); }
+  .ver.kept { box-shadow: inset 3px 0 0 var(--amber); }
+  .vers { display: grid; gap: 8px; }
+
+  /* data arriving: the strip under the header, the rows that glow, the page's activity beside */
+  .arrived { flex: none; display: flex; gap: 10px; align-items: center; height: 40px; padding: 0 22px; background: var(--glass-dim); color: var(--glass); font-size: var(--fs-14); font-weight: 700; border-bottom: 1px solid rgba(127, 214, 194, .2); }
+  .arrived .end { margin-left: auto; font-weight: 400; color: var(--sand-dim); }
+  .pg-read.xl .bk.fresh { margin: 0 -14px; padding: 16px 14px; border-radius: 6px; background: rgba(127, 214, 194, .12); box-shadow: inset 4px 0 0 #7fd6c2; border-bottom-color: transparent; }
+  .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .feed li { display: grid; grid-template-columns: 14px 1fr; gap: 3px 12px; padding: 11px 12px; border-radius: 10px; }
+  .feed li.hot { background: var(--reef); }
+  .feed .sw { grid-row: span 2; width: 14px; height: 14px; margin-top: 4px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .12); }
+  .feed .sw.live { background: var(--glass); }
+  .feed b { font-size: var(--fs-14); font-weight: 600; }
+  .feed span { color: var(--sand-faint); font-size: var(--fs-12-5); }
+  .feed em { font-style: normal; color: var(--glass); }
+
+  /* settings: tabs, the wide list, a detail column */
+  .set-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+  .set-tabs { display: grid; gap: 2px; align-content: start; }
+  .set-tabs span { padding: 9px 12px; border-radius: 9px; color: var(--sand-dim); font-size: var(--fs-14-5); font-weight: 700; }
+  .set-tabs span.on { background: var(--reef); color: var(--sand); }
+  .set-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .set-h { margin: 10px 0 -2px; font: 700 var(--fs-13) var(--font-body); color: var(--sand-faint); }
+  .set-h:first-child { margin-top: 0; }
+  .set-note { margin: -6px 0 0; color: var(--sand-faint); font-size: var(--fs-13-5); }
+  .set-main .budget { max-width: 760px; }
+  .travel { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--fs-14-5); }
+  .travel th { text-align: left; padding: 0 14px 8px; font: 700 var(--fs-12-5) var(--font-body); color: var(--sand-faint); }
+  .travel td { padding: 13px 14px; border-top: 1px solid var(--line-soft); }
+  .travel tr.hot td { background: var(--reef); border-top-color: transparent; }
+  .travel tr.hot td:first-child { border-radius: 10px 0 0 10px; }
+  .travel tr.hot td:last-child { border-radius: 0 10px 10px 0; }
+  .travel .sw { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, .12); vertical-align: -3px; margin-right: 12px; }
+  .travel .num { font-family: var(--font-mono); font-size: var(--fs-13); color: var(--sand-dim); white-space: nowrap; }
+  .travel .faint { color: var(--sand-faint); }
+  .travel td:last-child, .travel th:last-child { text-align: right; }
+  .set-foot { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+  .screen .switch { width: 42px; height: 24px; }
+  .screen .switch::after { top: 4px; left: 4px; width: 16px; height: 16px; }
+  .screen .switch.on::after { transform: translateX(18px); }
+  .aside .mini.sm { height: 120px; border-radius: 10px; border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- 43. The notice -->
+  <section class="screen" data-n="43" data-title="Two pages came from your laptop" data-note="The notice names each page, says whether it's new or changed, and when, so you know what you're about to look at. A changed page keeps running the version you agreed to here, and the new one waits on its tile: new code still gets a look, but a change on the laptop never switches the desk's page off. Nothing else on the shelf is touched. The side column holds the two arrivals with where each came from and its one action, so the notice itself can stay a line.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-pages="print,radar,deps,read,gym,dinner" data-live="print" data-off="gym"></nav>
+      <main class="main">
+        <div class="main-head">
+          <div><h1>Pages</h1><p class="lede">6 pages, 2 pinned. 2 came from your laptop.</p></div>
+          <div class="end"><div class="seg"><button aria-selected="true">Last changed</button><button>Last opened</button><button>Name</button></div><button class="btn icon ghost" aria-label="Search">⌕</button><button class="btn primary">New page</button></div>
+        </div>
+        <div class="main-body">
+          <div class="card warn arrive">
+            <div class="say"><h3>2 pages came from your laptop</h3><p>The new one stays off, and the changed one keeps its old version, until you've looked here.</p></div>
+            <div class="rows"><div class="row"><span class="g">🏋️</span>Gym log, new<span class="w">10 min ago</span></div><div class="row"><span class="g">📚</span>Reading list, changed there<span class="w">10 min ago</span></div></div>
+            <div class="acts"><button class="btn">Look at them</button></div>
+          </div>
+          <div class="sec-h">Pinned</div>
+          <div class="shelf" style="grid-template-columns:repeat(4, 1fr)">
+            <button class="tile big"><div class="mini print" style="height:240px"><i></i><i class="n"></i><i class="n"></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>Claude added 2 prints in "Tune the Benchy profile", 4 min ago</span></span></button>
+            <button class="tile big"><div class="mini radar" style="height:240px"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i><i style="height:35%"></i><i style="height:58%"></i><i style="height:44%"></i><i class="hi" style="height:74%"></i><i style="height:50%"></i><i style="height:38%"></i></div><span class="pin">📌</span><span class="meta"><b>Release radar</b><span>Morning routine posted 3 releases, 07:02</span></span></button>
+          </div>
+          <div class="sec-h">Everything else</div>
+          <div class="shelf" style="grid-template-columns:repeat(4, 1fr)">
+            <button class="tile off"><div class="mini gym"><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i><i></i><i class="d"></i><i></i><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i></i></div><span class="over"><span class="chip amber">From your laptop</span></span><span class="meta"><b>Gym log</b><span>Off: look before it runs</span></span></button>
+            <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i><i style="width:58%"></i></div><span class="over"><span class="chip amber">New version from your laptop</span></span><span class="meta"><b>Reading list</b><span>Your version still runs</span></span></button>
+            <button class="tile"><div class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dependency radar</b><span>1 critical in shellby</span></span></button>
+            <button class="tile"><div class="mini dinner"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dinner plan</b><span>Not opened in 3 weeks</span></span></button>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Arrived</h3>
+        <p class="lede">From your laptop, through your private gist. Each page comes on its own.</p>
+        <div class="need"><div class="mini gym off"><i class="d"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="d"></i><i></i></div><b>Gym log <span class="chip amber" style="margin-left:6px">New</span></b><p>Claude made it there, 10 min ago: "a gym log like the print queue". Off here until you look.</p><div class="acts"><button class="btn sm">Look at it</button></div></div>
+        <div class="need"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i></div><b>Reading list <span class="chip amber" style="margin-left:6px">Changed</span></b><p>Changed there at 10:14. Claude: saves the article under each link. Your version still runs here.</p><div class="acts"><button class="btn sm">See what's new</button></div></div>
+        <div class="foot">
+          <div class="budget"><div class="bar"><i class="used" style="width:55%"></i></div><div class="lg"><span><i class="used"></i>1.1 MB of 2 MB</span><span class="end">Last synced 2 min ago</span></div></div>
+          <div class="l"><span>Pages go to my other PCs: on</span><span>Settings ›</span></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 44. Looking at one -->
+  <section class="screen" data-n="44" data-title="Looking at a page that arrived" data-note="The access sheet, with where it came from on top. The preview is behind glass because the page isn't running: a miniature from the laptop, not the code. Turn it on is the same agreement as Let it on a new page; Not on this PC leaves it off here, and the notice stops, without touching the laptop's copy. Full screen puts the preview at page size with the three files that came under it, and the sheet beside it, so you judge the page and its asks in one look.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="gym" data-pages="print,radar,deps,read,gym,dinner" data-live="print" data-off="gym"></nav>
+      <main class="main">
+        <div class="page-head ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Gym log</span><span class="chip amber">From your laptop</span><span class="end"><span class="hint">Off: a preview, not the code running</span></span></div>
+        <div class="main-body pad">
+          <div class="came"><span><b>What came</b></span><span class="f">page.js<small>9.1 KB</small></span><span class="f">style.css<small>2.4 KB</small></span><span class="f">page.json<small>2.5 KB</small></span><span class="end">3 files, 14 KB. Checked again here, like a new page.</span></div>
+          <div class="glass-box">
+            <div class="pg-gym">
+              <h4>Gym log</h4><p class="sub">Week 46 · 4 sessions so far</p>
+              <div class="days">
+                <span class="dow">Mon</span><span class="dow">Tue</span><span class="dow">Wed</span><span class="dow">Thu</span><span class="dow">Fri</span><span class="dow">Sat</span><span class="dow">Sun</span>
+                <span class="day d"><span class="n">19</span><b>3,100 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">20</span></span><span class="day d"><span class="n">21</span><b>2,800 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">22</span></span><span class="day d"><span class="n">23</span><b>2,400 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">24</span></span><span class="day"><span class="n">25</span></span>
+                <span class="day d"><span class="n">26</span><b>3,300 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">27</span></span><span class="day d"><span class="n">28</span><b>3,000 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">29</span></span><span class="day"><span class="n">30</span></span><span class="day d"><span class="n">31</span><b>2,200 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">1</span></span>
+                <span class="day d"><span class="n">2</span><b>3,400 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">3</span></span><span class="day d"><span class="n">4</span><b>3,200 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">5</span></span><span class="day d"><span class="n">6</span><b>2,600 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">7</span></span><span class="day"><span class="n">8</span></span>
+                <span class="day d"><span class="n">9</span><b>3,400 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">10</span></span><span class="day d"><span class="n">11</span><b>4,100 kg</b><span class="s">Deadlift</span></span><span class="day d"><span class="n">12</span><b>2,900 kg</b><span class="s">Press, rows</span></span><span class="day d"><span class="n">13</span><b>2,000 kg</b><span class="s">Pull day</span></span><span class="day"><span class="n">14</span></span><span class="day"><span class="n">15</span></span>
+              </div>
+              <div class="tot"><span>This week<b>12,400 kg</b></span><span>Last week<b>9,200 kg</b></span><span>Best week<b>12,400 kg</b></span></div>
+            </div>
+            <span class="over"><span class="chip amber">Off: a preview, not running</span></span>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>From your laptop</h3>
+        <p class="lede">10 min ago, through your private gist.</p>
+        <ul class="facts">
+          <li><span>What it is</span><span>Sets and weights by day, with a weekly total.</span></li>
+          <li><span>From</span><span>Your laptop, 10 min ago. Claude made it there: "a gym log like the print queue".</span></li>
+          <li><span>Files</span><span>3 files, 14 KB, checked like a new page.</span></li>
+          <li><span>Its data</span><span>Goes with it. 31 days of sets so far, 9 KB.</span></li>
+        </ul>
+        <div class="sec-h">It asks for</div>
+        <ul class="rights">
+          <li><span class="g">🔔</span><b>Notifications</b><span>A toast here and a notification on your phone, at most one a minute.</span></li>
+          <li><span class="g">💬</span><b>Ask Claude</b><span>Start a turn with Claude. You see the prompt first, every time.</span></li>
+        </ul>
+        <div class="sec-h">Checked here, like a new page</div>
+        <ul class="checks">
+          <li>14 KB of the 512 KB a page's files may take</li>
+          <li>No code from outside its own three files</li>
+          <li>Everything it reaches for is in the list above</li>
+          <li>The gist is treated as untrusted, even though it's yours</li>
+        </ul>
+        <p class="set-note" style="margin:0">Turn it on is the same agreement as Let it on a new page. Not on this PC leaves it off here and quiet until it next changes on the laptop.</p>
+        <div class="acts"><button class="btn lg ghost">Not on this PC</button><button class="btn lg allow">Turn it on</button></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 45. Where it goes -->
+  <section class="screen" data-n="45" data-title="Where it goes" data-note="The page and its data are two choices, because a page can make sense everywhere while its data is about one PC. Dependency radar's code goes to the laptop; what it found about this PC's projects stays put, and the laptop's radar scans its own. The wide sheet puts the two choices side by side and, under them, what each would carry: files, data and history by size, against the budget.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="deps" data-live="print,deps"></nav>
+      <main class="main">
+        <div class="page-head ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Dependency radar</span><span class="dot live"></span><span class="end"><button class="btn ghost">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></span></div>
+        <div class="page">
+          <div class="pg-deps">
+            <h4>Dependency radar</h4><p class="sub">4 projects on this PC · scanned 07:01 by the Morning check · 1 critical</p>
+            <div class="proj"><span><b>shellby</b><small>84 packages · 1 critical, 2 behind</small></span><span class="tiles"><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="st bad">1 critical</span></div>
+            <div class="proj"><span><b>notes-cli</b><small>21 packages · all current</small></span><span class="tiles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="st">Current</span></div>
+            <div class="proj"><span><b>weather-widget</b><small>37 packages · 3 behind</small></span><span class="tiles"><i></i><i class="w"></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i></span><span class="st warn">3 behind</span></div>
+            <div class="proj"><span><b>photo-sort</b><small>12 packages · all current</small></span><span class="tiles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="st">Current</span></div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="where">
+          <h3>Where it goes</h3>
+          <p class="lede">Dependency radar</p>
+          <div class="cols">
+            <div><div class="grp">The page</div>
+              <button class="opt on"><span class="radio"></span><b>Everywhere</b><span>Goes to your other PCs, switched off until you look at it there.</span></button>
+              <button class="opt"><span class="radio"></span><b>This PC only</b><span>Stays here. Your other PCs never see it.</span></button></div>
+            <div><div class="grp">Its data</div>
+              <button class="opt"><span class="radio"></span><b>Goes with it</b><span>One set of data, merged key by key.</span></button>
+              <button class="opt on"><span class="radio"></span><b>Stays on this PC</b><span>Each PC keeps its own radar of its own projects.</span></button></div>
+          </div>
+          <table class="goes">
+            <thead><tr><th>What</th><th>Made of</th><th>Goes</th><th>Size</th></tr></thead>
+            <tbody>
+              <tr><td>The page</td><td class="faint">3 files: page.js, style.css, page.json</td><td>Everywhere, switched off until looked at</td><td class="num">48 KB</td></tr>
+              <tr><td>Its data</td><td class="faint">4 projects, 154 packages, 12 keys</td><td>Stays on this PC</td><td class="num">310 KB</td></tr>
+              <tr><td>History</td><td class="faint">6 versions</td><td>Doesn't travel. Each PC keeps its own.</td><td class="num">—</td></tr>
+            </tbody>
+          </table>
+          <div class="foot">
+            <div class="budget" style="flex:1;max-width:620px"><div class="bar"><i class="used" style="width:52%"></i><i class="this" style="width:3%"></i></div><div class="lg"><span><i class="used"></i>Other pages, 1.05 MB</span><span><i class="this"></i>This one, 48 KB</span><span class="end">Takes 48 KB of the 2 MB your pages share</span></div></div>
+            <button class="btn">Done</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- 46. Too big -->
+  <section class="screen" data-n="46" data-title="A page too big for the budget" data-note="The budget is checked per page, so one heavy page stays home and says so, instead of stopping every page's sync. The bar shows what's taken and by what. The fix is a smaller page, which is why Change with Claude is right there: &quot;keep the links, not the articles&quot;. Beside the page, the side column breaks the 1.3 MB down by what it is and lists the order pages travel in, which is why this one is the one that stays.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="read" data-live="print,read"></nav>
+      <main class="main">
+        <div class="page-head ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Reading list</span><span class="dot live"></span><span class="end"><button class="btn ghost">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></span></div>
+        <div class="main-body pad">
+          <div class="card warn toobig">
+            <div><h3>Too big to go to your other PCs</h3><p>Your pages share 2 MB between them. The others take 1.1 MB, so 0.9 MB is left, and this one comes to 1.3 MB, mostly the saved articles. It stays on this PC; every other page still goes.</p></div>
+            <div class="budget"><div class="bar"><i class="used" style="width:55%"></i><i class="this" style="width:45%"></i></div><div class="lg"><span><i class="used"></i>Other pages, 1.1 MB</span><span><i class="this"></i>This one, 1.3 MB</span><span class="end">2 MB</span></div></div>
+            <div class="acts"><button class="btn">Show its data</button><button class="btn primary">Change with Claude</button></div>
+          </div>
+          <div class="page framed">
+            <div class="pg-read xl">
+              <h4>Reading list</h4>
+              <div class="bk"><span class="spine"></span><span>Why the 3D Benchy is a torture test<small>Saved in full. Claude: it tests overhangs and bridging in one small boat.</small></span><span class="kb">212 KB</span></div>
+              <div class="bk"><span class="spine" style="background:#7fa88a"></span><span>Hermit crabs and their shells<small>Saved in full. Claude: they trade up in queues, smallest crab first.</small></span><span class="kb">340 KB</span></div>
+              <div class="bk"><span class="spine" style="background:#b86b6b"></span><span>A field guide to flaky tests<small>Saved in full. Claude: isolate, then retry, never the other way round.</small></span><span class="kb">188 KB</span></div>
+              <div class="bk"><span class="spine" style="background:#c9a35b"></span><span>Why your print bed is never level<small>Saved in full. Claude: it's the frame, not the bed.</small></span><span class="kb">296 KB</span></div>
+              <div class="bk"><span class="spine" style="background:#6e8fb8"></span><span>The long history of the pixel font<small>Saved in full, not summarised yet</small></span><span class="kb">240 KB</span></div>
+              <div class="bk"><span class="spine" style="background:#9db3a4"></span><span>Pixel fonts that still read at 11px<small>Link only, Tuesday.</small></span><span class="kb">2 KB</span></div>
+              <div class="bk"><span class="spine" style="background:#9db3a4"></span><span>Static sites, still<small>Link only, Monday. Claude: the argument is for fewer moving parts, not fewer pages.</small></span><span class="kb">1 KB</span></div>
+              <div class="bk"><span class="spine" style="background:#9db3a4"></span><span>Routines, not resolutions<small>Link only, last week.</small></span><span class="kb">1 KB</span></div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>What takes the space</h3>
+        <p class="lede">1.3 MB on this page, by what it is.</p>
+        <div class="space">
+          <div class="r"><span>Saved articles, 5</span><span class="num">1.25 MB</span><span class="bar"><i style="width:96%"></i></span><small>Full text of each link. The links themselves are 4 KB.</small></div>
+          <div class="r"><span>Claude's summaries</span><span class="num">38 KB</span><span class="bar"><i style="width:3%"></i></span></div>
+          <div class="r"><span>The page's files</span><span class="num">22 KB</span><span class="bar"><i style="width:2%"></i></span></div>
+        </div>
+        <div class="sec-h">Pages travel in the order you last opened them</div>
+        <ul class="order">
+          <li><span class="i">1</span>Print queue<span class="num">620 KB</span><span class="ok">goes</span></li>
+          <li><span class="i">2</span>Release radar<span class="num">390 KB</span><span class="ok">goes</span></li>
+          <li><span class="i">3</span>Dependency radar<span class="num">48 KB</span><span class="ok">goes</span></li>
+          <li><span class="i">4</span>Gym log<span class="num">14 KB</span><span class="ok">goes</span></li>
+          <li class="stay"><span class="i">5</span>Reading list<span class="num">1.3 MB</span><span class="ok">stays</span></li>
+          <li><span class="i">—</span>Drive space<span class="num">31 KB</span><span class="faint small">This PC only</span></li>
+        </ul>
+        <p class="set-note">Each page goes on its own, so the four above still travel. A page is at most 1.5 MB, so it is always a combination that overflows.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 47. Changed on two PCs -->
+  <section class="screen" data-n="47" data-title="Changed on two PCs" data-note="No merge to resolve: the later save wins per page, and the other save is a version like any other, one press from coming back. The card says what happened in plain words, and the data is handled separately, merged key by key, so neither PC's rows are lost. Full screen shows both saves side by side at page size, so you can see what each morning's change was before choosing.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="gym" data-pages="print,radar,deps,read,gym,dinner" data-live="print,gym"></nav>
+      <main class="main">
+        <div class="page-head ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Gym log</span><span class="dot live"></span><span class="end"><button class="btn ghost">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></span></div>
+        <div class="main-body pad">
+          <div class="card quiet banner"><span class="px-crab" aria-hidden="true" style="width:42px;height:29px"></span><p>Changed here and on your laptop this morning. Your laptop's was later, so that's the one showing. The one from this PC is kept below.</p></div>
+          <div class="two">
+            <div class="vpane now">
+              <header><span><b>Showing now</b><p>Your laptop, 10:14. Claude: added a weekly total.</p></span><span class="end chip glass">Current</span></header>
+              <div class="page"><div class="pg-gym">
+                <h4>Gym log</h4><p class="sub">Week 46 · 4 sessions so far</p>
+                <div class="days">
+                  <span class="dow">Mon</span><span class="dow">Tue</span><span class="dow">Wed</span><span class="dow">Thu</span><span class="dow">Fri</span><span class="dow">Sat</span><span class="dow">Sun</span>
+                  <span class="day d"><span class="n">19</span><b>3,100 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">20</span></span><span class="day d"><span class="n">21</span><b>2,800 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">22</span></span><span class="day d"><span class="n">23</span><b>2,400 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">24</span></span><span class="day"><span class="n">25</span></span>
+                  <span class="day d"><span class="n">26</span><b>3,300 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">27</span></span><span class="day d"><span class="n">28</span><b>3,000 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">29</span></span><span class="day"><span class="n">30</span></span><span class="day d"><span class="n">31</span><b>2,200 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">1</span></span>
+                  <span class="day d"><span class="n">2</span><b>3,400 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">3</span></span><span class="day d"><span class="n">4</span><b>3,200 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">5</span></span><span class="day d"><span class="n">6</span><b>2,600 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">7</span></span><span class="day"><span class="n">8</span></span>
+                  <span class="day d"><span class="n">9</span><b>3,400 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">10</span></span><span class="day d"><span class="n">11</span><b>4,100 kg</b><span class="s">Deadlift</span></span><span class="day d"><span class="n">12</span><b>2,900 kg</b><span class="s">Press, rows</span></span><span class="day d"><span class="n">13</span><b>2,000 kg</b><span class="s">Pull day</span></span><span class="day"><span class="n">14</span></span><span class="day"><span class="n">15</span></span>
+                </div>
+                <div class="tot"><span>This week<b>12,400 kg</b></span><span>Last week<b>9,200 kg</b></span><span>Best week<b>12,400 kg</b></span></div>
+              </div></div>
+              <footer><span class="h">What this save changed</span><span class="d"><span class="pm"><span class="p">+14</span> <span class="m">−0</span></span><code>page.js</code>A weekly total under the calendar, with last week and the best week.</span><span class="d"><span class="pm"><span class="p">+2</span> <span class="m">−1</span></span><code>page.json</code>Version 11, from your laptop.</span></footer>
+            </div>
+            <div class="vpane kept">
+              <header><span><b>Kept from this PC</b><p>This PC, 09:58. Claude: changed the colours to match Shellby.</p></span><span class="end"><button class="btn">Go back to this one</button></span></header>
+              <div class="page"><div class="pg-gym reef">
+                <h4>Gym log</h4><p class="sub">Week 46 · 4 sessions so far</p>
+                <div class="days">
+                  <span class="dow">Mon</span><span class="dow">Tue</span><span class="dow">Wed</span><span class="dow">Thu</span><span class="dow">Fri</span><span class="dow">Sat</span><span class="dow">Sun</span>
+                  <span class="day d"><span class="n">19</span><b>3,100 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">20</span></span><span class="day d"><span class="n">21</span><b>2,800 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">22</span></span><span class="day d"><span class="n">23</span><b>2,400 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">24</span></span><span class="day"><span class="n">25</span></span>
+                  <span class="day d"><span class="n">26</span><b>3,300 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">27</span></span><span class="day d"><span class="n">28</span><b>3,000 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">29</span></span><span class="day"><span class="n">30</span></span><span class="day d"><span class="n">31</span><b>2,200 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">1</span></span>
+                  <span class="day d"><span class="n">2</span><b>3,400 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">3</span></span><span class="day d"><span class="n">4</span><b>3,200 kg</b><span class="s">Deadlift</span></span><span class="day"><span class="n">5</span></span><span class="day d"><span class="n">6</span><b>2,600 kg</b><span class="s">Press, rows</span></span><span class="day"><span class="n">7</span></span><span class="day"><span class="n">8</span></span>
+                  <span class="day d"><span class="n">9</span><b>3,400 kg</b><span class="s">Squat, bench</span></span><span class="day"><span class="n">10</span></span><span class="day d"><span class="n">11</span><b>4,100 kg</b><span class="s">Deadlift</span></span><span class="day d"><span class="n">12</span><b>2,900 kg</b><span class="s">Press, rows</span></span><span class="day d"><span class="n">13</span><b>2,000 kg</b><span class="s">Pull day</span></span><span class="day"><span class="n">14</span></span><span class="day"><span class="n">15</span></span>
+                </div>
+              </div></div>
+              <footer><span class="h">What this save changed</span><span class="d"><span class="pm"><span class="p">+9</span> <span class="m">−9</span></span><code>style.css</code>Shellby's ink, reef and glass instead of lime on black.</span><span class="d"><span class="pm"><span class="p">+1</span> <span class="m">−1</span></span><code>page.json</code>Version 11, from this PC. Kept as a version, not thrown away.</span></footer>
+            </div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>History</h3>
+        <p class="lede">This PC's versions. History doesn't travel, so the laptop keeps its own.</p>
+        <div class="vers">
+          <div class="ver now"><b>Showing now</b><p>Your laptop, 10:14. Claude: added a weekly total.</p><span class="end chip glass">Current</span></div>
+          <div class="ver kept"><b>Kept from this PC</b><p>This PC, 09:58. Claude: changed the colours to match Shellby.</p><span class="end"><button class="btn sm">Go back to this one</button></span></div>
+          <div class="ver"><b>Version 10</b><p>This PC, yesterday. You: the first version.</p><span class="end"><button class="btn sm">Go back to this one</button></span></div>
+          <div class="ver"><b>Version 9</b><p>Your laptop, Tuesday. Claude: a day per cell instead of a bar chart.</p><span class="end"><button class="btn sm">Go back to this one</button></span></div>
+        </div>
+        <p class="set-note">Its data wasn't part of this: data merges key by key, so both mornings' sets are here.</p>
+        <p class="set-note">Going back to the kept one makes it the newest save, so it goes to the laptop next.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 48. Data arrived -->
+  <section class="screen" data-n="48" data-title="Data that just arrived" data-note="Data moves on its own, with no switching on: the header's dot pulses, the strip says from where and when, and the new rows glow once, exactly as they do when an agent writes. The page did nothing special; onChange fired like it does for any write. The side column is the page's own activity, where the arrival sits in line with every other write.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="pages" data-sub="read" data-live="print,read"></nav>
+      <main class="main">
+        <div class="page-head ph"><button class="back" aria-label="Back to Pages">‹</button><span class="nm">Reading list</span><span class="dot live"></span><span class="end"><button class="btn ghost">Change with Claude</button><button class="btn ghost icon" aria-label="Menu">⋯</button></span></div>
+        <div class="arrived"><span class="dot live"></span>2 links from your laptop<span class="end">just now</span></div>
+        <div class="page">
+          <div class="pg-read xl">
+            <h4>Reading list</h4>
+            <div class="bk fresh"><span class="spine"></span><span>Why the 3D Benchy is a torture test<small>From the laptop's phone share. Claude: it tests overhangs and bridging in one small boat.</small></span></div>
+            <div class="bk fresh"><span class="spine" style="background:#7fa88a"></span><span>Hermit crabs and their shells<small>From the laptop, not summarised yet</small></span></div>
+            <div class="bk"><span class="spine" style="background:#b86b6b"></span><span>A field guide to flaky tests<small>Yesterday. Claude: isolate, then retry, never the other way round.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#c9a35b"></span><span>Pixel fonts that still read at 11px<small>Tuesday. Claude: hinting matters more than the grid.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#6e8fb8"></span><span>Why your print bed is never level<small>Monday. Claude: it's the frame, not the bed.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#9db3a4"></span><span>Static sites, still<small>Last week. Claude: the argument is for fewer moving parts, not fewer pages.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#c9a35b"></span><span>What a 0.12 mm layer actually buys you<small>Two weeks ago. Claude: detail on curves, little on flats, twice the time.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#7fa88a"></span><span>Routines, not resolutions<small>Two weeks ago. Claude: small, scheduled, boring.</small></span></div>
+            <div class="bk"><span class="spine" style="background:#b86b6b"></span><span>The case for boring build pipelines<small>Last month. No summary.</small></span></div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Activity</h3>
+        <p class="lede">Every write to this page, newest first.</p>
+        <ul class="feed">
+          <li class="hot"><span class="sw live"></span><b>2 links from your laptop</b><span>Just now · data, not code: nothing to switch on</span></li>
+          <li><span class="sw" style="background:#1d2a22"></span><b>Summary added to 1 link</b><span>Claude, in <em>Summarise my reading list</em> · yesterday</span></li>
+          <li><span class="sw" style="background:#1d2a22"></span><b>1 link</b><span>You, from the phone · Tuesday</span></li>
+          <li><span class="sw" style="background:#1d2a22"></span><b>1 link</b><span>You, from the phone · Monday</span></li>
+          <li><span class="sw" style="background:#1d2a22"></span><b>Summary added to 2 links</b><span>Claude, in <em>Summarise my reading list</em> · last week</span></li>
+        </ul>
+        <div class="card quiet"><h3>Merged key by key</h3><p>The laptop's two rows and this PC's four were different keys, so nothing was overwritten. Had both PCs changed the same row, the later save would show here and the other would stay in that row's history.</p></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- 49. Settings -->
+  <section class="screen" data-n="49" data-title="Settings: on your other PCs" data-note="One place to see which pages travel, which stay and why, with the shared budget as a bar. Its own switch, apart from Sync between PCs, so your crab's progress can sync while pages stay home. Turn every page off is here too, from Access and safety. The wide list gets columns for the page, its data, its size and when it last went out; the selected row's detail sits beside it.">
+    <header class="tb"></header>
+    <div class="body">
+      <nav class="rail" data-on="settings" data-pages="print,radar,deps,read,gym,drive" data-live="print"></nav>
+      <main class="main">
+        <div class="main-head"><div><h1>Settings</h1><p class="lede">Pages</p></div></div>
+        <div class="main-body">
+          <div class="set-body">
+            <div class="set-tabs"><span>Shellby</span><span>Around you</span><span>Claude</span><span>Connections</span><span class="on">Pages</span><span>General</span></div>
+            <div class="set-main">
+              <div class="set-h">On your other PCs</div>
+              <label class="toggle"><span class="switch on"></span>Pages go to my other PCs</label>
+              <p class="set-note">Through the same private gist as Sync between PCs, in its own file. Each page arrives switched off. Sync between PCs is on, under Connections.</p>
+              <div class="budget"><div class="bar"><i class="used" style="width:55%"></i></div><div class="lg"><span><i class="used"></i>1.1 MB of 2 MB</span><span class="end">Last synced 2 min ago · your laptop and the desk PC</span></div></div>
+              <div class="set-h">Which pages travel</div>
+              <table class="travel">
+                <thead><tr><th>Page</th><th>The page</th><th>Its data</th><th>Size</th><th>Last went out</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="sw" style="background:#ece6d9"></span>Print queue</td><td>Everywhere</td><td class="faint">Goes with it</td><td class="num">620 KB</td><td class="faint">4 min ago</td></tr>
+                  <tr><td><span class="sw" style="background:#0f1630"></span>Release radar</td><td>Everywhere</td><td class="faint">Goes with it</td><td class="num">390 KB</td><td class="faint">07:02</td></tr>
+                  <tr class="hot"><td><span class="sw" style="background:#f6f6f2"></span>Dependency radar</td><td>Everywhere</td><td>Stays here</td><td class="num">48 KB</td><td class="faint">2 min ago</td></tr>
+                  <tr><td><span class="sw" style="background:#18181b"></span>Gym log</td><td>Everywhere</td><td class="faint">Goes with it</td><td class="num">14 KB</td><td class="faint">10:14, from your laptop</td></tr>
+                  <tr><td><span class="sw" style="background:#d9d2c4"></span>Drive space</td><td>This PC only</td><td class="faint">Stays here</td><td class="num">31 KB</td><td class="faint">—</td></tr>
+                  <tr><td><span class="sw" style="background:#1d2a22"></span>Reading list</td><td><span class="chip amber">Too big, stays here</span></td><td class="faint">Stays here</td><td class="num">1.3 MB</td><td class="faint">—</td></tr>
+                </tbody>
+              </table>
+              <p class="set-note" style="margin-top:0">Change one from the page's menu, under Where it goes.</p>
+              <div class="set-foot"><span class="muted">Stops them all running on this PC. Their data and your other PCs' copies stay as they are.</span><button class="btn ghost">Turn every page off</button></div>
+            </div>
+          </div>
+        </div>
+      </main>
+      <aside class="aside">
+        <h3>Dependency radar</h3>
+        <p class="lede">Everywhere, data stays here.</p>
+        <div class="mini deps sm"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i></i></div>
+        <ul class="facts">
+          <li><span>The page</span><span>3 files, 48 KB. Goes to your other PCs, switched off until you look at it there.</span></li>
+          <li><span>Its data</span><span>12 keys, 310 KB. Stays on this PC: each PC's radar scans its own projects.</span></li>
+          <li><span>History</span><span>6 versions. Doesn't travel; each PC keeps its own.</span></li>
+          <li><span>Went out</span><span>2 min ago, to your laptop. Off there until looked at.</span></li>
+        </ul>
+        <div class="acts" style="margin-top:0;justify-content:flex-start"><button class="btn">Where it goes…</button><button class="btn ghost">Open the page</button></div>
+        <div class="card quiet"><h3>Why a page and its data are two choices</h3><p>A page can make sense everywhere while its data is about one PC. The radar's code is the same on every PC; what it found is about this one's projects.</p></div>
+      </aside>
+    </div>
+  </section>
+
+</div>
+<script src="deck.js"></script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: the shelf</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  /* tiles on the shelf */
+  .shelf { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
+  .tile {
+    position: relative; display: grid; gap: 0; padding: 0; text-align: left; overflow: hidden;
+    border-radius: var(--r); background: var(--reef); border: 1px solid var(--line);
+  }
+  .tile:hover { border-color: var(--glass); }
+  .tile .meta { padding: 8px 10px 9px; display: grid; gap: 1px; }
+  .tile .meta b { font-size: var(--fs-13); display: flex; gap: 6px; align-items: center; }
+  .tile .meta span { font-size: var(--fs-11-5); color: var(--sand-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile .pin { position: absolute; top: 6px; right: 6px; font-size: 11px; padding: 1px 5px; border-radius: 5px; background: rgba(7, 16, 18, .7); color: var(--sand); }
+  .tile.off .mini { filter: grayscale(1) brightness(.55); }
+  .tile.off .meta b { color: var(--sand-dim); }
+  .tile .over { position: absolute; inset: 0 0 auto 0; height: 92px; display: grid; place-items: center; }
+  .tile .over .chip { background: var(--abyss); box-shadow: inset 0 0 0 1px currentColor, 0 4px 12px rgba(0, 0, 0, .4); }
+  .tile .over .chip:not(.glass):not(.amber):not(.coral):not(.danger) { color: var(--sand); box-shadow: inset 0 0 0 1px var(--line), 0 4px 12px rgba(0, 0, 0, .4); }
+  .tile.big { grid-column: span 2; }
+  .tile.big .mini { height: 120px; }
+  .tile.big .over { height: 120px; }
+
+  /* miniatures: each page in its own look, tiny */
+  .mini { height: 92px; position: relative; overflow: hidden; border-bottom: 1px solid var(--line-soft); }
+  .mini.print { background: #ece6d9; padding: 9px 10px; }
+  .mini.print i { display: block; height: 11px; margin-bottom: 5px; border-radius: 2px; background: #fbf8f2; border: 1px solid #d7cfc0; }
+  .mini.print i:first-child { width: 60%; height: 8px; background: #2b2723; border: 0; }
+  .mini.print i.f { box-shadow: inset 18px 0 0 #c4452c; }
+  .mini.radar { background: #0f1630; padding: 9px 10px; display: flex; gap: 2px; align-items: flex-end; }
+  .mini.radar i { flex: 1; background: #3a4ba8; border-radius: 1px; }
+  .mini.radar i.hi { background: #ffb02e; }
+  .mini.read { background: #1d2a22; padding: 10px; }
+  .mini.read i { display: block; height: 7px; margin: 0 0 7px 10px; border-radius: 2px; background: #3d5245; box-shadow: -10px 0 0 -1px #c9a35b; }
+  .mini.read i:first-child { width: 50%; background: #e8efe5; box-shadow: none; margin-left: 0; height: 9px; }
+  .mini.deps { background: #f6f6f2; padding: 8px 10px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; align-content: start; }
+  .mini.deps i { height: 12px; border-radius: 2px; background: #9bd7a2; }
+  .mini.deps i.w { background: #f5c451; }
+  .mini.deps i.b { background: #e5644e; }
+  .mini.dinner { background: #3b1f2b; padding: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .mini.dinner i { border-radius: 50%; aspect-ratio: 1; background: #f2a65a; }
+  .mini.dinner i:nth-child(2n) { background: #7cc6a4; }
+  .mini.build { background: repeating-linear-gradient(-45deg, var(--reef-2) 0 8px, var(--reef) 8px 16px); }
+
+  /* empty state */
+  .empty { flex: 1; display: grid; align-content: center; gap: 14px; }
+  .empty .hello { display: flex; gap: 12px; align-items: flex-end; }
+  .empty .hello .px-crab { width: 52px; height: 36px; }
+  .starter { display: flex; gap: 10px; align-items: center; width: 100%; padding: 9px 11px; border-radius: var(--r); border: 1px dashed var(--line); background: none; text-align: left; }
+  .starter:hover { border-color: var(--glass); border-style: solid; }
+  .starter .g { font-size: var(--fs-18); }
+  .starter b { display: block; font-size: var(--fs-13); }
+  .starter span { color: var(--sand-faint); font-size: var(--fs-12); }
+
+  /* search */
+  .hit { display: grid; grid-template-columns: 40px 1fr; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line-soft); }
+  .hit .mini { height: 40px; border-radius: 6px; border: 1px solid var(--line); padding: 4px; }
+  .hit b { font-size: var(--fs-13); }
+  .hit p { margin: 1px 0 0; font-size: var(--fs-12-5); color: var(--sand-dim); }
+  .hit mark { background: var(--coral-dim); color: var(--coral); border-radius: 3px; padding: 0 2px; }
+
+  /* the beach strip */
+  .beach-sec { font: 700 var(--fs-12) var(--font-body); color: var(--sand-faint); margin: 12px 0 6px; display: flex; align-items: center; }
+  .beach-sec .end { margin-left: auto; }
+  .strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .strip .tile .mini { height: 62px; }
+  .strip .tile .meta { padding: 6px 8px; }
+  .convo { display: flex; gap: 9px; align-items: center; padding: 9px 10px; border-radius: var(--r); background: var(--reef); border: 1px solid var(--line); margin-bottom: 6px; font-size: var(--fs-13); }
+  .convo span { color: var(--sand-faint); font-size: var(--fs-12); margin-left: auto; }
+
+  /* palette */
+  .palette { position: absolute; top: 50px; left: 14px; right: 14px; z-index: 9; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(0, 0, 0, .55); overflow: hidden; }
+  .palette .q { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); font-size: var(--fs-14); }
+  .palette .grp { padding: 8px 12px 2px; font-size: var(--fs-11-5); color: var(--sand-faint); font-weight: 700; }
+  .palette .opt { display: flex; gap: 9px; align-items: center; padding: 7px 12px; font-size: var(--fs-13); }
+  .palette .opt.hot { background: var(--reef-2); box-shadow: inset 2px 0 0 var(--glass); }
+  .palette .opt .k { margin-left: auto; color: var(--sand-faint); font-size: var(--fs-11-5); }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header class="sheet-head">
+    <span class="px-crab" aria-hidden="true"></span>
+    <h1>The shelf</h1>
+    <p>Where every page lives: a screen on the bottom bar, with pinned pages also on the Beach and in Ctrl+K.</p>
+  </header>
+  <nav class="sheet-nav" aria-label="Features">
+    <a href="index.html">Overview</a>
+    <a href="1-shelf.html" aria-current="page">1 The shelf</a>
+    <a href="2-running.html">2 Running a page</a>
+    <a href="3-building.html">3 Building with Claude</a>
+    <a href="4-agents.html">4 Agents and pages</a>
+    <a href="5-access.html">5 Access and safety</a>
+    <a href="6-phone.html">6 On your phone</a>
+    <a href="7-sync.html">7 Other PCs</a>
+  </nav>
+  <p class="sheet-intro">Each tile is a <strong>miniature of the page itself</strong>, captured when it last closed, so the shelf looks like the things you made, not a list of names. Pages keep their own look; only the frame around them is Shellby.</p>
+
+  <div class="board">
+
+    <!-- 1. Empty -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view">
+          <div class="view-head"><h2>Pages</h2></div>
+          <div class="empty">
+            <div class="hello"><span class="px-crab" aria-hidden="true"></span><span class="bubble">Tell me what you keep losing track of.</span></div>
+            <p class="muted" style="margin:0">A page is a small app Claude builds for you. It stays here, on your phone and on your other PCs, and your agents can write to it.</p>
+            <textarea class="field area" placeholder="A list of what's next on the 3D printer, with what failed and why"></textarea>
+            <div style="display:flex;justify-content:flex-end"><button class="btn primary">Build it</button></div>
+            <div class="beach-sec">Or start from one of these</div>
+            <div style="display:grid;gap:6px">
+              <button class="starter"><span class="g">📦</span><span><b>Dependency radar</b><span>A routine checks your projects each morning and posts here</span></span></button>
+              <button class="starter"><span class="g">✅</span><span><b>Agents' checklist</b><span>One list that every helper crab ticks off</span></span></button>
+              <button class="starter"><span class="g">📚</span><span><b>Reading list</b><span>Links you send from the phone, with Claude's summary</span></span></button>
+            </div>
+          </div>
+        </div>
+        <div class="dock"><button class="dock-btn"><span class="px-crab"></span>Shellby</button><button class="dock-btn"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>First visit</b><span>Nothing on the shelf yet. One box to describe a page, three starters that each show a different reason to have one: a routine posts to it, agents share it, the phone feeds it.</span></figcaption>
+    </figure>
+
+    <!-- 2. The shelf -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view">
+          <div class="view-head"><h2>Pages</h2><div class="end"><button class="btn sm ghost icon" aria-label="Search">⌕</button><button class="btn sm primary">New page</button></div></div>
+          <div class="shelf">
+            <button class="tile big"><div class="mini print"><i></i><i></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>Claude added 2 prints, 4 min ago</span></span></button>
+            <button class="tile"><div class="mini radar"><i style="height:30%"></i><i style="height:52%"></i><i style="height:40%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i></div><span class="pin">📌</span><span class="meta"><b>Release radar</b><span>Morning routine, 07:02</span></span></button>
+            <button class="tile"><div class="mini deps"><i></i><i></i><i class="w"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i class="w"></i><i></i></div><span class="meta"><b>Dependency radar</b><span>1 critical in shellby</span></span></button>
+            <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i><i style="width:72%"></i></div><span class="meta"><b>Reading list</b><span>You, from the phone, yesterday</span></span></button>
+            <button class="tile"><div class="mini dinner"><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="meta"><b>Dinner plan</b><span>Not opened in 3 weeks</span></span></button>
+          </div>
+        </div>
+        <div class="dock"><button class="dock-btn"><span class="px-crab"></span>Shellby</button><button class="dock-btn"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>The shelf</b><span>The first pinned page spans the row. Each tile's line says what changed last and who did it, which is the reason to open it. The dot means its data changed since you last looked.</span></figcaption>
+    </figure>
+
+    <!-- 3. Tile states -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view">
+          <div class="view-head"><h2>Pages</h2><div class="end"><button class="btn sm primary">New page</button></div></div>
+          <div class="card warn" style="margin-bottom:10px;padding:9px 11px"><p style="margin:0;color:var(--sand)">2 pages came from your laptop. They stay off until you've looked.</p><div class="acts" style="margin-top:6px"><button class="btn sm">Look at them</button></div></div>
+          <div class="shelf">
+            <button class="tile"><div class="mini build"></div><span class="over"><span class="chip glass">Claude is building it</span></span><span class="meta"><b>Standup notes</b><span>Started 1 min ago</span></span></button>
+            <button class="tile off"><div class="mini radar"><i style="height:30%"></i><i style="height:52%"></i><i class="hi" style="height:70%"></i><i style="height:46%"></i></div><span class="over"><span class="chip amber">From your laptop</span></span><span class="meta"><b>Gym log</b><span>Off: look before it runs</span></span></button>
+            <button class="tile off"><div class="mini deps"><i></i><i></i><i></i><i class="w"></i><i></i><i></i></div><span class="over"><span class="chip coral">Wants more access</span></span><span class="meta"><b>Dependency radar</b><span>New version asks to reach npm</span></span></button>
+            <button class="tile"><div class="mini read" style="filter:blur(1px) brightness(.6)"><i></i><i></i><i></i></div><span class="over"><span class="chip danger">Didn't load</span></span><span class="meta"><b>Reading list</b><span>An error on line 41</span></span></button>
+            <button class="tile off"><div class="mini dinner"><i></i><i></i><i></i></div><span class="over"><span class="chip">Off</span></span><span class="meta"><b>Dinner plan</b><span>You turned it off</span></span></button>
+            <button class="tile"><div class="mini print"><i></i><i></i><i></i></div><span class="over"><span class="chip">This PC only</span></span><span class="meta"><b>Drive space</b><span>Doesn't go to your other PCs</span></span></button>
+          </div>
+        </div>
+        <div class="dock"><button class="dock-btn"><span class="px-crab"></span>Shellby</button><button class="dock-btn"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>Every state a tile can be in</b><span>Being built, from another PC, wanting more access, broken, off, and this PC only. Anything that won't run until you act is greyed out, with one chip saying why.</span></figcaption>
+    </figure>
+
+    <!-- 4. Context menu -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view" style="position:relative">
+          <div class="view-head"><h2>Pages</h2><div class="end"><button class="btn sm primary">New page</button></div></div>
+          <div class="shelf">
+            <button class="tile big" style="border-color:var(--glass)"><div class="mini print"><i></i><i></i><i class="f"></i><i></i><i></i></div><span class="pin">📌</span><span class="meta"><b><span class="dot live"></span>Print queue</b><span>Claude added 2 prints, 4 min ago</span></span></button>
+            <button class="tile"><div class="mini radar"><i style="height:30%"></i><i style="height:52%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i></div><span class="meta"><b>Release radar</b><span>Morning routine, 07:02</span></span></button>
+            <button class="tile"><div class="mini read"><i></i><i style="width:80%"></i><i style="width:64%"></i></div><span class="meta"><b>Reading list</b><span>Yesterday</span></span></button>
+          </div>
+          <div class="menu" style="top:108px;left:150px">
+            <button class="hot">Open<span class="k">Enter</span></button>
+            <button>Open beside the chat</button>
+            <button>Change with Claude</button>
+            <hr>
+            <button>Unpin</button>
+            <button>Show its data</button>
+            <button>History<span class="k">7 versions</span></button>
+            <button>Access</button>
+            <hr>
+            <button>Turn off</button>
+            <button class="bad">Delete…</button>
+          </div>
+        </div>
+        <div class="dock"><button class="dock-btn"><span class="px-crab"></span>Shellby</button><button class="dock-btn"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>Right-click a tile</b><span>Opening it comes first, then changing it, then the things about it. Delete asks first and says that its data goes too, on every PC.</span></figcaption>
+    </figure>
+
+    <!-- 5. Search -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view">
+          <div class="view-head"><h2>Pages</h2><div class="end"><button class="btn sm primary">New page</button></div></div>
+          <input class="field" value="benchy" aria-label="Search pages">
+          <div class="seg" style="margin:10px 0 6px"><button aria-selected="true">Everything<span class="n">3</span></button><button>Names<span class="n">0</span></button><button>What's on them<span class="n">3</span></button></div>
+          <div class="hit"><div class="mini print"><i></i><i></i></div><div><b>Print queue</b><p>#3 <mark>Benchy</mark> at 0.12 layer, failed: stringing on the funnel</p></div></div>
+          <div class="hit"><div class="mini print"><i></i><i></i></div><div><b>Print queue</b><p>#7 <mark>Benchy</mark> in PETG, queued by you, Tuesday</p></div></div>
+          <div class="hit"><div class="mini read"><i></i><i></i></div><div><b>Reading list</b><p>"Why the 3D <mark>Benchy</mark> is a torture test", with Claude's summary</p></div></div>
+        </div>
+        <div class="dock"><button class="dock-btn"><span class="px-crab"></span>Shellby</button><button class="dock-btn"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn active"><i>▦</i>Pages</button><button class="dock-btn"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>Search what's on them</b><span>Page data is indexed like History, so search finds the row inside a page, not just its name. A hit opens the page scrolled to it when the page supports that.</span></figcaption>
+    </figure>
+
+    <!-- 6. Beach strip -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view">
+          <div class="view-head"><h2>Beach</h2></div>
+          <div class="beach-sec">Waiting on you</div>
+          <div class="convo" style="box-shadow:inset 3px 0 0 var(--coral)"><span class="dot coral"></span>Fix flaky upload test<span>can I run npm test?</span></div>
+          <div class="beach-sec">Pinned pages<span class="end"><button class="link-btn small faint">All pages</button></span></div>
+          <div class="strip">
+            <button class="tile"><div class="mini print"><i></i><i></i><i class="f"></i></div><span class="meta"><b><span class="dot live"></span>Print queue</b><span>2 new</span></span></button>
+            <button class="tile"><div class="mini radar"><i style="height:30%"></i><i class="hi" style="height:88%"></i><i style="height:46%"></i><i style="height:60%"></i></div><span class="meta"><b>Releases</b><span>07:02</span></span></button>
+            <button class="tile"><div class="mini deps"><i></i><i class="b"></i><i></i><i class="w"></i><i></i><i></i></div><span class="meta"><b>Deps</b><span>1 critical</span></span></button>
+          </div>
+          <div class="beach-sec">Ready to review</div>
+          <div class="convo"><span class="dot"></span>Add drive-space gauge<span>+48 −6</span></div>
+          <div class="beach-sec">Working</div>
+          <div class="convo"><span class="dot amber"></span>Bump electron to 44.2<span>3 min</span></div>
+        </div>
+        <div class="dock"><button class="dock-btn active"><span class="px-crab"></span>Shellby</button><button class="dock-btn"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn"><i>▦</i>Pages</button><button class="dock-btn"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>Pinned pages on the Beach</b><span>Up to three, after what's waiting on you and before what's ready to review: something you check every day shouldn't be a screen away, but it never pushes a permission prompt down.</span></figcaption>
+    </figure>
+
+    <!-- 7. Palette -->
+    <figure class="shot">
+      <div class="win">
+        <div class="titlebar"><span class="px-crab"></span><span class="word">Shellby</span><span class="mode">Ask first</span><span class="winbtns">— ✕</span></div>
+        <div class="view" style="position:relative">
+          <div class="chat" style="opacity:.35">
+            <div class="msg-you">Why did the release workflow fail?</div>
+            <div class="msg-claude">The tag step ran before CI finished on main…</div>
+          </div>
+          <div class="scrim"></div>
+          <div class="palette">
+            <div class="q"><span class="faint">⌕</span>print</div>
+            <div class="grp">Pages</div>
+            <div class="opt hot">🖨️ Print queue<span class="k">Open</span></div>
+            <div class="opt">🖨️ Print queue<span class="k">Open beside the chat</span></div>
+            <div class="opt">✏️ Change Print queue with Claude</div>
+            <div class="grp">Screens</div>
+            <div class="opt">⚙️ Settings: Printing a conversation</div>
+          </div>
+        </div>
+        <div class="dock"><button class="dock-btn"><span class="px-crab"></span>Shellby</button><button class="dock-btn active"><i>💬</i>Chat</button><button class="dock-btn"><i>⟳</i>Routines</button><button class="dock-btn"><i>▦</i>Pages</button><button class="dock-btn"><i>⋯</i>More</button></div>
+      </div>
+      <figcaption><b>Ctrl+K finds pages</b><span>Each page brings three actions to the jump palette. "Beside the chat" is the one you'll want while Claude is filling it in.</span></figcaption>
+    </figure>
+
+  </div>
+</main>
+</body>
+</html>

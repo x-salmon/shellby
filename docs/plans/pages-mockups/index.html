@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shellby Pages: overview</title>
+<link rel="stylesheet" href="mock.css">
+<style>
+  .lead { max-width: 68ch; font-size: var(--fs-16); line-height: 1.6; margin: 0 0 36px; }
+  .lead strong { color: var(--coral); font-weight: 700; }
+
+  .feats { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-bottom: 56px; }
+  .feat {
+    display: grid; grid-template-columns: 34px 1fr; gap: 2px 12px; padding: 14px 16px;
+    border-radius: var(--r-lg); background: var(--reef); border: 1px solid var(--line);
+    color: inherit; text-decoration: none;
+  }
+  .feat:hover { border-color: var(--glass); }
+  .feat .n { grid-row: span 3; font: 600 var(--fs-30)/1 var(--font-pixel); color: var(--sand-faint-deco); }
+  .feat b { font: 600 var(--fs-17)/1.3 var(--font-pixel); }
+  .feat p { margin: 0; color: var(--sand-dim); font-size: var(--fs-13); }
+  .feat .ph { margin-top: 6px; font-size: var(--fs-11-5); color: var(--sand-faint); }
+  .feat .ph .chip { height: 19px; font-size: var(--fs-11); }
+
+  h2.sec { font: 600 var(--fs-22) var(--font-pixel); margin: 0 0 6px; }
+  .sec-lede { color: var(--sand-dim); max-width: 70ch; margin: 0 0 20px; }
+
+  /* the boundary diagram */
+  .flow { display: grid; grid-template-columns: 1.1fr 60px 1.2fr 60px 1.3fr; align-items: stretch; gap: 0; margin-bottom: 18px; }
+  .zone { border-radius: var(--r-lg); padding: 14px 14px 16px; border: 1px dashed var(--line); }
+  .zone h3 { margin: 0 0 10px; font: 700 var(--fs-13) var(--font-body); color: var(--sand-dim); }
+  .zone.untrusted { border-color: rgba(255, 193, 94, .45); background: rgba(255, 193, 94, .04); }
+  .zone.untrusted h3 { color: var(--amber); }
+  .zone.main { border-style: solid; border-color: rgba(127, 214, 194, .4); background: var(--glass-dim); }
+  .zone.main h3 { color: var(--glass); }
+  .box { padding: 8px 10px; border-radius: 8px; background: var(--ink); border: 1px solid var(--line); margin-bottom: 6px; font-size: var(--fs-12-5); }
+  .box b { display: block; font-size: var(--fs-13); }
+  .box code { color: var(--sand-dim); font-size: var(--fs-11); }
+  .wire { display: grid; place-items: center; position: relative; }
+  .wire::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; border-top: 2px dotted var(--sand-faint-deco); }
+  .wire span { position: relative; padding: 3px 6px; border-radius: 6px; background: var(--abyss); color: var(--sand-faint); font: var(--fs-10-5)/1.25 var(--font-mono); text-align: center; }
+  .never { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 56px; }
+  .never .chip { height: 26px; font-size: var(--fs-12); }
+
+  .phases { list-style: none; margin: 0 0 40px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .phases li { padding: 14px 16px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--reef); }
+  .phases li:first-child { border-color: var(--coral); }
+  .phases b { display: block; font: 600 var(--fs-16) var(--font-pixel); margin-bottom: 4px; }
+  .phases p { margin: 0; color: var(--sand-dim); font-size: var(--fs-13); }
+  .phases .when { display: block; color: var(--sand-faint); font-size: var(--fs-12); margin-bottom: 6px; }
+
+  @media (max-width: 1000px) {
+    .flow { grid-template-columns: 1fr; }
+    .wire { height: 44px; }
+    .wire::before { left: 50%; right: auto; top: 4px; bottom: 4px; border-top: 0; border-left: 2px dotted var(--sand-faint-deco); }
+    .phases { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <header class="sheet-head">
+    <span class="px-crab" aria-hidden="true"></span>
+    <h1>Pages</h1>
+    <p>Small apps you build with Claude, kept in Shellby, open on every screen you use, written to by your agents.</p>
+  </header>
+  <nav class="sheet-nav" aria-label="Features">
+    <a href="index.html" aria-current="page">Overview</a>
+    <a href="1-shelf.html">1 The shelf</a>
+    <a href="2-running.html">2 Running a page</a>
+    <a href="3-building.html">3 Building with Claude</a>
+    <a href="4-agents.html">4 Agents and pages</a>
+    <a href="5-access.html">5 Access and safety</a>
+    <a href="6-phone.html">6 On your phone</a>
+    <a href="7-sync.html">7 Other PCs</a>
+    <a href="full/index.html">Full screen (4K)</a>
+  </nav>
+
+  <p class="lead">Claude Code can make a small tool in a minute, and there's nowhere to keep one. A page is that tool with a home: <strong>you describe it, Claude builds it, and it stays</strong>. It sits on a shelf beside your conversations and opens beside a chat, on your phone and on your other PCs. Every conversation, routine and helper crab can read it and add to it. The plan is in <a href="../shellby-pages.md" style="color:var(--glass)">shellby-pages.md</a>; these are its screens.</p>
+
+  <div class="feats">
+    <a class="feat" href="1-shelf.html"><span class="n">1</span><b>The shelf</b><p>A Pages screen of live miniatures, pinned pages on the Beach, search that finds what's on them.</p><span class="ph"><span class="chip coral">Phase 1</span></span></a>
+    <a class="feat" href="2-running.html"><span class="n">2</span><b>Running a page</b><p>Full-screen or beside a chat. Its data, its history, and what happens when it breaks.</p><span class="ph"><span class="chip coral">Phase 1</span></span></a>
+    <a class="feat" href="3-building.html"><span class="n">3</span><b>Building with Claude</b><p>Describe it, watch it take shape in a live preview, point at a part to change it.</p><span class="ph"><span class="chip coral">Phase 1</span></span></a>
+    <a class="feat" href="4-agents.html"><span class="n">4</span><b>Agents and pages</b><p>Five MCP tools. Any conversation can post to a page, with every write signed by who made it.</p><span class="ph"><span class="chip coral">Phase 1</span></span></a>
+    <a class="feat" href="5-access.html"><span class="n">5</span><b>Access and safety</b><p>A sandbox with no way out but the bridge, and plain-word access agreed before it runs.</p><span class="ph"><span class="chip coral">Phase 1</span></span></a>
+    <a class="feat" href="6-phone.html"><span class="n">6</span><b>On your phone</b><p>A Pages tab in the phone app, same sandbox, same checks on the PC, a snapshot when it sleeps.</p><span class="ph"><span class="chip">Phase 2</span></span></a>
+    <a class="feat" href="7-sync.html"><span class="n">7</span><b>On your other PCs</b><p>Through your private gist. A page that arrives comes switched off until you've looked.</p><span class="ph"><span class="chip">Phase 3</span></span></a>
+  </div>
+
+  <h2 class="sec">Where the line is</h2>
+  <p class="sec-lede">A page is the first code a model wrote that Shellby runs. It gets no way out of its frame except one message channel, and every message is checked on the PC against what you agreed to, whether it came from the desk or the phone.</p>
+  <div class="flow">
+    <div class="zone untrusted">
+      <h3>The page (untrusted)</h3>
+      <div class="box"><b>Sandboxed iframe</b><code>sandbox="allow-scripts"</code>: an opaque origin, no same-origin access</div>
+      <div class="box"><b>Its own files</b><code>shellby-page://&lt;id&gt;/</code> with <code>connect-src 'none'</code></div>
+      <div class="box"><b>shellby.js</b>data, read, ask, notify, fetch, say</div>
+    </div>
+    <div class="wire"><span>post<br>Message</span></div>
+    <div class="zone">
+      <h3>The panel or phone app</h3>
+      <div class="box"><b>pages-bridge.js</b>passes each call on with the page's id; decides nothing</div>
+      <div class="box"><b>Cards in the header</b>an ask, an access request, a blocked call</div>
+      <div class="box"><b>Phone</b>the same calls over the device-token API</div>
+    </div>
+    <div class="wire"><span>IPC with<br>schema</span></div>
+    <div class="zone main">
+      <h3>Main (decides)</h3>
+      <div class="box"><b>pages/rights.js</b>every call checked against the agreed access</div>
+      <div class="box"><b>pages/store.js</b>files, versions, data, limits; the only writer</div>
+      <div class="box"><b>pages/fetch.js</b>listed https hosts only, no cookies, capped</div>
+      <div class="box"><b>MCP tools and the gist sync</b>same store, same checks</div>
+    </div>
+  </div>
+  <div class="never" aria-label="What a page can never do">
+    <span class="chip danger">Touch Shellby's DOM, preload or IPC</span>
+    <span class="chip danger">Reach the network from its own code</span>
+    <span class="chip danger">Run in Autonomous mode</span>
+    <span class="chip danger">Draw its own permission dialog</span>
+    <span class="chip danger">Read another page's data</span>
+    <span class="chip danger">Run after arriving from another PC without your OK</span>
+  </div>
+
+  <h2 class="sec">Order of work</h2>
+  <p class="sec-lede">Not started. It waits for the agent-feature branches now in flight, since Pages adds to the same MCP tool lists.</p>
+  <ol class="phases">
+    <li><span class="when">First</span><b>This PC</b><p>A spike on the sandbox and CSP, then the shelf, running, building, agents and access. Useful by itself.</p></li>
+    <li><span class="when">Then</span><b>The phone</b><p>Routes in the phone server, a Pages tab, snapshots when the PC sleeps.</p></li>
+    <li><span class="when">Then</span><b>Other PCs</b><p><code>sync/pages.js</code> and a second gist file, arrivals switched off.</p></li>
+    <li><span class="when">Maybe</span><b>Sharing</b><p>Pages in the community gallery, reviewed like skins, since they're code.</p></li>
+  </ol>
+</main>
+</body>
+</html>
