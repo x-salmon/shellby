@@ -286,7 +286,7 @@ test('the Bugdex reads a failing command outside Shellby down to a species, neve
   const start = bugsOf(ev('PreToolUse', { tool_name: 'Bash', tool_use_id: 'tu_1', tool_input: { command: 'node app.js' } }));
   assert.equal(start.length, 1);
   assert.equal(start[0].type, 'bug-start');
-  assert.match(start[0].key, /^[0-9a-f]{12}$/);
+  assert.match(start[0].start.key, /^[0-9a-f]{12}$/);
   const fail = bugsOf(ev('PostToolUseFailure', { tool_name: 'Bash', tool_use_id: 'tu_1', tool_input: { command: 'node app.js' }, error: "Error: ENOENT: no such file or directory, open 'secret-plans.json'" }));
   assert.equal(fail[0].type, 'bug-read');
   assert.equal(fail[0].reading.outcome, 'fail');

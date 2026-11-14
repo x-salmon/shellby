@@ -24,6 +24,7 @@ interface Window {
   PocketPhone: any;
   PocketTab: any;
   ShellbyAmbient: any;
+  ShellbyBranchLabel: any;
   ShellbyChirp: any;
   ShellbyClashText: any;
   ShellbyColony: any;
@@ -183,7 +184,6 @@ interface ShellbyPanelExtras {
   relTime: any;
   remotePlace: any;
   renderMarkdownInto: any;
-  reveal: any;
   shortPath: any;
   sprite: any;
   tildify: any;
@@ -312,14 +312,9 @@ interface ShellbyPanelExtras {
   renderTodos: any;
   // nav.js
   goBack: any;
-  jumpToSetting: any;
-  jumpToSettingByName: any;
   openPalette: any;
   openShortcuts: any;
   retitleDock: any;
-  settingsTab: any;
-  showSetting: any;
-  showSettingsTab: any;
   // news.js
   news: any;
   // notes-detail.js
@@ -424,6 +419,14 @@ interface ShellbyPanelExtras {
   renderUpdates: any;
   // settings-local.js
   renderLocalModel: any;
+  // settings-rail.js
+  jumpToSetting: any;
+  jumpToSettingByName: any;
+  markSettingsRail: any;
+  settingsScroller: any;
+  settingsTab: any;
+  showSetting: any;
+  showSettingsTab: any;
   // settings-remote.js
   remoteNow: any;
   remoteRefresh: any;
@@ -556,6 +559,7 @@ interface ShellbyPanelExtras {
   closeTab: any;
   closeTabSafely: any;
   ensureTab: any;
+  harnesses: any;
   hasChanges: any;
   hasClosed: any;
   inChat: any;
@@ -564,8 +568,10 @@ interface ShellbyPanelExtras {
   newTab: any;
   newTabAs: any;
   newTabIn: any;
+  newTabOn: any;
   nudgeTab: any;
   orderTabs: any;
+  refreshHarnesses: any;
   reopenClosed: any;
   showChanges: any;
   stripIds: any;
@@ -583,6 +589,8 @@ interface ShellbyPanelExtras {
   tankPaint: any;
   // tank-render.js
   tankRender: any;
+  // tank-room.js
+  tankRoom: any;
   // tank-tidy.js
   tankTidy: any;
   tankUndo: any;
@@ -590,6 +598,8 @@ interface ShellbyPanelExtras {
   tankApply: any;
   tankEditing: any;
   tankView: any;
+  // taskboard.js
+  taskBoard: any;
   // tide.js
   tide: any;
   // together.js
@@ -636,6 +646,9 @@ interface ShellbyPanelExtras {
   giveBackAttachments: any;
   renderTries: any;
   startTries: any;
+  // trophies-rail.js
+  reveal: any;
+  trophyPage: any;
   // turn-checks.js
   decorateChanges: any;
   editorBar: any;

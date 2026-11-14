@@ -35,6 +35,8 @@ function normalizeOpen(raw) {
       key: str(e.key, 200) || null,
       keys: (Array.isArray(e.keys) ? e.keys : []).filter(k => HEX12.test(k)).slice(0, MAX_KEYS),
       kind: str(e.kind, 12) || 'run',
+      // Failed in a run of only some tests or files: a whole-project run of its kind can vouch for it.
+      narrow: e.narrow === true,
       failTree: TREE.test(e.failTree || '') ? e.failTree : null,
       tabId: str(e.tabId, 80),
       lang: str(e.lang, 8),
@@ -75,9 +77,33 @@ function engageKey(listIn, source, key) {
   return list.map(e => (e.source === source && e.key === key ? { ...e, engaged: true } : e));
 }
 
+/**
+ * Whether a command could catch this encounter if it passed: the same command
+ * (or a broader run of it), the same script, or a whole-project run of the
+ * kind that failed in a narrower one. A narrower run never vouches for a
+ * broader failure.
+ *   run: detect.js startOf() { key, scriptKey, kind, broad }
+ */
+function answers(e, run) {
+  if (e.source !== 'bash' || !run) return false;
+  if (run.key && e.keys.includes(run.key)) return true;
+  if (run.scriptKey && e.keys.includes(run.scriptKey)) return true;
+  return e.narrow && run.broad === true && run.kind === e.kind;
+}
+
+/** Whether anything open could be caught by this command, wherever it runs (so its start is worth a snapshot). */
+const couldCatch = (listIn, run) => normalizeOpen(listIn).some(e => answers(e, run));
+
 /** Open encounters a passing command in this project could catch. */
-function candidates(listIn, { project, key }) {
-  return normalizeOpen(listIn).filter(e => e.source === 'bash' && e.project === project && key && e.keys.includes(key));
+function candidates(listIn, { project, ...run }) {
+  return normalizeOpen(listIn).filter(e => e.project === project && answers(e, run));
+}
+
+/** Everything a closed conversation spotted: its fight is over (it fled). -> { list, closed } */
+function closeTab(listIn, tabId) {
+  const list = normalizeOpen(listIn);
+  const hit = e => e.source === 'bash' && !!tabId && e.tabId === tabId;
+  return { list: list.filter(e => !hit(e)), closed: list.filter(hit) };
 }
 
 /** Open encounters for a source's own key (a server id, a pull request, a copy). */
@@ -105,4 +131,4 @@ const ttlOf = source => TTL[source] || ENCOUNTER_TTL;
 /** Slip away after a day (a week for CI and copies), quietly. */
 const prune = (listIn, now) => normalizeOpen(listIn).filter(e => now - e.at <= ttlOf(e.source));
 
-module.exports = { ENCOUNTER_TTL, MAX_OPEN, encId, ttlOf, normalizeOpen, open, engage, engageKey, candidates, byKey, refuse, close, closeKey, prune };
+module.exports = { ENCOUNTER_TTL, MAX_OPEN, encId, ttlOf, normalizeOpen, open, engage, engageKey, answers, couldCatch, candidates, closeTab, byKey, refuse, close, closeKey, prune };

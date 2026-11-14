@@ -1,4 +1,4 @@
-    <div class="settings-panel" role="tabpanel" id="setPanel-shellby" data-tab="shellby" aria-labelledby="setTab-shellby" hidden>
+    <div class="settings-panel" role="tabpanel" id="setPanel-look" data-tab="look" aria-labelledby="setTab-look" hidden>
       <section class="setting-group" data-nav="Look">
         <h3>Look</h3>
         <div class="skins" id="skinGrid"></div>
@@ -102,28 +102,6 @@
         <p class="small muted">He goes quiet during focus, calls and when the screen is locked.</p>
       </section>
 
-      <section class="setting-group" id="gamesGroup" data-nav="Games">
-        <h3>Games</h3>
-        <label class="toggle"><input type="checkbox" id="catchBugsToggle"><span class="switch"></span>Catch bugs for the Bugdex</label>
-        <p class="muted small">When Claude fixes a failing command in Shellby's tabs, that kind of bug goes in a jar. Keeps only which kind it was and the project, never the error text.</p>
-        <div class="sub-toggles" id="bugdexOptions">
-          <label class="toggle"><input type="checkbox" id="bugBattlesToggle"><span class="switch"></span>Bug battles: watch Claude take on each bug while it's loose</label>
-          <label class="toggle"><input type="checkbox" id="bugFollowerToggle"><span class="switch"></span>His favourite catch follows him round the desk</label>
-          <label class="toggle"><input type="checkbox" id="shareBugdexToggle"><span class="switch"></span>Share my Bugdex with friends</label>
-          <p class="muted small">Puts which kinds you've caught and how many badges you hold on your calling card, so friends see your reports and bring you jars. No counts, projects or errors. Needs Visiting crabs.</p>
-        </div>
-        <label class="toggle"><input type="checkbox" id="tideEventsToggle"><span class="switch"></span>Tide events: a week or so with its own bug, finds and medal</label>
-        <p class="muted small">Six times a year (The Haunting, Frostbite, Pen Pal Week, Spring Clean, Low Tide and Harvest Moon), with a countdown on the Us page and four goals counted from what you already do. Finish them while it's on for that year's medal. Off hides the banner and the event's bug and finds.</p>
-        <label class="toggle"><input type="checkbox" id="communityNewsToggle"><span class="switch"></span>Community news: crab contests, winners and events</label>
-        <p class="muted small">Once a day Shellby reads a small file from the community gallery's site, with nothing about you in the request. What's on shows as a quiet card on the Us page and on About, never as a notification. Off fetches nothing.</p>
-        <label class="toggle"><input type="checkbox" id="rewardCardsToggle"><span class="switch"></span>Show what a task earned at the end of it in Chat</label>
-        <p class="muted small">A find he dug up, a bug caught, a sticker, a trophy or a level: one small card under the turn that earned it, kept in History. A turn that earned only XP doesn't get one.</p>
-        <label class="toggle"><input type="checkbox" id="surprisesToggle"><span class="switch"></span>Small surprises for real wins: a critical hit, a clean landing</label>
-        <p class="muted small">Now and then, when one turn takes failing tests all the way to green, or a copy comes home with its checks green on the first try, he makes a little fuss. Rare on purpose, and only for the real thing: never for being quick, and never when tests were skipped or deleted to get there. Clean landings need <button type="button" class="link-btn inline" data-jump-setting="checkEachTurnToggle">Run the tests after a turn</button>, on the Claude tab.</p>
-        <label class="toggle"><input type="checkbox" id="shareButtonsToggle"><span class="switch"></span>Share buttons on celebrations</label>
-        <p class="muted small">A 📸 on a trophy, a level, a molt or a rare catch makes a card of that moment to post. Nothing is shared until you press it, and he never asks. Off hides them; every trophy's card stays on the Trophies page.</p>
-      </section>
-
       <details class="setting-group setting-fold mischief-group" id="mischiefGroup" data-nav="Mischief" data-fold-on="mischiefPranks">
         <summary><h3>Mischief</h3><span class="fold-state"></span></summary>
         <p class="small muted ext-lede">Off unless you turn it on. A cheeky crab gets up to a little harmless trouble now and then, Desktop Goose style. He never does it while you're clicking, on a call, guarding your focus, gaming or presenting, or while a task is running.</p>
@@ -145,4 +123,41 @@
         </fieldset>
         <p class="small muted" id="mischiefNote" hidden>Right-click him for <b>Do something cheeky</b> to see it now, or <b>Behave for an hour</b> when you need him to.</p>
       </details>
-      </div>
+
+      <p class="settings-sub">What he notices <span>Off until you turn them on</span></p>
+      <details class="setting-group setting-fold" id="musicGroup" data-nav="Music" data-fold-on="npBody">
+        <summary><h3>Listening along</h3><span class="fold-state"></span></summary>
+        <p class="small muted ext-lede">Shellby notices what's playing on this PC — Spotify, a browser tab, anything that shows up in the volume flyout — and puts his headphones on. Read from Windows itself: no account, and nothing leaves the PC.</p>
+        <label class="toggle"><input type="checkbox" id="npEnabled"><span class="switch"></span>Notice what I'm listening to</label>
+        <div class="np-body" id="npBody" hidden>
+          <label class="toggle"><input type="checkbox" id="npHeadphones"><span class="switch"></span>Put his headphones on while it plays</label>
+          <label class="toggle"><input type="checkbox" id="npRemarks"><span class="switch"></span>Let him remark on it now and then</label>
+          <p class="small ext-status" id="npStatus"></p>
+        </div>
+      </details>
+
+      <details class="setting-group setting-fold" id="typingGroup" data-nav="Typing along" data-fold-on="typingBody">
+        <summary><h3>Typing along</h3><span class="fold-state"></span></summary>
+        <p class="small muted ext-lede">While you type, in any app, he taps along on a little keyboard, bobs to keep up when you're quick, and watches a long fast burst with stars in his eyes. He hears <em>that</em> a key was pressed, never which one, and none of it leaves the PC.</p>
+        <label class="toggle"><input type="checkbox" id="typingEnabled"><span class="switch"></span>Tap along while I type</label>
+        <div id="typingBody" hidden>
+          <label class="toggle"><input type="checkbox" id="typingRemarks"><span class="switch"></span>Tell me how fast a burst was</label>
+          <p class="small ext-status" id="typingStatus"></p>
+        </div>
+      </details>
+
+      <details class="setting-group setting-fold" id="weatherGroup" data-nav="Weather" data-fold-on="weatherBody">
+        <summary><h3>The weather outside</h3><span class="fold-state"></span></summary>
+        <p class="small muted ext-lede">Pick your town and he dresses for the real weather: a sou'wester and umbrella in the rain, a bobble hat in the snow, shades on a hot afternoon. Every 30 minutes Shellby asks <a data-href="https://open-meteo.com" href="#">Open-Meteo</a> (free, no account) about your town's rough position, to within about 11 km. It also tells him which half of the world you're in, so spring comes when yours does.</p>
+        <label class="toggle"><input type="checkbox" id="weatherEnabled"><span class="switch"></span>Dress him for the weather</label>
+        <div class="weather-body" id="weatherBody" hidden>
+          <form class="row weather-search" id="weatherSearch">
+            <input type="search" class="field" id="weatherQuery" placeholder="Your town" aria-label="Your town" maxlength="80" autocomplete="off" spellcheck="false">
+            <button type="submit" class="btn slim-btn" id="weatherFind">Find</button>
+          </form>
+          <div class="row wrap" id="weatherPlaces" role="group" aria-label="Towns found" hidden></div>
+          <label class="toggle"><input type="checkbox" id="weatherRemarks"><span class="switch"></span>Let him say so when the weather turns</label>
+          <p class="small ext-status" id="weatherStatus" aria-live="polite"></p>
+        </div>
+      </details>
+    </div>

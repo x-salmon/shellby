@@ -1,7 +1,7 @@
 /* Shellby panel — what you use. Each screen you go to is counted in main
    (feature-use.js), on this PC only, and so is each thing you do with him
    (main records those: wiring/feature-acts.js; a reward card opened in chat
-   tells it with api.featureActed('reward-opened')). Settings → General → What
+   tells it with api.featureActed('reward-opened')). Settings → System → What
    you use reads it back: the screens you live in, then the ones you've never
    opened or haven't for a month, each with a line on what it's for and Take a
    look; then What you do, the things you've done most and the ones you never

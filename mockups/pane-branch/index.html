@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby: the branch in a pane's header</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="intro">
+  <h1>The branch in a pane's header</h1>
+  <p>Today a pane in split view shows its copy's branch as <code>feat-notifications-bell-47f58c</code>, in mono, capped at 140px. The end gets cut, so what you see is the kind (<code>feat-</code>) and the first half of a word. The part that tells two panes apart is the part that's gone, and the six-letter id that is kept says nothing.</p>
+  <p>Six ways to fix it, next to today's, each drawn live from the same three branches. Drag the slider to see each one in a narrow pane (two panes in a 460px panel) and a wide one (full screen on 4K).</p>
+  <div class="facts">
+    <div><b>200px</b>a pane, two across at 460px</div>
+    <div><b>140px</b>the lane's cap today</div>
+    <div><b>7 of 30</b>letters that tell you anything, today</div>
+  </div>
+</header>
+
+<div class="jump">
+  <nav aria-label="Options">
+    <a href="#today">Today</a><a href="#tidy">Tidy name</a><a href="#glyph">Kind as colour</a><a href="#middle">Keep both ends</a><a href="#elastic">Grows into space</a><a href="#under">Under the tab</a><a href="#pill">A chip with state</a>
+  </nav>
+  <label class="width">
+    <span>Pane width</span>
+    <input type="range" id="width" min="180" max="900" step="2" value="220">
+    <output id="widthOut" for="width">220px</output>
+    <span class="presets">
+      <button type="button" data-w="220">2 panes, 460px</button>
+      <button type="button" data-w="420">2 panes, 900px</button>
+      <button type="button" data-w="860">4K, 3 panes</button>
+    </span>
+  </label>
+</div>
+
+<main id="mocks"></main>
+
+<script src="mocks.js"></script>
+</body>
+</html>

@@ -26,7 +26,7 @@ On the **Pro or Max plan you already pay for**, on Windows 10 and 11. No API key
 
 ### 🌿 Several tasks at once, each on its own branch
 
-Open a tab per task. With **copies** on (one switch in Settings → Claude), each tab works in its own copy of your repo, on its own branch, so two tasks never trip over each other's files. When one is done, **Bring it home** merges it back, never with a force-push, or **Ship it** opens a pull request. If the merge would clash, nothing is merged and he can sort it out on his branch first.
+Open a tab per task. With **copies** on (one switch in Settings → Code), each tab works in its own copy of your repo, on its own branch, so two tasks never trip over each other's files. When one is done, **Bring it home** merges it back, never with a force-push, or **Ship it** opens a pull request. If the merge would clash, nothing is merged and he can sort it out on his branch first.
 
 ### ↩️ Undo any turn
 
@@ -84,7 +84,7 @@ Windows may show a SmartScreen warning the first time; [Install](#install) expla
 
 ## Everything he can do
 
-Already use Claude Code on this PC? The tool screens are on the bar from the start: **History**, **Projects**, **Notes**, **Health**, the **Toolbox** and **Automate**. New to it, you start with just him, a chat box and **First steps**: open a project, give Claude a task, see what he changed, and say hi to the crab. Each step ticks itself off when you really do it, and any of them can be skipped. The tool screens open as he works: History, Projects and Notes after his first task, Health and the Toolbox after his third, Automate after his fifth. The game side (Finds, the Bugdex, Us and the Tank on his screen, the Sticker Book on Outfits, the Crew over the Toolbox's Agents, a project's Reef and Review mastery) waits until First steps are done or he reaches level 3, then opens as tasks earn it, each with a "new" on its door. Can't wait? **More → Show every screen**, or **Settings → General → Screens → Show everything now**, puts them all out, and [Work mode](docs/DESKTOP.md#work-mode) starts with every one of them. If you used Shellby before First steps existed, nothing changes for you.
+Already use Claude Code on this PC? The tool screens are on the bar from the start: **History**, **Projects**, **Notes**, **Health**, the **Toolbox** and **Automate**. New to it, you start with just him, a chat box and **First steps**: open a project, give Claude a task, see what he changed, and say hi to the crab. Each step ticks itself off when you really do it, and any of them can be skipped. The tool screens open as he works: History, Projects and Notes after his first task, Health and the Toolbox after his third, Automate after his fifth. The game side (Finds, the Bugdex, Us and the Tank on his screen, the Sticker Book on Outfits, the Crew over the Toolbox's Agents, a project's Reef and Review mastery) waits until First steps are done or he reaches level 3, then opens as tasks earn it, each with a "new" on its door. Can't wait? **More → Show every screen**, or **Settings → System → Screens → Show everything now**, puts them all out, and [Work mode](docs/DESKTOP.md#work-mode) starts with every one of them. If you used Shellby before First steps existed, nothing changes for you.
 
 | | |
 |---|---|
@@ -113,7 +113,7 @@ Already use Claude Code on this PC? The tool screens are on the bar from the sta
 <p align="center"><sub>Drag a tab into the chat to split it: up to twelve conversations side by side, or pop one out into its own window</sub></p>
 
 - **Helper crabs:** every subagent gets a lane in the panel and a crab on your desktop, and each kind levels up into a named crew member.
-- **Tabs on their own branches:** with copies on (**Settings → Claude → Copies of a project**), each one works in its own copy of the repo. **Bring it home** merges it back, never with a force-push.
+- **Tabs on their own branches:** with copies on (**Settings → Code → Copies of a project**), each one works in its own copy of the repo. **Bring it home** merges it back, never with a force-push.
 - **Up to twelve side by side,** or branch from any turn to **try it another way**.
 
 **Keep your code safe**
@@ -182,7 +182,7 @@ shellby time last-week
 </td>
 <td width="50%" valign="top">
 
-<img src="docs/img/screenshot-away.png" alt="Settings → Tell me when I'm away: ntfy selected, a QR code to scan with your phone, and a topic Shellby picked">
+<img src="docs/img/screenshot-away.png" alt="Settings → Alerts → Tell me when I'm away: ntfy selected, a QR code to scan with your phone, and a topic Shellby picked">
 
 </td>
 </tr>
@@ -298,9 +298,9 @@ or `winget install x-salmon.Shellby`, once Microsoft's review of the package fin
 > - **To install anyway:** click **More info → Run anyway**. The publisher shown should be Jacob Barford.
 > - **To check you got the real file:** every release is built by [GitHub Actions](https://github.com/x-salmon/shellby/actions/workflows/release.yml) from the tagged commit, and each one lists SHA-256 checksums in `SHA256SUMS.txt`. Compare them with `Get-FileHash .\Shellby-Setup-x.y.z.exe`, check its signed build provenance with `gh attestation verify .\Shellby-Setup-x.y.z.exe -R x-salmon/shellby`, or build from source (below).
 
-**Updating:** the installed version updates itself. He checks GitHub Releases, downloads in the background, and puts a dot on the ⚙ gear when an update is ready. Click **Restart and update** in **Settings → General → About**, or **Update to x.y.z and restart** in the tray menu, or just quit and it installs on the way out. Your settings live in `%APPDATA%\Shellby`, so they carry over. The portable build can't update itself: download the new `Shellby-Portable-x.y.z.exe` from [Releases](https://github.com/x-salmon/shellby/releases/latest) and replace the old one.
+**Updating:** the installed version updates itself. He checks GitHub Releases, downloads in the background, and puts a dot on the ⚙ gear when an update is ready. Click **Restart and update** in **Settings → System → About**, or **Update to x.y.z and restart** in the tray menu, or just quit and it installs on the way out. Your settings live in `%APPDATA%\Shellby`, so they carry over. The portable build can't update itself: download the new `Shellby-Portable-x.y.z.exe` from [Releases](https://github.com/x-salmon/shellby/releases/latest) and replace the old one.
 
-**Keeping Claude Code current:** Claude Code checks for its own updates only in an interactive terminal session, and the sessions Shellby starts aren't interactive, so a copy that only ever runs under Shellby would stay on the version you installed. Once a day Shellby asks the npm registry which version is newest and, if yours is older, says so once and puts an **Update** button in **Settings → General → About**, beside Shellby's own. It runs Claude Code's own `claude update`. Pick **Update it for me** there and he does it himself, only while no conversation is running; **Leave it to me** and he never asks the registry.
+**Keeping Claude Code current:** Claude Code checks for its own updates only in an interactive terminal session, and the sessions Shellby starts aren't interactive, so a copy that only ever runs under Shellby would stay on the version you installed. Once a day Shellby asks the npm registry which version is newest and, if yours is older, says so once and puts an **Update** button in **Settings → System → About**, beside Shellby's own. It runs Claude Code's own `claude update`. Pick **Update it for me** there and he does it himself, only while no conversation is running; **Leave it to me** and he never asks the registry.
 
 **Requirements:** Windows 10 or 11 (x64). For the Claude side: Claude Code 2.1+ and a Claude Pro or Max plan.
 
@@ -343,9 +343,9 @@ Everything stays on your PC. Conversation history lives in `%APPDATA%\Shellby\se
 - GitHub, only if you sign in: your profile, the sync gist, pack pull requests, the CI status of your pull requests, with Visiting crabs on, your public calling card and your friends' cards, with Profile card on, the public gist holding your profile card picture, and with Built with Shellby on, the public `shellby-badge` repository holding his picture and the badge at the bottom of pull requests your tabs open.
 - Phone notifications, only if you turn them on, straight to the service you picked (ntfy, Pushover, Telegram, Discord, Slack or your own endpoint).
 - Shellby on your phone, only if you turn it on: your PC serves the app to your own phone over your tailnet, and its notifications go encrypted through your phone's push service (Apple's, Google's, Mozilla's or Microsoft's), which can't read them.
-- The npm registry once a day, to say when a newer Claude Code is out (**Leave it to me** in **Settings → General → About** stops it).
-- The community gallery once a day, for its news of contests, winners and events, and while you're signed in to GitHub, its list of packs, to see whether you've earned a trophy for making Shellby. Nothing about you goes with either (**Community news** in **Settings → Shellby → Games** stops both). While you're signed in, GitHub is also asked once a day whether you sponsor Shellby, for the 🏮 Patron trophy. If you sponsor publicly, your GitHub username goes to getshellby.com for a signed proof that lets friends' crabs show your lantern.
-- Crash reports to Sentry, only when you say so: he asks first, and **Settings → General → About → Crash reports** changes it.
+- The npm registry once a day, to say when a newer Claude Code is out (**Leave it to me** in **Settings → System → About** stops it).
+- The community gallery once a day, for its news of contests, winners and events, and while you're signed in to GitHub, its list of packs, to see whether you've earned a trophy for making Shellby. Nothing about you goes with either (**Community news** in **Settings → Games** stops both). While you're signed in, GitHub is also asked once a day whether you sponsor Shellby, for the 🏮 Patron trophy. If you sponsor publicly, your GitHub username goes to getshellby.com for a signed proof that lets friends' crabs show your lantern.
+- Crash reports to Sentry, only when you say so: he asks first, and **Settings → System → About → Crash reports** changes it.
 - Things you ask for: ssh to the computers you add under **Other computers**, community packs, plugins and MCP servers, `git` fetches and pushes, workflow web requests, and the weekly dependency check (npm, pnpm, Yarn, pip-audit, cargo-audit and Go's, whichever your projects use).
 - Things that never leave your PC: the time tracker (it reads the title of the window in front to tell which project you're in, keeps only the project, the day and the minutes, and never syncs them; a day goes to Toggl, Clockify or Harvest only when you send it), push-to-talk audio (Windows' offline speech recognizer hears it, and the microphone is only open while you hold the shortcut), your PC's health readings, OpenRGB, the OBS overlay, the Stream Deck keys (behind a token only the plugin has), the phone app's port (Tailscale is what reaches it, for your login only), the port the `shellby` command and the plugin use, and Claude Code's own metrics (lines, accepted edits and commits, never prompts), which the conversations Shellby starts send to Shellby instead of anywhere else — all on `127.0.0.1`.
 

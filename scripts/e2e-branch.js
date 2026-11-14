@@ -74,7 +74,7 @@ git('commit', '-qm', 'init');
     await send('hello there');
     await idle();
     await send('edit a.txt first');           // held back, named, moved into a copy
-    await until("!document.getElementById('branchChip').hidden", 15000);
+    await until("!!SB.activeTab().worktree", 15000);
     await idle();
     await send('edit a.txt first');           // now it happens, in the copy
     await idle();

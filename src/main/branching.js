@@ -77,6 +77,8 @@ function register(deps) {
   async function makeBranch({ tabId, turnId, at, send }) {
     const entry = history.get(tabId);
     if (!entry) return { ok: false, error: 'Send it something first: there is nothing to branch yet.' };
+    // A branch forks Claude Code's own transcript: another agent's (harness/) has none to fork.
+    if (entry.harness && entry.harness !== 'claude') return { ok: false, error: 'Branching only works in a Claude Code conversation.' };
     const tab = manager.tabs.get(tabId) || null;
     // The last turn's diff and checkpoint are noted just after it ends.
     await deps.turnEnding(tabId);

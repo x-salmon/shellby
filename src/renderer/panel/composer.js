@@ -656,11 +656,11 @@
   }
 
   async function doRewind(tab, p, opts) {
-    SB.toast('Rewinding…', { ms: 15000 });
-    const r = await api.rewind(tab.id, p.turnId, opts);
-    if (!r?.ok) return SB.toast(r?.error || "Couldn't rewind.", { ms: 9000 });
+    const job = SB.toast.job('Rewinding…', { ms: 15000 });
+    const r = await api.rewind(tab.id, p.turnId, opts).catch(() => null);
+    if (!r?.ok) return job.fail(r?.error || "Couldn't rewind.", { ms: 9000 });
     const files = r.restored ? ` Put ${plural(r.restored, 'file')} back.` : '';
-    if (r.kept) return SB.toast(`Code rewound.${files}`, { ms: 6000 });
+    if (r.kept) return job.done(`Code rewound.${files}`, { ms: 6000 });
     tab.reset(r.items || []);
     tab.queue = [];
     if (tab.isActive) {
@@ -673,7 +673,7 @@
       shellMode();
       SB.syncBusyUi();
     } else if (!tab.draft) tab.draft = r.text || '';
-    SB.toast(`Rewound.${files} Your message is back in the box.`, { ms: 6000 });
+    job.done(`Rewound.${files} Your message is back in the box.`, { ms: 6000 });
   }
 
   // ------------------------------------------------------------ branch (branching.js)
@@ -728,13 +728,13 @@
 
   async function doBranch(tab, turnId, at, { send = false } = {}) {
     // Long enough for its copy's packages to install (copy-deps.js); the answer replaces it.
-    SB.toast('Making a branch…', { ms: 180000 });
-    const r = await api.branch(tab.id, turnId, { at, send });
-    if (!r?.ok) return r?.cancelled ? SB.toast('Not branched.') : SB.toast(r?.error || "Couldn't make the branch.", { ms: 9000 });
+    const job = SB.toast.job('Making a branch…', { ms: 180000 });
+    const r = await api.branch(tab.id, turnId, { at, send }).catch(() => null);
+    if (!r?.ok) return r?.cancelled ? job.fail('Not branched.', { ms: 2800, tone: null }) : job.fail(r?.error || "Couldn't make the branch.", { ms: 9000 });
     // The new tab has opened itself (boot.js onTabOpened).
     const where = r.branch ? `its own copy on ${r.branch}` : 'the same folder as the original';
     const note = r.filesNow ? ' The files are as they are now: the ones from then had been tidied away.' : r.approx ? ' The files are as near to then as Shellby can tell.' : '';
-    SB.toast(r.sent ? `Running it again in ${where}.${note}` : at === 'before' ? `Branched into ${where}. Change your message and send it.${note}` : `Branched into ${where}. Carry on from there.${note}`, { ms: 7000 });
+    job.done(r.sent ? `Running it again in ${where}.${note}` : at === 'before' ? `Branched into ${where}. Change your message and send it.${note}` : `Branched into ${where}. Carry on from there.${note}`, { ms: 7000 });
   }
 
   // Esc twice in an empty box (not working), within a moment: the rewind

@@ -113,7 +113,6 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const bar = await panel.ev("document.querySelector('#lvNext .lv-next-text')?.textContent || ''");
     check(/^[\d,]+ XP to level \d+$/.test(next) && /^Next: .+ at Lv \d+, [\d,]+ XP to go$/.test(bar) && !/Shell shell/.test(bar),
       `Trophies shows the next level, and the next unlock on its bar (${next} | ${bar})`);
-    check(await panel.ev("document.querySelector('.xp-ways-box').open") === false, 'the ways to earn start folded');
     check(await panel.ev("document.querySelectorAll('#xpBountyList li').length") === 3, "Trophies shows today's three bounties");
     check(await panel.ev("document.querySelectorAll('#xpSpark i').length") === 30, 'Trophies shows the last 30 days');
     check(await panel.ev("document.querySelectorAll('#xpWays li').length") === (await xp()).ways.length, 'the ways to earn come from main');
@@ -122,7 +121,14 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // Clear any trophy cards first so the picture shows the whole XP card.
     await panel.ev("(document.querySelector('.celebrate .cel-all') || document.querySelector('.celebrate .cel-close'))?.click()");
     await wait(400);
-    await panel.ev("document.querySelector('.xp-ways-box').open = true");
+    check(await panel.ev("SB.trophyPage('ways') === 'ways' && SB.$('xpWays').getBoundingClientRect().height > 0"), 'the ways to earn are a page of their own');
+    // A jump to a section (the old logbook view) opens the page it's on.
+    await panel.ev("SB.setView('logbook')");
+    check(await until(panel, "!document.querySelector('[data-tr-page=\"logbook\"]').hidden && document.querySelector('[data-tr-go=\"logbook\"]').getAttribute('aria-current') === 'page'"), 'going to the Logbook opens its page');
+    await panel.ev("SB.trophyPage('today')");
+    // Its counts are written only when they change: an unchanged write is still a mutation,
+    // and would have the page list redraw itself every frame.
+    check(await panel.ev("new Promise(r => { let n = 0; const o = new MutationObserver(m => { n += m.length; }); requestAnimationFrame(() => requestAnimationFrame(() => { o.observe(document.getElementById('trNav'), { subtree: true, childList: true, characterData: true, attributes: true }); setTimeout(() => { o.disconnect(); r(n); }, 1000); })); })") === 0, 'the page list sits still while nothing changes');
     const box = await panel.ev("(r =>({ x: r.x, y: r.y, width: r.width, height: r.height }))((document.getElementById('xpCard').scrollIntoView({ block: 'start' }), document.getElementById('xpCard').getBoundingClientRect()))");
     await panel.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { ...box, scale: 1 } }).then(s => fs.writeFileSync(path.join(OUT, 'xp-card.png'), Buffer.from(s.data, 'base64')));
   } catch (e) {

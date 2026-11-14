@@ -59,6 +59,40 @@ function createCopies(d) {
     };
   }
 
+  /**
+   * Another agent's conversation (Gemini CLI, OpenCode, Codex: harness/) can't
+   * be stopped before its first edit the way Claude Code's is (no PreToolUse
+   * hook), and its folder is fixed once its session starts. So with copies on,
+   * it gets its copy before its first message instead: the same rules as
+   * armCopy for which tabs get one, made up front.
+   */
+  async function copyFirst(tab) {
+    if (tab.worktree || tab.staysPut || tab.noCopy || tab.routineId || tab.workflowRunId || d.CAPTURE || !d.config.get('worktrees')) return;
+    // Its session began here: moving it would split it from what the agent remembers.
+    if (tab.session.sessionId) { tab.staysPut = true; return; }
+    const from = tab.session.cwd;
+    const root = await changes.rootOf(from);
+    const home = path.resolve(d.worktreeHome()).toLowerCase() + path.sep;
+    if (!root || (path.resolve(root) + path.sep).toLowerCase().startsWith(home)) { tab.staysPut = true; return; }
+    const made = await worktrees.create(from, { home: d.worktreeHome(), title: tab.title });
+    if (!d.manager.tabs.has(tab.id)) { if (made?.ok) worktrees.remove(made.worktree, { force: true }); return; }
+    if (!made?.ok) {
+      tab.noCopy = true;
+      if (made?.detail) d.log.warn('worktree', made.detail);
+      d.manager.note(tab.id, { kind: 'error', text: made?.detail || made?.error || '', trouble: { kind: 'no-copy', message: `${String(made?.error || "Couldn't make a copy").replace(/\.$/, '')}, so this conversation works in your checkout instead.`, action: null } });
+      return;
+    }
+    const w = made.worktree;
+    tab.worktree = w;
+    tab.session.cwd = w.cwd;
+    if (tab.saved) d.history.update(tab.id, { cwd: w.cwd, worktree: w });
+    d.log.info(`worktree: ${w.branch} for ${path.basename(w.root)} (another agent, before its first message)`);
+    d.manager.note(tab.id, { kind: 'moved', branch: w.branch, base: w.base, from, cwd: w.cwd, left: made.left?.from || null, stuck: made.stuck });
+    d.manager.changed();
+    const deps = await installCopyDeps(w);
+    if (deps.error) d.log.info(`worktree: npm ci in the copy failed: ${deps.error}`);
+  }
+
   async function moveIntoCopy(tab) {
     const { manager, history } = d;
     tab.copyWanted = false;
@@ -158,7 +192,7 @@ function createCopies(d) {
     };
   }
 
-  return { armCopy, changeRef, moveIntoCopy, retireWorktree };
+  return { armCopy, copyFirst, changeRef, moveIntoCopy, retireWorktree };
 }
 
 module.exports = { createCopies, NAME_THE_BRANCH };

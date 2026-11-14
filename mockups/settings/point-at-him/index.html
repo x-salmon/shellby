@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Point at him: Shellby settings prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../shared/sizes.css">
+</head>
+<body>
+<main class="wrap">
+  <article class="notes">
+    <a class="up" href="../index.html#m6">‹ All ten mockups</a>
+    <h1>Point at him</h1>
+    <p>Settings is the beach. All of today's settings live on it: his shell, eyes, body, claw and legs each hold one area, and the five things on the sand hold the rest. Every change shows on him right away.</p>
+    <h2>Things to try</h2>
+    <ul class="try">
+      <li>Point at any part of him, then click. Arrow keys step through them too.</li>
+      <li>Or use the rail down the side. Hover an area there and that part of him lights up; point at him and the rail answers. Arrow keys work there too.</li>
+      <li>Change a setting and watch its count appear on the rail. Search, and the rail glows wherever the results are.</li>
+      <li>Switch to Window or Full screen at the top right. The beach widens to show more of the shore, the rail opens out with labels, and the areas sit two to a row.</li>
+      <li>Rub the cursor back and forth over his shell.</li>
+      <li>His shell: change his size and skin, then move his helpers.</li>
+      <li>His eyes: turn on music and the weather, then pick Rain or Sun.</li>
+      <li>His eyes: turn on typing along, then type fast in the search box.</li>
+      <li>His body: set mischief to Cheeky and bring the cursor near his claw.</li>
+      <li>His body: pick Rolling surf. Sound only starts once you click.</li>
+      <li>His claw: pick Autonomous.</li>
+      <li>Search "quieter", "phone", "model" or "ssh" and watch what lights up.</li>
+    </ul>
+    <h2>How it's sorted</h2>
+    <dl class="map">
+      <dt>Shell</dt><dd>Size, skin, helpers, and where else he shows up: Discord, OBS, Stream Deck, desk lighting</dd>
+      <dt>Eyes</dt><dd>Music, typing, weather</dd>
+      <dt>Body</dt><dd>Work mode, talking, sound, mischief</dd>
+      <dt>Claw</dt><dd>Account and mode, billing, the five permission modes, what Claude knows, model, local model, your 5-hour limit</dd>
+      <dt>Legs</dt><dd>Strolling, climbing, on top, pals</dd>
+      <dt>Bucket</dt><dd>Working folder, copies, checks, dev servers, editor, Claude Code in your terminal</dd>
+      <dt>Bottle</dt><dd>Desktop notifications, phone alerts, Shellby on your phone</dd>
+      <dt>Bug jar</dt><dd>Bugdex, events, rewards</dd>
+      <dt>Buoy</dt><dd>GitHub, friends and profile card, GitLab, other computers</dd>
+      <dt>Signpost</dt><dd>Startup, shortcuts, screens, updates, crash reports, about</dd>
+    </dl>
+  </article>
+
+  <div class="phone">
+    <div class="bar">
+      <h2 class="title">Settings</h2>
+      <input id="q" class="search" type="search" placeholder="Search, or point at him" aria-label="Search settings" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="split">
+      <nav class="rail" id="rail" aria-label="Settings areas"></nav>
+      <div class="main">
+        <div class="stage" id="stage">
+          <svg id="beach" viewBox="0 0 64 36" shape-rendering="crispEdges" role="group" aria-label="Shellby on the beach. Each part of him, and each thing on the sand, opens its settings."></svg>
+          <div class="overlay" id="overlay"></div>
+          <div class="tag" id="tag" hidden></div>
+        </div>
+        <div class="panel" id="panel"></div>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+</main>
+<script src="../shared/sizes.js"></script>
+<script src="skins.js"></script>
+<script src="settings-data.js"></script>
+<script src="sound.js"></script>
+<script src="scene.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 // What you use: how often you open each of the panel's screens, and how often
 // you do each thing with him (dress him, keep a find, decorate the tank...),
 // counted on this PC and never sent anywhere (it isn't one of the settings Sync
-// carries). Settings → General → What you use reads it back: the screens you
+// carries). Settings → System → What you use reads it back: the screens you
 // live in, and the ones you've never opened, each with a line on what it's
 // for; then the things you do most and the ones you never have. Only known
 // screens and actions count, one at a time. Pure: no I/O; main records the

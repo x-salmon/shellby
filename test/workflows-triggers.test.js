@@ -197,3 +197,17 @@ test('server triggers match on the event, the project and the script', () => {
   assert.equal(validateWorkflow({ name: 'X', when: [{ type: 'server', on: 'exploded' }], steps: [{ type: 'tell', text: 'x' }] }).ok, false);
   assert.equal(validateWorkflow({ name: 'X', when: [{ type: 'server', script: 'dev && calc' }], steps: [{ type: 'tell', text: 'x' }] }).ok, false);
 });
+
+test('board triggers match posted, done and failed, never the claims in between', () => {
+  const done = wf([{ type: 'board' }], { name: 'Done' });
+  const any = wf([{ type: 'board', on: 'any', project: 'Shellby' }], { name: 'Any' });
+  const posted = wf([{ type: 'board', on: 'posted' }], { name: 'Posted' });
+  const names = data => matchEvent([done, any, posted], 'board', data).map(m => m.workflow.name);
+  assert.equal(done.when[0].on, 'done', 'done unless said otherwise');
+  assert.deepEqual(names({ event: 'done', project: 'shellby' }), ['Done', 'Any']);
+  assert.deepEqual(names({ event: 'posted', project: 'other' }), ['Posted']);
+  assert.deepEqual(names({ event: 'failed', project: 'shellby' }), ['Any']);
+  assert.deepEqual(names({ event: 'claimed', project: 'shellby' }), [], 'a claim starts nothing');
+  assert.deepEqual(names({ event: 'released', project: 'shellby' }), []);
+  assert.equal(validateWorkflow({ name: 'X', when: [{ type: 'board', on: 'claimed' }], steps: [{ type: 'tell', text: 'x' }] }).ok, false);
+});

@@ -1,5 +1,5 @@
 // Mischief, carried out (the rules are in mischief.js). Strictly opt-in:
-// with Settings → Shellby → Mischief on Off, as it starts, nothing here runs.
+// with Settings → Look → Mischief on Off, as it starts, nothing here runs.
 //
 //   pinch  your cursor lingers by him: he eyes it, snaps it up and tugs it a
 //          few pixels toward himself for half a second. Pull and he lets go.

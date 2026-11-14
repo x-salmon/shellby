@@ -460,18 +460,33 @@
 
   // A pane's lane, beside its tabs: the branch of the copy its conversation
   // works in, and how its last checks went (turn-checks.js keeps them on the tab).
+  // The branch reads as words with its kind as a colour (shared/branch-label.js),
+  // grows into whatever room the tabs leave, and folds to the glyph in a narrow
+  // pane (components.css). Hovered or focused, a card under it has the full name.
   const CHECK_MARK = { running: '…', pass: '✓', fail: '✗' };
   const CHECK_SAY = { running: 'Its checks are running', pass: 'Its last checks passed', fail: 'Its last checks failed' };
+  const BRANCH_ICON = 'M4.5 2.5v8.7M4.5 10.5c0-3 7-2.5 7-6.5M3.1 12.6a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0M10.1 3.2a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0';
   function paintLane(lane, t) {
-    const branch = t.worktree?.branch ? t.worktree.branch.replace(/^shellby\//, '') : '';
+    const w = t.worktree?.branch ? t.worktree : null;
+    const b = w ? window.ShellbyBranchLabel.branchLabel(w.branch) : null;
     const check = t.checkRunning ? 'running' : t.checkState || '';
-    lane.hidden = !branch && !check;
+    lane.hidden = !b && !check;
     lane.className = check ? `pane-lane ${check}` : 'pane-lane';
+    if (b) lane.dataset.kind = b.colour; else delete lane.dataset.kind;
+    // "From main. Its last checks passed." Under the name in the card, and read out with it.
+    const about = [b && w.base && `From ${w.base}`, check && CHECK_SAY[check]].filter(Boolean).join('. ');
+    lane.tabIndex = lane.hidden ? -1 : 0;
+    lane.setAttribute('aria-label', [b ? `Its own copy, on ${b.full}` : '', about].filter(Boolean).join('. '));
     lane.replaceChildren(...[
       check ? h('span', { class: 'lane-mark', 'aria-hidden': 'true', text: CHECK_MARK[check] }) : null,
-      branch ? h('span', { class: 'lane-branch', text: branch }) : null,
+      b ? SB.icon(BRANCH_ICON, { width: 1.6 }) : null,
+      b ? h('span', { class: 'lane-branch', text: b.words }) : null,
+      // Shown by CSS on hover and focus; aria-label above already says all of it.
+      h('span', { class: 'lane-peek', 'aria-hidden': 'true' },
+        b ? h('b', { class: 'peek-name' }, b.kind ? h('span', { class: 'peek-kind', text: b.kind }) : null, b.words) : null,
+        b ? h('code', { class: 'peek-full', text: b.full }) : null,
+        about ? h('span', { text: `${about}.` }) : null),
     ].filter(Boolean));
-    lane.title = [branch && `Its own copy, on ${t.worktree.branch}`, check && CHECK_SAY[check]].filter(Boolean).join('\n');
   }
 
   // ------------------------------------------------------------ what needs you

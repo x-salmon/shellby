@@ -184,7 +184,7 @@ async function connect(url) {
     await ev('shellby.friendsRefresh()');
     check(await until(ev, "/@reefbuddy says go ship it!/.test(document.getElementById('frInbox').textContent)"), 'their wave in the inbox');
     check(!(await ev("document.getElementById('frInbox').textContent.includes('stranger')")), 'a stranger\'s wave is ignored');
-    await ev("document.querySelectorAll('.cel-close').forEach(b => b.click()); document.getElementById('setTab-connect').click()");
+    await ev("document.querySelectorAll('.cel-close').forEach(b => b.click()); document.getElementById('setTab-accounts').click()");
     await wait(600);
     await ev("document.getElementById('githubGroup').scrollIntoView({ block: 'start' })");
     await ev("document.getElementById('frList').scrollIntoView({ block: 'start' })");

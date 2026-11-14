@@ -344,7 +344,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   }
   ipcMain.handle('card:post-discord', async (_e, file, text) => {
     const url = discordUrl();
-    if (!url) return { ok: false, error: 'Set up Discord under Settings → Connections first.' };
+    if (!url) return { ok: false, error: 'Set up Discord under Settings → Alerts first.' };
     const full = savedCard(file);
     if (!full) return { ok: false, error: "That isn't a card Shellby saved." };
     if (d.config.get('cardDiscordOk') !== webhookId(url)) {

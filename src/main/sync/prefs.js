@@ -52,7 +52,7 @@ const PREFS = {
   critterScale: oneOf([0.75, 1, 1.5, 2]),
   notifications: bool, recap: bool, claudeTricks: bool, plainCards: bool, leaveGuard: bool, crabOnly: bool, workMode: bool, wander: bool, onTop: bool,
   sounds: bool, soundFx: bool, forecast: bool, spendGuard: bool, holdBigTasks: bool, flakyTests: bool,
-  selfAware: bool, suggestions: bool, queueKeepAwake: bool, externalSessions: bool,
+  selfAware: bool, suggestions: bool, taskBoard: bool, queueKeepAwake: bool, externalSessions: bool,
   // An editor this PC doesn't have falls back to the one it does (filelinks.js pickEditor).
   editor: oneOf(filelinks.CHOICES),
   mutedSuggestions: v => (Array.isArray(v) ? [...new Set(v.filter(f => typeof f === 'string' && SUGGESTABLE[f]))] : undefined),
@@ -105,7 +105,7 @@ const LABELS = Object.freeze({
   climb: 'climbing', mischief: 'mischief', mischiefPranks: 'pranks', colony: 'pals', chatter: 'chatter', ambient: 'ambient sound',
   soundVolume: 'volume', spendReserve: 'limit reserve', spendMaxMinutes: 'limit wait', checkTimeoutMin: 'check time limit',
   workOverrides: 'Work mode', snippets: 'snippets', pinnedTools: 'pins',
-  selfAware: 'Claude knowing Shellby', suggestions: 'feature suggestions', mutedSuggestions: 'muted suggestions',
+  selfAware: 'Claude knowing Shellby', suggestions: 'feature suggestions', taskBoard: 'the task board', mutedSuggestions: 'muted suggestions',
   queueKeepAwake: 'staying awake for queued work', externalSessions: 'outside sessions', editor: 'editor',
   keybindings: 'keyboard shortcuts',
 });
