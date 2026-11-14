@@ -604,6 +604,8 @@ interface ShellbyPanelExtras {
   toolboxBatch: any;
   // toolbox-hooks.js
   toolboxHooks: any;
+  // toolbox-mcp.js
+  toolboxMcp: any;
   // toolbox-mods.js
   renderModStatus: any;
   toolboxMods: any;
@@ -618,6 +620,8 @@ interface ShellbyPanelExtras {
   toolboxSnippets: any;
   // toolbox-team.js
   toolboxTeam: any;
+  // toolbox-tidy.js
+  toolboxTidy: any;
   // toolbox.js
   onLearned: any;
   showToolbox: any;

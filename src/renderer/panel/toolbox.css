@@ -1,0 +1,169 @@
+/* Shellby panel — the Toolbox's lists of skills, agents and commands, tidied
+   (toolbox.js, toolbox-batch.js, toolbox-tidy.js). Rows are lines, not cards:
+   the kind as a letter, the name and what it's for, then two columns of
+   numbers, uses and cost. Use and the pin show where the pointer or keyboard
+   is; the box to pick one of yours takes the letter's place. A wide panel
+   adds a rail of sources on the left and the open row in a pane on the right.
+   MCP, Mods, Snippets and the rest keep components.css's cards. */
+
+#toolboxView { container: toolbox / inline-size; }
+
+/* Search, where from and order on one line. */
+.tool-find { grid-template-columns: minmax(0, 1fr) auto auto; }
+.tool-find #toolSearch { grid-column: auto; }
+.tool-find select { width: auto; max-width: 8em; }
+
+/* ---------------------------------------------------------------- the line over the list */
+.tool-list.is-tidy { gap: 0; }
+.tool-list.is-tidy > .tool-health { padding: 0 0 8px; border-bottom: 1px solid var(--line); gap: 5px; }
+.tool-health .btn.ghost { height: 24px; padding: 0 8px; font-size: var(--fs-12); }
+.tool-health-btn.down { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 45%, transparent); }
+.tool-health-btn.down:hover { background: var(--coral-dim); }
+.tool-health-btn.down.on { background: var(--coral); color: #2a0f0a; }
+.tool-list.is-tidy > .tool-note { margin: 6px 0 0; }
+
+/* What the two columns of numbers are. */
+.tool-cols { display: flex; justify-content: flex-end; gap: 10px; padding: 6px 10px 4px; border-bottom: 1px solid var(--line-soft); font-size: var(--fs-10-5); color: var(--sand-faint); }
+.tool-cols span { text-align: right; white-space: nowrap; }
+.tool-cols span:first-child { width: 4.8em; }
+.tool-cols span:last-child { width: 5.6em; }
+
+/* ---------------------------------------------------------------- a row */
+.tool-row.tidy, .tool-item.tidy.is-new, .tool-item.tidy.is-new:hover { border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; background: none; }
+.tool-row.tidy:hover, .tool-row.tidy:focus-within { background: var(--reef); }
+.tool-row.tidy.is-new { background: linear-gradient(90deg, var(--coral-dim), transparent 45%); }
+.tool-row.tidy.is-open { background: var(--reef-2); }
+.tool-row.tidy.is-picked { background: color-mix(in srgb, var(--glass) 9%, transparent); }
+.tidy .tool-head { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; column-gap: 9px; padding: 0 10px 0 8px; }
+.tidy .tool-toggle { padding: 7px 0; gap: 1px; border-radius: 0; }
+.tidy .tool-toggle .tool-name::after { content: none; }
+.tidy .tool-name { gap: 6px; }
+.tidy .src-pill { margin-left: 0; }
+.src-pill.hides { color: var(--amber); }
+.tool-pinned { flex: none; color: var(--amber); font-size: var(--fs-11); line-height: 1; }
+.tidy .tool-desc { -webkit-line-clamp: 1; font-size: var(--fs-12); color: var(--sand-faint); }
+.tidy .tool-desc.missing { color: var(--amber); }
+.tool-item.tidy.is-unused .tool-name code { font-weight: 400; }
+
+/* The kind as a letter; on your own ones, the box to pick it in the same place. */
+.tool-lead { position: relative; width: 22px; height: 22px; display: grid; place-items: center; }
+.kind-glyph {
+  width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; flex: none;
+  font: 700 var(--fs-11)/1 var(--font-mono); color: var(--k, var(--glass));
+  background: color-mix(in srgb, var(--k, var(--glass)) 15%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k, var(--glass)) 30%, transparent);
+}
+.tool-lead .tool-check { position: absolute; inset: 0; margin: auto; opacity: 0; }
+.tidy:is(:hover, :focus-within, .is-picked) .tool-lead .tool-check, .is-picking .tool-lead .tool-check { opacity: 1; }
+.tidy:is(:hover, :focus-within, .is-picked) .tool-lead:has(.tool-check) .kind-glyph, .is-picking .tool-lead:has(.tool-check) .kind-glyph { visibility: hidden; }
+
+/* Two columns: uses lately (and when last), and the cost in every conversation. */
+.tool-nums { display: grid; grid-template-columns: 4.8em 5.6em; column-gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+.tool-uses { display: grid; justify-items: end; line-height: 1.2; }
+.tool-uses b { font: 600 var(--fs-12) var(--font-mono); color: var(--sand); }
+.tool-uses small { font-size: var(--fs-10-5); color: var(--sand-faint); white-space: nowrap; }
+.tool-nums.idle .tool-uses small { color: var(--amber); }
+.tool-cost { display: grid; justify-items: end; gap: 3px; }
+.tool-cost b { font: 500 var(--fs-11-5) var(--font-mono); color: var(--sand-dim); }
+.tool-cost .cost-bar { width: 100%; height: 3px; background: none; }
+.tool-cost .cost-bar i { margin-left: auto; background: var(--sand-faint); opacity: .55; }
+.tool-nums.idle .cost-bar i { background: var(--amber); opacity: .8; }
+
+/* Use, the pin and Chat as, over the numbers where the pointer or keyboard is. */
+.tidy .tool-actions {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding-left: 24px;
+  background: linear-gradient(90deg, transparent, var(--reef) 20px); opacity: 0; pointer-events: none; transition: opacity .12s;
+}
+.tidy:is(:hover, :focus-within) .tool-actions { opacity: 1; pointer-events: auto; }
+.tidy.is-open .tool-actions { background: linear-gradient(90deg, transparent, var(--reef-2) 20px); }
+.tidy.is-picked .tool-actions { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--glass) 9%, var(--ink)) 20px); }
+.tidy .tool-detail { padding: 2px 10px 11px 39px; }
+
+/* ---------------------------------------------------------------- headings */
+/* An open heading stays at the top while its rows scroll under it. */
+.is-tidy .tool-group { display: flex; align-items: center; gap: 10px; margin: 0; padding-right: 10px; border-bottom: 1px solid var(--line-soft); }
+.is-tidy .tool-group.is-open { position: sticky; top: 6px; z-index: 2; background: var(--ink); box-shadow: 0 -6px 0 var(--ink); }
+.is-tidy .tool-group-btn { flex: 0 1 auto; width: auto; min-width: 0; padding: 9px 6px 8px; }
+.is-tidy .tool-group-n { margin-left: 2px; }
+.is-tidy .tool-group:not(.is-open) .tool-group-btn { font-weight: 400; }
+.tool-group-meta { flex: 1; min-width: 0; text-align: right; font-size: var(--fs-11-5); color: var(--sand-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tool-group-meta.idle { color: var(--amber); }
+.tool-group-all { flex: none; border: 0; background: none; padding: 2px 0; color: var(--glass); font: 700 var(--fs-11-5) var(--font-body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.tool-group-all:hover { color: var(--sand); }
+
+/* ---------------------------------------------------------------- picked: the floating bar */
+.tool-float { position: sticky; bottom: 8px; z-index: 3; }
+.tool-float:empty { display: none; }
+.tool-float .tool-batch.on {
+  margin-top: 8px; padding: 5px 6px 5px 12px; border: 0; border-radius: 12px;
+  background: var(--sand); color: var(--ink); box-shadow: 0 14px 34px rgba(0, 0, 0, .55);
+  animation: tool-float-in .2s var(--ease-out);
+}
+.tool-float .tool-batch-n { color: var(--ink); font-weight: 700; }
+.tool-float .tool-batch.on { flex-wrap: nowrap; gap: 0; overflow-x: auto; scrollbar-width: none; }
+.tool-float .tool-batch.on > * { flex: none; }
+.tool-float .tool-batch-gap { flex: 1 0 4px; }
+.tool-float .btn, .tool-float .tool-batch-n { font-size: var(--fs-12); }
+.tool-float .btn.ghost { padding: 0 7px; color: var(--ink); font-weight: 700; border-color: transparent; background: none; }
+.tool-float .btn.ghost:hover { background: rgba(7, 16, 18, .1); }
+.tool-float .btn.danger-hover:hover { color: #b3261e; }
+@keyframes tool-float-in { from { opacity: 0; transform: translateY(10px); } }
+
+/* ---------------------------------------------------------------- wide: rail, list, pane */
+.tidy-wide .tool-find select { display: none; }
+.tidy-wide .tool-body {
+  display: grid; grid-template-columns: 210px minmax(0, 1fr) minmax(340px, 30%); align-items: start;
+  margin: 0 -16px -20px; border-top: 1px solid var(--line);
+}
+.tidy-wide .tool-main { min-width: 0; padding: 0 18px 20px; border-inline: 1px solid var(--line); min-height: 60vh; }
+.tidy-wide .tool-list.is-tidy > .tool-health { padding-top: 10px; }
+.tool-rail, .tool-pane { position: sticky; top: 0; max-height: calc(100vh - 96px); overflow-y: auto; }
+.tool-rail { padding: 8px 10px 16px 14px; }
+.tool-rail-h { margin: 12px 8px 4px; font-size: var(--fs-11-5); color: var(--sand-faint); }
+.tool-rail-h:first-child { margin-top: 4px; }
+.tool-rail-btn {
+  width: 100%; display: flex; align-items: baseline; gap: 8px; padding: 5px 8px; border: 0; border-radius: 7px;
+  background: none; color: var(--sand-dim); font-size: var(--fs-12-5); text-align: left; cursor: pointer;
+}
+.tool-rail-btn span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tool-rail-btn small { font: 500 var(--fs-10-5) var(--font-mono); color: var(--sand-faint); }
+.tool-rail-btn:hover { background: var(--reef); color: var(--sand); }
+.tool-rail-btn[aria-pressed="true"] { background: var(--reef-2); color: var(--sand); font-weight: 700; }
+
+.tool-pane { padding: 16px 20px 20px; background: var(--reef); align-self: stretch; }
+.tool-pane > * { max-width: 620px; }
+.tool-pane-head { display: flex; align-items: center; gap: 12px; }
+.tool-pane-head .kind-glyph { width: 34px; height: 34px; border-radius: 9px; font-size: var(--fs-15); }
+.tool-pane-title { flex: 1; min-width: 0; }
+.tool-pane-title h3 { margin: 0; font-size: var(--fs-16); overflow-wrap: anywhere; }
+.tool-pane-title p { margin: 2px 0 0; }
+.tool-pane-desc { margin: 12px 0; line-height: 1.5; color: var(--sand); }
+.tool-pane-acts { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+.tool-pane .tool-detail { padding: 0; animation: none; }
+.tool-pane-empty { padding-top: 6px; color: var(--sand-dim); line-height: 1.5; }
+.tool-pane-empty p { margin: 0 0 8px; }
+
+.tidy-wide .tool-nums, .tidy-wide .tool-cols { --uses-w: 6em; --cost-w: 9em; }
+.tidy-wide .tool-nums { grid-template-columns: var(--uses-w) var(--cost-w); column-gap: 14px; }
+.tidy-wide .tool-cols { gap: 14px; padding-right: 10px; }
+.tidy-wide .tool-cols span:first-child { width: var(--uses-w); }
+.tidy-wide .tool-cols span:last-child { width: var(--cost-w); }
+.tidy-wide .tool-cost { grid-template-columns: 1fr auto; align-items: center; column-gap: 10px; }
+.tidy-wide .tool-cost b { grid-column: 2; grid-row: 1; }
+.tidy-wide .tool-cost .cost-bar { grid-column: 1; grid-row: 1; height: 5px; }
+
+/* 4K full screen: a size up throughout, read from a normal distance. */
+@container toolbox (min-width: 1800px) {
+  .tidy-wide .tool-body {
+    --fs-10-5: 12px; --fs-11: 12.5px; --fs-11-5: 13px; --fs-12: 13.5px; --fs-12-5: 14px; --fs-13: 14.5px; --fs-15: 17px; --fs-16: 18px;
+    grid-template-columns: 260px minmax(0, 1300px) minmax(460px, 1fr);
+  }
+  .tidy-wide .tool-toggle { padding: 9px 0; }
+  .tidy-wide .tool-head { grid-template-columns: 26px minmax(0, 1fr) auto; }
+  .tidy-wide .tool-lead, .tidy-wide .tool-row .kind-glyph { width: 26px; height: 26px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tidy .tool-actions { transition: none; }
+  .tool-float .tool-batch.on { animation: none; }
+}

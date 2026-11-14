@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="../shared/fonts.css">
 <link rel="stylesheet" href="panel.css">
 <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="toolbox.css">
 <link rel="stylesheet" href="notes.css">
 <link rel="stylesheet" href="files.css">
 <link rel="stylesheet" href="trail.css">
@@ -327,6 +328,10 @@
         </select>
       </div>
     </div>
+    <!-- A list's body. Wide, a rail of where from and order sits on its left and the open row's details on its right (toolbox-tidy.js) -->
+    <div class="tool-body" id="toolBody">
+    <nav class="tool-rail" id="toolRail" aria-label="Where from, and order" hidden></nav>
+    <div class="tool-main">
     <!-- Crew: one lasting helper crab per agent type, over the Agents list (crew.js, src/main/crew-roster.js) -->
     <section class="cr-card" id="crewCard" data-room="crew" aria-labelledby="crewHead" tabindex="-1" hidden>
       <h3 class="cr-head" id="crewHead">Crew <span class="n cr-count"></span></h3>
@@ -373,6 +378,11 @@
       </details>
     </section>
     <ul class="tool-list" id="toolList"></ul>
+    <!-- With some of your own picked: what to do to all of them, floating over the list's foot (toolbox-batch.js) -->
+    <div class="tool-float" id="toolFloat"></div>
+    </div>
+    <aside class="tool-pane" id="toolPane" aria-label="Details" hidden></aside>
+    </div>
   </main>
 
   <!-- ====================== WORKFLOWS (workflows.js) ====================== -->
@@ -3093,6 +3103,8 @@
 <script src="toolbox-team.js"></script>
 <script src="toolbox-mods.js"></script>
 <script src="toolbox-batch.js"></script>
+<script src="toolbox-mcp.js"></script>
+<script src="toolbox-tidy.js"></script>
 <script src="toolbox.js"></script>
 <script src="shop.js"></script>
 <script src="mcp-picker.js"></script>
