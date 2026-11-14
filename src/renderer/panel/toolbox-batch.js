@@ -1,10 +1,11 @@
 /* Shellby panel — Toolbox, many at once (main's toolbatch.js does the work).
    Your own skills, agents and commands get a checkbox; with some picked, a bar
-   offers Pin, Unpin, Park, Remove and Export for all of them. With none picked
-   it offers Select all shown, Pick unused (from lean.js usage) and Import.
+   floats under the list offering Pin, Unpin, Park, Remove and Export for all of
+   them. One line above the list counts what needs a look (servers that won't
+   connect, skills with no description, copies one scope hides from another),
+   then offers Select all shown, Pick unused (from lean.js usage) and Import.
+   A group of your own can be picked whole from its heading.
    Parked ones (turned off, kept in Shellby) list at the bottom with Restore.
-   A health line above the list counts what needs a look: servers that won't
-   connect, skills with no description, and copies one scope hides from another.
    toolbox.js draws the rows and calls in here; this file owns the selection. */
 'use strict';
 (function () {
@@ -109,24 +110,30 @@
     ctx.render();
   }
 
-  function bar(shownOwn) {
+  const btn = (text, attrs) => h('button', { class: 'btn ghost slim-btn', type: 'button', disabled: busy, ...attrs }, text);
+  const pickAll = list => { for (const t of list) picked.add(keyOf(t)); ctx.render(); };
+
+  // With none picked: Select all shown (when no heading offers it), Pick unused and Import.
+  function idleActions(shownOwn, grouped) {
+    const idle = shownOwn.filter(ctx.isIdle);
+    return [
+      grouped || !shownOwn.length ? null : btn(`Select all shown (${shownOwn.length})`, { onclick: () => pickAll(shownOwn) }),
+      idle.length ? btn(`Pick unused (${idle.length})`, {
+        title: "Your own ones Claude hasn't reached for lately: park them to save room in every conversation",
+        onclick: () => pickAll(idle),
+      }) : null,
+      btn('Import…', { title: 'Add skills, agents and commands from a Shellby tools file', onclick: () => act(() => api.importTools(), r => SB.toast(`Added ${r.added.length} to your Claude folder.${r.skipped?.length ? ` ${r.skipped.length} you already had.` : ''}`)) }),
+    ];
+  }
+
+  // With some picked: what to do to all of them, floating under the list (null with none).
+  function floatBar(shownOwn) {
     prune(shownOwn);
     const sel = shownOwn.filter(t => picked.has(keyOf(t)));
-    const btn = (text, attrs) => h('button', { class: 'btn ghost slim-btn', type: 'button', disabled: busy, ...attrs }, text);
-    if (!sel.length) {
-      const idle = shownOwn.filter(ctx.isIdle);
-      return h('li', { class: 'tool-batch' },
-        btn(`Select all shown (${shownOwn.length})`, { disabled: busy || !shownOwn.length, onclick: () => { for (const t of shownOwn) picked.add(keyOf(t)); ctx.render(); } }),
-        idle.length ? btn(`Pick unused (${idle.length})`, {
-          title: "Your own ones Claude hasn't reached for lately: park them to save room in every conversation",
-          onclick: () => { for (const t of idle) picked.add(keyOf(t)); ctx.render(); },
-        }) : null,
-        h('span', { class: 'tool-batch-gap' }),
-        btn('Import…', { title: 'Add skills, agents and commands from a Shellby tools file', onclick: () => act(() => api.importTools(), r => SB.toast(`Added ${r.added.length} to your Claude folder.${r.skipped?.length ? ` ${r.skipped.length} you already had.` : ''}`)) }));
-    }
+    if (!sel.length) return null;
     const refs = refsOf(sel);
     const clear = () => { picked.clear(); anchor = null; };
-    return h('li', { class: 'tool-batch on', role: 'toolbar', 'aria-label': 'Picked tools' },
+    return h('div', { class: 'tool-batch on', role: 'toolbar', 'aria-label': 'Picked tools' },
       h('strong', { class: 'tool-batch-n', text: `${sel.length} picked` }),
       btn('Pin', { onclick: () => pinMany(sel, true) }),
       btn('Unpin', { onclick: () => pinMany(sel, false) }),
@@ -186,16 +193,23 @@
     ].filter(p => !!p);
   }
 
-  function healthLine(tb, only, pick) {
+  // The line over a list: what needs a look as tinted counts (a server down in coral, it
+  // opens the MCP tab; the rest filter the list), then what you can do to many at once.
+  function topLine(tb, { only, pick, shownOwn, grouped }) {
+    prune(shownOwn);
     const parts = health(tb);
-    if (!parts.length && !only) return null;
-    return h('li', { class: 'tool-health', role: 'status' },
+    return h('li', { class: 'tool-health' },
       ...parts.map(p => h('button', {
-        class: `tool-health-btn${only === p.key ? ' on' : ''}`, type: 'button', title: p.title, 'aria-pressed': String(only === p.key),
+        class: `tool-health-btn${p.key === 'mcp' ? ' down' : ''}${only === p.key ? ' on' : ''}`, type: 'button', title: p.title, 'aria-pressed': String(only === p.key),
         onclick: () => pick(only === p.key ? null : p.key),
       }, p.text)),
-      only && only !== 'mcp' ? h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => pick(null) }, 'Show all') : null);
+      only && only !== 'mcp' ? h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => pick(null) }, 'Show all') : null,
+      h('span', { class: 'tool-batch-gap' }),
+      ...idleActions(shownOwn, grouped));
   }
 
-  SB.toolboxBatch = { init, checkbox, bar, parkedRows, healthLine, isOwn, loadParked, pickedCount: () => picked.size };
+  SB.toolboxBatch = {
+    init, checkbox, topLine, floatBar, parkedRows, isOwn, loadParked, pickAll,
+    isPicked: t => picked.has(keyOf(t)), pickedCount: () => picked.size,
+  };
 })();

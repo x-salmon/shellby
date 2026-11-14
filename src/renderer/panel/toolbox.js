@@ -1,11 +1,14 @@
 /* Shellby panel — Toolbox: everything Claude Code can use, and what Shellby just learned.
    Two rows of tabs: a section (Tools, Setup, Lean, Team), then the kinds in it.
    Skills, agents and commands list together under All, or one kind at a time.
-   MCP servers can be added, removed, reconnected and turned on or off here (/mcp),
-   and your prompt snippets saved, edited and run (/snippets; toolbox-snippets.js).
-   Skills, agents and commands show how often they're used and what they cost
-   (lean.js usage), can be filtered by where they come from and sorted by use,
-   and open up to show the rest: where they live, edit, remove (skillremove.js).
+   MCP servers (/mcp) are toolbox-mcp.js, and your prompt snippets saved, edited
+   and run (/snippets) toolbox-snippets.js.
+   Skills, agents and commands are one row each: kind, name and what it's for,
+   how often it's used and what it costs in every conversation (lean.js usage),
+   with Use and the pin where the pointer or keyboard is. They can be filtered by
+   where they come from and sorted by use, and open up to show the rest: where
+   they live, edit, remove (skillremove.js). A wide panel adds a rail of sources
+   and a pane for the open row (toolbox-tidy.js).
    The Hooks, Rules and Memory tabs live in toolbox-setup.js, Team (the
    repo's .shellby/team.json) in toolbox-team.js, and Mods in toolbox-mods.js.
    Picking many, parking and the health line are toolbox-batch.js. The tab,
@@ -171,19 +174,25 @@
       title: `From the last ${usage.lookbackDays} days or so of this PC's Claude Code history, Shellby and the terminal both. Its name and description are listed for Claude in every conversation; the rest of its file is read only when it's used.` });
   }
 
-  // What it costs every conversation, as a bar against the costliest one listed, and how often
-  // it's earned that. Amber when it costs something and hasn't been used lately.
+  // Two columns at the end of a row: how often it's been used lately (and when last), and what
+  // it costs in every conversation, with a bar against the costliest one listed. Amber when
+  // it costs something and hasn't been used lately.
   let maxList = 0;
-  function meter(u) {
-    if (!u) return null;
+  function numbers(u) {
+    if (!u) return h('span', { class: 'tool-nums' });
     const idle = isIdle(u);
+    const uses = num(u.uses);
     const fill = h('i');
     const pct = maxList ? (100 * num(u.listTokens)) / maxList : 0;
     fill.style.setProperty('--w', `${Math.max(MIN_BAR_PCT, Math.round(pct))}%`);
-    return h('span', { class: `tool-meter${idle ? ' idle' : ''}` },
-      h('span', { class: 'cost-bar', 'aria-hidden': 'true' }, fill),
-      u.listTokens ? h('span', { text: tok(u.listTokens) }) : null,
-      h('span', { class: 'meter-uses', text: u.uses ? `${u.uses} ${u.uses === 1 ? 'use' : 'uses'} lately` : idle ? 'not used lately' : '' }));
+    const last = Number.isFinite(u.lastUsed) ? SB.relTime(u.lastUsed) : '';
+    return h('span', { class: `tool-nums${idle ? ' idle' : ''}` },
+      h('span', { class: 'tool-uses', title: uses ? `${uses} ${uses === 1 ? 'use' : 'uses'} lately${last ? `, last ${last}` : ''}` : 'Not used lately' },
+        uses ? h('b', { text: String(uses) }) : null,
+        h('small', { text: uses ? last : idle ? 'not lately' : '' })),
+      h('span', { class: 'tool-cost', title: u.listTokens ? `${tok(u.listTokens)} in every conversation` : 'Nothing until it’s used' },
+        h('b', { text: u.listTokens ? SB.compact(u.listTokens) : '0' }),
+        h('span', { class: 'cost-bar', 'aria-hidden': 'true' }, fill)));
   }
 
   async function removeTool(t) {
@@ -348,8 +357,8 @@
   function toolDetail(t, id) {
     const own = MERGED.includes(t.kind) && (t.source === 'user' || t.source === 'project');
     const acts = t.kind === 'mcp'
-      ? [actBtn(SB.ICONS.trash, 'Remove', { class: 'btn ghost slim-btn tool-act danger-hover', 'aria-label': `Remove ${t.name}`, disabled: mcpBusy.has(t.name),
-        onclick: () => mcpCall(t.name, () => api.removeMcp(state.activeTab, t.name), `Removed ${t.name}. New conversations won't have it.`) })]
+      ? [actBtn(SB.ICONS.trash, 'Remove', { class: 'btn ghost slim-btn tool-act danger-hover', 'aria-label': `Remove ${t.name}`, disabled: SB.toolboxMcp.isBusy(t.name),
+        onclick: () => SB.toolboxMcp.remove(t) })]
       : [
         t.path ? actBtn(SB.ICONS.folder, 'Show file', { onclick: () => api.revealTool(t.path) }) : null,
         ownTool(t) ? actBtn(SB.ICONS.edit, 'Edit', { 'aria-label': `Edit ${t.name}`, onclick: () => openTool(t) }) : null,
@@ -380,7 +389,7 @@
 
   // What stays in reach with the row closed: Use and the pin, or a server's switches.
   function quickActions(t) {
-    if (t.kind === 'mcp') return mcpActions(t);
+    if (t.kind === 'mcp') return SB.toolboxMcp.actions(t);
     const pinned = isPinned(t);
     return [
       // An agent can run a whole conversation, not only be handed one task (claude --agent).
@@ -406,33 +415,54 @@
     li?.querySelector(sel)?.focus({ preventScroll: true });
   }
 
+  // A list's row leads with its kind as a letter; on your own ones the box to pick it takes
+  // that place when the pointer or keyboard is on the row, or once anything is picked.
+  const GLYPH = { skill: 'S', agent: 'A', command: '/' };
+  const lead = t => h('span', { class: 'tool-lead' },
+    h('span', { class: `kind-glyph k-${t.kind}`, role: 'img', 'aria-label': NOUN[t.kind], title: NOUN[t.kind], text: GLYPH[t.kind] }),
+    SB.toolboxBatch.isOwn(t) ? SB.toolboxBatch.checkbox(t, shownOwn) : null);
+
   function toolRow(t) {
+    const inGroup = groupedView;
     const key = `${t.kind}:${t.name}`;
     const open = openRows.has(key);
     const u = t.kind === 'mcp' ? null : usageOf(t);
     const id = `tool-detail-${++rowSeq}`;
-    const li = h('li', { class: `tool-row tool-item${isNew(t) ? ' is-new' : ''}${isIdle(u) ? ' is-unused' : ''}${open ? ' is-open' : ''}`, dataset: { key } });
+    const listed = LISTED.has(kind);
+    const inPane = listed && SB.toolboxTidy.isWide(); // a wide panel shows the open row beside the list
+    const li = h('li', { class: `tool-row tool-item${listed ? ' tidy' : ''}${isNew(t) ? ' is-new' : ''}${isIdle(u) ? ' is-unused' : ''}${open ? ' is-open' : ''}${listed && SB.toolboxBatch.isPicked(t) ? ' is-picked' : ''}`, dataset: { key } });
     const toggle = h('button', {
-      class: 'tool-toggle', type: 'button', 'aria-expanded': String(open), 'aria-controls': open ? id : null,
+      class: 'tool-toggle', type: 'button', 'aria-expanded': String(open), 'aria-controls': open ? (inPane ? 'toolPane' : id) : null,
       onclick: () => toggleRow(li, t),
     },
     h('span', { class: 'tool-name' },
-      t.kind === 'mcp' ? h('span', { class: `mcp-dot s-${(t.status || 'unknown').replace(/[^\w-]/g, '')}`, title: t.status || '' })
-        : kind === 'tool' ? h('span', { class: `kind-dot k-${t.kind}`, role: 'img', 'aria-label': NOUN[t.kind], title: NOUN[t.kind] }) : null,
+      t.kind === 'mcp' ? h('span', { class: `mcp-dot s-${(t.status || 'unknown').replace(/[^\w-]/g, '')}`, title: t.status || '' }) : null,
       h('code', { text: shown(t) }),
       isNew(t) ? h('span', { class: 'new-pill', text: 'new' }) : null,
-      h('span', { class: 'src-pill', text: t.kind === 'mcp' ? (t.status || '') : sourceLabel(t.source) })),
-    t.description ? h('span', { class: 'tool-desc', text: t.description }) : null,
-    meter(u));
+      listed && isPinned(t) ? h('span', { class: 'tool-pinned', title: 'Pinned to the start screen', text: '★' }) : null,
+      // A group's heading already says where its rows come from.
+      inGroup ? null : h('span', { class: 'src-pill', text: t.kind === 'mcp' ? (t.status || '') : sourceLabel(t.source) }),
+      listed && t.hides?.length ? h('span', { class: 'src-pill hides', text: 'hides a copy' }) : null),
+    t.description ? h('span', { class: 'tool-desc', text: t.description })
+      : listed && SB.toolboxBatch.isOwn(t) ? h('span', { class: 'tool-desc missing', text: 'No description, so Claude never picks it' }) : null);
     const crab = t.kind === 'agent' ? SB.crewPill?.(t.name) : null; // its crew crab's level (crew.js)
-    li.append(h('div', { class: 'tool-head' }, MERGED.includes(t.kind) ? SB.toolboxBatch.checkbox(t, shownOwn) : null, toggle, h('div', { class: 'tool-actions' }, crab, quickActions(t))));
-    if (open) li.append(toolDetail(t, id));
+    const actions = h('div', { class: 'tool-actions' }, crab, quickActions(t));
+    li.append(listed ? h('div', { class: 'tool-head' }, lead(t), toggle, numbers(u), actions) : h('div', { class: 'tool-head' }, toggle, actions));
+    if (open && !inPane) li.append(toolDetail(t, id));
     return li;
   }
 
   // Open or close in place, so the list keeps its scroll and the keyboard stays on the row.
+  // Wide, one row is open at a time, in the pane beside the list.
   function toggleRow(li, t) {
     const key = `${t.kind}:${t.name}`;
+    if (LISTED.has(kind) && SB.toolboxTidy.isWide()) {
+      const was = openRows.has(key);
+      openRows.clear();
+      if (!was) openRows.add(key);
+      render();
+      return;
+    }
     if (!openRows.delete(key)) openRows.add(key);
     const next = toolRow(t);
     li.replaceWith(next);
@@ -449,20 +479,29 @@
   const groupRank = s => ({ user: 0, project: 1, cli: 2 }[s] ?? 3);
   const groupName = s => (s.startsWith('plugin:') ? s.slice(7) : SOURCE_NAMES[s] || 'Other');
 
+  let groupedView = false; // rows under a heading leave out where they come from
   function grouped(items, q) {
+    groupedView = false;
     const s = sources[kind];
     if (q || sort !== 'name' || (s !== 'all' && s !== 'plugins')) return items;
     const srcOf = t => t.source || '';
-    const counts = new Map();
-    for (const t of items) counts.set(srcOf(t), (counts.get(srcOf(t)) || 0) + 1);
-    if (counts.size < 2) return items;
-    const order = [...counts.keys()].sort((a, b) => (groupRank(a) - groupRank(b)) || groupName(a).localeCompare(groupName(b)));
-    return order.flatMap(src => [{ head: true, src, count: counts.get(src) }, ...(isFolded(src) ? [] : items.filter(t => srcOf(t) === src))]);
+    const bySrc = new Map();
+    for (const t of items) bySrc.set(srcOf(t), [...(bySrc.get(srcOf(t)) || []), t]);
+    if (bySrc.size < 2) return items;
+    groupedView = true;
+    const order = [...bySrc.keys()].sort((a, b) => (groupRank(a) - groupRank(b)) || groupName(a).localeCompare(groupName(b)));
+    return order.flatMap(src => [{ head: true, src, rows: bySrc.get(src) }, ...(isFolded(src) ? [] : bySrc.get(src))]);
   }
 
-  function groupHead({ src, count }) {
+  // A heading says how many came from there, how many Claude used lately and what they
+  // cost together, so a plugin nobody uses shows before it's opened. Your own groups
+  // can be picked whole.
+  function groupHead({ src, rows }) {
     const open = !isFolded(src);
-    return h('li', { class: 'tool-group' },
+    const used = rows.filter(t => num(usageOf(t)?.uses) > 0).length;
+    const cost = rows.reduce((n, t) => n + num(usageOf(t)?.listTokens), 0);
+    const own = rows.filter(SB.toolboxBatch.isOwn);
+    return h('li', { class: `tool-group${open ? ' is-open' : ''}` },
       h('button', {
         class: 'tool-group-btn', type: 'button', 'aria-expanded': String(open), dataset: { src },
         onclick: () => {
@@ -473,70 +512,9 @@
       },
       h('span', { text: groupName(src) }),
       src.startsWith('plugin:') ? h('span', { class: 'tool-group-kind', text: 'plugin' }) : null,
-      h('span', { class: 'tool-group-n', text: String(count) })));
-  }
-
-  // ------------------------------------------------------------ MCP servers
-
-  const mcpBusy = new Set();
-  /** @type {any} */
-  let mcpForm = null; // { name, transport, target, scope, env, headers, error } while the Add form is open
-
-  async function mcpCall(name, fn, done) {
-    if (mcpBusy.has(name)) return;
-    mcpBusy.add(name);
-    render();
-    let r;
-    try { r = await fn(); } catch { r = { ok: false, error: "Shellby couldn't do that." }; }
-    mcpBusy.delete(name);
-    if (r?.ok) { if (done) SB.toast(done); } else if (!r?.cancelled) SB.toast(r?.error || "Couldn't do that.", { ms: 8000 });
-    state.toolbox = await api.getToolbox();
-    render();
-    return r;
-  }
-
-  function mcpActions(t) {
-    const tabId = state.activeTab;
-    const busy = mcpBusy.has(t.name);
-    const off = t.status === 'disabled';
-    const broken = /failed|needs-auth|pending/.test(t.status || '');
-    const signIn = async () => {
-      const r = await mcpCall(t.name, () => api.signInMcp(tabId, t.name), null);
-      if (!r?.ok) return;
-      if (r.done) SB.toast(`${t.name} is signed in`);
-      else if (r.connector) SB.toast(`Finish signing in to ${t.name} in your browser, then press Reconnect.`, { ms: 10000 });
-      else SB.toast(`Finish signing in to ${t.name} in your browser. Shellby connects it when you're done.`, { ms: 10000 });
-    };
-    return [
-      t.status === 'needs-auth' ? h('button', { class: 'btn primary slim-btn', type: 'button', disabled: busy, onclick: signIn }, busy ? '…' : 'Sign in') : null,
-      broken || busy ? h('button', { class: 'btn slim-btn', type: 'button', disabled: busy, onclick: () => mcpCall(t.name, () => api.reconnectMcp(tabId, t.name), `Reconnected ${t.name}`) }, busy ? '…' : 'Reconnect') : null,
-      h('button', { class: 'btn ghost slim-btn', type: 'button', disabled: busy, title: off ? 'Turn it on for open conversations' : 'Turn it off for open conversations',
-        onclick: () => mcpCall(t.name, () => api.toggleMcp(tabId, t.name, off), `${t.name} turned ${off ? 'on' : 'off'}`) }, off ? 'Turn on' : 'Turn off'),
-    ];
-  }
-
-  function mcpPane() {
-    const bar = h('div', { class: 'mcp-bar' },
-      h('span', { class: 'muted small', text: 'Servers Claude Code connects to. Statuses come from a running conversation.' }),
-      h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => mcpCall('*', () => api.refreshMcp(state.activeTab), 'Statuses refreshed') }, 'Refresh'),
-      h('button', { class: 'btn primary slim-btn', type: 'button', onclick: () => { mcpForm = mcpForm ? null : { transport: 'stdio', scope: 'local' }; render(); } }, mcpForm ? 'Close' : 'Add server'));
-    if (!mcpForm) return [bar];
-    const f = mcpForm;
-    const bind = (el, key) => { el.value = f[key] || ''; el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { f[key] = el.value; if (key === 'transport') render(); }); return el; };
-    const stdio = (f.transport || 'stdio') === 'stdio';
-    const add = async () => {
-      const r = await mcpCall(f.name || 'new', () => api.addMcp({ ...f, tabId: state.activeTab }), null);
-      if (r?.ok) { mcpForm = null; SB.toast(`Added ${r.name}. ${r.note}`, { ms: 8000 }); render(); } else if (r && !r.cancelled) { f.error = r.error; render(); }
-    };
-    return [bar, h('div', { class: 'mcp-form' },
-      h('div', { class: 'row2' },
-        bind(h('input', { class: 'field slim', type: 'text', spellcheck: 'false', placeholder: 'Name, like github', 'aria-label': 'Server name' }), 'name'),
-        bind(h('select', { class: 'field slim', 'aria-label': 'How it connects' }, [['stdio', 'Runs a program'], ['http', 'HTTP URL'], ['sse', 'SSE URL']].map(([v, t]) => h('option', { value: v, text: t }))), 'transport'),
-        bind(h('select', { class: 'field slim', 'aria-label': 'Who gets it' }, [['local', 'Just me, here'], ['project', 'This project (shared)'], ['user', 'Me, everywhere']].map(([v, t]) => h('option', { value: v, text: t }))), 'scope')),
-      bind(h('input', { class: 'field mono slim', type: 'text', spellcheck: 'false', placeholder: stdio ? 'npx -y @modelcontextprotocol/server-github' : 'https://mcp.example.com/mcp', 'aria-label': stdio ? 'Command' : 'URL' }), 'target'),
-      bind(h('textarea', { class: 'field', spellcheck: 'false', placeholder: stdio ? 'Environment, one per line: GITHUB_TOKEN=…' : 'Headers, one per line: Authorization: Bearer …', 'aria-label': stdio ? 'Environment variables' : 'Headers' }), stdio ? 'env' : 'headers'),
-      h('p', { class: `setup-status${f.error ? ' err' : ''}`, role: 'status', text: f.error || 'Shellby asks you to confirm before Claude Code adds it.' }),
-      h('div', {}, h('button', { class: 'btn primary slim-btn', type: 'button', onclick: add }, 'Add it')))];
+      h('span', { class: 'tool-group-n', text: String(rows.length) })),
+    usage ? h('span', { class: `tool-group-meta${used ? '' : ' idle'}` }, used ? `${used} used lately` : 'None used lately', cost ? `, ${tok(cost)}` : '') : null,
+    open && own.length > 1 ? h('button', { class: 'tool-group-all', type: 'button', onclick: () => SB.toolboxBatch.pickAll(own) }, `Select all ${own.length}`) : null);
   }
 
   // ------------------------------------------------------------ the tabs, and drawing it all
@@ -569,6 +547,7 @@
     $('toolFind').hidden = group === 'shop'; // the shop has its own search
   }
 
+  let floatKeep = -1; // the picked bar's button the keyboard was on, until it can go back
   function render() {
     const tb = state.toolbox;
     const list = $('toolList');
@@ -584,6 +563,13 @@
     if (search.placeholder !== `Search ${what}…`) { search.placeholder = `Search ${what}…`; search.setAttribute('aria-label', `Search ${what}`); }
     const listed = LISTED.has(kind) && !(toolEd && toolEd.view === kind);
     $('toolSource').hidden = $('toolSort').hidden = !listed;
+    list.classList.toggle('is-tidy', listed);
+    // The picked bar is rebuilt below. Keep the keyboard on its button, even through the redraw
+    // where they're all disabled while one works (focus can't land there, so it waits for the next).
+    const floatAt = SB.toolboxTidy.focusAt($('toolFloat'));
+    if (floatAt >= 0) floatKeep = floatAt;
+    $('toolFloat').replaceChildren();
+    SB.toolboxTidy.show(null); // the rail and pane come back below, for a list
 
     const q = search.value.trim().toLowerCase();
     if (setup.owns(kind)) { $('setupPane').hidden = false; setup.render(kind, q); return; }
@@ -609,11 +595,9 @@
       return;
     }
     if (kind === 'mcp') {
-      // Rebuilt only when the form itself changes, so a toolbox update can't
-      // take the cursor out of a field you're typing in.
-      const key = `mcp:${mcpForm ? `${mcpForm.transport}:${mcpForm.error || ''}` : 'closed'}`;
+      const key = SB.toolboxMcp.paneKey();
       $('setupPane').hidden = false;
-      if ($('setupPane').dataset.mounted !== key) { $('setupPane').replaceChildren(...mcpPane()); $('setupPane').dataset.mounted = key; }
+      if ($('setupPane').dataset.mounted !== key) { $('setupPane').replaceChildren(...SB.toolboxMcp.pane()); $('setupPane').dataset.mounted = key; }
     }
     if (!tb) { list.replaceChildren(h('li', { class: 'history-empty', text: 'Scanning…' })); return; }
     if (kind !== 'mcp' && !usageTried) loadUsage();
@@ -626,9 +610,22 @@
       .filter(t => !listed || !only || ONLY[only](t))
       .sort(order);
     const batch = SB.toolboxBatch;
-    const healthRow = listed ? batch.healthLine(tb, only, pickHealth) : null;
-    const parkedRows = listed ? batch.parkedRows(kind === 'tool' ? MERGED : [kind], q) : [];
     shownOwn = listed ? items.filter(batch.isOwn) : [];
+    const entries = grouped(items, q || only);
+    // What needs a look and what you can do to many: one line over the list. Picked, a bar floats under it.
+    const healthRow = listed ? batch.topLine(tb, { only, pick: pickHealth, shownOwn, grouped: groupedView }) : null;
+    const parkedRows = listed ? batch.parkedRows(kind === 'tool' ? MERGED : [kind], q) : [];
+    if (listed) {
+      const bar = batch.floatBar(shownOwn);
+      if (bar) $('toolFloat').append(bar);
+      const back = /** @type {HTMLButtonElement | undefined} */ (bar?.querySelectorAll('button')[floatKeep]);
+      if (back && !back.disabled && (floatAt >= 0 || document.activeElement === document.body)) { back.focus({ preventScroll: true }); floatKeep = -1; }
+      if (!bar) floatKeep = -1;
+      // Wide, one row is open at a time (the last one opened), in the pane.
+      if (SB.toolboxTidy.isWide() && openRows.size > 1) { const last = [...openRows].pop(); openRows.clear(); openRows.add(last); }
+      list.classList.toggle('is-picking', !!bar);
+      SB.toolboxTidy.show({ items, open: items.find(t => openRows.has(`${t.kind}:${t.name}`)) || null });
+    }
     if (!items.length) {
       const hint = q || only || (listed && sources[kind] !== 'all') ? 'No matches.' : {
         tool: 'No skills, agents or commands yet. Ask Shellby: "build yourself a skill that…"',
@@ -642,10 +639,9 @@
     }
     maxList = items.reduce((m, t) => Math.max(m, num(usageOf(t)?.listTokens)), 0);
     const refocus = focusedIn(list);
-    list.replaceChildren(...[
-      healthRow, listed ? batch.bar(shownOwn) : null, listed ? sortNote() : null,
-      ...page(grouped(items, q || only)), ...parkedRows,
-    ].filter(Boolean));
+    // What the two columns of numbers are, once usage is here to fill them.
+    const cols = listed && usage ? h('li', { class: 'tool-cols', 'aria-hidden': 'true' }, h('span', { text: 'Used', title: 'How often Claude used it lately, and when last' }), h('span', { text: 'Tokens', title: 'What its name and description cost in every conversation' })) : null;
+    list.replaceChildren(...[healthRow, listed ? sortNote() : null, cols, ...page(entries), ...parkedRows].filter(Boolean));
     refocus();
   }
 
@@ -783,6 +779,18 @@
   loadView();
   $('toolSort').value = sort;
   SB.toolboxBatch.init({ render, isIdle: t => isIdle(usageOf(t)) });
+  SB.toolboxMcp.init(render);
+  SB.toolboxTidy.init({
+    render, usageOf, hasUsage: () => !!usage, glyph: t => GLYPH[t.kind], detail: toolDetail, sourceLabel,
+    actions: t => [t.kind === 'agent' ? SB.crewPill?.(t.name) : null, quickActions(t)],
+    name: shown, noun: t => NOUN[t.kind],
+    close: () => {
+      const key = [...openRows].pop();
+      openRows.clear();
+      render();
+      if (key) focusRow(key, '.tool-toggle');
+    },
+  });
 
   SB.views.toolbox = { render };
 })();
