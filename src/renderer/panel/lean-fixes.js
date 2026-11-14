@@ -182,5 +182,6 @@
     ];
   }
 
-  SB.leanFixes = { fixedRows, fixRows, line: () => state.lean?.fixed?.line || '' };
+  // diffBox: the nudge under a repeated read shows its fix the same way (feed-savers.js).
+  SB.leanFixes = { fixedRows, fixRows, diffBox, line: () => state.lean?.fixed?.line || '' };
 })();

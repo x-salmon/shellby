@@ -73,6 +73,7 @@ const { wireTray } = require('./wiring/tray');
 const { reopenAfterUpdate } = require('./updates');
 const { wireClashes } = require('./wiring/clashes');
 const { wireUsagePlan } = require('./wiring/usageplan');
+const { wireReadNudge } = require('./wiring/read-nudge');
 const { wireChecks } = require('./wiring/checks');
 const { wireLanes } = require('./wiring/lanes');
 const { wireTries } = require('./wiring/tries');
@@ -396,6 +397,7 @@ const { noteClaudeVersion } = share(wireClaudeTricks(shared)); // what Claude Co
 const { createTray, drainCrashQueue, reportUncleanExit, setupUpdates } = share(wireTray(shared));
 const { watchClashes } = share(wireClashes(shared));
 share({ usagePlan: wireUsagePlan(shared) });
+share({ readNudge: wireReadNudge(shared) }); // a card under a repeated big read, with the Lean tab's one-tap fix
 share(wireChecks(shared));
 share(wireLanes(shared)); // the board of every conversation, lining copies up, one answer for many prompts
 share({ tries: wireTries(shared) }); // Try it N ways: only ever from tries:start, after asking

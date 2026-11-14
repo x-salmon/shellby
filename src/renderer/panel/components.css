@@ -854,20 +854,7 @@ button.rq-title:hover, button.rq-title:focus-visible { color: var(--glass); text
 .crowded.soon { border-left-color: var(--glass); }
 .crowded.soon .crowded-text { color: var(--sand-dim); }
 .crowded .slim-btn { height: 26px; flex: none; }
-/* A fresh tab with a summary Shellby writes, for a new topic in a well-filled conversation (handoff.js). */
-.handoff {
-  display: grid; gap: 6px; margin: 0 0 8px; padding: 4px 4px 6px 10px;
-  border-radius: var(--r-sm); background: var(--reef); border: 1px solid var(--line);
-  border-left: 2px solid var(--glass); font-size: var(--fs-12); animation: fadein .18s var(--ease-out);
-}
-.handoff[hidden] { display: none; }
-.handoff-row { display: flex; align-items: center; gap: 8px; }
-.handoff-row > svg { flex: none; width: 14px; height: 14px; color: var(--glass); }
-.handoff-text { flex: 1; min-width: 0; color: var(--sand); }
-.handoff-summary { min-height: 120px; max-height: 40vh; font: var(--fs-12)/1.45 var(--font-mono); }
-.handoff-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-right: 4px; }
-.handoff-actions .slim-btn { height: 26px; }
-.handoff-hint { margin-left: auto; color: var(--sand-dim); font-size: var(--fs-11); }
+/* A fresh tab for a new topic in a well-filled conversation is a dashed line in the feed (handoff.js, savers.css). */
 /* Usage forecast / at the limit: hold work for after the reset (outlook.js). */
 .outlook {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 8px; row-gap: 4px;

@@ -4,9 +4,11 @@
 //   1. A reply's token counts fill the hairline under its tab and the chip,
 //      and the turn ends with what it cost
 //   2. Filling fast: a quieter "filling up" offer before it's crowded; and a
-//      new topic typed into it offers a fresh tab with a summary Shellby writes
-//      himself (shown for editing, then the new tab's first message with the
-//      ask), once per conversation, the old one left as it was
+//      new topic sent into it draws a dashed line in the feed where the topic
+//      turned, offering a fresh tab with a summary Shellby writes himself (the
+//      message waits under the line; Stay sends it here and leaves the line;
+//      Start takes the summary as edited and the message to a new tab), once
+//      per conversation, the chip's menu bringing it back, the old one left as it was
 //   3. Past 80% he says it's getting crowded, and the composer offers room
 //      even after "filling up" was waved away
 //   4. The chip's menu: the running total, and the costliest turns, each a
@@ -84,26 +86,33 @@ function connect(url) {
     await ev("SB.$('crowded').querySelector('[aria-label=\"Not now\"]').click()");
     check(await ev("SB.$('crowded').hidden"), '"Not now" hides "filling up"');
 
-    // 2b. A new topic typed into a well-filled conversation: a fresh tab with Shellby's own summary (src/main/freshtab.js).
+    // 2b. A new topic sent into a well-filled conversation: a dashed line in the feed where the topic
+    // turned, with a fresh tab offered on it and the message waiting under it (src/main/freshtab.js, handoff.js).
     const oldTab = await ev('SB.activeTab().id');
-    check(await ev("SB.$('handoff').hidden"), 'no fresh-tab offer before anything new is typed');
-    await typeOnly('Explain how the weather widget fetches its forecast and caches it');
-    check(await until("!SB.$('handoff').hidden && /new topic/.test(SB.$('handoff').textContent) && /70% full/.test(SB.$('handoff').textContent)"), 'a new topic at 70% offers a fresh tab with a summary');
-    check(await ev("/saves about [\\d.]+k tokens on every message/.test(SB.$('handoff').textContent)"), 'and says what each message would save');
-    check(await ev("!SB.$('handoff').querySelector('.handoff-summary')"), 'the summary is folded until asked for');
-    await ev("SB.$('handoff').querySelector('.handoff-edit').click()");
-    check(await until("(t => !!t && /^# Handoff: /.test(t.value) && /- big 140000/.test(t.value) && /not by Claude/.test(t.value))(SB.$('handoff').querySelector('.handoff-summary'))"), "the summary is Shellby's own, shown for editing");
-    await ev("(t => { t.value += '\\n- (edited by hand)'; t.dispatchEvent(new Event('input')); })(SB.$('handoff').querySelector('.handoff-summary'))");
-    await ev("SB.$('handoff').querySelector('.handoff-start').click()");
-    check(await until(`SB.activeTab().id !== ${JSON.stringify(oldTab)} && [...SB.activeTab().el.querySelectorAll('.msg.user')].some(m => /started this tab fresh/.test(m.textContent) && /edited by hand/.test(m.textContent) && /weather widget fetches/.test(m.textContent))`, 15000), 'a new tab starts with the summary as edited, then the ask');
-    check(await until("!SB.activeTab().busy && [...SB.activeTab().el.querySelectorAll('.msg.assistant')].some(m => /echo:/.test(m.textContent))", 15000), 'and Claude answers it there');
-    check(await ev(`SB.$('handoff').hidden && SB.$('input').value === '' && SB.state.tabs.has(${JSON.stringify(oldTab)})`), 'the offer and the box are clear, and the old conversation is still open');
-    await ev(`SB.activate(${JSON.stringify(oldTab)})`);
-    check(await ev(`SB.activeTab().id === ${JSON.stringify(oldTab)} && SB.activeTab().context?.pct === 70`), 'back in the old one, still 70% full');
+    const feed = 'SB.activeTab().el';
+    check(await ev(`!${feed}.querySelector('.cut-divider')`), 'no line in the feed before anything new is sent');
+    await type('Explain how the weather widget fetches its forecast and caches it');
+    check(await until(`${feed}.querySelector('.cut-divider .cut-rule')?.textContent === 'New topic · 70% full'`), 'a new topic at 70% draws the line where the topic turned');
+    check(await ev(`!SB.activeTab().busy && ${feed}.querySelector('.msg.user.pending')?.textContent.includes('weather widget') && /Waiting on the line above/.test(${feed}.querySelector('.cut-pending')?.textContent || '')`), 'the message waits under it, unsent');
+    check(await ev(`(c => /per message, here/.test(c.textContent) && /on every message after this one/.test(c.textContent) && /^Everything above is “/.test(c.querySelector('.saver-title').textContent))(${feed}.querySelector('.cut-card'))`), 'the card says what each message carries here, fresh, and the difference');
+    check(await ev(`(t => !!t && /^# Handoff: /.test(t.value) && /- big 140000/.test(t.value) && /not by Claude/.test(t.value))(${feed}.querySelector('.cut-box'))`), "the summary is Shellby's own, there to edit");
+    await ev(`${feed}.querySelector('.cut-stay').click()`);
+    check(await until(`${feed}.querySelector('.cut-rule') && !${feed}.querySelector('.cut-card') && !${feed}.querySelector('.cut-pending') && !${feed}.querySelector('.msg.user.pending') && [...${feed}.querySelectorAll('.msg.user')].some(m => /weather widget/.test(m.textContent))`), '"Stay in this one" sends it here and leaves the line');
+    check(await until(`!SB.activeTab().busy && [...${feed}.querySelectorAll('.msg.assistant')].some(m => /echo: Explain how the weather/.test(m.textContent))`, 15000), 'and Claude answers it here');
+    // From the context chip's menu: the summary whatever the box says, with the box's text as the ask.
     await typeOnly('Describe the moon phase drawing on the beach scene');
-    await wait(1200); // past the moment's pause after typing, and the lookup it would start
-    check(await ev("SB.$('handoff').hidden"), 'it is offered once per conversation');
-    await typeOnly('');
+    await ev('SB.offerHandoff(SB.activeTab())');
+    check(await until(`${feed}.querySelectorAll('.cut-divider').length === 2 && ${feed}.querySelector('.cut-card') && ${feed}.querySelector('.msg.user.pending')?.textContent.includes('moon phase')`), 'the chip menu brings the line back, with the box as the message under it');
+    await ev(`(t => { t.value += '\\n- (edited by hand)'; t.dispatchEvent(new Event('input')); })(${feed}.querySelector('.cut-box'))`);
+    await ev(`${feed}.querySelector('.cut-start').click()`);
+    check(await until(`SB.activeTab().id !== ${JSON.stringify(oldTab)} && [...SB.activeTab().el.querySelectorAll('.msg.user')].some(m => /started this tab fresh/.test(m.textContent) && /edited by hand/.test(m.textContent) && /moon phase/.test(m.textContent))`, 15000), 'a new tab starts with the summary as edited, then the ask');
+    check(await until("!SB.activeTab().busy && [...SB.activeTab().el.querySelectorAll('.msg.assistant')].some(m => /echo:/.test(m.textContent))", 15000), 'and Claude answers it there');
+    check(await ev(`SB.$('input').value === '' && SB.state.tabs.has(${JSON.stringify(oldTab)})`), 'the box is clear, and the old conversation is still open');
+    await ev(`SB.activate(${JSON.stringify(oldTab)})`);
+    check(await ev(`SB.activeTab().id === ${JSON.stringify(oldTab)} && /carried on in a fresh tab/.test([...${feed}.querySelectorAll('.cut-rule')].at(-1).textContent) && !${feed}.querySelector('.cut-card') && !${feed}.querySelector('.msg.user.pending')`), 'back in the old one, the line marks where it carried on, and nothing waits');
+    await type('Tell me about the tide chart colours and the moon drawing');
+    check(await until(`!SB.activeTab().busy && [...${feed}.querySelectorAll('.msg.assistant')].some(m => /echo: Tell me about the tide/.test(m.textContent))`, 15000), 'another new topic goes straight through');
+    check(await ev(`${feed}.querySelectorAll('.cut-divider').length === 2`), 'it is offered once per conversation');
 
     // 3. Past the mark.
     await type('big 170000');
@@ -117,7 +126,7 @@ function connect(url) {
 
     // 4. The chip's menu: what the conversation has cost so far, then Not now, then Compact from it.
     await ev("SB.$('ctxChip').click()");
-    check(await until("!SB.$('ctxMenu').hidden && /So far: [\\d.]+k? tokens over 3 turns/.test(SB.$('ctxMenu').textContent)"), 'the chip menu has the running total');
+    check(await until("!SB.$('ctxMenu').hidden && /So far: [\\d.]+k? tokens over \\d+ turns/.test(SB.$('ctxMenu').textContent)"), 'the chip menu has the running total');
     check(await ev("SB.$('ctxMenu').textContent.includes('Costliest turns') && SB.$('ctxMenu').querySelectorAll('.cost-turn').length === 3"), 'and the costliest turns');
     await ev("SB.$('ctxMenu').querySelector('.cost-turn').click()");
     check(await until("SB.$('ctxMenu').hidden && SB.activeTab().el.querySelector('.turn-foot.flash .tf-open')?.getAttribute('aria-expanded') === 'true'"), 'a costliest turn scrolls back to it, opened');

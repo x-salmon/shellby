@@ -17,7 +17,9 @@
 //   "mcp <tool> <json>" -> calls a tool on the in-app MCP server (see crabmcp.js)
 //                   and replies with its result; "mcp tools" lists them
 //   "effort"     -> replies with the effort level it was last told (flag or apply_flag_settings)
-//   "model"      -> replies with the model it was last told (--model or set_model)
+//   "model" or "which model …" -> replies with the model it was last told (--model or set_model)
+//   "bigread <file> <chars> [wait <ms>]" -> a whole Read of a file in the working folder whose
+//                   result is <chars> long (the nudge under a repeated big read), the reply after <ms>
 //   "stream <words>" -> the reply written word by word, then a prompt suggestion
 //   "/goal <condition>|clear" -> Claude Code's own note that a goal was set or cleared
 //   "helper says <words>" -> a helper whose words are forwarded (--forward-subagent-text)
@@ -113,8 +115,9 @@ const heldEdit = () => {
 
 const out = obj => process.stdout.write(JSON.stringify(obj) + '\n');
 let messages = 0;
-// Real replies carry an id, model and token counts (the usage-by-project ledger reads them).
-const text = t => out({ type: 'assistant', message: { id: `msg_fake_${++messages}`, model: 'claude-sonnet-5-5', usage: { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 9000 }, content: [{ type: 'text', text: t }] }, parent_tool_use_id: null, session_id: sessionId, uuid: `uuid-${sessionId}-${messages}` });
+// Real replies carry an id, model and token counts (the usage-by-project ledger reads them):
+// the model it was told (--model, set_model), as the real CLI reports the one that answered.
+const text = t => out({ type: 'assistant', message: { id: `msg_fake_${++messages}`, model: model || 'claude-sonnet-5-5', usage: { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 9000 }, content: [{ type: 'text', text: t }] }, parent_tool_use_id: null, session_id: sessionId, uuid: `uuid-${sessionId}-${messages}` });
 const result = (ok, extra = {}) => out({ type: 'result', subtype: ok ? 'success' : 'error_during_execution', is_error: !ok, duration_ms: 42, num_turns: 1, session_id: sessionId, ...(ok ? { result: 'done' } : {}), ...extra });
 // Like the real CLI with --replay-user-messages: each message echoed as it's read.
 const echo = msg => { if (REPLAY) out({ type: 'user', message: msg.message, isReplay: true, session_id: sessionId }); };
@@ -586,7 +589,7 @@ function onLine(line) {
     result(true);
     return;
   }
-  if (content === 'model') { text(`model:${model || 'default'}`); result(true); return; }
+  if (content === 'model' || /^which model\b/i.test(content)) { text(`model:${model || 'default'}`); result(true); return; }
   if (content === 'effort') { text(`effort:${effort || 'default'}`); result(true); return; }
   // "stream <words>" -> the reply word by word first (--include-partial-messages), then whole;
   // "stream" also ends with a prompt suggestion, as the real CLI does when they're on.
@@ -752,6 +755,16 @@ function onLine(line) {
     out({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: `tu_read_${turn}`, content: '1\tbroken' }] }, parent_tool_use_id: null, session_id: sessionId });
     text('read it');
     result(true);
+    return;
+  }
+  // "bigread <file> <chars> [wait <ms>]" -> a whole Read of a file in the working folder whose
+  // result is <chars> long (the nudge under a repeated big read, read-nudge.js), the reply after <ms>.
+  if (content.startsWith('bigread ')) {
+    const [, file, chars, , ms] = content.split(' ');
+    const full = require('path').join(process.cwd(), file);
+    out({ type: 'assistant', message: { content: [{ type: 'tool_use', id: `tu_bigread_${turn}`, name: 'Read', input: { file_path: full } }] }, parent_tool_use_id: null, session_id: sessionId });
+    out({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: `tu_bigread_${turn}`, content: 'x'.repeat(Math.min(400000, parseInt(chars, 10) || 0)) }] }, parent_tool_use_id: null, session_id: sessionId });
+    setTimeout(() => { text(`read ${file} whole`); result(true); }, Math.min(30000, parseInt(ms, 10) || 0));
     return;
   }
   // "bug <fixture>" -> a Bash call whose command, output and error flag come from

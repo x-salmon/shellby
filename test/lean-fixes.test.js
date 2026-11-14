@@ -56,6 +56,29 @@ test('drafts: a deny rule in the project settings, a CLAUDE.md line, advice for 
   assert.deepEqual(w.svc.drafts(null), []);
 });
 
+test("draftNudge: one file's fix for the conversation's own project, applied and undone there, apart from the Lean tab's drafts", async () => {
+  const w = world({ answer: 0 });
+  w.cwd = w.home; // the panel sits on the home folder: the Lean tab has no project to draft for
+  assert.deepEqual(w.svc.drafts(HOT), []);
+  const file = { rel: 'package-lock.json', reads: 4, edits: 0, sessions: 3, tokens: 9000 };
+  const fix = w.svc.draftNudge({ project: w.project, file });
+  assert.match(fix.id, /^nudge:\d+:deny:package-lock\.json$/);
+  assert.equal(fix.kind, 'deny-read');
+  assert.equal(fix.file, path.join(w.project, '.claude', 'settings.json'));
+  assert.equal(fix.before, '', 'no settings file yet');
+  assert.equal(fix.raw, undefined, 'the file text stays in main');
+  assert.equal(fix.project, undefined);
+  const r = await w.svc.apply(fix.id);
+  assert.equal(r.ok, true, r.error);
+  assert.deepEqual(JSON.parse(read(fix.file)), { permissions: { deny: ['Read(./package-lock.json)'] } });
+  assert.equal(w.asked.length, 1, 'asked in the confirm window first');
+  assert.equal(w.svc.undo(r.undoId).ok, true, 'undo knows the project the fix was written in, wherever the panel is');
+  assert.equal(read(fix.file), null);
+  assert.equal(w.svc.draftNudge({ project: w.home, file }), null, 'never the home folder');
+  assert.equal(w.svc.draftNudge({ project: w.project, file: { rel: 'src/app.js', reads: 3, edits: 0, sessions: 3, tokens: 300 } }).kind, 'claude-line', 'a file that is not generated gets a CLAUDE.md line');
+  assert.equal(w.svc.draftNudge({ project: w.project, file: { rel: 'src/nothing-here.js', reads: 3, edits: 0, sessions: 3, tokens: 300 } }), null, 'nothing to say about a file with no head to read');
+});
+
 test('apply: cancelled in the confirm window writes nothing; confirmed writes exactly the preview; undo takes it back', async () => {
   const w = world({ answer: 1 });
   const [deny] = w.svc.drafts(HOT);

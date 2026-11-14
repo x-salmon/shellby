@@ -40,6 +40,7 @@
 <link rel="stylesheet" href="native.css">
 <link rel="stylesheet" href="composer.css">
 <link rel="stylesheet" href="turn-foot.css">
+<link rel="stylesheet" href="savers.css">
 <link rel="stylesheet" href="line-comments.css">
 <link rel="stylesheet" href="code.css">
 <link rel="stylesheet" href="turn-checks.css">
@@ -254,8 +255,7 @@
       </div>
       <div class="box-extras">
         <div class="crowded" id="crowded" role="status" hidden></div>
-        <!-- A fresh tab with a summary Shellby writes, offered for a new topic in a well-filled conversation (handoff.js) -->
-        <div class="handoff" id="handoff" role="region" aria-label="Start a fresh tab with a summary" hidden></div>
+        <!-- A fresh tab for a new topic in a well-filled conversation is a dashed line in the feed itself (handoff.js, feed-savers.js) -->
         <!-- Ultracode on for this conversation: what it means, in a line (ultracode.js) -->
         <div class="ultra-note" id="ultraNote" role="status" hidden>Ultracode is on: Claude may send out many agents, and they use a lot of tokens.</div>
         <div class="mod-status" id="modStatus" role="status" aria-label="What your mods say" hidden></div>
@@ -2277,6 +2277,8 @@
         <p class="muted small">Shellby learns what tasks like yours usually take. When a message would carry you past the line (the share you keep, or the limit with the guard off), it waits for the reset instead, with a "Send now" if you change your mind. It needs a few similar tasks to go on first, and it's all worked out on this PC.</p>
         <label class="toggle"><input type="checkbox" id="mergeSendsToggle"><span class="switch"></span>Send messages typed close together as one turn</label>
         <p class="muted small">A message waits a moment and a half for company, with a chip above the box saying so, and anything else you type then goes with it as one turn, each message its own paragraph. Messages that pile up behind a running turn go together when it ends, too. Each turn you save is usage you keep. Enter on an empty box or Ctrl+Enter sends now; a /command always goes on its own.</p>
+        <label class="toggle"><input type="checkbox" id="modelSuggestToggle"><span class="switch"></span>Offer Haiku for a small message before it goes</label>
+        <p class="muted small">A quick question or a small named change in a conversation on Opus gets a card in the chat first: what it usually takes of your 5-hour window on each model, with Use Haiku for this one, Keep Opus, or Always for questions like this. Nothing switches unless you pick, and doing nothing keeps the model you're on. "Always" sends that kind of message to Haiku by itself, with a note on the turn and Undo. Conversations already on Sonnet or Haiku, /commands and Ultracode turns are never asked.</p>
       </section>
     </div>
 
@@ -3184,6 +3186,8 @@
 <script src="feed-changes.js"></script>
 <script src="feed-lanes.js"></script>
 <script src="feed-native.js"></script>
+<script src="savers-logic.js"></script>
+<script src="feed-savers.js"></script>
 <script src="line-comments.js"></script>
 <script src="line-comments-ui.js"></script>
 <script src="turn-checks.js"></script>
@@ -3215,6 +3219,7 @@
 <script src="ship-it.js"></script>
 <script src="meter-logic.js"></script>
 <script src="tab-meters.js"></script>
+<script src="savers.js"></script>
 <script src="handoff.js"></script>
 <script src="clash-text.js"></script>
 <script src="clashes.js"></script>

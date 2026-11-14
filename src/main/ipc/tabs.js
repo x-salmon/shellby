@@ -15,6 +15,8 @@ const panes = require('../../renderer/shared/panes');
 const harnesses = require('../harness/registry');
 const { run: runCli, skipSettings } = require('../claude/cli');
 const { selectedNote } = require('../viewer');
+const { isModel } = require('../models');
+const { CLASS_WORDS } = require('../model-pick');
 
 // The most queued messages that go in at once, and files across all of them (as one task:send).
 const MAX_STEERS = 20;
@@ -158,8 +160,13 @@ function registerTabsIpc(ipcMain, d) {
   }, [obj({ tabId: ID, model: str({ max: 200 }) })]);
 
   // fromQueue: the panel's queue sending what you left behind a turn, by itself.
-  ipcMain.handle('task:send', async (_e, { tabId, text, attachments, selected, fromQueue } = {}) => {
+  // model: this one turn on a cheaper model, as you picked on the card (model-pick.js) or as
+  // "always" for its kind of message (modelBy 'always', modelCls); never any other way.
+  ipcMain.handle('task:send', async (_e, { tabId, text, attachments, selected, fromQueue, model, modelBy, modelCls } = {}) => {
     text = String(text || '').trim().slice(0, d.PANEL_MAX_TEXT);
+    const turnModel = typeof model === 'string' && model && isModel(model) ? model : null;
+    const by = modelBy === 'always' ? 'always' : 'you';
+    const cls = typeof modelCls === 'string' && modelCls in CLASS_WORDS ? modelCls : null;
     const files = (Array.isArray(attachments) ? attachments : []).filter(d.isStr).slice(0, 20);
     if (!text && !files.length) return { ok: false, error: 'Type a task first.' };
     // You're back: Keep warm's job is done. Not for a message you queued before you left.
@@ -176,10 +183,17 @@ function registerTabsIpc(ipcMain, d) {
     // and a /command goes as typed.
     const cwd = d.manager.tabs.get(tabId)?.session?.cwd;
     const note = d.isStr(selected) && d.isStr(cwd) && !text.startsWith('/') && !d.remoteService?.placeOf(cwd) ? await selectedNote(cwd, selected) : null;
-    const r = d.sendToTab(tabId, text, files, { note });
+    const r = d.sendToTab(tabId, text, files, { note, model: turnModel, modelBy: by, modelCls: cls });
     if (r.ok) d.firstRunStep?.('message'); // First steps (first-run.js)
     return r.ok ? { ok: true, tabId: r.tabId, turnId: r.turnId } : r;
   });
+  // A cheaper model for a small message, asked before it goes (model-pick.js): whether to ask, what the
+  // message usually takes on the tab's model and on Haiku, and the card's words. files: how many are attached.
+  ipcMain.handle('tab:model-suggest', (_e, { tabId, text: typed, files, ultracode }) => d.usagePlan.suggestModel(tabId, typed, { files: Number.isInteger(files) ? files : 0, ultracode: ultracode === true }),
+    [obj({ tabId: ID, text: text(50000), files: opt(v => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 20), ultracode: opt(v => typeof v === 'boolean') })]);
+  // The nudge under a repeated read (read-nudge.js): "Not this one" (it rests a week either way) or "Never for this file".
+  ipcMain.handle('lean:nudge-answer', (_e, { tabId, rel, answer }) => d.readNudge.answer(tabId, rel, answer),
+    [obj({ tabId: ID, rel: str({ max: 2000 }), answer: v => v === 'not' || v === 'never' })]);
   // What's queued behind the turn that's running, to go in at Claude's next step
   // (sessions.js steer). A /command can't go in mid-turn: it, and all after it, wait.
   ipcMain.on('task:steer', (_e, { tabId, turnId, items } = {}) => {

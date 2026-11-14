@@ -1,0 +1,89 @@
+/* Shellby panel — the inline savers' cards in the chat feed (feed-savers.js):
+   a message waiting on a card, the card offering Haiku for a small message
+   (savers.js), the nudge under a repeated read, and the dashed line that
+   offers a fresh tab where the topic turned (handoff.js). Drawn in the feed's
+   own tokens and type scale; two columns once the feed is wide enough. */
+
+/* ================================================================ shared */
+.saver-host { container-type: inline-size; margin: 0 0 14px; }
+.saver-card {
+  display: grid; gap: 10px; padding: 14px 16px 12px;
+  background: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg);
+  animation: rise .25s var(--ease-out);
+}
+.saver-title { margin: 0; font: 500 var(--fs-16)/1.25 var(--font-pixel); letter-spacing: .01em; color: var(--sand); }
+.saver-text { margin: 0; font-size: var(--fs-12-5); line-height: 1.5; color: var(--sand-dim); }
+.saver-text b { color: var(--sand); font-weight: 700; }
+.saver-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 2px; }
+.saver-acts .btn { font-weight: 700; }
+.saver-card .btn.glass { background: var(--glass-dim); border-color: transparent; color: var(--glass); }
+.saver-card .btn.glass:hover:not(:disabled) { filter: brightness(1.12); }
+.saver-fine { margin-left: auto; color: var(--sand-faint); font-size: var(--fs-11); }
+.saver-fold { border-left-color: var(--sand-faint-deco); }
+.saver-fold .link-btn { margin-left: 8px; color: var(--glass); }
+/* What you sent, waiting on the card under it. */
+.msg.user.pending { opacity: .85; }
+
+/* ================================================================ a cheaper model for a small message */
+.saver-ask { border-color: rgba(127, 214, 194, .35); }
+.saver-cmp { display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; gap: 8px 12px; align-items: center; font-size: var(--fs-12); color: var(--sand-dim); padding: 2px 0; }
+.saver-name { color: var(--sand); white-space: nowrap; }
+.saver-cmp b { color: var(--sand); text-align: right; font: 700 var(--fs-12) var(--font-mono); }
+.saver-bar { position: relative; height: 8px; border-radius: 4px; background: var(--reef-2); overflow: hidden; }
+.saver-bar i { position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--sand-faint-deco); border-radius: 4px; }
+.saver-bar.lit i { background: var(--glass); }
+.saver-always-btn .saver-caret { margin-left: 6px; color: var(--sand-faint); }
+.saver-always { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; border-top: 1px dashed var(--line-soft); }
+.saver-always[hidden] { display: none; }
+.saver-wait { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; color: var(--sand-faint); font-size: var(--fs-11); white-space: nowrap; }
+.saver-wait-bar { width: 110px; height: 4px; border-radius: 2px; background: var(--reef-2); overflow: hidden; }
+.saver-wait-bar i { display: block; height: 100%; width: 100%; background: var(--sand-faint-deco); transition: width .25s linear; }
+/* The note on a message that ran on a cheaper model. */
+.model-tag .link-btn { margin-left: 6px; color: var(--glass); }
+.model-tag-undone { margin-left: 6px; color: var(--sand-faint); font-weight: 400; }
+
+/* ================================================================ a repeated big read */
+.nudge-card { border-color: rgba(255, 193, 94, .35); grid-template-columns: minmax(0, 1fr); gap: 10px 20px; }
+.nudge-mark { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 10px; font-size: var(--fs-13); line-height: 1.45; color: var(--sand); }
+.nudge-mark i { flex: none; width: 22px; height: 22px; border-radius: 50%; background: rgba(255, 193, 94, .16); color: var(--amber); display: grid; place-items: center; font: 700 var(--fs-12) var(--font-body); font-style: normal; }
+.nudge-mark b { color: var(--amber); }
+.nudge-mark code { font: 500 .92em var(--font-mono); background: rgba(255, 193, 94, .14); color: var(--amber); padding: 1px 5px; border-radius: 4px; }
+.nudge-main { display: grid; gap: 8px; min-width: 0; }
+.nudge-main .lean-diff { margin: 0; max-height: 200px; overflow: auto; }
+.nudge-side { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.nudge-card .saver-acts { grid-column: 1 / -1; }
+@container (min-width: 720px) { .nudge-card { grid-template-columns: minmax(0, 1fr) minmax(220px, 38%); } }
+/* The step the card sits under. */
+.tool.hot > summary .t-detail { color: var(--amber); }
+
+/* ================================================================ a fresh tab where the topic turned */
+.cut-divider { container-type: inline-size; display: grid; gap: 10px; margin: 8px 0 14px; }
+.cut-rule { display: flex; align-items: center; gap: 12px; color: var(--amber); font: 600 var(--fs-11) var(--font-mono); }
+.cut-rule::before, .cut-rule::after { content: ""; flex: 1; border-top: 2px dashed rgba(255, 193, 94, .5); }
+.cut-rule span { display: inline-flex; align-items: center; height: 24px; padding: 0 11px; border-radius: 12px; background: rgba(255, 193, 94, .14); white-space: nowrap; }
+.cut-card { border-color: rgba(255, 193, 94, .35); grid-template-columns: minmax(0, 1fr); gap: 10px 20px; width: 100%; max-width: 980px; margin: 0 auto; box-sizing: border-box; }
+.cut-card .saver-title { grid-column: 1 / -1; }
+.cut-main { display: grid; gap: 8px; min-width: 0; align-content: start; }
+.cut-per { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: baseline; padding-top: 4px; }
+.cut-n { display: block; font: 500 var(--fs-20)/1 var(--font-pixel); color: var(--sand); }
+.cut-n.after { color: var(--glass); }
+.cut-num small { display: block; font-size: var(--fs-10-5); color: var(--sand-faint); margin-top: 4px; }
+.cut-sum { display: grid; gap: 5px; align-content: start; min-width: 0; }
+.cut-lbl { display: flex; font-size: var(--fs-11); color: var(--sand-faint); }
+.cut-count { margin-left: auto; color: var(--glass); }
+.cut-box {
+  width: 100%; box-sizing: border-box; min-height: 96px; max-height: 40vh; resize: vertical; padding: 8px 10px;
+  background: var(--abyss); border: 1px solid var(--line); border-radius: var(--r); color: var(--sand); font: var(--fs-12)/1.45 var(--font-mono);
+}
+.cut-box:focus { outline: none; border-color: var(--glass); }
+.cut-card .saver-acts { grid-column: 1 / -1; }
+@container (min-width: 720px) { .cut-card { grid-template-columns: minmax(0, 1fr) minmax(260px, 42%); } }
+/* The message that waits under the line. */
+.cut-pending { display: flex; align-items: center; gap: 10px; margin: -4px 0 14px 16px; color: var(--sand-faint); font-size: var(--fs-12); }
+.cut-pending i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); animation: cut-blink 1.6s ease-in-out infinite; }
+@keyframes cut-blink { 50% { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .saver-card, .cut-pending i { animation: none; }
+  .saver-wait-bar i { transition: none; }
+}

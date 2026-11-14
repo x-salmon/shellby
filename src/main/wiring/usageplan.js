@@ -6,6 +6,9 @@ const guard = require('../guard');
 const { coldResend, modelSwitch } = require('../cachebreak');
 const usageLedger = require('../usage/ledger');
 const runcost = require('../usage/runcost');
+const modelPick = require('../model-pick');
+const { onClaude } = require('../sessions');
+const { hasKeyword: hasUltracode } = require('../../renderer/shared/ultracode');
 const { clockTime } = require('../usage/service');
 const { headBranch } = require('../gitinfo');
 
@@ -167,6 +170,31 @@ function wireUsagePlan(d) {
     };
   }
 
+  /**
+   * A cheaper model for a small message, before it goes (model-pick.js): whether
+   * to ask (or send it to the model you chose for its kind), what the message
+   * usually takes on the tab's model and on Haiku, and the card's words.
+   * -> { ask: true, cls, model, modelName, cheaper, estimate, words }
+   *  | { auto, cls, model, modelName, cheaper } | { ask: false, why }
+   */
+  function suggestModel(tabId, text, { files = 0, ultracode = false } = {}) {
+    const tab = tabId ? d.manager?.tabs.get(tabId) : null;
+    if (!tab || !onClaude(tab) || tab.inTerminal) return { ask: false, why: 'tab' };
+    // What it runs on now: the model asked for right after a switch, else the latest reply's, else the start's.
+    const model = tab.session?.modelSwitched ? tab.session.model : (tab.session?.lastModel || tab.session?.initModel || tab.session?.model || '');
+    const decision = modelPick.suggest({
+      text, files, model, defaultModel: d.config.get('model') || '',
+      enabled: d.config.get('modelSuggest') !== false, always: d.config.get('modelAlways') || {},
+      ultracode: ultracode || hasUltracode(text), local: !!tab.localTarget,
+    });
+    if (!decision.ask && !decision.auto) return decision;
+    const named = { model: model || '', modelName: modelPick.familyName(model), cheaper: modelPick.CHEAPER };
+    if (decision.auto) return { ...decision, ...named };
+    const src = d.spendSource(tab);
+    const est = modelPick.estimateSmall(rows(), { pk: src.pk, category: usageLedger.classify(text), model: model || 'opus', now: Date.now() });
+    return { ...decision, ...named, estimate: est, words: modelPick.words({ cls: decision.cls, model, est }) };
+  }
+
   /** A suggestion for the routine editor: 'sonnet' when its runs are small for the model it's on, else null. */
   function routineSuggestion(routine) {
     return usageLedger.routineSuggestion(rows(), routine, d.config.get('model') || '', Date.now());
@@ -177,7 +205,7 @@ function wireUsagePlan(d) {
     return cwd ? usageLedger.byBranch(rows(), { pk: d.projectKeyOf(cwd).pk, now: Date.now() }) : [];
   }
 
-  return { beginTurn, onSpend, onUsage, endTurn, endRun, save, clear, estimateFor, estimateRunFor, routineSuggestion, branchCosts };
+  return { beginTurn, onSpend, onUsage, endTurn, endRun, save, clear, estimateFor, estimateRunFor, suggestModel, routineSuggestion, branchCosts };
 }
 
 module.exports = { wireUsagePlan };

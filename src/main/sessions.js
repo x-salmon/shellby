@@ -263,6 +263,12 @@ class SessionManager extends EventEmitter {
     // Shellby's own /compact while the tab sat idle (wiring/idle-compact.js): its mark says so.
     if (item.kind === 'compacted' && tab.idleCompacting) item = { ...item, trigger: 'idle' };
     if (item.kind === 'result') {
+      // A turn run on a cheaper model (send's opts.model): the tab goes back to its own.
+      if (tab.turnModel) {
+        const { was } = tab.turnModel;
+        tab.turnModel = null;
+        tab.session.setModel(was);
+      }
       // A note's Ask has its answer: whatever you say next is in your mode.
       if (item.ok && tab.startsIn && tab.startsIn !== 'plan') tab.session.setMode(this.followMode(tab));
       tab.outcome = item.interrupted ? 'stopped' : item.ok ? 'ok' : 'error';
@@ -297,7 +303,9 @@ class SessionManager extends EventEmitter {
     return true;
   }
 
-  send(tabId, prompt, userItem) {
+  /** One message in. opts.model: this one turn on that model (model-pick.js's card); onItem
+   *  puts the tab's own back at the result. Never a local tab or another CLI. -> the turn's id. */
+  send(tabId, prompt, userItem, { model: turnModel = null } = {}) {
     const tab = this.require(tabId);
     // Before anything below touches History or the turn: session.send would
     // refuse anyway, but only after a message Claude never saw was saved.
@@ -349,6 +357,10 @@ class SessionManager extends EventEmitter {
     if (this.decorate) prompt = this.decorate(tab, prompt);
     tab.pictures = (tab.pictures || 0) + turncost.picturesIn(prompt);
     this.maybePickEffort(tab, userItem);
+    if (turnModel && onClaude(tab) && !tab.localTarget && isModel(turnModel) && turnModel !== (tab.session.model || '')) {
+      tab.turnModel = { was: tab.session.model || '' };
+      tab.session.setModel(turnModel);
+    }
     tab.session.send(prompt, this.prepareTurn?.(tab) || null);
     // On disk at once, so a power cut mid-turn still leaves it marked unfinished.
     this.history.markTurn?.(tab.id, { turnId: userItem.turnId, at: Date.now() });

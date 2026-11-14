@@ -96,7 +96,8 @@ contextBridge.exposeInMainWorld('shellby', {
   setTabEffort: (tabId, effort) => ipcRenderer.invoke('tab:effort', { tabId, effort }), // the effort chip, for one conversation
   setTabModel: (tabId, model) => ipcRenderer.invoke('tab:model', { tabId, model }), setTabLocal: (tabId, model) => ipcRenderer.invoke('tab:local', { tabId, model }), // a model of its own, before a conversation starts
   markReviewed: (tabId, reviewed = true, after = null) => ipcRenderer.invoke('tab:reviewed', { tabId, reviewed, after }), // the review inbox
-  sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true }), // opts.selected: the file picked in All files (files-select.js); opts.fromQueue: the queue sent it (Keep warm)
+  sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true, model: opts?.model, modelBy: opts?.modelBy, modelCls: opts?.modelCls }), // opts.selected: the file picked in All files (files-select.js); opts.fromQueue: the queue sent it (Keep warm); opts.model: this one turn on a cheaper model, as picked on the card (savers.js)
+  modelSuggest: invoke('tab:model-suggest'), nudgeAnswer: invoke('lean:nudge-answer'), // the card offering Haiku for a small message (model-pick.js); the nudge under a repeated read waved away, 'not' | 'never' (read-nudge.js)
   stopTask: fire('task:stop'),
   steerTask: (tabId, turnId, items) => ipcRenderer.send('task:steer', { tabId, turnId, items }),
   unsteerTask: (tabId, id) => ipcRenderer.invoke('task:unsteer', { tabId, id }), // a queued message taken back, unless Claude has it
