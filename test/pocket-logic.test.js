@@ -57,6 +57,29 @@ test('a transcript folds into replies, tool rows, helper lanes and the turn’s 
   assert.equal(L.endLine(blocks[6]), '42s · 1.2k tokens · 3% of your window');
 });
 
+test('an opened helper lane shows its job, its step, its last words and how it came out', () => {
+  const [, crew] = L.fold([
+    { k: 'user', text: 'look around' },
+    { k: 'tool', id: 'h', label: 'Agent', agent: { type: 'Explore', description: 'map the upload callers' } },
+    { k: 'tool', id: 'x', label: 'Grep', detail: 'upload(', sub: true, parent: 'h' },
+    { k: 'text', text: 'Three callers so far.', sub: true, parent: 'h' },
+  ]);
+  const lane = crew.lanes[0];
+  assert.deepEqual(L.laneRows(lane).map(r => [r.label, r.text]), [
+    ['Asked to', 'map the upload callers'], ['Now', 'Grep upload('], ['Said', 'Three callers so far.'],
+  ]);
+  const done = L.laneRows({ ...lane, state: 'error', summary: 'ran out of turns' });
+  assert.equal(done[1].label, 'Last step');
+  assert.deepEqual(done.at(-1), { key: 'result', label: 'Went wrong', text: 'ran out of turns' });
+});
+
+test('an opened helper lane leaves out what it hasn’t got and keeps the end of long words', () => {
+  assert.deepEqual(L.laneRows({ state: 'running', description: '', activity: '', said: '', summary: '' }), []);
+  assert.deepEqual(L.laneRows(null), []);
+  const said = L.laneRows({ said: `${'a'.repeat(5000)}THE END` })[0].text;
+  assert.ok(said.startsWith('…') && said.endsWith('THE END') && said.length < 1300);
+});
+
 test('an undo marks its changes undone', () => {
   const blocks = L.fold([{ k: 'changes', after: 'a1', added: 3, removed: 1, files: [] }, { k: 'undone', after: 'a1' }]);
   assert.equal(blocks[0].undone, true);
