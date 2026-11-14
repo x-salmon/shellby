@@ -194,6 +194,7 @@ test('the bridge goes through pages/rights.js: its data, a read it was not given
   // ask: nothing starts; the phone gets the prompt and the mode for its own sheet, with Autonomous never on offer.
   const a = await call(phone, 'ask', ['Summarise the failed prints', { mode: 'autonomous' }]);
   assert.deepEqual(a, { ok: true, value: { shown: true }, ask: { prompt: 'Summarise the failed prints', mode: 'ask' } });
+  r.tick(31_000); // one ask a page every 30 s
   assert.deepEqual((await call(phone, 'ask', ['Plan it', { mode: 'plan' }])).ask, { prompt: 'Plan it', mode: 'plan' });
   assert.equal(r.of('startTask').length, 0);
   assert.ok(!r.of('send').some(([, ch, ev]) => ch === 'pages:changed' && ev.kind === 'ask'), 'no card at the desk for a phone’s ask');
@@ -320,4 +321,47 @@ test('what changes on the PC reaches the phones: data to the page’s watchers, 
     r.d.pages.writeYou(draft.id, { set: { x: 1 } });
     assert.equal(r.of('pageEvent').length, before);
   } finally { Date.now = realNow; }
+});
+
+test('a page that reads your PC opens at the desk only, for now: no capability, and its tile says so', async () => {
+  // guard.js is all that stands between a page and WebRTC on a phone, unchecked in Safari and mobile Chrome.
+  const r = rig();
+  const reads = r.make('Usage meter', { access: { read: ['usage'] } });
+  const tile = (await act(r.pp, 'pages', {})).pages.find(p => p.id === reads);
+  assert.deepEqual([tile.ready, tile.atDesk], [false, true]);
+  const opened = await act(r.pp, 'page-open', { id: reads });
+  assert.deepEqual([opened.ok, opened.desk, opened.reads], [false, true, true]);
+  assert.match(opened.error, /opens only at the desk/);
+  assert.equal((await act(r.pp, 'page-call', { id: reads, method: 'data.get', args: [] })).ok, false);
+});
+
+test('a page asks once in 30 seconds from a phone, whatever its frame does', async () => {
+  const r = rig();
+  const id = r.make('Print queue');
+  const first = await act(r.pp, 'page-call', { id, method: 'ask', args: ['Why?', { mode: 'plan' }] });
+  assert.equal(first.ok, true);
+  const again = await act(r.pp, 'page-call', { id, method: 'ask', args: ['Why?'] });
+  assert.match(again.error, /asked just now/);
+  r.tick(31_000);
+  assert.equal((await act(r.pp, 'page-call', { id, method: 'ask', args: ['Why?'] })).ok, true);
+  assert.equal((await act(r.pp, 'page-call', { id, method: 'data.get', args: [] })).ok, true, 'other calls never wait on it');
+});
+
+test('a phone forgotten mid-call has no rights at all, and a page that is off or waiting shows no data', async () => {
+  const devices = [FULL];
+  const r = rig({ devices });
+  const id = r.make('Print queue');
+  const waiting = r.make('Release radar', {}, { agree: false });
+  devices.length = 0; // forgotten between the server's check and this module's
+  assert.equal((await act(r.pp, 'page-call', { id, method: 'data.set', args: [{ a: 1 }] })).error, READ_ONLY_SAYS);
+  assert.equal((await act(r.pp, 'page-change', { id })).error, READ_ONLY_SAYS);
+  assert.equal((await act(r.pp, 'page-info', { id: waiting })).ok, false);
+});
+
+test('a page file that is not there still answers with the page headers', () => {
+  const r = rig();
+  const a = r.pp.serve(`/pages/${'x'.repeat(43)}/index.html`);
+  assert.equal(a.status, 404);
+  assert.match(a.headers['Content-Security-Policy'], /sandbox/);
+  assert.equal(a.headers['X-Content-Type-Options'], 'nosniff');
 });

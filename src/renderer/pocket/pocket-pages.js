@@ -21,6 +21,8 @@
 (function (root) {
   root.PocketPages = ({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, openSheet, canAct, lookOnly, refresh }) => {
     const MAX_MESSAGE = 256 * 1024;
+    const MAX_IN_FLIGHT = 4;      // a page's calls waiting on the PC at once; more are refused here
+    const ASK_ARM_MS = 700;       // the sheet's Ask Claude wakes after this
     const READY_MS = 5000;
     const SNAPS = 'shellby-pocket-pages'; // the service worker's cache: the shelf and each page's last look (sw.js keeps it)
     const SHELF_KEY = '/__pages';
@@ -70,6 +72,7 @@
 
     function chipFor(p) {
       if (!p.phone) return 'Built for the desk';
+      if (p.atDesk) return 'At the desk for now';
       if (!p.enabled) return 'Off';
       if (p.wants === 'add') return 'Wants to be added';
       if (p.needsOk) return 'Needs your OK';
@@ -149,11 +152,15 @@
       if (size > MAX_MESSAGE) { if (m.type === 'call') send({ type: 'answer', id: m.id, ok: false, error: 'A call can carry at most 256 KB.' }); return; }
       switch (m.type) {
         case 'call': {
+          if ((c.inFlight || 0) >= MAX_IN_FLIGHT) { send({ type: 'answer', id: m.id, ok: false, error: 'Too many calls at once. Wait for one to answer.' }); return; }
           const args = Array.isArray(m.args) ? m.args.slice(0, 10) : [];
-          const r = await N.post('page-call', { id: c.id, method: String(m.method || '').slice(0, 20), args });
+          c.inFlight = (c.inFlight || 0) + 1;
+          let r;
+          try { r = await N.post('page-call', { id: c.id, method: String(m.method || '').slice(0, 20), args }); } finally { c.inFlight -= 1; }
           if (current !== c) return;
           send({ type: 'answer', id: m.id, ok: !!r.ok, value: r.value, error: r.ok ? undefined : (r.error || (r.offline ? "Your PC isn't answering right now." : 'Refused.')) });
-          if (r.ok && r.ask) openSheet(askSheet(c, r.ask));
+          // Never over a sheet you have open, and one ask at a time: a page can't swap what you're reading.
+          if (r.ok && r.ask && !S.sheet) openSheet(askSheet(c, r.ask));
           break;
         }
         case 'ready': c.ready = true; clearTimeout(c.timer); c.setNote(null); break;
@@ -230,7 +237,7 @@
           return;
         }
         if (r.page) c.page = r.page;
-        if (r.desk) { c.mode = 'desk'; head(); body.replaceChildren(deskOnly(c)); return; }
+        if (r.desk) { c.mode = 'desk'; head(); body.replaceChildren(deskOnly(c, r.reads ? r.error : null)); return; }
         if (r.offline) { await snapshot(); return; }
         c.mode = 'gone'; head();
         body.replaceChildren(h('div', { class: 'empty pg-gone' }, D.crab({ px: 4, state: 'idle', label: '' }), h('p', { text: r.error || "That page isn't here." }), h('button', { type: 'button', class: 'btn ghost', text: 'Back to Pages', onclick: () => go('#/pages') })));
@@ -263,8 +270,15 @@
 
     // ---------------------------------------------------------------- built for the desk
 
-    function deskOnly(c) {
+    // reads: why a page made for a phone still opens at the desk (it reads your PC's data); no Change button then.
+    function deskOnly(c, reads = null) {
       const p = c.page || { name: 'This page' };
+      if (reads) {
+        return h('div', { class: 'scroll pg-desk' },
+          h('div', { class: 'pg-desk-thumb' }, p.thumb ? h('img', { src: p.thumb, alt: '' }) : h('span', { class: 'pg-mini-blank big', text: p.icon || p.name.slice(0, 1) }), h('span', { class: 'pg-over' }, h('span', { class: 'pg-chip', text: 'At the desk for now' }))),
+          h('h3', { class: 'pg-desk-name', text: p.name }),
+          h('p', { class: 'muted', text: reads }));
+      }
       return h('div', { class: 'scroll pg-desk' },
         h('div', { class: 'pg-desk-thumb' }, p.thumb ? h('img', { src: p.thumb, alt: '' }) : h('span', { class: 'pg-mini-blank big', text: p.icon || p.name.slice(0, 1) }), h('span', { class: 'pg-over' }, h('span', { class: 'pg-chip', text: 'Built for the desk' }))),
         h('h3', { class: 'pg-desk-name', text: p.name }),
@@ -361,6 +375,10 @@
             if (r.tabId) go(`#/tab/${encodeURIComponent(r.tabId)}`);
           },
         });
+        // A page knows when its sheet appears, and could time a tap of yours onto Ask Claude:
+        // the button wakes only after a moment.
+        ask.disabled = true;
+        setTimeout(() => { ask.disabled = false; }, ASK_ARM_MS);
         return { el: h('div', { class: 'pg-ask' },
           h('h2', { class: 'sheet-title', text: `${c.page?.name || 'The page'} wants to ask Claude` }),
           h('p', { class: 'muted small pg-who', text: 'The page asked. Nothing has started.' }),

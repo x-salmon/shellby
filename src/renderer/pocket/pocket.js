@@ -575,6 +575,8 @@
     stream?.stop();
     S.view = null;
     S.feeds.clear();
+    // What pages held, kept for when the PC sleeps, goes with the pairing (pocket-pages.js).
+    try { window.caches?.delete('shellby-pocket-pages').catch(() => {}); } catch { /* no caches here */ }
     show(pairScreen(message));
   }
 

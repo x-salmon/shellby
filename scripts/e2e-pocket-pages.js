@@ -217,10 +217,6 @@ async function openPhone(url) {
     check((await by('print-queue'))?.rows?.who?.kind === 'page', 'signed as the page');
     const refused = await call('read', ['usage']);
     check(refused.json?.ok === false && /wasn't given "usage"/.test(refused.json?.error || ''), `a read it was not given is refused by rights.js (${refused.json?.error})`);
-    const tabsBefore = await ev('SB.state.tabs.size');
-    const asked = await call('ask', ['Summarise the failed prints', { mode: 'autonomous' }]);
-    check(asked.json?.ok === true && asked.json?.ask?.prompt === 'Summarise the failed prints' && asked.json?.ask?.mode === 'ask', 'an ask comes back for the phone’s sheet, never Autonomous');
-    check((await ev('SB.state.tabs.size')) === tabsBefore, 'and starts nothing by itself');
     check((await call('data.get', [], 'drive-space')).json?.ok === false, 'the desk-only page has no bridge from a phone');
 
     // ---- 4. the phone app, for real
@@ -253,7 +249,10 @@ async function openPhone(url) {
     check(await untilTrue(() => phone.ev("document.querySelector('.pg-ask .pg-quote')?.textContent === 'Why do these fail?'")), 'the page’s ask is the phone’s own sheet with the prompt in full');
     check(await phone.ev("[...document.querySelectorAll('.pg-modes .proj')].map(b => b.textContent + (b.getAttribute('aria-checked') === 'true' ? '*' : '')).join(',')") === 'Ask first,Plan only*', 'Ask first or Plan only, the page’s pick marked, no Autonomous');
     await savePng(phone.send, path.join(SHOTS, '3-phone-ask-sheet.png'));
-    await phone.ev("[...document.querySelectorAll('.pg-ask button')].find(b => b.textContent.trim() === 'Ask Claude').click(); true");
+    const askBtn = "[...document.querySelectorAll('.pg-ask button')].find(b => b.textContent.trim() === 'Ask Claude')";
+    check(await phone.ev(`${askBtn}.disabled`), 'Ask Claude is asleep as the sheet opens, so a tap the page timed lands on nothing');
+    check(await untilTrue(() => phone.ev(`!${askBtn}.disabled`), 3000), 'and wakes a moment later');
+    await phone.ev(`${askBtn}.click(); true`);
     // The mode it started in is the one History wrote at its first message: a page's conversation keeps
     // Ask first only until its first answer is in, then follows yours (sessions.js modeToStart), and the
     // fake CLI answers before the phone's next view goes out.
@@ -262,6 +261,11 @@ async function openPhone(url) {
     const askTab = () => firstSeen(/^Print queue: Why do these fail/);
     check(await untilTrue(() => askTab()?.fromPhone && askTab()?.mode === 'plan'), `Ask Claude starts a phone task in Plan (${askTab()?.mode})`);
     check(await untilTrue(() => phone.ev("location.hash.startsWith('#/tab/')")), 'and the phone opens the conversation');
+    // Over the API, the page asking again at once: refused (one ask a page every 30 s), and nothing starts.
+    const tabsBefore = await ev('SB.state.tabs.size');
+    const again = await call('ask', ['Summarise the failed prints', { mode: 'autonomous' }]);
+    check(again.json?.ok === false && /asked just now/.test(again.json?.error || ''), `a page asking again straight away is refused (${again.json?.error})`);
+    check((await ev('SB.state.tabs.size')) === tabsBefore, 'and starts nothing');
 
     // Built for the desk: its own screen, and Change with Claude as a task.
     await phone.ev("location.hash = '#/page/drive-space'; true");

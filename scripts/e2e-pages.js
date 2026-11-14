@@ -39,6 +39,13 @@ const ESCAPE = [
   "t('top', () => window.top.location.href);",
   "t('storage', () => window.localStorage.length);",
   "t('cookie', () => document.cookie);",
+  // WebRTC, in the page's window and in a child frame made every way guard.js knows of.
+  "const rtc = w => { if (!w || !(w.RTCPeerConnection || w.webkitRTCPeerConnection)) throw new Error('none'); };",
+  "t('rtc', () => rtc(window));",
+  "t('rtc-create', () => { const fr = document.createElement('ifr' + 'ame'); document.body.appendChild(fr); rtc(fr.contentWindow || window[0]); });",
+  "t('rtc-html', () => { const d = document.createElement('div'); document.body.appendChild(d); d.innerHTML = '<ifr' + 'ame></ifr' + 'ame>'; rtc(window[0]); });",
+  "t('rtc-adjacent', () => { document.body.insertAdjacentHTML('beforeend', '<ifr' + 'ame></ifr' + 'ame>'); rtc(window[0]); });",
+  "t('rtc-parsed', () => { const doc = new DOMParser().parseFromString('<ifr' + 'ame></ifr' + 'ame>', 'text/html'); document.body.append(document.importNode(doc.body.firstChild, true)); rtc(window[0]); });",
   "const f = window['fe' + 'tch'];",
   "f('https://example.com/').then(() => { out.fetch = 'reached'; }, () => { out.fetch = 'blocked'; })",
   '  .finally(() => shellby.data.set({ escape: out }));',
@@ -116,7 +123,7 @@ const ESCAPE = [
     await ev("SB.openPage('escape')");
     check(await until("shellby.pages.data('escape').then(d => !!d.values.escape?.fetch)"), 'the hostile page ran and reported');
     const esc = (await data('escape'))?.escape || {};
-    for (const k of ['parent', 'top', 'storage', 'cookie', 'fetch']) check(esc[k] === 'blocked', `a page can't reach ${k}`);
+    for (const k of ['parent', 'top', 'storage', 'cookie', 'fetch', 'rtc', 'rtc-create', 'rtc-html', 'rtc-adjacent', 'rtc-parsed']) check(esc[k] === 'blocked', `a page can't reach ${k} (${esc[k]})`);
     check(await until("[...document.querySelectorAll('#pgOpen .pg-card.warn')].some(c => /usage/.test(c.textContent))"), 'a call it was not given shows a refusal in its header');
     await shot('4-refused');
 

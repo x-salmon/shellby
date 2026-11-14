@@ -143,8 +143,11 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
     const targets = devices().filter(dv => dv.push);
     const keys = targets.length ? vapidKeys() : null;
     if (!keys) return false;
+    // Named as a page, with control and direction marks gone: a page called "Shellby"
+    // can't pass for Shellby's own prompt.
+    const plainText = v => String(v ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, ' ').trim();
     sendToPhones(targets, {
-      title: String(name || 'A page').slice(0, 120), body: String(body ? `${title}: ${body}` : title).slice(0, 600),
+      title: `Page · ${plainText(name) || 'untitled'}`.slice(0, 120), body: plainText(body ? `${title}: ${body}` : title).slice(0, 600),
       tag: `page-${id}`, url: `/#/page/${encodeURIComponent(id)}`, badge: waitingPrompts().length, at: now,
     }, { keys, ttl: 6 * 3600, urgency: 'normal' });
     return true;

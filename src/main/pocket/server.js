@@ -41,6 +41,7 @@ const PAGES = '/pages/';             // a page's files, by capability (pocket/pa
 const MAX_CLIENTS = 24;              // a few phones, each with a stale stream or two while iOS reconnects
 const MAX_PER_DEVICE = 4;
 const MAX_BODY = 16 * 1024;          // a task is 4,000 characters at most
+const PAGE_CALLS_PER_MINUTE = 240; // a page's bridge calls, apart from the phone's own actions
 const MAX_PAGE_BODY = PAGE_LIMITS.MESSAGE_BYTES; // a page's bridge call carries what the desk's bridge would
 const KEEPALIVE_MS = 15000;          // phones and proxies drop a quiet stream sooner than desktops do
 const PAIR_PER_HOUR = 30;            // the code takes five tries; this keeps a flood out of the log
@@ -373,7 +374,7 @@ class PocketServer extends EventEmitter {
    * only the app may frame. Never cached.
    */
   pageFile(req, res, route) {
-    if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { Allow: 'GET, HEAD' }).end(); return; }
+    if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { Allow: 'GET, HEAD', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; sandbox; frame-ancestors 'self'" }).end(); return; }
     let a;
     try { a = this.onPage?.(route); } catch { a = null; }
     if (!a) { plain(res, 404, 'Not found.'); return; }
@@ -481,8 +482,15 @@ class PocketServer extends EventEmitter {
     });
   }
 
+  /** A page's bridge calls have their own allowance: a busy page can't use up the phone's Allow and Deny. */
+  pageAllowed(device) {
+    const key = `${device.id}:pages`;
+    if (!this.actionLimits.has(key)) this.actionLimits.set(key, limiter(PAGE_CALLS_PER_MINUTE, 60 * 1000));
+    return this.actionLimits.get(key)(this.now());
+  }
+
   action(req, res, device, name) {
-    if (!this.allowed(device)) { json(res, 429, { ok: false, error: 'slow down' }); return; }
+    if (!(name === 'page-call' ? this.pageAllowed(device) : this.allowed(device))) { json(res, 429, { ok: false, error: 'slow down' }); return; }
     readJson(req, res, async msg => {
       let r;
       try { r = await this.onAction?.(device, name, msg && typeof msg === 'object' ? msg : {}); } catch { r = { ok: false, error: 'failed' }; }

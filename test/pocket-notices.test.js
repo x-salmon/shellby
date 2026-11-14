@@ -75,7 +75,7 @@ test('a page’s notify is a push named after the page, to every phone, and a ta
     assert.equal(n.notifyPage({ id: 'print-queue', name: 'Print queue', title: 'Print done', body: 'Benchy finished in 42 min' }), true);
     assert.equal(sent.length, 2, 'both phones with notifications on, whatever their rights');
     const p = sent[0].payload;
-    assert.equal(p.title, 'Print queue');
+    assert.equal(p.title, 'Page · Print queue', 'named as a page, so it never passes for Shellby');
     assert.equal(p.body, 'Print done: Benchy finished in 42 min');
     assert.equal(p.tag, 'page-print-queue');
     assert.equal(p.url, '/#/page/print-queue');

@@ -39,6 +39,12 @@ const PAGE_CSP_INERT = `${protocol.CSP_INERT}; frame-ancestors 'self'`;
 const PAGE_SIDE = path.join(__dirname, '..', 'pages', 'page-side');
 const DESK_ONLY = "Claude built this one for a wide screen, so it doesn't open here yet. Ask him to make it fit a phone and it opens here next time.";
 const NOT_SERVED = 'This page is off, or waiting for your OK at the desk.';
+// On a phone, guard.js is the only thing between a page and WebRTC (the desk also
+// turns WebRTC's UDP off for every window), and that hasn't been checked in Safari
+// or mobile Chrome. So a page that reads your PC's own data (usage, git, your
+// conversations) opens at the desk only, for now: it has the most worth sending out.
+const READS_AT_DESK = "This page reads things from your PC, so for now it opens only at the desk. Pages that keep to their own data open here.";
+const ASK_EVERY_MS = 30 * 1000; // one ask a page in this long, whatever its frame does
 
 const ok = extra => ({ ok: true, ...extra });
 const no = error => ({ ok: false, error });
@@ -62,17 +68,21 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
     'guard.js': fs.readFileSync(path.join(PAGE_SIDE, 'guard.js'), 'utf8'),
   };
   const notified = new Map(); // page id -> when its last push went
+  const asked = new Map();    // page id -> when its last ask went to a phone's sheet
 
   const on = () => !!d.pages?.enabled();
   const store = () => d.pages.store();
   const deviceOf = id => devices().find(dv => dv.id === id) || null;
+  // Forgotten between the server's check and here: no rights at all (not the default's full).
+  const fullRights = id => { const dv = deviceOf(id); return !!dv && rightsOf(dv) === 'full'; };
+  const readsPC = id => (store().access(id)?.read || []).length > 0;
 
   /** Whether a page opens on a phone: a real page, marked for the phone, on, and agreed. */
   function phoneReady(id) {
     if (!on() || !format.isId(id)) return false;
     const s = store();
     if (!s.known(id)) return false;
-    return s.manifest(id)?.phone === true && d.pages.servable(id);
+    return s.manifest(id)?.phone === true && d.pages.servable(id) && !readsPC(id);
   }
 
   /** One page for the shelf: the desk's summary, clipped, with its miniature and whether it opens here. */
@@ -83,7 +93,7 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
       id: p.id, name: clip(p.name, LIMITS.NAME), description: clip(p.description, LIMITS.DESCRIPTION), icon: clip(p.icon, 4),
       pinned: !!p.pinned, phone: !!p.phone, enabled: !!p.enabled, needsOk: !!p.needsOk, wants: p.wants || null, broken: !!p.broken,
       updatedAt: Number(p.updatedAt) || 0, lastChange: p.lastChange ? { text: clip(p.lastChange.text, 120), at: Number(p.lastChange.at) || 0 } : null,
-      ready: phoneReady(p.id),
+      ready: phoneReady(p.id), atDesk: !!p.phone && readsPC(p.id),
       thumb: t ? `data:image/jpeg;base64,${t.toString('base64')}` : null,
     };
   }
@@ -115,6 +125,7 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
     const man = s.manifest(id);
     const page = tile(s.summary(id));
     if (!man?.phone) return { ok: false, desk: true, error: DESK_ONLY, page };
+    if (readsPC(id)) return { ok: false, desk: true, reads: true, error: READS_AT_DESK, page };
     if (!d.pages.servable(id)) return { ok: false, error: NOT_SERVED, page };
     const { cap, expiresAt } = issue(device.id, id);
     // Its data too: the app keeps a snapshot of it (the service worker's cache) for when the PC is asleep.
@@ -127,7 +138,7 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
    */
   function serve(route) {
     const m = /^\/pages\/([^/]+)(?:\/(.*))?$/.exec(String(route || ''));
-    const gone = { status: 404, type: 'text/plain', body: 'Not found.', headers: {} };
+    const gone = { status: 404, type: 'text/plain', body: 'Not found.', headers: { ...protocol.HEADERS, 'Content-Security-Policy': PAGE_CSP_INERT } };
     if (!m || !CAP_RE.test(m[1])) return gone;
     const cap = m[1];
     const c = caps.get(cap);
@@ -148,9 +159,11 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
     if (!format.isId(id) || !phoneReady(id)) return no("That page isn't open on a phone.");
     const name = clip(method, 20);
     if (!pageRights.METHODS.includes(name)) return no(`shellby has no "${name}".`);
-    if (rightsOf(deviceOf(device.id)) !== 'full' && !READ_METHODS.includes(name)) return no(READ_ONLY_SAYS);
+    if (!fullRights(device.id) && !READ_METHODS.includes(name)) return no(READ_ONLY_SAYS);
+    if (name === 'ask' && now() - (asked.get(id) || 0) < ASK_EVERY_MS) return no('This page asked just now. It can ask again in a moment.');
     const list = Array.isArray(args) ? args.slice(0, 10) : [];
     const r = await d.pages.call(id, name, list, 'phone');
+    if (r.ok && r.ask) asked.set(id, now());
     return r.ok ? ok({ value: r.value, ...(r.ask ? { ask: r.ask } : {}) }) : no(r.error || 'Refused.');
   }
 
@@ -160,6 +173,8 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
     if (!on()) return no('Pages are off on your PC.');
     const s = store();
     if (!format.isId(id) || !s.known(id)) return no('No such page.');
+    // Its data is the page's to show once you've agreed to it at the desk: not one that's off or waiting.
+    if (!d.pages.servable(id)) return no(NOT_SERVED);
     const sum = s.summary(id);
     if (!sum) return no('No such page.');
     const r = s.read(id);
@@ -190,7 +205,7 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
     return once('page-ask', body, ({ id, prompt, mode }) => {
       if (!on()) return no('Pages are off on your PC.');
       if (!format.isId(id) || !phoneReady(id)) return no("That page isn't open on a phone.");
-      if (rightsOf(deviceOf(device.id)) !== 'full') return no(READ_ONLY_SAYS);
+      if (!fullRights(device.id)) return no(READ_ONLY_SAYS);
       const s = store();
       // The same decision the desk makes for a page's ask: it has that access, and the mode is Ask first or Plan.
       const verdict = pageRights.decide('ask', [prompt, { mode }], { access: s.access(id), draft: false, enabled: true });
@@ -203,7 +218,7 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
     return once('page-change', body, ({ id }) => {
       if (!on()) return no('Pages are off on your PC.');
       if (!format.isId(id) || !store().known(id)) return no('No such page.');
-      if (rightsOf(deviceOf(device.id)) !== 'full') return no(READ_ONLY_SAYS);
+      if (!fullRights(device.id)) return no(READ_ONLY_SAYS);
       return startFor(id, () => d.pages.change(id, {}, { show: false }));
     });
   }
@@ -219,7 +234,8 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
     if (!srv) return;
     if (ev.id) {
       const out = { id: ev.id, kind: ev.kind };
-      if (ev.kind === 'data' && ev.change) out.change = { keys: ev.change.keys, values: ev.change.values, who: ev.change.who, text: ev.change.text };
+      // A page's data goes to phones only once you've agreed to the page (not one that's off or waiting).
+      if (ev.kind === 'data' && ev.change && d.pages.servable(ev.id)) out.change = { keys: ev.change.keys, values: ev.change.values, who: ev.change.who, text: ev.change.text };
       if (ev.kind === 'files') out.version = ev.version;
       srv.pageEvent?.(ev.id, out);
     }
@@ -243,4 +259,4 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
   return { actions, serve, stop, phoneReady, caps: () => caps.size };
 }
 
-module.exports = { createPocketPages, CAP_TTL_MS, CAPS_PER_DEVICE, READ_METHODS, PAGE_CSP, PAGE_CSP_INERT, DESK_ONLY };
+module.exports = { createPocketPages, CAP_TTL_MS, CAPS_PER_DEVICE, READ_METHODS, PAGE_CSP, PAGE_CSP_INERT, DESK_ONLY, READS_AT_DESK, ASK_EVERY_MS };

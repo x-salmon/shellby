@@ -365,3 +365,13 @@ test('a share that arrives before the service worker opens the app on a new task
     assert.equal((await request(port, { method: 'POST', url: '/share/../pocket.js' })).status, 405);
   } finally { server.stop(); }
 });
+
+test("a page's bridge calls have their own allowance: a busy page can't use up the phone's Allow and Deny", () => {
+  const SRC = path.join(__dirname, '..', 'src');
+  const server = new PocketServer({ srcDir: SRC, assetsDir: path.join(__dirname, '..', 'assets'), now: () => 1000 });
+  const device = { id: 'phone-1' };
+  let pageCalls = 0;
+  while (server.pageAllowed(device)) pageCalls++;
+  assert.ok(pageCalls > 0 && pageCalls < 1000, `a page's calls stop at a limit (${pageCalls})`);
+  assert.equal(server.allowed(device), true, "and the phone's own actions still go");
+});

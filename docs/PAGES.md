@@ -85,6 +85,10 @@ pages first, and your pinned pages are a row on the Beach too.
 - **When your PC is asleep**, a page you've opened on the phone shows how it
   last looked, dated and read-only. Nothing runs from that copy.
 - **A read-only phone** can open pages and read their data, and nothing else.
+- **A page that reads from your PC** (your usage, git, your conversations)
+  opens at the desk only, for now. On a phone, one of the sandbox's layers is
+  missing until it's been checked on real phones, and these pages have the
+  most worth keeping in.
 
 ## Limits
 
