@@ -157,7 +157,8 @@ body:not([data-view="chat"]) .subbar { display: none; }
   .ctx-chip .meter-label, .ctx-chip .meter-track { display: none; } /* its % says it */
   .model-ver, .model-tag:not(.local) { display: none; } /* bars and "Opus": the tooltip names the version and the default */
   .usage { gap: 7px; }
-  .usage .meter-track { width: 24px; }
+  .usage .meter-track { width: 22px; }
+  .usage-when { display: none; } /* the menu and the tooltip say it */
 }
 .branch-chip { margin-left: -8px; color: var(--glass); }
 .branch-chip:hover { color: var(--glass); }
@@ -187,10 +188,16 @@ body:not([data-view="chat"]) .subbar { display: none; }
 .usage { margin-left: auto; display: flex; gap: 10px; padding: 3px 5px; border: 0; border-radius: var(--r-sm); background: none; color: inherit; cursor: pointer; }
 .usage:hover, .usage:focus-visible, .usage[aria-expanded="true"] { background: var(--reef-2); outline: none; }
 .meter { display: flex; align-items: center; gap: 5px; color: var(--sand-faint); font: 600 var(--fs-10-5) var(--font-mono); }
-.meter-track { width: 44px; height: 5px; border-radius: 3px; background: var(--reef-2); overflow: hidden; }
+.meter-track { width: 36px; height: 5px; border-radius: 3px; background: var(--reef-2); overflow: hidden; }
 .meter-fill { display: block; height: 100%; width: 100%; background: var(--glass); border-radius: inherit; transform: scaleX(0); transform-origin: left; transition: transform .6s var(--ease-out); }
 .meter.warn .meter-fill { background: var(--amber); }
 .meter.hot .meter-fill { background: var(--danger); }
+/* The number beside each bar, and the time beside both (meter-logic.js): read without hovering. */
+.meter-num { min-width: 3ch; color: var(--sand-dim); font: 600 var(--fs-11) var(--font-mono); font-variant-numeric: tabular-nums; }
+.meter.warn .meter-num { color: var(--amber); }
+.meter.hot .meter-num { color: var(--danger); }
+.usage-when { align-self: center; color: var(--sand-faint); font-size: var(--fs-11-5); white-space: nowrap; }
+.usage-when.full { color: var(--amber); }
 /* Another Claude account's plan (a computer over ssh): named, and outlined so it never reads as yours. */
 .usage-who { display: flex; align-items: center; margin-right: -5px; color: var(--sand-dim); }
 .usage-who svg { width: 11px; height: 11px; }

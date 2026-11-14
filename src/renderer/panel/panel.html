@@ -142,8 +142,9 @@
     </button>
     <button type="button" class="usage" id="usage" aria-haspopup="menu" aria-label="Usage limits: see what used them" hidden>
       <span class="usage-who" id="usageWho" hidden><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="4" r="2.2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1.8 11c.5-2.3 2.2-3.5 4.2-3.5s3.7 1.2 4.2 3.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
-      <span class="meter" id="meter5h"><span class="meter-label">5h</span><span class="meter-track"><span class="meter-fill"></span></span></span>
-      <span class="meter" id="meter7d"><span class="meter-label">7d</span><span class="meter-track"><span class="meter-fill"></span></span></span>
+      <span class="meter" id="meter5h"><span class="meter-label">5h</span><span class="meter-track"><span class="meter-fill"></span></span><span class="meter-num"></span></span>
+      <span class="meter" id="meter7d"><span class="meter-label">7d</span><span class="meter-track"><span class="meter-fill"></span></span><span class="meter-num"></span></span>
+      <span class="usage-when" id="usageWhen" hidden></span>
     </button>
     <button type="button" class="icon-btn pop-btn" id="trailBtn" title="File manager: the Trail and All files (Ctrl+Shift+E · Ctrl+Shift+F)" aria-label="File manager" aria-pressed="false" aria-controls="trail" aria-keyshortcuts="Control+Shift+E Control+Shift+F">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 4.2c0-.7.5-1.2 1.2-1.2h3l1.4 1.5H13c.7 0 1.2.5 1.2 1.2v6.1c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
@@ -3072,6 +3073,7 @@
 <script src="tab-chips.js"></script>
 <script src="tab-git.js"></script>
 <script src="ship-it.js"></script>
+<script src="meter-logic.js"></script>
 <script src="tab-meters.js"></script>
 <script src="clash-text.js"></script>
 <script src="clashes.js"></script>
