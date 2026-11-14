@@ -18,6 +18,7 @@ const os = require('os');
 const { safeStorage } = require('electron');
 const peers = require('../hub/peers');
 const { PeerLink, pair } = require('../hub/link');
+const { ConvoLink, TAB_RE } = require('../hub/convo');
 const { roster, summaryOf } = require('../hub/roster');
 const { hostReader } = require('../hub/host');
 const { phoneHost, line } = require('../pocket/view');
@@ -26,6 +27,13 @@ const PUSH_MS = 1000;            // the panel hears about changes this often at 
 const SNAPSHOT_EVERY_MS = 5 * 60 * 1000;
 const THIS_ID = 'this';
 const MAX_SNAPSHOT_PROJECTS = 20;
+const REPLY_MODES = ['ask', 'smart', 'acceptEdits', 'plan']; // as tasks from the hub: never Autonomous
+
+/** Why a conversation there can't be replied to from the hub, or ''. (pcs-talk.js shows the same.) */
+function replyBlocked(tab) {
+  if (REPLY_MODES.includes(tab?.mode)) return '';
+  return tab?.mode === 'autonomous' ? "It's on Autonomous there, which the hub never sends in. Reply at that PC." : "That PC didn't say how this conversation may work. Reply at that PC.";
+}
 
 /**
  * What a PC said about itself, cut down to what the roster shows while it's
@@ -105,13 +113,18 @@ function wireHub(d) {
   }
 
   function stopHub() {
+    closeConvo();
     for (const link of links.values()) link.stop();
     links.clear();
   }
 
   // ---- what the panel shows
 
-  function hubView() {
+  /**
+   * focus: the PC on screen. A plan in full (up to 20 KB each) goes only with its
+   * prompts; the others say there's a plan, which is all their row shows.
+   */
+  function hubView(focus = null) {
     const now = Date.now();
     const seen = snapshots();
     /** @type {any} this PC's phone view (pocket/view.js phoneView) */
@@ -126,7 +139,8 @@ function wireHub(d) {
       const view = link?.view || (last ? { host: last.host, projects: last.projects, pc: last.pc } : null);
       entries.push({ id: p.id, name: p.name, kind: 'pc', state: link?.state || 'connecting', error: link?.error || null, seenAt: link?.seenAt || last?.seenAt || null, view });
     }
-    const rows = roster(entries, now);
+    const rows = roster(entries, now).map(r => (r.id === focus || !r.prompts.some(p => p.planText) ? r
+      : { ...r, prompts: r.prompts.map(p => ({ ...p, planText: '' })) }));
     return { rows, summary: summaryOf(rows), usage: own?.usage || null };
   }
 
@@ -172,6 +186,7 @@ function wireHub(d) {
     // asleep can't hear it: it says so, and its own Settings can forget the hub later.
     const forgot = link ? await link.act('forget', {}) : { ok: false };
     link?.stop();
+    if (convo?.pcId === id) closeConvo();
     links.delete(id);
     tokens.delete(id);
     save(peers.remove(list(), id));
@@ -205,11 +220,74 @@ function wireHub(d) {
     return { ok: true };
   }
 
+  // ---- acting on another PC's conversations
+
+  const onlineLink = id => {
+    const link = links.get(id);
+    if (!link) return { error: 'That PC has gone.' };
+    if (link.state !== 'online') return { error: link.error || "That PC isn't reachable right now." };
+    return { link };
+  };
+
+  /** Allow, always allow or deny a prompt there, through that PC's own answer rules (pocket answer). */
+  async function answerOn(id, { tabId, requestId, decision, answers, read }) {
+    const { link, error } = onlineLink(id);
+    if (!link) return { ok: false, error };
+    const r = await link.act('answer', { tabId, requestId, decision, ...(answers ? { answers } : {}), ...(read ? { read: true } : {}) });
+    if (r?.ok) push();
+    return r;
+  }
+
+  /**
+   * A message into a conversation there (pocket reply), in the mode it's in now:
+   * a reply from the hub never changes how it may work. One in a mode the hub never
+   * sends in (Autonomous), or that didn't say its mode, is replied to at that PC.
+   */
+  async function replyOn(id, { tabId, text }) {
+    const { link, error } = onlineLink(id);
+    if (!link) return { ok: false, error };
+    const tab = Array.isArray(link.view?.tabs) ? link.view.tabs.find(t => t?.id === tabId) : null;
+    if (!tab) return { ok: false, error: 'That conversation has closed.' };
+    if (!REPLY_MODES.includes(tab.mode)) return { ok: false, error: replyBlocked(tab) };
+    return link.act('reply', { tabId, text, mode: tab.mode });
+  }
+
+  /** @type {{ pcId: string, link: InstanceType<typeof ConvoLink> } | null} the one conversation open on the hub */
+  let convo = null;
+
+  function closeConvo() {
+    convo?.link.stop();
+    convo = null;
+    return { ok: true };
+  }
+
+  /** Watch one conversation there: its transcript, live. One at a time; opening another closes the last. */
+  function openConvo(id, tabId) {
+    const peer = list().find(p => p.id === id);
+    if (!peer) return { ok: false, error: 'That PC has gone.' };
+    if (!TAB_RE.test(tabId)) return { ok: false, error: 'That conversation has closed.' };
+    const was = convo;
+    if (was && was.pcId === id && was.link.tabId === tabId) return { ok: true };
+    closeConvo();
+    const link = new ConvoLink({ origin: peer.origin, tabId, token: () => tokenOf(peer) });
+    link.on('change', push);
+    convo = { pcId: id, link };
+    link.start();
+    return { ok: true };
+  }
+
+  /** The open conversation, or just { same: true } when the panel already has this version of it. */
+  function convoView(known = null) {
+    if (!convo) return null;
+    if (known === convo.link.version) return { pcId: convo.pcId, tabId: convo.link.tabId, version: known, same: true };
+    return { pcId: convo.pcId, ...convo.link.snapshot() };
+  }
+
   // This PC's own facts (Windows, Shellby, memory, disk, agents), in the view it serves its phones and other
   // hubs (wiring/pocket.js), so a hub on another PC can show this one in its roster too.
   const hostNow = hostReader({ claudeInstalled: () => !!d.claudeStatus?.installed });
 
-  return { hostNow, hub: { startHub, stopHub, hubView, addPc, removePc, renamePc, startOn, retryAll, THIS_ID } };
+  return { hostNow, hub: { startHub, stopHub, hubView, addPc, removePc, renamePc, startOn, retryAll, answerOn, replyOn, openConvo, closeConvo, convoView, THIS_ID } };
 }
 
 module.exports = { wireHub };

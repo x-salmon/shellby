@@ -656,7 +656,7 @@ contextBridge.exposeInMainWorld('shellby', {
   addToStreamDeck: invoke('deck:add'),
   onDeck: on('deck'),
   onDeckPress: on('deck:press'), // { what: 'home' | 'review', tabId? }: a key that needs the panel
-  getPocket: invoke('pocket:get'), setPocket: invoke('pocket:set'), newPocketCode: invoke('pocket:pair'), forgetPocketDevice: invoke('pocket:forget'), testPocketPush: invoke('pocket:test'), onPocket: on('pocket'), hubView: invoke('hub:view'), hubAdd: invoke('hub:add'), hubRemove: invoke('hub:remove'), hubRename: invoke('hub:rename'), hubTask: invoke('hub:task'), hubRetry: invoke('hub:retry'), onHubChanged: on('hub:changed'), // Shellby on your phone, and the hub for your other PCs, over your tailnet (wiring/pocket.js, wiring/hub.js)
+  getPocket: invoke('pocket:get'), setPocket: invoke('pocket:set'), newPocketCode: invoke('pocket:pair'), forgetPocketDevice: invoke('pocket:forget'), testPocketPush: invoke('pocket:test'), onPocket: on('pocket'), hubView: invoke('hub:view'), hubAdd: invoke('hub:add'), hubRemove: invoke('hub:remove'), hubRename: invoke('hub:rename'), hubTask: invoke('hub:task'), hubRetry: invoke('hub:retry'), hubAnswer: invoke('hub:answer'), hubReply: invoke('hub:reply'), hubOpen: invoke('hub:open'), hubClose: invoke('hub:close'), hubConvo: invoke('hub:convo'), onHubChanged: on('hub:changed'), // Shellby on your phone, and the hub for your other PCs, over your tailnet (wiring/pocket.js, wiring/hub.js)
 
   // his mood on the desk lighting
   getRgb: invoke('rgb:get'),

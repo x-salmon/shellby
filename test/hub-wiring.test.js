@@ -133,3 +133,77 @@ test("the panel's settings never carry the PCs' sealed tokens", () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'main', 'wiring', 'settings.js'), 'utf8');
   assert.match(src, /hubPeers: _hp, hubSeen: _hs/);
 });
+
+// ---- acting on another PC's conversations
+
+async function pairedWith(view) {
+  globalThis.fetch = fakeFetch(view);
+  const s = setup();
+  const { id } = await s.hub.addPc({ address: ORIGIN, code: 'GOODCODE', name: 'Laptop' });
+  await new Promise(r => setTimeout(r, 30));
+  return { ...s, id };
+}
+
+test('an answer goes to that PC as its phone would send it', async () => {
+  const { hub, id } = await pairedWith({ pc: 'laptop', tabs: [], prompts: [], projects: [] });
+  const r = await hub.answerOn(id, { tabId: 'a', requestId: 'r1', decision: 'always' });
+  assert.equal(r.ok, true);
+  const sent = calls.find(c => c.url === `${ORIGIN}/pocket/v1/answer`);
+  assert.deepEqual(JSON.parse(sent.init.body), { tabId: 'a', requestId: 'r1', decision: 'always' });
+  await hub.answerOn(id, { tabId: 'a', requestId: 'r2', decision: 'allow', read: true, answers: { 'Which?': 'A' } });
+  assert.deepEqual(JSON.parse(calls.filter(c => c.url.endsWith('/answer'))[1].init.body), { tabId: 'a', requestId: 'r2', decision: 'allow', answers: { 'Which?': 'A' }, read: true });
+  hub.stopHub();
+});
+
+test("a reply keeps the conversation's mode; one on Autonomous, or that didn't say, is replied to at that PC", async () => {
+  const { hub, id } = await pairedWith({ pc: 'laptop', tabs: [{ id: 'a', mode: 'acceptEdits' }, { id: 'b', mode: 'autonomous' }, { id: 'c' }], prompts: [], projects: [] });
+  await hub.replyOn(id, { tabId: 'a', text: 'Also the docs' });
+  assert.match((await hub.replyOn(id, { tabId: 'b', text: 'Carry on' })).error, /Autonomous.*Reply at that PC/);
+  assert.match((await hub.replyOn(id, { tabId: 'c', text: 'Carry on' })).error, /didn't say/);
+  const bodies = calls.filter(c => c.url === `${ORIGIN}/pocket/v1/reply`).map(c => JSON.parse(c.init.body));
+  assert.deepEqual(bodies, [{ tabId: 'a', text: 'Also the docs', mode: 'acceptEdits' }], 'nothing else was sent, so its mode there is untouched');
+  assert.match((await hub.replyOn(id, { tabId: 'gone', text: 'x' })).error, /closed/);
+  hub.stopHub();
+});
+
+test("an unreachable PC can't be answered or replied to, and says why", async () => {
+  const { hub } = setup();
+  assert.match((await hub.answerOn('p-000000000000', { tabId: 'a', requestId: 'r', decision: 'allow' })).error, /gone/);
+  assert.match((await hub.replyOn('p-000000000000', { tabId: 'a', text: 'x' })).error, /gone/);
+});
+
+test("one conversation there opens live, and opening another closes the first", async () => {
+  const { hub, id } = await pairedWith({ pc: 'laptop', tabs: [{ id: 'a' }], prompts: [], projects: [] });
+  assert.equal(hub.openConvo(id, 'a').ok, true);
+  await new Promise(r => setTimeout(r, 20));
+  assert.ok(calls.some(c => c.url === `${ORIGIN}/pocket/v1/events?tab=a`));
+  assert.equal(hub.convoView().tabId, 'a');
+  assert.equal(hub.convoView().pcId, id);
+  hub.openConvo(id, 'b');
+  assert.equal(hub.convoView().tabId, 'b');
+  assert.equal(hub.openConvo(id, 'x&y').ok, false);
+  hub.closeConvo();
+  assert.equal(hub.convoView(), null);
+  hub.stopHub();
+});
+
+test('the open conversation comes again only when it has changed', async () => {
+  const { hub, id } = await pairedWith({ pc: 'laptop', tabs: [{ id: 'a' }], prompts: [], projects: [] });
+  hub.openConvo(id, 'a');
+  const first = hub.convoView();
+  assert.ok(Number.isInteger(first.version));
+  assert.deepEqual(hub.convoView(first.version), { pcId: id, tabId: 'a', version: first.version, same: true });
+  assert.ok(Array.isArray(hub.convoView(first.version - 1).items), 'an older version gets the whole snapshot');
+  hub.stopHub();
+});
+
+test("a plan's whole text goes only with the PC on screen", async () => {
+  const plan = { tabId: 'a', requestId: 'r1', toolName: 'ExitPlanMode', plan: 'A plan', planText: 'Step 1' };
+  const { hub, id } = await pairedWith({ pc: 'laptop', tabs: [{ id: 'a' }], prompts: [plan], projects: [] });
+  await new Promise(r => setTimeout(r, 1100));
+  const row = v => v.rows.find(r => r.id === id);
+  assert.equal(row(hub.hubView(id)).prompts[0].planText, 'Step 1');
+  assert.equal(row(hub.hubView('this')).prompts[0].planText, '');
+  assert.equal(row(hub.hubView('this')).prompts[0].plan, 'A plan', 'it still says there is one');
+  hub.stopHub();
+});

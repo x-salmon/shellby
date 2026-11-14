@@ -9,7 +9,8 @@
    (pcs.css, a container query). */
 'use strict';
 (function () {
-  const { h, api, state, $ } = SB;
+  const { h, state, $ } = SB;
+  const api = SB.hubApi; // pcs-talk.js
   const MODES = [['ask', 'Ask first'], ['smart', 'Smart'], ['acceptEdits', 'Auto-edit'], ['plan', 'Plan only']];
   const STANDING = { asking: 'asks you', review: 'ready to review', finished: 'finished', working: 'working', quiet: 'quiet' };
 
@@ -19,6 +20,14 @@
   let tasking = false;    // the Start a task form is open for the selected PC
   let removing = null;    // the PC whose Remove is waiting for a second press
   let renaming = null;    // the PC whose name is being changed
+  /** @type {{ pcId: string, tabId: string, ready?: boolean } | null} a conversation there, open on the hub (pcs-talk.js) */
+  let opened = null;
+  /** @type {any} */
+  let convo = null;       // its transcript, as hub:convo last said
+  /** @type {any} */
+  let pane = null;        // its pane, kept while it's open
+  // The forms, kept across redraws so what's typed in them stays (the view redraws every second).
+  const forms = new Map();
 
   const rowOf = id => view?.rows.find(r => r.id === id) || null;
 
@@ -82,10 +91,14 @@
     return h('section', { class: 'pcs-card' },
       h('h3', { text: `On ${r.name} now` }),
       !r.live ? h('p', { class: 'muted small', text: r.error || "It isn't reachable, so what it's doing isn't known." })
-        : live.length ? h('ul', { class: 'pcs-convos' }, ...live.map(t => h('li', {},
-          h('span', { class: `pcs-dot ${t.busy ? 'on' : ''}`, 'aria-hidden': 'true' }),
-          h('span', { text: t.title }),
-          h('span', { class: t.standing === 'asking' ? 'pcs-ask' : 'who', text: [t.agent, STANDING[t.standing] || t.standing].filter(Boolean).join(', ') }))))
+        : live.length ? h('ul', { class: 'pcs-convos' }, ...live.map(t => h('li', {}, h('button', {
+          type: 'button', class: 'pcs-convo-btn', dataset: { keep: `convo:${t.id}` },
+          title: r.kind === 'this' ? 'Open it in Chat' : `Open it here, live from ${r.name}`,
+          onclick: () => openConvo(r, t),
+        },
+        h('span', { class: `pcs-dot ${t.busy ? 'on' : ''}`, 'aria-hidden': 'true' }),
+        h('span', { text: t.title }),
+        h('span', { class: t.standing === 'asking' ? 'pcs-ask' : 'who', text: [t.agent, STANDING[t.standing] || t.standing].filter(Boolean).join(', ') })))))
           : h('p', { class: 'muted small', text: 'Nothing on the go there.' }));
   }
 
@@ -120,7 +133,13 @@
   }
 
   function taskForm(r) {
-    const text = h('textarea', { class: 'field area', placeholder: `What should it do on ${r.name}?`, maxlength: '4000', 'aria-label': 'The task' });
+    const key = `task:${r.id}`;
+    if (!forms.has(key)) forms.set(key, makeTaskForm(r));
+    return forms.get(key);
+  }
+
+  function makeTaskForm(r) {
+    const text = h('textarea', { class: 'field area', dataset: { keep: 'task' }, placeholder: `What should it do on ${r.name}?`, maxlength: '4000', 'aria-label': 'The task' });
     const project = h('select', { class: 'field slim', 'aria-label': 'Which project' }, ...r.projects.map(p => h('option', { value: p.key, text: p.name })));
     const mode = h('select', { class: 'field slim', 'aria-label': 'How it may work' }, ...MODES.map(([v, label]) => h('option', { value: v, text: label })));
     const send = h('button', { type: 'submit', class: 'btn primary slim-btn', text: `Start on ${r.name}` });
@@ -132,6 +151,7 @@
       send.disabled = false;
       if (!res?.ok) { SB.toast(res?.error || res?.reply || "Couldn't start it there."); return; }
       tasking = false;
+      forms.delete(`task:${r.id}`);
       SB.toast(res.held ? `Queued on ${r.name}: ${res.atText || 'after the reset'}` : `Started on ${r.name}`);
       load();
     } }, text, h('div', { class: 'row' }, project, mode), h('div', { class: 'row' }, send));
@@ -140,13 +160,20 @@
   }
 
   function renameForm(r) {
-    const input = h('input', { class: 'field slim', value: r.name, maxlength: '40', 'aria-label': `New name for ${r.name}` });
+    const key = `rename:${r.id}`;
+    if (!forms.has(key)) forms.set(key, makeRenameForm(r));
+    return forms.get(key);
+  }
+
+  function makeRenameForm(r) {
+    const input = h('input', { class: 'field slim', dataset: { keep: 'rename' }, value: r.name, maxlength: '40', 'aria-label': `New name for ${r.name}` });
     requestAnimationFrame(() => { input.focus(); input.select(); });
     return h('form', { class: 'pcs-task', onsubmit: async e => {
       e.preventDefault();
       if (!input.value.trim()) return;
       await api.hubRename(r.id, input.value.trim());
       renaming = null;
+      forms.delete(`rename:${r.id}`);
       load();
     } }, h('div', { class: 'row' }, input, h('button', { type: 'submit', class: 'btn slim-btn', text: 'Save' })));
   }
@@ -163,9 +190,44 @@
   }
 
   function select(id) {
-    if (selected !== id) { tasking = false; removing = null; renaming = null; }
+    if (selected !== id) { tasking = false; removing = null; renaming = null; forms.clear(); closeConvo(); }
     selected = id;
     render();
+  }
+
+  // ---- a conversation there, open on the hub
+
+  function openConvo(r, t) {
+    if (r.kind === 'this') { SB.setView('chat'); SB.activate(t.id); return; }
+    /** @type {{ pcId: string, tabId: string, ready?: boolean }} */
+    const mine = { pcId: r.id, tabId: t.id };
+    opened = mine;
+    convo = null;
+    pane = SB.pcsTalk.makePane({ onBack: () => { const back = opened?.tabId; closeConvo(); render(); if (back) SB.focusKept($('pcsDetail'), `convo:${back}`); } });
+    api.hubOpen(r.id, t.id).then(res => {
+      if (opened !== mine) return; // another was opened meanwhile: this answer is about one that's gone
+      if (!res?.ok) { SB.toast(res?.error || "Couldn't open it there."); closeConvo(); } else mine.ready = true;
+      load();
+    });
+    render();
+    requestAnimationFrame(() => pane?.focus());
+  }
+
+  function closeConvo() {
+    if (!opened) return;
+    opened = null;
+    convo = null;
+    pane = null;
+    api.hubClose();
+  }
+
+  function detailOf(r) {
+    const o = opened;
+    if (o && o.pcId === r.id && pane) {
+      pane.update(r, r.tabs.find(t => t.id === o.tabId) || null, convo, load);
+      return [pane.el];
+    }
+    return [SB.pcsTalk.promptsCard(r, load), convosCard(r), factsCard(r), actionsCard(r)].filter(Boolean);
   }
 
   function render() {
@@ -176,12 +238,23 @@
     SB.keepFocus($('pcsView'), () => {
       root.replaceChildren(table());
       const r = rowOf(selected);
-      $('pcsDetail').replaceChildren(...(r ? [convosCard(r), factsCard(r), actionsCard(r)] : []));
+      const detail = $('pcsDetail');
+      const next = r ? detailOf(r) : [];
+      // What's the same stays put (the open conversation, a plan being read), keeping focus, scroll and what's typed.
+      SB.pcsTalk.place(detail, next);
+      detail.classList.toggle('talking', !!(opened && pane && r?.id === opened.pcId));
     });
   }
 
   async function load() {
-    view = await api.hubView().catch(() => null);
+    const o = opened;
+    const [v, c] = await Promise.all([api.hubView(selected).catch(() => null), o ? api.hubConvo(convo?.version ?? null).catch(() => null) : null]);
+    view = v;
+    if (o && o === opened) {
+      // Unchanged since the last ask: keep what's drawn. Gone on main's side (the hub stopped): back to the PC.
+      if (c?.same && convo) { /* kept */ } else if (c && c.pcId === o.pcId && c.tabId === o.tabId) convo = c;
+      else if (!c && o.ready) { opened = null; convo = null; pane = null; }
+    }
     if (state.view === 'pcs') render();
   }
 
@@ -212,12 +285,14 @@
     load();
   });
 
-  api.onHubChanged(() => { if (state.view === 'pcs') load(); });
+  SB.api.onHubChanged(() => { if (state.view === 'pcs') load(); });
   // From Settings, Alerts, On your phone: how another PC joins (html/settings-alerts.html).
   $('pocketHubLink')?.addEventListener('click', () => SB.setView('pcs'));
 
   SB.views.pcs = {
     // Opening the screen tries the PCs that weren't reachable at once, rather than at their next retry.
     render: () => { api.hubRetry(); load(); },
+    // Away from the screen, nothing there is watched live.
+    leave: () => closeConvo(),
   };
 })();

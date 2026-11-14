@@ -1,4 +1,4 @@
-// ci: Your PCs, the hub: this PC's row with its own facts, the narrow and wide roster, adding a PC refused for a non-Tailscale address
+// ci: Your PCs, the hub: this PC's row with its own facts, the narrow and wide roster, adding a PC refused for a non-Tailscale address, answering another PC's prompts and replying in its conversation
 // End-to-end check of the hub's screen (Your PCs, pcs.js), against the dev app
 // over CDP with the fake CLI. Pairing with another PC needs a second PC on a
 // tailnet (a real .ts.net certificate), so that's covered by the unit tests
@@ -7,6 +7,8 @@
 //   2. the row has this PC's facts: its Windows, Shellby's version, its agents
 //   3. narrow, the roster keeps its key columns; wide, it shows them all
 //   4. adding a PC with an address that isn't a Tailscale one is refused, saying why
+//   5. another PC's prompts (Allow, a plan read before it's approved) and one of its
+//      conversations open on the hub, with a reply that survives redraws
 //   node scripts/e2e-hub.js [screenshotDir]
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -88,6 +90,69 @@ async function connect(url) {
     check(await until("!document.getElementById('pcsAddError').hidden && /Tailscale address/.test(document.getElementById('pcsAddError').textContent)", 4000), 'an address that isn\'t a Tailscale one is refused, saying why');
     await panel.shot('3-add-refused');
     check(await ev("document.querySelectorAll('#pcsRoster tbody tr').length === 1"), 'and nothing was added');
+    await ev("document.getElementById('pcsAddCancel').click()");
+
+    // ---- 5. another PC's prompts and conversation, the panel's half: main's half
+    // (hub/convo.js, wiring/hub.js) is the unit tests'. The hub's calls are
+    // stood in for in the page, with a PC that has a prompt, a plan and a conversation.
+    const stubbed = await ev(`(() => {
+      const api = SB.hubApi;
+      const real = api.hubView;
+      const calls = window.__hubCalls = [];
+      const remote = { id: 'p-fake', name: 'Travel laptop', kind: 'pc', state: 'online', live: true, error: null, seenAt: Date.now(),
+        working: 1, waiting: 2, cpu: 20, gpu: null, hot: null, ram: null, diskFreeGb: 40, power: 'battery 64%', os: 'Windows 11', version: '0.98.1',
+        agents: [{ id: 'gemini', name: 'Gemini CLI' }], projects: [{ key: 'C:\\\\code\\\\app', name: 'app' }], moreProjects: 0, limits: null,
+        tabs: [{ id: 't1', title: 'Write the migration', folder: 'app', standing: 'asking', busy: true, pending: 1, agent: 'Gemini CLI', mode: 'acceptEdits', canReply: true }],
+        prompts: [
+          { tabId: 't1', requestId: 'r1', title: 'Write the migration', toolName: 'Bash', label: 'Run a command', detail: 'npm run migrate', ask: 'Run the migration?', warnings: [], helper: '', deskOnly: '', always: 'Always allow Bash(npm run migrate)', questions: [], plan: '', planText: '' },
+          { tabId: 't1', requestId: 'r2', title: 'Write the migration', toolName: 'ExitPlanMode', label: 'A plan', detail: '', ask: '', warnings: [], helper: '', deskOnly: '', always: '', questions: [], plan: 'A plan', planText: Array.from({ length: 80 }, (_, i) => 'Step ' + (i + 1)).join('\\n') },
+        ] };
+      try {
+        api.hubView = async () => { const v = await real(); return { ...v, rows: [...v.rows, remote], summary: '2 PCs, 2 reachable' }; };
+        api.hubRetry = async () => ({ ok: true });
+        api.hubConvo = async () => ({ pcId: 'p-fake', tabId: 't1', state: 'online', error: null, loaded: true, typing: 'Writing the down migration',
+          items: [{ k: 'user', text: 'Write the migration for the new table' }, { k: 'tool', name: 'Write', label: 'Wrote a file', detail: 'db/001.sql', sub: false, agent: '' }, { k: 'text', text: 'The up migration is written.', sub: false }] });
+        for (const n of ['hubAnswer', 'hubReply', 'hubOpen', 'hubClose']) api[n] = async (...args) => { calls.push([n, ...args]); return { ok: true }; };
+      } catch { return false; }
+      return api.hubView !== real;
+    })()`);
+    check(stubbed, "the hub's calls can be stood in for in the page");
+    if (stubbed) {
+      await ev("SB.views.pcs.render()");
+      check(await until("!!document.querySelector('#pcsRoster tr[data-id=\"p-fake\"]')", 3000), 'the other PC is on the roster');
+      await ev("document.querySelector('#pcsRoster tr[data-id=\"p-fake\"]').click()");
+      check(await until("/2 waiting on you/.test(document.querySelector('#pcsDetail .pcs-waiting h3')?.textContent || '')", 3000), "its prompts lead its detail: '2 waiting on you'");
+      check(await ev("/Always allow Bash\\(npm run migrate\\)/.test(document.querySelector('#pcsDetail .pcs-waiting').textContent)"), 'with its always-allow, as the desk words it');
+      await ev("[...document.querySelectorAll('#pcsDetail .pcs-waiting button')].find(b => b.textContent === 'Allow').click()");
+      check(await until("JSON.stringify(window.__hubCalls).includes('\"decision\":\"allow\"')", 2000), 'Allow answers it on that PC');
+      check(await ev("JSON.stringify(window.__hubCalls[0]) === JSON.stringify(['hubAnswer', 'p-fake', { tabId: 't1', requestId: 'r1', decision: 'allow' }])"), 'with that prompt, and nothing else');
+      check(await ev("[...document.querySelectorAll('#pcsDetail button')].find(b => b.textContent === 'Approve').disabled"), "a plan can't be approved before it's read");
+      await panel.shot('4-waiting');
+      await ev("(() => { const p = document.querySelector('#pcsDetail .pcs-plan'); p.scrollTop = p.scrollHeight; p.dispatchEvent(new Event('scroll')); })()");
+      check(await until("![...document.querySelectorAll('#pcsDetail button')].find(b => b.textContent === 'Approve').disabled", 2000), 'read to the end, it can be');
+      await ev("window.__plan = document.querySelector('#pcsDetail .pcs-plan'); SB.views.pcs.render()");
+      await wait(300);
+      check(await ev("document.querySelector('#pcsDetail .pcs-plan') === window.__plan && window.__plan.scrollTop > 0"), 'a redraw leaves the plan where you were reading it');
+      await ev("[...document.querySelectorAll('#pcsDetail button')].find(b => b.textContent === 'Approve').click()");
+      check(await until("window.__hubCalls.some(c => c[0] === 'hubAnswer' && c[2].requestId === 'r2' && c[2].read === true)", 2000), 'and approving says it was read');
+
+      // The conversation, open on the hub
+      await ev("document.querySelector('#pcsDetail .pcs-convo-btn').click()");
+      check(await until("!!document.querySelector('#pcsDetail .pcs-convo') && /up migration is written/.test(document.querySelector('.pcs-log').textContent)", 3000), 'a conversation there opens on the hub, with its steps');
+      check(await ev("window.__hubCalls.some(c => c[0] === 'hubOpen' && c[1] === 'p-fake' && c[2] === 't1')"), 'watching that one conversation');
+      check(await ev("/Writing the down migration/.test(document.querySelector('.pcs-log').textContent)"), 'and the reply as it is typed');
+      check(await ev("/In Auto-edit/.test(document.querySelector('.pcs-send').textContent)"), 'the reply box says the mode it goes in');
+      await ev("(() => { const b = document.querySelector('.pcs-convo textarea'); b.focus(); b.value = 'Add the down migration too'; })()");
+      await ev("SB.views.pcs.render()");
+      await wait(300);
+      check(await ev("document.activeElement === document.querySelector('.pcs-convo textarea') && document.activeElement.value === 'Add the down migration too'"), 'a redraw keeps what you were typing, and where');
+      await panel.shot('5-conversation');
+      await ev("document.querySelector('.pcs-convo form').requestSubmit()");
+      check(await until("window.__hubCalls.some(c => c[0] === 'hubReply' && c[2].tabId === 't1' && c[2].text === 'Add the down migration too')", 2000), 'the reply goes to that conversation');
+      check(await until("document.querySelector('.pcs-convo textarea').value === ''", 2000), 'and the box empties');
+      await ev("[...document.querySelectorAll('.pcs-convo-head button')][0].click()");
+      check(await until("!document.querySelector('#pcsDetail .pcs-convo') && window.__hubCalls.some(c => c[0] === 'hubClose')", 2000), 'Back closes it, and stops watching');
+    }
   } catch (e) {
     check(false, `the run itself: ${e.message}`);
   } finally {

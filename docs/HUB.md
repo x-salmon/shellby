@@ -34,10 +34,16 @@ A PC that's asleep, off or offline can't be told apart from here, so its row say
 
 ## Doing things there
 
-Select a PC for its conversations, its details, and **Start a task**: pick one of its projects, say what to do and how it may work (Ask first, Smart, Auto-edit or Plan only), and it starts there, in its own copy, under that PC's own rules for tasks from a phone: at most 10 at once and 30 an hour, held for the usage reset when you're at the limit. Its permission prompts come up on that PC's desk and on your phone. **Rename** changes what the hub calls it; **Remove** takes it off the hub and asks it to forget the hub too (one that's asleep can't hear that: forget the hub in its own Settings → Alerts → On your phone later).
+Select a PC for its conversations, its details, and **Start a task**: pick one of its projects, say what to do and how it may work (Ask first, Smart, Auto-edit or Plan only), and it starts there, in its own copy, under that PC's own rules for tasks from a phone: at most 10 at once and 30 an hour, held for the usage reset when you're at the limit. **Rename** changes what the hub calls it; **Remove** takes it off the hub and asks it to forget the hub too (one that's asleep can't hear that: forget the hub in its own Settings → Alerts → On your phone later).
 
-This PC's own row starts a conversation in Chat, as ever.
+This PC's own row starts a conversation in Chat, as ever, and its conversations open there.
+
+## Answering it from here
+
+What's waiting on you on a PC leads its detail, under **Waiting on you**: what it wants to do, then **Allow**, the always-allow its desk would offer, or **Deny**. A question has its options to pick from; a plan opens in full, and **Approve** stays shut until you've scrolled to its end, as on your phone. Each answer goes through that PC's own answer rules, the ones its phone app uses, so the hub can answer exactly what a phone could: a prompt that PC says needs its desk only shows here, with why.
+
+Select one of its conversations to open it on the hub, live: what you said, each step, and the reply as it's typed, with what's waiting in it underneath. Reply from the box under it (Ctrl+Enter sends): the message goes in in the mode the conversation is in (one on Autonomous is replied to at that PC, never from here), and while it's working it joins the queue for its next step. A conversation in a terminal there can't be replied to from here. **Back** closes it, and leaving Your PCs stops watching it.
 
 ## Not yet
 
-Answering another PC's permission prompts from the hub, opening its conversations here, Linux machines over ssh in the roster, and Your PCs in the dock are next.
+Linux machines over ssh in the roster, and Your PCs in the dock.

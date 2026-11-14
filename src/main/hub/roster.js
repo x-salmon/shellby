@@ -27,6 +27,27 @@ function ramOf(host, machine) {
   return Number.isFinite(machine?.ram) ? { pct: machine.ram } : null;
 }
 
+const MAX_PROMPTS = 20;
+const MAX_PLAN = 20000;
+
+/**
+ * A prompt waiting on you there (pocket/view.js phonePrompt), rebuilt from the
+ * fields the hub draws. deskOnly: why it can only be answered at that PC.
+ */
+function promptOf(p) {
+  const questions = objs(p.questions, 4).map(q => ({
+    question: str(q.question, 300), header: str(q.header, 40), multiSelect: q.multiSelect === true,
+    options: objs(q.options, 8).map(o => ({ label: str(o.label, 200), description: str(o.description, 300) })).filter(o => o.label),
+  })).filter(q => q.question && q.options.length);
+  return {
+    tabId: str(p.tabId, 100), requestId: str(p.requestId, 100), title: str(p.title, 120) || 'Untitled',
+    toolName: str(p.toolName, 60), label: str(p.label, 120), detail: str(p.detail, 400), ask: str(p.ask, 200),
+    warnings: (Array.isArray(p.warnings) ? p.warnings.slice(0, 4) : []).map(w => str(w, 140)).filter(Boolean),
+    helper: str(p.helper, 80), deskOnly: str(p.deskOnly, 200), always: str(p.always, 60),
+    questions, plan: str(p.plan, 120), planText: str(p.planText, MAX_PLAN),
+  };
+}
+
 /** "plugged in", "charging, 80%", "battery 64%", or null when the PC has no battery reading. */
 function powerOf(machine) {
   const b = machine?.battery;
@@ -71,7 +92,10 @@ function rowOf(e, now) {
     tabs: tabs.slice(0, MAX_TABS).map(t => ({
       id: str(t.id, 100), title: str(t.title, 120), folder: str(t.folder, 80), standing: str(t.standing, 20),
       busy: !!t.busy, pending: Number.isFinite(t.pending) ? t.pending : 0, agent: AGENT_NAMES[t.harness] || null,
+      mode: str(t.mode, 20), canReply: t.canReply === true,
     })),
+    // Waiting on you there, oldest first: answered from the hub through that PC's own answer rules.
+    prompts: live ? objs(v?.prompts, MAX_PROMPTS).map(promptOf).filter(p => p.tabId && p.requestId) : [],
     // What a new task there may run in: that PC's own limits, as its phone app shows them.
     limits: isObj(v?.limits) ? { atOnce: num(v.limits.atOnce), open: num(v.limits.open) } : null,
   };
@@ -102,4 +126,4 @@ function summaryOf(rows) {
   return [pcs, `${awake} reachable`, `${working} working`, ...(waiting ? [`${waiting} waiting on you`] : [])].join(', ');
 }
 
-module.exports = { AGENT_NAMES, powerOf, rowOf, roster, summaryOf };
+module.exports = { AGENT_NAMES, powerOf, promptOf, rowOf, roster, summaryOf };

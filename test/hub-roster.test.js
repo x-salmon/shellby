@@ -89,3 +89,27 @@ test("a PC sending junk gets a row that says so, and never stops the roster draw
   assert.equal(worse.live, false);
   assert.match(worse.error, /couldn't be read/);
 });
+
+test("what's waiting on you there comes with the row, rebuilt, and only while it's reachable", () => {
+  const prompts = [
+    { tabId: 't2', requestId: 'r1', title: 'Write the migration', toolName: 'Bash', label: 'Run a command', detail: 'npm test', always: 'Always allow Bash(npm test)', warnings: ['x'.repeat(500)], evil: '<script>' },
+    { tabId: 't2', requestId: 'r2', toolName: 'AskUserQuestion', questions: [{ question: 'Which?', options: [{ label: 'A' }, { label: '' }, null], multiSelect: 'yes' }, { question: 'No options', options: [] }] },
+    { tabId: 't2', requestId: 'r3', toolName: 'ExitPlanMode', plan: 'A plan', planText: 'p'.repeat(30000), deskOnly: null },
+    { tabId: 't2' }, null, 'x',
+  ];
+  const r = rowOf({ id: 'p-1', name: 'Desk', kind: 'pc', state: 'online', view: view({ prompts }) }, NOW);
+  assert.equal(r.waiting, 6, 'the count is what the PC says');
+  assert.deepEqual(r.prompts.map(p => p.requestId), ['r1', 'r2', 'r3'], 'only ones that can be answered');
+  assert.equal(r.prompts[0].always, 'Always allow Bash(npm test)');
+  assert.equal(r.prompts[0].warnings[0].length, 140);
+  assert.ok(!('evil' in r.prompts[0]));
+  assert.deepEqual(r.prompts[1].questions, [{ question: 'Which?', header: '', multiSelect: false, options: [{ label: 'A', description: '' }] }]);
+  assert.equal(r.prompts[2].planText.length, 20000);
+  const off = rowOf({ id: 'p-1', name: 'Desk', kind: 'pc', state: 'offline', view: view({ prompts }) }, NOW);
+  assert.deepEqual(off.prompts, [], "a PC that isn't reachable can't be answered");
+});
+
+test("each conversation says the mode it's in and whether a reply can reach it", () => {
+  const r = rowOf({ id: 'p-1', name: 'Desk', kind: 'pc', state: 'online', view: view({ tabs: [{ id: 'a', mode: 'acceptEdits', canReply: true }, { id: 'b', mode: 7, canReply: 'yes' }] }) }, NOW);
+  assert.deepEqual(r.tabs.map(t => [t.mode, t.canReply]), [['acceptEdits', true], ['', false]]);
+});

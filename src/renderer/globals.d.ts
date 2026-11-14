@@ -361,6 +361,9 @@ interface ShellbyPanelExtras {
   growForPanes: any;
   NO_ROOM: any;
   roomFor: any;
+  // pcs-talk.js
+  hubApi: any;
+  pcsTalk: any;
   // pr-badge.js
   prBadge: any;
   // problems-view.js

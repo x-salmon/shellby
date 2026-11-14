@@ -76,6 +76,8 @@ class PeerLink extends EventEmitter {
     this.waiting = null;
     /** @type {any} */
     this.viewTimer = null;
+    /** @type {any} a quiet line's end, cleared on stop too: a stream that never ends never reaches read()'s finally */
+    this.idle = null;
     this.viewAt = 0;
   }
 
@@ -90,6 +92,8 @@ class PeerLink extends EventEmitter {
     this.timer = null;
     if (this.viewTimer) this.clearTimer(this.viewTimer);
     this.viewTimer = null;
+    if (this.idle) this.clearTimer(this.idle);
+    this.idle = null;
     this.abort?.abort();
     this.abort = null;
   }
@@ -129,6 +133,7 @@ class PeerLink extends EventEmitter {
     try {
       const res = await this.fetch(`${this.origin}${API}/events`, { headers: this.headers({ Accept: 'text/event-stream' }), signal: abort.signal, redirect: 'error' });
       this.clearTimer(connectTimer);
+      if (!res.ok) res.body?.cancel?.().catch(() => {}); // nothing in it is read: let the socket go
       if (res.status === 401) { this.setState('unpaired', 'That PC forgot this hub. Pair it again.'); return; }
       if (res.status === 403) { this.setState('offline', "That PC turned the hub away: it's signed in to Tailscale as someone else."); this.later(); return; }
       if (!res.ok || !res.body) { this.setState('offline', `That PC answered ${res.status}.`); this.later(); return; }
@@ -146,11 +151,11 @@ class PeerLink extends EventEmitter {
     const decoder = new TextDecoder();
     let buffer = '';
     // A line that goes quiet (a half-open connection, a PC that froze) is ended, not trusted as online.
-    /** @type {any} */
-    let idle = null;
+    /** @type {any} this line's own timer: a line that replaced it has its own */
+    let mine = null;
     const quiet = () => {
-      if (idle) this.clearTimer(idle);
-      idle = this.setTimer(() => abort.abort(), IDLE_MS);
+      if (this.idle) this.clearTimer(this.idle);
+      this.idle = mine = this.closed ? null : this.setTimer(() => abort.abort(), IDLE_MS);
     };
     quiet();
     try {
@@ -165,9 +170,9 @@ class PeerLink extends EventEmitter {
         if (view) this.queueView(view.data);
       }
     } finally {
-      if (idle) this.clearTimer(idle);
+      if (mine && this.idle === mine) { this.clearTimer(mine); this.idle = null; }
     }
-    this.setState('offline', 'The connection closed.');
+    if (!this.closed) this.setState('offline', 'The connection closed.');
   }
 
   /** At most one view read a second: a PC sending a flood of them can't keep the hub's main thread busy. */
