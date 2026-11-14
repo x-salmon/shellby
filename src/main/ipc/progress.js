@@ -6,6 +6,7 @@ const { dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const confirm = require('../confirm');
+const { PATH, opt, str } = require('../ipc-args');
 const recap = require('../recap');
 const { repoOf } = require('../gitinfo');
 const { reviewPrompt, LENSES } = require('../review');
@@ -226,6 +227,16 @@ function registerProgressIpc(ipcMain, d) {
   ipcMain.handle('time:export-csv', (_e, o) => d.timeTracker.exportCsv(timeOpts(o)).catch(e => { d.log.error('time csv', e); return { ok: false, error: "Couldn't save that file." }; }));
   ipcMain.handle('time:export-pdf', (_e, o) => d.timeTracker.exportPdf(timeOpts(o)).catch(e => { d.log.error('time pdf', e); return { ok: false, error: "Couldn't make the timesheet." }; }));
   ipcMain.handle('time:copy', (_e, o) => d.timeTracker.copyText(timeOpts(o)));
+  // Writing up a day (timetrack/daywrite.js): the day's view, Shellby's lines, keeping or dropping them.
+  const DAY_ARG = str({ max: 10, re: DAY });
+  ipcMain.handle('time:day', (_e, day) => d.timeTracker.dayView(day), [DAY_ARG]);
+  ipcMain.handle('time:write-day', (_e, day) => d.timeTracker.writeDay(day).catch(e => { d.log.error('time write-up', e); return { ok: false, error: "Couldn't write that day up." }; }), [DAY_ARG]);
+  ipcMain.handle('time:keep-draft', (_e, day, key) => {
+    // One line, or (no key at all) every draft that day: a key that isn't a project never widens to all of them.
+    if (key && !timeKey(key)) return { ok: false, error: 'Which line?' };
+    return d.timeTracker.keepDraft(day, key ? timeKey(key) : null);
+  }, [DAY_ARG, opt(PATH)]);
+  ipcMain.handle('time:drop-draft', (_e, day, key) => d.timeTracker.dropDraft(day, timeKey(key)), [DAY_ARG, PATH]);
   // Sending days to a time tracker (timetrack/timesync.js). The token goes in and never comes back out.
   ipcMain.handle('time:sync-connect', (_e, provider, token) => d.timeSync.connect(typeof provider === 'string' ? provider : '', typeof token === 'string' ? token.slice(0, 400) : ''));
   ipcMain.handle('time:sync-disconnect', () => d.timeSync.disconnect());

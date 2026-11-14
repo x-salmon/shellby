@@ -15,6 +15,15 @@ const MAX_CREDIT_S = 60;        // one tick never credits more (a sleep or a sta
 const MAX_DAY_S = 24 * 60 * 60;
 const NOTE_MAX = 200;
 const RATE_MAX = 100000;
+// Written-up days (daywrite.js) and when in the day the time fell: a couple of
+// months of each, enough to look back over and to write up a day you missed.
+const RECENT_DAYS = 62;
+const SLOT_MIN = 15;                       // a day in quarter hours...
+const SLOTS = (24 * 60) / SLOT_MIN;        // ...96 of them, one bit each
+const SLOT_HEX = SLOTS / 4;                // kept as 24 hex digits
+const MAX_SENTENCES = 4;
+const MAX_SOURCES = 12;                    // what one sentence says it came from
+const SOURCE_ID_MAX = 80;
 
 const IDLE_CHOICES = Object.freeze([2, 3, 5, 10, 15, 30]);  // minutes away before the clock stops
 const ROUND_CHOICES = Object.freeze([0, 6, 10, 15, 30, 60]); // each day's entry, in minutes
@@ -101,6 +110,30 @@ function cleanDays(raw, value) {
   return out;
 }
 
+// A draft Shellby wrote for a day's line (daywrite.js): its sentences, each with
+// what it came from, never longer as a whole than a note can be.
+function cleanDraft(v) {
+  if (!v || typeof v !== 'object' || !Array.isArray(v.sentences)) return null;
+  const sentences = [];
+  let room = NOTE_MAX;
+  for (const raw of v.sentences.slice(0, MAX_SENTENCES)) {
+    const text = clip(raw?.text, NOTE_MAX);
+    const cost = text.length + (sentences.length ? 1 : 0);
+    if (!text || cost > room) break;
+    const src = (Array.isArray(raw.src) ? raw.src : []).filter(x => typeof x === 'string' && x && x.length <= SOURCE_ID_MAX).slice(0, MAX_SOURCES);
+    sentences.push({ text, src: [...new Set(src)] });
+    room -= cost;
+  }
+  if (!sentences.length) return null;
+  return { sentences, by: clip(v.by, 80), at: Number.isFinite(v.at) && v.at > 0 ? v.at : 0 };
+}
+
+/** The line a draft would put on the timesheet. */
+const draftText = d => (d?.sentences || []).map(x => x.text).join(' ');
+
+// Only the newest RECENT_DAYS days of a map kept by day.
+const recent = days => Object.fromEntries(Object.entries(days).sort(([a], [b]) => (a < b ? -1 : 1)).slice(-RECENT_DAYS));
+
 /** Tolerate anything read from disk. */
 function normalize(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
@@ -121,6 +154,10 @@ function normalize(raw) {
     manual: cleanDays(src.manual, v => { const n = secs(v); return n !== 0 ? Math.max(-MAX_DAY_S, Math.min(n, MAX_DAY_S)) : null; }),
     // What the day was for, for the invoice line.
     notes: cleanDays(src.notes, v => clip(v, NOTE_MAX) || null),
+    // Lines Shellby wrote that you haven't kept or changed yet. Never sent anywhere until kept.
+    drafts: recent(cleanDays(src.drafts, cleanDraft)),
+    // The quarter hours each project had time in, as 24 hex digits (bit i: the i-th quarter hour).
+    slots: recent(cleanDays(src.slots, v => (typeof v === 'string' && /^[0-9a-f]{24}$/.test(v) && /[1-9a-f]/.test(v) ? v : null))),
   };
 }
 
@@ -175,7 +212,7 @@ function removeProject(stateIn, key) {
   const s = normalize(stateIn);
   const without = days => Object.fromEntries(Object.entries(days).map(([d, m]) => [d, Object.fromEntries(Object.entries(m).filter(([k]) => k !== key))]));
   const projects = Object.fromEntries(Object.entries(s.projects).filter(([k]) => k !== key));
-  return normalize({ ...s, projects, days: without(s.days), manual: without(s.manual), notes: without(s.notes) });
+  return normalize({ ...s, projects, days: without(s.days), manual: without(s.manual), notes: without(s.notes), drafts: without(s.drafts), slots: without(s.slots) });
 }
 
 /** Count `seconds` of work on a project (one on the books), on the day of `now`. */
@@ -186,7 +223,34 @@ function credit(stateIn, key, seconds, now) {
   if (!p || p.ignored || n <= 0 || !Number.isFinite(now)) return s;
   const day = dayKey(now);
   const d = s.days[day] || {};
-  return { ...s, days: { ...s.days, [day]: { ...d, [key]: Math.min(MAX_DAY_S, (d[key] || 0) + n) } } };
+  const sl = s.slots[day] || {};
+  return {
+    ...s,
+    days: { ...s.days, [day]: { ...d, [key]: Math.min(MAX_DAY_S, (d[key] || 0) + n) } },
+    slots: { ...s.slots, [day]: { ...sl, [key]: markSlot(own(sl, key), slotOf(now)) } },
+  };
+}
+
+/** Which quarter hour of its day a moment falls in, 0 to 95. */
+function slotOf(t) {
+  const d = new Date(t);
+  return Math.min(SLOTS - 1, Math.floor((d.getHours() * 60 + d.getMinutes()) / SLOT_MIN));
+}
+
+/** 24 hex digits with quarter hour i marked. */
+function markSlot(hex, i) {
+  const digits = (typeof hex === 'string' && hex.length === SLOT_HEX ? hex : '0'.repeat(SLOT_HEX)).split('');
+  const at = Math.floor(i / 4);
+  digits[at] = (parseInt(digits[at], 16) | (1 << (i % 4))).toString(16);
+  return digits.join('');
+}
+
+/** The quarter hours marked in 24 hex digits, in order. */
+function slotList(hex) {
+  if (typeof hex !== 'string' || hex.length !== SLOT_HEX) return [];
+  const out = [];
+  for (let i = 0; i < SLOTS; i++) if (parseInt(hex[Math.floor(i / 4)], 16) & (1 << (i % 4))) out.push(i);
+  return out;
 }
 
 /**
@@ -211,6 +275,16 @@ function setNote(stateIn, day, key, text) {
   const n = { ...(s.notes[day] || {}), [key]: clip(text, NOTE_MAX) };
   if (!n[key]) delete n[key];
   return normalize({ ...s, notes: { ...s.notes, [day]: n } });
+}
+
+/** A line Shellby wrote for a project's day (daywrite.js), or null to forget it. */
+function setDraft(stateIn, day, key, draft) {
+  const s = normalize(stateIn);
+  if (!DAY_RE.test(day) || !projectOf(s, key)) return s;
+  const next = { ...(s.drafts[day] || {}) };
+  const clean = draft ? cleanDraft(draft) : null;
+  if (clean) next[key] = clean; else delete next[key];
+  return normalize({ ...s, drafts: { ...s.drafts, [day]: next } });
 }
 
 // ------------------------------------------------------------------ which project is in front
@@ -393,6 +467,7 @@ function summarize(stateIn, range, { commits = {}, estimates = false, only = nul
       const tracked = own(s.days[day], key) || 0;
       const manual = own(s.manual[day], key) || 0;
       const note = own(s.notes[day], key) || '';
+      const draft = own(s.drafts[day], key) || null;
       const dayCommits = (byDay.get(day) || []).sort((a, b) => a.at - b.at);
       // A day with any time, or one you set by hand (even to nothing), is never guessed at.
       const decided = tracked > 0 || manual !== 0;
@@ -402,6 +477,8 @@ function summarize(stateIn, range, { commits = {}, estimates = false, only = nul
       if (!total && !note && !dayCommits.length && !estimate) continue;
       rows.push({
         day, tracked, manual, estimate, total, note, estimated,
+        // What Shellby wrote for the line: shown until you keep it (then it's the note) or write your own.
+        draft: draft ? { text: draftText(draft), by: draft.by, kept: !!note && note === draftText(draft) } : null,
         billed: roundSeconds(total, s.roundMinutes, s.roundMode),
         commits: dayCommits.slice(0, 30),
         commitCount: dayCommits.length,
@@ -505,7 +582,9 @@ function toText(summary, label = '') {
 
 module.exports = {
   DEFAULTS, IDLE_CHOICES, ROUND_CHOICES, ROUND_MODES, STICKY_MS, MAX_CREDIT_S, KEEP_DAYS,
-  normalize, cleanProject, setSettings, ensureProject, setProject, removeProject, credit, adjust, setNote,
+  NOTE_MAX, RECENT_DAYS, SLOT_MIN, SLOTS,
+  normalize, cleanProject, cleanDraft, draftText, setSettings, ensureProject, setProject, removeProject, credit, adjust, setNote, setDraft,
+  slotOf, markSlot, slotList,
   projectOf, appKind, matchTitle, attribute,
   ranges, daysBetween, roundSeconds, estimateFromCommits, summarize,
   duration, hours, money, lineText, csvCell, toCsv, toText, dayKey,

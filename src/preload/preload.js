@@ -546,7 +546,7 @@ contextBridge.exposeInMainWorld('shellby', {
   addTimeFolder: invoke('time:add-folder'),
   exportTimeCsv: invoke('time:export-csv'),
   exportTimePdf: invoke('time:export-pdf'),
-  copyTime: invoke('time:copy'),
+  copyTime: invoke('time:copy'), getTimeDay: invoke('time:day'), writeTimeDay: invoke('time:write-day'), keepTimeDraft: invoke('time:keep-draft'), dropTimeDraft: invoke('time:drop-draft'), // writing up a day (timetrack/daywrite.js)
   showTimeFile: invoke('time:show-file'),
   connectTimeSync: invoke('time:sync-connect'),
   disconnectTimeSync: invoke('time:sync-disconnect'),

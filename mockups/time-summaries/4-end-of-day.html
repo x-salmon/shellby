@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Daily summaries, concept 4: at the end of the day the crab hands you the write-up</title>
+<link rel="stylesheet" href="summaries.css">
+<style>
+  body { background: radial-gradient(1400px 900px at 22% 110%, color-mix(in srgb, var(--glass) 10%, transparent), transparent 70%), var(--abyss); }
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 560px 1fr 620px; gap: 48px; }
+
+  /* the crab and what he says */
+  .host { display: flex; flex-direction: column; justify-content: center; gap: 30px; }
+  .bubble { position: relative; background: var(--sand); color: var(--abyss); border-radius: 22px; padding: 28px 30px; font-size: 24px; line-height: 1.45; font-weight: 700; }
+  .bubble small { display: block; margin-top: 12px; font-weight: 400; font-size: 18px; color: #4a4338; }
+  .bubble::after { content: ""; position: absolute; left: 90px; bottom: -22px; border: 12px solid transparent; border-top: 14px solid var(--sand); border-left-width: 6px; }
+  .stage { position: relative; height: 300px; display: flex; align-items: flex-end; padding-left: 40px; }
+  .stage::before { content: ""; position: absolute; left: 0; right: 40px; bottom: 0; height: 46px; border-radius: 50% 50% 0 0 / 100% 100% 0 0; background: linear-gradient(#d9c39a, #b89c6c); opacity: .9; }
+  .stage [data-crab] { position: relative; bottom: 28px; }
+  .stage .pad { position: absolute; left: 340px; bottom: 34px; width: 120px; height: 150px; background: var(--sand); border-radius: 6px; transform: rotate(8deg); box-shadow: 0 10px 30px rgba(0,0,0,.4); padding: 16px 14px; display: grid; gap: 10px; align-content: start; }
+  .stage .pad i { display: block; height: 7px; border-radius: 4px; background: #b8ad99; }
+  .when { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--sand-faint); font-size: 15px; }
+
+  /* the cards to look over */
+  .deck { display: flex; flex-direction: column; gap: 22px; justify-content: center; }
+  .deck .title { display: flex; align-items: baseline; gap: 20px; }
+  .deck h2 { font: 500 52px/1 var(--font-pixel); }
+  .deck .title b { font: 700 40px var(--font-body); margin-left: auto; }
+  .steps { display: flex; gap: 8px; }
+  .steps i { flex: 1; height: 6px; border-radius: 3px; background: var(--reef-3); }
+  .steps i.done { background: var(--glass); }
+  .steps i.now { background: var(--amber); }
+  .card { flex: none; border-radius: 18px; padding: 28px 32px; display: grid; gap: 16px; }
+  .card.kept { opacity: .62; padding: 18px 28px; }
+  .card.kept .hd .tag { margin-left: auto; }
+  .card.cur { background: var(--reef); border: 2px solid var(--amber); box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+  .card.next { border: 1.5px dashed var(--line); padding: 18px 28px; }
+  .card .hd { display: flex; align-items: center; gap: 14px; }
+  .card .hd b { font-size: 22px; }
+  .card .hd small { color: var(--sand-faint); font-size: 16px; }
+  .card .hd .t { margin-left: auto; font: 700 26px var(--font-body); }
+  .card .text { font-size: 23px; line-height: 1.55; border-radius: 12px; padding: 18px 20px; background: var(--abyss); border: 1px solid var(--line); }
+  .card .text .caret { display: inline-block; width: 2px; height: 26px; background: var(--amber); vertical-align: -5px; margin-left: 2px; }
+  .card .row { display: flex; gap: 12px; align-items: center; }
+  .card .row .muted { margin-right: auto; font-size: 15px; }
+  .card .alt { display: flex; gap: 10px; flex-wrap: wrap; }
+  .kbd { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--abyss); font: 12px var(--font-mono); color: var(--sand-dim); margin-left: 8px; }
+
+  /* what happens next */
+  .after { display: flex; flex-direction: column; gap: 22px; justify-content: center; }
+  .box { padding: 26px 30px; display: grid; gap: 14px; }
+  .box h3 { color: var(--sand-faint); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+  .box li { list-style: none; display: flex; gap: 12px; font-size: 18px; line-height: 1.45; }
+  .box li .sw { margin-top: 7px; }
+  .box pre { font: 15.5px/1.65 var(--font-mono); color: var(--sand-dim); white-space: pre-wrap; }
+  .send { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: center; font-size: 17px; }
+  .send small { color: var(--sand-faint); font-size: 15px; grid-column: 1; }
+  .tog { width: 50px; height: 28px; border-radius: 14px; background: var(--glass); position: relative; grid-row: span 2; }
+  .tog::after { content: ""; position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--abyss); }
+  .finish { display: flex; gap: 12px; }
+  .finish .btn { flex: 1; justify-content: center; height: 54px; font-size: 19px; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="now"><span class="live off"></span><b>Clock stopped</b><span class="why">6:04 pm, you locked the PC</span></span>
+    <span class="spacer"></span>
+    <button class="btn ghost">Later</button>
+  </header>
+
+  <section class="body">
+    <div class="host">
+      <div class="bubble">That's Thursday: 8h 20m across three projects. I wrote it up. Want to look it over before you go?<small>Takes about a minute. Anything you skip stays a draft, and nothing is sent until you keep it.</small></div>
+      <div class="stage"><span data-crab="12"></span><span class="pad"><i></i><i style="width:80%"></i><i></i><i style="width:60%"></i><i style="width:85%"></i></span></div>
+      <div class="when">Ask me <span class="chip on">when I lock the PC after 5 h</span><span class="chip">at 6 pm</span><span class="chip">never</span></div>
+    </div>
+
+    <div class="deck">
+      <div class="title"><h2>Your Thursday</h2><span class="muted" style="font-size:18px">1 of 3 kept</span><b>8:20</b></div>
+      <div class="steps"><i class="done"></i><i class="now"></i><i></i></div>
+
+      <div class="card kept panel p1">
+        <div class="hd"><span class="sw"></span><b>shellby</b><small>5:05 · your own</small><span class="tag glass">✓ Kept</span></div>
+      </div>
+
+      <div class="card cur p2">
+        <div class="hd"><span class="sw"></span><b>booking-app</b><small>Northwind Dental · billable</small><span class="t">2:45</span></div>
+        <div class="text">Connected bookings to Google Calendar, so new appointments appear on the practice calendar within a minute. Started the reminder emails patients get the day before<span class="caret"></span></div>
+        <div class="alt"><span class="chip">Shorter</span><span class="chip">Less technical</span><span class="chip">Mention the call with Dana</span><span class="chip">Bullet points</span></div>
+        <div class="row"><span class="muted"><span class="src cl"><i>C</i>1 conversation</span> · <span class="src git"><i>G</i>3 commits</span> · <span class="src win"><i>W</i>1:50</span></span><button class="btn ghost">Skip</button><button class="btn primary">Keep <span class="kbd" style="border-color:#2a0d05;background:none;color:#2a0d05">Enter</span></button></div>
+      </div>
+
+      <div class="card next p4">
+        <div class="hd"><span class="sw"></span><b>label-cloud</b><small>0:30 · Pike &amp; Co</small><span class="t" style="font-size:20px;color:var(--sand-dim)">next</span></div>
+      </div>
+    </div>
+
+    <div class="after">
+      <section class="panel box">
+        <h3>Left open for tomorrow</h3>
+        <ul style="display:grid;gap:12px">
+          <li class="p2"><span class="sw"></span><span>Merge the <b>reminders</b> branch once Dana sends the email wording</span></li>
+          <li class="p1"><span class="sw"></span><span>Answer Claude: what colour is the badge when CI fails?</span></li>
+        </ul>
+        <button class="btn small ghost" style="justify-self:start">Put these on my Notes</button>
+      </section>
+      <section class="panel box">
+        <h3>Tomorrow's standup</h3>
+        <pre>Yesterday: merge-queue badge in shellby; Northwind calendar sync is live; Pike review fixes.
+Today: reminder emails, failed-CI badge.</pre>
+        <button class="btn small" style="justify-self:start">Copy</button>
+      </section>
+      <section class="panel box">
+        <div class="send"><span>Send kept lines to Toggl</span><span class="tog"></span><small>Northwind and Pike &amp; Co only. Your own projects stay here.</small></div>
+      </section>
+      <div class="finish"><button class="btn primary">Keep the rest and finish</button></div>
+    </div>
+  </section>
+</main>
+<div class="caption">Daily summaries · concept 4: end of day</div>
+<script src="../us-page/beach-data.js"></script>
+<script>window.SB = {};</script>
+<script src="../../src/renderer/shared/sprite.js"></script>
+<script src="crab.js"></script>
+</body>
+</html>

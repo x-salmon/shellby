@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Daily summaries, concept 1: each timesheet line written for you</title>
+<link rel="stylesheet" href="summaries.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 900px; gap: 40px; }
+  .left { display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+  .stats { display: flex; gap: 56px; align-items: flex-end; padding: 0 4px; }
+  .stat b { display: block; font: 700 46px/1 var(--font-body); }
+  .stat span { color: var(--sand-dim); font-size: 17px; }
+
+  .cal { flex: 1; display: grid; grid-template-rows: auto repeat(5, 1fr); grid-template-columns: repeat(7, 1fr) 110px; gap: 10px; min-height: 0; }
+  .dow { color: var(--sand-faint); font-size: 16px; padding: 0 4px 2px; }
+  .day { position: relative; border-radius: 12px; padding: 14px 16px; border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--glass) calc(var(--h) * 3.2%), var(--ink)); display: flex; flex-direction: column; }
+  .day .n { font-size: 16px; color: var(--sand-dim); }
+  .day .t { margin-top: auto; font: 700 24px/1 var(--font-body); }
+  .day .mix { display: flex; height: 7px; gap: 2px; margin-top: 10px; border-radius: 4px; overflow: hidden; }
+  .day .mix i { background: var(--pc); }
+  .day.out { background: none; border-style: dashed; border-color: var(--line-soft); }
+  .day.out .n { color: var(--sand-faint-deco); }
+  .day.ahead { background: none; border-color: var(--line-soft); }
+  .day.empty .t { color: var(--sand-faint-deco); font-weight: 400; font-size: 20px; }
+  .day.today { border-color: var(--glass); }
+  .day.today .n { color: var(--glass); font-weight: 700; }
+  .day.sel { box-shadow: 0 0 0 3px var(--coral); border-color: var(--coral); }
+  /* a day whose summaries are still drafts */
+  .day .pen { position: absolute; top: 12px; right: 12px; width: 12px; height: 12px; border-radius: 50%; border: 2px dashed var(--amber); }
+  .wk { display: flex; flex-direction: column; justify-content: center; align-items: flex-end; padding-right: 4px; }
+  .wk b { font-size: 22px; }
+  .wk span { color: var(--sand-faint); font-size: 14px; }
+  .key { display: flex; gap: 28px; color: var(--sand-faint); font-size: 15px; align-items: center; }
+  .key span { display: inline-flex; align-items: center; gap: 10px; }
+  .key .pen { width: 12px; height: 12px; border-radius: 50%; border: 2px dashed var(--amber); }
+
+  .dayview { padding: 34px 40px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+  .dayview .top { display: flex; align-items: baseline; gap: 18px; }
+  .dayview h2 { font: 500 36px/1.1 var(--font-pixel); }
+  .dayview .top b { margin-left: auto; font: 700 36px/1 var(--font-body); }
+
+  .gist { font-size: 21px; line-height: 1.5; color: var(--sand); padding: 0 2px; }
+  .gist em { font-style: normal; color: var(--glass); }
+
+  .line { border-radius: var(--r-lg); padding: 20px 22px; display: grid; gap: 12px; }
+  .line .hd { display: flex; align-items: center; gap: 12px; }
+  .line .hd b { font-size: 20px; }
+  .line .hd small { color: var(--sand-faint); font-size: 15px; }
+  .line .hd .dur { margin-left: auto; display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--r); background: var(--abyss); }
+  .line .hd .dur span { padding: 5px 12px; font-weight: 700; font-size: 19px; }
+  .line .hd .dur button { width: 32px; height: 34px; color: var(--sand-dim); font-size: 20px; }
+  .line p { font-size: 18px; line-height: 1.55; }
+  .line .was { font: 13.5px/1.5 var(--font-mono); color: var(--sand-faint-deco); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--sand-faint-deco) 60%, transparent); }
+  .line .foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .line .foot .from { color: var(--sand-faint); font-size: 14.5px; margin-right: auto; display: inline-flex; gap: 14px; align-items: center; }
+  .line .foot .btn.small { height: 34px; }
+
+  .adder { border: 1.5px dashed var(--line); border-radius: var(--r-lg); padding: 16px 22px; display: flex; align-items: center; gap: 14px; font-size: 16px; }
+  .adder .picker { height: 40px; font-size: 16px; }
+  .act { display: flex; gap: 12px; margin-top: auto; align-items: center; padding-top: 6px; }
+  .act .who { margin-left: auto; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="now"><span class="live"></span><b>shellby</b><span class="why">1h 40m today, Claude at work</span></span>
+    <span class="spacer"></span>
+    <span class="picker"><span class="arrows">‹ ›</span><b>November 2026</b><span class="caret">▾</span></span>
+    <button class="btn">Timesheet…</button>
+  </header>
+
+  <section class="body">
+    <div class="left">
+      <div class="stats">
+        <div class="stat"><b>58h 10m</b><span>so far in November</span></div>
+        <div class="stat"><b>23h 45m</b><span>billable, $2,380</span></div>
+        <div class="stat"><b>9 of 10</b><span>days written up</span></div>
+      </div>
+      <div class="cal" id="cal"></div>
+      <div class="key"><span><i class="pen"></i>Summaries waiting for a look</span><span>Shaded by hours worked</span></div>
+    </div>
+
+    <aside class="panel dayview">
+      <div class="top"><h2>Thursday, Nov 12</h2><span class="tag amber">2 drafts to look at</span><b>8:20</b></div>
+      <p class="gist">You shipped the <em>merge-queue badge</em> in shellby, got <em>Google Calendar sync</em> working for Northwind's booking app, and closed out Pike &amp; Co's review notes.</p>
+
+      <div class="line draft p1">
+        <div class="hd"><span class="sw"></span><b>shellby</b><small>Your own</small><span class="dur"><button>−</button><span>5:05</span><button>+</button></span></div>
+        <p>Added a badge to the merge queue tab so waiting branches show at a glance<span class="cite"><i class="g">G</i><i class="c">C</i></span>. Fixed notes vanishing under Done<span class="cite"><i class="g">G</i></span>, and covered the new time ranges with end-to-end tests<span class="cite"><i class="g">G</i><i class="c">C</i></span>.</p>
+        <p class="was">feat: merge queue tab badge; fix: notes null under Done; test: e2e for time ranges</p>
+        <div class="foot"><span class="from"><span class="src git"><i>G</i>5 commits</span><span class="src cl"><i>C</i>2 conversations</span><span class="src win"><i>W</i>1:45 in VS Code</span></span><button class="btn small ghost">Shorter</button><button class="btn small ghost">Edit</button><button class="btn small primary">Keep</button></div>
+      </div>
+
+      <div class="line draft p2">
+        <div class="hd"><span class="sw"></span><b>booking-app</b><small>Northwind Dental</small><span class="dur"><button>−</button><span>2:45</span><button>+</button></span></div>
+        <p>Connected bookings to Google Calendar, so new appointments appear on the practice calendar within a minute<span class="cite"><i class="c">C</i><i class="g">G</i></span>. Started the reminder emails patients get the day before<span class="cite"><i class="w">W</i></span>.</p>
+        <div class="foot"><span class="from"><span class="src cl"><i>C</i>1 conversation</span><span class="src git"><i>G</i>3 commits</span><span class="src win"><i>W</i>1:50</span></span><button class="btn small ghost">Shorter</button><button class="btn small ghost">Edit</button><button class="btn small primary">Keep</button></div>
+      </div>
+
+      <div class="line kept p4">
+        <div class="hd"><span class="sw"></span><b>label-cloud</b><small>Pike &amp; Co</small><span class="tag plain">Yours</span><span class="dur"><button>−</button><span>0:30</span><button>+</button></span></div>
+        <p>Review fixes from Tuesday's call.</p>
+        <div class="foot"><span class="from">You wrote this, so Shellby leaves it alone. Sent to Toggl on Nov 13.</span></div>
+      </div>
+
+      <div class="adder"><b style="color:var(--glass);white-space:nowrap">+ Add time</b><span class="picker"><b>Pick a project</b><span class="caret">▾</span></span><span class="picker"><b>0:30</b></span><span class="muted">Write a line, or leave it and Shellby drafts one tonight</span></div>
+
+      <div class="act"><button class="btn">Keep both drafts</button><button class="btn ghost">Copy the day</button><span class="who"><span class="dot"></span>Written on this PC by Ollama · qwen3:8b</span></div>
+    </aside>
+  </section>
+</main>
+<div class="caption">Daily summaries · concept 1: written lines</div>
+<script>
+  const DAYS = {
+    2: { p1: 180, p4: 120 }, 3: { p1: 150, p4: 105, p2: 60 }, 4: { p1: 240, p2: 90 }, 5: { p1: 200, p4: 135 },
+    6: { p2: 150, p1: 90 }, 7: { p1: 60 }, 9: { p1: 190, p2: 120, p3: 40 }, 10: { p1: 265, p2: 90, p4: 130 },
+    11: { p1: 170, p4: 180, p3: 75 }, 12: { p1: 305, p2: 165, p4: 30 }, 13: { p1: 100, p2: 50 },
+  };
+  const TODAY = 13, PICKED = 12, DRAFTS = new Set([12, 13]);
+  const hm = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  const cal = document.getElementById('cal');
+  const add = (cls, html, style) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; if (style) d.style.cssText = style; cal.append(d); };
+  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', ''].forEach(n => add('dow', n));
+  for (let w = 0; w < 5; w++) {
+    let week = 0;
+    for (let i = 0; i < 7; i++) {
+      const date = w * 7 + i - 5;
+      if (date < 1) { add('day out', `<span class="n">Oct ${31 + date}</span>`); continue; }
+      const mins = DAYS[date] || {};
+      const total = Object.values(mins).reduce((a, b) => a + b, 0);
+      week += total;
+      const cls = ['day', date > TODAY ? 'ahead' : '', !total && date <= TODAY ? 'empty' : '', date === TODAY ? 'today' : '', date === PICKED ? 'sel' : ''].join(' ');
+      const mix = Object.entries(mins).map(([p, m]) => `<i class="${p}" style="flex:${m}"></i>`).join('');
+      const body = date > TODAY ? '' : total ? `<span class="t">${hm(total)}</span><span class="mix">${mix}</span>` : '<span class="t">–</span>';
+      add(cls, `<span class="n">${date === TODAY ? 'Today' : `Nov ${date}`}</span>${DRAFTS.has(date) ? '<span class="pen"></span>' : ''}${body}`, `--h:${total / 60}`);
+    }
+    add('wk', week ? `<b>${hm(week)}</b><span>week</span>` : '<span>–</span>');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Daily summaries, concept 2: every sentence traced back to the day</title>
+<link rel="stylesheet" href="summaries.css">
+<style>
+  .head .back { color: var(--sand-dim); font-size: 17px; }
+
+  /* the day as lanes, 8:00 to 19:00 */
+  .tl { padding: 26px 32px 22px; display: grid; grid-template-columns: 170px 1fr; row-gap: 14px; }
+  .tl .hours { grid-column: 2; position: relative; height: 22px; color: var(--sand-faint); font-size: 14px; }
+  .tl .hours span { position: absolute; white-space: nowrap; transform: translateX(-50%); }
+  .tl .lab { display: flex; align-items: center; gap: 10px; color: var(--sand-dim); font-size: 16px; font-weight: 700; }
+  .lane { position: relative; height: 46px; border-radius: 8px; background: var(--abyss); }
+  .lane .grid { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(100% / 11 - 1px), var(--line-soft) calc(100% / 11 - 1px) calc(100% / 11)); border-radius: 8px; }
+  .blk { position: absolute; top: 6px; bottom: 6px; border-radius: 6px; background: color-mix(in srgb, var(--pc) 70%, var(--ink)); }
+  .blk.conv { background: color-mix(in srgb, var(--coral) 32%, var(--ink)); border: 1px solid color-mix(in srgb, var(--coral) 60%, transparent); padding: 0 10px; display: flex; align-items: center; font-size: 14px; color: var(--sand); white-space: nowrap; overflow: hidden; }
+  .tick { position: absolute; top: 8px; bottom: 8px; width: 5px; margin-left: -2px; border-radius: 3px; background: #c3b6f2; }
+  .hot { outline: 3px solid var(--amber); outline-offset: 3px; z-index: 2; }
+  .tick.hot { background: var(--amber); outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 35%, transparent); }
+
+  .lower { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 760px; gap: 36px; }
+  .story { padding: 34px 40px; display: flex; flex-direction: column; gap: 22px; }
+  .story h2 { font: 500 34px/1.1 var(--font-pixel); display: flex; align-items: center; gap: 16px; }
+  .story h2 small { font: 700 26px var(--font-body); margin-left: auto; }
+  .proj { display: grid; grid-template-columns: 14px 1fr; gap: 6px 16px; }
+  .proj .sw { margin-top: 10px; }
+  .proj h3 { font-size: 20px; display: flex; gap: 12px; align-items: baseline; }
+  .proj h3 small { color: var(--sand-faint); font-weight: 400; font-size: 15px; }
+  .proj p { grid-column: 2; font-size: 22px; line-height: 1.6; }
+  .s { border-radius: 6px; padding: 2px 4px; margin: 0 -4px; }
+  .s.sel { background: color-mix(in srgb, var(--amber) 18%, transparent); box-shadow: inset 0 -2px 0 var(--amber); }
+  .open { border-top: 1px solid var(--line); padding-top: 22px; display: grid; gap: 12px; }
+  .open h4 { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--sand-faint); }
+  .open li { list-style: none; display: flex; gap: 14px; align-items: center; font-size: 18px; }
+  .open li .sw { width: 10px; height: 10px; }
+  .open li small { color: var(--sand-faint); font-size: 15px; margin-left: auto; }
+  .story .bar { margin-top: auto; display: flex; gap: 12px; align-items: center; }
+  .story .bar .who { margin-left: auto; }
+
+  .side { display: flex; flex-direction: column; gap: 24px; min-height: 0; }
+  .why { padding: 30px 34px; display: flex; flex-direction: column; gap: 16px; }
+  .why h4, .reads h4 { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--sand-faint); }
+  .why blockquote { font-size: 20px; line-height: 1.5; border-left: 4px solid var(--amber); padding-left: 18px; }
+  .ev { display: grid; grid-template-columns: 26px 1fr auto; gap: 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--line-soft); }
+  .ev i { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font: 700 12px/1 var(--font-body); font-style: normal; color: var(--abyss); margin-top: 2px; }
+  .ev b { font-size: 17px; display: block; }
+  .ev span { color: var(--sand-faint); font-size: 15px; }
+  .ev code { display: block; font: 15px var(--font-mono); color: var(--sand); }
+  .ev time { color: var(--sand-faint); font-size: 15px; }
+
+  .reads { padding: 28px 34px; display: grid; gap: 14px; }
+  .row { display: flex; align-items: center; gap: 14px; font-size: 17px; }
+  .row .sw2 { width: 46px; height: 26px; border-radius: 13px; background: var(--glass); position: relative; flex: none; }
+  .row .sw2::after { content: ""; position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--abyss); }
+  .row .sw2.off { background: var(--reef-3); }
+  .row .sw2.off::after { right: auto; left: 3px; background: var(--sand-faint); }
+  .row small { color: var(--sand-faint); font-size: 15px; margin-left: auto; text-align: right; }
+  .never { color: var(--sand-dim); font-size: 15.5px; line-height: 1.5; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="back">‹ November</span>
+    <span class="spacer"></span>
+    <span class="picker"><span class="arrows">‹ ›</span><b>Thursday, Nov 12</b><span class="caret">▾</span></span>
+    <button class="btn">Timesheet…</button>
+  </header>
+
+  <section class="panel tl">
+    <span></span>
+    <div class="hours" id="hours"></div>
+    <span class="lab"><span class="src win"><i>W</i></span>Windows</span>
+    <div class="lane"><div class="grid"></div>
+      <span class="blk p1" style="left:4%;width:15%"></span><span class="blk p2" style="left:20.5%;width:8%"></span>
+      <span class="blk p1" style="left:31%;width:10%"></span><span class="blk p4" style="left:42%;width:5%"></span>
+      <span class="blk p2 hot" style="left:48.5%;width:17%"></span><span class="blk p1" style="left:70%;width:18%"></span>
+    </div>
+    <span class="lab"><span class="src cl"><i>C</i></span>Claude</span>
+    <div class="lane"><div class="grid"></div>
+      <span class="blk conv" style="left:2%;width:15%">Merge queue: badge on the tab</span>
+      <span class="blk conv" style="left:26%;width:7%">Notes vanish</span>
+      <span class="blk conv hot" style="left:48.5%;width:16%">Northwind: calendar sync</span>
+      <span class="blk conv" style="left:72%;width:16%">e2e for time ranges</span>
+    </div>
+    <span class="lab"><span class="src git"><i>G</i></span>Commits</span>
+    <div class="lane"><div class="grid"></div>
+      <span class="tick" style="left:15%"></span><span class="tick" style="left:18%"></span><span class="tick" style="left:27%"></span><span class="tick" style="left:32%"></span>
+      <span class="tick hot" style="left:63.9%"></span><span class="tick hot" style="left:65.2%"></span>
+      <span class="tick" style="left:84%"></span><span class="tick" style="left:88%"></span>
+    </div>
+  </section>
+
+  <section class="lower">
+    <article class="panel story">
+      <h2>What you did <span class="tag amber">Draft</span><small>8:20</small></h2>
+      <div class="proj p1"><span class="sw"></span><h3>shellby <small>5:05 · your own</small></h3>
+        <p><span class="s">Added a badge to the merge queue tab so waiting branches show at a glance.</span> <span class="s">Fixed notes vanishing under Done.</span> <span class="s">Covered the new time ranges with end-to-end tests.</span></p></div>
+      <div class="proj p2"><span class="sw"></span><h3>booking-app <small>2:45 · Northwind Dental</small></h3>
+        <p><span class="s sel">Connected bookings to Google Calendar, so new appointments appear on the practice calendar within a minute.</span> <span class="s">Started the reminder emails patients get the day before.</span></p></div>
+      <div class="proj p4"><span class="sw"></span><h3>label-cloud <small>0:30 · Pike &amp; Co</small></h3>
+        <p><span class="s">Review fixes from Tuesday's call.</span> <span class="muted" style="font-size:16px">(yours)</span></p></div>
+      <section class="open"><h4>Left open at the end of the day</h4><ul style="display:grid;gap:12px">
+        <li class="p2"><span class="sw"></span>Reminder emails: branch <code style="font:16px var(--font-mono)">reminders</code> isn't merged yet<small>booking-app · 2 commits ahead</small></li>
+        <li class="p1"><span class="sw"></span>“Badge colour for a failed CI run”: Claude's question you didn't answer<small>shellby · 4:52 pm</small></li>
+      </ul><p class="muted" style="font-size:15px">These stay out of the timesheet. They're where Friday's summary picks up.</p></section>
+      <div class="bar"><button class="btn primary">Keep this</button><button class="btn">Edit</button><button class="btn ghost">Write it again</button><span class="who"><span class="dot"></span>Written on this PC by Ollama · qwen3:8b · 4 s</span></div>
+    </article>
+
+    <div class="side">
+      <section class="panel why">
+        <h4>Behind this sentence</h4>
+        <blockquote>Connected bookings to Google Calendar, so new appointments appear on the practice calendar within a minute.</blockquote>
+        <div class="ev"><i style="background:var(--coral)">C</i><div><b>“Northwind: calendar sync”</b><span>Your ask: “bookings should show up in their Google Calendar, poll every minute is fine”</span></div><time>1:20–3:05 pm</time></div>
+        <div class="ev"><i style="background:#c3b6f2">G</i><div><code>feat: sync bookings to Google Calendar</code><span>booking-app · 6 files</span></div><time>3:02 pm</time></div>
+        <div class="ev"><i style="background:#c3b6f2">G</i><div><code>fix: poll interval to 60s</code><span>booking-app · 1 file</span></div><time>3:10 pm</time></div>
+        <div class="ev"><i style="background:var(--sand-dim)">W</i><div><b>VS Code · booking-app</b><span>and Chrome · calendar.google.com</span></div><time>0:55</time></div>
+      </section>
+      <section class="panel reads">
+        <h4>What Shellby reads to write it</h4>
+        <div class="row"><span class="sw2"></span>Commit messages<small>subjects only</small></div>
+        <div class="row"><span class="sw2"></span>Your Claude conversations<small>titles and your first ask</small></div>
+        <div class="row"><span class="sw2"></span>Window titles<small>apps Time already tracks</small></div>
+        <div class="row"><span class="sw2 off"></span>Notes you took that day<small>off</small></div>
+        <p class="never">Never your code, file contents or web pages. Nothing leaves this PC while a local model is set up; without one it's a short Claude call.</p>
+      </section>
+    </div>
+  </section>
+</main>
+<div class="caption">Daily summaries · concept 2: how he wrote it</div>
+<script>
+  const h = document.getElementById('hours');
+  for (let i = 0; i <= 11; i++) {
+    const s = document.createElement('span');
+    const hr = 8 + i;
+    s.textContent = hr === 12 ? '12 pm' : hr > 12 ? `${hr - 12} pm` : `${hr} am`;
+    s.style.left = `${(i / 11) * 100}%`;
+    if (i === 0) s.style.transform = 'none';
+    if (i === 11) s.style.transform = 'translateX(-100%)';
+    h.append(s);
+  }
+</script>
+</body>
+</html>

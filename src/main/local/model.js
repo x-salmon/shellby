@@ -25,10 +25,10 @@ const MAX_LIST_BYTES = 1024 * 1024;
 const PROXY_VARS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy'];
 // The drafts a local model may write, each one it can be turned off for or
 // given its own model. 'other' is any caller that passes local: true.
-const JOBS = Object.freeze(['rules', 'routines', 'hooks', 'workflows', 'quiz']);
+const JOBS = Object.freeze(['rules', 'routines', 'hooks', 'workflows', 'timesheet', 'quiz']);
 // On unless turned off, apart from the quiz, whose questions need a model
 // that reads code well.
-const JOB_DEFAULTS = Object.freeze({ rules: true, routines: true, hooks: true, workflows: true, quiz: false });
+const JOB_DEFAULTS = Object.freeze({ rules: true, routines: true, hooks: true, workflows: true, timesheet: true, quiz: false });
 
 /** A model name as the server would take it, or ''. */
 function modelName(raw) {

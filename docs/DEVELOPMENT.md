@@ -603,7 +603,8 @@ src/main/        Electron main process
                    sync.js (which conversations sync between PCs, pure: the trimmed copy that travels, the merge, the recap
                    Claude gets; github/history-gist.js moves it)
   timetrack/       time on each project: index.js (built from what Shellby sees), service.js (the 15-second look at the
-                   window in front), timesheet.js (the printable timesheet), timesync.js (Toggl Track, Clockify or Harvest)
+                   window in front), timesheet.js (the printable timesheet), timesync.js (Toggl Track, Clockify or Harvest),
+                   daywrite.js (writing up a day from its commits and conversations; drafts until kept)
   channels/        telling you when you're away: index.js, messages.js (what a phone notification says), replies.js
                    (answering from your phone), phone-tasks.js (starting a task from it)
   events.js        tide events (pure): six short named runs inside the seasons, their goals, medals, boosts and the bug that comes along;

@@ -62,6 +62,7 @@ interface Window {
   ShellbyTextGrid: any;
   ShellbyTideChart: any;
   ShellbyTimeCalendar: any;
+  ShellbyTimeDayline: any;
   ShellbyTimeFormat: any;
   ShellbyTodos: any;
   ShellbyTrail: any;
@@ -609,6 +610,8 @@ interface ShellbyPanelExtras {
   taskBoard: any;
   // tide.js
   tide: any;
+  // time-day.js
+  timeDay: any;
   // time-month.js
   timeMonth: any;
   // together.js

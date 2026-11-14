@@ -196,6 +196,15 @@ if (args.includes('--json-schema')) {
       answer = reading
         ? { error: '', tickets: [{ key: 'ENG-7', title: 'Crab walks sideways', url: 'https://linear.app/crab/issue/ENG-7', status: 'Todo', priority: 'urgent', assignee: '', mine: false, labels: ['Bug'], due: '', current: true, updated: '', description: 'He should walk forwards when asked.' }] }
         : { error: 'Not asked through reading tools only.', tickets: [] };
+    } else if (schema.properties.lines) {
+      // Writing up a day (timetrack/daywrite.js): a sentence per project, citing its first source.
+      answer = {
+        lines: prompt.split(/^## /m).slice(1).map(block => {
+          const [, project, name] = /^(p\d+): ([^,(\n]+)/.exec(block) || [];
+          const first = (/\[([gc]\d+)\]/.exec(block) || [])[1];
+          return { project, sentences: [{ text: `Worked on ${(name || 'it').trim()}.`, sources: first ? [first] : [] }] };
+        }).filter(l => l.project),
+      };
     } else if (schema.properties.questions) {
       // "Quiz me" (quiz.js): three questions on the diff it was given, the right answer always first.
       const file = (/^diff --git a\/(\S+)/m.exec(prompt) || [])[1] || 'the file';
