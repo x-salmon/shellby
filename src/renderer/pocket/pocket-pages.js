@@ -390,6 +390,12 @@
       } };
     }
 
-    return { pagesScreen, pageScreen, pinnedRow, onPageEvent, onShelfEvent, loadShelf };
+    /** This phone was forgotten or unpaired: what pages held, kept for when the PC sleeps, goes too. */
+    function forget() {
+      S.pages = null;
+      try { root.caches?.delete(SNAPS).catch(() => {}); } catch { /* no caches here */ }
+    }
+
+    return { pagesScreen, pageScreen, pinnedRow, onPageEvent, onShelfEvent, loadShelf, forget };
   };
 })(window);

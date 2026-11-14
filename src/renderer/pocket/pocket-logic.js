@@ -580,8 +580,20 @@
   /** What Claude is asked when Bring it home clashes: the same words as the desk's "Ask him to sort it out" (tab-git.js). */
   const clashPrompt = base => `Merge ${base} into this branch (git merge ${base}), resolve the conflicts so both sides' intent survives, run the tests if there are any, and commit. Then tell me it's ready to bring home.`;
 
+  // ---------------------------------------------------------------- which agent runs it
+
+  // Named as harness/registry.js names them; anything else reads as Claude Code, the default.
+  const AGENTS = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini', opencode: 'OpenCode' };
+  /** { key, label } for a conversation's harness id. */
+  const agentOf = id => {
+    const key = typeof id === 'string' && Object.hasOwn(AGENTS, id) ? id : 'claude';
+    return { key, label: AGENTS[key] };
+  };
+  /** Whether to mark agents at all: only once a conversation runs on another one. "Claude" on every card says nothing. */
+  const mixedAgents = view => (view?.tabs || []).some(t => agentOf(t?.harness).key !== 'claude');
+
   const api = {
-    clashPrompt,
+    agentOf, clashPrompt, mixedAgents,
     OUTBOX_MAX, SAVED_MAX, SETTLE_MS, STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, dropPrompt, duration, endLine, fold, formatCode, headline, holdRedraw, inline,
     isIos, keepItem, keyBytes, laneRows, lineComment, markdown, modeLabel, newKey, outboxDrop, outboxOf, outboxPut, parsePatch, plural, promptChip, route, savePrompt, savedOf, sections, spokenText, sseParser,
     tappedHash, tokens,

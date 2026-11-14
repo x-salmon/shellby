@@ -1,0 +1,139 @@
+/* Shared base for the any-device mockups: the phone app's own tokens, fonts
+   and pieces (src/renderer/pocket/pocket.css), laid out for a tablet or a
+   desktop browser. Fluid, so render.sh can shoot each at two sizes. */
+@import url("../../src/renderer/shared/tokens.css");
+@import url("../../src/renderer/shared/fonts.css");
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; }
+body {
+  color: var(--sand);
+  font: 16px/1.5 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(60% 40% at 8% -5%, rgba(127, 214, 194, .08), transparent 70%),
+    radial-gradient(50% 35% at 100% 6%, rgba(255, 122, 92, .06), transparent 70%),
+    var(--ink);
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.mono { font-family: var(--font-mono); font-stretch: 87%; font-size: .86em; }
+.muted { color: var(--sand-dim); }
+.faint { color: var(--sand-faint); }
+.add { color: var(--glass); font-family: var(--font-mono); font-stretch: 87%; font-size: 13px; }
+.del { color: var(--coral); font-family: var(--font-mono); font-stretch: 87%; font-size: 13px; }
+svg.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The crab, from the app's own icon */
+.crab { image-rendering: pixelated; display: block; }
+
+/* Top bar */
+.top { display: flex; align-items: center; gap: 14px; height: 60px; padding: 0 22px; border-bottom: 1px solid var(--line-soft); background: linear-gradient(var(--abyss), rgba(7, 16, 18, .85)); flex: none; }
+.brand { display: flex; align-items: center; gap: 9px; font: 700 21px/1 var(--font-pixel); }
+.brand .crab { width: 30px; height: 30px; }
+.gap { flex: 1; }
+
+/* Which PC: a switcher once the hub is in */
+.pcs { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border-radius: 99px; background: var(--reef); border: 1px solid var(--line); }
+.pcs span { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 99px; font: 600 12px/1 var(--font-mono); font-stretch: 87%; color: var(--sand-dim); white-space: nowrap; }
+.pcs span i { width: 7px; height: 7px; border-radius: 50%; background: var(--sand-faint-deco); }
+.pcs span.on { background: var(--glass-dim); color: var(--glass); }
+.pcs span.on i, .pcs span.up i { background: var(--glass); box-shadow: 0 0 8px var(--glass); }
+.pcs span b { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--amber); color: #2a1a00; font: 700 11px/18px var(--font-body); text-align: center; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 12px; background: var(--reef-2); border: 1px solid var(--line); color: var(--sand); font-weight: 700; font-size: 15px; white-space: nowrap; }
+.btn.go { background: var(--coral); color: #1a0d09; border-color: transparent; box-shadow: 0 2px 0 var(--coral-deep); }
+.btn.allow { background: var(--glass); color: #06201b; border-color: transparent; box-shadow: 0 2px 0 #4fa592; }
+.btn.ghost { background: transparent; }
+.btn.slim { height: 34px; padding: 0 12px; font-size: 14px; }
+.kbd { font: 600 11px/1 var(--font-mono); font-stretch: 87%; padding: 4px 6px; border-radius: 5px; border: 1px solid rgba(26, 13, 9, .35); opacity: .75; }
+
+/* Section heads, as on the phone */
+.sect { display: flex; align-items: center; gap: 7px; margin: 14px 2px 8px; font: 600 11px/1 var(--font-mono); font-stretch: 87%; letter-spacing: .1em; text-transform: uppercase; color: var(--sand-faint); }
+.sect.asking { color: var(--amber); }
+.sect.asking i { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.sect.review { color: var(--glass); }
+.sect.working { color: var(--coral); }
+
+/* A conversation's card */
+.card { display: grid; gap: 7px; padding: 12px 14px; background: var(--reef); border: 1px solid var(--line); border-radius: 14px; }
+.card + .card { margin-top: 8px; }
+.card-t { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.card-title { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-m { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--sand-dim); min-width: 0; }
+.card.s-review { border-color: rgba(127, 214, 194, .35); }
+.card.s-working { border-color: rgba(255, 122, 92, .28); }
+.card.s-asking { border-color: rgba(255, 193, 94, .45); }
+.card.sel { background: var(--reef-2); border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-dim); }
+.pill { flex: none; font: 600 11px/1 var(--font-mono); font-stretch: 87%; padding: 5px 8px; border-radius: 99px; background: var(--glass-dim); color: var(--glass); white-space: nowrap; }
+.pill.amber { background: rgba(255, 193, 94, .14); color: var(--amber); }
+.pill.coral { background: var(--coral-dim); color: var(--coral); }
+.pill.dim { background: var(--reef-2); color: var(--sand-dim); }
+/* Which agent runs it: Claude Code, Codex, Gemini CLI, OpenCode */
+.agent { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--sand-dim); }
+.agent::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--ag); }
+.ag-claude { --ag: var(--coral); }
+.ag-codex { --ag: var(--sand); }
+.ag-gemini { --ag: #8fb4ff; }
+.ag-opencode { --ag: #c3b6f2; }
+.prog { height: 3px; border-radius: 99px; background: var(--abyss); overflow: hidden; }
+.prog i { display: block; height: 100%; background: var(--coral); border-radius: 99px; }
+
+/* The tide: him, the headline and the usage window */
+.tide { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: center; padding: 14px 16px; border-radius: 18px; background: linear-gradient(170deg, var(--reef), rgba(17, 35, 42, .55)); border: 1px solid var(--line-soft); }
+.tide .crab { width: 72px; height: 72px; }
+.tide-title { font: 700 22px/1.1 var(--font-pixel); }
+.tide-sub { color: var(--sand-dim); font-size: 14px; }
+.meter { grid-column: 1 / -1; display: grid; gap: 6px; margin-top: 8px; }
+.meter-row { display: flex; justify-content: space-between; font: 600 11px/1 var(--font-mono); font-stretch: 87%; color: var(--sand-faint); text-transform: uppercase; letter-spacing: .05em; }
+.bar { height: 6px; border-radius: 99px; background: var(--abyss); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 99px; background: var(--glass); }
+
+/* A permission prompt */
+.ask { padding: 14px 16px; border-radius: 16px; background: var(--reef); border: 1px solid rgba(255, 122, 92, .55); box-shadow: 0 0 0 4px rgba(255, 122, 92, .06); display: grid; gap: 10px; }
+.ask-h { font: 700 18px/1.1 var(--font-pixel); color: var(--coral); }
+.ask-for { font-size: 13px; color: var(--sand-dim); }
+.cmd { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--abyss); border: 1px solid var(--line); font: 13px/1.5 var(--font-mono); font-stretch: 87%; white-space: pre-wrap; }
+.btns { display: flex; gap: 10px; }
+.btns .btn { flex: 1; }
+
+/* A conversation, as on the phone */
+.convo { display: flex; flex-direction: column; gap: 14px; }
+.convo-h { display: grid; gap: 8px; padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
+.convo-h h1 { font: 700 26px/1.15 var(--font-pixel); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.you { align-self: flex-end; max-width: 70%; padding: 12px 16px; border-radius: 16px 16px 4px 16px; background: var(--reef-2); }
+.tools { display: grid; gap: 2px; border-left: 2px solid var(--line); padding-left: 12px; font: 13px/1.9 var(--font-mono); font-stretch: 87%; color: var(--sand-dim); }
+.tools b { color: var(--sand); font-weight: 600; }
+.tools .ok { color: var(--glass); margin-right: 8px; }
+.tools .run { color: var(--coral); margin-right: 8px; }
+.reply { max-width: 68ch; line-height: 1.65; }
+.reply code { font: 13.5px var(--font-mono); font-stretch: 87%; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--line); }
+.changed { padding: 14px 16px; border-radius: 14px; background: var(--reef); border: 1px solid var(--line); display: grid; gap: 6px; max-width: 640px; }
+.changed .row { display: flex; justify-content: space-between; gap: 12px; font: 13px/1.6 var(--font-mono); font-stretch: 87%; color: var(--sand-dim); }
+.changed .head { display: flex; justify-content: space-between; font-weight: 700; }
+.stat { text-align: center; font: 12px var(--font-mono); font-stretch: 87%; color: var(--sand-faint); }
+.replybox { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 16px; background: var(--reef); border: 1px solid var(--line); color: var(--sand-faint); }
+.replybox span { flex: 1; }
+
+/* To-dos */
+.todos { display: grid; gap: 6px; font-size: 14px; }
+.todos li { list-style: none; display: flex; gap: 10px; align-items: baseline; color: var(--sand-dim); }
+.todos li::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid var(--sand-faint-deco); transform: translateY(1px); }
+.todos li.done { text-decoration: line-through; color: var(--sand-faint); }
+.todos li.done::before { background: var(--glass); border-color: var(--glass); }
+.todos li.now { color: var(--sand); font-weight: 700; }
+.todos li.now::before { border-color: var(--coral); background: var(--coral-dim); }
+
+/* Diff lines */
+.diff { font: 12.5px/1.75 var(--font-mono); font-stretch: 87%; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--abyss); }
+.diff div { padding: 0 12px; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.diff .a { background: rgba(127, 214, 194, .09); color: #c9f2e7; }
+.diff .d { background: rgba(255, 122, 92, .09); color: #ffc9bb; }
+.diff .h { color: var(--sand-faint); background: var(--reef); }
+
+/* Labels and counts never wrap */
+.meter-row span, .changed .row > span:last-child { white-space: nowrap; }
+.meter-row { gap: 12px; }
+.changed .row > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

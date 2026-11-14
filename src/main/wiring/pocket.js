@@ -248,7 +248,7 @@ function wirePocket(d) {
 
   function currentView() {
     return view.phoneView({
-      pc: ts.dnsName ? ts.dnsName.split('.')[0] : require('os').hostname(),
+      pc: ts.dnsName ? ts.dnsName.split('.')[0] : require('os').hostname(), pcs: d.config.get('hubPeers'), // pcs: only names and addresses reach the phone (view.js phonePcs)
       tabs: d.manager?.summary || [],
       prompts: waitingPrompts(),
       crab: crab(),

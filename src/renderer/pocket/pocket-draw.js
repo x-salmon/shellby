@@ -98,6 +98,12 @@
   }
   const helperHue = i => HUES[i % HUES.length];
 
+  // Which agent runs a conversation, with its colour in pocket.css (which and when: pocket-logic.js).
+  function agent(id) {
+    const { key, label } = L.agentOf(id);
+    return h('span', { class: `agent ag-${key}`, text: label });
+  }
+
   // ---------------------------------------------------------------- Claude's words
   function runs(list) {
     return list.map(r => {
@@ -153,5 +159,5 @@
     return box;
   }
 
-  root.PocketDraw = { crab, diffFile, h, helperHue, icon, markdown, setSkin };
+  root.PocketDraw = { agent, crab, diffFile, h, helperHue, icon, markdown, setSkin };
 })(window);

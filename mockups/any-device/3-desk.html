@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Any device, concept 3: a desk with the list, the conversation and what it's doing</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .app { height: 100vh; display: grid; grid-template-columns: auto clamp(280px, 22vw, 360px) 1fr clamp(300px, 22vw, 360px); }
+
+  /* The rail: where to go */
+  .rail { display: flex; flex-direction: column; gap: 4px; padding: 14px 10px; border-right: 1px solid var(--line-soft); background: var(--abyss); }
+  .rail .crab { width: 40px; height: 40px; margin: 0 auto 12px; }
+  .rail a { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; border-radius: 10px; color: var(--sand-dim); text-decoration: none; font-weight: 700; font-size: 14.5px; }
+  .rail a.on { background: var(--reef-2); color: var(--sand); }
+  .rail a b { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--amber); color: #2a1a00; font-size: 12px; line-height: 20px; text-align: center; }
+  .rail .pc-list { margin-top: auto; display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+  .rail .pc-list a { font: 600 12px/1 var(--font-mono); font-stretch: 87%; height: 36px; }
+  .rail .pc-list i { width: 8px; height: 8px; border-radius: 50%; background: var(--glass); box-shadow: 0 0 8px var(--glass); flex: none; }
+  .rail .pc-list a.off i { background: var(--sand-faint-deco); box-shadow: none; }
+  @media (max-width: 1300px) {
+    .rail a span, .rail a b, .rail .pc-list a span { display: none; }
+    .rail a { justify-content: center; padding: 0; width: 42px; }
+  }
+
+  /* The list: every conversation as a row */
+  .list { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line-soft); }
+  .list-top { padding: 14px 14px 6px; display: grid; gap: 10px; }
+  .search { height: 38px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border-radius: 19px; background: var(--reef); border: 1px solid var(--line); color: var(--sand-faint); font-size: 14px; }
+  .list-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 0 8px; }
+  .row { display: grid; grid-template-columns: 10px 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 10px; border-radius: 10px; }
+  .row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sand-faint-deco); }
+  .row.asking .dot { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .row.working .dot { background: var(--coral); }
+  .row.review .dot { background: var(--glass); }
+  .row .t { font-weight: 700; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .when { font-size: 12px; color: var(--sand-faint); }
+  .row .m { grid-column: 2 / -1; display: flex; gap: 10px; font-size: 12.5px; color: var(--sand-dim); white-space: nowrap; overflow: hidden; }
+  .row.sel { background: var(--reef-2); box-shadow: inset 0 0 0 1px var(--coral); }
+  .list .sect { margin: 14px 10px 4px; }
+
+  /* The conversation */
+  .pane { display: flex; flex-direction: column; min-height: 0; }
+  .pane-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 24px clamp(20px, 3vw, 48px) 0; }
+  .pane-foot { padding: 12px clamp(20px, 3vw, 48px) 16px; border-top: 1px solid var(--line-soft); }
+
+  /* The context rail: what it's asking, its plan, what it changed */
+  .ctx { min-height: 0; overflow: hidden; border-left: 1px solid var(--line-soft); background: rgba(7, 16, 18, .4); padding: 16px; display: grid; align-content: start; gap: 6px; }
+  .ctx .sect:first-child { margin-top: 0; }
+  .ctx .ask .btns .btn { height: 38px; }
+  .ctx .changed .row { padding: 0; display: flex; grid-template-columns: none; }
+  .ctx .footer-acts { display: grid; gap: 8px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Shellby">
+    <img class="crab" src="../../assets/icon.png" alt="Shellby">
+    <a class="on" href="#"><svg class="ic" viewBox="0 0 24 24"><path d="M3 15c3-3 6 3 9 0s6 3 9 0M3 10c3-3 6 3 9 0s6 3 9 0"/></svg><span>Beach</span><b>1</b></a>
+    <a href="#"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span>Queue</span></a>
+    <a href="#"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Search</span></a>
+    <a href="#"><svg class="ic" viewBox="0 0 24 24"><path d="M6 4h12v16H6zM9 9h6M9 13h6"/></svg><span>Notes</span></a>
+    <a href="#"><svg class="ic" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/></svg><span>Routines</span></a>
+    <div class="pc-list">
+      <a href="#"><i></i><span>DESK-PC</span></a>
+      <a href="#"><i></i><span>LAPTOP</span></a>
+      <a class="off" href="#"><i></i><span>MEDIA-PC</span></a>
+    </div>
+  </nav>
+
+  <section class="list" aria-label="Every conversation">
+    <div class="list-top">
+      <button class="btn go"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New task <span class="kbd">N</span></button>
+      <div class="search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Search conversations</div>
+    </div>
+    <div class="list-scroll">
+      <p class="sect asking"><i></i>Waiting on you</p>
+      <div class="row asking"><span class="dot"></span><span class="t">Fix the flaky upload test</span><span class="when">now</span><span class="m"><span class="agent ag-claude">Claude</span><span>wants to run npm test</span></span></div>
+      <p class="sect review">Ready to review</p>
+      <div class="row review sel"><span class="dot"></span><span class="t">Tailnet range for localOrHttps</span><span class="when">4m</span><span class="m"><span class="agent ag-codex">Codex</span><span class="add">+18</span><span class="del">−3</span></span></div>
+      <p class="sect working">Working</p>
+      <div class="row working"><span class="dot"></span><span class="t">Month calendar for Time</span><span class="when">6m</span><span class="m"><span class="agent ag-claude">Claude</span><span>Editing time-month.js</span></span></div>
+      <div class="row working"><span class="dot"></span><span class="t">Split the tab store</span><span class="when">2m</span><span class="m"><span class="agent ag-gemini">Gemini</span><span>Reading tabs.js</span></span></div>
+      <p class="sect">Finished</p>
+      <div class="row"><span class="dot"></span><span class="t">Hero copy for the website</span><span class="when">1h</span><span class="m"><span class="agent ag-opencode">OpenCode</span><span>shellby-site</span></span></div>
+      <div class="row"><span class="dot"></span><span class="t">Bump Electron to 44.2</span><span class="when">3h</span><span class="m"><span class="agent ag-claude">Claude</span><span>shellby</span></span></div>
+    </div>
+  </section>
+
+  <main class="pane">
+    <div class="pane-scroll">
+      <article class="convo">
+        <div class="convo-h">
+          <h1>Tailnet range for localOrHttps</h1>
+          <div class="tags"><span class="pill dim">Ask first</span><span class="pill">own copy</span><span class="pill dim">shellby/tailnet-range</span><span class="agent ag-codex">Codex · gpt-5.2</span></div>
+        </div>
+        <p class="you">localOrHttps should accept Tailscale addresses (100.64.0.0/10) over http.</p>
+        <div class="tools">
+          <span><span class="ok">✓</span><b>Edit</b> src/main/channels/index.js</span>
+          <span><span class="ok">✓</span><b>Edit</b> test/channels.test.js</span>
+          <span><span class="ok">✓</span><b>Run</b> npm test -- channels</span>
+        </div>
+        <p class="reply">Done. <code>localOrHttps</code> now takes <b>100.64.0.0/10</b> over plain http, and the tests cover the edges of the range: <code>100.64.0.1</code> and <code>100.127.255.254</code> pass, <code>100.63.255.255</code> and <code>100.128.0.0</code> don't.</p>
+        <div class="diff">
+          <div class="h">src/main/channels/index.js</div>
+          <div>  if (isLoopback(host)) return true;</div>
+          <div class="d">- return url.protocol === 'https:';</div>
+          <div class="a">+ if (inTailnet(host)) return true;</div>
+          <div class="a">+ return url.protocol === 'https:';</div>
+        </div>
+        <p class="stat">4m 12s · 23.1k tokens · 4% of your window</p>
+      </article>
+    </div>
+    <footer class="pane-foot">
+      <div class="replybox"><span>Reply to Codex…</span><button class="btn slim">Send</button></div>
+    </footer>
+  </main>
+
+  <aside class="ctx" aria-label="About this conversation">
+    <p class="sect asking"><i></i>Elsewhere, waiting on you</p>
+    <div class="ask">
+      <div><p class="ask-h">Can I do this?</p><p class="ask-for">Fix the flaky upload test</p></div>
+      <pre class="cmd">npm test -- --grep upload</pre>
+      <div class="btns"><button class="btn">Deny</button><button class="btn allow">Allow</button></div>
+    </div>
+    <p class="sect">Its plan</p>
+    <ul class="todos">
+      <li class="done">Find where localOrHttps decides</li>
+      <li class="done">Add the 100.64.0.0/10 range</li>
+      <li class="done">Test both edges of the range</li>
+    </ul>
+    <p class="sect">Changed 2 files</p>
+    <div class="changed">
+      <div class="row"><span>…/channels/index.js</span><span><span class="add">+6</span> <span class="del">−2</span></span></div>
+      <div class="row"><span>test/channels.test.js</span><span><span class="add">+12</span> <span class="del">−1</span></span></div>
+    </div>
+    <div class="footer-acts">
+      <button class="btn">Undo turn</button>
+      <button class="btn go">Bring it home</button>
+    </div>
+    <div class="meter">
+      <div class="meter-row"><span>5-hour window</span><span>42%</span></div>
+      <div class="bar"><i style="width:42%"></i></div>
+    </div>
+  </aside>
+</div>
+</body>
+</html>

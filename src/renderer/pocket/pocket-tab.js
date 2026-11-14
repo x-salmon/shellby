@@ -253,6 +253,7 @@
         if (t.copy) chips.push(h('span', { class: 'pill', text: 'own copy' }), h('span', { class: 'pill dim mono', text: t.copy.branch }));
         else if (t.folder) chips.push(h('span', { class: 'pill dim', text: t.folder }));
         if (t.fromPhone) chips.push(h('span', { class: 'pill dim', text: '📱 from your phone' }));
+        if (L.mixedAgents(S.view)) chips.push(D.agent(t.harness));
         const tools = [];
         if (S.view?.allow?.files) tools.push(h('a', { class: 'btn ghost slim', href: `#/files/${encodeURIComponent(tabId)}/` }, icon('folder'), h('span', { class: 'btn-label', text: 'Files' })));
         // The whole branch against where it started: what Bring it home would bring (pocket-find.js).

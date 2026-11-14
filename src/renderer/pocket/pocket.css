@@ -81,6 +81,15 @@ a { color: var(--glass); }
 .pc i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
 .pc.off { background: var(--reef); color: var(--sand-faint); }
 .pc.off i { box-shadow: none; }
+/* Your other PCs beside this one (pocket.js pcSwitch): each opens its own Shellby. */
+.pcs { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 62%; padding: 3px; border-radius: 99px; background: var(--reef); border: 1px solid var(--line-soft); overflow-x: auto; scrollbar-width: none; }
+.pcs .pc { max-width: 9.5em; flex: none; gap: 5px; padding: 6px 9px; letter-spacing: 0; }
+/* With PCs to switch between, the crab alone says Shellby and they get the room. */
+.top:has(.pcs) .brand > span:last-child { display: none; }
+.top:has(.pcs) .pcs { max-width: calc(100% - 64px); }
+.pc.other { background: transparent; color: var(--sand-dim); text-decoration: none; }
+.pc.other i { background: var(--sand-faint); box-shadow: none; }
+.pc.other:hover, .pc.other:focus-visible { color: var(--sand); background: var(--reef-2); }
 
 .offline-slot:empty { display: none; }
 .offline { margin: 8px max(var(--gutter), var(--safe-l)) 0; padding: 10px 12px; border-radius: var(--r); background: var(--reef); border: 1px solid var(--line); font-size: 14px; color: var(--sand-dim); }
@@ -180,6 +189,14 @@ button.card:active { transform: scale(.985); }
 .tab-card.s-review { border-color: rgba(127, 214, 194, .35); }
 .tab-card.s-working { border-color: rgba(255, 122, 92, .28); }
 .since { color: var(--sand-faint); }
+/* Which agent runs it (pocket-draw.js agent): a coloured square and its name. */
+.agent { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--sand-dim); white-space: nowrap; }
+.agent::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--ag); flex: none; }
+.ag-claude { --ag: var(--coral); }
+.ag-codex { --ag: var(--sand); }
+.ag-gemini { --ag: #8fb4ff; }
+.ag-opencode { --ag: #c3b6f2; }
+.tab-head .agent { align-self: center; }
 .pill { flex: none; font: 600 10.5px/1 var(--font-mono); font-stretch: 87%; padding: 5px 8px; border-radius: 99px; background: var(--glass-dim); color: var(--glass); white-space: nowrap; }
 .pill.amber { background: rgba(255, 193, 94, .14); color: var(--amber); }
 .pill.coral { background: var(--coral-dim); color: var(--coral); }
@@ -511,6 +528,26 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
   .scroll, .top, .foot { padding-left: max(calc(50vw - 330px), var(--gutter)); padding-right: max(calc(50vw - 330px), var(--gutter)); }
   .sheet { left: 50%; right: auto; width: 560px; transform: translate(-50%, 105%); border-radius: 24px; bottom: 24px; }
   .sheet.in { transform: translate(-50%, 0); }
+}
+
+/* ---------------------------------------------------------------- a wide screen
+   A tablet on its side or a computer's browser: the beach on the left, the
+   open conversation beside it (pocket.js wideScreen; the width matches WIDE). */
+@media (min-width: 1000px) {
+  .wide { --pane-pad: clamp(24px, 4vw, 64px); height: 100%; display: grid; grid-template-columns: clamp(360px, 30vw, 460px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .wide-list, .wide-pane { min-width: 0; min-height: 0; overflow: hidden; }
+  .wide-list { border-right: 1px solid var(--line-soft); background: rgba(7, 16, 18, .35); }
+  .wide-list .scroll, .wide-list .top { padding-left: var(--gutter); padding-right: var(--gutter); }
+  /* The conversation reads at a book's width, centred however wide the window gets. */
+  .wide-pane .scroll, .wide-pane .top, .wide-pane .foot {
+    padding-left: max(var(--pane-pad), calc((100% - 880px) / 2));
+    padding-right: max(var(--pane-pad), calc((100% - 880px) / 2));
+  }
+  .wide-pane .scroll { padding-top: 18px; }
+  /* The beach is right there with the brand and the PC, so the conversation needs no bar of its own. */
+  .wide-pane .tab-screen > .top { display: none; }
+  .wide-empty { align-items: center; justify-content: center; gap: 14px; text-align: center; }
+  .tab-card.sel { background: var(--reef-2); border-color: var(--glass); box-shadow: 0 0 0 3px var(--glass-dim); }
 }
 
 /* Questions and plans, answered from the phone */
