@@ -110,8 +110,9 @@
   }
 
   function showTurn(tab, turnId) {
-    const el = turnId && [...tab.el.querySelectorAll('.turn-cost')].find(c => c.dataset.turn === turnId);
+    const el = turnId && [...tab.el.querySelectorAll('.turn-foot')].find(c => c.dataset.turn === turnId);
     if (!el) return SB.toast("That turn is further back than this tab keeps. It's in History.");
+    tab.toggleFoot(el, true); // opened: what it cost is why you came
     el.scrollIntoView({ block: 'center' });
     el.classList.add('flash');
     setTimeout(() => el.classList.remove('flash'), 1600);

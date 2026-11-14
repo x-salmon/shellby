@@ -43,7 +43,7 @@ test('a turn that made no calls has no cost', () => {
   assert.equal(tc.turnCost({ usages: [], weight: 0 }, ctxAt(1000)), null);
   assert.equal(tc.turnCost(null, null), null);
   const c = tc.turnCost({ usages: [{ input_tokens: 1000, output_tokens: 500, cache_read_input_tokens: 4000 }], weight: 42 }, ctxAt(82000));
-  assert.deepEqual(c, { tokens: 1500, read: 4000, weight: 42, share: null, contextPct: 41, effort: '', thinking: null });
+  assert.deepEqual(c, { tokens: 1500, read: 4000, weight: 42, share: null, contextPct: 41, contextBefore: null, compactedFrom: null, contextLevel: '', effort: '', thinking: null });
 });
 
 test("a turn keeps the effort it ran at and the thinking it did, and the badge says both", () => {
@@ -233,6 +233,54 @@ test("a session puts the turn's cost on its result, helpers' calls included", ()
   // A result with no turn behind it (Claude Code's own, after a restart) carries nothing.
   s.handle({ kind: 'result', ok: true });
   assert.equal(items.filter(i => i.kind === 'result')[1].cost, undefined);
+});
+
+test("how full a conversation is, in the warning's words: filling up at 60%, crowded at the crowded mark", () => {
+  assert.equal(tc.contextLevel(59), '');
+  assert.equal(tc.contextLevel(tc.SOON_PCT), 'filling');
+  assert.equal(tc.contextLevel(CROWDED_PCT - 1), 'filling');
+  assert.equal(tc.contextLevel(CROWDED_PCT), 'crowded');
+  assert.equal(tc.contextLevel(null), '');
+});
+
+test("a turn's cost says where its part of the context started, or what a compact inside it freed", () => {
+  const usages = [{ input_tokens: 100, output_tokens: 10 }];
+  const plain = tc.turnCost({ usages, weight: 1, beforePct: 22 }, ctxAt(82000));
+  assert.deepEqual([plain.contextBefore, plain.compactedFrom, plain.contextPct, plain.contextLevel], [22, null, 41, '']);
+  // Compacted from 86% to a summary at 14%: the summary is where this turn's part starts.
+  const squeezed = tc.turnCost({ usages, weight: 1, beforePct: 86, compact: { from: 86, base: 14 } }, ctxAt(36000));
+  assert.deepEqual([squeezed.contextBefore, squeezed.compactedFrom, squeezed.contextPct], [14, 86, 18]);
+  // A reopened conversation with no reading, or one saved before these were kept: unknown, not 0.
+  assert.equal(tc.turnCost({ usages, weight: 1 }, ctxAt(1000)).contextBefore, null);
+  assert.equal(tc.turnCost({ usages, weight: 1, beforePct: 140 }, ctxAt(1000)).contextBefore, 100);
+});
+
+test('a session notes a compact inside a turn: where it was, and the summary it carried on from', () => {
+  const s = new ClaudeSession({ exe: process.execPath, cwd: os.tmpdir(), mode: 'ask' });
+  const items = [];
+  s.on('item', i => items.push(i));
+  const reply = (id, tokens) => ({ type: 'assistant', message: { id, model: 'claude-haiku-4-5', usage: { input_tokens: tokens, output_tokens: 0 } } });
+  s.measure(reply('m0', 172000)); // 86% of 200k
+  s.turn = { usages: new Map(), weight: 0, before: 172000, beforePct: 86 };
+  s.measure({ type: 'system', subtype: 'compact_boundary' });
+  s.measure(reply('m1', 28000)); // the summary, 14%
+  s.measure(reply('m2', 36000)); // and the reply on it, 18%
+  s.countSpend({ messageId: 'm2', model: 'claude-haiku-4-5', usage: { input_tokens: 36000, output_tokens: 10 } });
+  s.handle({ kind: 'result', ok: true });
+  const r = items.find(i => i.kind === 'result');
+  assert.deepEqual([r.cost.compactedFrom, r.cost.contextBefore, r.cost.contextPct], [86, 14, 18]);
+});
+
+test('two compacts in one turn: freed from where the first began, carried on from the last summary', () => {
+  const s = new ClaudeSession({ exe: process.execPath, cwd: os.tmpdir(), mode: 'ask' });
+  const reply = (id, tokens) => ({ type: 'assistant', message: { id, model: 'claude-haiku-4-5', usage: { input_tokens: tokens, output_tokens: 0 } } });
+  s.measure(reply('m0', 180000)); // 90%
+  s.turn = { usages: new Map(), weight: 0, before: 180000, beforePct: 90 };
+  s.measure({ type: 'system', subtype: 'compact_boundary' });
+  s.measure(reply('m1', 40000)); // 20%
+  s.measure({ type: 'system', subtype: 'compact_boundary' });
+  s.measure(reply('m2', 16000)); // 8%
+  assert.deepEqual(s.turn.compact, { from: 90, base: 8 });
 });
 
 test("each helper's part of a turn: costliest first, empty ones left out", () => {

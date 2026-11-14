@@ -136,6 +136,83 @@ test('resultLabel says done, stopped, an error, or what a turn left running', ()
   assert.equal(F.resultLabel({ ok: true, waiting: ['a', 'b'] }).label, 'waiting on 2 background tasks');
 });
 
+// The footer under a turn: SB.compact / SB.duration stand-ins.
+const fmt = { compact: n => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n)), duration: ms => `${Math.round(ms / 1000)}s` };
+const costAt = (o = {}) => ({ tokens: 44000, read: 0, share: 2, effort: 'medium', thinking: 61, contextPct: 7, contextBefore: 4, compactedFrom: null, contextLevel: '', ...o });
+
+test('sounding: a quick reply says one step, and how much of the conversation it took', () => {
+  const v = F.sounding({ ok: true, durationMs: 15000, turns: 1, cost: costAt() }, fmt);
+  assert.equal(v.word, 'Done');
+  assert.deepEqual(v.soft, ['15s', '1 step']);
+  assert.deepEqual(v.effort, { lit: 2, of: 5, name: 'medium' });
+  assert.deepEqual(v.bar, { past: 4, added: 3, freedTo: null });
+  assert.equal(v.full, '7% full');
+  assert.deepEqual(v.change, { kind: 'plus', text: '+3' });
+  assert.equal(v.tokens, '44k');
+  assert.equal(v.meter, '7% of the conversation used, 3% by this reply');
+  assert.match(v.details, /^44k new tokens, about 2% of your 5-hour window\. Medium effort, 61 tokens of thinking\. This reply took 3% of the conversation's room; 93% is left\.$/);
+});
+
+test('sounding: steps and helpers are counted in words, and past 60% or 80% it says so', () => {
+  const helpers = [{ id: 'a', tokens: 70000 }, { id: 'b', tokens: 50000 }];
+  const v = F.sounding({ ok: true, durationMs: 252000, turns: 23, cost: costAt({ helpers, contextPct: 72, contextBefore: 58, contextLevel: 'filling' }) }, fmt);
+  assert.deepEqual(v.soft, ['252s', '23 steps', '2 helpers']);
+  assert.equal(v.level, 'filling');
+  assert.match(v.details, /2 helpers used 120k of them, in their own context/);
+  assert.equal(F.sounding({ ok: true, cost: costAt({ contextLevel: 'crowded' }) }, fmt).level, 'crowded');
+});
+
+test('sounding: after a compact the bar shrinks and says what it freed', () => {
+  const v = F.sounding({ ok: true, cost: costAt({ contextPct: 18, contextBefore: 14, compactedFrom: 86 }) }, fmt);
+  assert.deepEqual(v.bar, { past: 14, added: 4, freedTo: 86 });
+  assert.deepEqual(v.change, { kind: 'freed', text: 'compacted from 86%' });
+  assert.equal(v.meter, '18% of the conversation used, down from 86% after a compact');
+  assert.match(v.details, /freed 68% of its room\.$/);
+});
+
+test("sounding: an old turn without a starting point shows how full, but no +N", () => {
+  const v = F.sounding({ ok: true, cost: costAt({ contextBefore: undefined, compactedFrom: undefined, contextLevel: undefined }) }, fmt);
+  assert.deepEqual(v.bar, { past: 7, added: 0, freedTo: null });
+  assert.equal(v.change, null);
+  assert.equal(v.level, '');
+  assert.match(v.details, /The conversation is 7% full\.$/);
+  // ...and one from before Shellby kept the context at all: no bar, just the tokens.
+  const older = F.sounding({ ok: true, cost: costAt({ contextPct: null }) }, fmt);
+  assert.equal(older.bar, null);
+  assert.equal(older.full, null);
+  assert.equal(older.tokens, '44k');
+});
+
+test("sounding: a turn saved before levels were kept gets its level from the % at main's own marks", () => {
+  const { SOON_PCT } = require('../src/main/turncost');
+  const { CROWDED_PCT } = require('../src/main/context');
+  const old = p => F.sounding({ ok: true, cost: costAt({ contextPct: p, contextBefore: undefined, contextLevel: undefined }) }, fmt);
+  assert.deepEqual([old(SOON_PCT - 1).level, old(SOON_PCT).level, old(CROWDED_PCT - 1).level, old(CROWDED_PCT).level], ['', 'filling', 'filling', 'crowded']);
+  assert.equal(old(85).meter, '85% of the conversation used: getting crowded');
+});
+
+test("sounding: a reading lower than where the turn began, with no compact, claims no share", () => {
+  const v = F.sounding({ ok: true, cost: costAt({ contextPct: 5, contextBefore: 30 }) }, fmt);
+  assert.deepEqual(v.bar, { past: 5, added: 0, freedTo: null });
+  assert.equal(v.change, null);
+  assert.equal(v.meter, '5% of the conversation used');
+  assert.match(v.details, /The conversation is 5% full\.$/);
+});
+
+test('sounding: stopped, failed, waiting and costless turns', () => {
+  assert.equal(F.sounding({ ok: true, interrupted: true }, fmt).state, 'stopped');
+  const failed = F.sounding({ ok: false }, fmt);
+  assert.deepEqual([failed.state, failed.word], ['failed', 'Ended with an error']);
+  const waiting = F.sounding({ ok: true, waiting: ['npm run dev'] }, fmt);
+  assert.deepEqual([waiting.state, waiting.word], ['waiting', 'Waiting on npm run dev']);
+  assert.match(waiting.title, /still running/);
+  // A local command: no calls, so no bar, no tokens and nothing to open.
+  const local = F.sounding({ ok: true, durationMs: 0, turns: 0 }, fmt);
+  assert.deepEqual([local.bar, local.tokens, local.details, local.effort, local.soft], [null, null, null, null, []]);
+  // Auto effort lights nothing.
+  assert.equal(F.sounding({ ok: true, cost: costAt({ effort: '' }) }, fmt).effort, null);
+});
+
 test('diffRows drops file headers and classes each line', () => {
   const patch = [
     'diff --git a/x.js b/x.js', 'index 1..2 100644', '--- a/x.js', '+++ b/x.js',

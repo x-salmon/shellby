@@ -1,0 +1,85 @@
+/* The footer under each finished turn (feed-foot.js). One bar for the whole
+   conversation, then one line: what happened, and how full it is. Colour has
+   one job here, how full the conversation is: teal, amber past 60% ("filling
+   up"), coral past 80% ("getting crowded"). Earlier replies are always grey,
+   and "+3" is printed in its own part's colour, so the label is the key. */
+
+.meta.turn-foot {
+  --tf-fill: var(--glass);
+  display: block; max-width: 760px; margin: 8px 0 18px;
+  color: var(--sand-faint); font: 500 var(--fs-10-5) var(--font-mono); font-stretch: 88%;
+}
+.meta.turn-foot::before, .meta.turn-foot::after { content: none; }
+.meta.turn-foot.is-filling { --tf-fill: var(--amber); }
+.meta.turn-foot.is-crowded { --tf-fill: var(--coral); }
+.meta.turn-foot:has(+ .turn-denials), .meta.turn-foot:has(+ .turn-note) { margin-bottom: 6px; }
+
+/* ---------------------------------------------------------------- the bar */
+.tf-bar { position: relative; height: 6px; margin-bottom: 7px; border-radius: 3px; background: var(--reef-2); }
+.tf-bar > i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.tf-past { left: 0; width: var(--past); background: var(--sand-faint-deco); opacity: .55; }
+/* this reply's part: at least 3px, so a +1 still shows */
+.tf-added { left: var(--past); width: max(3px, var(--added)); background: var(--tf-fill); }
+.tf-past + .tf-added { border-radius: 0 3px 3px 0; box-shadow: -1px 0 0 var(--ink); }
+/* after a compact: the room it freed, as a hatched ghost of the old fill */
+.tf-freed { left: 0; width: var(--freed); opacity: .5;
+  background: repeating-linear-gradient(135deg, var(--sand-faint-deco) 0 2px, transparent 2px 5px); }
+/* 80%: where Shellby asks you to make room (context.js CROWDED_PCT), with an ink gap so it shows over a fill */
+.tf-bar > .tf-mark { left: 80%; top: -3px; bottom: -3px; width: 1px; border-radius: 0;
+  background: var(--sand-faint-deco); box-shadow: -1px 0 0 var(--ink), 1px 0 0 var(--ink); }
+.is-crowded .tf-bar > .tf-mark { background: var(--sand); }
+
+/* ---------------------------------------------------------------- the line */
+.tf-row { display: flex; align-items: center; gap: 6px; min-height: 20px; }
+.tf-open {
+  flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px;
+  margin: 0 -6px; padding: 2px 6px; border: 0; border-radius: var(--r-sm); background: none;
+  color: inherit; font: inherit; text-align: left; white-space: nowrap;
+}
+button.tf-open { cursor: pointer; }
+button.tf-open:hover, button.tf-open[aria-expanded="true"] { background: var(--reef); }
+button.tf-open:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
+.tf-what { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.tf-state { color: var(--glass); flex: none; }
+.is-stopped .tf-state, .is-waiting .tf-state { color: var(--amber); }
+.is-failed .tf-state { color: var(--danger); }
+.is-waiting .tf-state { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; max-width: 22ch; }
+.tf-soft { overflow: hidden; text-overflow: ellipsis; }
+.tf-room { margin-left: auto; flex: none; display: flex; align-items: baseline; gap: 7px; }
+.tf-full { color: var(--sand-dim); }
+.is-filling .tf-full { color: var(--amber); }
+.is-crowded .tf-full { color: var(--coral); }
+.tf-change.is-plus { color: var(--tf-fill); }
+
+/* effort: how many of five are lit, no colour */
+.tf-effort { display: inline-flex; gap: 2px; align-self: center; flex: none; }
+.tf-effort i { width: 3px; height: 7px; border-radius: 1px; background: var(--reef-3); }
+.tf-effort i.on { background: var(--sand-faint); }
+
+.tf-act {
+  flex: none; padding: 1px 8px; border: 0; border-radius: 4px; cursor: pointer;
+  font: 700 var(--fs-10-5) var(--font-body); color: var(--tf-fill);
+  background: color-mix(in srgb, var(--tf-fill) 14%, transparent);
+}
+.tf-act:hover { background: color-mix(in srgb, var(--tf-fill) 24%, transparent); }
+.tf-act:focus-visible { outline: 2px solid var(--tf-fill); outline-offset: 2px; }
+.turn-foot .tf-row > .meta-branch { flex: none; }
+.tf-acts { display: flex; gap: 6px; margin-top: 8px; }
+/* In the opened part it's an ordinary button, always visible (composer.css fades the old hover one). */
+.tf-acts .meta-branch { opacity: 1; padding: 3px 10px; border: 1px solid var(--line); background: var(--ink); font: 500 var(--fs-11-5) var(--font-body); }
+.tf-acts .meta-branch:hover { border-color: var(--sand-faint-deco); }
+
+/* ---------------------------------------------------------------- opened */
+.tf-more { margin-top: 6px; padding: 8px 11px; border-radius: var(--r-sm); background: var(--reef); }
+.tf-more p { margin: 0; max-width: 64ch; font: 400 var(--fs-12) / 1.55 var(--font-body); color: var(--sand-dim); text-wrap: pretty; white-space: normal; }
+
+/* The costliest-turns menu (tab-meters.js) lands here. */
+.turn-foot.flash .tf-open { background: var(--reef-2); color: var(--sand); }
+
+/* The one motion: as a turn ends, its part grows out from where the last one stopped. */
+@media (prefers-reduced-motion: no-preference) {
+  .turn-foot.is-live .tf-added { transform-origin: left; animation: tf-grow .6s cubic-bezier(.22, 1, .36, 1) .1s both; }
+  .turn-foot.is-live .tf-change { animation: tf-in .3s ease-out .55s both; }
+}
+@keyframes tf-grow { from { transform: scaleX(0); } }
+@keyframes tf-in { from { opacity: 0; } }

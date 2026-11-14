@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby turn footer: five directions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Bold.ttf"); font-weight: 700; }
+@font-face { font-family: "Martian Mono"; src: url("../../assets/fonts/MartianMono.ttf"); font-weight: 100 800; font-stretch: 75% 112.5%; }
+
+:root {
+  --abyss: #071012; --ink: #0c1719; --reef: #11232a; --reef-2: #173039; --reef-3: #1e3d47;
+  --line: #214049; --sand: #f3e6cc; --sand-dim: #b3a892; --sand-faint: #9d9482; --sand-faint-deco: #7d7566;
+  --glass: #7fd6c2; --glass-dim: rgba(127, 214, 194, .14);
+  --coral: #ff7a5c; --coral-dim: rgba(255, 122, 92, .14); --amber: #ffc15e; --danger: #ff5a4a; --lilac: #c3b6f2;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  --font-pixel: "Pixelify Sans", monospace;
+  --font-mono: "Martian Mono", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 36px 44px 80px; background: var(--abyss); color: var(--sand); font: 15px/1.5 var(--font-body); }
+h1 { font: 600 30px/1.1 var(--font-pixel); margin: 0 0 8px; }
+.lede { color: var(--sand-dim); max-width: 72ch; margin: 0 0 10px; }
+.lede b { color: var(--sand); }
+.issues { color: var(--sand-dim); max-width: 72ch; margin: 0 0 30px; padding-left: 20px; font-size: 14px; }
+.issues li { margin-bottom: 3px; }
+.issues code { font: 500 12px var(--font-mono); color: var(--sand); background: var(--reef); padding: 1px 5px; border-radius: 4px; }
+
+.dir { display: grid; grid-template-columns: 290px 1fr; gap: 32px; padding: 30px 0 34px; border-top: 1px solid var(--line); }
+.dir h2 { font: 600 21px/1.2 var(--font-pixel); margin: 0 0 8px; }
+.dir h2 small { color: var(--sand-faint); font-weight: 400; margin-right: 8px; }
+.dir p { color: var(--sand-dim); margin: 0 0 10px; font-size: 14px; }
+.dir p.why { color: var(--sand); }
+.dir.pick h2::after { content: "Recommended"; margin-left: 10px; padding: 1px 8px; border-radius: 99px; font: 500 11px var(--font-body); color: var(--glass); background: var(--glass-dim); vertical-align: 3px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0 12px; font-size: 13px; color: var(--sand-dim); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 6px; border-radius: 3px; }
+.frames { display: grid; grid-template-columns: repeat(2, minmax(0, 460px)); gap: 18px; align-content: start; align-items: start; }
+.frame { background: var(--ink); border: 1px solid var(--reef-2); border-radius: 10px; padding: 14px 16px 4px; }
+.frame.wide { grid-column: 1 / -1; width: 100%; max-width: 1060px; }
+.cap { font: 500 11px var(--font-body); color: var(--sand-faint); margin: 0 0 8px; }
+.reply { margin: 0 0 10px; color: var(--sand); font-size: 13.5px; line-height: 1.55; }
+.reply code { font: 500 11.5px var(--font-mono); font-stretch: 90%; background: var(--reef); padding: 0 4px; border-radius: 3px; }
+
+/* ---------------------------------------------------------------- today, as it ships */
+.today { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; color: var(--sand-faint); font: 500 11px var(--font-mono); font-stretch: 88%; }
+.today::before, .today::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
+.today-cost { margin: 0 0 14px; text-align: center; color: var(--sand-faint); font: 500 10.5px var(--font-mono); font-stretch: 88%; }
+.today-badge { display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--sand-dim); background: var(--reef); }
+
+/* ---------------------------------------------------------------- shared bits */
+.pips { display: inline-flex; gap: 2px; vertical-align: 1px; }
+.pips i { width: 4px; height: 7px; border-radius: 1px; background: var(--reef-3); }
+.pips i.on { background: currentColor; }
+.lvl-low { color: var(--sand-faint); } .lvl-medium { color: var(--sand-dim); }
+.lvl-high, .lvl-xhigh { color: var(--glass); } .lvl-max { color: var(--coral); } .lvl-auto { color: var(--sand-faint-deco); }
+.ghost-branch { opacity: 0; border: 0; background: none; color: var(--sand-faint); font: 500 10.5px var(--font-body); padding: 1px 6px; border-radius: 4px; cursor: pointer; transition: opacity .15s; }
+.foot:hover .ghost-branch, .ghost-branch:focus-visible { opacity: 1; }
+.ghost-branch:hover { background: var(--reef); color: var(--sand); }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- 1. Tide line */
+.t1 { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px; font: 500 11px var(--font-mono); font-stretch: 88%; color: var(--sand-faint); }
+.t1-state { color: var(--glass); }
+.t1.stopped .t1-state { color: var(--amber); }
+.t1-time { color: var(--sand-dim); }
+.t1-track { position: relative; flex: 1; height: 3px; border-radius: 2px; background: var(--reef-2); }
+.t1-track .prev, .t1-track .add { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+.t1-track .prev { left: 0; width: var(--prev); background: var(--sand-faint-deco); opacity: .55; }
+.t1-track .add { left: var(--prev); width: max(3px, var(--add)); background: var(--glass); }
+.t1.warn .t1-track .add { background: var(--amber); }
+.t1.warn .t1-track .prev { background: var(--amber); opacity: .4; }
+.t1-ctx { color: var(--sand-dim); min-width: 5ch; }
+.t1.warn .t1-ctx { color: var(--amber); }
+.t1-tok { color: var(--sand-dim); }
+.t1 .ghost-branch { margin-left: -4px; }
+
+/* ---------------------------------------------------------------- 2. Receipt */
+.t2 { margin: 4px 0 16px; }
+.t2 > summary { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--sand-faint); font: 500 11px var(--font-mono); font-stretch: 88%; }
+.t2 > summary::-webkit-details-marker { display: none; }
+.t2 > summary::before, .t2 > summary::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
+.t2-chip { display: inline-flex; align-items: center; gap: 8px; padding: 2px 10px; border-radius: 99px; border: 1px solid transparent; transition: background .15s, border-color .15s; }
+.t2 > summary:hover .t2-chip, .t2[open] .t2-chip { background: var(--reef); border-color: var(--line); color: var(--sand-dim); }
+.t2-chip .ok { color: var(--glass); } .t2-chip .stop { color: var(--amber); }
+.t2-chip .caret { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translate(-2px, -2px); transition: transform .2s; }
+.t2[open] .t2-chip .caret { transform: rotate(-135deg) translate(-2px, -2px); }
+.t2-sheet { margin: 10px auto 0; width: min(100%, 320px); padding: 12px 14px 10px; background: var(--reef); border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; }
+.t2-row { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 12px; padding: 3px 0; color: var(--sand-dim); }
+.t2-row b { font: 500 11.5px var(--font-mono); font-stretch: 90%; color: var(--sand); font-variant-numeric: tabular-nums; }
+.t2-row b small { color: var(--sand-faint); font-size: 10.5px; }
+.t2-bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--reef-3); overflow: hidden; margin: 2px 0 4px; }
+.t2-bar i { display: block; height: 100%; width: var(--w); background: var(--glass); border-radius: 2px; }
+.t2-bar.warn i { background: var(--amber); }
+.t2-actions { display: flex; gap: 6px; margin-top: 8px; padding-top: 9px; border-top: 1px solid var(--line); }
+.t2-actions button { border: 1px solid var(--line); background: var(--ink); color: var(--sand-dim); font: 500 11.5px var(--font-body); padding: 3px 10px; border-radius: 5px; cursor: pointer; }
+.t2-actions button:hover { color: var(--sand); border-color: var(--sand-faint-deco); }
+.t2-actions button.go { color: var(--amber); border-color: rgba(255, 193, 94, .35); }
+@media (prefers-reduced-motion: no-preference) { .t2[open] .t2-sheet { animation: drop .18s ease-out; } }
+@keyframes drop { from { opacity: 0; transform: translateY(-4px); } }
+
+/* ---------------------------------------------------------------- 3. In his words */
+.t3 { display: flex; gap: 9px; margin: 2px 0 16px; padding-top: 9px; border-top: 1px solid var(--reef-2); font-size: 12.5px; line-height: 1.5; color: var(--sand-faint); }
+.t3-mark { flex: none; width: 14px; height: 14px; margin-top: 2px; border-radius: 50%; display: grid; place-items: center; background: var(--glass-dim); color: var(--glass); font: 700 9px var(--font-body); }
+.t3.stopped .t3-mark { background: rgba(255, 193, 94, .14); color: var(--amber); }
+.t3 b { color: var(--sand-dim); font-weight: 700; }
+.t3-warn { margin-top: 7px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; color: var(--amber); }
+.t3-warn button { border: 0; background: rgba(255, 193, 94, .12); color: var(--amber); font: 700 11.5px var(--font-body); padding: 3px 10px; border-radius: 5px; cursor: pointer; }
+.t3-warn button.quiet { background: none; color: var(--sand-dim); font-weight: 400; }
+.t3-warn button:hover { background: rgba(255, 193, 94, .22); }
+
+/* ---------------------------------------------------------------- 4. Tide pool (pixel glyphs) */
+.t4 { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
+.t4::before, .t4::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
+.t4-row { display: flex; align-items: center; gap: 13px; }
+.t4-item { display: inline-flex; align-items: center; gap: 5px; font: 500 13px var(--font-pixel); color: var(--sand-dim); }
+.t4-item svg { width: 14px; height: 14px; shape-rendering: crispEdges; flex: none; }
+.t4-item.state { color: var(--glass); }
+.t4.stopped .t4-item.state { color: var(--amber); }
+.t4-item.jar { color: var(--sand-dim); }
+.t4.warn .t4-item.jar { color: var(--amber); }
+
+/* ---------------------------------------------------------------- 5. Sounding */
+.t5 { margin: 4px 0 16px; }
+.t5-bar { position: relative; display: flex; height: 6px; border-radius: 3px; background: var(--reef-2); overflow: hidden; }
+.t5-bar i { height: 100%; }
+.t5-bar .prev { background: var(--sand-faint-deco); opacity: .6; }
+.t5.warn .t5-bar .prev { background: var(--amber); opacity: .4; }
+.t5-bar .said { background: var(--glass); }
+.t5-bar .thought { background: var(--lilac); }
+.t5.warn .t5-bar .said { background: var(--amber); }
+.t5-soon { position: absolute; top: -3px; bottom: -3px; left: 60%; width: 1px; background: var(--sand-faint-deco); opacity: .7; }
+.t5-wrap { position: relative; padding-top: 3px; }
+.t5-labels { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 6px; font: 500 10.5px var(--font-mono); font-stretch: 88%; color: var(--sand-faint); }
+.t5-labels > span { white-space: nowrap; }
+.t5-labels .pips { margin-left: 6px; }
+.t5-labels .l b { color: var(--glass); font-weight: 500; }
+.t5.stopped .t5-labels .l b { color: var(--amber); }
+.t5-labels .r b { color: var(--sand-dim); font-weight: 500; }
+.t5.warn .t5-labels .r b { color: var(--amber); }
+.t5-key { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; }
+.t5-key i { width: 7px; height: 7px; border-radius: 2px; }
+.t5-helpers { margin-top: 3px; font: 500 10.5px var(--font-mono); font-stretch: 88%; color: var(--sand-faint); text-align: right; }
+.t5-helpers b { color: var(--lilac); font-weight: 500; }
+
+@media (max-width: 1100px) { .dir { grid-template-columns: 1fr; } .frames { grid-template-columns: minmax(0, 460px); } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<h1>The line under each reply</h1>
+<p class="lede">Today it's two lines of faint mono text: six facts at one volume, joined by dots. Each direction below
+keeps every fact but gives them an order. <b>What happened</b> comes first, then <b>how full the conversation is</b>
+(the only number you act on), and the rest is there to look up. Every direction shows four states: a quick reply,
+a long one with helpers, a conversation past 60% full (the point where Shellby already starts warning you), and a stopped turn.</p>
+<ul class="issues">
+  <li>A one-step reply reads "1 turns" (<code>feed.js:586</code> never makes "turns" singular).</li>
+  <li>"Turns" here counts agent steps, while the line under it says "this turn" for the whole reply. Calling them <b>steps</b> clears that up.</li>
+  <li>"61 thinking" has no unit. It means 61 tokens.</li>
+  <li>The two lines differ in size and framing, so they read as two separate things.</li>
+</ul>
+
+<div id="dirs"></div>
+
+<script>
+// The four turns every direction is drawn with: real fields from turncost.js / resultLabel().
+const TURNS = [
+  { key: 'quick', cap: 'A quick reply (your screenshot)', reply: 'The status line reads from <code>turncost.js</code>; the badge comes from <code>effortBadge()</code>.',
+    state: 'done', ms: 15000, steps: 1, effort: 'medium', thinking: 61, tokens: 44000, share: 2, ctx: 7, ctxPrev: 4, helpers: null },
+  { key: 'big', cap: 'A long turn with helpers', reply: 'Both helpers are back. The suite passes and the three flaky e2e checks now wait on real events.',
+    state: 'done', ms: 252000, steps: 23, effort: 'high', thinking: 8400, tokens: 312000, share: 9, ctx: 41, ctxPrev: 22, helpers: { n: 2, tokens: 120000 } },
+  { key: 'tight', cap: 'Past 60% full: time to act', reply: 'Refactored the queue into three modules and updated every import.',
+    state: 'done', ms: 63000, steps: 6, effort: 'max', thinking: 21000, tokens: 96000, share: 4, ctx: 72, ctxPrev: 58, helpers: null },
+  { key: 'stopped', cap: 'Stopped by you', reply: 'Reading the hook payloads to see where the',
+    state: 'stopped', ms: 38000, steps: 3, effort: 'low', thinking: 0, tokens: 9100, share: 1, ctx: 12, ctxPrev: 10, helpers: null },
+];
+const SOON = 60;
+const EFFORT = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
+const EFFORT_NAME = { low: 'low', medium: 'medium', high: 'high', xhigh: 'extra high', max: 'max' };
+
+const k = n => n >= 1000 ? `${(n / 1000).toFixed(n < 10000 ? 1 : 0).replace(/\.0$/, '')}k` : String(n);
+const dur = ms => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
+const durWords = ms => { const s = Math.round(ms / 1000); return s < 60 ? `${s} seconds` : `${Math.floor(s / 60)} min ${s % 60} s`; };
+const steps = n => `${n} ${n === 1 ? 'step' : 'steps'}`;
+const warn = t => t.ctx >= SOON;
+const stateWord = t => (t.state === 'stopped' ? 'Stopped' : 'Done');
+const pips = level => `<span class="pips lvl-${level}" title="${EFFORT_NAME[level]} effort">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= EFFORT[level] ? 'on' : ''}"></i>`).join('')}</span>`;
+const branch = '<button class="ghost-branch" type="button" title="Branch from here">branch</button>';
+
+// ------------------------------------------------------------------ today
+function today(t) {
+  const label = t.state === 'stopped' ? 'stopped' : 'done';
+  const think = t.thinking ? `${k(t.thinking)} thinking` : 'no thinking';
+  return `<div class="today"><span>${label} · ${dur(t.ms)} · ${t.steps} turns</span></div>
+    <div class="today-cost"><span class="today-badge">${EFFORT_NAME[t.effort]} · ${think}</span>this turn: ${k(t.tokens)} tokens${t.helpers ? ` (helpers ${k(t.helpers.tokens)})` : ''} · ~${t.share}% of your 5-hour window · ${t.ctx}% of context</div>`;
+}
+
+// ------------------------------------------------------------------ 1. Tide line
+function tide(t) {
+  const title = `${t.ctx}% of context used. This reply added ${t.ctx - t.ctxPrev}%. ${k(t.tokens)} new tokens, about ${t.share}% of your 5-hour window. ${EFFORT_NAME[t.effort]} effort, ${t.thinking ? `${k(t.thinking)} thinking tokens` : 'no thinking'}.`;
+  return `<div class="foot t1 ${t.state}${warn(t) ? ' warn' : ''}" title="${title}">
+    <span class="t1-state">${stateWord(t)}</span><span class="t1-time">${dur(t.ms)}</span>
+    <span class="t1-track" style="--prev:${t.ctxPrev}%;--add:${t.ctx - t.ctxPrev}%" role="meter" aria-valuenow="${t.ctx}" aria-label="Context used"><i class="prev"></i><i class="add"></i></span>
+    <span class="t1-ctx">${t.ctx}%${warn(t) ? ' full' : ''}</span>
+    <span class="t1-tok">${k(t.tokens)}</span>${pips(t.effort)}${branch}
+  </div>`;
+}
+
+// ------------------------------------------------------------------ 2. Receipt
+function receipt(t, open) {
+  const icon = t.state === 'stopped' ? '<span class="stop">■</span>' : '<span class="ok">✓</span>';
+  return `<details class="foot t2"${open ? ' open' : ''}>
+    <summary><span class="t2-chip">${icon}${stateWord(t)} in ${dur(t.ms)}, ${k(t.tokens)} tokens<i class="caret"></i></span></summary>
+    <div class="t2-sheet">
+      <div class="t2-row"><span>Steps</span><b>${t.steps}</b></div>
+      <div class="t2-row"><span>Effort</span><b>${pips(t.effort)} ${EFFORT_NAME[t.effort]}</b></div>
+      <div class="t2-row"><span>Thinking</span><b>${t.thinking ? `${k(t.thinking)} <small>tokens</small>` : 'none'}</b></div>
+      <div class="t2-row"><span>New tokens</span><b>${k(t.tokens)}${t.helpers ? ` <small>incl. ${t.helpers.n} helpers' ${k(t.helpers.tokens)}</small>` : ''}</b></div>
+      <div class="t2-row"><span>5-hour window</span><b>~${t.share}%</b><span class="t2-bar"><i style="--w:${t.share}%"></i></span></div>
+      <div class="t2-row"><span>Context</span><b>${t.ctx}% full <small>+${t.ctx - t.ctxPrev}</small></b><span class="t2-bar${warn(t) ? ' warn' : ''}"><i style="--w:${t.ctx}%"></i></span></div>
+      <div class="t2-actions"><button type="button">Branch from here</button>${warn(t) ? '<button class="go" type="button">Compact</button>' : ''}</div>
+    </div>
+  </details>`;
+}
+
+// ------------------------------------------------------------------ 3. In his words
+function words(t) {
+  const thought = !t.thinking ? 'without thinking first' : t.thinking < 500 ? `after a moment's thought (<b>${t.thinking}</b> tokens)` : `after thinking <b>${k(t.thinking)}</b> tokens' worth`;
+  const head = t.state === 'stopped'
+    ? `Stopped after <b>${durWords(t.ms)}</b>, ${steps(t.steps)} in. Used <b>${k(t.tokens)}</b> tokens ${thought}.`
+    : `Done in <b>${durWords(t.ms)}</b>, ${t.steps === 1 ? 'one step' : `<b>${t.steps}</b> steps`}${t.helpers ? ` and ${t.helpers.n} helpers` : ''}. Used <b>${k(t.tokens)}</b> tokens${t.helpers ? ` (${k(t.helpers.tokens)} were the helpers')` : ''} ${thought}.`;
+  const room = warn(t)
+    ? `<div class="t3-warn">This conversation is ${t.ctx}% full. <button type="button">Compact it</button><button class="quiet" type="button">Start fresh</button></div>`
+    : ` The conversation is <b>${t.ctx}%</b> full.`;
+  return `<div class="foot t3 ${t.state}"><span class="t3-mark" aria-hidden="true">${t.state === 'stopped' ? '■' : '✓'}</span><div>${head}${room}</div></div>`;
+}
+
+// ------------------------------------------------------------------ 4. Tide pool: pixel glyphs
+// Each glyph is a 7×7 grid; '#' is a lit pixel.
+const GLYPH = {
+  clock: ['.#####.', '#..#..#', '#..#..#', '#..##.#', '#.....#', '#.....#', '.#####.'],
+  feet: ['.....##', '.....##', '.......', '..##...', '..##...', '.......', '##.....'],
+  bubble: ['..###..', '.#...#.', '.#...#.', '..###..', '.......', '#......', '.......'],
+  shell: ['...#...', '..###..', '.##.##.', '##.#.##', '#######', '.#####.', '..#.#..'],
+  check: ['.......', '......#', '.....#.', '#...#..', '.#.#...', '..#....', '.......'],
+  stop: ['.......', '.#####.', '.#####.', '.#####.', '.#####.', '.#####.', '.......'],
+};
+function glyph(rows) {
+  let r = '';
+  rows.forEach((row, y) => [...row].forEach((c, x) => { if (c === '#') r += `<rect x="${x}" y="${y}" width="1" height="1"/>`; }));
+  return `<svg viewBox="0 0 7 7" fill="currentColor" aria-hidden="true">${r}</svg>`;
+}
+// The jar fills to the context share, a row of water per ~20%.
+function jar(pct) {
+  const level = Math.max(1, Math.round((pct / 100) * 5));
+  let r = '<rect x="1" y="0" width="5" height="1" opacity=".55"/><rect x="0" y="1" width="1" height="6"/><rect x="6" y="1" width="1" height="6"/><rect x="1" y="6" width="5" height="1"/>';
+  for (let i = 0; i < level; i++) r += `<rect x="1" y="${5 - i}" width="5" height="1" opacity="${i === level - 1 ? 1 : .7}"/>`;
+  return `<svg viewBox="0 0 7 7" fill="currentColor" aria-hidden="true">${r}</svg>`;
+}
+function pool(t) {
+  return `<div class="foot t4 ${t.state}${warn(t) ? ' warn' : ''}"><span class="t4-row">
+    <span class="t4-item state" title="${stateWord(t)}">${glyph(t.state === 'stopped' ? GLYPH.stop : GLYPH.check)}${dur(t.ms)}</span>
+    <span class="t4-item" title="${steps(t.steps)}">${glyph(GLYPH.feet)}${t.steps}</span>
+    <span class="t4-item lvl-${t.effort}" title="${EFFORT_NAME[t.effort]} effort, ${t.thinking ? `${t.thinking.toLocaleString('en-GB')} thinking tokens` : 'no thinking'}">${glyph(GLYPH.bubble)}${t.thinking ? k(t.thinking) : '–'}</span>
+    <span class="t4-item" title="${k(t.tokens)} new tokens, about ${t.share}% of your 5-hour window">${glyph(GLYPH.shell)}${k(t.tokens)}</span>
+    <span class="t4-item jar" title="${t.ctx}% of context used">${jar(t.ctx)}${t.ctx}%</span>
+  </span>${branch}</div>`;
+}
+
+// ------------------------------------------------------------------ 5. Sounding: where the room went
+function sounding(t) {
+  const added = t.ctx - t.ctxPrev;
+  const thoughtPart = t.thinking && t.tokens ? Math.max(.6, added * (t.thinking / t.tokens)) : 0;
+  return `<div class="foot t5 ${t.state}${warn(t) ? ' warn' : ''}">
+    <div class="t5-wrap"><div class="t5-bar" role="meter" aria-valuenow="${t.ctx}" aria-label="Context used">
+      <i class="prev" style="width:${t.ctxPrev}%" title="Earlier in this conversation: ${t.ctxPrev}%"></i>
+      <i class="said" style="width:${added - thoughtPart}%" title="This reply: +${added}%"></i>
+      <i class="thought" style="width:${thoughtPart}%" title="Thinking"></i>
+    </div><span class="t5-soon" title="60%: Shellby starts suggesting a compact"></span></div>
+    <div class="t5-labels">
+      <span class="l"><b>${stateWord(t)}</b> · ${dur(t.ms)} · ${steps(t.steps)} ${pips(t.effort)}</span>
+      <span class="r" title="${k(t.tokens)} new tokens, about ${t.share}% of your 5-hour window"><b>${t.ctx}% full</b> +${added} · ${k(t.tokens)}</span>
+    </div>
+    ${t.helpers ? `<div class="t5-helpers">+ <b>${t.helpers.n} helpers</b>, ${k(t.helpers.tokens)} tokens in their own context</div>` : ''}
+  </div>`;
+}
+
+// ------------------------------------------------------------------ the page
+const DIRS = [
+  { n: 'Today', title: 'As it ships', render: today,
+    text: ['For comparison: two centred lines, every fact the same faint colour.'] },
+  { n: '1', title: 'Tide line', render: tide, pick: true,
+    text: ['The dashed rule turns into a context meter. The grey part is what earlier replies used, the bright part is what this one added, and it all turns amber past 60%.',
+      'One line instead of two. Effort becomes five small bars instead of a word, and hovering gives the full sentence.',
+      'Why: it keeps the quiet divider you already have, but now it carries information.'] },
+  { n: '2', title: 'Receipt', render: receipt, openKey: 'tight',
+    text: ['Collapsed, it\'s one chip: what happened, how long, how many tokens. Click it for an itemised receipt with bars and the actions that apply, Compact included.',
+      'Why: the quietest at rest, and the most complete when you want the numbers. A good companion to direction 1.'] },
+  { n: '3', title: 'In his words', render: words,
+    text: ['One plain sentence, left-aligned like the reply, in the body font instead of mono. Numbers in bold so you can still scan them.',
+      'Past 60% the sentence becomes an offer with two buttons, the only footer here that asks you to act.',
+      'Why: the most readable for someone new to tokens and context, and it sounds like Shellby.'] },
+  { n: '4', title: 'Tide pool', render: pool,
+    text: ['Each fact gets a pixel glyph in the crab\'s own style: clock, footprints for steps, a thought bubble tinted by effort, a shell for tokens, and a jar that fills with the context.',
+      'Why: the most Shellby of the five. Glyphs are faster to scan than words once you know them, and hover tells you what each one means.'] },
+  { n: '5', title: 'Sounding', render: sounding,
+    legend: [['var(--sand-faint-deco)', 'Earlier replies'], ['var(--glass)', 'This reply'], ['var(--lilac)', 'Its thinking'], ['var(--amber)', 'Past 60% full'], ['var(--reef-2)', 'Room left']],
+    text: ['One bar is the whole context window, filling from the left. The grey is what earlier replies used, the teal is what this reply added, and the lilac at the end is the part of it spent thinking. The tick marks 60%, and past it the whole fill turns amber. Helpers run in their own context, so they get a line of their own.',
+      'Why: the only one that shows where the room went. The most information, at the cost of being the busiest.'] },
+];
+
+document.getElementById('dirs').innerHTML = DIRS.map(d => `
+  <section class="dir${d.pick ? ' pick' : ''}">
+    <div><h2><small>${d.n}</small>${d.title}</h2>${d.text.map((p, i) => `<p class="${p.startsWith('Why') ? 'why' : ''}">${p}</p>`).join('')}${d.legend ? `<div class="legend">${d.legend.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join('')}</div>` : ''}</div>
+    <div class="frames">
+      ${TURNS.map(t => `<div class="frame"><p class="cap">${t.cap}</p><p class="reply">${t.reply}</p>${d.render(t, d.openKey === t.key)}</div>`).join('')}
+      ${d.n === 'Today' ? '' : `<div class="frame wide"><p class="cap">Full screen, 1060px wide</p><p class="reply">${TURNS[1].reply}</p>${d.render(TURNS[1], false)}</div>`}
+    </div>
+  </section>`).join('');
+</script>
+</body>
+</html>

@@ -138,15 +138,6 @@
 .plan-overall { display: block; width: 100%; margin: 8px 0 0; font-size: var(--fs-12-5); }
 .decided .plan-overall:placeholder-shown { display: none; }
 
-/* ---------------------------------------------------------------- the effort a turn ran at */
-.effort-badge {
-  display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 99px;
-  border: 1px solid var(--line); color: var(--sand-dim); background: var(--reef);
-}
-.effort-badge.effort-high, .effort-badge.effort-xhigh { color: var(--glass); border-color: rgba(127, 214, 194, .35); }
-.effort-badge.effort-max { color: var(--coral); border-color: rgba(255, 122, 92, .4); }
-.effort-badge.effort-low { color: var(--sand-faint); }
-
 /* ---------------------------------------------------------------- Toolbox → Memory: what Claude remembers */
 .auto-memory { margin: 14px 0 6px; padding: 10px 12px; border-radius: var(--r); background: var(--reef); border: 1px solid var(--line); }
 .auto-memory[hidden] { display: none; }

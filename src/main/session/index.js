@@ -566,7 +566,11 @@ class ClaudeSession extends Base {
     if (this.busy) throw new Error('Shellby is still working on the last task.');
     this.setBusy(true);
     // effort: what this turn thinks at, for its cost line ('' is Claude Code's own default).
-    this.turn = { usages: new Map(), helpers: new Map(), weight: 0, tokens: 0, before: this.context?.tokens ?? null, effort: this.effort || '' };
+    // beforePct: how full it was, for the footer's "+N" (a new conversation starts empty; a reopened one without a reading is unknown).
+    this.turn = {
+      usages: new Map(), helpers: new Map(), weight: 0, tokens: 0, before: this.context?.tokens ?? null, effort: this.effort || '',
+      beforePct: this.context?.pct ?? (this.sessionId ? null : 0),
+    };
     // No conversation yet: its first call will show the setup weight. A prompt
     // with an image can't be sized, so that one isn't measured (-1).
     if (!this.sessionId && !this.proc) this.setupChars = eff.promptChars(content) ?? -1;
