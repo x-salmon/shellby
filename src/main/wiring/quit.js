@@ -21,6 +21,7 @@ function wireQuit(d) {
     d.telemetry?.stop();
     d.toolbox?.stop();
     d.health?.stop();
+    d.hub?.stopHub(); // the live lines to your other PCs (wiring/hub.js)
     d.timeTracker?.stop(); // writes the last minutes down
     d.depWatch?.stop();
     d.external?.stop();

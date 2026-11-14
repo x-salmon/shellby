@@ -72,6 +72,8 @@ function phoneTab(t, extra = {}) {
     fromPhone: !!extra.fromPhone,
     canReply: !!extra.canReply,
     effort: typeof extra.effort === 'string' ? line(extra.effort, 10) : '',
+    // The agent it runs on (harness/registry.js): Claude Code unless another was picked.
+    harness: line(t.harness, 20) || 'claude',
   };
 }
 
@@ -208,6 +210,23 @@ function phoneMachine(sample, mood) {
 }
 
 /**
+ * The PC itself, as the hub's roster shows it (hub/host.js hostFacts): which
+ * Windows and Shellby, memory, the system drive's free space, the agents it
+ * can run. Cleaned again here like everything else the view carries. Pure.
+ */
+function phoneHost(h) {
+  if (!h || typeof h !== 'object') return null;
+  const ram = h.ram && typeof h.ram === 'object' && Number.isFinite(h.ram.totalGb) ? { usedGb: num(h.ram.usedGb), totalGb: h.ram.totalGb } : null;
+  return {
+    os: line(h.os, 30) || null,
+    version: line(h.version, 20) || null,
+    ram,
+    diskFreeGb: num(h.diskFreeGb),
+    agents: (Array.isArray(h.agents) ? h.agents : []).filter(a => ['claude', 'gemini', 'opencode', 'codex'].includes(a)),
+  };
+}
+
+/**
  * The whole phone view.
  *   tabs:     sessions.js summary
  *   prompts:  waiting prompts, oldest first, each with its tabId
@@ -218,9 +237,10 @@ function phoneMachine(sample, mood) {
  *   rights:   this phone's level (pocket/rights.js): the app hides what it can't use
  *   quiet:    the quiet hours (pocket/quiet.js), shown and set on the Phone screen
  *   health, mood: Health's last reading and mood, for the PC line on the beach
+ *   host:     the PC itself, for the hub's roster (hub/host.js)
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, health = null, mood = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, health = null, mood = null, host = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -249,6 +269,7 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     quiet: normalizeQuiet(quiet),
     held: (held || []).slice(0, 20).map(phoneHeld),
     machine: phoneMachine(health, mood),
+    host: phoneHost(host),
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),
     skin: skin || null,
     limits: limits || null,
@@ -336,4 +357,4 @@ function phoneItems(items) {
   return out.reverse();
 }
 
-module.exports = { MAX_ITEMS, MAX_PICS, STANDINGS, pictureFiles, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };
+module.exports = { phoneHost, MAX_ITEMS, MAX_PICS, STANDINGS, pictureFiles, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };

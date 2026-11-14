@@ -502,6 +502,7 @@ SB.setView = target => {
   if (view === 'chat' && s.settings.crabOnly) view = 'health';
   if (SB.solo) view = 'chat';
   if (view !== 'onboarding') SB.views.onboarding?.leave?.(); // gives back what first run borrowed
+  if (view !== 'pcs') SB.views.pcs?.leave?.(); // stops watching a conversation on another PC (pcs.js)
   s.view = view;
   document.body.dataset.view = view;
   const section = SB.NAV_SECTION[view] || view;

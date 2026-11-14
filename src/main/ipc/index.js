@@ -55,6 +55,7 @@ const { registerProjectToolsIpc } = require('./project-tools');
 const { registerNotesIpc } = require('./notes');
 const { registerTaskBoardIpc } = require('./taskboard');
 const { registerPagesIpc } = require('./pages');
+const { registerHubIpc } = require('./hub');
 const { registerCrewIpc } = require('./crew');
 const { registerNativeIpc } = require('./native');
 const { registerGameIpc } = require('./game');
@@ -264,6 +265,7 @@ function registerIpc(electronIpcMain, d) {
   registerNotesIpc(ipcMain, d);
   registerTaskBoardIpc(ipcMain, d); // the task board on a project's page
   registerPagesIpc(ipcMain, d); // pages: the shelf, one page, and its bridge (wiring/pages.js)
+  registerHubIpc(ipcMain, d); // Your PCs: the hub's roster of your other PCs
   registerCrewIpc(ipcMain, d);
   registerNativeIpc(ipcMain, d);
   registerGameIpc(ipcMain, d); // the game screens' one bridge (game-hub.js)

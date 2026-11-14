@@ -1,0 +1,22 @@
+  <!-- ====================== YOUR PCS (the hub) ====================== -->
+  <main class="view view-pcs" id="pcsView">
+    <div class="view-head">
+      <h2>Your PCs</h2>
+      <button type="button" class="btn slim-btn" id="pcsAddBtn">Add a PC</button>
+    </div>
+    <p class="view-lede" id="pcsSummary">This PC, and the others you've added, with what each is doing.</p>
+    <div class="pcs-roster" id="pcsRoster"></div>
+    <section class="pcs-detail" id="pcsDetail" aria-live="polite"></section>
+    <form class="pcs-add card-ish" id="pcsAdd" hidden>
+      <h3>Add a PC</h3>
+      <p class="small muted">On that PC, open Shellby's <b>Settings, Alerts, On your phone</b>, turn it on, and press <b>Pair a phone</b>. Then type its address and the code it shows here. Both PCs need to be signed in to the same Tailscale account.</p>
+      <label class="pcs-field">Its address<input class="field" id="pcsAddress" placeholder="laptop.your-tailnet.ts.net" autocomplete="off" spellcheck="false" maxlength="300"></label>
+      <label class="pcs-field">The code it shows<input class="field mono" id="pcsCode" placeholder="ABCD-EFGH" autocomplete="off" spellcheck="false" maxlength="16"></label>
+      <label class="pcs-field">What to call it<input class="field" id="pcsName" placeholder="Travel laptop" maxlength="40"></label>
+      <p class="pcs-error" id="pcsAddError" role="alert" hidden></p>
+      <div class="btn-row">
+        <button type="submit" class="btn primary slim-btn" id="pcsPair">Add it</button>
+        <button type="button" class="btn ghost slim-btn" id="pcsAddCancel">Cancel</button>
+      </div>
+    </form>
+  </main>
