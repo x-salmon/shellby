@@ -278,6 +278,8 @@ interface ShellbyPanelExtras {
   keepWarm: any;
   onKeepWarmItem: any;
   renderKeepWarm: any;
+  // lean-bar.js
+  leanBar: any;
   // lean-fixes.js
   leanFixes: any;
   // lean.js

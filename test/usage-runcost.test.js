@@ -138,6 +138,35 @@ test('words warn when it would run past the limit, or the share the guard keeps'
   assert.match(guarded.text, /past the share you keep for yourself \(25%\)\.$/);
 });
 
+// ---- the short forms on and under the button
+
+test('labels: the share for the button, the line under the box with the ending and the reset, and the strip\'s note', () => {
+  const v = rc.view({ kind: 'ultracode', pct: 8, low: 5, high: 12, samples: 6, basis: 'history' }, advice(54), { resetText: '4:15 PM' });
+  assert.equal(v.share, '~8%');
+  assert.equal(v.label, '~8% of your window');
+  assert.equal(v.hint, 'about 8% of your 5-hour window · it would end about 62% full · resets 4:15 PM');
+  assert.equal(v.note, 'Runs like this took 5% to 12% of your 5-hour window before. Yours is 54% full.');
+});
+
+test('labels: a rough guess says so, and without a reading there is no ending, no reset and no "yours"', () => {
+  const v = rc.view({ kind: 'workflow', pct: 6, low: 2, high: 10, samples: 0, basis: 'default' }, advice(null), { name: 'Triage' });
+  assert.equal(v.label, '~6% of your window');
+  assert.equal(v.hint, 'a rough guess: about 6% of your 5-hour window');
+  assert.equal(v.note, 'Nothing like it has run here yet; a rough guess is 2 to 10% of your 5-hour window.');
+  const half = rc.view({ kind: 'ultracode', pct: 27.5, low: 15, high: 40, samples: 0, basis: 'default' }, advice(20), { resetText: '9:00 AM' });
+  assert.equal(half.share, '~28%', 'whole percent, as the meter reads');
+  assert.equal(half.hint, 'a rough guess: about 28% of your 5-hour window · it would end about 48% full · resets 9:00 AM');
+  assert.equal(half.note, 'Nothing like it has run here yet; a rough guess is 15 to 40% of your 5-hour window. Yours is 20% full.');
+});
+
+test('labels: past the limit the ending says so, and the guard\'s share when that is the line', () => {
+  const est = { kind: 'ultracode', pct: 30, low: 20, high: 40, samples: 3, basis: 'history' };
+  const past = rc.view(est, { ...advice(85), over: true }, { resetText: '4:15 PM' });
+  assert.equal(past.hint, 'about 30% of your 5-hour window · it would end about 115% full, past your limit · resets 4:15 PM');
+  const guarded = rc.view(est, { ...advice(60, { line: 75 }), over: true }, { resetText: '4:15 PM', guardOn: true });
+  assert.match(guarded.hint, /it would end about 90% full, past the share you keep · resets 4:15 PM$/);
+});
+
 test('view carries the reset and the line for the panel, and null for no estimate', () => {
   const v = rc.view({ kind: 'ultracode', pct: 15, low: 12, high: 18, samples: 4, basis: 'history' }, advice(47), { resetText: '4:15 PM' });
   assert.equal(v.resetsAt, NOW + 3 * HOUR);

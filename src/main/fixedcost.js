@@ -20,6 +20,11 @@ const MIN_NAME = 3;              // shorter project names match too much to mean
 const MAX_ITEMS = 80;
 const MAX_SUGGESTIONS = 12;
 const HEADING = /^#{1,2}\s+(\S.*)$/;
+// The parts of the setup the Lean tab's bar is coloured by: each item's kind
+// belongs to one, and the rest (Claude Code's own prompt and tools) is its own.
+const PART_OF = { style: 'style', memory: 'memory', rule: 'memory', plugin: 'plugins', skills: 'skills', mcp: 'mcp', hook: 'hooks' };
+const PART_ORDER = ['rest', 'mcp', 'plugins', 'skills', 'memory', 'style', 'hooks'];
+const SUGGESTION_PART = { style: 'style', plugin: 'plugins', hook: 'hooks', move: 'memory' };
 
 /** A heading's words: trailing #s and spaces off, by index, so a long line costs one pass. */
 function headingText(rest) {
@@ -175,12 +180,39 @@ function fixedCost({ setup = null, memory = [], plugins = [], skills = [], mcp =
     .map(i => ({ ...i, share: Number.isFinite(i.tokens) && total ? i.tokens / total : null }))
     .sort((a, b) => ((b.tokens ?? -1) - (a.tokens ?? -1)) || String(a.label).localeCompare(String(b.label)))
     .slice(0, MAX_ITEMS);
+  const rest = measured ? Math.max(0, total - known) : 0;
   return {
-    total, measured, known, rest: measured ? Math.max(0, total - known) : 0,
+    total, measured, known, rest,
     line: total ? `setup ~${compactTokens(total)}/turn` : null,
     items: rows,
+    parts: partsOf(rows, rest, total),
     suggestions: suggestions({ style, items: rows, globalMd, projects, idleDays }),
   };
+}
+
+/**
+ * The items grouped into the parts the bar is coloured by, biggest first and
+ * the ones Shellby can't size last: [{ key, tokens (null when none of its
+ * items is sized), share, keys (its items') }]. The rest is a part of its own.
+ * @param {any[]} items  fixedCost's rows
+ * @param {number} rest
+ * @param {number} total
+ */
+function partsOf(items, rest, total) {
+  /** @type {Map<string, { key: string, tokens: number | null, keys: string[] }>} */
+  const by = new Map();
+  for (const it of items) {
+    const key = PART_OF[it.kind];
+    if (!key) continue;
+    const p = by.get(key) || /** @type {{ key: string, tokens: number | null, keys: string[] }} */ ({ key, tokens: null, keys: [] });
+    p.keys.push(String(it.key));
+    if (Number.isFinite(it.tokens)) p.tokens = (p.tokens || 0) + it.tokens;
+    by.set(key, p);
+  }
+  if (rest > 0) by.set('rest', { key: 'rest', tokens: rest, keys: [] });
+  return [...by.values()]
+    .map(p => ({ ...p, share: p.tokens !== null && total ? p.tokens / total : null }))
+    .sort((a, b) => ((b.tokens ?? -1) - (a.tokens ?? -1)) || PART_ORDER.indexOf(a.key) - PART_ORDER.indexOf(b.key));
 }
 
 // ---- suggestions
@@ -189,8 +221,9 @@ const tok = n => `~${compactTokens(n)} tokens`;
 
 /**
  * What could be left out, biggest saving first. Each is data: text in Shellby's
- * voice, the tokens it saves, and an action when one is safe to offer
- * ({ type: 'style-off' } or { type: 'plugin-off', id }), null when it's advice.
+ * voice, the tokens it saves, the part of the bar it cuts, and an action when
+ * one is safe to offer ({ type: 'style-off' } or { type: 'plugin-off', id }),
+ * null when it's advice (the panel drafts those for Claude, nothing is written).
  * @param {{ style: Style | null, items: any[], globalMd: { path: string, text: string } | null, projects: string[], idleDays: number }} input
  */
 function suggestions({ style, items, globalMd, projects, idleDays }) {
@@ -200,21 +233,23 @@ function suggestions({ style, items, globalMd, projects, idleDays }) {
   if (style?.name && styleRow) {
     const where = style.source === 'shellby' ? 'set in Shellby\'s Settings → Claude' : `set in ${style.file || `your ${style.source} settings`}`;
     const size = Number.isFinite(styleRow.tokens) ? `adds ${tok(styleRow.tokens)} to every turn` : 'adds to every turn';
-    out.push({ id: 'style-off', kind: 'style', label: styleRow.label, saves: styleRow.tokens || 0, text: `Output style "${style.name}" ${size} (${where}): switch it off and Claude keeps its replies brief.`, action: { type: 'style-off' } });
+    out.push({ id: 'style-off', kind: 'style', label: styleRow.label, saves: styleRow.tokens || 0, text: `Output style "${style.name}" ${size} (${where}): switch it off and Claude keeps its replies brief.`, short: 'Turn it off. Claude explains when you ask anyway.', action: { type: 'style-off' } });
   }
   for (const p of items.filter(i => i.kind === 'plugin' && i.idle)) {
     const size = Number.isFinite(p.tokens) ? ` and adds ${tok(p.tokens)} to every conversation` : '';
-    out.push({ id: `plugin-off:${p.id}`, kind: 'plugin', label: p.label, saves: p.tokens || 0, text: `"${p.label}" sat idle for ${idleDays} days${size}: turn it off. It stays installed.`, action: { type: 'plugin-off', id: p.id } });
+    out.push({ id: `plugin-off:${p.id}`, kind: 'plugin', label: p.label, saves: p.tokens || 0, text: `"${p.label}" sat idle for ${idleDays} days${size}: turn it off. It stays installed.`, short: `${p.label} sat idle for ${idleDays} days. Turn it off; it stays installed.`, action: { type: 'plugin-off', id: p.id } });
   }
   for (const hk of items.filter(i => i.kind === 'hook' && i.when === 'message' && i.tokens >= MESSAGE_HOOK_MIN)) {
-    out.push({ id: `hook:${hk.label}`, kind: 'hook', label: hk.label, saves: hk.tokens, text: `The hook ${hk.label} adds ${tok(hk.tokens)} with every message you send, and each copy stays in the conversation: have it print only when something changed, or move standing instructions into CLAUDE.md.`, action: null });
+    out.push({ id: `hook:${hk.label}`, kind: 'hook', label: hk.label, saves: hk.tokens, text: `The hook ${hk.label} adds ${tok(hk.tokens)} with every message you send, and each copy stays in the conversation: have it print only when something changed, or move standing instructions into CLAUDE.md.`, short: `${hk.label} adds to every message you send. Have it print only when something changed.`, action: null });
   }
   if (globalMd?.text) {
     for (const s of projectOnlySections(globalMd.text, projects)) {
-      out.push({ id: `move:${s.heading}`, kind: 'move', label: `"${s.heading}" in CLAUDE.md`, saves: s.tokens, path: globalMd.path, line: s.line, text: `Your global CLAUDE.md has a section ("${s.heading}", ${tok(s.tokens)}) that only ${s.project} uses, and every project carries it: move it into ${s.project}'s own CLAUDE.md.`, action: null });
+      out.push({ id: `move:${s.heading}`, kind: 'move', label: `"${s.heading}" in CLAUDE.md`, saves: s.tokens, path: globalMd.path, line: s.line, heading: s.heading, project: s.project, text: `Your global CLAUDE.md has a section ("${s.heading}", ${tok(s.tokens)}) that only ${s.project} uses, and every project carries it: move it into ${s.project}'s own CLAUDE.md.`, short: `Move "${s.heading}" out of the global CLAUDE.md into ${s.project}.`, action: null });
     }
   }
-  return out.sort((a, b) => (b.saves - a.saves) || a.id.localeCompare(b.id)).slice(0, MAX_SUGGESTIONS);
+  return out
+    .map(s => ({ ...s, part: SUGGESTION_PART[s.kind] }))
+    .sort((a, b) => (b.saves - a.saves) || a.id.localeCompare(b.id)).slice(0, MAX_SUGGESTIONS);
 }
 
-module.exports = { activeStyle, styleTokens, sectionsOf, projectOnlySections, fixedCost, compactTokens, BUILT_IN_STYLE_TOKENS, MOVE_MIN_TOKENS, MESSAGE_HOOK_MIN };
+module.exports = { activeStyle, styleTokens, sectionsOf, projectOnlySections, fixedCost, partsOf, compactTokens, BUILT_IN_STYLE_TOKENS, MOVE_MIN_TOKENS, MESSAGE_HOOK_MIN, PART_OF };

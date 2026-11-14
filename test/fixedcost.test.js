@@ -82,6 +82,26 @@ test('every item sent with a turn, its share of the measured setup, and the rest
   assert.equal(r.rest, 20250 - 6850);
 });
 
+test('the parts the bar is coloured by: items grouped by kind, biggest first, the unsized last, and the rest as its own', () => {
+  const r = fc.fixedCost({ setup: { tokens: 20000 }, memory: MEMORY, plugins: PLUGINS, skills: SKILLS, mcp: MCP, hooks: HOOKS, style: { name: 'Explanatory', source: 'shellby', file: null } });
+  assert.deepEqual(r.parts.map(p => p.key), ['rest', 'plugins', 'memory', 'hooks', 'style', 'skills', 'mcp']);
+  const by = key => r.parts.find(p => p.key === key);
+  assert.equal(by('rest').tokens, r.rest);
+  assert.deepEqual(by('rest').keys, []);
+  assert.equal(by('plugins').tokens, 3000, 'the sized plugins add up; the unsized one still belongs');
+  assert.deepEqual(by('plugins').keys, ['plugin:vercel@m', 'plugin:github@m', 'plugin:quiet@m']);
+  assert.equal(by('memory').tokens, 2500, 'CLAUDE.md files and rules are one part');
+  assert.equal(by('hooks').tokens, 650);
+  assert.equal(by('mcp').tokens, null, 'an MCP server\'s tool list is not sized');
+  assert.equal(by('mcp').share, null);
+  assert.equal(by('style').share, 500 / 20250);
+  assert.equal(r.parts.reduce((n, p) => n + (p.tokens || 0), 0), r.total, 'the sized parts and the rest make the whole');
+  // Without a measured setup there is no rest, and two of a kind still make one part.
+  const plain = fc.fixedCost({ setup: null, memory: MEMORY, plugins: [], skills: [], mcp: [], hooks: [], style: null });
+  assert.deepEqual(plain.parts.map(p => [p.key, p.tokens]), [['memory', 2500]]);
+  assert.deepEqual(fc.fixedCost({}).parts, []);
+});
+
 test('with no measured setup the items add up to the total, and nothing at all gives no line', () => {
   const r = fc.fixedCost({ setup: null, memory: MEMORY, plugins: PLUGINS, skills: [], mcp: [], hooks: [], style: null });
   assert.equal(r.measured, false);
@@ -150,7 +170,15 @@ test('suggestions, biggest saving first: the style can be switched off, an idle 
   assert.equal(by('move').action, null, 'moving a section is never automatic');
   assert.match(by('move').text, /"Shop deploys".*shop/);
   assert.equal(by('move').path, 'C:\\Users\\me\\.claude\\CLAUDE.md');
+  assert.equal(by('move').heading, 'Shop deploys');
+  assert.equal(by('move').project, 'shop');
   assert.ok(by('move').saves > 0);
+  // Each cut names the part of the bar it comes off, and has a short form for its row.
+  assert.deepEqual(s.map(x => [x.kind, x.part]).sort(), [['hook', 'hooks'], ['move', 'memory'], ['plugin', 'plugins'], ['style', 'style']]);
+  assert.ok(s.every(x => typeof x.short === 'string' && x.short.length > 0 && x.short.length < x.text.length), 'the short form is shorter');
+  assert.equal(by('style').short, 'Turn it off. Claude explains when you ask anyway.');
+  assert.match(by('plugin').short, /^vercel sat idle for 21 days/);
+  assert.ok(r.parts.map(p => p.key).includes(by('move').part), 'a cut\'s part is one of the bar\'s');
 });
 
 test('no suggestions when there is nothing to suggest', () => {

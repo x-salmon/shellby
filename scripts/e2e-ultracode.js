@@ -1,9 +1,12 @@
-// ci: ultracode: the chip, the ask before the first run, the card, its crabs, Stop, restored
+// ci: ultracode: the chip, the estimate on Send, the ask before the first run, the card, its crabs, Stop, restored
 // End-to-end check of Ultracode against the dev app over CDP, driven by the fake
 // Claude CLI (test/fixtures/fake-claude.js plays Claude Code 2.1.299's Workflow
-// run): no account, no usage.
+// run): no account, no usage (5-hour readings come from dev:usage, SHELLBY_FORECAST_TEST).
 //   1. The Ultracode chip under the box is off; on, it says what it means, and
-//      typing shows what a run usually costs (a labelled rough guess before any).
+//      typing puts what a run usually costs on the Send button itself (a labelled
+//      rough guess before any has run), with where your window would end under
+//      the box; past the limit the button turns to a warning and the banner
+//      offers the reset.
 //   2. The first message asks in the confirm window (Cancel keeps it in the box),
 //      then goes with the word "ultracode" on the end, where you can see it.
 //   3. The run's card: phases, agents running and done, the clock, the cost "at
@@ -48,7 +51,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '48087' },
+    env: { ...process.env, SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '48087', SHELLBY_FORECAST_TEST: '1' },
   });
   try {
     let list = [];
@@ -74,14 +77,44 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev("SB.$('ultraChip').click()");
     check(await ev("SB.$('ultraChip').getAttribute('aria-pressed') === 'true' && !SB.$('ultraNote').hidden"), 'on, it says so');
     check(/many agents/.test(await ev("SB.$('ultraNote').textContent")), 'the warning says it can use many agents and tokens');
-    // What a run usually costs, while you type (src/main/usage/runcost.js): nothing has run yet, so a rough guess, said as one.
+    // What a run usually costs sits on the Send button and under the box (src/main/usage/runcost.js):
+    // nothing has run yet, so a rough guess, said as one. Nothing to dismiss: no banner.
     const [lo, hi] = DEFAULTS.ultracode;
+    const mid = Math.round((lo + hi) / 2);
+    const reading = (pct, extra = '') => ev(`SB.api.devUsage({ pct: ${pct}, resetsAt: Date.now() + 3 * 3600e3 })`).then(() => typeOnly(`Audit the repo ${extra}`));
     await typeOnly('Audit the repo');
-    check(await until(`!SB.$('outlook').hidden && /An Ultracode run hasn't run here yet; a rough guess is ${lo} to ${hi}% of your 5-hour window/.test(SB.$('outlook').textContent)`), 'with the chip on, typing shows what a run usually costs: a rough guess, labelled, before any has run');
-    check(await ev("SB.$('costHint').hidden"), 'in the banner, not the small cost hint');
+    check(await until(`SB.$('sendBtn').classList.contains('wide') && SB.$('sendBtn').textContent.trim() === 'Send · ~${mid}% of your window'`), `with the chip on, the Send button carries what a run usually costs: "Send · ~${mid}% of your window"`);
+    const hint = await ev("SB.$('costHint').hidden ? '(hidden)' : SB.$('costHint').textContent");
+    check(hint === `a rough guess: about ${mid}% of your 5-hour window`, `the line under the box says it is a rough guess, with no window reading to end from (${hint})`);
+    check(await ev(`SB.$('costHint').title.startsWith("An Ultracode run hasn't run here yet; a rough guess is ${lo} to ${hi}% of your 5-hour window")`), 'the whole sentence, range and all, is its tooltip');
+    check(await ev(`!SB.$('ultraEst').hidden && SB.$('ultraEst').textContent === 'Nothing like it has run here yet; a rough guess is ${lo} to ${hi}% of your 5-hour window.'`), 'the strip says what runs like this took');
+    check(await ev("SB.$('outlook').hidden"), 'nothing to dismiss: no banner');
+    // With a current reading: where the window would end and when it resets, and the small meter shows both.
+    const now = 30;
+    await reading(now, 'again');
+    check(await until(`new RegExp('^a rough guess: about ${mid}% of your 5-hour window · it would end about ${Math.round(now + (lo + hi) / 2)}% full · resets ').test(SB.$('costHint').textContent)`), 'with a reading, the line says where it would end and when the window resets');
+    check(await ev(`SB.$('costHint').querySelector('.mini .now')?.style.width === '${now}%'`), 'the small meter shows your window now');
+    check(await ev(`SB.$('ultraEst').textContent.endsWith(' Yours is ${now}% full.')`), 'and the strip says how full yours is');
+    // For a look (E2E_SHOTS): the button, the line and the strip at a 4K full screen and at the panel's own width.
+    if (SHOTS) {
+      for (const [width, height, name] of [[2560, 1440, 'wide'], [460, 700, 'narrow']]) {
+        await panel.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+        await wait(400);
+        await shot(`estimate-${name}`);
+      }
+      await panel.send('Emulation.clearDeviceMetricsOverride');
+      await wait(300);
+    }
+    // Past the limit: the button turns to a warning, and the banner offers to send after the reset instead.
+    await reading(90, 'once more');
+    check(await until("SB.$('sendBtn').classList.contains('over') && /^Send anyway · ~/.test(SB.$('sendBtn').textContent.trim())"), 'past the limit the Send button turns to a warning');
+    check(await until("!SB.$('outlook').hidden && [...SB.$('outlook').querySelectorAll('button')].some(b => b.textContent === 'Send after the reset')"), 'and the banner offers to send after the reset');
+    check(await ev("/past your limit|past the share you keep/.test(SB.$('costHint').textContent)"), 'the line under the box says it would pass the limit');
+    await reading(10, 'please');
+    check(await until("!SB.$('sendBtn').classList.contains('over') && SB.$('outlook').hidden"), 'back under it, the warning goes');
     await ev("SB.$('ultraChip').click()");
-    check(await ev("SB.$('ultraChip').getAttribute('aria-pressed') === 'false' && SB.$('ultraNote').hidden"), 'off again, the warning goes');
-    check(await until("SB.$('outlook').hidden"), 'and so does the estimate');
+    check(await ev("SB.$('ultraChip').getAttribute('aria-pressed') === 'false' && SB.$('ultraNote').hidden"), 'off again, the warning strip goes');
+    check(await until("!SB.$('sendBtn').classList.contains('wide') && SB.$('costHint').hidden"), 'and so does the estimate');
     await typeOnly('');
     // The send waits on the confirm window, so a message in the feed means none was asked.
     await type('Is ultracode worth it?');
