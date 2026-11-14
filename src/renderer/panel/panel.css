@@ -1058,8 +1058,11 @@ select.field option { background: var(--reef); }
 
 /* ================================================================ onboarding */
 .hello { text-align: center; padding: 10px 6px 4px; }
-.hello-crab { height: 80px; display: grid; place-items: center; }
-.hello-crab svg { width: 120px; height: auto; animation: breathe 3.2s ease-in-out infinite; }
+/* Sized by the crab himself, not a fixed height: he's taller than 80px at this
+   width, and dressed his view box frames the whole outfit, so a fixed box let
+   him sit on the heading. The cap keeps a tall outfit from pushing the page down. */
+.hello-crab { display: grid; place-items: center; }
+.hello-crab svg { display: block; width: 120px; height: auto; max-height: 150px; animation: breathe 3.2s ease-in-out infinite; }
 .hello-crab .part-claw { animation: wave .6s ease-in-out 3 .6s; transform-box: fill-box; transform-origin: 0% 50%; }
 .hello h1 { font: 600 var(--fs-24) var(--font-pixel); margin: 10px 0 6px; }
 .hello p { margin: 0 auto; color: var(--sand-dim); max-width: 330px; font-size: var(--fs-13-5); }

@@ -14,7 +14,10 @@
   if (SB.solo) $('closeBtn').title = 'Back into the panel';
 
   SB.renderCrabs = () => {
-    for (const id of ['brandCrab', 'helloCrab', 'dockCrab']) $(id).replaceChildren(SB.sprite());
+    for (const id of ['brandCrab', 'dockCrab']) $(id).replaceChildren(SB.sprite());
+    // The welcome crab frames his whole outfit, shell topper too, so the box
+    // around him (panel.css .hello-crab) is as tall as he is drawn.
+    $('helloCrab').replaceChildren(SB.sprite(undefined, { fit: true }));
     SB.syncHomeMark();
     SB.refreshEmptyStates();
   };
