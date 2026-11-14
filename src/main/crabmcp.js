@@ -106,7 +106,27 @@ const BOARD_TOOLS = [
     inputSchema: obj({ ids: IDS, timeout_seconds: { type: 'integer' } }, ['ids']),
   },
 ];
+// Seeing this project's other conversations and handing one of them work
+// (wiring/chatlink.js). Offered with the board: both are conversations working together.
+const CHAT_TOOLS = [
+  {
+    name: 'list_chats',
+    description: "This project's other open conversations.",
+    inputSchema: obj({}),
+  },
+  {
+    name: 'read_chat',
+    description: 'Last messages of one (id from list_chats).',
+    inputSchema: obj({ id: STR, turns: { type: 'integer' } }, ['id']),
+  },
+  {
+    name: 'hand_off',
+    description: 'Give an idle conversation (to: id) or a new one (to: "new") work. brief must stand alone. The user may approve first.',
+    inputSchema: obj({ to: STR, brief: STR, title: STR }, ['to', 'brief']),
+  },
+];
 const BOARD_TOOL_NAMES = BOARD_TOOLS.map(t => t.name);
+const CHAT_TOOL_NAMES = CHAT_TOOLS.map(t => t.name);
 
 // Pages (wiring/pages.js): small apps that live in Shellby, with data any
 // conversation can read and add to. Kept terse, like the board's: pages/
@@ -156,9 +176,9 @@ const SUGGEST_TOOL = {
   }, ['feature', 'why']),
 };
 
-/** The tools a conversation gets: the crab's, the task board's and pages' when they're on, and `suggest` when suggestions are on. */
+/** The tools a conversation gets: the crab's, the task board's (and the chat tools) and pages' when they're on, and `suggest` when suggestions are on. */
 function toolsFor({ suggestions = true, board = true, pages = true } = {}) {
-  return [...CRAB_TOOLS, ...(board ? BOARD_TOOLS : []), ...(pages ? PAGE_TOOLS : []), ...(suggestions ? [SUGGEST_TOOL] : [])];
+  return [...CRAB_TOOLS, ...(board ? [...BOARD_TOOLS, ...CHAT_TOOLS] : []), ...(pages ? PAGE_TOOLS : []), ...(suggestions ? [SUGGEST_TOOL] : [])];
 }
 
 /** The mcpServers entry for the one server Shellby hosts itself. */
@@ -204,4 +224,4 @@ async function handle(message, { tools, call }) {
   }
 }
 
-module.exports = { SERVER, BOARD_TOOL_NAMES, PAGE_TOOLS, PAGE_TOOL_NAMES, MAX_WAIT_SECONDS, toolsFor, servers, handle };
+module.exports = { SERVER, BOARD_TOOL_NAMES, CHAT_TOOL_NAMES, PAGE_TOOLS, PAGE_TOOL_NAMES, MAX_WAIT_SECONDS, toolsFor, servers, handle };

@@ -152,7 +152,7 @@
   // ---------------------------------------------------------------- prompts
 
   // after(): what happens once an answer went (the prompt screen goes back to the beach).
-  function promptCard(p, { compact = false, inTab = false, after = null } = {}) {
+  function promptCard(p, { inTab = false, after = null } = {}) {
     const sending = S.answering.get(p.requestId);
     const card = h('article', { class: `ask${p.deskOnly ? ' desk' : ''}${sending ? ' sending' : ''}`, 'aria-label': `${p.title}: ${p.ask || p.label}` });
     card.append(h('div', { class: 'ask-head' },
@@ -166,8 +166,9 @@
     const pv = p.preview;
     // The desk shows it in full, so here a glimpse is enough.
     if (pv?.kind === 'command') card.append(h('pre', { class: `cmd${p.deskOnly ? ' peek' : ''}`, text: pv.command }));
-    else if (pv?.kind === 'edit' && !compact) card.append(editPreview(pv));
-    else if (pv?.kind === 'write' && !compact) card.append(h('div', { class: 'cmd-file', text: shortPath(pv.file) }), h('pre', { class: 'cmd write', text: pv.content }));
+    // Edits and writes in full on the beach too, in boxes that scroll: Allow sits right under them.
+    else if (pv?.kind === 'edit') card.append(editPreview(pv));
+    else if (pv?.kind === 'write') card.append(h('div', { class: 'cmd-file', text: pv.file }), h('pre', { class: 'cmd write', text: pv.content }));
     else if (pv?.kind === 'url') card.append(h('pre', { class: 'cmd', text: pv.url }));
     else if (pv?.file) card.append(h('div', { class: 'cmd-file', text: shortPath(pv.file) }));
     for (const w of p.warnings || []) card.append(h('p', { class: 'flag' }, icon('warn'), h('span', { text: `Heads up: ${w}` })));
@@ -206,17 +207,17 @@
     }
     card.append(h('div', { class: 'btns' }, answer('deny'), answer('allow')));
     if (p.always) card.append(answer('always'));
-    if (compact && (pv?.kind === 'edit' || pv?.kind === 'write')) {
-      card.append(h('button', { type: 'button', class: 'link', text: pv.kind === 'edit' ? 'See the edit first' : 'See what it writes', onclick: () => openSheet(promptSheet(p)) }));
-    }
     return card;
   }
 
   function editPreview(pv) {
-    const box = h('div', { class: 'edit-pv' }, h('div', { class: 'cmd-file', text: shortPath(pv.file) }));
-    const lines = (text, kind) => String(text || '').split('\n').slice(0, 40).map(l => h('div', { class: `diff-row ${kind}` }, h('span', { class: 'diff-sign', text: kind === 'add' ? '+' : '−' }), h('span', { class: 'diff-text', text: l || ' ' })));
-    box.append(h('div', { class: 'diff compact' }, ...lines(pv.old, 'del'), ...lines(pv.new, 'add')));
-    if (pv.more) box.append(h('p', { class: 'muted small', text: `And ${L.plural(pv.more, 'more edit')} to the same file.` }));
+    const box = h('div', { class: 'edit-pv' }, h('div', { class: 'cmd-file', text: pv.file }));
+    // Every line of every edit, in a box that scrolls: the phone may allow it, so nothing is left out.
+    const lines = (text, kind) => String(text || '').split('\n').map(l => h('div', { class: `diff-row ${kind}` }, h('span', { class: 'diff-sign', text: kind === 'add' ? '+' : '−' }), h('span', { class: 'diff-text', text: l || ' ' })));
+    const edits = Array.isArray(pv.edits) && pv.edits.length ? pv.edits : [{ old: pv.old, new: pv.new }];
+    const gap = () => h('div', { class: 'diff-row gap' }, h('span', { class: 'diff-text', text: '⋯' }));
+    box.append(h('div', { class: 'diff compact' }, ...edits.flatMap((e, n) => [...(n ? [gap()] : []), ...lines(e.old, 'del'), ...lines(e.new, 'add')])));
+    if (edits.length > 1) box.append(h('p', { class: 'muted small', text: `${L.plural(edits.length, 'edit')} to the same file, all shown above.` }));
     return box;
   }
 
@@ -224,16 +225,6 @@
     const parts = String(p || '').split(/[\\/]/).filter(Boolean);
     return parts.length > 3 ? `…/${parts.slice(-3).join('/')}` : parts.join('/');
   };
-
-  function promptSheet(p) {
-    return { label: 'Permission', build: close => {
-      const card = promptCard(p);
-      card.classList.add('in-sheet');
-      // Answered while it was open (here or at the desk): it closes itself.
-      const watch = () => { if (!S.view?.prompts?.some(x => x.requestId === p.requestId)) close(); };
-      return { el: card, update: watch };
-    } };
-  }
 
   // ---------------------------------------------------------------- the beach
 
@@ -347,7 +338,7 @@
       const prompts = v.prompts || [];
       if (prompts.length) {
         parts.push(h('h3', { class: 'sect asking' }, h('i'), h('span', { text: 'Waiting on you' }), h('b', { text: prompts.length })));
-        for (const p of prompts) parts.push(promptCard(p, { compact: true }));
+        for (const p of prompts) parts.push(promptCard(p));
       }
       for (const s of L.sections(v)) {
         if (s.key === 'quiet' && s.tabs.length > 2) {

@@ -7,7 +7,7 @@ const { composeMessage } = require('../channels/messages');
 const push = require('./push');
 const { inQuietHours } = require('./quiet');
 const { rightsOf } = require('./rights');
-const { appDeskOnlyReason } = require('../channels/replies');
+const { appDeskOnlyReason, deskOnlyReason } = require('../channels/replies');
 
 const PUSH_SUBJECT = 'https://getshellby.com/';
 const ID_RE = /^[\w-]{1,100}$/;
@@ -35,6 +35,8 @@ function answerable(event, item) {
   if (event?.kind !== 'asking' || !item) return null;
   if (!ID_RE.test(String(event.tabId ?? '')) || !ID_RE.test(String(event.requestId ?? ''))) return null;
   if (['AskUserQuestion', 'ExitPlanMode'].includes(item.toolName) || appDeskOnlyReason(item)) return null;
+  // A notification shows a line, not the whole command: a long one is answered in the app, where it's all there.
+  if (deskOnlyReason(item)) return null;
   return { tabId: event.tabId, requestId: event.requestId };
 }
 

@@ -51,6 +51,7 @@ const { wireCrabApi } = require('./wiring/crab-api');
 const { wireTaskBoard } = require('./wiring/taskboard');
 const { wirePages } = require('./wiring/pages');
 const pagesProtocol = require('./pages/protocol');
+const { wireChatLink } = require('./wiring/chatlink');
 const { wireChannels } = require('./wiring/channels');
 const { wireDeck } = require('./wiring/deck');
 const { wirePhoneTasks } = require('./wiring/phone-tasks');
@@ -376,6 +377,7 @@ const { createExternal, createHealth, createTimeTracker, stat } = share(wireTime
 const { createCrabApi } = share(wireCrabApi(shared));
 share(wireTaskBoard(shared)); // the task board: conversations handing each other work (taskboard/)
 share(wirePages(shared)); // pages: small apps built with Claude (pages/, wiring/pages.js)
+share(wireChatLink(shared)); // conversations seeing each other and handing one another work (chatlink.js)
 const { channelPlace, channelSettings, confirmChannelPlace, createObs, createRemote, loadChannelSecret } = share(wireChannels(shared));
 const { createPhoneTasks } = share(wirePhoneTasks(shared));
 const { createDeck } = share(wireDeck(shared));

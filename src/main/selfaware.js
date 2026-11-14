@@ -47,6 +47,7 @@ function systemNote({ suggestions = true, board = false, pages = false } = {}) {
   ];
   if (board) {
     lines.push("Each project has a task board shared by Shellby's conversations. When work splits into parts that can go on at once, post_task hands one to another conversation (start: true starts a helper) and wait_for_tasks waits for the results.");
+    lines.push("list_chats and read_chat show this project's other conversations; hand_off passes one a brief. Commit what it needs first: each may be in its own copy.");
   }
   if (pages) {
     lines.push("The user's pages are small apps in Shellby with data any conversation can use: list_pages, read_page and write_page reach them. When they ask for a tool, board or tracker to keep, create_page builds one as a draft beside the chat (load the page-authoring skill first if it's there).");

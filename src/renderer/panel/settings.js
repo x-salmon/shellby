@@ -159,6 +159,8 @@
     $('idleCompactToggle').checked = !!state.settings.idleCompact;
     $('suggestToggle').disabled = state.settings.selfAware === false;
     $('taskBoardToggle').disabled = state.settings.selfAware === false;
+    $('handoffAskToggle').checked = state.settings.handoffAsk !== false;
+    $('handoffAskToggle').disabled = state.settings.selfAware === false || state.settings.taskBoard === false;
     const muted = state.settings.mutedSuggestions || [];
     $('mutedSuggestRow').hidden = !muted.length;
     $('mutedSuggestText').textContent = `${muted.length} ${muted.length === 1 ? 'feature' : 'features'} Claude won't offer.`;
@@ -329,7 +331,8 @@
   $('plainCardsToggle').addEventListener('change', async e => { const r = await api.setSettings({ plainCards: e.target.checked }); state.settings = r.settings; });
   $('idleCompactToggle').addEventListener('change', async e => { const r = await api.setSettings({ idleCompact: e.target.checked }); state.settings = r.settings; });
   $('suggestToggle').addEventListener('change', async e => { const r = await api.setSettings({ suggestions: e.target.checked }); state.settings = r.settings; });
-  $('taskBoardToggle').addEventListener('change', async e => { const r = await api.setSettings({ taskBoard: e.target.checked }); state.settings = r.settings; });
+  $('taskBoardToggle').addEventListener('change', async e => { const r = await api.setSettings({ taskBoard: e.target.checked }); state.settings = r.settings; $('handoffAskToggle').disabled = !e.target.checked; });
+  $('handoffAskToggle').addEventListener('change', async e => { const r = await api.setSettings({ handoffAsk: e.target.checked }); state.settings = r.settings; });
   $('unmuteSuggestBtn').addEventListener('click', async () => { state.settings.mutedSuggestions = await api.muteSuggestion(null); renderSettings(); });
   $('loginToggle').addEventListener('change', async e => { const r = await api.setSettings({ openAtLogin: e.target.checked }); state.settings = r.settings; });
   $('notifyToggle').addEventListener('change', async e => { const r = await api.setSettings({ notifications: e.target.checked }); state.settings = r.settings; });

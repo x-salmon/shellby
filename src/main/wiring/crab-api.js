@@ -159,6 +159,8 @@ function wireCrabApi(d) {
     if (d.taskBoard?.isBoardTool(name)) return d.taskBoard.tool(tab, name, args);
     // Pages (wiring/pages.js): small apps in Shellby, and their data.
     if (d.pages?.isPageTool(name)) return d.pages.tool(tab, name, args, 'shellby');
+    // Seeing and handing work to this project's other conversations (wiring/chatlink.js).
+    if (d.chatLink?.isChatTool(name)) return d.chatLink.tool(tab, name, args);
     if (!['say', 'celebrate', 'wear', 'status'].includes(name)) return { text: `Unknown tool: ${name}`, isError: true };
     const r = applyCrabIntent({ action: name, args });
     return r.ok === false ? { text: r.error, isError: true } : { text: r.text };
