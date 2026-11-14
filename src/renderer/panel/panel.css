@@ -1084,23 +1084,45 @@ select.field option { background: var(--reef); }
 .onboarding-modes { border-top: 0; }
 
 /* ================================================================ toast */
+/* Under the header, clear of the newest message and the box you type in (a
+   trophy card lands down there too). Lit from above in its accent: sea-glass,
+   amber for tone 'urgent', red for 'danger' (core.js SB.toast). */
 .toast {
-  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 60;
+  position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 60;
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 14px; border-radius: 99px; max-width: 86%;
-  /* The recap card's surface: reef with a lit edge down the left, sea-glass,
-     amber for tone 'urgent', red for 'danger' (core.js SB.toast). */
+  padding: 8px 14px; border-radius: 99px; max-width: 86%; overflow: hidden;
   --toast-accent: var(--glass);
-  background: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--toast-accent) 14%, transparent), transparent 65%), var(--reef);
-  border: 1px solid color-mix(in srgb, var(--toast-accent) 34%, var(--line));
-  border-left: 3px solid var(--toast-accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--toast-accent) 11%, var(--reef)), var(--reef) 70%);
+  border: 1px solid color-mix(in srgb, var(--toast-accent) 40%, var(--line));
   color: var(--sand); font-size: var(--fs-12-5); font-weight: 600;
   box-shadow: 0 14px 36px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25);
   animation: toast .3s var(--ease-spring);
 }
 .toast.urgent { --toast-accent: var(--amber); }
 .toast.danger { --toast-accent: var(--danger); }
-@keyframes toast { from { opacity: 0; transform: translate(-50%, 10px) scale(.95); } }
+@keyframes toast { from { opacity: 0; transform: translate(-50%, -10px) scale(.95); } }
+
+/* A job (SB.toast.job): a spinner while it works, a tick once it's done.
+   A failure says so with its colour (tone 'danger'). A result with a title
+   shows its title instead of either (.toast-body is a column). */
+.toast.working > span:first-child:not(.toast-body)::before,
+.toast.finished > span:first-child:not(.toast-body)::before {
+  content: ""; display: inline-block; vertical-align: -2px; margin-right: 8px;
+  width: 10px; height: 10px; box-sizing: border-box;
+}
+.toast.working > span:first-child:not(.toast-body)::before { border: 2px solid color-mix(in srgb, var(--toast-accent) 30%, transparent); border-top-color: var(--toast-accent); border-radius: 50%; animation: toast-spin .8s linear infinite; }
+.toast.finished > span:first-child:not(.toast-body)::before { width: 6px; height: 11px; margin: 0 10px 0 2px; vertical-align: -1px; border: solid var(--toast-accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+@keyframes toast-spin { to { transform: rotate(360deg); } }
+
+/* The time left drains along the bottom, and stops while you're on it. */
+.toast-water { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--toast-accent); transform-origin: left; visibility: hidden; }
+.toast.timed .toast-water { visibility: visible; animation: toast-water var(--toast-ms, 3s) linear forwards; }
+.toast.held .toast-water { animation-play-state: paused; }
+@keyframes toast-water { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .toast-water { display: none; }
+  .toast.working > span:first-child:not(.toast-body)::before { animation-duration: 2.4s; }
+}
 
 /* shared sprite animations */
 .part { transform-box: fill-box; transform-origin: center; }

@@ -10,10 +10,18 @@ const vm = require('node:vm');
 
 const CORE = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'panel', 'core.js'), 'utf8');
 
+function classSet() {
+  const on = new Set();
+  return {
+    toggle(c, force = !on.has(c)) { if (force) on.add(c); else on.delete(c); return force; },
+    contains: c => on.has(c), add: c => on.add(c), remove: c => on.delete(c),
+  };
+}
+
 function element(tag) {
   return {
     nodeType: 1, tagName: String(tag).toUpperCase(), children: [], attrs: {}, listeners: {}, dataset: {}, style: { setProperty() {} },
-    classList: { toggle() {}, contains: () => false, add() {}, remove() {} },
+    classList: classSet(),
     append(...kids) { this.children.push(...kids); },
     replaceChildren(...kids) { this.children = kids; },
     addEventListener(type, fn) { this.listeners[type] = fn; },
@@ -214,6 +222,123 @@ test('Escape on a toast dismisses it', withClock(({ SB, slot }) => {
   slot.listeners.keydown({ key: 'Escape', stopPropagation() { stopped = true; } });
   assert.equal(slot.children.length, 0);
   assert.ok(stopped, "Escape doesn't also close whatever is behind it");
+}));
+
+// ------------------------------------------------------------------ jobs
+
+const has = (el, c) => el.classList.contains(c);
+
+test('a job spins while it works, then becomes its result in the same toast', withClock(({ SB, slot }) => {
+  const job = SB.toast.job('Pushing the branch and opening a draft…');
+  assert.equal(toastText(slot), 'Pushing the branch and opening a draft…');
+  assert.ok(has(slot, 'working'));
+  assert.ok(!has(slot, 'timed'), 'no time draining while it works');
+
+  let opened = 0;
+  job.done('Draft pull request #412 is up.', { ms: 10000, action: 'Open it', onAction() { opened++; } });
+  assert.equal(toastText(slot), 'Draft pull request #412 is up.');
+  assert.ok(!has(slot, 'working') && has(slot, 'finished'));
+  assert.ok(has(slot, 'timed'), 'the result drains');
+  toastButtons(slot)[0].listeners.click();
+  assert.equal(opened, 1);
+}));
+
+test('a failed job turns red in place', withClock(({ SB, slot }) => {
+  SB.toast.job('Pushing…').fail("Couldn't push.", { ms: 9000 });
+  assert.equal(toastText(slot), "Couldn't push.");
+  assert.ok(has(slot, 'danger'));
+  assert.ok(!has(slot, 'finished'), 'no tick on a failure');
+}));
+
+test('a working job stays however long the pointer rests on it', withClock(({ SB, slot, tick }) => {
+  SB.toast.job('Making a branch…', { ms: 180000 });
+  slot.listeners.pointerenter();
+  assert.ok(has(slot, 'held'));
+  slot.listeners.pointerleave();
+  tick(10000);
+  assert.equal(toastText(slot), 'Making a branch…', 'leaving it is no reason to drop a job still running');
+}));
+
+test('a job nobody finishes stops spinning after its time', withClock(({ SB, slot, tick }) => {
+  SB.toast.job('Rewinding…', { ms: 15000 });
+  tick(15001);
+  assert.equal(slot.children.length, 0);
+}));
+
+test('when something else takes the slot, the job\'s result still arrives, as a toast of its own', withClock(({ SB, slot }) => {
+  const job = SB.toast.job('Pushing…');
+  SB.toast('Copied.');
+  assert.equal(toastText(slot), 'Copied.', 'a job never holds the slot');
+  job.done('Pushed 2 commits.');
+  assert.equal(toastText(slot), 'Pushed 2 commits.');
+  assert.ok(!has(slot, 'finished'), 'it is not the same toast, so it does not pretend to be');
+}));
+
+test('a job dismissed with ✕ still reports how it went', withClock(({ SB, slot }) => {
+  const job = SB.toast.job('Pushing…');
+  toastClose(slot).listeners.click();
+  assert.equal(slot.children.length, 0);
+  job.fail("Couldn't push.");
+  assert.equal(toastText(slot), "Couldn't push.");
+}));
+
+test('under a toast with a button, a job shows only its result, once the button toast goes', withClock(({ SB, slot, tick }) => {
+  SB.toast('It clashes with main.', { ms: 12000, action: 'Ask him to sort it out', onAction() {} });
+  const job = SB.toast.job('Pushing…', { ms: 30000 });
+  tick(2000);
+  job.done('Pushed 2 commits.', { ms: 6000 });
+  assert.equal(toastText(slot), 'It clashes with main.', 'the button stays under the pointer');
+  tick(12500);
+  assert.equal(toastText(slot), 'Pushed 2 commits.', 'the result, never a stale "Pushing…"');
+}));
+
+test('a job that finishes under the pointer waits for you to move off, then gets its whole time', withClock(({ SB, slot, tick }) => {
+  const job = SB.toast.job('Pushing the branch and opening a draft…');
+  slot.listeners.pointerenter();
+  job.done('Draft pull request #412 is up.', { ms: 10000, action: 'Open it', onAction() {} });
+  tick(60000);
+  assert.equal(toastText(slot), 'Draft pull request #412 is up.', 'still there while you read it');
+  slot.listeners.pointerleave();
+  tick(12000);
+  assert.equal(toastText(slot), 'Draft pull request #412 is up.', 'its own time and the time to reach the button, not just a moment');
+  tick(1000);
+  assert.equal(slot.children.length, 0);
+}));
+
+test('looking at a working job never stretches its deadline', withClock(({ SB, slot, tick }) => {
+  SB.toast.job('Rewinding…', { ms: 15000 });
+  for (let i = 0; i < 3; i++) {
+    tick(4000);
+    slot.listeners.pointerenter();
+    slot.listeners.pointerleave();
+  }
+  tick(3001);
+  assert.equal(slot.children.length, 0);
+}));
+
+test('a job whose time ran out still reports how it went, without a tick', withClock(({ SB, slot, tick }) => {
+  const job = SB.toast.job('Rewinding…', { ms: 15000 });
+  tick(15001);
+  job.done('Rewound.');
+  assert.equal(toastText(slot), 'Rewound.');
+  assert.ok(!has(slot, 'finished'));
+}));
+
+test('fail with a plain tone is neither red nor ticked: "Not branched."', withClock(({ SB, slot }) => {
+  SB.toast.job('Making a branch…').fail('Not branched.', { tone: null });
+  assert.equal(toastText(slot), 'Not branched.');
+  assert.ok(!has(slot, 'danger') && !has(slot, 'finished'));
+}));
+
+test('the time line stops while you hover, and starts again for the moment after', withClock(({ SB, slot, tick }) => {
+  SB.toast('Copied.', { ms: 2000 });
+  assert.ok(has(slot, 'timed'));
+  slot.listeners.pointerenter();
+  assert.ok(has(slot, 'held'));
+  tick(5000);
+  assert.equal(toastText(slot), 'Copied.');
+  slot.listeners.pointerleave();
+  assert.ok(!has(slot, 'held') && has(slot, 'timed'));
 }));
 
 test('picking a menu item runs it', () => {
