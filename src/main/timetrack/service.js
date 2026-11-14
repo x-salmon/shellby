@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const tt = require('./index');
+const daywrite = require('./daywrite');
 const { timesheetHtml, exportName } = require('./timesheet');
 const gitinfo = require('../gitinfo');
 const syncHours = require('../sync/hours');
@@ -26,6 +27,9 @@ const MAX_WATCHED = 30;
 const MAX_LOOKUPS = 40;               // projects asked for their commits in one view
 const RESOLVE_CACHE = 200;
 const RETRY_MS = 60 * 1000;          // a folder git couldn't place (busy, timed out) is asked again after this
+const MAX_CHATS_A_DAY = 40;          // conversations looked at when writing up a day
+const CHATS_TTL_MS = 60 * 1000;      // a day's conversations are read again after this
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 const caseKey = p => (process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p));
 const folderName = key => key.split(/[\\/]/).filter(Boolean).pop() || key;
@@ -49,6 +53,9 @@ class TimeTracker {
    *   claudeAt() -> { dirs: [dir], names: [folder name] }  where Claude is working right now
    *   resolve(dir) -> Promise<{ root, name } | null>        the project a folder belongs to
    *   device?() -> this PC's id (progression/xp.js), so its own share of the synced hours isn't counted twice
+   *   conversations?(day) -> [{ id, title, home, asks: [{ at, text }], until }]  what you asked Claude that day, and where
+   *   draft?() -> runClaudeOnce-shaped runner for daywrite.js, or null when nothing can write
+   *   writer?() -> the local model that would write a day up, or null (Claude does)
    *   electron: { dialog, BrowserWindow, clipboard, shell, app }, panel() -> BrowserWindow
    * }
    */
@@ -70,6 +77,9 @@ class TimeTracker {
     /** @type {NodeJS.Timeout | null} */
     this.timer = null;
     this.saved = new Set();       // files exported this run: the only ones "Show file" reveals
+    this.chatCache = new Map();   // day -> { at, chats }: chatsOn()'s last read
+    /** @type {Map<string, Promise<any>>} */
+    this.writing = new Map();     // day -> the write-up of it in progress
   }
 
   toPanel(channel, payload) { this.deps.toPanel(channel, payload); }
@@ -404,6 +414,145 @@ class TimeTracker {
     const key = caseKey(root);
     this.update(tt.ensureProject(this.state, key, p?.name || path.basename(root), { added: true }));
     return { ok: true, key };
+  }
+
+  // ---------------------------------------------------------------- writing up a day (daywrite.js)
+
+  /** A folder -> its project key, waiting for git when it isn't cached yet. */
+  async keyFor(dir) {
+    const hit = this.keyOf(dir);
+    if (hit) return hit;
+    const p = await Promise.resolve(this.deps.resolve(dir)).catch(() => null);
+    return p?.root ? caseKey(p.root) : null;
+  }
+
+  /**
+   * What you asked Claude on `day`, by project: key -> [{ id, title, asks, from, to }].
+   * Held a moment: reading the day's transcripts is file reads on the main
+   * thread, and the open day redraws after every change.
+   */
+  async chatsOn(day) {
+    const hit = this.chatCache.get(day);
+    if (hit && this.now() - hit.at < CHATS_TTL_MS) return hit.chats;
+    const chats = await this.readChats(day);
+    if (this.chatCache.size > 8) this.chatCache.clear();
+    this.chatCache.set(day, { at: this.now(), chats });
+    return chats;
+  }
+
+  async readChats(day) {
+    /** @type {Map<string, any[]>} */
+    const out = new Map();
+    let list;
+    try { list = await Promise.resolve(this.deps.conversations?.(day) || []); } catch { return out; }
+    for (const c of (Array.isArray(list) ? list : []).slice(0, MAX_CHATS_A_DAY)) {
+      const asks = (Array.isArray(c?.asks) ? c.asks : []).filter(a => Number.isFinite(a?.at) && typeof a.text === 'string');
+      if (!asks.length || typeof c.id !== 'string' || typeof c.home !== 'string') continue;
+      const key = await this.keyFor(c.home);
+      if (!key || this.ignored(key)) continue;
+      if (!out.has(key)) out.set(key, []);
+      out.get(key)?.push({ id: `c:${c.id}`, title: typeof c.title === 'string' ? c.title.slice(0, 80) : '', asks, from: asks[0].at, to: Math.max(asks[asks.length - 1].at, Number(c.until) || 0) });
+    }
+    return out;
+  }
+
+  /**
+   * One day as the Time page's "how it was written" view: each project's line,
+   * the draft Shellby wrote and what each sentence came from, its commits and
+   * conversations, and the quarter hours its time fell in.
+   * @param {string} day
+   */
+  async dayView(day) {
+    const { summary } = await this.summary({ range: 'custom', from: day, to: day });
+    const chats = await this.chatsOn(day);
+    const drafts = this.state.drafts[day] || {};
+    const slots = this.state.slots[day] || {};
+    const lines = summary.projects.map(p => {
+      const r = p.days[0];
+      const seen = new Map();
+      // A commit's id is its time: the same commit keeps its id when more arrive.
+      const commits = r.commits.map(c => {
+        const base = `g:${c.at}`;
+        const n = (seen.get(base) || 0) + 1;
+        seen.set(base, n);
+        return { id: n > 1 ? `${base}-${n}` : base, at: c.at, subject: c.subject };
+      });
+      const draft = Object.prototype.hasOwnProperty.call(drafts, p.key) ? drafts[p.key] : null;
+      return {
+        key: p.key, name: p.name, client: p.client, total: r.total, note: r.note,
+        draft: draft ? { ...draft, text: tt.draftText(draft), kept: !!r.note && r.note === tt.draftText(draft) } : null,
+        commits, chats: chats.get(p.key) || [],
+        slots: tt.slotList(Object.prototype.hasOwnProperty.call(slots, p.key) ? slots[p.key] : ''),
+      };
+    });
+    return { day, lines, writer: this.deps.writer?.() || null };
+  }
+
+  /**
+   * Shellby writes the lines of a day that have no words of yours yet. Lines
+   * with a note are never touched.
+   * @param {string} day
+   */
+  async writeDay(day) {
+    if (!DAY_KEY.test(day) || day > tt.dayKey(this.now())) return { ok: false, error: 'Pick a day that has happened.' };
+    // One write-up of a day at a time: a second ask waits for the first's answer.
+    const running = this.writing.get(day);
+    if (running) return running;
+    const job = this.writeDayNow(day).finally(() => this.writing.delete(day));
+    this.writing.set(day, job);
+    return job;
+  }
+
+  async writeDayNow(day) {
+    const run = this.deps.draft?.();
+    if (!run) return { ok: false, error: 'Writing needs Claude Code or a local model. Set one up in Settings.' };
+    this.chatCache.delete(day); // what you asked Claude a minute ago counts
+    const before = await this.dayView(day);
+    const open = before.lines.filter(l => !l.note);
+    if (!open.length) return { ok: false, error: before.lines.length ? 'Every line already has your words.' : 'Nothing kept on this day to write up.' };
+    const r = await daywrite.ask(day, open.map(l => ({ ...l, seconds: l.total })), run);
+    if (!r.ok || !r.lines) return r;
+    let s = this.state;
+    const at = this.now();
+    // A note you wrote while it was writing wins: that line's draft is left out.
+    const notes = this.combined().notes[day] || {};
+    const fresh = r.lines.filter(l => !Object.prototype.hasOwnProperty.call(notes, l.key));
+    for (const l of fresh) s = tt.setDraft(tt.ensureProject(s, l.key, this.nameHere(l.key)), day, l.key, { sentences: l.sentences, by: r.by, at });
+    this.update(s);
+    return { ok: true, written: fresh.length };
+  }
+
+  /**
+   * Keep what Shellby wrote: the draft becomes the line on the timesheet. No
+   * key keeps every draft of the day that has no note of yours yet.
+   * @param {string} day
+   * @param {string | null} [key]
+   */
+  keepDraft(day, key = null) {
+    const drafts = DAY_KEY.test(day) ? this.state.drafts[day] || {} : {};
+    // Your words, from any PC, are never written over: only lines without a note take a draft.
+    const notes = this.combined().notes[day] || {};
+    const yours = k => Object.prototype.hasOwnProperty.call(notes, k);
+    const keys = (key ? [key] : Object.keys(drafts)).filter(k => !yours(k));
+    if (key && yours(key)) return { ok: false, error: 'That line already has your words, so the draft was left out.' };
+    let s = this.state;
+    let kept = 0;
+    for (const k of keys) {
+      const d = Object.prototype.hasOwnProperty.call(drafts, k) ? drafts[k] : null;
+      if (!d || this.ignored(k)) continue;
+      s = tt.setNote(s, day, k, tt.draftText(d));
+      kept++;
+    }
+    if (!kept) return { ok: false, error: 'Nothing written to keep.' };
+    this.update(s);
+    return { ok: true, kept };
+  }
+
+  /** Forget what Shellby wrote for a line (the note, if you kept it, stays). */
+  dropDraft(day, key) {
+    if (!DAY_KEY.test(day) || typeof key !== 'string') return { ok: false, error: 'Which line?' };
+    this.update(tt.setDraft(this.state, day, key, null));
+    return { ok: true };
   }
 
   // ---------------------------------------------------------------- exports

@@ -15,6 +15,7 @@ const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
 const { savePng } = require('./lib/shot');
+const { JOBS } = require('../src/main/local/model');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9489;
@@ -151,7 +152,7 @@ function modelServer() {
 
     // what it writes first: a row per job, and the tally of what it saved
     await until("document.getElementById('localModelGroup')?.offsetParent !== null");
-    check(await until("!document.getElementById('localModelMore').disabled && document.querySelectorAll('#localModelJobList .local-job').length === 5"), 'Settings lists the jobs it writes first');
+    check(await until("!document.getElementById('localModelMore').disabled && document.querySelectorAll('#localModelJobList .local-job').length === " + JOBS.length), 'Settings lists the jobs it writes first');
     check(await until("/2 drafts written on this PC/.test(document.getElementById('localModelTallyText').textContent)"), `the tally counts both routine drafts ("${await ev("document.getElementById('localModelTallyText').textContent")}")`);
     // Try it: one plain question, answered by the stand-in
     await ev("document.getElementById('localModelQuestion').value = 'hello?'; document.getElementById('localModelAsk').click()");

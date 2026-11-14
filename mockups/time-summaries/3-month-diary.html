@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Daily summaries, concept 3: the month reads like a diary, the week sums itself up</title>
+<link rel="stylesheet" href="summaries.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 720px; gap: 40px; }
+  .left { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+  .views { display: flex; gap: 14px; align-items: center; }
+  .views .muted { margin-left: auto; font-size: 15px; }
+
+  .cal { flex: 1; display: grid; grid-template-rows: auto repeat(4, 1fr); grid-template-columns: repeat(5, 1fr) 0.55fr; gap: 10px; min-height: 0; }
+  .dow { color: var(--sand-faint); font-size: 16px; padding: 0 4px; }
+  .day { border-radius: 12px; padding: 16px 18px 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--glass) calc(var(--h) * 2.4%), var(--ink)); display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; position: relative; }
+    .day .n { display: flex; justify-content: space-between; font-size: 15px; color: var(--sand-dim); }
+  .day .n b { color: var(--sand); font-size: 17px; }
+  .day h3 { font-size: 18.5px; line-height: 1.35; font-weight: 700; }
+  .day p { font-size: 15px; line-height: 1.45; color: var(--sand-dim); }
+  .day .mix { margin-top: auto; display: flex; height: 6px; gap: 2px; border-radius: 3px; overflow: hidden; }
+  .day .mix i { background: var(--pc); }
+  .day.sel { box-shadow: 0 0 0 3px var(--coral); border-color: var(--coral); }
+  .day.today { border-color: var(--glass); }
+  .day.today .n span { color: var(--glass); font-weight: 700; }
+  .day.draft h3::after { content: "draft"; margin-left: 10px; font-size: 12px; padding: 2px 8px; border-radius: 10px; vertical-align: 3px; color: var(--amber); background: color-mix(in srgb, var(--amber) 15%, transparent); }
+  .day.ahead { background: none; border-color: var(--line-soft); }
+  .day.ahead .n { color: var(--sand-faint-deco); }
+  .wkend { border-radius: 12px; border: 1px dashed var(--line-soft); padding: 16px 16px; display: flex; flex-direction: column; gap: 8px; color: var(--sand-faint); font-size: 14.5px; }
+  .wkend b { color: var(--sand-dim); font-size: 15px; }
+  .wkend.sel { border: 1px solid var(--glass); background: var(--glass-dim); color: var(--sand-dim); }
+
+  .week { padding: 36px 40px; display: flex; flex-direction: column; gap: 22px; }
+  .week .eyebrow { color: var(--sand-faint); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+  .week h2 { font: 500 38px/1.15 var(--font-pixel); }
+  .week .lede { font-size: 21px; line-height: 1.55; }
+  .split { display: grid; gap: 10px; }
+  .split .r { display: grid; grid-template-columns: 14px 170px 1fr 80px; gap: 14px; align-items: center; font-size: 17px; }
+  .split .track { height: 12px; border-radius: 6px; background: var(--abyss); overflow: hidden; }
+  .split .track i { display: block; height: 100%; background: var(--pc); border-radius: 6px; }
+  .split .r span:last-child { text-align: right; font-weight: 700; }
+  .hl { display: grid; gap: 14px; }
+  .hl h3, .su h3 { color: var(--sand-faint); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+  .hl li { list-style: none; display: grid; grid-template-columns: 30px 1fr; gap: 12px; font-size: 18px; line-height: 1.45; }
+  .hl li .k { font: 700 13px/26px var(--font-body); text-align: center; border-radius: 6px; height: 26px; color: var(--abyss); }
+  .k.ship { background: var(--glass); } .k.fix { background: var(--coral); } .k.wait { background: var(--amber); }
+  .su { margin-top: auto; border-radius: var(--r-lg); background: var(--abyss); border: 1px solid var(--line); padding: 20px 22px; display: grid; gap: 10px; }
+  .su pre { font: 15px/1.6 var(--font-mono); color: var(--sand-dim); white-space: pre-wrap; }
+  .su .act { display: flex; gap: 10px; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="now"><span class="live"></span><b>shellby</b><span class="why">1h 40m today, Claude at work</span></span>
+    <span class="spacer"></span>
+    <span class="picker"><span class="arrows">‹ ›</span><b>November 2026</b><span class="caret">▾</span></span>
+    <button class="btn">Timesheet…</button>
+  </header>
+
+  <section class="body">
+    <div class="left">
+      <div class="views">
+        <span class="seg"><span>Hours</span><span class="on">What I did</span></span>
+        <span class="chipbar"><span class="chip on">All projects</span><span class="chip"><i class="sw p2"></i>Northwind Dental</span><span class="chip"><i class="sw p4"></i>Pike &amp; Co</span></span>
+        <span class="muted">Weekdays shown · weekends fold into the last column</span>
+      </div>
+      <div class="cal" id="cal"></div>
+    </div>
+
+    <aside class="panel week">
+      <span class="eyebrow">Week of Nov 9 · 31h 50m</span>
+      <h2>The merge queue landed, and Northwind's bookings went live on their calendar.</h2>
+      <p class="lede">Most of the week went to shellby: the merge queue is finished, the time page moved to a month calendar, and the e2e suite caught up. Northwind got calendar sync and the first reminder emails; Pike &amp; Co's review round is closed.</p>
+      <div class="split">
+        <div class="r p1"><span class="sw"></span>shellby<span class="track"><i style="width:58%"></i></span><span>18:30</span></div>
+        <div class="r p2"><span class="sw"></span>booking-app<span class="track"><i style="width:21%"></i></span><span>6:45</span></div>
+        <div class="r p4"><span class="sw"></span>label-cloud<span class="track"><i style="width:14%"></i></span><span>4:35</span></div>
+        <div class="r p3"><span class="sw"></span>rack-builder<span class="track"><i style="width:6%"></i></span><span>2:00</span></div>
+      </div>
+      <ul class="hl">
+        <h3>Worth mentioning</h3>
+        <li><span class="k ship">✓</span>Merge queue with a badge on its tab, in shellby 0.94</li>
+        <li><span class="k ship">✓</span>Northwind's bookings sync to Google Calendar within a minute</li>
+        <li><span class="k fix">!</span>Notes no longer vanish under Done (reported by two users)</li>
+        <li><span class="k wait">…</span>Reminder emails are half done, waiting on Northwind's wording</li>
+      </ul>
+      <div class="su">
+        <h3>For Monday's standup</h3>
+        <pre>Last week: shipped the merge queue; Northwind calendar sync is live; Pike &amp; Co review closed.
+This week: finish reminder emails once Northwind sends wording; time-page summaries.
+Blocked: nothing.</pre>
+        <div class="act"><button class="btn small">Copy</button><button class="btn small ghost">Post to Slack…</button><button class="btn small ghost">Send Northwind their part…</button></div>
+      </div>
+    </aside>
+  </section>
+</main>
+<div class="caption">Daily summaries · concept 3: the month as a diary</div>
+<script>
+  // Weekdays of November (Mon Nov 2 onward). [date, minutes per project, headline, line, draft?]
+  const D = {
+    2: [{ p1: 180, p4: 120 }, 'Toolbox search, Pike kickoff', 'Fuzzy search across tools; scoped Pike & Co label sync.'],
+    3: [{ p1: 150, p4: 105, p2: 60 }, 'Label sync prototype', 'First Forge build pulls labels; shellby tray fixes.'],
+    4: [{ p1: 240, p2: 90 }, 'Merge queue started', 'Queue model and the panel tab; Northwind booking form.'],
+    5: [{ p1: 200, p4: 135 }, 'Queue retries, Pike demo', 'Failed merges retry once; demoed label sync to Pike.'],
+    6: [{ p2: 150, p1: 90 }, 'Northwind booking flow', 'Patients can pick a slot and get a confirmation.'],
+    9: [{ p1: 190, p2: 120, p3: 40 }, 'Time page as a month', 'Calendar view replaces the bar chart; rack-builder spike.'],
+    10: [{ p1: 265, p2: 90, p4: 130 }, 'Merge queue shipped', 'Released in 0.94; Pike & Co review notes in.'],
+    11: [{ p1: 170, p4: 180, p3: 75 }, 'Pike review round', 'Fixed six of eight review notes; rack-builder BOM export.'],
+    12: [{ p1: 305, p2: 165, p4: 30 }, 'Calendar sync for Northwind', 'Bookings reach Google Calendar; merge-queue badge.', true],
+    13: [{ p1: 100, p2: 50 }, 'Summaries on the timesheet', 'So far: mockups for written days.', true],
+  };
+  const WEEKEND = { 0: ['Nov 7–8', 'Sat 1:00 · shellby release notes', 'Week 26:20'], 1: ['Nov 14–15', '', 'Week 31:50'], 2: ['Nov 21–22', '', ''], 3: ['Nov 28–29', '', ''] };
+  const TODAY = 13, PICKED = 0;
+  const hm = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  const cal = document.getElementById('cal');
+  const add = (cls, html, style) => { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; if (style) d.style.cssText = style; cal.append(d); return d; };
+  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Weekend'].forEach(n => add('dow', n));
+  for (let w = 0; w < 4; w++) {
+    for (let i = 0; i < 5; i++) {
+      const date = 2 + w * 7 + i;
+      const d = D[date];
+      const label = date === TODAY ? '<span>Today</span>' : `<span>Nov ${date}</span>`;
+      if (!d) { add('day ahead', `<span class="n">${label}</span>`); continue; }
+      const [mins, head, line, draft] = d;
+      const total = Object.values(mins).reduce((a, b) => a + b, 0);
+      const mix = Object.entries(mins).map(([p, m]) => `<i class="${p}" style="flex:${m}"></i>`).join('');
+      const cls = ['day', draft ? 'draft' : '', date === TODAY ? 'today' : '', date === PICKED ? 'sel' : ''].join(' ');
+      add(cls, `<span class="n">${label}<b>${hm(total)}</b></span><h3>${head}</h3><p>${line}</p><span class="mix">${mix}</span>`, `--h:${total / 60}`);
+    }
+    const [when, what, tot] = WEEKEND[w];
+    add(`wkend${w === 1 ? ' sel' : ''}`, `<b>${when}</b>${what}${tot ? `<b style="margin-top:auto;font-size:19px;color:var(--sand)">${tot}</b>${w === 1 ? '<span>Summed up →</span>' : '<span>Read the week</span>'}` : ''}`);
+  }
+</script>
+</body>
+</html>

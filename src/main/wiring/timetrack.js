@@ -22,7 +22,9 @@ const shellCmd = require('../shellcmd');
 const shells = require('../progression/shells');
 const stickers = require('../stickers');
 const streaks = require('../progression/streaks');
+const localModel = require('../local/model');
 const timetrack = require('../timetrack');
+const daywrite = require('../timetrack/daywrite');
 const { TimeTracker } = require('../timetrack/service');
 const { TimeSync } = require('../timetrack/timesync');
 const { markRed, normalizeXp } = require('../progression/xp');
@@ -71,6 +73,14 @@ function wireTimetrack(d) {
       // Your other PCs' hours ride on the progress sync (github/sync.js).
       device: () => normalizeXp(d.config.get('xp')).device,
       syncable: () => !!d.github?.can('sync'),
+      // Writing up a day (timetrack/daywrite.js): what you asked Claude that day,
+      // and the small-draft runner, which tries the local model first.
+      conversations: day => (d.history ? daywrite.conversationsOn(d.history.list(), id => d.history.load(id), day) : []),
+      draft: () => d.localDrafts || d.runClaudeOnce || null,
+      writer: () => {
+        const s = localModel.checkSettings(d.config.get('localModel'));
+        return s ? localModel.modelFor(s, 'timesheet') : null;
+      },
       electron: { dialog, BrowserWindow, clipboard, shell, app },
       panel: () => d.panel,
     });
