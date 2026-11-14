@@ -1,5 +1,68 @@
 # Changelog
 
+## 0.99.1: Task board and hub
+
+### New
+- **Conversations on Gemini CLI, OpenCode or Codex.** Press Ctrl+K and choose New conversation in Gemini CLI, OpenCode or Codex: a tab like any other, with the reply as it's written, each tool it runs, its plan as the to-do list and its permission prompts as cards, using the agent's own model and sign-in. It picks up where it left off when you reopen it. Not installed? It says how.
+- The Health page now says what's behind a warning: "Running hot because of Cyberpunk2077", then how it got there (the app, the reading against your line, how long it's held) and what would help, with buttons to end the app, see everything running, or move your line.
+- On a wide or full-screen panel, Health leads with the verdict in large type and moves the vitals into a column beside it, one row per sensor with its graph.
+- **Your PCs: one PC to see them all.** Press Ctrl+K and open Your PCs: this PC and every other one you run Shellby on, each with what it's doing, what's waiting on you, its load and heat, memory, disk, power, and which agents it can run. Add a PC with the code it shows under On your phone, then start a task on it from here, under that PC's own rules. Widen the panel for the full table.
+- **Answer your other PCs from this one.** What's waiting on you on another PC shows in Your PCs: allow it, always allow it, deny it, pick an answer to a question, or read a plan to its end and approve it. Open any of its conversations to watch it live and reply, in the mode it's in.
+- **Notes opens the note beside the list.** Pick a note and it opens on the right with what Claude said when you asked about it, what's happened to it so far, and its next step as the main button. The list sorts itself into what Claude answered, what's under way and what hasn't started, with chips to show just one kind. A narrow panel shows one at a time, with a way back.
+- **Plan Claude's version.** When Claude says "Do it differently", one button plans its way instead of the note as you wrote it. It waits in the box for you to read first.
+- **Keys for Notes.** J and K walk the list; P, B and A plan, build or ask; X ticks the open note off; E edits it.
+- **Projects at full screen.** On a wide panel your projects stay in a list on the left and the one you pick opens beside it, its cards set side by side. J and K walk the list. On a really wide screen what's waiting across every project, and how their dependencies and tests are doing, gets a column of its own on the right.
+- **Conversations hand each other work.** Ask Claude to split a job up and it posts the parts on the project's new task board: another conversation claims one, does it and says what it changed, and the first one waits for the results and carries on. A task can wait for others to be done first. Claude can start a helper conversation for a task, in its own copy and in the same mode (Smart at most), at most three at once. Each project's page shows its board, with Open and Cancel. Turn it off in Settings → Claude.
+- **A workflow trigger for the task board.** "When the task board changes" runs a workflow when a task is posted, done or fails, with what came back.
+- **The week on one line.** Automate now opens with a tide chart: every routine, workflow and task waiting for your usage reset, with what already ran behind "now" and what's coming ahead of it. Failed runs show in red, the window you're in is shaded with its reset time, and workflows waiting on a build or a file sit on a Listening line underneath. Press any mark to go to it.
+- **Shellby writes up your day.** On the Time page, pick a day and press **Write up the day**: each project gets a line in plain words, from your commit messages and what you asked Claude there, instead of a pile of commit subjects. For a client's project it's written for the client. It stays a dashed draft until you press **Keep**, **Edit** it into your own words, or **Drop** it. Nothing goes on a timesheet until you keep it, and a line you wrote yourself is never touched.
+- **See how it was written.** **How it was written** lays the day out hour by hour: when your time was kept, your conversations with Claude and your commits. Pick a sentence and what it came from lights up beside it, so you can check a line before it goes to a client.
+- **Written on your PC if you like.** With a local model set up (Settings, Claude), it writes your day there and nothing leaves the PC; otherwise it's one short Claude call. It's sent commit messages, conversation titles and your messages, never your code, files or window titles.
+- **Time is a month on a calendar.** Each day shows its hours and gets darker the longer you worked, with a total for each week and the month's hours, billable amount and usual day at the top. Step back through earlier months with the arrows.
+- **Pick a day to fix it.** The day opens beside the calendar (under it on a narrow panel) with a line per project: + and − for 15 minutes, what goes on the timesheet, and its commits. Add time for a call or a meeting right there. Arrow keys walk the days.
+- **Keep the guess.** A day with commits but no time kept has a dashed ring, and its line offers to keep the time the commits suggest.
+
+### Fixed
+- What a helper crab says now floats clear above its head, with a little tail down to it, instead of landing on its eyes when he's set to a bigger size.
+- **A stray "null" under Done on Notes is gone.**
+- On the welcome screen, Shellby no longer sits on top of "Hi, I'm Shellby." The space above the heading now grows to fit him, hat and shell topper included.
+- The stat tiles on a share card show big numbers whole: thousands of tasks or a long trophy count shrink to fit instead of ending in "…".
+- **Short popups no longer wrap into a narrow column.** A one-line message now fits on one line.
+- A bounty with the 🎲 swap button no longer pushes its XP onto a line of its own.
+- **A one-step reply no longer says "1 turns".** It says "1 step", which is also what it counts: the turn's steps, not your turns.
+
+### Changed
+- A new conversation lists the keys worth knowing as a tidy legend instead of one long line: the key that opens Shellby from anywhere on your PC stands apart in its own colour, and the ones that work in here (skills, jumping to any screen, switching mode, pasting files and every shortcut) line up beneath it. Keys you've changed in the shortcut list show as you set them.
+- **The tide gauge is now a tide staff.** The thin tube on his tank's glass is now a red and white harbour depth post in the sand, with a band for each tenth of your 5-hour window and a cork float bobbing at the level. What you've used fades, and the float turns orange when a fifth or less is left.
+- His level in the titlebar is a nameplate now: "Lv 75" in his pixel lettering, then ten XP cells that fill in the rank's colour, and the next one blinks while Claude works. It replaces the gold pill and the thin bar under the crab.
+- An empty Notes list now shows a short heading and a hint, centred with room around them, instead of a line of text squeezed against the edge. The same goes for a search with no matches and a list that's all ticked off.
+- **Split panes name their branch in words.** A pane's header reads "notifications bell" instead of `feat-notificati…`, with the kind of change as the colour of the branch mark. On a wide pane the whole name shows; on a narrow one it folds to the mark. Hover or tab to it for the full branch name, where it came from and how its checks went.
+- **A character sheet worth opening.** Trophies → Character now draws his four stats as a diamond, so you can see the shape that picks his class. Each stat gets a card showing what feeds it, the XP to its next point and the ways to raise it.
+- **Always a next class to chase.** The sheet names the nearest class and how much XP in which stat gets him there. A new Wanderer is told the quickest way out: 30 XP of Tidiness makes a Curator.
+- **Every class on one page.** A roster lists all 11 classes with the stats that make each one, lighting up the ones he has been. On a wide window the diamond, the stats and the roster sit side by side.
+- **Settings has a rail down the side.** Five tabs became nine areas, each named for what it holds: Look, Games, Claude, Code, Limits, Alerts, Apps, Accounts and System. The rail stays put while you scroll, so you can always see where everything lives and jump between areas in one click.
+- **More room, more map.** With the panel wide or maximized, the rail shows each area's name and lists the sections of the one you're in, lighting the one you're reading as you scroll. Click one to go straight there. In the narrow panel, rest on an icon to peek at its sections.
+- **Search shows where things are.** While you search Settings, the rail counts what each area found and dims the ones with nothing.
+- **His tank fills the Tank tab.** It's lit in a dark room now, as big as your screen allows, with the time, what he's up to and your readings (temperature, usage window, dev server) underneath. Move the mouse and the controls wake on the glass; leave it and they get out of the way.
+- **Readings on the glass.** The thermometer, lighthouse and chest say what they're reading right over them, so the gauges in disguise are easy to read at a glance. Turn it off from **Readings**.
+- **Decorating happens in place.** The tray rises under the tank like a drawer, the picked piece's tools sit right above it, and if the light follows your clock, the lights come up so you can see what you're placing.
+- **Settings beside the tank.** Where decor comes from, layouts, tidying, the gauges' switches and sharing moved into a sheet that opens from **Settings** or **Layouts** on the glass, instead of a long scroll under it.
+- **Timesheets cover the month on show**, and one for a whole month is titled with its name. Focus and your streak now sit below the timesheet.
+- **Popups now appear under the header.** They no longer cover the newest message or the box you type in. A line along the bottom shows how long each one has left, and it stops while your pointer is on it.
+- **One popup for the whole job.** Pushing, rewinding, branching and opening a draft pull request each show a spinner while they work, then the same popup becomes the result, with its button where you need it. Before, "Pushing…" and "Pushed" were two separate popups.
+- **The Toolbox's lists are tidier.** All, Skills, Agents and Commands are one clean line each: the kind as a letter, the name and what it's for, then how often Claude used it lately and what it costs in every conversation, lined up in two columns. Use and the pin show on the row you point at or tab to, and a pinned one keeps a star by its name.
+- **Headings say what each source is worth.** Yours, Built in and every plugin now say how many Claude used lately and what they cost together, so a plugin nobody uses shows before you open it. Select all on your own groups picks them in one go.
+- **One line for what needs a look.** Missing descriptions, hidden copies and servers that are down sit in one line with Pick unused and Import, and the bar for what you've picked floats at the bottom instead of pushing the list down. A skill of yours with no description says so on its row.
+- **Room to spread out.** With the panel wide or full screen, where things come from and the order sit in a rail on the left, and the row you open shows in a pane on the right. On a 4K screen it all goes up a size.
+- With conversations side by side, every pane shows its own to-do list, what it left running in the background (with Output and Stop) and the prompt Claude Code suggests next, not just the pane you're typing in. A click on a pane's suggestion brings the box there with it typed in, unsent.
+- Trophies is a set of short pages now instead of one long scroll. Your level and a list of pages (Today, Character, This week, Last 30 days, Logbook, Review mastery, Trophies, How to earn XP) sit in a rail on the left, with what's waiting on each, like "2 open" beside Today. On a narrow panel the list is a row of chips under your level. Links into Trophies, like the Logbook's cards, open the right page.
+- **The line under each reply shows how full the conversation is.** A bar fills from the left: grey for earlier replies, then this reply's part, with "+3" beside it in the same colour. It turns amber past 60% and coral past 80%, with a Compact or Make room button on the newest reply. Click the line for what the turn cost, its effort and thinking, and Branch from here.
+- **After a compact, the bar shows the room it freed** instead of just dropping.
+- **The Ultracode chip is a pixel button now.** It's drawn in the crab's own pixel style, and when it's on it fills solid amber, so you can tell at a glance whether your next message will send out a crew of agents.
+- **Us is one road now.** Under your beach, each stage of your bond sits on a single line: when you got there, what it opened and what you two did while you were at it. Where you are now is the big stage, with how far there is to go, roughly how long that is at your pace, and today's ways to get closer, each showing what it's worth. Full screen, the road runs across the page. In the panel it runs down, newest first, so playing with him is near the top.
+- **A full-screen beach that fills the screen.** On a wide panel the beach's pixels grow, and the bare sand past your newest castle says it's room for the next one.
+- **Less to wade through.** Scenes, the clutch, medals and your birthday sit together under the road, and how the beach grows folds away until you want it.
+
 ## 0.99.0: Pages
 
 ### New

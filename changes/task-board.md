@@ -1,3 +1,0 @@
-### New
-- **Conversations hand each other work.** Ask Claude to split a job up and it posts the parts on the project's new task board: another conversation claims one, does it and says what it changed, and the first one waits for the results and carries on. A task can wait for others to be done first. Claude can start a helper conversation for a task, in its own copy and in the same mode (Smart at most), at most three at once. Each project's page shows its board, with Open and Cancel. Turn it off in Settings → Claude.
-- **A workflow trigger for the task board.** "When the task board changes" runs a workflow when a task is posted, done or fails, with what came back.

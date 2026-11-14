@@ -1,5 +1,0 @@
-### Changed
-- **The Toolbox's lists are tidier.** All, Skills, Agents and Commands are one clean line each: the kind as a letter, the name and what it's for, then how often Claude used it lately and what it costs in every conversation, lined up in two columns. Use and the pin show on the row you point at or tab to, and a pinned one keeps a star by its name.
-- **Headings say what each source is worth.** Yours, Built in and every plugin now say how many Claude used lately and what they cost together, so a plugin nobody uses shows before you open it. Select all on your own groups picks them in one go.
-- **One line for what needs a look.** Missing descriptions, hidden copies and servers that are down sit in one line with Pick unused and Import, and the bar for what you've picked floats at the bottom instead of pushing the list down. A skill of yours with no description says so on its row.
-- **Room to spread out.** With the panel wide or full screen, where things come from and the order sit in a rail on the left, and the row you open shows in a pane on the right. On a 4K screen it all goes up a size.
