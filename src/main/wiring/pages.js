@@ -446,8 +446,9 @@ function wirePages(d) {
     const files = draft ? null : s.files(id);
     const pend = !draft && st.sync.pending ? pendingView(id, st) : null;
     const m = draft ? null : measure().pages.find(p => p.id === id);
+    const t = draft ? null : s.thumb(id);
     return {
-      ...sum, draft, url: protocol.urlOf(id), servable: servable(id),
+      ...sum, draft, url: protocol.urlOf(id), servable: servable(id), thumb: t ? `data:image/jpeg;base64,${t.toString('base64')}` : null,
       words: format.accessWords(man?.access), pending: s.pendingAccess(id).map(g => ({ ...g, text: growthWord(g) })),
       added: st.added, agreed: st.agreed, versions: st.versions.slice().reverse(),
       arrived: st.arrived,

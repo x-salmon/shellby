@@ -13,13 +13,22 @@
      web host.
    - It broke (an error, or no "ready" in 5 seconds): the error, Fix it with
      Claude, and Go back to the last version.
-   - A draft: Draft, Save to my pages and Keep changing it. */
+   - A draft: Draft, Save to my pages and Keep changing it.
+   - It came from another PC (sync/pages.js): the access sheet with where it
+     came from on top and its miniature behind glass, Turn it on / Not on this
+     PC. A new version from another PC waits in a card while yours runs.
+   - It doesn't fit the budget your pages share: a card with the bar.
+   - Data arrived from another PC, or an agent wrote: a strip under the header. */
 'use strict';
 (function () {
   const { h, api } = SB;
 
   const btn = (text, onclick, cls = 'btn slim-btn') => h('button', { type: 'button', class: cls, text, onclick });
   const card = (tone, ...kids) => h('div', { class: `pg-card ${tone}`, role: tone === 'bad' ? 'alert' : 'status' }, ...kids);
+  const STRIP_MS = 6000;
+  const mb = n => `${(n / 1024 / 1024).toFixed(1)} MB`;
+  const kb = n => (n >= 1024 * 1024 ? mb(n) : `${Math.max(1, Math.round(n / 1024))} KB`);
+  const whoLine = w => (!w ? '' : w.kind === 'you' ? 'You' : w.kind === 'page' ? 'The page' : w.name || (w.kind === 'pc' ? 'Another PC' : 'Someone'));
 
   /**
    * opts: { pane: boolean, onBack(), onMenu(anchor, view), onSaved(id) }
@@ -35,9 +44,11 @@
     const moreBtn = h('button', { type: 'button', class: 'icon-btn pg-more', 'aria-label': 'More', 'aria-haspopup': 'menu', title: 'More' }, SB.icon('M3.5 8h.01M8 8h.01M12.5 8h.01', { width: 2.4 }));
     const back = opts.pane ? null : h('button', { type: 'button', class: 'back-btn', 'aria-label': 'Back to Pages', text: '‹ Pages', onclick: () => opts.onBack?.() });
     const head = h('div', { class: 'pg-head' }, back, icon, name, dot, chip, h('span', { class: 'pg-grow' }), pointBtn, changeBtn, moreBtn);
+    const strip = h('div', { class: 'pg-arrived', role: 'status', hidden: true });
     const cards = h('div', { class: 'pg-cards' });
     const stage = h('div', { class: 'pg-stage' });
-    const el = h('section', { class: opts.pane ? 'pg-host pane' : 'pg-host', 'aria-label': 'Page' }, head, cards, stage);
+    const el = h('section', { class: opts.pane ? 'pg-host pane' : 'pg-host', 'aria-label': 'Page' }, head, strip, cards, stage);
+    let stripTimer = 0;
 
     /** @type {any} */
     let view = null;      // main's pages:view for the page on show
@@ -63,12 +74,20 @@
     const snapSoon = ms => { clearTimeout(snapTimer); snapTimer = setTimeout(() => { if (!opts.pane && el.offsetParent !== null) snapshot(); }, ms); };
     let late = false;     // broken only because "ready" was late: ready clears it
     async function show(pageId) {
-      if (pageId !== id()) { shown.clear(); ask = null; broken = null; refused = null; pointed = null; setPoint(false); }
+      if (pageId !== id()) {
+        shown.clear(); ask = null; broken = null; refused = null; pointed = null; setPoint(false); hideStrip();
+        if (!/^draft-/.test(pageId)) api.pages.opened?.(pageId).catch(() => {}); // pages travel in the order last opened
+      }
       const was = view?.id === pageId ? view.version : null;
       view = await api.pages.view(pageId).catch(() => null);
       if (was !== null && view && view.version !== was) { broken = null; late = false; } // a new version starts clean
       draw();
     }
+
+    // A page from another PC you haven't looked at here, or a new version of one waiting.
+    const arrivedNew = () => view?.arrived && !view.arrived.quiet && view.arrived.kind === 'new';
+    const arrivedChanged = () => view?.arrived && !view.arrived.quiet && view.arrived.kind === 'changed' && view.pendingVersion;
+    const fromName = () => view?.arrived?.from?.name || view?.pendingVersion?.from?.name || 'another PC';
 
     function draw() {
       if (!view) {
@@ -80,15 +99,27 @@
       }
       icon.textContent = view.icon || '▦';
       name.textContent = view.name;
-      chip.hidden = !(view.draft || !view.enabled || view.wants);
-      chip.textContent = view.draft ? 'Draft' : view.wants ? 'Wants to be added' : 'Off';
-      chip.className = `chip pg-chip ${view.draft ? 'amber' : ''}`;
+      chip.hidden = !(view.draft || !view.enabled || view.wants || arrivedChanged());
+      chip.textContent = view.draft ? 'Draft' : view.wants ? 'Wants to be added' : arrivedNew() ? `From ${fromName()}` : arrivedChanged() ? `New version from ${fromName()}` : 'Off';
+      chip.className = `chip pg-chip ${view.draft || view.arrived && !view.arrived.quiet ? 'amber' : ''}`;
       changeBtn.hidden = !!view.draft;
       pointBtn.hidden = !view.servable;
       drawCards();
       if (view.servable && !(view.pending?.length && !view.agreed)) mountFrame();
       else { frame?.close(); frame = null; frameFor = null; stage.replaceChildren(gate()); }
     }
+
+    /** The strip under the header: what just arrived, from where, for a few seconds. */
+    function showStrip(change) {
+      const w = change?.who;
+      if (!w || w.kind === 'you' || w.kind === 'page') return;
+      const text = w.kind === 'pc' ? `${change.text || 'Data'} from ${w.name || 'another PC'}` : `${w.name || 'An agent'}: ${change.text || 'wrote'}`;
+      strip.replaceChildren(h('span', { class: 'pg-live', 'aria-hidden': 'true' }), h('span', { class: 'pg-arrived-text', text }), h('span', { class: 'pg-arrived-when', text: 'just now' }));
+      strip.hidden = false;
+      clearTimeout(stripTimer);
+      stripTimer = setTimeout(hideStrip, STRIP_MS);
+    }
+    function hideStrip() { clearTimeout(stripTimer); strip.hidden = true; }
 
     function mountFrame() {
       if (frame && frameFor === view.id) {
@@ -121,13 +152,14 @@
           drawCards();
         },
         onAsk: a => { ask = a; drawCards(); },
-        onData: () => { dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); snapSoon(3000); },
+        onData: change => { dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); showStrip(change); snapSoon(3000); },
       });
       stage.replaceChildren(frame.el);
     }
 
     // What shows instead of the page while it can't run yet.
     function gate() {
+      if (arrivedNew()) return arrivalSheet();
       if (view.wants === 'add') {
         return h('div', { class: 'pg-gate' },
           h('h3', { text: `${view.name} wants to be added` }),
@@ -161,6 +193,49 @@
         h('div', { class: 'row wrap' }, btn('Let it', () => agree(), 'btn allow slim-btn'), btn('Not now', () => opts.onBack ? opts.onBack() : null, 'btn ghost slim-btn')));
     }
 
+    /**
+     * A page, or a version of one, that came from another PC: the access sheet
+     * with where it came from on top, and its miniature behind glass (a picture
+     * from there, not the code: nothing runs until Turn it on).
+     */
+    function arrivalSheet() {
+      const pend = arrivedChanged() ? view.pendingVersion : null;
+      const shownVersion = pend ? pend.n : view.version;
+      const facts = pend || view.facts || {};
+      const made = pend ? { who: pend.who, why: pend.why } : view.facts?.version || {};
+      const thumb = pend ? pend.thumb : view.thumb;
+      const words = pend ? (pend.growth.length ? pend.growth : []) : view.words;
+      const when = view.arrived?.at ? SB.relTime(view.arrived.at) : '';
+      const maker = made.who ? `${whoLine(made.who)} ${pend ? 'changed' : 'made'} it there${made.why ? `: "${made.why}"` : '.'}` : '';
+      return h('div', { class: 'pg-gate pg-access pg-arrival', role: 'dialog', 'aria-label': `${view.name}, from ${fromName()}` },
+        h('h3', { text: pend ? `A new version of ${view.name} from ${fromName()}` : `${view.name} came from ${fromName()}` }),
+        thumb ? h('div', { class: 'pg-glass' }, h('img', { src: thumb, alt: '' }), h('span', { class: 'chip amber', text: pend ? 'Waiting: a preview, not running' : 'Off: a preview, not running' })) : null,
+        h('dl', { class: 'pg-facts' },
+          h('dt', { text: 'What it is' }), h('dd', { text: (pend ? pend.description : view.description) || 'No description.' }),
+          h('dt', { text: 'From' }), h('dd', { text: `${fromName()}${when ? `, ${when}` : ''}. ${maker}`.trim() }),
+          h('dt', { text: 'Files' }), h('dd', { text: `${facts.files || 0} ${facts.files === 1 ? 'file' : 'files'}, ${kb(facts.bytes || 0)}, checked like a new page.` })),
+        h('p', { class: 'muted small', text: pend ? (words.length ? 'Beyond what you let it do here, it asks for' : 'It asks for nothing more than you already let it do.') : 'It asks for' }),
+        words.length || !pend ? accessList(words) : null,
+        pend ? h('p', { class: 'muted small', text: `Your version (${view.version}) keeps running until you turn this one on. Either way, this one is in History.` }) : null,
+        h('div', { class: 'row wrap pg-arrival-acts' }, btn('Not on this PC', () => decline(), 'btn ghost slim-btn'), btn('Turn it on', () => turnOn(shownVersion), 'btn allow slim-btn')));
+    }
+
+    /** Too big for the budget your pages share: it stays on this PC, and the bar says why. */
+    function budgetCard() {
+      const s = view.sync;
+      const left = Math.max(0, s.budget - s.others);
+      const pct = n => `${Math.min(100, Math.round(n / s.budget * 100))}%`;
+      return card('warn pg-budget-card',
+        h('div', { class: 'pg-card-text' },
+          h('b', { text: 'Too big to go to your other PCs' }),
+          h('span', { text: `Your pages share ${mb(s.budget)} between them. This one comes to ${mb(s.bytes)}, and ${mb(left)} is left. It stays on this PC; every other page still goes.` }),
+          h('div', { class: 'pg-budget' },
+            h('div', { class: 'pg-budget-bar' }, h('i', { class: 'used', style: `width:${pct(s.others)}` }), h('i', { class: 'this', style: `width:${pct(Math.min(s.bytes, left))}` })),
+            h('div', { class: 'pg-budget-legend' }, h('span', {}, h('i', { class: 'used' }), `Other pages, ${mb(s.others)}`), h('span', {}, h('i', { class: 'this' }), `This one, ${mb(s.bytes)}`), h('span', { class: 'end', text: mb(s.budget) })))),
+        btn('Show its data', () => SB.showPageDrawer?.('data'), 'btn slim-btn'),
+        btn('Change with Claude', () => api.pages.change(view.id, { ask: 'Make this page smaller so it fits the 2 MB its pages share on the sync: keep what matters and drop or trim the heavy parts.' }).then(fail), 'btn primary slim-btn'));
+    }
+
     function drawCards() {
       if (!view) return;
       const out = [];
@@ -168,7 +243,9 @@
         out.push(card('draft', h('span', { text: "A draft: it isn't on your shelf, your phone or your other PCs yet, and agents can't write to it." }),
           btn('Save to my pages', () => save(), 'btn primary slim-btn')));
       }
-      if (view.agreed && view.pending?.length && view.enabled) out.push(h('div', { class: 'pg-card more' }, accessSheet(false)));
+      if (arrivedChanged()) out.push(h('div', { class: 'pg-card more' }, arrivalSheet()));
+      if (view.agreed && view.pending?.length && view.enabled && !arrivedChanged()) out.push(h('div', { class: 'pg-card more' }, accessSheet(false)));
+      if (view.sync?.on && view.sync.where === 'everywhere' && view.sync.fits === false) out.push(budgetCard());
       if (broken) {
         out.push(card('bad',
           h('div', { class: 'pg-card-text' }, h('b', { text: 'This page broke' }), h('code', { text: broken })),
@@ -202,6 +279,8 @@
     const fail = r => { if (r?.ok === false && r.error) SB.toast(r.error); return r; };
     async function set(patch) { fail(await api.pages.set(view.id, patch)); await show(view.id); }
     async function agree() { fail(await api.pages.agree(view.id, view.version)); await show(view.id); }
+    async function turnOn(shownVersion) { fail(await api.pages.turnOn(view.id, shownVersion)); await show(view.id); }
+    async function decline() { fail(await api.pages.decline(view.id)); await show(view.id); }
     async function addPage() { fail(await api.pages.set(view.id, { enabled: true })); await show(view.id); }
     async function goBack() {
       const prev = view.versions?.[1];
@@ -255,7 +334,7 @@
       refresh: () => (view ? show(view.id) : null),
       reload: () => frame?.reload(),
       snapshot,
-      close: () => { clearTimeout(snapTimer); frame?.close(); frame = null; frameFor = null; el.remove(); },
+      close: () => { clearTimeout(snapTimer); hideStrip(); frame?.close(); frame = null; frameFor = null; el.remove(); },
     };
   }
 

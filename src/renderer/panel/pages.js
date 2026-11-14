@@ -22,8 +22,12 @@
     ['Release radar', 'Upcoming releases of the tools I use, with the date and what changed, that agents can add to.'],
     ['Gym log', 'A gym log: sets, reps and weight per exercise, with my best for each.'],
   ];
-  const WHO = { you: 'You', page: 'The page', agent: '', routine: '', terminal: 'A terminal', pc: 'Another PC' };
+  const WHO = { you: 'You', page: 'The page', agent: '', routine: '', terminal: 'A terminal', pc: '' };
   const AGENT_WORDS = { any: 'Any conversation', shellby: "Only Shellby's own", none: 'Nobody (read-only)' };
+  // Where it goes (sync/pages.js): the page Everywhere or This PC only; its data goes with it or stays.
+  const WHERE_WORDS = { everywhere: 'Everywhere', here: 'This PC only' };
+  const mb = n => `${(n / 1024 / 1024).toFixed(1)} MB`;
+  const kb = n => (n >= 1024 * 1024 ? mb(n) : `${Math.max(1, Math.round(n / 1024))} KB`);
 
   /** @type {any[]} */
   let list = [];
@@ -44,20 +48,55 @@
   $('pgOpenMain').append(host.el);
 
   const fail = r => { if (r?.ok === false && r.error) SB.toast(r.error); return r; };
-  const whoText = w => (w ? WHO[w.kind] || w.name || 'Someone' : 'Someone');
+  const whoText = w => (w ? WHO[w.kind] || w.name || (w.kind === 'pc' ? 'Another PC' : 'Someone') : 'Someone');
+  // A page from another PC you haven't looked at here (sync/pages.js): new, or a new version waiting.
+  const arrived = p => (p.arrived && !p.arrived.quiet ? p.arrived : null);
+  const fromName = p => p.arrived?.from?.name || p.sync?.pending?.from?.name || 'another PC';
 
   // ------------------------------------------------------------ the shelf
   function stateChip(p) {
     if (p.wants) return h('span', { class: 'chip amber', text: 'Wants to be added' });
+    const a = arrived(p);
+    if (a?.kind === 'new') return h('span', { class: 'chip amber', text: `From ${fromName(p)}` });
+    if (a?.kind === 'changed') return h('span', { class: 'chip amber', text: `New version from ${fromName(p)}` });
     if (!p.enabled) return h('span', { class: 'chip', text: 'Off' });
     if (p.needsOk) return h('span', { class: 'chip amber', text: 'Needs your OK' });
     if (p.broken) return h('span', { class: 'chip danger', text: "Didn't load" });
     return null;
   }
 
+  /** The tile's second line while something from another PC waits on it. */
+  function arrivedLine(p) {
+    const a = arrived(p);
+    if (!a) return null;
+    return a.kind === 'new' ? 'Off: look before it runs' : 'Your version still runs';
+  }
+
+  /** "2 pages came from your laptop", above the shelf, with Look at them. */
+  function arrivalsNotice() {
+    const came = list.filter(p => arrived(p));
+    if (!came.length) return null;
+    const names = [...new Set(came.map(fromName))];
+    const from = names.length === 1 ? names[0] : 'your other PCs';
+    const fresh = came.filter(p => p.arrived.kind === 'new').length;
+    const changed = came.length - fresh;
+    const rows = came.map(p => h('div', { class: 'pg-arrive-row' },
+      h('span', { class: 'pg-arrive-icon', 'aria-hidden': 'true', text: p.icon || '▦' }),
+      h('span', { text: `${p.name}, ${p.arrived.kind === 'new' ? 'new' : 'changed there'}` }),
+      h('span', { class: 'pg-arrive-when faint small', text: SB.relTime(p.arrived.at) })));
+    const line = fresh && changed ? 'The new one stays off, and the changed one keeps its old version, until you\'ve looked here.'
+      : fresh ? `${fresh === 1 ? 'It stays' : 'They stay'} off until you've looked here.` : `${changed === 1 ? 'Your version keeps' : 'Your versions keep'} running until you've looked here.`;
+    return h('div', { class: 'pg-card warn pg-arrive', role: 'status' },
+      h('div', { class: 'pg-arrive-body' },
+        h('h3', { text: `${came.length} ${came.length === 1 ? 'page' : 'pages'} came from ${from}` }),
+        ...rows,
+        h('p', { class: 'muted small', text: line })),
+      h('div', { class: 'row wrap' }, h('button', { type: 'button', class: 'btn slim-btn', text: came.length === 1 ? 'Look at it' : 'Look at them', onclick: () => open(came[0].id) })));
+  }
+
   function tile(p, hit) {
     const t = h('div', {
-      class: `pg-tile${p.enabled && !p.wants ? '' : ' off'}`, role: 'listitem', tabindex: '0', dataset: { id: p.id },
+      class: `pg-tile${p.enabled && !p.wants && arrived(p)?.kind !== 'new' ? '' : ' off'}`, role: 'listitem', tabindex: '0', dataset: { id: p.id },
       'aria-label': `${p.name}${p.pinned ? ', pinned' : ''}`,
       onclick: () => open(p.id),
       onkeydown: e => { if (e.key === 'Enter') open(p.id); else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); menuAt(t, p); } },
@@ -68,7 +107,7 @@
       p.pinned ? h('span', { class: 'pg-pin', text: '★' }) : null),
     h('div', { class: 'pg-tile-body' },
       h('div', { class: 'pg-tile-name' }, h('b', { text: p.name }), stateChip(p)),
-      h('div', { class: 'pg-tile-desc muted small', text: hit || p.description || `${p.keys.length} ${p.keys.length === 1 ? 'key' : 'keys'} of data` }),
+      h('div', { class: 'pg-tile-desc muted small', text: hit || arrivedLine(p) || p.description || `${p.keys.length} ${p.keys.length === 1 ? 'key' : 'keys'} of data` }),
       p.lastChange?.at ? h('div', { class: 'pg-tile-when faint small', text: `${p.lastChange.text}, ${SB.relTime(p.lastChange.at)}` }) : null),
     h('button', { type: 'button', class: 'icon-btn pg-tile-more', 'aria-label': `More for ${p.name}`, 'aria-haspopup': 'menu', onclick: e => { e.stopPropagation(); menuAt(/** @type {HTMLElement} */ (e.currentTarget), p); } },
       SB.icon('M3.5 8h.01M8 8h.01M12.5 8h.01', { width: 2.4 })));
@@ -103,6 +142,9 @@
     $('pgSearch').hidden = !on || list.length < 2;
     $('pgCount').textContent = list.length ? `${list.length} ${list.length === 1 ? 'page' : 'pages'}` : '';
     const found = await matches();
+    const notice = query.trim() ? null : arrivalsNotice();
+    $('pgArrivals').replaceChildren(...(notice ? [notice] : []));
+    $('pgArrivals').hidden = !notice;
     $('pgGrid').replaceChildren(...found.map(f => tile(f.p, f.hit)));
     $('pgGrid').hidden = !found.length;
     const empty = $('pgEmpty');
@@ -133,7 +175,8 @@
       p.draft ? null : M('History', () => { open(p.id); showDrawer('history'); }),
       p.draft ? null : M('Activity', () => { open(p.id); showDrawer('activity'); }),
       p.draft ? null : M('Settings for this page', () => { open(p.id); showDrawer('settings'); }),
-      p.draft || p.wants ? null : M(p.enabled ? 'Turn off' : 'Turn on', () => api.pages.set(p.id, { enabled: !p.enabled }).then(fail).then(load)),
+      p.draft || p.wants ? null : M('Where it goes', () => whereSheet(p.id)),
+      p.draft || p.wants || arrived(p)?.kind === 'new' ? null : M(p.enabled ? 'Turn off' : 'Turn on', () => api.pages.set(p.id, { enabled: !p.enabled }).then(fail).then(load)),
       M('Delete…', () => { open(p.id); confirmDelete = true; showDrawer('settings'); }, { tone: 'danger' }),
     ].filter(Boolean);
   }
@@ -207,13 +250,22 @@
   async function historyPane(id) {
     const v = await api.pages.view(id).catch(() => null);
     const versions = v?.versions || [];
+    const lost = v?.sync?.lost;
+    const pend = v?.pendingVersion;
+    // Changed here and on another PC: the later save won, and this PC's is kept as a version (sync/pages.js).
+    const clash = lost && versions.some(x => x.n === lost.n) ? h('div', { class: 'pg-card quiet pg-clash' }, h('span', { text: pend
+      ? `Changed here and on ${lost.from?.name || 'another PC'}. ${lost.from?.name || 'Its'} version was later, so it's the one waiting; the one from this PC keeps running and is kept below.`
+      : `Changed here and on ${lost.from?.name || 'another PC'}. ${lost.from?.name || 'Its'} version was later, so that's the one showing. The one from this PC is kept below.` })) : null;
+    const label = x => (x.n === v.version ? 'Showing now' : pend && x.n === pend.n ? 'Waiting from ' + (x.pc || 'another PC') : lost && x.n === lost.n ? 'Kept from this PC' : `Version ${x.n}`);
     return h('div', { class: 'pg-dpane' },
       h('p', { class: 'muted small', text: 'Every save of its files; data isn\'t versioned. Going back makes a new version, so nothing is lost.' }),
-      h('ol', { class: 'pg-versions' }, ...versions.map(x => h('li', { class: x.n === v.version ? 'now' : '' },
-        h('div', {}, h('b', { text: `Version ${x.n}` }), x.n === v.version ? h('span', { class: 'chip', text: 'Running' }) : null),
+      clash,
+      h('ol', { class: 'pg-versions' }, ...versions.map(x => h('li', { class: `${x.n === v.version ? 'now' : ''}${lost && x.n === lost.n ? ' kept' : ''}` },
+        h('div', {}, h('b', { text: label(x) }), x.n === v.version ? h('span', { class: 'chip', text: 'Running' }) : null),
         h('div', { class: 'small', text: x.why || '' }),
-        h('div', { class: 'faint small', text: `${whoText(x.who)}, ${SB.relTime(x.at)}` }),
-        x.n === v.version ? null : h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Go back to this one', onclick: async () => { fail(await api.pages.revert(id, x.n)); await host.show(id); drawDrawer(); } })))));
+        h('div', { class: 'faint small', text: `${x.pc || (v.sync?.on ? 'This PC' : '')}${x.pc || v.sync?.on ? ', ' : ''}${whoText(x.who)}, ${SB.relTime(x.at)}` }),
+        x.n === v.version ? null : h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Go back to this one', onclick: async () => { fail(await api.pages.revert(id, x.n)); await host.show(id); drawDrawer(); } })))),
+      clash ? h('p', { class: 'muted small', text: 'Its data wasn\'t part of this: data merges key by key, so both PCs\' writes are here.' }) : null);
   }
 
   async function activityPane(id) {
@@ -230,8 +282,9 @@
       h('input', { type: 'radio', name: 'pgAgents', value: k, checked: v.agents === k, onchange: async () => { fail(await api.pages.agents(id, k)); drawDrawer(); } }), label)));
     const notify = v.access?.notify ? h('label', { class: 'pg-check' },
       h('input', { type: 'checkbox', checked: v.notifyOn, onchange: e => api.pages.set(id, { notifyOn: /** @type {HTMLInputElement} */ (e.target).checked }).then(fail) }), 'Tell me when it changes') : null;
+    const travels = v.sync?.on && v.sync.where === 'everywhere';
     const del = confirmDelete
-      ? h('div', { class: 'pg-card bad' }, h('span', { class: 'pg-card-text', text: `Delete ${v.name}? Its files, data and History go too.` }),
+      ? h('div', { class: 'pg-card bad' }, h('span', { class: 'pg-card-text', text: `Delete ${v.name}? Its files, data and History go too${travels ? ', here and on your other PCs' : ''}.` }),
         h('button', { type: 'button', class: 'btn danger slim-btn', text: 'Delete', onclick: async () => { const r = fail(await api.pages.remove(id)); if (r?.ok !== false) close(); } }),
         h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Keep it', onclick: () => { confirmDelete = false; drawDrawer(); } }))
       : h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Delete…', onclick: () => { confirmDelete = true; drawDrawer(); } });
@@ -241,12 +294,55 @@
       h('h4', { text: 'What it can do' }),
       v.words?.length ? h('ul', { class: 'pg-rights' }, ...v.words.map(w => h('li', { class: `pg-right ${w.kind}`, text: w.text }))) : h('p', { class: 'muted small', text: 'Nothing beyond its own data.' }),
       v.added?.web?.length ? h('p', { class: 'small', text: `Added by you: ${v.added.web.join(', ')}` }) : null,
+      v.sync ? h('h4', { text: 'Where it goes' }) : null,
+      v.sync ? h('p', { class: 'small', text: whereText(v.sync) }) : null,
+      v.sync ? h('button', { type: 'button', class: 'btn slim-btn', text: 'Change where it goes', onclick: () => whereSheet(id) }) : null,
       h('h4', { text: 'This page' }),
       h('div', { class: 'row wrap' },
         h('button', { type: 'button', class: 'btn slim-btn', text: v.enabled ? 'Turn off' : 'Turn on', onclick: async () => { fail(await api.pages.set(id, { enabled: !v.enabled })); await host.show(id); drawDrawer(); } }),
         h('button', { type: 'button', class: 'btn slim-btn', text: v.pinned ? 'Unpin' : 'Pin', onclick: async () => { fail(await api.pages.set(id, { pinned: !v.pinned })); drawDrawer(); } }),
         del));
   }
+
+  // ------------------------------------------------------------ where it goes
+  /** "Everywhere", "Everywhere, data stays here", "This PC only" or "Too big, stays here". */
+  function whereText(s) {
+    if (s.where === 'here') return WHERE_WORDS.here;
+    if (s.fits === false) return 'Too big, stays here';
+    return s.data === 'here' ? `${WHERE_WORDS.everywhere}, data stays here` : WHERE_WORDS.everywhere;
+  }
+
+  /** The sheet: the page Everywhere / This PC only, its data Goes with it / Stays on this PC, and what it takes of the budget. */
+  async function whereSheet(id) {
+    const v = await api.pages.view(id).catch(() => null);
+    if (!v?.sync) return;
+    const sheet = $('pgWhereSheet');
+    const s = v.sync;
+    const opt = (group, value, current, title, sub, dim) => h('button', {
+      type: 'button', class: `pg-opt${value === current ? ' on' : ''}${dim ? ' dim' : ''}`, role: 'radio', 'aria-checked': String(value === current),
+      onclick: async () => { fail(await api.pages.where(id, { [group]: value })); whereSheet(id); if (openId === id) { host.refresh(); if (drawer) drawDrawer(); } else load(); },
+    }, h('span', { class: 'pg-opt-radio', 'aria-hidden': 'true' }), h('b', { text: title }), h('span', { text: sub }));
+    const here = s.where === 'here';
+    $('pgWhereTitle').textContent = `Where ${v.name} goes`;
+    $('pgWhereBody').replaceChildren(
+      h('div', { class: 'pg-grp', text: 'The page' }),
+      h('div', { role: 'radiogroup', 'aria-label': 'The page' },
+        opt('where', 'everywhere', s.where, 'Everywhere', 'Goes to your other PCs, switched off until you look at it there.'),
+        opt('where', 'here', s.where, 'This PC only', 'Stays here. Your other PCs never see it.')),
+      h('div', { class: 'pg-grp', text: 'Its data' }),
+      h('div', { role: 'radiogroup', 'aria-label': 'Its data' },
+        opt('data', 'with', s.data, 'Goes with it', 'One set of data, merged key by key.', here),
+        opt('data', 'here', s.data, 'Stays on this PC', 'Each PC keeps its own.', here)),
+      h('p', { class: 'muted small pg-where-note', text: here ? 'It never leaves this PC.'
+        : s.fits === false ? `Too big: it comes to ${mb(s.bytes)}, and ${mb(Math.max(0, s.budget - s.others))} of the ${mb(s.budget)} your pages share is left. It stays on this PC.`
+          : s.on ? `Takes ${kb(s.bytes)} of the ${mb(s.budget)} your pages share.` : 'Pages go to your other PCs once Sync between PCs is on (Settings › Accounts) and pages are allowed to travel (Settings › Claude › Pages).' }));
+    sheet.hidden = false;
+  }
+  const closeWhere = () => { $('pgWhereSheet').hidden = true; };
+  $('pgWhereClose').addEventListener('click', closeWhere);
+  $('pgWhereDone').addEventListener('click', closeWhere);
+  $('pgWhereSheet').addEventListener('mousedown', e => { if (e.target === e.currentTarget) closeWhere(); });
+  $('pgWhereSheet').addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); closeWhere(); } });
 
   // ------------------------------------------------------------ new page
   function newPage(text) {
@@ -306,10 +402,45 @@
   });
 
   // ------------------------------------------------------------ Settings › Pages
+  // On your other PCs: its own switch, the budget bar, when it last synced, and which pages travel (sync/pages.js).
+  async function renderSyncSettings() {
+    const box = $('pgSyncTravel');
+    if (!box) return;
+    const v = await api.pages.sync().catch(() => null);
+    if (!v) return;
+    const toggle = /** @type {HTMLInputElement} */ ($('pgSyncToggle'));
+    toggle.checked = v.on;
+    const live = v.on && v.able;
+    $('pgSyncNote').textContent = !v.signedIn ? 'Needs Sync between PCs: sign in with GitHub in Settings › Accounts. Through the same private gist, in its own file. Each page arrives switched off.'
+      : !v.able ? 'Needs Sync between PCs on, in Settings › Accounts. Through the same private gist, in its own file. Each page arrives switched off.'
+        : 'Through the same private gist as Sync between PCs, in its own file. Each page arrives switched off.';
+    const bar = $('pgSyncBar');
+    bar.hidden = !live;
+    if (live) {
+      /** @type {HTMLElement} */ ($('pgSyncUsed')).style.width = `${Math.min(100, Math.round(v.used / v.budget * 100))}%`;
+      $('pgSyncUsedText').textContent = `${mb(v.used)} of ${mb(v.budget)}`;
+      $('pgSyncLast').textContent = v.lastSyncAt ? `Last synced ${SB.relTime(v.lastSyncAt)}` : 'Not synced yet';
+    }
+    const rows = v.pages.map(p => h('div', { class: 'pg-srow' },
+      h('span', { class: 'pg-srow-icon', 'aria-hidden': 'true', text: p.icon || '▦' }),
+      h('span', { class: 'pg-srow-name', text: p.name }),
+      p.where === 'everywhere' && p.fits === false
+        ? h('span', { class: 'chip amber', text: 'Too big, stays here' })
+        : h('span', { class: 'pg-srow-end muted small', text: p.where === 'waiting' ? 'Not added yet' : whereText({ where: p.where, data: p.data, fits: p.fits }) })));
+    box.replaceChildren(...(rows.length ? rows : [h('p', { class: 'muted small', text: 'No pages yet.' })]));
+    $('pgSyncWhich').hidden = !live || !rows.length;
+  }
+  $('pgSyncToggle')?.addEventListener('change', async e => {
+    const r = await api.setSettings({ pagesSync: /** @type {HTMLInputElement} */ (e.target).checked });
+    if (r?.settings) state.settings = r.settings;
+    renderSyncSettings();
+  });
+
   // Every page's access in one list: what it can do, who may write, on or off.
   async function renderSettings() {
     const box = $('pgSetList');
     if (!box) return;
+    renderSyncSettings();
     const r = await api.pages.list().catch(() => null);
     const pages = r?.pages || [];
     if (!pages.length) { box.replaceChildren(h('li', { class: 'muted small', text: 'No pages yet.' })); return; }
@@ -333,6 +464,7 @@
   /** Open a page by id (Ctrl+K, a link, a notification). */
   SB.openPage = id => open(id);
   SB.newPage = text => newPage(text || '');
+  SB.showPageDrawer = which => { if (openId) showDrawer(which); };
 
   SB.views.pages = {
     render: () => { if (openId) host.show(openId); else load(); },
