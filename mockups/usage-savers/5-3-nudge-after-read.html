@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Repeated reads 3: a nudge in the chat, right after the read</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .step.hot { color: var(--sand); }
+  .step.hot code { background: rgba(255, 193, 94, .14); color: var(--amber); }
+  .nudge { width: 1000px; padding: 20px 24px 18px; display: grid; grid-template-columns: 1fr 400px; gap: 12px 24px; border-color: rgba(255, 193, 94, .35); }
+  .nudge .mark { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; font-size: 17px; }
+  .nudge .mark i { width: 26px; height: 26px; border-radius: 50%; background: rgba(255, 193, 94, .16); color: var(--amber); display: grid; place-items: center; font: 700 14px var(--font-body); font-style: normal; }
+  .nudge .mark b { color: var(--amber); }
+  .nudge p { font-size: 15px; color: var(--sand-dim); }
+  .nudge p b { color: var(--sand); }
+  .nudge .diff { font-size: 13px; }
+  .nudge .side { display: grid; gap: 10px; align-content: start; }
+  .nudge .acts { grid-column: 1 / -1; padding-top: 4px; }
+  .nudge .acts .fine { margin-left: auto; }
+  .working { display: flex; align-items: center; gap: 14px; padding: 10px 16px; color: var(--sand-dim); font-size: 15px; }
+  .working .crab { width: 18px; height: 14px; background: var(--coral); border-radius: 3px; }
+  .working .t { margin-left: auto; font: 500 13px var(--font-mono); color: var(--sand-faint); }
+  .working .stop { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--sand-dim); font-size: 14px; }
+  .thinking { display: flex; gap: 6px; padding: 4px 0; }
+  .thinking i { width: 8px; height: 8px; border-radius: 50%; background: var(--sand-faint-deco); }
+  .thinking i:nth-child(2) { opacity: .7; } .thinking i:nth-child(3) { opacity: .4; }
+</style>
+</head>
+<body>
+<div class="note"><b>5-3 · Nudge in the chat.</b> The moment a read repeats and it's a big one, a small card lands under that step with the rule drafted; the turn carries on around it. <span class="trade">on the spot, with the file in front of you, but it interrupts a turn, and a quiet week brings none</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar" data-opts='{"ctx":41}'></div>
+
+  <section class="feed"><div class="col">
+    <div data-kit="thread" data-opts='{"first":false}'></div>
+
+    <div class="msg you">Which version of ws do we ship, and is it the one with the permessage-deflate fix?</div>
+    <div class="steps">
+      <div class="step"><i class="read">R</i>Read <code>package.json</code><span class="tok">1.1k</span></div>
+      <div class="step hot"><i class="read">R</i>Read <code>package-lock.json</code><span class="tok loud">38.2k</span></div>
+    </div>
+
+    <div class="card nudge" role="group" aria-label="A repeated read">
+      <div class="mark"><i>!</i><span>That's the <b>4th time this week</b> Claude read <code>package-lock.json</code>: 38k tokens each time, and it has never changed it.</span></div>
+      <div>
+        <p>A deny rule keeps it out of every conversation in this project. Claude is told the file is off limits, and for a version it can run <b>npm ls ws</b> instead, about 80 tokens.</p>
+        <div class="diff" style="margin-top:10px"><span class="f">.claude/settings.json</span><span class="ctx">  "permissions": {</span><span class="add">+   "deny": ["Read(./package-lock.json)"],</span><span class="ctx">    "allow": ["Bash(npm test:*)", "Bash(npm run lint:*)"]</span></div>
+      </div>
+      <div class="side">
+        <p><b>This conversation keeps the read</b> it already did. The rule starts with the next message.</p>
+        <p><b>One click to undo</b>, under Setup → Rules. Shellby never adds a rule by itself.</p>
+        <p>Also read a lot: <code>dist/panel.html</code>, twice this week. The Lean tab has the rest.</p>
+      </div>
+      <div class="acts"><span class="btn glass">Apply to this project</span><span class="btn">Apply everywhere</span><span class="btn ghost">Not this one</span><span class="btn ghost">Never for this file</span><span class="fine">Saves about 38k a conversation.</span></div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><i class="run">$</i>npm ls ws<span class="tok">0.1k</span></div>
+    </div>
+    <div class="thinking"><i></i><i></i><i></i></div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{
+    "before": "<div class=\"working\"><span class=\"crab\"></span>Working… checking the ws changelog<span class=\"t\">0:48 · 41k so far</span><span class=\"stop\">Stop <kbd>Esc</kbd></span></div>"
+  }'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

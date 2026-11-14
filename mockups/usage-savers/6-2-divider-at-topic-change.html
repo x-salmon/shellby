@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fresh start 2: a divider in the feed where the topic changes</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .divider { display: grid; gap: 0; margin: 10px 0 4px; }
+  .divider .rule { display: flex; align-items: center; gap: 16px; color: var(--amber); font: 600 14px var(--font-mono); }
+  .divider .rule::before, .divider .rule::after { content: ""; flex: 1; border-top: 2px dashed rgba(255, 193, 94, .5); }
+  .divider .rule span { display: inline-flex; align-items: center; gap: 10px; height: 30px; padding: 0 14px; border-radius: 15px; background: rgba(255, 193, 94, .14); }
+  .cut { width: 1040px; margin: 14px auto 0; padding: 20px 26px 18px; display: grid; grid-template-columns: 1fr 440px; gap: 10px 26px; border-color: rgba(255, 193, 94, .35); }
+  .cut h3 { grid-column: 1 / -1; font: 500 22px/1.2 var(--font-pixel); }
+  .cut p { font-size: 16px; color: var(--sand-dim); }
+  .cut p b { color: var(--sand); }
+  .cut .per { display: grid; grid-template-columns: repeat(3, auto); gap: 10px 26px; align-items: baseline; padding: 8px 0 2px; justify-content: start; }
+  .cut .per .n { font: 500 28px/1 var(--font-pixel); }
+  .cut .per .n.after { color: var(--glass); }
+  .cut .per small { display: block; font: 13px var(--font-body); color: var(--sand-faint); margin-top: 6px; }
+  .cut .sum { display: grid; gap: 6px; }
+  .cut .sum .lbl { display: flex; font-size: 13px; color: var(--sand-faint); }
+  .cut .sum .lbl span { margin-left: auto; color: var(--glass); }
+  .cut .sum .box { padding: 10px 14px; background: var(--abyss); border: 1px solid var(--line); border-radius: var(--r); font: 400 14px/1.5 var(--font-body); color: var(--sand); }
+  .cut .sum .box i { font-style: normal; color: var(--sand-faint); }
+  .cut .acts { grid-column: 1 / -1; padding-top: 2px; }
+  .cut .acts .fine { margin-left: auto; }
+  .below { opacity: .92; }
+  .pending { display: flex; align-items: center; gap: 12px; color: var(--sand-faint); font-size: 15px; }
+  .pending i { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); }
+</style>
+</head>
+<body>
+<div class="note"><b>6-2 · Divider at the topic change.</b> The feed draws a dashed line where the subject turned, and the line carries the offer: start a fresh tab from here with a summary of everything above, and this message goes with it. <span class="trade">it marks exactly what would be left behind, which makes the choice easy, but it's easy to scroll past</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar" data-opts='{"ctx":71}'></div>
+
+  <section class="feed"><div class="col">
+    <div data-kit="thread" data-opts='{"first":false,"more":true}'></div>
+
+    <div class="divider">
+      <div class="rule"><span>New topic · 71% full</span></div>
+      <section class="card cut" aria-label="Start fresh from here">
+        <h3>Everything above is the queue. From here on it's the Lean tab.</h3>
+        <div>
+          <p>Each message you send carries the whole thread, <b>142k tokens</b>. A fresh tab from this line carries the summary instead, about <b>36k</b> with the setup, and the message below goes with it. This tab stays as it is.</p>
+          <div class="per"><span><span class="n">142k</span><small>per message, here</small></span><span><span class="n after">36k</span><small>per message, fresh</small></span><span><span class="n after">106k less</span><small>on every message after this one</small></span></div>
+        </div>
+        <div class="sum">
+          <div class="lbl">Carried over · tap to edit<span>1.1k tokens</span></div>
+          <div class="box">From “queue races”, Nov 14: enqueue() in src/main/queue.js raced when two tabs sent in one tick; each tab now has its own lock, per tab not global. The Queued row waits for main’s summary before it draws. Committed on fix/queue-races, not pushed. Repro: test/queue.test.js. <i>Edited by you: “keep the lock per tab” added.</i></div>
+        </div>
+        <div class="acts"><span class="btn glass">Start fresh from here</span><span class="btn">Stay in this one</span><span class="fine">If you stay, the line stays too, so you can come back to it.</span></div>
+      </section>
+    </div>
+
+    <div class="msg you below">Now the Lean tab: can we show the cache hit rate per project, not just the week's total?</div>
+    <div class="pending"><i></i>Waiting on the line above. Claude starts in whichever tab you pick.</div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{}'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

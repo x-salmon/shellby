@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Run cost 1: the estimate sits on the send button</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .ultra-note { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-radius: var(--r); background: var(--coral-dim); color: var(--sand); font-size: 16px; }
+  .ultra-note b { color: var(--coral); }
+  .ultra-note .est { margin-left: auto; color: var(--sand-dim); font-size: 15px; white-space: nowrap; }
+  .ultra-note .est b { color: var(--sand); }
+  .send.wide { height: 46px; }
+  .send.wide .pct { font: 600 15px var(--font-mono); opacity: .85; padding-left: 10px; border-left: 1px solid rgba(42, 13, 5, .35); }
+  .cost-hint { display: inline-flex; align-items: center; gap: 10px; color: var(--sand-dim); }
+  .cost-hint .mini { display: inline-flex; width: 110px; height: 7px; border-radius: 4px; background: var(--reef-2); overflow: hidden; }
+  .cost-hint .mini i { display: block; height: 100%; }
+  .cost-hint .mini .now { width: 54%; background: var(--glass); }
+  .cost-hint .mini .add { width: 8%; background: var(--amber); }
+  .cost-hint .amber { color: var(--amber); }
+  .wf { margin-top: 2px; display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; padding: 18px 22px; }
+  .wf h4 { font-size: 18px; }
+  .wf p { color: var(--sand-dim); font-size: 15px; margin-top: 2px; }
+  .wf .btn .pct { font: 600 14px var(--font-mono); color: var(--sand-dim); }
+</style>
+</head>
+<body>
+<div class="note"><b>4-1 · Estimate on the button.</b> With Ultracode on, the send button itself says what the run would take, and the line under it says where your window would end. Workflow run buttons get the same number. <span class="trade">no extra step and nothing to dismiss, but one number with no range and no cheaper way out</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar"></div>
+
+  <section class="feed"><div class="col">
+    <div data-kit="thread"></div>
+    <div class="msg claude" style="margin-top:-6px"><p class="muted" style="font-size:16px">Workflows that match this folder</p></div>
+    <div class="panel wf" style="margin-top:-18px">
+      <div><h4>Release check</h4><p>Runs lint, typecheck, the tests and the full e2e, then drafts the release notes from <code>changes/</code>.</p></div>
+      <span class="btn">Run <span class="pct">· ~3% of your window</span></span>
+    </div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{
+    "text": "ultracode: port the e2e dialog helpers in scripts/e2e-*.js to the new CDP session API. Keep every check green and run the full e2e once at the end.",
+    "ultra": true,
+    "send": "Send <span class=\"pct\">~8% of your window</span>",
+    "before": "<div class=\"ultra-note\" role=\"status\"><b>Ultracode is on.</b> Claude may send out many agents, and they use a lot of tokens.<span class=\"est\">Runs like this took <b>5% to 12%</b> of your 5-hour window before. Yours is 54% full.</span></div>",
+    "hint": "<span class=\"cost-hint\"><span class=\"mini\"><i class=\"now\"></i><i class=\"add\"></i></span>about <b>8%</b> of your 5-hour window · it would end <span class=\"amber\">about 62% full</span> · resets 4:15</span>"
+  }'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

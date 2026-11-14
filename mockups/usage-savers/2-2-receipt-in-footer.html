@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixed cost 2: a receipt line on each turn's footer that opens</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .setup-chip { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid var(--line); color: var(--sand-dim); font: 500 13px var(--font-mono); }
+  .setup-chip.open { background: var(--reef); color: var(--sand); }
+  .setup-chip .c { width: 9px; height: 9px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg) translate(-1px, -1px); }
+  .setup-chip.open .c { transform: rotate(-135deg) translate(-2px, -1px); }
+
+  .receipt { margin: 4px 0 6px; padding: 22px 26px 18px; background: var(--reef); border: 1px solid var(--line); border-radius: var(--r-lg); display: grid; grid-template-columns: 1fr 1fr; gap: 10px 48px; }
+  .receipt h4 { grid-column: 1 / -1; font: 500 20px/1.2 var(--font-pixel); display: flex; align-items: baseline; gap: 14px; }
+  .receipt h4 small { font: 15px var(--font-body); color: var(--sand-dim); }
+  .receipt .row { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--line-soft); font-size: 16px; color: var(--sand-dim); }
+  .receipt .row b { font: 500 16px var(--font-mono); color: var(--sand); }
+  .receipt .row.head { border-top: 0; color: var(--sand); font-weight: 700; }
+  .receipt .row.head b { font-weight: 600; }
+  .receipt .row.sub { padding-left: 22px; }
+  .receipt .row.sub span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--c); margin-right: 10px; vertical-align: -1px; }
+  .receipt .row .t { height: 5px; border-radius: 3px; background: var(--reef-3); grid-column: 1 / -1; overflow: hidden; }
+  .receipt .row .t i { display: block; height: 100%; width: var(--w); background: var(--c, var(--sand-faint-deco)); }
+  .receipt .cuts { display: grid; gap: 10px; align-content: start; }
+  .receipt .cuts h5 { font-size: 15px; color: var(--sand-faint); font-weight: 400; }
+  .receipt .cut { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 10px 14px; background: var(--ink); border: 1px solid var(--line); border-radius: var(--r); font-size: 15px; color: var(--sand-dim); }
+  .receipt .cut b { color: var(--sand); }
+  .receipt .cut .less { color: var(--glass); font: 600 14px var(--font-mono); }
+  .receipt .acts { grid-column: 1 / -1; padding-top: 10px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="note"><b>2-2 · Receipt on the turn footer.</b> Every footer says how much of the turn was setup; open it and the receipt itemises the parts, with the cut for each right there. <span class="trade">you see it where it costs, on every turn, but the footer gets busier and the receipt repeats itself</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar"></div>
+
+  <section class="feed"><div class="col">
+    <div class="msg you">Which part holds a message while Claude is still busy with the last one, the queue in main or the composer?</div>
+    <div class="msg claude"><p>Main. The composer hands the message over at once; <code>src/main/queue.js</code> holds it per tab until the running turn ends, then sends it. The panel only mirrors the queue so the "Queued" row can show it.</p></div>
+    <div data-kit="foot" data-opts='{"past":4,"added":8,"time":"31s","steps":2,"effort":1,"tokens":"14k","extra":"<span class=\"setup-chip\">setup 33.6k of 48k<i class=\"c\"></i></span>"}'></div>
+
+    <div class="msg you">The queue drops a message when two tabs send within the same tick. <code>test/queue.test.js</code> has a repro, <code>drops the second of two sends</code>.</div>
+    <div class="steps">
+      <div class="step"><i class="read">R</i>Read <code>src/main/queue.js</code><span class="tok">3.1k</span></div>
+      <div class="step"><i class="run">$</i>node --test test/queue.test.js<span class="tok">1.4k</span></div>
+      <div class="step"><i class="edit">E</i>Edit <code>src/main/queue.js</code> · 2 changes</div>
+      <div class="step"><i class="run">$</i>node --test test/queue.test.js<span class="tok">0.6k</span></div>
+    </div>
+    <div class="msg claude"><p>Found it. <code>enqueue()</code> reads <code>pending.length</code> before the earlier call's push has landed, so the second send gets the same slot and overwrites the first. Each tab now has its own lock in <code>src/main/queue.js</code>, and sends land in order.</p><p>The repro passes, and so do the other 14 queue tests. Three files changed: the queue, its test, and a line in <code>docs/DEVELOPMENT.md</code> about the lock.</p></div>
+    <div data-kit="foot" data-opts='{"past":12,"added":11,"extra":"<span class=\"setup-chip open\">setup 33.6k of 96k<i class=\"c\"></i></span>"}'></div>
+
+    <div class="receipt" role="region" aria-label="What this turn carried">
+      <h4>What this turn carried <small>9 calls to Claude · 96k tokens in, 35% of it setup that goes with every call</small></h4>
+      <div>
+        <div class="row head"><span>Setup, the same on every call</span><b>33.6k</b></div>
+        <div class="row sub is-rest"><span>Claude Code's own prompt and tools</span><b>11.2k</b></div>
+        <div class="row sub is-mcp"><span>MCP tool schemas (github 41, chrome 19, shellby 8, context7 2)</span><b>9.4k</b></div>
+        <div class="row sub is-skills"><span>Skill descriptions, 112 of them</span><b>6.8k</b></div>
+        <div class="row sub is-memory"><span>CLAUDE.md and rules</span><b>4.1k</b></div>
+        <div class="row sub is-style"><span>Output style: explanatory</span><b>1.2k</b></div>
+        <div class="row sub is-hooks"><span>Plugin hooks' notes</span><b>0.9k</b></div>
+        <div class="row head"><span>This conversation so far</span><b>24.0k</b></div>
+        <div class="row head"><span>This turn: your message, 4 tools, the reply</span><b>38.4k</b></div>
+      </div>
+      <div class="cuts">
+        <h5>Cuts that would show on the next turn</h5>
+        <div class="cut"><span>Allow only the <b>6 github tools</b> you used this month</span><span class="less">-4.9k a call</span><span class="btn tiny glass">Draft</span></div>
+        <div class="cut"><span>Move <b>ansible, frequentis and vcs skills</b> into their own projects</span><span class="less">-2.1k</span><span class="btn tiny glass">Draft</span></div>
+        <div class="cut"><span>Turn off <b>output style: explanatory</b></span><span class="less">-1.2k</span><span class="btn tiny glass">Turn off</span></div>
+        <div class="cut"><span>Move the <b>Harbor Tree routing table</b> out of the global CLAUDE.md</span><span class="less">-0.6k</span><span class="btn tiny glass">Draft</span></div>
+      </div>
+      <div class="acts"><span class="btn small">Branch from here</span><span class="btn small ghost">Open the Lean tab</span><span class="fine">Setup is cached after the first call, about a tenth of the price, but still in every call's input.</span></div>
+    </div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{}'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>
