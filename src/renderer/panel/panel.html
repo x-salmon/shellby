@@ -45,6 +45,7 @@
 <link rel="stylesheet" href="hooks.css">
 <link rel="stylesheet" href="remote.css">
 <link rel="stylesheet" href="workflows.css">
+<link rel="stylesheet" href="automate-tide.css">
 <link rel="stylesheet" href="workflow-canvas.css">
 <link rel="stylesheet" href="wf-chat.css">
 <link rel="stylesheet" href="time.css">
@@ -383,6 +384,8 @@
       <button type="button" data-goto-workflows aria-current="page">Workflows</button>
       <button type="button" data-view-btn="routines">Routines</button>
     </nav>
+    <!-- The tide chart: the week of routines, workflows and held tasks (automate-tide.js). Hidden while there is nothing on it. -->
+    <section class="tide-chart" data-tide aria-label="Coming up" hidden></section>
     <div id="wfScreen"></div>
   </main>
 
@@ -392,6 +395,8 @@
       <button type="button" data-goto-workflows>Workflows</button>
       <button type="button" aria-current="page">Routines</button>
     </nav>
+    <!-- The tide chart: the week of routines, workflows and held tasks (automate-tide.js). Hidden while there is nothing on it. -->
+    <section class="tide-chart" data-tide aria-label="Coming up" hidden></section>
     <div class="view-head">
       <h2>Routines</h2>
       <button type="button" class="btn primary slim-btn" id="newRoutineBtn">New routine</button>
@@ -3102,6 +3107,7 @@
 <script src="../shared/viewer-logic.js"></script>
 <script src="../shared/review-lenses.js"></script>
 <script src="../shared/files-logic.js"></script>
+<script src="../shared/tide-chart.js"></script>
 <script src="shortcuts.js"></script>
 <script src="core.js"></script>
 <script src="a11y.js"></script>
@@ -3188,6 +3194,7 @@
 <script src="wf-runs.js"></script>
 <script src="wf-save.js"></script>
 <script src="workflows.js"></script>
+<script src="automate-tide.js"></script>
 <script src="settings-text.js"></script>
 <script src="settings-search-logic.js"></script>
 <script src="notes.js"></script>

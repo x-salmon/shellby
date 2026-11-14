@@ -59,6 +59,7 @@ interface Window {
   ShellbyTabLogic: any;
   ShellbyTabSort: any;
   ShellbyTextGrid: any;
+  ShellbyTideChart: any;
   ShellbyTimeFormat: any;
   ShellbyTodos: any;
   ShellbyTrail: any;
@@ -72,6 +73,8 @@ interface Window {
 interface ShellbyPanelExtras {
   // a11y.js
   rove: any;
+  // automate-tide.js
+  renderTide: any;
   // backlog.js
   backlog: any;
   // beach-paint.js

@@ -12,7 +12,7 @@ const mcpServers = require('../mcpservers');
 const routineDraft = require('./draft');
 const { isModel } = require('../models');
 const { MAX_TABS } = require('../sessions');
-const { missedOnStartup, nextRun, describeSchedule, Scheduler } = require('./index');
+const { missedOnStartup, nextRun, runsBetween, TIDE, describeSchedule, Scheduler } = require('./index');
 
 const MAX_ROUTINES = 50;
 const ROUTINE_TABS_KEPT = 6;             // finished routine tabs left open before the oldest closes
@@ -51,10 +51,25 @@ function createRoutines(d) {
 
   function routines() { return Array.isArray(d.config.get('routines')) ? d.config.get('routines') : []; }
 
+  // When each routine started in the last two days, from History: { routineId: [ms...] }.
+  function recentStarts(now) {
+    const out = new Map();
+    for (const e of d.history?.list?.() || []) {
+      if (!e?.routineId || !Number.isFinite(e.createdAt) || e.createdAt < now - TIDE.behindMs || e.createdAt > now) continue;
+      if (!out.has(e.routineId)) out.set(e.routineId, []);
+      out.get(e.routineId).push(e.createdAt);
+    }
+    return out;
+  }
+
   function routinesView() {
     const now = Date.now();
+    const recent = recentStarts(now);
     return routines().map(r => ({
       ...r, next: nextRun(r, now), scheduleText: describeSchedule(r.schedule),
+      // The week ahead and the two days behind, for the tide chart (shared/tide-chart.js).
+      upcoming: runsBetween(t => nextRun(r, t), now, now + TIDE.aheadMs),
+      recent: (recent.get(r.id) || []).sort((a, b) => a - b).slice(-TIDE.max),
       running: [...routineTabs.entries()].some(([tabId, id]) => id === r.id && d.manager.isBusy(tabId)),
       held: heldFor(r.id),
       // Small runs on a top model: the editor says a lighter one would do (never changes it).
