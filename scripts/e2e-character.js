@@ -11,6 +11,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const { dayKey } = require('../src/main/weekly');
 const { panelBooted } = require('./lib/boot');
+const { CLASSES } = require('../src/main/progression/character');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9353;
@@ -74,9 +75,14 @@ function seed(dir) {
     await wait(600);
     check(await ev("!document.getElementById('xpSheet').hidden"), 'the character sheet shows on Trophies');
     check(await ev("document.getElementById('xpClassName').textContent") === 'Tester', 'it names his class');
-    check(await ev("document.querySelectorAll('#xpStats li').length") === 4, 'it lists four stats');
-    check(await ev("document.querySelector('#xpStats li.top .xp-stat-name')?.textContent") === 'Rigour', 'the class stat is highlighted');
-    check(await ev("[...document.querySelectorAll('.xp-stat-gain')].some(e => /^\\+\\d+$/.test(e.textContent))"), "this week's gains show");
+    check(await ev("document.querySelectorAll('#xpStats > li').length") === 4, 'it lists four stats');
+    check(await ev("[...document.querySelectorAll('#xpStats > li')].every(li => li.querySelector('.xp-stat-what')?.textContent && li.querySelector('.xp-stat-ways li'))"), 'each stat says what feeds it and how to raise it');
+    check(await ev("!!document.querySelector('#xpRadarSvg .xp-radar-shape')"), 'the stat diamond is drawn');
+    check(await ev("document.querySelectorAll('#xpRoster > li').length") === Object.keys(CLASSES).length - 1, 'the roster lists every class but Wanderer');
+    check(await ev("document.querySelector('#xpRoster > li.current')?.dataset.class") === 'rigour', 'the roster marks his class');
+    check(await ev("!document.getElementById('xpGoal').hidden && document.querySelectorAll('#xpStats > li.aim').length === 1"), 'the nearest class is named, on one stat');
+    check(await ev("document.querySelector('#xpStats > li.top .xp-stat-name')?.textContent") === 'Rigour', 'the class stat is highlighted');
+    check(await ev("[...document.querySelectorAll('.xp-stat-gain')].some(e => /^\\+\\d+ this week$/.test(e.textContent))"), "this week's gains show");
     check(await ev("SB.trophyPage('character')") === 'character' && await ev("SB.$('xpSheet').getBoundingClientRect().height > 0"), 'the sheet has a page of its own');
     const box = await ev("(r => ({ x: r.x, y: r.y, width: r.width, height: r.height }))((document.getElementById('xpSheet').scrollIntoView({ block: 'center' }), document.getElementById('xpSheet').getBoundingClientRect()))");
     fs.writeFileSync(path.join(OUT, 'sheet.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png', clip: { ...box, scale: 1 } })).data, 'base64'));

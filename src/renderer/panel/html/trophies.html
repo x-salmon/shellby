@@ -72,9 +72,18 @@
                   <h4 id="xpClassName">Wanderer</h4>
                   <p class="xp-class-blurb" id="xpClassBlurb"></p>
                 </div>
+                <p class="xp-goal" id="xpGoal" hidden></p>
               </div>
-              <ul class="xp-stats" id="xpStats" aria-label="Stats"></ul>
-              <p class="xp-classes" id="xpClasses" hidden></p>
+              <div class="xp-sheet-body">
+                <figure class="xp-radar" id="xpRadar">
+                  <svg viewBox="-82 -60 164 120" role="img" id="xpRadarSvg" aria-label="Stat shape"></svg>
+                </figure>
+                <ul class="xp-stats" id="xpStats" aria-label="Stats"></ul>
+                <section class="xp-roster" aria-labelledby="xpRosterTitle">
+                  <p class="xp-sub" id="xpRosterTitle">Classes <span id="xpRosterCount"></span></p>
+                  <ul class="xp-roster-list" id="xpRoster"></ul>
+                </section>
+              </div>
             </div>
           </section>
 

@@ -710,4 +710,6 @@ interface ShellbyPanelExtras {
   wrappedCard: any;
   // wrapped.js
   wrapped: any;
+  // xp-sheet.js
+  characterSheet: any;
 }

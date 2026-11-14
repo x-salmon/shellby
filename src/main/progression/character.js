@@ -76,6 +76,44 @@ function classFor(scores, min = MIN_CLASS) {
 
 const classView = (id, stats) => ({ id, ...CLASSES[id], stats });
 
+// The stats a class is made of: one, a pair, or all four. Wanderer has none.
+function recipe(id) {
+  if (id === 'polymath') return STATS.map(s => s.id);
+  if (id === 'wanderer') return [];
+  return id.split('-');
+}
+
+const scoreOf = (xp, scale) => 10 * Math.sqrt(count(xp) / scale);
+
+/**
+ * The nearest other class: the least XP, put into a single stat, that changes
+ * his class, worked out with classFor itself so it can't drift from the rules.
+ * xps: [{ id, xp }] in STATS order. Returns { id, name, icon, stat, xp } or null.
+ */
+function nearestClass(xps) {
+  const has = id => count(xps.find(x => x.id === id)?.xp);
+  const scores = add => STATS.map(s => ({ id: s.id, score: scoreOf(has(s.id) + (s.id === add.id ? add.xp : 0), s.scale) }));
+  const base = scores({ id: null, xp: 0 });
+  const now = classFor(base).id;
+  // Classes weigh unfloored scores, which run past 99. Leaving a Polymath or a
+  // pair can take one stat past the top by 1/ALL_SHARE, so search up to there.
+  const top = Math.max(MAX_STAT, ...base.map(s => s.score)) / ALL_SHARE + 1;
+  /** @type {{ id: string, name: string, icon: string, stat: string, xp: number } | null} */
+  let best = null;
+  for (const s of STATS) {
+    const changes = n => classFor(scores({ id: s.id, xp: n })).id !== now;
+    let lo = 0, hi = Math.max(1, xpForStat(top, s.scale) - has(s.id));
+    if (!changes(hi)) continue;
+    // The first amount that changes it: once another class, more of one stat keeps it changed.
+    while (hi - lo > 1) { const mid = Math.floor((lo + hi) / 2); if (changes(mid)) hi = mid; else lo = mid; }
+    if (!best || hi < best.xp) {
+      const to = classFor(scores({ id: s.id, xp: hi }));
+      best = { id: to.id, name: to.name, icon: to.icon, stat: s.id, xp: hi };
+    }
+  }
+  return best;
+}
+
 // XP per kind over the last `days` days (today included), from dailyKinds.
 function recentByKind(dailyKinds, now, days) {
   const out = {};
@@ -108,20 +146,28 @@ function characterSheet(xp, now) {
     const value = statValue(total, s.scale);
     const floor = xpForStat(value, s.scale), next = xpForStat(value + 1, s.scale);
     return {
-      id: s.id, name: s.name, short: s.short, icon: s.icon, what: s.what,
-      value, xp: total, week: weekXp, gain: value - statValue(total - weekXp, s.scale),
+      id: s.id, name: s.name, short: s.short, icon: s.icon, what: s.what, kinds: [...s.kinds],
+      value, score: scoreOf(total, s.scale), xp: total, week: weekXp, gain: value - statValue(total - weekXp, s.scale),
       next: value < MAX_STAT ? next - total : 0,
       progress: value < MAX_STAT ? (total - floor) / (next - floor) : 1,
     };
   });
-  const score = (s, n) => 10 * Math.sqrt(n / s.scale);
-  const weekScores = STATS.map((s, i) => ({ id: s.id, score: score(s, stats[i].week) }));
+  const weekScores = STATS.map((s, i) => ({ id: s.id, score: scoreOf(stats[i].week, s.scale) }));
+  const cls = classFor(stats.map(s => ({ id: s.id, score: s.score })));
+  const seen = (xp?.classes || []).filter(id => CLASS_IDS.includes(id)).map(id => ({ id, name: CLASSES[id].name, icon: CLASSES[id].icon }));
   return {
     stats,
-    cls: classFor(STATS.map((s, i) => ({ id: s.id, score: score(s, stats[i].xp) }))),
+    cls,
     // This week's class: what the week looked like, with any stat XP at all.
     weekCls: weekScores.some(s => s.score > 0) ? classFor(weekScores, 0) : null,
-    seen: (xp?.classes || []).filter(id => CLASS_IDS.includes(id)).map(id => ({ id, name: CLASSES[id].name, icon: CLASSES[id].icon })),
+    seen,
+    classAt: MIN_CLASS,
+    // Every class there is but Wanderer, for the sheet's roster.
+    roster: CLASS_IDS.filter(id => id !== 'wanderer').map(id => ({
+      id, name: CLASSES[id].name, icon: CLASSES[id].icon, blurb: CLASSES[id].blurb, stats: recipe(id),
+      current: id === cls.id, seen: id === cls.id || seen.some(x => x.id === id),
+    })),
+    goal: nearestClass(stats.map(s => ({ id: s.id, xp: s.xp }))),
   };
 }
 
@@ -143,4 +189,4 @@ function newClass(after, now) {
   return cls.id !== 'wanderer' && !seen.some(x => x.id === cls.id) ? cls : null;
 }
 
-module.exports = { STATS, CLASSES, CLASS_IDS, MAX_STAT, MIN_CLASS, statValue, xpForStat, classFor, characterSheet, isStatKind, noteClass, newClass };
+module.exports = { STATS, CLASSES, CLASS_IDS, MAX_STAT, MIN_CLASS, statValue, xpForStat, classFor, nearestClass, characterSheet, isStatKind, noteClass, newClass };

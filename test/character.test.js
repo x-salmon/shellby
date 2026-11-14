@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { STATS, CLASSES, statValue, xpForStat, classFor, characterSheet, isStatKind, noteClass, newClass } = require('../src/main/progression/character');
+const { STATS, CLASSES, statValue, xpForStat, classFor, nearestClass, characterSheet, isStatKind, noteClass, newClass } = require('../src/main/progression/character');
 const { normalizeXp, award, xpSummary } = require('../src/main/progression/xp');
 const { weekSummary } = require('../src/main/weekly');
 
@@ -128,4 +128,60 @@ test('the week card carries the sheet', () => {
   const xp = xpWith({ tests: 5000 });
   assert.equal(weekSummary(null, NOW, { xp }).character.cls.name, 'Tester');
   assert.equal(weekSummary(null, NOW, {}).character, null);
+});
+
+test('a Wanderer is pointed at the cheapest first class', () => {
+  const { goal } = characterSheet(xpWith({}), NOW);
+  // Tidiness has the smallest scale, so 5 Tidiness (30 XP) is the quickest way out.
+  assert.deepEqual(goal, { id: 'tidiness', name: 'Curator', icon: '🧹', stat: 'tidiness', xp: xpForStat(5, 120) });
+});
+
+test('the nearest class is the least XP in one stat that changes it', () => {
+  const xps = [{ id: 'shipping', xp: 4000 }, { id: 'rigour', xp: 0 }, { id: 'craft', xp: 0 }, { id: 'tidiness', xp: 0 }];
+  const goal = nearestClass(xps);
+  const scores = add => STATS.map((s, i) => ({ id: s.id, score: 10 * Math.sqrt((xps[i].xp + (s.id === goal.stat ? add : 0)) / s.scale) }));
+  // Exactly that much makes the new class, one less doesn't.
+  assert.equal(classFor(scores(goal.xp)).id, goal.id);
+  assert.equal(classFor(scores(goal.xp - 1)).id, 'shipping');
+  assert.ok(goal.id.startsWith('shipping-'), goal.id);
+});
+
+test('a stat can always reach a new class, even near the cap', () => {
+  const huge = 1e9;
+  const goal = nearestClass(STATS.map(s => ({ id: s.id, xp: s.id === 'craft' ? huge : 0 })));
+  assert.ok(goal && goal.id !== 'craft' && goal.xp > 0);
+});
+
+test('the roster lists every class but Wanderer, with its recipe and who he has been', () => {
+  const sheet = characterSheet(xpWith({ tests: 5000 }, { classes: ['shipping'] }), NOW);
+  assert.equal(sheet.roster.length, Object.keys(CLASSES).length - 1);
+  assert.ok(!sheet.roster.some(c => c.id === 'wanderer'));
+  const by = id => sheet.roster.find(c => c.id === id);
+  assert.deepEqual(by('rigour-craft').stats, ['rigour', 'craft']);
+  assert.deepEqual(by('polymath').stats, STATS.map(s => s.id));
+  assert.equal(by('rigour').current, true);
+  assert.equal(by('rigour').seen, true);
+  assert.equal(by('shipping').seen, true);
+  assert.equal(by('craft').seen, false);
+});
+
+test('stats carry their kinds and an unfloored score', () => {
+  const sheet = characterSheet(xpWith({ ship: 1 }), NOW);
+  assert.deepEqual(stat(sheet, 'shipping').kinds, ['ship', 'deploy', 'issue']);
+  assert.equal(stat(sheet, 'shipping').value, 0);
+  assert.ok(stat(sheet, 'shipping').score > 0);
+});
+
+test('an endgame sheet still has a nearest class', () => {
+  // All four near 90: a Polymath. Any class change needs one stat far past 99.
+  const near90 = STATS.map(s => ({ id: s.id, xp: xpForStat(90, s.scale) }));
+  assert.equal(classFor(near90.map((x, i) => ({ id: x.id, score: statValue(x.xp, STATS[i].scale) }))).id, 'polymath');
+  const goal = nearestClass(near90);
+  assert.ok(goal && goal.id !== 'polymath', JSON.stringify(goal));
+  // A pair at 90/90 can still be pulled apart.
+  const pair = STATS.map(s => ({ id: s.id, xp: ['shipping', 'rigour'].includes(s.id) ? xpForStat(90, s.scale) : 0 }));
+  assert.ok(nearestClass(pair), 'pair has a goal');
+  // Order and missing entries don't matter: stats are looked up by id.
+  assert.deepEqual(nearestClass([...pair].reverse()), nearestClass(pair));
+  assert.ok(nearestClass([]));
 });
