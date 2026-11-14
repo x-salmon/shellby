@@ -735,10 +735,21 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     check(await ev("document.getElementById('dropHint').hidden && !document.body.classList.contains('swapping-panes')"), 'and the preview goes on letting go');
 
     // ---- A pane's lane: its copy's branch and its last checks.
-    await ev(`(() => { const t = SB.state.tabs.get('${A}'); t.worktree = { branch: 'shellby/fix-login-1a2b', base: 'main', originalCwd: t.cwd }; SB.refreshPaneHeads(); })()`);
-    const laneOf = id => ev(`(() => { const l = document.querySelector('.pane[data-tab="${id}"] .pane-lane'); return { hidden: l.hidden, text: l.textContent, cls: l.className }; })()`);
+    await ev(`(() => { const t = SB.state.tabs.get('${A}'); t.worktree = { branch: 'shellby/fix-login-loop-1a2b3c', base: 'main', originalCwd: t.cwd }; SB.refreshPaneHeads(); })()`);
+    const laneOf = id => ev(`(() => {
+      const l = document.querySelector('.pane[data-tab="${id}"] .pane-lane');
+      const peek = l.querySelector('.lane-peek');
+      return { hidden: l.hidden, text: l.textContent, words: l.querySelector('.lane-branch')?.textContent, kind: l.dataset.kind,
+        cls: l.className, label: l.getAttribute('aria-label'), peek: peek?.textContent, peekShown: !!peek && getComputedStyle(peek).visibility === 'visible' };
+    })()`);
     let lane = await laneOf(A);
-    check(!lane.hidden && lane.text.includes('fix-login-1a2b') && !lane.text.includes('shellby/'), `A's lane shows its branch (${JSON.stringify(lane)})`);
+    check(!lane.hidden && lane.words === 'login loop' && lane.kind === 'fix', `A's lane shows its branch as words, its kind as a colour (${JSON.stringify(lane)})`);
+    check(lane.peek.includes('shellby/fix-login-loop-1a2b3c') && lane.peek.includes('From main') && lane.label.includes('shellby/fix-login-loop-1a2b3c'), 'its card and its label have the full name');
+    check(!lane.peekShown, 'the card waits to be asked for');
+    await ev(`document.querySelector('.pane[data-tab="${A}"] .pane-lane').focus({ focusVisible: true })`);
+    check(await until(`getComputedStyle(document.querySelector('.pane[data-tab="${A}"] .lane-peek')).visibility === 'visible'`), 'focused, it shows');
+    await panel.shot('pane-lane');
+    await ev(`document.querySelector('.pane[data-tab="${A}"] .pane-lane').blur()`);
     check((await laneOf(B)).hidden, 'B, in your own checkout with no checks, has none');
     await ev(`SB.renderChecks(SB.state.tabs.get('${A}'), { status: 'fail', commands: [{ cmd: 'npm test', ok: false, failed: ['login'] }] })`);
     lane = await laneOf(A);

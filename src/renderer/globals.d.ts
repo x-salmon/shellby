@@ -24,6 +24,7 @@ interface Window {
   PocketPhone: any;
   PocketTab: any;
   ShellbyAmbient: any;
+  ShellbyBranchLabel: any;
   ShellbyChirp: any;
   ShellbyClashText: any;
   ShellbyColony: any;

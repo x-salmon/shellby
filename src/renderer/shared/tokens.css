@@ -25,6 +25,13 @@
   --coral-dim: rgba(255, 122, 92, .14);
   --amber: #ffc15e;
   --danger: #ff5a4a;
+  /* A branch's kind, as a colour (shared/branch-label.js): new, fix, faster,
+     reshaped, and the rest. Marks only, with the kind also said in words. */
+  --kind-feat: var(--glass);
+  --kind-fix: var(--coral);
+  --kind-perf: var(--amber);
+  --kind-refactor: #c3b6f2;
+  --kind-other: var(--sand-faint);
 
   /* ---------------------------------------------------------------- type */
   --font-body: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
