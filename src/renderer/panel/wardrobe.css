@@ -259,15 +259,6 @@ body.busy .lv-cells i.edge { animation: lv-edge 1.2s steps(1) infinite; }
 .xp-sub { margin: 10px 0 5px; font: 600 var(--fs-10) var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--sand-dim); }
 .xp-section > .xp-sub:first-child, .xp-section > :first-child > .xp-sub { margin-top: 0; }
 .xp-sub span { letter-spacing: 0; text-transform: none; color: var(--sand-faint); }
-/* How to earn: reference, so it stays folded until asked for. */
-.xp-ways-box > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; margin: 0; border-radius: 4px; }
-.xp-ways-box > summary::-webkit-details-marker { display: none; }
-.xp-ways-box > summary::before { content: '▸'; font-size: var(--fs-10); letter-spacing: 0; transition: transform .15s var(--ease-out); }
-.xp-ways-box[open] > summary::before { transform: rotate(90deg); }
-.xp-ways-box > summary:hover { color: var(--sand); }
-.xp-ways-box > summary:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
-.xp-ways-box[open] > summary { margin-bottom: 6px; }
-@media (prefers-reduced-motion: reduce) { .xp-ways-box > summary::before { transition: none; } }
 /* The character sheet: his class, then one row per stat (character.js). */
 .xp-class { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255, 210, 63, .22); background: linear-gradient(120deg, rgba(255, 210, 63, .09), rgba(127, 214, 194, .05)); }
 .xp-class-icon { font-size: var(--fs-20); line-height: 1; }
@@ -323,7 +314,11 @@ body.busy .lv-cells i.edge { animation: lv-edge 1.2s steps(1) infinite; }
   .xp-week-row { grid-template-columns: 1fr; gap: 3px; }
 }
 .xp-bounties ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.xp-bounties li { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center; font-size: var(--fs-12); }
+/* A row: check, text, count, the 🎲 reroll when it's offered, XP. Flex, so the reroll
+   coming and going never pushes the XP onto a line of its own. */
+.xp-bounties li { display: flex; gap: 8px; align-items: center; font-size: var(--fs-12); }
+.xp-bounties li > .xp-bounty-check { flex: none; }
+.xp-bounties li > span:nth-child(2) { flex: 1; min-width: 0; }
 .xp-bounties li small { font: 500 var(--fs-10-5) var(--font-mono); color: var(--sand-dim); }
 .xp-bounties li b { font: 700 var(--fs-11) var(--font-mono); color: #ffd23f; }
 .xp-bounty-check { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); display: grid; place-items: center; font-size: var(--fs-10); line-height: 1; }

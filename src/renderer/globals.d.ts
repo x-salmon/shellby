@@ -183,7 +183,6 @@ interface ShellbyPanelExtras {
   relTime: any;
   remotePlace: any;
   renderMarkdownInto: any;
-  reveal: any;
   shortPath: any;
   sprite: any;
   tildify: any;
@@ -644,6 +643,9 @@ interface ShellbyPanelExtras {
   giveBackAttachments: any;
   renderTries: any;
   startTries: any;
+  // trophies-rail.js
+  reveal: any;
+  trophyPage: any;
   // turn-checks.js
   decorateChanges: any;
   editorBar: any;

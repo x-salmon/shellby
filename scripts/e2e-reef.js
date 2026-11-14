@@ -122,7 +122,7 @@ function makeRepo() {
     check(await until(`document.querySelectorAll('#rmLadder li').length === ${TIERS.length}`), `the review ladder has ${TIERS.length} tiers`);
     check(/Not ranked yet/.test(await text('#rmTier')), 'a fresh profile is not ranked yet');
     check(/Tide-pool Reader/.test(await text('#rmNext')), 'the next tier is named');
-    await panel.ev("document.getElementById('rmCard').scrollIntoView()");
+    await panel.ev("SB.trophyPage('mastery'); document.getElementById('rmCard').scrollIntoView()");
     await panel.shot('review-mastery');
   } catch (e) {
     check(false, e.message);
