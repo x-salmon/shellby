@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { answer, withGuard, CSP } = require('../src/main/pages/protocol');
+const { answer, withGuard, CSP, CSP_INERT } = require('../src/main/pages/protocol');
 const { isPrivate } = require('../src/main/pages/fetch');
 
 const SIDE = { 'shellby.js': 'BRIDGE', 'guard.js': 'GUARD' };
@@ -38,6 +38,7 @@ test('the CSP keeps a page to its own files and sandboxed', () => {
   for (const part of ["default-src 'none'", "script-src 'self'", "connect-src 'none'", "frame-src 'none'", 'sandbox allow-scripts']) assert.ok(CSP.includes(part), part);
   assert.ok(!CSP.includes('unsafe-eval'));
   assert.equal(withGuard('<p>'), '<script src="guard.js"></script><p>');
+  assert.ok(CSP_INERT.endsWith('sandbox') && !CSP_INERT.includes('script-src'), 'an SVG opened by itself runs nothing');
 });
 
 test('fetch refuses this PC and the local network', () => {

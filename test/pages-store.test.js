@@ -49,7 +49,8 @@ test('a page runs with nothing until you agree, and only what you agreed while a
   const s = fresh();
   const { id } = s.create(man({ access: { read: ['usage'] } }), { 'index.html': INDEX });
   assert.deepEqual(s.access(id), format.NO_ACCESS);
-  s.agree(id);
+  assert.equal(s.agree(id, 2).ok, false, 'not the version you were shown');
+  s.agree(id, 1);
   assert.deepEqual(s.access(id).read, ['usage']);
   const up = s.update(id, man({ access: { read: ['usage', 'git'], web: ['api.example.com'] } }), { 'index.html': INDEX }, { who: AGENT, why: 'more' });
   assert.deepEqual(up.growth.map(g => g.kind), ['read', 'web']);

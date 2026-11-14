@@ -20,12 +20,14 @@ const CSP = [
   "connect-src 'none'", "form-action 'none'", "base-uri 'none'", "frame-src 'none'", "worker-src 'none'",
   'sandbox allow-scripts',
 ].join('; ');
+// Everything that isn't HTML (an SVG opened as a document, say): no script at all,
+// so nothing can run without guard.js in front of it.
+const CSP_INERT = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox";
 const HEADERS = Object.freeze({
   'Content-Security-Policy': CSP,
   'X-Content-Type-Options': 'nosniff',
   'Cache-Control': 'no-store',
   'Referrer-Policy': 'no-referrer',
-  'Cross-Origin-Resource-Policy': 'same-origin',
 });
 const PAGE_SIDE = path.join(__dirname, 'page-side');
 const GUARD_TAG = '<script src="guard.js"></script>';
@@ -72,8 +74,9 @@ function servePages(protocol, pages) {
   protocol.handle(SCHEME, req => {
     if (req.method !== 'GET') return new Response('Only GET.', { status: 405, headers: HEADERS });
     const a = answer(req.url, pages, sideFiles);
-    return new Response(a.body, { status: a.status, headers: { ...HEADERS, 'Content-Type': `${a.type}${/^text\//.test(a.type) || a.type.includes('javascript') ? '; charset=utf-8' : ''}` } });
+    const csp = a.type === 'text/html' || a.type === 'text/javascript' ? CSP : CSP_INERT;
+    return new Response(a.body, { status: a.status, headers: { ...HEADERS, 'Content-Security-Policy': csp, 'Content-Type': `${a.type}${/^text\//.test(a.type) || a.type.includes('javascript') ? '; charset=utf-8' : ''}` } });
   });
 }
 
-module.exports = { SCHEME, CSP, PRIVILEGES, urlOf, withGuard, answer, servePages };
+module.exports = { SCHEME, CSP, CSP_INERT, PRIVILEGES, urlOf, withGuard, answer, servePages };

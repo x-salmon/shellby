@@ -30,7 +30,7 @@ function registerPagesIpc(ipcMain, d) {
   ipcMain.handle('pages:files', (_e, id, n) => d.pages.files(id, n ?? undefined), [PAGE_ID, opt(VERSION)]);
   ipcMain.handle('pages:set', (_e, id, patch) => d.pages.setMeta(id, patch), [PAGE_ID, META]);
   ipcMain.handle('pages:agents', (_e, id, agents) => d.pages.setAgents(id, agents), [PAGE_ID, AGENTS]);
-  ipcMain.handle('pages:agree', (_e, id) => d.pages.agree(id), [PAGE_ID]);
+  ipcMain.handle('pages:agree', (_e, id, version) => d.pages.agree(id, version), [PAGE_ID, VERSION]);
   ipcMain.handle('pages:addHost', (_e, id, host) => d.pages.addHost(id, host), [PAGE_ID, str({ max: 253 })]);
   ipcMain.handle('pages:revert', (_e, id, n) => d.pages.revert(id, n), [PAGE_ID, VERSION]);
   ipcMain.handle('pages:remove', (_e, id) => d.pages.remove(id), [PAGE_ID]);

@@ -239,6 +239,7 @@ function wirePages(d) {
 
   /** The confirmation window for a page that came from a routine or a terminal. Never waited on. */
   function askToAdd(id, man, who) {
+    const shownVersion = pages().state(id).version;
     const words = format.accessWords(man.access).map(w => w.text);
     const spec = {
       title: `Add ${man.name} to your pages?`,
@@ -250,9 +251,10 @@ function wirePages(d) {
     const ask = d.askConfirm ? d.askConfirm(spec) : confirm.ask(d.panel, { ...(d.dialogLook?.() || {}), ...spec });
     Promise.resolve(ask).then(choice => {
       if (choice !== 0 || !pages().known(id)) return; // left off, "Wants to be added"
+      if (pages().state(id).version !== shownVersion) return; // changed while asking: it waits, unadded
       pages().setMeta(id, { enabled: true });
       // Access still waits for the access sheet when it's first opened, unless it asks for none.
-      if (!format.accessWords(man.access).length) pages().agree(id);
+      if (!format.accessWords(man.access).length) pages().agree(id, shownVersion);
       changed(id, 'meta');
     }).catch(e => d.log?.warn('pages: the add window failed', e?.message));
   }
@@ -262,6 +264,7 @@ function wirePages(d) {
     const id = a.id;
     if (!(format.isId(id) || format.isDraftId(id)) || !s.known(id)) return oops(`No page "${String(id).slice(0, 40)}". list_pages has their ids.`);
     if (format.isDraftId(id) && s.state(id).tab !== tab?.id) return oops('That draft belongs to another conversation.');
+    if (!format.isDraftId(id) && s.state(id).wants === 'add') return oops("That page is waiting for the user to add it; it can't change until they do.");
     const base = s.manifest(id);
     if (!base) return oops("The page's page.json can't be read.");
     if (!format.isDraftId(id)) {
@@ -310,7 +313,7 @@ function wirePages(d) {
     const r = s.saveDraft(draftId);
     if (!r.ok) return r;
     // Saving is the confirmation for a page that asks for nothing more than its data.
-    if (man && !format.accessWords(man.access).length) s.agree(r.id);
+    if (man && !format.accessWords(man.access).length) s.agree(r.id, s.state(r.id).version);
     if (!d.config.get('pagesFirstSave')) {
       d.config.set({ pagesFirstSave: Date.now() });
       d.flashState?.('success');
@@ -343,7 +346,7 @@ function wirePages(d) {
         return s.setMeta(id, patch);
       }),
       setAgents: (id, agents) => act(id, s => s.setAgents(id, agents, { kind: 'you', name: '' }), 'files'),
-      agree: id => act(id, s => s.agree(id)),
+      agree: (id, version) => act(id, s => s.agree(id, version)),
       addHost: (id, host) => act(id, s => s.addHost(id, host)),
       revert: (id, n) => act(id, s => s.revert(id, n, { kind: 'you', name: '' }), 'files'),
       remove: id => act(id, s => s.remove(id), 'removed'),

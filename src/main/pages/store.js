@@ -240,11 +240,15 @@ function createStore(root, { now = Date.now } = {}) {
     return update(id, { ...man, agents }, fileMap, { who, why: `Agents: ${words[agents]} may write` });
   }
 
-  /** You said Let it: the page may now use everything its page.json asks for. */
-  function agree(id) {
+  /**
+   * You said Let it to what version `shown` asks for. Refused if the page has
+   * changed since (a newer version may ask for more than you saw).
+   */
+  function agree(id, shown) {
     const man = manifest(id);
     if (!man) return no('No such page.');
     const s = state(id);
+    if (s.version !== shown) return no('The page changed while you were looking. Have another look at what it asks for.');
     saveState(id, { ...s, agreed: man.access, enabled: true, wants: null });
     return ok();
   }
