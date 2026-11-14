@@ -196,3 +196,28 @@ test('a miniature travels only as a small JPEG', () => {
   p.thumb = jpeg;
   assert.equal(sync.snapshot(local(DESK, [p])).pages['gym-log'].thumb, jpeg.toString('base64'));
 });
+
+test('a stamp from the future counts as none, so it can never win every merge', () => {
+  const far = Date.now() + 365 * 24 * 60 * 60 * 1000;
+  const mine = page('gym-log', { at: 15, sharedAt: 15 });
+  const planted = { format: 1, pages: {}, gone: { 'gym-log': far } };
+  const merged = sync.merge(sync.snapshot(local(DESK, [mine])), planted);
+  assert.ok(merged.pages['gym-log'], 'the page stays');
+  assert.deepEqual(sync.apply(local(DESK, [mine]), merged).filter(a => a.kind === 'gone'), []);
+});
+
+test('deletions from another PC are a few a pass, and always said', () => {
+  const now = Date.now();
+  const mine = ['a', 'b', 'c', 'd', 'e'].map(id => page(`page-${id}`, { at: 10, sharedAt: 10 }));
+  const gone = Object.fromEntries(mine.map(p => [p.id, now]));
+  const actions = sync.apply(local(DESK, mine), sync.merge(sync.snapshot(local(DESK, mine)), { format: 1, pages: {}, gone }));
+  assert.equal(actions.filter(a => a.kind === 'gone').length, 3);
+  assert.match(sync.describeArrived(actions), /3 pages deleted on another PC were moved to the \.trash folder/);
+});
+
+test('data keys named after Object.prototype members merge like any other', () => {
+  const desk = local(DESK, [page('gym-log', { at: 10, sharedAt: 10, values: { toString: 'mine' }, by: { toString: stamped(5) } })]);
+  const laptop = local(LAPTOP, [page('gym-log', { at: 10, sharedAt: 10, values: { valueOf: 'theirs' }, by: { valueOf: stamped(6) } })]);
+  const keys = sync.merge(sync.snapshot(desk), sync.snapshot(laptop)).pages['gym-log'].data.keys;
+  assert.deepEqual([keys.toString?.v, keys.valueOf?.v], ['mine', 'theirs']);
+});

@@ -26,7 +26,7 @@
   const btn = (text, onclick, cls = 'btn slim-btn') => h('button', { type: 'button', class: cls, text, onclick });
   const card = (tone, ...kids) => h('div', { class: `pg-card ${tone}`, role: tone === 'bad' ? 'alert' : 'status' }, ...kids);
   const STRIP_MS = 6000;
-  const mb = n => `${(n / 1024 / 1024).toFixed(1)} MB`;
+  const mb = n => `${(n / 1024 / 1024).toFixed(1).replace(/\.0$/, '')} MB`;
   const kb = n => (n >= 1024 * 1024 ? mb(n) : `${Math.max(1, Math.round(n / 1024))} KB`);
   const whoLine = w => (!w ? '' : w.kind === 'you' ? 'You' : w.kind === 'page' ? 'The page' : w.name || (w.kind === 'pc' ? 'Another PC' : 'Someone'));
 
@@ -214,8 +214,8 @@
           h('dt', { text: 'What it is' }), h('dd', { text: (pend ? pend.description : view.description) || 'No description.' }),
           h('dt', { text: 'From' }), h('dd', { text: `${fromName()}${when ? `, ${when}` : ''}. ${maker}`.trim() }),
           h('dt', { text: 'Files' }), h('dd', { text: `${facts.files || 0} ${facts.files === 1 ? 'file' : 'files'}, ${kb(facts.bytes || 0)}, checked like a new page.` })),
-        h('p', { class: 'muted small', text: pend ? (words.length ? 'Beyond what you let it do here, it asks for' : 'It asks for nothing more than you already let it do.') : 'It asks for' }),
-        words.length || !pend ? accessList(words) : null,
+        h('p', { class: 'muted small', text: pend ? (words.length ? 'Beyond what you let it do here, it asks for' : 'It asks for nothing more than you already let it do.') : words.length ? 'It asks for' : 'It asks for nothing beyond its own data.' }),
+        words.length ? accessList(words) : null,
         pend ? h('p', { class: 'muted small', text: `Your version (${view.version}) keeps running until you turn this one on. Either way, this one is in History.` }) : null,
         h('div', { class: 'row wrap pg-arrival-acts' }, btn('Not on this PC', () => decline(), 'btn ghost slim-btn'), btn('Turn it on', () => turnOn(shownVersion), 'btn allow slim-btn')));
     }

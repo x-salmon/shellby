@@ -403,7 +403,7 @@ function wirePages(d) {
         // A version made current reloads an open frame; one waiting only refreshes the view.
         changed(a.id, r.kind === 'changed' ? 'meta' : 'files', { version: r.version });
       } else if (a.kind === 'data') arriveData(a.id, a);
-      else if (a.kind === 'gone') { s.remove(a.id); changed(a.id, 'removed'); }
+      else if (a.kind === 'gone') { if (s.trash(a.id).ok) changed(a.id, 'removed'); }
       else if (a.kind === 'shared') s.markShared(a.id, a.at);
     }
   }

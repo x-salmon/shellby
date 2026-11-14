@@ -32,32 +32,91 @@ function filesOf(raw) {
   return { ok: true, files };
 }
 
+/**
+ * Cut every open...close comment out, in one pass. A lazy regex like
+ * /<!--[\s\S]*?-->/ rescans to the end for each unclosed opener, which is
+ * quadratic: "<!--" repeated over a few MB froze main for minutes. An unclosed
+ * comment runs to the end, as a browser reads it.
+ */
+function cut(s, open, close) {
+  let out = '';
+  let at = 0;
+  for (;;) {
+    const i = s.indexOf(open, at);
+    if (i < 0) return out + s.slice(at);
+    out += s.slice(at, i);
+    const j = s.indexOf(close, i + open.length);
+    if (j < 0) return out;
+    at = j + close.length;
+  }
+}
 const stripComments = {
-  html: s => s.replace(/<!--[\s\S]*?-->/g, ''),
-  css: s => s.replace(/\/\*[\s\S]*?\*\//g, ''),
+  html: s => cut(s, '<!--', '-->'),
+  css: s => cut(s, '/*', '*/'),
   // Good enough to keep a comment from tripping a check; not a JS parser.
-  js: s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'`\\])\/\/[^\n]*/g, '$1'),
+  js: s => cut(s, '/*', '*/').replace(/(^|[^:"'`\\])\/\/[^\n]*/g, '$1'),
 };
 const REMOTE = /^\s*(?:https?:)?\/\//i;
+
+/**
+ * Every start tag, as { tag, text, end } (text: "<name attrs", end: where it
+ * stops). One pass: a token runs to the next < or >, so tokens never overlap
+ * and no pattern rescans the file. (Patterns like /<link\b[^>]*\bhref/ over the
+ * whole file were quadratic: a few hundred KB of "<a " took a minute.)
+ */
+function* tags(html) {
+  for (const m of html.matchAll(/<([a-z][a-z0-9-]*)\b[^<>]*/gi)) {
+    yield { tag: m[1].toLowerCase(), text: m[0], end: /** @type {number} */ (m.index) + m[0].length };
+  }
+}
+
+/** What's between a tag's end and its closing tag (to the end if it never closes, as a browser reads it). lower: html.toLowerCase(), once. */
+function body(html, lower, from, tag) {
+  const close = lower.indexOf(`</${tag}`, from);
+  return { text: html.slice(from + 1, close < 0 ? html.length : close), next: close < 0 ? html.length : close };
+}
+
+/** The text of every <style> block. */
+function styleBodies(html) {
+  const lower = html.toLowerCase();
+  const out = [];
+  let skipTo = 0;
+  for (const t of tags(html)) {
+    if (t.end <= skipTo || (t.tag !== 'style' && t.tag !== 'script')) continue;
+    const b = body(html, lower, t.end, t.tag);
+    skipTo = b.next;
+    if (t.tag === 'style') out.push(b.text);
+  }
+  return out;
+}
+
+const attr = (text, re) => re.exec(text)?.[1];
 
 /** Problems in one HTML file. */
 function htmlProblems(name, src) {
   const out = [];
   const html = stripComments.html(src);
-  for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
-    const attrs = m[1];
-    const srcAttr = attrs.match(/\bsrc\s*=\s*["']?([^"'\s>]+)/i);
-    if (!srcAttr && m[2].trim()) out.push(`${name}: an inline <script> won't run (the page's CSP allows only its own files). Move it to a .js file and load it with <script src="...">.`);
-    if (srcAttr && REMOTE.test(srcAttr[1])) out.push(`${name}: <script src="${srcAttr[1].slice(0, 80)}"> loads from the web, which a page can't. Put the code in the page's own files.`);
+  const lower = html.toLowerCase();
+  let skipTo = 0; // inside a <script>'s body, nothing is a tag
+  let handler = null;
+  for (const t of tags(html)) {
+    if (t.end <= skipTo) continue;
+    if (t.tag === 'script') {
+      const srcAttr = attr(t.text, /\ssrc\s*=\s*["']?([^"'\s>]+)/i);
+      const b = body(html, lower, t.end, 'script');
+      skipTo = b.next;
+      if (!srcAttr && b.text.trim()) out.push(`${name}: an inline <script> won't run (the page's CSP allows only its own files). Move it to a .js file and load it with <script src="...">.`);
+      if (srcAttr && REMOTE.test(srcAttr)) out.push(`${name}: <script src="${srcAttr.slice(0, 80)}"> loads from the web, which a page can't. Put the code in the page's own files.`);
+    } else if (t.tag === 'link') {
+      const href = attr(t.text, /\shref\s*=\s*["']?([^"'\s>]+)/i);
+      if (href && REMOTE.test(href)) out.push(`${name}: <link href="${href.slice(0, 80)}"> loads from the web, which a page can't. Put the stylesheet or font in the page's own files.`);
+    } else if (['img', 'iframe', 'audio', 'video', 'source', 'embed', 'object'].includes(t.tag)) {
+      const from = attr(t.text, /\s(?:src|data)\s*=\s*["']?([^"'\s>]+)/i);
+      if (from && REMOTE.test(from)) out.push(`${name}: "${from.slice(0, 80)}" loads from the web, which a page can't. Use a data: URL, an SVG file, or shellby.fetch().`);
+    }
+    handler ||= attr(t.text, /\s(on[a-z]+)\s*=/i);
   }
-  for (const m of html.matchAll(/<link\b[^>]*\bhref\s*=\s*["']?([^"'\s>]+)/gi)) {
-    if (REMOTE.test(m[1])) out.push(`${name}: <link href="${m[1].slice(0, 80)}"> loads from the web, which a page can't. Put the stylesheet or font in the page's own files.`);
-  }
-  for (const m of html.matchAll(/<(?:img|iframe|audio|video|source|embed|object)\b[^>]*\b(?:src|data)\s*=\s*["']?([^"'\s>]+)/gi)) {
-    if (REMOTE.test(m[1])) out.push(`${name}: "${m[1].slice(0, 80)}" loads from the web, which a page can't. Use a data: URL, an SVG file, or shellby.fetch().`);
-  }
-  const handler = html.match(/<[a-z][^>]*\s(on[a-z]+)\s*=/i);
-  if (handler) out.push(`${name}: inline handlers like ${handler[1]}="..." are blocked by the page's CSP. Use addEventListener in a .js file.`);
+  if (handler) out.push(`${name}: inline handlers like ${handler}="..." are blocked by the page's CSP. Use addEventListener in a .js file.`);
   if (/\b(?:href|src|action)\s*=\s*["']?\s*javascript:/i.test(html)) out.push(`${name}: javascript: links are blocked by the page's CSP. Use addEventListener.`);
   if (/<iframe\b/i.test(html)) out.push(`${name}: a page can't hold frames of its own.`);
   return out;
@@ -83,7 +142,8 @@ function jsProblems(name, src) {
   if (/(^|[^\w$.])eval\s*\(/.test(js)) out.push(`${name}: eval() is blocked by the page's CSP.`);
   if (/\bnew\s+Function\s*\(/.test(js)) out.push(`${name}: new Function() is blocked by the page's CSP.`);
   if (/\bset(?:Timeout|Interval)\s*\(\s*["'`]/.test(js)) out.push(`${name}: setTimeout/setInterval with a string is blocked by the page's CSP. Pass a function.`);
-  for (const m of js.matchAll(/\bimport\s*(?:\(\s*|[\w{}*,\s]+from\s*)["'`]([^"'`]+)/g)) {
+  // Bounded: an unbounded [\w{}*,\s]+ before "from" rescanned for every "import" (quadratic).
+  for (const m of js.matchAll(/\bimport\s*(?:\(\s*|[\w{}*,\s]{1,400}from\s*)["'`]([^"'`\n]{1,400})/g)) {
     if (REMOTE.test(m[1])) out.push(`${name}: import from "${m[1].slice(0, 80)}" loads from the web, which a page can't.`);
   }
   if (/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\s*\(/.test(js.replace(/\bshellby\.fetch\s*\(/g, ''))
@@ -111,13 +171,14 @@ function check(files, access) {
   const errors = [];
   const notes = [];
   const total = Object.values(files).reduce((n, s) => n + bytes(s), 0);
-  if (total > LIMITS.FILES_BYTES) errors.push(`The page's files are ${kb(total)}; the most is ${kb(LIMITS.FILES_BYTES)}.`);
+  // Too big stops here, before any pattern reads the files: the size limit is what bounds their cost.
+  if (total > LIMITS.FILES_BYTES) return { ok: false, errors: [`The page's files are ${kb(total)}; the most is ${kb(LIMITS.FILES_BYTES)}.`], notes, bytes: total };
   const used = { read: new Set(), ask: false, notify: false, hosts: new Set() };
   for (const [name, src] of Object.entries(files)) {
     const ext = String(name.split('.').pop()).toLowerCase();
     if (ext === 'html') {
       errors.push(...htmlProblems(name, src));
-      for (const m of stripComments.html(src).matchAll(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi)) errors.push(...cssProblems(name, m[1]));
+      for (const css of styleBodies(stripComments.html(src))) errors.push(...cssProblems(name, css));
       for (const m of src.matchAll(/\bstyle\s*=\s*"([^"]*)"/gi)) errors.push(...cssProblems(name, m[1]));
     } else if (ext === 'css') {
       errors.push(...cssProblems(name, src));
@@ -133,7 +194,9 @@ function check(files, access) {
       errors.push(`${name}: code in a .${ext} file never runs (a page's scripts are its .js files). Take the <script>, handlers or javascript: links out.`);
     }
   }
-  if (!/<script\b[^>]*\bsrc\s*=\s*["']?\.?\/?shellby\.js["'\s>]/i.test(stripComments.html(files['index.html'] || ''))) {
+  const loadsBridge = [...tags(stripComments.html(files['index.html'] || ''))]
+    .some(t => t.tag === 'script' && /\ssrc\s*=\s*["']?\.?\/?shellby\.js(?:["'\s/]|$)/i.test(t.text));
+  if (!loadsBridge) {
     errors.push('index.html must load the bridge before its own scripts: <script src="shellby.js"></script>. Without it the page gets no data, and Shellby can\'t tell when it breaks.');
   }
   for (const r of used.read) if (!access.read.includes(r)) errors.push(`The code calls shellby.read('${r}'), but access.read doesn't list "${r}".`);

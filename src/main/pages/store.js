@@ -45,7 +45,7 @@ const writeJson = (file, value) => writeFileDurable(file, JSON.stringify(value))
 
 /** One version's line in the log: { n, at, who, why, pc } (pc: the PC it came from, or null for this one). */
 function versionOf(v) {
-  return { n: v.n, at: Number(v.at) || 0, who: whoOf(v.who), why: format.line(v.why, LIMITS.WHY), pc: format.line(v.pc, 64) || null };
+  return { n: v.n, at: Number(v.at) || 0, who: whoOf(v.who), why: format.line(v.why, LIMITS.WHY), pc: format.line(v.pc, 64) || null, ...(v.unseen === true ? { unseen: true } : {}) };
 }
 
 /**
@@ -175,7 +175,12 @@ function createStore(root, { now = Date.now } = {}) {
     fs.renameSync(tmp, dir);
     let vs = [];
     try { vs = fs.readdirSync(path.join(dirOf(id), 'v')).map(Number).filter(Number.isInteger).sort((a, b) => a - b); } catch { /* none yet */ }
-    for (const old of vs.slice(0, Math.max(0, vs.length - LIMITS.VERSIONS))) fs.rmSync(vdir(id, old), { recursive: true, force: true });
+    // Never the version running here, nor the one waiting for a look: versions
+    // arriving from another PC one after another would otherwise prune them away.
+    const st = fs.existsSync(path.join(dirOf(id), 'state.json')) ? state(id) : null;
+    const keep = new Set([n, st?.version, st?.sync?.pending?.n].filter(Number.isInteger));
+    const prunable = vs.filter(v => !keep.has(v));
+    for (const old of prunable.slice(0, Math.max(0, vs.length - LIMITS.VERSIONS))) fs.rmSync(vdir(id, old), { recursive: true, force: true });
   }
 
   function freshId(name) {
@@ -259,10 +264,12 @@ function createStore(root, { now = Date.now } = {}) {
     const n = Math.max(s.version, ...s.versions.map(v => v.n)) + 1;
     writeVersion(id, n, { ...man, id }, fileMap);
     const made = now();
-    const versions = [...s.versions, { n, at: stamp, who: whoOf(who), why: format.line(why, LIMITS.WHY), pc: from?.name || null }].slice(-LIMITS.VERSIONS);
+    const waits = !!s.agreed;
+    // unseen: code from another PC you haven't looked at here. History can't go back to
+    // it (revert); only Turn it on can, through the sheet.
+    const versions = [...s.versions, { n, at: stamp, who: whoOf(who), why: format.line(why, LIMITS.WHY), pc: from?.name || null, ...(waits ? { unseen: true } : {}) }].slice(-LIMITS.VERSIONS);
     // This PC changed it since the gist last saw it: that version lost, and stays a version here.
     const lost = s.sync.at > s.sync.sharedAt && !s.sync.pending ? { n: s.version, at: s.sync.at, from } : s.sync.lost;
-    const waits = !!s.agreed;
     const sync = { ...s.sync, at: stamp, sharedAt: stamp, from, pending: waits ? { n, at: stamp, from, why: format.line(why, LIMITS.WHY), who: whoOf(who) } : null, lost };
     saveState(id, {
       ...s, version: waits ? s.version : n, versions, updatedAt: made, sync,
@@ -289,6 +296,7 @@ function createStore(root, { now = Date.now } = {}) {
     const text = s.sync.pending ? `Turned on the version from ${from?.name || 'another PC'}` : 'Turned on';
     saveState(id, {
       ...s, version: n, agreed: man.access, enabled: true, wants: null, broken: null, arrived: null,
+      versions: s.versions.map(v => (v.n === n && v.unseen ? (({ unseen: _u, ...rest }) => rest)(v) : v)),
       sync: { ...s.sync, pending: null }, updatedAt: at, lastChange: { text, at },
     });
     try { fs.rmSync(pendingThumbFile(id), { force: true }); } catch { /* none */ }
@@ -357,6 +365,7 @@ function createStore(root, { now = Date.now } = {}) {
     if (!known(id)) return no('No such page.');
     const s = state(id);
     if (!s.versions.some(v => v.n === n) || !fs.existsSync(vdir(id, n))) return no(`Version ${n} isn't kept any more.`);
+    if (s.versions.find(v => v.n === n)?.unseen) return no(`Version ${n} came from another PC and you haven't looked at it here. Look at it first: Turn it on shows what it asks for.`);
     const man = manifest(id, n);
     const fileMap = files(id, n);
     if (!man || !fileMap) return no(`Version ${n} can't be read.`);
@@ -395,6 +404,25 @@ function createStore(root, { now = Date.now } = {}) {
       const { gone } = syncState();
       writeJson(syncFile(), { gone: { ...gone, [id]: now() } });
     }
+    return ok();
+  }
+
+  const TRASH_KEPT = 20;
+  /**
+   * Deleted on another PC: moved to .trash (not an id, so never listed), named
+   * with when, so you can get it back by hand. The oldest go past TRASH_KEPT.
+   */
+  function trash(id) {
+    if (!format.isId(id) || !known(id)) return no('No such page.');
+    const bin = path.join(root, '.trash');
+    fs.mkdirSync(bin, { recursive: true });
+    fs.renameSync(dirOf(id), path.join(bin, `${id}-${now()}`));
+    const { gone } = syncState();
+    writeJson(syncFile(), { gone: { ...gone, [id]: now() } });
+    try {
+      const kept = fs.readdirSync(bin).sort((a, b) => Number(a.split('-').pop()) - Number(b.split('-').pop()));
+      for (const old of kept.slice(0, Math.max(0, kept.length - TRASH_KEPT))) fs.rmSync(path.join(bin, old), { recursive: true, force: true });
+    } catch { /* the move is what matters */ }
     return ok();
   }
 
@@ -656,7 +684,7 @@ function createStore(root, { now = Date.now } = {}) {
   }
 
   return {
-    root, ids, draftIds, known, state, manifest, files, readFile, create, update, revert, saveDraft, remove,
+    root, ids, draftIds, known, state, manifest, files, readFile, create, update, revert, saveDraft, remove, trash,
     setMeta, setAgents, agree, addHost, access, pendingAccess, read, write, activity, list, summary, markBroken, draftsOf, writeThumb, thumb,
     // Between PCs (sync/pages.js, wiring/pages.js)
     arrive, arriveData, turnOn, decline, setWhere, markShared, touchOpened, syncState, pendingThumb: readPendingThumb,

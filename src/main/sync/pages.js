@@ -32,9 +32,14 @@ const FORMAT = 1;
 // The file may run a little over the pages' budget: stamps, markers and the envelope.
 const FILE_BYTES = LIMITS.SYNC_BYTES + 128 * 1024;
 const MAX_GONE = 200;
+const MAX_DELETES = 3; // pages one sync pass may move to .trash
 const THUMB_B64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 
-const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
+// A stamp from the future (past a day of clock skew) would win every merge for
+// ever, and let a planted deletion marker beat every page here: it counts as none.
+const SKEW_MS = 24 * 60 * 60 * 1000;
+const num = v => (Number.isFinite(v) && v > 0 && v <= Date.now() + SKEW_MS ? v : 0);
+const has = Object.hasOwn;
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
 const json = v => { try { const s = JSON.stringify(v); return s === undefined ? null : s; } catch { return null; } };
@@ -73,7 +78,7 @@ function cleanData(raw) {
     total += bytes(s);
   }
   const gone = Object.entries(isObj(raw.gone) ? raw.gone : {})
-    .filter(([k, at]) => format.isDataKey(k) && !(k in keys) && num(at))
+    .filter(([k, at]) => format.isDataKey(k) && !has(keys, k) && num(at))
     .sort((x, y) => y[1] - x[1]).slice(0, MAX_GONE);
   return { keys: sorted(keys), gone: sorted(Object.fromEntries(gone)) };
 }
@@ -114,7 +119,7 @@ function clean(raw) {
   const pages = {};
   let used = 0;
   for (const [id, rawItem] of Object.entries(isObj(r.pages) ? r.pages : {})) {
-    if (id in pages) continue;
+    if (has(pages, id)) continue;
     const item = cleanItem(id, rawItem);
     if (!item) continue;
     const size = sizeOf(item);
@@ -123,7 +128,7 @@ function clean(raw) {
     used += size;
   }
   const gone = Object.entries(isObj(r.gone) ? r.gone : {})
-    .filter(([id, at]) => format.isId(id) && !(id in pages) && num(at))
+    .filter(([id, at]) => format.isId(id) && !has(pages, id) && num(at))
     .sort((x, y) => y[1] - x[1]).slice(0, MAX_GONE);
   return { format: FORMAT, pages, gone: sorted(Object.fromEntries(gone)) };
 }
@@ -222,8 +227,9 @@ function mergeData(x, y) {
   const keys = {};
   const gone = {};
   for (const k of new Set([...Object.keys(x.keys), ...Object.keys(y.keys), ...Object.keys(x.gone), ...Object.keys(y.gone)])) {
-    const ex = x.keys[k], ey = y.keys[k];
-    const goneAt = Math.max(num(x.gone[k]), num(y.gone[k]));
+    // Own keys only: a key named toString would otherwise read Object.prototype's.
+    const ex = has(x.keys, k) ? x.keys[k] : null, ey = has(y.keys, k) ? y.keys[k] : null;
+    const goneAt = Math.max(has(x.gone, k) ? num(x.gone[k]) : 0, has(y.gone, k) ? num(y.gone[k]) : 0);
     let e;
     if (ex && ey) {
       if (ex.at === ey.at) e = same(ex.v, ey.v) ? ex : tieBreak(ex, ey);
@@ -252,7 +258,7 @@ function merge(aIn, bIn) {
   for (const side of [a, b]) for (const [id, at] of Object.entries(side.gone)) consider(id, { at, item: null });
   const order = [...new Set([...Object.keys(a.pages), ...Object.keys(b.pages)])].filter(id => latest.get(id).item);
   const pages = {};
-  for (const id of order) pages[id] = { ...latest.get(id).item, data: mergeData(a.pages[id]?.data || null, b.pages[id]?.data || null) };
+  for (const id of order) pages[id] = { ...latest.get(id).item, data: mergeData(has(a.pages, id) ? a.pages[id].data || null : null, has(b.pages, id) ? b.pages[id].data || null : null) };
   const gone = Object.fromEntries([...latest].filter(([, e]) => !e.item).map(([id, e]) => [id, e.at]));
   return clean({ format: FORMAT, pages, gone });
 }
@@ -274,7 +280,7 @@ function dataDiff(local, merged) {
     if (have && at(k) > e.at) continue; // this PC's is newer and wasn't in the file: it stays
     if (!have || at(k) !== e.at || !same(values[k], e.v)) set[k] = { v: e.v, by: { who: e.who, at: e.at, op: e.op, pc: e.pc } };
   }
-  for (const [k, goneAt] of Object.entries(merged.gone)) if (Object.hasOwn(values, k) && !(k in merged.keys) && goneAt >= at(k)) remove.push(k);
+  for (const [k, goneAt] of Object.entries(merged.gone)) if (Object.hasOwn(values, k) && !has(merged.keys, k) && goneAt >= at(k)) remove.push(k);
   if (!Object.keys(set).length && !remove.length) return null;
   return { set, remove, gone: merged.gone };
 }
@@ -298,7 +304,7 @@ function apply(local, mergedIn) {
     const p = mine.get(id);
     if (p && p.state.sync.where === 'here') continue;
     if (!p) {
-      if (num(local.gone?.[id]) >= item.at) continue;
+      if (isObj(local.gone) && has(local.gone, id) && num(local.gone[id]) >= item.at) continue;
       actions.push({ kind: 'new', id, item, data: item.data ? dataDiff(null, item.data) : null });
       continue;
     }
@@ -309,9 +315,11 @@ function apply(local, mergedIn) {
       if (diff) actions.push({ kind: 'data', id, ...diff });
     }
   }
+  // A few deletions a pass at most (each goes to .trash and is named): a planted file can't empty the shelf at once.
+  let deletes = 0;
   for (const [id, at] of Object.entries(merged.gone)) {
     const p = mine.get(id);
-    if (p && p.state.sync.where !== 'here' && at > p.state.sync.at) actions.push({ kind: 'gone', id });
+    if (p && p.state.sync.where !== 'here' && at > p.state.sync.at && deletes < MAX_DELETES) { actions.push({ kind: 'gone', id }); deletes++; }
   }
   return actions;
 }
@@ -320,14 +328,18 @@ function apply(local, mergedIn) {
 function describeArrived(actions) {
   const fresh = actions.filter(a => a.kind === 'new');
   const changed = actions.filter(a => a.kind === 'changed');
-  if (!fresh.length && !changed.length) return '';
+  const deleted = actions.filter(a => a.kind === 'gone');
+  if (!fresh.length && !changed.length && !deleted.length) return '';
   const names = [...new Set([...fresh, ...changed].map(a => a.item.from?.name).filter(Boolean))];
   const from = names.length === 1 ? names[0] : 'your other PCs';
   const n = (c, w) => `${c} ${w}${c === 1 ? '' : 's'}`;
   const parts = [];
   if (fresh.length) parts.push(`${n(fresh.length, 'page')} came from ${from}, switched off until you look`);
   if (changed.length) parts.push(`${fresh.length ? 'and ' : ''}${n(changed.length, 'new version')} ${changed.length === 1 ? 'is' : 'are'} waiting${fresh.length ? '' : ` from ${from}`}`);
-  return `${parts.join(' ')}.`;
+  const said = parts.length ? `${parts.join(' ')}.` : '';
+  // Never silent: a deletion from another PC moves the page to the pages folder's .trash, and says so.
+  const gone = deleted.length ? `${n(deleted.length, 'page')} deleted on another PC ${deleted.length === 1 ? 'was' : 'were'} moved to the .trash folder in your pages folder.` : '';
+  return [said, gone].filter(Boolean).join(' ');
 }
 
 const content = merged => JSON.stringify({ ...clean(merged), note: 'Shellby sync: your pages (small apps Claude built), each switched off until you look at it on the PC it arrives on. Safe to delete; Shellby makes a new one.' });

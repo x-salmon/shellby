@@ -85,8 +85,11 @@ class GitHubApi {
     try { u = new URL(String(rawUrl)); } catch { throw Object.assign(new Error('GitHub gave an odd address for the file.'), { status: 502 }); }
     const dev = this.api.startsWith('http:') && u.origin === new URL(this.api).origin;
     if (!dev && !(u.protocol === 'https:' && u.hostname === 'gist.githubusercontent.com')) throw Object.assign(new Error('GitHub gave an odd address for the file.'), { status: 502 });
-    const res = await this.fetchImpl(u.href, { method: 'GET', headers: { 'user-agent': 'Shellby' }, redirect: 'error' });
+    const RAW_TIMEOUT_MS = 30000;
+    const res = await this.fetchImpl(u.href, { method: 'GET', headers: { 'user-agent': 'Shellby' }, redirect: 'error', signal: AbortSignal.timeout(RAW_TIMEOUT_MS) });
     if (!res.ok) throw Object.assign(new Error(`GitHub answered ${res.status}`), { status: res.status });
+    // Said too big up front: not read at all.
+    if (Number(res.headers?.get?.('content-length')) > maxBytes) throw Object.assign(new Error('The file is bigger than Shellby reads.'), { status: 413 });
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length > maxBytes) throw Object.assign(new Error('The file is bigger than Shellby reads.'), { status: 413 });
     return buf.toString('utf8');

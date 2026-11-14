@@ -26,8 +26,8 @@
   const AGENT_WORDS = { any: 'Any conversation', shellby: "Only Shellby's own", none: 'Nobody (read-only)' };
   // Where it goes (sync/pages.js): the page Everywhere or This PC only; its data goes with it or stays.
   const WHERE_WORDS = { everywhere: 'Everywhere', here: 'This PC only' };
-  const mb = n => `${(n / 1024 / 1024).toFixed(1)} MB`;
-  const kb = n => (n >= 1024 * 1024 ? mb(n) : `${Math.max(1, Math.round(n / 1024))} KB`);
+  const mb = n => `${(n / 1024 / 1024).toFixed(1).replace(/\.0$/, '')} MB`;
+  const kb = n => (n >= 1024 * 1024 ? mb(n) : n ? `${Math.max(1, Math.round(n / 1024))} KB` : '0 KB');
 
   /** @type {any[]} */
   let list = [];
@@ -264,7 +264,10 @@
         h('div', {}, h('b', { text: label(x) }), x.n === v.version ? h('span', { class: 'chip', text: 'Running' }) : null),
         h('div', { class: 'small', text: x.why || '' }),
         h('div', { class: 'faint small', text: `${x.pc || (v.sync?.on ? 'This PC' : '')}${x.pc || v.sync?.on ? ', ' : ''}${whoText(x.who)}, ${SB.relTime(x.at)}` }),
-        x.n === v.version ? null : h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Go back to this one', onclick: async () => { fail(await api.pages.revert(id, x.n)); await host.show(id); drawDrawer(); } })))),
+        x.n === v.version ? null
+          // From another PC and not looked at here: only Turn it on (the sheet) runs it.
+          : x.unseen ? h('span', { class: 'chip', text: 'Waiting for a look' })
+          : h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Go back to this one', onclick: async () => { fail(await api.pages.revert(id, x.n)); await host.show(id); drawDrawer(); } })))),
       clash ? h('p', { class: 'muted small', text: 'Its data wasn\'t part of this: data merges key by key, so both PCs\' writes are here.' }) : null);
   }
 
@@ -418,7 +421,7 @@
     bar.hidden = !live;
     if (live) {
       /** @type {HTMLElement} */ ($('pgSyncUsed')).style.width = `${Math.min(100, Math.round(v.used / v.budget * 100))}%`;
-      $('pgSyncUsedText').textContent = `${mb(v.used)} of ${mb(v.budget)}`;
+      $('pgSyncUsedText').textContent = `${kb(v.used)} of ${mb(v.budget)}`;
       $('pgSyncLast').textContent = v.lastSyncAt ? `Last synced ${SB.relTime(v.lastSyncAt)}` : 'Not synced yet';
     }
     const rows = v.pages.map(p => h('div', { class: 'pg-srow' },

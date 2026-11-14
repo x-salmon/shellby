@@ -70,3 +70,33 @@ test('access must match what the code calls', () => {
   assert.match(extra.notes.join(), /git/);
   assert.equal(run({ 'index.html': INDEX, 'app.js': "shellby.fetch('http://api.example.com/')" }, { ...NO_ACCESS, web: ['api.example.com'] }).ok, false);
 });
+
+test('hostile files cost time in proportion to their size, never its square', () => {
+  // Each of these once took from 2 s to over a minute at this size, freezing main
+  // (a terminal's create_page, or a page arriving through the sync gist).
+  const N = 400 * 1024;
+  const fill = unit => unit.repeat(Math.floor(N / unit.length));
+  const hostile = [
+    ['index.html', '<!--'], ['index.html', '<script>'], ['index.html', '<style>'], ['index.html', '<a '],
+    ['index.html', '<link href='], ['index.html', '<img src='], ['index.html', '<script src=x '],
+    ['a.js', 'import '], ['a.js', 'import a,'], ['a.js', '/*'], ['a.css', '/*'],
+  ];
+  for (const [name, unit] of hostile) {
+    const files = { 'index.html': INDEX, [name]: name === 'index.html' ? INDEX + fill(unit) : fill(unit) };
+    const t = Date.now();
+    check(files, NO_ACCESS);
+    assert.ok(Date.now() - t < 3000, `${name} of ${JSON.stringify(unit)} took ${Date.now() - t} ms`);
+  }
+  const big = check({ 'index.html': INDEX + fill('<a ').repeat(3) }, NO_ACCESS);
+  assert.deepEqual([big.ok, big.errors.length], [false, 1], 'too big stops before any pattern runs');
+});
+
+test('the tag scan still finds what the old patterns did', () => {
+  assert.match(run({ 'index.html': '<!doctype html><script src="shellby.js"></script><script>alert(1)</script>' }).errors.join(), /inline <script>/);
+  assert.match(run({ 'index.html': '<!doctype html><script src="shellby.js"></script><link rel="stylesheet" href="https://x.example/a.css">' }).errors.join(), /link href/);
+  assert.match(run({ 'index.html': '<!doctype html><script src="shellby.js"></script><img alt="" src="//x.example/a.png">' }).errors.join(), /loads from the web/);
+  assert.match(run({ 'index.html': '<!doctype html><script src="shellby.js"></script><div class="a" onclick="go()">' }).errors.join(), /onclick/);
+  assert.match(run({ 'index.html': '<!doctype html><script src="shellby.js"></script><style>@import "https://x.example/a.css";</style>' }).errors.join(), /@import/);
+  assert.equal(run({ 'index.html': '<!doctype html><script src="./shellby.js"></script><script>if (a < b) {}</script>' }).errors.some(e => /must load the bridge/.test(e)), false);
+  assert.match(run({ 'index.html': '<!doctype html><!-- <script src="shellby.js"></script> -->' }).errors.join(), /must load the bridge/, 'a commented-out bridge is no bridge');
+});
