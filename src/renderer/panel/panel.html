@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="panel.css">
 <link rel="stylesheet" href="components.css">
 <link rel="stylesheet" href="notes.css">
+<link rel="stylesheet" href="pcs.css">
 <link rel="stylesheet" href="files.css">
 <link rel="stylesheet" href="trail.css">
 <link rel="stylesheet" href="files-dock.css">
@@ -524,6 +525,28 @@
     <input type="search" class="field slim notes-filter" id="notesFilter" placeholder="Find a note…" aria-label="Find a note" hidden>
     <ul class="note-list" id="noteList"></ul>
     <div class="notes-done" id="notesDone" hidden></div>
+  </main>
+  <!-- ====================== YOUR PCS (the hub) ====================== -->
+  <main class="view view-pcs" id="pcsView">
+    <div class="view-head">
+      <h2>Your PCs</h2>
+      <button type="button" class="btn slim-btn" id="pcsAddBtn">Add a PC</button>
+    </div>
+    <p class="view-lede" id="pcsSummary">This PC, and the others you've added, with what each is doing.</p>
+    <div class="pcs-roster" id="pcsRoster"></div>
+    <section class="pcs-detail" id="pcsDetail" aria-live="polite"></section>
+    <form class="pcs-add card-ish" id="pcsAdd" hidden>
+      <h3>Add a PC</h3>
+      <p class="small muted">On that PC, open Shellby's <b>Settings, Alerts, On your phone</b>, turn it on, and press <b>Pair a phone</b>. Then type its address and the code it shows here. Both PCs need to be signed in to the same Tailscale account.</p>
+      <label class="pcs-field">Its address<input class="field" id="pcsAddress" placeholder="laptop.your-tailnet.ts.net" autocomplete="off" spellcheck="false" maxlength="300"></label>
+      <label class="pcs-field">The code it shows<input class="field mono" id="pcsCode" placeholder="ABCD-EFGH" autocomplete="off" spellcheck="false" maxlength="16"></label>
+      <label class="pcs-field">What to call it<input class="field" id="pcsName" placeholder="Travel laptop" maxlength="40"></label>
+      <p class="pcs-error" id="pcsAddError" role="alert" hidden></p>
+      <div class="btn-row">
+        <button type="submit" class="btn primary slim-btn" id="pcsPair">Add it</button>
+        <button type="button" class="btn ghost slim-btn" id="pcsAddCancel">Cancel</button>
+      </div>
+    </form>
   </main>
 
   <!-- ====================== HEALTH ====================== -->
@@ -2224,6 +2247,7 @@
       <section class="setting-group" id="pocketGroup" data-nav="On your phone">
         <h3>Shellby on your phone</h3>
         <p class="small muted ext-lede">Your conversations live on your phone, over your own tailnet: what he's doing, what he's waiting on you for, and what's ready to review. Answer Allow or Deny, start a task, or bring a copy home from the sofa. It needs <b>Tailscale</b> on this PC and on your phone, and nothing goes through a server of ours.</p>
+        <p class="small muted pocket-hub-note">It's also how your other PCs join this one's hub: turn it on there, press <b>Pair a phone</b>, and add that PC here in <button type="button" class="link-btn" id="pocketHubLink">Your PCs</button>.</p>
         <ul class="rc-steps pocket-steps" id="pocketSteps"></ul>
         <label class="toggle"><input type="checkbox" id="pocketEnabled"><span class="switch"></span>Put Shellby on my phone</label>
         <p class="small ext-status" id="pocketStatus" aria-live="polite"></p>
@@ -3115,6 +3139,7 @@
 <script src="settings-text.js"></script>
 <script src="settings-search-logic.js"></script>
 <script src="notes.js"></script>
+<script src="pcs.js"></script>
 <script src="settings.js"></script>
 <script src="settings-account.js"></script>
 <script src="settings-local.js"></script>

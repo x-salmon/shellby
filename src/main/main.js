@@ -49,6 +49,7 @@ const { wireBugdex } = require('./wiring/bugdex');
 const { wireTimetrack } = require('./wiring/timetrack');
 const { wireCrabApi } = require('./wiring/crab-api');
 const { wireTaskBoard } = require('./wiring/taskboard');
+const { wireHub } = require('./wiring/hub');
 const { wireChannels } = require('./wiring/channels');
 const { wireDeck } = require('./wiring/deck');
 const { wirePhoneTasks } = require('./wiring/phone-tasks');
@@ -375,6 +376,7 @@ const { channelPlace, channelSettings, confirmChannelPlace, createObs, createRem
 const { createPhoneTasks } = share(wirePhoneTasks(shared));
 const { createDeck } = share(wireDeck(shared));
 const { createPocket } = share(wirePocket(shared)); // Shellby on your phone, over your tailnet (pocket/)
+share(wireHub(shared)); // Your PCs: this PC as the hub for your other ones, over the same tailnet (hub/)
 const {
   createDictation, createLifeAndPlay, createMedia, createPresence, createRgb, createTypingAlong, createWeather, ensureOpenRgb, rgbSettings,
 } = share(wireSurroundings(shared));
@@ -513,6 +515,7 @@ app.whenReady().then(() => {
   createObs();
   createDeck(); // the Stream Deck keys, if they're on
   createPocket(); // Shellby on your phone, if it's on
+  shared.hub.startHub(); // the live lines to your other PCs, if this one is a hub (wiring/hub.js)
   createRgb();
   if (rgbSettings().enabled) ensureOpenRgb().catch(err => log.warn('OpenRGB could not be started', err?.message)); // lighting on: start OpenRGB if it isn't running
   createWeather();

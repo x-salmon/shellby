@@ -1,0 +1,63 @@
+/* Your PCs, the hub's roster (pcs.js). In the 460px panel each PC is a compact
+   row; widened (or maximised) it opens out into the full table of mockup B. */
+body[data-view="pcs"] .view-pcs { display: block; overflow-y: auto; padding: 14px 16px 20px; animation: fadein .18s var(--ease-out); container-type: inline-size; }
+.view-pcs { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px); mask-image: linear-gradient(to bottom, transparent 0, #000 14px); }
+@media (prefers-reduced-motion: reduce) { body[data-view="pcs"] .view-pcs { animation: none; } }
+
+.pcs-roster { border: 1px solid var(--line); border-radius: var(--r); background: var(--reef); overflow: hidden; margin-bottom: 14px; }
+.pcs-table { width: 100%; border-collapse: collapse; font-size: var(--fs-12-5); }
+.pcs-table th, .pcs-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+.pcs-table thead th { font-weight: 400; color: var(--sand-faint); font-size: var(--fs-11); padding-top: 8px; padding-bottom: 6px; }
+.pcs-table tbody tr { cursor: pointer; }
+.pcs-table tbody tr:hover { background: var(--reef-2); }
+.pcs-table tbody tr[aria-selected="true"] { background: var(--reef-2); box-shadow: inset 3px 0 0 var(--coral); }
+.pcs-table tbody tr:last-child th, .pcs-table tbody tr:last-child td { border-bottom: 0; }
+.pcs-table tr.off { color: var(--sand-faint); }
+.pcs-name { display: flex; gap: 8px; align-items: flex-start; }
+.pcs-name b { display: block; font-weight: 700; color: var(--sand); }
+.pcs-table tr.off .pcs-name b { color: var(--sand-dim); font-weight: 400; }
+.pcs-name small { display: block; font-size: var(--fs-11); color: var(--sand-faint); font-weight: 400; }
+.pcs-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sand-faint-deco); flex: none; margin-top: 5px; }
+.pcs-dot.on { background: var(--glass); }
+.pcs-num { font: var(--fs-12) var(--font-mono); }
+.pcs-warm { color: var(--amber); }
+.pcs-ask { font-size: var(--fs-11); color: var(--coral); background: var(--coral-dim); border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+.pcs-meter { display: block; width: 64px; height: 4px; border-radius: 2px; background: var(--reef-3); overflow: hidden; margin-top: 4px; }
+.pcs-meter i { display: block; height: 100%; background: var(--glass); }
+.pcs-meter i.hot { background: var(--amber); }
+.pcs-ag { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; background: var(--reef-3); font: var(--fs-10) var(--font-mono); margin: 0 3px 2px 0; }
+.pcs-projects { color: var(--sand-dim); max-width: 220px; }
+
+/* The narrow panel: the columns that matter most, the rest in the detail below. */
+.pcs-wide { display: none; }
+@container (min-width: 900px) {
+  .pcs-wide { display: table-cell; }
+  .pcs-table { font-size: var(--fs-13); }
+  .pcs-table th, .pcs-table td { padding: 11px 12px; }
+}
+
+.pcs-detail { display: grid; gap: 12px; }
+@container (min-width: 900px) { .pcs-detail { grid-template-columns: 1.3fr 1fr 1fr; } }
+.pcs-card { border: 1px solid var(--line); border-radius: var(--r); background: var(--reef); padding: 12px 14px; }
+.pcs-card h3 { font: 600 var(--fs-14) var(--font-pixel); margin: 0 0 8px; }
+.pcs-card .muted { margin: 0; }
+.pcs-convos { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pcs-convos li { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 5px 2px; font-size: var(--fs-12-5); }
+.pcs-convos .who { color: var(--sand-faint); font-size: var(--fs-11); }
+.pcs-kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: var(--fs-12-5); margin: 0; }
+.pcs-kv dt { color: var(--sand-faint); }
+.pcs-kv dd { margin: 0; overflow-wrap: anywhere; }
+.pcs-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+.pcs-task { display: grid; gap: 8px; margin-top: 10px; }
+.pcs-task textarea { min-height: 64px; }
+.pcs-task .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pcs-task select { flex: 1; min-width: 140px; }
+
+.pcs-add { border: 1px solid var(--line); border-radius: var(--r); background: var(--reef); padding: 14px; display: grid; gap: 10px; margin-top: 14px; max-width: 520px; }
+.pcs-add h3 { font: 600 var(--fs-15) var(--font-pixel); margin: 0; }
+.pcs-add p { margin: 0; line-height: 1.5; }
+.pcs-field { display: grid; gap: 4px; font-size: var(--fs-12); color: var(--sand-dim); }
+.pcs-error { margin: 0; color: var(--coral); font-size: var(--fs-12-5); }
+
+.pcs-empty { padding: 16px; color: var(--sand-dim); line-height: 1.5; }

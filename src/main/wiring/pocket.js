@@ -266,7 +266,7 @@ function wirePocket(d) {
       guard: guard.settingsOf(k => d.config.get(k)),
       quiet: settings().quiet,
       health: d.health?.monitor?.latest || null,
-      mood: d.healthMood || null,
+      mood: d.healthMood || null, host: d.hostNow?.() || null, // host: the PC itself, for the hub's roster (wiring/hub.js)
       now: Date.now(),
     });
   }
@@ -791,7 +791,7 @@ function wirePocket(d) {
   }
 
   return {
-    createPocket, forgetPocketDevice: forgetDevice, newPocketCode: newPairCode, pocketNotify: notify, pocketView, pocketViewNow,
+    createPocket, forgetPocketDevice: forgetDevice, newPocketCode: newPairCode, pocketNotify: notify, pocketView, pocketViewNow, pocketCurrentView: currentView,
     setPocket, testPocketPush: testPush,
   };
 }

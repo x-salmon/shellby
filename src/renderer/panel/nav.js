@@ -212,6 +212,7 @@
       claude() && { icon: '⏰', title: 'Routines', sub: 'Tasks that run on a schedule', keys: 'automate schedule recurring cron', run: go('routines') },
       claude() && { icon: '⏰', title: 'New routine', sub: 'Schedule a recurring task', keys: 'schedule add', run: () => { SB.setView('routines'); $('newRoutineBtn').click(); } },
       claude() && { icon: '📝', title: 'Notes', sub: 'Ideas to plan, build or ask Claude about', keys: 'todo ideas list project', run: go('notes') },
+      claude() && { icon: '🖥️', title: 'Your PCs', sub: 'This PC and your others: what each is doing, and starting work on them', keys: 'hub computers machines pcs laptop server fleet roster other devices', run: go('pcs') },
       claude() && { icon: '📝', title: 'New note', sub: 'Jot down something to do', keys: 'todo idea add', run: () => { SB.setView('notes'); $('noteInput').focus(); } },
       { icon: '📈', title: 'Health', sub: 'Temperatures, memory and drives', keys: 'gpu cpu ram disk temperature vitals', run: go('health') },
       claude() && { icon: '🗂️', title: 'History', sub: 'Past conversations', keys: 'sessions old', run: go('history') },
