@@ -178,7 +178,7 @@
       if (ask) {
         const a = ask;
         out.push(card('ask',
-          h('div', { class: 'pg-card-text' }, h('b', { text: `${view.name} asks Claude` }), h('q', { text: a.prompt }), h('span', { class: 'muted small', text: `In ${a.mode === 'plan' ? 'Plan' : a.mode === 'edits' ? 'Edit files' : 'Ask first'} mode` })),
+          h('div', { class: 'pg-card-text' }, h('b', { text: `${view.name} asks Claude` }), h('q', { text: a.prompt }), h('span', { class: 'muted small', text: `In ${a.mode === 'plan' ? 'Plan' : 'Ask first'} mode` })),
           btn('Ask Claude', () => { ask = null; drawCards(); api.pages.ask(view.id, a.prompt, a.mode).then(fail); }, 'btn primary slim-btn'),
           btn('Not now', () => { ask = null; drawCards(); }, 'btn ghost slim-btn')));
       }

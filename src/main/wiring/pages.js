@@ -113,7 +113,7 @@ function wirePages(d) {
     switch (method) {
       case 'data.get': {
         const r = s.read(id);
-        return { ok: true, value: a[0] === null ? r.values : r.values[a[0]] ?? null };
+        return { ok: true, value: a[0] === null ? r.values : Object.hasOwn(r.values, a[0]) ? r.values[a[0]] : null };
       }
       case 'data.set': return writeData(id, { set: a[0] }, pageWho);
       case 'data.append': return writeData(id, { append: { [a[0]]: [a[1]] } }, pageWho);
@@ -261,6 +261,9 @@ function wirePages(d) {
       changed(r.id, 'draft', { tab: tab.id });
       return done(`Made a draft of ${p.manifest.name} (${r.id}), open beside this chat. It's a draft until the user presses Save to my pages; change it with update_page and id "${r.id}".${notesLine(p.notes)}`);
     }
+    // A routine or a terminal can't stack up pages or windows: a few a minute, and five waiting at most.
+    if (!allow('create', 3, Date.now())) return oops('Too many pages made just now. Try again in a minute.');
+    if (s.list().filter(x => x.wants).length >= 5) return oops('Five pages are already waiting for the user to add them. Wait until they have looked.');
     const r = s.create(p.manifest, p.files, { enabled: false, wants: 'add', from: who.kind === 'routine' ? 'routine' : 'terminal', who, why: a.why || 'First version' });
     if (!r.ok) return oops(r.error);
     changed(r.id, 'list');
@@ -302,6 +305,7 @@ function wirePages(d) {
       const refuse = mayWrite(base, via);
       if (refuse) return oops(refuse);
     }
+    if (format.isId(id) && !s.state(id).enabled) return oops('That page is turned off; it can change once the user turns it back on.');
     const why = format.line(a.why, LIMITS.WHY);
     if (!why) return oops('Say why in a few words (why): it goes in the page\'s History.');
     const p = prepare(a, base);
@@ -395,10 +399,10 @@ function wirePages(d) {
 
   /**
    * You pressed Ask Claude on a page's shellby.ask card. The mode is Ask
-   * first, Plan or Edit files, never Autonomous (rights.js); the prompt is
+   * first or Plan, never one that edits by itself (rights.js); the prompt is
    * marked as the page's, since a page wrote it.
    */
-  const ASK_MODES = { ask: 'ask', plan: 'plan', edits: 'acceptEdits' };
+  const ASK_MODES = { ask: 'ask', plan: 'plan' };
   function ask(id, prompt, mode) {
     const man = pages().manifest(id);
     if (!man) return { ok: false, error: 'No such page.' };

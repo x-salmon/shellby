@@ -63,7 +63,8 @@ function answer(rawUrl, pages, sideFiles) {
   const id = u.hostname;
   if (!(format.isId(id) || format.isDraftId(id)) || !pages.known(id)) return { status: 404, type: 'text/plain', body: 'No such page.' };
   if (!pages.servable(id)) return { status: 403, type: 'text/plain', body: "This page is off, or waiting for your OK." };
-  let name = decodeURIComponent(u.pathname).replace(/^\/+/, '') || 'index.html';
+  let name;
+  try { name = decodeURIComponent(u.pathname).replace(/^\/+/, '') || 'index.html'; } catch { return { status: 400, type: 'text/plain', body: 'Bad address.' }; }
   if (name.includes('/') || name.includes('\\')) return { status: 404, type: 'text/plain', body: 'Not found.' };
   if (name === 'shellby.js' || name === 'guard.js') return { status: 200, type: 'text/javascript', body: sideFiles[name] };
   if (!format.isFileName(name)) return { status: 404, type: 'text/plain', body: 'Not found.' };

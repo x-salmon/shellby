@@ -75,6 +75,7 @@ test('data writes are checked as a whole, signed and logged', () => {
   assert.equal(s.write(id, { append: { title: 1 } }, YOU).ok, false, 'not a list');
   assert.equal(s.write(id, { set: { big: 'x'.repeat(300 * 1024) } }, YOU).ok, false);
   assert.equal(s.write(id, { set: { '': 1 } }, YOU).ok, false);
+  assert.equal(s.write(id, JSON.parse('{"set":{"__proto__":{"x":1}}}'), YOU).ok, false, 'no prototype keys');
   assert.equal(s.write(id, {}, YOU).ok, false);
   assert.deepEqual(s.read(id, ['title']).values, { title: 'x' }, 'a refused write changed nothing');
   s.write(id, { remove: ['title'] }, YOU);

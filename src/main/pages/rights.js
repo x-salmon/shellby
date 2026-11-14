@@ -65,7 +65,8 @@ function decide(method, rawArgs, ctx) {
       if (!prompt) return bad('shellby.ask takes what to ask.');
       if (ctx?.draft) return refuse("A draft's preview can't ask Claude for anything.", { kind: 'ask' });
       if (!access.ask) return refuse("This page wasn't given ask.", { kind: 'ask' });
-      const mode = ['ask', 'plan', 'edits'].includes(args[1]?.mode) ? args[1].mode : 'ask';
+      // Ask first or Plan: a page can't ask for a mode that edits files without asking.
+      const mode = args[1]?.mode === 'plan' ? 'plan' : 'ask';
       return ok([prompt, { mode }]);
     }
     case 'notify': {

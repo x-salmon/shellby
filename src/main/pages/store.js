@@ -26,6 +26,8 @@ const DRAFTS = '.drafts';
 const ok = extra => ({ ok: true, ...extra });
 const no = error => ({ ok: false, error });
 const KEY_RE = /^[^\u0000-\u001f]{1,100}$/;
+// Names an object already has: never page data keys.
+const RESERVED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const WHO_KINDS = ['you', 'page', 'agent', 'routine', 'terminal', 'pc'];
 
 function readJson(file, fallback) {
@@ -314,7 +316,7 @@ function createStore(root, { now = Date.now } = {}) {
     const append = o.append && typeof o.append === 'object' && !Array.isArray(o.append) ? o.append : {};
     const keys = [...Object.keys(set), ...remove, ...Object.keys(append)];
     if (!keys.length) return no('Nothing to write: give set, remove or append.');
-    for (const k of keys) if (typeof k !== 'string' || !KEY_RE.test(k)) return no(`"${String(k).slice(0, 40)}" isn't a key: 1 to 100 characters, no control characters.`);
+    for (const k of keys) if (typeof k !== 'string' || !KEY_RE.test(k) || RESERVED_KEYS.has(k)) return no(`"${String(k).slice(0, 40)}" isn't a key: 1 to 100 characters, no control characters.`);
     const { values, by } = data(id);
     const next = { ...values };
     const at = now();

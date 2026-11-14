@@ -9,7 +9,7 @@
 //   shellby.data.get(key?)  .set({ k: v })  .append(key, item)  .remove(key | [keys])
 //   shellby.data.onChange(fn)    after any write: the page's, yours, an agent's
 //   shellby.read('usage')        a snapshot, if the page was given it
-//   shellby.ask(prompt, { mode })  a card first; you press Ask Claude
+//   shellby.ask(prompt, { mode })  a card first; you press Ask Claude. mode: 'ask' or 'plan'
 //   shellby.notify(title, body)
 //   shellby.fetch(url, { method, body, headers })  -> { ok, status, headers, text(), json() }
 //   shellby.say(text)            the crab says it

@@ -20,24 +20,36 @@ function isPrivate(address) {
   const v = net.isIP(address);
   if (v === 4) {
     const [a, b] = address.split('.').map(Number);
+    const c = Number(address.split('.')[2]);
     return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254)
-      || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a >= 224;
+      || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 192 && b === 0 && c === 0)
+      || (a === 198 && (b === 18 || b === 19)) || a >= 224;
   }
   if (v === 6) {
     const s = address.toLowerCase();
     if (s.startsWith('::ffff:')) return isPrivate(s.slice(7));
+    // NAT64 (64:ff9b::) and 6to4 (2002::) can lead back into a private network.
     return s === '::' || s === '::1' || s.startsWith('fc') || s.startsWith('fd') || s.startsWith('fe8') || s.startsWith('fe9')
-      || s.startsWith('fea') || s.startsWith('feb') || s.startsWith('ff');
+      || s.startsWith('fea') || s.startsWith('feb') || s.startsWith('ff') || s.startsWith('64:ff9b:') || s.startsWith('2002:');
   }
   return true;
 }
 
-/** dns.lookup that refuses private addresses. */
+const privateError = hostname => Object.assign(new Error(`${hostname} is on this PC or your local network, which a page can't reach.`), { code: 'EPRIVATE' });
+
+/**
+ * dns.lookup that refuses private addresses. net calls it with all: true
+ * (happy eyeballs) and wants an array back; older callers want one address.
+ * Any private address among them refuses the lot.
+ */
 function publicLookup(hostname, options, cb) {
-  dns.lookup(hostname, { ...options, all: false }, (err, address, family) => {
+  const all = !!options?.all;
+  dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
     if (err) return cb(err);
-    if (isPrivate(address)) return cb(Object.assign(new Error(`${hostname} is on this PC or your local network, which a page can't reach.`), { code: 'EPRIVATE' }));
-    return cb(null, address, family);
+    const list = Array.isArray(addresses) ? addresses : [];
+    if (!list.length) return cb(Object.assign(new Error(`${hostname} has no address.`), { code: 'ENOTFOUND' }));
+    if (list.some(a => isPrivate(a.address))) return cb(privateError(hostname));
+    return all ? cb(null, list) : cb(null, list[0].address, list[0].family);
   });
 }
 

@@ -39,7 +39,7 @@ function registerPagesIpc(ipcMain, d) {
   ipcMain.handle('pages:offAll', () => d.pages.offAll());
   const NUM = v => Number.isFinite(v) && v >= 0 && v < 100_000;
   ipcMain.handle('pages:thumb', (_e, id, rect) => d.pages.thumb(id, rect), [PAGE_ID, obj({ x: NUM, y: NUM, width: NUM, height: NUM })]);
-  ipcMain.handle('pages:ask', (_e, id, prompt, mode) => d.pages.ask(id, prompt, mode), [PAGE_ID, text(2000), str({ max: 10, re: /^(ask|plan|edits)$/ })]);
+  ipcMain.handle('pages:ask', (_e, id, prompt, mode) => d.pages.ask(id, prompt, mode), [PAGE_ID, text(2000), str({ max: 10, re: /^(ask|plan)$/ })]);
   ipcMain.handle('pages:build', (_e, describe) => d.pages.build(describe), [text(2000)]);
   ipcMain.handle('pages:change', (_e, id, o) => d.pages.change(id, o || {}), [PAGE_ID, opt(obj({ ask: opt(text(2000)), error: opt(text(500)), pointed: opt(obj({ text: opt(text(200)), selector: opt(text(200)) })) }))]);
 }

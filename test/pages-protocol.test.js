@@ -28,6 +28,7 @@ test('nothing outside a known page is served', () => {
   assert.equal(answer('shellby-page://print-queue/missing.js', pages(), SIDE).status, 404);
   assert.equal(answer('shellby-page://print-queue/v/1/index.html', pages(), SIDE).status, 404);
   assert.equal(answer('not a url', pages(), SIDE).status, 400);
+  assert.equal(answer('shellby-page://print-queue/%E0%A4%A', pages(), SIDE).status, 400, 'a bad escape answers, not throws');
 });
 
 test('a page that is off or waiting for your OK is not served at all', () => {

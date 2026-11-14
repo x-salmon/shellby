@@ -62,9 +62,11 @@ test('a page that is off can do nothing', () => {
   assert.equal(decide('data.get', [], { access: ALL, draft: false, enabled: false }).ok, false);
 });
 
-test('ask never runs in a mode beyond edits, and arguments are bounded', () => {
+test('ask is Ask first or Plan, never a mode that edits, and arguments are bounded', () => {
   const r = decide('ask', ['x'.repeat(5000), { mode: 'autonomous' }], page(ALL));
   assert.equal(r.args[1].mode, 'ask');
+  assert.equal(decide('ask', ['x', { mode: 'edits' }], page(ALL)).args[1].mode, 'ask');
+  assert.equal(decide('ask', ['x', { mode: 'plan' }], page(ALL)).args[1].mode, 'plan');
   assert.equal(r.args[0].length, 2000);
   assert.equal(decide('ask', ['   '], page(ALL)).ok, false);
   assert.equal(decide('data.set', [[1]], page()).ok, false);
