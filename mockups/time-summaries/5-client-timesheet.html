@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Daily summaries, concept 5: the timesheet a client reads</title>
+<link rel="stylesheet" href="summaries.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 640px 1fr; gap: 48px; }
+
+  .opts { padding: 34px 36px; display: flex; flex-direction: column; gap: 28px; }
+  .opts h2 { font: 500 34px/1.1 var(--font-pixel); }
+  .grp { display: grid; gap: 12px; }
+  .grp > label { color: var(--sand-faint); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; }
+  .grp .picker { width: 100%; justify-content: space-between; }
+  .seg.wide { display: flex; }
+  .seg.wide span { flex: 1; justify-content: center; }
+  .chk { display: flex; align-items: flex-start; gap: 14px; font-size: 17px; line-height: 1.4; }
+  .chk i { flex: none; width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--line); margin-top: 1px; display: grid; place-items: center; font: 700 14px/1 var(--font-body); font-style: normal; color: var(--abyss); }
+  .chk i.on { background: var(--glass); border-color: var(--glass); }
+  .chk small { display: block; color: var(--sand-faint); font-size: 14.5px; }
+  .note { border-radius: var(--r-lg); background: var(--abyss); border: 1px solid var(--line); padding: 18px 20px; font-size: 16px; line-height: 1.5; color: var(--sand-dim); }
+  .note b { color: var(--sand); }
+  .opts .act { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .opts .act .btn { justify-content: center; height: 52px; }
+  .opts .act .btn.primary { grid-column: span 2; font-size: 19px; }
+
+  /* the page as the client gets it */
+  .desk { position: relative; border-radius: var(--r-lg); background: repeating-linear-gradient(45deg, var(--reef) 0 14px, color-mix(in srgb, var(--reef) 85%, var(--abyss)) 14px 28px); display: flex; justify-content: center; padding: 44px 0 0; overflow: hidden; }
+  .paper { width: 1180px; background: #fbf8f2; color: #1d2a33; border-radius: 4px 4px 0 0; box-shadow: 0 30px 80px rgba(0,0,0,.5); padding: 64px 76px; font-family: "Atkinson Hyperlegible", sans-serif; }
+  .paper header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1d2a33; padding-bottom: 22px; }
+  .paper h1 { font-size: 36px; letter-spacing: -.01em; }
+  .paper header p { color: #56646f; font-size: 17px; margin-top: 6px; }
+  .paper .meta { text-align: right; font-size: 16px; color: #56646f; line-height: 1.6; }
+  .paper .meta b { color: #1d2a33; font-size: 28px; display: block; }
+  .period { margin: 30px 0 8px; padding: 22px 26px; background: #eef3ef; border-radius: 8px; }
+  .period h2 { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: #2e8f7c; margin-bottom: 8px; }
+  .period p { font-size: 19px; line-height: 1.55; }
+  table { width: 100%; border-collapse: collapse; margin-top: 22px; font-size: 17px; }
+  th { text-align: left; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: #56646f; padding: 0 10px 10px; border-bottom: 1px solid #cfd6da; }
+  td { padding: 16px 10px; border-bottom: 1px solid #e3e7e9; vertical-align: top; line-height: 1.5; }
+  td:first-child { white-space: nowrap; color: #56646f; width: 120px; }
+  td.num, th.num { text-align: right; white-space: nowrap; width: 90px; }
+  td b { display: block; font-size: 17.5px; }
+  td .hl { background: color-mix(in srgb, #ffc15e 45%, transparent); border-radius: 3px; padding: 0 3px; }
+  .flag { position: absolute; display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 12px; background: var(--ink); border: 1px solid var(--amber); color: var(--sand); font-size: 15.5px; box-shadow: 0 12px 30px rgba(0,0,0,.4); max-width: 360px; line-height: 1.4; }
+  .flag::before { content: ""; position: absolute; left: -9px; top: 22px; width: 16px; height: 16px; background: var(--ink); border-left: 1px solid var(--amber); border-bottom: 1px solid var(--amber); transform: rotate(45deg); }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Timesheet</h1>
+    <span class="muted" style="font-size:17px">‹ Back to November</span>
+    <span class="spacer"></span>
+    <span class="who"><span class="dot"></span>Every line on the page is one you kept or wrote</span>
+  </header>
+
+  <section class="body">
+    <aside class="panel opts">
+      <h2>Who's it for?</h2>
+      <div class="grp"><label>Client</label><span class="picker"><span style="display:flex;gap:12px;align-items:center"><i class="sw p2"></i><b>Northwind Dental</b></span><span class="caret">▾</span></span></div>
+      <div class="grp"><label>Period</label><span class="picker"><b>Nov 2 – Nov 13</b><span class="muted">two weeks</span><span class="caret">▾</span></span></div>
+      <div class="grp"><label>Written for</label><span class="seg wide"><span class="on">The client</span><span>A developer</span><span>Just hours</span></span>
+        <span class="muted" style="font-size:15px">Plain words, what changed for the practice. No branch names or commit jargon.</span></div>
+      <div class="grp"><label>On the page</label>
+        <div class="chk"><i class="on">✓</i><span>A summary of the two weeks<small>Three sentences at the top</small></span></div>
+        <div class="chk"><i class="on">✓</i><span>One line per day<small>Hours to the quarter hour</small></span></div>
+        <div class="chk"><i></i><span>Hours by source<small>Windows, Claude, commits</small></span></div>
+        <div class="chk"><i></i><span>Commits under each day</span></div>
+      </div>
+      <div class="note"><b>1 day needs a word from you.</b> Nov 9 only has commits, so its line is a guess. Shellby won't put a guess on a client's page without asking.</div>
+      <div class="act"><button class="btn">Copy as text</button><button class="btn">Send to Toggl</button><button class="btn primary">Save PDF</button></div>
+    </aside>
+
+    <div class="desk">
+      <article class="paper">
+        <header>
+          <div><h1>Timesheet · Northwind Dental</h1><p>Booking app · November 2 – 13, 2026</p></div>
+          <div class="meta"><b>9h 45m</b>$975 at $100/h<br>Sam Rivera · Rivera Studio</div>
+        </header>
+        <section class="period">
+          <h2>These two weeks</h2>
+          <p>Patients can now book a slot online and get a confirmation straight away. New bookings appear on the practice's Google Calendar within a minute. Reminder emails are built and go live once we've agreed the wording.</p>
+        </section>
+        <table>
+          <thead><tr><th>Day</th><th>What was done</th><th class="num">Hours</th></tr></thead>
+          <tbody>
+            <tr><td>Tue, Nov 3</td><td><b>Booking form</b>Laid out the booking page and the slot picker to match the practice's opening hours.</td><td class="num">1:00</td></tr>
+            <tr><td>Wed, Nov 4</td><td><b>Choosing a slot</b>Slots already taken can't be picked twice, even if two patients book at once.</td><td class="num">1:30</td></tr>
+            <tr><td>Fri, Nov 6</td><td><b>Confirmations</b>Patients get an on-screen and email confirmation as soon as they book.</td><td class="num">2:30</td></tr>
+            <tr><td>Mon, Nov 9</td><td><b>Opening hours</b><span class="hl">Holiday closures can be entered so those days can't be booked.</span></td><td class="num">2:00</td></tr>
+            <tr><td>Thu, Nov 12</td><td><b>Google Calendar</b>New bookings appear on the practice calendar within a minute. Started the day-before reminder emails.</td><td class="num">2:45</td></tr>
+          </tbody>
+          <tfoot><tr><td></td><td style="text-align:right;font-weight:700;border:0">Total</td><td class="num" style="font-weight:700;font-size:20px;border:0">9:45</td></tr></tfoot>
+        </table>
+        <p style="margin-top:40px;color:#56646f;font-size:15px;line-height:1.6">Next up: reminder emails go live once the wording is agreed (about 1 hour). Questions about any line? Reply to this email.</p>
+      </article>
+      <div class="flag" style="left:calc(50% + 600px - 40px); top:742px">From commits only. Is this right? <button class="btn small primary" style="height:30px">Yes</button></div>
+    </div>
+  </section>
+</main>
+<div class="caption">Daily summaries · concept 5: the client's timesheet</div>
+</body>
+</html>

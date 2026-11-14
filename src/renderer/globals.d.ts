@@ -62,6 +62,7 @@ interface Window {
   ShellbyTextGrid: any;
   ShellbyTideChart: any;
   ShellbyTimeCalendar: any;
+  ShellbyTimeDayline: any;
   ShellbyTimeFormat: any;
   ShellbyTodos: any;
   ShellbyTrail: any;
@@ -534,6 +535,7 @@ interface ShellbyPanelExtras {
   swapPanes: any;
   takeCarry: any;
   // tab-queue.js
+  drainQueue: any;
   editQueued: any;
   handBack: any;
   onSteered: any;
@@ -548,6 +550,7 @@ interface ShellbyPanelExtras {
   autosize: any;
   clearComposer: any;
   markSent: any;
+  pauseTask: any;
   prefill: any;
   prefillNew: any;
   renderAttachments: any;
@@ -620,6 +623,8 @@ interface ShellbyPanelExtras {
   taskBoard: any;
   // tide.js
   tide: any;
+  // time-day.js
+  timeDay: any;
   // time-month.js
   timeMonth: any;
   // together.js

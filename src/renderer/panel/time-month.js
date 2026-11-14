@@ -73,16 +73,43 @@
 
   // ------------------------------------------------------------------ the picked day
 
+  // Who wrote a draft: Claude, or the local model by name.
+  const byWho = by => (!by || by === 'Claude' ? 'Claude' : `${by} on this PC`);
+
+  // What Shellby wrote for a line you haven't written yourself: kept, edited
+  // (it becomes your note) or dropped. Never on a timesheet until kept.
+  function draftBox(l, note, act) {
+    const box = h('div', { class: 'tm-draft', role: 'group', 'aria-label': `Shellby's draft for ${l.name}` },
+      h('p', { class: 'tm-draft-text', text: l.draft.text }),
+      h('div', { class: 'tm-draft-acts' },
+        h('span', { class: 'tm-draft-by', text: `Draft by ${byWho(l.draft.by)}` }),
+        h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Drop', 'aria-label': `Drop the draft for ${l.name}`, dataset: { focus: `drop:${l.key}` }, onclick: () => act.drop(l.key) }),
+        h('button', {
+          type: 'button', class: 'btn ghost slim-btn', text: 'Edit', 'aria-label': `Edit the draft for ${l.name}`,
+          onclick: () => {
+            note.value = l.draft.text;
+            box.replaceWith(note);
+            note.focus();
+            // Left as it was, it's still Shellby's draft (only a change makes it yours): the box comes back.
+            note.addEventListener('blur', () => { if (note.isConnected && note.value.trim() === l.draft.text) note.replaceWith(box); }, { once: true });
+          },
+        }),
+        h('button', { type: 'button', class: 'btn primary slim-btn', text: 'Keep', 'aria-label': `Keep the draft for ${l.name}`, dataset: { focus: `keep-draft:${l.key}` }, onclick: () => act.keep(l.key) })));
+    return box;
+  }
+
   function line(l, { colours, act }) {
     const note = h('input', {
       class: 'field tm-note', value: l.note, maxlength: '200',
       placeholder: l.commits.length ? l.commits.map(c => c.subject).slice(0, 3).join('; ') : 'What it was for',
-      'aria-label': `What the time on ${l.name} was for`,
+      'aria-label': `What the time on ${l.name} was for`, dataset: { focus: `note:${l.key}` },
     });
     note.addEventListener('change', () => act.note(l.key, note.value.trim()));
+    const drafted = !l.note && !!l.draft;
     const guess = !l.tracked && !l.manual && l.estimate ? l.estimate : 0;
     const parts = F.dayParts(l);
-    return h('li', { class: `tm-line${l.estimated ? ' est' : ''}` },
+    if (l.note && l.draft?.kept) parts.push(`written by ${byWho(l.draft.by)}, kept`);
+    return h('li', { class: `tm-line${l.estimated ? ' est' : ''}${drafted ? ' drafted' : ''}` },
       h('div', { class: 'tm-line-head' },
         h('span', { class: `tm-sw ${tint(colours, l.key)}`, 'aria-hidden': 'true' }),
         h('b', { class: 'tm-line-name', text: l.name }),
@@ -91,7 +118,7 @@
           h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Take 15 minutes off ${l.name}`, title: 'Take 15 minutes off', disabled: !l.total || l.estimated, dataset: { focus: `less:${l.key}` }, onclick: () => act.nudge(l.key, C.nudge(l, -1)) }, '−'),
           h('span', { class: 'tm-line-time', text: l.total ? C.clock(l.total) : '0:00' }),
           h('button', { type: 'button', class: 'icon-btn', 'aria-label': `Add 15 minutes to ${l.name}`, title: 'Add 15 minutes', dataset: { focus: `more:${l.key}` }, onclick: () => act.nudge(l.key, C.nudge(l, 1)) }, '+'))),
-      note,
+      drafted ? draftBox(l, note, act) : note,
       h('div', { class: 'tm-line-meta' },
         parts.length ? h('span', { text: parts.join(' · ') }) : null,
         l.commitCount ? h('span', { class: 'tm-commits', role: 'note', title: F.commitsTip(l), tabindex: '0', 'aria-label': `${F.plural(l.commitCount, 'commit')}: ${l.commits.map(c => c.subject).join('; ')}` }, F.plural(l.commitCount, 'commit')) : null,
@@ -116,18 +143,47 @@
     return form;
   }
 
+  // Write the day up, keep every draft at once, or see how it was written.
+  function dayTools(lines, act) {
+    const open = lines.filter(l => !l.note);
+    const drafts = open.filter(l => l.draft);
+    const write = h('button', {
+      type: 'button', class: `btn slim-btn${drafts.length ? ' ghost' : ''}`, dataset: { focus: 'write-day' },
+      text: drafts.length ? 'Write it again' : 'Write up the day',
+      title: 'Shellby writes the lines that have no words of yours yet, from your commits and what you asked Claude. Lines you wrote are never touched.',
+    });
+    write.addEventListener('click', async () => {
+      write.disabled = true;
+      write.textContent = 'Writing…';
+      try { await act.write(); } finally { write.disabled = false; write.textContent = drafts.length ? 'Write it again' : 'Write up the day'; }
+    });
+    const tools = [
+      drafts.length > 1 ? h('button', { type: 'button', class: 'btn primary slim-btn', text: `Keep all ${drafts.length}`, dataset: { focus: 'keep-all' }, onclick: () => act.keep(null) }) : null,
+      open.length ? write : null,
+      lines.some(l => l.draft) ? h('button', { type: 'button', class: 'link-btn tm-how', text: 'How it was written', dataset: { focus: 'how' }, onclick: () => act.detail() }) : null,
+    ].filter(Boolean);
+    return tools.length ? h('div', { class: 'tm-dv-tools' }, ...tools) : null;
+  }
+
   function drawDay(el, { day, summary, projects, act }) {
     const colours = C.colours(summary);
     const lines = C.lines(summary, day);
     const total = lines.reduce((n, l) => n + l.total, 0);
+    const drafted = lines.some(l => !l.note && l.draft);
     el.replaceChildren(
       h('div', { class: 'tm-dv-head' },
         h('h3', { text: longDay(day) }),
         h('b', { class: 'tm-dv-total', text: total ? C.clock(total) : '' })),
-      h('p', { class: 'tm-dv-sub', text: lines.length ? 'What each timesheet says for this day. Changes save as you go.' : 'Nothing kept on this day. Add time below if you worked.' }),
+      h('p', {
+        class: 'tm-dv-sub',
+        text: !lines.length ? 'Nothing kept on this day. Add time below if you worked.'
+          : drafted ? 'Dashed lines are Shellby’s drafts, from your commits and what you asked Claude. Nothing goes on a timesheet until you keep it.'
+            : 'What each timesheet says for this day. Changes save as you go.',
+      }),
+      lines.length ? dayTools(lines, act) : null,
       lines.length ? h('ul', { class: 'tm-lines' }, ...lines.map(l => line(l, { colours, act }))) : null,
       adder({ projects, act }));
   }
 
-  SB.timeMonth = { drawStats, drawCalendar, drawDay, onCalendarKey, tint };
+  SB.timeMonth = { drawStats, drawCalendar, drawDay, onCalendarKey, tint, longDay, byWho };
 })();

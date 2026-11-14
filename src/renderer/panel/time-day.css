@@ -1,0 +1,134 @@
+/* Shellby panel — Time: Shellby's write-up of a day (time-month.js's drafts,
+   time-day.js's "how it was written"). A draft is dashed amber until you keep
+   it; what it came from is coral (Claude) and lilac (commits), as everywhere. */
+
+/* ---------------------------------------------------------------- drafts in the day panel */
+.tm-dv-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: -4px 0 10px; }
+.tm-dv-tools .tm-how, .td-head .link-btn {
+  padding: 0; border: 0; background: none; font: inherit; font-size: var(--fs-12-5); color: var(--glass);
+  text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer;
+}
+.tm-dv-tools .tm-how { margin-left: auto; }
+.tm-dv-tools .tm-how:hover { text-decoration-style: solid; }
+
+.tm-line.drafted { border-color: color-mix(in srgb, var(--amber) 30%, transparent); }
+.tm-draft {
+  margin: 8px 0 6px; padding: 9px 10px; border-radius: var(--r-sm);
+  border: 1.5px dashed color-mix(in srgb, var(--amber) 55%, transparent);
+  background: color-mix(in srgb, var(--amber) 5%, var(--ink));
+}
+.tm-draft-text { margin: 0 0 8px; font-size: var(--fs-13); line-height: 1.5; color: var(--sand); }
+.tm-draft-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tm-draft-by { margin-right: auto; font-size: var(--fs-11-5); color: var(--amber); }
+
+/* ---------------------------------------------------------------- how it was written */
+.tm-detail-open .tm-month-head, .tm-detail-open .tm-stats, .tm-detail-open .tm-fill,
+.tm-detail-open .tm-short, .tm-detail-open .tm-month { display: none; }
+
+.td-detail { display: grid; gap: 14px; margin-bottom: 18px; animation: rise .2s var(--ease-out); }
+.td-detail[hidden] { display: none; }
+.td-detail { scroll-margin-top: 72px; } /* clear of the panel's top bar when it opens */
+.td-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.td-head h3 { margin: 0; font: 600 var(--fs-17)/1.2 var(--font-pixel); }
+.td-head .tm-dv-total { margin-left: auto; }
+
+/* The day's line: hours across, a lane each for kept time, Claude and commits. */
+.td-line { display: grid; gap: 6px; padding: 12px 12px 14px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--reef); }
+.td-hours { position: relative; height: 16px; margin-left: 92px; font-size: var(--fs-10-5); color: var(--sand-faint); }
+.td-hours span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.td-hours span.start { transform: none; }
+.td-hours span.end { transform: translateX(-100%); }
+/* Narrow: every other hour, so the labels never run into each other. */
+.td-hours span:nth-child(even) { visibility: hidden; }
+.td-lane-row { display: grid; grid-template-columns: 86px minmax(0, 1fr); align-items: center; gap: 6px; }
+.td-lane-label { display: flex; align-items: center; gap: 6px; font-size: var(--fs-11-5); font-weight: 700; color: var(--sand-dim); white-space: nowrap; }
+.td-lane {
+  position: relative; height: 26px; border-radius: 6px; overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--abyss) 0 calc(12.5% - 1px), var(--line-soft) calc(12.5% - 1px) 12.5%);
+}
+.td-lane > span { position: absolute; top: 4px; bottom: 4px; border-radius: 4px; }
+.td-kept { background: color-mix(in srgb, var(--pc) 70%, var(--ink)); }
+.td-chat {
+  display: flex; align-items: center; padding: 0 6px; overflow: hidden; font-size: var(--fs-11); color: var(--sand); white-space: nowrap;
+  background: color-mix(in srgb, var(--coral) 30%, var(--ink)); border: 1px solid color-mix(in srgb, var(--coral) 55%, transparent);
+}
+.td-chat span { overflow: hidden; text-overflow: ellipsis; }
+.td-tick { width: 4px; margin-left: -2px; background: var(--kind-refactor); }
+.td-lane > .lit { outline: 2px solid var(--amber); outline-offset: 1px; z-index: 1; }
+.td-tick.lit { background: var(--amber); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 35%, transparent); }
+
+/* Where a thing came from, the same three marks as the mockups: kept time, Claude, git. */
+.td-src {
+  flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px;
+  font: 700 9.5px/1 var(--font-body); font-style: normal; color: var(--abyss);
+}
+.td-src.kept { background: var(--glass); }
+.td-src.chat { background: var(--coral); }
+.td-src.commit { background: var(--kind-refactor); }
+
+.td-lower { display: grid; gap: 14px; }
+.td-story, .td-behind, .td-reads { padding: 14px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--reef); }
+.td-story { display: flex; flex-direction: column; gap: 12px; }
+.td-story-head { display: flex; align-items: baseline; gap: 10px; }
+.td-story-head h4 { margin: 0; font: 600 var(--fs-17)/1.2 var(--font-pixel); }
+.td-story-head b { margin-left: auto; font: 700 var(--fs-17) var(--font-body); font-variant-numeric: tabular-nums; }
+.td-projs { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.td-proj-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.td-proj-head b { font-size: var(--fs-14); }
+.td-proj-head small { font-size: var(--fs-11-5); color: var(--sand-faint); }
+.td-proj-head .td-keep { margin-left: auto; }
+.td-tag { padding: 1px 8px; border-radius: 10px; font-size: var(--fs-10-5); font-weight: 700; }
+.td-tag.draft { color: var(--amber); background: color-mix(in srgb, var(--amber) 15%, transparent); }
+.td-tag.kept { color: var(--glass); background: var(--glass-dim); }
+.td-says { margin: 6px 0 0 18px; font-size: var(--fs-14); line-height: 1.6; }
+.td-yours { color: var(--sand-faint); font-size: var(--fs-12); }
+.td-sentence {
+  display: inline; padding: 1px 3px; margin: 0 -3px; border: 0; border-radius: 4px; background: none;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.td-sentence:hover { background: color-mix(in srgb, var(--amber) 9%, transparent); }
+.td-sentence:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
+.td-sentence.on { background: color-mix(in srgb, var(--amber) 18%, transparent); box-shadow: inset 0 -2px 0 var(--amber); }
+.td-story-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; }
+.td-by { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-11-5); color: var(--sand-faint); }
+.td-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--glass); }
+
+.td-side { display: grid; gap: 14px; align-content: start; }
+.td-behind h4, .td-reads h4 { margin: 0 0 8px; font-size: var(--fs-11); letter-spacing: .08em; text-transform: uppercase; color: var(--sand-faint); }
+.td-claim { margin: -4px 0 8px; font-size: var(--fs-11-5); color: var(--sand-faint); }
+/* The picked sentence, marked the way it's marked in the write-up. */
+.td-behind blockquote {
+  margin: 0 0 8px; padding: 6px 8px; border-radius: var(--r-sm); font-size: var(--fs-13-5); line-height: 1.5;
+  background: color-mix(in srgb, var(--amber) 12%, transparent); box-shadow: inset 0 -2px 0 var(--amber);
+}
+.td-evidence { list-style: none; margin: 0; padding: 0; }
+.td-evidence li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line-soft); font-size: var(--fs-12-5); }
+.td-evidence .td-src { margin-top: 2px; }
+.td-evidence b, .td-evidence code { display: block; overflow-wrap: anywhere; }
+.td-evidence code { font: var(--fs-12) var(--font-mono); color: var(--sand); }
+.td-evidence span { color: var(--sand-faint); font-size: var(--fs-11-5); overflow-wrap: anywhere; }
+.td-evidence time { color: var(--sand-faint); font-size: var(--fs-11-5); white-space: nowrap; }
+.td-reads ul { margin: 0 0 8px; padding-left: 18px; display: grid; gap: 4px; font-size: var(--fs-12-5); color: var(--sand-dim); }
+.td-reads b { color: var(--sand); }
+.td-reads p { margin: 0; }
+
+@container (min-width: 880px) {
+  .td-hours span:nth-child(even) { visibility: visible; }
+  .td-line { padding: 16px 18px 18px; gap: 8px; }
+  .td-hours { margin-left: 112px; font-size: var(--fs-11-5); }
+  .td-lane-row { grid-template-columns: 104px minmax(0, 1fr); }
+  .td-lane { height: 32px; }
+  .td-lower { grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: 20px; }
+  .td-story, .td-behind, .td-reads { padding: 20px; }
+  .td-says { font-size: var(--fs-16); }
+}
+@container (min-width: 1500px) {
+  .td-lane { height: 40px; }
+  .td-says { font-size: var(--fs-18); }
+  .td-lower { grid-template-columns: minmax(0, 1.6fr) minmax(420px, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .td-detail { animation: none; }
+}

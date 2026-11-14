@@ -18,6 +18,11 @@ const WORK_HOOK = 'shellby-before-work';
 // Every finished tool call on the main thread, so what you typed while Claude
 // works can go in before its next step (steer()).
 const STEER_HOOK = 'shellby-steer';
+// How long Claude Code waits on that hook, in seconds. Shellby answers it at
+// once, except while you've paused the conversation (session/pause.js), when
+// it holds the answer back. Left unset, Claude Code gives up after 10 minutes
+// and carries on (checked against 2.1.323), so a pause would undo itself.
+const STEER_TIMEOUT_S = 3 * 60 * 60;
 
 // Flags newer than the rest, passed only when this Claude Code lists them in
 // its --help (claude/cli.js helpFlags): an older one stops at a flag it doesn't
@@ -46,7 +51,7 @@ const removeFile = file => { if (file) fs.rm(file, { force: true }, () => {}); }
 // answers "go ahead" while nothing watches (control.js answerHook): one
 // round trip over stdin, like the steer hook's. scripts/cli-compat.js sends the same.
 function initHooks() {
-  const steerAt = [{ matcher: '.*', hookCallbackIds: [STEER_HOOK] }];
+  const steerAt = [{ matcher: '.*', hookCallbackIds: [STEER_HOOK], timeout: STEER_TIMEOUT_S }];
   return {
     PreToolUse: [{ matcher: WORK_TOOLS, hookCallbackIds: [WORK_HOOK] }],
     PostToolUse: steerAt,
@@ -117,4 +122,4 @@ const args = {
   },
 };
 
-module.exports = { args, EFFORTS, OPTIONAL_FLAGS, WORK_HOOK, STEER_HOOK, writeConfig, removeFile, initHooks, isOwnHook };
+module.exports = { args, EFFORTS, OPTIONAL_FLAGS, WORK_HOOK, STEER_HOOK, STEER_TIMEOUT_S, writeConfig, removeFile, initHooks, isOwnHook };

@@ -310,7 +310,16 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
 .pic.big img { max-width: 100%; max-height: none; width: 100%; }
 
 .crew { display: grid; gap: 6px; }
-.lane { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--reef); border-left: 3px solid var(--lane, var(--coral)); }
+.lane { border-radius: 10px; background: var(--reef); border-left: 3px solid var(--lane, var(--coral)); }
+.lane > summary { display: grid; grid-template-columns: 34px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 10px; min-height: 44px; cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+.lane > summary::-webkit-details-marker { display: none; }
+.lane > summary::after { content: "▸"; color: var(--sand-faint); font-size: 12px; }
+.lane[open] > summary::after { content: "▾"; }
+.lane[open] .lane-words span { white-space: normal; }
+.lane-more { margin: 0; padding: 0 12px 10px 54px; display: grid; gap: 2px; }
+.lane-more dt { font-size: 11px; color: var(--sand-faint); margin-top: 6px; }
+.lane-more dd { margin: 0; font-size: 13px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lane-more dd.mono { font: 400 12px/1.4 var(--font-mono); font-stretch: 87%; color: var(--sand-dim); }
 .lane-words { min-width: 0; display: grid; }
 .lane-words b { font-size: 13.5px; }
 .lane-words span { font: 400 11.5px/1.35 var(--font-mono); font-stretch: 87%; color: var(--sand-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

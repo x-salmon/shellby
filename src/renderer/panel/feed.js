@@ -345,7 +345,7 @@
           return this.renderAsk(item, replay);
         case 'decision': return this.markDecision(item);
         case 'result':
-          if (!replay && this.isActive) SB.announce(item.interrupted ? 'Claude stopped' : item.ok ? 'Claude finished' : 'Claude ended with an error');
+          if (!replay && this.isActive) SB.announce(item.parked ? 'Claude paused' : item.interrupted ? 'Claude stopped' : item.ok ? 'Claude finished' : 'Claude ended with an error');
           this.renderResult(item, replay);
           return this.offerLocal?.(item, replay); // Claude didn't answer: your local model can (feed-local.js)
         case 'changes': return this.renderChanges(item);
@@ -364,7 +364,7 @@
           this.wipe();
           SB.renderTodos?.(this); // in whichever pane shows it (native-strip.js)
           // falls through
-        case 'moved': case 'wt-in': case 'wt-out': case 'phone': case 'home': case 'home-wait': case 'pushed': case 'compacted': case 'fresh': case 'rewound': case 'hook-failed': {
+        case 'moved': case 'wt-in': case 'wt-out': case 'phone': case 'home': case 'home-wait': case 'pushed': case 'compacted': case 'fresh': case 'rewound': case 'hook-failed': case 'paused': {
           const mark = F.markFor(item, SB.compact);
           return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: mark.icon }), mark.text));
         }

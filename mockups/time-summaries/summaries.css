@@ -1,0 +1,28 @@
+/* Daily summaries on the Time page: the Time mockups' base plus what a
+   written summary needs (draft state, where a sentence came from). */
+@import url("../time/shared.css");
+
+/* A summary Shellby wrote that you haven't kept yet */
+.draft { position: relative; border: 1.5px dashed color-mix(in srgb, var(--amber) 55%, transparent); background: color-mix(in srgb, var(--amber) 5%, var(--ink)); }
+.kept { border: 1px solid var(--line); background: var(--ink); }
+.tag { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 14px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.tag.amber { background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber); }
+.tag.glass { background: var(--glass-dim); color: var(--glass); }
+.tag.coral { background: var(--coral-dim); color: var(--coral); }
+.tag.plain { background: var(--reef-2); color: var(--sand-dim); }
+
+/* Little source marks after a sentence: C conversation, G commit, W window */
+.cite { display: inline-flex; gap: 3px; vertical-align: 2px; margin-left: 6px; }
+.cite i { width: 17px; height: 17px; border-radius: 4px; display: inline-grid; place-items: center; font: 700 10.5px/1 var(--font-body); font-style: normal; color: var(--abyss); }
+.cite .c, .src.cl i { background: var(--coral); }
+.cite .g, .src.git i { background: #c3b6f2; }
+.cite .w, .src.win i { background: var(--sand-dim); }
+
+.chipbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.chip { height: 36px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border-radius: 18px; border: 1px solid var(--line); background: var(--reef); color: var(--sand-dim); font-size: 15px; font-weight: 700; white-space: nowrap; }
+.chip.on { background: var(--glass-dim); color: var(--glass); border-color: transparent; }
+
+.who { display: inline-flex; align-items: center; gap: 10px; color: var(--sand-faint); font-size: 15px; }
+.who .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--glass); }
+
+[data-crab] { display: inline-block; line-height: 0; }

@@ -15,6 +15,7 @@ claude -p --input-format stream-json --output-format stream-json --verbose
 - **Tasks** go in as JSON user messages on stdin. One process holds the whole conversation, so follow-ups keep context.
 - **Permission prompts** come out as `control_request { subtype: "can_use_tool" }` and Shellby answers with `allow` / `deny` (plus the suggested rules for "Always allow"). This is the same host protocol the Claude Agent SDK uses.
 - **Stop** sends an `interrupt` control request, and falls back to killing the process tree if the CLI doesn't wind down.
+- **Pause** holds back the answer to Shellby's `PostToolUse` callback hook, which every finished tool call asks (helpers' too, with `agent_id`) before Claude reads its result: the step is done, and nothing more runs until it's answered (`session/pause.js`). The hook is registered with `timeout` (seconds): without one, Claude Code gives up after 10 minutes, sends `control_cancel_request` and carries on (checked on 2.1.323). A message written while a hook is held isn't read until it's answered, so a held conversation can't be pinged warm; a pause only the main thread holds is *parked* before its cache expires instead (a note is written, the hook answered, and Claude ends the turn).
 - **Mode changes** mid-conversation send `set_permission_mode`.
 - **Subagents** come through as `task_started` / `task_progress` / `task_notification` system events. Their messages carry `parent_tool_use_id`, the Agent call that spawned them, and their permission prompts carry `agent_id`, which equals the `task_id`. That's all it takes to route every event, prompt and helper crab to the right lane.
 - **Background commands and watches** (`Bash { run_in_background }`, `Monitor`) come through as the same `task_*` events with `task_type: "local_bash"` (helpers are `local_agent`), and only `task_started` says the type, so later events are known by their task id (jobs.js). A command's exit code is only in `task_notification`'s summary. Stop sends a `stop_task` control request, as Claude Code's own TaskStop does. A helper sent another message (`SendMessage`) starts again under that call's id while its messages keep the first Agent call's.
@@ -142,6 +143,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/e2e-bugdex.js` | The Bugdex with the fake CLI (commands replayed from `test/fixtures/bugdex/`): a failed command seen and on the loose with nothing paid, an edit and the same command passing caught (XP, the jar), the same bug soon after not counted twice, no catch for an unchanged tree, a deleted test or a grep through a log, the page, and the Settings switch |
 | `node scripts/e2e-battle.js` | Bug battles with the fake CLI: a red suite opens a battle at full HP, a read is a Scout and an edit a Patch, a re-run with fewer failing tests takes HP off (the right tool counting double), a helper joins the party, and the green run knocks it out and jars it; the chip under the tabs and the battle screen show it. `SHELLBY_SHOTS=<folder>` saves screenshots |
 | `node scripts/e2e-queue.js` | Queued messages with the fake CLI: queue behind a running turn, edit with ↑, drain in order, Stop hands them back, an error pauses the queue, a message queued while a tool runs is steered into the same turn (no Claude account needed) |
+| `node scripts/e2e-pause.js` | Pause with the fake CLI: Pause beside Stop while he works, Pausing… with what it waits for until his step ends, then Paused and Continue; nothing runs while paused, what you type meanwhile goes in on Continue, Stop ends a paused turn, a turn with no step says it finished first, a long pause parks (the footer reads paused, Continue carries on in a new turn) and Stop ends a parked pause without sending anything. `SHELLBY_PARK_AFTER_MS` makes it park 6 seconds after pausing (no Claude account needed) |
 | `node scripts/e2e-context.js` | The context meter with the fake CLI: a reply's tokens filling the hairline under its tab and the chip, what each turn cost, a quieter "filling up" offer and then "getting crowded" past 80%, the chip's menu (the running total, the costliest turns, Not now, Compact), Start fresh with a summary, and `/clear` (the next message starts without `--resume`) |
 | `node scripts/e2e-keepwarm.js` | Keep warm with the fake CLI: off with nothing cached, then a reply cached for an hour, the mug pressed with the time left beside it, a ping just before the cache expires that leaves one dim line (not your message in the feed, the tab not left working), the tooltip's countdown, and coming back after an absence turning it off. `SHELLBY_KEEPWARM_LEAD_MS` makes the ping due a second after the reply |
 | `node scripts/e2e-attachments.js` | Screenshots as tasks with the fake CLI: a snip pasted into the box, or a picture with no file behind it dropped on the panel or the crab, is saved, shown as a thumbnail chip and reaches Claude as an image block. The pastes and drops are synthetic events with real PNG bytes, so the clipboard is never touched |
@@ -256,6 +258,7 @@ Most of these only work in an unpackaged (dev) build: an installed Shellby check
 | `SHELLBY_NETWORK_PROCESS=1` | lighter.js | Any build. Chromium's network service back in its own process, to compare |
 | `SHELLBY_NUDGE_TEST=1`, `SHELLBY_RECAP_TEST=1`, `SHELLBY_FORECAST_TEST=1` | wiring/streaks.js, wiring/services.js | Dev only. The dev hooks for the nudge check, fake idle readings and backdated usage readings (e2e-streaks, e2e-recap, e2e-forecast) |
 | `SHELLBY_KEEPWARM_LEAD_MS=<ms>` | wiring/services.js | Dev only. How long before the cache expires a keep-warm ping goes (default 5 minutes), so e2e-keepwarm needn't wait 55 minutes |
+| `SHELLBY_PARK_AFTER_MS=<ms>` | main.js | Dev only. How long after it settles a pause is parked (default: 5 minutes before its one-hour cache expires), so e2e-pause needn't wait 55 minutes |
 | `SHELLBY_DICTATION_WAV=<file>` | wiring/surroundings.js | Any build. A recording in place of the microphone for push-to-talk (e2e-push-to-talk) |
 | `SHELLBY_ALLOW_NOTIFY=1` | wiring/timetrack.js | Dev only. A dev run posts Windows notifications again (it doesn't, so stale toasts can't relaunch bare Electron) |
 | `SHELLBY_REGISTER_PROTOCOL=1` | main.js | A dev run registers itself for `shellby://` links, which otherwise go to the installed Shellby |
@@ -482,7 +485,8 @@ src/main/        Electron main process
   sessions.js      parallel conversations (tabs) + the critter's rolled-up mood
   ship.js          Ship it: a copy's tests, commit, secret scan, push and pull request in order, and the pull request's words (pure, deps passed in)
   session/         one Claude Code process per conversation (stream-json + control protocol): index.js its life
-                   and what it says; args.js how it starts, control.js answering it, accounting.js what it costs, crew.js its helpers
+                   and what it says; args.js how it starts, control.js answering it, accounting.js what it costs, crew.js its helpers,
+                   pause.js Pause and Continue (held steps, parking before the cache goes cold)
   stream.js        pure parser: CLI events (incl. subagent tasks) → UI items
   cli-contract.js  what Shellby needs from the Claude Code CLI (flags, modes, effort levels, the protocol), checked nightly (pure)
   cli-coverage.js  everything Claude Code offers and what Shellby does about each: use, skip or gap (pure)
@@ -608,7 +612,8 @@ src/main/        Electron main process
                    sync.js (which conversations sync between PCs, pure: the trimmed copy that travels, the merge, the recap
                    Claude gets; github/history-gist.js moves it)
   timetrack/       time on each project: index.js (built from what Shellby sees), service.js (the 15-second look at the
-                   window in front), timesheet.js (the printable timesheet), timesync.js (Toggl Track, Clockify or Harvest)
+                   window in front), timesheet.js (the printable timesheet), timesync.js (Toggl Track, Clockify or Harvest),
+                   daywrite.js (writing up a day from its commits and conversations; drafts until kept)
   channels/        telling you when you're away: index.js, messages.js (what a phone notification says), replies.js
                    (answering from your phone), phone-tasks.js (starting a task from it)
   events.js        tide events (pure): six short named runs inside the seasons, their goals, medals, boosts and the bug that comes along;

@@ -813,6 +813,16 @@ body:not([data-home]) .status-crab { width: 10px; height: 10px; background: var(
 }
 .stop-btn:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 .stop-btn kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .7; }
+/* Pause beside Stop (tab-send.js syncPause): quieter than Stop, and Continue once paused. */
+.pause-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: transparent; color: var(--sand-dim);
+  border-radius: var(--r-sm); padding: 3px 10px; font-size: var(--fs-12); font-weight: 700;
+}
+.pause-btn:hover:not(:disabled) { border-color: var(--glass); color: var(--sand); }
+.pause-btn:disabled { opacity: .6; cursor: progress; }
+.pause-btn.continue { border-color: var(--glass); background: var(--glass-dim); color: var(--sand); }
+.pause-btn.continue:hover { background: var(--glass); color: var(--abyss); }
 
 .attachments { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
 .att {

@@ -76,10 +76,7 @@
           const det = h('details', { class: 'tools-more' }, h('summary', { text: `${L.plural(b.tools.length - 2, 'step')} before these` }), ...b.tools.slice(0, -2).map(toolRow));
           return h('div', { class: 'tools' }, det, ...rows, strip);
         }
-        case 'crew': return h('div', { class: 'crew' }, ...b.lanes.map((lane, n) => h('div', { class: `lane ${lane.state} hue-${D.helperHue(n)}` },
-          D.crab({ px: 1.4, state: lane.state === 'running' ? 'working' : lane.state === 'ok' ? 'success' : 'idle', hue: D.helperHue(n), label: '' }),
-          h('div', { class: 'lane-words' }, h('b', { text: lane.type }), h('span', { text: lane.state === 'running' ? (lane.activity || lane.description) : (lane.summary || lane.description) })),
-          h('span', { class: 'tool-g', text: GLYPH[lane.state] }))));
+        case 'crew': return h('div', { class: 'crew' }, ...b.lanes.map((lane, n) => laneCard(lane, n, ctx)));
         case 'asked': return h('div', { class: `asked ${b.decision || 'open'}` }, h('span', { text: b.decision ? `${b.decision === 'deny' ? 'Denied' : 'Allowed'}${b.via === 'pocket' ? ' from your phone' : b.via === 'phone' ? ' from a notification' : b.via === 'deck' ? ' on the Stream Deck' : ''}: ` : 'Asked: ' }), h('span', { class: 'mono', text: [b.label, b.detail].filter(Boolean).join(' ') }));
         case 'end': return b.ok || b.interrupted
           ? h('div', { class: 'turn-end', text: L.endLine(b) })
@@ -89,6 +86,24 @@
         case 'note': return h('div', { class: `note ${b.what || ''}`, text: b.text });
         default: return null;
       }
+    }
+
+    // A helper: one line until tapped, then the job it was given, its step, its last
+    // words and how it came out. The feed redraws on every stream event, so which
+    // lanes are open lives in ctx.openLanes (a Set kept per conversation).
+    function laneCard(lane, n, ctx) {
+      const hue = D.helperHue(n);
+      const line = lane.state === 'running' ? (lane.activity || lane.description) : (lane.summary || lane.description);
+      const det = h('details', { class: `lane ${lane.state} hue-${hue}` },
+        h('summary', { 'aria-label': `${lane.type}: ${line}. Show more` },
+          D.crab({ px: 1.4, state: lane.state === 'running' ? 'working' : lane.state === 'ok' ? 'success' : 'idle', hue, label: '' }),
+          h('div', { class: 'lane-words' }, h('b', { text: lane.type }), h('span', { text: line })),
+          h('span', { class: 'tool-g', 'aria-hidden': 'true', text: GLYPH[lane.state] })),
+        h('dl', { class: 'lane-more' }, ...L.laneRows(lane).flatMap(r => [h('dt', { text: r.label }), h('dd', { class: r.key === 'step' ? 'mono' : '', text: r.text })])));
+      const open = ctx.openLanes;
+      if (open?.has(lane.id)) det.open = true;
+      if (open) det.addEventListener('toggle', () => { if (det.open) open.add(lane.id); else open.delete(lane.id); });
+      return det;
     }
 
     function changesCard(b, ctx) {
@@ -261,10 +276,12 @@
         return node;
       };
 
+      const openLanes = new Set(); // helper lanes tapped open, kept across redraws
+
       function drawFeed() {
         const feed = S.feeds.get(tabId);
         if (!feed.loaded) { feedEl.replaceChildren(h('div', { class: 'loading small' }, D.crab({ px: 2.5, state: 'working' }), h('p', { text: 'Fetching the conversation…' }))); return; }
-        const nodes = transcript(feed.items, { tabId, md, onUser: canAct() ? b => openSheet(branchSheet(tabId, b)) : null });
+        const nodes = transcript(feed.items, { tabId, md, openLanes, onUser: canAct() ? b => openSheet(branchSheet(tabId, b)) : null });
         const typing = S.partial.get(tabId);
         if (typing) nodes.push(h('div', { class: 'msg-claude typing' }, D.markdown(typing), h('span', { class: 'caret', 'aria-hidden': 'true' })));
         if (!nodes.length) nodes.push(h('p', { class: 'muted pad', text: 'Nothing said yet.' }));

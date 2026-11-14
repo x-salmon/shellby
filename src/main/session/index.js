@@ -33,6 +33,7 @@ const { placeEdit } = require('./place');
 const { accounting } = require('./accounting');
 const { crew, TALK_MS } = require('./crew');
 const { ultra } = require('./ultra');
+const { pause } = require('./pause');
 
 // How often the reply's words as they're written reach the panel, at most.
 const PARTIAL_MS = 50;
@@ -80,7 +81,7 @@ function noteUnknown(event) {
  * @property {() => { exe: string, host: string, dir: string, env: Record<string, string>, extra?: string[], argsPrefix?: string[] } | null} [remote]
  */
 
-/** @typedef {typeof args & typeof control & typeof accounting & typeof crew & typeof ultra} SessionMixins */
+/** @typedef {typeof args & typeof control & typeof accounting & typeof crew & typeof ultra & typeof pause} SessionMixins */
 // EventEmitter at run time: the mixins join the prototype at the end of this
 // file. The cast only lets the class (and tsc) see their methods on `this`.
 const Base = /** @type {new () => EventEmitter & SessionMixins} */ (/** @type {unknown} */ (EventEmitter));
@@ -181,6 +182,8 @@ class ClaudeSession extends Base {
     this.toolKind = null;
     this.toolAt = null;
     this.interrupting = false;
+    // A pause you asked for (pause.js): null, or { phase, holds, ... } while it holds or is parked.
+    this.pause = null;
     // While an edit's file is being read (placeEdit), what came after it waits
     // here, so items still reach listeners in the order Claude Code sent them.
     /** @type {(() => void)[] | null} */
@@ -253,6 +256,8 @@ class ClaudeSession extends Base {
       const { event, items } = parseLine(line);
       noteUnknown(event);
       if (event?.type === 'control_response') return this.answered(event.response);
+      // Claude Code stopped waiting for one of its requests: a held step, say (pause.js).
+      if (event?.type === 'control_cancel_request') return this.cancelledRequest(event.request_id);
       // The newest entry of the conversation's own chain, so a later rewind can
       // resume up to the end of this turn (see result below and rewind()).
       if ((event?.type === 'assistant' || event?.type === 'user') && !event.parent_tool_use_id && typeof event.uuid === 'string') this.lastUuid = event.uuid;
@@ -313,6 +318,7 @@ class ClaudeSession extends Base {
     this.waiting = carried;
     this.steered = [];
     this.openTools.clear();
+    this.pauseEnded();
     for (const id of [...this.requests.keys()]) this.answered({ request_id: id, subtype: 'error', error: 'Claude Code stopped.' });
     this.inOrder(() => {
       const wasBusy = this.busy && !stopping && !carried;
@@ -394,6 +400,8 @@ class ClaudeSession extends Base {
   // The reply's words as they're written go out together, every PARTIAL_MS at
   // most, and always before whatever came after them.
   handle(item) {
+    // Parking a pause (pause.js): his one-word reply to it is Shellby's business, not the conversation's.
+    if (this.pause?.phase === 'parking' && !item.sub && (item.kind === 'partial' || item.kind === 'text' || item.kind === 'thinking')) return;
     if (item.kind === 'partial') return this.inOrder(() => this.bufferPartial(item.text));
     this.inOrder(() => { this.flushPartial(); this.handleNow(item); });
   }
@@ -476,6 +484,7 @@ class ClaudeSession extends Base {
         if (item.sessionId) this.sessionId = item.sessionId;
         if (this.interrupting) { item.interrupted = true; item.ok = false; item.error = null; }
         this.interrupting = false;
+        this.pauseAtResult(item); // parked, or it finished before it could pause
         // What went wrong, in a sentence and a next step (trouble.js); the CLI's own words stay in `error`.
         if (!item.ok && !item.interrupted && item.error) item.trouble = troubleOf(item.error);
         // What it was refused, less what you refused yourself: that's already a card with your answer on it.
@@ -599,6 +608,7 @@ class ClaudeSession extends Base {
   // A turn's first message is echoed too, but nothing is steered by then.
   trackSteps(event) {
     if (event.type === 'user' && event.isReplay) {
+      if (this.isParkEcho(event)) return;
       if (this.steered.length) this.emitItem(this.steered.shift());
       return;
     }
@@ -606,7 +616,7 @@ class ClaudeSession extends Base {
     if (!Array.isArray(content)) return;
     if (event.type === 'assistant') this.trackPlan(content);
     for (const b of content) {
-      if (event.type === 'assistant' && b.type === 'tool_use') { this.openTools.add(b.id); this.setTool(b.name, b.input); }
+      if (event.type === 'assistant' && b.type === 'tool_use') { this.openTools.add(b.id); this.setTool(b.name, b.input); this.strayWhileParking(); }
       if (event.type === 'user' && b.type === 'tool_result') { this.openTools.delete(b.tool_use_id); if (!this.openTools.size) this.setTool(null); }
     }
   }
@@ -670,7 +680,7 @@ class ClaudeSession extends Base {
   }
 }
 
-for (const mixin of [args, control, accounting, crew, ultra]) {
+for (const mixin of [args, control, accounting, crew, ultra, pause]) {
   Object.defineProperties(ClaudeSession.prototype, Object.getOwnPropertyDescriptors(mixin));
 }
 

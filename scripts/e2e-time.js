@@ -30,7 +30,13 @@ async function cdp(url) {
 
 (async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
-  const key = ROOT.toLowerCase();
+  // The project's key as Shellby works it out (gitinfo.projectOf): a git worktree is its main checkout.
+  const key = (() => {
+    try {
+      const common = path.resolve(ROOT, execFileSync('git', ['-C', ROOT, 'rev-parse', '--git-common-dir'], { encoding: 'utf8' }).trim());
+      return (path.basename(common).toLowerCase() === '.git' ? path.dirname(common) : ROOT).toLowerCase();
+    } catch { return ROOT.toLowerCase(); }
+  })();
   const today = dayKey(Date.now());
   // Another day this month, unless today is the 1st.
   const other = new Date().getDate() > 1 ? dayKey(Date.now() - 24 * 60 * 60 * 1000) : null;
@@ -44,8 +50,15 @@ async function cdp(url) {
       notes: other ? { [other]: { [key]: 'Time tracker design' } } : {},
     },
   }));
+  // A conversation in this repository today, for Shellby to write the day up from (timetrack/daywrite.js).
+  const asked = Math.max(new Date().setHours(0, 1, 0, 0), Date.now() - 2 * 3600 * 1000);
+  const sessions = path.join(profile, 'sessions');
+  fs.mkdirSync(sessions);
+  fs.writeFileSync(path.join(sessions, 'index.json'), JSON.stringify([{ id: 'e2e-day', title: 'Merge queue badge', cwd: ROOT, mode: 'default', claudeSessionId: null, createdAt: asked, updatedAt: asked + 60000 }]));
+  fs.writeFileSync(path.join(sessions, 'e2e-day.jsonl'), `${JSON.stringify({ t: asked, kind: 'user', text: 'Add a badge to the merge queue tab' })}\n${JSON.stringify({ t: asked + 30000, kind: 'text', text: 'Done.' })}\n`);
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [`--inspect=${INSPECT}`, ROOT, `--remote-debugging-port=${PORT}`],
-    { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile } });
+    // The fake CLI writes the day up, as it answers every other draft in e2e.
+    { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') } });
   let fails = 0;
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
   try {
@@ -91,6 +104,48 @@ async function cdp(url) {
     })()`);
     check(!!commits, `git commits show on their day (${commits})`);
     await ev(`document.querySelector('#timeCal [data-day="${today}"]').click()`);
+
+    // Shellby writes the day up: a dashed draft, never on the timesheet until kept.
+    const until = async (expr, tries = 60) => { for (let i = 0; i < tries; i++) { if (await ev(expr)) return true; await wait(250); } return false; };
+    check(await until("!!document.querySelector('#timeDay [data-focus=\"write-day\"]')"), 'a day with no words of yours offers to write it up');
+    await ev("document.querySelector('#timeDay [data-focus=\"write-day\"]').click()");
+    check(await until("!!document.querySelector('#timeDay .tm-line.drafted .tm-draft-text')"), 'the write-up comes back as a draft on the line');
+    check(await ev("document.querySelector('#timeDay .tm-draft-text').textContent") === 'Worked on shellby.', `the draft says what was written (${await ev("document.querySelector('#timeDay .tm-draft-text')?.textContent")})`);
+    await send('Emulation.setDeviceMetricsOverride', { width: 2560, height: 1440, deviceScaleFactor: 1, mobile: false });
+    await wait(400);
+    await savePng(send, (process.argv[2] || path.join(os.tmpdir(), 'shellby-time.png')).replace(/\.png$/, '-draft-wide.png'));
+    await send('Emulation.clearDeviceMetricsOverride');
+    await wait(300);
+    const row = await ev(`shellby.getTime({ range: 'custom', from: '${today}', to: '${today}' }).then(v => v.summary.projects[0].days[0])`);
+    check(row?.note === '' && row?.draft?.text === 'Worked on shellby.', 'a draft is not the line on the timesheet until you keep it');
+
+    // How it was written: the day's line, the sentence, and what it came from.
+    await ev("document.querySelector('#timeDay [data-focus=\"how\"]').click()");
+    check(await until("!document.getElementById('timeDetail').hidden && !!document.querySelector('#timeDetail .td-sentence')"), '"How it was written" opens the day');
+    check(await ev("getComputedStyle(document.querySelector('.tm-month')).display") === 'none', 'the month steps aside for it');
+    check(await ev("document.querySelector('#timeDetail .td-sentence').getAttribute('aria-pressed')") === 'true', 'its first sentence is picked');
+    check(await ev("document.querySelectorAll('#timeDetail .td-lane > .lit').length") >= 1, 'what the sentence came from is lit on the line');
+    check(await ev("document.querySelectorAll('#timeDetail .td-evidence li').length") >= 1, 'and listed beside it');
+    check(await ev("[...document.querySelectorAll('#timeDetail .td-chat')].some(c => c.textContent === 'Merge queue badge')"), "the day's conversation sits on Claude's lane");
+    const shotOut = process.argv[2] || path.join(os.tmpdir(), 'shellby-time.png');
+    await savePng(send, shotOut.replace(/\.png$/, '-written.png'));
+    await send('Emulation.setDeviceMetricsOverride', { width: 2560, height: 1440, deviceScaleFactor: 1, mobile: false });
+    await wait(400);
+    check(await ev("getComputedStyle(document.querySelector('.td-lower')).gridTemplateColumns.split(' ').length") === 2, 'a wide panel puts the evidence beside the write-up');
+    await savePng(send, shotOut.replace(/\.png$/, '-written-wide.png'));
+    await send('Emulation.clearDeviceMetricsOverride');
+    await wait(300);
+    await ev("document.querySelector('#timeDetail [data-focus=\"td-back\"]').click()");
+    check(await until("document.getElementById('timeDetail').hidden && getComputedStyle(document.querySelector('.tm-month')).display !== 'none'"), 'back to the month');
+
+    // Keep it: the draft becomes the line on the timesheet.
+    await ev("document.querySelector('#timeDay [data-focus^=\"keep-draft:\"]').click()");
+    check(await until("document.querySelector('#timeDay .tm-note')?.value === 'Worked on shellby.'"), 'keeping the draft makes it the line');
+    check(/written by Claude, kept/.test(await ev("document.querySelector('#timeDay .tm-line-meta').textContent")), 'and says Shellby wrote it');
+    check(await ev("!document.querySelector('#timeDay [data-focus=\"write-day\"]')"), 'with every line written, there is nothing left to write up');
+    // Back to an empty line, so the rest of the run starts where it did.
+    await ev(`shellby.addTime({ key: ${JSON.stringify(key)}, day: '${today}', minutes: 0, note: '' })`);
+    await ev(`shellby.dropTimeDraft('${today}', ${JSON.stringify(key)})`);
 
     await ev("document.getElementById('timeRound').value = '30|up'; document.getElementById('timeRound').dispatchEvent(new Event('change'))");
     await wait(800);

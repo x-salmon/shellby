@@ -36,7 +36,9 @@
   let loadSeq = 0;
   // The month on show, as the custom range main takes.
   const monthOpts = () => ({ range: 'custom', ...C.monthRange(month || C.monthOf(today())) });
-  async function load() {
+  // timer: the minute's quiet refresh, which leaves an open past day alone (its conversations don't change).
+  async function load(opts) {
+    const timer = !!opts?.timer; // also a .then() callback, so whatever it's handed is read with care
     const seq = ++loadSeq;
     if (!month) month = C.monthOf(today());
     let next;
@@ -54,7 +56,12 @@
     const at = /** @type {HTMLElement | null} */ (document.activeElement);
     const back = at?.dataset?.focus ? `[data-focus="${CSS.escape(at.dataset.focus)}"]` : at?.closest('#timeCal') && at.dataset.day ? `#timeCal [data-day="${at.dataset.day}"]` : null;
     render();
-    if (back) /** @type {HTMLElement | null} */ (document.querySelector(back))?.focus();
+    // A line's Keep or Drop is gone once it's done: focus goes to that line's note instead.
+    const lineNote = at?.dataset?.focus?.match(/^(?:keep-draft|drop):(.+)$/);
+    const target = back && /** @type {HTMLElement | null} */ (document.querySelector(back));
+    if (target) target.focus();
+    else if (lineNote) /** @type {HTMLElement | null} */ (document.querySelector(`[data-focus="note:${CSS.escape(lineNote[1])}"]`))?.focus();
+    if (detailDay && (!timer || detailDay === today())) loadDetail();
   }
 
   function scheduleRefresh() {
@@ -64,7 +71,7 @@
     refreshTimer = setInterval(() => {
       if (state.view !== 'time') return clearInterval(refreshTimer ?? undefined);
       if ($('timeView').contains(document.activeElement) && document.activeElement?.matches('input, select, textarea')) return;
-      load();
+      load({ timer: true });
     }, 60 * 1000);
   }
 
@@ -114,11 +121,82 @@
   function stepMonth(n) {
     month = n ? C.shiftMonth(month, n) : C.monthOf(today());
     picked = null;
+    detailDay = null;
+    detailView = null;
+    renderDetail();
     load();
   }
 
-  // What the picked day's lines do: nudge, write the line, add time. Each saves and redraws.
+  // ------------------------------------------------------------------ how a day was written (time-day.js)
+
+  let detailDay = null;     // the day open in "how it was written", or null for the month
+  /** @type {any} */
+  let detailView = null;
+  let detailSeq = 0;
+
+  let detailArrive = false;  // the next draw of the day is its first: scroll to it and focus Back
+
+  async function loadDetail() {
+    const seq = ++detailSeq;
+    const day = detailDay;
+    if (!day) return;
+    let next;
+    try { next = await api.getTimeDay(day); } catch { next = null; }
+    if (seq !== detailSeq || day !== detailDay) return;
+    if (!next) { SB.toast("Couldn't load that day."); closeDetail(); return; }
+    detailView = next;
+    renderDetail();
+  }
+
+  function renderDetail() {
+    const on = !!detailDay && !!detailView;
+    $('timeBody').classList.toggle('tm-detail-open', on);
+    $('timeDetail').hidden = !on;
+    if (!on || !view) return;
+    const at = /** @type {HTMLElement | null} */ (document.activeElement);
+    const was = at?.dataset?.focus && $('timeDetail').contains(at) ? at.dataset.focus : null;
+    SB.timeDay.draw($('timeDetail'), detailView, { summary: view.summary, act: { ...dayActions(detailDay), back: closeDetail, redraw: renderDetail } });
+    const find = sel => /** @type {HTMLElement | null} */ ($('timeDetail').querySelector(sel));
+    if (detailArrive) {
+      detailArrive = false;
+      $('timeDetail').scrollIntoView({ block: 'start', behavior: 'instant' });
+      find('[data-focus="td-back"]')?.focus();
+    } else if (was) {
+      // The button pressed may be gone (a kept line has no Keep): its line's first sentence, else Back.
+      (find(`[data-focus="${CSS.escape(was)}"]`) || find(`[data-focus^="sentence:${CSS.escape(was.split(':').slice(1).join(':'))}|"]`) || find('[data-focus="td-back"]'))?.focus();
+    }
+  }
+
+  function openDetail(day) {
+    detailDay = day;
+    detailView = null;
+    detailArrive = true;
+    loadDetail();
+  }
+
+  function closeDetail() {
+    detailDay = null;
+    detailView = null;
+    renderDetail();
+    /** @type {HTMLElement | null} */ (document.querySelector('[data-focus="how"]'))?.focus();
+  }
+
+  // What the picked day's lines do: nudge, write the line, add time, and
+  // Shellby's write-up (write, keep, drop). Each saves and redraws.
   const dayActions = day => ({
+    write: async () => {
+      const r = await api.writeTimeDay(day);
+      if (!r?.ok) { SB.toast(r?.error || "Couldn't write that day up."); load(); return; }
+      SB.toast(r.written === 1 ? 'Wrote 1 line. Keep it if it reads right' : `Wrote ${r.written} lines. Keep the ones that read right`);
+      load();
+    },
+    keep: key => api.keepTimeDraft(day, key || null).then(r => {
+      if (!r?.ok) return SB.toast(r?.error || "Couldn't keep that.");
+      if (r.kept > 1) SB.toast(`Kept ${r.kept} lines`);
+      load();
+    }),
+    drop: key => api.dropTimeDraft(day, key).then(r => (r?.ok ? load() : SB.toast(r?.error || "Couldn't drop that."))),
+    detail: () => openDetail(day),
     nudge: (key, minutes) => api.addTime({ key, day, minutes }).then(r => (r?.ok ? load() : SB.toast(r?.error || "Couldn't change that."))),
     note: (key, note) => api.addTime({ key, day, minutes: 0, note }).then(r => { if (!r?.ok) SB.toast(r?.error || "Couldn't save that."); }),
     add: async (key, minutes, note) => {
@@ -432,5 +510,5 @@
     if (state.view === 'time') renderNow(now);
   });
 
-  SB.views.time = { render: () => { syncList = null; load(); scheduleRefresh(); } };
+  SB.views.time = { render: () => { syncList = null; detailDay = null; detailView = null; renderDetail(); load(); scheduleRefresh(); } };
 })();

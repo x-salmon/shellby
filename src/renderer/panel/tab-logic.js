@@ -58,6 +58,8 @@
   function icon(t, doing) {
     if (t.pending) return { kind: 'ask', title: 'Needs your OK', text: '?' };
     if (t.inTerminal) return { kind: 'term', title: 'Carrying on in a terminal', text: '›_' };
+    // Paused (main's session/pause.js): not working, and waiting on you to continue.
+    if (t.pause?.phase === 'paused' || t.pause?.phase === 'parked') return { kind: 'cut', title: 'Paused · Continue picks up where he stopped', text: '⏸' };
     if (doing === 'turn') return { kind: 'busy', title: t.crew ? `${several(t.crew, 'helper')} working` : 'Working' };
     // Not done, so not the finished tick; not the working spinner either, which
     // would say Claude is still replying.
@@ -137,7 +139,32 @@
     return `${step} · ${when}`;
   }
 
-  const api = { NEW_TITLE, planLine, reorder, nudgeBefore, keyTarget, stepTarget, shownTitle, firstTitle, icon, tabClass, steerPlan, queueBack, queueTag, queueText, slashCandidates };
+  // The busy line and its Pause button for a tab's pause (main's session/pause.js):
+  // { text, button: 'pause' | 'pausing' | 'continue', stop } where text replaces
+  // the working line ('' keeps it) and stop says whether Stop shows.
+  // pause: null or { phase, waitingOn, coolsAt, parkAt }.
+  const hhmm = ms => { const t = new Date(ms); return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`; };
+  function pauseLine(pause) {
+    switch (pause?.phase) {
+      case 'pausing':
+        return { text: `Pausing after this step… waiting for ${pause.waitingOn || 'his reply'}`, button: 'pausing', stop: true };
+      case 'paused': {
+        const when = Number.isFinite(pause.coolsAt) ? ` · its cache goes cold at ${hhmm(pause.coolsAt)}` : '';
+        return { text: `Paused. Nothing more runs until you continue${when}`, button: 'continue', stop: true };
+      }
+      case 'parking':
+        return { text: 'Pausing… letting him note where he stopped', button: 'pausing', stop: true };
+      case 'parked':
+        return { text: 'Paused. Continue picks up where he left off', button: 'continue', stop: true };
+      default:
+        return { text: '', button: 'pause', stop: true };
+    }
+  }
+
+  // What Continue sends after a parked pause, with nothing queued to send instead.
+  const CONTINUE_TEXT = 'Continue where you left off.';
+
+  const api = { NEW_TITLE, CONTINUE_TEXT, pauseLine, planLine, reorder, nudgeBefore, keyTarget, stepTarget, shownTitle, firstTitle, icon, tabClass, steerPlan, queueBack, queueTag, queueText, slashCandidates };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyTabLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

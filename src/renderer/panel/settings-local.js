@@ -13,6 +13,7 @@
     { id: 'routines', label: 'Routine drafts', on: true },
     { id: 'hooks', label: 'Hook drafts', on: true },
     { id: 'workflows', label: 'Workflow drafts', on: true },
+    { id: 'timesheet', label: 'Writing up your day on the Time page', on: true },
     { id: 'quiz', label: 'Quiz me questions (best with a model that reads code well)', on: false },
   ];
   const OFF_PC =`Use the address of a server on this PC, like ${DEFAULT_URL}.`;

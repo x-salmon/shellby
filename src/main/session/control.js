@@ -61,14 +61,20 @@ const control = {
     if (this.busy && this.waiting) {
       // Claude never saw it, so there's nothing to interrupt: the turn just ends.
       this.waiting = null;
+      this.pauseEnded(); // a pause asked for before it started goes with it
       this.setBusy(false);
       this.emitItem({ kind: 'result', ok: false, interrupted: true, error: null, durationMs: 0 });
       return;
     }
-    if (!this.proc || !this.busy) return;
+    if (!this.busy) return this.clearParked(); // a parked pause: Stop means you won't carry on
+    if (!this.proc) return;
     this.interrupting = true;
     for (const id of [...this.pending.keys()]) this.respond(id, 'deny', 'Interrupted by the user.');
     this.write({ type: 'control_request', request_id: randomUUID(), request: { subtype: 'interrupt' } });
+    // Steps held by a pause are answered after the interrupt, so none of them
+    // carries on: with `interrupting` set, nothing queued goes in with them.
+    // A parked pause stays: what's stopped is a turn since (Keep warm's ping).
+    if (this.pause?.phase !== 'parked') this.releasePause();
     // If the CLI doesn't wind down promptly, kill it; the session can be resumed.
     // Only this turn: once it has ended, the next message runs in the same
     // process, and killing that one would read as a crash.
@@ -142,6 +148,7 @@ const control = {
    */
   async rewindTo(anchor) {
     await this.stop();
+    this.clearParked(); // rewound past where it paused (pause.js)
     if (anchor) this.resumeAt = anchor;
     else this.sessionId = null;
     this.lastUuid = null;
@@ -166,12 +173,19 @@ const control = {
   // Claude Code's own queue. Only once nothing else of this step is still
   // running (until Claude has read it, Stop can't take it back), not for a
   // subagent's tools, whose steer would wait on the whole subagent, and not
-  // once you've pressed Stop.
+  // once you've pressed Stop. While paused, the answer is held back instead (pause.js).
   steer(requestId, input) {
+    if (this.holdStep(requestId, input)) return;
+    this.answerStep(requestId, input);
+  },
+
+  // letIn: false when parking a pause (pause.js park), whose own message goes
+  // in instead: what you queued waits for Continue.
+  answerStep(requestId, input, letIn = true) {
     try {
       this.openTools.delete(input?.tool_use_id);
       const stopping = this.interrupting || input?.is_interrupt;
-      if (this.busy && !stopping && !input?.agent_id && !this.openTools.size && this.proc?.stdin.writable) {
+      if (letIn && this.busy && !stopping && !input?.agent_id && !this.openTools.size && this.proc?.stdin.writable) {
         for (const s of this.takeSteers?.() || []) {
           this.write({ type: 'user', message: { role: 'user', content: s.content } });
           this.steered.push(s.item);

@@ -54,6 +54,7 @@
 <link rel="stylesheet" href="workflow-canvas.css">
 <link rel="stylesheet" href="wf-chat.css">
 <link rel="stylesheet" href="time.css">
+<link rel="stylesheet" href="time-day.css">
 <link rel="stylesheet" href="projects.css">
 <link rel="stylesheet" href="pages.css">
 <link rel="stylesheet" href="viewer.css">
@@ -252,6 +253,8 @@
         <span class="status-crab" aria-hidden="true"></span>
         <span class="status-text" id="statusText">Working…</span>
         <span class="status-time" id="statusTime" title="How long this prompt has been running, the tokens it has used so far, and its step through Claude's to-do list with a rough time left"></span>
+        <!-- Pause: he stops after the step he's on and waits; Continue lets him go on (tab-send.js) -->
+        <button type="button" class="pause-btn" id="pauseBtn" title="He finishes the step he's on, then waits until you continue">Pause</button>
         <button type="button" class="stop-btn" id="stopBtn">Stop <kbd>Esc</kbd></button>
       </div>
       <div class="box-extras">
@@ -1604,7 +1607,7 @@
         <li><b>Claude at work.</b> While Claude works in a project, your terminal and docs count for it.</li>
         <li><b>Git.</b> A commit, checkout or pull says which project you're in.</li>
       </ul>
-      <p>The clock stops when you're away from the keyboard. Window titles are read to find the project and then forgotten: only the project, the day and the minutes are kept, on this PC. Nothing is sent anywhere unless you send it to your time tracker, or switch on syncing your hours between your PCs.</p>
+      <p>The clock stops when you're away from the keyboard. Window titles are read to find the project and then forgotten: only the project, the day, the minutes and which quarter hours they fell in are kept, on this PC. Nothing is sent anywhere unless you send it to your time tracker, or switch on syncing your hours between your PCs.</p>
     </section>
     <p class="tm-now" id="timeNow" aria-live="polite"></p>
     <div id="timeBody">
@@ -1625,6 +1628,7 @@
         </section>
         <section class="tm-dayview" id="timeDay" aria-label="The picked day"></section>
       </div>
+      <section class="td-detail" id="timeDetail" aria-label="How the day was written up" hidden></section>
 
       <section class="setting-group tm-projects-wrap" aria-labelledby="timeProjectsTitle">
         <h3 id="timeProjectsTitle">Projects this month</h3>
@@ -1639,7 +1643,7 @@
           <button type="button" class="btn slim-btn" id="timeCsv">Save CSV</button>
           <button type="button" class="btn ghost slim-btn" id="timeCopy">Copy as text</button>
         </div>
-        <p class="muted small" id="timeExportNote">For the month above, rounded as set below. Each day's line is its note, or else your commit messages.</p>
+        <p class="muted small" id="timeExportNote">For the month above, rounded as set below. Each day's line is what you wrote or kept, or else your commit messages.</p>
         <div class="tm-sync" id="timeSync"></div>
       </section>
 
@@ -3233,6 +3237,7 @@
 <script src="../shared/outlook-format.js"></script>
 <script src="../shared/time-format.js"></script>
 <script src="../shared/time-calendar.js"></script>
+<script src="../shared/time-dayline.js"></script>
 <script src="../shared/streaks-format.js"></script>
 <script src="../shared/panes.js"></script>
 <script src="../shared/branch-label.js"></script>
@@ -3404,6 +3409,7 @@
 <script src="xp.js"></script>
 <script src="week-card.js"></script>
 <script src="time-month.js"></script>
+<script src="time-day.js"></script>
 <script src="time.js"></script>
 <script src="streaks.js"></script>
 <script src="focus.js"></script>
