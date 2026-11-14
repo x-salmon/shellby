@@ -29,6 +29,14 @@ const RETRY_MS = 60 * 1000;          // a folder git couldn't place (busy, timed
 
 const caseKey = p => (process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p));
 const folderName = key => key.split(/[\\/]/).filter(Boolean).pop() || key;
+// "September 2026" when from..to is exactly one calendar month (the Time page's
+// calendar asks for months), so a timesheet over it says so; else null.
+const wholeMonth = (from, to) => {
+  const [y, m, d] = from.split('-').map(Number);
+  const last = new Date(y, m, 0);
+  if (d !== 1 || to !== tt.dayKey(last.getTime())) return null;
+  return last.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+};
 
 class TimeTracker {
   /**
@@ -263,7 +271,7 @@ class TimeTracker {
 
   rangeOf(id, from, to) {
     const all = tt.ranges(this.now());
-    if (id === 'custom' && tt.daysBetween(from, to).length) return { id: 'custom', label: `${from} to ${to}`, from, to };
+    if (id === 'custom' && tt.daysBetween(from, to).length) return { id: 'custom', label: wholeMonth(from, to) || `${from} to ${to}`, from, to };
     // ranges() always has a week
     return all.find(r => r.id === id) || /** @type {typeof all[number]} */ (all.find(r => r.id === 'week'));
   }

@@ -1,14 +1,16 @@
 // End-to-end check of the Time page against the dev app over CDP (throwaway
-// profile). Seeds a week of tracked time for this repository, then checks the
-// page: the total, the chart, the project and its commits from git, rounding
-// and rate, adding time by hand, the switch with History, and that a timesheet
-// PDF really renders (in the main process, through the same hidden window).
+// profile). Seeds tracked time for this repository, then checks the page: the
+// month's total, the calendar and the picked day, its commits from git,
+// rounding and rate, adding time to a day, stepping months, the wide layout,
+// the switch with History, and that a timesheet PDF really renders (in the
+// main process, through the same hidden window).
 //   node scripts/e2e-time.js [screenshot.png]
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
+const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9351;
@@ -30,15 +32,16 @@ async function cdp(url) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
   const key = ROOT.toLowerCase();
   const today = dayKey(Date.now());
-  const yesterday = dayKey(Date.now() - 24 * 60 * 60 * 1000);
+  // Another day this month, unless today is the 1st.
+  const other = new Date().getDate() > 1 ? dayKey(Date.now() - 24 * 60 * 60 * 1000) : null;
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({
     onboarded: false, crabOnly: true,
     streaks: { days: [], projects: { [key]: { name: 'shellby', lastSeen: Date.now() } } },
     timeTracking: {
       enabled: true, roundMinutes: 15, currency: 'USD',
       projects: { [key]: { name: 'shellby', client: 'Harbor Tree', rate: 100 } },
-      days: { [today]: { [key]: 80 * 60 }, [yesterday]: { [key]: 2 * 3600 + 7 * 60 } },
-      notes: { [yesterday]: { [key]: 'Time tracker design' } },
+      days: { [today]: { [key]: 80 * 60 }, ...(other ? { [other]: { [key]: 2 * 3600 + 7 * 60 } } : {}) },
+      notes: other ? { [other]: { [key]: 'Time tracker design' } } : {},
     },
   }));
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [`--inspect=${INSPECT}`, ROOT, `--remote-debugging-port=${PORT}`],
@@ -54,59 +57,85 @@ async function cdp(url) {
     const { send, ev } = await cdp(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     await panelBooted(ev);
     await ev("SB.setView('time')");
-    const ready = async () => { for (let i = 0; i < 40; i++) { if (await ev("document.querySelectorAll('#timeProjects .tm-project').length")) return true; await wait(250); } return false; };
-    check(await ready(), 'the Time page lists a project');
+    const ready = async () => { for (let i = 0; i < 40; i++) { if (await ev("document.querySelectorAll('#timeCal .tm-day[data-day]').length && document.querySelectorAll('#timeProjects .tm-project').length")) return true; await wait(250); } return false; };
+    check(await ready(), 'the Time page shows the month and lists a project');
 
-    const total = await ev("document.getElementById('timeTotal').textContent");
-    check(/^3h 27m this week$/.test(total), `the week's total (${total})`);
-    const bars = await ev("document.querySelectorAll('#timeChart .tm-bar').length");
-    const dow = (new Date().getDay() + 6) % 7;
-    check(bars === dow + 1, `a bar for each day so far this week (${bars})`);
-    const tip = await ev("[...document.querySelectorAll('#timeChart .tm-bar')].pop().getAttribute('aria-label') || [...document.querySelectorAll('#timeChart .tm-bar')].pop().dataset.tip");
-    check(/1h 20m/.test(tip || ''), `today's bar says its hours (${tip})`);
-    const amount = await ev("document.getElementById('timeAmount').textContent");
-    // 80 min -> 1:15, 127 min -> 2:00 at 15-minute rounding: 3.25 h x $100
-    check(/\$325\.00/.test(amount) && /3\.25 billable h/.test(amount), `rounded and billed (${amount})`);
+    const stat = () => ev("document.querySelector('#timeStats .tm-stat dd').textContent");
+    check(await stat() === (other ? '3h 27m' : '1h 20m'), `the month's total (${await stat()})`);
+    const cells = await ev("[...document.querySelectorAll('#timeCal .tm-day[data-day]')].map(b => b.dataset.day)");
+    const monthDays = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    check(cells.length === monthDays, `a day for each day of the month (${cells.length} of ${monthDays})`);
+    check(await ev(`document.querySelector('#timeCal [data-day="${today}"] .tm-d-t').textContent`) === '1:20', "today's day says its hours");
+    check(await ev(`document.querySelector('#timeCal [data-day="${today}"]').getAttribute('aria-pressed')`) === 'true', 'today is picked to start with');
+    check(await ev("document.querySelectorAll('#timeDay .tm-line').length") === 1, 'the picked day lists its one project');
+    check(await ev("document.querySelector('#timeDay .tm-line-time').textContent") === '1:20', "the line shows today's time");
+    const amount = await ev("[...document.querySelectorAll('#timeStats .tm-stat')].map(s => s.textContent).join(' ')");
+    // 80 min -> 1:15, 127 min -> 2:00 at 15-minute rounding, x $100
+    check((other ? /\$325\.00/ : /\$125\.00/).test(amount), `rounded and billed (${amount})`);
 
-    await ev("document.querySelector('#timeProjects details').open = true");
-    await wait(200);
-    const commits = await ev("document.querySelectorAll('#timeProjects .tm-commits').length");
-    check(commits > 0, `git commits show on their days (${commits} days with commits)`);
-    const note = await ev(`[...document.querySelectorAll('#timeProjects .tm-note')].map(i => i.value).includes('Time tracker design')`);
-    check(note, 'the note is on its day');
+    if (other) {
+      await ev(`document.querySelector('#timeCal [data-day="${other}"]').click()`);
+      await wait(150);
+      check(await ev("document.querySelector('#timeDay .tm-note').value") === 'Time tracker design', 'the picked day shows its line for the timesheet');
+      // Arrow keys walk the days.
+      await ev(`document.querySelector('#timeCal [data-day="${other}"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))`);
+      await wait(150);
+      check(await ev("document.activeElement?.dataset?.day") === today, 'the right arrow moves to the next day');
+    }
+    // Some day this month has this repository's commits on it, when you made any here this month.
+    const since = `${today.slice(0, 8)}01`;
+    const mine = (() => { try { const me = execFileSync('git', ['-C', ROOT, 'config', '--get', 'user.email'], { encoding: 'utf8' }).trim(); return execFileSync('git', ['-C', ROOT, 'log', '--branches', '--no-merges', '-1', `--since=${since}`, `--author=${me}`, '--format=%H'], { encoding: 'utf8' }).trim(); } catch { return ''; } })();
+    const commits = !mine ? 'none this month' : await ev(`(() => {
+      for (const b of document.querySelectorAll('#timeCal .tm-day[data-day]:not(:disabled)')) { b.click(); if (document.querySelector('#timeDay .tm-commits')) return b.dataset.day; }
+      return null;
+    })()`);
+    check(!!commits, `git commits show on their day (${commits})`);
+    await ev(`document.querySelector('#timeCal [data-day="${today}"]').click()`);
 
     await ev("document.getElementById('timeRound').value = '30|up'; document.getElementById('timeRound').dispatchEvent(new Event('change'))");
     await wait(800);
-    const up = await ev("document.getElementById('timeAmount').textContent");
-    check(/\$400\.00/.test(up), `rounding up to 30 minutes changes the bill (${up})`);
+    const up = await ev("[...document.querySelectorAll('#timeStats .tm-stat')].map(s => s.textContent).join(' ')");
+    check((other ? /\$400\.00/ : /\$150\.00/).test(up), `rounding up to 30 minutes changes the bill (${up})`);
 
-    // Add 45 minutes to today by hand.
+    // Add 45 minutes to today from the day's own form, then 15 more with its +.
     await ev(`(() => {
-      document.getElementById('timeAddHours').value = '0';
-      document.getElementById('timeAddMinutes').value = '45';
-      document.getElementById('timeAddNote').value = 'Client call';
-      document.getElementById('timeAdd').requestSubmit();
+      const form = document.querySelector('#timeDay .tm-adder');
+      const [project, minutes] = form.querySelectorAll('select');
+      project.value = ${JSON.stringify(key)};
+      minutes.value = '45';
+      form.querySelector('.tm-add-note').value = 'Client call';
+      form.requestSubmit();
     })()`);
     await wait(900);
-    const after = await ev("document.getElementById('timeTotal').textContent");
-    check(/^4h 12m this week$/.test(after), `time added by hand counts (${after})`);
+    check(await stat() === (other ? '4h 12m' : '2h 05m'), `time added to the day counts (${await stat()})`);
+    check(await ev("document.querySelector('#timeDay .tm-line-time').textContent") === '2:05', 'the day shows the added time');
+    await ev("document.querySelector('#timeDay .tm-nudge .icon-btn:last-child').click()");
+    await wait(900);
+    check(await ev("document.querySelector('#timeDay .tm-line-time').textContent") === '2:20', 'the + adds 15 minutes');
     const bad = await ev("shellby.addTime({ key: 'c:\\\\not\\\\a\\\\project', day: '2026-01-01', minutes: 30 }).then(r => r.ok)");
     check(bad === false, 'time for an unknown project is refused');
     const future = await ev(`shellby.addTime({ key: ${JSON.stringify(key)}, day: '2999-01-01', minutes: 30 }).then(r => r.ok)`);
     check(future === false, 'time in the future is refused');
 
-    const out = process.argv[2] || path.join(os.tmpdir(), 'shellby-time.png');
-    const shot = await send('Page.captureScreenshot', { format: 'png' });
-    if (shot?.data) { fs.writeFileSync(out, Buffer.from(shot.data, 'base64')); console.log(`screenshot: ${out}`); }
+    // Back a month and home again.
+    const label = await ev("document.getElementById('timeMonth').textContent");
+    check(await ev("document.getElementById('timeNext').disabled"), "there's no month after this one");
+    await ev("document.getElementById('timePrev').click()");
+    await wait(900);
+    check(await ev("document.getElementById('timeMonth').textContent") !== label && !await ev("document.getElementById('timeThisMonth').hidden"), 'the previous month opens, with the way back');
+    await ev("document.getElementById('timeThisMonth').click()");
+    await wait(900);
+    check(await ev("document.getElementById('timeMonth').textContent") === label, 'back to this month');
 
-    await ev("document.getElementById('timeProjects').scrollIntoView()");
+    const out = process.argv[2] || path.join(os.tmpdir(), 'shellby-time.png');
+    await savePng(send, out);
+    // Full screen on a big monitor: the day beside the calendar.
+    await send('Emulation.setDeviceMetricsOverride', { width: 2560, height: 1440, deviceScaleFactor: 1, mobile: false });
+    await wait(400);
+    check(await ev("getComputedStyle(document.querySelector('.tm-month')).gridTemplateColumns.split(' ').length") === 2, 'a wide panel puts the day beside the calendar');
+    await savePng(send, out.replace(/\.png$/, '-wide.png'));
+    await send('Emulation.clearDeviceMetricsOverride');
     await wait(300);
-    const shot2 = await send('Page.captureScreenshot', { format: 'png' });
-    if (shot2?.data) fs.writeFileSync(out.replace(/\.png$/, '-days.png'), Buffer.from(shot2.data, 'base64'));
-    await ev("document.getElementById('timeView').scrollTop = 1e6");
-    await wait(300);
-    const shot3 = await send('Page.captureScreenshot', { format: 'png' });
-    if (shot3?.data) fs.writeFileSync(out.replace(/\.png$/, '-forms.png'), Buffer.from(shot3.data, 'base64'));
 
     await ev("document.querySelector('#timeView [data-goto-view=\"history\"]').click()");
     await wait(300);

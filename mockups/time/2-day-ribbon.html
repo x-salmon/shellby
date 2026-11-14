@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time, concept 2: each day as a ribbon, with why each block counted</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 580px; gap: 32px; }
+  .main { display: flex; flex-direction: column; gap: 28px; min-height: 0; }
+
+  /* the hour axis everything shares: 7 am to 10 pm */
+  .axis { position: relative; height: 26px; margin: 0 110px 0 150px; color: var(--sand-faint); font-size: 14px; }
+  .axis span { position: absolute; transform: translateX(-50%); }
+
+  /* ---- today, big ---- */
+  .today { padding: 34px 40px 250px; }
+  .today .top { display: flex; align-items: baseline; gap: 22px; margin-bottom: 26px; }
+  .today h2 { font: 500 30px/1 var(--font-pixel); }
+  .today .tot { font: 700 30px/1 var(--font-body); }
+  .today .tot small { font-weight: 400; color: var(--sand-dim); font-size: 18px; margin-left: 8px; }
+  .lane { position: relative; margin: 0 110px 0 150px; }
+  .lane .lbl { position: absolute; left: -150px; top: 50%; transform: translateY(-50%); color: var(--sand-dim); font-size: 16px; }
+  .track { position: relative; height: 150px; border-radius: 12px; background:
+      repeating-linear-gradient(90deg, var(--line-soft) 0 1px, transparent 1px calc(100% / 15)), var(--abyss); }
+  .blk { position: absolute; top: 14px; bottom: 14px; border-radius: 8px; background: var(--pc); color: var(--abyss); padding: 12px 14px; overflow: hidden; }
+  .blk b { display: block; font-size: 16px; }
+  .blk small { font-size: 14px; opacity: .8; }
+  .blk.on { box-shadow: 0 0 0 3px var(--abyss), 0 0 0 5px var(--sand); }
+  .away { position: absolute; top: 14px; bottom: 14px; border-radius: 8px; border: 1.5px dashed var(--line);
+    background: repeating-linear-gradient(135deg, transparent 0 9px, rgba(127,214,194,.05) 9px 18px); color: var(--sand-faint); font-size: 15px; display: grid; place-items: center; }
+  .nowline { position: absolute; top: -10px; bottom: -10px; width: 2px; background: var(--glass); }
+  .nowline::before { content: "now"; position: absolute; top: -24px; left: 50%; transform: translateX(-50%); color: var(--glass); font-size: 14px; font-weight: 700; }
+  .srclane { height: 34px; margin-top: 12px; }
+  .srclane .src { position: absolute; top: 4px; transform: translateX(-9px); }
+  .srclane .src i { width: 22px; height: 22px; font-size: 12px; }
+
+  .pop { position: absolute; top: 172px; left: calc(21.11% - 10px); width: 520px; z-index: 2; background: var(--reef-2); border: 1px solid var(--line);
+    border-radius: var(--r-lg); padding: 22px 24px; box-shadow: 0 18px 40px rgba(0,0,0,.45); display: grid; gap: 14px; }
+  .pop::before { content: ""; position: absolute; top: -9px; left: 40px; width: 16px; height: 16px; background: var(--reef-2); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+  .pop h3 { font-size: 20px; }
+  .pop p { color: var(--sand-dim); font-size: 16px; }
+  .pop .row { display: flex; gap: 10px; }
+
+  /* ---- the week below, one thin ribbon a day ---- */
+  .week { padding: 30px 40px; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+  .week h3 { font-size: 19px; color: var(--sand-dim); margin-bottom: 6px; }
+  .wrow { display: grid; grid-template-columns: 150px 1fr 110px; align-items: center; }
+  .wrow .d { color: var(--sand-dim); font-size: 17px; }
+  .wrow .d b { color: var(--sand); }
+  .wrow .t { text-align: right; font-weight: 700; font-size: 19px; }
+  .mini { position: relative; height: 64px; border-radius: 8px; background:
+      repeating-linear-gradient(90deg, var(--line-soft) 0 1px, transparent 1px calc(100% / 15)), var(--abyss); }
+  .mini i { position: absolute; top: 10px; bottom: 10px; border-radius: 5px; background: var(--pc); }
+  .mini i.guess { background: none; border: 2px dashed var(--amber); }
+  .wrow.cur .d b { color: var(--glass); }
+
+  /* ---- right: totals and what to check ---- */
+  .side { display: flex; flex-direction: column; gap: 24px; }
+  .side section { padding: 30px 32px; }
+  .side h3 { font: 500 24px/1.2 var(--font-pixel); margin-bottom: 18px; }
+  .tot-list { list-style: none; display: grid; gap: 14px; }
+  .tot-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; font-size: 18px; }
+  .tot-list small { color: var(--sand-faint); font-size: 15px; margin-left: 8px; }
+  .tot-list .h { font-weight: 700; }
+  .checks { list-style: none; display: grid; gap: 14px; }
+  .checks li { border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; display: grid; gap: 12px; }
+  .checks p { font-size: 17px; line-height: 1.45; }
+  .checks .row { display: flex; gap: 10px; }
+  .keyline { margin-top: auto; color: var(--sand-faint); font-size: 15px; display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 0 6px; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="now"><span class="live"></span><b>shellby</b><span class="why">since 1:20 pm, Claude at work</span></span>
+    <span class="spacer"></span>
+    <span class="picker"><span class="arrows">‹ ›</span><b>This week</b><span class="muted">Nov 9 – 15</span><span class="caret">▾</span></span>
+    <button class="btn">Timesheet…</button>
+    <button class="btn ghost">⛑️ Guard my focus</button>
+  </header>
+
+  <section class="body">
+    <div class="main">
+      <section class="panel today">
+        <div class="top"><h2>Today</h2><span class="tot">2h 30m<small>Friday, Nov 13, and counting</small></span></div>
+        <div class="axis"><span style="left:0">7 am</span><span style="left:13.33%">9</span><span style="left:26.67%">11</span><span style="left:40%">1 pm</span><span style="left:53.33%">3</span><span style="left:66.67%">5</span><span style="left:80%">7</span><span style="left:93.33%">9</span></div>
+        <div class="lane">
+          <span class="lbl">Projects</span>
+          <div class="track">
+            <div class="blk p1" style="left:13.89%;width:5%"><b>shellby</b><small>45m</small></div>
+            <div class="blk p2 on" style="left:21.11%;width:5.56%"><b>booking</b><small>50m</small></div>
+            <div class="away" style="left:26.67%;width:15.56%">Away 2h 20m, not counted</div>
+            <div class="blk p1" style="left:42.22%;width:6.11%"><b>shellby</b><small>55m</small></div>
+            <div class="nowline" style="left:48.33%"></div>
+          </div>
+          <div class="pop">
+            <h3>booking-app, 10:10 to 11:00 am</h3>
+            <p>VS Code had the booking-app folder open. One commit at 10:55: “fix: reminder sent twice across time zones”.</p>
+            <div class="row"><button class="btn small">Shorten or lengthen</button><button class="btn small">It was another project…</button><button class="btn small ghost">Not work</button></div>
+          </div>
+        </div>
+        <div class="lane srclane">
+          <span class="lbl">Why</span>
+          <span class="src cl" style="left:14%"><i>C</i></span>
+          <span class="src git" style="left:18.9%"><i>G</i></span>
+          <span class="src win" style="left:21.3%"><i>W</i></span>
+          <span class="src git" style="left:26.1%"><i>G</i></span>
+          <span class="src cl" style="left:42.4%"><i>C</i></span>
+          <span class="src git" style="left:46.9%"><i>G</i></span>
+        </div>
+      </section>
+
+      <section class="panel week">
+        <h3>The rest of this week</h3>
+        <div class="wrow"><span class="d"><b>Mon</b> Nov 9</span><div class="mini"><i class="p1" style="left:13.33%;width:21.11%"></i><i class="p2" style="left:40%;width:13.33%"></i><i class="p3" style="left:86.67%;width:4.44%"></i></div><span class="t">5:50</span></div>
+        <div class="wrow"><span class="d"><b>Tue</b> Nov 10</span><div class="mini"><i class="p1" style="left:10%;width:29.44%"></i><i class="p4" style="left:46.67%;width:14.44%"></i><i class="p2" style="left:63.33%;width:10%"></i></div><span class="t">8:05</span></div>
+        <div class="wrow"><span class="d"><b>Wed</b> Nov 11</span><div class="mini"><i class="p1" style="left:14.44%;width:18.89%"></i><i class="p4" style="left:40%;width:20%"></i><i class="guess" style="left:63.33%;width:6.67%"></i><i class="p3" style="left:80%;width:8.33%"></i></div><span class="t">7:05</span></div>
+        <div class="wrow"><span class="d"><b>Thu</b> Nov 12</span><div class="mini"><i class="p1" style="left:6.67%;width:33.89%"></i><i class="p2" style="left:46.67%;width:18.33%"></i><i class="p4" style="left:66.67%;width:3.33%"></i></div><span class="t">8:20</span></div>
+        <div class="wrow cur"><span class="d"><b>Fri</b> Today</span><div class="mini"><i class="p1" style="left:13.89%;width:5%"></i><i class="p2" style="left:21.11%;width:5.56%"></i><i class="p1" style="left:42.22%;width:6.11%"></i></div><span class="t">2:30</span></div>
+        <div class="keyline">
+          <span class="src win"><i>W</i>The window in front</span>
+          <span class="src cl"><i>C</i>Claude at work</span>
+          <span class="src git"><i>G</i>A commit, checkout or pull</span>
+          <span>Dashed: commits but no time kept</span>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section class="panel">
+        <h3>This week</h3>
+        <ul class="tot-list">
+          <li class="p1"><span class="sw"></span><span>shellby</span><span class="h">17:10</span></li>
+          <li class="p2"><span class="sw"></span><span>booking-app<small>Northwind Dental</small></span><span class="h">7:05</span></li>
+          <li class="p4"><span class="sw"></span><span>label-cloud<small>Pike &amp; Co</small></span><span class="h">5:40</span></li>
+          <li class="p3"><span class="sw"></span><span>rack-builder</span><span class="h">1:55</span></li>
+          <li style="border-top:1px solid var(--line);padding-top:14px"><span></span><span class="muted">31h 50m, $1,353 billable</span><span class="h">31:50</span></li>
+        </ul>
+      </section>
+      <section class="panel">
+        <h3>Worth a look</h3>
+        <ul class="checks">
+          <li><p>Wednesday has 3 commits in <b>booking-app</b> from 4:30 to 5:30 pm but no time kept.</p>
+            <div class="row"><button class="btn small primary">Keep 1h</button><button class="btn small ghost">Leave it out</button></div></li>
+          <li><p>45m in Chrome on <b>github.com/pike-co/label-cloud</b> on Tuesday counted for label-cloud, billed to Pike &amp; Co.</p>
+            <div class="row"><button class="btn small">That's right</button><button class="btn small ghost">Don't bill it</button></div></li>
+          <li><p>The clock stopped at 11:00 today after 5 minutes away. Back at 1:20.</p>
+            <div class="row"><button class="btn small ghost">I was on a call: add it</button></div></li>
+        </ul>
+      </section>
+    </aside>
+  </section>
+</main>
+<div class="caption">Concept 2: day ribbon</div>
+</body>
+</html>
