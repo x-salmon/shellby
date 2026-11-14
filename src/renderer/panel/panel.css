@@ -342,7 +342,22 @@ body:not([data-view="chat"]) .tabstrip { display: none; }
 .suggestion:hover { border-color: var(--coral); background: var(--reef-2); }
 .suggestion .glyph { font: 600 var(--fs-13) var(--font-pixel); color: var(--coral); width: 16px; text-align: center; transition: transform .2s var(--ease-spring); }
 .suggestion:hover .glyph { transform: translateX(3px); }
-.empty-hint { margin-top: 20px; color: var(--sand-faint); font-size: var(--fs-12); }
+/* The keys worth knowing on day one, as a legend: keys right-aligned in one
+   column, what they do in the next. Each group is a fixed width so their key
+   columns line up when the narrow panel stacks them; a wide one sets them side
+   by side. The key column grows for a long hotkey of your own, and the heading
+   (a subgrid row) stays over what the keys do. */
+.empty-keys {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px 48px;
+  margin-top: 22px; text-align: left; font-size: var(--fs-12-5); color: var(--sand-dim);
+}
+.empty-keys section { display: grid; grid-template-columns: minmax(124px, max-content) 1fr; column-gap: 12px; min-width: 282px; }
+.empty-keys-head { grid-column: 2; margin: 0 0 6px; font: 400 var(--fs-12) var(--font-body); color: var(--sand-faint); }
+.empty-keys dl { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; row-gap: 7px; margin: 0; align-items: center; }
+.empty-keys dt { text-align: right; }
+.empty-keys dd { margin: 0; }
+/* The one that works outside Shellby, so it's the one worth noticing. */
+.empty-keys .hotkey-hint { color: var(--glass); border-color: rgba(127, 214, 194, .35); }
 
 /* The next quest (quests.js): a note pinned above the suggestions, amber like a trophy. */
 .quest-card {

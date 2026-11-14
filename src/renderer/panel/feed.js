@@ -118,7 +118,10 @@
       const e = this.empty;
       e.querySelector('.empty-crab').replaceChildren(SB.sprite());
       e.querySelector('.empty-folder').textContent = SB.tildify(this.cwd || state.cwd);
-      e.querySelector('.hotkey-hint').textContent = SB.prettyAccel(state.settings.hotkey) || 'The tray icon';
+      // Written like the shortcut table ("Ctrl+K"), not like Settings ("Ctrl + K"), so the legend reads as one.
+      e.querySelector('.hotkey-hint').textContent = SB.prettyAccel(state.settings.hotkey).replace(/ \+ /g, '+') || 'The tray icon';
+      // Some of these can be changed in the shortcut list, so they come from it.
+      for (const k of e.querySelectorAll('kbd[data-key]')) k.textContent = SB.shortcuts?.primary(k.dataset.key) || k.textContent;
       // A quest card takes the third suggestion's room.
       // A new install's first tasks lead with a tour of a project, until it's opened once.
       // Shuffled once per conversation. This runs again whenever his look changes

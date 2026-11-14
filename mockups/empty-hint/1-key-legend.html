@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>1 · Key legend: keys line up in a column, split into "anywhere" and "in here"</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .legend { margin: 22px auto 0; display: flex; flex-direction: column; gap: 12px; width: max-content; text-align: left; }
+  .wide .legend { flex-direction: row; gap: 56px; align-items: flex-start; }
+  .legend h2 { font: 400 12px var(--font-body); color: var(--sand-faint-deco); margin-bottom: 6px; }
+  .legend dl { display: grid; grid-template-columns: 124px 1fr; gap: 7px 12px; font-size: 12.5px; color: var(--sand-dim); }
+  .legend dt { text-align: right; }
+  .legend .global kbd { color: var(--glass); border-color: rgba(127,214,194,.35); }
+  .legend .drop { display: inline-block; width: 18px; height: 14px; border: 1px dashed var(--sand-faint); border-radius: 3px; vertical-align: -2px; }
+</style>
+</head>
+<body>
+<template id="hint">
+  <div class="legend">
+    <section>
+      <h2>From anywhere on your PC</h2>
+      <dl><dt class="global"><kbd>Ctrl Alt Space</kbd></dt><dd>Open Shellby</dd></dl>
+    </section>
+    <section>
+      <h2>In here</h2>
+      <dl>
+        <dt><kbd>/</kbd></dt><dd>Run a skill</dd>
+        <dt><kbd>Ctrl K</kbd></dt><dd>Jump to any screen</dd>
+        <dt><kbd>Shift Tab</kbd></dt><dd>Switch mode</dd>
+        <dt><span class="drop"></span></dt><dd>Drop files or paste a screenshot</dd>
+      </dl>
+    </section>
+  </div>
+</template>
+<script src="shared.js"></script>
+</body>
+</html>
