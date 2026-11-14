@@ -148,7 +148,37 @@ function wirePages(d) {
     const r = pages().write(id, ops, who);
     if (!r.ok) return { ok: false, error: r.error };
     changed(id, 'data', { change: { keys: r.changed, values: r.values, who, text: r.text } });
+    toastWrite(id, who, r.text);
     return { ok: true, value: { changed: r.changed } };
+  }
+
+  /**
+   * Tell me when it changes: a toast for an agent's write, on a page that asked
+   * for notify and still has it on, while you aren't in the panel. One a minute.
+   */
+  function toastWrite(id, who, text) {
+    if (!['agent', 'routine', 'terminal'].includes(who.kind)) return;
+    const s = pages();
+    const st = s.state(id);
+    if (!st.notifyOn || !s.access(id).notify || d.panel?.isFocused?.()) return;
+    if (!allow(`toast:${id}`, LIMITS.NOTIFY_PER_MINUTE, Date.now())) return;
+    const man = s.manifest(id);
+    d.notify?.(man?.name || 'A page', `${who.name || 'An agent'} ${text}`.slice(0, 160), () => { d.showPanel?.({ focusInput: false }); changed(id, 'open'); });
+  }
+
+  /** The shelf's miniature, from where the page sits in the panel as it closes (rect in CSS px). */
+  async function thumb(id, rect) {
+    const wc = d.panel?.webContents;
+    if (!wc || !pages().known(id) || format.isDraftId(id)) return { ok: false };
+    const z = wc.getZoomFactor?.() || 1;
+    const r = { x: Math.round(rect.x * z), y: Math.round(rect.y * z), width: Math.round(rect.width * z), height: Math.round(rect.height * z) };
+    if (r.width < 40 || r.height < 40) return { ok: false };
+    try {
+      const img = await wc.capturePage(r);
+      if (img.isEmpty()) return { ok: false };
+      pages().writeThumb(id, img.resize({ width: Math.min(480, r.width) }).toJPEG(72));
+      return { ok: true };
+    } catch { return { ok: false }; }
   }
 
   // ------------------------------------------------------------ MCP tools
@@ -299,7 +329,9 @@ function wirePages(d) {
 
   function list() {
     if (!enabled()) return { on: false, pages: [] };
-    return { on: true, pages: pages().list(), limits: { pages: LIMITS.PAGES, open: LIMITS.OPEN_PAGES } };
+    const s = pages();
+    const withThumb = p => { const t = s.thumb(p.id); return t ? { ...p, thumb: `data:image/jpeg;base64,${t.toString('base64')}` } : p; };
+    return { on: true, pages: s.list().map(withThumb), limits: { pages: LIMITS.PAGES, open: LIMITS.OPEN_PAGES } };
   }
 
   const act = (id, fn, kind = 'meta') => {
@@ -384,7 +416,7 @@ function wirePages(d) {
 
   return {
     pages: {
-      servePages, call, tool, isPageTool, view, list, saveDraft, offAll, enabled, build, change, ask,
+      servePages, call, tool, isPageTool, view, list, saveDraft, offAll, enabled, build, change, ask, thumb,
       store: () => pages(),
       draftsOf: tab => pages().draftsOf(tab),
       files: (id, n) => pages().files(id, n),

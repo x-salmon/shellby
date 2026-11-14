@@ -135,6 +135,16 @@ const ESCAPE = [
     await ev("[...document.querySelectorAll('#pagesMenu .menu-item')].find(b => /Its data/.test(b.textContent))?.click()");
     check(await until("!!document.querySelector('#pgDrawer:not([hidden]) .pg-key code')"), 'Its data opens the drawer with the keys');
     await shot('6-data-drawer');
+
+    // ---- the shelf keeps a miniature; Settings › Pages lists every page's access
+    check(await until("shellby.pages.list().then(r => !!r.pages.find(p => p.id === 'print-queue')?.thumb)"), 'the shelf keeps a miniature of the page');
+    await ev("document.querySelector('#pgOpen .back-btn').click()");
+    check(await until("!!document.querySelector('#pgGrid .pg-tile[data-id=\"print-queue\"] img.pg-thumb')"), 'and its tile shows it');
+    await shot('7-shelf-with-miniatures');
+    await ev("SB.setView('settings')");
+    check(await until("document.querySelectorAll('#pgSetList .pg-set-row').length === 2"), 'Settings › Pages lists both pages');
+    await ev("document.getElementById('pgSetOff').click()");
+    check(await until("shellby.pages.list().then(r => r.pages.every(p => !p.enabled))"), 'Turn every page off turns them all off');
   } catch (e) {
     console.log(`FAIL  ${e.stack || e.message}`);
     fails++;

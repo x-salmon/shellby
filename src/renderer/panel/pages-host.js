@@ -58,6 +58,9 @@
 
     const id = () => view?.id || null;
 
+    let snapTimer = 0;
+    // The shelf's miniature: a while after it loads, and after its data settles, while it's on screen.
+    const snapSoon = ms => { clearTimeout(snapTimer); snapTimer = setTimeout(() => { if (!opts.pane && el.offsetParent !== null) snapshot(); }, ms); };
     let late = false;     // broken only because "ready" was late: ready clears it
     async function show(pageId) {
       if (pageId !== id()) { shown.clear(); ask = null; broken = null; refused = null; pointed = null; setPoint(false); }
@@ -97,6 +100,7 @@
       frameFor = view.id;
       frame = SB.pageFrames.open(view.id, view.url, {
         onReady: () => {
+          snapSoon(1500);
           if (broken && late) { broken = null; late = false; drawCards(); }
           if (!broken && view && !view.draft && view.broken) api.pages.broken(view.id, null);
         },
@@ -117,7 +121,7 @@
           drawCards();
         },
         onAsk: a => { ask = a; drawCards(); },
-        onData: () => { dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); },
+        onData: () => { dot.classList.remove('pulse'); void dot.offsetWidth; dot.classList.add('pulse'); snapSoon(3000); },
       });
       stage.replaceChildren(frame.el);
     }
@@ -234,13 +238,24 @@
       drawCards();
     }
 
+    /** Keep a miniature of the page as it looks now, for its tile on the shelf. */
+    function snapshot() {
+      if (!view || view.draft || broken || !frame?.el.isConnected) return Promise.resolve();
+      // The top-left of the page, at about the tile's shape, so a wide screen's page stays readable small.
+      const r = frame.el.getBoundingClientRect();
+      const width = Math.min(r.width, 520);
+      const height = Math.min(r.height, Math.round(width / 2.5));
+      return api.pages.thumb(view.id, { x: r.x, y: r.y, width, height }).catch(() => {});
+    }
+
     moreBtn.addEventListener('click', () => { if (view) opts.onMenu?.(moreBtn, view); });
 
     return {
       el, show, id,
       refresh: () => (view ? show(view.id) : null),
       reload: () => frame?.reload(),
-      close: () => { frame?.close(); frame = null; frameFor = null; el.remove(); },
+      snapshot,
+      close: () => { clearTimeout(snapTimer); frame?.close(); frame = null; frameFor = null; el.remove(); },
     };
   }
 

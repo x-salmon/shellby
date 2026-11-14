@@ -63,7 +63,9 @@
       onkeydown: e => { if (e.key === 'Enter') open(p.id); else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); menuAt(t, p); } },
       oncontextmenu: e => { e.preventDefault(); menuAt(t, p); },
     },
-    h('div', { class: 'pg-mini', 'aria-hidden': 'true' }, h('span', { class: 'pg-mini-icon', text: p.icon || '▦' }), p.pinned ? h('span', { class: 'pg-pin', text: '★' }) : null),
+    h('div', { class: 'pg-mini', 'aria-hidden': 'true' },
+      p.thumb ? h('img', { class: 'pg-thumb', src: p.thumb, alt: '' }) : h('span', { class: 'pg-mini-icon', text: p.icon || '▦' }),
+      p.pinned ? h('span', { class: 'pg-pin', text: '★' }) : null),
     h('div', { class: 'pg-tile-body' },
       h('div', { class: 'pg-tile-name' }, h('b', { text: p.name }), stateChip(p)),
       h('div', { class: 'pg-tile-desc muted small', text: hit || p.description || `${p.keys.length} ${p.keys.length === 1 ? 'key' : 'keys'} of data` }),
@@ -147,7 +149,8 @@
     if (drawer) drawDrawer();
   }
 
-  function close() {
+  async function close() {
+    await host.snapshot();
     openId = null;
     drawer = null;
     $('pgOpen').hidden = true;
@@ -290,6 +293,7 @@
   }
 
   api.pages.onChanged(ev => {
+    if (state.view === 'settings' && ev?.kind !== 'data') renderSettings();
     if (ev?.kind === 'data' || ev?.kind === 'refused' || ev?.kind === 'ask') {
       if (openId === ev.id && drawer && ev.kind === 'data') drawDrawer();
       return; // the frames have it (pages-bridge.js)
@@ -300,6 +304,31 @@
       if (openId && (ev?.id === openId || ev?.id === null)) { host.refresh(); if (drawer) drawDrawer(); } else load();
     } else load();
   });
+
+  // ------------------------------------------------------------ Settings › Pages
+  // Every page's access in one list: what it can do, who may write, on or off.
+  async function renderSettings() {
+    const box = $('pgSetList');
+    if (!box) return;
+    const r = await api.pages.list().catch(() => null);
+    const pages = r?.pages || [];
+    if (!pages.length) { box.replaceChildren(h('li', { class: 'muted small', text: 'No pages yet.' })); return; }
+    const views = await Promise.all(pages.map(p => api.pages.view(p.id).catch(() => null)));
+    box.replaceChildren(...views.filter(Boolean).map(v => h('li', { class: 'pg-set-row' },
+      h('div', { class: 'pg-set-name' }, h('span', { text: v.icon || '▦', 'aria-hidden': 'true' }), h('b', { text: v.name }), stateChip(v)),
+      h('div', { class: 'small muted', text: [
+        v.words.length ? v.words.map(w => w.text).join('; ') : 'Nothing beyond its own data',
+        v.added?.web?.length ? `added by you: ${v.added.web.join(', ')}` : '',
+        `agents: ${AGENT_WORDS[v.agents] || 'any'}`,
+      ].filter(Boolean).join(' · ') }),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Open', onclick: () => open(v.id) }),
+        v.wants ? null : h('button', { type: 'button', class: 'btn ghost slim-btn', text: v.enabled ? 'Turn off' : 'Turn on', onclick: async () => { fail(await api.pages.set(v.id, { enabled: !v.enabled })); renderSettings(); } })))));
+  }
+  $('pgSetOpen')?.addEventListener('click', () => SB.setView('pages'));
+  $('pgSetOff')?.addEventListener('click', async () => { fail(await api.pages.offAll()); SB.toast('Every page is off. Turn one back on from its page.'); renderSettings(); });
+  SB.renderPagesSettings = renderSettings;
+  SB.onSettingsOpen?.(renderSettings);
 
   /** Open a page by id (Ctrl+K, a link, a notification). */
   SB.openPage = id => open(id);

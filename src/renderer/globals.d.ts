@@ -348,6 +348,7 @@ interface ShellbyPanelExtras {
   // pages.js
   newPage: any;
   openPage: any;
+  renderPagesSettings: any;
   // painter-preview.js
   paintPreview: any;
   // painter-share.js

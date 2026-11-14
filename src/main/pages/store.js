@@ -346,7 +346,8 @@ function createStore(root, { now = Date.now } = {}) {
     const text = describeWrite(set, remove, append, appended);
     logActivity(id, { at, who: w, text, keys: changed });
     const s = state(id);
-    saveState(id, { ...s, updatedAt: at, lastChange: { text: `${w.kind === 'you' ? 'You' : w.name || 'Someone'}: ${text}`, at } });
+    const whoText = w.kind === 'you' ? 'You' : w.kind === 'page' ? 'On the page' : w.name || 'Someone';
+    saveState(id, { ...s, updatedAt: at, lastChange: { text: `${whoText}: ${text}`, at } });
     return ok({ changed, values: Object.fromEntries(changed.filter(k => Object.hasOwn(next, k)).map(k => [k, next[k]])), text });
   }
 
@@ -398,6 +399,17 @@ function createStore(root, { now = Date.now } = {}) {
     saveState(id, { ...s, broken: message ? { message: format.line(message, 300), at: now() } : null });
   }
 
+  /** The shelf's miniature: a JPEG, written by the service when a page closes. */
+  const thumbFile = id => path.join(dirOf(id), 'thumb.jpg');
+  function writeThumb(id, jpeg) {
+    if (!known(id) || !Buffer.isBuffer(jpeg) || jpeg.length > 256 * 1024) return no('No thumb.');
+    fs.writeFileSync(thumbFile(id), jpeg);
+    return ok();
+  }
+  function thumb(id) {
+    try { return fs.readFileSync(thumbFile(id)); } catch { return null; }
+  }
+
   /** Drafts made by one conversation, newest first. */
   function draftsOf(tab) {
     return draftIds().map(id => ({ id, s: state(id) })).filter(d => d.s.tab === tab)
@@ -406,7 +418,7 @@ function createStore(root, { now = Date.now } = {}) {
 
   return {
     root, ids, draftIds, known, state, manifest, files, readFile, create, update, revert, saveDraft, remove,
-    setMeta, setAgents, agree, addHost, access, pendingAccess, read, write, activity, list, summary, markBroken, draftsOf,
+    setMeta, setAgents, agree, addHost, access, pendingAccess, read, write, activity, list, summary, markBroken, draftsOf, writeThumb, thumb,
   };
 }
 
