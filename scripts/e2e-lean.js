@@ -3,9 +3,11 @@
 //      prompt-cache dot on the context chip and its menu explains it; starting
 //      a crowded conversation fresh pays the "fresh" XP.
 //   2. With the REAL Claude Code CLI, read-only: Toolbox → Lean lists plugins
-//      with Claude Code's own estimates, MCP servers and memory files; "Turn
-//      off" on a plugin opens the isolated confirm window, which is cancelled,
-//      so nothing is ever turned off. Screenshots go to the temp profile.
+//      with Claude Code's own estimates, MCP servers and memory files, and what
+//      every turn carries item by item with its "setup ~Nk/turn" line; "Switch
+//      it off" on the pretend home's output style and "Turn off" on a plugin
+//      each open the isolated confirm window, which is cancelled, so nothing is
+//      ever changed. Screenshots go to the temp profile.
 //   node scripts/e2e-lean.js
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -94,12 +96,15 @@ async function launch(port, env) {
 
   // ---- 2. the Lean tab, against the real CLI, read-only
   const real = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
-  // Dev runs read memory from a pretend home in the profile: one file for every
-  // conversation, one rule that loads only for TypeScript.
+  // Dev runs read memory and settings from a pretend home in the profile: one
+  // file for every conversation, one rule that loads only for TypeScript, and
+  // Claude Code's settings naming an output style.
   const home = path.join(real, 'claude-home', '.claude');
   fs.mkdirSync(path.join(home, 'rules'), { recursive: true });
   fs.writeFileSync(path.join(home, 'CLAUDE.md'), `# Me\n\n${'Prefer small, focused commits. '.repeat(80)}\n`);
   fs.writeFileSync(path.join(home, 'rules', 'ts.md'), `---\npaths:\n  - "**/*.ts"\n---\n# TypeScript\n\n${'Type the public API. '.repeat(40)}\n`);
+  const homeSettings = path.join(home, 'settings.json');
+  fs.writeFileSync(homeSettings, JSON.stringify({ outputStyle: 'Explanatory' }, null, 2));
   run = await launch(9392, { SHELLBY_USER_DATA: real, SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47989' });
   try {
     const panel = await cdp((await run.target('panel.html')).webSocketDebuggerUrl);
@@ -125,6 +130,31 @@ async function launch(port, env) {
     check(String(info.idle) === info.count || (info.idle === 0 && info.count === ''), 'the tab count is the idle count');
     check(info.ask, 'there is a button to ask Claude for leaner ways to keep the same features');
     await panel.shot(path.join(real, 'lean-tab.png'));
+
+    // What every turn carries (main's fixedcost.js): one row per item, the one-liner, and the style on offer to switch off.
+    const fixed = await panel.ev(`({
+      label: [...document.querySelectorAll('#toolList .lean-fixed-label')].map(l => l.textContent)[0] || '',
+      rows: document.querySelectorAll('#toolList .lean-item').length,
+      items: SB.state.lean.fixed.items.length,
+      line: SB.state.lean.fixed.line,
+      style: SB.state.lean.fixed.items.find(i => i.kind === 'style')?.label || '',
+      memory: SB.state.lean.fixed.items.filter(i => i.kind === 'memory').length,
+      rule: SB.state.lean.fixed.items.some(i => i.kind === 'rule'),
+      suggest: !!document.querySelector('#toolList .lean-sugg[data-id="style-off"] button'),
+    })`);
+    console.log('fixed:', JSON.stringify(fixed));
+    check(fixed.label.startsWith('Sent with every turn: ~') && fixed.rows > 0 && fixed.rows === fixed.items, 'every item sent with a turn has a row, under a label that gives the total');
+    check(/^setup ~\S+\/turn$/.test(fixed.line), 'the one-line summary the turn footer shows');
+    check(fixed.style === 'Output style "Explanatory"' && fixed.memory >= 1 && !fixed.rule, 'the output style and CLAUDE.md are items; a rule for matching files only is not');
+    check(fixed.suggest, 'the style is on offer to switch off');
+    // Switch it off -> the confirm window, focused on Cancel; cancel it, and the settings file is untouched.
+    await panel.ev(`document.querySelector('#toolList .lean-sugg[data-id="style-off"] button').click()`);
+    const styleAsk = await answerDialog(run.port, { press: 'Cancel', shot: path.join(real, 'lean-style-confirm.png') });
+    console.log('style confirm:', JSON.stringify(styleAsk && { title: styleAsk.title, focused: styleAsk.focused }));
+    check(styleAsk?.title === 'Switch off the "Explanatory" output style?' && /settings\.json/.test(styleAsk.message), 'the confirm window names the style and the file it is set in');
+    check(styleAsk?.focused === 'Cancel', 'Cancel is the default');
+    check(JSON.parse(fs.readFileSync(homeSettings, 'utf8')).outputStyle === 'Explanatory', 'the settings file still names the style after Cancel');
+    check(await poll(panel, `!!document.querySelector('#toolList .lean-sugg[data-id="style-off"] button:not([disabled])')`), 'the suggestion is still on offer');
 
     // Turn off -> the confirm window, focused on Cancel; cancel it.
     const pick = await panel.ev(`(() => {

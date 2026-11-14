@@ -468,6 +468,8 @@
       h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
         onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: HOT_ASK(rep.hot.files) }); } }, 'Ask Claude')) : null;
     const rows = [
+      // What every turn carries, item by item, and what could go (lean-fixes.js; main's fixedcost.js).
+      ...SB.leanFixes.fixedRows(rep, match),
       plugins.length ? label('Plugins') : null, ...plugins.map(p => pluginRow(p, rep)),
       mcp.length ? label('MCP servers you added') : null, ...mcp.map(s => mcpRow(s, rep)),
       skills.length ? label(`Your skills, commands and agents (${tok(rep.totals.skills || 0)} in every conversation)`) : null, ...skills.map(t => skillRow(t, rep)),
@@ -477,6 +479,8 @@
       hotLabel, ...hot.map(hotRow),
       loudLabel, ...noisy.map(loudRow),
       quietRow(rep.hot),
+      // One-tap fixes drafted from the hot files and loud commands above (lean-fixes.js; main's leanfix.js).
+      ...SB.leanFixes.fixRows(rep, match),
       mcpLoudLabel, ...mcpLoud.map(mcpLoudRow),
       branches.length ? label('What each branch cost here (last 7 days)') : null, ...branches.map(branchRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),
@@ -484,5 +488,6 @@
     list.replaceChildren(...(rows.length ? rows : [h('li', { class: 'history-empty', text: q ? 'No matches.' : 'Nothing loads into every conversation besides Claude Code itself.' })]));
   }
 
-  SB.lean = { render, load, count: () => (state.lean ? state.lean.totals.idleCount || '' : '') };
+  // line: the one-liner the turn footer shows ("setup ~14k/turn"), '' until a report has come.
+  SB.lean = { render, load, count: () => (state.lean ? state.lean.totals.idleCount || '' : ''), line: () => state.lean?.fixed?.line || '' };
 })();

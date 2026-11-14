@@ -276,6 +276,8 @@ interface ShellbyPanelExtras {
   keepWarm: any;
   onKeepWarmItem: any;
   renderKeepWarm: any;
+  // lean-fixes.js
+  leanFixes: any;
   // lean.js
   lean: any;
   // lessons.js

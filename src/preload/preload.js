@@ -287,11 +287,10 @@ contextBridge.exposeInMainWorld('shellby', {
   toggleMcp: (tabId, name, enabled) => ipcRenderer.invoke('mcp:toggle', { tabId, name, enabled }),
   addMcp: invoke('mcp:add'),
   removeMcp: (tabId, name) => ipcRenderer.invoke('mcp:remove', { tabId, name }),
-  // Lean Shell: what every conversation carries, and the prompt cache (lean.js)
-  leanReport: (refresh = false) => ipcRenderer.invoke('lean:report', { refresh }),
-  leanPlugin: (id, on) => ipcRenderer.invoke('lean:plugin', { id, on }),
-  leanMcpRemoved: invoke('lean:mcp-removed'),
-  leanUsage: (refresh = false) => ipcRenderer.invoke('lean:usage', { refresh }),
+  // Lean Shell: what every conversation carries and the prompt cache (lean.js); its one-tap fixes and the output-style switch, each asked in the confirm window and undoable (lean-fixes.js)
+  leanReport: (refresh = false) => ipcRenderer.invoke('lean:report', { refresh }), leanUsage: (refresh = false) => ipcRenderer.invoke('lean:usage', { refresh }),
+  leanPlugin: (id, on) => ipcRenderer.invoke('lean:plugin', { id, on }), leanMcpRemoved: invoke('lean:mcp-removed'),
+  leanFixApply: id => ipcRenderer.invoke('lean:fix-apply', { id }), leanFixUndo: id => ipcRenderer.invoke('lean:fix-undo', { id }), leanStyleOff: invoke('lean:style-off'),
 
   // skill shop (Claude Code plugin marketplaces)
   shopList: invoke('shop:list'),
