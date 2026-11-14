@@ -429,11 +429,11 @@ async function capturePages({ panel, send, out, config, base, makeTimeTracker })
   config.set(demo.demoWeek(now, config.get('xp')));
   send(panel, 'xp', xpSummary(config.get('xp'), now, streaks.streakOf(config.get('streaks'), now).current));
   await show('trophies');
-  await js("document.getElementById('xpWeek').scrollIntoView({ block: 'start' })");
+  await js("SB.trophyPage('week'); document.getElementById('xpWeek').scrollIntoView({ block: 'start' })");
   await wait(300);
   await shot(panel, path.join(out, 'screenshot-week.png'));
   // Trophies from the top, now that the week has given him a level and XP.
-  await js("for (let el = document.getElementById('xpCard'); el; el = el.parentElement) el.scrollTop = 0; 1");
+  await js("SB.trophyPage('today'); for (let el = document.getElementById('xpCard'); el; el = el.parentElement) el.scrollTop = 0; 1");
   await wait(300);
   await shot(panel, path.join(out, 'screenshot-trophies.png'));
   const week = await js('SB.weekCard.render().then(r => r.canvas.toDataURL("image/png"))');
