@@ -101,6 +101,25 @@ function previousRun(routine, beforeMs) {
   return null;
 }
 
+// How far the Automate page's tide chart looks each way, and how many starts
+// one schedule may put on it (an every-hour job would otherwise send 168).
+// 64 covers a whole week of anything three or more hours apart (56 at most);
+// anything closer together is drawn as one streak, which runs to the end anyway.
+const TIDE = Object.freeze({ aheadMs: 7 * 24 * HOUR, behindMs: 2 * 24 * HOUR, max: 64 });
+
+// Every start in (fromMs, toMs], soonest first and at most `max`. `next(t)` is
+// a schedule's "next time strictly after t" (nextRun, or a workflow's nextAt).
+function runsBetween(next, fromMs, toMs, max = TIDE.max) {
+  const out = [];
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return out;
+  let at = next(fromMs);
+  while (Number.isFinite(at) && at <= toMs && out.length < max) {
+    out.push(at);
+    at = next(at);
+  }
+  return out;
+}
+
 // Enabled routines with a slot in (sinceMs, nowMs].
 function dueRoutines(routines, sinceMs, nowMs) {
   if (!Array.isArray(routines)) return [];
@@ -282,4 +301,4 @@ class Scheduler extends EventEmitter {
   }
 }
 
-module.exports = { nextRun, previousRun, dueRoutines, missedOnStartup, validateRoutine, describeSchedule, scheduleError, normaliseSchedule, Scheduler };
+module.exports = { nextRun, previousRun, runsBetween, TIDE, dueRoutines, missedOnStartup, validateRoutine, describeSchedule, scheduleError, normaliseSchedule, Scheduler };

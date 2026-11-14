@@ -359,6 +359,7 @@
   function render() {
     closePopup();
     const s = current().name;
+    SB.renderTide?.(); // on the list only (automate-tide.js)
     if (!state.workflows && s !== 'run') { loadView(); return renderLoading(); }
     if (s === 'editor' && W.ed.def) return W.renderEditor();
     if (s === 'runs') return W.renderRuns();

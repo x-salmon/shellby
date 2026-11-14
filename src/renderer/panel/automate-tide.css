@@ -1,0 +1,84 @@
+/* The tide chart at the top of Automate (automate-tide.js). */
+.tide-chart {
+  --tide-dot-y: 30px;   /* where the run dots sit, from the bottom */
+  --tide-stem: 10px;    /* dot to the first row of names */
+  --tide-lbl-y: 46px;   /* the first row of names */
+  --tide-row: 22px;     /* each row above it */
+  --tide-held: var(--sand);
+  margin: 0 0 16px; padding: 12px 14px 10px;
+  background: linear-gradient(180deg, var(--reef) 0%, var(--ink) 100%);
+  border: 1px solid var(--line-soft); border-radius: var(--r-lg);
+}
+.tide-head { display: flex; align-items: center; gap: 10px; }
+.tide-title { flex: 1; margin: 0; font: 600 var(--fs-15) var(--font-pixel); color: var(--sand); }
+.tide-range { flex: none; }
+.tide-range button { flex: none; height: 24px; padding: 0 10px; }
+.tide-range button[aria-pressed="true"] { background: var(--reef-2); color: var(--sand); }
+
+/* The top row is kept for "now" and the reset; names sit in three rows under it. */
+.tide-track { position: relative; height: calc(var(--tide-lbl-y) + var(--tide-row) * 3 + 22px); margin-top: 4px; }
+.tide-wave { position: absolute; left: 0; right: 0; bottom: 16px; width: 100%; height: 28px; }
+.tide-past { fill: var(--glass-dim); stroke: none; }
+.tide-ahead { fill: none; stroke: var(--glass); stroke-opacity: .4; stroke-width: 1.2; stroke-dasharray: 4 5; }
+.tide-day { position: absolute; top: 18px; bottom: 16px; border-left: 1px solid var(--line-soft); }
+.tide-tick { position: absolute; bottom: 0; transform: translateX(-50%); font-size: var(--fs-10-5); color: var(--sand-faint); white-space: nowrap; }
+
+.tide-band {
+  position: absolute; top: 18px; bottom: 16px;
+  background: repeating-linear-gradient(135deg, rgba(243, 230, 204, .07) 0 5px, transparent 5px 10px);
+  border-left: 1px dashed var(--sand-faint); border-right: 1px dashed var(--sand-faint);
+}
+.tide-reset { position: absolute; top: 0; margin-left: 5px; font-size: var(--fs-10-5); color: var(--sand-dim); white-space: nowrap; }
+.tide-now { position: absolute; top: 0; bottom: 16px; border-left: 1.5px solid var(--coral); }
+.tide-now span { position: absolute; top: 0; right: 5px; font-size: var(--fs-10-5); font-weight: 700; color: var(--coral); }
+
+/* Something that runs every few minutes: a dotted run from its next start to the chart's end. */
+.tide-streak {
+  position: absolute; bottom: calc(var(--tide-dot-y) - 1.5px); height: 3px; cursor: pointer;
+  background: radial-gradient(circle, var(--glass) 1.2px, transparent 1.6px) 0 50% / 7px 3px repeat-x;
+}
+
+/* A run: filled once it happened, a ring while it's still to come. */
+.tide-mk {
+  position: absolute; bottom: var(--tide-dot-y); width: 10px; height: 10px; margin: 0 0 -5px -5px; padding: 0;
+  border-radius: 50%; border: 0; background: var(--glass); box-shadow: 0 0 0 3px var(--ink); cursor: pointer; z-index: 1;
+}
+.tide-mk::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; } /* a bigger target than the dot */
+.tide-mk.done { background: var(--reef-3); }
+.tide-mk.err { background: var(--coral); }
+.tide-mk.wait { background: var(--amber); }
+.tide-mk.off { background: var(--sand-faint); }
+.tide-mk.run { background: var(--sand); }
+.tide-mk.plan { background: var(--ink); border: 2px solid var(--glass); }
+.tide-mk.held { background: var(--ink); border: 2px solid var(--tide-held); }
+.tide-mk:hover, .tide-mk:focus-visible { transform: scale(1.35); }
+.tide-mk:focus-visible { outline: 2px solid var(--glass); outline-offset: 3px; }
+
+.tide-stem { position: absolute; bottom: calc(var(--tide-dot-y) + 5px); border-left: 1px solid var(--line); }
+.tide-lbl {
+  position: absolute; padding: 2px 8px; border-radius: 6px; cursor: pointer;
+  background: var(--ink); border: 1px solid var(--line-soft); color: var(--sand-dim);
+  font-size: var(--fs-11); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tide-lbl:hover { color: var(--sand); border-color: var(--line); }
+.tide-lbl.err { color: var(--coral); border-color: var(--coral-dim); }
+.tide-lbl.wait { color: var(--amber); }
+.tide-lbl.held { color: var(--sand); }
+
+.tide-listen { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-top: 8px; padding-top: 9px; border-top: 1px solid var(--line-soft); }
+.tide-listen-name { font-size: var(--fs-12); color: var(--sand-faint); }
+.tide-ear {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 10px 4px 9px;
+  border: 0; border-radius: 99px; background: var(--reef-2); color: var(--sand); font-size: var(--fs-12); cursor: pointer;
+}
+.tide-ear::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--glass); }
+.tide-ear:hover { background: var(--reef-3); }
+.tide-ear span { color: var(--sand-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The routine a mark opened, picked out for a moment. */
+.ar-row.tide-found { animation: tide-found 1.6s var(--ease-out); }
+@keyframes tide-found { from { background: var(--glass-dim); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .ar-row.tide-found { animation: none; outline: 1px solid var(--glass); outline-offset: -1px; }
+  .tide-mk:hover, .tide-mk:focus-visible { transform: none; }
+}
