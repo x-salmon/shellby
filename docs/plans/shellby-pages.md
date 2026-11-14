@@ -1,10 +1,9 @@
 # Pages: small apps you build with Claude, on every screen you use
 
-Not built. The sandbox spike is done (section 5). **Waiting on** the
-agent-feature branches now in flight: Pages adds tools to
-`src/main/crabmcp.js` and the plugin's MCP server, and should start from
-whatever shape those branches leave them in. Re-read this plan against main
-before phase 1.
+**Phase 1 is built** on this branch (2026-11-14): the screens for this PC, the
+five MCP tools in the app and the plugin, and docs/PAGES.md for users. Phases
+2 (phone) and 3 (other PCs) wait for the multi-PC hub branch to reach main.
+Where the build went another way than this plan, see "Built" under Phases.
 
 Mockups for every feature are in [pages-mockups/](pages-mockups/index.html):
 open `index.html` in a browser (it uses Shellby's own tokens and fonts).
@@ -372,6 +371,17 @@ scope** (chosen 2026-11-13): the 30 marked Core, plus every extra:
    done (section 5). Next come the format, store, protocol and bridge, then
    the shelf, running a page, building it with Claude, the MCP tools, access,
    and the threat-model row.
+   **Built**, with these departures from the plan above:
+   - Pages sits at the end of the bar (Ctrl+9), not after Automate, so
+     nobody's Ctrl+number shortcuts move.
+   - The format lives in the build and change prompts (`pages/prompts.js`),
+     not a plugin skill, so it's always the one this Shellby checks against.
+   - A page's files are kept per version (`v\<n>\`); the shelf's miniature is
+     `thumb.jpg`, taken after the page loads and after its data settles.
+   - Settings › Pages is a section of Settings › Claude.
+   - Page scripts load in CORS mode (the scheme has `corsEnabled`), so an
+     error keeps its message, file and line for Fix it with Claude.
+   - Not yet: pinned pages on the Beach (screen 6), the phone and sync.
 2. **On the phone: screens 36–42.**
 3. **On your other PCs: screens 43–49.**
 4. **Sharing** (later, maybe): a page to the community gallery as a pack,
