@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Health, concept 4: who's using your PC</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 600px; gap: 44px; }
+  .left { display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+  /* Totals strip: how full each resource is, as segmented bars split by app */
+  .totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; }
+  .tot .top { display: flex; align-items: baseline; justify-content: space-between; }
+  .tot b { font: 500 26px var(--font-pixel); }
+  .tot .v { font: 500 26px var(--font-pixel); }
+  .stack { display: flex; height: 18px; border-radius: 9px; overflow: hidden; margin-top: 10px; background: var(--reef-2); gap: 2px; }
+  .stack i { display: block; height: 100%; }
+
+  /* Treemap: area = combined load (GPU here) */
+  .tree { flex: 1; min-height: 0; display: grid; gap: 6px;
+    grid-template-columns: 1.9fr 1fr 0.8fr; grid-template-rows: 1.3fr 1fr 0.7fr;
+    grid-template-areas: "a b c" "a d e" "f g h"; }
+  .tile { border-radius: 12px; padding: 22px 24px; display: flex; flex-direction: column; justify-content: space-between; position: relative; overflow: hidden; }
+  .tile h2 { font: 500 30px/1.1 var(--font-pixel); }
+  .tile .p { font: 500 64px/1 var(--font-pixel); opacity: .95; }
+  .tile .meta { font-size: 15px; opacity: .85; }
+  .tile.sm .p { font-size: 34px; } .tile.sm h3 { font-size: 22px; }
+  .t-a { grid-area: a; background: #6b2a22; color: #ffd9cf; }
+  .t-b { grid-area: b; background: #4a3a1c; color: #ffe2b0; }
+  .t-c { grid-area: c; background: #1e3d47; }
+  .t-d { grid-area: d; background: #17414a; }
+  .t-e { grid-area: e; background: #173039; }
+  .t-f { grid-area: f; background: #173039; }
+  .t-g { grid-area: g; background: #11232a; border: 2px solid var(--glass); }
+  .t-h { grid-area: h; background: #11232a; color: var(--sand-dim); }
+  .tile .end { position: absolute; top: 18px; right: 18px; }
+  .tile.sel { outline: 3px solid var(--sand); outline-offset: 3px; }
+
+  /* Right: the selected app, with Shellby's read on it */
+  .side { display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+  .side h2 { font: 500 46px/1 var(--font-pixel); }
+  .side .sub { color: var(--sand-faint); }
+  .kv { display: grid; grid-template-columns: 1fr auto; border-top: 1px solid var(--line); }
+  .kv > * { padding: 14px 0; border-bottom: 1px solid var(--line-soft); font-size: 18px; }
+  .kv dd { font-weight: 700; text-align: right; }
+  .procs { font: 14px var(--font-mono); color: var(--sand-faint); line-height: 1.9; }
+  .opinion { display: flex; gap: 18px; padding: 20px; background: var(--reef); border: 1px solid var(--line); border-radius: 14px; }
+  .opinion img { width: 64px; height: 64px; flex: none; }
+  .opinion p { font-size: 17px; color: var(--sand-dim); }
+  .opinion b { color: var(--sand); }
+  .acts { display: flex; gap: 12px; flex-wrap: wrap; }
+  .fine { color: var(--sand-faint); font-size: 14px; margin-top: auto; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <h1>Health</h1>
+    <span class="live">live</span>
+    <span class="spacer"></span>
+    <span class="sub">Size boxes by</span>
+    <div class="seg"><span class="on">GPU</span><span>CPU</span><span>Memory</span><span>All three</span></div>
+    <div class="seg"><span class="on">By app</span><span>Each process</span></div>
+  </header>
+
+  <div class="main">
+    <div class="left">
+      <div class="totals">
+        <div class="tot"><div class="top"><b>GPU</b><span class="v hot">97% · 84°C</span></div>
+          <div class="stack"><i style="width:86%; background:#c4553f"></i><i style="width:8%; background:#a8803a"></i><i style="width:3%; background:var(--reef-3)"></i></div></div>
+        <div class="tot"><div class="top"><b>CPU</b><span class="v">34% · 61°C</span></div>
+          <div class="stack"><i style="width:14%; background:#c4553f"></i><i style="width:6%; background:#a8803a"></i><i style="width:9%; background:#2b6a76"></i><i style="width:5%; background:var(--reef-3)"></i></div></div>
+        <div class="tot"><div class="top"><b>Memory</b><span class="v">58% · 18.6 GB</span></div>
+          <div class="stack"><i style="width:30%; background:#c4553f"></i><i style="width:11%; background:#a8803a"></i><i style="width:10%; background:#2b6a76"></i><i style="width:7%; background:var(--reef-3)"></i></div></div>
+      </div>
+
+      <div class="tree">
+        <div class="tile t-a"><span class="end btn small" style="background:rgba(0,0,0,.25); border-color:transparent">End task</span><h2>Dune</h2><div><div class="p">86%</div><div class="meta">of the GPU · 9.8 GB memory · 14% CPU</div></div></div>
+        <div class="tile t-b sel"><h2>Chrome</h2><div><div class="p">8%</div><div class="meta">37 processes · 3 tabs playing video</div></div></div>
+        <div class="tile t-c sm"><h2>Discord</h2><div><div class="p">1.4%</div><div class="meta">screen share off</div></div></div>
+        <div class="tile t-d sm"><h2>Docker (WSL)</h2><div><div class="p">0.9%</div><div class="meta">7.1 GB memory held</div></div></div>
+        <div class="tile t-e sm"><h2>Windows</h2><div><div class="p">0.6%</div><div class="meta">desktop, explorer</div></div></div>
+        <div class="tile t-f sm"><h2>VS Code</h2><div><div class="p">0.4%</div></div></div>
+        <div class="tile t-g sm"><h2>Shellby</h2><div><div class="p">0.4%</div><div class="meta">all of him, added up</div></div></div>
+        <div class="tile t-h sm"><h2>41 others</h2><div><div class="p">0.3%</div></div></div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div><h2>Chrome</h2><p class="sub">Picked from the map</p></div>
+      <dl class="kv">
+        <dt>GPU</dt><dd>8%</dd>
+        <dt>CPU</dt><dd>6%</dd>
+        <dt>Memory</dt><dd>3.4 GB</dd>
+        <dt>Running since</dt><dd>Monday, 09:14</dd>
+      </dl>
+      <div class="procs">youtube.com — 4.1% GPU<br>twitch.tv — 2.6% GPU<br>meet.google.com — 1.0% GPU<br>34 other tabs and helpers — 0.3%</div>
+      <div class="opinion"><img class="crab" src="crab.png" alt=""><p><b>Three tabs are playing video behind Dune.</b> You probably can't see them. Closing them gives the game back about 8% of the card and should cool it by around 3°C.</p></div>
+      <div class="acts"><button class="btn primary">Close those 3 tabs</button><button class="btn">Ask Shellby what I don't need</button></div>
+      <p class="fine">End task asks first, and never touches Windows itself or Shellby. Shellby's own share is shown so you can judge him too.</p>
+    </aside>
+  </div>
+</main>
+<span class="caption">Health, concept 4 · who's using it</span>
+</body>
+</html>

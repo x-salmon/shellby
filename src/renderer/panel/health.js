@@ -36,6 +36,9 @@
   const H = SB.health = {
     view: () => view, history: () => history,
     levelOf, pendingOf, setText, smooth, changed, ask: checkId => ask(checkId),
+    refresh: () => render(),
+    // The app to blame for the mood (health-logic.js diagnosisCause), or null.
+    cause: () => L.diagnosisCause(view, H.topApp?.() || null, view?.sample?.ram?.total || 0),
   };
 
   // ------------------------------------------------------------ hero
@@ -47,7 +50,7 @@
     hero.dataset.level = off ? 'off' : view?.worst || 'ok';
     $('hlLive').classList.toggle('on', !!view?.running);
     $('hlEnable').hidden = !off;
-    const words = L.heroWords(view);
+    const words = L.heroWords(view, H.cause()?.name || null);
     $('hlAsk').hidden = !words.ask;
     if (words.ask) {
       $('hlAsk').dataset.check = words.ask.check;
@@ -161,6 +164,7 @@
     renderBadge();
     if (state.view !== 'health') return;
     renderHero();
+    H.renderDiagnosis();
     H.renderSelf();
     H.renderHogs();
     H.renderGauges();

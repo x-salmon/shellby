@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Health, concept 1: one diagnosis, not twelve gauges</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 640px; gap: 56px; }
+  .left { display: flex; flex-direction: column; gap: 36px; min-height: 0; }
+
+  /* The verdict: a sentence, set big, with the crab feeling it */
+  .verdict { display: grid; grid-template-columns: 220px 1fr; gap: 44px; align-items: center;
+    padding: 44px 48px; border-radius: 22px; background: linear-gradient(180deg, rgba(255,122,92,.10), rgba(255,122,92,.02)); border: 1px solid rgba(255,122,92,.35); }
+  .verdict .crab { width: 220px; height: 220px; filter: hue-rotate(-12deg) saturate(1.3); }
+  .verdict .sweat { position: relative; }
+  .verdict .sweat::after { content: "💧"; position: absolute; top: 8px; right: 6px; font-size: 34px; }
+  .verdict h2 { font: 500 64px/1.18 var(--font-pixel); max-width: 22ch; }
+  .verdict p { margin-top: 18px; font-size: 22px; color: var(--sand-dim); max-width: 60ch; }
+  .verdict .acts { margin-top: 28px; display: flex; gap: 12px; }
+
+  /* Cause chain: these really are a sequence, so arrows are earned */
+  .chain-head { display: flex; align-items: baseline; gap: 16px; }
+  .chain-head h3 { font: 500 28px/1 var(--font-pixel); }
+  .chain { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+  .link { position: relative; padding: 26px 28px; background: var(--reef); border: 1px solid var(--line); }
+  .link:first-child { border-radius: 14px 0 0 14px; }
+  .link:last-child { border-radius: 0 14px 14px 0; }
+  .link + .link { border-left: 0; }
+  .link + .link::before { content: ""; position: absolute; left: -12px; top: 50%; width: 22px; height: 22px; margin-top: -11px;
+    background: var(--reef); border-top: 1px solid var(--line); border-right: 1px solid var(--line); transform: rotate(45deg); }
+  .link .what { color: var(--sand-faint); font-size: 15px; }
+  .link .big { font: 500 40px/1.1 var(--font-pixel); margin: 8px 0 6px; }
+  .link .why { font-size: 16px; color: var(--sand-dim); }
+  .link.root { background: rgba(255,193,94,.07); border-color: rgba(255,193,94,.4); }
+  .link.root .what { color: var(--amber); font-weight: 700; }
+
+  /* Fixes Shellby can do, ranked by how much they'd help */
+  .fixes { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--line); }
+  .fix { display: grid; grid-template-columns: 1fr 200px 220px; gap: 24px; align-items: center; padding: 20px 4px; border-bottom: 1px solid var(--line-soft); }
+  .fix b { font-size: 20px; }
+  .fix p { color: var(--sand-dim); font-size: 16px; }
+  .fix .gain { font: 500 22px var(--font-pixel); color: var(--glass); text-align: right; }
+  .fix .btn { justify-self: end; }
+
+  /* Right rail: everything that's fine, shrunk to one line each */
+  .rail { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
+  .rail h3 { font: 500 26px/1 var(--font-pixel); }
+  .rail .note { color: var(--sand-faint); font-size: 16px; }
+  .row-ok { display: grid; grid-template-columns: 160px 1fr 120px; gap: 18px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line-soft); }
+  .row-ok .k { color: var(--sand-dim); font-size: 18px; }
+  .row-ok .v { font: 500 24px var(--font-pixel); text-align: right; }
+  .row-ok svg { width: 100%; height: 34px; }
+  .row-ok.bad .k { color: var(--coral); font-weight: 700; }
+  .history { margin-top: auto; padding: 22px 24px; background: var(--ink); border: 1px solid var(--line); border-radius: 14px; }
+  .history b { display: block; margin-bottom: 8px; }
+  .history li { list-style: none; color: var(--sand-dim); font-size: 16px; padding: 6px 0; display: flex; gap: 14px; }
+  .history .t { color: var(--sand-faint); width: 90px; flex: none; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <h1>Health</h1>
+    <span class="live">reading every 2 s</span>
+    <span class="spacer"></span>
+    <button class="btn ghost">Alert settings</button>
+    <button class="btn ghost">Sensors</button>
+  </header>
+
+  <div class="main">
+    <div class="left">
+      <section class="verdict">
+        <div class="sweat"><img class="crab" src="crab.png" alt=""></div>
+        <div>
+          <h2>Your graphics card is running hot because of Dune</h2>
+          <p>84°C for the last 11 minutes, 6° past your line. The card's fans are capped at 55%, so it can't shed the heat. Nothing is damaged; it's slowing itself down to cope.</p>
+          <div class="acts">
+            <button class="btn primary">Raise the fan cap to 80%</button>
+            <button class="btn">Ask Shellby to look deeper</button>
+            <button class="btn ghost">It's fine, I'm gaming</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="chain-head"><h3>How it got here</h3><span class="mono">from 14:02</span></div>
+      <div class="chain">
+        <div class="link"><div class="what">14:02 you opened</div><div class="big">Dune</div><div class="why">GPU load went 8% → 97%</div></div>
+        <div class="link root"><div class="what">The real cause</div><div class="big">Fans at 55%</div><div class="why">A fan curve from MSI Afterburner caps them</div></div>
+        <div class="link"><div class="what">So the card reached</div><div class="big hot">84°C</div><div class="why">Your line is 78°C</div></div>
+        <div class="link"><div class="what">Which means</div><div class="big warn">−9% clock</div><div class="why">It's throttling to stay safe</div></div>
+      </div>
+
+      <div class="chain-head"><h3>What would help</h3><span class="mono">best first</span></div>
+      <div class="fixes">
+        <div class="fix"><div><b>Raise the fan cap to 80%</b><p>Louder, but the card should settle near 72°C. Shellby changes Afterburner's profile and can put it back.</p></div><span class="gain">about −12°C</span><button class="btn small primary">Do it</button></div>
+        <div class="fix"><div><b>Cap Dune at 90 fps</b><p>You're at 138 fps on a 144 Hz screen; most of the extra work is invisible.</p></div><span class="gain">about −8°C</span><button class="btn small">Show me how</button></div>
+        <div class="fix"><div><b>Close the 3 Chrome tabs playing video</b><p>They hold 11% of the GPU in the background.</p></div><span class="gain">about −3°C</span><button class="btn small">Close them</button></div>
+      </div>
+    </div>
+
+    <aside class="rail">
+      <h3>Everything else</h3>
+      <p class="note">All within your lines. One row each, last 10 minutes.</p>
+      <div class="row-ok bad"><span class="k">GPU</span><svg viewBox="0 0 200 34"><polyline fill="none" stroke="#ff7a5c" stroke-width="2.5" points="0,30 30,29 50,12 80,8 110,6 140,5 170,4 200,4"/></svg><span class="v hot">84°C</span></div>
+      <div class="row-ok"><span class="k">CPU</span><svg viewBox="0 0 200 34"><polyline fill="none" stroke="#7fd6c2" stroke-width="2.5" points="0,24 30,22 50,16 80,18 110,15 140,17 170,16 200,15"/></svg><span class="v">61°C</span></div>
+      <div class="row-ok"><span class="k">Memory</span><svg viewBox="0 0 200 34"><polyline fill="none" stroke="#7fd6c2" stroke-width="2.5" points="0,20 40,19 60,14 100,13 140,13 200,12"/></svg><span class="v">58%</span></div>
+      <div class="row-ok"><span class="k">C: drive</span><svg viewBox="0 0 200 34"><polyline fill="none" stroke="#7fd6c2" stroke-width="2.5" points="0,18 200,18"/></svg><span class="v">212 GB</span></div>
+      <div class="row-ok"><span class="k">D: drive</span><svg viewBox="0 0 200 34"><polyline fill="none" stroke="#7fd6c2" stroke-width="2.5" points="0,22 200,22"/></svg><span class="v">1.4 TB</span></div>
+      <div class="row-ok"><span class="k">Fans</span><svg viewBox="0 0 200 34"><polyline fill="none" stroke="#ffc15e" stroke-width="2.5" points="0,26 40,24 60,14 200,14"/></svg><span class="v warn">1,650 rpm</span></div>
+      <div class="history">
+        <b>Earlier today</b>
+        <ul>
+          <li><span class="t">11:40</span>Memory hit 91% during a Docker build. Settled by itself.</li>
+          <li><span class="t">09:12</span>Shellby cleared 18 GB of npm cache you asked about.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</main>
+<span class="caption">Health, concept 1 · diagnosis first</span>
+</body>
+</html>
