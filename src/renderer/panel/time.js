@@ -10,7 +10,9 @@
 
   /** @type {any} */
   let view = null;          // the last view from main
-  let rangeId = 'week';
+  const C = window.ShellbyTimeCalendar;
+  let month = '';         // "2026-11", the month on show (this month until you step away)
+  let picked = null;      // the day open beside the calendar
   let estimates = false;    // fill untracked days from commits
   const open = new Set();   // projects with their details open, kept across redraws
   /** @type {ReturnType<typeof setInterval> | null} */
@@ -20,7 +22,7 @@
 
   // The pure part (durations, money, days, form checks) lives in shared/time-format.js.
   const F = window.ShellbyTimeFormat;
-  const { dur, decimal, money, dateOf } = F;
+  const { dur, decimal, dateOf } = F;
   const shortDay = day => dateOf(day).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
   const today = () => F.dayKey();
   const WHY = {
@@ -32,12 +34,27 @@
 
   // Loads can overlap (the minute refresh, a click, a save): only the newest one draws.
   let loadSeq = 0;
+  // The month on show, as the custom range main takes.
+  const monthOpts = () => ({ range: 'custom', ...C.monthRange(month || C.monthOf(today())) });
   async function load() {
     const seq = ++loadSeq;
-    const next = await api.getTime({ range: rangeId, estimates });
+    if (!month) month = C.monthOf(today());
+    let next;
+    try {
+      next = await api.getTime({ ...monthOpts(), estimates });
+    } catch {
+      if (seq !== loadSeq) return;
+      SB.toast("Couldn't load that month.");
+      if (view) { month = C.monthOf(view.range.from); render(); }
+      return;
+    }
     if (seq !== loadSeq) return;
     view = next;
+    // A redraw replaces the calendar and the day: put focus back where it was.
+    const at = /** @type {HTMLElement | null} */ (document.activeElement);
+    const back = at?.dataset?.focus ? `[data-focus="${CSS.escape(at.dataset.focus)}"]` : at?.closest('#timeCal') && at.dataset.day ? `#timeCal [data-day="${at.dataset.day}"]` : null;
     render();
+    if (back) /** @type {HTMLElement | null} */ (document.querySelector(back))?.focus();
   }
 
   function scheduleRefresh() {
@@ -63,30 +80,57 @@
       : [h('span', { class: 'tm-live off', 'aria-hidden': 'true' }), now.why === 'idle' ? 'Paused while you’re away' : 'Not on a project right now', h('span', { class: 'tm-now-all', text: todayLine })]));
   }
 
-  function renderRanges() {
-    $('timeRanges').replaceChildren(...view.ranges.map(r => h('button', {
-      type: 'button', role: 'tab', 'aria-selected': String(r.id === view.range.id), dataset: { range: r.id },
-      onclick: () => { rangeId = r.id; load(); },
-    }, r.label)));
+  // ------------------------------------------------------------------ the month and the picked day
+
+  function renderMonth() {
+    const now = today();
+    const current = C.monthOf(now);
+    $('timeMonth').textContent = C.monthLabel(month);
+    $('timeNext').disabled = month >= current;
+    $('timeThisMonth').hidden = month === current;
+    picked = C.pickDay(month, now, picked, view.summary);
+    SB.timeMonth.drawStats($('timeStats'), view.summary, view.summary.currency);
+    SB.timeMonth.drawCalendar($('timeCal'), { month, today: now, picked, summary: view.summary, onPick: pickDay });
+    renderDay();
   }
 
-  // One hue, light to full: the bar is the hours. Values on hover (and in each
-  // bar's label for screen readers); the busiest day is labelled outright.
-  function renderChart(sum) {
-    const days = sum.days;
-    const max = Math.max(...days.map(d => d.seconds), 1);
-    const many = days.length > 10;
-    const peak = days.reduce((a, d) => (d.seconds > a.seconds ? d : a), days[0] || { seconds: 0 });
-    $('timeChart').classList.toggle('many', many);
-    $('timeChart').replaceChildren(...days.map(d => {
-      const label = F.chartLabel(d.day, many);
-      const words = `${shortDay(d.day)}: ${d.seconds ? dur(d.seconds) : 'nothing'}`;
-      return h('li', { class: `tm-bar${d.seconds ? '' : ' zero'}${d.day === today() ? ' today' : ''}`, title: words, 'aria-label': words },
-        h('span', { class: 'tm-bar-value', text: d === peak && d.seconds && !many ? dur(d.seconds) : '' }),
-        h('span', { class: 'tm-bar-track' }, h('i', { style: `height:${F.barPercent(d.seconds, max, 4)}%` })),
-        h('span', { class: 'tm-bar-day', text: label }));
-    }));
+  function renderDay() {
+    const projects = [...view.projects.filter(p => !p.ignored).map(p => ({ key: p.key, name: p.name })), ...view.known];
+    SB.timeMonth.drawDay($('timeDay'), { day: picked, summary: view.summary, projects, act: dayActions(picked) });
   }
+
+  function pickDay(day, { focus = false } = {}) {
+    picked = day;
+    for (const b of /** @type {NodeListOf<HTMLElement>} */ ($('timeCal').querySelectorAll('.tm-day[data-day]'))) {
+      const on = b.dataset.day === day;
+      b.classList.toggle('picked', on);
+      b.setAttribute('aria-pressed', String(on));
+      b.tabIndex = on ? 0 : -1;
+      if (on && focus) b.focus();
+    }
+    renderDay();
+  }
+
+  function stepMonth(n) {
+    month = n ? C.shiftMonth(month, n) : C.monthOf(today());
+    picked = null;
+    load();
+  }
+
+  // What the picked day's lines do: nudge, write the line, add time. Each saves and redraws.
+  const dayActions = day => ({
+    nudge: (key, minutes) => api.addTime({ key, day, minutes }).then(r => (r?.ok ? load() : SB.toast(r?.error || "Couldn't change that."))),
+    note: (key, note) => api.addTime({ key, day, minutes: 0, note }).then(r => { if (!r?.ok) SB.toast(r?.error || "Couldn't save that."); }),
+    add: async (key, minutes, note) => {
+      const problem = F.addTimeProblem({ key, day, minutes, note });
+      if (problem) return problem;
+      const r = await api.addTime({ key, day, minutes, ...(note ? { note } : {}) });
+      if (!r?.ok) return r?.error || "Couldn't add that.";
+      SB.toast(`Added ${dur(minutes * 60)}`);
+      load();
+      return null;
+    },
+  });
 
   function projectSettings(p) {
     const onBooks = view.projects.find(x => x.key === p.key);
@@ -121,32 +165,15 @@
         onBooks ? forget : null));
   }
 
-  function dayRow(p, r) {
-    const note = h('input', { class: 'field tm-note', value: r.note, maxlength: '200', placeholder: r.commits.length ? r.commits.map(c => c.subject).slice(0, 3).join('; ') : 'What it was for', 'aria-label': `What ${shortDay(r.day)} was for` });
-    note.addEventListener('change', () => api.addTime({ key: p.key, day: r.day, minutes: 0, note: note.value.trim() }).then(x => (x?.ok ? load() : SB.toast(x?.error || "Couldn't save that."))));
-    const nudge = minutes => api.addTime({ key: p.key, day: r.day, minutes }).then(x => (x?.ok ? load() : SB.toast(x?.error || "Couldn't change that.")));
-    const parts = F.dayParts(r);
-    const commitsTip = F.commitsTip(r);
-    return h('li', { class: `tm-day${r.total ? '' : ' empty'}${r.estimated ? ' est' : ''}` },
-      h('span', { class: 'tm-day-date', text: shortDay(r.day) }),
-      h('span', { class: 'tm-day-hours' }, h('b', { text: r.total ? dur(r.total) : '—' }), h('small', { text: parts.join(' · ') })),
-      r.commitCount ? h('span', { class: 'tm-commits', title: commitsTip, tabindex: '0', 'aria-label': `${F.plural(r.commitCount, 'commit')}: ${r.commits.map(c => c.subject).join('; ')}` }, F.plural(r.commitCount, 'commit')) : h('span'),
-      note,
-      h('span', { class: 'tm-nudge' },
-        h('button', { type: 'button', class: 'icon-btn', title: 'Take 15 minutes off', 'aria-label': `Take 15 minutes off ${shortDay(r.day)}`, disabled: !r.total || r.estimated, onclick: () => nudge(-15) }, '−'),
-        h('button', { type: 'button', class: 'icon-btn', title: 'Add 15 minutes', 'aria-label': `Add 15 minutes to ${shortDay(r.day)}`, onclick: () => nudge(15) }, '+')));
-  }
-
-  function projectRow(p, max, sum) {
+  function projectRow(p, max, sum, colours) {
     const pay = F.payLabel(p, sum.currency);
     const details = h('details', { class: 'tm-project', open: open.has(p.key) },
       h('summary', {},
-        h('span', { class: 'tm-p-name' }, h('b', { text: p.name }), p.client ? h('small', { text: p.client }) : null),
+        h('span', { class: 'tm-p-name' }, h('span', { class: `tm-sw ${SB.timeMonth.tint(colours, p.key)}`, 'aria-hidden': 'true' }), h('b', { text: p.name }), p.client ? h('small', { text: p.client }) : null),
         h('span', { class: 'tm-p-hours' }, h('b', { text: p.seconds ? dur(p.seconds) : '—' }), h('small', { text: [p.billed && p.billed !== p.seconds ? `${decimal(p.billed)} h billed` : '', pay].filter(Boolean).join(' · ') })),
         h('span', { class: 'tm-p-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${F.barPercent(p.seconds, max, 2)}%` }))),
       h('div', { class: 'tm-p-body' },
         !p.seconds && p.unfilled ? h('p', { class: 'muted small', text: `Commits here but no time kept: about ${dur(p.unfilled)} going by them.` }) : null,
-        h('ul', { class: 'tm-days' }, p.days.map(r => dayRow(p, r))),
         projectSettings(p)));
     details.addEventListener('toggle', () => { if (details.open) open.add(p.key); else open.delete(p.key); });
     return h('li', {}, details);
@@ -154,20 +181,20 @@
 
   function renderProjects(sum) {
     const max = Math.max(...sum.projects.map(p => p.seconds), 1);
-    const list = sum.projects.map(p => projectRow(p, max, sum));
+    const colours = C.colours(sum);
+    const list = sum.projects.map(p => projectRow(p, max, sum, colours));
     $('timeProjects').replaceChildren(...(list.length ? list : [h('li', { class: 'tm-empty' },
       view.settings.enabled
-        ? 'Nothing yet for this period. Time shows up here as you work: open a project in your editor or terminal, or have Claude work in one.'
-        : 'Nothing kept for this period. Turn on Keep time and Shellby starts counting.')]));
+        ? 'Nothing yet this month. Time shows up here as you work: open a project in your editor or terminal, or have Claude work in one.'
+        : 'Nothing kept this month. Turn on Keep time and Shellby starts counting.')]));
     // Clients typed before, offered as you type.
     let dl = $('timeClients');
     if (!dl) { dl = h('datalist', { id: 'timeClients' }); document.body.append(dl); }
     dl.replaceChildren(...view.clients.map(c => h('option', { value: c })));
   }
 
-  function renderTotals(sum) {
-    $('timeTotal').replaceChildren(h('b', { text: dur(sum.totals.seconds) }), h('span', { text: ` ${view.range.label.toLowerCase()}` }));
-    $('timeAmount').textContent = sum.totals.amount ? `${money(sum.totals.amount, sum.currency)} · ${decimal(sum.totals.billed)} billable h` : sum.totals.billed ? `${decimal(sum.totals.billed)} billable h` : '';
+  // Days with commits but no time can be filled in from the commits, for the whole month at once.
+  function renderFill(sum) {
     const fill = $('timeFill');
     if (sum.totals.unfilled || estimates) {
       fill.hidden = false;
@@ -188,17 +215,6 @@
     if ([...sel.options].some(o => o.value === was)) sel.value = was;
     const none = !sum.projects.some(p => p.seconds);
     for (const id of ['timePdf', 'timeCsv', 'timeCopy']) $(id).disabled = none;
-  }
-
-  function renderForm() {
-    const sel = $('timeAddProject');
-    const was = sel.value;
-    const all = [...view.projects.filter(p => !p.ignored).map(p => ({ key: p.key, name: p.name })), ...view.known];
-    sel.replaceChildren(...(all.length ? all.map(p => h('option', { value: p.key, text: p.name })) : [h('option', { value: '', text: 'No projects yet' })]));
-    if (all.some(p => p.key === was)) sel.value = was;
-    const day = $('timeAddDay');
-    day.max = today();
-    if (!day.value) day.value = today();
   }
 
   function renderSettings() {
@@ -350,13 +366,11 @@
     $('timeToggle').checked = on;
     $('timeIntro').hidden = on || view.summary.projects.length > 0;
     renderNow(view.now);
-    renderRanges();
-    renderTotals(view.summary);
-    renderChart(view.summary);
+    renderFill(view.summary);
+    renderMonth();
     renderProjects(view.summary);
     renderExport(view.summary);
     renderSync();
-    renderForm();
     renderSettings();
   }
 
@@ -388,32 +402,15 @@
     if (r?.ok) { SB.toast('Added. Its time counts from now on'); load(); }
   });
 
-  for (const b of document.querySelectorAll('.tm-sign [data-sign]')) {
-    b.addEventListener('click', () => document.querySelectorAll('.tm-sign [data-sign]').forEach(x => x.setAttribute('aria-checked', String(x === b))));
-  }
-
-  $('timeAdd').addEventListener('submit', async e => {
-    e.preventDefault();
-    const err = $('timeAddError');
-    const sign = Number(/** @type {HTMLElement} */ (document.querySelector('.tm-sign [aria-checked="true"]')).dataset.sign);
-    const minutes = (Number($('timeAddHours').value) || 0) * 60 + (Number($('timeAddMinutes').value) || 0);
-    const key = $('timeAddProject').value;
-    const note = $('timeAddNote').value.trim();
-    const problem = F.addTimeProblem({ key, day: $('timeAddDay').value, minutes, note });
-    err.hidden = !problem;
-    err.textContent = problem || '';
-    if (problem) return;
-    const r = await api.addTime({ key, day: $('timeAddDay').value, minutes: sign * minutes, ...(note ? { note } : {}) });
-    if (!r?.ok) { err.hidden = false; err.textContent = r?.error || "Couldn't add that."; return; }
-    $('timeAddNote').value = '';
-    SB.toast(sign > 0 ? `Added ${dur(minutes * 60)}` : `Took off ${dur(minutes * 60)}`);
-    load();
-  });
+  $('timePrev').addEventListener('click', () => stepMonth(-1));
+  $('timeNext').addEventListener('click', () => stepMonth(1));
+  $('timeThisMonth').addEventListener('click', () => stepMonth(0));
+  $('timeCal').addEventListener('keydown', e => SB.timeMonth.onCalendarKey(e, { month, today: today(), picked, onPick: pickDay }));
 
   const exportOpts = () => {
     let only;
     try { only = $('timeOnly').value ? JSON.parse($('timeOnly').value) : null; } catch { only = null; }
-    return { range: rangeId, estimates, only };
+    return { ...monthOpts(), estimates, only };
   };
   async function saved(r, what) {
     if (r?.canceled) return;

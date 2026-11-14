@@ -133,3 +133,10 @@ test('time by hand is checked', () => {
   assert.equal(t.state.projects[SHELLBY].rate, 90);
   assert.equal(t.setProject('c:\\nope', { rate: 90 }).ok, false);
 });
+
+test('a custom range that is one whole month is named after the month', () => {
+  const { t } = make();
+  assert.equal(t.rangeOf('custom', '2026-09-01', '2026-09-30').label, 'September 2026');
+  assert.equal(t.rangeOf('custom', '2026-09-01', '2026-09-29').label, '2026-09-01 to 2026-09-29');
+  assert.equal(t.rangeOf('custom', '2026-09-02', '2026-09-30').label, '2026-09-02 to 2026-09-30');
+});

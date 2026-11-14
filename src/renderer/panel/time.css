@@ -1,6 +1,6 @@
-/* Shellby panel — Time (time.js): hours on each project. The period's total is
-   the headline; one sea-glass hue carries the hours in the chart and the bars,
-   so colour means "time" and nothing else. Panel variables only. */
+/* Shellby panel — Time (time.js, time-month.js): hours on each project. The
+   month is a calendar whose days deepen in sea-glass with the hours; a project
+   gets a colour of its own only as a mark beside its name. Panel variables only. */
 
 body[data-view="time"] .view-time {
   display: block; overflow-y: auto; padding: 14px 16px 20px;
@@ -27,37 +27,116 @@ body[data-view="time"] .view-time {
 .tm-live.off { background: var(--sand-faint-deco); box-shadow: none; animation: none; }
 @keyframes tm-pulse { 50% { box-shadow: 0 0 0 6px transparent; } }
 
-.tm-ranges { margin-bottom: 12px; }
-.tm-ranges button { white-space: nowrap; }
+/* ---------------------------------------------------------------- the month */
+#timeBody { container-type: inline-size; }
+.tm-month-head { display: flex; align-items: center; gap: 6px; margin: 2px 0 10px; }
+.tm-month-head h3 { margin: 0 6px; font: 600 var(--fs-20)/1 var(--font-pixel); min-width: 9ch; text-align: center; }
+.tm-step { width: 30px; height: 30px; font: 700 var(--fs-18)/1 var(--font-body); }
+.tm-step:disabled { opacity: .3; }
+.tm-month-head .btn { margin-left: auto; }
 
-/* ---------------------------------------------------------------- the period */
-.tm-overview { padding: 14px 14px 10px; border-radius: var(--r-lg); border: 1px solid var(--line); background: linear-gradient(180deg, var(--reef-2), var(--reef) 70%); }
-.tm-totals { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.tm-total { margin: 0; color: var(--sand-dim); font-size: var(--fs-13); }
-.tm-total b { font: 600 var(--fs-30)/1 var(--font-pixel); color: var(--sand); letter-spacing: -.01em; }
-.tm-amount { margin: 0; font: 600 var(--fs-12) var(--font-mono); color: var(--glass); }
+.tm-stats { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0 0 10px; }
+.tm-stat { display: flex; flex-direction: column-reverse; }
+.tm-stat dt { font-size: var(--fs-11-5); color: var(--sand-dim); }
+.tm-stat dd { margin: 0; font: 700 var(--fs-22)/1.1 var(--font-body); color: var(--sand); font-variant-numeric: tabular-nums; }
 
-/* One bar per day, grown from the baseline. 2px of surface between them. */
-.tm-chart { list-style: none; margin: 12px 0 0; padding: 0; display: flex; align-items: stretch; gap: 2px; height: 118px; }
-.tm-bar { flex: 1; min-width: 0; display: grid; grid-template-rows: 16px 1fr 16px; text-align: center; }
-.tm-bar-value { font: 600 var(--fs-10)/16px var(--font-mono); color: var(--sand); white-space: nowrap; overflow: visible; }
-.tm-bar-track { position: relative; border-bottom: 1px solid var(--line); }
-.tm-bar-track i {
-  position: absolute; left: 50%; bottom: 0; width: min(26px, 70%); transform: translateX(-50%);
-  border-radius: 4px 4px 0 0; background: var(--glass); opacity: .85;
-  transition: opacity .12s, height .35s var(--ease-out);
-}
-.tm-chart.many .tm-bar-track i { width: 80%; border-radius: 2px 2px 0 0; }
-.tm-bar:hover .tm-bar-track i { opacity: 1; }
-.tm-bar-day { font: 500 var(--fs-10)/16px var(--font-mono); color: var(--sand-faint); white-space: nowrap; }
-.tm-bar.today .tm-bar-day { color: var(--sand); font-weight: 700; }
-
-.tm-fill { margin: 10px 0 0; }
+.tm-fill { margin: 0 0 10px; }
 .tm-fill .toggle { font-size: var(--fs-12-5); color: var(--sand-dim); }
-.tm-short { margin: 10px 0 0; }
+.tm-short { margin: 0 0 10px; }
+
+.tm-month { display: grid; gap: 12px; margin-bottom: 18px; }
+
+/* A project's mark, in the calendar's day bars and beside its name. Five for the month's busiest. */
+.tm-c0 { --pc: var(--glass); }
+.tm-c1 { --pc: var(--amber); }
+.tm-c2 { --pc: var(--coral); }
+.tm-c3 { --pc: var(--kind-refactor); }
+.tm-c4 { --pc: #7cb8ff; }
+.tm-cx { --pc: var(--sand-faint-deco); }
+.tm-sw { width: 10px; height: 10px; flex: none; border-radius: 3px; background: var(--pc); }
+
+/* ---------------------------------------------------------------- the calendar */
+.tm-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) auto; gap: 4px; }
+.tm-dow { padding: 0 2px 2px; font: 600 var(--fs-10) var(--font-mono); color: var(--sand-faint); }
+.tm-dow.tm-wk { text-align: right; }
+.tm-day {
+  position: relative; min-width: 0; min-height: 54px; padding: 5px 6px 6px; display: flex; flex-direction: column; align-items: stretch;
+  border-radius: var(--r-sm); border: 1px solid var(--line-soft); background: var(--ink); color: var(--sand); text-align: left;
+  font: inherit; cursor: pointer; transition: border-color .12s;
+}
+.tm-day.lv1 { background: color-mix(in srgb, var(--glass) 9%, var(--ink)); }
+.tm-day.lv2 { background: color-mix(in srgb, var(--glass) 17%, var(--ink)); }
+.tm-day.lv3 { background: color-mix(in srgb, var(--glass) 26%, var(--ink)); }
+.tm-day.lv4 { background: color-mix(in srgb, var(--glass) 36%, var(--ink)); }
+button.tm-day:hover:not(:disabled) { border-color: var(--reef-3); }
+.tm-day:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
+.tm-day.today { border-color: var(--glass); }
+.tm-day.picked { border-color: var(--coral); box-shadow: 0 0 0 1px var(--coral); }
+.tm-day.future { background: none; cursor: default; }
+.tm-day.out { background: none; border-color: transparent; }
+.tm-day.filled { border-style: dashed; border-color: var(--amber); }
+.tm-d-n { font: 500 var(--fs-10-5) var(--font-mono); color: var(--sand-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-day.today .tm-d-n { color: var(--glass); font-weight: 700; }
+.tm-day.future .tm-d-n, .tm-day.out .tm-d-n { color: var(--sand-faint-deco); }
+.tm-d-t { margin-top: auto; font: 700 var(--fs-12-5)/1.1 var(--font-body); font-variant-numeric: tabular-nums; }
+.tm-d-mix { display: flex; gap: 1px; height: 4px; margin-top: 4px; border-radius: 2px; overflow: hidden; }
+.tm-d-mix i { background: var(--pc); }
+.tm-d-guess { position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px dashed var(--amber); }
+.tm-cal-grid > .tm-wk:not(.tm-dow) { align-self: center; padding-left: 4px; font: 600 var(--fs-11) var(--font-mono); color: var(--sand-dim); text-align: right; }
+.tm-cal-key { margin: 8px 0 0; }
+
+/* ---------------------------------------------------------------- the picked day */
+.tm-dayview { align-self: start; padding: 14px; border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--reef); }
+.tm-dv-head { display: flex; align-items: baseline; gap: 10px; }
+.tm-dv-head h3 { margin: 0; font: 600 var(--fs-17)/1.2 var(--font-pixel); }
+.tm-dv-total { margin-left: auto; font: 700 var(--fs-20)/1 var(--font-body); font-variant-numeric: tabular-nums; }
+.tm-dv-sub { margin: 4px 0 12px; font-size: var(--fs-12); color: var(--sand-dim); }
+.tm-lines { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.tm-line { padding: 10px; border-radius: var(--r); border: 1px solid var(--line-soft); background: var(--ink); }
+.tm-line-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tm-line-name { font-size: var(--fs-14); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-line-client { font-size: var(--fs-11-5); color: var(--sand-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tm-nudge { display: flex; align-items: center; margin-left: auto; flex: none; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--reef); }
+.tm-nudge .icon-btn { width: 26px; height: 26px; font: 700 var(--fs-15)/1 var(--font-mono); }
+.tm-nudge .icon-btn:disabled { opacity: .3; }
+.tm-line-time { min-width: 42px; text-align: center; font: 700 var(--fs-14) var(--font-body); font-variant-numeric: tabular-nums; }
+.tm-line.est .tm-line-time { color: var(--amber); }
+.tm-note.field { width: 100%; height: 30px; margin: 8px 0 6px; font-size: var(--fs-12-5); padding: 0 8px; }
+.tm-note.field:not(:focus):placeholder-shown { background: transparent; border-color: var(--line-soft); }
+.tm-line-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--fs-11-5); color: var(--sand-faint); }
+.tm-commits { font: 600 var(--fs-9-5)/16px var(--font-mono); padding: 0 6px; border-radius: 99px; background: var(--reef-3); color: var(--sand-dim); white-space: nowrap; cursor: default; }
+.tm-commits:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
+.tm-keep { margin-left: auto; }
+
+.tm-adder { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px; border-radius: var(--r); border: 1px dashed var(--line); }
+.tm-adder-title { width: 100%; font-size: var(--fs-12-5); font-weight: 700; color: var(--glass); }
+.tm-adder select { max-width: 100%; }
+.tm-adder .tm-add-note { flex: 1 1 140px; min-width: 0; }
+.tm-adder .form-errors { width: 100%; margin: 0; }
+
+/* Room for both: the day beside the calendar, and days big enough to read at a glance. */
+@container (min-width: 880px) {
+  .tm-month { grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr); gap: 20px; }
+  .tm-cal-grid { gap: 6px; }
+  .tm-day { min-height: 84px; padding: 8px 10px 9px; }
+  .tm-d-n { font-size: var(--fs-12); }
+  .tm-day.today .tm-d-n::after { content: "  today"; white-space: pre; }
+  .tm-d-t { font-size: var(--fs-18); }
+  .tm-d-mix { height: 6px; margin-top: 6px; }
+  .tm-cal-grid > .tm-wk:not(.tm-dow) { font-size: var(--fs-13); padding-left: 8px; }
+  .tm-stat dd { font-size: var(--fs-30); }
+  .tm-stats { gap: 6px 40px; }
+  .tm-dayview { padding: 20px; }
+  .tm-adder-title { width: auto; margin-right: 4px; }
+}
+@container (min-width: 1500px) {
+  .tm-day { min-height: 112px; }
+  .tm-d-t { font-size: var(--fs-22); }
+}
 
 /* ---------------------------------------------------------------- projects */
-.tm-projects { list-style: none; margin: 12px 0 4px; padding: 0; display: grid; gap: 6px; }
+.tm-projects-wrap { margin-bottom: 4px; }
+.tm-projects { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; gap: 6px; }
 .tm-empty { padding: 14px; border-radius: var(--r); border: 1px dashed var(--line); color: var(--sand-dim); font-size: var(--fs-13); text-align: center; }
 .tm-project { border: 1px solid var(--line); border-radius: var(--r); background: var(--reef); transition: border-color .15s; }
 .tm-project[open] { border-color: var(--reef-3); }
@@ -68,7 +147,7 @@ body[data-view="time"] .view-time {
 .tm-project summary::-webkit-details-marker { display: none; }
 .tm-project summary:hover { background: var(--reef-2); }
 .tm-project summary:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
-.tm-p-name { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.tm-p-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .tm-p-name b { font-size: var(--fs-14); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tm-p-name small, .tm-p-hours small { font: 500 var(--fs-10-5) var(--font-mono); color: var(--sand-faint); white-space: nowrap; }
 /* Short of room, the client gives way before the project's name does. */
@@ -80,36 +159,14 @@ body[data-view="time"] .view-time {
 .tm-p-bar i { display: block; height: 100%; border-radius: 2px; background: var(--glass); opacity: .85; }
 .tm-p-body { padding: 4px 12px 12px; border-top: 1px solid var(--line-soft); animation: rise .2s var(--ease-out); }
 
-.tm-days { list-style: none; margin: 6px 0 12px; padding: 0; display: grid; gap: 2px; }
-/* Date, hours, commits and the nudges on one line; what it was for under them, full width. */
-.tm-day { display: grid; grid-template-columns: 96px 1fr auto auto; align-items: center; gap: 4px 10px; padding: 6px 0 8px; border-bottom: 1px solid var(--line-soft); text-align: left; }
-.tm-day.empty .tm-day-hours b { color: var(--sand-faint); }
-.tm-day.est .tm-day-hours b { color: var(--amber); }
-.tm-day-date { font: 500 var(--fs-11) var(--font-mono); color: var(--sand-dim); white-space: nowrap; }
-.tm-day-hours { display: grid; justify-items: start; line-height: 1.2; min-width: 0; }
-.tm-day-hours b { font: 600 var(--fs-12-5) var(--font-mono); }
-.tm-day-hours small { font-size: var(--fs-10-5); color: var(--sand-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tm-commits { font: 600 var(--fs-9-5)/16px var(--font-mono); padding: 0 6px; border-radius: 99px; background: var(--reef-3); color: var(--sand-dim); white-space: nowrap; cursor: default; }
-.tm-commits:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
-.tm-note.field { grid-row: 2; grid-column: 1 / -1; height: 28px; font-size: var(--fs-12); padding: 0 8px; min-width: 0; }
-.tm-note.field:not(:focus):placeholder-shown { background: transparent; border-color: var(--line-soft); }
-.tm-nudge { display: flex; }
-.tm-nudge .icon-btn { width: 24px; height: 24px; font: 700 var(--fs-15)/1 var(--font-mono); }
-.tm-nudge .icon-btn:disabled { opacity: .3; }
-
-.tm-psettings { display: grid; gap: 10px; padding-top: 4px; }
+.tm-psettings { display: grid; gap: 10px; padding-top: 8px; }
 .tm-prow { display: flex; align-items: end; gap: 14px; }
 .tm-rate { width: 170px; }
 .tm-psettings .row { gap: 6px; }
 
-/* ---------------------------------------------------------------- export, add, settings */
+/* ---------------------------------------------------------------- export, settings */
 .tm-export .row { gap: 6px; }
 .tm-export select { flex: 1; min-width: 150px; }
-.tm-add { display: grid; gap: 10px; }
-.tm-add-row { display: flex; align-items: end; gap: 10px; }
-.tm-sign { flex: none; width: 160px; }
-.tm-sign button[aria-checked="true"] { background: var(--reef-2); color: var(--sand); box-shadow: 0 1px 0 rgba(0, 0, 0, .3); }
-.tm-num { width: 90px; }
 .tm-settings { display: flex; flex-wrap: wrap; gap: 12px 16px; }
 .tm-settings + .muted.small + .row { margin-top: 12px; }
 .field.slim.tm-cur { width: 76px; text-transform: uppercase; font-family: var(--font-mono); }
@@ -118,15 +175,9 @@ body[data-view="time"] .view-time {
 .tm-sync input[type="password"] { flex: 1; min-width: 160px; }
 #timeIgnored .link-btn, .tm-sync .link-btn { padding: 0; border: 0; background: none; font: inherit; color: var(--glass); text-decoration: underline dotted; cursor: pointer; }
 
-@media (max-width: 420px) {
-  .tm-day { grid-template-columns: 84px 1fr auto; }
-  .tm-day .tm-commits { grid-row: 2; grid-column: 1 / -1; justify-self: start; }
-  .tm-note.field { grid-row: 3; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .tm-live { animation: none; }
-  .tm-bar-track i { transition: none; }
+  .tm-day { transition: none; }
   .tm-p-body { animation: none; }
 }
 
