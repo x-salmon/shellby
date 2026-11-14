@@ -160,12 +160,15 @@ async function windows() {
     await panel.shot('4-finds');
     check(await until(panel, 'shellby.getLife().then(v => v.finds.unseen.length === 0)', 6000), 'looking at the shelf clears the new badge');
     await panel.ev("SB.setView('us')");
-    check(await until(panel, "document.querySelector('#usHero h3')?.textContent.length > 0", 3000), 'the Us page shows how close you are');
-    check(await panel.ev("/Your crab is/.test(document.getElementById('usHero').textContent)"), '...and his temperament');
+    check(await until(panel, "/together/.test(document.querySelector('#usHero h3')?.textContent)", 3000), 'the Us page says how long you have been together');
+    check(await until(panel, "document.querySelectorAll('#usRoad .us-stage').length >= 2 && !!document.querySelector('#usRoad .us-here[aria-current=step]')", 3000), '...and how close you are, on the road');
+    check(await panel.ev("/Your crab is/.test(document.querySelector('#usRoad .us-here').textContent)"), '...with his temperament where you are');
+    check(await panel.ev("['pet', 'hide', 'fetch', 'dig'].every(k => document.querySelector(`#usRoad .us-here [data-play=${k}]`))"), '...and the ways to get closer today');
     check(await until(panel, "!!document.querySelector('#usHero #bcHits .bc-hit-crab')", 4000), '...on your beach, with him on it to pet');
     check(await panel.ev("!document.querySelector('[data-goto=\"beach\"]')"), '...and no Beach tab of its own');
-    check(await panel.ev("document.querySelectorAll('#usStory li').length >= 2"), '...and your story so far');
-    check(await panel.ev(`document.querySelectorAll('#usUnlocks li').length === ${UNLOCKS.length}`), '...and what opens up as you get closer');
+    check(await panel.ev("document.querySelectorAll('#usRoad .us-mems li').length >= 2"), '...and your story so far, by stage');
+    // Down the panel only the stage you're heading for is drawn; across the page, every one.
+    check(await panel.ev(`(() => { const road = document.getElementById('usRoad'), n = road.querySelectorAll('.us-unlock').length; return road.classList.contains('across') ? n === ${UNLOCKS.length} : n >= 1 && n <= ${UNLOCKS.length}; })()`), '...and what opens up as you get closer');
     await panel.shot('4-us');
 
     // ------------------------------------------------------- 5. your day

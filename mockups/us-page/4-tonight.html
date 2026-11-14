@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Us, concept 4: tonight</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  main { display: grid; grid-template-columns: 1fr 1140px; grid-template-rows: 1fr auto; gap: 40px 72px; padding: 56px 72px 44px; }
+
+  /* What he's doing, said big */
+  .now { display: flex; flex-direction: column; min-height: 0; }
+  .now .when { font-size: 20px; color: var(--glass); font-weight: 700; }
+  .now h1 { margin-top: 14px; font: 500 104px/.98 var(--font-pixel); letter-spacing: -.01em; max-width: 1100px; }
+  .now .lede { margin-top: 24px; font-size: 24px; color: var(--sand-dim); max-width: 860px; }
+  .acts { margin-top: 40px; display: flex; gap: 16px; }
+  .act { height: 76px; padding: 0 30px 0 22px; display: inline-flex; align-items: center; gap: 14px; border-radius: 14px;
+    background: var(--reef-2); border: 1px solid var(--line); font-weight: 700; font-size: 21px; }
+  .act .emoji { font-size: 32px; }
+  .act.pet { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+
+  /* Coming up: a real timeline, soonest first */
+  .soon { margin-top: 52px; }
+  .soon h2 { font-size: 20px; font-weight: 700; color: var(--sand-dim); margin-bottom: 14px; }
+  .soon ol { position: relative; display: grid; }
+  .soon ol::before { content: ""; position: absolute; left: 132px; top: 22px; bottom: 22px; width: 2px; background: var(--line); }
+  .soon li { position: relative; display: grid; grid-template-columns: 112px 40px 1fr; align-items: center; gap: 0 20px; padding: 11px 0; }
+  .soon time { text-align: right; font-size: 17px; color: var(--sand-faint); }
+  .soon li > i { position: relative; z-index: 1; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 19px;
+    background: var(--abyss); border: 2px solid var(--line); }
+  .soon li.next > i { border-color: var(--glass); }
+  .soon b { font-size: 20px; }
+  .soon span span { color: var(--sand-dim); font-size: 17px; margin-left: 10px; }
+  .soon .mini { display: inline-block; vertical-align: middle; margin-left: 14px; width: 160px; height: 8px; border-radius: 4px; background: var(--reef-3); overflow: hidden; }
+  .soon .mini::after { content: ""; display: block; height: 100%; width: 71%; background: #ff8fab; }
+
+  /* The window onto his beach, close on him */
+  .window { display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+  .frame { position: relative; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 70px rgba(0, 0, 0, .45); }
+  .frame .lv { position: absolute; left: 22px; bottom: 20px; display: inline-flex; align-items: center; gap: 10px; padding: 9px 16px 9px 12px;
+    border-radius: 22px; background: rgba(5, 13, 23, .78); font-size: 17px; }
+  .frame .lv .emoji { font-size: 22px; }
+  .since { padding: 22px 26px; border-radius: 16px; background: var(--ink); border: 1px solid var(--line); }
+  .since h2 { font-size: 18px; font-weight: 700; color: var(--sand-dim); }
+  .since ul { margin-top: 12px; display: grid; gap: 10px; }
+  .since li { display: flex; align-items: center; gap: 14px; font-size: 19px; }
+  .since .emoji { font-size: 22px; width: 30px; text-align: center; }
+  .since .new { margin-left: auto; font-size: 14px; font-weight: 700; color: var(--abyss); background: var(--glass); padding: 2px 10px; border-radius: 10px; }
+
+  /* The shelf: everything you keep, one tap each */
+  .shelf { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .shelf a { display: grid; grid-template-columns: 64px 1fr; grid-template-rows: auto auto; column-gap: 18px; align-items: center;
+    padding: 20px 24px; border-radius: 16px; background: var(--reef); border: 1px solid var(--line); color: inherit; text-decoration: none; }
+  .shelf .emoji { grid-row: 1 / 3; font-size: 40px; width: 64px; height: 64px; display: grid; place-items: center; border-radius: 14px; background: var(--ink); }
+  .shelf b { font-size: 21px; }
+  .shelf b span { color: var(--sand-faint); font-weight: 400; margin-left: 8px; }
+  .shelf small { font-size: 16px; color: var(--sand-dim); }
+</style>
+</head>
+<body>
+<main>
+  <section class="now">
+    <p class="when">Friday, 9:14 pm</p>
+    <h1>He's out watching the stars.</h1>
+    <p class="lede">Best friends for 4 days now, and 187 days together. He's chipper, so he'd love a game before bed.</p>
+    <div class="acts">
+      <button class="act pet"><span class="emoji">♥</span>Pet him</button>
+      <button class="act"><span class="emoji">🙈</span>Hide and seek</button>
+      <button class="act"><span class="emoji">🎾</span>Fetch</button>
+    </div>
+
+    <div class="soon">
+      <h2>Coming up</h2>
+      <ol>
+        <li class="next"><time>11:24 pm</time><i class="emoji">⛏️</i><span><b>He can dig again</b><span>Something might turn up</span></span></li>
+        <li><time>26 Nov</time><i class="emoji">🗓️</i><span><b>200 days together</b><span>In 13 days</span></span></li>
+        <li><time>1 Dec</time><i class="emoji">❄️</i><span><b>The Frost Tide starts</b><span>A medal, if you finish it while it's on</span></span></li>
+        <li><time>Mid Dec</time><i class="emoji">🌟</i><span><b>Inseparable</b><span>176 points to go</span><i class="mini"></i></span></li>
+        <li><time>24 Dec</time><i class="emoji">🎂</i><span><b>Your birthday</b><span>He'll dig up something you can't find any other way</span></span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="window">
+    <div class="frame">
+      <canvas id="b" data-beach='{"k":8,"from":118,"cols":143,"top":4,"rows":96,"time":"night","orbAt":150,"pops":[{"x":214,"y":82,"age":0.15},{"x":205,"y":78,"age":0.45},{"x":219,"y":75,"age":0.7}]}'></canvas>
+      <span class="lv"><span class="emoji">💞</span>Best friends, and 71% of the way to Inseparable</span>
+    </div>
+    <div class="since">
+      <h2>Since you were last here</h2>
+      <ul>
+        <li><span class="emoji">🤹</span>You caught him juggling pebbles<span class="new">New scene</span></li>
+        <li><span class="emoji">✨</span>He found amber sea glass</li>
+        <li><span class="emoji">🏡</span>@mira's crab came to visit</li>
+      </ul>
+    </div>
+  </section>
+
+  <nav class="shelf" aria-label="What you keep">
+    <a href="#"><span class="emoji">📖</span><b>Our story<span>48</span></b><small>Latest: became Best friends</small></a>
+    <a href="#"><span class="emoji">🎬</span><b>His scenes<span>14 of 31</span></b><small>3 only happen at the weekend</small></a>
+    <a href="#"><span class="emoji">🏅</span><b>Medals<span>3</span></b><small>Harvest Tide, 31 Oct</small></a>
+    <a href="#"><span class="emoji">🥚</span><b>The clutch<span>2</span></b><small>Pip and Biscuit. Lay another egg</small></a>
+  </nav>
+</main>
+<p class="caption">Concept 4, tonight: what he's doing now, what you can do, what's coming; everything you keep is one tap away</p>
+<script src="beach-data.js"></script>
+<script>window.SB = {};</script>
+<script src="../../src/renderer/shared/sprite.js"></script>
+<script src="../../src/renderer/panel/beach-paint.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>

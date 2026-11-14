@@ -1,9 +1,8 @@
 /* Shellby panel — Finds and Us, two tabs of Shellby's screen about the two of
    you, none of which needs Claude. Finds is the shelf of everything he's dug up
    (src/main/gifts/index.js); Us is your beach (beach.js draws it, with him on it),
-   how close you are, his temperament, games, your birthday, the scenes you've
-   caught him in and the moments he remembers (bond.js, playtime.js,
-   scenes.js). Main sends one view for both (life.js). */
+   the road of how close you are (us-road.js), your birthday and the scenes
+   you've caught him in (bond.js, playtime.js, scenes.js). Main sends one view for both (life.js). */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
@@ -19,7 +18,6 @@
     const m = Math.max(1, Math.ceil((t - Date.now()) / 60000));
     return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
   };
-  const clock = ms => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
   // A find's pixels, or its silhouette when it isn't on the shelf yet. Art
   // without an `owned` of its own (its sparkly look, its sprite) says so.
@@ -101,49 +99,12 @@
   }
 
   // ------------------------------------------------------------ Us
-  // The scene at the top is your beach (beach.js): him beside the newest
-  // castle, to pet, with what your bond has opened up drawn into it. This
-  // file fills in the words over it and everything under it.
-  function renderBond(v) {
-    const b = v.bond;
-    const t = v.temperament;
-    const last = b.levels.length - 1;
-    $('usLevelName').textContent = b.level.name;
-    $('usSub').textContent = [b.days ? `${plural(b.days, 'day')} together` : 'Your first day together', b.hatchedAt ? `moved in ${when(b.hatchedAt)}` : null].filter(Boolean).join(' · ');
-
-    const path = $('usPath');
-    path.style.setProperty('--fill', String(Math.min(1, (b.level.index + b.level.progress) / last)));
-    path.setAttribute('aria-valuenow', String(Math.round(b.level.progress * 100)));
-    path.setAttribute('aria-valuetext', b.level.next != null ? `${b.level.name}, ${Math.round(b.level.progress * 100)}% of the way to ${b.levels[b.level.index + 1].name}` : b.level.name);
-    path.replaceChildren(...b.levels.map((l, i) => h('li', { class: `us-stone${l.reached ? ' reached' : ''}${i === b.level.index ? ' here' : ''}`, style: `--at:${i / last}` },
-      h('span', { class: 'us-stone-icon', 'aria-hidden': 'true', text: l.icon }),
-      h('span', { class: 'us-stone-name', text: l.name }))));
-
-    const next = b.level.next != null ? `${(b.level.next - b.level.points).toLocaleString()} to ${b.levels[b.level.index + 1].name}` : 'As close as it gets';
-    $('usNext').textContent = b.nextMilestone ? `${next} · ${b.nextMilestone - b.days} days to ${b.nextMilestone} together` : next;
-    $('usTemper').replaceChildren(
-      h('span', { class: 'us-temper-emoji', 'aria-hidden': 'true', text: t.emoji }),
-      h('span', {}, h('b', { text: `Your crab is ${t.name.toLowerCase()}.` }), ' ', t.blurb, h('span', { class: 'us-faint', text: ' Every crab is one of four, picked when he moved in, and he stays that way.' })));
-  }
-
-  function renderPlay(v) {
-    const p = v.play;
-    const playing = !!p?.playing;
-    document.querySelectorAll('.us-play [data-play]').forEach(btn => {
-      const k = btn.dataset.play;
-      if (k === 'stop') { btn.hidden = !playing; return; }
-      btn.disabled = playing || (k === 'dig' && !v.finds.canDig);
-    });
-    $('usStatHide').textContent = p?.hide.games ? `Found him ${plural(p.hide.found, 'time')}${p.hide.best ? `, best ${clock(p.hide.best)}` : ''}${p.hide.won ? `. He won ${p.hide.won}.` : ''}` : 'He hides behind your windows';
-    $('usStatFetch').textContent = p?.fetch.fetched ? `${plural(p.fetch.fetched, 'fetch', 'fetches')}${p.fetch.longest ? `, longest ${p.fetch.longest.toLocaleString()} px` : ''}` : 'Throw him a pebble';
-    $('usStatDig').textContent = !v.finds.canDig ? `He can dig again in ${until(v.finds.nextDigAt)}` : v.finds.total ? `${plural(v.finds.total, 'find')} dug up` : 'See what turns up';
-  }
-
-  function renderUnlocks(b) {
-    $('usUnlocks').replaceChildren(...b.unlocks.map(u => h('li', { class: `us-unlock${u.open ? ' open' : ''}` },
-      h('span', { class: 'us-unlock-icon', 'aria-hidden': 'true', text: b.levels[u.level].icon }),
-      h('span', { class: 'us-unlock-text' }, u.text),
-      h('span', { class: 'us-unlock-at', text: u.open ? `${u.levelName} ✓` : `at ${u.levelName}` }))));
+  // The scene at the top is your beach (beach.js), with how long you've been
+  // together over it; the road under it is us-road.js. This file fills in
+  // the title and everything under the road.
+  function renderTitle(b) {
+    $('usTitle').textContent = b.days ? `${plural(b.days, 'day')} together` : 'Your first day together';
+    $('usSub').textContent = b.hatchedAt ? `He moved in on ${when(b.hatchedAt)}` : '';
   }
 
   function renderScenes(s) {
@@ -152,33 +113,14 @@
     $('usScenes').replaceChildren(...s.list.map(x => h('li', x.name ? { class: 'seen', text: x.name } : { 'aria-label': 'Not caught yet', text: '?' })));
   }
 
-  // Newest first, with the month marked where it changes.
-  function renderStory(journal) {
-    if (!journal.length) {
-      $('usStory').replaceChildren(h('li', { class: 'us-story-empty', text: 'Nothing yet. Click him up there to give him a pet.' }));
-      return;
-    }
-    const monthOf = t => new Date(t).toLocaleDateString([], { month: 'long', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
-    $('usStory').replaceChildren(...journal.map((e, i) => {
-      const month = monthOf(e.at);
-      return h('li', { class: i === 0 ? 'latest' : '' },
-        month !== (i && monthOf(journal[i - 1].at)) ? h('span', { class: 'us-story-month', text: month }) : null,
-        h('span', { class: 'us-story-icon', 'aria-hidden': 'true', text: e.icon }),
-        h('span', { class: 'us-story-text', text: e.text }),
-        h('time', { datetime: new Date(e.at).toISOString(), text: when(e.at) }));
-    }));
-  }
-
   function renderUs() {
     const v = life();
     if (!v) return;
     SB.beachScene?.refresh(); // a closer bond or a new favourite shows on the beach
-    renderBond(v);
-    renderPlay(v);
-    renderUnlocks(v.bond);
+    renderTitle(v.bond);
+    SB.usRoad.render(v);
     renderBirthday(v.bond.birthday);
     renderScenes(v.scenes);
-    renderStory(v.bond.journal);
   }
 
   // How long until the next one, counted in whole days.
@@ -234,7 +176,6 @@
 
   // ------------------------------------------------------------ wiring
   $('fdDig').addEventListener('click', () => play('dig'));
-  document.querySelectorAll('.us-play [data-play]').forEach(b => b.addEventListener('click', () => play(b.dataset.play)));
   async function play(kind) {
     const r = await api.play(kind);
     if (!r?.ok) return SB.toast(r?.error || 'He can’t right now.');

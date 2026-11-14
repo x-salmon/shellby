@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Us, concept 3: the road to Inseparable</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  main { display: grid; grid-template-rows: auto 1fr; }
+
+  /* The whole beach as a panorama, with the room still to fill */
+  .strip { position: relative; height: 476px; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .strip canvas { position: absolute; left: 0; top: 0; }
+  .strip h1 { position: absolute; left: 64px; top: 36px; padding: 18px 24px; border-radius: 14px; background: rgba(7, 16, 18, .82); font: 500 34px/1.2 var(--font-pixel); color: var(--sand); }
+  .strip h1 span { display: block; font: 400 18px/1.5 var(--font-body); color: var(--sand-dim); }
+  .room { position: absolute; transform: translate(0, -100%); padding: 10px 16px; border: 2px dashed rgba(243, 230, 204, .35); border-radius: 8px;
+    width: 720px; height: 150px; display: grid; place-items: center; color: #4a3b22; font-weight: 700; font-size: 19px; border-color: rgba(74, 59, 34, .45); }
+
+  /* The road: one column per stage of your bond */
+  .road { position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 2.1fr 1.15fr; gap: 0; padding: 0 40px; }
+  .road::before { content: ""; position: absolute; left: 40px; right: 40px; top: 77px; height: 6px; background: var(--reef-3); }
+  .road::after { content: ""; position: absolute; left: 40px; width: 1940px; top: 77px; height: 6px; background: linear-gradient(90deg, #ff8fab 0 1450px, rgba(255, 143, 171, .5) 1450px); }
+  .stage { position: relative; z-index: 1; padding: 49px 24px 30px; display: flex; flex-direction: column; gap: 18px; }
+  .stage + .stage { border-left: 1px solid var(--line-soft); }
+  .marker { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+  .marker i { width: 62px; height: 62px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 28px; font-style: normal;
+    background: var(--abyss); border: 4px solid #ff8fab; }
+  .marker b { display: block; font: 500 24px/1.1 var(--font-pixel); }
+  .marker small { font-size: 15px; color: var(--sand-faint); }
+  .opened { padding: 12px 14px; border-radius: 10px; background: rgba(255, 143, 171, .09); font-size: 16px; line-height: 1.4; }
+  .opened::before { content: "✓ "; color: #ff8fab; font-weight: 700; }
+  .memories { display: grid; gap: 10px; }
+  .memories li { display: grid; grid-template-columns: 30px 1fr; gap: 8px; font-size: 16.5px; color: var(--sand-dim); line-height: 1.35; }
+  .memories .emoji { font-size: 19px; }
+  .memories time { display: block; font-size: 13.5px; color: var(--sand-faint); }
+
+  /* Where you are now: bigger, and it says how to get closer */
+  .stage.here { background: linear-gradient(180deg, rgba(255, 143, 171, .07), rgba(255, 143, 171, 0) 70%); border-radius: 0 0 18px 18px; padding-left: 36px; padding-right: 36px; }
+  .stage.here .marker i { width: 78px; height: 78px; font-size: 36px; margin-top: -8px; margin-bottom: -8px; box-shadow: 0 0 0 10px rgba(255, 143, 171, .18); }
+  .stage.here .marker b { font-size: 36px; }
+  .progress { display: grid; gap: 10px; }
+  .bar { height: 14px; border-radius: 7px; background: var(--reef-3); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 71%; background: #ff8fab; border-radius: 7px; }
+  .progress p { font-size: 18px; }
+  .progress p span { color: var(--sand-dim); }
+  .earn { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .way { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; background: var(--reef); border: 1px solid var(--line); text-align: left; }
+  .way .emoji { font-size: 28px; text-align: center; }
+  .way b { font-size: 18px; display: block; }
+  .way small { font-size: 14px; color: var(--sand-faint); }
+  .way em { font-style: normal; font-weight: 700; color: #ff8fab; font-size: 17px; }
+  .way.go { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+  .way.go small { color: #6b2a17; }
+  .way.go em { color: #2a0d05; }
+  .way.done { opacity: .55; }
+  .here h2 { font-size: 16px; color: var(--sand-dim); font-weight: 700; margin-top: 4px; }
+
+  /* What's ahead stays visible, so there's a reason to come back */
+  .stage.ahead .marker i { border-color: var(--line); filter: grayscale(1); opacity: .6; }
+  .stage.ahead .marker b { color: var(--sand-dim); }
+  .locked { padding: 14px 16px; border-radius: 10px; border: 1px dashed var(--line); font-size: 16px; color: var(--sand-dim); line-height: 1.4; }
+  .eta { font-size: 15px; color: var(--sand-faint); }
+  .bd { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 12px; background: var(--reef); font-size: 15.5px; }
+  .bd .emoji { font-size: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <section class="strip">
+    <canvas id="b" data-beach='{"k":7,"from":0,"cols":366,"top":32,"rows":68,"time":"day"}'></canvas>
+    <h1>187 days together<span>14 castles so far. Every one is a project you shipped.</span></h1>
+    <div class="room" data-pin='{"on":"b","x":262,"y":97}'>Room for the next one. Ship something and he builds it here.</div>
+  </section>
+
+  <ol class="road" aria-label="How close you are">
+    <li class="stage">
+      <div class="marker"><i class="emoji">🥚</i><span><b>New friends</b><small>10 May</small></span></div>
+      <ul class="memories">
+        <li><span class="emoji">🥚</span><span>Moved onto your desktop<time>10 May</time></span></li>
+        <li><span class="emoji">♥</span><span>His first pet<time>10 May</time></span></li>
+        <li><span class="emoji">🗓️</span><span>A week together<time>17 May</time></span></li>
+      </ul>
+    </li>
+    <li class="stage">
+      <div class="marker"><i class="emoji">🐚</i><span><b>Pals</b><small>14 May</small></span></div>
+      <p class="opened">He brings up things you did together</p>
+      <ul class="memories">
+        <li><span class="emoji">🧗</span><span>Climbed onto VS Code for the first time<time>16 May</time></span></li>
+        <li><span class="emoji">🐚</span><span>Dug up his first find: a tiny shell<time>21 May</time></span></li>
+        <li><span class="emoji">🎾</span><span>Your first game of fetch<time>25 May</time></span></li>
+      </ul>
+    </li>
+    <li class="stage">
+      <div class="marker"><i class="emoji">🦀</i><span><b>Buddies</b><small>30 May</small></span></div>
+      <p class="opened">He shows off his favourite find, and asks to play hide and seek</p>
+      <ul class="memories">
+        <li><span class="emoji">🏅</span><span>Won his first game of hide and seek<time>2 Jun</time></span></li>
+        <li><span class="emoji">🗓️</span><span>50 days together<time>29 Jun</time></span></li>
+        <li><span class="emoji">🛩️</span><span>You threw him across the screen<time>3 Jul</time></span></li>
+        <li><span class="emoji">🤫</span><span>Kept quiet through your first call<time>8 Jul</time></span></li>
+      </ul>
+    </li>
+    <li class="stage">
+      <div class="marker"><i class="emoji">💛</i><span><b>Close friends</b><small>19 Jul</small></span></div>
+      <p class="opened">He draws you hearts in the sand</p>
+      <ul class="memories">
+        <li><span class="emoji">🎢</span><span>Rode VS Code 4,120 px<time>12 Sep</time></span></li>
+        <li><span class="emoji">🏆</span><span>Finished the Sea glass set<time>28 Sep</time></span></li>
+        <li><span class="emoji">🗓️</span><span>150 days together<time>7 Oct</time></span></li>
+        <li><span class="emoji">🐣</span><span>@mira hatched one of his eggs: Pip<time>14 Oct</time></span></li>
+        <li><span class="emoji">🏅</span><span>Finished the Harvest Tide<time>31 Oct</time></span></li>
+      </ul>
+    </li>
+    <li class="stage here">
+      <div class="marker"><i class="emoji">💞</i><span><b>Best friends</b><small>Since 9 Nov, and he's chipper about it</small></span></div>
+      <p class="opened">He leans on your cursor for a cuddle</p>
+      <div class="progress">
+        <div class="bar"><i></i></div>
+        <p><b>424 of 600</b> <span>176 more and you're Inseparable</span></p>
+      </div>
+      <h2>Get closer today</h2>
+      <div class="earn">
+        <button class="way go"><span class="emoji">♥</span><span><b>Pet him</b><small>7 more count today</small></span><em>+1</em></button>
+        <button class="way"><span class="emoji">🙈</span><span><b>Hide and seek</b><small>Best 0:41</small></span><em>+3</em></button>
+        <button class="way"><span class="emoji">🎾</span><span><b>Fetch</b><small>212 fetches</small></span><em>+3</em></button>
+        <button class="way done"><span class="emoji">⛏️</span><span><b>Dig</b><small>Again in 2h 10m</small></span><em>+1</em></button>
+      </div>
+      <p class="eta">Every day together adds 5 on its own.</p>
+    </li>
+    <li class="stage ahead">
+      <div class="marker"><i class="emoji">🌟</i><span><b>Inseparable</b><small>About 5 weeks at your pace</small></span></div>
+      <p class="locked">Golden hearts when you pet him</p>
+      <p class="locked">A scene you can't catch any other way</p>
+      <div class="bd"><span class="emoji">🎂</span><span>Your birthday is in 41 days. He'll make a fuss.</span></div>
+    </li>
+  </ol>
+</main>
+<p class="caption">Concept 3, the road to Inseparable: your bond is the page; each stage holds what it opened and what you did</p>
+<script src="beach-data.js"></script>
+<script>window.SB = {};</script>
+<script src="../../src/renderer/shared/sprite.js"></script>
+<script src="../../src/renderer/panel/beach-paint.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>

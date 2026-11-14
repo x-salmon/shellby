@@ -670,6 +670,8 @@ interface ShellbyPanelExtras {
   renderUltraChip: any;
   renderUltracode: any;
   ultraWords: any;
+  // us-road.js
+  usRoad: any;
   // viewer-find.js
   viewerFind: any;
   // viewer-preview.js
