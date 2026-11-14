@@ -10,6 +10,7 @@ const recap = require('../recap');
 const { repoOf } = require('../gitinfo');
 const { reviewPrompt, LENSES } = require('../review');
 const selfaware = require('../selfaware');
+const { ID } = require('../ipc-args');
 const stickers = require('../stickers');
 const streaks = require('../progression/streaks');
 
@@ -102,6 +103,9 @@ function registerProgressIpc(ipcMain, d) {
     d.config.set({ mutedSuggestions: feature === null ? [] : muted ? [...list, feature] : list });
     return d.config.get('mutedSuggestions');
   });
+
+  // A hand-off card (wiring/chatlink.js): the user let one conversation's brief through to another, or not.
+  ipcMain.handle('chats:decide', (_e, id, yes) => d.chatLink.decide(id, yes === true), [ID]);
 
   // ---- focus sessions
   ipcMain.handle('focus:get', () => d.focusView());

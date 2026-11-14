@@ -146,6 +146,8 @@ function wireCrabApi(d) {
     if (name === 'add_routine' || name === 'list_routines') return routineFrom(name, args);
     // The task board (wiring/taskboard.js): handing work between conversations.
     if (d.taskBoard?.isBoardTool(name)) return d.taskBoard.tool(tab, name, args);
+    // Seeing and handing work to this project's other conversations (wiring/chatlink.js).
+    if (d.chatLink?.isChatTool(name)) return d.chatLink.tool(tab, name, args);
     if (!['say', 'celebrate', 'wear', 'status'].includes(name)) return { text: `Unknown tool: ${name}`, isError: true };
     const r = applyCrabIntent({ action: name, args });
     return r.ok === false ? { text: r.error, isError: true } : { text: r.text };

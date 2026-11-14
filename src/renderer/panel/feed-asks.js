@@ -275,6 +275,36 @@
       this.append(card);
     }
 
+    // A conversation asking to hand work to another one (wiring/chatlink.js hand_off).
+    // Nothing goes until the user says so; Claude waits on the answer.
+    renderHandOff(item) {
+      let card = null;
+      const answer = async yes => {
+        if (card.classList.contains('decided')) return;
+        const r = await api.decideHandOff(item.id, yes).catch(() => null);
+        card.classList.add('decided');
+        const verdict = !r?.ok ? (r?.error || "Couldn't answer that.") : yes ? 'Approved' : 'Kept here';
+        card.append(h('div', { class: `ask-verdict ${yes && r?.ok ? 'allow' : 'deny'}`, text: `→ ${verdict}` }));
+      };
+      const to = item.isNew ? 'a new conversation' : `“${item.toTitle}”`;
+      const dirty = item.dirty > 0
+        ? h('p', { class: 'ask-desc', text: `This conversation has ${item.dirty} uncommitted ${item.dirty === 1 ? 'change' : 'changes'}, which ${item.isNew ? 'the new one' : 'the other one'} won't see unless they're committed.` })
+        : null;
+      card = h('div', { class: 'ask suggest handoff', role: 'group', 'aria-label': `Hand off to ${to}` },
+        h('div', { class: 'ask-head' },
+          h('span', { class: 'ask-crab' }, SB.sprite()),
+          h('div', {},
+            h('div', { class: 'ask-title', text: `Hand this to ${to}?` }),
+            h('div', { class: 'ask-sub', text: 'Claude wrote this brief for it:' }))),
+        h('div', { class: 'ask-body' },
+          item.elevatedMode ? h('p', { class: 'ask-desc', text: `It runs in ${item.elevatedMode} mode, so it can do more without asking than this conversation can.` }) : null,
+          h('p', { class: 'ask-desc', text: item.brief }), dirty),
+        h('div', { class: 'ask-actions' },
+          h('button', { class: 'btn allow', type: 'button', onclick: () => answer(true) }, 'Send it'),
+          h('button', { class: 'btn ghost', type: 'button', onclick: () => answer(false) }, 'Keep it here')));
+      this.append(card);
+    }
+
     cancelOpenAsks() {
       for (const [requestId, card] of this.asks) if (!card.classList.contains('decided')) this.markDecision({ requestId, decision: 'cancelled' });
     }

@@ -49,6 +49,7 @@ const { wireBugdex } = require('./wiring/bugdex');
 const { wireTimetrack } = require('./wiring/timetrack');
 const { wireCrabApi } = require('./wiring/crab-api');
 const { wireTaskBoard } = require('./wiring/taskboard');
+const { wireChatLink } = require('./wiring/chatlink');
 const { wireChannels } = require('./wiring/channels');
 const { wireDeck } = require('./wiring/deck');
 const { wirePhoneTasks } = require('./wiring/phone-tasks');
@@ -371,6 +372,7 @@ share({ bugdex: wireBugdex(shared) }); // the bugs Claude has fixed for you, in 
 const { createExternal, createHealth, createTimeTracker, stat } = share(wireTimetrack(shared));
 const { createCrabApi } = share(wireCrabApi(shared));
 share(wireTaskBoard(shared)); // the task board: conversations handing each other work (taskboard/)
+share(wireChatLink(shared)); // conversations seeing each other and handing one another work (chatlink.js)
 const { channelPlace, channelSettings, confirmChannelPlace, createObs, createRemote, loadChannelSecret } = share(wireChannels(shared));
 const { createPhoneTasks } = share(wirePhoneTasks(shared));
 const { createDeck } = share(wireDeck(shared));

@@ -382,6 +382,7 @@
         // What the turn earned: finds, catches, trophies... (turn-rewards.js), kept with it.
         case 'rewards': { const card = SB.renderRewards?.(item); return card ? this.append(card) : undefined; }
         case 'suggest': return this.renderSuggestion(item, replay); // feed-asks.js
+        case 'chat-handoff': return this.renderHandOff(item); // feed-asks.js
         case 'handoff': return this.renderHandoff(item, replay);
         case 'cutoff': return this.renderCutOff(item, replay);
         case 'branched': return this.renderBranched(item);

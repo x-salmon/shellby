@@ -272,7 +272,7 @@ function wireTaskBoard(d) {
 
   const isBoardTool = name => crabmcp.BOARD_TOOL_NAMES.includes(name);
 
-  return { taskBoard: { tool, view, cancelByUser, isBoardTool, watchTabs, enabled } };
+  return { taskBoard: { tool, view, cancelByUser, isBoardTool, watchTabs, enabled, projectOf } };
 }
 
 module.exports = { wireTaskBoard };

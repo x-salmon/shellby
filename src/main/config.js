@@ -83,6 +83,7 @@ const DEFAULTS = {
   selfAware: true,   // Claude is told it's in Shellby and gets the crab's tools (see selfaware.js)
   suggestions: true, // ...and may offer Shellby features as one-tap cards
   taskBoard: true,   // ...and share a task board per project, to hand each other work (wiring/taskboard.js)
+  handoffAsk: true,  // ...and a hand_off from one conversation to another waits on a card for your yes (wiring/chatlink.js)
   mutedSuggestions: [], // features the user said not to offer again
   voice: null,       // his seed, temperament and what he's said lately (see voice.js)
   finds: null,       // the shelf: everything he's dug up for you (see gifts/index.js)

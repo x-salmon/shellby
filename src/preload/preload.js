@@ -405,7 +405,7 @@ contextBridge.exposeInMainWorld('shellby', {
   openProject: fire('streaks:open'),
   reviewProject: invoke('review:start'),
   reviewFromSuggestion: invoke('suggest:review'),
-  muteSuggestion: invoke('suggest:mute'),
+  muteSuggestion: invoke('suggest:mute'), decideHandOff: invoke('chats:decide'), // a suggestion card; a hand-off card (wiring/chatlink.js)
   onStreaks: on('streaks'),
   onNudge: on('nudge'),
   devCheckNudges: invoke('dev:check-nudges'), // dev builds with SHELLBY_NUDGE_TEST only
