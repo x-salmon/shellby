@@ -30,6 +30,7 @@
 <link rel="stylesheet" href="tank-layouts.css">
 <link rel="stylesheet" href="../shared/health.css">
 <link rel="stylesheet" href="health-view.css">
+<link rel="stylesheet" href="health-wide.css">
 <link rel="stylesheet" href="card.css">
 <link rel="stylesheet" href="crabonly.css">
 <link rel="stylesheet" href="github.css">
@@ -548,6 +549,7 @@
       <span class="hl-live" id="hlLive"><i></i>live</span>
       <button type="button" class="btn ghost slim-btn" id="hlRecheck" title="Read every sensor again now">Recheck</button>
     </div>
+    <div class="hl-main">
     <p class="view-lede newcomer-only" id="hlLede">He keeps an eye on your PC while you work: he sweats when it runs hot and gets dizzy when memory fills up. Nothing to set up; this page says why.</p>
 
     <section class="hl-hero" id="hlHero" data-level="ok" aria-live="polite">
@@ -564,6 +566,14 @@
           <button type="button" class="btn" id="hlEnable" hidden>Turn health checks on</button>
         </div>
       </div>
+    </section>
+
+    <!-- How it got here and what would help, while there's a mood (health-diagnosis.js). -->
+    <section class="hl-diag" id="hlDiag" hidden aria-labelledby="hlDiagTitle">
+      <h3 class="hl-h" id="hlDiagTitle">How it got here</h3>
+      <ol class="hl-chain" id="hlChain"></ol>
+      <h3 class="hl-h">What would help</h3>
+      <ul class="hl-fixes" id="hlFixes"></ul>
     </section>
 
     <section class="hl-block hl-hogs" id="hlHogs" hidden aria-labelledby="hlHogsTitle">
@@ -594,14 +604,26 @@
       <p class="hl-fine" id="hlHogsFine">End task asks first, and won't touch Windows itself or Shellby. Processes marked "Shellby task" end on their own when that task closes. Asking Shellby goes through everything running, not just these, and changes nothing until you pick.</p>
     </section>
 
-    <div class="hl-gauges-head">
-      <h3 class="hl-h">Vitals</h3>
-      <div class="seg hl-range" id="hlRange" role="tablist" aria-label="Graph range" data-roving>
-        <button type="button" role="tab" data-range="600000">10 min</button>
-        <button type="button" role="tab" data-range="3600000">1 hour</button>
-      </div>
     </div>
-    <div class="hl-gauges" id="hlGauges"></div>
+
+    <!-- Vitals and recent alerts: inline in a narrow panel, a column of their own on a wide one. -->
+    <aside class="hl-rail" aria-label="Vitals">
+      <div class="hl-gauges-head">
+        <h3 class="hl-h">Vitals</h3>
+        <div class="seg hl-range" id="hlRange" role="tablist" aria-label="Graph range" data-roving>
+          <button type="button" role="tab" data-range="600000">10 min</button>
+          <button type="button" role="tab" data-range="3600000">1 hour</button>
+        </div>
+      </div>
+      <div class="hl-gauges" id="hlGauges"></div>
+
+      <section class="setting-group">
+        <div class="hl-loghead"><h3>Recent alerts</h3><button type="button" class="btn ghost slim-btn" id="hlClearLog">Clear</button></div>
+        <ul class="hl-log" id="hlLog"></ul>
+      </section>
+    </aside>
+
+    <div class="hl-more">
 
     <section class="hl-block" id="hlFansBlock" hidden>
       <h3 class="hl-h">Fans</h3>
@@ -689,10 +711,7 @@
       </div>
     </section>
 
-    <section class="setting-group">
-      <div class="hl-loghead"><h3>Recent alerts</h3><button type="button" class="btn ghost slim-btn" id="hlClearLog">Clear</button></div>
-      <ul class="hl-log" id="hlLog"></ul>
-    </section>
+    </div>
   </main>
 
   <!-- ====================== WARDROBE ====================== -->
@@ -3242,6 +3261,7 @@
 <script src="health-gauges.js"></script>
 <script src="health-drives.js"></script>
 <script src="health-hogs.js"></script>
+<script src="health-diagnosis.js"></script>
 <script src="card.js"></script>
 <script src="moment-card.js"></script>
 <script src="moment-clip.js"></script>

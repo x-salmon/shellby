@@ -70,16 +70,19 @@
 
   // The hero's words for a snapshot (null before the first): { eyebrow, title,
   // sub, ask }, ask being { check, text } when there's something to ask about.
-  function heroWords(view) {
+  // cause: the app to blame (diagnosisCause), named in the title when there is one.
+  function heroWords(view, cause = null) {
     if (view && !view.settings?.enabled) {
       return { eyebrow: 'Vitals', title: 'Health checks are off', sub: "Shellby isn't watching temperatures, memory or drives right now.", ask: null };
     }
     if (!view?.sample) return { eyebrow: 'Vitals', title: 'Taking a first reading…', sub: '', ask: null };
     if (view.mood) {
       const copy = heroCopy(view.mood, view.checks?.[view.mood.id]?.reading || null, view.thresholds || {});
+      // "Overheating!" stays a shout; the calmer titles read on into the cause.
+      const blamed = cause && !copy.cooling && HOG_MOODS.has(view.mood.mood) && !copy.title.endsWith('!');
       return {
         eyebrow: view.mood.level === 'critical' && !copy.cooling ? 'Needs attention' : 'Heads up',
-        title: copy.title, sub: copy.line, ask: { check: view.mood.id, text: copy.ask || 'Ask Shellby why' },
+        title: blamed ? `${copy.title} because of ${cause}` : copy.title, sub: copy.line, ask: { check: view.mood.id, text: copy.ask || 'Ask Shellby why' },
       };
     }
     return { eyebrow: 'Vitals', title: 'All calm', sub: calmLine(view.sample), ask: null };
@@ -279,6 +282,81 @@
     return bits.join(', ') || `${name} had already closed`;
   }
 
+  // ------------------------------------------------------------ the diagnosis
+
+  // An app is only blamed when it holds a real share of what's running out.
+  const BLAME_SHARE = 0.2;
+
+  /**
+   * The app behind the mood, from the list that opens itself while he sweats or
+   * is dizzy: { name, value, metric, locked, share } or null when nothing
+   * stands out. top is the list's first row, ramTotal the machine's memory.
+   */
+  function diagnosisCause(view, top, ramTotal) {
+    const metric = hogsAuto(view);
+    if (!metric || !top) return null;
+    const w = hogWords(top, metric, true, ramTotal);
+    if (w.share < BLAME_SHARE) return null;
+    return { name: top.name, value: w.value, metric, locked: !!top.locked, share: w.share };
+  }
+
+  // "4 min", "1 h 12 min": how long a level has held.
+  function heldFor(ms) {
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return 'under a minute';
+    if (min < 60) return `${min} min`;
+    return `${Math.floor(min / 60)} h${min % 60 ? ` ${min % 60} min` : ''}`;
+  }
+
+  // When the mood's level was reached, from the alert log (newest first).
+  function reachedAt(view) {
+    const m = view?.mood;
+    return (view?.log || []).find(e => String(e.id) === m?.id && e.to === m.level)?.at ?? null;
+  }
+
+  /**
+   * How it got here and what would help, while there's a mood: { chain, fixes }
+   * or null. chain is a sequence of { what, big, why, level } (the cause first),
+   * fixes a list of { id, title, why } in the order they'd help most. cause is
+   * diagnosisCause's, now the time to measure from.
+   */
+  function diagnosis(view, cause, now = Date.now()) {
+    const m = view?.settings?.enabled ? view.mood : null;
+    const r = m && view.checks?.[m.id]?.reading;
+    if (!r) return null;
+    const t = view.thresholds || {};
+    const label = METRIC_LABEL[cause?.metric] || '';
+    const chain = [];
+    if (cause) chain.push({ what: 'Using it most', big: cause.name, why: `${cause.value} of the ${label}`, level: null });
+    const v = Math.round(r.value);
+    if (m.mood === 'hot' || m.mood === 'scorching') {
+      const warn = warnFor(r.kind, t);
+      chain.push({ what: cause ? `So ${named(r)} reached` : `${named(r)} is at`, big: `${v}°C`, why: `Your line is ${warn}°C`, level: m.level });
+    } else if (m.mood === 'dizzy') {
+      chain.push({ what: cause ? 'So memory reached' : 'Memory is at', big: `${v}%`, why: `Your line is ${t.ramWarn}%`, level: m.level });
+    } else if (r.kind === 'reclaim') {
+      chain.push({ what: 'Developer clutter', big: gb(r.value * GB), why: r.sources?.length ? `Mostly ${r.sources.slice(0, 3).join(', ')}` : 'Docker and package caches', level: m.level });
+    } else {
+      chain.push({ what: `Left on ${r.drive || 'the drive'}`, big: gb(r.value * GB), why: `Your line is ${t.diskWarnGb} GB`, level: m.level });
+    }
+    const at = reachedAt(view);
+    if (at != null && now >= at) {
+      chain.push({ what: 'For', big: heldFor(now - at), why: `since ${new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, level: null });
+    }
+
+    const fixes = [];
+    if (cause && !cause.locked) {
+      fixes.push({ id: 'end', title: `Close ${cause.name}`, why: `It's using ${cause.value} of the ${label}. Save your work in it first; Shellby asks before ending it.` });
+    }
+    if (HOG_MOODS.has(m.mood)) {
+      fixes.push({ id: 'hogs', title: "See everything that's running", why: 'The full list, by app or by process, with what each one uses.' });
+    } else if (view.space) {
+      fixes.push({ id: 'space', title: 'See what the clutter is', why: 'Docker, package caches and virtual disks, biggest first.' });
+    }
+    fixes.push({ id: 'line', title: 'Move your line', why: 'If this is normal for what you do, raise the warning so Shellby stays calm.' });
+    return { chain, fixes };
+  }
+
   // ------------------------------------------------------------ startup, settings and the log
 
   function startupSummary(items) {
@@ -307,7 +385,7 @@
 
   const api = {
     GB, fmt, gb, heroCopy, calmLine, heroWords, gaugeSpecs, windowOf, sparkX, sparkY, sparkPaths, stats, sparkKeyOf,
-    spaceRows, sources, lhmVersion, metricOf, METRIC_LABEL, size, pct, hogsAuto, hogWords, endedLine, startupSummary, settingsSummary, logEntry,
+    spaceRows, sources, lhmVersion, metricOf, METRIC_LABEL, size, pct, hogsAuto, hogWords, endedLine, diagnosisCause, heldFor, diagnosis, startupSummary, settingsSummary, logEntry,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyHealthLogic = api;

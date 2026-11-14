@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Health, concept 3: inside the case</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 720px; gap: 48px; }
+  /* The PC drawn as a blueprint: parts sit where they really are */
+  .case { position: relative; border-radius: 26px; border: 2px solid var(--line);
+    background:
+      linear-gradient(rgba(127,214,194,.05) 1px, transparent 1px) 0 0 / 40px 40px,
+      linear-gradient(90deg, rgba(127,214,194,.05) 1px, transparent 1px) 0 0 / 40px 40px,
+      var(--ink); }
+  .part { position: absolute; border: 2px solid var(--line); border-radius: 12px; background: rgba(17,35,42,.9); padding: 18px 22px; }
+  .part .n { color: var(--sand-dim); font-size: 16px; }
+  .part .v { font: 500 44px/1.05 var(--font-pixel); margin-top: 4px; }
+  .part .s { color: var(--sand-faint); font-size: 15px; }
+  .part.sel { border-color: var(--coral); outline: 6px solid var(--coral-dim); }
+  .heat { position: absolute; border-radius: 50%; filter: blur(50px); pointer-events: none; }
+  .fan { position: absolute; width: 150px; height: 150px; border-radius: 50%; border: 2px dashed var(--line); display: grid; place-items: center; color: var(--sand-faint); font-size: 15px; text-align: center; }
+  .fan b { display: block; color: var(--sand); font: 500 22px var(--font-pixel); }
+  .fan.capped { border-color: var(--amber); }
+  .fan.capped b { color: var(--amber); }
+  .bar { height: 10px; border-radius: 5px; background: var(--reef-3); margin-top: 12px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--glass); }
+  .slot { width: 26px; border-radius: 4px; background: var(--reef-3); border: 1px solid var(--line); }
+  .slots { display: flex; gap: 10px; height: 170px; margin-top: 12px; }
+  .slots .slot { position: relative; overflow: hidden; }
+  .slots .slot i { position: absolute; bottom: 0; left: 0; right: 0; background: var(--glass); }
+  .crabby { position: absolute; right: 36px; bottom: 26px; width: 120px; }
+  .legend { position: absolute; left: 36px; bottom: 28px; color: var(--sand-faint); font-size: 15px; }
+
+  /* The part you picked, in depth */
+  .detail { display: flex; flex-direction: column; gap: 24px; min-height: 0; }
+  .detail h2 { font: 500 48px/1.05 var(--font-pixel); }
+  .detail .model { color: var(--sand-faint); font-size: 17px; margin-top: 6px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .stats div { padding: 18px 0; }
+  .stats div + div { padding-left: 22px; border-left: 1px solid var(--line-soft); }
+  .stats span { color: var(--sand-faint); font-size: 15px; }
+  .stats b { display: block; font: 500 34px var(--font-pixel); }
+  .chart { background: var(--reef); border-radius: 14px; padding: 18px 20px; border: 1px solid var(--line); }
+  .chart svg { width: 100%; height: 180px; display: block; }
+  .chart .mono { display: flex; justify-content: space-between; }
+  .detail .say { font-size: 19px; color: var(--sand-dim); }
+  .detail .say b { color: var(--sand); }
+  .acts { display: flex; gap: 12px; flex-wrap: wrap; }
+  .who { list-style: none; }
+  .who li { display: grid; grid-template-columns: 1fr 70px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); font-size: 17px; }
+  .who li span:last-child { text-align: right; font-weight: 700; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <h1>Health</h1>
+    <span class="live">live</span>
+    <span class="sub">Click a part to look closer</span>
+    <span class="spacer"></span>
+    <button class="btn ghost">Alert settings</button>
+  </header>
+
+  <div class="main">
+    <div class="case">
+      <div class="heat" style="left:250px; top:680px; width:900px; height:260px; background:rgba(255,90,74,.35)"></div>
+      <div class="heat" style="left:560px; top:180px; width:340px; height:280px; background:rgba(255,193,94,.12)"></div>
+
+      <div class="fan" style="left:60px; top:120px"><div><b>1,120</b>rpm<br>rear</div></div>
+      <div class="fan" style="left:60px; top:340px"><div><b>980</b>rpm<br>rear</div></div>
+      <div class="fan" style="right:60px; top:120px"><div><b>1,340</b>rpm<br>front</div></div>
+      <div class="fan" style="right:60px; top:340px"><div><b>1,340</b>rpm<br>front</div></div>
+      <div class="fan" style="right:60px; top:560px"><div><b>1,310</b>rpm<br>front</div></div>
+
+      <div class="part" style="left:560px; top:170px; width:340px">
+        <div class="n">CPU · Ryzen 7 7800X3D</div><div class="v">61°C</div><div class="s">34% busy, 8 cores</div>
+        <div class="bar"><i style="width:34%"></i></div>
+      </div>
+      <div class="part" style="left:960px; top:150px; width:240px">
+        <div class="n">Memory</div><div class="v">58%</div><div class="s">18.6 of 32 GB</div>
+        <div class="slots"><span class="slot"><i style="height:60%"></i></span><span class="slot"><i style="height:58%"></i></span><span class="slot" style="opacity:.35"></span><span class="slot" style="opacity:.35"></span></div>
+      </div>
+      <div class="part sel" style="left:300px; top:690px; width:820px">
+        <div class="n">Graphics card · RTX 4070 Ti</div>
+        <div style="display:flex; align-items:baseline; gap:30px"><div class="v hot">84°C</div><div class="s">97% busy · 10.1 of 12 GB video memory · fans capped at 55%</div></div>
+        <div class="bar"><i style="width:97%; background:var(--coral)"></i></div>
+      </div>
+      <div class="part" style="left:300px; top:930px; width:360px">
+        <div class="n">C: · Samsung 990 Pro</div><div class="v">212 GB free</div><div class="s">44°C</div>
+        <div class="bar"><i style="width:79%"></i></div>
+      </div>
+      <div class="part" style="left:690px; top:930px; width:430px">
+        <div class="n">D: · WD 4 TB</div><div class="v">1.4 TB free</div><div class="s">37°C</div>
+        <div class="bar"><i style="width:65%"></i></div>
+      </div>
+      <div class="fan capped" style="left:520px; top:1090px; width:120px; height:120px"><div><b>55%</b>GPU fans</div></div>
+      <div class="fan capped" style="left:760px; top:1090px; width:120px; height:120px"><div><b>55%</b>GPU fans</div></div>
+
+      <p class="legend">Glow shows heat. Laid out from what Windows reports about your parts.</p>
+      <img class="crab crabby" src="crab.png" alt="">
+    </div>
+
+    <aside class="detail">
+      <div><h2>Graphics card</h2><p class="model">NVIDIA RTX 4070 Ti · driver 566.14 · in slot 1</p></div>
+      <div class="stats">
+        <div><span>Temperature</span><b class="hot">84°C</b></div>
+        <div><span>Busy</span><b>97%</b></div>
+        <div><span>Power</span><b>268 W</b></div>
+      </div>
+      <div class="chart">
+        <svg viewBox="0 0 600 180" preserveAspectRatio="none"><line x1="0" x2="600" y1="60" y2="60" stroke="#7d7566" stroke-dasharray="6 6"/><polyline fill="none" stroke="#ff7a5c" stroke-width="3" points="0,160 120,158 200,156 220,80 260,66 340,60 420,54 500,48 600,46"/></svg>
+        <div class="mono"><span>1 hour ago</span><span>your line, 78°C</span><span>now</span></div>
+      </div>
+      <p class="say"><b>It's hot because the fans can't speed up.</b> They stop at 55% while the card would like about 75%. Your case fans are fine, so the heat isn't trapped.</p>
+      <div>
+        <p class="mono" style="margin-bottom:6px">Using the card now</p>
+        <ul class="who"><li><span>Dune</span><span>86%</span></li><li><span>Chrome (3 videos)</span><span>11%</span></li><li><span>Shellby</span><span>0.4%</span></li></ul>
+      </div>
+      <div class="acts"><button class="btn primary">Raise the fan cap</button><button class="btn">Ask Shellby why</button></div>
+    </aside>
+  </div>
+</main>
+<span class="caption">Health, concept 3 · inside the case</span>
+</body>
+</html>

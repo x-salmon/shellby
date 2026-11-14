@@ -104,7 +104,28 @@
     }
     // A read that began before an End task may still list what was ended.
     if (hogsAgain) { hogsAgain = false; hogsAt = 0; }
-    if (state.view === 'health') renderHogs();
+    // The hero and the diagnosis name what's at the top of this list.
+    if (state.view === 'health') H.refresh();
+  }
+
+  /** The app at the top of the list for the metric he's reacting to, or null. */
+  function topApp() {
+    const auto = L.hogsAuto(H.view());
+    return auto && hogs?.ok && hogs.metric === auto ? hogs.groups?.[0] || null : null;
+  }
+
+  /** End every process of the app the diagnosis blames (End task asks first). */
+  function endTop(btn) {
+    const g = topApp();
+    if (g) endGroup(g, btn);
+  }
+
+  /** Open the list on what he's reacting to and bring it into view. */
+  function showHogs() {
+    hogsOpen = true;
+    renderHogs();
+    $('hlHogs').scrollIntoView({ behavior: H.smooth(), block: 'start' });
+    $('hlHogsSeg').querySelector('[aria-selected="true"]')?.focus({ preventScroll: true });
   }
 
   async function endTask(p, btn) {
@@ -203,5 +224,5 @@
   $('hlHogsRefresh').addEventListener('click', () => { hogsAt = 0; renderHogs(); });
   $('hlSelfSettings').addEventListener('click', () => { const view = H.view(); if (view?.self?.jump) SB.jumpToSettingByName(view.self.jump); });
 
-  Object.assign(H, { renderHogs, renderSelf, loadStartup });
+  Object.assign(H, { renderHogs, renderSelf, loadStartup, topApp, endTop, showHogs });
 })();

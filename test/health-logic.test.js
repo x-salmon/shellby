@@ -285,3 +285,67 @@ test('logEntry says whether an alert got worse and where it can be shown', () =>
   assert.deepEqual(L.logEntry({ id: 'reclaim', kind: 'reclaim', from: 'ok', to: 'warn' }).where, 'in Developer clutter');
   assert.equal(L.logEntry({ id: 'battery', kind: 'battery', from: 'ok', to: 'warn' }).where, null);
 });
+
+// ------------------------------------------------------------ the diagnosis
+
+const hotView = (o = {}) => ({
+  settings: { enabled: true }, sample: sample(), thresholds: T,
+  mood: { id: 'gpu-temp:0', mood: 'hot', level: 'warn' },
+  checks: { 'gpu-temp:0': { reading: { value: 84.3, kind: 'gpu-temp', label: 'GPU' } } },
+  log: [], ...o,
+});
+const dune = { name: 'Dune', count: 1, owned: 0, cpu: 14, gpu: 86, mem: 9 * GB };
+
+test('diagnosisCause blames the top app only when it holds a real share', () => {
+  const c = L.diagnosisCause(hotView(), dune, 32 * GB);
+  assert.deepEqual(c, { name: 'Dune', value: '86%', metric: 'gpu', locked: false, share: 0.86 });
+  assert.equal(L.diagnosisCause(hotView(), { ...dune, gpu: 4 }, 32 * GB), null);
+  assert.equal(L.diagnosisCause(hotView({ mood: null }), dune, 32 * GB), null);
+  assert.equal(L.diagnosisCause(hotView(), null, 32 * GB), null);
+});
+
+test('heroWords names the cause after a calm title, but not after a shout or while cooling', () => {
+  assert.equal(L.heroWords(hotView(), 'Dune').title, 'Running hot because of Dune');
+  const scorching = hotView({ mood: { id: 'gpu-temp:0', mood: 'scorching', level: 'critical' } });
+  assert.equal(L.heroWords(scorching, 'Dune').title, 'Overheating!');
+  const cooling = hotView({ checks: { 'gpu-temp:0': { reading: { value: 70, kind: 'gpu-temp', label: 'GPU' } } } });
+  assert.equal(L.heroWords(cooling, 'Dune').title, 'Cooling down');
+});
+
+test('diagnosis walks from the cause to the reading to how long, and offers to end the app first', () => {
+  const now = Date.UTC(2026, 10, 13, 14, 33);
+  const view = hotView({ log: [{ id: 'gpu-temp:0', from: 'ok', to: 'warn', at: now - 11 * 60000 }] });
+  const d = L.diagnosis(view, L.diagnosisCause(view, dune, 32 * GB), now);
+  assert.deepEqual(d.chain.map(l => l.big), ['Dune', '84°C', '11 min']);
+  assert.equal(d.chain[1].why, 'Your line is 80°C');
+  assert.equal(d.chain[1].level, 'warn');
+  assert.deepEqual(d.fixes.map(f => f.id), ['end', 'hogs', 'line']);
+  assert.equal(d.fixes[0].title, 'Close Dune');
+});
+
+test('diagnosis leaves out what it cannot know, and never offers to end a protected app', () => {
+  const d = L.diagnosis(hotView(), null);
+  assert.deepEqual(d.chain.map(l => l.what), ['GPU is at']);
+  assert.deepEqual(d.fixes.map(f => f.id), ['hogs', 'line']);
+  const locked = L.diagnosis(hotView(), { name: 'csrss', value: '50%', metric: 'gpu', locked: true, share: .5 });
+  assert.ok(!locked.fixes.some(f => f.id === 'end'));
+});
+
+test('diagnosis words a full drive and clutter, and is null while calm or switched off', () => {
+  const disk = L.diagnosis({
+    settings: { enabled: true }, thresholds: { diskWarnGb: 20 }, space: {},
+    mood: { id: 'disk:C:', mood: 'stuffed', level: 'critical' },
+    checks: { 'disk:C:': { reading: { value: 8.4, kind: 'disk', drive: 'C:' } } },
+  }, null);
+  assert.deepEqual(disk.chain[0], { what: 'Left on C:', big: '8.4 GB', why: 'Your line is 20 GB', level: 'critical' });
+  assert.deepEqual(disk.fixes.map(f => f.id), ['space', 'line']);
+  assert.equal(L.diagnosis(hotView({ mood: null }), null), null);
+  assert.equal(L.diagnosis(hotView({ settings: { enabled: false } }), null), null);
+});
+
+test('heldFor rounds down to minutes, then hours and minutes', () => {
+  assert.equal(L.heldFor(30000), 'under a minute');
+  assert.equal(L.heldFor(11 * 60000), '11 min');
+  assert.equal(L.heldFor(60 * 60000), '1 h');
+  assert.equal(L.heldFor(72 * 60000), '1 h 12 min');
+});
