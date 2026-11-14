@@ -531,3 +531,27 @@ body[data-view="projects"] .view-projects {
 .pt-what { width: 100%; box-sizing: border-box; resize: vertical; min-height: 54px; }
 .pt-field { display: grid; gap: 4px; }
 .pt-foot { margin: 8px 0 0; }
+
+/* ---------- a wide page (projects-split.js): the list on the left, the open
+   project in the middle, and from THREE_MIN what's waiting across every
+   project on the right. Each column scrolls on its own. ---------- */
+body[data-view="projects"] .view-projects:is([data-layout="two"], [data-layout="three"]) {
+  display: grid; grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(340px, 400px) minmax(0, 1fr);
+  overflow: hidden; padding: 0; -webkit-mask-image: none; mask-image: none;
+}
+body[data-view="projects"] .view-projects[data-layout="three"] { grid-template-columns: minmax(340px, 400px) minmax(0, 1fr) minmax(340px, 420px); }
+.view-projects:is([data-layout="two"], [data-layout="three"]) > .view-head { grid-column: 1 / -1; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.view-projects:is([data-layout="two"], [data-layout="three"]) :is(#pjListScreen, #pjMain, #pjSide) { min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--reef-3) transparent; }
+.view-projects:is([data-layout="two"], [data-layout="three"]) #pjListScreen { grid-column: 1; padding: 14px 14px 20px; background: var(--abyss); border-right: 1px solid var(--line); }
+.view-projects:is([data-layout="two"], [data-layout="three"]) #pjMain { grid-column: 2; padding: 20px 28px 28px; }
+.view-projects[data-layout="three"] #pjSide { grid-column: 3; padding: 14px 16px 20px; background: var(--abyss); border-left: 1px solid var(--line); }
+.view-projects[data-layout="three"] #pjSide > * + * { margin-top: 18px; }
+
+/* The open project's row, and its page without the way back (the list is right there). */
+.pj-row[aria-current="true"] { background: var(--reef-3); border-color: color-mix(in srgb, var(--glass) 40%, var(--line)); }
+.view-projects:is([data-layout="two"], [data-layout="three"]) .pj-back { display: none; }
+/* The cards set in columns, each kept whole: two at ~1000px, three on a 4K screen. */
+.view-projects:is([data-layout="two"], [data-layout="three"]) .pj-cards { columns: 3 420px; column-gap: 18px; }
+.view-projects:is([data-layout="two"], [data-layout="three"]) .pj-cards > .pj-sec { break-inside: avoid; }
+.pj-split-empty { margin: 18vh auto 0; max-width: 32ch; text-align: center; font-size: var(--fs-14); }
+.pj-split-empty[hidden] { display: none; }

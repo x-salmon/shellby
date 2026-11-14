@@ -1,11 +1,14 @@
-// ci: projects and dev servers: start, the crab's pill, a crash's approval card, restart, the quit choice
+// ci: projects and dev servers: start, the crab's pill, a crash's approval card, restart, the quit choice, the wide three-column page
 // End-to-end check of Projects and its dev servers against the dev app over
 // CDP (throwaway profile). A real git repository whose `dev` script is a
 // stand-in Vite server (test/fixtures/devservers/server.js) is added to the
 // list; then: start it from the project page, see "Up on :port" and the crab's
 // pill, make it crash and see the red pill and the approval card with exactly
 // what would go to Claude, restart it, the "when Shellby quits" choice in both
-// places, and no uncaught errors in the panel or the crab.
+// places, the page at full-screen widths (the list beside the open project, J
+// and K between projects, the inbox and health in a third column, all of it
+// back under the list when narrow again), and no uncaught errors in the panel
+// or the crab. Wide is the panel's viewport, emulated: no window moves.
 //   node scripts/e2e-projects.js [screenshot.png]
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
@@ -43,7 +46,10 @@ async function cdp(url) {
   fs.copyFileSync(FIXTURE, path.join(repo, 'server.js'));
   fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ name: 'site', private: true, scripts: { dev: 'node server.js crash.flag', build: 'echo build' } }, null, 2));
   fs.mkdirSync(path.join(repo, 'node_modules'));
-  fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, crabOnly: false, projects: { added: [repo] } }));
+  // A second project, for J and K on the wide page.
+  const other = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-other-')));
+  execFileSync('git', ['init', '-q', '-b', 'main', other], { windowsHide: true });
+  fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, crabOnly: false, projects: { added: [repo, other] } }));
 
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`],
     { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile } });
@@ -127,6 +133,42 @@ async function cdp(url) {
     const gone = await fetch(`http://localhost:${port}/`).then(() => 'still answering').catch(() => 'gone');
     check(gone === 'gone', `and the server is really gone (${gone})`);
 
+    // Full screen: the list beside the open project, and a third column.
+    const wide = (width, height) => panel.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+    const layout = "document.getElementById('projectsView').dataset.layout";
+    const shown = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none' && !document.getElementById('${id}').hidden`;
+    const openName = "document.querySelector('#pjDetailScreen .pj-detail-name')?.textContent";
+    await wide(2560, 1440);
+    check(await until(`${layout} === 'three'`, 5000) === true, 'at 2560 wide the page has three columns');
+    check(await ev(`${shown('pjListScreen')} && ${shown('pjDetailScreen')}`), 'the list and the open project show side by side');
+    check(await ev("document.querySelector('#pjProjects .pj-row[aria-current=\"true\"]')?.textContent.includes(" + JSON.stringify(name) + ')'), "the open project's row is marked");
+    check(await ev("getComputedStyle(document.querySelector('#pjDetailScreen .pj-back')).display === 'none'"), 'and its page has no way back (the list is right there)');
+    // A scan sheet's Cancel goes back to 'list', which beside the list is the open project, not an empty column.
+    await ev("SB.pj.showScreen('scan'); SB.pj.showScreen('list')");
+    check(await ev(`${shown('pjDetailScreen')} && document.getElementById('pjSplitEmpty').hidden`), 'closing a scan sheet comes back to the open project');
+    check(await ev("['pjInbox', 'depWatch'].every(id => document.getElementById('pjSide').contains(document.getElementById(id))) && !document.getElementById('pjSide').hidden"), 'the inbox and Dependency watch move to the right-hand column');
+    // Down the list if there's room below the open one, else up: then the other key comes back.
+    const before = await ev(openName);
+    const atEnd = await ev("(() => { const rows = [...document.querySelectorAll('#pjProjects .pj-row')]; return rows.at(-1)?.getAttribute('aria-current') === 'true'; })()");
+    const [there, home] = atEnd ? ['k', 'j'] : ['j', 'k'];
+    const press = key => ev(`document.body.focus(); document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '${key}', bubbles: true }))`);
+    await press(there);
+    const moved = await until(`${openName} !== ${JSON.stringify(before)} && ${openName}`, 5000);
+    await press(home);
+    const returned = await until(`${openName} === ${JSON.stringify(before)}`, 5000);
+    check(!!moved && returned === true, `${there.toUpperCase()} opens the ${atEnd ? 'previous' : 'next'} project and ${home.toUpperCase()} goes back (${before} → ${moved})`);
+    if (process.argv[2]) {
+      const shot = await panel.send('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(process.argv[2].replace(/.png$/i, '-wide.png'), Buffer.from(shot.data, 'base64'));
+    }
+    await wide(1300, 900);
+    check(await until(`${layout} === 'two'`, 5000) === true, 'at 1300 wide it is two columns');
+    check(await ev("document.getElementById('pjListScreen').contains(document.getElementById('depWatch')) && document.getElementById('pjSide').hidden"), 'and the side sections are back under the list');
+    await panel.send('Emulation.clearDeviceMetricsOverride');
+    check(await until(`${layout} === 'one'`, 5000) === true, 'back at panel width it is the single list');
+    const narrow = await ev(`JSON.stringify({ list: ${shown('pjListScreen')}, page: ${shown('pjDetailScreen')}, open: SB.pj.openKey(), width: document.getElementById('projectsView').clientWidth })`);
+    check(narrow && JSON.parse(narrow).list === false && JSON.parse(narrow).page === true, `with the open project on its own, as before (${narrow})`);
+
     check(!panel.errors.length, `no uncaught errors in the panel${panel.errors.length ? `: ${panel.errors[0]}` : ''}`);
     check(!crab.errors.length, `no uncaught errors in the crab${crab.errors.length ? `: ${crab.errors[0]}` : ''}`);
     crab.ws.close();
@@ -138,7 +180,7 @@ async function cdp(url) {
     app.kill();
     panel?.ws.close();
     await wait(500);
-    try { fs.rmSync(repo, { recursive: true, force: true }); } catch { /* in use */ }
+    for (const dir of [repo, other]) try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* in use */ }
   }
   console.log(fails ? `\n${fails} failed` : '\nall passed');
   process.exitCode = fails ? 1 : 0;

@@ -206,3 +206,32 @@ test('erroring is live and up, and says so; a found server has its words and its
   assert.equal(L.foundScript({ ...f, script: null }, c), null, 'none read off its command line: no button, never a guess');
   assert.equal(L.foundScript(f, { scripts: [] }), null);
 });
+
+test('layoutFor keeps the single list on a narrow panel and opens out as it widens', () => {
+  assert.equal(L.layoutFor(460), 'one');
+  assert.equal(L.layoutFor(L.SPLIT_MIN - 1), 'one');
+  assert.equal(L.layoutFor(L.SPLIT_MIN), 'two');
+  assert.equal(L.layoutFor(L.THREE_MIN - 1), 'two');
+  assert.equal(L.layoutFor(L.THREE_MIN), 'three');
+  assert.equal(L.layoutFor(3840), 'three');
+});
+
+test('layoutFor treats a width it cannot read as narrow', () => {
+  assert.equal(L.layoutFor(0), 'one');
+  assert.equal(L.layoutFor(NaN), 'one');
+  assert.equal(L.layoutFor(undefined), 'one');
+});
+
+test('stepKey moves to the next or previous project and stops at the ends', () => {
+  const keys = ['a', 'b', 'c'];
+  assert.equal(L.stepKey(keys, 'a', 1), 'b');
+  assert.equal(L.stepKey(keys, 'b', -1), 'a');
+  assert.equal(L.stepKey(keys, 'c', 1), 'c');
+  assert.equal(L.stepKey(keys, 'a', -1), 'a');
+});
+
+test('stepKey starts at the top when nothing is open or the open one is filtered out', () => {
+  assert.equal(L.stepKey(['a', 'b'], null, 1), 'a');
+  assert.equal(L.stepKey(['a', 'b'], 'gone', -1), 'a');
+  assert.equal(L.stepKey([], 'a', 1), null);
+});

@@ -1634,8 +1634,12 @@
       </section>
     </div>
 
+    <!-- Everything but the list. On a wide page (projects-split.js) it's the middle column. -->
+    <div class="pj-main" id="pjMain">
     <!-- One project -->
     <div id="pjDetailScreen" hidden></div>
+    <!-- A wide page: beside the list until a project is open -->
+    <p class="pj-split-empty muted" id="pjSplitEmpty" hidden>Pick a project on the left to see it here.</p>
 
     <!-- Scan a folder: pick which of the repos it found to add -->
     <section class="pj-sheet" id="pjScanSheet" aria-labelledby="pjScanTitle" hidden>
@@ -1683,6 +1687,9 @@
       <p class="muted small reef-waiting" id="reefWaiting" hidden></p>
       <p class="muted small reef-privacy">Counts only, kept on this PC. Shellby reads git and coverage files that are already there; it never runs your code.</p>
     </section>
+    </div>
+    <!-- A wide page's third column: the inbox and the health sections move here from under the list -->
+    <aside class="pj-side" id="pjSide" aria-label="Across every project" hidden></aside>
   </main>
 
   <!-- ====================== SETTINGS ====================== -->
@@ -3181,6 +3188,7 @@
 <script src="project-report.js"></script>
 <script src="projects-logic.js"></script>
 <script src="projects.js"></script>
+<script src="projects-split.js"></script>
 <script src="project-page.js"></script>
 <script src="projects-servers.js"></script>
 <script src="tool-tabs.js"></script>
