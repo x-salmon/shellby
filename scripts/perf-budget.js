@@ -232,7 +232,9 @@ const SEND = (text, marker) => `(async () => {
   box.value = ${JSON.stringify(text)};
   box.dispatchEvent(new Event('input'));
   const sentAt = performance.now();
-  box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  // Ctrl+Enter, "send now": plain Enter on an idle tab waits MERGE_WINDOW_MS on purpose
+  // for a second message (queue-turns.js), and that wait is a choice, not overhead.
+  box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
   const at = await seen;
   return at == null ? null : at - sentAt;
 })()`;
