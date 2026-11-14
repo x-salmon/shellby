@@ -75,7 +75,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/overlay-visual-test.js` | Proves the critter never paints over apps: covers it with a window, cycles every mood, and counts real screen pixels |
 | `node scripts/probe-subagents.js` | One turn on your real Claude Code with two helpers in parallel (one writes a temp file): prints the shapes of the subagent events and whether their permission prompts reach the host (types, keys, ids), not their content |
 | `node scripts/e2e-shop.js` | The Skill Shop against your real Claude Code, read-only: plugin list, search and filters, then Install is cancelled in the confirm window, so nothing is installed |
-| `node scripts/e2e-lean.js` | Lean Shell: with the fake CLI, the prompt-cache dot on the context chip (warm, then cold) and the fresh-start XP; then Toolbox → Lean against your real Claude Code, read-only: plugins with their estimates, CLAUDE.md apart from path-scoped rules, and Turn off cancelled in the confirm window, so nothing is turned off |
+| `node scripts/e2e-lean.js` | Lean Shell: with the fake CLI, the prompt-cache dot on the context chip (warm, then cold) and the fresh-start XP; then Toolbox → Lean against your real Claude Code, read-only: plugins with their estimates, CLAUDE.md apart from path-scoped rules, what every turn carries with its "setup ~Nk/turn" line and a suggestion to switch the pretend home's output style off (cancelled in the confirm window), and Turn off on a plugin cancelled the same way, so nothing is changed |
 | `node scripts/e2e-registry.js` | One-click install from the live community registry: warm and cold, themed confirmation, every item previewed |
 | `node scripts/e2e-wardrobe.js` | Real task → first trophy unlocks → desktop celebration and the celebration card → wear the Party Hat from it (isolated profile) |
 | `python scripts/preview-wardrobe.py` | Contact sheet of every accessory worn by the crab, for pixel-art work |
@@ -572,6 +572,13 @@ src/main/        Electron main process
                    file, a long helper brief, many checks on a background job, long replies in an explaining style, a commit with
                    the context well filled (compact now, with the commit's subject as the focus), hard thinking on a small job
   rulefit.js       rule files written for a language or framework the project shows none of (the Lean tab's misfit pill)
+  fixedcost.js     what every turn carries before your words (pure): the active output style and where it's set, each item's
+                   estimated size and share, the "setup ~14k/turn" line, and suggestions as data (style off, idle plugin off, a
+                   global CLAUDE.md section only one project uses)
+  leanfix.js       one-tap fixes drafted from the hot files and loud commands (pure): a CLAUDE.md line from a file's first lines,
+                   a Read(./path) deny rule for a generated file, a quieter way to run a command; lean-fixes.js reads the project's
+                   files for it, asks in the confirm window, writes only inside the project and only when the file still reads
+                   as the preview did, and keeps what was there for Undo; lean.js wires both into the Lean report
   cachebreak.js    a warm prompt cache that missed (pure): caught per call, put down to a restart or a model change, kept per day
                    for the Lean tab; a short message about to pay for a cold one, and a /model switch about to throw a warm one away (the composer's tips)
   jobs.js          commands and Monitor watches Claude left running in the background (pure): the tray above the box and the crab's badge

@@ -68,7 +68,12 @@
       let row;
       if (v.details) {
         const id = `tf-more-${++footIds}`;
-        more = h('div', { class: 'tf-more', id, hidden: true }, h('p', { text: v.details }), fork ? h('div', { class: 'tf-acts' }, fork) : null);
+        // What every turn carries before your words, once the Lean tab has measured it ("setup ~14k/turn").
+        const setup = SB.lean?.line?.() || '';
+        more = h('div', { class: 'tf-more', id, hidden: true },
+          h('p', { text: v.details }),
+          setup ? h('p', { class: 'tf-setup', text: `${setup}: what every message carries before your words. Toolbox → Lean lists it.` }) : null,
+          fork ? h('div', { class: 'tf-acts' }, fork) : null);
         row = h('button', { class: 'tf-open', type: 'button', 'aria-expanded': 'false', 'aria-controls': id, title: fork ? 'What this turn cost, and branching from here' : 'What this turn cost',
           onclick: () => this.toggleFoot(foot) }, summary);
       } else {
