@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Any device, concept 1: the beach and a conversation side by side</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .app { height: 100vh; display: flex; flex-direction: column; }
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: clamp(340px, 30vw, 440px) 1fr; }
+
+  /* Left: the beach, as on the phone */
+  .beach { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line-soft); background: rgba(7, 16, 18, .35); }
+  .beach-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 16px 16px 0; }
+  .beach-foot { padding: 12px 16px 16px; display: flex; gap: 10px; border-top: 1px solid var(--line-soft); }
+  .beach-foot .btn.go { flex: 1; }
+  .ask-mini { padding: 12px 14px; border-radius: 14px; background: var(--reef); border: 1px solid rgba(255, 122, 92, .55); display: grid; gap: 8px; }
+  .ask-mini .btns .btn { height: 36px; font-size: 14px; }
+
+  /* Right: one conversation */
+  .pane { display: flex; flex-direction: column; min-height: 0; }
+  .pane-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 26px clamp(24px, 4vw, 64px) 0; }
+  .pane-scroll .convo { max-width: 860px; }
+  .pane-foot { padding: 14px clamp(24px, 4vw, 64px) 18px; border-top: 1px solid var(--line-soft); display: grid; gap: 12px; }
+  .pane-foot > * { max-width: 860px; width: 100%; }
+  .actions { display: flex; gap: 10px; }
+  .actions .btn.go { margin-left: auto; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><img class="crab" src="../../assets/icon.png" alt="">Shellby</div>
+    <div class="gap"></div>
+    <div class="pcs" aria-label="Which PC">
+      <span class="on"><i></i>DESK-PC</span>
+      <span class="up"><i></i>LAPTOP <b>1</b></span>
+    </div>
+  </header>
+
+  <div class="body">
+    <aside class="beach" aria-label="Every conversation">
+      <div class="beach-scroll">
+        <section class="tide">
+          <img class="crab" src="../../assets/icon.png" alt="Shellby, asking">
+          <div>
+            <p class="tide-title">He needs you</p>
+            <p class="tide-sub">3 working, 1 to review</p>
+          </div>
+          <div class="meter">
+            <div class="meter-row"><span>5-hour window</span><span>42% · resets 19:02</span></div>
+            <div class="bar"><i style="width:42%"></i></div>
+          </div>
+        </section>
+
+        <p class="sect asking"><i></i>Waiting on you 1</p>
+        <div class="ask-mini">
+          <div class="card-t"><span class="card-title">Fix the flaky upload test</span><span class="agent ag-claude">Claude</span></div>
+          <pre class="cmd">npm test -- --grep upload</pre>
+          <div class="btns"><button class="btn">Deny</button><button class="btn allow">Allow</button></div>
+        </div>
+
+        <p class="sect review">Ready to review 1</p>
+        <div class="card s-review sel">
+          <div class="card-t"><span class="card-title">Tailnet range for localOrHttps</span><span class="pill">✓ checks</span></div>
+          <div class="card-m"><span class="add">+18</span><span class="del">−3</span><span>2 files</span><span class="agent ag-codex">Codex</span></div>
+        </div>
+
+        <p class="sect working">Working 2</p>
+        <div class="card s-working">
+          <div class="card-t"><span class="card-title">Month calendar for Time</span><span class="pill coral">2 helpers</span></div>
+          <div class="card-m"><span>Editing time-month.js</span><span class="agent ag-claude">Claude</span></div>
+          <div class="prog"><i style="width:60%"></i></div>
+        </div>
+        <div class="card s-working">
+          <div class="card-t"><span class="card-title">Split the tab store</span></div>
+          <div class="card-m"><span>Reading src/main/tabs.js</span><span class="agent ag-gemini">Gemini</span></div>
+          <div class="prog"><i style="width:25%"></i></div>
+        </div>
+
+        <p class="sect">Finished 1</p>
+        <div class="card">
+          <div class="card-t"><span class="card-title">Hero copy for the website</span><span class="pill dim">done</span></div>
+          <div class="card-m"><span>shellby-site</span><span class="agent ag-opencode">OpenCode</span></div>
+        </div>
+      </div>
+      <div class="beach-foot">
+        <button class="btn ghost slim">Queue 2</button>
+        <button class="btn ghost slim">More</button>
+        <button class="btn go"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New task <span class="kbd">N</span></button>
+      </div>
+    </aside>
+
+    <main class="pane">
+      <div class="pane-scroll">
+        <article class="convo">
+          <div class="convo-h">
+            <h1>Tailnet range for localOrHttps</h1>
+            <div class="tags"><span class="pill dim">Ask first</span><span class="pill">own copy</span><span class="pill dim">shellby/tailnet-range</span><span class="agent ag-codex">Codex · gpt-5.2</span></div>
+          </div>
+          <p class="you">localOrHttps should accept Tailscale addresses (100.64.0.0/10) over http.</p>
+          <div class="tools">
+            <span><span class="ok">✓</span><b>Edit</b> src/main/channels/index.js</span>
+            <span><span class="ok">✓</span><b>Edit</b> test/channels.test.js</span>
+            <span><span class="ok">✓</span><b>Run</b> npm test -- channels</span>
+          </div>
+          <p class="reply">Done. <code>localOrHttps</code> now takes <b>100.64.0.0/10</b> over plain http, and the tests cover the edges of the range: <code>100.64.0.1</code> and <code>100.127.255.254</code> pass, <code>100.63.255.255</code> and <code>100.128.0.0</code> don't.</p>
+          <div class="changed">
+            <div class="head"><span>Changed 2 files</span><span><span class="add">+18</span> <span class="del">−3</span></span></div>
+            <div class="row"><span>src/main/channels/index.js</span><span><span class="add">+6</span> <span class="del">−2</span></span></div>
+            <div class="row"><span>test/channels.test.js</span><span><span class="add">+12</span> <span class="del">−1</span></span></div>
+          </div>
+          <p class="stat">4m 12s · 23.1k tokens · 4% of your window</p>
+        </article>
+      </div>
+      <footer class="pane-foot">
+        <div class="replybox"><span>Reply to Codex…</span><button class="btn slim">Send</button></div>
+        <div class="actions">
+          <button class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/></svg>Changes <span class="add">+18</span><span class="del">−3</span></button>
+          <button class="btn">Undo turn</button>
+          <button class="btn go">Bring it home</button>
+        </div>
+      </footer>
+    </main>
+  </div>
+</div>
+</body>
+</html>

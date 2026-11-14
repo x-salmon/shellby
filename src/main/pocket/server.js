@@ -94,6 +94,7 @@ function routeTable(srcDir, assetsDir) {
     '/pocket-phone.js': app('pocket-phone.js'),
     '/pocket-new.js': app('pocket-new.js'),
     '/pocket-later.js': app('pocket-later.js'),
+    '/pocket-wide.js': app('pocket-wide.js'),
     '/sw.js': app('sw.js'),
     '/manifest.webmanifest': app('manifest.webmanifest'),
     // He's on the pairing screen before the PC has said which skin he wears.

@@ -17,6 +17,7 @@ const { appDeskOnlyReason, PLAN_MAX: MAX_PLAN, APP_SHOW_MAX } = require('../chan
 const { normalizeQuiet } = require('./quiet');
 const { normalizeRights } = require('./rights');
 const { validPicture } = require('../tool-pictures');
+const { originOf, MAX_PEERS } = require('../hub/peers');
 
 const VERSION = 1;
 const MAX_TABS = 40;
@@ -227,6 +228,20 @@ function phoneHost(h) {
 }
 
 /**
+ * The hub's other PCs (hub/peers.js), for the switcher: a name and the https
+ * address on your tailnet where that PC serves its own Shellby. Never a token.
+ * Each is checked again, so only a .ts.net address ever reaches a link.
+ */
+function phonePcs(list) {
+  const out = [];
+  for (const p of Array.isArray(list) ? list : []) {
+    const url = originOf(p?.origin);
+    if (url && !out.some(o => o.url === url)) out.push({ name: line(p.name, 40) || new URL(url).hostname.split('.')[0], url });
+  }
+  return out.slice(0, MAX_PEERS);
+}
+
+/**
  * The whole phone view.
  *   tabs:     sessions.js summary
  *   prompts:  waiting prompts, oldest first, each with its tabId
@@ -240,7 +255,7 @@ function phoneHost(h) {
  *   host:     the PC itself, for the hub's roster (hub/host.js)
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, health = null, mood = null, host = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', pcs = [], tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, health = null, mood = null, host = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -270,6 +285,7 @@ function phoneView({ pc = '', tabs = [], prompts = [], crab = null, extras = {},
     held: (held || []).slice(0, 20).map(phoneHeld),
     machine: phoneMachine(health, mood),
     host: phoneHost(host),
+    pcs: phonePcs(pcs), // the hub's other PCs: the switcher opens each one's own page
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),
     skin: skin || null,
     limits: limits || null,
@@ -357,4 +373,4 @@ function phoneItems(items) {
   return out.reverse();
 }
 
-module.exports = { phoneHost, MAX_ITEMS, MAX_PICS, STANDINGS, pictureFiles, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };
+module.exports = { phoneHost, phonePcs, MAX_ITEMS, MAX_PICS, STANDINGS, pictureFiles, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };

@@ -29,9 +29,9 @@ const min = 60 * 1000;
 // ---- a made-up Shellby
 const tabs = [
   { id: 'flaky', title: '📱 Fix the flaky upload test', cwd: 'C:\\code\\shellby', busy: false, busySince: null, pending: 1, crew: 0, outcome: null, unread: false, worktree: { branch: 'shellby/fix-upload', base: 'main', originalCwd: 'C:\\code\\shellby' }, ready: null, checks: null, todos: null, turnTokens: 4200, planning: false },
-  { id: 'summary', title: 'Refactor the tab summary', cwd: 'C:\\code\\shellby', busy: true, busySince: now - 4 * min, pending: 0, crew: 2, outcome: null, unread: false, worktree: { branch: 'shellby/tab-summary', base: 'main', originalCwd: 'C:\\code\\shellby' }, ready: null, checks: null, todos: { total: 5, done: 3, current: 'Add the mode to the summary' }, turnTokens: 18000, planning: false },
-  { id: 'tailnet', title: 'Tailnet range for localOrHttps', cwd: 'C:\\code\\shellby', busy: false, busySince: null, pending: 0, crew: 0, outcome: 'ok', unread: true, worktree: { branch: 'shellby/tailnet-range', base: 'main', originalCwd: 'C:\\code\\shellby' }, ready: { after: 'a1b2c3', files: 2, added: 18, removed: 3, paths: ['src/main/channels/index.js', 'test/channels.test.js'], at: now - 4 * min, reviewed: false }, checks: { status: 'pass', after: 'a1b2c3', at: now }, todos: null, turnTokens: 0, planning: false },
-  { id: 'site', title: 'Hero copy for the website', cwd: 'C:\\code\\shellby-site', busy: false, busySince: null, pending: 0, crew: 0, outcome: 'ok', unread: true, worktree: null, ready: null, checks: null, todos: null, turnTokens: 0, planning: false },
+  { id: 'summary', title: 'Refactor the tab summary', harness: 'gemini', cwd: 'C:\\code\\shellby', busy: true, busySince: now - 4 * min, pending: 0, crew: 2, outcome: null, unread: false, worktree: { branch: 'shellby/tab-summary', base: 'main', originalCwd: 'C:\\code\\shellby' }, ready: null, checks: null, todos: { total: 5, done: 3, current: 'Add the mode to the summary' }, turnTokens: 18000, planning: false },
+  { id: 'tailnet', title: 'Tailnet range for localOrHttps', harness: 'codex', cwd: 'C:\\code\\shellby', busy: false, busySince: null, pending: 0, crew: 0, outcome: 'ok', unread: true, worktree: { branch: 'shellby/tailnet-range', base: 'main', originalCwd: 'C:\\code\\shellby' }, ready: { after: 'a1b2c3', files: 2, added: 18, removed: 3, paths: ['src/main/channels/index.js', 'test/channels.test.js'], at: now - 4 * min, reviewed: false }, checks: { status: 'pass', after: 'a1b2c3', at: now }, todos: null, turnTokens: 0, planning: false },
+  { id: 'site', title: 'Hero copy for the website', harness: 'opencode', cwd: 'C:\\code\\shellby-site', busy: false, busySince: null, pending: 0, crew: 0, outcome: 'ok', unread: true, worktree: null, ready: null, checks: null, todos: null, turnTokens: 0, planning: false },
   { id: 'deck', title: 'Stream Deck key icons', cwd: 'C:\\code\\shellby', busy: false, pending: 0, crew: 0, outcome: 'ok', unread: false, worktree: null, ready: null },
   { id: 'notes', title: 'Release notes for 0.90', cwd: 'C:\\code\\shellby', busy: false, pending: 0, crew: 0, outcome: 'ok', unread: false, worktree: null, ready: null },
   { id: 'dots', title: 'Tidy the dotfiles', cwd: 'C:\\code\\dotfiles', busy: false, pending: 0, crew: 0, outcome: 'ok', unread: false, worktree: null, ready: null },
@@ -111,7 +111,7 @@ diff --git a/test/channels.test.js b/test/channels.test.js
 `;
 
 const currentView = () => view.phoneView({
-  pc: 'desk-pc', tabs, prompts, extras, held, projects, skin,
+  pc: 'desk-pc', pcs: [{ name: 'LAPTOP', origin: 'https://laptop.tail3f2c.ts.net' }, { name: 'MEDIA-PC', origin: 'https://media-pc.tail3f2c.ts.net' }], tabs, prompts, extras, held, projects, skin,
   crab: { state: prompts.length ? 'asking' : tabs.some(t => t.busy) ? 'working' : 'idle', say: null, crew: [{ label: 'mapping tab-sort callers', type: 'Explore' }, { label: 'writing tests', type: 'test-writer' }] },
   lastUsage: { fiveHour: { pct: 42, resetsAt: Date.now() + 2 * 60 * min } },
   limits: { perHour: 30, atOnce: 10, open: 1 },

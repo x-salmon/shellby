@@ -127,8 +127,9 @@
         ? h('button', { type: 'button', class: 'top-back', 'aria-label': 'Back', onclick: () => (history.length > 1 ? history.back() : go(back)) }, icon('back'), h('span', { text: backLabel }))
         : h('div', { class: 'brand' }, D.crab({ px: 1.5, state: S.view?.crab?.state || 'idle', label: '' }), h('span', { text: 'Shellby' })),
       title ? h('h1', { class: 'top-title', text: title }) : h('span', { class: 'top-gap' }),
-      right || h('span', { class: `pc ${live() ? 'on' : 'off'}`, role: 'status', 'aria-label': live() ? `Connected to ${pc}` : `Not connected to ${pc}` }, h('i'), h('span', { text: pc })));
+      right || Wide.pcSwitch(pc));
   }
+
 
   function dock(active) {
     const held = S.view?.held?.length || 0;
@@ -238,13 +239,16 @@
     if (t.ready) meta.push(h('span', { class: 'add', text: `+${t.ready.added}` }), h('span', { class: 'del', text: `−${t.ready.removed}` }), h('span', { text: L.plural(t.ready.files, 'file') }));
     if (t.copy) meta.push(h('span', { class: 'pill', text: 'own copy' }));
     if (t.folder && !t.copy) meta.push(h('span', { class: 'muted', text: t.folder }));
+    if (L.mixedAgents(S.view)) meta.push(D.agent(t.harness));
     const right = t.standing === 'working' && t.crew
       ? h('span', { class: 'mini-crew', 'aria-label': `${L.plural(t.crew, 'helper')} out` }, ...Array.from({ length: Math.min(3, t.crew) }, (_, i) => D.crab({ px: 0.9, state: 'working', hue: D.helperHue(i), label: '' })))
       : t.standing === 'review' && t.checks ? h('span', { class: `pill ${t.checks.status === 'pass' ? '' : 'amber'}`, text: t.checks.status === 'pass' ? '✓ checks' : t.checks.status === 'fail' ? '✕ checks' : 'checks' })
         : t.standing === 'finished' ? h('span', { class: `pill ${t.outcome === 'error' ? 'coral' : ''}`, text: t.outcome === 'error' ? 'hit a problem' : t.outcome === 'stopped' ? 'stopped' : 'done' })
           : t.fromPhone ? h('span', { class: 'pill dim', text: '📱' }) : null;
     const prog = t.todos?.total ? h('div', { class: 'prog', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': t.todos.total, 'aria-valuenow': t.todos.done, 'aria-label': 'To-dos done' }, h('i', { class: `w${Math.round((t.todos.done / t.todos.total) * 20) * 5}` })) : null;
-    return h('button', { type: 'button', class: `card tab-card s-${t.standing}`, onclick: go1 },
+    // On a wide screen the open one sits beside the list, so its card shows it.
+    const open = S.route?.name === 'tab' && S.route.tabId === t.id;
+    return h('button', { type: 'button', class: `card tab-card s-${t.standing}${open ? ' sel' : ''}`, 'aria-current': open ? 'true' : null, onclick: go1 },
       h('span', { class: 'card-t' }, h('span', { class: 'card-title', text: t.title }), right),
       meta.length ? h('span', { class: 'card-m' }, ...meta) : null,
       prog);
@@ -358,7 +362,7 @@
     }
     update();
     // What waits to send changes on the phone alone: the card follows it.
-    const stopOut = Later.onOutbox(() => { if (S.screen?.el === el) update(); else stopOut(); });
+    const stopOut = Later.onOutbox(() => { if (S.screen?.el === el || S.screen?.beach?.el === el) update(); else stopOut(); });
     return { el, update: () => update(), title: 'Shellby' };
   }
 
@@ -370,6 +374,9 @@
   const Find = window.PocketFind({ S, L, D, N, h, icon, live, go, act, actButton, canAct, toast, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded: More.loaded, transcript, shortPath });
   // One prompt from its notification, and the quiet hours card (pocket-phone.js).
   const { promptScreen, quietCard, pushState, turnOnPush, turnOffPush } = window.PocketPhone({ S, L, D, h, ios, standalone, icon, live, tabOf, go, toast, act, topbar, offlineBanner, promptCard, canAct });
+
+  // A tablet or a computer's browser: the beach and a conversation side by side (pocket-wide.js).
+  const Wide = window.PocketWide({ S, D, h, live, show, wake, beachScreen, tabScreen, remount: () => { if (N.token() && stream) { S.screen = null; mount(); } } });
 
   // ---------------------------------------------------------------- the queue
 
@@ -604,12 +611,12 @@
     if (r.name === 'new' || r.name === 'share') {
       history.replaceState(null, '', '#/');
       S.route = { name: 'beach' };
-      show(beachScreen());
+      Wide.beach();
       stream.watch(null);
       if (r.name === 'share') openShared(); else openSheet(newTaskSheet());
       return;
     }
-    if (r.name === 'tab') { show(tabScreen(r.tabId)); stream.watch(r.tabId); return; }
+    if (r.name === 'tab') { Wide.tab(r.tabId); stream.watch(r.tabId); return; }
     stream.watch(r.name === 'diff' || r.name === 'branch' ? r.tabId : null);
     if (r.name === 'prompt') show(promptScreen(r.tabId, r.requestId));
     else if (r.name === 'diff') show(diffScreen(r.tabId, r.after));
@@ -626,7 +633,7 @@
     else if (r.name === 'past') show(Find.pastScreen(r.id));
     else if (r.name === 'branch') show(Find.branchScreen(r.tabId));
     else if (r.name === 'phone') show(phoneScreen());
-    else show(beachScreen());
+    else Wide.beach();
   }
 
   function refresh() {

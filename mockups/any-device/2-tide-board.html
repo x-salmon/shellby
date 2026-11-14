@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Any device, concept 2: every conversation on one board, opened in a drawer</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .app { height: 100vh; display: flex; flex-direction: column; position: relative; }
+
+  /* The tideline: him, the headline and the window, one strip across the top */
+  .tideline { flex: none; display: flex; align-items: center; gap: 18px; padding: 14px 24px; border-bottom: 1px solid var(--line-soft); }
+  .tideline .crab { width: 64px; height: 64px; }
+  .tideline .words { min-width: 0; }
+  .tideline .meter { width: clamp(200px, 20vw, 300px); margin: 0 0 0 32px; }
+
+  .board { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+  .col { min-height: 0; overflow: hidden; padding: 6px 14px 14px; border-right: 1px solid var(--line-soft); }
+  .col:last-child { border-right: 0; }
+  .col.asks { background: linear-gradient(180deg, rgba(255, 193, 94, .05), transparent 40%); }
+  .col .sect { margin-top: 12px; }
+  .col .ask + .ask { margin-top: 10px; }
+  .ask .btns .btn { height: 38px; }
+  .review-go { display: flex; gap: 8px; }
+  .review-go .btn { flex: 1; height: 34px; font-size: 14px; }
+
+  /* The drawer: one conversation over the board's right side */
+  .drawer { position: absolute; top: 60px; right: 0; bottom: 0; width: clamp(440px, 40vw, 640px); display: flex; flex-direction: column; background: var(--ink); border-left: 1px solid var(--line); box-shadow: -24px 0 48px rgba(0, 0, 0, .45); }
+  .drawer-top { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--line-soft); color: var(--glass); font-weight: 700; }
+  .drawer-scroll { flex: 1; min-height: 0; overflow: hidden; padding: 18px 24px 0; }
+  .drawer-foot { padding: 12px 24px 16px; border-top: 1px solid var(--line-soft); display: grid; gap: 10px; }
+  .drawer-foot .actions { display: flex; gap: 8px; }
+  .drawer-foot .actions .btn.go { margin-left: auto; }
+  .drawer .convo-h h1 { font-size: 22px; }
+  .drawer .you { max-width: 88%; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><img class="crab" src="../../assets/icon.png" alt="">Shellby</div>
+    <div class="gap"></div>
+    <button class="btn ghost slim">Queue 2</button>
+    <button class="btn ghost slim">Search</button>
+    <div class="pcs" aria-label="Which PC">
+      <span class="on"><i></i>All PCs</span>
+      <span class="up"><i></i>DESK-PC</span>
+      <span class="up"><i></i>LAPTOP</span>
+    </div>
+    <button class="btn go slim">+ New task</button>
+  </header>
+
+  <section class="tideline">
+    <img class="crab" src="../../assets/icon.png" alt="Shellby, asking">
+    <div class="words">
+      <p class="tide-title">He needs you twice</p>
+      <p class="tide-sub">3 working on 2 PCs, 1 to review</p>
+    </div>
+    <div class="meter">
+      <div class="meter-row"><span>5-hour window</span><span>42% · resets 19:02</span></div>
+      <div class="bar"><i style="width:42%"></i></div>
+    </div>
+  </section>
+
+  <div class="board">
+    <section class="col asks">
+      <p class="sect asking"><i></i>Waiting on you 2</p>
+      <div class="ask">
+        <div><p class="ask-h">Can I do this?</p><p class="ask-for">Fix the flaky upload test · DESK-PC · <span class="agent ag-claude">Claude</span></p></div>
+        <pre class="cmd">npm test -- --grep upload</pre>
+        <div class="btns"><button class="btn">Deny</button><button class="btn allow">Allow</button></div>
+      </div>
+      <div class="ask">
+        <div><p class="ask-h">Which one?</p><p class="ask-for">Release notes · LAPTOP · <span class="agent ag-gemini">Gemini</span></p></div>
+        <p>Group the fixes by screen, or by how serious they are?</p>
+        <div class="btns"><button class="btn">By screen</button><button class="btn">By severity</button></div>
+      </div>
+    </section>
+
+    <section class="col">
+      <p class="sect working">Working 3</p>
+      <div class="card s-working">
+        <div class="card-t"><span class="card-title">Month calendar for Time</span><span class="pill coral">2 helpers</span></div>
+        <div class="card-m"><span>Editing time-month.js</span></div>
+        <div class="card-m"><span class="agent ag-claude">Claude</span><span class="faint">DESK-PC · 6m</span></div>
+        <div class="prog"><i style="width:60%"></i></div>
+      </div>
+      <div class="card s-working">
+        <div class="card-t"><span class="card-title">Split the tab store</span></div>
+        <div class="card-m"><span>Reading src/main/tabs.js</span></div>
+        <div class="card-m"><span class="agent ag-gemini">Gemini</span><span class="faint">DESK-PC · 2m</span></div>
+        <div class="prog"><i style="width:25%"></i></div>
+      </div>
+      <div class="card s-working">
+        <div class="card-t"><span class="card-title">Pricing page copy</span></div>
+        <div class="card-m"><span>Writing the reply</span></div>
+        <div class="card-m"><span class="agent ag-opencode">OpenCode</span><span class="faint">LAPTOP · 1m</span></div>
+        <div class="prog"><i style="width:80%"></i></div>
+      </div>
+    </section>
+
+    <section class="col">
+      <p class="sect review">Ready to review 1</p>
+      <div class="card s-review sel">
+        <div class="card-t"><span class="card-title">Tailnet range for localOrHttps</span><span class="pill">✓ checks</span></div>
+        <div class="card-m"><span class="add">+18</span><span class="del">−3</span><span>2 files</span><span class="agent ag-codex">Codex</span></div>
+        <div class="review-go"><button class="btn">See changes</button><button class="btn go">Bring it home</button></div>
+      </div>
+    </section>
+
+    <section class="col">
+      <p class="sect">Finished today 4</p>
+      <div class="card"><div class="card-t"><span class="card-title">Hero copy for the website</span></div><div class="card-m"><span class="agent ag-opencode">OpenCode</span><span class="faint">LAPTOP</span></div></div>
+      <div class="card"><div class="card-t"><span class="card-title">Bump Electron to 44.2</span></div><div class="card-m"><span class="agent ag-claude">Claude</span><span class="faint">DESK-PC</span></div></div>
+    </section>
+  </div>
+
+  <aside class="drawer" aria-label="Tailnet range for localOrHttps">
+    <div class="drawer-top"><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Board<span class="gap"></span><span class="pill dim">DESK-PC</span></div>
+    <div class="drawer-scroll">
+      <article class="convo">
+        <div class="convo-h">
+          <h1>Tailnet range for localOrHttps</h1>
+          <div class="tags"><span class="pill">own copy</span><span class="pill dim">shellby/tailnet-range</span><span class="agent ag-codex">Codex · gpt-5.2</span></div>
+        </div>
+        <p class="you">localOrHttps should accept Tailscale addresses (100.64.0.0/10) over http.</p>
+        <div class="tools">
+          <span><span class="ok">✓</span><b>Edit</b> src/main/channels/index.js</span>
+          <span><span class="ok">✓</span><b>Edit</b> test/channels.test.js</span>
+          <span><span class="ok">✓</span><b>Run</b> npm test -- channels</span>
+        </div>
+        <p class="reply">Done. <code>localOrHttps</code> now takes <b>100.64.0.0/10</b> over plain http, and the tests cover both edges of the range.</p>
+        <div class="diff">
+          <div class="h">src/main/channels/index.js</div>
+          <div>  if (isLoopback(host)) return true;</div>
+          <div class="d">- return url.protocol === 'https:';</div>
+          <div class="a">+ if (inTailnet(host)) return true;</div>
+          <div class="a">+ return url.protocol === 'https:';</div>
+        </div>
+      </article>
+    </div>
+    <footer class="drawer-foot">
+      <div class="replybox"><span>Reply to Codex…</span><button class="btn slim">Send</button></div>
+      <div class="actions"><button class="btn slim">Undo turn</button><button class="btn go slim">Bring it home</button></div>
+    </footer>
+  </aside>
+</div>
+</body>
+</html>
