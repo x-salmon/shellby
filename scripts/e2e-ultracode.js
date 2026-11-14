@@ -2,7 +2,8 @@
 // End-to-end check of Ultracode against the dev app over CDP, driven by the fake
 // Claude CLI (test/fixtures/fake-claude.js plays Claude Code 2.1.299's Workflow
 // run): no account, no usage.
-//   1. The Ultracode chip under the box is off; on, it says what it means.
+//   1. The Ultracode chip under the box is off; on, it says what it means, and
+//      typing shows what a run usually costs (a labelled rough guess before any).
 //   2. The first message asks in the confirm window (Cancel keeps it in the box),
 //      then goes with the word "ultracode" on the end, where you can see it.
 //   3. The run's card: phases, agents running and done, the clock, the cost "at
@@ -18,6 +19,7 @@ const path = require('path');
 const { savePng } = require('./lib/shot');
 const { panelBooted } = require('./lib/boot');
 const { answerDialog } = require('./lib/dialog');
+const { DEFAULTS } = require('../src/main/usage/runcost');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9487;
@@ -55,6 +57,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     const { ev } = panel;
     const until = async (expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await ev(expr)) return true; await wait(150); } return false; };
     const type = text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })(SB.$('input'))`);
+    const typeOnly = text => ev(`(i => { i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); })(SB.$('input'))`);
     const card = (sel = '.ultra-card') => `[...SB.activeTab().el.querySelectorAll(${JSON.stringify(sel)})].at(-1)`;
     // The first task's trophy card would sit over the card: put it away first.
     const shot = async name => { if (SHOTS) { await ev("[...document.querySelectorAll('button')].filter(b => /^Dismiss all/.test(b.textContent.trim()) && b.offsetParent).forEach(b => b.click())"); await wait(400); fs.mkdirSync(SHOTS, { recursive: true }); await savePng(panel.send, path.join(SHOTS, `ultracode-${name}.png`)); } };
@@ -71,8 +74,15 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev("SB.$('ultraChip').click()");
     check(await ev("SB.$('ultraChip').getAttribute('aria-pressed') === 'true' && !SB.$('ultraNote').hidden"), 'on, it says so');
     check(/many agents/.test(await ev("SB.$('ultraNote').textContent")), 'the warning says it can use many agents and tokens');
+    // What a run usually costs, while you type (src/main/usage/runcost.js): nothing has run yet, so a rough guess, said as one.
+    const [lo, hi] = DEFAULTS.ultracode;
+    await typeOnly('Audit the repo');
+    check(await until(`!SB.$('outlook').hidden && /An Ultracode run hasn't run here yet; a rough guess is ${lo} to ${hi}% of your 5-hour window/.test(SB.$('outlook').textContent)`), 'with the chip on, typing shows what a run usually costs: a rough guess, labelled, before any has run');
+    check(await ev("SB.$('costHint').hidden"), 'in the banner, not the small cost hint');
     await ev("SB.$('ultraChip').click()");
     check(await ev("SB.$('ultraChip').getAttribute('aria-pressed') === 'false' && SB.$('ultraNote').hidden"), 'off again, the warning goes');
+    check(await until("SB.$('outlook').hidden"), 'and so does the estimate');
+    await typeOnly('');
     // The send waits on the confirm window, so a message in the feed means none was asked.
     await type('Is ultracode worth it?');
     check(await until("[...SB.activeTab().el.querySelectorAll('.msg.user')].some(e => /Is ultra\\W?code worth it\\?$/.test(e.textContent.trim()))"), 'off, the word typed in a message sends at once, with no ask');

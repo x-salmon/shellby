@@ -145,11 +145,15 @@ function registerNativeIpc(ipcMain, d) {
     if (!tab) return { ok: false, error: 'That conversation is closed.' };
     const model = tab.session.runModel?.() || '';
     const e = ultraWords.expect(model);
+    // What past runs here have cost, when there are any (usage/runcost.js); the rough dollar guess either way.
+    let past;
+    try { past = d.usagePlan?.estimateRunFor({ kind: 'ultracode' }); } catch { past = null; }
     const response = await confirm.ask(d.panel, {
       ...d.dialogLook(), icon: '🦀',
       title: 'Send this with Ultracode?',
       message: 'Claude may start a run of many agents in the background. Each one is a helper crab, and each spends from your plan.',
-      detail: `A run is often ${e.agents[0]} to ${e.agents[1]} agents. As a rough guess that's ${ultraWords.money(e.low)} to ${ultraWords.money(e.high)}${model ? ` on ${model}` : ''}, and it can fill a good part of your 5-hour window.`,
+      detail: `A run is often ${e.agents[0]} to ${e.agents[1]} agents. As a rough guess that's ${ultraWords.money(e.low)} to ${ultraWords.money(e.high)}${model ? ` on ${model}` : ''}, and it can fill a good part of your 5-hour window.`
+        + (past?.basis === 'history' ? `\n\n${past.text}` : ''),
       note: 'The card in the conversation shows what it has spent so far, and Stop ends it.',
       buttons: [{ label: 'Send with Ultracode', style: 'primary' }, { label: 'Cancel' }], defaultId: 1, cancelId: 1,
     });

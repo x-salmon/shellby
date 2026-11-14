@@ -2,6 +2,7 @@
 // test runs, the weekly dependency watch (depwatch/index.js), and the usage forecast
 // with the work held for after a reset (forecast.js, held.js).
 // Kept out of main.js, which only wires it up.
+const { ID, obj, opt, str } = require('../ipc-args');
 const confirm = require('../confirm');
 const crabtools = require('../crabtools');
 const depwatch = require('../depwatch');
@@ -21,8 +22,13 @@ function registerRoutinesIpc(ipcMain, d) {
   ipcMain.handle('usage:estimate', (_e, req) => {
     const text = typeof req?.text === 'string' ? req.text.slice(0, 50000) : '';
     if (!text.trim() || d.config.get('crabOnly')) return null;
-    return d.usagePlan.estimateFor(d.isStr(req.tabId) ? req.tabId : null, text);
+    // ultracode: the chip is on for the tab, so this message starts a run of many agents.
+    return d.usagePlan.estimateFor(d.isStr(req.tabId) ? req.tabId : null, text, { ultracode: req.ultracode === true });
   });
+  // What a run usually costs before it starts (usage/runcost.js): an Ultracode
+  // run, one workflow by its id, or a turn that fans out to several helpers.
+  ipcMain.handle('usage:estimate-run', (_e, req) => (d.config.get('crabOnly') ? null : d.usagePlan.estimateRunFor({ kind: req.kind, workflowId: req.workflowId || null })),
+    [obj({ kind: str({ max: 20, re: /^(ultracode|workflow|fanout)$/ }), workflowId: opt(ID) })]);
   ipcMain.handle('routines:list', () => d.routinesView());
   ipcMain.handle('routines:templates', () => routineTemplates.TEMPLATES);
   ipcMain.handle('routines:save', async (_e, input) => {
@@ -119,6 +125,12 @@ function registerRoutinesIpc(ipcMain, d) {
     if (input?.kind === 'routine') {
       const r = d.routines().find(x => x.id === input.routineId);
       return r ? d.holdForReset({ kind: 'routine', routineId: r.id, name: r.name }) : { ok: false, error: 'Routine not found.' };
+    }
+    // A workflow run from its cost estimate's "Run after the reset" (wf-list.js), with the inputs it had.
+    if (input?.kind === 'workflow') {
+      const wf = d.isStr(input.workflowId) ? d.workflows?.get(input.workflowId) : null;
+      if (!wf) return { ok: false, error: 'That workflow is gone.' };
+      return d.holdForReset({ kind: 'workflow', workflowId: wf.id, name: wf.name, inputs: input.inputs });
     }
     if (input?.kind !== 'message') return { ok: false, error: "There's nothing to hold." };
     const tab = d.isStr(input.tabId) && d.manager.tabs.get(input.tabId);

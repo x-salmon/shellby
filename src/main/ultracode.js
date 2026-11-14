@@ -53,7 +53,7 @@ function track(state, item, now) {
       id: item.taskId, toolUseId: item.toolUseId || null, runId: null, name: '', description: '',
       status: 'running', startedAt: now, endedAt: null, phases: [], agents: [],
       tokens: 0, toolUses: 0, summary: '', priced: 0, pricedSeen: false, metered: 0,
-      savedAt: 0, sentAt: 0,
+      savedAt: 0, sentAt: 0, costed: false, // costed: its total has gone to the per-turn ledger (session/ultra.js 'run')
     };
     state.byId.set(item.taskId, run);
     const launch = state.launches.get(item.taskId);

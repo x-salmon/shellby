@@ -8,6 +8,8 @@
 //     conversation; it goes back there, reopening it from History if needed.
 //   { kind: 'routine', routineId, name, auto, why? }: one run of a routine. why says
 //     what held it when Shellby did: 'limit', or routines/pace.js's reason.
+//   { kind: 'workflow', workflowId, name, inputs }: one run of a workflow, by hand, with
+//     the inputs it was going to run with (the cost estimate's "Run after the reset").
 //   { kind: 'task', prompt, cwd, mode, name, tabId, tries, model?, when? }: heavy work queued
 //     for a fresh window ("refactor X overnight"). Tasks go one after another,
 //     each waiting for the last to finish. Once one starts it keeps its tabId:
@@ -23,6 +25,8 @@ const { isModel } = require('./models');
 const MAX_HELD = 50;
 const MAX_TEXT = 50000;
 const MAX_FILES = 20;
+const MAX_INPUTS = 20;      // a held workflow run's inputs, each a line of text
+const MAX_INPUT_CHARS = 2000;
 const MAX_WAIT_MS = 8 * 24 * 60 * 60 * 1000; // the weekly window is the longest anyone waits
 const MAX_TRIES = 3; // starts of one task (first go, then carrying on) before it's given up on
 const TASK_MODES = ['ask', 'smart', 'acceptEdits', 'plan', 'autonomous'];
@@ -57,6 +61,12 @@ function clean(raw, now) {
       ...base, kind: 'routine', routineId: raw.routineId, name: String(raw.name || 'Routine').slice(0, 60), auto: raw.auto === true,
       ...(raw.auto === true && ROUTINE_WHYS.includes(raw.why) ? { why: raw.why } : {}),
     };
+  }
+  if (raw.kind === 'workflow') {
+    if (!isStr(raw.workflowId) || !ID_RE.test(raw.workflowId)) return null;
+    const given = raw.inputs && typeof raw.inputs === 'object' && !Array.isArray(raw.inputs) ? Object.entries(raw.inputs) : [];
+    const inputs = Object.fromEntries(given.filter(([k, v]) => ID_RE.test(k) && typeof v === 'string').slice(0, MAX_INPUTS).map(([k, v]) => [k, v.slice(0, MAX_INPUT_CHARS)]));
+    return { ...base, kind: 'workflow', workflowId: raw.workflowId, name: String(raw.name || 'Workflow').slice(0, 60), inputs };
   }
   if (raw.kind === 'task') {
     const prompt = typeof raw.prompt === 'string' ? raw.prompt.trim().slice(0, MAX_TEXT) : '';
@@ -99,8 +109,8 @@ function normalize(raw, now) {
 }
 
 /**
- * The list with one more held item: { list, item } or { error }. A routine
- * already held isn't held twice; the earlier one stands.
+ * The list with one more held item: { list, item } or { error }. A routine or
+ * a workflow already held isn't held twice; the earlier one stands.
  */
 function hold(list, raw, now) {
   // A new task hasn't started anywhere yet, whatever came in.
@@ -109,6 +119,10 @@ function hold(list, raw, now) {
   if (!item) return { error: 'There\'s nothing to hold.' };
   if (item.kind === 'routine') {
     const had = list.find(h => h.kind === 'routine' && h.routineId === item.routineId);
+    if (had) return { list, item: had };
+  }
+  if (item.kind === 'workflow') {
+    const had = list.find(h => h.kind === 'workflow' && h.workflowId === item.workflowId);
     if (had) return { list, item: had };
   }
   if (list.length >= MAX_HELD) return { error: `${MAX_HELD} things are already waiting for the reset.` };
@@ -171,13 +185,14 @@ function move(list, id, dir) {
   return { list: swapped.sort((p, q) => p.createdAt - q.createdAt) };
 }
 
-/** "2 messages, a routine and 3 queued tasks": what went, for one notification. */
+/** "2 messages, a routine, a workflow and 3 queued tasks": what went, for one notification. */
 function summary(items) {
   const n = k => items.filter(h => h.kind === k).length;
   const parts = [];
-  const m = n('message'), r = n('routine'), t = n('task');
+  const m = n('message'), r = n('routine'), w = n('workflow'), t = n('task');
   if (m) parts.push(m === 1 ? 'a held message' : `${m} held messages`);
   if (r) parts.push(r === 1 ? 'a routine' : `${r} routines`);
+  if (w) parts.push(w === 1 ? 'a workflow' : `${w} workflows`);
   if (t) parts.push(t === 1 ? 'a queued task' : `${t} queued tasks`);
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts.join('');
 }

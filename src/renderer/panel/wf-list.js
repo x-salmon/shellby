@@ -15,6 +15,8 @@
   let drafting = false;
   let runFormFor = null;     // workflow id whose inputs form is open
   let runValues = {};
+  /** @type {{ id: string, inputs: Record<string, string>, est: any } | null} */
+  let estimateFor = null;    // the workflow whose cost estimate is showing, before it runs (src/main/usage/runcost.js)
 
   const workflows = () => state.workflows?.workflows || [];
   const DEF_KEYS = ['id', 'name', 'description', 'enabled', 'cwd', 'concurrency', 'inputs', 'when', 'steps', 'createdAt'];
@@ -67,6 +69,7 @@
     if (state.view === 'workflows' || state.view === 'routines') SB.renderTide?.();
   }
   const refreshList = throttle(() => { if (state.view === 'workflows' && current().name === 'list') fillList(); }, 600);
+  SB.refreshWorkflowRows = refreshList; // a run held for the reset, or let go (outlook.js applyOutlook)
 
   // Live updates refill the rows, but never under your cursor: if you're typing
   // in a run form or the secrets box, it waits until you leave.
@@ -184,12 +187,16 @@
     return { tone, text: at ? `${word} ${SB.relTime(at)}` : word };
   }
 
+  // A run of it held for after the usage reset, from its cost estimate (outlook.js brings the list).
+  const heldRun = w => (state.outlook?.held || []).find(x => x.kind === 'workflow' && x.workflowId === w.id) || null;
+
   function workflowRow(w) {
     const last = w.lastRun;
     const note = lastRunNote(w);
     const when = [w.triggers?.length ? w.triggers.join(' · ') : 'Run by hand'];
     if (!w.enabled) when.push('off');
     else if (w.next) when.push(`next ${SB.untilTime(w.next)}`);
+    const held = heldRun(w);
     const firstTrigger = w.when?.[0]?.type;
     return h('li', { class: `ar-row wf-row${w.enabled ? '' : ' paused'}${last?.waiting ? ' waiting' : ''}`, 'data-workflow-id': w.id },
       h('div', { class: 'ar-top' },
@@ -198,7 +205,8 @@
           h('div', { class: 'ar-name' }, h('button', { type: 'button', class: 'ar-title', 'aria-label': `Edit “${w.name}”`, 'data-fk': `edit-${w.id}`, onclick: () => openEditor(toDef(w)) }, w.name)),
           h('div', { class: 'ar-meta' },
             h('span', { class: `ar-status ${note.tone}` }, h('span', { class: 'ar-dot', 'aria-hidden': 'true' }), note.text),
-            h('span', { class: 'ar-when', text: when.join(' · ') })),
+            h('span', { class: 'ar-when', text: when.join(' · ') }),
+            held ? h('button', { type: 'button', class: 'ar-held', title: 'Held until your usage resets. Click to take it out of the queue.', 'data-fk': `held-${w.id}`, onclick: () => unholdRun(w, held) }, `runs after the reset · ${held.atText}`) : null),
           w.description ? h('div', { class: 'ar-desc', text: w.description, title: w.description }) : null),
         h('div', { class: 'ar-actions' },
           iconBtn('play', `Run “${w.name}” now`, () => startRun(w), { 'data-fk': `run-${w.id}`, 'aria-expanded': w.inputs?.length ? String(runFormFor === w.id) : null }),
@@ -207,7 +215,8 @@
             h('input', { type: 'checkbox', checked: w.enabled, 'aria-label': `Run “${w.name}” automatically`, 'data-fk': `en-${w.id}`, onchange: e => setEnabled(w, e.target) }),
             h('span', { class: 'switch' })))),
       last?.waiting ? waitingBox(last) : null,
-      runFormFor === w.id ? runForm(w) : null);
+      runFormFor === w.id ? runForm(w) : null,
+      estimateFor?.id === w.id ? estimateBox(w) : null);
   }
 
   function waitingBox(last) {
@@ -307,12 +316,50 @@
     runNow(w, {});
   }
 
-  async function runNow(w, inputs) {
+  // What it usually costs first (src/main/usage/runcost.js), in a box on its row
+  // with one tap to go ahead; estimated: that tap, so it runs.
+  async function runNow(w, inputs, { estimated = false } = {}) {
+    if (!estimated) {
+      let est;
+      try { est = await api.estimateRun({ kind: 'workflow', workflowId: w.id }); } catch { est = null; }
+      if (est?.text) {
+        estimateFor = { id: w.id, inputs, est };
+        runFormFor = null;
+        fillList();
+        requestAnimationFrame(() => list.rows?.querySelector('.wf-estimate .wf-run-go')?.focus());
+        return false;
+      }
+    }
     let res;
     try { res = await api.runWorkflow(w.id, inputs); } catch { res = { ok: false, error: 'Couldn\'t start it. Try again.' }; }
     if (!res?.ok) { SB.toast(res?.error || 'Couldn\'t start it.'); return false; }
     SB.toast(`Started “${w.name}”`, { action: 'Watch', onAction: () => go('run', { runId: res.runId }) });
     return true;
+  }
+
+  function estimateBox(w) {
+    const { est, inputs } = estimateFor;
+    const close = () => { estimateFor = null; fillList(); focusFk(`run-${w.id}`); };
+    return h('div', { class: `wf-estimate${est.over ? ' over' : ''}`, role: 'group', 'aria-label': `What “${w.name}” usually costs` },
+      h('p', { class: 'wf-estimate-text', text: est.text }),
+      h('div', { class: 'row wrap' },
+        h('button', { type: 'button', class: `btn slim-btn wf-run-go${est.over ? '' : ' primary'}`, onclick: () => { estimateFor = null; runNow(w, inputs, { estimated: true }); } }, est.over ? 'Run anyway' : 'Run now'),
+        est.resetText ? h('button', { type: 'button', class: `btn slim-btn wf-run-later${est.over ? ' primary' : ' ghost'}`, title: 'Held until your usage resets, then run by hand with these inputs', onclick: () => holdRun(w, inputs) }, `Run after the reset (${est.resetText})`) : null,
+        h('button', { type: 'button', class: 'btn ghost slim-btn', onclick: close }, 'Cancel')));
+  }
+
+  async function holdRun(w, inputs) {
+    let r;
+    try { r = await api.holdForReset({ kind: 'workflow', workflowId: w.id, inputs }); } catch { r = { ok: false, error: 'Couldn\'t hold it. Try again.' }; }
+    estimateFor = null;
+    fillList();
+    SB.toast(r?.ok ? `“${w.name}” runs after the reset, at ${r.atText}.` : r?.error || 'Couldn\'t hold it.');
+  }
+
+  async function unholdRun(w, held) {
+    let r;
+    try { r = await api.cancelHeld(held.id); } catch { r = { ok: false }; }
+    SB.toast(r?.ok ? `“${w.name}” won't run after the reset.` : 'That one has already gone.');
   }
 
   function runForm(w) {

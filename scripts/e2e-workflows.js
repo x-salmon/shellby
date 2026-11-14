@@ -4,13 +4,15 @@
 // Saves workflows through the panel's bridge, runs them, and checks the
 // Automate page shows what happened: typed Claude output steering an If, a
 // command, an Ask answered from the run view, a stop and a resume, a web hook
-// on the local port, and the confirmation window guarding risky saves.
+// on the local port, the confirmation window guarding risky saves, and the
+// Run button saying what a run usually costs first (one tap goes ahead).
 //   node scripts/e2e-workflows.js
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { templates } = require('../src/main/workflows/templates');
+const { DEFAULTS } = require('../src/main/usage/runcost');
 const { panelBooted } = require('./lib/boot');
 const { answerDialog } = require('./lib/dialog');
 
@@ -79,6 +81,17 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const saved = JSON.parse(await ev(`shellby.saveWorkflow(${JSON.stringify(triage)}).then(r => JSON.stringify(r))`));
     check(saved.ok === true, `a plan-only workflow saves without a confirmation (${JSON.stringify(saved.errors || '')})`);
     check(await until("document.querySelectorAll('#workflowsView [data-workflow-id]').length === 1 || /Triage/.test(document.getElementById('workflowsView').innerText)"), 'it is listed on the Automate page');
+    // Run by hand first says what it usually costs (src/main/usage/runcost.js): no run yet, so a rough guess, labelled; Cancel starts nothing.
+    const runBtn = `document.querySelector('#workflowsView [data-fk="run-${saved.workflow.id}"]')`;
+    check(await until(`!!${runBtn}`), 'the row has a Run button');
+    await ev(`${runBtn}.click()`);
+    check(await until("!!document.querySelector('#workflowsView .wf-estimate')"), 'Run first shows what the workflow usually costs');
+    const estText = await ev("document.querySelector('#workflowsView .wf-estimate-text')?.textContent || ''");
+    check(new RegExp(`^“Triage” hasn't run here yet; a rough guess is ${DEFAULTS.workflow[0]} to ${DEFAULTS.workflow[1]}% of your 5-hour window\\.$`).test(estText), `a rough guess, labelled, before any run (${estText})`);
+    check(await ev("!document.querySelector('#workflowsView .wf-run-later')"), 'no "after the reset" while no reset is known');
+    await ev("[...document.querySelectorAll('#workflowsView .wf-estimate button')].find(b => b.textContent === 'Cancel').click()");
+    check(await until("!document.querySelector('#workflowsView .wf-estimate')"), 'Cancel puts it away');
+    check((await ev(`shellby.listRuns(${JSON.stringify(saved.workflow.id)}).then(l => l.length)`)) === 0, 'and nothing ran');
     const run1 = JSON.parse(await ev(`shellby.runWorkflow(${JSON.stringify(saved.workflow.id)}, {}).then(r => JSON.stringify(r))`));
     check(run1.ok, 'it runs');
     const r1 = await waitRun(run1.runId, ['ok', 'error']);
@@ -86,6 +99,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(r1?.steps?.look?.output?.fixable === true && r1?.steps?.look?.output?.cause === 'a typo', 'Claude handed back typed fields');
     check(r1?.vars?.verdict === 'fix a typo', `the If took the right branch (${r1?.vars?.verdict})`);
     check(!!r1?.steps?.look?.output?.tabId && await ev('/⚡ Triage/.test(document.body.textContent)'), 'its Claude step ran in a ⚡ tab');
+    // One more tap on the estimate runs it.
+    await ev("SB.setView('workflows')");
+    check(await until(`!!${runBtn}`), 'back on the list');
+    await ev(`${runBtn}.click()`);
+    check(await until("!!document.querySelector('#workflowsView .wf-estimate .wf-run-go')"), 'Run shows the estimate again');
+    await ev("document.querySelector('#workflowsView .wf-estimate .wf-run-go').click()");
+    check(await until(`shellby.listRuns(${JSON.stringify(saved.workflow.id)}).then(l => l.length === 2)`), 'one more tap runs it');
+    check(await until("!document.querySelector('#workflowsView .wf-estimate')"), 'and the estimate is gone');
+    const again = JSON.parse(await ev(`shellby.listRuns(${JSON.stringify(saved.workflow.id)}).then(l => JSON.stringify(l[0]))`));
+    check((await waitRun(again.id, ['ok', 'error']))?.status === 'ok', 'that run finishes too');
 
     // 3. A risky save asks in the confirmation window: No keeps nothing, Yes saves.
     const plan = path.join(work, 'plan.md');

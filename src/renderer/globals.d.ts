@@ -264,6 +264,8 @@ interface ShellbyPanelExtras {
   github: any;
   // gitlab.js
   gitlab: any;
+  // handoff.js
+  offerHandoff: any;
   // health.js
   health: any;
   refreshHealthCrab: any;
@@ -342,6 +344,7 @@ interface ShellbyPanelExtras {
   heldChips: any;
   holdIfBig: any;
   holdQueue: any;
+  refreshEstimate: any;
   renderOutlook: any;
   resetEstimate: any;
   // painter-preview.js
@@ -704,6 +707,8 @@ interface ShellbyPanelExtras {
   // wf-kit.js
   roomSettled: any;
   wfKit: any;
+  // wf-list.js
+  refreshWorkflowRows: any;
   // workflow-canvas.js
   wfCanvas: any;
   // workflows.js

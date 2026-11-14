@@ -32,7 +32,8 @@ const pause = ms => new Promise(r => setTimeout(r, ms));
  *   currentCwd, isFolder, isStr, dialogLook, confirm ({ ask }), randomUUID,
  *   powerSaveBlocker (Electron's), worktreeHome, adoptPhoneTab (wiring/phone-tasks.js),
  *   from usage/service.js: limitWait, resetTarget, clockTime, sendOutlook,
- *   from routines/service.js: routines, routinesView, runRoutine, makeRoomForRoutine
+ *   from routines/service.js: routines, routinesView, runRoutine, makeRoomForRoutine,
+ *   workflows (getter, the WorkflowService: a held workflow run goes through its runManual)
  */
 function createHeldQueue(d) {
   const queueTabs = new Map();       // tabId -> held task id, for tasks queued for the reset
@@ -72,6 +73,7 @@ function createHeldQueue(d) {
     const base = { id: h.id, kind: h.kind, at: h.at, atText: d.clockTime(h.at) };
     if (h.kind === 'message') return { ...base, tabId: h.tabId, text: h.text, attachments: h.attachments };
     if (h.kind === 'routine') return { ...base, routineId: h.routineId, name: h.name, why: h.why || null };
+    if (h.kind === 'workflow') return { ...base, workflowId: h.workflowId, name: h.name };
     return {
       ...base, name: h.name, prompt: h.prompt, cwd: h.cwd, folder: h.cwd ? path.basename(h.cwd) : null, mode: h.mode, model: h.model || '', when: h.when || 'reset', fromPhone: !!h.fromPhone,
       tabId: h.tabId, running: !!h.tabId && queueWaits.has(h.tabId),
@@ -172,7 +174,7 @@ function createHeldQueue(d) {
         try {
           // A task is waited on until it finishes, so heavy ones go one at a
           // time and whatever the window can't fit waits for the next reset.
-          outcome = h.kind === 'routine' ? releaseRoutine(h) : h.kind === 'task' ? await releaseTask(h) : releaseMessage(h);
+          outcome = h.kind === 'routine' ? releaseRoutine(h) : h.kind === 'workflow' ? releaseWorkflow(h) : h.kind === 'task' ? await releaseTask(h) : releaseMessage(h);
         } catch (err) {
           // Dropped rather than left due: a failure that repeats would retry forever.
           d.log.warn('Held item failed', err.message);
@@ -320,6 +322,17 @@ function createHeldQueue(d) {
     const res = d.runRoutine(r, { reason: 'after-reset' });
     if (res.ok) return 'sent';
     if (res.skipped) d.notify(`Routine "${r.name}" didn't run`, res.error);
+    return 'failed';
+  }
+
+  // A workflow run held from its cost estimate ("Run after the reset"): run by
+  // hand now, with the inputs it was going to have. Queued behind other runs counts as sent.
+  function releaseWorkflow(h) {
+    const wf = d.workflows?.get(h.workflowId);
+    if (!wf) return 'dropped'; // deleted while it waited
+    const res = d.workflows.runManual(wf.id, h.inputs || {});
+    if (res.ok || res.queued) return 'sent';
+    d.notify(`Workflow “${wf.name}” didn't run`, res.error || 'It couldn\'t start after the reset.', () => d.showPanel({ focusInput: false }), { tone: 'problem' });
     return 'failed';
   }
 

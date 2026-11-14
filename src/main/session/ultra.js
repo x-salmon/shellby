@@ -36,6 +36,11 @@ const ultra = {
     const weight = ultracode.meterDelta(run, this.runModel());
     if (weight) this.emit('spend', { messageId: `ultracode:${run.id}`, weight });
     if (ultracode.syncCrew(this.tasks, run, now)) this.emit('crew', this.crew);
+    // Ended: what it cost in all, once, so the next run can be guessed at (usage/runcost.js).
+    if (run.status !== 'running' && !run.costed) {
+      run.costed = true;
+      this.emit('run', { id: run.id, weight: Math.max(run.priced, run.metered), tokens: run.tokens, durationMs: (run.endedAt || now) - run.startedAt, ok: run.status === 'completed' });
+    }
     const { send, save } = ultracode.due(run, now, { started });
     if (!send && !save) return;
     // Only some of a running card's updates are kept in History (history/index.js): enough to restore it.
