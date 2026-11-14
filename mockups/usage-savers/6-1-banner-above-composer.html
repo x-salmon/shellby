@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fresh start 1: a banner above the composer</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .fresh { display: grid; grid-template-columns: 1fr 520px; gap: 12px 26px; padding: 20px 24px 18px; border-radius: var(--r-lg); background: var(--ink); border: 1px solid rgba(255, 193, 94, .4); }
+  .fresh h3 { grid-column: 1 / -1; font: 500 22px/1.2 var(--font-pixel); display: flex; align-items: center; gap: 14px; }
+  .fresh h3 .full { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 13px; background: rgba(255, 193, 94, .14); color: var(--amber); font: 600 13px var(--font-mono); }
+  .fresh p { font-size: 16px; color: var(--sand-dim); }
+  .fresh p b { color: var(--sand); }
+  .fresh .nums { display: flex; gap: 28px; align-items: baseline; padding: 6px 0 2px; }
+  .fresh .nums .n { font: 500 30px/1 var(--font-pixel); }
+  .fresh .nums .n.after { color: var(--glass); }
+  .fresh .nums small { display: block; font: 14px var(--font-body); color: var(--sand-faint); margin-top: 6px; }
+  .fresh .nums .arrow { color: var(--sand-faint); font-size: 22px; align-self: center; }
+  .fresh .sum { display: grid; gap: 8px; }
+  .fresh .sum .lbl { display: flex; align-items: center; font-size: 14px; color: var(--sand-faint); }
+  .fresh .sum .lbl span { margin-left: auto; color: var(--glass); }
+  .fresh .sum .box { height: 150px; padding: 10px 14px; background: var(--abyss); border: 1px solid var(--line); border-radius: var(--r); font: 400 14px/1.5 var(--font-body); color: var(--sand); overflow: hidden; white-space: pre-wrap; }
+  .fresh .acts { grid-column: 1 / -1; padding-top: 4px; }
+  .fresh .acts .fine { margin-left: auto; }
+  .composer { padding-top: 6px; }
+</style>
+</head>
+<body>
+<div class="note"><b>6-1 · Banner above the composer.</b> When the conversation is well filled and your message changes the subject, the slot above the box offers a fresh tab that carries an editable summary instead of the whole thread. <span class="trade">right where you type, so you can't miss it, but it takes room from the composer and the summary is small to edit</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar" data-opts='{"ctx":71}'></div>
+
+  <section class="feed"><div class="col">
+    <div data-kit="thread" data-opts='{"first":false,"more":true}'></div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{
+    "text": "Now the Lean tab: can we show the cache hit rate per project, not just the week&#39;s total?",
+    "before": "<div class=\"fresh\" role=\"status\"><h3>New topic? Start fresh and carry a summary. <span class=\"full\">71% full</span></h3><div><p>The queue work above is done and committed, and this message is about the <b>Lean tab</b>. Every message you send here carries the whole thread, <b>142k</b>; a fresh tab with the summary on the right would carry about <b>36k</b>.</p><div class=\"nums\"><span><span class=\"n\">142k</span><small>with every message now</small></span><span class=\"arrow\">→</span><span><span class=\"n after\">36k</span><small>in the fresh tab</small></span><span style=\"margin-left:auto\"><span class=\"n after\">106k</span><small>less per message</small></span></div><p>This tab stays as it is, and the fresh one opens in the same folder and branch with your message already in the box.</p></div><div class=\"sum\"><div class=\"lbl\">What the fresh tab is told · tap to edit<span>1.1k tokens</span></div><div class=\"box\">From “queue races”, Nov 14: enqueue() in src/main/queue.js raced when two tabs sent in one tick; each tab now has its own lock (per tab, not global, so unrelated tabs aren’t serialised). The Queued row waits for main’s summary before it draws. Committed on fix/queue-races, not pushed. Repro: test/queue.test.js.</div></div><div class=\"acts\"><span class=\"btn glass\">Start fresh with this summary</span><span class=\"btn\">Keep going here</span><span class=\"btn ghost\">Compact instead</span><span class=\"fine\">Only asks once per topic change.</span></div></div>"
+  }'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>
