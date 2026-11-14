@@ -639,6 +639,13 @@
     if (state.view !== 'workflows') SB.setView('workflows'); else show();
   }
 
+  // The tide chart's way in: a workflow's runs.
+  function openRuns(id) {
+    if (typeof id !== 'string') return;
+    resetNav({ name: 'runs', id });
+    if (state.view !== 'workflows') SB.setView('workflows'); else show();
+  }
+
   Object.assign(W, { renderEditor, stepSummary, triggerSummary, inspRoot, inspHead });
-  SB.views.workflows = { render, openRun, draftFrom };
+  SB.views.workflows = { render, openRun, openRuns, draftFrom };
 })();

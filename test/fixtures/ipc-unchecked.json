@@ -145,7 +145,6 @@
   "notes:delete",
   "notes:move",
   "notes:restore",
-  "notes:run",
   "notes:update",
   "nowplaying:set",
   "obs:set",

@@ -46,12 +46,14 @@
 <link rel="stylesheet" href="hooks.css">
 <link rel="stylesheet" href="remote.css">
 <link rel="stylesheet" href="workflows.css">
+<link rel="stylesheet" href="automate-tide.css">
 <link rel="stylesheet" href="workflow-canvas.css">
 <link rel="stylesheet" href="wf-chat.css">
 <link rel="stylesheet" href="time.css">
 <link rel="stylesheet" href="projects.css">
 <link rel="stylesheet" href="viewer.css">
 <link rel="stylesheet" href="logbook.css">
+<link rel="stylesheet" href="trophies-rail.css">
 <link rel="stylesheet" href="reef.css">
 <link rel="stylesheet" href="molt.css">
 <link rel="stylesheet" href="wrapped.css">
@@ -143,8 +145,9 @@
     </button>
     <button type="button" class="usage" id="usage" aria-haspopup="menu" aria-label="Usage limits: see what used them" hidden>
       <span class="usage-who" id="usageWho" hidden><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="4" r="2.2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1.8 11c.5-2.3 2.2-3.5 4.2-3.5s3.7 1.2 4.2 3.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
-      <span class="meter" id="meter5h"><span class="meter-label">5h</span><span class="meter-track"><span class="meter-fill"></span></span></span>
-      <span class="meter" id="meter7d"><span class="meter-label">7d</span><span class="meter-track"><span class="meter-fill"></span></span></span>
+      <span class="meter" id="meter5h"><span class="meter-label">5h</span><span class="meter-track"><span class="meter-fill"></span></span><span class="meter-num"></span></span>
+      <span class="meter" id="meter7d"><span class="meter-label">7d</span><span class="meter-track"><span class="meter-fill"></span></span><span class="meter-num"></span></span>
+      <span class="usage-when" id="usageWhen" hidden></span>
     </button>
     <button type="button" class="icon-btn pop-btn" id="trailBtn" title="File manager: the Trail and All files (Ctrl+Shift+E · Ctrl+Shift+F)" aria-label="File manager" aria-pressed="false" aria-controls="trail" aria-keyshortcuts="Control+Shift+E Control+Shift+F">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 4.2c0-.7.5-1.2 1.2-1.2h3l1.4 1.5H13c.7 0 1.2.5 1.2 1.2v6.1c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
@@ -382,6 +385,8 @@
       <button type="button" data-goto-workflows aria-current="page">Workflows</button>
       <button type="button" data-view-btn="routines">Routines</button>
     </nav>
+    <!-- The tide chart: the week of routines, workflows and held tasks (automate-tide.js). Hidden while there is nothing on it. -->
+    <section class="tide-chart" data-tide aria-label="Coming up" hidden></section>
     <div id="wfScreen"></div>
   </main>
 
@@ -391,6 +396,8 @@
       <button type="button" data-goto-workflows>Workflows</button>
       <button type="button" aria-current="page">Routines</button>
     </nav>
+    <!-- The tide chart: the week of routines, workflows and held tasks (automate-tide.js). Hidden while there is nothing on it. -->
+    <section class="tide-chart" data-tide aria-label="Coming up" hidden></section>
     <div class="view-head">
       <h2>Routines</h2>
       <button type="button" class="btn primary slim-btn" id="newRoutineBtn">New routine</button>
@@ -511,20 +518,28 @@
   </main>
 
   <!-- ====================== NOTES ====================== -->
+  <!-- The list on the left, the note you picked on the right: what Claude said
+       about it, what's happened to it so far, and its next step. A narrow panel
+       shows one at a time (notes.js). -->
   <main class="view view-notes" id="notesView">
     <div class="view-head">
       <h2>Notes</h2>
       <select class="field slim notes-scope" id="notesScope" aria-label="Which list"></select>
     </div>
-    <p class="view-lede">Things you'd like to do. When you're ready, have Claude plan one, build it, or tell you whether it's worth doing.</p>
-    <form class="note-add" id="noteAdd">
-      <textarea class="field area" id="noteInput" rows="2" maxlength="2000" placeholder="Add a note… (Enter to save, Shift+Enter for a new line)" aria-label="New note"></textarea>
-      <button type="submit" class="btn primary slim-btn">Add</button>
-    </form>
-    <p class="notes-where" id="notesWhere"></p>
-    <input type="search" class="field slim notes-filter" id="notesFilter" placeholder="Find a note…" aria-label="Find a note" hidden>
-    <ul class="note-list" id="noteList"></ul>
-    <div class="notes-done" id="notesDone" hidden></div>
+    <div class="notes-split" id="notesSplit">
+      <section class="notes-pane notes-list-pane" aria-label="Your notes">
+        <form class="note-add" id="noteAdd">
+          <textarea class="field area" id="noteInput" rows="2" maxlength="2000" placeholder="Add a note… (Enter to save, Shift+Enter for a new line)" aria-label="New note"></textarea>
+          <button type="submit" class="btn primary slim-btn">Add</button>
+        </form>
+        <p class="notes-where" id="notesWhere"></p>
+        <input type="search" class="field slim notes-filter" id="notesFilter" placeholder="Find a note…" aria-label="Find a note" hidden>
+        <div class="notes-chips" id="notesChips" role="group" aria-label="Show" hidden></div>
+        <ul class="note-list" id="noteList" aria-label="Open notes"></ul>
+        <div class="notes-done" id="notesDone" hidden></div>
+      </section>
+      <section class="notes-pane note-detail" id="noteDetail" aria-label="The open note"></section>
+    </div>
   </main>
   <!-- ====================== YOUR PCS (the hub) ====================== -->
   <main class="view view-pcs" id="pcsView">
@@ -912,112 +927,160 @@
     </div>
     <!-- Wrapped week (wrapped.js, src/main/yearbook.js wrappedWeek): January 2nd to 8th. -->
     <section class="ww-banner" data-wrapped-week="trophies" hidden aria-label="Wrapped week"></section>
-    <section class="xp-card" id="xpCard" aria-label="Level and XP">
-      <div class="xp-head">
-        <span class="xp-level" id="xpLevel">1</span>
-        <div class="xp-titles">
-          <p class="xp-eyebrow" id="xpEyebrow">Level</p>
-          <h3 id="xpTitle">Hatchling</h3>
+    <!-- A rail (his level and the page list) beside one page at a time; on a narrow panel the
+         list is a row of chips under the level. trophies-rail.js switches pages; every id below
+         is filled by its own module (xp.js, quests.js, week-card.js, logbook.js, review-mastery.js, wardrobe.js). -->
+    <div class="tr-layout">
+      <div class="tr-shell">
+        <aside class="tr-rail">
+          <section class="xp-card" id="xpCard" aria-label="Level and XP">
+            <div class="xp-head">
+              <span class="xp-level" id="xpLevel">1</span>
+              <div class="xp-titles">
+                <p class="xp-eyebrow" id="xpEyebrow">Level</p>
+                <h3 id="xpTitle">Hatchling</h3>
+              </div>
+              <span class="xp-total" id="xpTotal">0 XP</span>
+              <button type="button" class="xp-streak" id="xpStreak" hidden></button>
+            </div>
+            <div class="xp-bar" role="progressbar" aria-label="Progress to the next level" aria-valuemin="0" aria-valuemax="100" id="xpBarWrap"><i id="xpBar"></i></div>
+            <div class="xp-meta">
+              <p class="xp-next"><span id="xpNext"></span><span class="xp-unlock" id="xpUnlock" hidden></span></p>
+              <ul class="xp-boosts" id="xpBoosts" aria-label="XP boosts" hidden></ul>
+            </div>
+          </section>
+          <nav class="tr-nav" id="trNav" aria-label="Trophies pages">
+            <button type="button" data-tr-go="today">Today <span class="tr-n" data-tr-n="today"></span></button>
+            <button type="button" data-tr-go="character">Character <span class="tr-n" data-tr-n="character"></span></button>
+            <button type="button" data-tr-go="week">This week <span class="tr-n" data-tr-n="week"></span></button>
+            <button type="button" data-tr-go="history">Last 30 days <span class="tr-n" data-tr-n="history"></span></button>
+            <button type="button" data-tr-go="logbook">Logbook <span class="tr-n" data-tr-n="logbook"></span></button>
+            <button type="button" data-tr-go="mastery">Review mastery <span class="tr-n" data-tr-n="mastery"></span></button>
+            <button type="button" data-tr-go="trophies">Trophies <span class="tr-n" data-tr-n="trophies"></span></button>
+            <button type="button" data-tr-go="ways">How to earn XP <span class="tr-n" data-tr-n="ways"></span></button>
+          </nav>
+        </aside>
+
+        <div class="tr-pages">
+          <section class="tr-page tr-today" data-tr-page="today" aria-label="Today">
+            <div class="xp-section xp-bounties" id="xpBounties" aria-label="Today's bounties">
+              <p class="xp-sub">Today's bounties <span id="xpBountyBonus"></span></p>
+              <ul id="xpBountyList"></ul>
+            </div>
+            <div class="xp-section xp-quests" id="xpQuests" aria-label="Quests" hidden>
+              <div class="xp-quests-head">
+                <p class="xp-sub">Quests <span id="xpQuestCount"></span></p>
+                <button type="button" class="btn ghost slim-btn" id="xpQuestShow" hidden>Show in the chat</button>
+              </div>
+              <ol class="quest-trail" id="xpQuestList"></ol>
+            </div>
+            <div class="xp-section xp-latest">
+              <p class="xp-sub">Latest XP</p>
+              <ul class="xp-log" id="xpLog" aria-label="Latest XP"></ul>
+            </div>
+          </section>
+
+          <section class="tr-page" data-tr-page="character" aria-label="Character" hidden>
+            <div class="xp-section xp-sheet" id="xpSheet" aria-label="Character sheet" hidden>
+              <div class="xp-sheet-head">
+                <p class="xp-sub">Character sheet <span id="xpSheetWeek"></span></p>
+              </div>
+              <div class="xp-class" id="xpClass">
+                <span class="xp-class-icon" id="xpClassIcon" aria-hidden="true">🐚</span>
+                <div class="xp-class-text">
+                  <p class="xp-class-eyebrow">Class</p>
+                  <h4 id="xpClassName">Wanderer</h4>
+                  <p class="xp-class-blurb" id="xpClassBlurb"></p>
+                </div>
+              </div>
+              <ul class="xp-stats" id="xpStats" aria-label="Stats"></ul>
+              <p class="xp-classes" id="xpClasses" hidden></p>
+            </div>
+          </section>
+
+          <section class="tr-page" data-tr-page="week" aria-label="This week" hidden>
+            <div class="xp-section xp-week" id="xpWeek" aria-label="This week" hidden>
+              <div class="xp-week-head">
+                <p class="xp-sub">This week <span id="xpWeekRange"></span></p>
+                <button type="button" class="btn slim-btn" data-share-week title="Make a shareable picture of your week: tasks, streak, top project and new trophies">📅 Share my week</button>
+              </div>
+              <div class="xp-week-plan" id="xpWeekPlan" role="group" aria-label="What your plan bought you" hidden>
+                <p class="xp-week-hours"><b id="xpWeekHours"></b><span id="xpWeekHoursNote"></span></p>
+                <ul class="xp-week-ledger" id="xpWeekLedger"></ul>
+              </div>
+              <p class="xp-week-line" id="xpWeekLine"></p>
+              <ul class="xp-week-work" id="xpWeekWork" aria-label="The week's work"></ul>
+              <div class="xp-week-row" id="xpWeekTrophiesRow" hidden>
+                <p class="xp-week-label">New trophies</p>
+                <ul class="xp-week-chips" id="xpWeekTrophies"></ul>
+              </div>
+              <div class="xp-week-row" id="xpWeekShippedRow" hidden>
+                <p class="xp-week-label">Shipped</p>
+                <ul class="xp-week-chips xp-week-shipped" id="xpWeekShipped"></ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="tr-page" data-tr-page="history" aria-label="Last 30 days" hidden>
+            <div class="xp-section xp-history">
+              <p class="xp-sub">Last 30 days <span id="xpHistoryTotal"></span></p>
+              <div class="xp-spark" id="xpSpark" role="img"></div>
+              <ul class="xp-kinds" id="xpKinds" aria-label="Where the XP came from"></ul>
+            </div>
+          </section>
+
+          <!-- The Logbook: every game system as a card, each linked to its screen (logbook.js, main/logbook.js) -->
+          <section class="tr-page" data-tr-page="logbook" aria-label="Logbook" hidden>
+            <section class="lb-section" id="lbSection" aria-labelledby="lbHead" tabindex="-1">
+              <h3 class="lb-head" id="lbHead">Logbook</h3>
+              <p class="muted small lb-intro">What’s going on, what to do next, and what each thing leads to. Every card opens its screen.</p>
+              <p class="view-lede newcomer-only" id="lbNewcomer">Just starting? First steps on the chat’s start screen come first. This fills up as you two work.</p>
+              <div class="lb-cards" id="lbCards" aria-live="polite"></div>
+              <section class="lb-chapters" id="lbChapters" aria-labelledby="lbChaptersHead" tabindex="-1">
+                <h3 id="lbChaptersHead">Quest line <span class="muted small" id="lbChapterCount"></span></h3>
+                <ol class="lb-chapter-list" id="lbChapterList"></ol>
+              </section>
+            </section>
+          </section>
+
+          <!-- Review mastery (review-mastery.js, docs/CLAUDE-CODE.md#review-mastery) -->
+          <section class="tr-page" data-tr-page="mastery" aria-label="Review mastery" hidden>
+            <section class="rm-card" id="rmCard" data-room="mastery" aria-labelledby="rmTitle">
+              <div class="rm-head">
+                <h3 id="rmTitle">Review mastery</h3>
+                <span class="rm-tier" id="rmTier"></span>
+              </div>
+              <p class="muted small">For really reading what Claude changed: quizzes on a turn’s diff, line comments that say something, and catching a problem before it merges.</p>
+              <div class="rm-stats" id="rmStats"></div>
+              <div class="rm-next" id="rmNext"></div>
+              <ol class="rm-ladder" id="rmLadder" aria-label="Review tiers"></ol>
+              <div class="rm-rates" id="rmRates" hidden></div>
+              <details class="rm-more">
+                <summary class="xp-sub">How it counts</summary>
+                <ul class="rm-rules small">
+                  <li><b>+3</b> for a quiz you pass on a turn’s changes, once per turn. Passes in a row make a run; a miss ends the run, but your best run stays.</li>
+                  <li><b>+1</b> for a review you send with at least one real comment (12 characters or more, not just “lgtm”) on a change of 10 lines or more. Once per turn.</li>
+                  <li><b>+5</b> when Claude’s next turn rewrites lines you commented on, before anything was pushed or merged. That’s a catch.</li>
+                </ul>
+              </details>
+              <ul class="rm-log small" id="rmLog" aria-label="Recent review points"></ul>
+            </section>
+          </section>
+
+          <section class="tr-page" data-tr-page="trophies" aria-label="Trophies" hidden>
+            <p class="view-lede">Use Shellby, earn outfits. Secret trophies reveal themselves when you find them.</p>
+            <ul class="trophy-list" id="trophyList"></ul>
+          </section>
+
+          <section class="tr-page" data-tr-page="ways" aria-label="How to earn XP" hidden>
+            <div class="xp-section xp-ways-box">
+              <p class="xp-sub">How to earn XP <span id="xpWaysCount"></span></p>
+              <ul class="xp-ways" id="xpWays"></ul>
+            </div>
+          </section>
         </div>
-        <span class="xp-total" id="xpTotal">0 XP</span>
-        <button type="button" class="xp-streak" id="xpStreak" hidden></button>
       </div>
-      <div class="xp-bar" role="progressbar" aria-label="Progress to the next level" aria-valuemin="0" aria-valuemax="100" id="xpBarWrap"><i id="xpBar"></i></div>
-      <div class="xp-meta">
-        <p class="xp-next"><span id="xpNext"></span><span class="xp-unlock" id="xpUnlock" hidden></span></p>
-        <ul class="xp-boosts" id="xpBoosts" aria-label="XP boosts" hidden></ul>
-      </div>
-      <div class="xp-section xp-bounties" id="xpBounties" aria-label="Today's bounties">
-        <p class="xp-sub">Today's bounties <span id="xpBountyBonus"></span></p>
-        <ul id="xpBountyList"></ul>
-      </div>
-      <div class="xp-section xp-quests" id="xpQuests" aria-label="Quests" hidden>
-        <div class="xp-quests-head">
-          <p class="xp-sub">Quests <span id="xpQuestCount"></span></p>
-          <button type="button" class="btn ghost slim-btn" id="xpQuestShow" hidden>Show in the chat</button>
-        </div>
-        <ol class="quest-trail" id="xpQuestList"></ol>
-      </div>
-      <div class="xp-section xp-sheet" id="xpSheet" aria-label="Character sheet" hidden>
-        <div class="xp-sheet-head">
-          <p class="xp-sub">Character sheet <span id="xpSheetWeek"></span></p>
-        </div>
-        <div class="xp-class" id="xpClass">
-          <span class="xp-class-icon" id="xpClassIcon" aria-hidden="true">🐚</span>
-          <div class="xp-class-text">
-            <p class="xp-class-eyebrow">Class</p>
-            <h4 id="xpClassName">Wanderer</h4>
-            <p class="xp-class-blurb" id="xpClassBlurb"></p>
-          </div>
-        </div>
-        <ul class="xp-stats" id="xpStats" aria-label="Stats"></ul>
-        <p class="xp-classes" id="xpClasses" hidden></p>
-      </div>
-      <div class="xp-section xp-week" id="xpWeek" aria-label="This week" hidden>
-        <div class="xp-week-head">
-          <p class="xp-sub">This week <span id="xpWeekRange"></span></p>
-          <button type="button" class="btn slim-btn" data-share-week title="Make a shareable picture of your week: tasks, streak, top project and new trophies">📅 Share my week</button>
-        </div>
-        <div class="xp-week-plan" id="xpWeekPlan" role="group" aria-label="What your plan bought you" hidden>
-          <p class="xp-week-hours"><b id="xpWeekHours"></b><span id="xpWeekHoursNote"></span></p>
-          <ul class="xp-week-ledger" id="xpWeekLedger"></ul>
-        </div>
-        <p class="xp-week-line" id="xpWeekLine"></p>
-        <ul class="xp-week-work" id="xpWeekWork" aria-label="The week's work"></ul>
-        <div class="xp-week-row" id="xpWeekTrophiesRow" hidden>
-          <p class="xp-week-label">New trophies</p>
-          <ul class="xp-week-chips" id="xpWeekTrophies"></ul>
-        </div>
-        <div class="xp-week-row" id="xpWeekShippedRow" hidden>
-          <p class="xp-week-label">Shipped</p>
-          <ul class="xp-week-chips xp-week-shipped" id="xpWeekShipped"></ul>
-        </div>
-      </div>
-      <div class="xp-section xp-history">
-        <p class="xp-sub">Last 30 days <span id="xpHistoryTotal"></span></p>
-        <div class="xp-spark" id="xpSpark" role="img"></div>
-        <ul class="xp-kinds" id="xpKinds" aria-label="Where the XP came from"></ul>
-        <ul class="xp-log" id="xpLog" aria-label="Latest XP"></ul>
-      </div>
-      <details class="xp-section xp-ways-box">
-        <summary class="xp-sub">How to earn XP <span id="xpWaysCount"></span></summary>
-        <ul class="xp-ways" id="xpWays"></ul>
-      </details>
-    </section>
-    <!-- The Logbook: every game system as a card, each linked to its screen (logbook.js, main/logbook.js) -->
-    <section class="lb-section" id="lbSection" aria-labelledby="lbHead" tabindex="-1">
-      <h3 class="lb-head" id="lbHead">Logbook</h3>
-      <p class="muted small lb-intro">What’s going on, what to do next, and what each thing leads to. Every card opens its screen.</p>
-      <p class="view-lede newcomer-only" id="lbNewcomer">Just starting? First steps on the chat’s start screen come first. This fills up as you two work.</p>
-      <div class="lb-cards" id="lbCards" aria-live="polite"></div>
-      <section class="lb-chapters" id="lbChapters" aria-labelledby="lbChaptersHead" tabindex="-1">
-        <h3 id="lbChaptersHead">Quest line <span class="muted small" id="lbChapterCount"></span></h3>
-        <ol class="lb-chapter-list" id="lbChapterList"></ol>
-      </section>
-    </section>
-    <!-- Review mastery (review-mastery.js, docs/CLAUDE-CODE.md#review-mastery) -->
-    <section class="rm-card" id="rmCard" data-room="mastery" aria-labelledby="rmTitle">
-      <div class="rm-head">
-        <h3 id="rmTitle">Review mastery</h3>
-        <span class="rm-tier" id="rmTier"></span>
-      </div>
-      <p class="muted small">For really reading what Claude changed: quizzes on a turn’s diff, line comments that say something, and catching a problem before it merges.</p>
-      <div class="rm-stats" id="rmStats"></div>
-      <div class="rm-next" id="rmNext"></div>
-      <ol class="rm-ladder" id="rmLadder" aria-label="Review tiers"></ol>
-      <div class="rm-rates" id="rmRates" hidden></div>
-      <details class="rm-more">
-        <summary class="xp-sub">How it counts</summary>
-        <ul class="rm-rules small">
-          <li><b>+3</b> for a quiz you pass on a turn’s changes, once per turn. Passes in a row make a run; a miss ends the run, but your best run stays.</li>
-          <li><b>+1</b> for a review you send with at least one real comment (12 characters or more, not just “lgtm”) on a change of 10 lines or more. Once per turn.</li>
-          <li><b>+5</b> when Claude’s next turn rewrites lines you commented on, before anything was pushed or merged. That’s a catch.</li>
-        </ul>
-      </details>
-      <ul class="rm-log small" id="rmLog" aria-label="Recent review points"></ul>
-    </section>
-    <p class="view-lede">Use Shellby, earn outfits. Secret trophies reveal themselves when you find them.</p>
-    <ul class="trophy-list" id="trophyList"></ul>
+    </div>
   </main>
 
 
@@ -1290,7 +1353,7 @@
   </main>
 
 
-  <!-- ====================== TANK: a home you decorate (tank.js, tank-paint.js, src/main/tank.js) ====================== -->
+  <!-- ====================== TANK: a home you decorate (tank.js, tank-room.js, tank-paint.js, src/main/tank.js) ====================== -->
   <main class="view view-tank" id="tankView">
     <div class="view-head">
       <h2 class="sr-only">His tank</h2>
@@ -1311,104 +1374,128 @@
       <button type="button" data-goto="us">Us <i class="dot-badge bc-badge" hidden></i></button>
       <button type="button" data-goto="stickers">Stickers <span class="n st-count"></span><i class="dot-badge st-badge" hidden></i></button>
     </nav>
-    <!-- One canvas for the scene; the buttons over it are what you can point at (and tab to). -->
-    <section class="tk-hero" aria-labelledby="tkTitle">
-      <div class="tk-head">
-        <div>
-          <h3 id="tkTitle">His tank</h3>
-          <p class="tk-sub" id="tkSub"></p>
-        </div>
-        <div class="tk-tools">
-          <button type="button" class="btn primary slim-btn" id="tkDecorate">Decorate</button>
-          <button type="button" class="btn ghost slim-btn share-icon" id="tkCard" data-share-card data-kind="tank" title="Share a picture of his tank" aria-label="Share a picture of his tank">📸</button>
-          <button type="button" class="btn ghost slim-btn" id="tkUndo" hidden title="Undo (Ctrl+Z)">Undo</button>
-          <button type="button" class="btn ghost slim-btn" id="tkRedo" hidden title="Redo (Ctrl+Y)">Redo</button>
-          <button type="button" class="btn ghost slim-btn" id="tkCancel" hidden>Cancel</button>
-          <button type="button" class="btn primary slim-btn" id="tkDone" hidden>Done</button>
-        </div>
-      </div>
+    <!-- The room: his tank in the dark, the controls on the glass (they wake with the mouse),
+         the time and your readings under it. Decorating, the tray rises in their place. -->
+    <section class="tk-room" id="tkRoom" aria-labelledby="tkTitle">
+      <h3 class="sr-only" id="tkTitle">His tank</h3>
       <div class="tk-stage" id="tkStage">
-        <div class="tk-frame">
-          <canvas class="tk-canvas" id="tkCanvas" role="img" aria-label="His tank"></canvas>
-          <div class="tk-hits" id="tkHits" role="group" aria-label="In the tank"></div>
+        <div class="tk-glass" id="tkGlass">
+          <div class="tk-glassbar" id="tkBar" role="group" aria-label="Tank controls">
+            <button type="button" class="btn primary slim-btn" id="tkDecorate">Decorate</button>
+            <button type="button" class="btn ghost slim-btn" id="tkOpenLayouts" aria-controls="tkSheet" aria-expanded="false">Layouts</button>
+            <button type="button" class="btn ghost slim-btn" id="tkPinsOn" aria-pressed="true" title="Show what the thermometer, lighthouse and chest are reading, on the glass" aria-label="Readings on the glass">Readings</button>
+            <button type="button" class="btn ghost slim-btn share-icon" id="tkCard" data-share-card data-kind="tank" title="Share a picture of his tank" aria-label="Share a picture of his tank">📸</button>
+            <button type="button" class="btn ghost slim-btn" id="tkOpenSheet" aria-controls="tkSheet" aria-expanded="false">Settings</button>
+            <button type="button" class="btn ghost slim-btn" id="tkUndo" hidden title="Undo (Ctrl+Z)">Undo</button>
+            <button type="button" class="btn ghost slim-btn" id="tkRedo" hidden title="Redo (Ctrl+Y)">Redo</button>
+            <span class="tk-count" id="tkCount" hidden></span>
+            <button type="button" class="btn ghost slim-btn" id="tkCancel" hidden>Cancel</button>
+            <button type="button" class="btn primary slim-btn" id="tkDone" hidden>Done</button>
+          </div>
+          <!-- One canvas for the scene; the buttons over it are what you can point at (and tab to). -->
+          <div class="tk-frame">
+            <canvas class="tk-canvas" id="tkCanvas" role="img" aria-label="His tank"></canvas>
+            <div class="tk-hits" id="tkHits" role="group" aria-label="In the tank"></div>
+          </div>
+          <div class="tk-pins" id="tkPins" aria-hidden="true"></div>
+          <!-- The piece you've picked, and what you can do to it: just above it in the water. -->
+          <div class="tk-picked" id="tkPicked" role="group" aria-labelledby="tkPickedName" hidden>
+            <span class="tk-picked-name" id="tkPickedName"></span>
+            <button type="button" class="btn ghost slim-btn" id="tkFlip" title="Flip (F)">Flip</button>
+            <button type="button" class="btn ghost slim-btn" id="tkBack" title="Send back ([)" aria-label="Send back">Back</button>
+            <button type="button" class="btn ghost slim-btn" id="tkForward" title="Bring forward (])" aria-label="Bring forward">Forward</button>
+            <button type="button" class="btn ghost slim-btn tk-away" id="tkAway" title="Put away (Delete)">Put away</button>
+          </div>
         </div>
         <div class="tk-empty" id="tkEmpty" hidden>
           <b>Nothing in here yet</b>
           <span>Press Decorate to give him a castle, some plants, or the finds he’s dug up for you.</span>
         </div>
       </div>
-      <div class="tk-picked" id="tkPicked" hidden>
-        <span class="tk-picked-name" id="tkPickedName"></span>
-        <button type="button" class="btn ghost slim-btn" id="tkFlip" title="Flip (F)">Flip</button>
-        <button type="button" class="btn ghost slim-btn" id="tkBack" title="Send back ([)">Send back</button>
-        <button type="button" class="btn ghost slim-btn" id="tkForward" title="Bring forward (])">Bring forward</button>
-        <button type="button" class="btn ghost slim-btn" id="tkAway" title="Put away (Delete)">Put away</button>
+      <div class="tk-notes">
+        <p class="tk-note" id="tkNote" hidden></p>
+        <p class="tk-note muted small" id="tkMissing" hidden></p>
       </div>
-      <p class="tk-keys muted small" id="tkKeysHint" hidden><span id="tkKeys">Arrow keys move it (Shift for bigger steps), Up and Down change the row, F flips it, [ and ] send it back or bring it forward, Delete puts it away.</span></p>
-      <p class="tk-note" id="tkNote" hidden></p>
-      <p class="tk-note muted small" id="tkMissing" hidden></p>
-      <p class="sr-only" id="tkLive" aria-live="polite"></p>
-    </section>
-    <section class="tk-tray" id="tkTray" hidden aria-label="Decor">
-      <div class="seg tk-shelves" id="tkShelves" role="tablist" aria-label="Shelf" data-roving></div>
-      <div class="tk-items" id="tkItems" role="group"></div>
-      <div class="tk-settings">
-        <div class="tk-setting">
-          <span class="tk-setting-label" aria-hidden="true">Tank</span>
-          <div class="seg tk-sizes" id="tkSizes" role="radiogroup" aria-label="Tank size" data-roving></div>
+      <div class="tk-hud" id="tkHud">
+        <div class="tk-hud-time">
+          <b class="tk-clock" id="tkClock"></b>
+          <p class="tk-sub" id="tkSub"></p>
         </div>
-        <div class="tk-setting">
-          <span class="tk-setting-label" aria-hidden="true">Light</span>
-          <div class="seg tk-light" id="tkLight" role="radiogroup" aria-label="Light" data-roving>
-            <button type="button" role="radio" data-light="clock" title="Day and night follow your clock">Clock</button>
-            <button type="button" role="radio" data-light="day">Day</button>
-            <button type="button" role="radio" data-light="night">Night</button>
+        <p class="tk-doing" id="tkDoing"></p>
+        <dl class="tk-reads" id="tkReads"></dl>
+      </div>
+      <section class="tk-tray" id="tkTray" hidden aria-label="Decor">
+        <div class="tk-tray-main">
+          <div class="seg tk-shelves" id="tkShelves" role="tablist" aria-label="Shelf" data-roving></div>
+          <div class="tk-items" id="tkItems" role="group"></div>
+          <p class="tk-keys muted small" id="tkKeysHint" hidden>Drag one up into the water, or press Enter on it. <span id="tkKeys">Arrow keys move it (Shift for bigger steps), Up and Down change the row, F flips it, [ and ] send it back or bring it forward, Delete puts it away.</span></p>
+        </div>
+        <div class="tk-settings">
+          <div class="tk-setting">
+            <span class="tk-setting-label" aria-hidden="true">Tank</span>
+            <div class="seg tk-sizes" id="tkSizes" role="radiogroup" aria-label="Tank size" data-roving></div>
+          </div>
+          <div class="tk-setting">
+            <span class="tk-setting-label" aria-hidden="true">Light</span>
+            <div class="seg tk-light" id="tkLight" role="radiogroup" aria-label="Light" data-roving>
+              <button type="button" role="radio" data-light="clock" title="Day and night follow your clock">Clock</button>
+              <button type="button" role="radio" data-light="day">Day</button>
+              <button type="button" role="radio" data-light="night">Night</button>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
-    <section class="us-sec" id="tkKeySec" aria-labelledby="tkKeyTitle">
-      <div class="us-h"><h3 id="tkKeyTitle">Where his decor comes from</h3><span class="us-h-meta" id="tkKeyMeta"></span></div>
-      <ul class="tk-key" id="tkKey"></ul>
-    </section>
-    <section class="us-sec tk-layouts" id="tkLayoutsSec" aria-labelledby="tkLayoutsTitle">
-      <div class="us-h"><h3 id="tkLayoutsTitle">Layouts</h3><span class="us-h-meta" id="tkLayoutsMeta"></span></div>
-      <p class="muted small">Keep up to three. One tagged to a season goes up when the season starts and comes down when it ends.</p>
-      <ul class="tk-layout-list" id="tkLayouts"></ul>
-      <form class="tk-layout-save" id="tkLayoutForm">
-        <label class="sr-only" for="tkLayoutName">Name this layout</label>
-        <input type="text" class="field" id="tkLayoutName" maxlength="24" placeholder="Name this layout" autocomplete="off">
-        <button type="submit" class="btn ghost slim-btn" id="tkLayoutSave">Save the tank as it is</button>
-      </form>
-    </section>
-    <section class="us-sec tk-tidy" aria-labelledby="tkTidyTitle">
-      <div class="us-h"><h3 id="tkTidyTitle">Tidying up</h3></div>
-      <label class="toggle"><input type="checkbox" id="tkTidyOn" checked><span class="switch"></span>Let him tidy up: now and then he moves one of his finds a little, never anything else</label>
-      <p class="tk-note" id="tkTidyNote" hidden><span id="tkTidyText"></span> <button type="button" class="btn ghost slim-btn" id="tkTidyUndo">Put it back</button></p>
-    </section>
-    <section class="us-sec tk-live" aria-labelledby="tkLiveTitle">
-      <div class="us-h"><h3 id="tkLiveTitle">Gauges in disguise</h3></div>
-      <p class="muted small">A few things in his tank quietly show what Shellby knows about your PC. They stay on this PC: never synced, never on a card.</p>
-      <label class="toggle"><input type="checkbox" data-live="thermometer"><span class="switch"></span>The Glass Thermometer reads your GPU (or CPU) temperature, red past your Health line</label>
-      <label class="toggle"><input type="checkbox" data-live="bubbler"><span class="switch"></span>Bubblers hurry when the CPU is busy</label>
-      <label class="toggle"><input type="checkbox" data-live="lighthouse"><span class="switch"></span>The lighthouse is lit while a dev server runs, and blinks when one crashes</label>
-      <label class="toggle"><input type="checkbox" data-live="moods"><span class="switch"></span>His Health moods reach the water</label>
-      <label class="toggle"><input type="checkbox" data-live="tide"><span class="switch"></span>Tide gauge on the glass: how much of your 5-hour usage window is left</label>
-      <label class="toggle"><input type="checkbox" data-live="chest"><span class="switch"></span>The Sunken Chest glints for a minute when a pull request of yours merges</label>
-      <label class="toggle"><input type="checkbox" data-live="bottle"><span class="switch"></span>A message in a bottle bobs up while a recap or your weekly card is waiting</label>
-      <p class="muted small" id="tkLiveNow"></p>
-    </section>
-    <section class="us-sec tk-share" aria-labelledby="tkShareTitle">
-      <div class="us-h"><h3 id="tkShareTitle">On your cards</h3></div>
-      <p class="muted small">Your calling card (Visiting crabs) and profile card are public. His tank stays off them unless you turn this on.</p>
-      <label class="toggle"><input type="checkbox" id="tkShare" aria-describedby="tkShareHelp"><span class="switch"></span>Show his tank: friends can peek at it, and it’s on your profile card</label>
-      <p class="muted small" id="tkShareHelp"></p>
-    </section>
+      </section>
+      <p class="sr-only" id="tkLive" aria-live="polite"></p>
+      <!-- Everything about the tank that isn't the tank: opened from Settings or Layouts on the glass. -->
+      <aside class="tk-sheet" id="tkSheet" aria-labelledby="tkSheetTitle" hidden>
+        <div class="tk-sheet-head">
+          <h3 id="tkSheetTitle">His tank</h3>
+          <button type="button" class="btn ghost slim-btn" id="tkSheetClose">Close</button>
+        </div>
+        <section class="us-sec" id="tkKeySec" aria-labelledby="tkKeyTitle">
+          <div class="us-h"><h4 id="tkKeyTitle">Where his decor comes from</h4><span class="us-h-meta" id="tkKeyMeta"></span></div>
+          <ul class="tk-key" id="tkKey"></ul>
+        </section>
+        <section class="us-sec tk-layouts" id="tkLayoutsSec" aria-labelledby="tkLayoutsTitle">
+          <div class="us-h"><h4 id="tkLayoutsTitle">Layouts</h4><span class="us-h-meta" id="tkLayoutsMeta"></span></div>
+          <p class="muted small">Keep up to three. One tagged to a season goes up when the season starts and comes down when it ends.</p>
+          <ul class="tk-layout-list" id="tkLayouts"></ul>
+          <form class="tk-layout-save" id="tkLayoutForm">
+            <label class="sr-only" for="tkLayoutName">Name this layout</label>
+            <input type="text" class="field" id="tkLayoutName" maxlength="24" placeholder="Name this layout" autocomplete="off">
+            <button type="submit" class="btn ghost slim-btn" id="tkLayoutSave">Save the tank as it is</button>
+          </form>
+        </section>
+        <section class="us-sec tk-tidy" aria-labelledby="tkTidyTitle">
+          <div class="us-h"><h4 id="tkTidyTitle">Tidying up</h4></div>
+          <label class="toggle"><input type="checkbox" id="tkTidyOn" checked><span class="switch"></span>Let him tidy up: now and then he moves one of his finds a little, never anything else</label>
+          <p class="tk-note" id="tkTidyNote" hidden><span id="tkTidyText"></span> <button type="button" class="btn ghost slim-btn" id="tkTidyUndo">Put it back</button></p>
+        </section>
+        <section class="us-sec tk-live" aria-labelledby="tkLiveTitle">
+          <div class="us-h"><h4 id="tkLiveTitle">Gauges in disguise</h4></div>
+          <p class="muted small">A few things in his tank quietly show what Shellby knows about your PC. They stay on this PC: never synced, never on a card.</p>
+          <label class="toggle"><input type="checkbox" data-live="thermometer"><span class="switch"></span>The Glass Thermometer reads your GPU (or CPU) temperature, red past your Health line</label>
+          <label class="toggle"><input type="checkbox" data-live="bubbler"><span class="switch"></span>Bubblers hurry when the CPU is busy</label>
+          <label class="toggle"><input type="checkbox" data-live="lighthouse"><span class="switch"></span>The lighthouse is lit while a dev server runs, and blinks when one crashes</label>
+          <label class="toggle"><input type="checkbox" data-live="moods"><span class="switch"></span>His Health moods reach the water</label>
+          <label class="toggle"><input type="checkbox" data-live="tide"><span class="switch"></span>Tide gauge on the glass: how much of your 5-hour usage window is left</label>
+          <label class="toggle"><input type="checkbox" data-live="chest"><span class="switch"></span>The Sunken Chest glints for a minute when a pull request of yours merges</label>
+          <label class="toggle"><input type="checkbox" data-live="bottle"><span class="switch"></span>A message in a bottle bobs up while a recap or your weekly card is waiting</label>
+          <p class="muted small" id="tkLiveNow"></p>
+        </section>
+        <section class="us-sec tk-share" aria-labelledby="tkShareTitle">
+          <div class="us-h"><h4 id="tkShareTitle">On your cards</h4></div>
+          <p class="muted small">Your calling card (Visiting crabs) and profile card are public. His tank stays off them unless you turn this on.</p>
+          <label class="toggle"><input type="checkbox" id="tkShare" aria-describedby="tkShareHelp"><span class="switch"></span>Show his tank: friends can peek at it, and it’s on your profile card</label>
+          <p class="muted small" id="tkShareHelp"></p>
+        </section>
     <!-- Coral from each watched reef (reef.js, docs/REEF.md) -->
     <section class="us-sec reef-tank" aria-labelledby="reefTankTitle">
-      <div class="us-h"><h3 id="reefTankTitle">Coral</h3><span class="us-h-meta" id="reefTankMeta"></span></div>
+      <div class="us-h"><h4 id="reefTankTitle">Coral</h4><span class="us-h-meta" id="reefTankMeta"></span></div>
       <p class="muted small">Each project whose reef you watch grows a coral here. Every new best adds a polyp, and nothing takes one away: a struggling reef only turns paler. Place it from the tray’s Plants shelf.</p>
       <ul class="reef-tank-list" id="reefTankList"></ul>
+    </section>
+      </aside>
     </section>
   </main>
 
@@ -1657,8 +1744,12 @@
       </section>
     </div>
 
+    <!-- Everything but the list. On a wide page (projects-split.js) it's the middle column. -->
+    <div class="pj-main" id="pjMain">
     <!-- One project -->
     <div id="pjDetailScreen" hidden></div>
+    <!-- A wide page: beside the list until a project is open -->
+    <p class="pj-split-empty muted" id="pjSplitEmpty" hidden>Pick a project on the left to see it here.</p>
 
     <!-- Scan a folder: pick which of the repos it found to add -->
     <section class="pj-sheet" id="pjScanSheet" aria-labelledby="pjScanTitle" hidden>
@@ -1706,6 +1797,9 @@
       <p class="muted small reef-waiting" id="reefWaiting" hidden></p>
       <p class="muted small reef-privacy">Counts only, kept on this PC. Shellby reads git and coverage files that are already there; it never runs your code.</p>
     </section>
+    </div>
+    <!-- A wide page's third column: the inbox and the health sections move here from under the list -->
+    <aside class="pj-side" id="pjSide" aria-label="Across every project" hidden></aside>
   </main>
 
   <!-- ====================== SETTINGS ====================== -->
@@ -3046,11 +3140,13 @@
 <script src="../shared/time-format.js"></script>
 <script src="../shared/streaks-format.js"></script>
 <script src="../shared/panes.js"></script>
+<script src="../shared/branch-label.js"></script>
 <script src="../shared/workposes.js"></script>
 <script src="../shared/trail.js"></script>
 <script src="../shared/viewer-logic.js"></script>
 <script src="../shared/review-lenses.js"></script>
 <script src="../shared/files-logic.js"></script>
+<script src="../shared/tide-chart.js"></script>
 <script src="shortcuts.js"></script>
 <script src="core.js"></script>
 <script src="a11y.js"></script>
@@ -3098,6 +3194,7 @@
 <script src="tab-chips.js"></script>
 <script src="tab-git.js"></script>
 <script src="ship-it.js"></script>
+<script src="meter-logic.js"></script>
 <script src="tab-meters.js"></script>
 <script src="clash-text.js"></script>
 <script src="clashes.js"></script>
@@ -3136,8 +3233,11 @@
 <script src="wf-runs.js"></script>
 <script src="wf-save.js"></script>
 <script src="workflows.js"></script>
+<script src="automate-tide.js"></script>
 <script src="settings-text.js"></script>
 <script src="settings-search-logic.js"></script>
+<script src="notes-logic.js"></script>
+<script src="notes-detail.js"></script>
 <script src="notes.js"></script>
 <script src="pcs-talk.js"></script>
 <script src="pcs.js"></script>
@@ -3179,6 +3279,7 @@
 <script src="tank-gauges-more.js"></script>
 <script src="tank-life.js"></script>
 <script src="tank-render.js"></script>
+<script src="tank-room.js"></script>
 <script src="tank.js"></script>
 <script src="tank-layouts.js"></script>
 <script src="tank-tidy.js"></script>
@@ -3210,6 +3311,7 @@
 <script src="project-report.js"></script>
 <script src="projects-logic.js"></script>
 <script src="projects.js"></script>
+<script src="projects-split.js"></script>
 <script src="project-page.js"></script>
 <script src="projects-servers.js"></script>
 <script src="tool-tabs.js"></script>
@@ -3235,6 +3337,7 @@
 <script src="wrapped-card.js"></script>
 <script src="wrapped.js"></script>
 <script src="logbook.js"></script>
+<script src="trophies-rail.js"></script>
 <script src="boot.js"></script>
 </body>
 </html>

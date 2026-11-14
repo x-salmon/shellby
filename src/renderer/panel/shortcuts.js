@@ -59,6 +59,11 @@
 
     { id: 'askKeys', fixed: true, group: 'Cards in the chat', keys: ['Y', 'A', 'N'], what: 'Allow, Always allow or Deny a request (outside the box)' },
     { id: 'questionKeys', fixed: true, group: 'Cards in the chat', keys: ['1…9'], what: 'Pick an answer to his question' },
+
+    { id: 'notesWalk', fixed: true, group: 'Notes', keys: ['J K'], what: 'Next and previous note' },
+    { id: 'notesRun', fixed: true, group: 'Notes', keys: ['P B A'], what: 'Plan the open note as written, Build it or Ask about it (on the Notes screen)' },
+    { id: 'notesDone', fixed: true, group: 'Notes', keys: ['X'], what: 'Tick the open note off, or put it back' },
+    { id: 'notesEdit', fixed: true, group: 'Notes', keys: ['E'], what: 'Edit the open note' },
   ];
 
   const GROUPS = [...new Set(SHORTCUTS.map(s => s.group))];

@@ -77,6 +77,7 @@ function seed(dir) {
     check(await ev("document.querySelectorAll('#xpStats li').length") === 4, 'it lists four stats');
     check(await ev("document.querySelector('#xpStats li.top .xp-stat-name')?.textContent") === 'Rigour', 'the class stat is highlighted');
     check(await ev("[...document.querySelectorAll('.xp-stat-gain')].some(e => /^\\+\\d+$/.test(e.textContent))"), "this week's gains show");
+    check(await ev("SB.trophyPage('character')") === 'character' && await ev("SB.$('xpSheet').getBoundingClientRect().height > 0"), 'the sheet has a page of its own');
     const box = await ev("(r => ({ x: r.x, y: r.y, width: r.width, height: r.height }))((document.getElementById('xpSheet').scrollIntoView({ block: 'center' }), document.getElementById('xpSheet').getBoundingClientRect()))");
     fs.writeFileSync(path.join(OUT, 'sheet.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png', clip: { ...box, scale: 1 } })).data, 'base64'));
 

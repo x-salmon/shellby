@@ -20,7 +20,6 @@ const { shipOf } = require('./stickers');
 const { checkupOf, readCheckup, commandDir } = require('./checkup');
 const { clientOf, describeClient } = require('./clients');
 const bugRead = require('./bugdex/detect');
-const { cmdKey } = require('./flaky/ids');
 const { readRun } = require('./flaky/parsers');
 const workPose = require('./work-pose');
 
@@ -197,7 +196,7 @@ const TOOL_USE_RE = /^[A-Za-z0-9_-]{1,80}$/;
  * command starting, a command's reading (a bug it showed, or what its pass
  * means) or a write. Pure. The command and its output are read here and
  * dropped: only hashes, a species and yes/no answers leave.
- *   -> [{ type: 'bug-start', toolUseId, key, cwd } | { type: 'bug-read', toolUseId, reading, cwd } | { type: 'bug-wrote', cwd }]
+ *   -> [{ type: 'bug-start', toolUseId, start (detect.js startOf: hashes and a kind), cwd } | { type: 'bug-read', toolUseId, reading, cwd } | { type: 'bug-wrote', cwd }]
  */
 function bugsOf(evt) {
   const name = evt?.hook_event_name;
@@ -209,7 +208,7 @@ function bugsOf(evt) {
   const toolUseId = typeof evt.tool_use_id === 'string' && TOOL_USE_RE.test(evt.tool_use_id) ? evt.tool_use_id : null;
   const background = evt.tool_input?.run_in_background === true;
   if (!command || background) return [];
-  if (name === 'PreToolUse') return toolUseId ? [{ type: 'bug-start', toolUseId, key: cmdKey(command), cwd }] : [];
+  if (name === 'PreToolUse') return toolUseId ? [{ type: 'bug-start', toolUseId, start: bugRead.startOf(command), cwd }] : [];
   let reading = null;
   if (name === 'PostToolUse') {
     const res = evt.tool_response;

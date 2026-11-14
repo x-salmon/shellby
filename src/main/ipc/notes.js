@@ -4,6 +4,13 @@
 const fs = require('fs');
 const path = require('path');
 const notes = require('../notes');
+const { ID, obj: shape, opt, str } = require('../ipc-args');
+
+// notes:run's argument. scope and where: 'general', 'here' or a project key (a folded path).
+const RUN_REQ = shape({
+  scope: str({ max: 400 }), id: ID, kind: str({ re: /^(plan|build|ask)$/ }),
+  where: opt(str({ max: 400 })), version: opt(str({ re: /^claude$/ })),
+});
 
 // build: whatever mode you're in. Plan and Ask only start in theirs (sessions.js modeToStart).
 const NOTE_MODE = { plan: 'plan', build: null, ask: 'ask' };
@@ -83,16 +90,21 @@ function registerNotesIpc(ipcMain, d) {
   // or 'here' for the folder you're working in).
   // A note Claude put there (the `note` tool) could carry words from anything
   // Claude read, so it opens as a draft: the prompt waits in the box until you send it.
+  // version 'claude' (Plan only, once Claude said "Do it differently"): plan what
+  // Claude suggested, from the Ask's answer (notes.planPrompt). Those are
+  // Claude's words, so a draft too.
   ipcMain.handle('notes:run', async (_e, req) => {
-    const { scope, id, kind, where } = obj(req);
+    const { scope, id, kind, where, version } = obj(req);
     const note = notes.find(d.config.get('notes'), scope, id);
     if (!note || !notes.KINDS.includes(kind)) return { ok: false, error: "Shellby can't find that note any more." };
+    const answer = version === 'claude' ? notes.answerOf(note) : null;
+    if (version === 'claude' && (kind !== 'plan' || answer?.verdict !== 'differently')) return { ok: false, error: "Claude hasn't suggested another way for that note. Ask first." };
     const dir = await runDir(scope, where);
     if (!dir.ok) return dir;
     const short = note.text.split('\n')[0].slice(0, 50);
     const title = kind === 'plan' ? `Plan: ${short}` : kind === 'ask' ? `Ask: ${short}` : short;
-    const prompt = kind === 'ask' ? notes.askPrompt(note.text, dir.name) : note.text;
-    const draft = note.from === 'claude';
+    const prompt = answer ? notes.planPrompt(note.text, answer.answer) : kind === 'ask' ? notes.askPrompt(note.text, dir.name) : note.text;
+    const draft = note.from === 'claude' || !!answer;
     const mode = NOTE_MODE[kind];
     let r = kind === 'ask' ? null : await d.startTaskInCopy(dir.cwd, title, () => prompt, { mode, draft });
     if (!r || (!r.ok && r.notRepo)) r = draft ? d.startDraft(dir.cwd, title, prompt, { mode }) : d.startTask(prompt, title, { mode, cwd: dir.cwd, copyLater: true });
@@ -101,7 +113,7 @@ function registerNotesIpc(ipcMain, d) {
     const view = await d.saveNotes(notes.markRun(d.config.get('notes'), scope, id, { kind, tabId: r.tabId, at: Date.now() }));
     d.showPanel({ focusInput: false, tabId: r.tabId });
     return { ...r, view, copy: !!r.worktree, draft };
-  });
+  }, [RUN_REQ]);
 
   /** The folder a note runs in. -> { ok, cwd, name } | { ok: false, error } */
   async function runDir(scope, where) {

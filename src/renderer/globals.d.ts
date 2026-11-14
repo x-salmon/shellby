@@ -24,6 +24,7 @@ interface Window {
   PocketPhone: any;
   PocketTab: any;
   ShellbyAmbient: any;
+  ShellbyBranchLabel: any;
   ShellbyChirp: any;
   ShellbyClashText: any;
   ShellbyColony: any;
@@ -39,7 +40,9 @@ interface Window {
   ShellbyLineComments: any;
   ShellbyMarkdown: any;
   ShellbyMermaid: any;
+  ShellbyMeterLogic: any;
   ShellbyMiniShell: any;
+  ShellbyNotesLogic: any;
   ShellbyOutlookFormat: any;
   ShellbyPanes: any;
   ShellbyPixelGrid: any;
@@ -57,6 +60,7 @@ interface Window {
   ShellbyTabLogic: any;
   ShellbyTabSort: any;
   ShellbyTextGrid: any;
+  ShellbyTideChart: any;
   ShellbyTimeFormat: any;
   ShellbyTodos: any;
   ShellbyTrail: any;
@@ -70,6 +74,8 @@ interface Window {
 interface ShellbyPanelExtras {
   // a11y.js
   rove: any;
+  // automate-tide.js
+  renderTide: any;
   // backlog.js
   backlog: any;
   // beach-paint.js
@@ -182,7 +188,6 @@ interface ShellbyPanelExtras {
   relTime: any;
   remotePlace: any;
   renderMarkdownInto: any;
-  reveal: any;
   shortPath: any;
   sprite: any;
   tildify: any;
@@ -316,6 +321,8 @@ interface ShellbyPanelExtras {
   retitleDock: any;
   // news.js
   news: any;
+  // notes-detail.js
+  noteDetail: any;
   // notes.js
   openNotes: any;
   // onboarding.js
@@ -469,6 +476,8 @@ interface ShellbyPanelExtras {
   // tab-git.js
   bringHome: any;
   compareWith: any;
+  homePlaceOf: any;
+  homePlaces: any;
   keepThisOne: any;
   repoItems: any;
   ultraReview: any;
@@ -589,6 +598,8 @@ interface ShellbyPanelExtras {
   tankPaint: any;
   // tank-render.js
   tankRender: any;
+  // tank-room.js
+  tankRoom: any;
   // tank-tidy.js
   tankTidy: any;
   tankUndo: any;
@@ -644,6 +655,9 @@ interface ShellbyPanelExtras {
   giveBackAttachments: any;
   renderTries: any;
   startTries: any;
+  // trophies-rail.js
+  reveal: any;
+  trophyPage: any;
   // turn-checks.js
   decorateChanges: any;
   editorBar: any;

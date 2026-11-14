@@ -488,10 +488,10 @@
       : info.ticket ? `Push this branch and open a draft linked to ${info.ticket}` : 'Push this branch and open a draft pull request';
     return [item('⇡', 'Open a draft pull request', sub, async () => {
       if (tab.busy) return SB.toast('Let him finish first.');
-      SB.toast('Pushing the branch and opening a draft…', { ms: 8000 });
+      const job = SB.toast.job('Pushing the branch and opening a draft…', { ms: 60000 });
       const r = await api.backlogOpenPr(tab.id).catch(() => null);
-      if (!r?.ok) return SB.toast(r?.error || 'Couldn\'t open it.', { ms: 9000 });
-      SB.toast(`Draft pull request #${r.number} is up.`, { ms: 10000, action: 'Open it', onAction: () => api.openExternal(r.url) });
+      if (!r?.ok) return job.fail(r?.error || 'Couldn\'t open it.', { ms: 9000 });
+      job.done(`Draft pull request #${r.number} is up.`, { ms: 10000, action: 'Open it', onAction: () => api.openExternal(r.url) });
     })];
   }
 

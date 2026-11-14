@@ -165,7 +165,25 @@
     return f.script && (c?.scripts || []).some(s => s.name === f.script) ? f.script : null;
   }
 
-  const api = { isLive, isUp, statusText, foundText, foundScript, devChoice, SCOPES, readView, visible, togglePin, emptyText, needsList, cloneFacts, tidyPrompt, copiesSummary, scanLede, addedLine };
+  // ------------------------------------------------------------ the wide layout
+
+  // How wide the page must be for the list and a project's page side by side,
+  // and for a third column with what's waiting across every project. Below
+  // SPLIT_MIN it's the panel's single list. Widths are the view's, in CSS px.
+  const SPLIT_MIN = 1100;
+  const THREE_MIN = 1600;
+  const layoutFor = width => (!(width >= SPLIT_MIN) ? 'one' : width >= THREE_MIN ? 'three' : 'two');
+
+  // J and K beside the list: the next or previous project shown, stopping at
+  // either end. Nothing open (or the open one filtered away) starts at the top.
+  function stepKey(keys, current, dir) {
+    if (!keys.length) return null;
+    const i = keys.indexOf(current);
+    if (i < 0) return keys[0];
+    return keys[Math.max(0, Math.min(keys.length - 1, i + dir))];
+  }
+
+  const api = { isLive, isUp, statusText, foundText, foundScript, devChoice, SCOPES, readView, visible, togglePin, emptyText, needsList, cloneFacts, tidyPrompt, copiesSummary, scanLede, addedLine, SPLIT_MIN, THREE_MIN, layoutFor, stepKey };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyProjectsLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -31,6 +31,8 @@
   let pins = readPins();
   /** @type {string | null} */
   let openKey = null;         // the project whose page is open
+  /** @type {string | null} */
+  let wanted = null;          // the project last asked for, while its page is read
   /** @type {any} */
   let detail = null;          // projects:detail for it
   let loadedAt = 0;           // when the list last came back, for "updated 4m ago"
@@ -58,7 +60,7 @@
     loadedAt = Date.now();
     renderQuit();
     if (!same && $('pjMenu').hidden) { shownList = JSON.stringify(list); renderList(); } else renderSummary();
-    if (openKey) await openProject(openKey, { quiet: true });
+    if (openKey) await openProject(wanted || openKey, { quiet: true });
   }
 
   // Redraws go through SB.keepFocus, which puts focus back on the same button;
@@ -77,8 +79,10 @@
   // add their parts to it as they load.
   /** @type {any} */
   const P = SB.pj = {
-    data: () => data, servers: () => servers, openKey: () => openKey, detail: () => detail,
-    serversIn, keptDetails, load, showScreen, renderAll, openProject, closeProject, newHere, devAction,
+    data: () => data, servers: () => servers, openKey: () => openKey, wanted: () => wanted, detail: () => detail,
+    serversIn, keptDetails, load, showScreen, renderAll, openProject, closeProject, newHere, devAction, visibleKeys,
+    // projects-split.js sets these: whether the list sits beside the page, and what to do once a project closes there.
+    split: () => false, afterClose: () => {},
     reloadServers: async () => { servers = await api.getServers(); renderAll(); },
   };
 
@@ -90,6 +94,7 @@
     const running = p => p.local.some(c => serversIn(c.root).some(isLive));
     const ordered = L.visible(data.projects, { q, scope, sort, running, pinned: new Set(pins) });
     SB.keepFocus($('pjProjects'), () => $('pjProjects').replaceChildren(...ordered.map(projectRow)));
+    markOpen();
     announceCount(ordered.length);
     renderSummary();
     const empty = $('pjEmpty');
@@ -99,6 +104,17 @@
     $('pjAddRow').hidden = none;
     $('pjEmptyText').textContent = L.emptyText({ none, scope, q });
     renderGitHubNote();
+  }
+
+  // The rows showing, top to bottom (J and K walk them on a wide page).
+  function visibleKeys() { return [...$('pjProjects').querySelectorAll('.pj-row')].map(b => b.dataset.key); }
+
+  // Beside an open project's page, its row says so.
+  function markOpen() {
+    for (const b of $('pjProjects').querySelectorAll('.pj-row')) {
+      if (b.dataset.key === openKey) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    }
   }
 
   // The list redraws on every keystroke in the search box, so it isn't a live
@@ -288,15 +304,22 @@
 
   // ------------------------------------------------------------------ to a project's page and back
 
+  // Only the project asked for last is shown: a slower read of another one
+  // (a click, then J, then a list redraw's reload) is dropped when it lands.
   async function openProject(key, { quiet = false } = {}) {
+    wanted = key;
     const p = await api.projectDetail(key);
+    if (key !== wanted) return;
     if (!p) { if (!quiet) SB.toast("That project isn't on the list any more."); return closeProject(); }
     // A quiet reload that changed nothing leaves the page (and where you were on it) alone.
     const same = quiet && key === openKey && JSON.stringify(p) === JSON.stringify(detail);
+    // Beside the list, a different project starts at its top (the middle column scrolls on its own).
+    if (key !== openKey && P.split()) $('pjMain').scrollTop = 0;
     openKey = key;
     detail = p;
     if (same) return;
     showScreen('detail');
+    markOpen();
     P.renderDetail();
     P.loadFound?.(); // servers Shellby didn't start, asked only while a project's page is open
   }
@@ -304,15 +327,21 @@
   // Back to the list, read again: the page may have just read fresher git than the rows have.
   function closeProject() {
     openKey = null;
+    wanted = null;
     detail = null;
     showScreen('list');
     renderList();
     load();
+    P.afterClose();
   }
 
+  // On a wide page the list stays beside whatever else is showing, and the
+  // list screen keeps the open project beside it (closing a scan comes back to it).
   function showScreen(which) {
-    $('pjListScreen').hidden = which !== 'list';
+    if (which === 'list' && P.split() && openKey) which = 'detail';
+    $('pjListScreen').hidden = which !== 'list' && !P.split();
     $('pjDetailScreen').hidden = which !== 'detail';
+    $('pjSplitEmpty').hidden = !(P.split() && which === 'list');
     $('pjScanSheet').hidden = which !== 'scan';
     $('pjCloneSheet').hidden = which !== 'clone';
     $('pjRefresh').hidden = which === 'scan' || which === 'clone';
@@ -323,8 +352,9 @@
   function renderAll() {
     renderQuit();
     if (state.view !== 'projects') return;
-    if (openKey && detail && !$('pjDetailScreen').hidden) P.renderDetail();
-    else if (!$('pjListScreen').hidden) renderList();
+    const page = openKey && detail && !$('pjDetailScreen').hidden;
+    if (page) P.renderDetail();
+    if (!$('pjListScreen').hidden && (!page || P.split())) renderList();
   }
 
   api.onServersChanged(v => {

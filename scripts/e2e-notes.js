@@ -1,8 +1,10 @@
 // ci: Notes per project and General: add, edit, move, and Plan / Build / Ask
-// Notes: a list per project plus a General one. Adding, editing, ticking off
-// (into the Done fold), pinning, moving between lists, deleting and Clear done,
-// each with Undo; and Plan / Build / Ask each opening a task in the right folder
-// (Plan and Build in a copy), in the right mode, with the right prompt. Runs
+// Notes: a list per project plus a General one, and the note you pick opened
+// beside it (on a narrow panel, in its place, with a way back). Adding, editing,
+// ticking off (into the Done fold), pinning, moving between lists, deleting and
+// Clear done, each with Undo; Plan / Build / Ask each opening a task in the right
+// folder (Plan and Build in a copy), in the right mode, with the right prompt;
+// Claude's answer to an Ask kept on the note; and J/K walking the list. Runs
 // against the fake CLI; no account needed.
 //   node scripts/e2e-notes.js
 const { spawn, execFileSync } = require('child_process');
@@ -49,9 +51,14 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     const open = () => ev("(SB.setView('notes'), SB.views.notes.render())");
     const texts = () => ev("[...document.querySelectorAll('#noteList .note-text')].map(e => e.textContent)");
     const scope = () => ev("document.getElementById('notesScope').value");
-    const pick = s => ev(`(() => { const sel = document.getElementById('notesScope'); sel.value = ${JSON.stringify(s)}; sel.dispatchEvent(new Event('change')); })()`);
+    const pickList = s => ev(`(() => { const sel = document.getElementById('notesScope'); sel.value = ${JSON.stringify(s)}; sel.dispatchEvent(new Event('change')); })()`);
     const add = text => ev(`(() => { const i = document.getElementById('noteInput'); i.value = ${JSON.stringify(text)}; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`).then(() => until(async () => (await ev("document.getElementById('noteInput').value")) === ''));
     const row = n => `document.querySelectorAll('#noteList .note')[${n}]`;
+    // A row's note, opened in the detail pane; then its buttons are the pane's.
+    const pick = n => ev(`${row(n)}.querySelector('.note-open').click()`);
+    const detail = sel => `document.querySelector('#noteDetail ${sel}')`;
+    const opened = () => ev(`${detail('.nd-text')}?.textContent`);
+    const press = k => ev(`document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true }))`);
     const stored = () => ev('shellby.listNotes()');
 
     // ---- 1. it opens on the project you're working in
@@ -68,28 +75,39 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     check((await stored()).projects.find(x => x.key === key)?.notes.length === 2, 'the notes are saved by the main process, not just held in the panel');
 
     // ---- 3. General is its own list
-    await pick('general');
+    await pickList('general');
     check((await texts()).length === 0, 'General starts empty');
     check(await ev("document.getElementById('notesWhere').textContent.includes('where you pick')"), 'General says its notes run where you pick');
     await add('learn rust\nproperly this time');
     check((await texts())[0] === 'learn rust\nproperly this time', 'a note keeps its line breaks');
     check((await stored()).general.length === 1, 'the General note is saved');
 
-    // ---- 4. editing: click, type, Enter; Esc cancels without leaving the screen
-    await ev(`${row(0)}.querySelector('.note-text').click()`);
+    // ---- 4. picking a note opens it; a narrow panel shows it in place of the list, with a way back
+    await pick(0);
+    check(await opened() === 'learn rust\nproperly this time', 'picking a note opens it');
+    if (await ev('!matchMedia("(min-width: 820px)").matches')) {
+      check(await ev("document.getElementById('notesSplit').classList.contains('reading')"), 'a narrow panel shows the note in place of the list');
+      await ev(`${detail('.nd-back')}.click()`);
+      check(!(await ev("document.getElementById('notesSplit').classList.contains('reading')")), 'and its back button returns to the list');
+      await pick(0);
+    }
+
+    // ---- 4b. editing: click, type, Enter; Esc cancels without leaving the screen
+    await ev(`${detail('.nd-text')}.click()`);
     await wait(100);
-    await ev(`(() => { const a = document.querySelector('#noteList .note-edit'); a.value = 'learn rust'; a.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
+    await ev(`(() => { const a = ${detail('.note-edit')}; a.value = 'learn rust'; a.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`);
     await wait(400);
     check((await stored()).general[0].text === 'learn rust', 'an edit is saved');
-    await ev(`${row(0)}.querySelector('.note-text').click()`);
+    await ev(`${detail('.nd-text')}.click()`);
     await wait(100);
-    await ev(`(() => { const a = document.querySelector('#noteList .note-edit'); a.value = 'oops'; a.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); })()`);
+    await ev(`(() => { const a = ${detail('.note-edit')}; a.value = 'oops'; a.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); })()`);
     await wait(300);
     check(await ev('SB.state.view') === 'notes', 'Esc in an edit stays on Notes');
     check((await stored()).general[0].text === 'learn rust', 'and throws the edit away');
 
     // ---- 5. moving a note from General into the project
-    await ev(`${row(0)}.querySelector('.note-more').click()`);
+    await pick(0);
+    await ev(`${detail('.note-more')}.click()`);
     const targets = await ev("[...document.querySelectorAll('#noteMenu .menu-item .mi-title')].map(e => e.textContent)");
     check(targets.includes(path.basename(repo)) && targets.includes('Delete'), `the menu offers the project and Delete (${targets.join(', ')})`);
     await ev(`[...document.querySelectorAll('#noteMenu .menu-item')].find(b => b.textContent === ${JSON.stringify(path.basename(repo))}).click()`);
@@ -98,7 +116,7 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     check(s5.general.length === 0 && s5.projects.find(x => x.key === key)?.notes[0].text === 'learn rust', 'the note moves into the project');
 
     // ---- 6. ticking off folds a note away under Done
-    await pick(key);
+    await pickList(key);
     await ev(`${row(0)}.querySelector('.note-check').click()`);
     await wait(400);
     check(!(await texts()).includes('learn rust'), 'a ticked-off note leaves the list');
@@ -107,12 +125,12 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     check(await ev("document.querySelector('#notesDone .note.done .note-text')?.textContent") === 'learn rust', 'opening Done shows it, looking done');
 
     // ---- 6b. pinning puts a note first
-    await ev(`${row(1)}.querySelector('.note-more').click()`);
-    await ev("[...document.querySelectorAll('#noteMenu .menu-item')].find(b => b.textContent === 'Pin to top').click()");
+    await pick(1);
+    await ev(`${detail('.nd-pin')}.click()`);
     await wait(400);
     check((await texts())[0] === 'add a dark mode' && await ev(`${row(0)}.classList.contains('pinned')`), 'a pinned note goes first');
-    await ev(`${row(0)}.querySelector('.note-more').click()`);
-    await ev("[...document.querySelectorAll('#noteMenu .menu-item')].find(b => b.textContent === 'Unpin').click()");
+    check(await ev(`${detail('.nd-pin')}.textContent`) === 'Unpin', 'and the open note offers to unpin it');
+    await ev(`${detail('.nd-pin')}.click()`);
     await wait(400);
     check((await texts()).join() === 'export to STL,add a dark mode', 'and unpinning puts it back');
 
@@ -123,7 +141,8 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     const run = async (n, kind) => {
       const before = (await last())?.id;
       await open();
-      await ev(`${row(n)}.querySelector('.note-${kind}').click()`);
+      await pick(n);
+      await ev(`${detail(`.note-${kind}`)}.click()`);
       for (let i = 0; i < 100 && (await last())?.id === before; i++) await wait(150);
       await idle();
     };
@@ -149,19 +168,43 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     check(entry.mode === 'smart' && entry.title === 'add a dark mode', `Build runs in your current mode (${entry.mode}, ${entry.title})`);
     check(entry.cwd.toLowerCase() !== key, `in a copy, not your checkout (${entry.cwd})`);
 
-    // ---- 10. the note remembers, and links back
+    // ---- 10. the note remembers what happened, keeps Claude's answer, and links back
     await open();
-    check(await ev(`${row(1)}.querySelector('.note-last')?.textContent`) === 'Built just now · open', 'the note says what was last done with it');
-    await ev(`${row(0)}.querySelector('.note-last').click()`);
+    check(await ev(`${row(1)}.querySelector('.note-last')?.textContent`) === 'Built just now', 'the list says what was last done with a note');
+    const asked = () => stored().then(s => s.projects.find(x => x.key === key)?.notes.find(x => x.text === 'export to STL')?.runs[0]);
+    await until(async () => !!(await asked())?.answer);
+    check((await asked())?.answer?.startsWith('echo:'), "the Ask's answer is kept on the note");
+    await open();
+    await pick(0);
+    check(((await ev(`${detail('.nd-answer')}?.textContent`)) || '').includes('echo:'), 'and the open note shows what Claude said');
+    const story = await ev("[...document.querySelectorAll('#noteDetail .nd-story li')].map(l => l.querySelector('b, button').textContent).join()");
+    check(story === 'Noted,Asked Claude,Plan it', `its story runs from when it was noted to its next step (${story})`);
+    await ev("[...document.querySelectorAll('#noteDetail .nd-story-link')].pop().click()");
     await wait(500);
     check(await ev('SB.state.view') === 'chat' && await ev('SB.activeTab().title') === 'Ask: export to STL', 'and opens that conversation');
+
+    // ---- 10b. J and K walk the list
+    await open();
+    await pick(0);
+    await press('j');
+    check(await opened() === 'add a dark mode', 'J opens the next note');
+    await press('k');
+    check(await opened() === 'export to STL', 'and K the one before');
+    if (await ev('!matchMedia("(min-width: 820px)").matches')) {
+      // From a narrow panel's list the open note is out of sight, so X leaves it be.
+      await ev(`${detail('.nd-back')}.click()`);
+      await press('x');
+      await wait(300);
+      check((await texts()).join() === 'export to STL,add a dark mode', 'X from the list ticks off nothing you can\'t see');
+    }
 
     // ---- 11. delete, with Undo; and the lists only take projects Shellby knows
     // Build's "Moved to <copy>" holds the toast slot until you move on, which a
     // scripted click never does: dismiss it, or Delete's Undo waits behind it.
     await ev("document.querySelector('#toast .toast-close')?.click()");
     await open();
-    await ev(`${row(1)}.querySelector('.note-more').click()`);
+    await pick(1);
+    await ev(`${detail('.note-more')}.click()`);
     await ev("[...document.querySelectorAll('#noteMenu .menu-item')].find(b => b.textContent === 'Delete').click()");
     await until(async () => (await texts()).length === 1);
     check((await texts()).join() === 'export to STL', 'a note can be deleted');

@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { previousAt, nextAt } = require('./schedule');
+const { runsBetween, TIDE } = require('../routines');
 
 const MAX_CHAIN = 3;              // workflow -> workflow trigger hops
 const RATE_WINDOW_MS = 60 * 60 * 1000;
@@ -98,6 +99,14 @@ function nextStart(wf, from) {
   if (!wf.enabled) return null;
   const times = (wf.when || []).filter(t => t.type === 'schedule').map(t => nextAt(t.schedule, wf.createdAt, from)).filter(Number.isFinite);
   return times.length ? Math.min(...times) : null;
+}
+
+/** Every scheduled start in (from, to], soonest first, across all its schedule triggers (the tide chart). */
+function startsBetween(wf, from, to, max = TIDE.max) {
+  if (!wf.enabled) return [];
+  const all = (wf.when || []).filter(t => t.type === 'schedule')
+    .flatMap(t => runsBetween(at => nextAt(t.schedule, wf.createdAt, at), from, to, max));
+  return [...new Set(all)].sort((a, b) => a - b).slice(0, max);
 }
 
 /** Starts per workflow in the last hour; past the limit, the caller pauses it. */
@@ -262,4 +271,4 @@ class FolderWatch {
   }
 }
 
-module.exports = { matchEvent, byWebhook, patternTest, nextStart, RateLimit, ScheduleTicker, FolderWatch, MAX_CHAIN, RATE_LIMIT };
+module.exports = { matchEvent, byWebhook, patternTest, nextStart, startsBetween, RateLimit, ScheduleTicker, FolderWatch, MAX_CHAIN, RATE_LIMIT };

@@ -58,6 +58,7 @@ function closeTab(d, tabId) {
   d.queueWaits.delete(tabId);
   d.workflows?.onTabClosed(tabId);
   d.debugMode?.tabClosed(tabId); // its debug receiver stops listening
+  d.bugdex?.tabClosed(tabId); // the bugs it spotted got away with it
   d.remote?.settleTab(tabId);
   return true;
 }

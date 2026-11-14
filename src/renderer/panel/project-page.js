@@ -44,7 +44,8 @@
       h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Remove from Projects', onclick: () => removeProject(p) }),
       main && h('button', { type: 'button', class: 'btn ghost slim-btn', text: "Forget Claude's history here…", title: "Delete Claude Code's transcripts, to-dos and memory for this folder (claude purge). Your code isn't touched.", onclick: () => forgetClaude(p, main.root) }));
     SB.keepFocus($('pjDetailScreen'), () => $('pjDetailScreen').replaceChildren(
-      head(p), needsStrip(p), jumpLinks(present), ...cards.map(([, el]) => el), clones, foot,
+      // The cards share one wrapper so a wide page can set them in columns (projects.css).
+      head(p), needsStrip(p), jumpLinks(present), h('div', { class: 'pj-cards' }, ...cards.map(([, el]) => el), clones), foot,
     ));
   }
 
@@ -58,7 +59,7 @@
     const sticker = p.insights?.sticker;
     const dev = P.devAction(p);
     return h('div', { class: 'pj-detail-head' },
-      h('button', { type: 'button', class: 'btn ghost slim-btn', text: '← Projects', onclick: P.closeProject }),
+      h('button', { type: 'button', class: 'btn ghost slim-btn pj-back', text: '← Projects', onclick: P.closeProject }),
       h('div', { class: 'pj-hero' },
         F.tile(p, 'lg'),
         h('div', { class: 'pj-hero-text' },
