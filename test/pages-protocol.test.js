@@ -15,7 +15,7 @@ test('a page is served with the guard first and its own files', () => {
   const a = answer('shellby-page://print-queue/', pages(), SIDE);
   assert.equal(a.status, 200);
   assert.equal(a.type, 'text/html');
-  assert.equal(a.body, '<!doctype html><script src="guard.js"></script><p>hi</p>');
+  assert.equal(a.body, '<!doctype html><script src="guard.js" crossorigin="anonymous"></script><p>hi</p>');
   assert.equal(answer('shellby-page://print-queue/app.js', pages(), SIDE).body.toString(), 'x()');
   assert.equal(answer('shellby-page://print-queue/shellby.js', pages(), SIDE).body, 'BRIDGE');
   assert.equal(answer('shellby-page://print-queue/guard.js', pages(), SIDE).body, 'GUARD');
@@ -37,7 +37,8 @@ test('a page that is off or waiting for your OK is not served at all', () => {
 test('the CSP keeps a page to its own files and sandboxed', () => {
   for (const part of ["default-src 'none'", "script-src 'self'", "connect-src 'none'", "frame-src 'none'", 'sandbox allow-scripts']) assert.ok(CSP.includes(part), part);
   assert.ok(!CSP.includes('unsafe-eval'));
-  assert.equal(withGuard('<p>'), '<script src="guard.js"></script><p>');
+  assert.equal(withGuard('<p>'), '<script src="guard.js" crossorigin="anonymous"></script><p>');
+  assert.equal(withGuard('<script src="a.js"></script>'), '<script src="guard.js" crossorigin="anonymous"></script><script crossorigin="anonymous" src="a.js"></script>');
   assert.ok(CSP_INERT.endsWith('sandbox') && !CSP_INERT.includes('script-src'), 'an SVG opened by itself runs nothing');
 });
 

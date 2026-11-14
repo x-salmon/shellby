@@ -28,17 +28,26 @@ const HEADERS = Object.freeze({
   'X-Content-Type-Options': 'nosniff',
   'Cache-Control': 'no-store',
   'Referrer-Policy': 'no-referrer',
+  // A page's origin is opaque ("null"): this lets its own scripts load in CORS
+  // mode. Nothing else can ask: every page has connect-src 'none'.
+  'Access-Control-Allow-Origin': 'null',
 });
 const PAGE_SIDE = path.join(__dirname, 'page-side');
-const GUARD_TAG = '<script src="guard.js"></script>';
+const GUARD_TAG = '<script src="guard.js" crossorigin="anonymous"></script>';
 
-/** The privileges the scheme needs, for protocol.registerSchemesAsPrivileged before app ready. */
-const PRIVILEGES = Object.freeze({ scheme: SCHEME, privileges: { standard: true, secure: true } });
+/**
+ * The privileges the scheme needs, for protocol.registerSchemesAsPrivileged before app ready.
+ * corsEnabled: a page's own scripts load in CORS mode (withGuard marks them), so
+ * an error in one reaches shellby.js with its message, file and line instead of
+ * a bare "Script error." (an opaque origin's own files count as another origin).
+ */
+const PRIVILEGES = Object.freeze({ scheme: SCHEME, privileges: { standard: true, secure: true, corsEnabled: true } });
 
-/** Put guard.js ahead of everything else in a page's HTML. */
+/** Put guard.js ahead of everything else in a page's HTML, and load its scripts in CORS mode. */
 function withGuard(html) {
-  const m = /^\s*<!doctype[^>]*>/i.exec(html);
-  return m ? `${m[0]}${GUARD_TAG}${html.slice(m[0].length)}` : `${GUARD_TAG}${html}`;
+  const marked = html.replace(/<script\b(?![^>]*\bcrossorigin\b)/gi, '<script crossorigin="anonymous"');
+  const m = /^\s*<!doctype[^>]*>/i.exec(marked);
+  return m ? `${m[0]}${GUARD_TAG}${marked.slice(m[0].length)}` : `${GUARD_TAG}${marked}`;
 }
 
 /** The URL a page loads from. */

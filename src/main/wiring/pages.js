@@ -20,6 +20,7 @@ const { LIMITS } = require('../pages/limits');
 const { pageFetch } = require('../pages/fetch');
 const protocol = require('../pages/protocol');
 const confirm = require('../confirm');
+const prompts = require('../pages/prompts');
 
 const MINUTE = 60_000;
 const PAGE_TOOLS = ['list_pages', 'read_page', 'write_page', 'create_page', 'update_page'];
@@ -325,6 +326,50 @@ function wirePages(d) {
     return { ok: true, id: r.id, needsOk: !!man && format.accessWords(man.access).length > 0 };
   }
 
+  // ------------------------------------------- building and changing, with Claude
+  /** Start a conversation that works on pages: the panel opens the page beside it. */
+  function startWith(prompt, title, id, mode = null) {
+    const man = id ? pages().manifest(id) : null;
+    const cwd = man?.project || d.currentCwd();
+    const r = d.startTask(prompt, title, { cwd, ...(mode ? { mode } : {}) });
+    if (!r?.ok) return r || { ok: false, error: "Couldn't start the conversation." };
+    if (mode) d.manager?.modeToStart?.(r.tabId);
+    d.showPanel?.({ focusInput: false, tabId: r.tabId });
+    return { ok: true, tabId: r.tabId };
+  }
+  function build(describe) {
+    const text = format.line(describe, 2000);
+    if (!text) return { ok: false, error: 'Say what the page is for.' };
+    return startWith(prompts.buildPrompt(describe), `Page: ${text.slice(0, 40)}`, null);
+  }
+  /**
+   * Change with Claude, or Fix it with Claude when error is given.
+   * @param {string} id @param {{ ask?: string, pointed?: { text?: string, selector?: string }, error?: string }} [o]
+   */
+  function change(id, { ask, pointed, error } = {}) {
+    const s = pages();
+    const man = s.manifest(id);
+    if (!man || !format.isId(id)) return { ok: false, error: 'No such page.' };
+    const page = { id, name: man.name };
+    const files = s.files(id) || {};
+    const prompt = error !== undefined ? prompts.fixPrompt(page, files, error) : prompts.changePrompt(page, files, ask, pointed);
+    return startWith(prompt, `${error !== undefined ? 'Fix' : 'Change'}: ${man.name}`.slice(0, 60), id);
+  }
+
+  /**
+   * You pressed Ask Claude on a page's shellby.ask card. The mode is Ask
+   * first, Plan or Edit files, never Autonomous (rights.js); the prompt is
+   * marked as the page's, since a page wrote it.
+   */
+  const ASK_MODES = { ask: 'ask', plan: 'plan', edits: 'acceptEdits' };
+  function ask(id, prompt, mode) {
+    const man = pages().manifest(id);
+    if (!man) return { ok: false, error: 'No such page.' };
+    const text = String(prompt || '').trim().slice(0, LIMITS.ASK_PROMPT);
+    if (!text) return { ok: false, error: 'Nothing to ask.' };
+    return startWith(`[Shellby: the page "${man.name}" asks, and the user said yes] ${text}`, `${man.name}: ${text.slice(0, 40)}`, id, ASK_MODES[mode] || 'ask');
+  }
+
   function offAll() {
     const s = pages();
     for (const id of s.ids()) s.setMeta(id, { enabled: false });
@@ -334,7 +379,7 @@ function wirePages(d) {
 
   return {
     pages: {
-      servePages, call, tool, isPageTool, view, list, saveDraft, offAll, enabled,
+      servePages, call, tool, isPageTool, view, list, saveDraft, offAll, enabled, build, change, ask,
       store: () => pages(),
       draftsOf: tab => pages().draftsOf(tab),
       files: (id, n) => pages().files(id, n),

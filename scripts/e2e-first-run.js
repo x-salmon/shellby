@@ -194,7 +194,7 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
       await ev("SB.setView('settings')");
       await ev("SB.$('showEverythingBtn').click()");
       check(await until("SB.$('showEverythingBtn').disabled"), 'Show everything now opens every screen');
-      check(await ev(`(${SHOWN}) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes'`), `every button is on the bar (${await ev(SHOWN)})`);
+      check(await ev(`(${SHOWN}) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes,pages'`), `every button is on the bar (${await ev(SHOWN)})`);
       check(await ev("!SB.$('rmCard').classList.contains('room-locked')"), "and Review mastery's card is back");
     });
 
@@ -224,7 +224,7 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
     });
     await run('before-rooms', { onboarded: true }, async ({ ev, until, data }) => {
       await until('!!SB.activeTab()');
-      check(await ev(SHOWN) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes', 'someone from before rooms keeps the whole bar');
+      check(await ev(SHOWN) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes,pages', 'someone from before rooms keeps the whole bar');
       check(!(await ev(visible(CARD))), 'with no First steps');
       const saved = JSON.parse(fs.readFileSync(path.join(data, 'settings.json'), 'utf8'));
       check(saved.firstRun?.legacy === true && saved.rooms?.all === true, 'saved as finished, every screen open');

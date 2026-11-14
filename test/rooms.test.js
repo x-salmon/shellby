@@ -43,7 +43,7 @@ test('finished tasks open rooms in order and report each one once', () => {
     s = r.state;
     opened.push(r.opened.map(x => x.id));
   }
-  assert.deepEqual(opened, [['history', 'projects', 'notes'], ['finds', 'stickers'], ['health', 'toolbox', 'crew', 'reef'], ['bugdex', 'mastery'], ['workflows', 'us'], ['tank'], []]);
+  assert.deepEqual(opened, [['history', 'projects', 'notes'], ['finds', 'stickers'], ['health', 'toolbox', 'crew', 'reef'], ['bugdex', 'mastery'], ['workflows', 'pages', 'us'], ['tank'], []]);
   assert.equal(rooms.roomsView(s).all, true);
 });
 
@@ -105,7 +105,7 @@ test('someone new opens only the working rooms however many tasks go by, until t
   const s = after(10, newcomer());
   const open = rooms.openRooms(s);
   assert.ok(GAME.every(id => !open.includes(id)), `no game room yet (${open})`);
-  assert.deepEqual(open, ['trophies', 'history', 'projects', 'notes', 'health', 'toolbox', 'workflows']);
+  assert.deepEqual(open, ['trophies', 'history', 'projects', 'notes', 'health', 'toolbox', 'workflows', 'pages']);
   assert.deepEqual(rooms.roomsView(s).next, { id: 'finds', name: 'Finds', core: true, in: 'wardrobe' }, 'next says the game waits on the core loop');
 });
 

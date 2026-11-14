@@ -91,7 +91,30 @@
     };
   }
 
-  const KINDS = { server: serverTool };
+  // ------------------------------------------------------------ a page
+
+  // The same page host the Pages screen uses (pages-host.js), in a pane.
+  function pageTool(toolId) {
+    const id = P.toolOf(toolId)?.target;
+    const host = SB.pageHost.create({
+      pane: true,
+      onBack: () => close(toolId),
+      onSaved: newId => { if (newId !== id) { close(toolId); openPage(newId); } },
+      onMenu: (anchor, v) => SB.openMenu(SB.$('pagesMenu'), anchor, () => [
+        SB.menuItem('Open full size', () => SB.openPage?.(v.id)),
+        v.draft ? null : SB.menuItem('Change with Claude', () => api.pages.change(v.id, {})),
+        SB.menuItem('Reload it', () => host.reload()),
+        SB.menuItem('Close', () => close(toolId)),
+      ].filter(Boolean)),
+    });
+    host.el.classList.add('tool-pane');
+    host.show(id);
+    let title = 'Page';
+    api.pages.view(id).then(v => { title = v?.name || 'Page'; SB.renderTabStrip(); }, () => {});
+    return { el: host.el, draw: () => {}, title: () => title, destroy: () => host.close() };
+  }
+
+  const KINDS = { server: serverTool, page: pageTool };
 
   // ------------------------------------------------------------ opening and closing
 
@@ -127,6 +150,31 @@
     return true;
   }
 
+  /** A page beside the focused conversation, as Split does for a server's log. */
+  async function openPage(pageId) {
+    const toolId = `page:${pageId}`;
+    if (SB.solo || !P.isTool(toolId)) return false;
+    if (P.paneWith(state.grid, toolId)) { SB.setView('chat'); return true; }
+    SB.setView('chat');
+    SB.unzoom();
+    const next = P.openTool(state.grid, toolId, SB.focusedPane());
+    if (next === state.grid && !P.paneWith(state.grid, toolId)) { SB.toast(SB.NO_ROOM); return false; }
+    const room = SB.roomFor(next);
+    if (!room.ok) { SB.toast(SB.NO_ROOM); return false; }
+    if (room.want) await api.fitPanel(room.want);
+    const grid = P.openTool(state.grid, toolId, SB.focusedPane());
+    state.paneSizes = room.space ? SB.atLeastMin(grid, P.fitSizes(grid, state.paneSizes), room.space) : P.fitSizes(grid, state.paneSizes);
+    state.grid = grid;
+    SB.renderPanes();
+    SB.renderTabStrip();
+    return true;
+  }
+
+  // A draft Claude just made opens beside the conversation that made it, if it's on screen.
+  api.pages.onChanged(ev => {
+    if (ev?.kind === 'draft' && ev.tab && (state.activeTab === ev.tab || SB.isShown?.(ev.tab))) openPage(ev.id);
+  });
+
   function close(toolId) {
     if (!P.paneWith(state.grid, toolId)) return;
     state.grid = P.leave(state.grid, toolId);
@@ -154,6 +202,7 @@
     // Its pane's strip (tab-strip.js): its name, alone. The pane's x closes it.
     chip: toolId => h('span', { class: 'tool-chip', role: 'tab', 'aria-selected': 'true', text: mounted.get(toolId)?.title() || 'Tool' }),
     openServer,
+    openPage,
     close,
     prune,
   };

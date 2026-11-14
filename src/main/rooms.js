@@ -31,12 +31,13 @@ const ROOMS = Object.freeze([
   { id: 'bugdex', game: true, chapter: 'bug-hunter', tasks: 4, in: 'wardrobe', name: 'Bugdex', text: 'Every bug you two have caught, and the battles to catch them.' },
   { id: 'mastery', game: true, chapter: 'long-watch', part: 'trophies', tasks: 4, name: 'Review mastery', text: 'Your eye for review, ranked on the Trophies page: bugs you catch in his changes, quizzes, tiers.' },
   { id: 'workflows', chapter: 'clockwork', tasks: 5, name: 'Automate', text: 'Routines and workflows: work he does on a schedule or when something happens.' },
+  { id: 'pages', tasks: 5, name: 'Pages', text: 'Small apps Claude builds for you, that live here and that any conversation can add to.' },
   { id: 'us', game: true, chapter: 'tides-and-friends', tasks: 5, in: 'wardrobe', name: 'Us', text: 'Your time together, on a beach that gets a sandcastle for every project you ship.' },
   { id: 'tank', game: true, chapter: 'home-improvement', tasks: 6, in: 'wardrobe', name: 'Tank', text: 'His home, to decorate with castles, plants and his finds.' },
 ]);
 const IDS = new Set(ROOMS.map(r => r.id));
 // The bar's tool screens: open from the start for someone who already uses Claude Code.
-const TOOL_ROOMS = Object.freeze(['history', 'projects', 'notes', 'health', 'toolbox', 'workflows']);
+const TOOL_ROOMS = Object.freeze(['history', 'projects', 'notes', 'health', 'toolbox', 'workflows', 'pages']);
 const ALL = Object.freeze({ tasks: 0, open: [], all: true, core: true, fresh: [] });
 
 const count = n => Math.max(0, Math.floor(Number(n) || 0));

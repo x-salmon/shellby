@@ -1,0 +1,43 @@
+  <!-- ====================== PAGES ====================== -->
+  <!-- Small apps built with Claude (docs/plans/shellby-pages.md): the shelf of
+       pages, and one page open with its drawer (data, History, activity).
+       pages.js draws both; pages-host.js the page itself, pages-bridge.js its frame. -->
+  <main class="view view-pages" id="pagesView">
+    <section class="pg-shelf" id="pgShelf" aria-label="Your pages">
+      <div class="view-head">
+        <h2>Pages</h2>
+        <span class="muted small" id="pgCount"></span>
+        <span class="pg-grow"></span>
+        <input type="search" class="field slim pg-search" id="pgSearch" placeholder="Find a page, or what's on one…" aria-label="Find a page">
+        <button type="button" class="btn primary slim-btn" id="pgNew">New page</button>
+      </div>
+      <p class="pg-off muted" id="pgOff" hidden>Pages are off: Shellby is in just-the-crab mode.</p>
+      <div class="pg-grid" id="pgGrid" role="list"></div>
+      <div class="pg-empty" id="pgEmpty" hidden></div>
+    </section>
+    <section class="pg-open" id="pgOpen" aria-label="Page" hidden>
+      <div class="pg-open-main" id="pgOpenMain"></div>
+      <aside class="pg-drawer" id="pgDrawer" aria-label="About this page" hidden>
+        <div class="pg-drawer-tabs" role="tablist" id="pgDrawerTabs"></div>
+        <div class="pg-drawer-body" id="pgDrawerBody"></div>
+      </aside>
+    </section>
+  </main>
+  <div class="popover" id="pagesMenu" role="menu" hidden></div>
+  <div class="card-sheet" id="pgNewSheet" role="dialog" aria-modal="true" aria-labelledby="pgNewTitle" hidden>
+    <div class="card-box pg-new-box">
+      <div class="card-head">
+        <h2 id="pgNewTitle">New page</h2>
+        <button type="button" class="icon-btn" id="pgNewClose" aria-label="Close" title="Close (Esc)">
+          <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <p class="muted">Say what it's for. Claude builds it in a new conversation, with a live preview beside it, and it's a draft until you save it.</p>
+      <textarea class="field area" id="pgNewText" rows="4" maxlength="2000" placeholder="A board where my helper crabs post what they found, newest first, with a tick I can press when I've read it." aria-label="What the page is for"></textarea>
+      <div class="pg-starters" id="pgStarters" role="group" aria-label="Or start from"></div>
+      <div class="row pg-new-foot">
+        <span class="muted small">Pages can keep their own data, and ask for more only with your OK.</span>
+        <button type="button" class="btn primary" id="pgBuild">Build it</button>
+      </div>
+    </div>
+  </div>

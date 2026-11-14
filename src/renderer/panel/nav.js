@@ -247,6 +247,14 @@
     }));
   }
 
+  // Pages by name (pages.js keeps state.pages): Enter opens one.
+  function pageEntries() {
+    return (state.pages || []).filter(p => p.enabled && !p.wants).map(p => ({
+      id: `page:${p.id}`, group: 'Pages', icon: p.icon || '▦', title: p.name, sub: p.description || 'Page', keys: `page ${p.name}`,
+      run: () => SB.openPage?.(p.id),
+    }));
+  }
+
   function toolEntries() {
     const tb = state.toolbox;
     if (!claude() || !tb) return [];
@@ -351,7 +359,7 @@
   // what you ran lately, then the group's place here.
   const GROUP_RANK = {
     'This conversation': 0, Screens: 1, Focus: 2, Project: 3, Claude: 4, Editor: 5, Settings: 6, 'Permission mode': 7,
-    Routines: 8, Snippets: 9, Conversations: 10, Skills: 11, Commands: 12,
+    Routines: 8, Pages: 8.5, Snippets: 9, Conversations: 10, Skills: 11, Commands: 12,
   };
   const focusEntries = () => (SB.focusCommands?.() || []).map(e => ({ ...e, group: 'Focus' }));
 
@@ -375,7 +383,7 @@
     const screens = screenEntries();
     const settings = settingEntries();
     const all = [...actions, ...screens, ...focusEntries(), ...projectEntries(), ...claudeEntries(), ...editorEntries(), ...settings, ...modeEntries(),
-      ...routineEntries(), ...snippetEntries(), ...tabEntries(), ...cloudEntries(), ...paneEntries(), ...conversationEntries(), ...toolEntries()];
+      ...routineEntries(), ...snippetEntries(), ...tabEntries(), ...cloudEntries(), ...paneEntries(), ...conversationEntries(), ...toolEntries(), ...pageEntries()];
     return K.rank(all, raw, {
       recent, groupRank: GROUP_RANK,
       pinned: state.view === 'chat' ? actions : [],
@@ -474,7 +482,7 @@
     if (e.key === 'Enter') { e.preventDefault(); return runAt(selected); }
     if (e.key === 'Tab') e.preventDefault(); // the input is the only stop in the dialog
     // The palette's own keys, the shortcut list and the screens go on through to their handlers.
-    if (!(K.matches(e, 'palette') || K.matches(e, 'shortcuts') || (e.ctrlKey && /^[1-8]$/.test(e.key)))) e.stopPropagation();
+    if (!(K.matches(e, 'palette') || K.matches(e, 'shortcuts') || (e.ctrlKey && /^[1-9]$/.test(e.key)))) e.stopPropagation();
   });
   sheet.addEventListener('mousedown', e => { if (e.target === sheet) closePalette(); });
   $('paletteBtn').addEventListener('click', openPalette);

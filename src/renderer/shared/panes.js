@@ -28,7 +28,8 @@
   const PANE_ID = /^p[1-9]\d{0,5}$/;
   const EDGES = ['left', 'right', 'top', 'bottom'];
 
-  const TOOL = /^(server):([a-z0-9-]{1,40})$/;
+  // 'page:<id>': a page beside the chat (pages-host.js), a draft's preview included.
+  const TOOL = /^(server|page):([a-z0-9-]{1,40})$/;
 
   // ------------------------------------------------------------ tools
 

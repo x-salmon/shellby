@@ -341,6 +341,13 @@ interface ShellbyPanelExtras {
   holdQueue: any;
   renderOutlook: any;
   resetEstimate: any;
+  // pages-bridge.js
+  pageFrames: any;
+  // pages-host.js
+  pageHost: any;
+  // pages.js
+  newPage: any;
+  openPage: any;
   // painter-preview.js
   paintPreview: any;
   // painter-share.js

@@ -86,7 +86,7 @@ const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => get
 
       // 4. Show every screen.
       await ev('SB.openAllRooms()');
-      check(await until(`(${SHOWN}) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes'`), '"Show every screen" opens the rest and hides More');
+      check(await until(`(${SHOWN}) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes,pages'`), '"Show every screen" opens the rest and hides More');
       check(await ev(TABS) === 'wardrobe,trophies,bugdex,home,finds,tank,us,stickers', `and every tab of his screen, Home's row included (${await ev(TABS)})`);
       check(await ev("getComputedStyle(document.querySelector('.wd-make [data-goto=\"stickers\"]')).display !== 'none'"), 'and the Sticker Book on Outfits');
       await ev("SB.setView('tank')");
@@ -96,7 +96,7 @@ const SHOWN = "[...document.querySelectorAll('.dock .dock-btn')].filter(b => get
 
     // 5. Someone who was here before rooms: no rooms value yet, already onboarded.
     await run({ onboarded: true }, async ({ ev, data }) => {
-      check(await ev(SHOWN) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes', 'an existing user keeps the whole bar');
+      check(await ev(SHOWN) === 'wardrobe,chat,toolbox,workflows,health,history,projects,notes,pages', 'an existing user keeps the whole bar');
       check(JSON.parse(fs.readFileSync(path.join(data, 'settings.json'), 'utf8')).rooms?.all === true, 'and is saved as everything open');
     });
   } catch (e) {
