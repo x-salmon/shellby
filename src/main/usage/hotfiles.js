@@ -110,12 +110,13 @@ function tallyTranscript(tally, touches) {
  * The files worth a word: in MIN_SESSIONS or more conversations, most first.
  * @param {Map<string, { rel: string, reads: number, edits: number, sessions: number }>} tally
  * @param {(rel: string) => number | null} [sizeOf]
+ * @param {number} [top]  how many
  */
-function hottest(tally, sizeOf = () => null) {
+function hottest(tally, sizeOf = () => null, top = TOP) {
   return [...tally.values()]
     .filter(t => t.sessions >= MIN_SESSIONS)
     .sort((a, b) => (b.sessions - a.sessions) || ((b.reads + b.edits) - (a.reads + a.edits)) || a.rel.localeCompare(b.rel))
-    .slice(0, TOP)
+    .slice(0, top)
     .map(t => {
       const size = sizeOf(t.rel);
       return { ...t, tokens: typeof size === 'number' && Number.isFinite(size) ? Math.round(size / CHARS_PER_TOKEN) : null };
@@ -177,12 +178,14 @@ async function readTranscript(file) {
  * hooks: [{ event, name, runs, sessions, tokens, perConversation }], hookStart
  * (what start hooks add, all of them), sessions, days }.
  * A subagent's transcript counts with the conversation that ran it.
+ * lookbackMs: how far back (the Lean tab's month; a week for the nudge under
+ * a repeated read, read-nudge.js); top: how many files come back.
  */
-async function scanHotFiles({ configDir, cwd, now = Date.now(), maxBytes = MAX_BYTES }) {
+async function scanHotFiles({ configDir, cwd, now = Date.now(), maxBytes = MAX_BYTES, lookbackMs = LOOKBACK_MS, top = TOP }) {
   const root = path.join(configDir, 'projects');
   let folders = [];
   try { folders = (await fs.promises.readdir(root, { withFileTypes: true })).filter(e => e.isDirectory() && isProjectFolder(e.name, cwd)); } catch { /* no history yet */ }
-  const since = now - LOOKBACK_MS;
+  const since = now - lookbackMs;
   const files = [];
   for (const f of folders) await listJsonl(path.join(root, f.name), since, 0, files);
   files.sort((a, b) => b.mtimeMs - a.mtimeMs);
@@ -210,7 +213,7 @@ async function scanHotFiles({ configDir, cwd, now = Date.now(), maxBytes = MAX_B
     try { return fs.statSync(full).size; } catch { return null; }
   };
   const sessions = new Set([...bySession.keys(), ...outputsBySession.keys(), ...hooksBySession.keys()]).size;
-  return { files: hottest(tally, sizeOf), loud: loud.loudest(noisy), loudMcp: loud.loudest(noisy, { mcp: true }), quieted: loud.quietSavings(noisy), hooks: hookctx.heaviestHooks(added), hookStart: hookctx.startTokens(added), sessions, days: Math.round(LOOKBACK_MS / (24 * 60 * 60 * 1000)) };
+  return { files: hottest(tally, sizeOf, top), loud: loud.loudest(noisy), loudMcp: loud.loudest(noisy, { mcp: true }), quieted: loud.quietSavings(noisy), hooks: hookctx.heaviestHooks(added), hookStart: hookctx.startTokens(added), sessions, days: Math.round(lookbackMs / (24 * 60 * 60 * 1000)) };
 }
 
-module.exports = { scanHotFiles, folderOf, isProjectFolder, relativeTo, rootIn, touchesIn, sessionOf, tallyTranscript, hottest, MIN_SESSIONS };
+module.exports = { scanHotFiles, folderOf, isProjectFolder, relativeTo, rootIn, touchesIn, sessionOf, tallyTranscript, hottest, MIN_SESSIONS, LOOKBACK_MS, TOP };

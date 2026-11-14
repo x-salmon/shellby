@@ -94,16 +94,19 @@
       return false;
     }
     // !! is how a message that starts with ! reaches Claude; it shows (and is sent) with one.
-    markSent(tab, text.startsWith('!!') ? text.slice(1) : text, attachments, r.turnId);
+    // A turn on a cheaper model (savers.js) is noted on the message, as main keeps it.
+    const onModel = opts?.model ? { model: opts.model, modelBy: opts.modelBy || 'you', modelCls: opts.modelCls || null } : undefined;
+    markSent(tab, text.startsWith('!!') ? text.slice(1) : text, attachments, r.turnId, onModel);
     SB.notePrompt?.(text);
     return true;
   }
   SB.sendNow = sendNow;
 
   // A message has gone to Claude: from the box, the queue, or held for the
-  // usage reset and sent by main (boot.js onTabSent).
-  function markSent(tab, text, attachments, turnId) {
-    tab.render({ kind: 'user', text, attachments, turnId });
+  // usage reset and sent by main (boot.js onTabSent). onModel: the cheaper
+  // model this turn runs on, and why ({ model, modelBy, modelCls }), if one does.
+  function markSent(tab, text, attachments, turnId, onModel = undefined) {
+    tab.render({ kind: 'user', text, attachments, turnId, ...(onModel || {}) });
     tab.busy = true;
     tab.busySince = Date.now();
     tab.turnTokens = 0;
@@ -167,6 +170,22 @@
       const words = await SB.ultraWords(tab, text);
       if (words === null) return false;
       text = words;
+    }
+    // Before it goes, two things worth a card in the feed, one at a time (savers.js):
+    // a fresh tab for a new topic in a well-filled conversation (handoff.js), else a
+    // cheaper model for a small message. Only a message you typed, into an idle tab,
+    // on its own: the gate clears the box itself once it has the message.
+    if (typed && !solo && SB.saverGate) {
+      // A second Enter while main looks would take it twice.
+      if (tab.gating) return false;
+      tab.gating = true;
+      let took;
+      try { took = await SB.saverGate(tab, text, attachments, picked); } finally { tab.gating = false; }
+      if (took) {
+        SB.setView('chat');
+        if (snippet) api.snippetUsed(snippet);
+        return true;
+      }
     }
     // "Hold big tasks for the reset" (Settings): one that usually takes more than
     // the window has left waits for the reset instead (outlook.js).

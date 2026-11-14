@@ -115,6 +115,8 @@ const DEFAULTS = {
   spendMaxMinutes: 60, // the longest one routine run may take
   holdBigTasks: false, // hold a message for the reset when it usually takes more than the window has left (usage/ledger.js)
   mergeSends: true,   // messages typed close together go to Claude as one turn (renderer/panel/queue-turns.js)
+  modelSuggest: true, // a small message on a top model gets a card offering Haiku first, never switched without you (model-pick.js)
+  modelAlways: {},    // { question | lookup | tweak: model }: kinds of small message that go to that model by themselves, with a note on the turn (model-pick.js)
   streaks: null,      // work days, projects and nudge settings (see progression/streaks.js)
   stickers: null,     // a sticker per project shipped, and where they sit on each shell (see stickers/index.js)
   beach: null,        // the beach: what you've seen on it and the high-water mark (see beach.js); this PC only
@@ -165,6 +167,7 @@ const DEFAULTS = {
   journalPending: [], // conversations whose handoff note was still settling at quit (see wiring/journal.js)
   spendLedger: [],    // who used the 5-hour and weekly limits (see spend.js)
   turnCosts: [],      // what each turn cost, by project and kind of ask, never the prompt (see usage/ledger.js); this PC only
+  readNudges: { seen: {}, never: [] }, // files nudged about under a repeated read this week, and the ones never to again (read-nudge.js); this PC only
   // Lean Shell (efficiency.js, lean.js): cache reads per day, each project's
   // setup weight, what Claude Code used lately, plugins' always-on estimates,
   // what was tidied away (XP once each), and when things were first seen.

@@ -211,6 +211,7 @@ function wireSessions(d) {
       d.send(win, 'tab:item', { tabId, item, continues });
       // The reply as it's written and what you might ask next: only the panel shows them.
       if (item.kind === 'partial' || item.kind === 'next') return;
+      d.readNudge?.onItem(tabId, item, tab); // a whole read, and its result: worth a card under the step? (wiring/read-nudge.js)
       d.workflows?.onTabItem(tabId, item);
       if (item.kind === 'text' && !item.sub) tab.lastReply = item.text;
       if (item.kind === 'decision') d.remote?.settle(item.requestId, item.decision);

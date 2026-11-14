@@ -271,7 +271,7 @@
           if (!replay) { this.stuck = true; this.dropCutOff(); }
           // What Claude guessed you'd ask next is spent once you've asked something.
           if (!replay && this.nextPrompt) { this.nextPrompt = null; SB.renderNextPrompt?.(this); } // over the box or its pane's stand-in
-          return this.renderUser(item);
+          return this.renderUser(item, replay);
         // Claude's reply as it's written (--include-partial-messages), formatted
         // as it goes, so the finished one takes its place without a jump.
         case 'partial':
@@ -346,6 +346,7 @@
         case 'decision': return this.markDecision(item);
         case 'result':
           if (!replay && this.isActive) SB.announce(item.interrupted ? 'Claude stopped' : item.ok ? 'Claude finished' : 'Claude ended with an error');
+          if (!replay) this.foldSavers(); // a nudge nobody answered folds to one line (feed-savers.js)
           this.renderResult(item, replay);
           return this.offerLocal?.(item, replay); // Claude didn't answer: your local model can (feed-local.js)
         case 'changes': return this.renderChanges(item);
@@ -383,6 +384,8 @@
         case 'rewards': { const card = SB.renderRewards?.(item); return card ? this.append(card) : undefined; }
         case 'suggest': return this.renderSuggestion(item, replay); // feed-asks.js
         case 'handoff': return this.renderHandoff(item, replay);
+        // A repeated big read: the Lean tab's one-tap fix, under the step, mid-turn (feed-savers.js). The panel's alone, never saved.
+        case 'read-nudge': return replay ? undefined : this.renderReadNudge(item);
         case 'cutoff': return this.renderCutOff(item, replay);
         case 'branched': return this.renderBranched(item);
         case 'branched-off': return this.renderBranchedOff(item);
@@ -475,8 +478,10 @@
         act || copy ? h('div', { class: 'trouble-actions' }, act, copy) : null);
     }
 
-    renderUser(item) {
+    renderUser(item, replay = false) {
       const routine = item.routine ? h('div', { class: 'routine-tag' }, '⟳ ', item.routine.name, item.routine.reason === 'catch-up' ? ' · catch-up run' : '') : null;
+      // Ran on a cheaper model, as you picked on the card or chose for its kind (feed-savers.js).
+      const onModel = item.model ? this.modelTag(item, replay) : null;
       // Messages sent since rewind came in carry an id, and a way back to just
       // before them: in this tab (rewind), or in a new one that leaves this be (branch).
       // One read mid-turn (a steer) is part of the turn it went into, which keeps its id.
@@ -493,7 +498,7 @@
         : turnOf ? h('button', { class: 'msg-rewind', type: 'button', title: steerTip, 'aria-label': steerTip, onclick: () => SB.openRewind(this, turnOf) }) : null;
       const fork = item.turnId ? h('button', { class: 'msg-branch', type: 'button', title: 'Try again from here, in a new tab', 'aria-label': 'Try again from here, in a new tab', onclick: () => SB.openBranch(this, item.turnId, 'before') }, SB.forkIcon()) : null;
       const steered = item.steerId ? h('div', { class: 'routine-tag', title: 'Claude read this between two steps of the turn before it' }, '↪ sent mid-turn') : null;
-      this.append(h('div', { class: 'msg user', dataset: item.turnId ? { turn: item.turnId } : {} }, back, fork, routine || steered, item.text || '',
+      this.append(h('div', { class: 'msg user', dataset: item.turnId ? { turn: item.turnId } : {} }, back, fork, routine || steered || onModel, item.text || '',
         item.attachments?.length ? h('div', { class: 'att-list' }, SB.attachmentChips(item.attachments)) : null));
     }
 

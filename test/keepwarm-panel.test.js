@@ -42,7 +42,7 @@ test('a queued message going out by itself says so, so Keep warm stays on', () =
   has(queue, 'const sendNow = (tab, text, attachments, opts) => SB.sendNow(tab, text, attachments, opts);', 'and the queue passes the mark on');
   has(src('tab-send.js'), 'async function sendNow(tab, text, attachments, opts) {\n    const r = await api.sendTask(tab.id, text, attachments, opts);', 'sendNow hands it to main');
   const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload', 'preload.js'), 'utf8');
-  has(preload, "sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true }),", 'the preload carries it');
+  has(preload, "sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true, model: opts?.model, modelBy: opts?.modelBy, modelCls: opts?.modelCls }),", 'the preload carries it');
   has(fs.readFileSync(path.join(__dirname, '..', 'src', 'main', 'ipc', 'tabs.js'), 'utf8'), 'if (fromQueue !== true) d.keepWarm?.userSent();', 'and task:send heeds it');
 });
 

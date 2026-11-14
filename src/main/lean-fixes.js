@@ -29,6 +29,7 @@ const HEAD_BYTES = 4096;                 // of a file, for the line about it
 const MAX_MEMORY = 512 * 1024;           // a CLAUDE.md bigger than this is left alone (claude/setup.js has the same limit)
 const MAX_SETTINGS = 1024 * 1024;        // and a settings file bigger than this
 const MAX_UNDO = 20;
+const MAX_NUDGED = 50;                   // fixes drafted for nudges under reads, kept until applied or forgotten
 const FIX_ID = str({ max: 1200 });
 const UNDO_ID = str({ max: 80 });
 
@@ -114,6 +115,8 @@ function createLeanFixes({ config, askOnce, setupWhere, log, now = Date.now }) {
   /** @type {{ project: string | null, fixes: any[] }} */
   let drafted = { project: null, fixes: [] };
   /** @type {Map<string, any>} */
+  const nudged = new Map(); // id -> a fix drafted for the nudge under a repeated read (wiring/read-nudge.js), with its project
+  /** @type {Map<string, any>} */
   const undos = new Map();
   let seq = 0;
 
@@ -122,6 +125,35 @@ function createLeanFixes({ config, askOnce, setupWhere, log, now = Date.now }) {
     const { home, cwd } = setupWhere();
     return cwd && !(home && samePath(cwd, home)) ? cwd : null;
   }
+
+  // A project's memory file and settings file, read as they are, with a reader for a file's head.
+  function filesOf(project) {
+    const mdFile = learnedRules.fileFor(project);
+    const mdRaw = insideProject(mdFile, project) ? readRaw(mdFile, MAX_MEMORY) : undefined;
+    const settingsFile = path.join(project, '.claude', 'settings.json');
+    const settingsRaw = insideProject(settingsFile, project) ? readRaw(settingsFile, MAX_SETTINGS) : undefined;
+    const headOf = rel => {
+      const file = path.resolve(project, rel);
+      return relativeTo(file, project) !== null && insideProject(file, project) ? head(file) : null;
+    };
+    return { mdFile, mdRaw, settingsFile, settingsRaw, headOf };
+  }
+
+  // Draft the fixes for a hot-files report against a project's files, each with the text it would write.
+  function draftFor(project, hot) {
+    const { mdFile, mdRaw, settingsFile, settingsRaw, headOf } = filesOf(project);
+    return leanfix.draftFixes({
+      hot, mdFile, settingsFile, headOf,
+      md: mdRaw === undefined ? null : normalise(mdRaw ?? ''),
+      settingsRaw: settingsRaw === undefined ? null : (settingsRaw ?? ''),
+    }).map(f => {
+      if (f.kind === 'claude-line') return { ...f, raw: mdRaw ?? null, write: shaped(mdRaw, f.after) };
+      if (f.kind === 'deny-read') return { ...f, raw: settingsRaw ?? null, write: shaped(settingsRaw, f.after) };
+      return f;
+    });
+  }
+
+  const publicOf = ({ raw: _raw, write: _write, project: _project, ...pub }) => pub;
 
   function remember(entry) {
     const id = `undo:${++seq}:${now()}`;
@@ -139,25 +171,27 @@ function createLeanFixes({ config, askOnce, setupWhere, log, now = Date.now }) {
   function drafts(hot) {
     const project = projectOf();
     if (!project || !hot) { drafted = { project: null, fixes: [] }; return []; }
-    const mdFile = learnedRules.fileFor(project);
-    const mdRaw = insideProject(mdFile, project) ? readRaw(mdFile, MAX_MEMORY) : undefined;
-    const settingsFile = path.join(project, '.claude', 'settings.json');
-    const settingsRaw = insideProject(settingsFile, project) ? readRaw(settingsFile, MAX_SETTINGS) : undefined;
-    const headOf = rel => {
-      const file = path.resolve(project, rel);
-      return relativeTo(file, project) !== null && insideProject(file, project) ? head(file) : null;
-    };
-    const fixes = leanfix.draftFixes({
-      hot, mdFile, settingsFile, headOf,
-      md: mdRaw === undefined ? null : normalise(mdRaw ?? ''),
-      settingsRaw: settingsRaw === undefined ? null : (settingsRaw ?? ''),
-    }).map(f => {
-      if (f.kind === 'claude-line') return { ...f, raw: mdRaw ?? null, write: shaped(mdRaw, f.after) };
-      if (f.kind === 'deny-read') return { ...f, raw: settingsRaw ?? null, write: shaped(settingsRaw, f.after) };
-      return f;
-    });
+    const fixes = draftFor(project, hot);
     drafted = { project, fixes };
-    return fixes.map(({ raw: _raw, write: _write, ...pub }) => pub);
+    return fixes.map(publicOf);
+  }
+
+  /**
+   * One fix for the nudge under a repeated read (read-nudge.js): the file's row
+   * from the week's scan ({ rel, reads, edits, sessions, tokens }), drafted for
+   * the conversation's own project rather than the folder the panel is on, and
+   * kept apart from the Lean tab's drafts so neither look spoils the other.
+   * -> the public fix (its id starts with "nudge:"), or null when there's none to draft.
+   */
+  function draftNudge({ project, file }) {
+    const { home } = setupWhere();
+    if (!project || (home && samePath(project, home)) || !file?.rel) return null;
+    const fix = draftFor(project, { files: [file] }).find(f => f.kind === 'deny-read' || f.kind === 'claude-line');
+    if (!fix) return null;
+    const id = `nudge:${++seq}:${fix.id}`;
+    nudged.set(id, { ...fix, id, project });
+    while (nudged.size > MAX_NUDGED) nudged.delete(nudged.keys().next().value);
+    return publicOf(nudged.get(id));
   }
 
   // ---- applying
@@ -179,11 +213,16 @@ function createLeanFixes({ config, askOnce, setupWhere, log, now = Date.now }) {
     };
   }
 
-  /** Apply a drafted fix by its id: asked first, written only if the file still reads as the preview did. */
+  /**
+   * Apply a drafted fix by its id: asked first, written only if the file still
+   * reads as the preview did. A nudge's fix is for the project it was drafted
+   * in; the Lean tab's are for the folder the panel is still on.
+   */
   async function apply(id) {
-    const fix = drafted.fixes.find(f => f.id === id);
-    const project = projectOf();
-    if (!fix || !project || !drafted.project || !samePath(project, drafted.project)) return { ok: false, error: 'That fix is from an earlier look. Check again and try once more.' };
+    const nudge = nudged.get(id) || null;
+    const fix = nudge || drafted.fixes.find(f => f.id === id);
+    const project = nudge ? nudge.project : projectOf();
+    if (!fix || !project || (!nudge && (!drafted.project || !samePath(project, drafted.project)))) return { ok: false, error: 'That fix is from an earlier look. Check again and try once more.' };
     if (fix.kind !== 'deny-read' && fix.kind !== 'claude-line') return { ok: false, error: "That one is a suggestion to try by hand: there's nothing to apply." };
     const name = base(fix.file);
     // Still inside the project (links followed), still the file the preview showed: checked
@@ -205,7 +244,7 @@ function createLeanFixes({ config, askOnce, setupWhere, log, now = Date.now }) {
       log?.warn?.(`lean fixes: couldn't write ${fix.file}: ${e && e.message}`);
       return { ok: false, error: `Couldn't write ${name}.` };
     }
-    const undoId = remember({ kind: fix.kind, scope: 'project', file: fix.file, before: fix.raw, after: fix.write, label: fix.title });
+    const undoId = remember({ kind: fix.kind, scope: 'project', project, file: fix.file, before: fix.raw, after: fix.write, label: fix.title });
     return { ok: true, undoId, file: fix.file };
   }
 
@@ -219,9 +258,10 @@ function createLeanFixes({ config, askOnce, setupWhere, log, now = Date.now }) {
       return { ok: true };
     }
     const name = base(u.file);
-    // A project's file must still be inside it (your own settings file lives in your home).
+    // A project's file must still be inside it (your own settings file lives in your home):
+    // the project it was written in, when the fix knew one, else the folder the panel is on.
     if (u.scope !== 'user') {
-      const project = projectOf();
+      const project = u.project || projectOf();
       if (!project || !insideProject(u.file, project)) return { ok: false, error: `${name} is outside the project now, so Shellby left it alone.` };
     }
     if (readRaw(u.file) !== u.after) return { ok: false, error: `${name} changed since Shellby wrote it, so it's left as it is.` };
@@ -326,7 +366,7 @@ function createLeanFixes({ config, askOnce, setupWhere, log, now = Date.now }) {
     ipcMain.handle('lean:style-off', () => styleOff());
   }
 
-  return { drafts, apply, undo, activeStyle, styleOff, register };
+  return { drafts, draftNudge, apply, undo, activeStyle, styleOff, register };
 }
 
 module.exports = { createLeanFixes, insideProject, realDeep };

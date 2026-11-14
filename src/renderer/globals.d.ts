@@ -51,6 +51,7 @@ interface Window {
   ShellbyRemoteLogic: any;
   ShellbyReviewLenses: any;
   ShellbyReviewQueue: any;
+  ShellbySavers: any;
   ShellbySettingsSearch: any;
   ShellbySettingsText: any;
   ShellbyShortcuts: any;
@@ -265,7 +266,10 @@ interface ShellbyPanelExtras {
   // gitlab.js
   gitlab: any;
   // handoff.js
+  handoffCheck: any;
   offerHandoff: any;
+  settleHandoff: any;
+  showHandoff: any;
   // health.js
   health: any;
   refreshHealthCrab: any;
@@ -424,6 +428,10 @@ interface ShellbyPanelExtras {
   renderCloudRoutines: any;
   // routines.js
   openRoutineEditor: any;
+  // savers.js
+  saverGate: any;
+  sendGated: any;
+  settleSaver: any;
   // settings-account.js
   renderBillingGuard: any;
   renderClaudeAccount: any;

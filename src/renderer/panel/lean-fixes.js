@@ -123,5 +123,6 @@
     ];
   }
 
-  SB.leanFixes = { fixRows, styleOff, pluginOff, isBusy: id => busy.has(id), line: () => state.lean?.fixed?.line || '' };
+  // diffBox: the nudge under a repeated read shows its fix the same way (feed-savers.js).
+  SB.leanFixes = { fixRows, styleOff, pluginOff, diffBox, isBusy: id => busy.has(id), line: () => state.lean?.fixed?.line || '' };
 })();
