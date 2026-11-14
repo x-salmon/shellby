@@ -19,6 +19,13 @@ const TYPES = Object.freeze({
 const READS = Object.freeze(['usage', 'conversations', 'projects', 'health', 'routines', 'git']);
 const AGENTS = Object.freeze(['any', 'shellby', 'none']);
 const HOST_RE = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+// A page data key: short, printable; never a name every object already has.
+const KEY_RE = /^[^\u0000-\u001f]{1,100}$/;
+const RESERVED_KEYS = Object.freeze(['__proto__', 'constructor', 'prototype']);
+// Who wrote something: you, the page, a conversation, a routine, a terminal, another PC.
+const WHO_KINDS = Object.freeze(['you', 'page', 'agent', 'routine', 'terminal', 'pc']);
+// Another PC's id (progression/xp.js DEVICE_RE) and its name.
+const PC_RE = /^[\w-]{1,64}$/;
 
 const ok = extra => ({ ok: true, ...extra });
 const no = error => ({ ok: false, error });
@@ -31,6 +38,20 @@ function line(v, n) {
 const isId = v => typeof v === 'string' && ID_RE.test(v) && !v.startsWith('draft-');
 const isDraftId = v => typeof v === 'string' && DRAFT_RE.test(v);
 const isFileName = v => typeof v === 'string' && FILE_RE.test(v) && !v.includes('..');
+const isDataKey = v => typeof v === 'string' && KEY_RE.test(v) && !RESERVED_KEYS.includes(v);
+
+/** Who did something, cleaned: { kind, name }. */
+function whoOf(raw) {
+  const w = raw && typeof raw === 'object' ? raw : {};
+  return { kind: WHO_KINDS.includes(w.kind) ? w.kind : 'you', name: line(w.name, 80) };
+}
+
+/** Another PC, as a page from it names it: { pc, name }, or null. */
+function pcOf(raw) {
+  const p = raw && typeof raw === 'object' ? raw : {};
+  if (typeof p.pc !== 'string' || !PC_RE.test(p.pc)) return null;
+  return { pc: p.pc, name: line(p.name, 64) || 'another PC' };
+}
 /** @param {string} name */
 const typeOf = name => /** @type {Record<string, string>} */ (TYPES)[String(String(name).split('.').pop()).toLowerCase()] || 'application/octet-stream';
 
@@ -143,7 +164,7 @@ function manifestOf(raw, { id } = {}) {
 }
 
 module.exports = {
-  FORMAT, READS, AGENTS, NO_ACCESS, TYPES,
-  isId, isDraftId, isFileName, typeOf, slug, hostOf, line,
+  FORMAT, READS, AGENTS, NO_ACCESS, TYPES, WHO_KINDS,
+  isId, isDraftId, isFileName, isDataKey, typeOf, slug, hostOf, line, whoOf, pcOf,
   accessOf, accessGrowth, accessUnion, accessWords, manifestOf,
 };

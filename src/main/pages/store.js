@@ -1,15 +1,21 @@
 // Where pages live on disk, and the only code that writes there.
 //
 //   <root>\<id>\
-//     state.json      on or off, what you agreed to, pinned, its versions' log
-//     data.json       { values, by }: the page data, and who wrote each key
+//     state.json      on or off, what you agreed to, pinned, its versions' log,
+//                     and how it syncs (where it goes, its stamps, a version waiting)
+//     data.json       { values, by, gone }: the page data, who wrote each key, and
+//                     when each removed key went (so a sync doesn't bring it back)
 //     activity.json   the last 200 writes
-//     thumb.png       the shelf's miniature (written by the service)
+//     thumb.jpg       the shelf's miniature (written by the service)
+//     pending.jpg     the miniature a new version from another PC came with
 //     v\<n>\          version n: its files and its page.json
 //   <root>\.drafts\<draft-id>\   the same, for a page still being built
+//   <root>\.sync.json            { gone: { id: at } }: pages deleted here, for the sync
 //
 // The current version is state.version. A save writes a new v\<n> and keeps
-// the last 20; going back copies an old one forward, so nothing is lost.
+// the last 20; going back copies an old one forward, so nothing is lost. A
+// version from another PC (arrive) is written like a save but, when you've
+// agreed to a version here, waits as state.sync.pending until you turn it on.
 // Everything read back is checked again (format.js), since a page's folder is
 // as untrusted as what wrote it. Writes go through writeFileDurable.
 //
@@ -23,22 +29,52 @@ const format = require('./format');
 const { writeFileDurable } = require('../durable');
 
 const DRAFTS = '.drafts';
+const SYNC_FILE = '.sync.json';
+const MAX_GONE = 200;
 const ok = extra => ({ ok: true, ...extra });
 const no = error => ({ ok: false, error });
-const KEY_RE = /^[^\u0000-\u001f]{1,100}$/;
-// Names an object already has: never page data keys.
-const RESERVED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
-const WHO_KINDS = ['you', 'page', 'agent', 'routine', 'terminal', 'pc'];
+const { whoOf } = format;
+const WHERE = ['everywhere', 'here'];
+const DATA_WHERE = ['with', 'here'];
+const num = v => (Number.isFinite(v) && v > 0 ? v : 0);
 
 function readJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
 }
 const writeJson = (file, value) => writeFileDurable(file, JSON.stringify(value));
 
-/** Who did something, cleaned: { kind, name }. */
-function whoOf(raw) {
-  const w = raw && typeof raw === 'object' ? raw : {};
-  return { kind: WHO_KINDS.includes(w.kind) ? w.kind : 'you', name: format.line(w.name, 80) };
+/** One version's line in the log: { n, at, who, why, pc } (pc: the PC it came from, or null for this one). */
+function versionOf(v) {
+  return { n: v.n, at: Number(v.at) || 0, who: whoOf(v.who), why: format.line(v.why, LIMITS.WHY), pc: format.line(v.pc, 64) || null };
+}
+
+/**
+ * How a page syncs (sync/pages.js): where it goes, its data's choice, the
+ * stamp of the newest version this PC knows (at), the stamp the gist last
+ * agreed on (sharedAt), which PC changed it last (from; null: this one), a
+ * version from another PC waiting to be looked at (pending), and a version
+ * of this PC's that lost to another PC's later one (lost).
+ */
+function syncOf(raw, fallbackAt) {
+  const s = raw && typeof raw === 'object' ? raw : {};
+  const p = s.pending && typeof s.pending === 'object' && Number.isInteger(s.pending.n) && s.pending.n > 0 ? s.pending : null;
+  const l = s.lost && typeof s.lost === 'object' && Number.isInteger(s.lost.n) && s.lost.n > 0 ? s.lost : null;
+  return {
+    where: WHERE.includes(s.where) ? s.where : 'everywhere',
+    data: DATA_WHERE.includes(s.data) ? s.data : 'with',
+    at: num(s.at) || fallbackAt || 1,
+    sharedAt: num(s.sharedAt),
+    from: format.pcOf(s.from),
+    pending: p ? { n: p.n, at: num(p.at), from: format.pcOf(p.from), why: format.line(p.why, LIMITS.WHY), who: whoOf(p.who) } : null,
+    lost: l ? { n: l.n, at: num(l.at), from: format.pcOf(l.from) } : null,
+  };
+}
+
+/** A page that came from another PC and hasn't been looked at here: { kind, from, at, quiet }. */
+function arrivedOf(raw) {
+  const a = raw && typeof raw === 'object' ? raw : null;
+  if (!a || !['new', 'changed'].includes(a.kind)) return null;
+  return { kind: a.kind, from: format.pcOf(a.from), at: num(a.at), quiet: a.quiet === true };
 }
 
 function stateOf(raw) {
@@ -46,8 +82,13 @@ function stateOf(raw) {
   const access = a => (a ? format.accessOf(a) : null);
   const agreed = access(s.agreed);
   const added = access(s.added);
+  const version = Number.isInteger(s.version) && s.version > 0 ? s.version : 1;
+  const versions = (Array.isArray(s.versions) ? s.versions : [])
+    .filter(v => v && Number.isInteger(v.n) && v.n > 0)
+    .map(versionOf)
+    .slice(-LIMITS.VERSIONS);
   return {
-    version: Number.isInteger(s.version) && s.version > 0 ? s.version : 1,
+    version,
     enabled: s.enabled !== false,
     agreed: agreed?.ok ? agreed.access : null,
     added: added?.ok ? added.access : { ...format.NO_ACCESS },
@@ -58,13 +99,14 @@ function stateOf(raw) {
     tab: typeof s.tab === 'string' ? s.tab.slice(0, 100) : null,
     createdAt: Number.isFinite(s.createdAt) ? s.createdAt : 0,
     updatedAt: Number.isFinite(s.updatedAt) ? s.updatedAt : 0,
+    openedAt: num(s.openedAt),
     lastChange: s.lastChange && typeof s.lastChange === 'object'
       ? { text: format.line(s.lastChange.text, 120), at: Number(s.lastChange.at) || 0 } : null,
-    versions: (Array.isArray(s.versions) ? s.versions : [])
-      .filter(v => v && Number.isInteger(v.n) && v.n > 0)
-      .map(v => ({ n: v.n, at: Number(v.at) || 0, who: whoOf(v.who), why: format.line(v.why, LIMITS.WHY) }))
-      .slice(-LIMITS.VERSIONS),
+    versions,
     broken: s.broken && typeof s.broken === 'object' ? { message: format.line(s.broken.message, 300), at: Number(s.broken.at) || 0 } : null,
+    // A page from before it could sync counts as changed when its version was made.
+    sync: syncOf(s.sync, versions.find(v => v.n === version)?.at || num(s.createdAt)),
+    arrived: arrivedOf(s.arrived),
   };
 }
 
@@ -162,8 +204,9 @@ function createStore(root, { now = Date.now } = {}) {
       pinned: false, notifyOn: true, wants: o.wants || null, from: o.from || 'here', tab: o.tab || null,
       createdAt: at, updatedAt: at, lastChange: { text: 'Made', at },
       versions: [{ n: 1, at, who: whoOf(o.who), why: format.line(o.why, LIMITS.WHY) || 'First version' }],
+      sync: { where: 'everywhere', data: 'with', at, sharedAt: 0, from: null, pending: null, lost: null },
     });
-    writeJson(path.join(dirOf(id), 'data.json'), { values: {}, by: {} });
+    writeJson(path.join(dirOf(id), 'data.json'), { values: {}, by: {}, gone: {} });
     return ok({ id, version: 1 });
   }
 
@@ -175,9 +218,138 @@ function createStore(root, { now = Date.now } = {}) {
     const n = Math.max(s.version, ...s.versions.map(v => v.n)) + 1;
     writeVersion(id, n, { ...man, id: format.isId(id) ? id : null }, fileMap);
     const at = now();
-    const versions = [...s.versions, { n, at, who: whoOf(who), why: format.line(why, LIMITS.WHY) }].slice(-LIMITS.VERSIONS);
-    saveState(id, { ...s, version: n, versions, updatedAt: at, broken: null, lastChange: { text: format.line(why, 120) || `Version ${n}`, at } });
+    const versions = [...s.versions, { n, at, who: whoOf(who), why: format.line(why, LIMITS.WHY), pc: null }].slice(-LIMITS.VERSIONS);
+    // A change made here: it's this PC's newest, and anything waiting from another PC stays in History only.
+    const sync = { ...s.sync, at, from: null, pending: null, lost: null };
+    saveState(id, { ...s, version: n, versions, updatedAt: at, broken: null, lastChange: { text: format.line(why, 120) || `Version ${n}`, at }, sync, arrived: null });
     return ok({ version: n, growth: format.accessGrowth(s.agreed, man.access) });
+  }
+
+  // ------------------------------------------------------- from another PC
+  /**
+   * A version from another PC (sync/pages.js): { at, from, why, who } are
+   * the other PC's. A page new here is made with the gist's id, switched off
+   * and with its access not agreed. One you've agreed to here keeps running,
+   * and the new version waits as sync.pending until you turn it on; one never
+   * agreed here just takes the new version. A version of this PC's that the
+   * gist never saw is kept in History and named in sync.lost.
+   * -> { version, kind: 'new' | 'changed' }
+   */
+  function arrive(id, man, fileMap, { at, from, why, who }) {
+    if (!format.isId(id)) return no('Not a page id.');
+    const stamp = num(at) || 1;
+    if (!known(id)) {
+      if (ids().length >= LIMITS.PAGES) return no(`There are already ${LIMITS.PAGES} pages, the most Shellby keeps.`);
+      fs.mkdirSync(dirOf(id), { recursive: true });
+      const made = now();
+      writeVersion(id, 1, { ...man, id }, fileMap);
+      saveState(id, {
+        version: 1, enabled: false, agreed: null, added: { ...format.NO_ACCESS },
+        pinned: false, notifyOn: true, wants: null, from: 'pc', tab: null,
+        createdAt: made, updatedAt: made, lastChange: { text: `Came from ${from?.name || 'another PC'}`, at: made },
+        versions: [{ n: 1, at: stamp, who: whoOf(who), why: format.line(why, LIMITS.WHY) || 'First version', pc: from?.name || null }],
+        sync: { where: 'everywhere', data: 'with', at: stamp, sharedAt: stamp, from, pending: null, lost: null },
+        arrived: { kind: 'new', from, at: made, quiet: false },
+      });
+      writeJson(path.join(dirOf(id), 'data.json'), { values: {}, by: {}, gone: {} });
+      forgetGone(id);
+      return ok({ id, version: 1, kind: 'new' });
+    }
+    const s = state(id);
+    const n = Math.max(s.version, ...s.versions.map(v => v.n)) + 1;
+    writeVersion(id, n, { ...man, id }, fileMap);
+    const made = now();
+    const versions = [...s.versions, { n, at: stamp, who: whoOf(who), why: format.line(why, LIMITS.WHY), pc: from?.name || null }].slice(-LIMITS.VERSIONS);
+    // This PC changed it since the gist last saw it: that version lost, and stays a version here.
+    const lost = s.sync.at > s.sync.sharedAt && !s.sync.pending ? { n: s.version, at: s.sync.at, from } : s.sync.lost;
+    const waits = !!s.agreed;
+    const sync = { ...s.sync, at: stamp, sharedAt: stamp, from, pending: waits ? { n, at: stamp, from, why: format.line(why, LIMITS.WHY), who: whoOf(who) } : null, lost };
+    saveState(id, {
+      ...s, version: waits ? s.version : n, versions, updatedAt: made, sync,
+      lastChange: { text: `${waits ? 'A new version' : 'Changed'} from ${from?.name || 'another PC'}`, at: made },
+      arrived: { kind: waits ? 'changed' : 'new', from, at: made, quiet: false },
+    });
+    return ok({ id, version: n, kind: waits ? 'changed' : 'new' });
+  }
+
+  /**
+   * Turn it on: you looked at what came from another PC and agreed. shown is
+   * the version the sheet showed (the one waiting, or the current one), so a
+   * version arriving meanwhile is looked at again.
+   */
+  function turnOn(id, shown) {
+    if (!known(id) || format.isDraftId(id)) return no('No such page.');
+    const s = state(id);
+    const n = s.sync.pending?.n ?? s.version;
+    if (n !== shown) return no('The page changed while you were looking. Have another look at what it asks for.');
+    const man = manifest(id, n);
+    if (!man) return no("The version can't be read.");
+    const at = now();
+    const from = s.sync.pending?.from || s.arrived?.from;
+    const text = s.sync.pending ? `Turned on the version from ${from?.name || 'another PC'}` : 'Turned on';
+    saveState(id, {
+      ...s, version: n, agreed: man.access, enabled: true, wants: null, broken: null, arrived: null,
+      sync: { ...s.sync, pending: null }, updatedAt: at, lastChange: { text, at },
+    });
+    try { fs.rmSync(pendingThumbFile(id), { force: true }); } catch { /* none */ }
+    if (s.sync.pending) {
+      const t = thumb(id);
+      const pt = readPendingThumb(id);
+      if (pt && !t) fs.writeFileSync(thumbFile(id), pt);
+    }
+    return ok({ version: n });
+  }
+
+  /** Not on this PC: it stays as it is (off, or running your version) and quiet until it next changes elsewhere. */
+  function decline(id) {
+    if (!known(id)) return no('No such page.');
+    const s = state(id);
+    if (!s.arrived) return ok();
+    saveState(id, { ...s, arrived: { ...s.arrived, quiet: true } });
+    return ok();
+  }
+
+  /** Where it goes: the page Everywhere or This PC only, and its data with it or staying here. */
+  function setWhere(id, patch) {
+    if (!known(id) || format.isDraftId(id)) return no('No such page.');
+    const s = state(id);
+    const sync = { ...s.sync };
+    if (WHERE.includes(patch?.where)) sync.where = patch.where;
+    if (DATA_WHERE.includes(patch?.data)) sync.data = patch.data;
+    saveState(id, { ...s, sync });
+    return ok({ sync });
+  }
+
+  /** The gist agreed on stamp `at` for this page (after a sync). */
+  function markShared(id, at) {
+    if (!known(id)) return;
+    const s = state(id);
+    if (s.sync.sharedAt === at) return;
+    saveState(id, { ...s, sync: { ...s.sync, sharedAt: at } });
+  }
+
+  /** You opened it: pages travel in the order they were last opened. */
+  function touchOpened(id) {
+    if (!known(id) || format.isDraftId(id)) return;
+    const s = state(id);
+    const at = now();
+    if (at - s.openedAt < 60_000) return;
+    saveState(id, { ...s, openedAt: at });
+  }
+
+  // Pages deleted here, so a sync doesn't bring one back: <root>\.sync.json { gone: { id: at } }.
+  const syncFile = () => path.join(root, SYNC_FILE);
+  function syncState() {
+    const raw = readJson(syncFile(), null);
+    const g = raw && typeof raw === 'object' && raw.gone && typeof raw.gone === 'object' ? raw.gone : {};
+    const gone = Object.fromEntries(Object.entries(g).filter(([id, at]) => format.isId(id) && num(at)).sort((x, y) => y[1] - x[1]).slice(0, MAX_GONE));
+    return { gone };
+  }
+  function forgetGone(id) {
+    const { gone } = syncState();
+    if (!(id in gone)) return;
+    const { [id]: _g, ...rest } = gone;
+    writeJson(syncFile(), { gone: rest });
   }
 
   /** Go back to version n: a new version with n's files. */
@@ -206,16 +378,23 @@ function createStore(root, { now = Date.now } = {}) {
       const m = readJson(f, null);
       if (m) fs.writeFileSync(f, JSON.stringify({ ...m, id }, null, 2));
     }
-    saveState(id, { ...s, tab: null, from: 'here', lastChange: { text: 'Saved to your pages', at: now() } });
+    const at = now();
+    saveState(id, { ...s, tab: null, from: 'here', lastChange: { text: 'Saved to your pages', at }, sync: { ...s.sync, at, sharedAt: 0, from: null } });
     // What the preview wrote was sample data: the page starts empty.
-    writeJson(path.join(dirOf(id), 'data.json'), { values: {}, by: {} });
+    writeJson(path.join(dirOf(id), 'data.json'), { values: {}, by: {}, gone: {} });
     try { fs.rmSync(path.join(dirOf(id), 'activity.json'), { force: true }); } catch { /* none */ }
+    forgetGone(id);
     return ok({ id });
   }
 
+  /** Delete it. A page (not a draft) leaves a marker so the sync deletes it on your other PCs too, and doesn't bring it back. */
   function remove(id) {
     if (!known(id)) return no('No such page.');
     fs.rmSync(dirOf(id), { recursive: true, force: true });
+    if (format.isId(id)) {
+      const { gone } = syncState();
+      writeJson(syncFile(), { gone: { ...gone, [id]: now() } });
+    }
     return ok();
   }
 
@@ -287,20 +466,23 @@ function createStore(root, { now = Date.now } = {}) {
 
   // ------------------------------------------------------------- page data
   const dataFile = id => path.join(dirOf(id), 'data.json');
+  const plainObj = v => v && typeof v === 'object' && !Array.isArray(v) ? v : {};
   function data(id) {
     const raw = readJson(dataFile(id), null);
-    const values = raw?.values && typeof raw.values === 'object' && !Array.isArray(raw.values) ? raw.values : {};
-    const by = raw?.by && typeof raw.by === 'object' ? raw.by : {};
-    return { values, by };
+    const values = plainObj(raw?.values);
+    const by = plainObj(raw?.by);
+    // When each removed key went, so a sync with an older copy doesn't bring it back.
+    const gone = Object.fromEntries(Object.entries(plainObj(raw?.gone)).filter(([k, at]) => format.isDataKey(k) && num(at)).slice(-MAX_GONE));
+    return { values, by, gone };
   }
 
   /** The data, or just these keys. A draft has data of its own, from its preview. */
   function read(id, keys) {
     if (!known(id)) return no('No such page.');
-    const { values, by } = data(id);
-    if (!Array.isArray(keys) || !keys.length) return ok({ values, by });
+    const { values, by, gone } = data(id);
+    if (!Array.isArray(keys) || !keys.length) return ok({ values, by, gone });
     const pick = o => Object.fromEntries(keys.filter(k => Object.hasOwn(o, k)).map(k => [k, o[k]]));
-    return ok({ values: pick(values), by: pick(by) });
+    return ok({ values: pick(values), by: pick(by), gone });
   }
 
   /**
@@ -316,8 +498,8 @@ function createStore(root, { now = Date.now } = {}) {
     const append = o.append && typeof o.append === 'object' && !Array.isArray(o.append) ? o.append : {};
     const keys = [...Object.keys(set), ...remove, ...Object.keys(append)];
     if (!keys.length) return no('Nothing to write: give set, remove or append.');
-    for (const k of keys) if (typeof k !== 'string' || !KEY_RE.test(k) || RESERVED_KEYS.has(k)) return no(`"${String(k).slice(0, 40)}" isn't a key: 1 to 100 characters, no control characters.`);
-    const { values, by } = data(id);
+    for (const k of keys) if (!format.isDataKey(k)) return no(`"${String(k).slice(0, 40)}" isn't a key: 1 to 100 characters, no control characters.`);
+    const { values, by, gone } = data(id);
     const next = { ...values };
     const at = now();
     const w = whoOf(who);
@@ -339,11 +521,13 @@ function createStore(root, { now = Date.now } = {}) {
     if (Object.keys(next).length > LIMITS.DATA_KEYS) return no(`A page holds at most ${LIMITS.DATA_KEYS} keys.`);
     if (jsonBytes(next) > LIMITS.DATA_BYTES) return no(`A page's data is at most ${LIMITS.DATA_BYTES / 1024 / 1024} MB.`);
     const nextBy = { ...by };
+    const nextGone = { ...gone };
+    // op: an append merges item by item with another PC's appends (sync/pages.js); a set replaces.
+    const onlyAppended = k => !Object.hasOwn(set, k) && Object.hasOwn(append, k);
     for (const k of new Set(keys)) {
-      if (Object.hasOwn(next, k)) nextBy[k] = { who: w, at };
-      else delete nextBy[k];
+      if (Object.hasOwn(next, k)) { nextBy[k] = { who: w, at, op: onlyAppended(k) ? 'append' : 'set' }; delete nextGone[k]; } else { delete nextBy[k]; nextGone[k] = at; }
     }
-    writeJson(dataFile(id), { values: next, by: nextBy });
+    writeJson(dataFile(id), { values: next, by: nextBy, gone: Object.fromEntries(Object.entries(nextGone).slice(-MAX_GONE)) });
     const changed = [...new Set(keys)];
     const text = describeWrite(set, remove, append, appended);
     logActivity(id, { at, who: w, text, keys: changed });
@@ -351,6 +535,51 @@ function createStore(root, { now = Date.now } = {}) {
     const whoText = w.kind === 'you' ? 'You' : w.kind === 'page' ? 'On the page' : w.name || 'Someone';
     saveState(id, { ...s, updatedAt: at, lastChange: { text: `${whoText}: ${text}`, at } });
     return ok({ changed, values: Object.fromEntries(changed.filter(k => Object.hasOwn(next, k)).map(k => [k, next[k]])), text });
+  }
+
+  /**
+   * Data merged in from another PC (sync/pages.js apply): each key as the merge
+   * decided it, with the stamp and signature it had there, never re-stamped
+   * here (so the two PCs agree next time). from: { pc, name }.
+   * -> { changed, values, text, who }
+   */
+  function arriveData(id, { set = {}, remove = [], gone = {} }, from) {
+    if (!known(id) || format.isDraftId(id)) return no('No such page.');
+    const { values, by, gone: wasGone } = data(id);
+    const next = { ...values };
+    const nextBy = { ...by };
+    const nextGone = { ...wasGone };
+    const parts = [];
+    const touched = [];
+    for (const [k, e] of Object.entries(plainObj(set))) {
+      if (!format.isDataKey(k) || !e || typeof e !== 'object' || jsonBytes(e.v) > LIMITS.VALUE_BYTES) continue;
+      const was = next[k];
+      next[k] = JSON.parse(JSON.stringify(e.v));
+      nextBy[k] = { who: whoOf(e.by?.who), at: num(e.by?.at) || now(), op: e.by?.op === 'append' ? 'append' : 'set' };
+      delete nextGone[k];
+      touched.push(k);
+      const grew = Array.isArray(was) && Array.isArray(next[k]) && next[k].length > was.length;
+      parts.push(grew ? `added ${next[k].length - was.length} to ${k}` : `changed ${k}`);
+    }
+    for (const k of Array.isArray(remove) ? remove : []) {
+      if (!format.isDataKey(k) || !Object.hasOwn(next, k)) continue;
+      delete next[k]; delete nextBy[k];
+      nextGone[k] = num(gone[k]) || now();
+      touched.push(k);
+      parts.push(`removed ${k}`);
+    }
+    for (const [k, at] of Object.entries(plainObj(gone))) if (format.isDataKey(k) && num(at) && !Object.hasOwn(next, k)) nextGone[k] = Math.max(nextGone[k] || 0, at);
+    if (!touched.length) return ok({ changed: [], values: {}, text: '', who: null });
+    if (Object.keys(next).length > LIMITS.DATA_KEYS) return no(`A page holds at most ${LIMITS.DATA_KEYS} keys.`);
+    if (jsonBytes(next) > LIMITS.DATA_BYTES) return no(`A page's data is at most ${LIMITS.DATA_BYTES / 1024 / 1024} MB.`);
+    writeJson(dataFile(id), { values: next, by: nextBy, gone: Object.fromEntries(Object.entries(nextGone).slice(-MAX_GONE)) });
+    const at = now();
+    const who = { kind: 'pc', name: from?.name || 'another PC' };
+    const text = parts.slice(0, 4).join('; ') + (parts.length > 4 ? ` and ${parts.length - 4} more` : '');
+    logActivity(id, { at, who, text, keys: touched });
+    const s = state(id);
+    saveState(id, { ...s, updatedAt: at, lastChange: { text: `${who.name}: ${text}`.slice(0, 120), at } });
+    return ok({ changed: touched, values: Object.fromEntries(touched.filter(k => Object.hasOwn(next, k)).map(k => [k, next[k]])), text, who });
   }
 
   function describeWrite(set, remove, append, appended) {
@@ -389,9 +618,11 @@ function createStore(root, { now = Date.now } = {}) {
       id, name: man.name, description: man.description, icon: man.icon, project: man.project, phone: man.phone,
       agents: man.agents, access: man.access, keys: Object.keys(values).slice(0, 50),
       enabled: s.enabled, pinned: s.pinned, notifyOn: s.notifyOn, wants: s.wants, from: s.from,
-      version: s.version, updatedAt: s.updatedAt, createdAt: s.createdAt, lastChange: s.lastChange,
+      version: s.version, updatedAt: s.updatedAt, createdAt: s.createdAt, openedAt: s.openedAt, lastChange: s.lastChange,
       needsOk: !format.isDraftId(id) && s.enabled && format.accessGrowth(s.agreed, man.access).length > 0,
       broken: s.broken,
+      sync: { where: s.sync.where, data: s.sync.data, pending: s.sync.pending, lost: s.sync.lost, from: s.sync.from },
+      arrived: s.arrived,
     };
   }
 
@@ -403,13 +634,19 @@ function createStore(root, { now = Date.now } = {}) {
 
   /** The shelf's miniature: a JPEG, written by the service when a page closes. */
   const thumbFile = id => path.join(dirOf(id), 'thumb.jpg');
-  function writeThumb(id, jpeg) {
-    if (!known(id) || !Buffer.isBuffer(jpeg) || jpeg.length > 256 * 1024) return no('No thumb.');
-    fs.writeFileSync(thumbFile(id), jpeg);
+  const isJpeg = buf => Buffer.isBuffer(buf) && buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  /** pending: the miniature a version waiting from another PC came with, kept apart from this PC's own. */
+  function writeThumb(id, jpeg, { pending = false } = {}) {
+    if (!known(id) || !isJpeg(jpeg) || jpeg.length > 256 * 1024) return no('No thumb.');
+    fs.writeFileSync(pending ? pendingThumbFile(id) : thumbFile(id), jpeg);
     return ok();
   }
   function thumb(id) {
     try { return fs.readFileSync(thumbFile(id)); } catch { return null; }
+  }
+  const pendingThumbFile = id => path.join(dirOf(id), 'pending.jpg');
+  function readPendingThumb(id) {
+    try { return fs.readFileSync(pendingThumbFile(id)); } catch { return null; }
   }
 
   /** Drafts made by one conversation, newest first. */
@@ -421,6 +658,8 @@ function createStore(root, { now = Date.now } = {}) {
   return {
     root, ids, draftIds, known, state, manifest, files, readFile, create, update, revert, saveDraft, remove,
     setMeta, setAgents, agree, addHost, access, pendingAccess, read, write, activity, list, summary, markBroken, draftsOf, writeThumb, thumb,
+    // Between PCs (sync/pages.js, wiring/pages.js)
+    arrive, arriveData, turnOn, decline, setWhere, markShared, touchOpened, syncState, pendingThumb: readPendingThumb,
   };
 }
 

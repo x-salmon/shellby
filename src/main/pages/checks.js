@@ -128,6 +128,9 @@ function check(files, access) {
       used.ask ||= r.calls.ask;
       used.notify ||= r.calls.notify;
       r.calls.hosts.forEach(h => used.hosts.add(h));
+    } else if (/<script\b|\son[a-z]+\s*=|javascript:/i.test(stripComments.html(src))) {
+      // An SVG, JSON or text file is served with no script at all, so code in one never runs.
+      errors.push(`${name}: code in a .${ext} file never runs (a page's scripts are its .js files). Take the <script>, handlers or javascript: links out.`);
     }
   }
   if (!/<script\b[^>]*\bsrc\s*=\s*["']?\.?\/?shellby\.js["'\s>]/i.test(stripComments.html(files['index.html'] || ''))) {
