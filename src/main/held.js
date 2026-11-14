@@ -6,7 +6,8 @@
 // Three kinds:
 //   { kind: 'message', tabId, cwd, title, text, attachments }: a message for a
 //     conversation; it goes back there, reopening it from History if needed.
-//   { kind: 'routine', routineId, name }: one run of a routine.
+//   { kind: 'routine', routineId, name, auto, why? }: one run of a routine. why says
+//     what held it when Shellby did: 'limit', or routines/pace.js's reason.
 //   { kind: 'task', prompt, cwd, mode, name, tabId, tries, model?, when? }: heavy work queued
 //     for a fresh window ("refactor X overnight"). Tasks go one after another,
 //     each waiting for the last to finish. Once one starts it keeps its tabId:
@@ -25,6 +26,7 @@ const MAX_FILES = 20;
 const MAX_WAIT_MS = 8 * 24 * 60 * 60 * 1000; // the weekly window is the longest anyone waits
 const MAX_TRIES = 3; // starts of one task (first go, then carrying on) before it's given up on
 const TASK_MODES = ['ask', 'smart', 'acceptEdits', 'plan', 'autonomous'];
+const ROUTINE_WHYS = ['limit', 'reserve', 'near', 'pace'];
 const ID_RE = /^[\w-]{1,64}$/;
 
 const isStr = s => typeof s === 'string' && s.length > 0;
@@ -50,8 +52,11 @@ function clean(raw, now) {
   };
   if (raw.kind === 'routine') {
     if (!isStr(raw.routineId) || !ID_RE.test(raw.routineId)) return null;
-    // auto: held because it came due at the limit, not because you asked.
-    return { ...base, kind: 'routine', routineId: raw.routineId, name: String(raw.name || 'Routine').slice(0, 60), auto: raw.auto === true };
+    // auto: held because it came due at (or near) the limit, not because you asked; why says which.
+    return {
+      ...base, kind: 'routine', routineId: raw.routineId, name: String(raw.name || 'Routine').slice(0, 60), auto: raw.auto === true,
+      ...(raw.auto === true && ROUTINE_WHYS.includes(raw.why) ? { why: raw.why } : {}),
+    };
   }
   if (raw.kind === 'task') {
     const prompt = typeof raw.prompt === 'string' ? raw.prompt.trim().slice(0, MAX_TEXT) : '';

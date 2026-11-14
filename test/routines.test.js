@@ -111,6 +111,13 @@ test('validateRoutine normalises good input and fills defaults', () => {
   assert.equal(routine.lastRunAt, null);
   assert.equal(routine.lastStatus, null);
 });
+test('validateRoutine waits near the limit unless told to run anyway', () => {
+  assert.equal('runNearLimit' in validateRoutine(good()).routine, false);
+  assert.equal(validateRoutine({ ...good(), runNearLimit: false }).routine.runNearLimit, undefined);
+  assert.equal(validateRoutine({ ...good(), runNearLimit: true }).routine.runNearLimit, true);
+  assert.deepEqual(validateRoutine({ ...good(), runNearLimit: 'yes' }).errors, ['runNearLimit must be true or false']);
+});
+
 test('validateRoutine runs on the usual model unless it names one Shellby offers', () => {
   assert.equal(validateRoutine(good()).routine.model, '');
   assert.equal(validateRoutine({ ...good(), model: null }).routine.model, '');

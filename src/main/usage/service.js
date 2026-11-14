@@ -187,6 +187,9 @@ function createUsage(d) {
     return Number.isFinite(r) && r > now ? r : null;
   }
 
+  // The 5-hour window's pace right now, or null with no pace to go on (routines/pace.js reads it).
+  const forecastNow = () => forecast.outlook(d.recapLog, Date.now());
+
   // Everything the panel shows about where the window's heading and what's waiting on it.
   function outlookView() {
     const now = Date.now();
@@ -307,7 +310,7 @@ function createUsage(d) {
   }
 
   return {
-    armGuard, checkGuards, checkLimit, clockTime, guardSettings, limitWait, onSpend, onUsage,
+    armGuard, checkGuards, checkLimit, clockTime, forecastNow, guardSettings, limitWait, onSpend, onUsage,
     outlookView, projectKeyOf, recordSpend, refreshOutlook, resetTarget, saveSpend, scheduleLimit, sendOutlook, spendSource,
     stop, tabCost, usageBreakdown, watchGuards, watchOutlook, windowShare,
   };

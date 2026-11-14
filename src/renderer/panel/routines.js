@@ -25,12 +25,23 @@
   const templateButton = t => h('button', { class: 'template', type: 'button', onclick: () => openEditor({ ...t, isTemplate: true }) },
     h('b', {}, t.icon ? `${t.icon} ` : '', t.name), h('span', { text: t.note || t.prompt }));
 
-  // Waiting for the usage window to reset (src/main/held.js): click to run it on schedule instead.
+  // Waiting for the usage window to reset (src/main/held.js): click to run it on
+  // schedule instead. Shellby held it near the limit (routines/pace.js): the pill
+  // says it's waiting, and why.
+  const HELD_WHY = {
+    limit: 'You were at your limit when it came due.',
+    reserve: 'Your 5-hour window was past the share you keep for yourself when it came due.',
+    near: 'Your 5-hour window was nearly full when it came due.',
+    pace: 'At this pace your 5-hour window would fill before a run could finish.',
+  };
   function heldPill(r) {
-    return h('button', { class: 'r-pill held', type: 'button', title: 'Held for after your usage resets. Click to cancel.', 'aria-label': `Don't run ${r.name} after the reset`, onclick: async () => {
+    const why = HELD_WHY[r.held.why];
+    const text = why ? `waiting for the reset · ${r.held.atText}` : `after reset · ${r.held.atText}`;
+    const title = why ? `${why} It runs at ${r.held.atText}, once your usage resets. Click to skip this run.` : 'Held for after your usage resets. Click to cancel.';
+    return h('button', { class: `r-pill held${why ? ' waiting' : ''}`, type: 'button', title, 'aria-label': `Don't run ${r.name} after the reset`, onclick: async () => {
       await api.cancelHeld(r.held.id);
       SB.toast(`"${r.name}" won't run after the reset.`);
-    } }, `after reset · ${r.held.atText}`);
+    } }, text);
   }
 
   // How the last run went, as a dot and a few words (the same line Workflows uses).
@@ -146,6 +157,7 @@
     SB.fillModels(form.elements.model, r?.model || '', 'Your usual model');
     syncModelSuggest();
     form.elements.catchUp.checked = r ? r.catchUp !== false : true;
+    form.elements.runNearLimit.checked = r?.runNearLimit === true;
     $('routineFolder').textContent = folder ? SB.tildify(folder) : `Default (${SB.tildify(state.cwd)})`;
     tools = { ...(r?.mcp?.length ? { mcp: [...r.mcp] } : {}), ...(r?.mcp?.length && r.mcpOnly ? { mcpOnly: true } : {}) };
     syncWhen();
@@ -184,6 +196,7 @@
       ...(editing ? { id: editing.id, createdAt: editing.createdAt, enabled: editing.enabled } : {}),
       name: form.elements.name.value, prompt: form.elements.prompt.value, cwd: folder,
       mode: form.elements.mode.value, model: form.elements.model.value, schedule, catchUp: form.elements.catchUp.checked,
+      runNearLimit: form.elements.runNearLimit.checked,
       // Always sent, so unticking every server clears them (main merges with what it has).
       mcp: [...(tools.mcp || [])], mcpOnly: !!tools.mcp?.length && !!tools.mcpOnly,
     };
@@ -300,7 +313,7 @@
   }
 
   // What Claude's change touched glows for a moment, the way the workflow editor's steps do.
-  const FIELD_OF = { name: 'name', prompt: 'prompt', mode: 'mode', catchUp: 'catchUp' };
+  const FIELD_OF = { name: 'name', prompt: 'prompt', mode: 'mode', catchUp: 'catchUp', runNearLimit: 'runNearLimit' };
   function flashChanged(before, after) {
     const targets = Object.entries(FIELD_OF).filter(([k]) => before[k] !== after[k]).map(([, f]) => form.elements[f]);
     if (JSON.stringify(before.schedule) !== JSON.stringify(after.schedule)) targets.push(form.elements.type);
