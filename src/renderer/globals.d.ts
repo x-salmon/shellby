@@ -470,6 +470,8 @@ interface ShellbyPanelExtras {
   // tab-git.js
   bringHome: any;
   compareWith: any;
+  homePlaceOf: any;
+  homePlaces: any;
   keepThisOne: any;
   repoItems: any;
   ultraReview: any;

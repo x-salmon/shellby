@@ -66,13 +66,14 @@
     const ctx = t.context ? [contextText(t.context), contextLevel(t.context), t.context.pct] : null;
     const look = L.tabClass(t, { active, clash, dragging: lifted });
     return JSON.stringify([t.id, active, lifted, look, clash, L.icon(t, window.ShellbyTabSort.activity(t)),
-      shownTitle(t), t.title, t.branchOf?.title, t.agent, t.safeMode, t.crew, ctx]);
+      shownTitle(t), t.title, t.branchOf?.title, t.agent, t.safeMode, t.crew, ctx, SB.homePlaceOf?.(t.id)]);
   }
 
   // One tab. .tab draws it; inside it the role=tab part and its × sit side by
   // side (a button can't live inside a tab).
   function tabEl(t, active) {
     const clash = clashOf(t);
+    const inLine = SB.homePlaceOf?.(t.id) || null; // lined up to sort out a merge conflict (tab-git.js)
     return h('div', {
       class: L.tabClass(t, { active, clash, dragging: !!drag?.moved && t.id === drag.id }),
       role: 'presentation',
@@ -85,13 +86,15 @@
     h('div', {
       class: 'tab-main', role: 'tab', 'aria-selected': String(active), tabindex: active ? '0' : '-1',
       title: [t.title, t.branchOf ? `Branched from "${t.branchOf.title}"` : null, t.agent ? `Run by your ${t.agent} agent` : null,
-        t.safeMode ? 'Safe mode: without your CLAUDE.md, skills, plugins, hooks and MCP servers' : null, clash || null, t.context ? contextText(t.context) : null].filter(Boolean).join('\n'),
+        t.safeMode ? 'Safe mode: without your CLAUDE.md, skills, plugins, hooks and MCP servers' : null, inLine?.title || null, clash || null, t.context ? contextText(t.context) : null].filter(Boolean).join('\n'),
       onkeydown: e => tabKey(e, t.id),
     },
     tabIcon(t),
     h('span', { class: 'tab-title', text: shownTitle(t) }),
     t.safeMode ? h('span', { class: 'tab-safe', 'aria-label': ', safe mode', text: '🛟' }) : null,
     // Another copy changed the same files (clashes.js): a shape, not just a colour, and said aloud.
+    inLine ? h('span', { class: `tab-line${inLine.waiting ? ' waiting' : ''}`, 'aria-hidden': 'true', text: inLine.text }) : null,
+    inLine ? h('span', { class: 'sr-only', text: `. ${inLine.title}` }) : null,
     clash ? h('span', { class: 'tab-clash', 'aria-hidden': 'true', text: '⚠' }) : null,
     clash ? h('span', { class: 'sr-only', text: `. ${clash}` }) : null),
     // Only the open tab's × is a Tab stop; Ctrl+W closes any of them.

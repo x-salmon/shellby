@@ -16,6 +16,7 @@
 //   bringHome(tabId, opts)           ipc/repo.js bringTabHome: the tests, the merge, the push
 //   caughtUp(w)                      worktrees.caughtUp: the base merged in, nothing half done
 //   tell(event)                      to the panel: { tabId, title, base, status, ... }
+//   onPlaces(places)                 the whole line changed: places() below, for the tabs' badges
 const path = require('path');
 
 const MAX_TRIES = 3; // the base moving on under it this many times: over to you
@@ -33,8 +34,8 @@ function sortPrompt(w, { landed = [], again = false } = {}) {
   return `${start}, resolve the conflicts so both sides' intent survives, run the tests if there are any, and commit.${before} Don't merge into ${base} yourself: Shellby brings it home as soon as you've finished, and other copies are waiting their turn behind it.`;
 }
 
-/** @param {{ isOpen: Function, isBusy: Function, send: Function, bringHome: Function, caughtUp: Function, tell?: (e: object) => void, log?: { info: (msg: string) => void }, maxTries?: number }} opts */
-function createHomeLine({ isOpen, isBusy, send, bringHome, caughtUp, tell = () => {}, log = { info: () => {} }, maxTries = MAX_TRIES }) {
+/** @param {{ isOpen: Function, isBusy: Function, send: Function, bringHome: Function, caughtUp: Function, tell?: (e: object) => void, onPlaces?: (p: object) => void, log?: { info: (msg: string) => void }, maxTries?: number }} opts */
+function createHomeLine({ isOpen, isBusy, send, bringHome, caughtUp, tell = () => {}, onPlaces = () => {}, log = { info: () => {} }, maxTries = MAX_TRIES }) {
   // ---- merges into one checkout, one at a time
   const lanes = new Map(); // root key -> the tail of what's queued there
 
@@ -62,6 +63,15 @@ function createHomeLine({ isOpen, isBusy, send, bringHome, caughtUp, tell = () =
     return null;
   };
   const titleOf = e => e.title || e.w.branch;
+  // Every copy in line: { [tabId]: { position, ahead, sorting } }, ahead the title at the front.
+  function places() {
+    const out = {};
+    for (const line of lines.values()) {
+      line.forEach((e, i) => { out[e.tabId] = { position: i, ahead: i ? titleOf(line[0]) : null, sorting: e.sorting || e.settling }; });
+    }
+    return out;
+  }
+  const changed = () => onPlaces(places());
   const event = (e, status, extra = {}) => tell({ tabId: e.tabId, title: titleOf(e), base: e.w.base, branch: e.w.branch, status, ...extra });
 
   /**
@@ -80,6 +90,7 @@ function createHomeLine({ isOpen, isBusy, send, bringHome, caughtUp, tell = () =
     line.push(entry);
     const position = line.length - 1;
     if (position === 0) begin(key, entry);
+    changed();
     return { ok: true, position, ahead: position ? titleOf(line[0]) : null };
   }
 
@@ -96,6 +107,7 @@ function createHomeLine({ isOpen, isBusy, send, bringHome, caughtUp, tell = () =
     }
     e.sorting = true;
     event(e, 'sorting', { again });
+    changed();
   }
 
   /** A turn ended in a conversation: maybe the front copy finished sorting it out. */
@@ -138,8 +150,9 @@ function createHomeLine({ isOpen, isBusy, send, bringHome, caughtUp, tell = () =
     if (!line) return;
     const i = line.indexOf(e);
     if (i >= 0) line.splice(i, 1);
-    if (!line.length) { lines.delete(key); return; }
-    if (i === 0) begin(key, line[0]);
+    if (!line.length) lines.delete(key);
+    else if (i === 0) begin(key, line[0]);
+    changed();
   }
 
   /** Conversations that closed leave the line. openIds: a Set of the open tab ids. */
@@ -155,7 +168,7 @@ function createHomeLine({ isOpen, isBusy, send, bringHome, caughtUp, tell = () =
     return at ? { position: at.i, ahead: at.i ? titleOf(at.line[0]) : null, sorting: at.entry.sorting } : null;
   }
 
-  return { turn, busy, sortOut, turnEnded, prune, placeOf };
+  return { turn, busy, sortOut, turnEnded, prune, placeOf, places };
 }
 
 module.exports = { createHomeLine, sortPrompt, MAX_TRIES };
