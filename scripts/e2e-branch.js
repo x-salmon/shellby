@@ -129,6 +129,8 @@ git('commit', '-qm', 'init');
     check(read(path.join(origCopy, 'a.txt')) === 'second', "the original's file was not touched");
     await send('edit a.txt branch-take');
     await idle();
+    // As above: idle comes a beat before the file settles on a loaded PC.
+    for (let i = 0; i < 100 && read(path.join(a.worktree.path, 'a.txt')) !== 'branch-take'; i++) await wait(100);
     check(read(path.join(a.worktree.path, 'a.txt')) === 'branch-take', 'its own edits land in its own copy');
     check(read(path.join(origCopy, 'a.txt')) === 'second', '...and only there');
 

@@ -79,17 +79,38 @@ function helperCosts(helpers) {
     .sort((a, b) => b.weight - a.weight || b.tokens - a.tokens);
 }
 
+const pctOrNull = v => (Number.isFinite(v) && v >= 0 ? Math.min(100, Math.round(v)) : null);
+
+/** How full a conversation is, in the warning's words: 'crowded', 'filling' or '' (nudge's two marks). */
+function contextLevel(pct) {
+  if (!Number.isFinite(pct)) return '';
+  return pct >= CROWDED_PCT ? 'crowded' : pct >= SOON_PCT ? 'filling' : '';
+}
+
+/**
+ * Where the turn's part of the context starts, for the footer's bar: what it
+ * began at, or after a compact inside it, the summary it carried on from.
+ * { contextBefore, compactedFrom }: each a percent or null.
+ */
+function contextStart(turn) {
+  const c = turn?.compact;
+  if (c) return { contextBefore: pctOrNull(c.base), compactedFrom: pctOrNull(c.from) };
+  return { contextBefore: pctOrNull(turn?.beforePct), compactedFrom: null };
+}
+
 /**
  * What one turn cost, as the result item carries it, or null for a turn that
  * made no calls (a local command, one stopped before it started).
- * turn: { usages, weight, helpers?, cacheBreak? }; context: the conversation's reading after it.
+ * turn: { usages, weight, helpers?, cacheBreak?, beforePct?, compact? }; context: the conversation's reading after it.
  */
 function turnCost(turn, context) {
   const { fresh, read } = tokensOf(turn?.usages);
   if (!fresh && !read) return null;
   const helpers = helperCosts(turn?.helpers);
+  const contextPct = Number.isFinite(context?.pct) ? context.pct : null;
   return {
-    tokens: fresh, read, weight: num(turn?.weight), share: null, contextPct: Number.isFinite(context?.pct) ? context.pct : null,
+    tokens: fresh, read, weight: num(turn?.weight), share: null, contextPct,
+    ...contextStart(turn), contextLevel: contextLevel(contextPct),
     // How hard it was asked to think ('' is Claude Code's own default), and how much it did.
     effort: EFFORT_NAMES[turn?.effort] ? turn.effort : '',
     thinking: Number.isFinite(turn?.thinking) && turn.thinking >= 0 ? turn.thinking : null,
@@ -293,6 +314,6 @@ function nudge(context, growths) {
 
 module.exports = {
   mergeUsage, tokensOf, windowShare, turnCost, helperCosts, helpersTotal, helperNote, picturesIn, pictureNote, turnNotes, compact, shareText, costLine, costDetail, effortBadge,
-  turnsOf, topTurns, tabTotal, addGrowth, turnsLeft, nudge,
+  contextLevel, contextStart, turnsOf, topTurns, tabTotal, addGrowth, turnsLeft, nudge,
   SOON_PCT, SOON_TURNS, RECENT_TURNS, TOP_TURNS, HEAVY_HELPERS, PICTURE_TOKENS, PILED_PICTURES,
 };

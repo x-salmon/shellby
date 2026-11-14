@@ -61,7 +61,10 @@ const accounting = {
     this.turn = null;
     if (!turn) return;
     const helpers = [...(turn.helpers || [])].map(([id, x]) => ({ id, usages: [...x.usages.values()], weight: x.weight }));
-    const cost = turncost.turnCost({ usages: [...turn.usages.values()], weight: turn.weight, effort: turn.effort, thinking: item.thinkingTokens, helpers, cacheBreak: turn.cacheBreak }, this.context);
+    const cost = turncost.turnCost({
+      usages: [...turn.usages.values()], weight: turn.weight, effort: turn.effort, thinking: item.thinkingTokens, helpers, cacheBreak: turn.cacheBreak,
+      beforePct: turn.beforePct, compact: turn.compact,
+    }, this.context);
     if (cost) item.cost = cost;
     this.growths = turncost.addGrowth(this.growths, turn.before, this.context?.tokens);
   },
@@ -118,12 +121,20 @@ const accounting = {
       if (this.context) this.setContext(this.context.tokens, this.lastModel);
       return;
     }
-    if (event?.type === 'system' && event.subtype === 'compact_boundary') return this.setContext(0);
+    if (event?.type === 'system' && event.subtype === 'compact_boundary') {
+      // A compact inside a turn (auto, or /compact itself): the footer shows what it freed.
+      // A second one in the same turn keeps where the first began; the summary is the latest's.
+      if (this.turn) this.turn.compact = { from: this.turn.compact?.from ?? this.context?.pct ?? null, base: null };
+      return this.setContext(0);
+    }
     const t = ctx.tokensFrom(event);
     if (!t) return;
     this.lastModel = t.model || this.lastModel;
     if (t.model) this.modelSwitched = false; // a reply on the model it was switched to
     this.setContext(t.tokens, this.lastModel);
+    // The first reading after a compact is the summary the turn carried on from.
+    const compacted = this.turn?.compact;
+    if (compacted && compacted.base === null && Number.isFinite(this.context?.pct)) compacted.base = this.context.pct;
   },
 
   setContext(tokens, model = this.lastModel) {

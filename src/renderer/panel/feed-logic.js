@@ -200,6 +200,93 @@
     return { label: item.interrupted ? 'stopped' : waiting || (item.ok ? 'done' : 'ended with an error'), waiting };
   }
 
+  // The footer under a turn (feed.js renderResult): one bar for the whole
+  // context window, earlier replies then this one, and a line under it saying
+  // what happened on the left and how full the conversation is on the right.
+  // The rest is said once, in plain words, when it's opened. Old turns saved
+  // before Shellby kept a field just leave that part out.
+  const EFFORT_LIT = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
+  const EFFORT_WORD = { low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra high', max: 'Max' };
+  const pct = v => (Number.isFinite(v) && v >= 0 ? Math.min(100, Math.round(v)) : null);
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const windowWords = s => (!Number.isFinite(s) || s <= 0 ? null : s < 1 ? 'under 1%' : `about ${Math.round(s)}%`);
+  const capital = s => s.charAt(0).toUpperCase() + s.slice(1);
+  // For turns saved before main stamped contextLevel: turncost.js SOON_PCT and context.js CROWDED_PCT.
+  const FILLING_PCT = 60;
+  const CROWDED_PCT = 80;
+  const levelOf = (cost, now) => (typeof cost?.contextLevel === 'string' ? cost.contextLevel
+    : now === null ? '' : now >= CROWDED_PCT ? 'crowded' : now >= FILLING_PCT ? 'filling' : '');
+  const LEVEL_WORDS = { filling: 'filling up', crowded: 'getting crowded' };
+
+  // Where this turn's part of the bar starts and ends: { past, added, freedTo }
+  // in percent, or null with no reading. After a compact the summary is the
+  // past part and the room it freed runs from now up to freedTo.
+  function soundingBar(cost) {
+    const now = pct(cost?.contextPct);
+    if (now === null) return null;
+    const from = pct(cost.compactedFrom);
+    const start = pct(cost.contextBefore);
+    if (start === null) return { past: now, added: 0, freedTo: from > now ? from : null };
+    const past = Math.min(start, now);
+    return { past, added: now - past, freedTo: from > now ? from : null };
+  }
+
+  // The sentence an opened footer says: tokens, helpers, effort, and the room.
+  function soundingDetails(cost, bar, compact) {
+    const out = [];
+    const share = windowWords(cost.share);
+    out.push(`${compact(cost.tokens)} new tokens${share ? `, ${share} of your 5-hour window` : ''}.`);
+    if (cost.read) out.push(`Plus ${compact(cost.read)} re-read from the prompt cache, at a tenth of the price.`);
+    const helpers = (cost.helpers || []).filter(x => Number.isFinite(x?.tokens));
+    if (helpers.length) {
+      const spent = helpers.reduce((n, x) => n + x.tokens, 0);
+      out.push(`${helpers.length === 1 ? 'A helper' : `${helpers.length} helpers`} used ${compact(spent)} of them, in ${helpers.length === 1 ? 'its' : 'their'} own context, so they don't fill this one.`);
+    }
+    if (typeof cost.effort === 'string') {
+      const word = EFFORT_WORD[cost.effort] || 'Auto';
+      const thought = Number.isFinite(cost.thinking) ? cost.thinking : null;
+      out.push(thought === null ? `${word} effort.` : thought ? `${word} effort, ${compact(thought)} tokens of thinking.` : `${word} effort, no thinking.`);
+    }
+    if (bar?.freedTo) out.push(`The conversation was summed up during this turn, which freed ${bar.freedTo - bar.past - bar.added}% of its room.`);
+    else if (bar && pct(cost.contextBefore) !== null && pct(cost.contextBefore) <= bar.past + bar.added) out.push(`This reply took ${bar.added}% of the conversation's room; ${100 - bar.past - bar.added}% is left.`);
+    else if (bar) out.push(`The conversation is ${bar.past}% full.`);
+    return out.join(' ');
+  }
+
+  /**
+   * What a turn's footer shows: { state, word, title, soft, effort, bar, level,
+   * full, change, tokens, details, meter }. fmt: { compact, duration } (SB's).
+   */
+  function sounding(item, fmt) {
+    const { label, waiting } = resultLabel(item);
+    const state = item.interrupted ? 'stopped' : waiting ? 'waiting' : item.ok ? 'done' : 'failed';
+    const cost = item.cost && Number.isFinite(item.cost.tokens) ? item.cost : null;
+    const helpers = cost?.helpers?.length || 0;
+    const soft = [
+      Number.isFinite(item.durationMs) && item.durationMs > 0 ? fmt.duration(item.durationMs) : null,
+      Number.isFinite(item.turns) && item.turns > 0 ? plural(item.turns, 'step') : null,
+      helpers ? plural(helpers, 'helper') : null,
+    ].filter(Boolean);
+    const lit = EFFORT_LIT[cost?.effort];
+    const bar = cost ? soundingBar(cost) : null;
+    const now = bar ? bar.past + bar.added : null;
+    const known = !!bar && pct(cost.contextBefore) !== null;
+    const change = bar?.freedTo ? { kind: 'freed', text: `compacted from ${bar.freedTo}%` }
+      : known && bar.added > 0 ? { kind: 'plus', text: `+${bar.added}` } : null;
+    const level = levelOf(cost, now);
+    const meter = now === null ? null
+      : `${now}% of the conversation used${bar.freedTo ? `, down from ${bar.freedTo}% after a compact` : change ? `, ${bar.added}% by this reply` : ''}${level ? `: ${LEVEL_WORDS[level]}` : ''}`;
+    return {
+      state, word: capital(label), title: waiting ? 'This turn ended, but something it started is still running.' : null,
+      soft, effort: lit ? { lit, of: 5, name: EFFORT_WORD[cost.effort].toLowerCase() } : null,
+      bar, level,
+      full: now === null ? null : `${now}% full`, change,
+      tokens: cost ? fmt.compact(cost.tokens) : null,
+      details: cost ? soundingDetails(cost, bar, fmt.compact) : null,
+      meter,
+    };
+  }
+
   // A turn Claude didn't answer, for the offer to ask your local model instead.
   // The API's own safety stop is certain. Words are a guess, kept narrow: a
   // short reply, with no step taken, that opens by declining to help. "I can't
@@ -364,7 +451,7 @@
   const api = {
     contextSegments, insightsReportIn, subtaskPrompt,
     files, storySteps, markFor, compactingLine, retryLine, hookLine, denialsLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
-    decisionVerdict, questionVerdict, resultLabel, refusalLike, refusalOf, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
+    decisionVerdict, questionVerdict, resultLabel, sounding, soundingBar, refusalLike, refusalOf, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

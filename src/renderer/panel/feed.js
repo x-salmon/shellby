@@ -574,30 +574,15 @@
 
     renderResult(item, replay = false) {
       for (const el of this.tools.values()) if (el.classList.contains('pending')) el.classList.replace('pending', item.ok ? 'ok' : 'err');
-      const { label, waiting } = F.resultLabel(item);
-      // A reply you might want to take somewhere else: a new tab that remembers
-      // everything up to here, with the files as this turn left them.
-      const turnId = this.lastTurnId;
-      const fork = turnId && item.anchor ? h('button', { class: 'meta-branch', type: 'button', title: 'Branch from here: a new tab that carries on from this reply, leaving this one as it is', onclick: () => SB.openBranch(this, turnId, 'after') }, SB.forkIcon(), 'branch') : null;
-      const cost = item.cost?.line ? item.cost : null;
       // Each helper's part goes on its own lane (turncost.js helperCosts).
       for (const c of item.cost?.helpers || []) this.lanes.get(c.id)?.setCost(c);
-      this.append(h('div', { class: `meta${item.ok || item.interrupted ? '' : ' bad'}${waiting ? ' waiting' : ''}${cost ? ' has-cost' : ''}`, title: waiting ? 'This turn ended, but something it started is still running.' : null },
-        h('span', { text: [label, SB.duration(item.durationMs), item.turns ? `${item.turns} turns` : null].filter(Boolean).join(' · ') }), fork));
+      this.append(this.turnFoot(item, replay));
       // What the turn was refused by a rule or a hook (feed-logic.js denialsLine): one quiet line.
       if (item.denials?.length) this.append(h('div', { class: 'turn-denials', role: 'note', title: 'Tool calls Claude Code refused this turn: a permission rule, a hook, or a No from you.', text: F.denialsLine(item.denials) }));
-      // What the turn cost (src/main/turncost.js): the context chip's menu scrolls back to it.
-      if (cost) {
-        // How hard it thought, beside what it cost (turncost.js effortBadge).
-        const badge = cost.effortBadge;
-        this.append(h('div', { class: 'turn-cost', title: cost.detail || null, dataset: turnId ? { turn: turnId } : {} },
-          badge ? h('span', { class: `effort-badge effort-${badge.level}`, title: badge.detail, text: badge.text }) : null,
-          h('span', { class: 'turn-cost-line', text: cost.line })));
-        // A warm cache it missed, helpers that outspent it, pictures piling up (turncost.js turnNotes).
-        // A reopened conversation's old notes keep their words but not their buttons:
-        // a fresh start offered before an earlier one would throw away this one.
-        for (const n of cost.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note' }, h('span', { text: n.text }), replay ? null : this.noteAction(n.action, n)));
-      }
+      // A warm cache it missed, helpers that outspent it, pictures piling up (turncost.js turnNotes).
+      // A reopened conversation's old notes keep their words but not their buttons:
+      // a fresh start offered before an earlier one would throw away this one.
+      for (const n of item.cost?.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note' }, h('span', { text: n.text }), replay ? null : this.noteAction(n.action, n)));
       // A turn whose process went (main's session/index.js ended()): its error block is just above.
       if (!item.ok && !item.interrupted && item.error && !item.crashed) this.append(this.troubleBlock(item.trouble, item.error));
       // ...and its helpers went with it.

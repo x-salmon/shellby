@@ -64,14 +64,18 @@ function connect(url) {
     check(await ev("getComputedStyle(document.querySelector('.tab.active .tab-ctx')).getPropertyValue('--fill').trim() === '0.3'"), 'the hairline under the tab is 30% long');
     check(await ev("!SB.$('ctxChip').hidden && SB.$('ctxLabel').textContent === '30%'"), 'the chip reads 30%');
     check(await ev("SB.$('crowded').hidden"), 'no crowded offer at 30%');
-    check(await ev("/^this turn: [\\d.]+k? tokens · .*30% of context$/.test(SB.activeTab().el.querySelector('.turn-cost .turn-cost-line')?.textContent || '')"), 'the turn ends with what it cost');
-    check(/^(low|medium|high|extra high|max|auto)\b/.test(await ev("SB.activeTab().el.querySelector('.turn-cost .effort-badge')?.textContent || ''")), 'beside the effort it ran at');
+    const foot = "[...SB.activeTab().el.querySelectorAll('.turn-foot')].at(-1)";
+    check(await ev(`(f => f?.querySelector('.tf-full')?.textContent === '30% full' && f.querySelector('.tf-change.is-plus')?.textContent === '+30' && f.querySelector('.tf-bar')?.getAttribute('aria-valuenow') === '30')(${foot})`), 'the turn ends with a bar: 30% full, all of it this reply');
+    check(await ev(`(f => !f.querySelector('.tf-act') && !f.classList.contains('is-filling'))(${foot})`), 'no offer to make room at 30%');
+    await ev(`${foot}.querySelector('.tf-open').click()`);
+    check(await ev(`(f => f.querySelector('.tf-open').getAttribute('aria-expanded') === 'true' && !f.querySelector('.tf-more').hidden && /new tokens/.test(f.querySelector('.tf-more').textContent) && /(Low|Medium|High|Extra high|Max|Auto) effort/.test(f.querySelector('.tf-more').textContent))(${foot})`), 'opened, it says what the turn cost and the effort it ran at');
 
     // 2. A big jump: at that pace it'll be crowded in a turn, so a quieter offer first.
     await type('big 140000');
     check(await until("SB.activeTab().context?.pct === 70 && !SB.activeTab().busy"), 'the tab is 70% full');
     check(await until("!SB.$('crowded').hidden && SB.$('crowded').classList.contains('soon') && /Filling up: 70% full, about a turn from crowded/.test(SB.$('crowded').textContent)"), 'the composer says it is filling up, before it is crowded');
     check(await ev("SB.$('crowded').textContent.includes('Compact') && SB.$('crowded').textContent.includes('Start fresh')"), 'and offers the same ways to make room');
+    check(await ev(`(f => f.classList.contains('is-filling') && f.querySelector('.tf-change')?.textContent === '+40' && f.querySelector('.tf-act')?.textContent === 'Compact')(${foot})`), "the turn's footer turns amber, +40, and offers to compact");
     await ev("SB.$('crowded').querySelector('[aria-label=\"Not now\"]').click()");
     check(await ev("SB.$('crowded').hidden"), '"Not now" hides "filling up"');
 
@@ -81,6 +85,8 @@ function connect(url) {
     check(await ev("document.querySelector('.tab.active .tab-ctx').classList.contains('warn') && SB.$('ctxChip').classList.contains('warn')"), 'bar and chip turn amber');
     check(await until("!SB.$('crowded').hidden && /crowded/i.test(SB.$('crowded').textContent) && !SB.$('crowded').classList.contains('soon')"), 'the composer says it is getting crowded, though "filling up" was waved away');
     check(await ev("SB.$('crowded').querySelectorAll('.crowded-text').length === 1"), 'one offer, never two');
+    check(await ev(`(f => f.classList.contains('is-crowded') && f.querySelector('.tf-act')?.textContent === 'Make room')(${foot})`), 'past 80% the footer says "Make room"');
+    check(await ev("SB.activeTab().el.querySelectorAll('.turn-foot .tf-act').length === 1"), 'only the newest footer offers it');
     check(await until.in(critter, "window.__said.some(t => /crowded/i.test(t))", 4000), 'he says "Getting crowded in here."');
 
     // 4. The chip's menu: what the conversation has cost so far, then Not now, then Compact from it.
@@ -88,7 +94,7 @@ function connect(url) {
     check(await until("!SB.$('ctxMenu').hidden && /So far: [\\d.]+k? tokens over 3 turns/.test(SB.$('ctxMenu').textContent)"), 'the chip menu has the running total');
     check(await ev("SB.$('ctxMenu').textContent.includes('Costliest turns') && SB.$('ctxMenu').querySelectorAll('.cost-turn').length === 3"), 'and the costliest turns');
     await ev("SB.$('ctxMenu').querySelector('.cost-turn').click()");
-    check(await until("SB.$('ctxMenu').hidden && !!SB.activeTab().el.querySelector('.turn-cost.flash')"), 'a costliest turn scrolls back to it');
+    check(await until("SB.$('ctxMenu').hidden && SB.activeTab().el.querySelector('.turn-foot.flash .tf-open')?.getAttribute('aria-expanded') === 'true'"), 'a costliest turn scrolls back to it, opened');
     await ev("SB.$('crowded').querySelector('[aria-label=\"Not now\"]').click()");
     check(await ev("SB.$('crowded').hidden"), '"Not now" hides the offer');
     await ev("SB.$('ctxChip').click()");
