@@ -89,4 +89,4 @@ function servePages(protocol, pages) {
   });
 }
 
-module.exports = { SCHEME, CSP, CSP_INERT, PRIVILEGES, urlOf, withGuard, answer, servePages };
+module.exports = { SCHEME, CSP, CSP_INERT, HEADERS, PRIVILEGES, urlOf, withGuard, answer, servePages };

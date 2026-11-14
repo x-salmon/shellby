@@ -14,9 +14,11 @@ const RIGHTS = ['full', 'readonly'];
 const DEFAULT_RIGHTS = 'full';
 
 // The one list of what a read-only phone may still ask for: looking (the
-// lists past the beach, a conversation's files), its own notifications, a pat,
-// and leaving. Anything not here is refused.
-const READ_ONLY_ACTIONS = ['forget', 'push', 'routines', 'notes', 'wardrobe', 'files', 'file', 'pet', 'history', 'find', 'project-history', 'past', 'away', 'checks', 'branch', 'progress'];
+// lists past the beach, a conversation's files, a page and its data), its own
+// notifications, a pat, and leaving. Anything not here is refused. A page's
+// bridge (page-call) is here because reading goes through it; pocket/pages.js
+// refuses the calls that write.
+const READ_ONLY_ACTIONS = ['forget', 'push', 'routines', 'notes', 'wardrobe', 'files', 'file', 'pet', 'history', 'find', 'project-history', 'past', 'away', 'checks', 'branch', 'progress', 'pages', 'page-open', 'page-call', 'page-info'];
 
 const READ_ONLY_SAYS = 'This phone can only look. Change what it may do on your PC, in Settings → On your phone.';
 

@@ -38,6 +38,7 @@ const rights = require('../pocket/rights');
 const { createPocketTalk } = require('../pocket/talk');
 const { createLookOver } = require('../pocket/look-over');
 const { createPocketLater } = require('../pocket/later');
+const { createPocketPages } = require('../pocket/pages'); // pages on your phone: the shelf, a page's files by capability, its bridge
 
 const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
 const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
@@ -362,9 +363,9 @@ function wirePocket(d) {
       default: {
         if (Object.prototype.hasOwnProperty.call(talk.actions, name)) return talk.actions[name](body || {});
         const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-        const fn = own(extra.actions, name) ? extra.actions[name] : own(review.actions, name) ? review.actions[name] : own(later.actions, name) ? later.actions[name] : null;
+        const fn = [extra.actions, review.actions, later.actions, pocketPages.actions].map(a => (own(a, name) ? a[name] : null)).find(Boolean) || null;
         if (!fn) return no('unknown');
-        const r = await fn(body);
+        const r = await fn(body || {}, device);
         if (r.ok && ['focus', 'routine-toggle'].includes(name)) pushView();
         return r;
       }
@@ -450,10 +451,8 @@ function wirePocket(d) {
     return gate;
   }
 
-  // Look over my changes (pocket/look-over.js).
-  // The queue, tasks for later, checks again and branching (pocket/later.js).
+  // The queue, tasks for later, checks again and branching (pocket/later.js); Look over my changes (pocket/look-over.js).
   const later = createPocketLater(d, { adopt: id => adopt(id), pushView: () => pushView(), claimStart: opts => claimStart(Date.now(), opts), once });
-
   const startLookOver = createLookOver(d, { projects: () => projects(), claimStart, adopt: id => adopt(id), pushView: () => pushView() });
   const lookOver = body => once('look', body, startLookOver);
 
@@ -559,10 +558,11 @@ function wirePocket(d) {
 
   // ---- push notifications (pocket/notices.js)
 
-  const { notify, noticeWork, testPush, badge } = createPocketNotices(d, {
+  const { notify, notifyPage, noticeWork, testPush, badge } = createPocketNotices(d, {
     settings, devices, saveDevices, vapidKeys, waitingPrompts,
     changed: () => d.send(d.panel, 'pocket', pocketViewNow()),
   });
+  const pocketPages = createPocketPages(d, { devices, claimStart: () => claimStart(), adopt, pushView, once, notifyPage, server: () => d.pocket });
 
   // ---- on and off (the panel asks; the confirmation window decides)
 
@@ -765,7 +765,7 @@ function wirePocket(d) {
       getPlace: place,
       ownerLogin: () => settings().login,
       findDevice,
-      onPair, onOpen, onAction, onDiff, onPicture: require('../pocket/pictures').createPocketPictures(d).onPicture,
+      onPair, onOpen, onAction, onDiff, onPicture: require('../pocket/pictures').createPocketPictures(d).onPicture, onPage: pocketPages.serve,
       onUpload: (device, bytes) => {
         if (!settings().enabled) return no('Shellby on your phone is off.');
         const why = rights.refuseUpload(devices().find(dv => dv.id === device.id));

@@ -7,7 +7,8 @@
 //     pages/rights.js and done here (data, read snapshots, ask, notify, fetch, say)
 //   - the five MCP tools, from Shellby's conversations (crab-api.js) and from
 //     the plugin's server through the crab API
-//   - 'pages:changed' to the panel after anything changes
+//   - 'pages:changed' to the panel after anything changes, and to anyone who
+//     asked with onChanged (the phone, wiring/pocket.js via pocket/pages.js)
 //
 // Kept out of main.js, which only wires it up.
 const path = require('path');
@@ -52,7 +53,13 @@ function wirePages(d) {
     return store;
   }
 
-  const changed = (id, kind, extra = {}) => d.send(d.panel, 'pages:changed', { id, kind, ...extra });
+  /** @type {Set<(ev: any) => void>} others who hear every change (the phone) */
+  const listeners = new Set();
+  const changed = (id, kind, extra = {}) => {
+    const ev = { id, kind, ...extra };
+    d.send(d.panel, 'pages:changed', ev);
+    for (const fn of listeners) { try { fn(ev); } catch (e) { d.log?.warn?.('pages: a listener failed', e?.message); } }
+  };
 
   /** Whether the protocol serves id: a draft always (its preview), a page once it's on and agreed. */
   function servable(id) {
@@ -94,8 +101,11 @@ function wirePages(d) {
   /**
    * One call from a page, as the panel's bridge passed it on: id is the page
    * whose frame sent it (the bridge knows by event.source). -> { ok, value } | { ok: false, error }
+   * via: 'desk' (the panel) or 'phone' (pocket/pages.js), which has its own
+   * ask sheet, so a phone's ask comes back as { ask } for it rather than a
+   * card in the desk's header.
    */
-  async function call(id, method, args) {
+  async function call(id, method, args, via = 'desk') {
     if (!enabled()) return { ok: false, error: 'Pages are off.' };
     const s = pages();
     if (!s.known(id)) return { ok: false, error: 'No such page.' };
@@ -103,8 +113,8 @@ function wirePages(d) {
     const st = s.state(id);
     const verdict = rights.decide(method, args, { access: s.access(id), draft, enabled: draft || (st.enabled && !!st.agreed) });
     if (!verdict.ok) {
-      if (verdict.refused) changed(id, 'refused', { refused: verdict.refused, error: verdict.error });
-      return { ok: false, error: verdict.error };
+      if (verdict.refused && via === 'desk') changed(id, 'refused', { refused: verdict.refused, error: verdict.error });
+      return { ok: false, error: verdict.error, refused: verdict.refused };
     }
     const a = verdict.args;
     const man = s.manifest(id);
@@ -122,13 +132,15 @@ function wirePages(d) {
         try { return { ok: true, value: await snapshots[a[0]]() }; } catch (e) { return { ok: false, error: `Couldn't read ${a[0]}: ${e.message}` }; }
       }
       case 'ask':
-        // Never started from here: a card in the page's header, and you press Ask Claude.
+        // Never started from here: a card in the page's header (or the phone's own sheet), and you press Ask Claude.
+        if (via === 'phone') return { ok: true, value: { shown: true }, ask: { prompt: a[0], mode: a[1].mode } };
         changed(id, 'ask', { prompt: a[0], mode: a[1].mode });
         return { ok: true, value: { shown: true } };
       case 'notify': {
         if (!st.notifyOn) return { ok: true, value: { shown: false, why: 'Notifications from this page are quiet.' } };
         if (!allow(`notify:${id}`, LIMITS.NOTIFY_PER_MINUTE, now)) return { ok: false, error: 'At most one notification a minute.' };
         d.notify?.(`${man?.name || 'A page'}: ${a[0]}`, a[1], () => { d.showPanel?.({ focusInput: false }); changed(id, 'open'); });
+        changed(id, 'notify', { title: a[0], body: a[1] }); // and the phone, as a push (pocket/pages.js)
         return { ok: true, value: { shown: true } };
       }
       case 'fetch': {
@@ -163,7 +175,9 @@ function wirePages(d) {
     if (!st.notifyOn || !s.access(id).notify || d.panel?.isFocused?.()) return;
     if (!allow(`toast:${id}`, LIMITS.NOTIFY_PER_MINUTE, Date.now())) return;
     const man = s.manifest(id);
-    d.notify?.(man?.name || 'A page', `${who.name || 'An agent'} ${text}`.slice(0, 160), () => { d.showPanel?.({ focusInput: false }); changed(id, 'open'); });
+    const line = `${who.name || 'An agent'} ${text}`.slice(0, 160);
+    d.notify?.(man?.name || 'A page', line, () => { d.showPanel?.({ focusInput: false }); changed(id, 'open'); });
+    changed(id, 'notify', { title: line, body: '' });
   }
 
   /** The shelf's miniature, from where the page sits in the panel as it closes (rect in CSS px). */
@@ -365,15 +379,16 @@ function wirePages(d) {
   // ------------------------------------------- building and changing, with Claude
   /**
    * Start a conversation that works on pages: the panel opens the page beside it.
-   * @param {string} prompt @param {string} title @param {string | null} id @param {string | null} [mode]
+   * show: false leaves the panel where it is (a task from the phone).
+   * @param {string} prompt @param {string} title @param {string | null} id @param {string | null} [mode] @param {{ show?: boolean }} [o]
    */
-  function startWith(prompt, title, id, mode = null) {
+  function startWith(prompt, title, id, mode = null, { show = true } = {}) {
     const man = id ? pages().manifest(id) : null;
     const cwd = man?.project || d.currentCwd();
     const r = d.startTask(prompt, title, { cwd, ...(mode ? { mode } : {}) });
     if (!r?.ok) return r || { ok: false, error: "Couldn't start the conversation." };
     if (mode) d.manager?.modeToStart?.(r.tabId);
-    d.showPanel?.({ focusInput: false, tabId: r.tabId });
+    if (show) d.showPanel?.({ focusInput: false, tabId: r.tabId });
     return { ok: true, tabId: r.tabId };
   }
   function build(describe) {
@@ -383,9 +398,9 @@ function wirePages(d) {
   }
   /**
    * Change with Claude, or Fix it with Claude when error is given.
-   * @param {string} id @param {{ ask?: string, pointed?: { text?: string, selector?: string }, error?: string }} [o]
+   * @param {string} id @param {{ ask?: string, pointed?: { text?: string, selector?: string }, error?: string }} [o] @param {{ show?: boolean }} [where]
    */
-  function change(id, { ask, pointed, error } = {}) {
+  function change(id, { ask, pointed, error } = {}, where = {}) {
     const s = pages();
     const man = s.manifest(id);
     if (!man || !format.isId(id)) return { ok: false, error: 'No such page.' };
@@ -394,7 +409,7 @@ function wirePages(d) {
     const files = s.files(id) || {};
     const prompt = error !== undefined ? prompts.fixPrompt(page, files, error) : prompts.changePrompt(page, files, ask, pointed);
     // Ask first: the prompt carries the page's own files and errors, which a model wrote.
-    return startWith(prompt, `${error !== undefined ? 'Fix' : 'Change'}: ${man.name}`.slice(0, 60), id, 'ask');
+    return startWith(prompt, `${error !== undefined ? 'Fix' : 'Change'}: ${man.name}`.slice(0, 60), id, 'ask', where);
   }
 
   /**
@@ -403,12 +418,12 @@ function wirePages(d) {
    * marked as the page's, since a page wrote it.
    */
   const ASK_MODES = { ask: 'ask', plan: 'plan' };
-  function ask(id, prompt, mode) {
+  function ask(id, prompt, mode, where = {}) {
     const man = pages().manifest(id);
     if (!man) return { ok: false, error: 'No such page.' };
     const text = String(prompt || '').trim().slice(0, LIMITS.ASK_PROMPT);
     if (!text) return { ok: false, error: 'Nothing to ask.' };
-    return startWith(`[Shellby: the page "${man.name}" asks, and the user said yes] ${text}`, `${man.name}: ${text.slice(0, 40)}`, id, ASK_MODES[mode] || 'ask');
+    return startWith(`[Shellby: the page "${man.name}" asks, and the user said yes] ${text}`, `${man.name}: ${text.slice(0, 40)}`, id, ASK_MODES[mode] || 'ask', where);
   }
 
   function offAll() {
@@ -420,8 +435,10 @@ function wirePages(d) {
 
   return {
     pages: {
-      servePages, call, tool, isPageTool, view, list, saveDraft, offAll, enabled, build, change, ask, thumb,
+      servePages, servable, call, tool, isPageTool, view, list, saveDraft, offAll, enabled, build, change, ask, thumb,
       store: () => pages(),
+      /** Hear every change (the phone forwards them): -> stop listening. */
+      onChanged: fn => { listeners.add(fn); return () => listeners.delete(fn); },
       draftsOf: tab => pages().draftsOf(tab),
       files: (id, n) => pages().files(id, n),
       data: id => pages().read(id),
