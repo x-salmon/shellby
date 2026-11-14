@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>His tank: seven full-screen directions (2560 × 1440, a 4K screen at 150%)</title>
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Bold.ttf"); font-weight: 700; }
+
+:root {
+  --abyss: #071012; --deep: #0a171a; --reef: #11232a; --reef-2: #16303a; --line: #214049; --line-soft: #183239;
+  --sand: #f3e6cc; --sand-dim: #b3a892; --faint: #a49d8b; --glass: #7fd6c2; --coral: #ff7657; --danger: #ff5a4a;
+  --gold: #e8c46a; --tide: #6fb7ff;
+  --font-pixel: "Pixelify Sans", monospace; --font-body: "Atkinson Hyperlegible", sans-serif;
+  --r-sm: 4px; --r: 8px; --r-lg: 14px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #020607; }
+body { color: var(--sand); font: 17px/1.5 var(--font-body); font-variant-ligatures: no-common-ligatures; }
+canvas { image-rendering: pixelated; display: block; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+
+/* --------------------------------------------------------- the deck */
+.screen { position: relative; width: 2560px; height: 1440px; margin: 0 auto 80px; background: var(--abyss); overflow: hidden; display: grid; grid-template-rows: 46px 1fr 66px; }
+.screen.bare { grid-template-rows: 1fr; }
+.caption { width: 2560px; margin: 0 auto; padding: 40px 0 16px; display: flex; align-items: baseline; gap: 22px; }
+.caption h1 { margin: 0; font: 600 34px/1.1 var(--font-pixel); }
+.caption h1 small { color: var(--glass); margin-right: 12px; }
+.caption p { margin: 0; color: var(--sand-dim); max-width: 120ch; }
+body.one .caption { display: none; }
+body.one .screen { margin: 0; }
+
+/* --------------------------------------------------------- panel chrome */
+.titlebar { display: flex; align-items: center; gap: 14px; padding: 0 14px; background: #0d1a1d; border-bottom: 1px solid var(--line-soft); }
+.titlebar .me { display: flex; align-items: center; gap: 10px; font: 600 15px var(--font-pixel); }
+.titlebar .lv { display: inline-flex; align-items: center; gap: 6px; color: var(--gold); }
+.titlebar .lv i { display: inline-block; width: 70px; height: 6px; background: linear-gradient(90deg, var(--gold) 62%, #3a3220 62%); }
+.titlebar .ask { height: 30px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--reef); display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.titlebar .ask::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--glass); }
+.titlebar .win { margin-left: auto; display: flex; gap: 26px; color: var(--sand-dim); font-size: 18px; }
+.tabbar { display: flex; justify-content: center; gap: 4px; padding: 6px; background: #0b1619; border-top: 1px solid var(--line-soft); }
+.tabbar span { width: 104px; display: grid; justify-items: center; gap: 2px; padding-top: 6px; border-radius: var(--r); font-size: 14px; color: var(--sand-dim); }
+.tabbar span::before { content: ""; width: 20px; height: 20px; border-radius: 5px; border: 2px solid currentColor; opacity: .7; }
+.tabbar span.on { color: var(--sand); background: var(--reef); }
+.tabbar span.on::before { border-color: var(--coral); opacity: 1; }
+.body { position: relative; min-height: 0; padding: 22px 44px 26px; display: grid; gap: 22px; }
+.crumbs { display: flex; align-items: center; gap: 18px; }
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--deep); border: 1px solid var(--line-soft); }
+.seg b { padding: 5px 14px; border-radius: 7px; font-weight: 400; font-size: 15px; color: var(--sand-dim); }
+.seg b.on { background: var(--reef-2); color: var(--sand); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* --------------------------------------------------------- shared parts */
+h2 { margin: 0; font: 600 40px/1.05 var(--font-pixel); }
+h3 { margin: 0; font: 600 22px/1.2 var(--font-pixel); }
+.dim { color: var(--sand-dim); }
+.faint { color: var(--faint); }
+.small { font-size: 15px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: var(--r); border: 1px solid var(--line); background: var(--reef); font-weight: 700; font-size: 16px; white-space: nowrap; }
+.btn.primary { background: var(--coral); border-color: #ffa088; color: #1f0c06; }
+.btn.quiet { background: transparent; }
+.btn.big { height: 48px; padding: 0 24px; font-size: 18px; }
+.switch { flex: none; width: 40px; height: 22px; border-radius: 99px; background: var(--glass); position: relative; }
+.switch::after { content: ""; position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--abyss); }
+.switch.off { background: var(--line); }
+.switch.off::after { right: auto; left: 3px; background: var(--sand-dim); }
+.panel { background: var(--reef); border: 1px solid var(--line-soft); border-radius: var(--r-lg); padding: 22px 24px; min-width: 0; }
+.bar { height: 8px; border-radius: 99px; background: var(--line-soft); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--glass); border-radius: inherit; }
+.bar.gold > i { background: var(--gold); }
+
+/* the tank and its glass */
+.stage { position: relative; justify-self: center; line-height: 0; border-radius: 6px; box-shadow: 0 0 0 3px rgba(127,214,194,.22), 0 0 0 5px rgba(0,0,0,.6), 0 40px 80px -30px rgba(0,0,0,.9); }
+.stage canvas { border-radius: 6px; }
+.stage .over { position: absolute; inset: 0; line-height: 1.4; }
+.pin { position: absolute; transform: translate(-50%, calc(-100% - 10px)); white-space: nowrap; padding: 4px 10px; border-radius: var(--r-sm); background: rgba(6,19,22,.9); border: 1px solid var(--line); font: 600 15px var(--font-body); pointer-events: none; }
+.pin b { font: 600 18px var(--font-pixel); margin-right: 6px; }
+.pin.hot { border-color: var(--danger); color: #ffb3a8; }
+.ring { position: absolute; border-radius: 6px; outline: 3px solid var(--glass); outline-offset: 6px; }
+.ring.dash { outline: 3px dashed var(--sand); }
+.tile { display: grid; justify-items: center; align-content: end; gap: 6px; padding: 12px 8px 10px; border-radius: var(--r); background: var(--deep); border: 1px solid var(--line-soft); text-align: center; font-size: 13.5px; line-height: 1.25; min-width: 0; position: relative; }
+.tile canvas { max-width: 100%; }
+.tile.locked { color: var(--faint); }
+.tile .lock { position: absolute; top: 6px; right: 8px; font-size: 13px; }
+.tile.gold { box-shadow: inset 0 0 0 1px rgba(232,196,106,.5); }
+.tile.gold::after { content: ""; position: absolute; top: 0; right: 0; border: 9px solid transparent; border-top-color: var(--gold); border-right-color: var(--gold); border-top-right-radius: var(--r); }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 99px; background: var(--deep); border: 1px solid var(--line); font-size: 14px; color: var(--sand-dim); }
+.chip.on { color: var(--abyss); background: var(--glass); border-color: var(--glass); font-weight: 700; }
+
+/* ===================================================== 1. Panorama */
+.s1 .body { grid-template-rows: auto 1fr auto; }
+.s1 .tankrow { display: grid; place-items: center; }
+.s1 .glass-head { position: absolute; left: 28px; top: 24px; display: grid; gap: 4px; padding: 14px 20px 16px; border-radius: var(--r); background: rgba(5,18,22,.72); backdrop-filter: blur(4px); }
+.s1 .glass-tools { position: absolute; right: 24px; top: 24px; display: flex; gap: 10px; }
+.s1 .says { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -100%); padding: 10px 16px; border-radius: 12px; background: var(--sand); color: #1d150a; font: 600 18px var(--font-pixel); line-height: 1.2; }
+.s1 .says::after { content: ""; position: absolute; left: 50%; bottom: -10px; border: 6px solid transparent; border-top: 6px solid var(--sand); transform: translateX(-50%); }
+.s1 .under { display: grid; grid-template-columns: 1.15fr 1fr 1fr 0.8fr; gap: 20px; }
+.s1 .next { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; align-items: center; }
+.s1 .next canvas { grid-row: span 3; width: 88px; }
+.s1 .lays { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.s1 .more li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+.s1 .more ul { list-style: none; margin: 10px 0 0; padding: 0; font-size: 16px; }
+
+/* ===================================================== 2. Readings */
+.s2 .body { grid-template-columns: 1fr 640px; grid-template-rows: auto auto auto 1fr; column-gap: 48px; }
+.s2 .crumbs { grid-column: 1 / -1; }
+.s2 .lede { align-self: end; }
+.s2 .readings { grid-row: 2 / 5; grid-column: 2; display: grid; align-content: start; gap: 10px; }
+.s2 .rd { display: grid; grid-template-columns: 64px 1fr auto; gap: 4px 18px; align-items: center; padding: 16px 18px; border-radius: var(--r); background: var(--reef); border: 1px solid var(--line-soft); }
+.s2 .rd.focus { border-color: var(--glass); box-shadow: inset 4px 0 0 var(--glass); }
+.s2 .rd .ic { grid-row: span 2; width: 64px; height: 64px; display: grid; place-items: center; background: var(--deep); border-radius: var(--r); }
+.s2 .rd .ic canvas { max-height: 52px; }
+.s2 .rd .v { font: 600 30px/1 var(--font-pixel); }
+.s2 .rd .v.hot { color: var(--danger); }
+.s2 .rd .what { grid-column: 2 / 4; font-size: 15px; color: var(--sand-dim); }
+.s2 .rd .top { display: flex; align-items: baseline; gap: 14px; }
+.s2 .rd .rd-h { margin: 0; font: 700 17px var(--font-body); }
+.s2 .tidegauge { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: grid; gap: 4px; padding: 6px; border-radius: 6px; background: rgba(5,18,22,.6); }
+.s2 .tidegauge i { width: 16px; height: 22px; border-radius: 2px; background: var(--tide); }
+.s2 .tidegauge i.e { background: rgba(111,183,255,.18); }
+.s2 .bottle { position: absolute; width: 34px; height: 18px; border-radius: 9px 4px 4px 9px; background: linear-gradient(#bfe6c8, #6aa883); box-shadow: 10px 0 0 -4px #8b6a42; }
+.s2 .hour { align-self: start; display: grid; gap: 14px; }
+.s2 .sparks { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+.s2 .sparks figure { margin: 0; display: grid; gap: 6px; }
+.s2 .sparks figcaption { display: flex; justify-content: space-between; font-size: 15px; color: var(--sand-dim); }
+.s2 .sparks figcaption b { font: 600 22px var(--font-pixel); color: var(--sand); }
+.s2 .footnote { grid-column: 1; align-self: end; display: flex; gap: 28px; align-items: center; color: var(--sand-dim); font-size: 15px; }
+
+/* ===================================================== 3. Workshop */
+.s3 .body { grid-template-columns: 470px 1fr 430px; grid-template-rows: auto 1fr; gap: 26px; padding-top: 18px; }
+.s3 .edbar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--r-lg); background: rgba(127,214,194,.08); border: 1px solid rgba(127,214,194,.35); }
+.s3 .edbar h2 { margin-right: 8px; font-size: 22px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.s3 .edbar .cap { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.s3 .edbar .cap .bar { width: 220px; }
+.s3 .tray { display: grid; grid-template-columns: 150px 1fr; gap: 16px; min-height: 0; }
+.s3 .shelves { display: grid; align-content: start; gap: 4px; }
+.s3 .shelves b { display: flex; justify-content: space-between; padding: 9px 12px; border-radius: var(--r); font-weight: 400; font-size: 16px; color: var(--sand-dim); }
+.s3 .shelves b span { color: var(--faint); }
+.s3 .shelves b.on { background: var(--reef-2); color: var(--sand); box-shadow: inset 3px 0 0 var(--coral); }
+.s3 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-content: start; overflow: hidden; }
+.s3 .grid .tile { height: 118px; }
+.s3 .grid .tile.drag { opacity: .35; outline: 2px dashed var(--line); }
+.s3 .grid .tile .n { position: absolute; top: 6px; left: 8px; font: 600 13px var(--font-pixel); color: var(--glass); }
+.s3 .center { display: grid; align-content: center; justify-items: center; gap: 22px; }
+.s3 .stage { box-shadow: 0 0 0 3px var(--glass), 0 0 0 5px rgba(0,0,0,.6), 0 40px 80px -30px rgba(0,0,0,.9); }
+.s3 .rows { position: absolute; left: 10px; width: 120px; pointer-events: none; }
+.s3 .rows span { left: 0; right: auto !important; padding: 1px 8px; border-radius: 4px; background: rgba(5,18,22,.72); color: var(--sand-dim); font-size: 13px; }
+.s3 .float { position: absolute; transform: translate(-50%, calc(-100% - 22px)); display: flex; gap: 2px; padding: 4px; border-radius: 10px; background: #0b1b1f; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.s3 .float b { min-width: 38px; height: 36px; padding: 0 10px; display: grid; place-items: center; border-radius: 7px; font: 600 15px var(--font-body); }
+.s3 .float b.sep { min-width: 1px; width: 1px; padding: 0; background: var(--line); margin: 4px 2px; }
+.s3 .float b.warn { color: #ffb3a8; }
+.s3 .ghost { position: absolute; outline: 2px dashed var(--glass); outline-offset: 2px; border-radius: 4px; background: rgba(127,214,194,.12); }
+.s3 .cursor { position: absolute; width: 26px; height: 30px; background: var(--sand); clip-path: polygon(0 0, 0 78%, 26% 60%, 44% 100%, 58% 94%, 40% 56%, 74% 56%); filter: drop-shadow(0 2px 2px #000); }
+.s3 .keys { display: flex; gap: 22px; color: var(--faint); font-size: 14.5px; }
+.s3 .keys kbd { font: 600 13px var(--font-body); padding: 1px 7px; border-radius: 5px; border: 1px solid var(--line); background: var(--deep); color: var(--sand-dim); margin-right: 5px; }
+.s3 .insp { display: grid; align-content: start; gap: 18px; }
+.s3 .insp .who { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: center; }
+.s3 .insp .who .ic { height: 120px; display: grid; place-items: center; border-radius: var(--r); background: var(--deep); }
+.s3 .insp dl { display: grid; grid-template-columns: 110px 1fr; gap: 12px 14px; margin: 0; align-items: center; font-size: 15.5px; }
+.s3 .insp dt { color: var(--sand-dim); }
+.s3 .insp dd { margin: 0; }
+.s3 .sizes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.s3 .sizes b { display: grid; gap: 2px; padding: 8px 6px; border-radius: var(--r); background: var(--deep); border: 1px solid var(--line-soft); font-weight: 400; font-size: 13px; text-align: center; color: var(--sand-dim); }
+.s3 .sizes b i { font-style: normal; font: 600 15px var(--font-pixel); color: var(--sand); }
+.s3 .sizes b.on { border-color: var(--glass); background: rgba(127,214,194,.08); }
+.s3 .sizes b.locked { opacity: .5; }
+.s3 .sw { display: flex; gap: 8px; }
+.s3 .sw span { display: grid; gap: 4px; justify-items: center; font-size: 13px; color: var(--sand-dim); }
+.s3 .sw canvas { width: 72px; height: 36px; border-radius: 6px; border: 2px solid var(--line-soft); }
+.s3 .sw .on canvas { border-color: var(--glass); }
+
+/* ===================================================== 4. Collection */
+.s4 .body { grid-template-columns: 760px 1fr; grid-template-rows: auto 1fr; gap: 26px 44px; }
+.s4 .crumbs { grid-column: 1 / -1; }
+.s4 .left { display: grid; align-content: start; gap: 22px; }
+.s4 .count { display: flex; align-items: baseline; gap: 14px; }
+.s4 .count b { font: 600 72px/1 var(--font-pixel); }
+.s4 .ladder { display: grid; gap: 8px; }
+.s4 .rung { display: grid; grid-template-columns: 26px 170px 1fr auto; gap: 14px; align-items: center; padding: 10px 14px; border-radius: var(--r); background: var(--deep); font-size: 15.5px; }
+.s4 .rung .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); justify-self: center; }
+.s4 .rung.done .dot { background: var(--glass); border-color: var(--glass); }
+.s4 .rung.here { box-shadow: inset 0 0 0 1px var(--glass); }
+.s4 .rung.here .dot { background: var(--abyss); border-color: var(--glass); box-shadow: 0 0 0 4px rgba(127,214,194,.2); }
+.s4 .rung b { font: 600 17px var(--font-pixel); }
+.s4 .right { display: grid; grid-template-rows: auto 1fr; gap: 22px; min-height: 0; }
+.s4 .soon { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.s4 .soon .panel { display: grid; grid-template-columns: 110px 1fr; gap: 6px 20px; align-items: center; }
+.s4 .soon .panel .ic { grid-row: span 4; height: 110px; display: grid; place-items: center; background: var(--deep); border-radius: var(--r); }
+.s4 .soon .num { font: 600 15px var(--font-pixel); color: var(--gold); }
+.s4 .groups { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 26px; align-content: start; min-height: 0; overflow: hidden; }
+.s4 .group h3 { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.s4 .group h3 span { font: 400 15px var(--font-body); color: var(--sand-dim); }
+.s4 .group .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.s4 .group .tile { height: 104px; padding: 8px; align-content: center; }
+.s4 .group .tile canvas { max-height: 74px; }
+.s4 .group.wide { grid-column: 1 / -1; }
+.s4 .ringp { position: absolute; bottom: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; background: conic-gradient(var(--gold) var(--p), rgba(232,196,106,.15) 0); }
+.s4 .ringp::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--deep); }
+
+/* ===================================================== 5. His day */
+.s5 .body { grid-template-columns: 1fr 640px; grid-template-rows: auto auto 1fr; gap: 26px 44px; }
+.s5 .crumbs { grid-column: 1 / -1; }
+.s5 .now { display: flex; align-items: center; gap: 20px; }
+.s5 .now .pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--glass); box-shadow: 0 0 0 6px rgba(127,214,194,.18); }
+.s5 .log { grid-row: 2 / 4; grid-column: 2; display: grid; grid-template-rows: auto 1fr; gap: 14px; min-height: 0; }
+.s5 .log ol { list-style: none; margin: 0; padding: 0 0 0 26px; border-left: 2px solid var(--line); display: grid; align-content: start; gap: 4px; }
+.s5 .log li { position: relative; display: grid; grid-template-columns: 76px 56px 1fr; gap: 14px; align-items: center; padding: 10px 0; }
+.s5 .log li::before { content: ""; position: absolute; left: -34px; width: 12px; height: 12px; border-radius: 50%; background: var(--abyss); border: 2px solid var(--line); }
+.s5 .log li.first::before { border-color: var(--gold); background: var(--gold); }
+.s5 .log li time { font: 600 16px var(--font-pixel); color: var(--sand-dim); }
+.s5 .log li .ic { height: 48px; display: grid; place-items: center; background: var(--reef); border-radius: var(--r); }
+.s5 .log li .ic canvas { max-height: 40px; max-width: 46px; }
+.s5 .log li q { quotes: none; color: var(--sand-dim); font-style: italic; }
+.s5 .below { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 20px; align-items: start; }
+.s5 .share li { display: grid; grid-template-columns: 170px 1fr 60px; gap: 14px; align-items: center; padding: 5px 0; font-size: 15.5px; }
+.s5 .share ul { list-style: none; margin: 14px 0 0; padding: 0; }
+.s5 .share .bar { height: 12px; border-radius: 3px; }
+.s5 .share .bar > i { border-radius: 3px; }
+.s5 .share li span:last-child { text-align: right; color: var(--sand-dim); }
+.s5 .fav { display: grid; grid-template-columns: 140px 1fr; gap: 18px; align-items: center; }
+.s5 .fav .ic { height: 140px; display: grid; place-items: center; background: var(--deep); border-radius: var(--r); position: relative; }
+.s5 .fav .ic::after { content: "♥"; position: absolute; top: 6px; right: 10px; color: var(--coral); font-size: 20px; }
+.s5 .move .row { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 14px; font-size: 15.5px; }
+
+/* ===================================================== 6. Layouts & visits */
+.s6 .body { grid-template-rows: auto; align-content: start; gap: 30px; }
+.s6 .hd { display: flex; align-items: end; justify-content: space-between; }
+.s6 .layouts { display: grid; grid-template-columns: 1.6fr 1fr 1fr; grid-template-rows: auto auto; gap: 26px; align-items: start; }
+.s6 .lay { align-content: start; }
+.s6 .lay.up { grid-row: span 2; align-content: start; }
+.s6 .new { grid-column: 2 / 4; display: flex !important; align-items: center; justify-content: flex-start; text-align: left; padding: 20px 24px; }
+.s6 .lay { display: grid; gap: 14px; padding: 18px; border-radius: var(--r-lg); background: var(--reef); border: 1px solid var(--line-soft); }
+.s6 .lay.up { border-color: var(--glass); box-shadow: 0 0 0 1px var(--glass); }
+.s6 .lay canvas { width: 100%; height: auto; border-radius: 6px; box-shadow: 0 0 0 2px rgba(127,214,194,.18); }
+.s6 .lay .hd2 { display: flex; align-items: center; gap: 12px; }
+.s6 .lay .hd2 h3 { margin-right: auto; }
+.s6 .lay .acts { display: flex; gap: 10px; align-items: center; }
+.s6 .new { display: grid; place-content: center; justify-items: center; gap: 14px; border: 2px dashed var(--line); border-radius: var(--r-lg); text-align: center; padding: 30px; }
+.s6 .new input { width: 280px; height: 44px; border-radius: var(--r); border: 1px solid var(--line); background: var(--deep); color: var(--sand); padding: 0 14px; font: inherit; }
+.s6 .friends { display: grid; grid-template-columns: repeat(4, 1fr) 520px; gap: 22px; align-items: start; }
+.s6 .fr { display: grid; gap: 10px; }
+.s6 .fr canvas { width: 100%; height: auto; border-radius: 6px; box-shadow: 0 0 0 2px rgba(127,214,194,.14); }
+.s6 .fr .who { display: flex; justify-content: space-between; align-items: center; font-size: 15.5px; }
+.s6 .fr .who b { font: 600 18px var(--font-pixel); }
+.s6 .card-share { display: grid; gap: 14px; }
+.s6 .card-share label { display: flex; gap: 14px; align-items: center; }
+
+/* ===================================================== 7. Aquarium mode */
+.s7 { background: radial-gradient(ellipse at 50% 46%, #0d2228 0%, #050c0e 55%, #010303 100%); }
+.s7 .room { display: grid; place-items: center; align-content: center; gap: 46px; }
+.s7 .stage { box-shadow: 0 0 0 4px rgba(127,214,194,.16), 0 0 0 6px #000, 0 0 180px 10px rgba(63,163,179,.16), 0 90px 120px -40px #000; }
+.s7 .stand { width: 2480px; height: 40px; margin-top: -46px; background: linear-gradient(#2a1d14, #160f0a); border-radius: 0 0 10px 10px; box-shadow: 0 20px 40px #000; }
+.s7 .hud { width: 2380px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; }
+.s7 .clock { font: 600 92px/1 var(--font-pixel); color: rgba(243,230,204,.88); }
+.s7 .clock small { display: block; font: 400 20px var(--font-body); color: var(--faint); margin-top: 10px; }
+.s7 .work { justify-self: center; display: grid; justify-items: center; gap: 10px; text-align: center; }
+.s7 .work b { font: 600 30px var(--font-pixel); }
+.s7 .work .dim { font-size: 19px; color: #c4b9a2; }
+.s7 .work .bubs { display: flex; gap: 8px; }
+.s7 .work .bubs i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(205,234,254,.75); }
+.s7 .work .bubs i.d { background: rgba(205,234,254,.75); }
+.s7 .glyphs { justify-self: end; display: flex; gap: 30px; color: var(--sand-dim); font-size: 18px; }
+.s7 .glyphs b { display: block; font: 600 32px/1 var(--font-pixel); color: var(--sand); }
+.s7 .esc { position: absolute; top: 30px; right: 40px; color: var(--faint); font-size: 16px; }
+
+/* 7b: controls on demand, over the glass */
+.s7 .onglass { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 14px; background: rgba(4,12,15,.82); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0,0,0,.5); line-height: 1.4; }
+.s7 .onglass .sep { width: 1px; height: 28px; background: var(--line); margin: 0 4px; }
+.s7 .onglass .btn { background: transparent; border-color: transparent; }
+.s7 .onglass .btn.primary { background: var(--coral); border-color: #ffa088; }
+.s7 .onglass .btn.on { background: var(--reef-2); border-color: var(--line); }
+.mcursor { position: absolute; width: 26px; height: 30px; background: var(--sand); clip-path: polygon(0 0, 0 78%, 26% 60%, 44% 100%, 58% 94%, 40% 56%, 74% 56%); filter: drop-shadow(0 2px 2px #000); }
+.s7 .fadehint { position: absolute; left: 50%; top: 92px; transform: translateX(-50%); padding: 4px 12px; border-radius: 6px; background: rgba(4,12,15,.6); color: var(--sand-dim); font-size: 15px; line-height: 1.4; white-space: nowrap; }
+
+/* 7c: decorating in place, the tray rises like a drawer */
+.screen.s7e { grid-template-rows: 100px 1fr 316px; background: radial-gradient(ellipse at 50% 40%, #183842 0%, #0a1a1e 60%, #050c0e 100%); }
+.s7e .top { display: flex; align-items: center; gap: 12px; width: 2400px; justify-self: center; align-self: end; padding-bottom: 14px; }
+.s7e .top h2 { font-size: 26px; margin-right: 10px; }
+.s7e .top .cap { font-size: 16px; margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.s7e .top .cap .bar { width: 220px; }
+.s7e .mid { display: grid; place-items: center; }
+.s7e .stage { box-shadow: 0 0 0 3px var(--glass), 0 0 0 5px #000, 0 60px 90px -40px #000; }
+.s7e .float { position: absolute; transform: translate(-50%, calc(-100% - 22px)); display: flex; gap: 2px; padding: 4px; border-radius: 10px; background: #0b1b1f; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.5); line-height: 1.4; }
+.s7e .float b { min-width: 38px; height: 36px; padding: 0 10px; display: grid; place-items: center; border-radius: 7px; font: 600 15px var(--font-body); }
+.s7e .float b.sep { min-width: 1px; width: 1px; padding: 0; background: var(--line); margin: 4px 2px; }
+.s7e .float b.warn { color: #ffb3a8; }
+.s7e .ghost { position: absolute; outline: 2px dashed var(--glass); outline-offset: 2px; border-radius: 4px; background: rgba(127,214,194,.12); }
+.s7e .drawer { position: relative; width: 2480px; justify-self: center; display: grid; grid-template-columns: 1fr 440px; gap: 34px; padding: 26px 28px 26px; border-radius: 22px 22px 0 0; background: rgba(13,30,35,.96); border: 1px solid var(--line); border-bottom: 0; box-shadow: 0 -30px 60px rgba(0,0,0,.45); }
+.s7e .grip { position: absolute; left: 50%; top: 10px; width: 70px; height: 5px; border-radius: 99px; background: var(--line); transform: translateX(-50%); }
+.s7e .shelfrow { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+.s7e .shelfrow b { padding: 7px 14px; border-radius: 99px; font-weight: 400; font-size: 15.5px; color: var(--sand-dim); border: 1px solid transparent; }
+.s7e .shelfrow b.on { color: var(--sand); background: var(--reef-2); border-color: var(--line); }
+.s7e .shelfrow b span { color: var(--faint); margin-left: 6px; }
+.s7e .shelfrow .search { margin-left: auto; width: 300px; height: 38px; border-radius: 99px; border: 1px solid var(--line); background: var(--deep); color: var(--faint); display: flex; align-items: center; padding: 0 16px; font-size: 15px; }
+.s7e .strip { display: grid; grid-template-columns: repeat(16, 1fr); gap: 10px; }
+.s7e .strip .tile { height: 150px; }
+.s7e .strip .tile.drag { opacity: .35; outline: 2px dashed var(--line); }
+.s7e .strip .tile .n { position: absolute; top: 6px; left: 8px; font: 600 13px var(--font-pixel); color: var(--glass); }
+.s7e .hint2 { margin: 16px 0 0; font-size: 15px; color: var(--sand-dim); }
+.s7e .hint2 kbd { font: 600 13px var(--font-body); padding: 1px 7px; border-radius: 5px; border: 1px solid var(--line); background: var(--deep); margin: 0 4px 0 14px; }
+.s7e .look { display: grid; gap: 16px; align-content: start; border-left: 1px solid var(--line-soft); padding-left: 30px; }
+.s7e .look .row { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 12px; font-size: 15px; color: var(--sand-dim); }
+.s7e .sw { display: flex; gap: 8px; }
+.s7e .sw span { display: grid; gap: 3px; justify-items: center; font-size: 12.5px; }
+.s7e .sw canvas { width: 64px; height: 32px; border-radius: 6px; border: 2px solid var(--line-soft); }
+.s7e .sw .on canvas { border-color: var(--glass); }
+
+/* the switcher, off-canvas */
+.jump { position: fixed; right: 18px; bottom: 18px; display: grid; gap: 6px; z-index: 9; }
+.jump a { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--reef); border: 1px solid var(--line); color: var(--sand); text-decoration: none; font: 600 18px var(--font-pixel); }
+body.one .jump { display: none; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- ======================================================== 1 -->
+<div class="caption" id="c1"><h1><small>1</small>Panorama</h1><p>The tank is the page. The Grand aquarium fills the width at 9× and its controls sit on the glass. Everything that's a setting moves behind one button, so the scroll of toggles is gone.</p></div>
+<section class="screen s1" data-chrome>
+  <div class="body">
+    <div class="crumbs" data-crumbs></div>
+    <div class="tankrow">
+      <div class="stage" data-stage="grand" data-u="10">
+        <canvas data-scene="grand"></canvas>
+        <div class="over">
+          <div class="glass-head"><h2>His tank</h2><span class="dim">Grand aquarium, 25 of 56 pieces. He likes the Sandcastle Keep best.</span></div>
+          <div class="glass-tools"><span class="btn quiet" style="background:rgba(5,18,22,.7)">📸 Share</span><span class="btn quiet" style="background:rgba(5,18,22,.7)">Layouts</span><span class="btn quiet" style="background:rgba(5,18,22,.7)">Tank settings</span><span class="btn primary big">Decorate</span></div>
+          <div class="says" data-say="crab">Nobody's in my castle. Good.</div>
+        </div>
+      </div>
+    </div>
+    <div class="under">
+      <div class="panel next">
+        <canvas data-piece="level-25-flag" data-sil="1"></canvas>
+        <h3>Next for the tank: the Level 25 Flag</h3>
+        <span class="dim">Reach level 25. You're at 23, about two days at your pace.</span>
+        <div class="bar gold"><i style="width:92%"></i></div>
+      </div>
+      <div class="panel"><h3>Layouts</h3><p class="dim small" style="margin:6px 0 0">Spooky goes up by itself on 1 October.</p>
+        <div class="lays"><span class="chip on">Everyday</span><span class="chip">Spooky</span><span class="chip">Winter</span><span class="chip">+ Save this one</span></div></div>
+      <div class="panel"><h3>New since last time</h3><p class="dim small" style="margin:6px 0 10px">2 pieces are waiting in the tray.</p>
+        <div style="display:flex;gap:14px;align-items:end"><canvas data-piece="old-anchor" style="height:66px"></canvas><canvas data-piece="moon-lamp" style="height:46px"></canvas><span class="btn" style="margin-left:auto">Put them in</span></div></div>
+      <div class="panel more"><h3>Tank settings</h3><ul><li>Gauges in disguise <span class="dim">7 on</span></li><li>Tidying up <span class="dim">On</span></li><li>On your cards <span class="dim">Off</span></li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== 2 -->
+<div class="caption" id="c2"><h1><small>2</small>Readings</h1><p>The gauges in disguise are the tank's most useful feature, and nobody can tell they're there. Here each one says what it's reading, on the glass and in a column you can scan. Point at a row and its piece lights up in the tank.</p></div>
+<section class="screen s2" data-chrome>
+  <div class="body">
+    <div class="crumbs" data-crumbs></div>
+    <div class="lede"><h2 style="font-size:32px">His tank, Grand aquarium</h2><p class="dim" style="margin:6px 0 0;max-width:80ch">Everything in it is decor you earned. Seven pieces also read your PC. <span class="btn primary" style="margin-left:14px;vertical-align:middle">Decorate</span></p></div>
+    <div class="stage" data-stage="readings" data-u="7" style="justify-self:start">
+      <canvas data-scene="readings"></canvas>
+      <div class="over">
+        <div class="tidegauge" title="5-hour window">
+          <i class="e"></i><i class="e"></i><i class="e"></i><i class="e"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <span class="ring" data-ring="glass-thermometer"></span>
+        <span class="pin hot" data-pin="glass-thermometer"><b>86°</b>GPU, past your 83° line</span>
+        <span class="pin" data-pin="lighthouse"><b>Lit</b>vite on :5173</span>
+        <span class="pin" data-pin="air-stone"><b>34%</b>CPU</span>
+        <span class="pin" data-pin="sunken-chest"><b>#482</b>merged</span>
+        <span class="bottle" style="left:966px;top:22px"></span>
+        <span class="pin" style="left:983px;top:20px">Recap waiting</span>
+      </div>
+    </div>
+    <aside class="readings">
+      <div style="display:flex;justify-content:space-between;align-items:end;margin-bottom:6px"><h2>Readings</h2><span class="dim small">From this PC only. Never synced.</span></div>
+      <div class="rd focus"><span class="ic"><canvas data-piece="glass-thermometer"></canvas></span><div class="top"><span class="v hot">86°C</span><h3 class="rd-h">GPU temperature</h3></div><span class="switch"></span><span class="what">Glass Thermometer. Red past your Health line of 83°C, for 4 minutes now.</span></div>
+      <div class="rd"><span class="ic"><canvas data-piece="air-stone" style="width:40px"></canvas></span><div class="top"><span class="v">34%</span><h3 class="rd-h">CPU</h3></div><span class="switch"></span><span class="what">Bubblers. 2 in the tank, both bubbling faster as it climbs.</span></div>
+      <div class="rd"><span class="ic"><canvas data-piece="lighthouse"></canvas></span><div class="top"><span class="v">Lit</span><h3 class="rd-h">Dev server</h3></div><span class="switch"></span><span class="what">Lighthouse. vite on port 5173, up 1 h 12 min. Blinks red if it crashes.</span></div>
+      <div class="rd"><span class="ic" style="gap:3px;display:flex"><i style="width:10px;height:44px;background:linear-gradient(to top,var(--tide) 60%,rgba(111,183,255,.18) 60%);border-radius:2px"></i></span><div class="top"><span class="v">6 of 10</span><h3 class="rd-h">Usage window</h3></div><span class="switch"></span><span class="what">Tide gauge on the glass. 60% of your 5-hour window left. It refills at 16:40.</span></div>
+      <div class="rd"><span class="ic"><canvas data-piece="sunken-chest"></canvas></span><div class="top"><span class="v">#482</span><h3 class="rd-h">Pull request merged</h3></div><span class="switch"></span><span class="what">Sunken Chest. Glinted for a minute, 12 minutes ago.</span></div>
+      <div class="rd"><span class="ic"><span class="bottle" style="position:static"></span></span><div class="top"><span class="v">1</span><h3 class="rd-h">Recap waiting</h3></div><span class="switch"></span><span class="what">Message in a bottle. Sinks once you read it. <u>Read the recap</u></span></div>
+      <div class="rd"><span class="ic" style="font:600 26px var(--font-pixel);color:#ffb3a8">~</span><div class="top"><span class="v">Warm</span><h3 class="rd-h">His mood</h3></div><span class="switch"></span><span class="what">The water. Warm because the GPU is hot, so the plants sway faster.</span></div>
+    </aside>
+    <div class="panel hour"><div style="display:flex;justify-content:space-between;align-items:baseline"><h3>Earlier this hour</h3><span class="dim small">What the thermometer and the bubblers read</span></div><div class="sparks" id="sparks"></div></div>
+  </div>
+</section>
+
+<!-- ======================================================== 3 -->
+<div class="caption" id="c3"><h1><small>3</small>Workshop</h1><p>Decorating gets a real editor at full screen: the tray docks on the left with shelves you can see all at once, the tank sits in the middle at 8×, and an inspector on the right replaces the button row and the paragraph of key help. The picked piece gets its tools right above it.</p></div>
+<section class="screen s3" data-chrome>
+  <div class="body">
+    <div class="edbar"><h2>Decorating</h2><span class="btn">Undo</span><span class="btn" style="opacity:.45">Redo</span>
+      <span class="cap"><span class="dim">25 of 56 pieces</span><span class="bar"><i style="width:45%"></i></span><span class="btn quiet">Cancel</span><span class="btn primary">Done</span></span></div>
+    <div class="tray">
+      <div class="shelves">
+        <b>Everything <span>48</span></b><b>Structures <span>8</span></b><b>Plants <span>9</span></b><b>Rocks <span>4</span></b><b class="on">Treasures <span>12</span></b><b>Bubblers &amp; lights <span>6</span></b><b>Milestones <span>3</span></b><b>His finds <span>14</span></b><b>Stickers on the glass <span>5</span></b>
+      </div>
+      <div style="display:grid;align-content:start;gap:14px"><div class="grid" id="trayGrid"></div><p class="dim small" style="margin:0">Drag one into the tank, or press Enter on it and it goes in at the first good spot.</p></div>
+    </div>
+    <div class="center">
+      <div class="stage" data-stage="work" data-u="6">
+        <canvas data-scene="work"></canvas>
+        <div class="over">
+          <span class="ring dash" data-ring="castle-keep"></span>
+          <div class="float" data-float="castle-keep"><b title="Flip">⇋ Flip</b><b title="Row back">Row ↑</b><b title="Row forward">Row ↓</b><b title="Send back">Back</b><b title="Bring forward">Forward</b><b class="sep"></b><b class="warn">Put away</b></div>
+          <span class="ghost" data-ring="old-anchor"><span class="cursor" style="left:60%;top:55%"></span></span>
+        </div>
+      </div>
+      <div class="keys"><span><kbd>Arrows</kbd>move</span><span><kbd>Shift</kbd>bigger steps</span><span><kbd>F</kbd>flip</span><span><kbd>[</kbd><kbd>]</kbd>back, forward</span><span><kbd>Del</kbd>put away</span><span><kbd>Ctrl Z</kbd>undo</span></div>
+    </div>
+    <aside class="insp">
+      <div class="panel who"><span class="ic"><canvas data-piece="castle-keep" style="width:96px"></canvas></span><div><h3>Sandcastle Keep</h3><p class="dim small" style="margin:6px 0 0">Two towers, a keep and a door just his size. He checks it for intruders daily.</p></div></div>
+      <div class="panel"><dl>
+        <dt>Row</dt><dd><span class="seg"><b>Back</b><b class="on">Middle</b><b>Front</b></span></dd>
+        <dt>Facing</dt><dd><span class="seg"><b class="on">Left</b><b>Right</b></span></dd>
+        <dt>He uses it</dt><dd>To hide, then peek out. 38 times this week.</dd>
+        <dt>Came from</dt><dd>Yours from the start</dd>
+      </dl></div>
+      <div class="panel" style="display:grid;gap:16px">
+        <h3>The tank</h3>
+        <div class="sizes"><b><i>Nano</i>10</b><b><i>10 gal</i>18</b><b><i>30 gal</i>28</b><b class="locked"><i>Reef</i>Lv 30</b><b class="on"><i>Grand</i>56</b></div>
+        <div><div class="dim small" style="margin-bottom:6px">Floor</div><div class="sw"><span class="on"><canvas data-swatch="soft-sand"></canvas>Sand</span><span><canvas data-swatch="gravel"></canvas>Gravel</span><span><canvas data-swatch="pebble-floor"></canvas>Pebbles</span></div></div>
+        <div><div class="dim small" style="margin-bottom:6px">Back glass</div><div class="sw"><span><canvas data-swatch="plain-water"></canvas>Water</span><span class="on"><canvas data-swatch="rock-wall"></canvas>Rock wall</span><span><canvas data-swatch="starry-night"></canvas>Stars</span></div></div>
+        <div><div class="dim small" style="margin-bottom:6px">Light</div><span class="seg"><b class="on">Follow my clock</b><b>Day</b><b>Night</b></span></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ======================================================== 4 -->
+<div class="caption" id="c4"><h1><small>4</h1><p></p></div>
+<section class="screen s4" data-chrome>
+  <div class="body">
+    <h2 class="sr-only">His tank and everything he can have</h2>
+    <div class="crumbs" data-crumbs></div>
+    <div class="left">
+      <div class="stage" data-stage="small" data-u="4.75" style="justify-self:start"><canvas data-scene="small"></canvas></div>
+      <div class="count"><b>31</b><span class="dim" style="font-size:22px">of 116 pieces are his</span></div>
+      <div class="bar"><i style="width:27%"></i></div>
+      <div class="panel">
+        <h3 style="margin-bottom:14px">His tanks</h3>
+        <div class="ladder">
+          <div class="rung done"><i class="dot"></i><b>Nano tank</b><span class="dim">10 pieces</span><span class="faint">from the start</span></div>
+          <div class="rung done"><i class="dot"></i><b>10 gallon</b><span class="dim">18 pieces</span><span class="faint">level 5</span></div>
+          <div class="rung done here"><i class="dot"></i><b>30 gallon</b><span class="dim">28 pieces, he lives here</span><span class="faint">level 15</span></div>
+          <div class="rung"><i class="dot"></i><b>Reef tank</b><span class="dim">40 pieces: level 30 and 10 projects shipped. You're at 23 and 7.</span><span class="faint"></span></div>
+          <div class="rung"><i class="dot"></i><b>Grand aquarium</b><span class="dim">56 pieces</span><span class="faint">level 50</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="soon">
+        <div class="panel"><span class="ic"><canvas data-piece="level-25-flag" data-sil="1" style="height:84px"></canvas></span><span class="num">23 / 25</span><h3>Level 25 Flag</h3><span class="dim small">Reach level 25.</span><div class="bar gold"><i style="width:92%"></i></div></div>
+        <div class="panel"><span class="ic"><canvas data-piece="specimen-shelf" data-sil="1" style="width:90px"></canvas></span><span class="num">7 / 10</span><h3>Specimen Shelf</h3><span class="dim small">Catch 10 bugs for the Bugdex.</span><div class="bar gold"><i style="width:70%"></i></div></div>
+        <div class="panel"><span class="ic"><canvas data-piece="coral-fan" data-sil="1" style="width:76px"></canvas></span><span class="num">12 / 15</span><h3>Coral Fan</h3><span class="dim small">Have 15 pieces in his tank at once.</span><div class="bar gold"><i style="width:80%"></i></div></div>
+      </div>
+      <div class="groups" id="groups"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== 5 -->
+<div class="caption" id="c5"><h1><small>5</small>His day</h1><p>He already hides, nibbles, climbs and sleeps in there, and picks a favourite, but none of it shows unless you sit and watch. This direction keeps a diary beside the tank, says what he's doing right now, and shows where his time goes and how close moving day is.</p></div>
+<section class="screen s5" data-chrome>
+  <div class="body">
+    <div class="crumbs" data-crumbs></div>
+    <div style="display:grid;gap:18px">
+      <div class="now"><i class="pulse"></i><h2 style="font-size:34px">Peeking out of the Sandcastle Keep</h2><span class="dim">for 3 minutes</span><span class="btn primary" style="margin-left:auto">Decorate</span></div>
+      <div class="stage" data-stage="day" data-u="7" style="justify-self:start"><canvas data-scene="day"></canvas><div class="over"><span class="ring" data-ring="castle-keep"></span></div></div>
+    </div>
+    <aside class="log">
+      <div style="display:flex;justify-content:space-between;align-items:end"><h2>Today in his tank</h2><span class="dim small">Friday 13 November</span></div>
+      <ol id="diary"></ol>
+    </aside>
+    <div class="below">
+      <div class="panel share"><h3>Where his week went</h3><ul id="share"></ul></div>
+      <div class="panel fav"><span class="ic"><canvas data-piece="castle-keep" style="width:112px"></canvas></span><div><span class="dim small">His favourite</span><h3>Sandcastle Keep</h3><p class="dim small" style="margin:6px 0 0">The Health porthole looks at it, and with motion turned down he sits by it.</p></div></div>
+      <div class="panel move"><h3>Next moving day: the Reef tank</h3><p class="dim small" style="margin:6px 0 0">40 pieces. The pieces hop across one by one and he scuttles in last.</p>
+        <div class="row"><span>Level 23 of 30</span><span class="dim">77%</span><span class="bar" style="grid-column:1/-1"><i style="width:77%"></i></span></div>
+        <div class="row"><span>7 of 10 projects shipped</span><span class="dim">70%</span><span class="bar" style="grid-column:1/-1"><i style="width:70%"></i></span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== 6 -->
+<div class="caption" id="c6"><h1><small>6</small>Layouts and visits</h1><p>Saved layouts become tanks you can see, not names in a list. Each one is a live thumbnail with its season, and putting one up is a single press. Friends' tanks sit underneath, with the switch that puts yours on your cards beside them, where the reason to turn it on is visible.</p></div>
+<section class="screen s6" data-chrome>
+  <div class="body">
+    <div class="crumbs" data-crumbs></div>
+    <div class="hd"><div><h2>His tanks</h2><p class="dim" style="margin:6px 0 0">Keep up to three. One tagged to a season goes up when it starts and comes down when it ends.</p></div><span class="btn primary big">Decorate the one that's up</span></div>
+    <div class="layouts">
+      <div class="lay up"><div class="hd2"><h3>Everyday</h3><span class="chip on">Up now</span></div><canvas data-scene="everyday"></canvas><div class="acts"><span class="dim small" style="margin-right:auto">25 pieces, saved 3 days ago</span><span class="btn quiet">Rename</span><span class="btn quiet">Remove</span></div></div>
+      <div class="lay"><div class="hd2"><h3>Spooky</h3><span class="chip">🎃 Goes up 1 Oct</span></div><canvas data-scene="spooky"></canvas><div class="acts"><span class="dim small" style="margin-right:auto">14 pieces</span><span class="btn quiet">Season</span><span class="btn">Put up</span></div></div>
+      <div class="lay"><div class="hd2"><h3>Winter</h3><span class="chip">❄ Goes up 1 Dec</span></div><canvas data-scene="winter"></canvas><div class="acts"><span class="dim small" style="margin-right:auto">19 pieces</span><span class="btn quiet">Season</span><span class="btn">Put up</span></div></div>
+      <div class="new"><h3>Save the tank as it is</h3><span class="dim small">Your third and last slot.</span><input value="" placeholder="Name this layout" aria-label="Name this layout"><span class="btn">Save layout</span></div>
+    </div>
+    <div class="hd" style="margin-top:24px"><h2 style="font-size:32px">Friends' tanks</h2><span class="dim small">From their last calling card</span></div>
+    <div class="friends">
+      <div class="fr"><canvas data-scene="f1"></canvas><div class="who"><b>tidepool-dev</b><span class="btn quiet">Peek</span></div></div>
+      <div class="fr"><canvas data-scene="f2"></canvas><div class="who"><b>marrow</b><span class="btn quiet">Peek</span></div></div>
+      <div class="fr"><canvas data-scene="f3"></canvas><div class="who"><b>quietkelp</b><span class="btn quiet">Peek</span></div></div>
+      <div class="fr"><canvas data-scene="f4"></canvas><div class="who"><b>bytebarnacle</b><span class="btn quiet">Peek</span></div></div>
+      <div class="panel card-share"><h3>Let them see yours</h3>
+        <label><span class="switch off"></span>Show his tank on my calling card and profile card</label>
+        <p class="dim small" style="margin:0">Friends get a Peek button next to your name. Your tank is on their screen with their Shellby's art, up to 24 pieces. Stickers and specimen jars stay home. A friend dropping by earns House Guest and the Guest Bench.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== 7 -->
+<div class="caption" id="c7"><h1><small>7</h1><p></p></div>
+<section class="screen s7 bare">
+  <div class="room">
+    <h2 class="sr-only">Aquarium mode</h2>
+    <span class="esc">Esc to leave. Moving the mouse shows the panel.</span>
+    <div class="stage" data-stage="aqua" data-u="10"><canvas data-scene="aqua"></canvas></div>
+    <div class="stand"></div>
+    <div class="hud">
+      <div class="clock">21:14<small>He's settling into the Rock Cave for the night</small></div>
+      <div class="work"><b>Claude is working on feat-tank-page</b><span class="dim">Each step it finishes rises as a bubble. 9 so far, about 4 to go.</span><span class="bubs"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i></i><i></i><i></i><i></i></span></div>
+      <div class="glyphs"><span><b>71°</b>GPU</span><span><b>6/10</b>window left</span><span><b>Lit</b>dev server</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="caption" id="c7b"><h1><small>7b</small>Aquarium mode: controls on demand</h1><p>Moving the mouse brings up one bar on the glass: Decorate, Layouts, Readings, Share, Settings, Leave. Readings on the glass pins each gauge's reading onto its piece, as in direction 2. With the mouse still for 3 seconds the bar fades and the room is just the tank again.</p></div>
+<section class="screen s7 bare">
+  <div class="room">
+    <h2 class="sr-only">Aquarium mode, controls showing</h2>
+    <div class="stage" data-stage="aqua2" data-u="10">
+      <canvas data-scene="aqua2"></canvas>
+      <div class="over">
+        <div class="onglass"><span class="btn primary">Decorate</span><span class="sep"></span><span class="btn">Layouts</span><span class="btn on">Readings on the glass</span><span class="btn">📸 Share</span><span class="sep"></span><span class="btn">Settings</span><span class="btn">Leave</span></div>
+        <span class="fadehint">Hides again after 3 seconds without the mouse</span>
+        <span class="mcursor" style="left:1300px;top:150px"></span>
+        <span class="pin" data-pin="glass-thermometer"><b>71°</b>GPU</span>
+        <span class="pin" data-pin="lighthouse"><b>Lit</b>vite on :5173</span>
+        <span class="pin" data-pin="sunken-chest"><b>#482</b>merged</span>
+      </div>
+    </div>
+    <div class="stand"></div>
+    <div class="hud" style="opacity:.8">
+      <div class="clock">21:14<small>He's settling into the Rock Cave for the night</small></div>
+      <div class="work"><b>Claude is working on feat-tank-page</b><span class="dim">9 steps so far, about 4 to go.</span></div>
+      <div class="glyphs"><span><b>71°</b>GPU</span><span><b>6/10</b>window left</span><span><b>Lit</b>dev server</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="caption" id="c7c"><h1><small>7c</small>Aquarium mode: decorating</h1><p>Decorate never leaves the room. The tank stays put and the lights come up so you can see what you place; the night comes back on Done. The tray rises from the bottom as a drawer: shelves across the top, pieces in a strip you drag up into the water, and the tank's size, floor, back glass and light on the right. The picked piece gets its tools right above it.</p></div>
+<section class="screen s7e bare">
+  <div class="top">
+    <h2>Decorating</h2><span class="btn">Undo</span><span class="btn" style="opacity:.45">Redo</span>
+    <span class="cap"><span class="dim">25 of 56 pieces</span><span class="bar"><i style="width:45%"></i></span><span class="btn quiet">Cancel</span><span class="btn primary">Done</span></span>
+  </div>
+  <div class="mid">
+    <div class="stage" data-stage="aquaEdit" data-u="10">
+      <canvas data-scene="aquaEdit"></canvas>
+      <div class="over">
+        <span class="ring dash" data-ring="castle-keep"></span>
+        <div class="float" data-float="castle-keep"><b>⇋ Flip</b><b>Row ↑</b><b>Row ↓</b><b>Back</b><b>Forward</b><b class="sep"></b><b class="warn">Put away</b></div>
+        <span class="ghost" data-ring="old-anchor"><span class="mcursor" style="left:60%;top:55%"></span></span>
+      </div>
+    </div>
+  </div>
+  <div class="drawer">
+    <i class="grip"></i>
+    <div>
+      <div class="shelfrow"><b class="on">Everything<span>48</span></b><b>Structures<span>8</span></b><b>Plants<span>9</span></b><b>Rocks<span>4</span></b><b>Treasures<span>12</span></b><b>Bubblers &amp; lights<span>6</span></b><b>Milestones<span>3</span></b><b>His finds<span>14</span></b><b>Stickers on the glass<span>5</span></b><span class="search">Find a piece</span></div>
+      <div class="strip" id="drawerStrip"></div>
+      <p class="hint2">Drag one up into the water, or press Enter on it.<kbd>Arrows</kbd>move<kbd>F</kbd>flip<kbd>[ ]</kbd>back, forward<kbd>Del</kbd>put away<kbd>Ctrl Z</kbd>undo</p>
+    </div>
+    <div class="look">
+      <div class="row">Tank<span class="seg"><b>Nano</b><b>10 gal</b><b>30 gal</b><b class="on">Grand</b></span></div>
+      <div class="row">Floor<div class="sw"><span class="on"><canvas data-swatch="soft-sand"></canvas>Sand</span><span><canvas data-swatch="gravel"></canvas>Gravel</span><span><canvas data-swatch="pebble-floor"></canvas>Pebbles</span></div></div>
+      <div class="row">Back glass<div class="sw"><span><canvas data-swatch="plain-water"></canvas>Water</span><span><canvas data-swatch="rock-wall"></canvas>Rock wall</span><span class="on"><canvas data-swatch="starry-night"></canvas>Stars</span></div></div>
+      <div class="row">Light<span class="seg"><b class="on">Follow my clock</b><b>Day</b><b>Night</b></span></div>
+    </div>
+  </div>
+</section>
+
+<nav class="jump" aria-label="Directions"><a href="#c1">1</a><a href="#c2">2</a><a href="#c3">3</a><a href="#c4">4</a><a href="#c5">5</a><a href="#c6">6</a><a href="#c7">7</a><a href="#c7b" style="font-size:14px">7b</a><a href="#c7c" style="font-size:14px">7c</a></nav>
+
+<script src="data.js"></script>
+<script src="paint.js"></script>
+<script>
+'use strict';
+const T = window.TankMock;
+document.getElementById('c4').innerHTML = '<h1><small>4</small>Collection</h1><p>There are 116 pieces and nothing to buy, so the page should show what\'s left to earn. Today that\'s a list of counts. Here the tank sits beside the whole catalogue: earned pieces in colour, the rest as silhouettes with a progress ring, the three closest called out, and the ladder of tank sizes.</p>';
+document.getElementById('c7').innerHTML = '<h1><small>7</small>Aquarium mode</h1><p>On a 4K screen the tank can be a place to look while Claude works: full screen, no chrome, a clock, a few readings, and the running task\'s steps rising as bubbles. A button in the tank opens it, or it turns on after idle on a second monitor.</p>';
+
+// ------------------------------------------------------------ scenes (real ids, real geometry)
+const P = (id, x, row = 1, more = {}) => ({ id, x, row, ...more });
+const GRAND = [
+  P('kelp', 4), P('kelp', 12), P('kelp', 194), P('kelp', 236),
+  P('castle-keep', 32, 0), P('rock-cave', 104, 0), P('sunken-ship', 140, 0), P('specimen-shelf', 170, 0), P('lighthouse', 222, 0),
+  P('amphora', 18, 1), P('coral-fan', 58, 1), P('java-fern', 120, 1), P('driftwood', 186, 1), P('anubias', 208, 1),
+  P('rock-flat', 6, 2), P('air-stone', 50, 2), P('sunken-chest', 74, 2), P('rock-round', 112, 2), P('moss-ball', 132, 2), P('air-stone', 162, 2), P('sea-grass', 226, 2),
+  P('glass-thermometer', 230, 0), P('jelly-lamp', 152, 1),
+];
+const scenes = {
+  grand: { w: 240, h: 80, light: 'day', floor: 'soft-sand', back: 'rock-wall', crab: { x: 88 }, pieces: GRAND },
+  readings: { w: 240, h: 80, light: 'dusk', floor: 'soft-sand', back: 'rock-wall', crab: { x: 88 }, busy: true, pieces: GRAND },
+  work: { w: 240, h: 80, light: 'day', floor: 'soft-sand', back: 'rock-wall', crab: { x: 222, alpha: 0.35 }, pieces: [...GRAND.filter(p => p.id !== 'lighthouse'), P('old-anchor', 186, 2, { ghost: true })] },
+  small: { w: 160, h: 64, light: 'day', floor: 'gravel', back: 'plain-water', crab: { x: 60 }, pieces: [P('kelp', 4), P('kelp', 150), P('castle-keep', 20, 0), P('rock-cave', 96, 0), P('coral-fan', 40, 1), P('java-fern', 116, 1), P('sunken-chest', 82, 2), P('air-stone', 132, 2), P('rock-round', 8, 2), P('moss-ball', 142, 2)] },
+  day: { w: 240, h: 80, light: 'day', floor: 'soft-sand', back: 'rock-wall', crab: { x: 45, lift: 0, alpha: 1 }, pieces: GRAND.filter(p => p.id !== 'glass-thermometer') },
+  everyday: { w: 240, h: 80, light: 'day', floor: 'soft-sand', back: 'rock-wall', crab: { x: 88 }, pieces: GRAND },
+  spooky: { w: 160, h: 64, light: 'dusk', floor: 'gravel', back: 'rock-wall', crab: { x: 70 }, pieces: [P('maple-leaves', 10, 2), P('carved-pumpkin', 30, 1), P('sunken-ship', 100, 0), P('rock-cave', 44, 0), P('moon-lamp', 130, 0), P('carved-pumpkin', 120, 2), P('kelp', 4), P('kelp', 150), P('rock-stack', 140, 1)] },
+  winter: { w: 160, h: 64, light: 'night', floor: 'pebble-floor', back: 'starry-night', crab: { x: 64 }, pieces: [P('snow-globe', 30, 1), P('castle-keep', 96, 0), P('jelly-lamp', 20, 0), P('snow-globe', 130, 2), P('rock-flat', 8, 2), P('moss-ball', 50, 2), P('kelp', 150)] },
+  f1: { w: 128, h: 56, light: 'day', floor: 'soft-sand', back: 'plain-water', crab: { x: 54 }, pieces: [P('sunken-ship', 6, 0), P('kelp', 120), P('coral-fan', 90, 1), P('beach-ball', 38, 2)] },
+  f2: { w: 128, h: 56, light: 'night', floor: 'gravel', back: 'starry-night', crab: { x: 40 }, pieces: [P('rock-cave', 80, 0), P('moon-lamp', 20, 0), P('rock-stack', 100, 1), P('java-fern', 6, 1)] },
+  f3: { w: 128, h: 56, light: 'day', floor: 'pebble-floor', back: 'plain-water', crab: { x: 62 }, pieces: [P('kelp', 4), P('kelp', 12), P('kelp', 110), P('sea-grass', 24, 2), P('anubias', 40, 1), P('java-fern', 90, 1), P('cherry-blossom', 100, 2), P('moss-ball', 80, 2)] },
+  f4: { w: 128, h: 56, light: 'dusk', floor: 'soft-sand', back: 'rock-wall', crab: { x: 30 }, pieces: [P('lighthouse', 110, 0), P('old-anchor', 70, 1), P('diver', 8, 1), P('sunken-chest', 50, 2)] },
+  aqua2: { w: 240, h: 80, light: 'night', floor: 'soft-sand', back: 'starry-night', crab: { x: 110 }, pieces: GRAND.concat([P('moon-lamp', 60, 0)]) },
+  aquaEdit: { w: 240, h: 80, light: 'day', floor: 'soft-sand', back: 'starry-night', crab: { x: 222, alpha: 0.35 }, pieces: [...GRAND.filter(p => p.id !== 'lighthouse'), P('moon-lamp', 60, 0), P('old-anchor', 186, 2, { ghost: true })] },
+  aqua: { w: 240, h: 80, light: 'night', floor: 'soft-sand', back: 'starry-night', crab: { x: 110, alpha: 1 }, busy: false, pieces: GRAND.filter(p => p.id !== 'rock-cave').concat([P('rock-cave', 104, 0), P('moon-lamp', 60, 0)]) },
+};
+
+// ------------------------------------------------------------ sizing, pins and rings
+for (const st of document.querySelectorAll('[data-stage]')) {
+  const sc = scenes[st.dataset.stage], u = Number(st.dataset.u);
+  const c = st.querySelector('canvas');
+  c.style.width = `${sc.w * u}px`; c.style.height = `${sc.h * u}px`;
+  const box = id => T.boxes(sc).find(b => b.id === id);
+  st.querySelectorAll('[data-pin]').forEach(el => { const b = box(el.dataset.pin); el.style.left = `${(b.x + b.w / 2) * u}px`; el.style.top = `${b.top * u}px`; });
+  st.querySelectorAll('[data-ring]').forEach(el => { const b = box(el.dataset.ring); Object.assign(el.style, { left: `${b.x * u}px`, top: `${b.top * u}px`, width: `${b.w * u}px`, height: `${b.h * u}px` }); });
+  st.querySelectorAll('[data-float]').forEach(el => { const b = box(el.dataset.float); el.style.left = `${(b.x + b.w / 2) * u}px`; el.style.top = `${b.top * u}px`; });
+  st.querySelectorAll('[data-say]').forEach(el => { el.style.setProperty('--x', `${(sc.crab.x + 11) * u}px`); el.style.setProperty('--y', `${(sc.h - 5 - T.crabSize[1] - 3) * u}px`); });
+  st.querySelectorAll('[data-rows]').forEach(el => {
+    el.style.top = '0'; el.style.height = '100%';
+    el.innerHTML = ['Back row', 'He walks here', 'Front row'].map((t, i) => `<span style="position:absolute;top:${[sc.h - 30, sc.h - 25, sc.h - 20][i] * u}px;white-space:nowrap">${t}</span>`).join('');
+  });
+}
+// a single piece, drawn at a whole-number scale that fits its box
+for (const c of document.querySelectorAll('canvas[data-piece]')) {
+  T.piece(c, c.dataset.piece, { silhouette: !!c.dataset.sil });
+  if (!c.style.width && !c.style.height) { const a = T.ART.get(c.dataset.piece); const k = Math.max(2, Math.floor(48 / Math.max(a.pixels.length, a.pixels[0].length / 1.4))); c.style.width = `${a.pixels[0].length * k}px`; }
+}
+for (const c of document.querySelectorAll('canvas[data-swatch]')) {
+  const a = T.ART.get(c.dataset.swatch); c.width = 16; c.height = 8;
+  const x = c.getContext('2d');
+  if (a.pixels.length === 1) { x.fillStyle = '#3fa3b3'; x.fillRect(0, 0, 16, 8); continue; }
+  for (let ox = 0; ox < 16; ox += a.pixels[0].length) a.pixels.forEach((r, y) => [...r].forEach((ch, i) => { if (a.palette[ch]) { x.fillStyle = a.palette[ch]; x.fillRect(ox + i, y, 1, 1); } }));
+}
+
+// ------------------------------------------------------------ 3: the tray
+const tray = ['sunken-chest', 'amphora', 'old-anchor', 'diver', 'beach-ball', 'heart-shell', 'carved-pumpkin', 'snow-globe', 'medal-rack', 'quiz-scroll', 'red-pen-quill', 'twin-husks'];
+const trayState = { 'sunken-chest': 'in', amphora: 'in', 'old-anchor': 'drag', 'medal-rack': 'lock', 'quiz-scroll': 'lock', 'red-pen-quill': 'lock', 'twin-husks': 'lock' };
+document.getElementById('trayGrid').innerHTML = tray.map(id => {
+  const a = T.ART.get(id), s = trayState[id];
+  return `<div class="tile ${s === 'lock' ? 'locked' : ''} ${s === 'drag' ? 'drag' : ''}">${s === 'in' ? '<span class="n">In</span>' : ''}${s === 'lock' ? '<span class="lock">🔒</span>' : ''}<canvas data-p="${id}" ${s === 'lock' ? 'data-s="1"' : ''}></canvas>${a.name}</div>`;
+}).join('');
+
+// ------------------------------------------------------------ 7c: the drawer
+const DRAWER = ['castle-keep', 'rock-cave', 'driftwood', 'kelp', 'coral-fan', 'anubias', 'sunken-chest', 'old-anchor', 'diver', 'lighthouse', 'jelly-lamp', 'moon-lamp', 'beach-ball', 'snow-globe', 'medal-rack', 'twin-husks'];
+const DSTATE = { 'castle-keep': 'in', 'rock-cave': 'in', driftwood: 'in', kelp: 'in', 'coral-fan': 'in', 'sunken-chest': 'in', 'old-anchor': 'drag', 'jelly-lamp': 'in', 'moon-lamp': 'in', 'medal-rack': 'lock', 'twin-husks': 'lock' };
+document.getElementById('drawerStrip').innerHTML = DRAWER.map(id => {
+  const a = T.ART.get(id), s = DSTATE[id];
+  return '<div class="tile ' + (s === 'lock' ? 'locked ' : '') + (s === 'drag' ? 'drag' : '') + '">' + (s === 'in' ? '<span class="n">In</span>' : '') + (s === 'lock' ? '<span class="lock">🔒</span>' : '') + '<canvas data-p="' + id + '"' + (s === 'lock' ? ' data-s="1"' : '') + '></canvas>' + a.name + '</div>';
+}).join('');
+
+// ------------------------------------------------------------ 4: the catalogue
+const START = ['castle-keep', 'rock-cave', 'driftwood', 'kelp', 'java-fern', 'sea-grass', 'moss-ball', 'rock-round', 'rock-flat', 'rock-stack', 'air-stone', 'amphora'];
+const TROPHY = ['sunken-chest', 'coral-fan', 'guest-bench', 'anubias', 'display-plinth', 'old-anchor', 'moon-lamp', 'lighthouse', 'glass-thermometer', 'diver', 'jelly-lamp', 'sunken-ship'];
+const SEASON = ['carved-pumpkin', 'snow-globe', 'heart-shell', 'cherry-blossom', 'beach-ball', 'maple-leaves'];
+const MILE = window.TANK_DATA.decor.slice(36).map(d => d.id);
+const OWN = new Set([...START, 'sunken-chest', 'anubias', 'old-anchor', 'lighthouse', 'glass-thermometer', 'jelly-lamp', 'sunken-ship', 'diver', 'carved-pumpkin', 'snow-globe', 'maple-leaves', 'first-nest-stone', 'diving-goggles-stand', 'chapter-compass']);
+const PROG = { 'level-25-flag': 92, 'specimen-shelf': 70, 'jar-shelf-100': 7, 'rematch-belt': 33, 'proof-tablet': 40, 'medal-rack': 50, 'twin-husks': 0, 'nest-cairn': 10, 'hawk-perch': 60, 'red-pen-quill': 30, 'logbook-lectern': 46, 'streak-lighthouse': 20, 'coral-fan': 80, 'guest-bench': 0 };
+const group = (title, sub, ids, wide) => `<section class="group ${wide ? 'wide' : ''}"><h3>${title} <span>${ids.filter(i => OWN.has(i)).length} of ${ids.length}. ${sub}</span></h3><div class="tiles">${ids.map(id => {
+  const own = OWN.has(id), p = PROG[id];
+  return `<div class="tile ${own ? '' : 'locked'} ${own && MILE.includes(id) ? 'gold' : ''}" title="${T.ART.get(id).name}"><canvas data-p="${id}" ${own ? '' : 'data-s="1"'}></canvas>${!own && p != null ? `<i class="ringp" style="--p:${p}%"></i>` : ''}</div>`;
+}).join('')}</div></section>`;
+document.getElementById('groups').innerHTML =
+  group('From the start', 'Yours from day one.', START) +
+  group('Trophies', 'Each comes with one.', TROPHY) +
+  group('Milestones', 'The rarest. Gold once they\'re yours.', MILE, true) +
+  group('Seasons', 'Turn up in their season, then stay.', SEASON) +
+  '<section class="group"><h3>His finds <span>14 dug up, 3 sets complete.</span></h3><p class="dim" style="margin:0">Every find he digs up can go in, as many as he has found. A complete set in the tank goes on display. <u>Open Finds</u></p></section>';
+
+for (const c of document.querySelectorAll('canvas[data-p]')) {
+  T.piece(c, c.dataset.p, { silhouette: !!c.dataset.s });
+  const a = T.ART.get(c.dataset.p), box = c.closest('.s4') ? 72 : 62;
+  const k = Math.max(2, Math.floor(box / Math.max(a.pixels.length, a.pixels[0].length)));
+  c.style.width = `${a.pixels[0].length * k}px`;
+}
+
+// ------------------------------------------------------------ 5: the diary and his week
+const DIARY = [
+  ['07:02', 'rock-cave', 'Woke up in the Rock Cave and stretched.'],
+  ['08:15', 'kelp', 'Nibbled the kelp by the back glass.'],
+  ['09:40', 'sunken-chest', 'Checked the Sunken Chest. Nothing, again. <q>He looked at you.</q>'],
+  ['11:03', 'old-anchor', 'Found the Old Anchor you put in and climbed straight up it.', 'first'],
+  ['12:30', 'driftwood', 'Clambered over the Driftwood Arch, twice.'],
+  ['14:12', 'castle-keep', 'Hid in the Sandcastle Keep while your build ran.'],
+  ['15:48', 'coral-fan', 'Sat under the Coral Fan.'],
+  ['16:20', 'castle-keep', 'Back in the Sandcastle Keep, peeking out.'],
+];
+document.getElementById('diary').innerHTML = DIARY.map(([t, id, s, cls]) => `<li class="${cls || ''}"><time>${t}</time><span class="ic"><canvas data-q="${id}"></canvas></span><span>${s}${cls ? ' <span class="chip" style="height:24px;margin-left:6px">First time</span>' : ''}</span></li>`).join('');
+for (const c of document.querySelectorAll('canvas[data-q]')) { T.piece(c, c.dataset.q); const a = T.ART.get(c.dataset.q); const k = Math.max(1, Math.floor(40 / Math.max(a.pixels.length, a.pixels[0].length))); c.style.width = `${a.pixels[0].length * k}px`; }
+const WEEK = [['Sandcastle Keep', 38], ['Rock Cave', 22], ['Driftwood Arch', 14], ['Kelp', 11], ['Sunken Chest', 8], ['Just wandering', 7]];
+document.getElementById('share').innerHTML = WEEK.map(([n, v]) => `<li><span>${n}</span><span class="bar"><i style="width:${v / 38 * 100}%"></i></span><span>${v}%</span></li>`).join('');
+
+// ------------------------------------------------------------ 2: earlier this hour (made-up readings)
+const series = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+const gpu = series(60, i => 70 + i * 0.27 + Math.sin(i * 0.9) * 1.4);
+const cpu = series(60, i => 30 + Math.sin(i * 0.5) * 9 + (i > 40 && i < 48 ? 22 : 0) + Math.sin(i * 2.3) * 4);
+const spark = (vals, { lo, hi, line, color, hot }) => {
+  const W = 600, H = 120, x = i => (i / (vals.length - 1)) * W, y = v => H - ((v - lo) / (hi - lo)) * H;
+  const d = vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const over = line != null ? vals.map((v, i) => (v > line ? `<circle cx="${x(i)}" cy="${y(v)}" r="2.5" fill="${hot}" vector-effect="non-scaling-stroke"/>` : '')).join('') : '';
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:120px;overflow:visible" aria-hidden="true">
+    ${line != null ? `<line x1="0" x2="${W}" y1="${y(line)}" y2="${y(line)}" stroke="${hot}" stroke-dasharray="6 6" stroke-width="1.5" vector-effect="non-scaling-stroke" opacity=".8"/>` : ''}
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>${over}</svg>`;
+};
+document.getElementById('sparks').innerHTML =
+  `<figure><figcaption><span>GPU temperature. Dashed: your 83° line</span><b style="color:var(--danger)">86°</b></figcaption>${spark(gpu, { lo: 60, hi: 92, line: 83, color: '#e8c46a', hot: '#ff5a4a' })}<figcaption><span>60 min ago</span><span>now</span></figcaption></figure>` +
+  `<figure><figcaption><span>CPU. The spike was your build at 16:02</span><b>34%</b></figcaption>${spark(cpu, { lo: 0, hi: 100, color: '#7fd6c2' })}<figcaption><span>60 min ago</span><span>now</span></figcaption></figure>`;
+
+if (/[?&]screen=(\d)/.test(location.search)) {
+  const n = Number(RegExp.$1);
+  document.body.classList.add('one');
+  document.querySelectorAll('.screen').forEach((s, i) => { s.style.display = i === n - 1 ? '' : 'none'; });
+}
+
+// ------------------------------------------------------------ chrome
+const CHROME_TOP = '<header class="titlebar"><span class="me"><canvas data-crabicon style="width:44px"></canvas>Shellby <span class="lv">Lv 23 <i></i></span></span><span class="ask">Ask</span><span class="win"><span>⌕</span><span>⚙</span><span>—</span><span>▢</span><span>✕</span></span></header>';
+const CHROME_BOT = '<footer class="tabbar">' + ['Shellby', 'Chat', 'Toolbox', 'Automate', 'Health', 'History', 'Projects', 'Notes', 'More'].map((n, i) => `<span class="${i ? '' : 'on'}">${n}</span>`).join('') + '</footer>';
+document.querySelectorAll('[data-chrome]').forEach(s => { s.insertAdjacentHTML('afterbegin', CHROME_TOP); s.insertAdjacentHTML('beforeend', CHROME_BOT); });
+document.querySelectorAll('[data-crumbs]').forEach(el => { el.innerHTML = '<span class="seg"><b>Outfits</b><b>Trophies</b><b>Bugdex</b><b class="on">Home</b></span><span class="seg"><b>Finds</b><b class="on">Tank</b><b>Us</b><b>Stickers</b></span>'; });
+document.querySelectorAll('canvas[data-crabicon]').forEach(c => {
+  const { palette, pixels } = window.TANK_DATA.crab; c.width = pixels[0].length; c.height = pixels.length;
+  const x = c.getContext('2d'); pixels.forEach((r, y) => [...r].forEach((ch, i) => { if (palette[ch]) { x.fillStyle = palette[ch]; x.fillRect(i, y, 1, 1); } }));
+});
+
+T.run(scenes);
+</script>
+</body>
+</html>
