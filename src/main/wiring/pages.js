@@ -327,7 +327,10 @@ function wirePages(d) {
   }
 
   // ------------------------------------------- building and changing, with Claude
-  /** Start a conversation that works on pages: the panel opens the page beside it. */
+  /**
+   * Start a conversation that works on pages: the panel opens the page beside it.
+   * @param {string} prompt @param {string} title @param {string | null} id @param {string | null} [mode]
+   */
   function startWith(prompt, title, id, mode = null) {
     const man = id ? pages().manifest(id) : null;
     const cwd = man?.project || d.currentCwd();
@@ -350,10 +353,12 @@ function wirePages(d) {
     const s = pages();
     const man = s.manifest(id);
     if (!man || !format.isId(id)) return { ok: false, error: 'No such page.' };
+    if (!allow('change', 4, Date.now())) return { ok: false, error: 'That started a few conversations just now. Give it a moment.' };
     const page = { id, name: man.name };
     const files = s.files(id) || {};
     const prompt = error !== undefined ? prompts.fixPrompt(page, files, error) : prompts.changePrompt(page, files, ask, pointed);
-    return startWith(prompt, `${error !== undefined ? 'Fix' : 'Change'}: ${man.name}`.slice(0, 60), id);
+    // Ask first: the prompt carries the page's own files and errors, which a model wrote.
+    return startWith(prompt, `${error !== undefined ? 'Fix' : 'Change'}: ${man.name}`.slice(0, 60), id, 'ask');
   }
 
   /**

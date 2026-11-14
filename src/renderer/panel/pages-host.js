@@ -22,7 +22,7 @@
   const card = (tone, ...kids) => h('div', { class: `pg-card ${tone}`, role: tone === 'bad' ? 'alert' : 'status' }, ...kids);
 
   /**
-   * opts: { pane: boolean, onBack(), onMenu(anchor, view), onPointed(view, pointed) }
+   * opts: { pane: boolean, onBack(), onMenu(anchor, view), onSaved(id) }
    * -> { el, show(id), refresh(), id(), close() }
    */
   function create(opts = {}) {
@@ -31,7 +31,7 @@
     const dot = h('span', { class: 'pg-live', title: 'Live: agents and the page write here', hidden: true });
     const chip = h('span', { class: 'chip pg-chip', hidden: true });
     const pointBtn = h('button', { type: 'button', class: 'btn ghost slim-btn pg-point', 'aria-pressed': 'false', text: 'Point at it', title: 'Click part of the page to name it when you change it' });
-    const changeBtn = btn('Change with Claude', () => change(), 'btn slim-btn');
+    const changeBtn = btn('Change with Claude', () => change(pointed), 'btn slim-btn');
     const moreBtn = h('button', { type: 'button', class: 'icon-btn pg-more', 'aria-label': 'More', 'aria-haspopup': 'menu', title: 'More' }, SB.icon('M3.5 8h.01M8 8h.01M12.5 8h.01', { width: 2.4 }));
     const back = opts.pane ? null : h('button', { type: 'button', class: 'back-btn', 'aria-label': 'Back to Pages', text: '‹ Pages', onclick: () => opts.onBack?.() });
     const head = h('div', { class: 'pg-head' }, back, icon, name, dot, chip, h('span', { class: 'pg-grow' }), pointBtn, changeBtn, moreBtn);
@@ -107,7 +107,8 @@
           drawCards();
           if (view && !view.draft) api.pages.broken(view.id, message);
         },
-        onPointed: p => { pointed = p; setPoint(false); opts.onPointed ? opts.onPointed(view, p) : change(p); },
+        // Only while you've turned Point at it on, and it only fills a card: a page can't start anything.
+        onPointed: p => { if (!pointing) return; pointed = p; setPoint(false); drawCards(); },
         onRefused: r => {
           const key = `${r.refused?.kind}:${r.refused?.what || ''}`;
           if (shown.has(key)) return;
@@ -177,6 +178,13 @@
           btn('Ask Claude', () => { ask = null; drawCards(); api.pages.ask(view.id, a.prompt, a.mode).then(fail); }, 'btn primary slim-btn'),
           btn('Not now', () => { ask = null; drawCards(); }, 'btn ghost slim-btn')));
       }
+      if (pointed && !view.draft) {
+        const p = pointed;
+        out.push(card('ask',
+          h('div', { class: 'pg-card-text' }, h('b', { text: 'You pointed at' }), h('q', { text: p.text || p.selector })),
+          btn('Change it with Claude', () => change(p), 'btn primary slim-btn'),
+          btn('Not now', () => { pointed = null; drawCards(); }, 'btn ghost slim-btn')));
+      }
       if (refused) {
         const r = refused;
         out.push(card('warn',
@@ -218,10 +226,12 @@
     }
     pointBtn.addEventListener('click', () => setPoint(!pointing));
 
-    function change(p = pointed) {
+    /** Change with Claude: only ever from your click (the header's button, or the pointed-at card). */
+    function change(p = null) {
       if (!view || view.draft) return;
       api.pages.change(view.id, p ? { pointed: p } : {}).then(fail);
       pointed = null;
+      drawCards();
     }
 
     moreBtn.addEventListener('click', () => { if (view) opts.onMenu?.(moreBtn, view); });
