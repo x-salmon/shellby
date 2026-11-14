@@ -5,6 +5,11 @@
 const guard = require('../guard');
 const { coldResend, modelSwitch } = require('../cachebreak');
 const usageLedger = require('../usage/ledger');
+const runcost = require('../usage/runcost');
+const modelPick = require('../model-pick');
+const { onClaude } = require('../sessions');
+const { hasKeyword: hasUltracode } = require('../../renderer/shared/ultracode');
+const { clockTime } = require('../usage/service');
 const { headBranch } = require('../gitinfo');
 
 const SAVE_DELAY_MS = 5000;   // turns end in bursts (a workflow's steps); one write when they settle
@@ -65,15 +70,51 @@ function wireUsagePlan(d) {
     const src = d.spendSource(tab);
     ledger = usageLedger.record(rows(), {
       pk: src.pk, project: src.project, kind: src.kind, rid: tab.routineId || null,
+      // A workflow step's run and workflow, so past runs of it can be added up (usage/runcost.js); and the helpers the turn sent.
+      run: tab.workflowRunId || null, wf: tab.workflowRunId ? d.workflows?.workflowOfRun(tab.workflowRunId) : null,
+      helpers: Array.isArray(result?.cost?.helpers) ? result.cost.helpers.length : 0,
       // The branch the work was on: a copy's own, Claude's worktree's, or what the folder has checked out.
       branch: tab.worktree?.branch || tab.claudeWorktree?.branch || headBranch(tab.session?.cwd),
-      model: tab.session?.lastModel || tab.session?.model || d.config.get('model') || '',
+      model: modelOf(tab),
       category: t.category, size: t.size,
       weight: t.weight, pctRise: t.sawUsage ? t.rise : null,
       durationMs: Number.isFinite(result?.durationMs) ? result.durationMs : Date.now() - t.startedAt,
       turns: result?.turns, tokens: result?.tokens, ok: !!result?.ok,
     }, Date.now());
     if (!saveTimer) saveTimer = setTimeout(save, SAVE_DELAY_MS);
+  }
+
+  const modelOf = tab => tab?.session?.lastModel || tab?.session?.model || d.config.get('model') || '';
+
+  /**
+   * An Ultracode run ended (session/ultra.js 'run'): a row of its own, so the
+   * next one can be guessed at. Its agents' spend is what the meters got for it.
+   */
+  function endRun(tab, run) {
+    if (d.CAPTURE || !tab || !run || !(run.weight > 0)) return;
+    const src = d.spendSource(tab);
+    ledger = usageLedger.record(rows(), {
+      pk: src.pk, project: src.project, kind: 'ultracode', run: run.id, model: modelOf(tab),
+      category: 'other', size: 's', weight: run.weight, pctRise: null, durationMs: run.durationMs, ok: run.ok,
+    }, Date.now());
+    if (!saveTimer) saveTimer = setTimeout(save, SAVE_DELAY_MS);
+  }
+
+  /**
+   * What a run like this usually costs, before it starts (usage/runcost.js):
+   * kind 'ultracode', 'workflow' (with its id) or 'fanout' (a turn asking for
+   * several helpers). -> the view the panel shows, words included, or null.
+   */
+  function estimateRunFor({ kind, workflowId = null } = {}) {
+    const now = Date.now();
+    const all = rows();
+    const wf = kind === 'workflow' ? d.workflows?.get(workflowId) : null;
+    if (kind === 'workflow' && !wf) return null;
+    const est = runcost.estimateRun(all, { kind, key: wf?.id || null, ratio: usageLedger.ratioOf(all), now });
+    if (!est) return null;
+    const settings = guard.settingsOf(k => d.config.get(k));
+    const advice = usageLedger.advise(est, d.config.get('lastUsage'), settings, now);
+    return runcost.view(est, advice, { name: wf?.name || null, resetText: advice.resetsAt ? clockTime(advice.resetsAt) : null, guardOn: settings.on });
   }
 
   function save() {
@@ -95,26 +136,29 @@ function wireUsagePlan(d) {
    * What a message usually costs, for the composer: the estimate (usageLedger.js)
    * plus whether it would cross the line and whether to hold it for you.
    * -> { pct, low, high, samples, basis, category, project, over, line, nowPct,
-   *      left, guardOn, resetsAt, hold, cold, suggest }, or for a /command only { rebuild }
+   *      left, guardOn, resetsAt, hold, cold, suggest, run }, or for a /command only { rebuild }
    * rebuild: a /model switch that throws a warm cache away (cachebreak.js modelSwitch);
    * cold: a short message into a big conversation whose cache has gone cold
    * (cachebreak.js coldResend); suggest: Sonnet for a conversation that hasn't
-   * started, when this kind of ask usually suits it (ledger.js modelSuggestion).
+   * started, when this kind of ask usually suits it (ledger.js modelSuggestion);
+   * run: what the run this message starts usually costs (estimateRunFor), with
+   * Ultracode on for the tab (opts.ultracode) or a message that asks for several helpers.
    */
-  function estimateFor(tabId, text) {
+  function estimateFor(tabId, text, { ultracode = false } = {}) {
     const now = Date.now();
     const tab = tabId ? d.manager?.tabs.get(tabId) : null;
     const src = tab ? d.spendSource(tab) : d.projectKeyOf(d.currentCwd());
     // A /command isn't a task to estimate: only whether it throws a warm cache away.
     if (String(text || '').trim().startsWith('/')) {
-      return { basis: 'none', samples: 0, over: false, hold: false, rebuild: tab ? modelSwitch({ cache: tab.session?.cache, tokens: tab.session?.context?.tokens, text, now }) : null, cold: null, suggest: null };
+      return { basis: 'none', samples: 0, over: false, hold: false, rebuild: tab ? modelSwitch({ cache: tab.session?.cache, tokens: tab.session?.context?.tokens, text, now }) : null, cold: null, suggest: null, run: null };
     }
-    const model = tab?.session?.lastModel || tab?.session?.model || d.config.get('model') || '';
+    const model = modelOf(tab);
     const category = usageLedger.classify(text);
     const est = usageLedger.estimate(rows(), { pk: src.pk, category, model, now });
     const settings = guard.settingsOf(k => d.config.get(k));
     const advice = usageLedger.advise(est, d.config.get('lastUsage'), settings, now);
     const kind = tab?.routineId ? 'routine' : tab?.workflowRunId ? 'workflow' : 'tab';
+    const runKind = ultracode ? 'ultracode' : runcost.fanout(text) ? 'fanout' : null;
     return {
       ...est, category, project: src.project,
       over: advice.over, line: advice.line, nowPct: advice.now, left: advice.left, guardOn: settings.on, resetsAt: advice.resetsAt,
@@ -122,7 +166,33 @@ function wireUsagePlan(d) {
       cold: tab && kind === 'tab' ? coldResend({ cache: tab.session?.cache, tokens: tab.session?.context?.tokens, text, now }) : null,
       suggest: tab && kind === 'tab' && !tab.session?.proc && !tab.session?.sessionId && !tab.ownModel
         ? usageLedger.modelSuggestion(rows(), { pk: src.pk, category, model, now }) : null,
+      run: runKind && kind === 'tab' ? estimateRunFor({ kind: runKind }) : null,
     };
+  }
+
+  /**
+   * A cheaper model for a small message, before it goes (model-pick.js): whether
+   * to ask (or send it to the model you chose for its kind), what the message
+   * usually takes on the tab's model and on Haiku, and the card's words.
+   * -> { ask: true, cls, model, modelName, cheaper, estimate, words }
+   *  | { auto, cls, model, modelName, cheaper } | { ask: false, why }
+   */
+  function suggestModel(tabId, text, { files = 0, ultracode = false } = {}) {
+    const tab = tabId ? d.manager?.tabs.get(tabId) : null;
+    if (!tab || !onClaude(tab) || tab.inTerminal) return { ask: false, why: 'tab' };
+    // What it runs on now: the model asked for right after a switch, else the latest reply's, else the start's.
+    const model = tab.session?.modelSwitched ? tab.session.model : (tab.session?.lastModel || tab.session?.initModel || tab.session?.model || '');
+    const decision = modelPick.suggest({
+      text, files, model, defaultModel: d.config.get('model') || '',
+      enabled: d.config.get('modelSuggest') !== false, always: d.config.get('modelAlways') || {},
+      ultracode: ultracode || hasUltracode(text), local: !!tab.localTarget, contextTokens: tab.session?.context?.tokens || 0,
+    });
+    if (!decision.ask && !decision.auto) return decision;
+    const named = { model: model || '', modelName: modelPick.familyName(model), cheaper: modelPick.CHEAPER };
+    if (decision.auto) return { ...decision, ...named };
+    const src = d.spendSource(tab);
+    const est = modelPick.estimateSmall(rows(), { pk: src.pk, category: usageLedger.classify(text), model: model || 'opus', now: Date.now() });
+    return { ...decision, ...named, estimate: est, words: modelPick.words({ cls: decision.cls, model, est }) };
   }
 
   /** A suggestion for the routine editor: 'sonnet' when its runs are small for the model it's on, else null. */
@@ -135,7 +205,7 @@ function wireUsagePlan(d) {
     return cwd ? usageLedger.byBranch(rows(), { pk: d.projectKeyOf(cwd).pk, now: Date.now() }) : [];
   }
 
-  return { beginTurn, onSpend, onUsage, endTurn, save, clear, estimateFor, routineSuggestion, branchCosts };
+  return { beginTurn, onSpend, onUsage, endTurn, endRun, save, clear, estimateFor, estimateRunFor, suggestModel, routineSuggestion, branchCosts };
 }
 
 module.exports = { wireUsagePlan };

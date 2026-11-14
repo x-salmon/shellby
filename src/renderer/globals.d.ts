@@ -49,9 +49,11 @@ interface Window {
   ShellbyPanes: any;
   ShellbyPixelGrid: any;
   ShellbyProjectsLogic: any;
+  ShellbyQueueTurns: any;
   ShellbyRemoteLogic: any;
   ShellbyReviewLenses: any;
   ShellbyReviewQueue: any;
+  ShellbySavers: any;
   ShellbySettingsSearch: any;
   ShellbySettingsText: any;
   ShellbyShortcuts: any;
@@ -266,6 +268,11 @@ interface ShellbyPanelExtras {
   github: any;
   // gitlab.js
   gitlab: any;
+  // handoff.js
+  handoffCheck: any;
+  offerHandoff: any;
+  settleHandoff: any;
+  showHandoff: any;
   // health.js
   health: any;
   refreshHealthCrab: any;
@@ -278,6 +285,10 @@ interface ShellbyPanelExtras {
   keepWarm: any;
   onKeepWarmItem: any;
   renderKeepWarm: any;
+  // lean-bar.js
+  leanBar: any;
+  // lean-fixes.js
+  leanFixes: any;
   // lean.js
   lean: any;
   // lessons.js
@@ -342,6 +353,7 @@ interface ShellbyPanelExtras {
   heldChips: any;
   holdIfBig: any;
   holdQueue: any;
+  refreshEstimate: any;
   renderOutlook: any;
   resetEstimate: any;
   // pages-bridge.js
@@ -431,6 +443,10 @@ interface ShellbyPanelExtras {
   renderCloudRoutines: any;
   // routines.js
   openRoutineEditor: any;
+  // savers.js
+  saverGate: any;
+  sendGated: any;
+  settleSaver: any;
   // settings-account.js
   renderBillingGuard: any;
   renderClaudeAccount: any;
@@ -538,9 +554,13 @@ interface ShellbyPanelExtras {
   swapPanes: any;
   takeCarry: any;
   // tab-queue.js
+  armMerge: any;
+  clearMerge: any;
   drainQueue: any;
   editQueued: any;
+  flushMerge: any;
   handBack: any;
+  isMerging: any;
   onSteered: any;
   onSteering: any;
   onTurnEnded: any;
@@ -716,6 +736,8 @@ interface ShellbyPanelExtras {
   // wf-kit.js
   roomSettled: any;
   wfKit: any;
+  // wf-list.js
+  refreshWorkflowRows: any;
   // workflow-canvas.js
   wfCanvas: any;
   // workflows.js

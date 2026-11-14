@@ -152,8 +152,32 @@
 .tidy-wide .tool-cost b { grid-column: 2; grid-row: 1; }
 .tidy-wide .tool-cost .cost-bar { grid-column: 1; grid-row: 1; height: 5px; }
 
+/* Lean's bar (lean-bar.js): with room, each part's row is one line, and the cards sit beside the rows. */
+@container toolbox (min-width: 760px) {
+  .lean-part { grid-template-columns: 9px minmax(150px, 230px) 56px minmax(110px, 190px) minmax(0, 1fr); grid-template-areas: "key name tok share cuts"; gap: 6px 14px; }
+  .lean-part-tok { text-align: right; }
+  .lean-share .t { max-width: none; }
+}
+@container toolbox (min-width: 1100px) {
+  .lean-fc { grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "before side" "parts side"; gap: 12px; align-items: start; }
+  .lean-fc-before { grid-area: before; }
+  .lean-parts { grid-area: parts; }
+  .lean-fc-side { grid-area: side; }
+  .lean-fc-before { padding: 18px 20px 16px; }
+  .lean-parts { padding-inline: 20px; }
+  .lean-part { padding: 12px 0; }
+  .lean-fc-bar { height: 26px; }
+}
+
 /* 4K full screen: a size up throughout, read from a normal distance. */
 @container toolbox (min-width: 1800px) {
+  .lean-fc { grid-template-columns: minmax(0, 1fr) 460px; gap: 16px; --fs-10-5: 12px; --fs-11: 12.5px; --fs-11-5: 13px; --fs-12: 13.5px; --fs-12-5: 14px; --fs-13: 14.5px; --fs-16: 19px; --fs-18: 22px; }
+  .lean-fc-before { padding: 22px 26px 20px; gap: 14px; }
+  .lean-fc-bar { height: 30px; }
+  .lean-parts { padding-inline: 26px; }
+  .lean-part { grid-template-columns: 11px minmax(200px, 300px) 72px minmax(160px, 240px) minmax(0, 1fr); padding: 14px 0; }
+  .lean-take, .lean-cache-card { padding: 20px 22px; }
+  .lean-take-numbers .n { font-size: 34px; }
   .tidy-wide .tool-body {
     --fs-10-5: 12px; --fs-11: 12.5px; --fs-11-5: 13px; --fs-12: 13.5px; --fs-12-5: 14px; --fs-13: 14.5px; --fs-15: 17px; --fs-16: 18px;
     grid-template-columns: 260px minmax(0, 1300px) minmax(460px, 1fr);

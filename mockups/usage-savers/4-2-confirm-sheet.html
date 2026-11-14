@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Run cost 2: a confirm sheet with the range and a cheaper way</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .sheet { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1100px; padding: 40px 44px 34px; display: grid; gap: 26px; z-index: 3; }
+  .sheet h3 { font: 500 32px/1.15 var(--font-pixel); }
+  .sheet .lede { color: var(--sand-dim); font-size: 17px; }
+  .sheet .lede code { font-size: 15px; }
+  .win { display: grid; gap: 14px; padding: 24px 26px; background: var(--reef); border: 1px solid var(--line); border-radius: var(--r-lg); }
+  .win .top { display: flex; align-items: baseline; gap: 16px; }
+  .win .big { font: 500 56px/1 var(--font-pixel); }
+  .win .top .of { color: var(--sand-dim); font-size: 17px; }
+  .win .top .range { margin-left: auto; color: var(--sand-faint); font: 500 15px var(--font-mono); }
+  .win .track { position: relative; height: 22px; border-radius: 11px; background: var(--reef-3); overflow: hidden; }
+  .win .track .now { position: absolute; inset: 0 auto 0 0; width: 54%; background: var(--sand-faint-deco); opacity: .7; }
+  .win .track .run { position: absolute; top: 0; bottom: 0; left: 54%; width: 8%; background: var(--amber); }
+  .win .track .rng { position: absolute; top: 0; bottom: 0; left: 59%; width: 7%; background: repeating-linear-gradient(-45deg, var(--amber) 0 4px, transparent 4px 8px); opacity: .6; }
+  .win .track .lo { position: absolute; top: 0; bottom: 0; left: 54%; width: 5%; background: var(--amber); }
+  .ticks { display: flex; justify-content: space-between; color: var(--sand-faint); font: 500 14px var(--font-mono); }
+  .ticks b { color: var(--sand); font-weight: 600; }
+  .ticks .end { color: var(--amber); }
+  .ways { display: grid; gap: 10px; }
+  .way { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; padding: 18px 22px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+  .way.pick { border-color: var(--coral); background: var(--coral-dim); }
+  .way b { font-size: 18px; display: block; }
+  .way small { color: var(--sand-dim); font-size: 15px; }
+  .way .cost { text-align: right; }
+  .way .cost b { font: 500 26px/1 var(--font-pixel); }
+  .way .cost small { display: block; color: var(--sand-faint); font-size: 13px; margin-top: 4px; }
+  .way.cheap .cost b { color: var(--glass); }
+  .foot-row { display: flex; align-items: center; gap: 12px; }
+  .foot-row .pref { display: flex; align-items: center; gap: 10px; color: var(--sand-dim); font-size: 15px; margin-right: auto; }
+  .foot-row .box { width: 20px; height: 20px; border-radius: 5px; background: var(--glass); display: grid; place-items: center; color: var(--abyss); font-weight: 700; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="note"><b>4-2 · Confirm sheet.</b> Send with Ultracode and a sheet steps in first: the range, where your window would end, when it resets, and a cheaper and a smaller way to run it. <span class="trade">the fullest picture and a real choice, but it's one more click on every big run</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar"></div>
+
+  <section class="feed"><div class="col">
+    <div data-kit="thread"></div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{
+    "text": "ultracode: port the e2e dialog helpers in scripts/e2e-*.js to the new CDP session API. Keep every check green and run the full e2e once at the end.",
+    "ultra": true
+  }'></div>
+
+  <div class="scrim"></div>
+  <div class="pop sheet" role="dialog" aria-label="Before this run">
+    <div>
+      <h3>Before this run</h3>
+      <p class="lede">An Ultracode run across <code>scripts/e2e-*.js</code>: Claude will send out helpers and run the full e2e at the end. Nothing has gone out yet.</p>
+    </div>
+    <div class="win">
+      <div class="top"><span class="big">about 8%</span><span class="of">of your 5-hour window</span><span class="range">runs like this: 5% to 12%</span></div>
+      <div class="track"><i class="now"></i><i class="run"></i><i class="rng"></i></div>
+      <div class="ticks"><span>now <b>54%</b></span><span>after <b class="end">about 62%</b>, 59 to 66</span><span>resets <b>4:15</b>, in 2h 40m</span></div>
+    </div>
+    <div class="ways">
+      <div class="way pick"><div><b>Run it as planned</b><small>Opus, up to 6 helpers on Opus, the full e2e at the end.</small></div><div class="cost"><b>8%</b><small>about · ends 62% full</small></div></div>
+      <div class="way cheap"><div><b>Helpers on Sonnet</b><small>Opus plans and checks; Sonnet does the ports. For ports like this it has come out the same 9 times out of 10.</small></div><div class="cost"><b>3%</b><small>about · ends 57% full</small></div></div>
+      <div class="way cheap"><div><b>Start smaller</b><small>Port <code>scripts/e2e-setup.js</code> first, no helpers, then decide with that in hand.</small></div><div class="cost"><b>1.5%</b><small>about · ends 56% full</small></div></div>
+    </div>
+    <div class="foot-row">
+      <span class="pref"><span class="box">✓</span>Ask before runs that look bigger than 5%</span>
+      <span class="btn ghost">Not now</span>
+      <span class="btn primary">Run it as planned</span>
+    </div>
+  </div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

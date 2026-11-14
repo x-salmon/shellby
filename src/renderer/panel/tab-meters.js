@@ -140,6 +140,9 @@
       h('button', { class: 'menu-item', onclick: () => { SB.closeMenus(); startFresh(tab); } },
         h('span', { class: 'mi-check', text: '↻' }),
         h('span', {}, h('div', { class: 'mi-title', text: 'Start fresh with a summary' }), h('div', { class: 'mi-sub', text: 'Claude writes a handoff note, then a new conversation picks it up in this tab' }))),
+      h('button', { class: 'menu-item', onclick: () => { SB.closeMenus(); SB.offerHandoff?.(tab); } },
+        h('span', { class: 'mi-check', text: '⇥' }),
+        h('span', {}, h('div', { class: 'mi-title', text: 'Fresh tab with Shellby\'s summary' }), h('div', { class: 'mi-sub', text: 'He sums this one up himself (no tokens), you check it, and a new tab starts with it; this one stays' }))),
     ]);
   });
 

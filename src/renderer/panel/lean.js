@@ -1,5 +1,6 @@
 /* Shellby panel — Toolbox → Lean: what every new conversation carries before your
-   first word and where it goes, how much of Claude's input came from the prompt
+   first word and where it goes (the bar and its cuts are lean-bar.js), how much of
+   Claude's input came from the prompt
    cache (and a word when today's falls well short), Claude Code's own count of
    lines, edits and commits, the files Claude keeps coming back to, the
    commands whose output fills its context, the hooks that add to it, what
@@ -96,27 +97,6 @@
 
   // ------------------------------------------------------------ the summary
 
-  const BUDGET = {
-    memory: { label: 'CLAUDE.md and rules', cls: 'is-memory' },
-    plugins: { label: "plugins (Claude Code's estimate)", cls: 'is-plugins' },
-    skills: { label: "your skills' listings", cls: 'is-skills' },
-    hooks: { label: 'what start hooks add', cls: 'is-hooks' },
-    rest: { label: "Claude Code's own prompt and tools, and MCP servers you added", cls: 'is-rest' },
-  };
-
-  // Where the setup weight goes, as one bar: the parts Shellby can size, and the rest.
-  function budgetBar(b) {
-    const parts = [...b.parts, ...(b.rest ? [{ key: 'rest', tokens: b.rest }] : [])];
-    const whole = parts.reduce((n, p) => n + p.tokens, 0) || 1;
-    const legend = parts.map(p => `${BUDGET[p.key].label} ${tok(p.tokens)}`).join(' · ');
-    return h('div', { class: 'lean-budget' },
-      h('div', { class: 'lean-bar', role: 'img', 'aria-label': legend },
-        ...parts.map(p => h('span', { class: `lean-seg ${BUDGET[p.key].cls}`, style: `flex-grow: ${p.tokens / whole}`, title: `${BUDGET[p.key].label}: ${tok(p.tokens)}` }))),
-      h('p', { class: 'muted small' },
-        `${pct(b.share)} of a 200k context window before you type: `,
-        ...parts.flatMap((p, i) => [i ? ' · ' : '', h('span', { class: `lean-key ${BUDGET[p.key].cls}`, 'aria-hidden': 'true' }), ` ${BUDGET[p.key].label} ${tok(p.tokens)}`])));
-  }
-
   function grewText(s) {
     if (!s?.prev) return null;
     const d = s.tokens - s.prev;
@@ -163,36 +143,34 @@
       + (b.resume ? " A restart misses when CLAUDE.md, a plugin or an MCP server changed meanwhile. If yours follow quiet spells, Keep warm (the mug above the tabs) holds the process while you're away." : '');
   }
 
-  function summary(rep) {
+  function summary(rep, match) {
     const s = rep.setup;
-    const head = s
+    // The bar: what every call carries before your words, part by part, with the cuts
+    // on offer and the cache card (lean-bar.js; main's fixedcost.js); the search narrows
+    // its rows. Before anything is sized, a line says when it will be.
+    const bar = SB.leanBar.block(rep, match);
+    const head = bar ? null : s
       ? h('p', { class: 'lean-head' },
         'Every new conversation carries ', h('strong', { text: tok(s.tokens) }), ' before your first word',
         h('span', { class: 'muted', text: ` (measured ${SB.relTime(s.at)} in ${s.name})` }),
         grewText(s) ? h('span', { class: 'muted', text: ` ${grewText(s)}` }) : null)
       : h('p', { class: 'lean-head', text: 'Shellby measures what a conversation carries before your first word the next time one starts.' });
-    const parts = [
-      rep.totals.plugins ? `plugins ${tok(rep.totals.plugins)} (Claude Code's estimate)` : null,
-      rep.totals.memory ? `CLAUDE.md and rules ${tok(rep.totals.memory)}` : null,
-      rep.totals.skills ? `your skills' names and descriptions ${tok(rep.totals.skills)}` : null,
-      rep.totals.hooks ? `what your start hooks add ${tok(rep.totals.hooks)}` : null,
-      'plus Claude Code\'s own prompt and tools',
-    ].filter(Boolean);
     const c = rep.cache.week;
     const was = rep.cache.lastWeek;
-    const cacheLine = c.rate == null
+    const cacheLine = bar ? null : h('p', { class: 'lean-cache', text: c.rate == null
       ? 'No calls this week yet.'
-      : `${pct(c.rate)} of Claude's input came from the prompt cache this week${was.rate == null ? '' : ` (last week ${pct(was.rate)})`}: ${tok(c.saved)}' worth billed at a tenth.`;
+      : `${pct(c.rate)} of Claude's input came from the prompt cache this week${was.rate == null ? '' : ` (last week ${pct(was.rate)})`}: ${tok(c.saved)}' worth billed at a tenth.` });
+    const grew = bar && grewText(s);
     const drop = rep.cacheDrop;
     return h('div', { class: 'lean-summary' },
+      bar,
       head,
-      rep.budget ? budgetBar(rep.budget) : null,
+      grew ? h('p', { class: 'muted small', text: grew }) : null,
       h('div', { class: 'setup-intro lean-ask' },
         h('p', { text: 'Rather than turning things off, Claude can look over this setup and suggest leaner ways to keep every feature you use.' }),
         h('button', { class: 'btn slim-btn', type: 'button', title: 'Opens a new tab with a prompt for you to read and send. Claude only proposes; nothing changes until you say so.',
           onclick: () => { SB.setView('chat'); SB.newTabIn({ cwd: state.cwd, draft: ADVICE_ASK(rep) }); } }, 'Ask Claude')),
-      h('p', { class: 'muted small', text: `That includes ${parts.join(', ')}. While the cache is warm it costs a tenth, but it always takes room in the context window, and it's paid in full whenever the cache goes cold.` }),
-      h('p', { class: 'lean-cache', text: cacheLine }),
+      cacheLine,
       drop ? h('p', { class: 'lean-warn', role: 'status', text: `Only ${pct(drop.today)} of today's input came from the cache, against ${pct(drop.usual)} most days. That's usual after a change to CLAUDE.md, a plugin or an MCP server (the cached start no longer matches), or long gaps between messages.` }) : null,
       rep.breaks ? h('p', { class: 'lean-warn', text: breaksText(rep.breaks) }) : null,
       telemetryBlock(rep),
@@ -435,8 +413,8 @@
         error ? null : h('span', { class: 'lean-wait-hint', text: 'The first time takes a minute or so with lots of plugins.' })));
       return;
     }
-    pane.replaceChildren(...[summary(rep), error ? h('p', { class: 'setup-status err', role: 'status', text: error }) : null].filter(Boolean));
     const match = s => !q || s.toLowerCase().includes(q);
+    pane.replaceChildren(...[summary(rep, match), error ? h('p', { class: 'setup-status err', role: 'status', text: error }) : null].filter(Boolean));
     const plugins = rep.plugins.filter(p => match(p.name));
     const off = (rep.off || []).filter(p => match(p.name));
     const mcp = rep.mcp.filter(s => match(s.name));
@@ -477,6 +455,8 @@
       hotLabel, ...hot.map(hotRow),
       loudLabel, ...noisy.map(loudRow),
       quietRow(rep.hot),
+      // One-tap fixes drafted from the hot files and loud commands above (lean-fixes.js; main's leanfix.js).
+      ...SB.leanFixes.fixRows(rep, match),
       mcpLoudLabel, ...mcpLoud.map(mcpLoudRow),
       branches.length ? label('What each branch cost here (last 7 days)') : null, ...branches.map(branchRow),
       off.length ? label('Turned off') : null, ...off.map(offRow),
@@ -484,5 +464,6 @@
     list.replaceChildren(...(rows.length ? rows : [h('li', { class: 'history-empty', text: q ? 'No matches.' : 'Nothing loads into every conversation besides Claude Code itself.' })]));
   }
 
-  SB.lean = { render, load, count: () => (state.lean ? state.lean.totals.idleCount || '' : '') };
+  // line: the one-liner the turn footer shows ("setup ~14k/turn"), '' until a report has come.
+  SB.lean = { render, load, count: () => (state.lean ? state.lean.totals.idleCount || '' : ''), line: () => state.lean?.fixed?.line || '' };
 })();

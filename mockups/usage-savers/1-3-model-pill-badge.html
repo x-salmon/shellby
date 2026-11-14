@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Model suggestion 3: the tab's model pill grows a suggestion badge</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .badge { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; margin-left: 4px; border-radius: 12px; background: var(--glass-dim); color: var(--glass); font-size: 13px; font-weight: 700; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--glass); }
+  .menu { position: absolute; left: 536px; top: 118px; width: 560px; padding: 22px 24px 18px; display: grid; gap: 16px; z-index: 3; }
+  .menu .hint { padding: 16px 18px; border-radius: var(--r); background: var(--glass-dim); display: grid; gap: 10px; }
+  .menu .hint p { font-size: 16px; color: var(--sand); }
+  .menu .hint p b { color: var(--glass); }
+  .menu .hint .acts { gap: 8px; }
+  .menu .opts { display: grid; }
+  .menu .opt { display: grid; grid-template-columns: 24px 1fr auto; gap: 14px; align-items: center; padding: 10px 6px; font-size: 16px; color: var(--sand-dim); border-top: 1px solid var(--line-soft); }
+  .menu .opt:first-child { border-top: 0; }
+  .menu .opt .r { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--sand-faint-deco); }
+  .menu .opt.on { color: var(--sand); }
+  .menu .opt.on .r { border-color: var(--coral); background: radial-gradient(var(--coral) 45%, transparent 48%); }
+  .menu .opt small { color: var(--sand-faint); font-size: 14px; margin-left: 10px; }
+  .menu .opt .cost { font: 500 13px var(--font-mono); color: var(--sand-faint); }
+  .menu .opt .cost.free { color: var(--glass); }
+  .menu .pref { display: flex; align-items: center; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 15px; color: var(--sand-dim); }
+  .menu .sw { width: 40px; height: 22px; border-radius: 11px; background: var(--glass); position: relative; flex: none; }
+  .menu .sw::after { content: ""; position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--abyss); }
+  .menu .k { font: 500 13px var(--font-mono); color: var(--sand-faint); }
+  .pointer { position: absolute; left: 596px; top: 110px; width: 16px; height: 16px; background: var(--ink); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); z-index: 4; }
+</style>
+</head>
+<body>
+<div class="note"><b>1-3 · Suggestion badge on the model pill.</b> The subbar's model pill, where you'd change the model anyway, grows a "Haiku?" badge while a small message sits in the box; the menu holds the offer and the local model too. <span class="trade">quietest of the three and it teaches where the model lives, but you have to notice the badge</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar" data-opts='{"model":{"label":"Opus","lit":true,"badge":"<span class=\"badge\">Haiku?</span>"}}'></div>
+
+  <span class="pointer"></span>
+  <div class="pop menu" role="menu" aria-label="Model for this tab">
+    <h3>Model for this tab</h3>
+    <div class="hint">
+      <p>What's in the box looks small: a rename. <b>Haiku</b> would do it for about <b>1/5 the usage</b> of Opus. Nothing changes unless you pick.</p>
+      <div class="acts"><span class="btn small glass">Use Haiku for this message</span><span class="btn small">For the rest of this tab</span></div>
+    </div>
+    <div class="opts">
+      <div class="opt on"><span class="r"></span><span>Opus<small>what this tab runs</small></span><span class="cost">~1.5% a rename</span></div>
+      <div class="opt"><span class="r"></span><span>Sonnet</span><span class="cost">~0.6%</span></div>
+      <div class="opt"><span class="r"></span><span>Haiku</span><span class="cost">~0.3%</span></div>
+      <div class="opt"><span class="r"></span><span>qwen2.5-coder:14b<small>on your PC, slower</small></span><span class="cost free">free</span></div>
+    </div>
+    <div class="pref"><span class="sw"></span>Suggest a cheaper model for quick questions and renames. Never switches by itself.</div>
+    <div class="k">/model · the same menu</div>
+  </div>
+
+  <section class="feed"><div class="col">
+    <div data-kit="thread"></div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{"text":"rename footAct to roomOffer in feed-foot.js"}'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

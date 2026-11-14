@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Repeated reads 1: rows in the Lean tab, each with its fix</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 560px; gap: 32px; }
+  .left { display: flex; flex-direction: column; gap: 22px; min-height: 0; }
+  .sec { padding: 0 36px 8px; }
+  .sec h3 { font: 500 24px/1.2 var(--font-pixel); padding: 26px 0 6px; display: flex; align-items: baseline; gap: 16px; }
+  .sec h3 small { font: 15px var(--font-body); color: var(--sand-dim); }
+  .rows li { display: grid; grid-template-columns: 1fr 190px 150px 1fr auto; gap: 22px; align-items: center; padding: 16px 0; font-size: 17px; }
+  .rows li.open { display: block; padding: 0 0 18px; }
+  .rows .name b { font: 500 16px var(--font-mono); color: var(--sand); display: block; }
+  .rows .name small { color: var(--sand-faint); font-size: 14px; }
+  .rows .n { color: var(--sand-dim); font-size: 15px; }
+  .rows .n b { display: block; font: 500 17px var(--font-mono); color: var(--sand); }
+  .rows .fix { color: var(--sand-dim); font-size: 15px; }
+  .rows .fix b { color: var(--sand); }
+  .rows .kind { display: inline-flex; height: 24px; padding: 0 9px; border-radius: 12px; font: 600 12px var(--font-mono); align-items: center; margin-right: 8px; }
+  .rows .kind.deny { background: rgba(255, 122, 92, .14); color: var(--coral); }
+  .rows .kind.md { background: var(--glass-dim); color: var(--glass); }
+  .open .head { display: grid; grid-template-columns: 1fr 190px 150px 1fr auto; gap: 22px; align-items: center; padding: 16px 0 12px; }
+  .open .detail { display: grid; grid-template-columns: 1fr 380px; gap: 18px 26px; padding: 14px 18px 16px; background: var(--reef); border: 1px solid var(--line); border-radius: var(--r-lg); }
+  .open .detail .diff { font-size: 13.5px; }
+  .open .detail .why { display: grid; gap: 10px; align-content: start; font-size: 15px; color: var(--sand-dim); }
+  .open .detail .why b { color: var(--sand); }
+  .open .detail .acts { grid-column: 1 / -1; }
+  .right { display: flex; flex-direction: column; gap: 22px; }
+  .sum { padding: 28px 32px; display: grid; gap: 14px; background: var(--reef-2); border-color: var(--reef-3); }
+  .sum h3 { font: 500 24px/1.2 var(--font-pixel); }
+  .sum .big { font: 500 52px/1 var(--font-pixel); color: var(--amber); }
+  .sum .big small { font: 16px var(--font-body); color: var(--sand-dim); margin-left: 10px; }
+  .sum p { color: var(--sand-dim); font-size: 16px; }
+  .sum p b { color: var(--sand); }
+  .how { padding: 26px 32px; display: grid; gap: 12px; }
+  .how h3 { font: 500 22px/1.2 var(--font-pixel); }
+  .how dl { display: grid; grid-template-columns: 130px 1fr; gap: 10px 16px; font-size: 16px; }
+  .how dt { color: var(--sand-faint); }
+  .how dd b { color: var(--sand); }
+</style>
+</head>
+<body>
+<div class="note"><b>5-1 · Rows in the Lean tab.</b> The files Claude keeps re-reading and the commands that shout, one row each with how often, what it costs and a drafted fix; open a row for the diff and Apply. <span class="trade">everything measured in one place, with the diff before you commit, but you have to come and look</span></div>
+<main class="app">
+  <div data-kit="tabs" data-opts='{"tabs":[{"name":"queue races"},{"name":"Lean tab cache rate"},{"name":"release 0.98.2","busy":true}]}'></div>
+  <section class="view">
+    <div class="view-head"><h2>Toolbox</h2><span class="spacer"></span><span class="btn small ghost">Rescan</span></div>
+    <span class="seg"><span>Tools</span><span>Setup</span><span class="on">Lean <span class="n">4</span></span><span>Team <span class="n">1</span></span><span>Get more</span></span>
+
+    <div class="body">
+      <div class="left">
+        <section class="panel sec">
+          <h3>Files Claude keeps coming back to <small>in shellby, last 30 days, from Claude Code's own transcripts</small></h3>
+          <ul class="rows">
+            <li class="open">
+              <div class="head">
+                <span class="name"><b>package-lock.json</b><small>9 of 12 conversations · a 38k read every time</small></span>
+                <span class="n"><b>340k</b>tokens this month</span>
+                <span class="n"><b>0</b>edits</span>
+                <span class="fix"><span class="kind deny">deny</span>Keep it out. Claude still sees the name and can ask.</span>
+                <span class="btn small">Close</span>
+              </div>
+              <div class="detail">
+                <div class="diff"><span class="f">.claude/settings.json</span><span class="ctx">  "permissions": {</span><span class="ctx">    "allow": ["Bash(npm test:*)", "Bash(npm run lint:*)"],</span><span class="add">+   "deny": ["Read(./package-lock.json)", "Read(./dist/**)"],</span><span class="ctx">    "ask": []</span><span class="ctx">  }</span></div>
+                <div class="why">
+                  <span>Claude read it <b>23 times</b>, never changed it, and the read was followed by <code>npm ls</code> or a <code>grep</code> 19 of those times: it was after <b>one package's version</b>.</span>
+                  <span>With the rule, Claude is told the file is off limits and can run <code>npm ls &lt;pkg&gt;</code> instead, about 80 tokens.</span>
+                  <span>One click to undo: the rule shows under Setup → Rules.</span>
+                </div>
+                <div class="acts"><span class="btn glass">Apply to this project</span><span class="btn">Apply everywhere</span><span class="btn ghost">Not this one</span><span class="fine">Saves about 38k a conversation, 340k a month.</span></div>
+              </div>
+            </li>
+            <li><span class="name"><b>dist/panel.html</b><small>5 conversations · 22k each · built from src/renderer/panel/html/</small></span><span class="n"><b>110k</b>tokens</span><span class="n"><b>0</b>edits</span><span class="fix"><span class="kind deny">deny</span>Built output. Same rule as above covers it.</span><span class="btn small glass">Preview</span></li>
+            <li><span class="name"><b>src/renderer/panel/feed.js</b><small>7 conversations · 11k each · 1,400 lines</small></span><span class="n"><b>77k</b>tokens</span><span class="n"><b>12</b>edits</span><span class="fix"><span class="kind md">CLAUDE.md</span>A map line: <b>footer → feed-foot.js, asks → feed-asks.js</b>, so Claude reads the slice.</span><span class="btn small glass">Preview</span></li>
+            <li><span class="name"><b>docs/DEVELOPMENT.md</b><small>6 conversations · 9k each</small></span><span class="n"><b>54k</b>tokens</span><span class="n"><b>1</b>edit</span><span class="fix"><span class="kind md">CLAUDE.md</span>"Read only the heading you need" with the list of headings.</span><span class="btn small glass">Preview</span></li>
+          </ul>
+        </section>
+
+        <section class="panel sec">
+          <h3>Commands whose output fills the context <small>average per run, in conversations where Claude ran them</small></h3>
+          <ul class="rows">
+            <li><span class="name"><b>npm test</b><small>31 runs · 6.2k of output each</small></span><span class="n"><b>192k</b>tokens</span><span class="n"><b>29</b>passed</span><span class="fix"><span class="kind md">CLAUDE.md</span>Run with <b>--test-reporter=dot</b>; the full log only when one fails.</span><span class="btn small glass">Preview</span></li>
+            <li><span class="name"><b>npm run e2e:ci</b><small>6 runs · 14k each</small></span><span class="n"><b>84k</b>tokens</span><span class="n"><b>5</b>passed</span><span class="fix"><span class="kind md">CLAUDE.md</span>Pipe through <b>tail -60</b>; failures print last anyway.</span><span class="btn small glass">Preview</span></li>
+            <li><span class="name"><b>git log</b><small>18 runs · 2.8k each</small></span><span class="n"><b>50k</b>tokens</span><span class="n"></span><span class="fix"><span class="kind md">CLAUDE.md</span><b>git log --oneline -20</b> unless asked for bodies.</span><span class="btn small glass">Preview</span></li>
+          </ul>
+        </section>
+      </div>
+
+      <aside class="right">
+        <section class="panel sum">
+          <h3>What these cost this month</h3>
+          <div class="big">907k<small>tokens read again and again</small></div>
+          <p>About <b>a window and a half</b> of your 5-hour limit, over 30 days, spent on reads Claude had already done. The seven fixes here would take most of it back.</p>
+          <span class="btn primary">Preview all seven</span>
+        </section>
+        <section class="panel how">
+          <h3>How he knows</h3>
+          <dl>
+            <dt>Read from</dt><dd>Claude Code's own transcripts for this folder and its worktrees, so the terminal counts too.</dd>
+            <dt>Counted</dt><dd>A file read in <b>3 or more</b> conversations; a command over <b>2k</b> of output in 2 or more.</dd>
+            <dt>Never</dt><dd>Nothing is sent anywhere, and nothing changes until you press Apply.</dd>
+          </dl>
+        </section>
+      </aside>
+    </div>
+  </section>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

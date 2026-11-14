@@ -91,6 +91,27 @@ test("scans this project's transcripts, worktrees with them, and not another pro
   fs.rmSync(home, { recursive: true, force: true });
 });
 
+test('a shorter look back leaves older transcripts out, and top says how many files come back', async () => {
+  const home = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-hot-')));
+  const cwd = path.join(home, 'shop');
+  fs.mkdirSync(cwd, { recursive: true });
+  const dir = path.join(home, 'config', 'projects', hf.folderOf(cwd));
+  fs.mkdirSync(dir, { recursive: true });
+  const reads = files => files.map(f => line(cwd, [['Read', { file_path: path.join(cwd, f) }]])).join('\n') + '\n';
+  for (const s of ['a', 'b', 'c']) fs.writeFileSync(path.join(dir, `${s}.jsonl`), reads(['one.js', 'two.js']));
+  const old = path.join(dir, 'old.jsonl');
+  fs.writeFileSync(old, reads(['one.js']));
+  const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+  fs.utimesSync(old, tenDaysAgo, tenDaysAgo);
+  const month = await hf.scanHotFiles({ configDir: path.join(home, 'config'), cwd });
+  assert.equal(month.files.find(f => f.rel === 'one.js').sessions, 4, 'a month back counts the old one');
+  const week = await hf.scanHotFiles({ configDir: path.join(home, 'config'), cwd, lookbackMs: 7 * 24 * 60 * 60 * 1000 });
+  assert.equal(week.files.find(f => f.rel === 'one.js').sessions, 3, 'a week back does not');
+  assert.equal(week.days, 7);
+  assert.equal((await hf.scanHotFiles({ configDir: path.join(home, 'config'), cwd, top: 1 })).files.length, 1);
+  fs.rmSync(home, { recursive: true, force: true });
+});
+
 test('no history yet is an empty list', async () => {
   const r = await hf.scanHotFiles({ configDir: path.join(os.tmpdir(), 'shellby-hot-no-such-dir'), cwd: CWD });
   assert.deepEqual(r.files, []);

@@ -429,8 +429,10 @@ function wireTimetrack(d) {
   // A message of yours into an open tab: what you type (task:send), or one held
   // for after the usage reset (releaseMessage). note: a line from Shellby that goes
   // to Claude after it (the file picked in All files) and not into the chat; never after a /command,
-  // which goes as typed. Returns { ok, tabId, turnId, item } or { ok: false, error }.
-  function sendToTab(tabId, text, files, { note = null } = {}) {
+  // which goes as typed. model: run this one turn on it (model-pick.js), noted on the
+  // message as modelBy ('you' picked it, or 'always' for its kind, modelCls).
+  // Returns { ok, tabId, turnId, item } or { ok: false, error }.
+  function sendToTab(tabId, text, files, { note = null, model = null, modelBy = null, modelCls = null } = {}) {
     const tab = d.manager.tabs.get(tabId);
     // A folder on another computer needs Claude Code there, not here (remote/service.js).
     const elsewhere = !!tab && !!d.remoteService?.placeOf(tab.session.cwd);
@@ -446,10 +448,11 @@ function wireTimetrack(d) {
       // !! sends a message that starts with !; Up brings it back as typed, still !!.
       const said = text.startsWith('!!') ? text.slice(1) : text;
       const told = note && !said.trimStart().startsWith('/') ? `\n\n${note}` : '';
-      const turnId = d.manager.send(tabId, composePrompt(ran + said + told, files), { kind: 'user', text: said, attachments: files, title });
+      const onModel = model ? { model, modelBy: modelBy === 'always' ? 'always' : 'you', ...(modelCls ? { modelCls } : {}) } : {};
+      const turnId = d.manager.send(tabId, composePrompt(ran + said + told, files), { kind: 'user', text: said, attachments: files, title, ...onModel }, { model });
       d.rememberPrompt(text);
       d.wake();
-      return { ok: true, tabId, turnId, item: { kind: 'user', text: said, attachments: files, turnId } };
+      return { ok: true, tabId, turnId, item: { kind: 'user', text: said, attachments: files, turnId, ...onModel } };
     } catch (err) {
       return { ok: false, error: err.message };
     }

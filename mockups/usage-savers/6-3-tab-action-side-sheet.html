@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fresh start 3: a tab-strip action with a side sheet to edit the summary</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .tab .full { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 11px; background: rgba(255, 193, 94, .14); color: var(--amber); font: 600 12px var(--font-mono); }
+  .tab .freshb { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; margin-left: 2px; border-radius: 13px; background: var(--glass-dim); color: var(--glass); font-size: 13px; font-weight: 700; }
+  .tab .freshb svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .split { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 820px; }
+  .split .chat { display: flex; flex-direction: column; min-height: 0; }
+  .split .chat .col { width: 1180px; }
+  .sheet { background: var(--ink); border-left: 1px solid var(--line); padding: 32px 36px 28px; display: flex; flex-direction: column; gap: 20px; min-height: 0; }
+  .sheet .head { display: flex; align-items: flex-start; gap: 14px; }
+  .sheet h3 { font: 500 28px/1.15 var(--font-pixel); }
+  .sheet .head p { color: var(--sand-dim); font-size: 15px; margin-top: 6px; }
+  .sheet .x { margin-left: auto; width: 36px; height: 36px; display: grid; place-items: center; color: var(--sand-faint); font-size: 22px; }
+  .sheet .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .sheet .nums div { padding: 14px 16px; background: var(--reef); border: 1px solid var(--line); border-radius: var(--r); }
+  .sheet .nums b { display: block; font: 500 30px/1 var(--font-pixel); }
+  .sheet .nums b.after { color: var(--glass); }
+  .sheet .nums small { display: block; font-size: 13px; color: var(--sand-faint); margin-top: 8px; }
+  .sheet .lbl { display: flex; align-items: center; font-size: 14px; color: var(--sand-faint); }
+  .sheet .lbl span { margin-left: auto; color: var(--glass); font: 500 13px var(--font-mono); }
+  .sumtext { flex: 1; min-height: 0; padding: 16px 18px; background: var(--abyss); border: 1px solid var(--reef-3); border-radius: var(--r); font: 400 16px/1.6 var(--font-body); color: var(--sand); white-space: pre-wrap; overflow: hidden; }
+  .sumtext .sel { background: rgba(127, 214, 194, .22); }
+  .carry { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; font-size: 14px; }
+  .carry h4 { font-size: 14px; color: var(--sand-faint); font-weight: 400; margin-bottom: 6px; }
+  .carry li { list-style: none; color: var(--sand-dim); padding: 3px 0; }
+  .carry li b { color: var(--sand); font-weight: 400; }
+  .carry code { font-size: 13px; }
+  .sheet .acts { padding-top: 4px; }
+  .sheet .acts .fine { margin-left: auto; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="note"><b>6-3 · Tab action with a side sheet.</b> A full tab shows its percentage and a "fresh" action in the strip; it opens a side sheet with the whole summary to edit, what goes with it, and the numbers. Available any time, not just at a topic change. <span class="trade">the most room to read and edit, on your own schedule, but nothing prompts you unless you look at the strip</span></div>
+<main class="app">
+  <div data-kit="tabs" data-opts='{"tabs":[{"on":true,"html":"<span class=\"dot\"></span>queue races <span class=\"full\">71%</span><span class=\"freshb\"><svg viewBox=\"0 0 16 16\"><path d=\"M3 8a5 5 0 0 1 8.7-3.4M13 8a5 5 0 0 1-8.7 3.4M11.5 2v2.8h-2.8M4.5 14v-2.8h2.8\"/></svg>fresh</span>"},{"name":"Lean tab cache rate"},{"name":"release 0.98.2","busy":true}]}'></div>
+  <div data-kit="subbar" data-opts='{"ctx":71}'></div>
+
+  <div class="split">
+    <section class="chat">
+      <section class="feed"><div class="col">
+        <div data-kit="thread" data-opts='{"first":false,"more":true}'></div>
+      </div></section>
+      <div data-kit="composer" data-opts='{"text":"Now the Lean tab: can we show the cache hit rate per project, not just the week&#39;s total?"}'></div>
+    </section>
+
+    <aside class="sheet" role="dialog" aria-label="Start fresh">
+      <div class="head"><div><h3>Start fresh from “queue races”</h3><p>A new tab in the same folder and branch, told what's below instead of the whole thread. This tab stays as it is.</p></div><span class="x">×</span></div>
+      <div class="nums">
+        <div><b>142k</b><small>with every message here</small></div>
+        <div><b class="after">36k</b><small>with every message there</small></div>
+        <div><b class="after">106k</b><small>less per message</small></div>
+      </div>
+      <div class="lbl">The summary · yours to edit<span>1.1k tokens · drafted by Claude, 9 s</span></div>
+      <div class="sumtext">From “queue races”, Nov 14, in ~/Documents/GitHub/shellby on fix/queue-races.
+
+Fixed: enqueue() in src/main/queue.js raced when two tabs sent in one tick; the second overwrote the first. Each tab now has its own lock. <span class="sel">Decided: per tab, not global, so unrelated tabs aren’t serialised.</span>
+
+Also: the panel’s Queued row waited on its own copy and drew the old order for a tick; it now waits for main’s summary (src/renderer/panel/feed-lanes.js).
+
+Committed as “fix: two sends in one tick no longer lose one”, with a note in changes/queue-races.md. Not pushed. Repro: test/queue.test.js, “drops the second of two sends”; all 15 queue tests pass.
+
+Open: nothing from this thread. Next topic: the Lean tab’s cache rate per project.<span class="caret"></span></div>
+      <div class="carry">
+        <div><h4>Goes with it</h4><ul><li><b>Folder</b> ~/Documents/GitHub/shellby</li><li><b>Branch</b> fix/queue-races</li><li><b>Files touched</b> <code>queue.js</code>, <code>queue.test.js</code>, <code>feed-lanes.js</code>, <code>DEVELOPMENT.md</code>, <code>changes/queue-races.md</code></li><li><b>Your message</b> in the box, as typed</li></ul></div>
+        <div><h4>Stays here</h4><ul><li>The full thread, 142k, under History</li><li>Its model, effort and mode</li><li>Nothing is compacted or deleted</li></ul></div>
+      </div>
+      <div class="acts"><span class="btn glass">Open the fresh tab</span><span class="btn">Copy the summary</span><span class="btn ghost">Cancel</span><span class="fine">Also under the tab's menu and <kbd>Ctrl+Shift+N</kbd>.</span></div>
+    </aside>
+  </div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

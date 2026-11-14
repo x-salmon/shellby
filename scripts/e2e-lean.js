@@ -3,9 +3,13 @@
 //      prompt-cache dot on the context chip and its menu explains it; starting
 //      a crowded conversation fresh pays the "fresh" XP.
 //   2. With the REAL Claude Code CLI, read-only: Toolbox → Lean lists plugins
-//      with Claude Code's own estimates, MCP servers and memory files; "Turn
-//      off" on a plugin opens the isolated confirm window, which is cancelled,
-//      so nothing is ever turned off. Screenshots go to the temp profile.
+//      with Claude Code's own estimates, MCP servers and memory files, and the
+//      bar of what every turn carries, part by part, with its "setup ~Nk/turn"
+//      line, the cut on each row and the card that adds them up; "Turn off" on
+//      the pretend home's output style, "Take all" (each switch asked in turn,
+//      the advice drafted in a new tab) and "Turn off" on a plugin each open the
+//      isolated confirm window, which is cancelled, so nothing is ever changed.
+//      Screenshots go to the temp profile, the Lean tab at 2560 and at 460 wide too.
 //   node scripts/e2e-lean.js
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -13,6 +17,7 @@ const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
 const { answerDialog } = require('./lib/dialog');
+const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
 const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
@@ -30,8 +35,9 @@ async function cdp(wsUrl) {
     if (r.result?.exceptionDetails) throw new Error(r.result.exceptionDetails.exception?.description || 'eval failed');
     return r.result?.result?.value;
   };
-  const shot = async file => fs.writeFileSync(file, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).result.data, 'base64'));
-  return { ev, shot, close: () => ws.close() };
+  // Guarded (lib/shot.js): a window that never paints is noted, not waited for.
+  const shot = file => savePng((method, params) => send(method, params).then(r => r.result), file);
+  return { ev, shot, send, close: () => ws.close() };
 }
 
 async function launch(port, env) {
@@ -94,12 +100,15 @@ async function launch(port, env) {
 
   // ---- 2. the Lean tab, against the real CLI, read-only
   const real = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
-  // Dev runs read memory from a pretend home in the profile: one file for every
-  // conversation, one rule that loads only for TypeScript.
+  // Dev runs read memory and settings from a pretend home in the profile: one
+  // file for every conversation, one rule that loads only for TypeScript, and
+  // Claude Code's settings naming an output style.
   const home = path.join(real, 'claude-home', '.claude');
   fs.mkdirSync(path.join(home, 'rules'), { recursive: true });
   fs.writeFileSync(path.join(home, 'CLAUDE.md'), `# Me\n\n${'Prefer small, focused commits. '.repeat(80)}\n`);
   fs.writeFileSync(path.join(home, 'rules', 'ts.md'), `---\npaths:\n  - "**/*.ts"\n---\n# TypeScript\n\n${'Type the public API. '.repeat(40)}\n`);
+  const homeSettings = path.join(home, 'settings.json');
+  fs.writeFileSync(homeSettings, JSON.stringify({ outputStyle: 'Explanatory' }, null, 2));
   run = await launch(9392, { SHELLBY_USER_DATA: real, SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47989' });
   try {
     const panel = await cdp((await run.target('panel.html')).webSocketDebuggerUrl);
@@ -125,6 +134,71 @@ async function launch(port, env) {
     check(String(info.idle) === info.count || (info.idle === 0 && info.count === ''), 'the tab count is the idle count');
     check(info.ask, 'there is a button to ask Claude for leaner ways to keep the same features');
     await panel.shot(path.join(real, 'lean-tab.png'));
+
+    // The bar (lean-bar.js; main's fixedcost.js): the header with the total, a row per part in the bar's order,
+    // a segment per sized part, the one-liner, the cut on the style's row, and the cards beside them.
+    const fixed = await panel.ev(`({
+      sum: document.querySelector('#setupPane .lean-fc-sum')?.textContent || '',
+      rows: [...document.querySelectorAll('#setupPane .lean-part')].map(r => r.dataset.part),
+      parts: SB.state.lean.fixed.parts.map(p => p.key),
+      segs: document.querySelectorAll('#setupPane .lean-fc-bar i').length,
+      sized: SB.state.lean.fixed.parts.filter(p => p.tokens).length,
+      keys: document.querySelectorAll('#setupPane .lean-fc-legend .lean-key').length,
+      line: SB.state.lean.fixed.line,
+      style: SB.state.lean.fixed.items.find(i => i.kind === 'style')?.label || '',
+      styleRow: document.querySelector('#setupPane .lean-part[data-part="style"] .lean-part-name')?.textContent || '',
+      memory: SB.state.lean.fixed.items.filter(i => i.kind === 'memory').length,
+      rule: SB.state.lean.fixed.items.some(i => i.kind === 'rule'),
+      cut: document.querySelector('#setupPane .lean-cut[data-id="style-off"] button')?.textContent || '',
+      cuts: SB.state.lean.fixed.suggestions.length,
+      take: document.querySelector('#setupPane .lean-take')?.textContent || '',
+      now: SB.compact(Math.round(SB.state.lean.fixed.total)),
+      after: SB.compact(Math.round(SB.state.lean.fixed.total - SB.state.lean.fixed.suggestions.reduce((n, s) => n + s.saves, 0))),
+      cache: document.querySelector('#setupPane .lean-cache-card')?.textContent || '',
+    })`);
+    console.log('fixed:', JSON.stringify(fixed));
+    check(/^\S+ tokens on every call · \d+% of a 200k window/.test(fixed.sum), `the bar's header gives the total and its share of the window (${fixed.sum.slice(0, 60)})`);
+    check(fixed.rows.length > 0 && fixed.rows.join() === fixed.parts.join(), `a row per part, in the bar's order (${fixed.rows.join(', ')})`);
+    check(fixed.segs === fixed.sized && fixed.keys === fixed.parts.length, 'a bar segment for each sized part, and every part in the legend');
+    check(/^setup ~\S+\/turn$/.test(fixed.line), 'the one-line summary the turn footer shows');
+    check(fixed.style === 'Output style "Explanatory"' && fixed.styleRow.startsWith('Output style: Explanatory') && fixed.memory >= 1 && !fixed.rule, 'the output style and CLAUDE.md have rows; a rule for matching files only does not');
+    check(fixed.cut === 'Turn off', 'the style\'s row offers to turn it off');
+    check(fixed.cuts > 0 && /^If you take (this one|all \w+)/.test(fixed.take) && fixed.take.includes(fixed.now) && fixed.take.includes(fixed.after), `the card adds the cuts up: ${fixed.now} now, ${fixed.after} after`);
+    check(fixed.cache.startsWith('What the cache does') && /This week/.test(fixed.cache), 'the cache card says what the cache does and this week\'s rate');
+    // The whole tab at a 4K full screen and at the panel's own width: for a look, not a check.
+    const metrics = (width, height) => panel.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+    await metrics(2560, 1440);
+    await wait(600);
+    check(await panel.ev("getComputedStyle(document.querySelector('#setupPane .lean-fc')).gridTemplateColumns.split(' ').length === 2"), 'wide, the cards sit beside the rows');
+    await panel.shot(path.join(real, 'lean-wide.png'));
+    await metrics(460, 700);
+    await wait(600);
+    check(await panel.ev("getComputedStyle(document.querySelector('#setupPane .lean-fc')).gridTemplateColumns.split(' ').length === 1 && document.querySelector('#setupPane .lean-fc').scrollWidth <= document.querySelector('#setupPane').clientWidth + 1"), 'narrow, one column, nothing cut off');
+    await panel.shot(path.join(real, 'lean-narrow.png'));
+    await panel.send('Emulation.clearDeviceMetricsOverride');
+    await wait(300);
+    // Turn off -> the confirm window, focused on Cancel; cancel it, and the settings file is untouched.
+    await panel.ev(`document.querySelector('#setupPane .lean-cut[data-id="style-off"] button').click()`);
+    const styleAsk = await answerDialog(run.port, { press: 'Cancel', shot: path.join(real, 'lean-style-confirm.png') });
+    console.log('style confirm:', JSON.stringify(styleAsk && { title: styleAsk.title, focused: styleAsk.focused }));
+    check(styleAsk?.title === 'Switch off the "Explanatory" output style?' && /settings\.json/.test(styleAsk.message), 'the confirm window names the style and the file it is set in');
+    check(styleAsk?.focused === 'Cancel', 'Cancel is the default');
+    check(JSON.parse(fs.readFileSync(homeSettings, 'utf8')).outputStyle === 'Explanatory', 'the settings file still names the style after Cancel');
+    check(await poll(panel, `!!document.querySelector('#setupPane .lean-cut[data-id="style-off"] button:not([disabled])')`), 'the cut is still on offer');
+    // Take all: each switch asks in turn (Cancel moves on to the next), then the advice opens as one draft, unsent.
+    const plan = await panel.ev("({ acts: SB.state.lean.fixed.suggestions.filter(s => s.action).length, drafts: SB.state.lean.fixed.suggestions.filter(s => !s.action).length, tabs: SB.state.tabs.size })");
+    await panel.ev("document.querySelector('#setupPane .lean-take-btn').click()");
+    let asked = 0;
+    for (let i = 0; i < plan.acts; i++) {
+      if (!(await answerDialog(run.port, { press: 'Cancel', ms: 15000 }))) break;
+      asked++;
+    }
+    check(asked === plan.acts, `Take all asked ${asked} of ${plan.acts} times, each cancelled`);
+    check(JSON.parse(fs.readFileSync(homeSettings, 'utf8')).outputStyle === 'Explanatory', 'the settings file is still as it was');
+    if (plan.drafts) check(await poll(panel, `SB.state.tabs.size === ${plan.tabs + 1} && SB.state.view === 'chat' && SB.$('input').value.includes('edit nothing until I say so')`), `the ${plan.drafts} piece${plan.drafts === 1 ? '' : 's'} of advice opened as one draft in a new tab, unsent`);
+    else check(await panel.ev(`SB.state.tabs.size === ${plan.tabs}`), 'no advice, so no draft tab');
+    await panel.ev("SB.showToolbox('lean')");
+    check(await poll(panel, "!!document.querySelector('#setupPane .lean-take-btn:not([disabled])')"), 'Take all is ready again');
 
     // Turn off -> the confirm window, focused on Cancel; cancel it.
     const pick = await panel.ev(`(() => {

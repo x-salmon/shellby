@@ -135,6 +135,9 @@ class WorkflowService {
   /** What started a running run ('manual', 'schedule', 'webhook'...), or null. */
   originOf(runId) { return this.active.get(runId)?.origin || null; }
 
+  /** The workflow a run (running or finished) belongs to, or null: the per-turn ledger keys a step's cost by it (usage/runcost.js). */
+  workflowOfRun(runId) { return this.active.get(runId)?.workflowId || this.store.get(runId)?.workflowId || null; }
+
   // ================================================================ views
 
   workflowView(wf, now = this.now()) {

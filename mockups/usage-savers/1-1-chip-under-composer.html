@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Model suggestion 1: a chip under the composer</title>
+<link rel="stylesheet" href="shared.css">
+<script src="kit.js"></script>
+<style>
+  .offer { display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 18px; border: 1px solid rgba(127, 214, 194, .35); border-radius: var(--r-lg); background: var(--glass-dim); font-size: 16px; }
+  .offer .what { color: var(--sand); }
+  .offer .what b { color: var(--glass); }
+  .offer .fine { color: var(--sand-dim); font-size: 14px; }
+  .offer .acts { margin-left: auto; gap: 8px; }
+  .offer .x { width: 34px; height: 34px; display: grid; place-items: center; color: var(--sand-faint); font-size: 20px; }
+  .ghosted { opacity: .55; }
+</style>
+</head>
+<body>
+<div class="note"><b>1-1 · Chip under the composer.</b> When what you typed looks small, a chip under the box offers a cheaper model. Enter still sends on Opus; only the chip's button switches. <span class="trade">never in the way, so it's easy to miss, and once you send it's gone</span></div>
+<main class="app">
+  <div data-kit="tabs"></div>
+  <div data-kit="subbar"></div>
+
+  <section class="feed"><div class="col">
+    <div data-kit="thread"></div>
+  </div></section>
+
+  <div data-kit="composer" data-opts='{
+    "text": "rename footAct to roomOffer in feed-foot.js",
+    "after": "<div class=\"offer\" role=\"status\"><span class=\"what\">Looks like a small one. <b>Haiku</b> would do it for about <b>1/5 the usage</b>.</span><span class=\"fine\">This tab stays on Opus after.</span><span class=\"acts\"><span class=\"btn small glass\">Use Haiku for this</span><span class=\"btn small quiet\">Keep Opus</span><span class=\"x\" title=\"Stop suggesting for renames\">×</span></span></div>"
+  }'></div>
+</main>
+<script>kit.mount()</script>
+</body>
+</html>

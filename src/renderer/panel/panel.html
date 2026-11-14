@@ -41,6 +41,7 @@
 <link rel="stylesheet" href="native.css">
 <link rel="stylesheet" href="composer.css">
 <link rel="stylesheet" href="turn-foot.css">
+<link rel="stylesheet" href="savers.css">
 <link rel="stylesheet" href="line-comments.css">
 <link rel="stylesheet" href="code.css">
 <link rel="stylesheet" href="turn-checks.css">
@@ -259,8 +260,9 @@
       </div>
       <div class="box-extras">
         <div class="crowded" id="crowded" role="status" hidden></div>
+        <!-- A fresh tab for a new topic in a well-filled conversation is a dashed line in the feed itself (handoff.js, feed-savers.js) -->
         <!-- Ultracode on for this conversation: what it means, in a line (ultracode.js) -->
-        <div class="ultra-note" id="ultraNote" role="status" hidden>Ultracode is on: Claude may send out many agents, and they use a lot of tokens.</div>
+        <div class="ultra-note" id="ultraNote" role="status" hidden><span class="ultra-note-text"><b>Ultracode is on.</b> Claude may send out many agents, and they use a lot of tokens.</span><span class="ultra-note-est" id="ultraEst" hidden></span></div>
         <div class="mod-status" id="modStatus" role="status" aria-label="What your mods say" hidden></div>
         <div class="outlook" id="outlook" role="status" hidden></div>
         <div class="review-bar" id="review" role="region" aria-label="Review comments waiting to be sent" hidden></div>
@@ -495,6 +497,8 @@
       <p class="routine-model-suggest" id="routineModelSuggest" role="status" hidden></p>
       <div id="routineMcp"></div>
       <label class="toggle"><input type="checkbox" name="catchUp" checked><span class="switch"></span>If the PC was off, run once when Shellby starts</label>
+      <label class="toggle"><input type="checkbox" name="runNearLimit"><span class="switch"></span>Run even near the limit</label>
+      <p class="muted small">Off, a run due while your 5-hour window is nearly full waits for the reset and runs then, once. The list says it's waiting and when.</p>
       <p class="form-errors" id="routineErrors" role="alert" hidden></p>
       <div class="row end">
         <button type="button" class="btn ghost" id="routineCancel">Cancel</button>
@@ -2382,6 +2386,10 @@
         <p class="muted small">A routine due past that point waits for the reset; one already running stops, and its conversation is kept so you can carry on. Autonomous tabs stop too, but only once you've been away from the PC for 15 minutes. Runs you start by hand aren't held back.</p>
         <label class="toggle"><input type="checkbox" id="holdBigToggle"><span class="switch"></span>Hold big tasks for the reset when I'm close to the limit</label>
         <p class="muted small">Shellby learns what tasks like yours usually take. When a message would carry you past the line (the share you keep, or the limit with the guard off), it waits for the reset instead, with a "Send now" if you change your mind. It needs a few similar tasks to go on first, and it's all worked out on this PC.</p>
+        <label class="toggle"><input type="checkbox" id="mergeSendsToggle"><span class="switch"></span>Send messages typed close together as one turn</label>
+        <p class="muted small">A message waits a moment and a half for company, with a chip above the box saying so, and anything else you type then goes with it as one turn, each message its own paragraph. Messages that pile up behind a running turn go together when it ends, too. Each turn you save is usage you keep. Enter on an empty box or Ctrl+Enter sends now; a /command always goes on its own.</p>
+        <label class="toggle"><input type="checkbox" id="modelSuggestToggle"><span class="switch"></span>Offer Haiku for a small message before it goes</label>
+        <p class="muted small">A quick question or a small named change in a conversation on Opus gets a card in the chat first: what it usually takes of your 5-hour window on each model, with Use Haiku for this one, Keep Opus, or Always for questions like this. Nothing switches unless you pick, and doing nothing keeps the model you're on. "Always" sends that kind of message to Haiku by itself, with a note on the turn and Undo. Conversations already on Sonnet or Haiku, /commands and Ultracode turns are never asked.</p>
       </section>
     </div>
 
@@ -3295,12 +3303,15 @@
 <script src="feed-changes.js"></script>
 <script src="feed-lanes.js"></script>
 <script src="feed-native.js"></script>
+<script src="savers-logic.js"></script>
+<script src="feed-savers.js"></script>
 <script src="line-comments.js"></script>
 <script src="line-comments-ui.js"></script>
 <script src="turn-checks.js"></script>
 <script src="turn-rewards.js"></script>
 <script src="lessons.js"></script>
 <script src="tab-logic.js"></script>
+<script src="queue-turns.js"></script>
 <script src="tabs.js"></script>
 <script src="tab-strip.js"></script>
 <script src="tab-panes.js"></script>
@@ -3325,6 +3336,8 @@
 <script src="ship-it.js"></script>
 <script src="meter-logic.js"></script>
 <script src="tab-meters.js"></script>
+<script src="savers.js"></script>
+<script src="handoff.js"></script>
 <script src="clash-text.js"></script>
 <script src="clashes.js"></script>
 <script src="tab-sort.js"></script>
@@ -3341,6 +3354,8 @@
 <script src="toolbox-automemory.js"></script>
 <script src="toolbox-hooks.js"></script>
 <script src="lean.js"></script>
+<script src="lean-fixes.js"></script>
+<script src="lean-bar.js"></script>
 <script src="toolbox-snippets.js"></script>
 <script src="toolbox-team.js"></script>
 <script src="toolbox-mods.js"></script>

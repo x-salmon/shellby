@@ -161,6 +161,7 @@ class SessionManager extends EventEmitter {
     // crab's suggestions) is the tab's as ever. Its usage readings go through.
     session.on('item', item => (tab.pinging && item.kind !== 'usage' ? this.onPingItem(tab, item) : this.onItem(tab, item)));
     session.on('spend', s => this.emit('spend', tab.id, s, tab));
+    session.on('run', r => this.emit('run', tab.id, r, tab)); // an Ultracode run ended, with what it cost (session/ultra.js)
     session.on('call', c => this.emit('call', tab.id, c, tab));
     session.on('cache', () => this.changed());
     session.on('context', (now, before) => { this.emit('context', tab.id, now, before, tab); this.changed(); });
@@ -176,6 +177,7 @@ class SessionManager extends EventEmitter {
     session.on('tool', () => this.changed());
     session.on('pause', () => this.changed()); // the pause line and its buttons (session/pause.js)
     session.on('exit', () => {
+      this.restoreTurnModel(tab); // no result comes from a process that ended
       // A process stopped mid-ping sends no result (session.js ended), so the ping is settled here.
       if (tab.pinging) this.settlePing(tab, { ok: false, error: 'its Claude Code process ended', tokens: null, denied: false });
       // Its mods ended with it: their status lines go too (plugin null: all of them).
@@ -264,6 +266,7 @@ class SessionManager extends EventEmitter {
     // Shellby's own /compact while the tab sat idle (wiring/idle-compact.js): its mark says so.
     if (item.kind === 'compacted' && tab.idleCompacting) item = { ...item, trigger: 'idle' };
     if (item.kind === 'result') {
+      this.restoreTurnModel(tab);
       // A note's Ask has its answer: whatever you say next is in your mode.
       if (item.ok && tab.startsIn && tab.startsIn !== 'plan') tab.session.setMode(this.followMode(tab));
       tab.outcome = item.interrupted ? 'stopped' : item.ok ? 'ok' : 'error';
@@ -298,7 +301,9 @@ class SessionManager extends EventEmitter {
     return true;
   }
 
-  send(tabId, prompt, userItem) {
+  /** One message in. opts.model: this one turn on that model (model-pick.js's card); onItem
+   *  puts the tab's own back at the result. Never a local tab or another CLI. -> the turn's id. */
+  send(tabId, prompt, userItem, { model: turnModel = null } = {}) {
     const tab = this.require(tabId);
     // Before anything below touches History or the turn: session.send would
     // refuse anyway, but only after a message Claude never saw was saved.
@@ -351,20 +356,19 @@ class SessionManager extends EventEmitter {
     if (this.decorate) prompt = this.decorate(tab, prompt);
     tab.pictures = (tab.pictures || 0) + turncost.picturesIn(prompt);
     this.maybePickEffort(tab, userItem);
-    tab.session.send(prompt, this.prepareTurn?.(tab) || null);
+    if (turnModel && onClaude(tab) && !tab.localTarget && isModel(turnModel) && turnModel !== (tab.session.model || '')) {
+      tab.turnModel = { was: tab.session.model || '' };
+      tab.session.setModel(turnModel);
+    }
+    try { tab.session.send(prompt, this.prepareTurn?.(tab) || null); } catch (e) { this.restoreTurnModel(tab); throw e; }
     // On disk at once, so a power cut mid-turn still leaves it marked unfinished.
     this.history.markTurn?.(tab.id, { turnId: userItem.turnId, at: Date.now() });
     this.changed();
     return userItem.turnId;
   }
 
-  /**
-   * The panel's queue while a turn runs, [{ id, text, attachments }] in order:
-   * it goes to Claude at its next step (session/control.js steer). Only for the turn it
-   * was queued behind: one the panel has since sent on its own isn't steered
-   * in too. What has gone in already this turn stays out, should the panel not
-   * have heard yet. -> whether it was taken.
-   */
+  /** The panel's queue while a turn runs, [{ id, text, attachments }]: it goes in at Claude's next step
+   *  (session/control.js steer), only for the turn it was queued behind; what went in already stays out. -> taken? */
   steer(tabId, turnId, list) {
     const tab = this.tabs.get(tabId);
     if (!tab || !tab.session.busy || !turnId || turnId !== tab.turnId) return false;
@@ -372,11 +376,8 @@ class SessionManager extends EventEmitter {
     return true;
   }
 
-  /**
-   * Take a queued message back before Claude has it (the panel's × on its chip).
-   * By id, here, where takeSteers() runs: the panel's own list can be a step
-   * behind. -> false when it's too late (it went in this turn), else true.
-   */
+  /** A queued message taken back before Claude has it (the chip's ×), by id here where takeSteers() runs:
+   *  the panel's list can be a step behind. -> false when it's too late (it went in this turn). */
   unsteer(tabId, id) {
     const tab = this.tabs.get(tabId);
     if (!tab) return true; // nothing of it can reach Claude
@@ -385,16 +386,15 @@ class SessionManager extends EventEmitter {
     return true;
   }
 
-  // What the session hands Claude now, taken off the list ('steering' tells the
-  // panel, so its chip can't be edited any more). The chip goes once Claude has
-  // read it: the 'user' item carries its steerId. One that can't be put
-  // together stays queued, and so does all after it.
-  //
-  // It has no rewind point of its own: Shellby keeps the code as it stood
-  // between turns, not mid-turn, so "just before it" can't be put back. turnOf
-  // is the message whose turn it went into, which the panel offers instead.
+  // A turn run on a cheaper model (send's opts.model) is over, or never ran: the tab's own model is back.
+  restoreTurnModel(tab) { if (tab.turnModel) { const { was } = tab.turnModel; tab.turnModel = null; tab.session.setModel(was); } }
+
+  // What the session hands Claude now, off the list ('steering' locks its chip; the 'user' item's
+  // steerId drops it once read). One that can't be put together stays queued, with all after it.
+  // No rewind point of its own (code is kept between turns, not mid-turn): turnOf is offered instead.
   takeSteers(tab) {
-    if (tab.pinging) return []; // after the ping, as a turn of its own
+    // After the ping, as a turn of its own; and you picked the cheaper model for one message only.
+    if (tab.pinging || tab.turnModel) return [];
     const taken = [];
     for (const m of tab.steers) {
       let content;

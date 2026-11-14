@@ -69,6 +69,7 @@ function wireServices(d) {
     get currentCwd() { return d.currentCwd; },
     get dialogLook() { return d.dialogLook; },
     get adoptPhoneTab() { return d.adoptPhoneTab; },
+    get workflows() { return d.workflows; },
     worktreeHome: () => d.worktreeHome(),
     limitWait: usageService.limitWait, resetTarget: usageService.resetTarget,
     clockTime: usageService.clockTime, sendOutlook: usageService.sendOutlook,
@@ -95,8 +96,8 @@ function wireServices(d) {
     get dialogLook() { return d.dialogLook; },
     get runClaudeOnce() { return d.runClaudeOnce; },
     get knownProjects() { return d.knownProjects; },
-    limitWait: usageService.limitWait, guardSettings: usageService.guardSettings, clockTime: usageService.clockTime,
-    heldList: heldService.heldList, holdForReset: heldService.holdForReset, scheduleHeld: heldService.scheduleHeld,
+    limitWait: usageService.limitWait, guardSettings: usageService.guardSettings, clockTime: usageService.clockTime, forecastNow: usageService.forecastNow,
+    heldList: heldService.heldList, holdForReset: heldService.holdForReset, saveHeld: heldService.saveHeld, scheduleHeld: heldService.scheduleHeld,
     syncKeepAwake: heldService.syncKeepAwake, queueTabs: heldService.queueTabs,
   });
   const keepWarm = createKeepWarm({
@@ -150,7 +151,7 @@ function wireServices(d) {
   // names are what ipc/ and main read.
   const { checkLimit, onUsage, outlookView, projectKeyOf, refreshOutlook, saveSpend, sendOutlook, spendSource, tabCost, usageBreakdown, watchGuards, watchOutlook, windowShare } = usageService;
   const { heldList, holdForReset, queueTabs, queueTask, queueWaits, reopenForHeld, saveHeld, scheduleHeld, syncKeepAwake } = heldService;
-  const { chatRoutine, draftRoutine, repairRoutine, routineTabs, routineTestView, routineTests, routines, routinesView, runRoutine, saveRoutines, startScheduler, testRoutine } = routineService;
+  const { chatRoutine, draftRoutine, repairRoutine, routineTabs, routineTestView, routineTests, routines, routinesView, runOrHoldRoutine, runRoutine, saveRoutines, startScheduler, testRoutine } = routineService;
   const { checkAway, checkLeavingSoon, isAway, noteRecap, watchAway, watchLeaving } = awayService;
   const { shellIdOf, shellStickers, shipped, stickerState } = stickerService;
   const { changeRef, retireWorktree } = copyService;
@@ -158,7 +159,7 @@ function wireServices(d) {
     FORECAST_TEST, RECAP_TEST, awayService, copyService, heldService, routineService, stickerService, usageService, keepWarm,
     checkLimit, onUsage, outlookView, projectKeyOf, refreshOutlook, saveSpend, sendOutlook, spendSource, tabCost, usageBreakdown, watchGuards, watchOutlook, windowShare,
     heldList, holdForReset, queueTabs, queueTask, queueWaits, reopenForHeld, saveHeld, scheduleHeld, syncKeepAwake,
-    chatRoutine, draftRoutine, repairRoutine, routineTabs, routineTestView, routineTests, routines, routinesView, runRoutine, saveRoutines, startScheduler, testRoutine,
+    chatRoutine, draftRoutine, repairRoutine, routineTabs, routineTestView, routineTests, routines, routinesView, runOrHoldRoutine, runRoutine, saveRoutines, startScheduler, testRoutine,
     checkAway, checkLeavingSoon, isAway, noteRecap, watchAway, watchLeaving,
     shellIdOf, shellStickers, shipped, stickerState,
     changeRef, retireWorktree,

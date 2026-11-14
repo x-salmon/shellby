@@ -32,6 +32,7 @@
     if (!tab) return;
     tab.ultracode = !tab.ultracode;
     SB.renderUltraChip(tab);
+    SB.refreshEstimate?.(); // what a run here usually costs, before the first one (outlook.js)
     $('input').focus();
   });
 
