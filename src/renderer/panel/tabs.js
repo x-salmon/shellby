@@ -32,6 +32,7 @@
 
   SB.ensureTab = (summary) => {
     let tab = state.tabs.get(summary.id);
+    const wasPausing = tab?.pause?.phase === 'pausing';
     if (!tab) {
       tab = new SB.Tab(summary.id, { title: summary.title, cwd: summary.cwd, saved: summary.saved, routineId: summary.routineId });
       tab.el.hidden = true;
@@ -62,10 +63,18 @@
       // What it left running in the background (main's jobs.js), and whether Claude is planning.
       jobs: Array.isArray(summary.jobs) ? summary.jobs : tab.jobs || [],
       planning: summary.planning !== undefined ? !!summary.planning : !!tab.planning,
+      // Pausing, paused or parked (main's session/pause.js), and whether this conversation can pause at all.
+      pause: summary.pause !== undefined ? summary.pause : tab.pause || null,
+      canPause: summary.canPause !== undefined ? !!summary.canPause : !!tab.canPause,
       // Started without your customizations (safe mode), and the agent that runs it, if one does.
       safeMode: summary.safeMode !== undefined ? !!summary.safeMode : !!tab.safeMode,
       agent: summary.agent !== undefined ? summary.agent : tab.agent || null,
     });
+    // The pause has landed: every step he had going is done and held. Said once, where you'll see it.
+    if (wasPausing && tab.pause?.phase === 'paused') {
+      SB.announce?.('Claude paused');
+      if (tab.isActive) SB.toast('Paused. Nothing more runs until you press Continue.');
+    }
     return tab;
   };
 

@@ -31,6 +31,7 @@ const crew = {
     if (prev.status === 'running' && next.status !== 'running') next.endedAt = Date.now(); // the crab window walks it home with how it went
     this.tasks.set(item.taskId, next);
     this.pruneTasks();
+    this.settlePause(); // a helper started or finished: pausing may be done waiting (pause.js)
     this.emit('crew', this.crew);
   },
 

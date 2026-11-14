@@ -46,6 +46,9 @@
           text: item.conversation === false ? `Rewound the code: put ${files(item.restored || 0)} back`
             : `Rewound to an earlier message${item.code && item.restored ? `, and put ${files(item.restored)} back` : ''}`,
         };
+      // A pause Claude Code stopped waiting on (main's session/pause.js cancelledRequest).
+      case 'paused':
+        return { icon: '⏸', text: 'The pause ran out: Claude Code stopped waiting after 3 hours, so Claude carried on' };
       case 'hook-failed':
         return {
           icon: '⚠',
@@ -197,6 +200,8 @@
     const waiting = item.ok && !item.interrupted && item.waiting?.length
       ? `waiting on ${item.waiting.length === 1 ? item.waiting[0] : `${item.waiting.length} background tasks`}`
       : null;
+    // Parked: you paused it, and the turn ended where he stopped (main's session/pause.js).
+    if (item.parked) return { label: 'paused', waiting: null };
     return { label: item.interrupted ? 'stopped' : waiting || (item.ok ? 'done' : 'ended with an error'), waiting };
   }
 
@@ -259,7 +264,7 @@
    */
   function sounding(item, fmt) {
     const { label, waiting } = resultLabel(item);
-    const state = item.interrupted ? 'stopped' : waiting ? 'waiting' : item.ok ? 'done' : 'failed';
+    const state = item.parked ? 'waiting' : item.interrupted ? 'stopped' : waiting ? 'waiting' : item.ok ? 'done' : 'failed';
     const cost = item.cost && Number.isFinite(item.cost.tokens) ? item.cost : null;
     const helpers = cost?.helpers?.length || 0;
     const soft = [
@@ -277,7 +282,9 @@
     const meter = now === null ? null
       : `${now}% of the conversation used${bar.freedTo ? `, down from ${bar.freedTo}% after a compact` : change ? `, ${bar.added}% by this reply` : ''}${level ? `: ${LEVEL_WORDS[level]}` : ''}`;
     return {
-      state, word: capital(label), title: waiting ? 'This turn ended, but something it started is still running.' : null,
+      state, word: capital(label),
+      title: item.parked ? 'You paused it, so this turn ended where he stopped. Continue picks up from here.'
+        : waiting ? 'This turn ended, but something it started is still running.' : null,
       soft, effort: lit ? { lit, of: 5, name: EFFORT_WORD[cost.effort].toLowerCase() } : null,
       bar, level,
       full: now === null ? null : `${now}% full`, change,

@@ -146,6 +146,8 @@ require('./session').setLogger(log);
 const FAKE_CLI = !app.isPackaged && process.env.SHELLBY_FAKE_CLAUDE ? path.resolve(process.env.SHELLBY_FAKE_CLAUDE) : null;
 // The same for Gemini CLI, OpenCode and Codex (harness/): one script stands in for every ACP agent.
 const FAKE_ACP = !app.isPackaged && process.env.SHELLBY_FAKE_ACP ? path.resolve(process.env.SHELLBY_FAKE_ACP) : null;
+// Dev/e2e only: a pause parks this long after it settles, so a check needn't wait 55 minutes (session/pause.js).
+if (!app.isPackaged) require('./session/pause').testParkAfter(process.env.SHELLBY_PARK_AFTER_MS);
 require('./lighter').lighten(app); // one process fewer: the network service runs inside main
 require('./test-desktop').keepPainting(app); // test runs only: keep covered windows painting, so screenshots and rendering work on a busy desktop
 // Isolated dev/test runs (SHELLBY_USER_DATA) never touch the real status file

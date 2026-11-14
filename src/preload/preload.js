@@ -97,7 +97,7 @@ contextBridge.exposeInMainWorld('shellby', {
   setTabModel: (tabId, model) => ipcRenderer.invoke('tab:model', { tabId, model }), setTabLocal: (tabId, model) => ipcRenderer.invoke('tab:local', { tabId, model }), // a model of its own, before a conversation starts
   markReviewed: (tabId, reviewed = true, after = null) => ipcRenderer.invoke('tab:reviewed', { tabId, reviewed, after }), // the review inbox
   sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true }), // opts.selected: the file picked in All files (files-select.js); opts.fromQueue: the queue sent it (Keep warm)
-  stopTask: fire('task:stop'),
+  stopTask: fire('task:stop'), pauseTask: invoke('task:pause'), resumeTask: invoke('task:resume'), // Stop, Pause and Continue (session/pause.js): -> { ok } | { ok: false, error }
   steerTask: (tabId, turnId, items) => ipcRenderer.send('task:steer', { tabId, turnId, items }),
   unsteerTask: (tabId, id) => ipcRenderer.invoke('task:unsteer', { tabId, id }), // a queued message taken back, unless Claude has it
   freshTab: invoke('tab:fresh'),
