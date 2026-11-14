@@ -64,3 +64,23 @@ test('Allow and Deny ride only to a phone that may answer', () => {
     assert.equal(to('b').url, '/#/prompt/t1/r1', 'a tap still opens the prompt');
   } finally { restore(); }
 });
+
+test('a page’s notify is a push named after the page, to every phone, and a tap opens the page', () => {
+  const { n, sent, restore } = notices([
+    { id: 'a', rights: 'full', push: { endpoint: 'https://fcm.googleapis.com/a' } },
+    { id: 'b', rights: 'readonly', push: { endpoint: 'https://fcm.googleapis.com/b' } },
+    { id: 'c', rights: 'full', push: null },
+  ]);
+  try {
+    assert.equal(n.notifyPage({ id: 'print-queue', name: 'Print queue', title: 'Print done', body: 'Benchy finished in 42 min' }), true);
+    assert.equal(sent.length, 2, 'both phones with notifications on, whatever their rights');
+    const p = sent[0].payload;
+    assert.equal(p.title, 'Print queue');
+    assert.equal(p.body, 'Print done: Benchy finished in 42 min');
+    assert.equal(p.tag, 'page-print-queue');
+    assert.equal(p.url, '/#/page/print-queue');
+    assert.equal(p.answer, undefined, 'nothing to answer on a page');
+    assert.equal(n.notifyPage({ id: '../x', name: 'Odd', title: 'x' }), false, 'an id that is not one');
+    assert.equal(sent.length, 2);
+  } finally { restore(); }
+});
