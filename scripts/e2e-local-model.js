@@ -82,6 +82,15 @@ function modelServer() {
     check(await ev("document.getElementById('localModelUrl').value") === 'http://127.0.0.1:11434', 'a saved address off this PC shows as the default');
     check(await ev("document.getElementById('localModelToggle').disabled && !document.getElementById('localModelToggle').checked"), 'it starts off, and can\'t be turned on before a model is picked');
     check(/Find models, then pick one/.test(await status()), `it says what to do first ("${await status()}")`);
+    // What a model unlocks shows before there is one, greyed, with nothing usable
+    const shown = id => `document.getElementById('${id}').offsetParent !== null`;
+    check(await ev(['localModelJobs', 'localAnswers', 'localAgent', 'localModelTry'].map(shown).join(' && ')), 'with no model, what it can do is still shown');
+    check(await ev("document.getElementById('localModelMore').disabled && [...document.querySelectorAll('#localModelMore input, #localModelMore select, #localModelMore button')].every(c => c.matches(':disabled'))"), '...but greyed, every control in it inert');
+    check(await ev(shown('localModelNeeds')), '...under a line saying to pick a model first');
+    check(await ev("document.getElementById('localModelTally').hidden"), '...and no tally yet');
+    fs.mkdirSync(OUT, { recursive: true });
+    await ev("document.getElementById('localModelGroup').scrollIntoView({ block: 'start' })");
+    await savePng(send, path.join(OUT, 'local-model-none.png'));
 
     // No model yet: Claude can set one up, in a task of its own that waits for you to send it
     check(await ev("!document.getElementById('localModelSetup').hidden"), 'with no model, Let Claude set it up is offered');
@@ -103,6 +112,7 @@ function modelServer() {
     await pick(MODELS[0]);
     check(await until("!document.getElementById('localModelToggle').disabled"), 'picking a model lets the switch be used');
     check(await ev("document.getElementById('localModelSetup').hidden"), '...and Let Claude set it up steps aside');
+    check(await ev("!document.getElementById('localModelMore').disabled && document.getElementById('localModelNeeds').offsetParent === null"), '...and what it can do comes alive, the pick-a-model line gone');
     check((await saved()).on === false && /Turn it on/.test(await status()), `...but leaves it off until you turn it on ("${await status()}")`);
     await toggle(true);
     check(await until('SB.state.settings.localModel.on === true'), 'the switch turns it on');
@@ -141,7 +151,7 @@ function modelServer() {
 
     // what it writes first: a row per job, and the tally of what it saved
     await until("document.getElementById('localModelGroup')?.offsetParent !== null");
-    check(await until("!document.getElementById('localModelJobs').hidden && document.querySelectorAll('#localModelJobList .local-job').length === 5"), 'Settings lists the jobs it writes first');
+    check(await until("!document.getElementById('localModelMore').disabled && document.querySelectorAll('#localModelJobList .local-job').length === 5"), 'Settings lists the jobs it writes first');
     check(await until("/2 drafts written on this PC/.test(document.getElementById('localModelTallyText').textContent)"), `the tally counts both routine drafts ("${await ev("document.getElementById('localModelTallyText').textContent")}")`);
     // Try it: one plain question, answered by the stand-in
     await ev("document.getElementById('localModelQuestion').value = 'hello?'; document.getElementById('localModelAsk').click()");
@@ -177,7 +187,7 @@ function modelServer() {
 
     // on, with a model of its own
     await ev("SB.setView('settings'); document.getElementById('setTab-claude').click()");
-    check(await until("!document.getElementById('localAnswers').hidden"), 'Settings offers asking a local model when Claude won\'t answer');
+    check(await until("!document.getElementById('localModelMore').disabled && document.getElementById('localAnswers').offsetParent !== null"), 'Settings offers asking a local model when Claude won\'t answer');
     await ev("(t => { t.checked = true; t.dispatchEvent(new Event('change')); })(document.getElementById('localAnswersToggle'))");
     check(await until('SB.state.settings.localModel.answers.on === true'), '...and its switch saves');
     await ev(`(s => { s.value = ${JSON.stringify(MODELS[1])}; s.dispatchEvent(new Event('change')); })(document.getElementById('localAnswersModel'))`);
