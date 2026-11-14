@@ -68,17 +68,16 @@
     // Only before there's a model, and only when Claude can do it.
     $('localModelSetup').hidden = !!lm.model || SB.isCrabOnly();
     say(statusText(lm));
+    // Shown without a model too, greyed and inert (the fieldset disables them all), so you can see what's here.
+    $('localModelMore').disabled = !lm.model;
     renderJobs(lm, names);
     renderAnswers(lm, names);
     renderAgent(lm, names);
-    $('localModelTry').hidden = !lm.model;
     refreshTally();
   }
 
   // Each job: on or off, and a model of its own or the one above.
   function renderJobs(lm, names) {
-    $('localModelJobs').hidden = !lm.model;
-    if (!lm.model) return;
     $('localModelJobList').replaceChildren(...JOBS.map(j => {
       const box = h('input', { type: 'checkbox' });
       box.checked = lm.jobs[j.id];
@@ -104,8 +103,6 @@
   // Asking it when Claude won't answer (feed-local.js): its own on/off and model,
   // apart from the drafts', so an uncensored model needn't write them.
   function renderAnswers(lm, names) {
-    $('localAnswers').hidden = !lm.model;
-    if (!lm.model) return;
     $('localAnswersToggle').checked = lm.answers.on;
     const own = lm.answers.model;
     $('localAnswersModel').replaceChildren(
@@ -117,8 +114,6 @@
 
   // Conversations on a local model (main's local/agent.js): its own on/off and model.
   function renderAgent(lm, names) {
-    $('localAgent').hidden = !lm.model;
-    if (!lm.model) return;
     $('localAgentToggle').checked = lm.agent.on;
     const own = lm.agent.model;
     $('localAgentModel').replaceChildren(

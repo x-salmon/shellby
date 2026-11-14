@@ -28,13 +28,6 @@
   /** A bar's length in percent of the biggest: 0 for nothing, else at least `min` so it shows. */
   const barPercent = (seconds, max, min) => (seconds ? Math.max(min, Math.round((seconds / Math.max(max, 1)) * 100)) : 0);
 
-  /** The chart's label under a day: weekday when few, else only the 1st and Mondays. */
-  const chartLabel = (day, many) => {
-    const date = dateOf(day);
-    if (!many) return date.toLocaleDateString(undefined, { weekday: 'short' });
-    return date.getDate() === 1 || date.getDay() === 1 ? String(date.getDate()) : '';
-  };
-
   /** Where a day's time came from: ["1h 00m tracked", "+15m by hand"], or the estimate from commits. */
   const dayParts = r => [
     r.tracked ? `${dur(r.tracked)} tracked` : '',
@@ -73,7 +66,7 @@
         : minutes > MAX_MINUTES_A_DAY ? "That's more than a day."
           : null);
 
-  const api = { dur, decimal, money, dateOf, dayKey, barPercent, chartLabel, dayParts, commitsTip, plural, payLabel, roundValues, roundLabel, currencyCode, addTimeProblem };
+  const api = { dur, decimal, money, dateOf, dayKey, barPercent, dayParts, commitsTip, plural, payLabel, roundValues, roundLabel, currencyCode, addTimeProblem };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyTimeFormat = api;
 })(typeof window !== 'undefined' ? window : globalThis);

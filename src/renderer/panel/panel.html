@@ -1583,31 +1583,54 @@
       <p>The clock stops when you're away from the keyboard. Window titles are read to find the project and then forgotten: only the project, the day and the minutes are kept, on this PC. Nothing is sent anywhere unless you send it to your time tracker, or switch on syncing your hours between your PCs.</p>
     </section>
     <p class="tm-now" id="timeNow" aria-live="polite"></p>
-    <section class="focus-card" id="focusCard" aria-label="Focus">
-      <div class="focus-head">
-        <span class="focus-badge" aria-hidden="true">⛑️</span>
-        <div class="focus-titles">
-          <p class="xp-eyebrow focus-eyebrow">Focus</p>
-          <h3 id="focusTitle">Guard my focus</h3>
-        </div>
-        <span class="focus-clock" id="focusClock" hidden></span>
-      </div>
-      <p class="streak-sub" id="focusSub"></p>
-      <div class="focus-actions" id="focusActions"></div>
-    </section>
     <div id="timeBody">
-      <div class="seg tm-ranges" id="timeRanges" role="tablist" aria-label="Period" data-roving></div>
-      <section class="tm-overview" aria-labelledby="timeTotal">
-        <div class="tm-totals">
-          <p class="tm-total" id="timeTotal"></p>
-          <p class="tm-amount" id="timeAmount"></p>
-        </div>
-        <ul class="tm-chart" id="timeChart" aria-label="Hours each day"></ul>
-      </section>
+      <div class="tm-month-head">
+        <button type="button" class="icon-btn tm-step" id="timePrev" aria-label="Previous month">‹</button>
+        <h3 id="timeMonth" aria-live="polite"></h3>
+        <button type="button" class="icon-btn tm-step" id="timeNext" aria-label="Next month">›</button>
+        <button type="button" class="btn ghost slim-btn" id="timeThisMonth" hidden>Back to this month</button>
+      </div>
+      <dl class="tm-stats" id="timeStats" aria-label="The month in numbers"></dl>
       <p class="tm-fill" id="timeFill" hidden></p>
       <p class="muted small tm-short" id="timeShort" hidden></p>
-      <ul class="tm-projects" id="timeProjects"></ul>
 
+      <div class="tm-month">
+        <section class="tm-cal" aria-labelledby="timeMonth">
+          <div class="tm-cal-grid" id="timeCal"></div>
+          <p class="tm-cal-key muted small">Darker days had more hours. A dashed ring is a day with commits but no time kept.</p>
+        </section>
+        <section class="tm-dayview" id="timeDay" aria-label="The picked day"></section>
+      </div>
+
+      <section class="setting-group tm-projects-wrap" aria-labelledby="timeProjectsTitle">
+        <h3 id="timeProjectsTitle">Projects this month</h3>
+        <ul class="tm-projects" id="timeProjects"></ul>
+      </section>
+
+      <section class="setting-group tm-export" aria-labelledby="timeExportTitle">
+        <h3 id="timeExportTitle">Timesheet</h3>
+        <div class="row wrap">
+          <select class="field slim" id="timeOnly" aria-label="Which projects go on it"></select>
+          <button type="button" class="btn slim-btn" id="timePdf">Save PDF</button>
+          <button type="button" class="btn slim-btn" id="timeCsv">Save CSV</button>
+          <button type="button" class="btn ghost slim-btn" id="timeCopy">Copy as text</button>
+        </div>
+        <p class="muted small" id="timeExportNote">For the month above, rounded as set below. Each day's line is its note, or else your commit messages.</p>
+        <div class="tm-sync" id="timeSync"></div>
+      </section>
+
+      <section class="focus-card" id="focusCard" aria-label="Focus">
+        <div class="focus-head">
+          <span class="focus-badge" aria-hidden="true">⛑️</span>
+          <div class="focus-titles">
+            <p class="xp-eyebrow focus-eyebrow">Focus</p>
+            <h3 id="focusTitle">Guard my focus</h3>
+          </div>
+          <span class="focus-clock" id="focusClock" hidden></span>
+        </div>
+        <p class="streak-sub" id="focusSub"></p>
+        <div class="focus-actions" id="focusActions"></div>
+      </section>
       <section class="streak-card" id="streakCard" aria-label="Streaks">
         <div class="streak-head">
           <span class="streak-flame" id="streakFlame">🔥</span>
@@ -1625,39 +1648,6 @@
             <option value="2">2 days</option><option value="3">3 days</option><option value="5">5 days</option><option value="7">a week</option><option value="14">2 weeks</option>
           </select>
         </div>
-      </section>
-
-      <section class="setting-group tm-export" aria-labelledby="timeExportTitle">
-        <h3 id="timeExportTitle">Timesheet</h3>
-        <div class="row wrap">
-          <select class="field slim" id="timeOnly" aria-label="Which projects go on it"></select>
-          <button type="button" class="btn slim-btn" id="timePdf">Save PDF</button>
-          <button type="button" class="btn slim-btn" id="timeCsv">Save CSV</button>
-          <button type="button" class="btn ghost slim-btn" id="timeCopy">Copy as text</button>
-        </div>
-        <p class="muted small" id="timeExportNote">For the period above, rounded as set below. Each day's line is its note, or else your commit messages.</p>
-        <div class="tm-sync" id="timeSync"></div>
-      </section>
-
-      <section class="setting-group" aria-labelledby="timeAddTitle">
-        <h3 id="timeAddTitle">Add time by hand</h3>
-        <form class="tm-add" id="timeAdd" novalidate>
-          <div class="grid-2">
-            <label class="field-label">Project<select class="field" id="timeAddProject" required></select></label>
-            <label class="field-label">Day<input class="field" type="date" id="timeAddDay" required></label>
-          </div>
-          <div class="tm-add-row">
-            <div class="seg tm-sign" role="radiogroup" aria-label="Add or take off">
-              <button type="button" role="radio" aria-checked="true" data-sign="1">Add</button>
-              <button type="button" role="radio" aria-checked="false" data-sign="-1">Take off</button>
-            </div>
-            <label class="field-label tm-num">Hours<input class="field" type="number" id="timeAddHours" min="0" max="24" step="1" value="0" inputmode="numeric"></label>
-            <label class="field-label tm-num">Minutes<input class="field" type="number" id="timeAddMinutes" min="0" max="59" step="5" value="30" inputmode="numeric"></label>
-          </div>
-          <label class="field-label">What it was for <span class="field-hint">(optional, goes on the timesheet)</span><input class="field" id="timeAddNote" maxlength="200" placeholder="Kickoff call with the client"></label>
-          <p class="form-errors" id="timeAddError" role="alert" hidden></p>
-          <div class="row"><button type="submit" class="btn primary slim-btn">Add time</button></div>
-        </form>
       </section>
 
       <section class="setting-group" aria-labelledby="timeSetTitle">
@@ -2145,33 +2135,27 @@
           </select>
         </div>
         <p class="small" id="localModelStatus" role="status" aria-live="polite"></p>
-        <fieldset class="local-jobs" id="localModelJobs" hidden>
+        <fieldset class="local-more" id="localModelMore" aria-describedby="localModelNeeds">
+        <p class="small muted local-needs" id="localModelNeeds">Pick a model above to use these.</p>
+        <fieldset class="local-jobs" id="localModelJobs">
           <legend class="small muted">What it writes first</legend>
           <div id="localModelJobList"></div>
         </fieldset>
-        <div class="local-answers" id="localAnswers" hidden>
+        <div class="local-answers" id="localAnswers">
           <div class="local-job">
             <label class="toggle"><input type="checkbox" id="localAnswersToggle" aria-describedby="localAnswersText"><span class="switch"></span>Ask a local model when Claude won't answer</label>
             <select id="localAnswersModel" class="field slim" aria-label="Model to ask when Claude won't answer"></select>
           </div>
           <p class="muted small" id="localAnswersText">When Claude declines a question, a card under it offers to ask this model instead. Only your question goes, only when you press the button, and the answer is shown as the local model's, apart from Claude's conversation. Pick a model you trust with what you ask: an uncensored one answers anything, accurately or not.</p>
         </div>
-        <div class="local-answers" id="localAgent" hidden>
+        <div class="local-answers" id="localAgent">
           <div class="local-job">
             <label class="toggle"><input type="checkbox" id="localAgentToggle" aria-describedby="localAgentText"><span class="switch"></span>Run new conversations on a local model</label>
             <select id="localAgentModel" class="field slim" aria-label="Model new conversations run on"></select>
           </div>
           <p class="muted small" id="localAgentText">Claude Code does the work as usual, with every tool, but thinks with this model instead of Claude, so nothing is spent from your plan and nothing leaves this PC. Needs Ollama 0.14 or LM Studio 0.4.1 or newer, and a model made for coding and tool use with a long context (32K tokens or more; Ollama starts most models with less). Each conversation keeps what it started on for good, reopened or branched later too, and a local one can't be sent to a terminal. Smaller models make more mistakes: watch what they change.</p>
         </div>
-        <div class="local-tally" id="localModelTally" hidden>
-          <p class="small" id="localModelTallyText"></p>
-          <p class="small muted" id="localModelFallback" hidden></p>
-          <div class="row wrap">
-            <button type="button" class="btn ghost slim-btn" id="localModelWake" hidden>Try it again now</button>
-            <button type="button" class="btn ghost slim-btn" id="localModelResetTally">Reset the count</button>
-          </div>
-        </div>
-        <div class="local-try" id="localModelTry" hidden>
+        <div class="local-try" id="localModelTry">
           <div class="row wrap">
             <label class="inline-label" for="localModelQuestion">Try it</label>
             <input type="text" class="field slim" id="localModelQuestion" placeholder="Ask it anything, or leave blank for a sample" maxlength="2000" spellcheck="true" autocomplete="off">
@@ -2179,6 +2163,15 @@
           </div>
           <p class="small muted">Answered on this PC, without your plan. Shellby only shows the answer here.</p>
           <p class="small local-answer" id="localModelAnswer" role="status" aria-live="polite" hidden></p>
+        </div>
+        </fieldset>
+        <div class="local-tally" id="localModelTally" hidden>
+          <p class="small" id="localModelTallyText"></p>
+          <p class="small muted" id="localModelFallback" hidden></p>
+          <div class="row wrap">
+            <button type="button" class="btn ghost slim-btn" id="localModelWake" hidden>Try it again now</button>
+            <button type="button" class="btn ghost slim-btn" id="localModelResetTally">Reset the count</button>
+          </div>
         </div>
       </section>
     </div>
@@ -3155,6 +3148,7 @@
 <script src="../shared/health-fx.js"></script>
 <script src="../shared/outlook-format.js"></script>
 <script src="../shared/time-format.js"></script>
+<script src="../shared/time-calendar.js"></script>
 <script src="../shared/streaks-format.js"></script>
 <script src="../shared/panes.js"></script>
 <script src="../shared/branch-label.js"></script>
@@ -3320,6 +3314,7 @@
 <script src="xp-sheet.js"></script>
 <script src="xp.js"></script>
 <script src="week-card.js"></script>
+<script src="time-month.js"></script>
 <script src="time.js"></script>
 <script src="streaks.js"></script>
 <script src="focus.js"></script>

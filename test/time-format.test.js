@@ -48,13 +48,6 @@ test('barPercent: nothing is 0, a sliver is at least the minimum, the biggest is
   assert.ok(Number.isFinite(F.barPercent(1, 0, 2)), 'a zero max never divides by zero');
 });
 
-test('chartLabel: weekdays for a short range, only the 1st and Mondays for a long one', () => {
-  assert.equal(F.chartLabel('2026-10-01', true), '1');  // a Thursday, the 1st
-  assert.equal(F.chartLabel('2026-10-05', true), '5');  // a Monday
-  assert.equal(F.chartLabel('2026-10-07', true), '');   // a Wednesday
-  assert.equal(F.chartLabel('2026-10-07', false), F.dateOf('2026-10-07').toLocaleDateString(undefined, { weekday: 'short' }));
-});
-
 test('dayParts lists tracked and by-hand time, and the commit estimate only when there is neither', () => {
   assert.deepEqual(F.dayParts({ tracked: 3600, manual: 900 }), ['1h 00m tracked', '+15m by hand']);
   assert.deepEqual(F.dayParts({ tracked: 0, manual: -900 }), ['−15m by hand']);

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time, concept 4: while it's off, show what it would have kept</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 760px; gap: 40px; }
+  .left { display: flex; flex-direction: column; gap: 30px; min-height: 0; }
+
+  .lead { padding: 14px 4px 0; }
+  .lead h2 { font: 700 54px/1.15 var(--font-body); letter-spacing: -.015em; max-width: 24ch; }
+  .lead p { margin-top: 16px; color: var(--sand-dim); font-size: 21px; max-width: 64ch; }
+
+  /* the guess, drawn as a guess: dashed, never solid */
+  .guess { padding: 34px 40px 28px; }
+  .guess .top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 22px; }
+  .guess h3 { font: 500 24px/1 var(--font-pixel); }
+  .guess .top span { color: var(--sand-faint); font-size: 16px; }
+  .cols { display: grid; grid-template-columns: repeat(14, 1fr); gap: 14px; height: 300px; align-items: end; }
+  .col { display: flex; flex-direction: column-reverse; gap: 4px; height: 100%; justify-content: flex-start; }
+  .col i { display: block; border: 2px dashed var(--pc); border-radius: 5px; background: color-mix(in srgb, var(--pc) 12%, transparent); }
+  .days { display: grid; grid-template-columns: repeat(14, 1fr); gap: 14px; margin-top: 12px; color: var(--sand-faint); font-size: 14px; text-align: center; }
+  .days .wk { color: var(--sand-faint-deco); }
+
+  .projects { padding: 10px 40px 18px; }
+  .projects li { list-style: none; display: grid; grid-template-columns: 40px 1fr 220px 160px; gap: 18px; align-items: center; padding: 20px 0; border-top: 1px solid var(--line-soft); font-size: 19px; }
+  .projects li:first-child { border-top: 0; }
+  .projects .name { display: flex; align-items: center; gap: 14px; }
+  .projects .name small { color: var(--sand-faint); font-size: 15px; }
+  .projects .c { color: var(--sand-dim); font-size: 16px; text-align: right; }
+  .projects .h { text-align: right; font-weight: 700; }
+  .projects .h small { font-weight: 400; color: var(--sand-faint); }
+  .box { width: 28px; height: 28px; border-radius: 7px; border: 2px solid var(--glass); background: var(--glass); display: grid; place-items: center; color: var(--abyss); font-weight: 700; font-size: 17px; }
+  .box.off { background: none; border-color: var(--sand-faint-deco); color: transparent; }
+  li.dim { color: var(--sand-faint); }
+
+  /* ---- right ---- */
+  .right { display: flex; flex-direction: column; gap: 26px; }
+  .how { padding: 36px 40px; display: grid; gap: 26px; }
+  .how h3, .keep h3 { font: 500 26px/1.2 var(--font-pixel); }
+  .how .item { display: grid; grid-template-columns: 44px 1fr; gap: 18px; }
+  .how .item .src i { width: 40px; height: 40px; border-radius: 10px; font-size: 18px; }
+  .how .item b { display: block; font-size: 19px; margin-bottom: 4px; }
+  .how .item p { color: var(--sand-dim); font-size: 17px; line-height: 1.5; }
+  .keep { padding: 32px 40px; display: grid; gap: 16px; }
+  .keep dl { display: grid; grid-template-columns: 170px 1fr; gap: 12px 20px; font-size: 17px; }
+  .keep dt { color: var(--sand-faint); }
+  .start { padding: 34px 40px; margin-top: auto; background: var(--reef-2); border-color: var(--reef-3); display: grid; gap: 20px; }
+  .start .opts { display: flex; gap: 14px; align-items: center; font-size: 17px; color: var(--sand-dim); flex-wrap: wrap; }
+  .start .btn.primary { height: 62px; font-size: 21px; justify-content: center; }
+  .start .alt { color: var(--sand-faint); font-size: 16px; }
+  .start .alt a { color: var(--glass); }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <span class="seg"><span>Conversations</span><span class="on">Time</span></span>
+    <h1>Time</h1>
+    <span class="now" style="background:var(--ink);border:1px solid var(--line)"><span class="live off"></span><span class="why">Not keeping time</span></span>
+    <span class="spacer"></span>
+    <button class="btn ghost">⛑️ Guard my focus</button>
+  </header>
+
+  <section class="body">
+    <div class="left">
+      <div class="lead">
+        <h2>Going by your commits, you worked on 4 projects over the last two weeks.</h2>
+        <p>That's about 58 hours, but commits only show when you saved work, not how long it took. Keep time and Shellby counts the real minutes from here on.</p>
+      </div>
+
+      <section class="panel guess">
+        <div class="top"><h3>A rough guess from git</h3><span>Oct 31 to Nov 13 · dashed because it's a guess</span></div>
+        <div class="cols">
+          <div class="col"></div>
+          <div class="col"><i class="p3" style="height:14%"></i></div>
+          <div class="col"><i class="p1" style="height:40%"></i><i class="p2" style="height:18%"></i></div>
+          <div class="col"><i class="p1" style="height:30%"></i><i class="p4" style="height:26%"></i></div>
+          <div class="col"><i class="p1" style="height:52%"></i><i class="p2" style="height:12%"></i></div>
+          <div class="col"><i class="p4" style="height:34%"></i><i class="p3" style="height:10%"></i></div>
+          <div class="col"><i class="p1" style="height:28%"></i></div>
+          <div class="col"></div>
+          <div class="col"></div>
+          <div class="col"><i class="p1" style="height:36%"></i><i class="p2" style="height:22%"></i><i class="p3" style="height:8%"></i></div>
+          <div class="col"><i class="p1" style="height:50%"></i><i class="p4" style="height:24%"></i><i class="p2" style="height:16%"></i></div>
+          <div class="col"><i class="p1" style="height:32%"></i><i class="p4" style="height:34%"></i><i class="p3" style="height:14%"></i></div>
+          <div class="col"><i class="p1" style="height:60%"></i><i class="p2" style="height:30%"></i></div>
+          <div class="col"><i class="p1" style="height:20%"></i><i class="p2" style="height:10%"></i></div>
+        </div>
+        <div class="days"><span class="wk">Sat</span><span class="wk">Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span class="wk">Sat</span><span class="wk">Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Today</span></div>
+      </section>
+
+      <ul class="panel projects">
+        <li class="p1"><span class="box">✓</span><span class="name"><span class="sw"></span>shellby <small>~/Documents/GitHub</small></span><span class="c">96 commits</span><span class="h">~31h</span></li>
+        <li class="p2"><span class="box">✓</span><span class="name"><span class="sw"></span>booking-app <small>for a client? set it after</small></span><span class="c">38 commits</span><span class="h">~13h</span></li>
+        <li class="p4"><span class="box">✓</span><span class="name"><span class="sw"></span>label-cloud</span><span class="c">29 commits</span><span class="h">~11h</span></li>
+        <li class="p3 dim"><span class="box off">✓</span><span class="name"><span class="sw"></span>rack-builder <small>left out: you unticked it</small></span><span class="c">9 commits</span><span class="h"><small>~3h</small></span></li>
+      </ul>
+    </div>
+
+    <aside class="right">
+      <section class="panel how">
+        <h3>How he'd count</h3>
+        <div class="item"><span class="src win"><i>W</i></span><div><b>The window in front</b><p>An editor or terminal on a project's folder, or the project's page on GitHub.</p></div></div>
+        <div class="item"><span class="src cl"><i>C</i></span><div><b>Claude at work</b><p>While Claude works in a project, your terminal and docs count for it.</p></div></div>
+        <div class="item"><span class="src git"><i>G</i></span><div><b>Git</b><p>A commit, checkout or pull says which project you're in.</p></div></div>
+      </section>
+      <section class="panel keep">
+        <h3>What's kept</h3>
+        <dl>
+          <dt>Kept, on this PC</dt><dd>The project, the day and the minutes.</dd>
+          <dt>Read, then gone</dt><dd>Window titles, to find the project.</dd>
+          <dt>Never sent</dt><dd>Unless you send hours to your time tracker or sync them between your PCs.</dd>
+          <dt>Away</dt><dd>The clock stops when you leave the keyboard.</dd>
+        </dl>
+      </section>
+      <section class="panel start">
+        <div class="opts">Stop the clock after <span class="picker"><b>5 minutes</b> away<span class="caret">▾</span></span> and count only the 3 ticked projects.</div>
+        <button class="btn primary">Start keeping time</button>
+        <p class="alt">Want the guess anyway? <a href="#">Save these two weeks as a CSV</a>. Already use Toggl, Clockify or Harvest? <a href="#">Connect it first</a>.</p>
+      </section>
+    </aside>
+  </section>
+</main>
+<div class="caption">Concept 4: before you start</div>
+</body>
+</html>
