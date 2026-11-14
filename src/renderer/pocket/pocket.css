@@ -403,6 +403,8 @@ body.sheet-open .fab { opacity: 0; pointer-events: none; }
 .diff-row.add { background: rgba(127, 214, 194, .12); color: var(--add-fg); }
 .diff-row.del { background: rgba(255, 122, 92, .12); color: var(--del-fg); }
 .diff-row.ctx { color: var(--sand-dim); }
+.diff-row.gap { color: var(--sand-dim); }
+.diff-row.gap .diff-text { grid-column: 1 / -1; text-align: center; }
 .diff-text { padding-right: 12px; }
 
 /* ---------------------------------------------------------------- sheets */

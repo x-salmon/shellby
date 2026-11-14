@@ -13,7 +13,7 @@
 // Pure: wiring/pocket.js gathers the inputs.
 const path = require('path');
 const { standing } = require('../../renderer/panel/tab-sort');
-const { appDeskOnlyReason, PLAN_MAX: MAX_PLAN } = require('../channels/replies');
+const { appDeskOnlyReason, PLAN_MAX: MAX_PLAN, APP_SHOW_MAX } = require('../channels/replies');
 const { normalizeQuiet } = require('./quiet');
 const { normalizeRights } = require('./rights');
 const { validPicture } = require('../tool-pictures');
@@ -78,14 +78,16 @@ function phoneTab(t, extra = {}) {
 /** The file a prompt is about, and what it does to it: the phone shows the edit before you say yes. */
 function preview(p) {
   const i = p.input && typeof p.input === 'object' ? p.input : {};
-  if (typeof i.command === 'string') return { kind: 'command', command: clip(i.command, 2000) };
+  // Whole, however long (up to APP_SHOW_MAX): the phone may allow these, so it must show all of them.
+  if (typeof i.command === 'string') return { kind: 'command', command: clip(i.command, APP_SHOW_MAX) };
   if (p.toolName === 'Edit' && typeof i.file_path === 'string') {
-    return { kind: 'edit', file: line(i.file_path, 300), old: clip(i.old_string, 1500), new: clip(i.new_string, 1500) };
+    return { kind: 'edit', file: line(i.file_path, 300), old: clip(i.old_string, APP_SHOW_MAX), new: clip(i.new_string, APP_SHOW_MAX) };
   }
   if (p.toolName === 'MultiEdit' && Array.isArray(i.edits)) {
-    return { kind: 'edit', file: line(i.file_path, 300), old: clip(i.edits[0]?.old_string, 1500), new: clip(i.edits[0]?.new_string, 1500), more: Math.max(0, i.edits.length - 1) };
+    const edits = i.edits.map(e => ({ old: clip(e?.old_string, APP_SHOW_MAX), new: clip(e?.new_string, APP_SHOW_MAX) }));
+    return { kind: 'edit', file: line(i.file_path, 300), more: Math.max(0, edits.length - 1), edits };
   }
-  if (p.toolName === 'Write' && typeof i.file_path === 'string') return { kind: 'write', file: line(i.file_path, 300), content: clip(i.content, 1500) };
+  if (p.toolName === 'Write' && typeof i.file_path === 'string') return { kind: 'write', file: line(i.file_path, 300), content: clip(i.content, APP_SHOW_MAX) };
   if (typeof i.url === 'string') return { kind: 'url', url: line(i.url, 500) };
   return null;
 }

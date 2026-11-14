@@ -230,7 +230,7 @@ test('no code without it on, and a forgotten phone is gone from the list and its
 test('Allow, Deny and Always allow (when Claude Code offers one) from the phone, and nothing the card would flag', async () => {
   const t = tabOf('t1');
   t.session.pending.set('r1', { requestId: 'r1', toolName: 'Bash', input: { command: 'npm test' } });
-  t.session.pending.set('r3', { requestId: 'r3', toolName: 'Edit', input: {}, suggestions: [{ type: 'setMode', mode: 'acceptEdits' }] });
+  t.session.pending.set('r3', { requestId: 'r3', toolName: 'Edit', input: { file_path: 'a.js', old_string: 'a', new_string: 'b' }, suggestions: [{ type: 'setMode', mode: 'acceptEdits' }] });
   t.session.pending.set('r2', { requestId: 'r2', toolName: 'ExitPlanMode', input: {} });
   const w = await paired({ tabs: [t] });
   try {
