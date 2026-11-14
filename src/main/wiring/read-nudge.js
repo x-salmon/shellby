@@ -15,6 +15,7 @@ const SCAN_MS = 10 * 60 * 1000;   // a project's week of reads: scanned again at
 const SCAN_TOP = 200;             // files the week's scan brings back (the Lean tab's ten would miss most)
 const CHARS_PER_TOKEN = 4;
 const MAX_OPEN = 200;             // reads waiting for their result, across every tab
+const MAX_SCANS = 20;             // projects whose week of reads is kept
 
 /** d: what main shares (main.js `shared`). */
 function wireReadNudge(d) {
@@ -29,6 +30,7 @@ function wireReadNudge(d) {
   function weekOf(project) {
     const cur = scans.get(project);
     if (cur && Date.now() - cur.at < SCAN_MS) return cur.promise;
+    if (scans.size >= MAX_SCANS) scans.delete(scans.keys().next().value); // the oldest project goes
     const promise = scanHotFiles({ configDir: d.claudeConfigDir(), cwd: project, lookbackMs: readNudge.WEEK_MS, top: SCAN_TOP })
       .catch(err => { d.log.info(`read nudge: the week's scan failed: ${err.message}`); return null; });
     scans.set(project, { at: Date.now(), promise });
@@ -59,7 +61,8 @@ function wireReadNudge(d) {
     const row = week?.files?.find(f => sameRel(f.rel, rel));
     const verdict = readNudge.shouldNudge({ rel, tokens, sessions: row?.sessions ?? 0, store: store(), project, now: Date.now() });
     if (!verdict.ok || !row) return;
-    if (tab.turnId !== turnId) return; // another turn began while the scan ran: the step is far up by now
+    // Another turn began while the scan ran (the step is far up by now), or the turn is over (nothing would fold it).
+    if (tab.turnId !== turnId || !tab.session?.busy) return;
     const fix = d.lean?.fixes?.draftNudge({ project, file: { rel, reads: row.reads, edits: row.edits, sessions: row.sessions, tokens: row.tokens ?? tokens } });
     if (!fix) return;
     d.config.set({ readNudges: readNudge.markSeen(store(), project, rel, Date.now()) });

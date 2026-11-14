@@ -97,6 +97,8 @@
      */
     renderReadNudge(item) {
       const self = /** @type {any} */ (this);
+      // One inline card at a time: a nudge already up, or a card holding a message, keeps the floor.
+      if (self.saver || self.el.querySelector('.nudge-card')) return null;
       const w = item.words || {};
       const fix = item.fix;
       const step = self.tools.get(item.toolId);
@@ -109,7 +111,11 @@
           h('p', { class: 'saver-text' }, h('b', { text: 'This conversation keeps the read' }), ' it already did. The change starts with the next message.'),
           h('p', { class: 'saver-text' }, h('b', { text: 'One click to undo' }), `, here or on the Lean tab. Shellby never ${fix?.kind === 'deny-read' ? 'adds a rule' : 'writes a line'} by itself.`)),
         acts);
-      const busy = on => { for (const b of acts.querySelectorAll('button')) /** @type {HTMLButtonElement} */ (b).disabled = on; };
+      // While a confirm window is up the card stays put, so Apply's Undo line has somewhere to land.
+      const busy = on => {
+        card.dataset.busy = on ? '1' : '';
+        for (const b of acts.querySelectorAll('button')) /** @type {HTMLButtonElement} */ (b).disabled = on;
+      };
       const apply = async () => {
         busy(true);
         let r;
@@ -203,7 +209,7 @@
     /** A nudge nobody answered folds into one line once Claude's reply is in. */
     foldSavers() {
       const self = /** @type {any} */ (this);
-      for (const card of self.el.querySelectorAll('.nudge-card')) giveWay(card, foldEl(S.foldLine('nudge', { rel: card.dataset.rel, tokens: card.dataset.tokens })));
+      for (const card of self.el.querySelectorAll('.nudge-card:not([data-busy="1"])')) giveWay(card, foldEl(S.foldLine('nudge', { rel: card.dataset.rel, tokens: card.dataset.tokens })));
     }
   }
 

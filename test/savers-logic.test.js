@@ -16,9 +16,12 @@ test('pick: the fresh-tab divider wins over the model card; nothing while a card
   assert.deepEqual(S.ORDER, ['handoff', 'model']);
 });
 
-test('keepsAfter counts keeps and timeouts in a row, and any other pick starts over', () => {
+test('keepsAfter counts only a pressed "Keep", leaves the streak alone when you never picked, and any other pick starts over', () => {
   assert.equal(S.keepsAfter(0, 'keep'), 1);
-  assert.equal(S.keepsAfter(1, 'timeout'), 2);
+  assert.equal(S.keepsAfter(1, 'keep'), 2);
+  assert.equal(S.keepsAfter(1, 'timeout'), 1);
+  assert.equal(S.keepsAfter(1, 'superseded'), 1);
+  assert.equal(S.keepsAfter(undefined, 'timeout'), 0);
   assert.equal(S.keepsAfter(undefined, 'keep'), 1);
   assert.equal(S.keepsAfter(5, 'cheaper'), 0);
   assert.equal(S.keepsAfter(5, 'always'), 0);

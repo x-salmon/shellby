@@ -17,7 +17,8 @@
 
   /** Send a message that waited on a card, with any per-turn model; a send that fails puts it back in the box. */
   async function sendGated(tab, msg, extra = {}) {
-    if (tab.sending) return false;
+    // Another send is mid-flight: back to the box, never dropped (its bubble and card are gone already).
+    if (tab.sending) { SB.handBack(tab, msg.text, msg.attachments || []); return false; }
     tab.sending = true;
     let ok;
     try { ok = await SB.sendNow(tab, msg.text, msg.attachments || [], { ...(msg.picked || {}), ...extra }); } finally { tab.sending = false; }
@@ -35,11 +36,17 @@
   /**
    * Run a typed message through the savers before it goes (tab-send.js). -> true
    * when it was taken: waiting on a card in the feed, or sent to the model you
-   * chose for its kind. false: it goes the usual way. A card already up in the
-   * tab is settled first (the earlier message goes as it stood), and this one follows.
+   * chose for its kind, or held in the box. false: it goes the usual way. A
+   * model card already up goes first on the tab's own model (not counted as a
+   * "Keep"), and this one follows. A new-topic line waits for your pick, so
+   * the new message stays in the box.
    */
   SB.saverGate = async (tab, text, attachments, picked) => {
-    if (tab.saver) await settle(tab, 'keep');
+    if (tab.saver?.kind === 'handoff') {
+      SB.toast('Pick on the line above first: a fresh tab, or stay in this one.');
+      return true;
+    }
+    if (tab.saver) await settle(tab, 'superseded');
     if (tab.busy || tab.draining || SB.isMerging?.(tab) || SB.isCrabOnly?.()) return false;
     const [offer, sug] = await Promise.all([SB.handoffCheck ? SB.handoffCheck(tab, text) : null, suggestFor(tab, text, attachments)]);
     if (tab.busy || tab.saver || !state.tabs.has(tab.id)) return false; // the tab moved on while main looked

@@ -43,20 +43,19 @@
     tab.saver = { kind: 'handoff', offer, msg, view, pending, waiting };
   };
 
-  let starting = false; // a second click while main opens the tab would start two
   /**
    * 'start': the new tab, in this one's folder, with the summary as edited and
    * the message as its first turn. 'stay': the message goes here, and the line stays.
+   * s.settling holds every other answer off while main opens the tab, so the
+   * message can't also go here; a failed start gives the card back.
    */
   async function settle(tab, answer) {
     const s = tab.saver;
-    if (!s || s.kind !== 'handoff') return;
+    if (!s || s.kind !== 'handoff' || s.settling) return;
     if (answer === 'start') {
-      if (starting) return;
-      starting = true;
-      let r;
-      try { r = await api.handoffStart({ tabId: tab.id, summary: s.view.editor.value, text: s.msg.text || '', attachments: s.msg.attachments || [] }).catch(() => null); } finally { starting = false; }
-      if (!r?.ok) return SB.toast(r?.error || "Couldn't start a fresh tab.");
+      s.settling = true;
+      const r = await api.handoffStart({ tabId: tab.id, summary: s.view.editor.value, text: s.msg.text || '', attachments: s.msg.attachments || [] }).catch(() => null);
+      if (!r?.ok) { s.settling = false; return SB.toast(r?.error || "Couldn't start a fresh tab."); }
       tab.saver = null;
       s.pending?.remove();
       s.waiting?.remove();
@@ -81,7 +80,8 @@
   SB.offerHandoff = async tab => {
     if (!tab?.saved) return SB.toast('That conversation has nothing to sum up yet.');
     if (tab.busy) return SB.toast('Let him finish first.');
-    if (tab.saver) await SB.settleSaver(tab, 'keep');
+    if (tab.saver?.kind === 'handoff') return;
+    if (tab.saver) await SB.settleSaver(tab, 'superseded');
     const text = input.value.trim();
     const r = await api.handoffOffer({ tabId: tab.id, text, force: true }).catch(() => null);
     if (!r?.offer) return SB.toast('That conversation has nothing to sum up yet.');

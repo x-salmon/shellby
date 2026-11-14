@@ -37,6 +37,14 @@ test('suggest asks for a small message on a top model, and only then', () => {
   assert.equal(mp.suggest({ text: 'build me a scheduler from scratch', model: 'opus' }).why, 'big');
 });
 
+test('suggest stays quiet in a well-filled conversation, where the switch would cost more than it saves', () => {
+  // Each model has its own prompt cache: Haiku would read the whole conversation uncached, and Opus cache it again after.
+  const small = { text: 'rename footAct to roomOffer in feed-foot.js', model: 'claude-opus-4-1' };
+  assert.equal(mp.suggest({ ...small, contextTokens: mp.MAX_SWITCH_CONTEXT - 1 }).ask, true);
+  assert.deepEqual(mp.suggest({ ...small, contextTokens: mp.MAX_SWITCH_CONTEXT }), { ask: false, why: 'context' });
+  assert.deepEqual(mp.suggest({ ...small, contextTokens: 90000, always: { tweak: 'haiku' } }), { ask: false, why: 'context' }, '"always" waits for a fresh conversation too');
+});
+
 test('suggest sends a class to the model you chose for it, by itself', () => {
   assert.deepEqual(mp.suggest({ text: 'which model is this?', model: 'opus', always: { question: 'haiku' } }), { auto: 'haiku', cls: 'question' });
   assert.deepEqual(mp.suggest({ text: 'rename a to b', model: 'opus', always: { question: 'haiku' } }), { ask: true, cls: 'tweak' }, 'another class still asks');

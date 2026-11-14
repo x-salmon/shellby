@@ -175,6 +175,7 @@ class SessionManager extends EventEmitter {
     session.on('planning', () => this.changed());
     session.on('tool', () => this.changed());
     session.on('exit', () => {
+      this.restoreTurnModel(tab); // no result comes from a process that ended
       // A process stopped mid-ping sends no result (session.js ended), so the ping is settled here.
       if (tab.pinging) this.settlePing(tab, { ok: false, error: 'its Claude Code process ended', tokens: null, denied: false });
       // Its mods ended with it: their status lines go too (plugin null: all of them).
@@ -263,12 +264,7 @@ class SessionManager extends EventEmitter {
     // Shellby's own /compact while the tab sat idle (wiring/idle-compact.js): its mark says so.
     if (item.kind === 'compacted' && tab.idleCompacting) item = { ...item, trigger: 'idle' };
     if (item.kind === 'result') {
-      // A turn run on a cheaper model (send's opts.model): the tab goes back to its own.
-      if (tab.turnModel) {
-        const { was } = tab.turnModel;
-        tab.turnModel = null;
-        tab.session.setModel(was);
-      }
+      this.restoreTurnModel(tab);
       // A note's Ask has its answer: whatever you say next is in your mode.
       if (item.ok && tab.startsIn && tab.startsIn !== 'plan') tab.session.setMode(this.followMode(tab));
       tab.outcome = item.interrupted ? 'stopped' : item.ok ? 'ok' : 'error';
@@ -361,7 +357,7 @@ class SessionManager extends EventEmitter {
       tab.turnModel = { was: tab.session.model || '' };
       tab.session.setModel(turnModel);
     }
-    tab.session.send(prompt, this.prepareTurn?.(tab) || null);
+    try { tab.session.send(prompt, this.prepareTurn?.(tab) || null); } catch (e) { this.restoreTurnModel(tab); throw e; }
     // On disk at once, so a power cut mid-turn still leaves it marked unfinished.
     this.history.markTurn?.(tab.id, { turnId: userItem.turnId, at: Date.now() });
     this.changed();
@@ -403,8 +399,12 @@ class SessionManager extends EventEmitter {
   // It has no rewind point of its own: Shellby keeps the code as it stood
   // between turns, not mid-turn, so "just before it" can't be put back. turnOf
   // is the message whose turn it went into, which the panel offers instead.
+  // A turn run on a cheaper model (send's opts.model) is over, or never ran: the tab's own model is back.
+  restoreTurnModel(tab) { if (tab.turnModel) { const { was } = tab.turnModel; tab.turnModel = null; tab.session.setModel(was); } }
+
   takeSteers(tab) {
-    if (tab.pinging) return []; // after the ping, as a turn of its own
+    // After the ping, as a turn of its own; and you picked the cheaper model for one message only.
+    if (tab.pinging || tab.turnModel) return [];
     const taken = [];
     for (const m of tab.steers) {
       let content;

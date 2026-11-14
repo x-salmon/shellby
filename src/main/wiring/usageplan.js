@@ -185,7 +185,7 @@ function wireUsagePlan(d) {
     const decision = modelPick.suggest({
       text, files, model, defaultModel: d.config.get('model') || '',
       enabled: d.config.get('modelSuggest') !== false, always: d.config.get('modelAlways') || {},
-      ultracode: ultracode || hasUltracode(text), local: !!tab.localTarget,
+      ultracode: ultracode || hasUltracode(text), local: !!tab.localTarget, contextTokens: tab.session?.context?.tokens || 0,
     });
     if (!decision.ask && !decision.auto) return decision;
     const named = { model: model || '', modelName: modelPick.familyName(model), cheaper: modelPick.CHEAPER };

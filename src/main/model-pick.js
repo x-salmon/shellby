@@ -17,6 +17,12 @@ const CHEAPER = 'haiku';
 const RATES = { haiku: 1, sonnet: 3, opus: 5, fable: 5 };
 /** A small turn on a top model, as % of the 5-hour window, when nothing like it has run here yet. */
 const GUESS_PCT = 1;
+/**
+ * Tokens in the conversation past which a switch costs more than it saves:
+ * each model keeps its own prompt cache, so Haiku would read all of it at full
+ * price and the tab's model would cache it all again on the next turn.
+ */
+const MAX_SWITCH_CONTEXT = 20000;
 /** Families already cheap enough: no card for a tab on one. */
 const CHEAP = new Set(['sonnet', 'haiku']);
 
@@ -51,12 +57,13 @@ function classOf(text, files = 0) {
  * -> { ask: true, cls } | { auto: 'haiku', cls } | { ask: false, why }
  * why: 'off' (the setting), 'command' (a /command or ! run), 'ultracode',
  * 'merged' (several messages as one turn), 'local' (a tab on a local model),
- * 'cheap' (already on Sonnet or Haiku), 'big' (not a small message).
+ * 'cheap' (already on Sonnet or Haiku), 'big' (not a small message),
+ * 'context' (the conversation is past MAX_SWITCH_CONTEXT).
  * model: what the tab runs on now ('' is Claude Code's default); defaultModel: Settings' pick for new ones.
- * @param {{ text?: string, files?: number, model?: string, defaultModel?: string, enabled?: boolean, always?: Record<string, string> | null, ultracode?: boolean, merged?: boolean, local?: boolean }} [o]
+ * @param {{ text?: string, files?: number, model?: string, defaultModel?: string, enabled?: boolean, always?: Record<string, string> | null, ultracode?: boolean, merged?: boolean, local?: boolean, contextTokens?: number }} [o]
  * @returns {{ ask: true, cls: SmallClass } | { auto: string, cls: SmallClass, ask?: undefined } | { ask: false, why: string }}
  */
-function suggest({ text = '', files = 0, model = '', defaultModel = '', enabled = true, always = {}, ultracode = false, merged = false, local = false } = {}) {
+function suggest({ text = '', files = 0, model = '', defaultModel = '', enabled = true, always = {}, ultracode = false, merged = false, local = false, contextTokens = 0 } = {}) {
   if (!enabled) return { ask: false, why: 'off' };
   const t = String(text || '').trim();
   if (!t || /^[/!]/.test(t)) return { ask: false, why: 'command' };
@@ -66,6 +73,7 @@ function suggest({ text = '', files = 0, model = '', defaultModel = '', enabled 
   if (CHEAP.has(modelFamily(model || defaultModel))) return { ask: false, why: 'cheap' };
   const cls = classOf(t, files);
   if (!cls) return { ask: false, why: 'big' };
+  if (Number.isFinite(contextTokens) && contextTokens >= MAX_SWITCH_CONTEXT) return { ask: false, why: 'context' };
   const chosen = always && typeof always === 'object' ? always[cls] : null;
   if (typeof chosen === 'string' && chosen) return { auto: chosen, cls };
   return { ask: true, cls };
@@ -143,4 +151,4 @@ function cleanAlways(raw, isModel) {
   return out;
 }
 
-module.exports = { classOf, suggest, estimateSmall, words, familyName, withAlways, cleanAlways, CHEAPER, CLASS_WORDS, GUESS_PCT, RATES };
+module.exports = { classOf, suggest, estimateSmall, words, familyName, withAlways, cleanAlways, CHEAPER, CLASS_WORDS, GUESS_PCT, RATES, MAX_SWITCH_CONTEXT };

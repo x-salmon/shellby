@@ -36,13 +36,15 @@
 
   /**
    * The tab's "Keep Opus" streak after an answer to the model card: one more
-   * after a keep (the countdown running out is a keep), back to none after
-   * any other pick.
+   * after "Keep" pressed, unchanged when you never picked (the countdown ran
+   * out, or a new message took the card's place), back to none after any other pick.
    * @param {number} keeps
-   * @param {'keep' | 'timeout' | 'cheaper' | 'always' | string} answer
+   * @param {'keep' | 'timeout' | 'superseded' | 'cheaper' | 'always' | string} answer
    */
   function keepsAfter(keeps, answer) {
-    return answer === 'keep' || answer === 'timeout' ? (Number.isFinite(keeps) ? keeps : 0) + 1 : 0;
+    const now = Number.isFinite(keeps) ? keeps : 0;
+    if (answer === 'keep') return now + 1;
+    return answer === 'timeout' || answer === 'superseded' ? now : 0;
   }
 
   /** Has the model card been kept away often enough to stop asking in this tab? */
