@@ -53,6 +53,9 @@ Shellby is a polite crab. **Settings → Look → Mischief** lets him be a bit l
 
 ## Just the two of you
 
+<img src="img/screenshot-us-wide.png" alt="The Us page at full screen: 187 days together, a night beach of sandcastles with finds along the tide line and bare sand marked as room for the next one, and under it one road of stages from New friends to Best friends, with ways to get closer today">
+<p align="center"><sub>Us at full screen: the beach's pixels grow, and your bond is one road under it</sub></p>
+
 <p align="center"><img src="img/screenshot-us.png" width="380" alt="The Us page: how close you and Shellby are, his temperament, and the story of your moments together"> <img src="img/screenshot-finds.png" width="380" alt="The Finds shelf: 20 of 102 finds, a compass showing off, and thirteen sets from Beach day to Tide chest"></p>
 
 - **Little scenes.** When nothing's happening he gets up to something: squints at your cursor, creeps up on it, pounces and misses (*"meant to do that"*); builds a sandcastle and watches it wash away; sneezes, gets the hiccups, blows bubbles, juggles pebbles, nods off, counts grains of sand. Some only happen at night, at the weekend, in their season or while music plays, and his temperament changes what he says. The **Us** page shows which of the 30 you've caught him in.

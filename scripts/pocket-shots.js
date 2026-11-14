@@ -14,6 +14,7 @@ const PORT = 47989;
 const BASE = `http://127.0.0.1:${PORT}/`;
 const TOKEN = 'p'.repeat(43); // the preview's own token (pocket-preview.js)
 const W = 390, H = 844;
+const WIDE = { width: 1440, height: 900, outWidth: 1920 }; // a laptop's browser, saved at 1920 px
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 // Each picture: where, what to do first, and how long to let it settle.
@@ -51,6 +52,15 @@ app.whenReady().then(async () => {
       fs.writeFileSync(file, img.toPNG());
       console.log(`${path.relative(ROOT, file)} ${img.getSize().width}×${img.getSize().height}`);
     }
+    // The same app in a laptop's browser: the beach on the left, a conversation beside it.
+    win.setContentSize(WIDE.width, WIDE.height);
+    await win.loadURL(`${BASE}?shot=wide#/tab/tailnet`);
+    await win.webContents.insertCSS('::-webkit-scrollbar { display: none; }');
+    await wait(1600);
+    const wide = (await win.webContents.capturePage()).resize({ width: WIDE.outWidth, quality: 'best' });
+    const wideFile = path.join(OUT, 'screenshot-phone-wide.png');
+    fs.writeFileSync(wideFile, wide.toPNG());
+    console.log(`${path.relative(ROOT, wideFile)} ${wide.getSize().width}×${wide.getSize().height}`);
   } finally {
     preview.kill();
     win.destroy();

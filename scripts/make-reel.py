@@ -5,6 +5,7 @@ Usage:  python scripts/make-reel.py [frames_dir]
         (default frames_dir: %TEMP%/shellby-reel, or $SHELLBY_REEL_DIR)
 Writes: docs/img/shellby-demo.gif  (960x540, for the README)
         docs/img/shellby-demo.mp4  (1920x1080, if `pip install imageio-ffmpeg`)
+        or, for frames from `npm run reel:wide`, shellby-demo-wide.gif (1280x720) and .mp4
 """
 import json
 import os
@@ -18,6 +19,9 @@ ROOT = Path(__file__).resolve().parent.parent
 FONTS = ROOT / "assets" / "fonts"
 SCENE_W, SCENE_H = 1300, 731          # logical px, 16:9
 PANEL_AT = (190, 80)                  # where the panel's top-left lands in the scene
+WIDE_BAND = 60                        # --wide: caption band above the full-screen panel (logical px)
+WIDE_CAPTION_X = 40
+WIDE_GIF = (1280, 720)
 CAPTION_FADE_MS = 350
 HOLD_END_MS = 1400                    # linger on the last frame before the loop restarts
 SAND, GLASS, CORAL = (243, 230, 204), (127, 214, 194), (255, 122, 92)
@@ -71,11 +75,19 @@ def main():
     meta = json.loads((src / "frames.json").read_text())
     frames, marks, fps = meta["frames"], meta["marks"], meta["fps"]
     first = frames[0]
+    wide = bool(meta.get("wide"))
+    suffix = "-wide" if wide else ""
     scale = Image.open(src / f"p{first['i']}.jpg").width / first["panel"]["width"]   # capture DPI (1.5 on a 150% display)
     S = scale
-    W, H = round(SCENE_W * S), round(SCENE_H * S)
-    ox = PANEL_AT[0] - first["panel"]["x"]
-    oy = PANEL_AT[1] - first["panel"]["y"]
+    if wide:
+        # The full-screen panel is the scene, under a band for the captions.
+        scene_w, scene_h = first["panel"]["width"], first["panel"]["height"] + WIDE_BAND
+        panel_at, caption_x = (0, WIDE_BAND), WIDE_CAPTION_X
+    else:
+        scene_w, scene_h, panel_at, caption_x = SCENE_W, SCENE_H, PANEL_AT, PANEL_AT[0]
+    W, H = round(scene_w * S), round(scene_h * S)
+    ox = panel_at[0] - first["panel"]["x"]
+    oy = panel_at[1] - first["panel"]["y"]
 
     base = wallpaper(W, H)
     cap_font = font("PixelifySans.ttf", round(34 * S))
@@ -115,14 +127,14 @@ def main():
             layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
             ld = ImageDraw.Draw(layer)
             step = marks.index(next(m for m in marks if m["caption"] == text)) + 1
-            ld.text((PANEL_AT[0] * S, 22 * S), f"{step}/{len(marks)}", font=step_font, fill=(*CORAL, round(255 * a)))
-            ld.text((PANEL_AT[0] * S + 44 * S, 14 * S), text, font=cap_font, fill=(*SAND, round(255 * a)))
+            ld.text((caption_x * S, 22 * S), f"{step}/{len(marks)}", font=step_font, fill=(*CORAL, round(255 * a)))
+            ld.text((caption_x * S + 44 * S, 14 * S), text, font=cap_font, fill=(*SAND, round(255 * a)))
             img.alpha_composite(layer)
         out.append(img.convert("RGB"))
 
     docs = ROOT / "docs" / "img"
     # ---- GIF: one shared palette (no flicker), no dithering (flat UI colours stay clean)
-    gw, gh = 960, 540
+    gw, gh = WIDE_GIF if wide else (960, 540)
     small = [f.resize((gw, gh), Image.LANCZOS) for f in out]
     sample = Image.new("RGB", (gw, gh * 6))
     for i in range(6):
@@ -131,7 +143,7 @@ def main():
     gif = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f in small]
     durations = [round(1000 / fps)] * len(gif)
     durations[-1] = HOLD_END_MS
-    gif_path = docs / "shellby-demo.gif"
+    gif_path = docs / f"shellby-demo{suffix}.gif"
     gif[0].save(gif_path, save_all=True, append_images=gif[1:], duration=durations, loop=0, optimize=True, disposal=1)
     print(f"wrote {gif_path.relative_to(ROOT)} ({gif_path.stat().st_size / 1e6:.1f} MB, {len(gif)} frames)")
 
@@ -142,7 +154,7 @@ def main():
         print("skipped MP4 (pip install imageio-ffmpeg to make one)")
         return
     vw, vh = 1920, 1080
-    mp4_path = docs / "shellby-demo.mp4"
+    mp4_path = docs / f"shellby-demo{suffix}.mp4"
     writer = imageio_ffmpeg.write_frames(str(mp4_path), (vw, vh), fps=fps, codec="libx264", quality=None, macro_block_size=1,
                                          output_params=["-crf", "18", "-preset", "slow", "-movflags", "+faststart"])
     writer.send(None)
