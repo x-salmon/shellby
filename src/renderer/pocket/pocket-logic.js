@@ -152,6 +152,23 @@
     return 'Working';
   }
 
+  const LANE_SAID_MAX = 1200; // of a helper's last words, the tail an opened lane shows
+
+  /**
+   * What an opened helper lane shows, in reading order: the job it was given, the
+   * step it's on (or took last), what it last said and how it came out. Only what
+   * it has; the phone gets a helper's latest step and words, not every one.
+   */
+  function laneRows(lane) {
+    const said = String(lane?.said || '').trim();
+    return [
+      { key: 'task', label: 'Asked to', text: lane?.description || '' },
+      { key: 'step', label: lane?.state === 'running' ? 'Now' : 'Last step', text: lane?.activity || '' },
+      { key: 'said', label: 'Said', text: said.length > LANE_SAID_MAX ? `…${said.slice(-LANE_SAID_MAX)}` : said },
+      { key: 'result', label: lane?.state === 'error' ? 'Went wrong' : lane?.state === 'stopped' ? 'Stopped' : 'Came back with', text: lane?.summary || '' },
+    ].filter(r => r.text);
+  }
+
   const STANDING = {
     asking: { label: 'Waiting on you', tone: 'amber' },
     review: { label: 'Ready to review', tone: 'glass' },
@@ -564,7 +581,7 @@
   const api = {
     clashPrompt,
     OUTBOX_MAX, SAVED_MAX, SETTLE_MS, STANDING, ago, announcements, awayLine, backoff, byDay, clock, day, dayLabel, doingLine, dropPrompt, duration, endLine, fold, formatCode, headline, holdRedraw, inline,
-    isIos, keepItem, keyBytes, lineComment, markdown, modeLabel, newKey, outboxDrop, outboxOf, outboxPut, parsePatch, plural, promptChip, route, savePrompt, savedOf, sections, spokenText, sseParser,
+    isIos, keepItem, keyBytes, laneRows, lineComment, markdown, modeLabel, newKey, outboxDrop, outboxOf, outboxPut, parsePatch, plural, promptChip, route, savePrompt, savedOf, sections, spokenText, sseParser,
     tappedHash, tokens,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
