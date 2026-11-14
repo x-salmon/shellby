@@ -74,13 +74,15 @@
 
   /**
    * The live stream. handlers: { view(v), items({ tabId, items }), item({ tabId, item }),
-   * bye({ reason }), live(on), unpaired() }. watch(tabId) reopens it for that conversation.
+   * page(ev), pages(ev), bye({ reason }), live(on), unpaired() }. watch(tabId, pageId)
+   * reopens it for that conversation, or for that page (pocket-pages.js).
    */
   function createStream(handlers) {
     let ctrl = null;
     let attempt = 0;
     let timer = null;
     let tab = null;
+    let page = null;
     let alive = false;
     let lastByte = 0;
     let stopped = false;
@@ -99,7 +101,10 @@
       if (stopped || !token()) return;
       const mine = new AbortController();
       ctrl = mine;
-      const q = tab ? `?tab=${encodeURIComponent(tab)}` : '';
+      const want = new URLSearchParams();
+      if (tab) want.set('tab', tab);
+      if (page) want.set('page', page);
+      const q = want.size ? `?${want}` : '';
       // From now, the watchdog counts: a PC asleep mid-handshake never answers at all.
       lastByte = Date.now();
       let res;
@@ -118,6 +123,8 @@
       const feed = L.sseParser((name, data) => {
         if (name === 'view' && data) { attempt = 0; setLive(true); handlers.view?.(data); } else if (name === 'items' && data) handlers.items?.(data);
         else if (name === 'item' && data) handlers.item?.(data);
+        else if (name === 'page' && data) handlers.page?.(data);
+        else if (name === 'pages' && data) handlers.pages?.(data);
         else if (name === 'bye') { stopped = true; handlers.bye?.(data || {}); }
       });
       lastByte = Date.now();
@@ -148,8 +155,8 @@
     return {
       start() { stopped = false; now(); },
       stop() { stopped = true; clearTimeout(timer); ctrl?.abort(); setLive(false); },
-      /** Follow one conversation's transcript too (or none). */
-      watch(tabId) { if (tab === tabId) return; tab = tabId || null; if (!stopped) now(); },
+      /** Follow one conversation's transcript too, or one page's changes (or neither). */
+      watch(tabId, pageId = null) { if (tab === (tabId || null) && page === (pageId || null)) return; tab = tabId || null; page = pageId || null; if (!stopped) now(); },
       get live() { return alive; },
       dispose() { clearInterval(watchdog); this.stop(); },
     };

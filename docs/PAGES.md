@@ -63,6 +63,33 @@ but a message channel to Shellby:
 The full picture is the "Page → Shellby" row in
 [THREAT-MODEL.md](THREAT-MODEL.md).
 
+## On your phone
+
+With [Shellby on your phone](PHONE.md) set up, the app has a **Pages** tab,
+after the Beach. It's the same shelf as the desk's, in the same order, pinned
+pages first, and your pinned pages are a row on the Beach too.
+
+- **A page made for a phone opens full screen**, in the same sandbox as at the
+  desk. Its data is live from your PC: a write at the desk or from an agent
+  shows on the phone straight away. Every call it makes goes back to your PC
+  and is checked there, so a page can't do more from the sofa than at the desk.
+  Ask Claude to "make it fit a phone" and Claude marks it `"phone": true`.
+- **A page built for the desk** shows on the shelf greyed, with **Change with
+  Claude** to make it fit a phone. That starts as a task on your PC, in Ask
+  first.
+- **When a page asks Claude something**, the phone shows its own task sheet
+  with the question in full. You pick Ask first or Plan only, and it counts as
+  one of the phone's tasks for the hour. A page never starts anything itself.
+- **A page's notifications** reach the phone too, named after the page, at
+  most one a minute.
+- **When your PC is asleep**, a page you've opened on the phone shows how it
+  last looked, dated and read-only. Nothing runs from that copy.
+- **A read-only phone** can open pages and read their data, and nothing else.
+- **A page that reads from your PC** (your usage, git, your conversations)
+  opens at the desk only, for now. On a phone, one of the sandbox's layers is
+  missing until it's been checked on real phones, and these pages have the
+  most worth keeping in.
+
 ## On your other PCs
 
 With **Sync between PCs** on (Settings › Accounts › GitHub), your pages follow
@@ -99,7 +126,9 @@ when they last synced, and which pages travel.
   with the bar; every other page still goes. Change with Claude is right there
   to make it smaller.
 - **Deleting a page deletes it on your other PCs too**, the way a routine
-  deleted on one PC goes on the others; the confirmation says so.
+  deleted on one PC goes on the others; the confirmation says so. There it
+  moves to the `.trash` folder in the pages folder, a few at a time, and the
+  sync says so, so you can get one back.
 
 Every arriving page is checked again by the same rules as a new one, and
 nothing from the gist runs before you've said so on this PC.

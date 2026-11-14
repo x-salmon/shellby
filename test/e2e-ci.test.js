@@ -135,7 +135,8 @@ test('no check launches the app on a port the runner did not give it', () => {
     const lines = src.split('\n');
     const bad = lines.filter(l => /^const\s+(?:ROOT\s*=[^,]*,\s*)?(PORT|HOOK_PORT|HOOK|CDP)\s*=\s*'?\d+'?\s*;/.test(l)
       || /SHELLBY_HOOK_PORT:\s*'\d+'/.test(l)
-      || /remote-debugging-port=\d/.test(l));
+      // =0 asks the OS for a free port, which can't collide (a check's own second browser uses it).
+      || /remote-debugging-port=[1-9]/.test(l));
     if (bad.length) offenders.push(`${name}: ${bad[0].trim()}`);
   }
   assert.deepEqual(offenders, [], 'use Number(process.env.E2E_CDP_PORT) || N, E2E_HOOK_PORT or E2E_SPARE_PORT');

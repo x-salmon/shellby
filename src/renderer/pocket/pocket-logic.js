@@ -409,7 +409,7 @@
 
   /**
    * Where the app is: #/, #/tab/<id>, #/prompt/<id>/<requestId>, #/diff/<id>/<after>, #/branch/<id>, #/past/<id>,
-   * #/files/<id>/<path>, #/queue, #/phone, #/new, #/find, #/history, #/more and its screens.
+   * #/files/<id>/<path>, #/pages, #/page/<id>, #/queue, #/phone, #/new, #/find, #/history, #/more and its screens.
    */
   function route(hash) {
     const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean).map(s => { try { return decodeURIComponent(s); } catch { return ''; } });
@@ -420,6 +420,8 @@
     if (parts[0] === 'diff' && ok(parts[1]) && ok(parts[2])) return { name: 'diff', tabId: parts[1], after: parts[2] };
     if (parts[0] === 'branch' && ok(parts[1])) return { name: 'branch', tabId: parts[1] };
     if (parts[0] === 'past' && ok(parts[1])) return { name: 'past', id: parts[1] };
+    // One page (pocket-pages.js): its id is a host-like slug (pages/format.js), and the PC says whether it opens here.
+    if (parts[0] === 'page' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(parts[1] || '')) return { name: 'page', id: parts[1] };
     // A file or folder inside a conversation's folder: the PC checks the path, this only carries it.
     if (parts[0] === 'files' && ok(parts[1])) {
       const rest = parts.slice(2);
@@ -427,7 +429,7 @@
       return { name: 'files', tabId: parts[1], path: rest.join('/') + (dir && rest.length ? '/' : '') };
     }
     // share: what another app shared (the service worker keeps it); trophies: his XP card.
-    if (['queue', 'phone', 'new', 'share', 'more', 'routines', 'notes', 'wardrobe', 'trophies', 'find', 'history', 'project-history'].includes(parts[0])) return { name: parts[0] };
+    if (['queue', 'phone', 'new', 'share', 'more', 'routines', 'notes', 'wardrobe', 'trophies', 'find', 'history', 'project-history', 'pages'].includes(parts[0])) return { name: parts[0] };
     return { name: 'beach' };
   }
 

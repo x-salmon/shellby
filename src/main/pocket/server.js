@@ -9,7 +9,9 @@
 //     so no part of a request ever becomes part of a path;
 //   - /pocket/v1: a stream of what Shellby is doing (server-sent events over a
 //     plain fetch, so the token rides in a header, never in a URL), and a few
-//     POSTs for what you can do from the phone.
+//     POSTs for what you can do from the phone;
+//   - /pages/<cap>/<file>: a page's files for the app's sandboxed iframe, by a
+//     short-lived capability the app asked for with its token (pocket/pages.js).
 //
 // Who gets in, checked on every request (refuse):
 //   - Host is ours: 127.0.0.1 or localhost on our port, or this PC's .ts.net
@@ -17,7 +19,9 @@
 //   - Through Tailscale, the Tailscale-User-Login header (which Tailscale sets
 //     and strips from what the phone sends) must be the login you turned this
 //     on with. Funnel requests (from the open internet) are refused outright.
-//   - An Origin, when a browser sends one, must be this server's own.
+//   - An Origin, when a browser sends one, must be this server's own. A page's
+//     file may also come with Origin "null": that's what a sandboxed frame
+//     sends for its own scripts, and the capability is what lets it in.
 //   - Every /pocket/v1 call but pairing carries a device token (pocket/pairing.js).
 //
 // What a call may do is decided in wiring/pocket.js: Allow, Deny, and Always
@@ -29,12 +33,16 @@ const fs = require('fs');
 const http = require('http');
 const path = require('path');
 const { EventEmitter } = require('events');
+const { LIMITS: PAGE_LIMITS } = require('../pages/limits');
 
 const DEFAULT_PORT = 47916;          // next door to the Stream Deck keys
 const API = '/pocket/v1';
+const PAGES = '/pages/';             // a page's files, by capability (pocket/pages.js)
 const MAX_CLIENTS = 24;              // a few phones, each with a stale stream or two while iOS reconnects
 const MAX_PER_DEVICE = 4;
 const MAX_BODY = 16 * 1024;          // a task is 4,000 characters at most
+const PAGE_CALLS_PER_MINUTE = 240; // a page's bridge calls, apart from the phone's own actions
+const MAX_PAGE_BODY = PAGE_LIMITS.MESSAGE_BYTES; // a page's bridge call carries what the desk's bridge would
 const KEEPALIVE_MS = 15000;          // phones and proxies drop a quiet stream sooner than desktops do
 const PAIR_PER_HOUR = 30;            // the code takes five tries; this keeps a flood out of the log
 const ACTIONS_PER_MINUTE = 120;
@@ -54,6 +62,8 @@ const ACTIONS = [
   'rename', 'effort', 'close', 'history', 'resume',
   // wiring/pocket.js lookOver, pocket/extras.js progress
   'look-over', 'progress',
+  // pocket/pages.js
+  'pages', 'page-open', 'page-call', 'page-info', 'page-ask', 'page-change',
 ];
 const MAX_UPLOAD = 6 * 1024 * 1024; // a photo for a task, made smaller on the phone first
 const UPLOAD_TYPES = ['image/jpeg', 'image/png'];
@@ -69,11 +79,13 @@ const TYPES = {
   '.svg': 'image/svg+xml',
 };
 
-// The page may run its own scripts and styles, talk to this server, and
-// nothing else: no inline script, no other host, no framing.
+// The app may run its own scripts and styles, talk to this server, frame a
+// page served from here (/pages/<cap>/), and nothing else: no inline script,
+// no other host, and nobody frames the app. (index.html carries the same in a
+// meta tag, so both have to say frame-src.)
 const CSP = [
   "default-src 'none'", "script-src 'self'", "style-src 'self'", "font-src 'self'", "img-src 'self' data: blob:",
-  "connect-src 'self'", "manifest-src 'self'", "worker-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+  "connect-src 'self'", "manifest-src 'self'", "worker-src 'self'", "frame-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
 ].join('; ');
 
 /** Every file the app needs, by URL. Anything not in here 404s. */
@@ -94,6 +106,7 @@ function routeTable(srcDir, assetsDir) {
     '/pocket-phone.js': app('pocket-phone.js'),
     '/pocket-new.js': app('pocket-new.js'),
     '/pocket-later.js': app('pocket-later.js'),
+    '/pocket-pages.js': app('pocket-pages.js'),
     '/sw.js': app('sw.js'),
     '/manifest.webmanifest': app('manifest.webmanifest'),
     // He's on the pairing screen before the PC has said which skin he wears.
@@ -135,8 +148,9 @@ class PocketServer extends EventEmitter {
    * onDiff(device, { tab, after, file }) -> Promise<{ ok, patch } | { ok: false, error }>
    * onPicture(device, { tab, pic } | { tab, turn, i }) -> Promise<{ ok, url } | { ok: false, error }>: a step's or a message's picture
    * onUpload(device, bytes) -> { ok, id } | { ok: false, error }: a photo for a new task
+   * onPage(route) -> { status, type, body, headers }: a page's file by its capability (pocket/pages.js serve)
    */
-  constructor({ srcDir, assetsDir, port = DEFAULT_PORT, getPlace, ownerLogin, findDevice, onPair, onOpen, onAction, onDiff, onPicture, onUpload, now = Date.now }) {
+  constructor({ srcDir, assetsDir, port = DEFAULT_PORT, getPlace, ownerLogin, findDevice, onPair, onOpen, onAction, onDiff, onPicture, onUpload, onPage, now = Date.now }) {
     super();
     this.routes = routeTable(srcDir, assetsDir);
     this.port = port;
@@ -149,9 +163,10 @@ class PocketServer extends EventEmitter {
     this.onDiff = onDiff;
     this.onPicture = onPicture;
     this.onUpload = onUpload;
+    this.onPage = onPage;
     this.now = now;
     this.server = null;
-    this.clients = new Set();      // { res, device, tab }
+    this.clients = new Set();      // { res, device, tab, page }
     this.status = 'off';           // 'off' | 'listening' | 'busy' | 'error'
     /** @type {NodeJS.Timeout | null} */
     this.keepalive = null;
@@ -217,6 +232,16 @@ class PocketServer extends EventEmitter {
     this.write(c => c.tab === tabId, `event: item\ndata: ${JSON.stringify({ tabId, item })}\n\n`);
   }
 
+  /** Something about one page (its data changed, a new version), to the phones that have it open. */
+  pageEvent(pageId, payload) {
+    this.write(c => c.page === pageId, `event: page\ndata: ${JSON.stringify(payload)}\n\n`);
+  }
+
+  /** The shelf changed (a page added, pinned, turned off, written to): a nudge to every phone, no data on it. */
+  pagesEvent(payload) {
+    this.write(() => true, `event: pages\ndata: ${JSON.stringify(payload)}\n\n`);
+  }
+
   /** A phone that was forgotten: its streams end now, with the reason. */
   dropDevice(deviceId, reason = 'forgotten') {
     for (const c of [...this.clients]) {
@@ -250,10 +275,12 @@ class PocketServer extends EventEmitter {
   /**
    * Who may ask at all. -> { no: status } to refuse, or { place } where
    * place says how it arrived: { tailnet, origin } (origin: the one a browser
-   * here would send).
+   * here would send). pageFile: a request for a page's file, which a sandboxed
+   * frame makes with Origin "null" (its scripts load in CORS mode).
+   * @param {import('http').IncomingMessage} req @param {{ pageFile?: boolean }} [o]
    * @returns {{ no: number, place?: undefined } | { no?: undefined, place: { tailnet: boolean, origin: string, login: string } }}
    */
-  check(req) {
+  check(req, { pageFile = false } = {}) {
     const host = lower(req.headers.host);
     const place = this.getPlace?.() || {};
     const dns = lower(place.dnsName);
@@ -276,7 +303,7 @@ class PocketServer extends EventEmitter {
     }
     const origin = tsHost ? `https://${dns}${httpsPort === 443 ? '' : `:${httpsPort}`}` : `http://${host}`;
     const said = req.headers.origin;
-    if (said != null && lower(said) !== origin) return { no: 403 };
+    if (said != null && lower(said) !== origin && !(pageFile && lower(said) === 'null')) return { no: 403 };
     return { place: { tailnet, origin, login: typeof login === 'string' ? login.slice(0, 200) : '' } };
   }
 
@@ -286,15 +313,16 @@ class PocketServer extends EventEmitter {
   }
 
   handle(req, res) {
-    const gate = this.check(req);
-    if (!gate.place) { plain(res, gate.no, gate.no === 421 ? 'Wrong address.' : 'No.'); return; }
     let url;
     try { url = new URL(String(req.url || '/'), 'http://x'); } catch { plain(res, 400, 'Bad address.'); return; }
     const route = url.pathname;
+    const gate = this.check(req, { pageFile: route.startsWith(PAGES) });
+    if (!gate.place) { plain(res, gate.no, gate.no === 421 ? 'Wrong address.' : 'No.'); return; }
     // Shared from another app before the service worker took over (it keeps
     // what was shared, sw.js): the app opens on a new task all the same.
     // Its body is never read: the connection closes behind the answer.
     if (route === '/share' && req.method === 'POST') { res.writeHead(303, { Location: '/#/share', 'Cache-Control': 'no-store', Connection: 'close' }).end(() => req.destroy()); return; }
+    if (route.startsWith(PAGES)) { this.pageFile(req, res, route); return; }
     if (!route.startsWith(`${API}/`)) { this.file(req, res, route); return; }
 
     const name = route.slice(API.length + 1);
@@ -306,7 +334,7 @@ class PocketServer extends EventEmitter {
     if (gate.place.tailnet && device.login && lower(device.login) !== lower(gate.place.login)) { json(res, 403, { ok: false, error: 'login' }); return; }
     this.emit('seen', device);
 
-    if (name === 'events' && req.method === 'GET') { this.subscribe(req, res, device, url.searchParams.get('tab')); return; }
+    if (name === 'events' && req.method === 'GET') { this.subscribe(req, res, device, url.searchParams.get('tab'), url.searchParams.get('page')); return; }
     if (name === 'diff' && req.method === 'GET') { this.diff(res, device, url.searchParams); return; }
     if (name === 'picture' && req.method === 'GET') { this.picture(res, device, url.searchParams); return; }
     if (name === 'upload' && req.method === 'POST') { this.upload(req, res, device); return; }
@@ -339,13 +367,31 @@ class PocketServer extends EventEmitter {
     });
   }
 
-  subscribe(req, res, device, tab) {
+  /**
+   * A page's file, by the capability in its address (pocket/pages.js serve):
+   * no token, since an iframe can't send one; the capability is the key, and
+   * the answer carries the page CSP (sandboxed, its own files only), which
+   * only the app may frame. Never cached.
+   */
+  pageFile(req, res, route) {
+    if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { Allow: 'GET, HEAD', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; sandbox; frame-ancestors 'self'" }).end(); return; }
+    let a;
+    try { a = this.onPage?.(route); } catch { a = null; }
+    if (!a) { plain(res, 404, 'Not found.'); return; }
+    const body = typeof a.body === 'string' ? Buffer.from(a.body, 'utf8') : a.body;
+    const text = /^text\//.test(a.type) || a.type.includes('javascript') || a.type.includes('json');
+    res.writeHead(a.status, { ...a.headers, 'Content-Type': `${a.type}${text ? '; charset=utf-8' : ''}`, 'Content-Length': body.length });
+    res.end(req.method === 'HEAD' ? undefined : body);
+  }
+
+  subscribe(req, res, device, tab, page) {
     const mine = [...this.clients].filter(c => c.device.id === device.id);
     // A phone coming back from sleep opens a new stream before the old one is
     // noticed gone: the old one makes way, rather than the phone being turned away.
     while (mine.length >= MAX_PER_DEVICE) this.drop(mine.shift());
     if (this.clients.size >= MAX_CLIENTS) { json(res, 503, { ok: false, error: 'busy' }); return; }
     const tabId = typeof tab === 'string' && /^[\w-]{1,100}$/.test(tab) ? tab : null;
+    const pageId = typeof page === 'string' && /^[a-z0-9-]{1,40}$/.test(page) ? page : null;
     let first;
     try { first = this.onOpen?.(device, { tab: tabId }); } catch { first = null; }
     res.writeHead(200, {
@@ -355,7 +401,7 @@ class PocketServer extends EventEmitter {
       'X-Accel-Buffering': 'no',
       'X-Content-Type-Options': 'nosniff',
     });
-    const c = { res, device, tab: tabId };
+    const c = { res, device, tab: tabId, page: pageId };
     this.clients.add(c);
     req.on('close', () => this.drop(c));
     res.on('error', () => this.drop(c));
@@ -436,13 +482,20 @@ class PocketServer extends EventEmitter {
     });
   }
 
+  /** A page's bridge calls have their own allowance: a busy page can't use up the phone's Allow and Deny. */
+  pageAllowed(device) {
+    const key = `${device.id}:pages`;
+    if (!this.actionLimits.has(key)) this.actionLimits.set(key, limiter(PAGE_CALLS_PER_MINUTE, 60 * 1000));
+    return this.actionLimits.get(key)(this.now());
+  }
+
   action(req, res, device, name) {
-    if (!this.allowed(device)) { json(res, 429, { ok: false, error: 'slow down' }); return; }
+    if (!(name === 'page-call' ? this.pageAllowed(device) : this.allowed(device))) { json(res, 429, { ok: false, error: 'slow down' }); return; }
     readJson(req, res, async msg => {
       let r;
       try { r = await this.onAction?.(device, name, msg && typeof msg === 'object' ? msg : {}); } catch { r = { ok: false, error: 'failed' }; }
       json(res, 200, r && typeof r === 'object' ? r : { ok: !!r });
-    });
+    }, name === 'page-call' ? MAX_PAGE_BODY : MAX_BODY);
   }
 }
 
@@ -454,8 +507,8 @@ function json(res, code, body) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }).end(JSON.stringify(body));
 }
 
-/** A JSON body, capped; answers 415, 413 or 400 itself. */
-function readJson(req, res, then) {
+/** A JSON body, capped at max; answers 415, 413 or 400 itself. */
+function readJson(req, res, then, max = MAX_BODY) {
   if (!/^application\/json\b/.test(String(req.headers['content-type'] || ''))) { json(res, 415, { ok: false, error: 'json' }); return; }
   let body = '';
   let over = false;
@@ -463,7 +516,7 @@ function readJson(req, res, then) {
   req.on('data', chunk => {
     if (over) return;
     body += chunk;
-    if (body.length > MAX_BODY) { over = true; json(res, 413, { ok: false, error: 'too big' }); req.destroy(); }
+    if (body.length > max) { over = true; json(res, 413, { ok: false, error: 'too big' }); req.destroy(); }
   });
   req.on('end', () => {
     if (over) return;
@@ -473,4 +526,4 @@ function readJson(req, res, then) {
   });
 }
 
-module.exports = { ACTIONS, API, CSP, DEFAULT_PORT, MAX_BODY, MAX_UPLOAD, MAX_CLIENTS, MAX_PER_DEVICE, PocketServer, TYPES, routeTable };
+module.exports = { ACTIONS, API, CSP, DEFAULT_PORT, MAX_BODY, MAX_PAGE_BODY, MAX_UPLOAD, MAX_CLIENTS, MAX_PER_DEVICE, PAGES, PocketServer, TYPES, routeTable };

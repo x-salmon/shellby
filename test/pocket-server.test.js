@@ -269,6 +269,93 @@ test('a port already in use says busy', async () => {
   } finally { server.stop(); second.stop(); }
 });
 
+test('the app’s CSP lets it frame a page from here, and nothing frames the app', async () => {
+  const { server, port } = await boot();
+  try {
+    const csp = (await request(port, { url: '/' })).headers['content-security-policy'];
+    assert.match(csp, /frame-src 'self'/);
+    assert.match(csp, /frame-ancestors 'none'/);
+    const html = fs.readFileSync(path.join(SRC, 'renderer', 'pocket', 'index.html'), 'utf8');
+    assert.match(html, /frame-src 'self'/, 'the meta tag says so too, or the header alone would be undone');
+  } finally { server.stop(); }
+});
+
+test('a page’s file comes by its capability, with the headers pocket/pages.js gives it, and no token', async () => {
+  const CAP = 'c'.repeat(43);
+  const served = [];
+  const { server, port } = await boot({
+    onPage: route => {
+      served.push(route);
+      if (!route.startsWith(`/pages/${CAP}/`)) return null;
+      return { status: 200, type: 'text/html', body: '<p>hi</p>', headers: { 'Content-Security-Policy': "default-src 'none'; sandbox allow-scripts; frame-ancestors 'self'", 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } };
+    },
+  });
+  try {
+    const r = await request(port, { url: `/pages/${CAP}/index.html` });
+    assert.equal(r.status, 200);
+    assert.equal(r.text, '<p>hi</p>');
+    assert.equal(r.headers['content-type'], 'text/html; charset=utf-8');
+    assert.match(r.headers['content-security-policy'], /sandbox allow-scripts/);
+    assert.equal(r.headers['x-frame-options'], undefined);
+    assert.equal(r.headers['cache-control'], 'no-store');
+    assert.deepEqual(served, [`/pages/${CAP}/index.html`]);
+    assert.equal((await request(port, { url: `/pages/${'x'.repeat(43)}/index.html` })).status, 404);
+    assert.equal((await request(port, { method: 'POST', url: `/pages/${CAP}/index.html`, body: {} })).status, 405);
+    assert.equal((await request(port, { method: 'HEAD', url: `/pages/${CAP}/index.html` })).status, 200);
+    // A dodge through .. is just the app's own file table (the URL is normalised first), and never reaches the pages route.
+    const before = served.length;
+    assert.equal((await request(port, { url: `/pages/${CAP}/../../pocket.js` })).headers['content-type'], 'text/javascript; charset=utf-8');
+    assert.equal((await request(port, { url: `/pages/${CAP}/%2e%2e/%2e%2e/package.json` })).status, 404);
+    assert.equal(served.length, before);
+    assert.equal((await request(port, { url: '/pages/' })).status, 404);
+    assert.equal((await request(port, { url: '/pages' })).status, 404, 'the app has no such file');
+  } finally { server.stop(); }
+});
+
+test('a sandboxed frame’s Origin "null" gets a page’s file and nothing else; every other Origin is still turned away', async () => {
+  const CAP = 'c'.repeat(43);
+  const { server, port } = await boot({ onPage: () => ({ status: 200, type: 'text/javascript', body: 'x()', headers: {} }) });
+  try {
+    assert.equal((await request(port, { url: `/pages/${CAP}/app.js`, headers: { Origin: 'null' } })).status, 200);
+    assert.equal((await request(port, { url: `/pages/${CAP}/app.js`, headers: { Origin: 'https://evil.example.com' } })).status, 403);
+    assert.equal((await request(port, { url: '/pocket.js', headers: { Origin: 'null' } })).status, 403, 'the app’s own files: not from an opaque origin');
+    assert.equal((await request(port, { url: `${API}/hello`, headers: { Origin: 'null' } })).status, 403, 'nor the API');
+    assert.equal((await request(port, { method: 'POST', url: `${API}/page-call`, headers: { ...auth, Origin: 'null' }, body: { id: 'p' } })).status, 403, 'a page can’t call the bridge itself: the app does, with its token');
+  } finally { server.stop(); }
+});
+
+test('a bridge call may carry what the desk’s bridge would; other actions stay small', async () => {
+  const { MAX_PAGE_BODY, MAX_BODY } = require('../src/main/pocket/server');
+  const { server, port, calls } = await boot();
+  try {
+    const big = { id: 'print-queue', method: 'data.set', args: [{ rows: 'x'.repeat(MAX_BODY * 2) }] };
+    assert.deepEqual((await request(port, { method: 'POST', url: `${API}/page-call`, headers: auth, body: big })).json, { ok: true, name: 'page-call' });
+    assert.equal(calls.actions.at(-1).body.args[0].rows.length, MAX_BODY * 2);
+    assert.equal((await request(port, { method: 'POST', url: `${API}/page-call`, headers: auth, body: { ...big, args: [{ rows: 'x'.repeat(MAX_PAGE_BODY) }] } }).catch(() => ({ status: 413 }))).status, 413);
+    assert.equal((await request(port, { method: 'POST', url: `${API}/page-ask`, headers: auth, body: { prompt: 'x'.repeat(MAX_BODY * 2) } }).catch(() => ({ status: 413 }))).status, 413);
+    for (const name of ['pages', 'page-open', 'page-call', 'page-info', 'page-ask', 'page-change']) assert.equal((await request(port, { method: 'POST', url: `${API}/${name}`, body: {} })).status, 401, `${name} needs the token`);
+  } finally { server.stop(); }
+});
+
+test('a phone watching a page gets its events, and every phone a nudge when the shelf changes', async () => {
+  const { server, port } = await boot();
+  try {
+    const watching = await openStream(port, `${API}/events?page=print-queue`);
+    const other = await openStream(port, `${API}/events`);
+    await Promise.all([watching.until(/event: view/), other.until(/event: view/)]);
+    server.pageEvent('print-queue', { id: 'print-queue', kind: 'data', change: { keys: ['rows'] } });
+    server.pageEvent('other-page', { id: 'other-page', kind: 'data' });
+    server.pagesEvent({ id: 'print-queue', kind: 'meta' });
+    const text = await watching.until(/event: pages/);
+    assert.match(text, /event: page\ndata: \{"id":"print-queue","kind":"data"/);
+    assert.doesNotMatch(text, /other-page/);
+    const seen = await other.until(/event: pages/);
+    assert.doesNotMatch(seen, /event: page\n/, 'a phone not watching a page hears nothing of it');
+    assert.equal((await openStream(port, `${API}/events?page=../x`)).status, 200, 'a bad page name is simply not watched');
+    watching.close(); other.close();
+  } finally { server.stop(); }
+});
+
 test('a share that arrives before the service worker opens the app on a new task', async () => {
   const { server, port } = await boot();
   try {
@@ -277,4 +364,14 @@ test('a share that arrives before the service worker opens the app on a new task
     assert.equal(r.headers.location, '/#/share');
     assert.equal((await request(port, { method: 'POST', url: '/share/../pocket.js' })).status, 405);
   } finally { server.stop(); }
+});
+
+test("a page's bridge calls have their own allowance: a busy page can't use up the phone's Allow and Deny", () => {
+  const SRC = path.join(__dirname, '..', 'src');
+  const server = new PocketServer({ srcDir: SRC, assetsDir: path.join(__dirname, '..', 'assets'), now: () => 1000 });
+  const device = { id: 'phone-1' };
+  let pageCalls = 0;
+  while (server.pageAllowed(device)) pageCalls++;
+  assert.ok(pageCalls > 0 && pageCalls < 1000, `a page's calls stop at a limit (${pageCalls})`);
+  assert.equal(server.allowed(device), true, "and the phone's own actions still go");
 });

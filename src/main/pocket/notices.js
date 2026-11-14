@@ -128,6 +128,31 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
     }
   }
 
+  /**
+   * A page's notify (or an agent's write to a page that asked for notify), to
+   * every phone: named after the page, so you can tell a page talking from
+   * Shellby himself. Tapping opens the page. Held in quiet hours and while
+   * Guard my focus is on, like the rest; pocket/pages.js keeps it to one a
+   * minute per page. -> whether it went.
+   */
+  function notifyPage({ id, name, title, body }) {
+    const s = settings();
+    if (!s.enabled || !s.notify.enabled || !ID_RE.test(String(id))) return false;
+    const now = Date.now();
+    if (inQuietHours(s.quiet, now) || focus.guarding(d.config?.get('focus'), now)) return false;
+    const targets = devices().filter(dv => dv.push);
+    const keys = targets.length ? vapidKeys() : null;
+    if (!keys) return false;
+    // Named as a page, with control and direction marks gone: a page called "Shellby"
+    // can't pass for Shellby's own prompt.
+    const plainText = v => String(v ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, ' ').trim();
+    sendToPhones(targets, {
+      title: `Page · ${plainText(name) || 'untitled'}`.slice(0, 120), body: plainText(body ? `${title}: ${body}` : title).slice(0, 600),
+      tag: `page-${id}`, url: `/#/page/${encodeURIComponent(id)}`, badge: waitingPrompts().length, at: now,
+    }, { keys, ttl: 6 * 3600, urgency: 'normal' });
+    return true;
+  }
+
   async function testPush() {
     const targets = devices().filter(dv => dv.push);
     if (!targets.length) return no('No paired phone has notifications on yet. Turn them on in the app.');
@@ -141,7 +166,7 @@ function createPocketNotices(d, { settings, devices, saveDevices, vapidKeys, wai
     return bad ? no(bad.gone ? 'That phone has turned notifications off.' : `It didn't go: ${bad.error || bad.status}`) : ok();
   }
 
-  return { notify, noticeWork, testPush, badge };
+  return { notify, notifyPage, noticeWork, testPush, badge };
 }
 
 module.exports = { createPocketNotices, PUSH_SUBJECT, answerable, urlFor };

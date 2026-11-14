@@ -9,6 +9,7 @@
      #/queue         what's waiting for the usage reset or tonight: take out, reword, reorder
      #/phone         this phone: notifications, quiet hours, and forgetting it
      #/more …        focus, routines, notes, the wardrobe and files (pocket-more.js)
+     #/pages, #/page/<id>  your pages, and one running in a sandboxed frame (pocket-pages.js)
      #/find …        search, a project's history, a closed conversation, a whole branch (pocket-find.js)
                      (New task and Look over my changes live in pocket-new.js)
                      (the prompt screen and the quiet hours card live in pocket-phone.js)
@@ -137,6 +138,7 @@
     }, h('span', { class: 'dock-pill' }, icon(iconName), badge ? h('b', { class: 'dock-badge', text: badge, 'aria-label': `${badge} waiting` }) : null), h('span', { text: label }));
     return h('nav', { class: 'dock', 'aria-label': 'Screens' },
       item('beach', 'Beach', 'beach', '#/', S.view?.prompts?.length || 0),
+      item('pages', 'Pages', 'pages', '#/pages'),
       item('queue', 'Queue', 'queue', '#/queue', held),
       item('more', 'More', 'more', '#/more'),
       item('phone', 'Phone', 'phone', '#/phone'));
@@ -340,6 +342,7 @@
         parts.push(h('h3', { class: 'sect asking' }, h('i'), h('span', { text: 'Waiting on you' }), h('b', { text: prompts.length })));
         for (const p of prompts) parts.push(promptCard(p));
       }
+      parts.push(...Pages.pinnedRow()); // after what's waiting on you, before what's ready to review, as at the desk
       for (const s of L.sections(v)) {
         if (s.key === 'quiet' && s.tabs.length > 2) {
           parts.push(h('button', { type: 'button', class: 'sect sect-toggle', 'aria-expanded': quietOpen ? 'true' : 'false', onclick: () => { quietOpen = !quietOpen; update(true); } },
@@ -370,6 +373,8 @@
   const Find = window.PocketFind({ S, L, D, N, h, icon, live, go, act, actButton, canAct, toast, topbar, offlineBanner, dock, openSheet, modePicker, refresh, loaded: More.loaded, transcript, shortPath });
   // One prompt from its notification, and the quiet hours card (pocket-phone.js).
   const { promptScreen, quietCard, pushState, turnOnPush, turnOffPush } = window.PocketPhone({ S, L, D, h, ios, standalone, icon, live, tabOf, go, toast, act, topbar, offlineBanner, promptCard, canAct });
+  // Your pages: the shelf, one running in a sandboxed frame, and the pinned row on the beach (pocket-pages.js).
+  const Pages = window.PocketPages({ S, L, D, N, h, icon, live, go, toast, buzz, act, actButton, topbar, offlineBanner, dock, openSheet, canAct, lookOnly, refresh });
 
   // ---------------------------------------------------------------- the queue
 
@@ -570,6 +575,8 @@
     stream?.stop();
     S.view = null;
     S.feeds.clear();
+    // What pages held, kept for when the PC sleeps, goes with the pairing (pocket-pages.js).
+    try { window.caches?.delete('shellby-pocket-pages').catch(() => {}); } catch { /* no caches here */ }
     show(pairScreen(message));
   }
 
@@ -577,6 +584,7 @@
 
   function show(screen) {
     const old = S.screen;
+    old?.leave?.(); // a page's frame stops being heard once its screen goes
     S.screen = screen;
     document.title = screen.title ? `${screen.title} · Shellby` : 'Shellby';
     screen.el.classList.add('enter');
@@ -610,6 +618,7 @@
       return;
     }
     if (r.name === 'tab') { show(tabScreen(r.tabId)); stream.watch(r.tabId); return; }
+    if (r.name === 'page') { show(Pages.pageScreen(r.id)); stream.watch(null, r.id); return; }
     stream.watch(r.name === 'diff' || r.name === 'branch' ? r.tabId : null);
     if (r.name === 'prompt') show(promptScreen(r.tabId, r.requestId));
     else if (r.name === 'diff') show(diffScreen(r.tabId, r.after));
@@ -625,6 +634,7 @@
     else if (r.name === 'project-history') show(Find.historyScreen());
     else if (r.name === 'past') show(Find.pastScreen(r.id));
     else if (r.name === 'branch') show(Find.branchScreen(r.tabId));
+    else if (r.name === 'pages') show(Pages.pagesScreen());
     else if (r.name === 'phone') show(phoneScreen());
     else show(beachScreen());
   }
@@ -702,10 +712,13 @@
         if (S.screen?.tabId === tabId) S.screen.feed();
         Later.heard(tabId, item);
       },
+      page: ev => Pages.onPageEvent(ev),
+      pages: ev => Pages.onShelfEvent(ev),
       live(on) {
         S.live = on;
-        // Back: what was written while the PC was away goes now.
-        if (on) Later.flush();
+        // Back: what was written while the PC was away goes now, and the shelf is asked
+        // for again (a cold start asks before the stream is up, and gets only the cache).
+        if (on) { Later.flush(); Pages.loadShelf(); }
         document.body.classList.toggle('offline-mode', !on);
         refresh();
       },

@@ -18,7 +18,9 @@ test('a full phone is refused nothing here; a read-only one may only look, leave
     assert.ok(ACTIONS.includes(a), `${a} is an action`);
     assert.equal(r.refuse({ rights: 'readonly' }, a), null, a);
   }
-  for (const a of ['answer', 'task', 'reply', 'stop', 'undo', 'home', 'reviewed', 'cancel-held', 'focus', 'routine-run', 'routine-toggle', 'workflow-run', 'note-add', 'note-tick', 'wear', 'quiet']) {
+  // A page's shelf, its files and its data are looking (page-call reads; pocket/pages.js refuses the writes). Asking Claude from one is not.
+  for (const a of ['pages', 'page-open', 'page-call', 'page-info']) assert.equal(r.refuse({ rights: 'readonly' }, a), null, a);
+  for (const a of ['answer', 'task', 'reply', 'stop', 'undo', 'home', 'reviewed', 'cancel-held', 'focus', 'routine-run', 'routine-toggle', 'workflow-run', 'note-add', 'note-tick', 'wear', 'quiet', 'page-ask', 'page-change']) {
     assert.ok(ACTIONS.includes(a), `${a} is an action`);
     assert.equal(r.refuse({ rights: 'readonly' }, a), r.READ_ONLY_SAYS, a);
   }
