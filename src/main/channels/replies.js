@@ -50,13 +50,40 @@ function newNonce(bytes = crypto.randomBytes(16)) {
 const PHONE_MAX = 300;
 // The longest plan the phone app shows in full: approving a longer one would approve unread text.
 const PLAN_MAX = 30000;
+// The most the phone app shows of a command, an edit or a file being written,
+// in a box you scroll: the whole thing, for anything shorter, so it can be allowed there.
+const APP_SHOW_MAX = 200000;
+const PATH_MAX = 300;          // pocket/view.js shows a file path this long, whole
+const COMMAND_TOOLS = new Set(['Bash', 'PowerShell']);
+const FILE_TOOLS = new Set(['Edit', 'MultiEdit', 'Write']);
 
-function deskOnlyReason(item) {
+/**
+ * Whether the phone app shows this prompt's whole text (pocket/view.js preview),
+ * so a long command or edit can still be read in full and allowed from it.
+ */
+function appShowsInFull(item) {
+  const i = item?.input && typeof item.input === 'object' ? item.input : null;
+  if (!i) return false;
+  const fits = (...parts) => parts.every(s => s == null || typeof s === 'string') && parts.reduce((n, s) => n + String(s ?? '').length, 0) <= APP_SHOW_MAX;
+  // The app shows a path on one line, up to PATH_MAX: a longer or odder one hides where it writes.
+  const pathShown = typeof i.file_path === 'string' && i.file_path.length <= PATH_MAX && !/[\x00-\x1f\x7f]/.test(i.file_path);
+  // Only the shells: for any other tool the command isn't all there is to read.
+  if (COMMAND_TOOLS.has(item.toolName) && typeof i.command === 'string') return fits(i.command);
+  if (item.toolName === 'Edit' && pathShown) return fits(i.old_string, i.new_string);
+  if (item.toolName === 'MultiEdit' && pathShown && Array.isArray(i.edits)) {
+    return fits(...i.edits.flatMap(e => [e?.old_string, e?.new_string]));
+  }
+  if (item.toolName === 'Write' && pathShown) return fits(i.content);
+  return false;
+}
+
+/** shownInFull: the screen shows the whole command or edit, so its length is no reason to wait for the desk. */
+function deskOnlyReason(item, { shownInFull = false } = {}) {
   if (!item || typeof item !== 'object') return 'Answer it at the desk.';
   // What the card itself can't show (another agent's command Shellby can't read, an edit to several files).
   if (typeof item.deskOnly === 'string' && item.deskOnly) return item.deskOnly;
   const full = String(item.input?.command ?? item.input?.file_path ?? item.detail ?? '');
-  if (full.length > PHONE_MAX || String(item.detail || '').length >= 400) return 'It is too long to read on a phone: check it at the desk.';
+  if (!shownInFull && (full.length > PHONE_MAX || String(item.detail || '').length >= 400)) return 'It is too long to read on a phone: check it at the desk.';
   if (item.toolName === 'AskUserQuestion') return 'It has a question for you: answer it at the desk.';
   if (item.toolName === 'ExitPlanMode') return 'It has a plan for you to read: approve it at the desk.';
   if (item.runsCreated?.length) return 'It runs a file Claude wrote this session: check it at the desk.';
@@ -69,7 +96,13 @@ function deskOnlyReason(item) {
  * those two are its to answer; everything else stays as deskOnlyReason says.
  */
 function appDeskOnlyReason(item) {
-  if (!['AskUserQuestion', 'ExitPlanMode'].includes(item?.toolName)) return deskOnlyReason(item);
+  if (!['AskUserQuestion', 'ExitPlanMode'].includes(item?.toolName)) {
+    const shown = appShowsInFull(item);
+    const why = deskOnlyReason(item, { shownInFull: shown });
+    if (why) return why;
+    // deskOnlyReason measures a file's path, not what goes in it: the app must show both.
+    return !shown && FILE_TOOLS.has(item?.toolName) ? 'The phone can’t show all of it: check it at the desk.' : null;
+  }
   if (item.runsCreated?.length) return 'It runs a file Claude wrote this session: check it at the desk.';
   if (item.selfConfig) return `It changes ${item.selfConfig}: check it at the desk.`;
   if (item.toolName === 'AskUserQuestion' && !Array.isArray(item.input?.questions)) return 'It has a question for you: answer it at the desk.';
@@ -443,5 +476,5 @@ class RemoteAnswers {
 
 module.exports = {
   RemoteAnswers, supportsReplies, newNonce, deskOnlyReason, appDeskOnlyReason,
-  parseNtfyMessage, parseTelegramCallback, NONCE, TTL_MS, PHONE_MAX, PLAN_MAX,INBOX_POLL_MS, MAX_BACKOFF_MS,
+  parseNtfyMessage, parseTelegramCallback, NONCE, TTL_MS, PHONE_MAX, PLAN_MAX, APP_SHOW_MAX, appShowsInFull, INBOX_POLL_MS, MAX_BACKOFF_MS,
 };

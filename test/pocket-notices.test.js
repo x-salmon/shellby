@@ -18,6 +18,8 @@ test('a plain prompt can be answered from its notification, a question or a plan
   assert.equal(answerable(asking, null), null, 'already answered');
   assert.equal(answerable({ ...asking, kind: 'done' }, bash), null);
   assert.equal(answerable({ ...asking, requestId: '../x' }, bash), null);
+  // The app shows a long command whole and may allow it; a notification shows a line, so no buttons.
+  assert.equal(answerable(asking, { toolName: 'Bash', input: { command: 'x'.repeat(400) } }), null);
 });
 
 function notices(devices, { allow = { notifyAnswers: true } } = {}) {

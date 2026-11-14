@@ -59,6 +59,7 @@ test('a prompt says why the phone may only look, by the same rule as the phone n
     { tabId: 't1', requestId: 'r2', toolName: 'ExitPlanMode', input: {}, planSummary: '4 steps' },
     { tabId: 't1', requestId: 'r3', toolName: 'Bash', input: { command: 'x'.repeat(400) } },
     { tabId: 't1', requestId: 'r4', toolName: 'Bash', input: { command: 'node build.js' }, runsCreated: ['build.js'] },
+    { tabId: 't1', requestId: 'r5', toolName: 'mcp__x__y', detail: 'y'.repeat(500), input: { query: 'y'.repeat(500) } },
   ];
   const view = v.phoneView({ tabs, prompts });
   assert.equal(view.prompts[0].deskOnly, null);
@@ -68,15 +69,21 @@ test('a prompt says why the phone may only look, by the same rule as the phone n
   assert.equal(view.prompts[0].title, 'Fix the upload test');
   assert.match(view.prompts[1].deskOnly, /plan/);
   assert.equal(view.prompts[1].plan, '4 steps');
-  assert.match(view.prompts[2].deskOnly, /too long/);
+  // A long command is shown whole on the phone, so it is the phone's to allow.
+  assert.equal(view.prompts[2].deskOnly, null);
+  assert.equal(view.prompts[2].preview.command.length, 400);
   assert.match(view.prompts[3].deskOnly, /file Claude wrote/);
+  assert.match(view.prompts[4].deskOnly, /too long/, 'nothing the phone shows in full: still the desk');
 });
 
 test('an edit shows what it changes before you say yes', () => {
   const p = v.preview({ toolName: 'Edit', input: { file_path: 'C:\\code\\a.js', old_string: 'a', new_string: 'b' } });
   assert.deepEqual(p, { kind: 'edit', file: 'C:\\code\\a.js', old: 'a', new: 'b' });
   const w = v.preview({ toolName: 'Write', input: { file_path: 'b.js', content: 'y'.repeat(5000) } });
-  assert.equal(w.content.length, 1500);
+  assert.equal(w.content.length, 5000, 'all of it: the phone may allow it');
+  const m = v.preview({ toolName: 'MultiEdit', input: { file_path: 'c.js', edits: [{ old_string: 'a', new_string: 'b' }, { old_string: 'c', new_string: 'd' }] } });
+  assert.deepEqual(m.edits, [{ old: 'a', new: 'b' }, { old: 'c', new: 'd' }]);
+  assert.equal(m.more, 1);
   assert.equal(v.preview({ toolName: 'Grep', input: { pattern: 'x' } }), null);
 });
 
@@ -169,7 +176,7 @@ test('the usage view has the week, the guard and focus', () => {
 });
 
 test('a prompt carries the desk’s always-allow label, never on one only the desk may answer', () => {
-  const edit = v.phonePrompt({ tabId: 't', requestId: 'r', toolName: 'Edit', suggestions: [{ type: 'setMode', mode: 'acceptEdits' }] }, () => 'T');
+  const edit = v.phonePrompt({ tabId: 't', requestId: 'r', toolName: 'Edit', input: { file_path: 'a.js', old_string: 'a', new_string: 'b' }, suggestions: [{ type: 'setMode', mode: 'acceptEdits' }] }, () => 'T');
   assert.equal(edit.always, 'Allow all edits');
   const rule = v.phonePrompt({ tabId: 't', requestId: 'r', toolName: 'Bash', input: { command: 'npm test' }, suggestions: [{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'npm test' }] }] }, () => 'T');
   assert.equal(rule.always, 'Always allow Bash(npm test)');

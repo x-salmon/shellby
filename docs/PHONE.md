@@ -31,12 +31,12 @@ Settings walks you through it a step at a time, ticking each one off as it works
 
 **The beach** is everything at a glance, in the same order as the desk's tabs: what's waiting on you first, then what's ready to review, then what's finished, working and quiet. Shellby himself sits at the top, the real crab in the skin you chose, doing what he's doing on your desktop, with your 5-hour usage window under him. When Health is on at your PC, a line under that says how the PC itself is doing: the CPU's and graphics card's load and heat, memory, and the battery, with Health's own warning when something runs hot. Worth a look before you send something heavy off from the sofa.
 
-**A permission prompt** shows as a card with the plain sentence, the command (or the edit, line by line), and any warning the desk card would show. **Allow** and **Deny** answer it straight from the beach, and when the desk card offers **Allow all edits** or **Always allow**, so does the phone. Like answering from a notification, some prompts are only ever answered at the desk:
+**A permission prompt** shows as a card with the plain sentence, the command (or the edit, line by line), and any warning the desk card would show. However long the command, the edit or the file being written, all of it is there, in a box you scroll, so **Allow** and **Deny** answer it straight from the beach, and when the desk card offers **Allow all edits** or **Always allow**, so does the phone. Some prompts are only ever answered at the desk:
 
-- a command too long to read on a phone
 - running a file Claude wrote this session, or changing Claude Code's own setup
+- one the app can't show whole: a tool with no command or edit to show and a long description, or a command over 200,000 characters
 
-Those say why they wait for the desk (*"It is too long to read on a phone: check it at the desk."*), with **See the conversation** to open it.
+Those say why they wait for the desk (*"It changes your hooks: check it at the desk."*), with **Deny** and **See the conversation**.
 
 **Questions and plans** open in a sheet. A question shows its options as buttons, with a box for your own answer, and **Skip** lets him carry on with his best judgement. A plan shows in full, and **Approve** stays shut until you've scrolled to the end. **Keep planning** sends your notes back with it.
 
@@ -110,7 +110,7 @@ Notifications come from your PC, encrypted, through your phone's own push servic
 - **Guard my focus** holds them back, unless you say otherwise. **Quiet hours** hold them back overnight, except a permission prompt, which comes quietly.
 - **A four-second task doesn't buzz you.** A task the phone started always says when it's done.
 
-Tap one and the app opens on that conversation. On Android, once you allow it (below), **"He needs you"** has **Allow** and **Deny** on it, which answer without opening the app, for the prompts the beach could answer with those two buttons (not a question, a plan, or one for the desk) and only on a phone with full rights. If the answer doesn't go, a notification says why, and a tap on it opens the prompt. On an iPhone there are no buttons on a web app's notification, so a tap on **"He needs you"** opens straight onto that one prompt instead: the plain sentence, the command or the edit, and big **Allow** and **Deny** (and **Always allow** when the desk would offer it). Answer it and you're back on the beach. If it was answered at the desk meanwhile, or is one that waits for the desk, the screen says so. The app icon's badge counts the prompts waiting.
+Tap one and the app opens on that conversation. On Android, once you allow it (below), **"He needs you"** has **Allow** and **Deny** on it, which answer without opening the app, for the prompts the beach could answer with those two buttons (not a question, a plan, one for the desk, or a command too long to read in a notification, which a tap opens in the app instead) and only on a phone with full rights. If the answer doesn't go, a notification says why, and a tap on it opens the prompt. On an iPhone there are no buttons on a web app's notification, so a tap on **"He needs you"** opens straight onto that one prompt instead: the plain sentence, the command or the edit, and big **Allow** and **Deny** (and **Always allow** when the desk would offer it). Answer it and you're back on the beach. If it was answered at the desk meanwhile, or is one that waits for the desk, the screen says so. The app icon's badge counts the prompts waiting.
 
 ## Security, in short
 
