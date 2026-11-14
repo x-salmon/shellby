@@ -63,6 +63,29 @@ but a message channel to Shellby:
 The full picture is the "Page → Shellby" row in
 [THREAT-MODEL.md](THREAT-MODEL.md).
 
+## On your phone
+
+With [Shellby on your phone](PHONE.md) set up, the app has a **Pages** tab,
+after the Beach. It's the same shelf as the desk's, in the same order, pinned
+pages first, and your pinned pages are a row on the Beach too.
+
+- **A page made for a phone opens full screen**, in the same sandbox as at the
+  desk. Its data is live from your PC: a write at the desk or from an agent
+  shows on the phone straight away. Every call it makes goes back to your PC
+  and is checked there, so a page can't do more from the sofa than at the desk.
+  Ask Claude to "make it fit a phone" and Claude marks it `"phone": true`.
+- **A page built for the desk** shows on the shelf greyed, with **Change with
+  Claude** to make it fit a phone. That starts as a task on your PC, in Ask
+  first.
+- **When a page asks Claude something**, the phone shows its own task sheet
+  with the question in full. You pick Ask first or Plan only, and it counts as
+  one of the phone's tasks for the hour. A page never starts anything itself.
+- **A page's notifications** reach the phone too, named after the page, at
+  most one a minute.
+- **When your PC is asleep**, a page you've opened on the phone shows how it
+  last looked, dated and read-only. Nothing runs from that copy.
+- **A read-only phone** can open pages and read their data, and nothing else.
+
 ## Limits
 
 A page has at most:

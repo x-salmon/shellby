@@ -52,6 +52,8 @@ Those say why they wait for the desk (*"It changes your hooks: check it at the d
 
 **Search**, on the beach, looks through every conversation in History across every project: titles, what you asked for first and what Claude said he'd done, ranked as the desk's own search ranks. **History** beside it lists one project's conversations (or all of them) by day, newest first, thirty at a time. Tapping a closed conversation shows it read-only, with **Open it again** to carry on (as **More → History** does); an open one opens live.
 
+**Pages**, the tab after the Beach, are your [pages](PAGES.md#on-your-phone): the small apps Claude builds for you. One made for a phone opens full screen with its data live from the PC, and every call it makes is checked on the PC. One built for the desk says so, with **Change with Claude** to make it fit. Pinned pages are a row on the Beach, and when the PC is asleep a page shows how it last looked, dated and read-only.
+
 **While you were away.** Open the app after ten minutes or more and a card at the top of the beach says what happened meanwhile: "2 finished, 1 hit a problem, 1 waiting on you, 4% of your window spent", with a tap to each. It's worked out from the time the phone last looked, which it keeps to itself, and it goes when you dismiss it.
 
 **New task** starts one in any project Shellby knows: the folder you're working in, the ones open in a conversation, and every one he's seen you work in. Long-press the app's icon on Android for **New task**, **Queue** and **Notes** straight away. Tasks from the app follow much the same rules as [phone tasks over Telegram or ntfy](CONNECTIONS.md#-your-phone), with more room, since the app is paired to this PC:

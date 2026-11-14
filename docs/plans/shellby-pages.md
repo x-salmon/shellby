@@ -381,8 +381,22 @@ scope** (chosen 2026-11-13): the 30 marked Core, plus every extra:
    - Settings › Pages is a section of Settings › Claude.
    - Page scripts load in CORS mode (the scheme has `corsEnabled`), so an
      error keeps its message, file and line for Fix it with Claude.
-   - Not yet: pinned pages on the Beach (screen 6), the phone and sync.
+   - Pinned pages (screen 6) went into the open-conversations list
+     (Ctrl+Shift+A), after "Waiting for your OK": the desk has no list-like
+     Beach, and that list is where what needs you is sorted.
 2. **On the phone: screens 36–42.**
+   **Built** (`pocket/pages.js`, `renderer/pocket/pocket-pages.js`), with
+   these departures:
+   - The phone app frames a page from its own origin, at
+     `/pages/<cap>/<file>`: an iframe can't send the device token, so the app
+     trades it for a capability (32 random bytes, bound to one phone and one
+     page, a few minutes long). Each response carries the desk's page CSP
+     with `sandbox allow-scripts` and `frame-ancestors 'self'`.
+   - A conversation a page starts keeps Ask first (or Plan) only until its
+     first answer, as at the desk (`sessions.js` `modeToStart`).
+   - The asleep snapshot is the miniature and the data as text, kept in the
+     service worker's cache when the page was last open.
+   - Android's long-press shortcut to the first pinned page isn't built.
 3. **On your other PCs: screens 43–49.**
 4. **Sharing** (later, maybe): a page to the community gallery as a pack,
    which needs review like skins do, since it's code.
