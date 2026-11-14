@@ -33,6 +33,7 @@ const cleanAgent = v => (typeof v === 'string' && AGENT_NAME.test(v) ? v : '');
 // Runs on Claude Code, not another agent's CLI (harness/): its models, effort, pings and /compact are Claude Code's.
 const onClaude = tab => !tab.harness || tab.harness === harnesses.CLAUDE;
 const NOT_CLAUDE = 'That only works in a Claude Code conversation.';
+const canPause = t => onClaude(t) && !!t.session.requestPause && !t.localTarget && !t.routineId && !t.workflowRunId;
 
 class SessionManager extends EventEmitter {
   // prepareTurn(tab): an optional promise each turn waits for before Claude
@@ -173,6 +174,7 @@ class SessionManager extends EventEmitter {
     session.on('todos', s => { this.emit('todos', tab.id, s, tab); this.changed(); });
     session.on('planning', () => this.changed());
     session.on('tool', () => this.changed());
+    session.on('pause', () => this.changed()); // the pause line and its buttons (session/pause.js)
     session.on('exit', () => {
       // A process stopped mid-ping sends no result (session.js ended), so the ping is settled here.
       if (tab.pinging) this.settlePing(tab, { ok: false, error: 'its Claude Code process ended', tokens: null, denied: false });
@@ -303,6 +305,7 @@ class SessionManager extends EventEmitter {
     if (tab.session.busy) throw new Error('Shellby is still working on the last task.');
     if (tab.inTerminal) throw new Error(IN_TERMINAL);
     tab.activeAt = Date.now();
+    tab.session.clearParked?.(); // a message after a parked pause is how it carries on (session/pause.js)
     tab.idleCompacting = false; // set again by wiring/idle-compact.js when the turn is its /compact
     // Opened before Settings changed (an empty tab left waiting): local or Claude is read again now.
     localTab.settle(tab, this.getLocalTarget(tab.session.cwd), this.claudeModels());
@@ -514,6 +517,11 @@ class SessionManager extends EventEmitter {
   }
 
   interrupt(tabId) { this.tabs.get(tabId)?.session.interrupt(); }
+
+  // Pause at the end of Claude's current step, or Continue a held pause (session/pause.js). -> { ok } | { ok: false, error }
+  // Not Keep warm's ping, and not a routine's or workflow's turn, which something else is waiting on.
+  pause(tabId) { const t = this.tabs.get(tabId); return t && canPause(t) && !t.pinging ? t.session.requestPause() : { ok: false, error: "This conversation can't pause." }; }
+  resume(tabId) { return this.tabs.get(tabId)?.session.resumePause?.() || { ok: false, error: "It isn't paused." }; }
 
   markRead(tabId) {
     const tab = this.tabs.get(tabId);
@@ -755,6 +763,8 @@ class SessionManager extends EventEmitter {
       todos: todoGlance(t.session.todos),
       jobs: t.session.jobView(),
       planning: !!t.session.planning,
+      pause: t.session.pauseView?.() || null, // pausing, paused or parked (session/pause.js)
+      canPause: canPause(t),
       compacting: !!t.compacting, // Claude Code compacting it now: the phone's working line says so
       safeMode: !!t.session.safeMode, agent: t.session.agent || null, harness: t.harness || harnesses.CLAUDE,
     }));

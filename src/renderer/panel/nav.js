@@ -79,6 +79,8 @@
     const idle = tab.saved && !tab.busy;
     const w = tab.worktree;
     return [
+      tab.canPause && tab.busy && !tab.pause && act('pause', '⏸', 'Pause', 'He finishes the step he’s on, then waits until you continue', () => SB.pauseTask(tab), null, 'hold wait break'),
+      tab.canPause && ['paused', 'parked'].includes(tab.pause?.phase) && act('continue', '▶', 'Continue', 'He picks up where he stopped', () => SB.pauseTask(tab), null, 'resume unpause go on'),
       tab.busy && act('stop', '■', 'Stop', 'He stops where he is. Queued messages come back to the box', () => SB.stopTask(), 'stop', 'interrupt cancel halt'),
       idle && act('undo', '↶', 'Undo the last turn', 'Rewind to just before your last message: the conversation, the code, or both', () => SB.openRewind(tab, tab.lastTurnId), null, 'rewind revert back'),
       idle && act('rewind', '⟲', 'Rewind to an earlier message', 'Pick one; the conversation, the code, or both go back to then', () => SB.openRewind(tab), 'rewind', 'undo revert back'),

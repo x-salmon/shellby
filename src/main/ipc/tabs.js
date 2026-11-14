@@ -201,7 +201,11 @@ function registerTabsIpc(ipcMain, d) {
     if (!d.isStr(tabId) || !d.isStr(id)) return { ok: false };
     return d.manager.unsteer(tabId, id) ? { ok: true } : { ok: false, taken: true };
   });
-  ipcMain.on('task:stop', (_e, tabId) => { if (d.isStr(tabId)) d.manager.interrupt(tabId); });
+  // Your Stop ends a parked pause too, even with a Keep warm ping running on it (session/pause.js).
+  ipcMain.on('task:stop', (_e, tabId) => { if (d.isStr(tabId)) { d.manager.tabs.get(tabId)?.session.clearParked?.(); d.manager.interrupt(tabId); } });
+  // Pause at the end of the step he's on, and Continue a held pause (session/pause.js). -> { ok } | { ok: false, error }
+  ipcMain.handle('task:pause', (_e, tabId) => d.manager.pause(tabId), [ID]);
+  ipcMain.handle('task:resume', (_e, tabId) => d.manager.resume(tabId), [ID]);
   // A crowded conversation: Claude writes a summary, then onResult starts it fresh.
   ipcMain.handle('tab:fresh', (_e, tabId) => {
     const tab = d.isStr(tabId) && d.manager.tabs.get(tabId);

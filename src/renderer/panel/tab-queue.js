@@ -116,16 +116,23 @@
   SB.editQueued = editQueued;
 
   async function drain(tab) {
+    if (tab.pause?.phase === 'parked') return; // Continue sends it (tab-send.js continueParked)
     if (tab.busy || tab.queuePaused || !tab.queue.length) return;
     const next = tab.queue.shift();
     if (!(await sendNow(tab, next.text, next.attachments, { ...(next.selected ? { selected: next.selected } : {}), fromQueue: true }))) tab.queue.unshift(next);
     if (tab.isActive) syncBusyUi();
   }
 
+  SB.drainQueue = drain;
+
   // A turn ended: send the next queued message, or hand the queue back after Stop.
   SB.onTurnEnded = (tab, result) => {
     // Handed over but never read (main let that process go): ordinary queued messages again.
     tab.queue = tab.queue.map(m => (m.taken ? { ...m, taken: false } : m));
+    // It finished before reaching a step to pause at: say so, as the button just goes back to Pause.
+    if (result.pauseMissed && tab.isActive) SB.toast('He finished before there was a step to pause at.');
+    // Parked (main's session/pause.js): the queue waits for Continue.
+    if (result.parked) { if (tab.isActive) syncBusyUi(); return; }
     if (!tab.queue.length) return;
     if (result.interrupted) {
       const back = L.queueBack(tab.queue);

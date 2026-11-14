@@ -524,6 +524,7 @@ interface ShellbyPanelExtras {
   swapPanes: any;
   takeCarry: any;
   // tab-queue.js
+  drainQueue: any;
   editQueued: any;
   handBack: any;
   onSteered: any;
@@ -538,6 +539,7 @@ interface ShellbyPanelExtras {
   autosize: any;
   clearComposer: any;
   markSent: any;
+  pauseTask: any;
   prefill: any;
   prefillNew: any;
   renderAttachments: any;

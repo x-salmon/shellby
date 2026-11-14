@@ -251,6 +251,8 @@
         <span class="status-crab" aria-hidden="true"></span>
         <span class="status-text" id="statusText">Working…</span>
         <span class="status-time" id="statusTime" title="How long this prompt has been running, the tokens it has used so far, and its step through Claude's to-do list with a rough time left"></span>
+        <!-- Pause: he stops after the step he's on and waits; Continue lets him go on (tab-send.js) -->
+        <button type="button" class="pause-btn" id="pauseBtn" title="He finishes the step he's on, then waits until you continue">Pause</button>
         <button type="button" class="stop-btn" id="stopBtn">Stop <kbd>Esc</kbd></button>
       </div>
       <div class="box-extras">

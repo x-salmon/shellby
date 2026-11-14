@@ -19,14 +19,18 @@
   function syncBusyUi() {
     const tab = SB.activeTab();
     const busy = !!tab?.busy;
-    $('status').hidden = !busy;
+    const pause = L.pauseLine(tab?.pause);
+    // A parked pause has no turn running, but its line and Continue stay until you carry on.
+    $('status').hidden = !busy && pause.button !== 'continue';
+    syncPause(tab, busy, pause);
     $('status').classList.toggle('compacting', busy && !!tab.compacting);
     // While Shellby works you can keep typing: Enter queues the message, and
     // Claude reads it at his next step (or when he finishes, if there's none).
     $('sendBtn').title = busy ? 'Queue: Claude reads it at his next step' : 'Send · right-click to try it 2, 3 or 4 ways';
     $('sendBtn').classList.toggle('queueing', busy);
     $('sendHint').textContent = busy ? 'Enter to queue for his next step · Shift+Enter new line' : 'Enter to send · Shift+Enter new line';
-    if (tab) $('statusText').textContent = busy ? tab.statusText + (tab.queue.length ? ` · ${tab.queue.length} queued` : '') : '';
+    const line = pause.text || (busy ? tab?.statusText : '');
+    if (tab) $('statusText').textContent = line ? line + (tab.queue.length ? ` · ${tab.queue.length} queued` : '') : '';
     if (tab) syncSteers(tab);
     SB.renderModStatus?.(tab);
     SB.renderGoal?.(tab); // its goal and what you might ask next (native-cli.js)
@@ -254,12 +258,57 @@
   $('stopBtn').addEventListener('click', stop);
   function stop() {
     const tab = SB.activeTab();
-    if (!tab?.busy) return;
+    const parked = tab?.pause?.phase === 'parked';
+    if (!tab?.busy && !parked) return;
     api.stopTask(tab.id);
-    tab.setStatus('Stopping…');
+    tab.pause = null; // Stop ends a pause too (main's control.js interrupt)
+    if (tab.busy) tab.setStatus('Stopping…');
+    else SB.onTurnEnded?.(tab, { ok: false, interrupted: true }); // parked: as after a Stop, what you queued comes back to the box
+    syncBusyUi();
   }
 
   SB.stopTask = stop;
+
+  // ------------------------------------------------------------ pause
+
+  // The Pause button as the tab's pause has it: Pause, Pausing… (it waits for
+  // the step he's on) or Continue. Only Claude Code conversations can pause.
+  function syncPause(tab, busy, pause) {
+    const btn = $('pauseBtn');
+    btn.hidden = !tab?.canPause || (!busy && pause.button !== 'continue');
+    btn.disabled = pause.button === 'pausing';
+    btn.textContent = pause.button === 'continue' ? 'Continue' : pause.button === 'pausing' ? 'Pausing…' : 'Pause';
+    btn.classList.toggle('continue', pause.button === 'continue');
+    btn.title = pause.button === 'continue' ? 'He picks up where he stopped. What you queued goes in with it'
+      : pause.button === 'pausing' ? "He's finishing the step he's on" : "He finishes the step he's on, then waits until you continue";
+    $('stopBtn').hidden = !pause.stop;
+  }
+
+  $('pauseBtn').addEventListener('click', () => pauseOrContinue());
+  async function pauseOrContinue(tab = SB.activeTab()) {
+    if (!tab?.canPause) return;
+    const phase = tab.pause?.phase;
+    if (phase === 'parked') return continueParked(tab);
+    if (phase === 'pausing' || phase === 'parking') return;
+    const r = phase === 'paused' ? await api.resumeTask(tab.id) : tab.busy ? await api.pauseTask(tab.id) : null;
+    if (!r) return;
+    if (!r.ok) { SB.toast(r.error || "Couldn't do that just now."); return; }
+    // Main's next summary has the details; until then the button says it's in hand.
+    tab.pause = phase === 'paused' ? null : { phase: 'pausing', waitingOn: null };
+    if (phase === 'paused') tab.setStatus('Working…');
+    if (tab.isActive) syncBusyUi();
+  }
+  SB.pauseTask = pauseOrContinue;
+
+  // A parked pause's turn has ended where he stopped: what you queued meanwhile
+  // goes first, or a message asking him to carry on.
+  async function continueParked(tab) {
+    if (tab.busy) return;
+    tab.pause = null; // carrying on: main clears its side when the message arrives (sessions.js send)
+    if (tab.queue.length) { tab.queuePaused = false; await SB.drainQueue(tab); return; }
+    if (!(await sendNow(tab, L.CONTINUE_TEXT, []))) tab.pause = { phase: 'parked' };
+    if (tab.isActive) syncBusyUi();
+  }
 
   // drag files onto the panel too
   let dragDepth = 0;
