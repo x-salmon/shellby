@@ -30,13 +30,13 @@
 
   // ------------------------------------------------------------ events from main
 
-  api.onTabItem(({ tabId, item }) => {
+  api.onTabItem(({ tabId, item, continues }) => {
     const tab = state.tabs.get(tabId);
     if (!tab) return;
     tab.render(item);
     if (item.kind === 'user' && item.steerId) SB.onSteered(tab, item.steerId);
     if (item.kind === 'result') {
-      tab.busy = false;
+      tab.busy = !!continues; // main goes straight on to another turn (the move into a copy)
       if (!tab.isShown) tab.unread = true;
       SB.onTurnEnded(tab, item);
       api.listSessions().then(s => { state.sessions = s; });

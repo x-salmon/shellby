@@ -68,6 +68,7 @@
     folder: () => ({ path: '', pattern: '', events: 'added' }),
     workflow: () => ({ name: '', status: 'any' }),
     server: () => ({ on: 'crashed', project: '', script: '' }),
+    board: () => ({ on: 'done', project: '' }),
   };
 
   function walk(steps, fn) {

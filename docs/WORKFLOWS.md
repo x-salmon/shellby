@@ -7,6 +7,26 @@ decide whether the next step fixes it or tells you about it.
 
 They live on the **Automate** page (the bottom bar, or <kbd>Ctrl</kbd>+<kbd>4</kbd>, or <kbd>Ctrl</kbd>+<kbd>6</kbd> in Work mode, which puts the tools first on the bar).
 
+## The week at a glance
+
+Once anything is scheduled, a **tide chart** sits at the top of both Automate
+pages: the week of routines, workflows and tasks waiting for your usage reset,
+on one line.
+
+- Runs that already happened sit behind **now**, as dots: teal when they went
+  fine, red when they failed, amber when one waits for you, and grey for a
+  routine's earlier runs (Shellby keeps only how its last one went). Runs still to come
+  are rings ahead of it, and the next start of each one is named.
+- Something that runs every few minutes or hours is one dotted streak, named
+  with how often ("Site watch, every 15 min"), not a ring per start.
+- Near your limit, the 5-hour window you're in is shaded and says when it
+  resets, so a task queued for the reset shows where it will really run.
+- Workflows that wait for something other than the clock (a red build, a file
+  arriving) can't go on a timeline. They're under it, on the **Listening** line.
+- **Press** a mark to go to it: a routine is picked out in the list, a
+  workflow's run opens, and a queued task takes you to the queue. **Next day**
+  zooms in on the next 24 hours.
+
 ## Three ways to make one
 
 - **Describe it.** Type what should happen and when ("when a pull request
@@ -122,6 +142,7 @@ Shellby remembers which you used last.
 | From a script | a web hook: when a script calls its address (see below) |
 | When Claude Code asks | lets Claude Code (`run_workflow`) and `shellby flow run` start it |
 | When a dev server changes | when a dev server started from the [Projects page](PROJECTS.md) comes up, crashes or is stopped, optionally only one project's or one script's. The steps get its project, script, port and exit code as `trigger.*` |
+| When the task board changes | when one of Shellby's conversations posts a task on a project's [task board](PROJECTS.md#task-board), or one is done or fails, optionally only one project's. The steps get its id, title, detail, result and the conversation that posted or did it as `trigger.*` |
 
 Every workflow can also be run by hand with **Run**.
 

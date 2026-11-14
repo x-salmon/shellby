@@ -118,6 +118,18 @@ Three things a project's page can start for you. Each one opens a new conversati
 - **Check the docs.** Claude reads the README, CONTRIBUTING, `docs/`, the example env file and the help text the code prints, and checks them against the code: commands and scripts that are gone, env settings, flags and config keys, paths, the versions asked for, and API examples. It fixes the docs in a copy on its own branch, never the code (anything the code seems to get wrong is listed for you instead), commits, and tells you what changed and why. It never pushes.
 - **Make it automatic…** opens a weekly docs check in the routine editor, run in your checkout in **Ask first**. It only reports what's out of date, most misleading first, and changes nothing. It isn't saved, and never runs, until you press **Save** there. Once saved it runs every Monday and uses your Claude usage each time, like any routine.
 
+## Task board
+
+Shellby's conversations can hand each other work. Ask one to split a job up ("do the API and the UI at the same time") and it posts the parts on the project's task board; another conversation claims a part, does it and marks it done with what it changed, and the first one reads that and carries on. A task can need others first: it isn't picked up until they're done, and if one of them fails it never is.
+
+- **Helpers.** A conversation can start a helper on a task it posts: a new conversation, in its own copy on its own branch, in the same mode as the one that posted it (so in Ask first, the helper asks you too), though never Autonomous: a helper of an Autonomous conversation runs in Smart. At most three helpers work at once and twelve start an hour, and none start while your usage window is at its limit. A workflow's or routine's conversation can post tasks but not start helpers, since it runs with only the tools it was given. Each is a conversation like any other, on the desk, where you can watch, answer or stop it.
+- **The card.** A project's page shows its board once something's on it: each task, where it is (open, waiting on another, being done, done or failed), who has it and what came back. **Open** goes to the conversation doing it; **Cancel** stops an unfinished one being picked up.
+- **Workflows.** The **When the task board changes** trigger runs a workflow when a task is posted, done or fails, with its title, result and the conversation that did it as `trigger.*`. Review every finished task in Plan mode, say, or tell your phone when one fails. Claude wrote those words, so a step should treat them as information. Tasks posted by a workflow's own conversation (or by helpers it started) never start a workflow, so one can't set itself off again.
+- **Each project's board is its own.** A conversation only sees, claims and waits on tasks in the project it's working in.
+- **A conversation that closes** gives back what it had claimed, so nothing waits on a tab that's gone.
+
+It's on unless you turn it off: **Settings → Claude → Task board**. Off, Claude isn't told about it and its four tools aren't sent. The board is kept on this PC, the last 300 tasks.
+
 ## Notes
 
 Somewhere to put ideas before they're tasks. **Notes** on the bar (<kbd>Ctrl</kbd>+<kbd>8</kbd>, <kbd>Ctrl</kbd>+<kbd>3</kbd> in Work mode, or **New note** in <kbd>Ctrl</kbd>+<kbd>K</kbd>) keeps a list for each project and one **General** list, and opens on the project you're working in. Type a note and press <kbd>Enter</kbd> (<kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line). Point at a note (or tab into it) for its three buttons:

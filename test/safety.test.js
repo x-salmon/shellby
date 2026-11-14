@@ -66,3 +66,14 @@ test('annotatePermission: writing a mod flags the card as selfConfig', () => {
   const cmd = annotatePermission({ toolName: 'Bash', input: { command: 'echo x > C:\\Users\\x\\.claude\\skills\\tidy\\.claude-plugin\\plugin.json' } });
   assert.equal(cmd.selfConfig, MOD);
 });
+
+test("the other agents' own settings and instructions count as their setup", () => {
+  const { selfConfigTarget } = require('../src/main/safety');
+  assert.equal(selfConfigTarget('C:\\repo\\.gemini\\settings.json'), "Gemini CLI's settings");
+  assert.equal(selfConfigTarget('GEMINI.md'), 'GEMINI.md instructions');
+  assert.equal(selfConfigTarget('C:\\Users\\me\\.codex\\config.toml'), "Codex's settings");
+  assert.equal(selfConfigTarget('AGENTS.md'), 'AGENTS.md instructions');
+  assert.equal(selfConfigTarget('opencode.json'), "OpenCode's settings");
+  assert.equal(selfConfigTarget('codex mcp add evil -- node x.js'), 'MCP server config');
+  assert.equal(selfConfigTarget('src/agents.js'), null);
+});

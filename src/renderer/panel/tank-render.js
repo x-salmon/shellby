@@ -71,9 +71,9 @@
   // ------------------------------------------------------------ words and controls around it
 
   function renderTools({ edit, history, future, item }) {
-    $('tkDecorate').hidden = edit;
-    $('tkCard').hidden = edit;
-    for (const id of ['tkUndo', 'tkRedo', 'tkCancel', 'tkDone']) $(id).hidden = !edit;
+    // On the glass: watching, what you can do with the tank; decorating, the editor's own.
+    for (const id of ['tkDecorate', 'tkCard', 'tkOpenLayouts', 'tkPinsOn', 'tkOpenSheet']) $(id).hidden = edit;
+    for (const id of ['tkUndo', 'tkRedo', 'tkCount', 'tkCancel', 'tkDone']) $(id).hidden = !edit;
     $('tkUndo').disabled = !history.length;
     $('tkRedo').disabled = !future.length;
     $('tkPicked').hidden = !item;

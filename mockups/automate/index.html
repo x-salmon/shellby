@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby Automate: five ways to rebuild it</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Bold.ttf"); font-weight: 700; }
+@font-face { font-family: "Martian Mono"; src: url("../../assets/fonts/MartianMono.ttf"); font-weight: 100 800; }
+
+:root {
+  --abyss: #071012; --ink: #0c1719; --reef: #11232a; --reef-2: #173039; --reef-3: #1e3d47;
+  --line: #214049; --line-soft: rgba(127, 214, 194, .10);
+  --sand: #f3e6cc; --sand-dim: #b3a892; --sand-faint: #9d9482;
+  --glass: #7fd6c2; --glass-dim: rgba(127, 214, 194, .14);
+  --coral: #ff7a5c; --coral-dim: rgba(255, 122, 92, .14);
+  --amber: #ffc15e; --amber-dim: rgba(255, 193, 94, .13); --danger: #ff5a4a;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  --font-pixel: "Pixelify Sans", monospace;
+  --font-mono: "Martian Mono", Consolas, monospace;
+  --r-sm: 6px; --r: 10px; --r-lg: 14px;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+* { box-sizing: border-box; font-variant-ligatures: no-common-ligatures; } /* Pixelify's "fi" reads as "A" */
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--abyss); color: var(--sand); font-family: var(--font-body); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- gallery chrome ---------- */
+.intro { max-width: 1120px; margin: 0 auto; padding: 56px 32px 24px; }
+.intro h1 { font-family: var(--font-pixel); font-weight: 600; font-size: 40px; line-height: 1.1; margin: 0 0 16px; }
+.intro p { max-width: 66ch; color: var(--sand-dim); font-size: 16px; line-height: 1.55; margin: 0 0 12px; }
+.found { margin: 28px 0 0; border-top: 1px solid var(--line); padding-top: 20px; }
+.found h2 { font-size: 15px; margin: 0 0 10px; }
+.found ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px 28px; padding-left: 18px; margin: 0; color: var(--sand-dim); font-size: 14px; line-height: 1.5; }
+.found b { color: var(--sand); }
+.jump { position: sticky; top: 0; z-index: 5; background: rgba(7, 16, 18, .92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.jump nav { max-width: 1120px; margin: 0 auto; padding: 10px 32px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.jump a { color: var(--sand-dim); text-decoration: none; font-size: 13px; padding: 4px 10px; border-radius: 99px; }
+.jump a:hover { color: var(--sand); background: var(--reef-2); }
+.sizer { margin-left: auto; display: inline-flex; gap: 2px; padding: 3px; background: var(--ink); border: 1px solid var(--line); border-radius: 99px; }
+.sizer button { background: none; border: 0; border-radius: 99px; padding: 4px 12px; font-size: 12.5px; color: var(--sand-dim); cursor: pointer; }
+.sizer button[aria-pressed="true"] { background: var(--glass-dim); color: var(--glass); }
+
+.mock { max-width: 1120px; margin: 0 auto; padding: 56px 32px; display: grid; grid-template-columns: 460px 1fr; gap: 48px; align-items: start; border-bottom: 1px solid var(--line-soft); }
+.notes { padding-top: 8px; max-width: 56ch; }
+.notes .num { font-family: var(--font-pixel); color: var(--glass); font-size: 18px; }
+.notes h2 { font-family: var(--font-pixel); font-weight: 600; font-size: 30px; line-height: 1.15; margin: 4px 0 14px; }
+.notes p { color: var(--sand-dim); line-height: 1.6; margin: 0 0 12px; font-size: 15px; }
+.notes dl { margin: 20px 0 0; display: grid; grid-template-columns: 7em 1fr; gap: 10px 14px; font-size: 14px; line-height: 1.5; }
+.notes dt { color: var(--sand-faint); }
+.notes dd { margin: 0; }
+.notes .try { margin-top: 18px; font-size: 13px; color: var(--glass); }
+@media (max-width: 980px) { .mock { grid-template-columns: 1fr; } }
+
+[data-size="wide"] .mock { max-width: none; grid-template-columns: minmax(0, 1fr); justify-items: center; }
+[data-size="wide"] .notes { width: min(1280px, 100%); max-width: none; columns: 2 380px; column-gap: 56px; }
+[data-size="wide"] .notes > :is(.num, h2, p:first-of-type) { column-span: all; max-width: 72ch; }
+[data-size="wide"] .notes dl { break-inside: avoid; }
+
+/* ---------- the panel ---------- */
+.phone { container: phone / inline-size; width: 460px; height: 700px; max-width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; display: flex; flex-direction: column; font-size: 13px; box-shadow: 0 24px 60px rgba(0, 0, 0, .45); position: relative; transition: width .3s var(--ease-out), height .3s var(--ease-out); }
+[data-size="wide"] .phone { width: min(1280px, 100%); height: 800px; }
+.bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--reef); flex: none; }
+.bar .ttl { margin: 0; font-family: var(--font-pixel); font-weight: 600; font-size: 17px; flex: 1; }
+.scroll { flex: 1; overflow-y: auto; padding: 14px 16px 22px; scrollbar-width: thin; scrollbar-color: var(--reef-3) transparent; }
+@container phone (min-width: 860px) { .scroll { padding: 20px 28px 28px; } }
+
+.btn { background: var(--reef-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12.5px; white-space: nowrap; }
+.btn:hover { border-color: var(--reef-3); background: var(--reef-3); }
+.btn.primary { background: var(--coral); color: var(--ink); border-color: var(--coral); font-weight: 700; }
+.btn.glass { background: var(--glass); color: var(--ink); border-color: var(--glass); font-weight: 700; }
+.btn.ghost { background: none; border-color: transparent; color: var(--sand-dim); }
+.btn.ghost:hover { color: var(--sand); background: var(--reef-2); }
+.muted { color: var(--sand-faint); }
+.h { font-size: 13px; font-weight: 700; margin: 20px 0 8px; display: flex; align-items: center; gap: 8px; }
+.h .count { font-weight: 400; color: var(--sand-faint); }
+.card { background: var(--reef); border: 1px solid var(--line-soft); border-radius: var(--r); }
+.tog { appearance: none; width: 34px; height: 20px; border-radius: 99px; background: var(--reef-3); position: relative; cursor: pointer; flex: none; transition: background .15s; margin: 0; }
+.tog::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--sand-dim); transition: transform .18s var(--ease-out), background .15s; }
+.tog:checked { background: var(--glass); }
+.tog:checked::after { transform: translateX(14px); background: var(--ink); }
+.seg { display: inline-flex; background: var(--abyss); border: 1px solid var(--line); border-radius: 8px; padding: 2px; flex: none; }
+.seg button { background: none; border: 0; padding: 3px 10px; border-radius: 6px; font-size: 12px; color: var(--sand-dim); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--reef-3); color: var(--sand); }
+.pill { font-size: 11.5px; padding: 3px 10px; border-radius: 99px; background: var(--glass-dim); color: var(--glass); white-space: nowrap; }
+.pill.coral { background: var(--coral-dim); color: var(--coral); }
+.pill.amber { background: var(--amber-dim); color: var(--amber); }
+.pill.off { background: var(--reef-2); color: var(--sand-faint); }
+.glyph { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; flex: none; background: var(--reef-2); color: var(--sand-dim); }
+.glyph[data-src="clock"] { color: var(--glass); }
+.glyph[data-src="code"] { color: var(--coral); }
+.glyph[data-src="files"] { color: var(--amber); }
+.glyph[data-src="limit"] { color: #b9a7ff; }
+.glyph[data-src="outside"] { color: var(--sand); }
+.runs { display: inline-flex; gap: 2px; }
+.runs i { width: 7px; height: 12px; border-radius: 1.5px; background: var(--glass); }
+.runs i[data-r="x"] { background: var(--coral); }
+.runs i[data-r="a"] { background: var(--amber); }
+.runs i[data-r="-"] { background: var(--reef-3); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips button { background: none; border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; font-size: 12px; color: var(--sand-dim); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chips button[aria-pressed="true"] { border-color: var(--glass); color: var(--glass); background: var(--glass-dim); }
+.chips button span { color: var(--sand-faint); }
+.quote { border-left: 2px solid var(--glass); padding: 2px 0 2px 10px; color: var(--sand); line-height: 1.5; }
+.quote.x { border-color: var(--coral); }
+.quote.a { border-color: var(--amber); }
+
+/* ================= M1 tide chart ================= */
+.tide { background: linear-gradient(180deg, var(--reef) 0%, var(--ink) 100%); border: 1px solid var(--line-soft); border-radius: var(--r-lg); padding: 12px 14px 8px; }
+.tide-head { display: flex; align-items: center; gap: 10px; }
+.tide-head b { font-family: var(--font-pixel); font-weight: 600; font-size: 15px; flex: 1; }
+.track { position: relative; height: 150px; margin-top: 6px; }
+@container phone (min-width: 860px) { .track { height: 176px; } }
+.track svg.wave { position: absolute; left: 0; right: 0; bottom: 20px; width: 100%; height: 56px; }
+.band { position: absolute; top: 4px; bottom: 20px; background: repeating-linear-gradient(135deg, rgba(185, 167, 255, .10) 0 6px, transparent 6px 12px); border-left: 1px dashed rgba(185, 167, 255, .45); border-right: 1px dashed rgba(185, 167, 255, .45); }
+.band span { position: absolute; top: 16px; left: 6px; font-size: 10.5px; color: #c8bbff; white-space: nowrap; }
+.now { position: absolute; top: 0; bottom: 20px; border-left: 1.5px solid var(--coral); }
+.now span { position: absolute; top: -2px; left: 5px; font-size: 10.5px; color: var(--coral); font-weight: 700; }
+.mk { position: absolute; bottom: 38px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; padding: 0; cursor: pointer; }
+.mk .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--glass); box-shadow: 0 0 0 3px var(--ink); }
+.mk[data-r="x"] .dot { background: var(--coral); }
+.mk[data-r="a"] .dot { background: var(--amber); }
+.mk.future .dot { background: var(--ink); border: 2px solid var(--glass); }
+.mk.future[data-src="limit"] .dot { border-color: #b9a7ff; }
+.mk.ghost { opacity: .35; }
+.mk .lbl { font-size: 11px; color: var(--sand-dim); white-space: nowrap; background: var(--ink); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--line-soft); }
+.mk .stem { width: 1px; background: var(--line); }
+.mk:hover .lbl, .mk[aria-pressed="true"] .lbl { color: var(--sand); border-color: var(--glass); }
+.mk.tiny .lbl { display: none; }
+.ticks { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
+.ticks span { position: absolute; transform: translateX(-50%); font-size: 10.5px; color: var(--sand-faint); }
+.listen { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--sand-dim); }
+.ear { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 99px; background: var(--reef-2); color: var(--sand); cursor: pointer; border: 0; font-size: 12px; }
+.ear::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--glass); }
+.m1-body { margin-top: 4px; }
+@container phone (min-width: 860px) { .m1-body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; } }
+.alist { display: flex; flex-direction: column; }
+.arow { display: flex; align-items: center; gap: 12px; padding: 10px 10px; border-radius: var(--r); cursor: pointer; border: 1px solid transparent; }
+.arow:hover { background: var(--reef); }
+.arow[aria-selected="true"] { background: var(--reef); border-color: var(--line); }
+.arow .t { flex: 1; min-width: 0; line-height: 1.35; }
+.arow .t b { display: block; font-size: 13.5px; }
+.arow .t span { display: block; color: var(--sand-faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arow .when { font-size: 12px; color: var(--sand-dim); text-align: right; white-space: nowrap; }
+.arow.off .t b, .arow.off .glyph { opacity: .55; }
+.detail { padding: 16px; position: sticky; top: 0; }
+.detail h3 { margin: 0 0 4px; font-size: 17px; }
+.detail .sent { color: var(--sand-dim); line-height: 1.5; margin: 0 0 14px; }
+.detail .row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.detail .lab { font-size: 12px; color: var(--sand-faint); margin: 14px 0 6px; }
+.m1-body .detail-inline { margin: 2px 0 8px 42px; }
+@container phone (min-width: 860px) { .m1-body .detail-inline { display: none; } }
+@container phone (max-width: 859px) { .m1-body > .detail { display: none; } }
+
+/* ================= M2 when/then ================= */
+.compose { background: var(--reef); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 18px 14px; }
+.sentence { font-size: 19px; line-height: 2.05; margin: 0; }
+@container phone (min-width: 860px) { .sentence { font-size: 26px; line-height: 1.95; } }
+.blank { display: inline; font: inherit; border: 0; border-bottom: 2px solid var(--glass); background: var(--glass-dim); color: var(--glass); padding: 1px 10px; border-radius: 6px 6px 0 0; cursor: pointer; position: relative; }
+.blank[data-k="trigger"] { color: var(--coral); background: var(--coral-dim); border-color: var(--coral); }
+.blank[data-k="then"] { color: var(--amber); background: var(--amber-dim); border-color: var(--amber); }
+.blank::after { content: "▾"; font-size: .55em; margin-left: 4px; vertical-align: .25em; opacity: .7; }
+.pop { position: absolute; z-index: 20; background: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 4px; min-width: 240px; box-shadow: 0 14px 40px rgba(0, 0, 0, .5); font-size: 13px; line-height: 1.3; }
+.pop button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 7px 10px; border-radius: 7px; cursor: pointer; color: var(--sand); }
+.pop button:hover, .pop button:focus-visible { background: var(--reef-2); }
+.compose-foot { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.compose-foot .muted { flex: 1; font-size: 12px; min-width: 180px; }
+.own { display: flex; gap: 8px; margin-top: 12px; }
+.own input { flex: 1; min-width: 0; background: var(--abyss); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; outline: none; }
+.own input:focus { border-color: var(--glass); }
+.own input::placeholder { color: var(--sand-faint); }
+.m2-grid { display: block; }
+@container phone (min-width: 860px) { .m2-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 28px; align-items: start; } }
+.starter { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line-soft); padding: 10px 2px; cursor: pointer; line-height: 1.45; color: var(--sand-dim); font-size: 13px; }
+.starter:first-child { border-top: 0; }
+.starter:hover { color: var(--sand); }
+.starter em { font-style: normal; color: var(--coral); }
+.mine { padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start; border-top: 1px solid var(--line-soft); }
+.mine:first-child { border-top: 0; }
+.mine p { margin: 0; flex: 1; line-height: 1.5; font-size: 13.5px; }
+.mine p em { font-style: normal; color: var(--coral); }
+.mine p b { font-weight: 400; color: var(--glass); }
+.mine.off p { color: var(--sand-faint); }
+.mine.off p em, .mine.off p b { color: inherit; }
+.mine .side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* ================= M3 inbox ================= */
+.m3-grid { display: block; }
+@container phone (min-width: 860px) { .m3-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; } }
+.greet { font-family: var(--font-pixel); font-weight: 600; font-size: 20px; margin: 2px 0 4px; }
+.greet + p { margin: 0 0 6px; color: var(--sand-dim); }
+.item { padding: 14px; margin-bottom: 8px; }
+.item.ask { border-color: rgba(255, 193, 94, .35); }
+.item.fail { border-color: rgba(255, 122, 92, .35); }
+.item header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.item header b { flex: 1; font-size: 13.5px; }
+.item header small { color: var(--sand-faint); font-size: 12px; }
+.item .acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.item.done { opacity: .6; }
+.upnext { display: flex; flex-direction: column; gap: 2px; }
+.upnext div { display: flex; gap: 10px; padding: 6px 2px; font-size: 12.5px; color: var(--sand-dim); }
+.upnext div time { width: 70px; flex: none; color: var(--sand); }
+.aside h3 { margin: 0 0 8px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+.mini { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-top: 1px solid var(--line-soft); }
+.mini:first-child { border-top: 0; }
+.mini .t { flex: 1; min-width: 0; font-size: 12.5px; }
+.mini .t small { display: block; color: var(--sand-faint); font-size: 11.5px; }
+@container phone (max-width: 859px) { .aside { margin-top: 18px; } }
+
+/* ================= M4 switchboard ================= */
+.lanes { display: flex; flex-direction: column; gap: 10px; }
+@container phone (min-width: 860px) { .lanes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: stretch; } }
+.lane { background: var(--reef); border: 1px solid var(--line-soft); border-radius: var(--r-lg); padding: 12px; display: flex; flex-direction: column; position: relative; }
+.lane-h { display: flex; align-items: center; gap: 10px; }
+.lane-h b { display: block; font-size: 14px; }
+.lane-h small { display: block; font-size: 11.5px; color: var(--sand-faint); line-height: 1.35; }
+.jacks { position: relative; margin: 12px 0 0 14px; padding-left: 16px; display: flex; flex-direction: column; gap: 8px; }
+.jacks::before { content: ""; position: absolute; left: 0; top: -12px; bottom: 14px; border-left: 2px solid var(--reef-3); }
+.jack { position: relative; background: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; display: flex; gap: 8px; align-items: flex-start; }
+.jack::before { content: ""; position: absolute; left: -17px; top: 14px; width: 16px; border-top: 2px solid var(--reef-3); }
+.jack::after { content: ""; position: absolute; left: -21px; top: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--reef-3); }
+.jack.live::before { border-color: var(--glass); }
+.jack.live::after { background: var(--glass); }
+.lane[data-src="code"] .jack.live::before { border-color: var(--coral); }
+.lane[data-src="code"] .jack.live::after { background: var(--coral); }
+.lane[data-src="files"] .jack.live::before { border-color: var(--amber); }
+.lane[data-src="files"] .jack.live::after { background: var(--amber); }
+.lane[data-src="limit"] .jack.live::before { border-color: #b9a7ff; }
+.lane[data-src="limit"] .jack.live::after { background: #b9a7ff; }
+.jack .t { flex: 1; min-width: 0; line-height: 1.35; }
+.jack .t b { display: block; font-size: 12.5px; }
+.jack .t small { display: block; font-size: 11.5px; color: var(--sand-faint); }
+.jack .tog { transform: scale(.85); transform-origin: right center; }
+.empty-jack { margin: 12px 0 0; border: 1px dashed var(--line); border-radius: var(--r); padding: 10px; font-size: 12px; color: var(--sand-faint); line-height: 1.45; }
+.offer { margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.offer span { font-size: 11.5px; color: var(--sand-faint); }
+.offer button { text-align: left; background: none; border: 0; padding: 4px 0; font-size: 12.5px; color: var(--glass); cursor: pointer; }
+.offer button:hover { text-decoration: underline; }
+.board-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.board-top p { margin: 0; flex: 1; color: var(--sand-dim); min-width: 220px; line-height: 1.45; }
+
+/* ================= M5 ledger ================= */
+.sum { font-size: 15px; line-height: 1.55; margin: 0 0 14px; max-width: 70ch; }
+.sum b { color: var(--glass); font-weight: 700; }
+.sum .x { color: var(--coral); }
+.sum .a { color: var(--amber); }
+.ltools { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.ltools .muted { font-size: 12px; }
+.ledger { border: 1px solid var(--line-soft); border-radius: var(--r); overflow: hidden; }
+.lrow, .lhead { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px 14px; padding: 10px 12px; align-items: center; }
+.lhead { display: none; }
+@container phone (min-width: 860px) {
+  .lhead, .lrow { grid-template-columns: minmax(0, 2.2fr) 150px 90px minmax(0, 1fr) 110px 44px; }
+  .lhead { display: grid; background: var(--reef); font-size: 11.5px; color: var(--sand-faint); padding-top: 8px; padding-bottom: 8px; }
+}
+.lrow { border-top: 1px solid var(--line-soft); cursor: pointer; }
+.lrow:hover { background: rgba(17, 35, 42, .6); }
+.lrow[aria-expanded="true"] { background: var(--reef); }
+.lrow .n { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lrow .n .t { min-width: 0; line-height: 1.35; }
+.lrow .n b { display: block; font-size: 13.5px; }
+.lrow .n small { display: block; font-size: 11.5px; color: var(--sand-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrow .c-runs, .lrow .c-took, .lrow .c-use, .lrow .c-next { font-size: 12px; color: var(--sand-dim); }
+.use { display: flex; align-items: center; gap: 8px; }
+.use .meter { flex: 1; height: 6px; background: var(--reef-3); border-radius: 99px; overflow: hidden; min-width: 40px; }
+.use .meter i { display: block; height: 100%; background: var(--glass); border-radius: 99px; }
+.use.hot .meter i { background: var(--amber); }
+@container phone (max-width: 859px) {
+  .lrow { grid-template-columns: minmax(0, 1fr) auto; }
+  .lrow .c-runs { grid-column: 1 / 2; padding-left: 40px; display: flex; gap: 10px; align-items: center; }
+  .lrow .c-took { display: none; }
+  .lrow .c-use { grid-column: 1 / 2; padding-left: 40px; }
+  .lrow .c-next { grid-row: 1; grid-column: 2; text-align: right; }
+  .lrow .c-on { grid-row: 2; grid-column: 2; justify-self: end; }
+}
+.hint { display: flex; gap: 10px; align-items: center; padding: 9px 12px 9px 52px; background: var(--amber-dim); border-top: 1px solid rgba(255, 193, 94, .2); font-size: 12.5px; color: var(--sand); flex-wrap: wrap; }
+.hint p { margin: 0; flex: 1; min-width: 200px; }
+.hist { padding: 4px 12px 12px 52px; background: var(--reef); }
+.hist div { display: grid; grid-template-columns: 110px 70px 1fr; gap: 10px; padding: 5px 0; font-size: 12px; color: var(--sand-dim); border-top: 1px solid var(--line-soft); }
+.hist div:first-child { border-top: 0; }
+.hist .ok { color: var(--glass); }
+.hist .x { color: var(--coral); }
+.hist .a { color: var(--amber); }
+@container phone (max-width: 859px) { .hist { padding-left: 12px; } .hist div { grid-template-columns: 90px 1fr; } .hist div span:last-child { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <h1>Automate: five ways to rebuild it</h1>
+  <p>Today the page is two tabs with three different ideas under them. A workflow, a routine and a task waiting for your limit to reset all mean "do this without me", and each sits in its own place with its own form. The page also shows how each one is set up, but almost nothing about what it did.</p>
+  <p>Each mockup below picks something else to lead with: time, plain sentences, results, what starts them, or what they cost. Your three routines are the real data. Two example workflows (Red build fixer, Downloads sorter) and one queued task stand beside them so the screens have something to show. Use the switch in the bar to see each mockup at panel size or full window.</p>
+  <section class="found">
+    <h2>What the screenshots show</h2>
+    <ul>
+      <li><b>One idea, two tabs.</b> A routine is a workflow with a schedule and one Claude step, but the two are made, listed and edited apart.</li>
+      <li><b>The prompt is the label.</b> Routine rows show the raw instruction cut off mid-sentence, with no plain summary of what the routine does.</li>
+      <li><b>Results are hidden.</b> "Ran 4d ago" says it ran, not what it found. You have to open a tab to learn the tax check said nothing is due.</li>
+      <li><b>Eleven templates in a wall.</b> The cards all look alike and their text is cut off, and on a wide screen they stretch into one long strip.</li>
+      <li><b>Leftovers at the bottom.</b> Secrets, cloud routines and the limit-reset queue sit below the fold, each in its own style.</li>
+      <li><b>Wide screens are wasted.</b> At 4K the input runs 1,900px wide and two thirds of the page is empty.</li>
+    </ul>
+  </section>
+</header>
+
+<div class="jump"><nav>
+  <a href="#m1">1 Tide chart</a><a href="#m2">2 When, then</a><a href="#m3">3 Inbox</a><a href="#m4">4 Switchboard</a><a href="#m5">5 Ledger</a>
+  <div class="sizer" role="group" aria-label="Mockup size">
+    <button type="button" data-size="panel">Panel 460</button><button type="button" data-size="wide">Window 1280</button>
+  </div>
+</nav></div>
+
+<!-- ============ 1 ============ -->
+<section class="mock" id="m1">
+  <div class="phone" id="p1">
+    <div class="bar"><b class="ttl">Automate</b><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
+    <div class="scroll">
+      <div class="tide">
+        <div class="tide-head"><b>This week</b>
+          <div class="seg" id="m1Range"><button type="button" data-r="day" aria-pressed="false">Next day</button><button type="button" data-r="week" aria-pressed="true">Week</button></div>
+        </div>
+        <div class="track" id="m1Track"></div>
+        <div class="listen" id="m1Listen"></div>
+      </div>
+      <div class="h" style="margin-top:18px">Everything <span class="count" id="m1Count"></span></div>
+      <div class="chips" id="m1Chips"></div>
+      <div class="m1-body" style="margin-top:10px">
+        <div class="alist" id="m1List" role="listbox" aria-label="Automations"></div>
+        <div class="detail card" id="m1Detail"></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">1</div>
+    <h2>Tide chart</h2>
+    <p>One page, no tabs. A tide line across the top shows the week: runs that already happened sit on the wave behind "now", and runs still to come wait ahead of it. The 5-hour limit window is shaded, so a task waiting for the reset sits where it will actually run.</p>
+    <p>Below the chart is one list of every automation, filtered by what starts it. Workflows that wait for a build or a file don't fit on a timeline, so they sit on the "Listening" line under the wave.</p>
+    <dl>
+      <dt>Fixes</dt><dd>Two tabs, three forms. "When your limit resets" stops being a separate form at the bottom and becomes a point on the chart.</dd>
+      <dt>Wide screen</dt><dd>The chart spans the full width, and the list gets a detail pane with the last result and run history.</dd>
+      <dt>Cost</dt><dd>Needs a single "next runs" feed that covers routines, scheduled workflows and the reset queue. Most of that data already exists in the routine and workflow schedulers.</dd>
+      <dt>Risk</dt><dd>Quiet weeks look empty. With only Monday jobs, most of the wave is bare.</dd>
+    </dl>
+    <p class="try">Try: press a marker on the wave, switch to Next day, filter to Listening.</p>
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section class="mock" id="m2">
+  <div class="phone" id="p2">
+    <div class="bar"><b class="ttl">Automate</b><button class="btn ghost" type="button">Import</button><button class="btn ghost" type="button">Secrets</button></div>
+    <div class="scroll">
+      <div class="m2-grid">
+        <div>
+          <div class="compose">
+            <p class="sentence" id="m2Sentence"></p>
+            <div class="compose-foot"><span class="muted">Claude writes it out for you to check. Nothing runs until you save it.</span><button class="btn primary" type="button">Draft it</button></div>
+          </div>
+          <div class="own"><input type="text" placeholder="Or say it your own way: when a build fails, find out why and text me"><button class="btn" type="button">Draft it</button></div>
+          <div class="h">Yours <span class="count" id="m2Count"></span></div>
+          <div class="card" id="m2Mine"></div>
+        </div>
+        <div>
+          <div class="h">Start from one of these</div>
+          <div id="m2Starters"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">2</div>
+    <h2>When, then</h2>
+    <p>Making an automation becomes finishing a sentence. Every blank is a short menu: what starts it, what Claude does, where, and how you hear about it. Choosing a schedule makes a routine and choosing an event makes a workflow, so you never have to know which one you need.</p>
+    <p>Your automations are listed in the same sentence form, so "Every Monday at 8:30, Claude re-checks state PFAS rules" replaces a prompt cut off mid-word. The templates become starter sentences you can press to load and then change.</p>
+    <dl>
+      <dt>Fixes</dt><dd>Rows labelled with the raw prompt, the wall of templates, and having to pick between routine and workflow before you start.</dd>
+      <dt>Wide screen</dt><dd>The sentence is set large on the left, with the starters beside it. It reads like a form you fill in, not a long input bar.</dd>
+      <dt>Cost</dt><dd>Each automation needs a one-sentence summary. Claude can write it when the automation is drafted, and older ones fall back to their trigger and name.</dd>
+      <dt>Risk</dt><dd>Workflows with If branches don't fit in one sentence. The sentence covers the start; the map is still one click away.</dd>
+    </dl>
+    <p class="try">Try: press any coloured blank, or one of the starter sentences.</p>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section class="mock" id="m3">
+  <div class="phone" id="p3">
+    <div class="bar"><b class="ttl">Automate</b><button class="btn primary" type="button">New</button></div>
+    <div class="scroll">
+      <div class="m3-grid">
+        <div>
+          <p class="greet">Two need you, three reported back</p>
+          <p>Since Monday morning.</p>
+          <div class="h">Needs you</div>
+          <div id="m3Needs"></div>
+          <div class="h">Reported back</div>
+          <div id="m3Back"></div>
+          <div class="h">Coming up</div>
+          <div class="upnext card" style="padding:4px 12px" id="m3Next"></div>
+        </div>
+        <div class="aside">
+          <h3>All automations <button class="btn ghost" type="button">Templates</button></h3>
+          <div class="card" id="m3All"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">3</div>
+    <h2>Inbox</h2>
+    <p>The page opens on what your automations said, not how they're set up. An Ask me step, a run that failed, or a routine paused for weeks goes to the top under "Needs you", with buttons that settle it in place. Under that, every finished run shows a few lines of what it found.</p>
+    <p>The list of automations becomes a column on the side. You switch things on and off there, and opening one takes you to its editor as it does today.</p>
+    <dl>
+      <dt>Fixes</dt><dd>"Ran 4d ago" with no result. You'd see "Nothing is due in the next 14 days" without opening a tab.</dd>
+      <dt>Wide screen</dt><dd>The inbox fills the middle and the list sits in a 340px column. At panel size the list moves under the inbox.</dd>
+      <dt>Cost</dt><dd>Each run keeps a short result excerpt: the final message of its Claude step or a Tell me step's text. Runs already end in a tab, so it's a matter of storing that text.</dd>
+      <dt>Risk</dt><dd>It overlaps with the Feed and notifications. Results would need to be marked read once you've seen them in either place.</dd>
+    </dl>
+    <p class="try">Try: press Take a crack, or Turn it back on.</p>
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section class="mock" id="m4">
+  <div class="phone" id="p4">
+    <div class="bar"><b class="ttl">Automate</b><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
+    <div class="scroll">
+      <div class="board-top"><p>Each column is something Shellby can listen to. A lit plug means something you made is listening there.</p><input type="search" class="own" style="margin:0;background:var(--abyss);border:1px solid var(--line);border-radius:var(--r);padding:7px 12px;min-width:200px" placeholder="Find an automation"></div>
+      <div class="lanes" id="m4Lanes"></div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">4</div>
+    <h2>Switchboard</h2>
+    <p>Automations are grouped by what starts them: the clock, your code, files and this PC, the limit reset, and things outside Shellby. Each group shows what's plugged in, and an empty one suggests the two templates that fit it. "Nothing listens to your builds yet" with Red build fixer under it is easier to act on than a wall of eleven cards.</p>
+    <p>It also shows what Shellby can do. Many people won't know a workflow can start when a dev server crashes or a test flakes until they see an empty plug for it.</p>
+    <dl>
+      <dt>Fixes</dt><dd>Template overload, and triggers you'd never find. Templates appear next to the thing they react to.</dd>
+      <dt>Wide screen</dt><dd>Five columns side by side, like a patch bay. At panel size they stack, and empty ones shrink to one line.</dd>
+      <dt>Cost</dt><dd>Small. It's a grouping of what exists, and the templates already know their trigger.</dd>
+      <dt>Risk</dt><dd>A workflow with two triggers shows up in two columns. That's honest, but it can look like a duplicate.</dd>
+    </dl>
+    <p class="try">Try: press a suggestion in an empty column to plug it in.</p>
+  </div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section class="mock" id="m5">
+  <div class="phone" id="p5">
+    <div class="bar"><b class="ttl">Automate</b><button class="btn ghost" type="button">Secrets</button><button class="btn primary" type="button">New</button></div>
+    <div class="scroll">
+      <p class="sum" id="m5Sum"></p>
+      <div class="ltools">
+        <div class="seg" id="m5Sort" role="group" aria-label="Sort"><button type="button" data-s="next" aria-pressed="true">Next to run</button><button type="button" data-s="use" aria-pressed="false">Most usage</button><button type="button" data-s="fail" aria-pressed="false">Most trouble</button></div>
+        <span class="muted">Each block is one run: teal ok, coral failed, amber asked you.</span>
+      </div>
+      <div class="ledger">
+        <div class="lhead"><span>Automation</span><span>Last 14 runs</span><span>Usually takes</span><span>Usage this month</span><span>Next</span><span>On</span></div>
+        <div id="m5Rows"></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="num">5</div>
+    <h2>Ledger</h2>
+    <p>For when you have a dozen automations and need to know which ones earn their keep. Each row shows its last 14 runs as blocks, how long it usually takes, and how much of your plan it used this month. Sorting by "Most trouble" puts the flaky ones first.</p>
+    <p>Model advice moves out of the editor and into the row: a routine that has only made small runs on your top model gets a one-line note and a button to switch it to Sonnet.</p>
+    <dl>
+      <dt>Fixes</dt><dd>You can't tell what automations cost or whether they're working without opening each one.</dd>
+      <dt>Wide screen</dt><dd>A real table with sortable columns. At panel size each row folds to two lines with the run blocks under the name.</dd>
+      <dt>Cost</dt><dd>Usage per run, which Shellby already reads for tabs; the routine model hint already counts small runs.</dd>
+      <dt>Risk</dt><dd>It can feel like a spreadsheet. It works best as the second half of mockup 1 or 3, not as the whole page for a new user.</dd>
+    </dl>
+    <p class="try">Try: sort by Most trouble, press a row, switch Downloads sorter to Sonnet.</p>
+  </div>
+</section>
+
+<header class="intro" style="padding-bottom:72px">
+  <p>They combine well. Mockup 2's sentences can label the rows in any of the others, mockup 4's empty-lane suggestions can replace the template wall, and mockup 5 makes a good "Details" view for mockup 1 or 3.</p>
+</header>
+
+<script>
+(function () {
+  'use strict';
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ICON = {
+    clock: '<circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/>',
+    code: '<circle cx="5" cy="3.8" r="1.6"/><circle cx="5" cy="12.2" r="1.6"/><circle cx="11" cy="5.5" r="1.6"/><path d="M5 5.4v5.2M11 7.1c0 2.4-2.4 2.6-5.6 3.6"/>',
+    files: '<path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/>',
+    limit: '<path d="M13 4.6A5.6 5.6 0 1 0 13.6 9"/><path d="M13.6 1.8v3h-3"/>',
+    outside: '<path d="M6 2v3M10 2v3M4 5h8v2.5a4 4 0 0 1-8 0zM8 11.5V14"/>',
+  };
+  const icon = k => `<svg class="i" viewBox="0 0 16 16" aria-hidden="true">${ICON[k]}</svg>`;
+  const glyph = k => `<span class="glyph" data-src="${k}">${icon(k)}</span>`;
+  const runs = s => `<span class="runs" aria-label="Last runs">${[...s.padStart(14, '-')].map(r => `<i data-r="${r}"></i>`).join('')}</span>`;
+
+  // Your three routines are real; the two workflows and the queued task are examples.
+  // Times are hours from now (Fri 13 Nov, 23:30). Negative is the past.
+  const AUTOS = Object.freeze([
+    { id: 'pfas', name: 'PFAS rules watch', src: 'clock', on: true, kind: 'Routine',
+      when: 'Every Monday at 8:30', next: 'Mon 8:30', nextH: 57,
+      sum: 'Re-checks state PFAS rules in pfas-service and reports only what changed',
+      verb: 're-checks state PFAS rules in <b>pfas-service</b> and tells you what changed',
+      result: 'Two changes since the last check, both with source links. RULES.md lines 41–48 and rules-data.js would need updating.', r: 'o',
+      lastAt: 'Mon 8:30', runs: 'oooooxoooooooo', took: '6 min', use: 2.4, model: 'Opus', past: [] },
+    { id: 'tax', name: 'Tax deadline check', src: 'clock', on: true, kind: 'Routine',
+      when: 'Every Monday at 9:00', next: 'Mon 9:00', nextH: 57.5,
+      sum: 'Says if a Maryland sales tax payment is due in the next 14 days',
+      verb: 'reads your tax ledger and says if a Maryland payment is due in the next 14 days',
+      result: 'Nothing is due in the next 14 days.', r: 'o',
+      lastAt: 'Mon 9:00', runs: 'oooooooo', took: '40 s', use: 0.3, model: 'Sonnet', past: [] },
+    { id: 'docs', name: 'Docs check: shellby', src: 'clock', on: false, kind: 'Routine',
+      when: 'Every day at 8 PM', next: 'Paused', nextH: null, daily: 20.5,
+      sum: "Checks shellby's docs still match the code, without editing anything",
+      verb: "checks <b>shellby</b>'s docs still match the code, without editing anything",
+      result: 'Paused since Oct 28. Its last run found 3 commands in DEVELOPMENT.md that no longer exist.', r: 'o',
+      lastAt: 'Oct 28', runs: 'oooooxoooo----', took: '3 min', use: 0, model: 'Sonnet', past: [] },
+    { id: 'red', name: 'Red build fixer', src: 'code', on: true, kind: 'Workflow',
+      when: 'When a pull request on shellby goes red', next: 'Listening', nextH: null,
+      sum: 'Finds out why, fixes it if it can, asks you before pushing',
+      verb: 'finds out why, fixes it if it can, and <b>asks you</b> before pushing',
+      result: 'PR #214 went red on the typecheck. Claude added a missing JSDoc type and the tests pass. It is waiting for you to OK the push.', r: 'a',
+      lastAt: 'Fri 22:55', runs: 'ooxoaooxoooa', took: '4 min', use: 3.1, model: 'Usual', past: [[-30.5, 'x'], [-0.6, 'a']] },
+    { id: 'dl', name: 'Downloads sorter', src: 'files', on: true, kind: 'Workflow',
+      when: 'When files land in Downloads', next: 'Listening', nextH: null,
+      sum: 'Files each new download into a sensible subfolder',
+      verb: 'files each one into a sensible subfolder of <b>Downloads</b>',
+      result: 'Moved 4 files: 3 PDFs to Downloads\\Invoices and an installer to Downloads\\Installers.', r: 'o',
+      lastAt: 'Fri 14:02', runs: 'oooooooooooooo', took: '20 s', use: 0.6, model: 'Opus', smallOnTop: 14, past: [[-33, 'o'], [-9.5, 'o']] },
+    { id: 'bill', name: 'Refactor the billing module', src: 'limit', on: true, kind: 'Waiting for reset',
+      when: 'When your limit resets, 2:10 AM', next: 'Sat 2:10', nextH: 2.67,
+      sum: 'Into smaller files, then tests for it, in shellby',
+      verb: 'splits the billing module into smaller files and writes tests, in <b>shellby</b>',
+      result: 'Queued. It runs once in its own tab and then leaves the queue.', r: '-',
+      lastAt: 'never', runs: '', took: 'about 25 min', use: 0, model: 'Usual', past: [] },
+  ]);
+  const byId = id => AUTOS.find(a => a.id === id);
+  const SRC = Object.freeze({
+    clock: ['The clock', 'Schedules: daily, weekly, every few minutes'],
+    code: ['Your code', 'Builds, issues, pushes, releases, flaky tests, dev servers'],
+    files: ['Files and this PC', 'A folder changing, a drive filling, a part running hot'],
+    limit: ['When your limit resets', 'Heavy tasks wait for a fresh 5-hour window'],
+    outside: ['Claude Code and others', 'Claude Code, a script, n8n, another workflow'],
+  });
+
+  /* ---------- size switch ---------- */
+  const sizer = document.querySelector('.sizer');
+  const setSize = s => {
+    document.documentElement.dataset.size = s;
+    sizer.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.size === s)));
+    try { localStorage.setItem('shellby-automate-size', s); } catch { /* file:// may refuse storage */ }
+  };
+  sizer.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setSize(b.dataset.size); });
+  let saved = null;
+  try { saved = localStorage.getItem('shellby-automate-size'); } catch { /* see above */ }
+  const params = new URLSearchParams(location.search);
+  const fromUrl = params.get('size');
+  // ?only=m3 shows one mockup by itself, for a screenshot or a link.
+  const only = params.get('only');
+  if (only && document.getElementById(only)) {
+    document.querySelectorAll('.intro, .jump, .mock').forEach(el => { el.hidden = el.id !== only; });
+  }
+  setSize((fromUrl || saved) === 'panel' ? 'panel' : 'wide');
+
+  /* ================= 1 tide chart ================= */
+  const m1 = { range: 'week', filter: 'all', sel: 'red', on: Object.fromEntries(AUTOS.map(a => [a.id, a.on])) };
+  const DAYS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  function wavePath(w, h, past) {
+    let d = `M0 ${h}`;
+    for (let x = 0; x <= w; x += 10) d += ` L${x} ${(h / 2 + Math.sin(x / 38) * 7 + Math.sin(x / 13) * 2).toFixed(1)}`;
+    return d + ` L${w} ${h} Z`;
+  }
+  function drawTrack() {
+    const span = m1.range === 'week' ? { from: -48, to: 168 } : { from: -6, to: 24 };
+    const pct = h => ((h - span.from) / (span.to - span.from)) * 100;
+    const nowP = pct(0);
+    const svg = `<svg class="wave" viewBox="0 0 1000 56" preserveAspectRatio="none" aria-hidden="true">
+      <defs><clipPath id="past"><rect x="0" y="0" width="${nowP * 10}" height="56"/></clipPath>
+      <clipPath id="fut"><rect x="${nowP * 10}" y="0" width="1000" height="56"/></clipPath></defs>
+      <path d="${wavePath(1000, 56)}" fill="rgba(127,214,194,.22)" clip-path="url(#past)"/>
+      <path d="${wavePath(1000, 56)}" fill="rgba(127,214,194,.05)" stroke="rgba(127,214,194,.35)" stroke-dasharray="4 5" vector-effect="non-scaling-stroke" clip-path="url(#fut)"/>
+    </svg>`;
+    // The 5-hour window you're in now: began 21:10, resets 2:10.
+    const band = `<div class="band" style="left:${pct(-2.33)}%;width:${pct(2.67) - pct(-2.33)}%"><span>Limit resets 2:10 AM</span></div>`;
+    const now = `<div class="now" style="left:${nowP}%"><span>now</span></div>`;
+    const marks = [];
+    const lane = { n: 0 };
+    // Only runs still to come carry a label (and the one you picked); past runs are dots with a tooltip.
+    const mk = (a, h, r, fut, ghost, tinyAlways) => {
+      if (h < span.from || h > span.to) return;
+      const latest = a.past.length && h === a.past[a.past.length - 1][0];
+      const tiny = tinyAlways || (!fut && !(m1.sel === a.id && latest));
+      const level = tiny ? 0 : lane.n++ % 3;
+      marks.push(`<button type="button" class="mk${fut ? ' future' : ''}${ghost ? ' ghost' : ''}${tiny ? ' tiny' : ''}" data-id="${a.id}" data-src="${a.src}" data-r="${r}" style="left:${pct(h)}%" aria-pressed="${m1.sel === a.id}" title="${esc(a.name)}">
+        <span class="lbl">${esc(a.name)}</span><span class="stem" style="height:${4 + level * 22}px"></span><span class="dot"></span></button>`);
+    };
+    AUTOS.forEach(a => a.past.forEach(([h, r]) => mk(a, h, r, false, false, false)));
+    mk(byId('bill'), byId('bill').nextH, '-', true, !m1.on.bill, false);
+    mk(byId('pfas'), byId('pfas').nextH, '-', true, !m1.on.pfas, false);
+    mk(byId('tax'), byId('tax').nextH, '-', true, !m1.on.tax, false);
+    // The paused daily docs check, shown faint so you can see the gap it leaves.
+    for (let d = -2; d < 7; d++) mk(byId('docs'), d * 24 - 3, '-', d * 24 - 3 > 0, !m1.on.docs, true);
+    const ticks = [];
+    if (m1.range === 'week') for (let d = -1; d <= 6; d++) ticks.push(`<span style="left:${pct(d * 24 + 0.5)}%">${d === -1 ? 'Thu' : d === 0 ? 'Today' : DAYS[d - 1]}</span>`);
+    else for (let h = -6; h <= 24; h += 6) ticks.push(`<span style="left:${pct(h)}%">${['17:30', '23:30', '5:30', '11:30', '17:30', '23:30'][(h + 6) / 6]}</span>`);
+    document.getElementById('m1Track').innerHTML = svg + band + now + marks.join('') + `<div class="ticks">${ticks.join('')}</div>`;
+    document.getElementById('m1Listen').innerHTML = '<span>Listening</span>' +
+      AUTOS.filter(a => a.nextH === null && a.next === 'Listening' && m1.on[a.id]).map(a => `<button type="button" class="ear" data-id="${a.id}">${esc(a.name)} <span class="muted">${esc(a.when.replace(/^When /, '').replace(/^./, c => c))}</span></button>`).join('');
+  }
+  const FILTERS = [['all', 'All', () => true], ['clock', 'On a schedule', a => a.src === 'clock'], ['listen', 'Listening', a => a.next === 'Listening'], ['limit', 'Waiting for reset', a => a.src === 'limit'], ['off', 'Paused', a => !m1.on[a.id]]];
+  function detailHtml(a) {
+    return `<h3>${esc(a.name)}</h3><p class="sent">${esc(a.when)}, Claude ${a.verb}.</p>
+      <div class="lab">Last run, ${esc(a.lastAt)}</div><div class="quote ${a.r}">${esc(a.result)}</div>
+      <div class="lab">Last 14 runs</div>${runs(a.runs)}
+      <div class="row"><button class="btn glass" type="button">Run now</button><button class="btn" type="button">Edit</button><button class="btn ghost" type="button">Open last tab</button></div>`;
+  }
+  function drawList() {
+    const f = FILTERS.find(x => x[0] === m1.filter)[2];
+    document.getElementById('m1Chips').innerHTML = FILTERS.map(([k, label, fn]) => `<button type="button" data-f="${k}" aria-pressed="${m1.filter === k}">${label} <span>${AUTOS.filter(fn).length}</span></button>`).join('');
+    document.getElementById('m1Count').textContent = `${AUTOS.length}`;
+    document.getElementById('m1List').innerHTML = AUTOS.filter(f).map(a => `
+      <div class="arow${m1.on[a.id] ? '' : ' off'}" role="option" tabindex="0" data-id="${a.id}" aria-selected="${m1.sel === a.id}">
+        ${glyph(a.src)}<div class="t"><b>${esc(a.name)}</b><span>${esc(a.sum)}</span></div>
+        <div class="when">${m1.on[a.id] ? esc(a.next) : 'Paused'}${a.r === 'a' && m1.on[a.id] ? '<br><span class="pill amber">Waiting on you</span>' : ''}</div>
+        <input class="tog" type="checkbox" aria-label="On" ${m1.on[a.id] ? 'checked' : ''}>
+      </div>${m1.sel === a.id ? `<div class="detail-inline">${detailHtml(a)}</div>` : ''}`).join('');
+    document.getElementById('m1Detail').innerHTML = detailHtml(byId(m1.sel));
+  }
+  const pick = id => { m1.sel = id; drawTrack(); drawList(); };
+  document.getElementById('m1Range').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    m1.range = b.dataset.r;
+    e.currentTarget.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    document.querySelector('#p1 .tide-head b').textContent = m1.range === 'week' ? 'This week' : 'The next day';
+    drawTrack();
+  });
+  document.getElementById('m1Chips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { m1.filter = b.dataset.f; drawList(); } });
+  document.getElementById('p1').addEventListener('click', e => {
+    if (e.target.classList.contains('tog')) { const id = e.target.closest('[data-id]').dataset.id; m1.on[id] = e.target.checked; drawTrack(); drawList(); return; }
+    const hit = e.target.closest('.mk, .ear, .arow');
+    if (hit && !e.target.closest('.detail-inline')) pick(hit.dataset.id);
+  });
+  document.getElementById('m1List').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.id) pick(e.target.dataset.id); });
+  drawTrack(); drawList();
+
+  /* ================= 2 when, then ================= */
+  const OPTS = Object.freeze({
+    trigger: ['Every weekday at 8:30', 'Every Monday at 9', 'When a pull request goes red', 'When an issue is assigned to me', 'When files land in Downloads', 'When my limit resets', 'When a dev server crashes'],
+    action: ['sum up what changed', 'find out why', 'fix it if it can', 'tidy it into subfolders', 'check the docs still match the code', 'draft release notes'],
+    where: ['~\\Documents', 'shellby', 'pfas-service', '~\\Downloads', 'whichever project it was'],
+    then: ['tell me on my phone', 'have the crab say it', 'add it to a notes file', 'ask me before changing anything', 'open a draft pull request'],
+  });
+  const m2 = { trigger: 'Every weekday at 8:30', action: 'sum up what changed', where: '~\\Documents', then: 'tell me on my phone' };
+  const blank = k => `<button type="button" class="blank" data-k="${k}" aria-haspopup="true">${esc(m2[k])}</button>`;
+  function drawSentence() {
+    document.getElementById('m2Sentence').innerHTML = `${blank('trigger')}, Claude will ${blank('action')} in ${blank('where')}, then ${blank('then')}.`;
+  }
+  let pop = null;
+  const closePop = () => { if (pop) { pop.remove(); pop = null; } };
+  document.getElementById('m2Sentence').addEventListener('click', e => {
+    const b = e.target.closest('.blank'); if (!b) return;
+    e.stopPropagation(); closePop();
+    const k = b.dataset.k;
+    pop = document.createElement('div');
+    pop.className = 'pop'; pop.setAttribute('role', 'menu');
+    pop.innerHTML = OPTS[k].map(o => `<button type="button" role="menuitem">${esc(o)}</button>`).join('');
+    const host = document.getElementById('p2');
+    const hb = host.getBoundingClientRect(), bb = b.getBoundingClientRect();
+    pop.style.left = `${Math.min(bb.left - hb.left, hb.width - 260)}px`;
+    pop.style.top = `${bb.bottom - hb.top + 4}px`;
+    host.appendChild(pop);
+    pop.querySelector('button').focus();
+    pop.addEventListener('click', ev => { const o = ev.target.closest('button'); if (!o) return; m2[k] = o.textContent; closePop(); drawSentence(); });
+  });
+  document.addEventListener('click', closePop);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
+  const STARTERS = Object.freeze([
+    ['When a pull request goes red', 'find out why', 'whichever project it was', 'ask me before changing anything', 'Red build fixer'],
+    ['When an issue is assigned to me', 'fix it if it can', 'whichever project it was', 'open a draft pull request', 'Issue helper'],
+    ['Every weekday at 8:30', 'sum up what changed', '~\\Documents', 'tell me on my phone', 'Morning brief'],
+    ['When files land in Downloads', 'tidy it into subfolders', '~\\Downloads', 'have the crab say it', 'Downloads sorter'],
+    ['When a dev server crashes', 'find out why', 'whichever project it was', 'tell me on my phone', 'Dev server medic'],
+    ['When my limit resets', 'draft release notes', 'shellby', 'add it to a notes file', 'Release notes overnight'],
+  ]);
+  document.getElementById('m2Starters').innerHTML = STARTERS.map(([t, a, w, n], i) => `<button type="button" class="starter" data-i="${i}"><em>${esc(t)}</em>, Claude will ${esc(a)} in ${esc(w)}, then ${esc(n)}.</button>`).join('');
+  document.getElementById('m2Starters').addEventListener('click', e => {
+    const b = e.target.closest('.starter'); if (!b) return;
+    const [t, a, w, n] = STARTERS[+b.dataset.i];
+    Object.assign(m2, { trigger: t, action: a, where: w, then: n });
+    drawSentence();
+    document.querySelector('#p2 .scroll').scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  document.getElementById('m2Count').textContent = AUTOS.length;
+  document.getElementById('m2Mine').innerHTML = AUTOS.map(a => `<div class="mine${a.on ? '' : ' off'}">
+    <p><em>${esc(a.when)}</em>, Claude ${a.verb}.</p>
+    <div class="side">${a.on ? (a.r === 'a' ? '<span class="pill amber">Waiting on you</span>' : `<span class="pill${a.next === 'Listening' ? '' : ''}">${esc(a.next === 'Listening' ? 'Listening' : `Next ${a.next}`)}</span>`) : '<span class="pill off">Paused</span>'}
+    <input class="tog" type="checkbox" aria-label="On" ${a.on ? 'checked' : ''}></div></div>`).join('');
+  drawSentence();
+
+  /* ================= 3 inbox ================= */
+  const NEEDS = [
+    { id: 'n1', cls: 'ask', src: 'code', title: 'Red build fixer', at: '35 min ago', text: byId('red').result, q: 'a',
+      acts: [['glass', 'Push it'], ['', 'See the changes'], ['ghost', 'Not this time']], done: 'Pushed. The checks are running again.' },
+    { id: 'n2', cls: 'fail', src: 'clock', title: 'Docs check: shellby is paused', at: 'since Oct 28', text: byId('docs').result, q: 'x',
+      acts: [['glass', 'Turn it back on'], ['', 'Run it once'], ['ghost', 'Delete it']], done: 'On again. It runs tonight at 8 PM.' },
+  ];
+  const BACK = [['pfas', 'Mon 8:30'], ['tax', 'Mon 9:00'], ['dl', 'Fri 14:02']];
+  const draw3 = () => {
+    document.getElementById('m3Needs').innerHTML = NEEDS.map(n => `<div class="card item ${n.cls}${n.isDone ? ' done' : ''}" data-n="${n.id}">
+      <header>${glyph(n.src)}<b>${esc(n.title)}</b><small>${esc(n.at)}</small></header>
+      <div class="quote ${n.q}">${esc(n.isDone ? n.done : n.text)}</div>
+      ${n.isDone ? '' : `<div class="acts">${n.acts.map(([c, l], i) => `<button type="button" class="btn ${c}" data-act="${i}">${esc(l)}</button>`).join('')}</div>`}</div>`).join('');
+  };
+  draw3();
+  document.getElementById('m3Needs').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const n = NEEDS.find(x => x.id === b.closest('[data-n]').dataset.n);
+    if (b.dataset.act === '0') { n.isDone = true; draw3(); }
+  });
+  document.getElementById('m3Back').innerHTML = BACK.map(([id, at]) => { const a = byId(id); return `<div class="card item">
+    <header>${glyph(a.src)}<b>${esc(a.name)}</b><small>${esc(at)}</small></header>
+    <div class="quote">${esc(a.result)}</div>
+    <div class="acts"><button class="btn ghost" type="button">Open the tab</button><button class="btn ghost" type="button">Mark read</button></div></div>`; }).join('');
+  document.getElementById('m3Next').innerHTML = [['Sat 2:10', 'bill'], ['Mon 8:30', 'pfas'], ['Mon 9:00', 'tax']].map(([t, id]) => `<div><time>${t}</time><span>${esc(byId(id).name)}</span></div>`).join('');
+  document.getElementById('m3All').innerHTML = AUTOS.map(a => `<div class="mini">${glyph(a.src)}<div class="t">${esc(a.name)}<small>${esc(a.when)}</small></div><input class="tog" type="checkbox" aria-label="On" ${a.on ? 'checked' : ''}></div>`).join('');
+
+  /* ================= 4 switchboard ================= */
+  const OFFERS = Object.freeze({
+    clock: [['Morning brief', 'Weekdays at 8:30, a summary of yesterday'], ['End-of-day digest', 'Weekdays at 17:30, what changed today']],
+    code: [['Issue helper', 'Offers to take on issues assigned to you'], ['Release notes', 'Drafts notes when you cut a release']],
+    files: [['Disk space guard', 'Finds what is filling a drive'], ['Site watch', 'Every 15 minutes, checks a page answers']],
+    limit: [['Queue a heavy task', 'It waits for a fresh window, overnight too']],
+    outside: [['Tell n8n when a task finishes', 'Passes each finished task to n8n'], ['Look at what n8n sends', 'Claude sums up an email or a ticket']],
+  });
+  const m4 = { added: {} };
+  function draw4() {
+    document.getElementById('m4Lanes').innerHTML = Object.entries(SRC).map(([k, [name, sub]]) => {
+      const mine = AUTOS.filter(a => a.src === k).map(a => ({ name: a.name, when: a.when, on: a.on }))
+        .concat((m4.added[k] || []).map(n => ({ name: n, when: 'Just added, off until you save it', on: false, fresh: true })));
+      return `<div class="lane" data-src="${k}">
+        <div class="lane-h">${glyph(k)}<div><b>${esc(name)}</b><small>${esc(sub)}</small></div></div>
+        ${mine.length ? `<div class="jacks">${mine.map(m => `<div class="jack${m.on ? ' live' : ''}"><div class="t"><b>${esc(m.name)}</b><small>${esc(m.when)}</small></div><input class="tog" type="checkbox" aria-label="On" ${m.on ? 'checked' : ''}></div>`).join('')}</div>`
+          : `<div class="empty-jack">Nothing listens here yet.</div>`}
+        <div class="offer"><span>${mine.length ? 'Also fits here' : 'Try one'}</span>${OFFERS[k].filter(([n]) => !(m4.added[k] || []).includes(n)).map(([n, d]) => `<button type="button" data-lane="${k}" data-n="${esc(n)}" title="${esc(d)}">+ ${esc(n)}</button>`).join('')}</div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('m4Lanes').addEventListener('click', e => {
+    if (e.target.classList.contains('tog')) { e.target.closest('.jack').classList.toggle('live', e.target.checked); return; }
+    const b = e.target.closest('.offer button'); if (!b) return;
+    (m4.added[b.dataset.lane] ||= []).push(b.dataset.n); draw4();
+  });
+  draw4();
+
+  /* ================= 5 ledger ================= */
+  const m5 = { sort: 'next', open: null, model: Object.fromEntries(AUTOS.map(a => [a.id, a.model])) };
+  const fails = a => [...a.runs].filter(r => r === 'x' || r === 'a').length;
+  const total = AUTOS.reduce((s, a) => s + a.use, 0);
+  const runCount = AUTOS.reduce((s, a) => s + [...a.runs].filter(r => r !== '-').length, 0);
+  document.getElementById('m5Sum').innerHTML = `This month your automations ran <b>${runCount} times</b> and used about <b>${total.toFixed(1)}%</b> of your plan. <span class="x">${AUTOS.reduce((s, a) => s + [...a.runs].filter(r => r === 'x').length, 0)} runs failed</span> and <span class="a">1 is waiting for you</span>.`;
+  const HIST = Object.freeze({
+    pfas: [['Mon 9 Nov 8:30', 'ok', '5 min', 'Two changes, with links'], ['Mon 2 Nov 8:30', 'ok', '7 min', 'No changes'], ['Mon 26 Oct 8:30', 'ok', '6 min', 'One change in WA Ecology HPCDS']],
+    tax: [['Mon 9 Nov 9:00', 'ok', '38 s', 'Nothing is due in the next 14 days'], ['Mon 2 Nov 9:00', 'ok', '41 s', 'Nothing is due in the next 14 days']],
+    docs: [['Wed 28 Oct 20:00', 'ok', '3 min', 'Three commands no longer exist'], ['Tue 27 Oct 20:00', 'x', '1 min', 'Stopped: the folder was busy (a rebase)']],
+    red: [['Fri 13 Nov 22:55', 'a', '4 min', 'Waiting for you to OK the push'], ['Thu 12 Nov 17:00', 'x', '9 min', 'Could not reproduce the failure locally'], ['Tue 10 Nov 11:20', 'ok', '3 min', 'Fixed a lint error, pushed']],
+    dl: [['Fri 13 Nov 14:02', 'ok', '18 s', 'Moved 4 files'], ['Thu 12 Nov 14:30', 'ok', '22 s', 'Moved 1 file']],
+    bill: [],
+  });
+  const SORTS = { next: a => (a.nextH ?? (a.next === 'Listening' ? 500 : 1000)), use: a => -a.use, fail: a => -fails(a) };
+  const maxUse = Math.max(...AUTOS.map(a => a.use));
+  function draw5() {
+    const rows = [...AUTOS].sort((x, y) => SORTS[m5.sort](x) - SORTS[m5.sort](y));
+    document.getElementById('m5Rows').innerHTML = rows.map(a => {
+      const open = m5.open === a.id;
+      const hint = a.smallOnTop && m5.model[a.id] === 'Opus';
+      return `<div class="lrow" data-id="${a.id}" tabindex="0" aria-expanded="${open}">
+        <div class="n">${glyph(a.src)}<div class="t"><b>${esc(a.name)}</b><small>${esc(a.when)}, ${m5.model[a.id] === 'Usual' ? 'your usual model' : esc(m5.model[a.id])}</small></div></div>
+        <div class="c-runs">${a.runs ? runs(a.runs) : '<span class="muted">Not run yet</span>'}</div>
+        <div class="c-took">${esc(a.took)}</div>
+        <div class="c-use"><div class="use${a.use === maxUse ? ' hot' : ''}"><span class="meter"><i style="width:${(a.use / maxUse) * 100}%"></i></span><span>${a.use ? `${a.use}%` : '0'}</span></div></div>
+        <div class="c-next">${a.on ? esc(a.next) : 'Paused'}</div>
+        <div class="c-on"><input class="tog" type="checkbox" aria-label="On" ${a.on ? 'checked' : ''}></div>
+      </div>
+      ${hint ? `<div class="hint"><p>Its last ${a.smallOnTop} runs were all small jobs on Opus. Sonnet would handle them and leave more of your plan for real work.</p><button class="btn" type="button" data-sonnet="${a.id}">Use Sonnet</button><button class="btn ghost" type="button" data-keep="${a.id}">Keep Opus</button></div>` : ''}
+      ${open ? `<div class="hist">${(HIST[a.id] || []).map(([t, r, d, s]) => `<div><span>${t}</span><span class="${r}">${r === 'ok' ? 'ok' : r === 'x' ? 'failed' : 'asked you'}, ${d}</span><span>${esc(s)}</span></div>`).join('') || '<div><span class="muted">No runs yet.</span></div>'}</div>` : ''}`;
+    }).join('');
+  }
+  document.getElementById('m5Sort').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    m5.sort = b.dataset.s;
+    e.currentTarget.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    draw5();
+  });
+  document.getElementById('m5Rows').addEventListener('click', e => {
+    if (e.target.classList.contains('tog')) return;
+    const s = e.target.closest('[data-sonnet]');
+    if (s) { m5.model[s.dataset.sonnet] = 'Sonnet'; draw5(); return; }
+    const k = e.target.closest('[data-keep]');
+    if (k) { k.closest('.hint').remove(); return; }
+    const r = e.target.closest('.lrow'); if (!r) return;
+    m5.open = m5.open === r.dataset.id ? null : r.dataset.id; draw5();
+  });
+  document.getElementById('m5Rows').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList.contains('lrow')) e.target.click(); });
+  draw5();
+})();
+</script>
+</body>
+</html>

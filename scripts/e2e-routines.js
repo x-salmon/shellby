@@ -1,4 +1,4 @@
-// ci: Fix with Claude on a failed routine, and a request that needs a workflow handed to the workflow builder
+// ci: Fix with Claude on a failed routine, the tide chart, and a request that needs a workflow handed to the workflow builder
 // End-to-end check of Claude's other help with routines, against the dev app
 // over CDP, driven by the fake Claude CLI (test/fixtures/fake-claude.js): no
 // account, no usage. Describe it fills the editor; a routine whose run failed
@@ -43,6 +43,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(await until("typeof shellby !== 'undefined' && !!SB.state?.settings", 20000), 'the panel is up');
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('routines'); })");
     check(await until("document.getElementById('routinesView')?.offsetParent !== null"), 'the Routines page opens');
+    check(await ev("document.querySelector('#routinesView [data-tide]').hidden"), 'with nothing scheduled, there is no tide chart');
 
     // 1. Describe it fills the editor, with the chat ready beside it.
     await describe('every morning, what changed in my Documents');
@@ -58,6 +59,17 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(await until(`shellby.listRoutines().then(l => l.find(r => r.id === ${JSON.stringify(failing.id)})?.lastStatus === 'error')`), 'its run fails');
     await ev("SB.setView('routines')");
     check(await until("document.querySelectorAll('#routineList .r-fix').length === 1"), 'it gets a Fix with Claude button');
+
+    // The tide chart: the failed run behind now, the next 07:00 ahead, and a mark opens the routine.
+    const tide = '#routinesView [data-tide]';
+    check(await until(`!document.querySelector('${tide}').hidden`), 'the tide chart shows once something is scheduled');
+    check(await until(`!!document.querySelector('${tide} .tide-mk.err.past')`), 'the failed run sits behind now, in red');
+    check(await ev(`document.querySelectorAll('${tide} .tide-mk.plan').length >= 7`), 'a daily routine has a start on each day of the week');
+    check(await ev(`!!document.querySelector('${tide} .tide-lbl.plan') && /Broken one/.test(document.querySelector('${tide} .tide-lbl.plan').textContent)`), 'its next start is named');
+    await ev(`document.querySelector('${tide} .tide-mk.plan').click()`);
+    check(await until(`document.querySelector('#routineList [data-routine-id=${JSON.stringify(failing.id)}]').classList.contains('tide-found')`), 'pressing it picks the routine out in the list');
+    await ev(`document.querySelector('${tide} .tide-range button').click()`);
+    check(await until(`/next day/i.test(document.querySelector('${tide} .tide-title').textContent) && document.querySelectorAll('${tide} .tide-mk.plan').length === 1`), 'Next day shows just the one start');
     await ev("document.querySelector('#routineList .r-fix').click()");
     check(await until("!document.getElementById('routineWork').hidden && /Edit/.test(document.getElementById('routineEditorTitle').textContent)"), 'the fix opens in the editor, as an edit of that routine');
     check(await until("/isn't there/.test(document.querySelector('#routineWork .wf-chat').innerText)"), 'with what Claude changed in the chat');

@@ -82,6 +82,7 @@ const DEFAULTS = {
   soundVolume: 60,   // 25 | 60 | 100: soft, normal, loud
   selfAware: true,   // Claude is told it's in Shellby and gets the crab's tools (see selfaware.js)
   suggestions: true, // ...and may offer Shellby features as one-tap cards
+  taskBoard: true,   // ...and share a task board per project, to hand each other work (wiring/taskboard.js)
   mutedSuggestions: [], // features the user said not to offer again
   voice: null,       // his seed, temperament and what he's said lately (see voice.js)
   finds: null,       // the shelf: everything he's dug up for you (see gifts/index.js)

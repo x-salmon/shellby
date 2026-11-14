@@ -64,6 +64,7 @@
     if (!v || typeof v !== 'object') return;
     state.workflows = v;
     if (state.view === 'workflows' && current().name === 'list') fillList();
+    if (state.view === 'workflows' || state.view === 'routines') SB.renderTide?.();
   }
   const refreshList = throttle(() => { if (state.view === 'workflows' && current().name === 'list') fillList(); }, 600);
 

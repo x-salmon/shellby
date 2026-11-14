@@ -156,3 +156,118 @@ test('a bug spotted in one conversation is that conversation\'s fight: another o
   [fight] = b.battles();
   assert.deepEqual(fight.moves.map(m => m.move), ['appear', 'patch']);
 });
+
+// ---- a failed command, then a passing one: the catch itself, in a throwaway repo
+
+const fs = require('fs');
+const path = require('path');
+const { execFileSync } = require('child_process');
+
+/** A git repo with one commit, at its long path (CI's temp dir is an 8.3 short name). */
+function tempRepo() {
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-bugdex-')));
+  const git = (...args) => execFileSync('git', ['-C', dir, ...args], { stdio: 'ignore' });
+  git('init', '-q');
+  git('config', 'user.email', 'crab@example.com');
+  git('config', 'user.name', 'Crab');
+  git('config', 'commit.gpgsign', 'false');
+  fs.mkdirSync(path.join(dir, 'src'));
+  fs.writeFileSync(path.join(dir, 'src', 'cart.js'), 'module.exports = (a, b) => a - b;\n');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'init');
+  return dir;
+}
+
+const NODE_RED = 'not ok 1 - totals\nℹ tests 5\nℹ pass 4\nℹ fail 1\n';
+const NODE_GREEN = 'ok 1 - totals\nℹ tests 9\nℹ pass 9\nℹ fail 0\n';
+
+function catchingMain() {
+  const m = fakeMain();
+  Object.assign(m.d, { stat() {}, noteWeek() {}, awardXp() {}, notify() {}, life: { presentJar() {} }, critter: {}, outfit: () => ({ confetti: null }), noteRecap() {} });
+  return m;
+}
+
+/** One command in tab t1, as sessions.js runs it: the start (and its snapshot), then the result. */
+async function run(b, dir, command, text, isError) {
+  const bugTree = b.commandStart({ command, dir });
+  await b.commandResult({ command, dir, tabId: 't1', bugTree }, { text, isError });
+}
+
+const caughtIds = data => Object.keys(data.bugdex?.species || {}).filter(id => data.bugdex.species[id].byDevice?.local > 0);
+
+test('a narrow test run failing is caught by the whole suite passing on fixed code', async () => {
+  const dir = tempRepo();
+  try {
+    const { d, data, errors } = catchingMain();
+    const b = wireBugdex(d);
+    await run(b, dir, 'node --test test/cart.test.js', NODE_RED, true);
+    assert.equal(data.bugdex.open.length, 1);
+    assert.equal(data.bugdex.open[0].narrow, true);
+    fs.writeFileSync(path.join(dir, 'src', 'cart.js'), 'module.exports = (a, b) => a + b;\n');
+    await run(b, dir, 'npm test', NODE_GREEN, false);
+    assert.deepEqual(caughtIds(data), ['red-snapper']);
+    assert.equal(data.bugdex.open.length, 0);
+    assert.deepEqual(errors, []);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a whole suite failing is never caught by a narrower run passing', async () => {
+  const dir = tempRepo();
+  try {
+    const { d, data } = catchingMain();
+    const b = wireBugdex(d);
+    await run(b, dir, 'npm test', NODE_RED, true);
+    assert.equal(data.bugdex.open[0].narrow, false);
+    fs.writeFileSync(path.join(dir, 'src', 'cart.js'), 'module.exports = (a, b) => a + b;\n');
+    await run(b, dir, 'node --test test/cart.test.js', NODE_GREEN, false);
+    assert.deepEqual(caughtIds(data), []);
+    assert.equal(data.bugdex.open.length, 1);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a script failing is caught by the same script passing with other arguments', async () => {
+  const dir = tempRepo();
+  try {
+    const { d, data } = catchingMain();
+    const b = wireBugdex(d);
+    await run(b, dir, 'node src/cart.js --fresh', "TypeError: Cannot read properties of undefined (reading 'total')\n    at src/cart.js:1:20\n", true);
+    assert.equal(data.bugdex.open[0].species, 'nullfish');
+    fs.writeFileSync(path.join(dir, 'src', 'cart.js'), 'module.exports = (a = 0, b = 0) => a + b;\n');
+    await run(b, dir, 'node src/cart.js', 'ok\n', false);
+    assert.deepEqual(caughtIds(data), ['nullfish']);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('scratch code failing is never spotted', async () => {
+  const dir = tempRepo();
+  try {
+    const { d, data } = catchingMain();
+    const b = wireBugdex(d);
+    await run(b, dir, 'node -e "require(\'./nope\')"', "Error: Cannot find module './nope'\n", true);
+    await run(b, dir, 'python -c "import nope"', "ModuleNotFoundError: No module named 'nope'\n", true);
+    assert.equal(data.bugdex?.open?.length || 0, 0);
+    assert.deepEqual(Object.keys(data.bugdex?.species || {}), []);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the same code passing lets the bug go instead of leaving it on the loose', async () => {
+  const dir = tempRepo();
+  try {
+    const { d, data } = catchingMain();
+    const b = wireBugdex(d);
+    await run(b, dir, 'npm test', NODE_RED, true);
+    assert.equal(data.bugdex.open.length, 1);
+    await run(b, dir, 'npm test', NODE_GREEN, false);
+    assert.deepEqual(caughtIds(data), [], 'a pass on unchanged code is never a catch');
+    assert.equal(data.bugdex.open.length, 0);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('closing a conversation lets the bugs it spotted go, and only those', async () => {
+  const { d, data } = fakeMain();
+  const b = wireBugdex(d);
+  const enc = (fp, tabId, source = 'bash') => ({ species: 'nullfish', fp, project: 'a1b2c3d4e5f6', name: 'p', source, keys: [], kind: 'run', tabId, at: Date.now(), firstAt: Date.now() });
+  data.bugdex = { open: [enc('111111111111', 't1'), enc('222222222222', 't2'), enc('333333333333', 't1', 'home')] };
+  b.tabClosed('t1');
+  assert.deepEqual(data.bugdex.open.map(e => e.fp), ['222222222222', '333333333333']);
+});

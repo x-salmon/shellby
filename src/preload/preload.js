@@ -83,7 +83,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onModels: on('models:changed'), // the picker's list, grown by models a newer Claude Code knows (wiring/models.js)
 
   // tabs + tasks
-  newTab: invoke('tab:new'), setSafeMode: invoke('tab:safe'), // safe mode: { tabId, on } (sessions.js setSafeMode)
+  newTab: invoke('tab:new'), harnessList: invoke('harness:list'), setSafeMode: invoke('tab:safe'), // safe mode: { tabId, on } (sessions.js setSafeMode); harnessList: Gemini CLI, OpenCode, Codex
   closeTab: invoke('tab:close'),
   moveTab: (tabId, beforeId) => ipcRenderer.invoke('tab:reorder', { tabId, beforeId }),
   // a conversation in a window of its own (x/y: where it was dropped, in screen pixels)
@@ -385,7 +385,7 @@ contextBridge.exposeInMainWorld('shellby', {
   // Linear or Jira on Next up (backlog/trackers.js): set it up, and hear when a read in the background lands.
   backlogTrackerChoices: invoke('backlog:tracker-choices'),
   backlogTrackerSet: invoke('backlog:tracker-set'),
-  onBacklogChanged: on('backlog:changed'),
+  onBacklogChanged: on('backlog:changed'), taskBoardView: invoke('taskboard:view'), taskBoardCancel: invoke('taskboard:cancel'), onTaskBoardChanged: on('taskboard:changed'), // and the task board's (wiring/taskboard.js)
   // A project's next release (src/main/projects/releases-ipc.js): nothing is pushed unless you say so.
   getRelease: invoke('releases:get'),
   cutRelease: invoke('releases:cut'),

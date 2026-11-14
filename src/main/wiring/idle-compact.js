@@ -22,7 +22,8 @@ function compactIdleTabs(d, { now = Date.now(), home = os.homedir() } = {}) {
   const done = [];
   for (const tab of d.manager.tabs.values()) {
     const s = tab.session;
-    if (s.remoteHost) continue;
+    // /compact is Claude Code's: another agent (harness/) would read it as a message.
+    if (s.remoteHost || (tab.harness && tab.harness !== 'claude')) continue;
     const view = {
       saved: tab.saved, routine: !!(tab.routineId || tab.workflowRunId), inTerminal: tab.inTerminal,
       busy: s.busy, waiting: s.pending.size > 0 || s.hasBackgroundWork(),

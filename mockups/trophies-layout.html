@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby Trophies &amp; XP: 6 layouts at 4K</title>
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Martian Mono"; src: url("../assets/fonts/MartianMono.ttf"); font-weight: 100 800; font-stretch: 75% 112.5%; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../assets/fonts/AtkinsonHyperlegible-Bold.ttf"); font-weight: 700; }
+
+:root {
+  --abyss: #071012; --deep: #0b181b; --reef: #11232a; --reef-2: #173039; --line: #214049;
+  --sand: #f3e6cc; --sand-dim: #b3a892; --sand-faint: #7f7867;
+  --amber: #ffc15e; --gold: #ffd23f; --coral: #ff7a5c; --glass: #7fd6c2; --kelp: #7bd389;
+  --font-pixel: "Pixelify Sans", monospace; --font-mono: "Martian Mono", Consolas, monospace;
+  --font-body: "Atkinson Hyperlegible", sans-serif;
+  --W: 2000px; --H: 1040px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #030809; }
+body { color: var(--sand); font: 15px/1.45 var(--font-body); }
+ul, ol { list-style: none; margin: 0; padding: 0; }
+h1, h2, h3, h4, p { margin: 0; }
+.num { font-family: var(--font-mono); font-stretch: 88%; font-variant-numeric: tabular-nums; }
+
+/* ---------- the frame: one 4K panel at 200% scale ---------- */
+.screen { width: var(--W); height: var(--H); overflow: hidden; position: relative; background: var(--abyss);
+  display: grid; grid-template-rows: 52px 1fr; }
+.screen[hidden] { display: none; }
+.top { display: flex; align-items: center; gap: 4px; padding: 0 28px; border-bottom: 1px solid var(--line); background: var(--deep); }
+.top button { border: 0; background: none; color: var(--sand-dim); font: 600 15px var(--font-body); padding: 8px 14px; border-radius: 8px; }
+.top button.on { background: var(--reef-2); color: var(--sand); }
+.top .sp { flex: 1; }
+.top .who { font: 500 13px var(--font-mono); color: var(--sand-faint); }
+.body { min-height: 0; overflow: hidden; }
+
+/* ---------- shared pieces ---------- */
+.h { font: 600 21px/1.2 var(--font-pixel); color: var(--sand); display: flex; align-items: baseline; gap: 10px; }
+.h small { font: 400 14px var(--font-body); color: var(--sand-dim); }
+.h .sp { flex: 1; }
+.link { font: 600 14px var(--font-body); color: var(--glass); background: none; border: 0; padding: 0; }
+.muted { color: var(--sand-dim); }
+.faint { color: var(--sand-faint); }
+.panel { background: var(--deep); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; }
+
+.lvl { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: radial-gradient(circle at 35% 30%, #fffaf0, #e6dccb 60%, #b8ac96); color: #1a1a1a;
+  font: 700 26px var(--font-pixel); box-shadow: 0 0 0 3px var(--abyss), 0 0 0 5px #e9dfcb55; }
+.rank { font: 600 13px var(--font-pixel); color: var(--amber); letter-spacing: .02em; }
+.title { font: 700 30px/1 var(--font-pixel); }
+.bar { height: 10px; border-radius: 6px; background: #ffffff12; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: inherit; background: var(--sand); }
+.bar.glass i { background: var(--glass); }
+.bar.amber i { background: var(--amber); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--reef-2);
+  font: 600 13px var(--font-mono); font-stretch: 88%; color: var(--sand); white-space: nowrap; }
+.pill.fire { color: var(--amber); background: #ffc15e1c; }
+.pill.cold { color: var(--glass); background: #7fd6c21a; }
+
+.bounty { display: grid; grid-template-columns: 22px 1fr auto 52px; gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid #ffffff0d; }
+.bounty:first-child { border-top: 0; }
+.chk { width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--line); }
+.bounty .what { font-size: 16px; }
+.bounty .cnt { font: 500 13px var(--font-mono); color: var(--sand-dim); }
+.xp { font: 700 15px var(--font-mono); font-stretch: 88%; color: var(--gold); text-align: right; }
+
+.qstep { display: grid; grid-template-columns: 24px 1fr; gap: 12px; align-items: start; padding: 6px 0; }
+.dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--font-body); }
+.dot.done { background: var(--kelp); color: #0d2a14; }
+.dot.now { border: 2px solid var(--amber); color: var(--amber); }
+.qstep.done span { color: var(--sand-dim); }
+.qnow b { font-size: 17px; color: var(--amber); display: block; }
+.qnow p { color: var(--sand-dim); font-size: 14.5px; max-width: 62ch; margin-top: 4px; }
+
+.cls { display: flex; gap: 14px; align-items: center; }
+.cls .ic { font-size: 30px; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 12px; background: #ffc15e18; }
+.cls h4 { font: 700 22px var(--font-pixel); color: var(--amber); }
+.cls p { color: var(--sand-dim); font-size: 14.5px; }
+
+.stat { display: grid; grid-template-columns: 22px 92px 1fr 44px 34px; gap: 10px; align-items: center; padding: 6px 0; font-size: 15px; }
+.stat .v { font: 700 16px var(--font-mono); font-stretch: 88%; text-align: right; }
+.stat .d { font: 600 12.5px var(--font-mono); color: var(--kelp); }
+
+.ledger { display: grid; gap: 6px; }
+.ledger li { display: grid; grid-template-columns: 68px 1fr; gap: 10px; align-items: baseline; font-size: 15px; color: var(--sand-dim); }
+.ledger b { font: 700 18px var(--font-mono); font-stretch: 88%; color: var(--sand); text-align: right; }
+.big { font: 700 64px/0.9 var(--font-pixel); color: var(--amber); }
+
+.work { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; font-size: 14.5px; color: var(--sand-dim); }
+.work li { display: flex; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 5px 12px; border-radius: 999px; background: var(--reef-2); font-size: 14px; }
+.chip.ship { font: 600 13px var(--font-mono); color: var(--glass); background: #7fd6c21a; }
+
+.spark { display: flex; align-items: end; gap: 3px; height: 70px; }
+.spark i { flex: 1; background: #e9dfcb; border-radius: 2px 2px 0 0; min-height: 2px; opacity: .85; }
+.spark i.wk { background: var(--amber); opacity: 1; }
+.kinds { display: flex; gap: 22px; font-size: 14.5px; color: var(--sand-dim); }
+.kinds b { color: var(--sand); font: 700 15px var(--font-mono); font-stretch: 88%; }
+.log li { display: grid; grid-template-columns: 1fr auto 76px; gap: 12px; padding: 7px 0; font-size: 14.5px; border-top: 1px solid #ffffff0d; }
+.log li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log .when { color: var(--sand-faint); text-align: right; font: 500 12.5px var(--font-mono); }
+
+.teaser { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.teaser .panel { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+.teaser .ic { font-size: 26px; }
+.teaser b { font: 600 18px var(--font-pixel); display: block; }
+.teaser span { color: var(--sand-dim); font-size: 14px; }
+
+/* ---------- 1 Three columns ---------- */
+.m1 .body { padding: 22px 32px; display: grid; grid-template-rows: auto auto auto; align-content: start; gap: 22px; }
+.m1 .strip { display: grid; grid-template-columns: auto auto 1fr auto; gap: 22px; align-items: center; }
+.m1 .strip .prog { display: grid; gap: 8px; }
+.m1 .strip .prog p { font-size: 15px; color: var(--sand-dim); }
+.m1 .strip .prog p b { color: var(--sand); }
+.m1 .strip .pills { display: flex; gap: 8px; }
+.m1 .cols { display: grid; grid-template-columns: 1.05fr 0.9fr 1.15fr; gap: 20px; min-height: 0; }
+.m1 .col { display: grid; gap: 20px; align-content: start; }
+
+/* ---------- 2 Today first ---------- */
+.m2 .body { padding: 26px 40px; display: grid; grid-template-rows: auto auto auto 1fr; gap: 22px; }
+.m2 .hero { display: grid; grid-template-columns: auto 1fr auto; gap: 26px; align-items: center; }
+.m2 .hero .say { font: 600 34px/1.15 var(--font-pixel); }
+.m2 .hero .say em { font-style: normal; color: var(--amber); }
+.m2 .hero .sub { color: var(--sand-dim); font-size: 16px; margin-top: 6px; }
+.m2 .tiles { display: grid; grid-template-columns: repeat(4, 1fr) 1.25fr; gap: 16px; }
+.m2 .tile { background: var(--deep); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 12px; align-content: space-between; min-height: 150px; }
+.m2 .tile .what { font-size: 17px; font-weight: 700; line-height: 1.3; }
+.m2 .tile .row { display: flex; align-items: center; justify-content: space-between; }
+.m2 .tile .xp { font-size: 20px; }
+.m2 .tile.quest { border-color: #ffc15e55; background: linear-gradient(180deg, #ffc15e10, transparent 70%), var(--deep); }
+.m2 .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); }
+.m2 .tabs button { border: 0; background: none; color: var(--sand-dim); font: 600 16px var(--font-body); padding: 10px 16px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.m2 .tabs button.on { color: var(--sand); border-color: var(--amber); }
+.m2 .tabs .n { font: 500 12.5px var(--font-mono); color: var(--sand-faint); margin-left: 4px; }
+.m2 .tabbody { display: grid; grid-template-columns: 420px 1fr 1fr; gap: 36px; min-height: 0; }
+
+/* ---------- 3 Side rail ---------- */
+.m3 .body { display: grid; grid-template-columns: 330px 1fr; }
+.m3 .rail { border-right: 1px solid var(--line); background: var(--deep); padding: 28px 22px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 24px; }
+.m3 .me { display: grid; gap: 12px; justify-items: start; }
+.m3 .me .lvl { width: 88px; height: 88px; font-size: 34px; }
+.m3 .nav { display: grid; gap: 2px; align-content: start; }
+.m3 .nav button { display: flex; justify-content: space-between; align-items: center; border: 0; background: none; color: var(--sand-dim); text-align: left;
+  font: 600 16px var(--font-body); padding: 11px 14px; border-radius: 10px; }
+.m3 .nav button.on { background: var(--reef-2); color: var(--sand); box-shadow: inset 3px 0 0 var(--amber); }
+.m3 .nav .n { font: 500 13px var(--font-mono); color: var(--sand-faint); }
+.m3 .nav .n.hot { color: var(--amber); }
+.m3 .main { padding: 34px 48px; display: grid; grid-template-rows: auto 1fr; gap: 26px; min-height: 0; }
+.m3 .page-h { display: flex; align-items: baseline; gap: 16px; }
+.m3 .page-h h2 { font: 700 34px var(--font-pixel); }
+.m3 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-content: start; }
+
+/* ---------- 4 Character screen ---------- */
+.m4 .body { padding: 24px 30px; display: grid; grid-template-columns: 500px 1fr 560px; gap: 22px; }
+.m4 .sheet { align-self: start; background: linear-gradient(180deg, #ffc15e0d, transparent 40%), var(--deep); border: 1px solid #ffc15e40; border-radius: 16px; padding: 26px; display: grid; gap: 18px; align-content: start; }
+.m4 .who { display: flex; gap: 18px; align-items: center; }
+.m4 .who .lvl { width: 92px; height: 92px; font-size: 36px; }
+.m4 .diamond { display: grid; place-items: center; }
+.m4 .col { display: grid; gap: 20px; align-content: start; min-height: 0; }
+.m4 .tag { font: 600 13px var(--font-body); color: var(--sand-faint); }
+
+/* ---------- 5 Glance strip + drawer ---------- */
+.m5 .body { padding: 26px 32px; display: grid; grid-template-rows: auto auto 1fr; gap: 0; }
+.m5 .glance { display: grid; grid-template-columns: 1.35fr repeat(5, 1fr); gap: 14px; }
+.m5 .g { border: 1px solid var(--line); border-radius: 14px; background: var(--deep); padding: 18px 20px; display: grid; gap: 8px; align-content: start; text-align: left; color: inherit; font: inherit; position: relative; }
+.m5 .g .k { font: 600 14px var(--font-body); color: var(--sand-dim); }
+.m5 .g .v { font: 700 30px/1 var(--font-pixel); }
+.m5 .g .s { font-size: 14px; color: var(--sand-dim); }
+.m5 .g.open { border-color: var(--amber); background: var(--reef); border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: var(--reef); z-index: 1; margin-bottom: -1px; }
+.m5 .drawer { background: var(--reef); border: 1px solid var(--amber); border-radius: 0 14px 14px 14px; padding: 26px 30px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 50px; }
+.m5 .after { padding-top: 24px; display: grid; gap: 14px; align-content: start; }
+
+/* ---------- 6 Tide chart ---------- */
+.m6 .body { padding: 22px 32px; display: grid; grid-template-rows: auto 1fr; gap: 20px; }
+.m6 .chart { background: var(--deep); border: 1px solid var(--line); border-radius: 16px; padding: 20px 26px 16px; display: grid; gap: 12px; }
+.m6 .chart .head { display: flex; align-items: center; gap: 20px; }
+.m6 .below { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; min-height: 0; align-items: start; }
+.m6 svg text { font-family: var(--font-mono); }
+
+/* ---------- viewer chrome outside the frame ---------- */
+.notes { width: var(--W); padding: 28px 40px 60px; color: var(--sand-dim); background: #030809; font-size: 16px; }
+.notes h1 { font: 600 26px var(--font-pixel); color: var(--sand); margin-bottom: 8px; }
+.notes .pick { display: flex; gap: 8px; margin: 14px 0 18px; }
+.notes .pick button { border: 1px solid var(--line); background: var(--deep); color: var(--sand); font: 600 15px var(--font-body); padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+.notes .pick button.on { border-color: var(--amber); color: var(--amber); }
+.notes p { max-width: 90ch; margin-bottom: 8px; }
+.notes b { color: var(--sand); }
+</style>
+</head>
+<body>
+<div id="screens"></div>
+<div class="notes" id="notes"></div>
+
+<script>
+// ---------- the real numbers from the screenshot ----------
+const D = {
+  level: 75, title: 'Tsunami', rank: 'Pearl', xp: '146,150', toNext: 100, next: 'Wave Crest', pct: 97,
+  streak: 43, boost: '×1.25', freezes: 2,
+  bounties: [
+    { what: 'Push to 2 different projects', cnt: '0/2', xp: 50 },
+    { what: 'Finish 2 focus sessions', cnt: '0/2', xp: 60 },
+    { what: 'Catch something in review, or pass a quiz', cnt: '', xp: 50 },
+    { what: 'Pass a dependency audit', cnt: '', xp: 50 },
+  ],
+  quest: { what: 'Comment on a diff line', how: 'Point at the exact line instead of describing where it is. Click a line number in the diff under his reply (Shift+click for several), say what should change, then send the review.' },
+  questsDone: ['Try it another way', 'Bring a copy home', 'Queue a routine for the reset'],
+  cls: { icon: '🏁', name: 'Release Engineer', blurb: 'Ships often, and ships green.', also: 'Tester' },
+  stats: [
+    { ic: '🚀', k: 'Shipping', v: 66, d: '+5' }, { ic: '✅', k: 'Rigour', v: 75, d: '+7' },
+    { ic: '🧠', k: 'Craft', v: 12, d: '' }, { ic: '🧹', k: 'Tidiness', v: 7, d: '' },
+  ],
+  week: { range: 'Nov 7 – 13', hours: '111h', days: '13.9 workdays', tasks: 847, fixes: '2/4', limit: 48,
+    line: '1 project shipped, 4 test suites turned green and a 43-day streak. Most work in shellby.',
+    work: ['🔁 Routines worked 6m while you were away', '🏠 Brought 21 branches home', '🏷️ 2 releases', '🛡️ 1 clean audit', '🐛 3 bugs caught, 1 new to the Bugdex'],
+    trophies: ['🧹 Nest Sweeper', '🌊 Deep Water'], shipped: ['shellby'] },
+  month: { total: '50,529', kinds: [['🦀', 'Tasks', '29,634'], ['✅', 'Tests', '24,209'], ['🚀', 'Pushes', '13,622']],
+    days: [22,6,1,5,8,2,2,4,3,2,2,4,2,5,1,0,0,1,3,4,8,1,3,4,3,3,1,9,4,7] },
+  log: [
+    ['So the only way to delete missions is to delete them in missions f…', 'just now'],
+    ['I would like to improve the effort symbol, can you give me 5 mockups', 'just now'],
+    ['what gives here for the ivsr-tmcs parser?', '1m ago'],
+    ['Can you make shellby a unified control service for all agentic harn…', '2m ago'],
+  ],
+};
+const wk = i => i >= D.month.days.length - 7;
+
+// ---------- small renderers shared by every layout ----------
+const topBar = () => `<div class="top"><button>Outfits</button><button class="on">Trophies</button><button>Bugdex</button><button>Home</button><span class="sp"></span><span class="who">📸 Share</span></div>`;
+const pills = () => `<span class="pill fire">🔥 ${D.streak} days</span><span class="pill fire">${D.boost}</span><span class="pill cold">🧊 ${D.freezes} freezes</span><span class="pill">🏖️ weekends off</span>`;
+const bounties = () => `<ul>${D.bounties.map(b => `<li class="bounty"><span class="chk"></span><span class="what">${b.what}</span><span class="cnt">${b.cnt}</span><span class="xp">+${b.xp}</span></li>`).join('')}</ul>`;
+const quest = (full = true) => `<div class="qstep qnow"><span class="dot now">4</span><div><b>${D.quest.what}</b>${full ? `<p>${D.quest.how}</p>` : ''}</div></div>`;
+const questsDone = () => D.questsDone.map(q => `<div class="qstep done"><span class="dot done">✓</span><span>${q}</span></div>`).join('');
+const cls = () => `<div class="cls"><span class="ic">${D.cls.icon}</span><div><h4>${D.cls.name}</h4><p>${D.cls.blurb}</p></div></div>`;
+const stats = () => D.stats.map((s, i) => `<div class="stat"><span>${s.ic}</span><span>${s.k}</span><div class="bar ${i < 2 ? 'amber' : 'glass'}"><i style="width:${s.v}%"></i></div><span class="v">${s.v}</span><span class="d">${s.d}</span></div>`).join('');
+const ledger = () => `<ul class="ledger"><li><b>${D.week.tasks}</b>tasks finished</li><li><b>${D.week.fixes}</b>fixes that held</li><li><b>${D.week.limit}%</b>of your weekly limit, resets Wed</li></ul>`;
+const work = () => `<ul class="work">${D.week.work.map(w => `<li>${w}</li>`).join('')}</ul>`;
+const chips = () => `<div class="chips">${D.week.trophies.map(t => `<span class="chip">${t}</span>`).join('')}${D.week.shipped.map(s => `<span class="chip ship">shipped ${s}</span>`).join('')}</div>`;
+const spark = (h = 70) => `<div class="spark" style="height:${h}px">${D.month.days.map((v, i) => `<i class="${wk(i) ? 'wk' : ''}" style="height:${Math.max(3, v / 22 * 100)}%"></i>`).join('')}</div>`;
+const kinds = () => `<div class="kinds">${D.month.kinds.map(k => `<span>${k[0]} ${k[1]} <b>${k[2]}</b></span>`).join('')}</div>`;
+const log = (n = 4) => `<ul class="log">${D.log.slice(0, n).map(l => `<li><span>🦀 ${l[0]}</span><span class="xp">+6</span><span class="when">${l[1]}</span></li>`).join('')}</ul>`;
+const lvl = () => `<span class="lvl">${D.level}</span>`;
+const teaser = () => `<div class="teaser">
+  <div class="panel"><span class="ic">📖</span><div><b>Logbook</b><span>9 systems, 2 with something to do</span></div><span class="sp" style="flex:1"></span><button class="link">Open</button></div>
+  <div class="panel"><span class="ic">🔍</span><div><b>Review mastery</b><span>Sharp Eye, 6 catches to the next tier</span></div><span class="sp" style="flex:1"></span><button class="link">Open</button></div>
+  <div class="panel"><span class="ic">🏆</span><div><b>Trophies</b><span>41 of 96, 2 new this week</span></div><span class="sp" style="flex:1"></span><button class="link">Open</button></div></div>`;
+
+// 4-stat diamond for the character screen
+function diamond(size = 300) {
+  const c = size / 2, r = c - 34, pts = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  const ring = f => pts.map(p => `${c + p[0] * r * f},${c + p[1] * r * f}`).join(' ');
+  const shape = D.stats.map((s, i) => `${c + pts[i][0] * r * s.v / 100},${c + pts[i][1] * r * s.v / 100}`).join(' ');
+  const lab = [[c, 18, 'middle'], [size - 4, c + 5, 'end'], [c, size - 8, 'middle'], [4, c + 5, 'start']];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="Stats">
+    ${[1, .66, .33].map(f => `<polygon points="${ring(f)}" fill="none" stroke="#214049" stroke-width="1.5"/>`).join('')}
+    <line x1="${c}" y1="${c - r}" x2="${c}" y2="${c + r}" stroke="#214049"/><line x1="${c - r}" y1="${c}" x2="${c + r}" y2="${c}" stroke="#214049"/>
+    <polygon points="${shape}" fill="#ffc15e33" stroke="#ffc15e" stroke-width="2.5" stroke-linejoin="round"/>
+    ${D.stats.map((s, i) => `<text x="${lab[i][0]}" y="${lab[i][1]}" text-anchor="${lab[i][2]}" fill="#f3e6cc" font-family="Atkinson Hyperlegible" font-size="15">${s.k} <tspan font-weight="700" fill="${i < 2 ? '#ffc15e' : '#7fd6c2'}">${s.v}</tspan></text>`).join('')}
+  </svg>`;
+}
+
+// stacked tide chart with level-up flags
+function tide(w = 1930, h = 230) {
+  const n = D.month.days.length, gap = 6, bw = (w - gap * (n - 1)) / n, base = h - 26, max = 22;
+  const split = [.44, .36, .2], col = ['#e9dfcb', '#7bd389', '#7fd6c2'];
+  let out = '';
+  D.month.days.forEach((v, i) => {
+    const x = i * (bw + gap); let y = base; const tot = Math.max(.6, v) / max * (base - 40);
+    split.forEach((f, k) => { const hh = tot * f; y -= hh; out += `<rect x="${x}" y="${y}" width="${bw}" height="${hh}" fill="${col[k]}" opacity="${wk(i) ? 1 : .55}"/>`; });
+    if (i % 3 === 0) out += `<text x="${x + bw / 2}" y="${h - 6}" text-anchor="middle" fill="#7f7867" font-size="11">Oct ${15 + i <= 31 ? 15 + i : ''}${15 + i > 31 ? `Nov ${i - 16}` : ''}</text>`.replace('Oct Nov', 'Nov');
+  });
+  const wx = (n - 7) * (bw + gap) - gap / 2;
+  out += `<rect x="${wx}" y="6" width="${w - wx}" height="${base - 6}" fill="#ffc15e0c" stroke="#ffc15e55" stroke-dasharray="4 4" rx="8"/>`;
+  out += `<text x="${wx + 12}" y="26" fill="#ffc15e" font-size="13">This week · 111h of Claude at work</text>`;
+  [[3, 'Lv 73 Rip Current'], [17, 'Lv 74 Undertow'], [27, 'Lv 75 Tsunami']].forEach(([i, t]) => {
+    const x = i * (bw + gap) + bw / 2;
+    out += `<line x1="${x}" y1="${base}" x2="${x}" y2="44" stroke="#f3e6cc66" stroke-dasharray="2 3"/><rect x="${x}" y="38" width="10" height="8" fill="#ff7a5c"/><text x="${x + 14}" y="46" fill="#f3e6cc" font-size="12.5">${t}</text>`;
+  });
+  return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="XP each day for 30 days">${out}</svg>`;
+}
+
+// ---------- the six layouts ----------
+const M = [];
+
+M.push({ name: 'Three columns', why: 'Same content, laid out for the width it has. Today (what to do), You (who you are), and This week (what happened) sit side by side, each at a readable width. The level becomes one strip on top, and Logbook, Review mastery and Trophies get one row of doors at the bottom instead of three more screens of scrolling.',
+html: () => `<div class="body">
+  <div class="strip">${lvl()}<div><p class="rank">Level ${D.level} · ${D.rank}</p><p class="title">${D.title}</p></div>
+    <div class="prog"><div class="bar"><i style="width:${D.pct}%"></i></div><p><b>${D.toNext} XP</b> to ${D.next} at level ${D.level + 1}. <span class="faint">${D.xp} XP in all</span></p></div>
+    <div class="pills">${pills()}</div></div>
+  <div class="cols">
+    <div class="col">
+      <section class="panel"><h3 class="h">Today's bounties <small>+50 more for all four</small></h3><div style="margin-top:10px">${bounties()}</div></section>
+      <section class="panel"><h3 class="h">Quests <small>3 of 4 done</small><span class="sp"></span><button class="link">Show in the chat</button></h3><div style="margin-top:12px">${quest()}${questsDone()}</div></section>
+    </div>
+    <div class="col">
+      <section class="panel"><h3 class="h">Character <small>played as a Tester this week</small></h3><div style="margin:16px 0 12px">${cls()}</div>${stats()}<p class="faint" style="font-size:14px;margin-top:8px">Has also been 🧪 ${D.cls.also}</p></section>
+      <section class="panel"><h3 class="h">Last 30 days <small>${D.month.total} XP</small></h3><div style="margin:14px 0 12px">${spark(64)}</div>${kinds()}</section>
+    </div>
+    <div class="col">
+      <section class="panel"><h3 class="h">This week <small>${D.week.range}</small><span class="sp"></span><button class="link">Share my week</button></h3>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;margin:16px 0"><div><p class="big">${D.week.hours}</p><p class="muted" style="font-size:14px;margin-top:6px">of Claude at work<br>≈ ${D.week.days}</p></div>${ledger()}</div>
+        <p style="margin-bottom:12px">${D.week.line}</p>${work()}<div style="margin-top:14px">${chips()}</div></section>
+      <section class="panel" style="padding-top:16px;padding-bottom:10px"><h3 class="h">Latest XP</h3>${log(3)}</section>
+    </div>
+  </div>
+  ${teaser()}
+</div>` });
+
+M.push({ name: 'Today first', why: 'The page opens on what you can do right now. One line says what the next level costs and how to get there, the four bounties and the open quest are big tiles you can act on, and everything about the past (character, week, history, trophies) moves behind tabs that each fit the screen.',
+html: () => `<div class="body">
+  <div class="hero">${lvl().replace('class="lvl"', 'class="lvl" style="width:84px;height:84px;font-size:32px"')}
+    <div><p class="say">${D.toNext} XP to <em>${D.next}</em>. Any two bounties get you there.</p><p class="sub">Level ${D.level} ${D.title} · ${D.rank} · ${D.xp} XP</p><div class="bar" style="margin-top:12px;max-width:900px"><i style="width:${D.pct}%"></i></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:360px">${pills()}</div></div>
+  <div class="tiles">
+    ${D.bounties.map(b => `<div class="tile"><span class="what">${b.what}</span><div class="row"><span class="cnt num muted">${b.cnt || 'not yet'}</span><span class="xp">+${b.xp}</span></div></div>`).join('')}
+    <div class="tile quest"><span class="rank">Quest 4 of 4</span><span class="what" style="color:var(--amber)">${D.quest.what}</span><span class="muted" style="font-size:14px">Click a line number in a diff, say what should change, send the review.</span></div>
+  </div>
+  <div class="tabs"><button class="on">This week</button><button>Character</button><button>Last 30 days</button><button>Logbook <span class="n">2</span></button><button>Review mastery</button><button>Trophies <span class="n">41/96</span></button></div>
+  <div class="tabbody">
+    <div><p class="big" style="font-size:88px">${D.week.hours}</p><p class="muted" style="margin:8px 0 20px">of Claude at work, ${D.week.range}<br>≈ ${D.week.days}</p>${ledger()}<div class="bar glass" style="margin-top:10px"><i style="width:${D.week.limit}%"></i></div></div>
+    <div><h3 class="h" style="margin-bottom:12px">What happened</h3><p style="margin-bottom:16px;font-size:16px">${D.week.line}</p>${work()}</div>
+    <div><h3 class="h" style="margin-bottom:12px">New this week</h3>${chips()}<h3 class="h" style="margin:28px 0 12px">Every day <small>orange is this week</small></h3>${spark(90)}<button class="link" style="margin-top:20px">Share my week</button></div>
+  </div>
+</div>` });
+
+M.push({ name: 'Side rail', why: 'Split the one long page into seven short ones. A rail keeps your level, streak and the nav visible all the time; each page (Today shown) gets the whole width and never scrolls at 4K. Counts in the rail tell you where something is waiting, so you only open what matters.',
+html: () => `<div class="body">
+  <aside class="rail">
+    <div class="me">${lvl().replace('class="lvl"', 'class="lvl" style="width:88px;height:88px;font-size:34px"')}<div><p class="rank">Level ${D.level} · ${D.rank}</p><p class="title">${D.title}</p></div>
+      <div style="width:100%"><div class="bar"><i style="width:${D.pct}%"></i></div><p class="muted" style="font-size:14px;margin-top:6px">${D.toNext} XP to ${D.next}</p></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${pills()}</div>
+    <nav class="nav">
+      <button class="on">Today <span class="n hot">4 open</span></button><button>Character <span class="n">${D.cls.icon}</span></button>
+      <button>This week <span class="n">${D.week.hours}</span></button><button>Last 30 days <span class="n">50.5k</span></button>
+      <button>Logbook <span class="n hot">2</span></button><button>Review mastery <span class="n">Sharp Eye</span></button><button>Trophies <span class="n">41/96</span></button>
+      <button>How to earn XP <span class="n">24</span></button></nav>
+    <p class="faint num" style="font-size:12.5px">${D.xp} XP in all</p>
+  </aside>
+  <div class="main">
+    <div class="page-h"><h2>Today</h2><span class="muted">Bounties reset at midnight. All four pays another +50.</span></div>
+    <div class="grid">
+      <section class="panel" style="padding:26px 30px"><h3 class="h">Bounties <small>0 of 4</small></h3><div style="margin-top:12px">${bounties()}</div></section>
+      <section class="panel" style="padding:26px 30px"><h3 class="h">Quests <small>3 of 4 done</small><span class="sp"></span><button class="link">Show in the chat</button></h3><div style="margin-top:14px">${quest()}${questsDone()}</div></section>
+      <section class="panel" style="grid-column:1 / -1;padding:22px 30px"><h3 class="h">Earned today <small>+240 XP so far</small></h3>${log(4)}</section>
+    </div>
+  </div>
+</div>` });
+
+M.push({ name: 'Character screen', why: 'Lean into the game. Your character sheet is a fixed card on the left with the class and a stat diamond, so the four stats read as a shape instead of four 1,800 px bars. The middle is one quest log (dailies and the story quest together), and the right holds the week. This one has the strongest identity and the most new UI.',
+html: () => `<div class="body">
+  <aside class="sheet">
+    <div class="who">${lvl().replace('class="lvl"', 'class="lvl" style="width:92px;height:92px;font-size:36px"')}<div><p class="rank">Level ${D.level} · ${D.rank}</p><p class="title" style="font-size:34px">${D.title}</p><p class="muted num" style="font-size:13px;margin-top:6px">${D.xp} XP</p></div></div>
+    <div><div class="bar"><i style="width:${D.pct}%"></i></div><p class="muted" style="font-size:14px;margin-top:6px">${D.toNext} XP to ${D.next}</p></div>
+    ${cls()}
+    <div class="diamond">${diamond(320)}</div>
+    <p class="muted" style="font-size:14px;text-align:center">This week: Shipping <b style="color:var(--kelp)">+5</b>, Rigour <b style="color:var(--kelp)">+7</b>. Has also been 🧪 ${D.cls.also}.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">${pills()}</div>
+  </aside>
+  <div class="col">
+    <section class="panel"><h3 class="h">Quest log</h3>
+      <p class="tag" style="margin:16px 0 4px">Story, 3 of 4</p>${quest()}<details style="margin:2px 0 0 36px"><summary class="faint" style="font-size:14px">3 done</summary>${questsDone()}</details>
+      <p class="tag" style="margin:18px 0 2px">Today's bounties, +50 more for all four</p>${bounties()}</section>
+    <section class="panel" style="padding-top:16px"><h3 class="h">Latest XP</h3>${log(4)}</section>
+  </div>
+  <div class="col">
+    <section class="panel"><h3 class="h">This week <small>${D.week.range}</small><span class="sp"></span><button class="link">Share</button></h3>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;margin:16px 0"><p class="big">${D.week.hours}</p>${ledger()}</div>
+      <p style="margin-bottom:12px">${D.week.line}</p>${work().replace('class="work"', 'class="work" style="grid-template-columns:1fr"')}<div style="margin-top:14px">${chips()}</div></section>
+    <section class="panel"><h3 class="h">Last 30 days <small>${D.month.total} XP</small></h3><div style="margin:12px 0">${spark(56)}</div>${kinds()}</section>
+  </div>
+</div>` });
+
+M.push({ name: 'Glance strip + drawer', why: 'Everything is summarised in one row you can read in a second: level, bounties, quest, class, week, month. Click a tile and its drawer opens underneath (Bounties shown); only one is open at a time. The least change to how the page works, and the page always fits because only one section is ever expanded.',
+html: () => `<div class="body">
+  <div class="glance">
+    <div class="g"><span class="k">Level ${D.level} · ${D.rank}</span><span class="v">${D.title}</span><div class="bar"><i style="width:${D.pct}%"></i></div><span class="s">${D.toNext} XP to ${D.next} · 🔥 ${D.streak} days</span></div>
+    <button class="g open"><span class="k">Today's bounties</span><span class="v num" style="font-family:var(--font-pixel)">0 / 4</span><span class="s">+260 XP open</span></button>
+    <button class="g"><span class="k">Quest</span><span class="v" style="font-size:22px;line-height:1.15">${D.quest.what}</span><span class="s">4 of 4</span></button>
+    <button class="g"><span class="k">Class</span><span class="v" style="font-size:22px;line-height:1.15">${D.cls.icon} ${D.cls.name}</span><span class="s">Rigour 75, Shipping 66</span></button>
+    <button class="g"><span class="k">This week</span><span class="v">${D.week.hours}</span><span class="s">${D.week.tasks} tasks · shipped 1</span></button>
+    <button class="g"><span class="k">Last 30 days</span><span class="v num" style="font-size:26px">50.5k XP</span>${spark(28)}</button>
+  </div>
+  <div class="drawer">
+    <div><h3 class="h">Today's bounties <small>reset at midnight, +50 more for all four</small></h3><div style="margin-top:12px">${bounties()}</div></div>
+    <div><h3 class="h">How to clear them fastest</h3><ul style="display:grid;gap:12px;margin-top:16px;color:var(--sand-dim)">
+      <li>🚀 You have unpushed work in <b>shellby</b> and <b>rack-builder</b>. Pushing both clears the first one.</li>
+      <li>🎯 A 25-minute focus session runs from the crab's right-click menu.</li>
+      <li>🔍 Your next quest (a line comment) also counts as a review catch if he changes that line.</li>
+      <li>🛡️ A dependency audit runs from the shield next to any project.</li></ul></div>
+  </div>
+  <div class="after"><h3 class="h">More</h3>${teaser()}<section class="panel" style="padding-top:14px;padding-bottom:8px"><h3 class="h">Latest XP</h3>${log(3)}</section></div>
+</div>` });
+
+M.push({ name: 'Tide chart', why: 'The 30-day strip is the most interesting thing on the page and it\'s currently a footnote. Here it\'s the hero: each day stacked by what earned it, this week boxed, and every level-up flagged on the day it happened, so your level reads as a story. The rest sits below in three columns.',
+html: () => `<div class="body">
+  <section class="chart">
+    <div class="head">${lvl()}<div><p class="rank">Level ${D.level} · ${D.rank}</p><p class="title">${D.title}</p></div>
+      <div style="flex:1;max-width:620px;margin-left:16px"><div class="bar"><i style="width:${D.pct}%"></i></div><p class="muted" style="font-size:14px;margin-top:6px">${D.toNext} XP to ${D.next} · ${D.xp} XP in all · ${D.month.total} in the last 30 days</p></div>
+      <span style="flex:1"></span><div style="display:flex;gap:8px">${pills()}</div></div>
+    ${tide()}
+    <div class="kinds" style="justify-content:flex-start;gap:28px"><span><i style="display:inline-block;width:10px;height:10px;background:#e9dfcb;margin-right:6px"></i>Tasks <b>29,634</b></span><span><i style="display:inline-block;width:10px;height:10px;background:#7bd389;margin-right:6px"></i>Tests <b>24,209</b></span><span><i style="display:inline-block;width:10px;height:10px;background:#7fd6c2;margin-right:6px"></i>Pushes <b>13,622</b></span><span><i style="display:inline-block;width:10px;height:10px;background:#ff7a5c;margin-right:6px"></i>Level up</span></div>
+  </section>
+  <div class="below">
+    <section class="panel"><h3 class="h">Today <small>+50 more for all four</small></h3><div style="margin-top:8px">${bounties()}</div><div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">${quest(false)}</div></section>
+    <section class="panel"><h3 class="h">This week <small>${D.week.range}</small><span class="sp"></span><button class="link">Share</button></h3>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;margin:14px 0"><p class="big" style="font-size:54px">${D.week.hours}</p>${ledger()}</div>${chips()}</section>
+    <section class="panel"><h3 class="h">Character</h3><div style="margin:14px 0 10px">${cls()}</div>${stats()}</section>
+  </div>
+</div>` });
+
+// ---------- viewer ----------
+const screens = document.getElementById('screens');
+screens.innerHTML = M.map((m, i) => `<section class="screen m${i + 1}" data-i="${i + 1}" hidden aria-label="${m.name}">${topBar()}${m.html()}</section>`).join('');
+const notes = document.getElementById('notes');
+function show(n) {
+  n = Math.min(M.length, Math.max(1, n | 0 || 1));
+  document.querySelectorAll('.screen').forEach(s => { s.hidden = +s.dataset.i !== n; });
+  const m = M[n - 1];
+  notes.innerHTML = `<h1>${n}. ${m.name}</h1><div class="pick">${M.map((x, i) => `<button class="${i + 1 === n ? 'on' : ''}" data-n="${i + 1}">${i + 1}. ${x.name}</button>`).join('')}</div>
+    <p>${m.why}</p><p>The frame above is 2000 × 1040, the panel at 4K with 200% scaling, the same size as the screenshot. Press 1–${M.length} or the buttons to switch.</p>`;
+  if (location.hash !== `#${n}`) history.replaceState(null, '', `#${n}`);
+}
+notes.addEventListener('click', e => { const b = e.target.closest('[data-n]'); if (b) show(+b.dataset.n); });
+addEventListener('keydown', e => { if (/^[1-9]$/.test(e.key)) show(+e.key); });
+show(+location.hash.slice(1));
+</script>
+</body>
+</html>

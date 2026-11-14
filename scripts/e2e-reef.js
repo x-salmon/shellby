@@ -66,7 +66,7 @@ function makeRepo() {
     const until = async (expr, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (await panel.ev(expr)) return true; await wait(150); } return false; };
     const text = sel => panel.ev(`document.querySelector(${JSON.stringify(sel)})?.textContent || ''`);
     await until('!!window.SB?.pj && !!SB.reef');
-    await panel.ev("window.__toasts = []; const t = SB.toast; SB.toast = (m, o) => { window.__toasts.push(String(m)); return t(m, o); }; true");
+    await panel.ev("window.__toasts = []; const t = SB.toast; SB.toast = Object.assign((m, o) => { window.__toasts.push(String(m)); return t(m, o); }, { job: t.job }); true");
 
     // 1. The project's page offers to watch its reef; nothing is read before you do.
     await panel.ev("SB.setView('projects')");
@@ -122,7 +122,7 @@ function makeRepo() {
     check(await until(`document.querySelectorAll('#rmLadder li').length === ${TIERS.length}`), `the review ladder has ${TIERS.length} tiers`);
     check(/Not ranked yet/.test(await text('#rmTier')), 'a fresh profile is not ranked yet');
     check(/Tide-pool Reader/.test(await text('#rmNext')), 'the next tier is named');
-    await panel.ev("document.getElementById('rmCard').scrollIntoView()");
+    await panel.ev("SB.trophyPage('mastery'); document.getElementById('rmCard').scrollIntoView()");
     await panel.shot('review-mastery');
   } catch (e) {
     check(false, e.message);

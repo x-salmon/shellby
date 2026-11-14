@@ -8,8 +8,13 @@ const STAYS_LOCAL = 'This conversation runs on your local model for good. Start 
 const STAYS_CLAUDE = 'This conversation runs on Claude for good. Start a new one to use a local model.';
 const NO_SERVER = 'Set up a local model in Settings first (Claude, then Local model).';
 
-/** Whether it can still move: nothing sent, no process, no Claude Code session. */
+/**
+ * Whether it can still move: nothing sent, no process, no Claude Code session.
+ * One on another agent (Gemini, OpenCode, Codex: harness/) never moves: local
+ * models are a Claude Code setting.
+ */
 function canMove(tab) {
+  if (tab.harness && tab.harness !== 'claude') return false;
   return !tab.saved && !tab.session.proc && !tab.session.sessionId;
 }
 

@@ -14,7 +14,7 @@
 
   // The page's parts, in order, as the links at the top name them.
   const SECTIONS = [
-    ['next', 'Next up'], ['pulse', 'Pulse'], ['notes', 'Notes'], ['health', 'Health'], ['releases', 'Releases'],
+    ['next', 'Next up'], ['board', 'Task board'], ['pulse', 'Pulse'], ['notes', 'Notes'], ['health', 'Health'], ['releases', 'Releases'],
     ['helpers', 'Helpers'], ['convos', 'Conversations'], ['report', 'Report'], ['clones', 'On this PC'],
   ];
   const sectionId = key => `pj-sec-${key}`;
@@ -28,6 +28,8 @@
     const cards = [
       // What to work on comes first: it's why you opened the page (backlog.js).
       ['next', (main || p.github) && SB.backlog.card({ root: main?.root || null, repo: p.github?.repo || null, name: p.name }, { onClone: repo => P.openClone(repo) })],
+      // What the conversations handed each other here; hidden while it's empty (taskboard.js).
+      ['board', main && SB.taskBoard.card({ root: main.root })],
       ['pulse', main && F.pulse(p, { onChange: reload })],
       ['notes', main && F.journal(p, { newHere: P.newHere, onChange: reload, keptDetails: P.keptDetails })],
       ['health', F.health(p)],

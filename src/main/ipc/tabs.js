@@ -11,6 +11,7 @@ const editor = require('../editor');
 const quiz = require('../quiz');
 const problems = require('../problems');
 const panes = require('../../renderer/shared/panes');
+const harnesses = require('../harness/registry');
 const { run: runCli, skipSettings } = require('../claude/cli');
 const { selectedNote } = require('../viewer');
 
@@ -57,6 +58,7 @@ function closeTab(d, tabId) {
   d.queueWaits.delete(tabId);
   d.workflows?.onTabClosed(tabId);
   d.debugMode?.tabClosed(tabId); // its debug receiver stops listening
+  d.bugdex?.tabClosed(tabId); // the bugs it spotted got away with it
   d.remote?.settleTab(tabId);
   return true;
 }
@@ -75,8 +77,15 @@ function registerTabsIpc(ipcMain, d) {
     const agent = d.isStr(opts?.agent) ? agentName(opts.agent, d.lastInit?.agents) : null;
     if (d.isStr(opts?.agent) && !agent) return { ok: false, error: `Claude Code doesn't list an agent called ${opts.agent.slice(0, 80)}.` };
     if (agent && !d.claudeSupports('--agent')) return { ok: false, error: "This Claude Code can't hand a conversation to an agent. Update it, then try again." };
-    try { return { ok: true, tabId: d.openTab({ ...(known ? { cwd: opts.cwd } : {}), ...(agent ? { agent } : {}) }).id }; } catch (err) { return { ok: false, error: err.message }; }
+    // Another agent's CLI to run it on (harness/registry.js): only one Shellby knows, and only once it's installed.
+    const harness = d.isStr(opts?.harness) ? harnesses.byId(opts.harness) : null;
+    if (d.isStr(opts?.harness) && opts.harness !== harnesses.CLAUDE && !harness) return { ok: false, error: "Shellby doesn't know that agent." };
+    if (harness && !d.FAKE_ACP && !harnesses.commandFor(harness.id)) return { ok: false, error: `${harness.name} isn't installed. In a terminal: ${harness.install}`, install: harness.install };
+    if (harness && agent) return { ok: false, error: 'An agent of your own runs on Claude Code only.' };
+    try { return { ok: true, tabId: d.openTab({ ...(known ? { cwd: opts.cwd } : {}), ...(agent ? { agent } : {}), ...(harness ? { harness: harness.id } : {}) }).id }; } catch (err) { return { ok: false, error: err.message }; }
   });
+  // The agents a conversation can run on besides Claude Code, and whether each is installed (harness/registry.js).
+  ipcMain.handle('harness:list', () => harnesses.listHarnesses().map(h => (d.FAKE_ACP ? { ...h, installed: true } : h)));
   // Safe mode for one conversation (sessions.js setSafeMode), from the tab menu.
   ipcMain.handle('tab:safe', (_e, { tabId, on } = {}) => (d.isStr(tabId) ? d.manager.setSafeMode(tabId, on === true) : { ok: false, error: 'Which conversation?' }));
   ipcMain.handle('tab:close', (_e, tabId) => d.isStr(tabId) && closeTab(d, tabId));

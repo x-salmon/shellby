@@ -105,6 +105,7 @@ const WORKFLOW_FORMAT = [
   '- folder { path (absolute), pattern?: "*.pdf", events: added|changed|any } -> folder, files[]',
   '- workflow { name (another workflow), status: ok|error|any } -> name, status, runId, vars',
   '- server { on: up|crashed|stopped|any, project?, script? } (a dev server started from the Projects page) -> event, project, script, port, url, exitCode, root, framework',
+  '- board { on: posted|done|failed|any, project? } (a task on the task board of a project, where the conversations in Shellby hand each other work) -> event, id, title, detail, result, project, folder, by',
   '- startup {}',
   '- webhook {} (Shellby generates the token)',
   '- claude {} (lets Claude Code start it with run_workflow) -> the inputs passed',

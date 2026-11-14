@@ -164,12 +164,10 @@ button.recap-row-body:hover, button.recap-row-body:focus-visible { background: r
 .seg-2 { background: var(--coral); }
 .seg-3 { background: var(--sand-dim); }
 
-/* While a trophy celebration is up, toasts move to the top so they never stack on it. */
-body.celebrating .toast { bottom: auto; top: 64px; }
-
 /* Ordinary toasts: a rounded card rather than a pill once text wraps, and the
-   action never gets squeezed. */
-.toast { border-radius: var(--r-lg); max-width: min(86%, 380px); line-height: 1.35; text-align: left; padding: 9px 12px 9px 14px; }
+   action never gets squeezed. max-content: at left 50% it would otherwise fit
+   itself into the right half of the panel and wrap long before its max-width. */
+.toast { border-radius: var(--r-lg); width: max-content; max-width: min(86%, 380px); line-height: 1.35; text-align: left; padding: 9px 12px 9px 14px; }
 .toast > span { min-width: 0; }
 .toast-action { flex: none; white-space: nowrap; padding: 5px 12px; }
 /* A toast with a headline: bold title, lighter body, quiet note. */

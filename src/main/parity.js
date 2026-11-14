@@ -215,6 +215,8 @@ function register(deps) {
   });
 
   async function doRewind(tab, turnId, { conversation, code }) {
+    // Rewinding goes into Claude Code's own transcript: another agent's (harness/) has none to rewind.
+    if (tab.harness && tab.harness !== 'claude') return { ok: false, error: 'Rewinding only works in a Claude Code conversation.' };
     // The last turn's diff is worked out after it ends: wait for it, so it's undone too.
     await deps.turnEnding(tab.id);
     let items = history.load(tab.id);
@@ -390,7 +392,8 @@ function register(deps) {
   ipcMain.handle('setup:remove-rule', (_e, req) => changeRule(req || {}, true), [obj({ scope: opt(ID), list: opt(ID), rule: opt(text(100_000)) })]);
 
   // ---- MCP servers
-  const running = () => [...manager.tabs.values()].filter(t => t.session.proc);
+  // Claude Code's running conversations: MCP servers here are its own, not another agent's (harness/).
+  const running = () => [...manager.tabs.values()].filter(t => t.session.proc && (!t.harness || t.harness === 'claude'));
 
   async function refreshMcp(tabId) {
     const t = tabOf(tabId)?.session.proc ? tabOf(tabId) : running()[0];

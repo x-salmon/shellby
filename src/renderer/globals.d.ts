@@ -24,6 +24,7 @@ interface Window {
   PocketPhone: any;
   PocketTab: any;
   ShellbyAmbient: any;
+  ShellbyBranchLabel: any;
   ShellbyChirp: any;
   ShellbyClashText: any;
   ShellbyColony: any;
@@ -39,6 +40,7 @@ interface Window {
   ShellbyLineComments: any;
   ShellbyMarkdown: any;
   ShellbyMermaid: any;
+  ShellbyMeterLogic: any;
   ShellbyMiniShell: any;
   ShellbyOutlookFormat: any;
   ShellbyPanes: any;
@@ -57,6 +59,7 @@ interface Window {
   ShellbyTabLogic: any;
   ShellbyTabSort: any;
   ShellbyTextGrid: any;
+  ShellbyTideChart: any;
   ShellbyTimeFormat: any;
   ShellbyTodos: any;
   ShellbyTrail: any;
@@ -70,6 +73,8 @@ interface Window {
 interface ShellbyPanelExtras {
   // a11y.js
   rove: any;
+  // automate-tide.js
+  renderTide: any;
   // backlog.js
   backlog: any;
   // beach-paint.js
@@ -182,7 +187,6 @@ interface ShellbyPanelExtras {
   relTime: any;
   remotePlace: any;
   renderMarkdownInto: any;
-  reveal: any;
   shortPath: any;
   sprite: any;
   tildify: any;
@@ -556,6 +560,7 @@ interface ShellbyPanelExtras {
   closeTab: any;
   closeTabSafely: any;
   ensureTab: any;
+  harnesses: any;
   hasChanges: any;
   hasClosed: any;
   inChat: any;
@@ -564,8 +569,10 @@ interface ShellbyPanelExtras {
   newTab: any;
   newTabAs: any;
   newTabIn: any;
+  newTabOn: any;
   nudgeTab: any;
   orderTabs: any;
+  refreshHarnesses: any;
   reopenClosed: any;
   showChanges: any;
   stripIds: any;
@@ -583,6 +590,8 @@ interface ShellbyPanelExtras {
   tankPaint: any;
   // tank-render.js
   tankRender: any;
+  // tank-room.js
+  tankRoom: any;
   // tank-tidy.js
   tankTidy: any;
   tankUndo: any;
@@ -590,6 +599,8 @@ interface ShellbyPanelExtras {
   tankApply: any;
   tankEditing: any;
   tankView: any;
+  // taskboard.js
+  taskBoard: any;
   // tide.js
   tide: any;
   // together.js
@@ -636,6 +647,9 @@ interface ShellbyPanelExtras {
   giveBackAttachments: any;
   renderTries: any;
   startTries: any;
+  // trophies-rail.js
+  reveal: any;
+  trophyPage: any;
   // turn-checks.js
   decorateChanges: any;
   editorBar: any;

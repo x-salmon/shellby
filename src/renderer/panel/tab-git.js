@@ -71,9 +71,9 @@
   }
 
   async function pushRepo(tab) {
-    SB.toast('Pushing…', { ms: 30000 });
-    const r = await api.pushRepo(tab?.id);
-    if (r?.ok) return SB.toast(pushNews(r), { ms: 6000 });
+    const job = SB.toast.job('Pushing…', { ms: 30000 });
+    const r = await api.pushRepo(tab?.id).catch(() => null);
+    if (r?.ok) return job.done(pushNews(r), { ms: 6000 });
     pushTrouble(tab, r);
   }
 
