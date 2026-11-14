@@ -40,6 +40,7 @@ interface Window {
   ShellbyLineComments: any;
   ShellbyMarkdown: any;
   ShellbyMermaid: any;
+  ShellbyMeterLogic: any;
   ShellbyMiniShell: any;
   ShellbyOutlookFormat: any;
   ShellbyPanes: any;
