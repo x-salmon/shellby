@@ -121,8 +121,62 @@ test('matchKeys lets a broader run catch a narrower failure, never the reverse',
   const broad = d.matchKeys('npm test');
   assert.ok(narrow.includes(broad[broad.length - 1]));
   assert.ok(!broad.includes(narrow[narrow.length - 1]));
-  assert.deepEqual(d.matchKeys('node a.js --x'), [d.matchKeys('node a.js --x')[0]]);
-  assert.equal(d.matchKeys('node a.js --x').length, 1);
+  // A one-off run: its own key and its script's, never a shorter run's.
+  assert.deepEqual(d.matchKeys('node a.js --x'), [d.matchKeys('node a.js --x')[0], d.scriptKey('node a.js')]);
+  assert.deepEqual(d.matchKeys('git commit -m x').length, 1);
+});
+
+test('scratch code is never a bug: inline code, stdin scripts and temp-folder scripts', () => {
+  for (const c of ['node -e "require(\'x\')"', 'cd web && node -p "1+"', 'node --input-type=module -e "x"', 'python -c "import x"', 'python3 -I -c "x"',
+    'FOO=1 node -e x', "$env:X='1'; node -e x", 'node - <<EOF\nx\nEOF', "python - <<'PY'\nx\nPY", 'deno eval "x"', 'ruby -e "x"',
+    'node C:\\Users\\me\\AppData\\Local\\Temp\\probe.js', 'node /tmp/x.js']) {
+    assert.equal(d.isScratch(c), true, c);
+  }
+  for (const c of ['node scripts/test.js', 'node app.js', 'npm test', 'python manage.py migrate', 'node --test test/a.test.js', 'node -r dotenv/config app.js', 'node scripts/temp-cleanup.js']) {
+    assert.equal(d.isScratch(c), false, c);
+  }
+  assert.equal(d.isScratch('node scripts/check.js --out tmp/x'), false, 'a real script that writes to tmp/ is real');
+  assert.equal(d.isScratch('bash -c "npm test"'), false, 'a wrapped real command is real');
+  const r = d.read({ cmd: 'node -e "require(\'./nope\')"', output: "Error: Cannot find module './nope'", isError: true });
+  assert.equal(r.outcome, 'fail');
+  assert.equal(r.hit, null);
+});
+
+test('scriptKey matches a script run with other arguments, never another script', () => {
+  assert.ok(d.scriptKey('node scripts/seed.js --fresh'));
+  assert.equal(d.scriptKey('node scripts/seed.js --fresh'), d.scriptKey('node .\\scripts\\seed.js'));
+  assert.equal(d.scriptKey('npm run e2e:ci -- queue'), d.scriptKey('npm run e2e:ci'));
+  assert.equal(d.scriptKey('FOO=1 python tools/x.py a'), d.scriptKey('python tools/x.py'));
+  assert.notEqual(d.scriptKey('node a.js'), d.scriptKey('node b.js'));
+  assert.equal(d.scriptKey('npm test'), null, 'a test run goes by its own keys');
+  assert.equal(d.scriptKey('npm install'), null);
+  assert.equal(d.scriptKey('node scripts/seed.js --dry-run'), null, 'a rehearsal can\'t vouch for the real run');
+  assert.ok(d.matchKeys('node a.js --x').includes(d.scriptKey('node a.js')));
+});
+
+test('isBroad: a whole-project run, with no file, folder or name filter', () => {
+  for (const c of ['npm test', 'node --test', 'npm run lint', 'eslint .', 'tsc -p jsconfig.json', 'cargo test', 'go test ./...', 'pytest']) assert.equal(d.isBroad(c), true, c);
+  for (const c of ['node --test test/a.test.js', 'npm test -- auth', 'pytest -k login', 'eslint src/a.js', 'pytest tests/', 'npx vitest run src/foo', 'node app.js', 'jest --testNamePattern=cart']) assert.equal(d.isBroad(c), false, c);
+  assert.equal(d.isBroad('npm run test:e2e'), false, 'another suite is not the project\'s tests');
+  for (const c of ['node --test --test-reporter spec', 'python -m pytest', 'npx tsc --noEmit', 'bun test']) assert.equal(d.isBroad(c), true, c);
+  for (const c of ['jest --shard=1/3', 'pytest -x -m slow', 'cargo test cart', 'jest cart', 'npm test --silent extra']) assert.equal(d.isBroad(c), false, `${c}: anything unknown might narrow it`);
+});
+
+test('the command checks stay fast on a long, flag-heavy command', () => {
+  const longs = [
+    `node ${'--a '.repeat(500)}zz`, `python ${'-a '.repeat(600)}zz`, `${'a=a=a '.repeat(300)}node x`,
+    `node ${'tmp '.repeat(500)}`, `npm test ${'--x '.repeat(500)}`, `$env:A=${'b'.repeat(1990)}`,
+  ];
+  const t0 = process.hrtime.bigint();
+  for (const c of longs) { d.isScratch(c); d.scriptKey(c); d.isBroad(c); d.isNarrow(c); d.startOf(c); d.matchKeys(c); }
+  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  assert.ok(ms < 250, `${ms} ms`);
+});
+
+test('isNarrow: a tool run on some files, never a package script (its own broader run covers it)', () => {
+  for (const c of ['node --test test/a.test.js', 'pytest -k login', 'eslint src/a.js', 'npx vitest run src/foo']) assert.equal(d.isNarrow(c), true, c);
+  for (const c of ['npm test', 'npm test -- auth', 'npm run test:e2e -- queue', 'node --test', 'node app.js']) assert.equal(d.isNarrow(c), false, c);
+  assert.equal(d.read({ cmd: 'node --test test/a.test.js', output: 'ℹ pass 4\nℹ fail 1', isError: true }).narrow, true);
 });
 
 test('remedies, resolves and flights', () => {
