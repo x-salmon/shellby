@@ -831,6 +831,9 @@ button.rq-title:hover, button.rq-title:focus-visible { color: var(--glass); text
 .queue-x { width: 24px; height: 24px; }
 .queue-paused { display: flex; align-items: center; gap: 8px; font-size: var(--fs-12); color: var(--amber); }
 .queue-paused .slim-btn { height: 26px; margin-left: auto; }
+/* The merge window: a message typed while idle waits a moment for company (tab-queue.js). */
+.queue-merging { display: flex; align-items: center; gap: 8px; font-size: var(--fs-12); color: var(--sand-dim); }
+.queue-merging .slim-btn { height: 26px; margin-left: auto; }
 /* A crowded conversation: make room, or not now. */
 .crowded {
   display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 4px 4px 4px 10px;

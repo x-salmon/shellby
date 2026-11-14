@@ -760,6 +760,7 @@
     const tab = state.tabs.get(tabId);
     if (!tab) return;
     const was = P.paneWith(state.grid, tabId)?.id;
+    SB.clearMerge?.(tab); // a message waiting for company here mustn't be sent to a tab that's gone (tab-queue.js)
     tab.destroy();
     state.tabs.delete(tabId);
     SB.dropHeldTabs?.(); // a list held for pacing (boot.js) may still carry this tab: main's next one will not

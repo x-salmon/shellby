@@ -1,10 +1,13 @@
 /* Shellby panel — messages queued behind a running turn: steered into it at
-   Claude's next step, edited, removed, sent one by one as turns end, or handed
-   back to the box after Stop. tab-send.js puts them in the queue. */
+   Claude's next step, edited, removed, sent together as one turn when it ends,
+   or handed back to the box after Stop. A message typed while idle waits a
+   moment here too, so a thought in several Enters goes as one turn
+   (queue-turns.js). tab-send.js puts them in the queue. */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
   const L = window.ShellbyTabLogic;
+  const Q = window.ShellbyQueueTurns;
   const input = $('input');
   // Theirs (tab-send.js, loaded before this).
   const syncBusyUi = () => SB.syncBusyUi();
@@ -45,10 +48,39 @@
   // Each window numbers its own apart, since a queue can move between them
   // with its conversation (tab-panes.js). selected: the file picked in All files
   // when it was typed, which goes with it (files-select.js).
+  // solo: typed as a /command (a snippet, /subtask), so it keeps a turn of its own
+  // however its words were filled in (queue-turns.js).
   const QUEUE_PREFIX = `q${Math.random().toString(36).slice(2, 7)}-`;
   let queued = 0;
-  const queueItem = (text, attachments, selected = null) => ({ id: `${QUEUE_PREFIX}${++queued}`, text, attachments, ...(selected ? { selected } : {}) });
+  const queueItem = (text, attachments, selected = null, { solo = false } = {}) => ({ id: `${QUEUE_PREFIX}${++queued}`, text, attachments, ...(selected ? { selected } : {}), ...(solo ? { solo: true } : {}) });
   SB.queueItem = queueItem;
+
+  // ------------------------------------------------------------ the merge window
+
+  // A plain message typed while the tab is idle waits MERGE_WINDOW_MS for
+  // company: anything else typed meanwhile goes with it as one turn. Each new
+  // message starts the wait again. Enter on an empty box, Ctrl+Enter or the
+  // chip's Send now send what's waiting at once.
+  const merging = tab => !!tab && !tab.busy && !tab.queuePaused && tab.queue.length > 0;
+  SB.isMerging = merging;
+
+  function armMerge(tab) {
+    clearTimeout(tab.mergeTimer);
+    tab.mergeTimer = setTimeout(() => { tab.mergeTimer = null; drain(tab); }, Q.MERGE_WINDOW_MS);
+  }
+  SB.armMerge = armMerge;
+
+  function clearMerge(tab) {
+    clearTimeout(tab.mergeTimer);
+    tab.mergeTimer = null;
+  }
+  SB.clearMerge = clearMerge;
+
+  function flushMerge(tab) {
+    clearMerge(tab);
+    return drain(tab);
+  }
+  SB.flushMerge = flushMerge;
 
   // ------------------------------------------------------------ queued messages
 
@@ -68,6 +100,10 @@
         h('span', { text: limited ? "Paused: you're at your usage limit." : 'Paused: the last turn ended with an error.' }),
         limited ? h('button', { class: 'btn slim-btn', type: 'button', onclick: () => SB.holdQueue(tab) }, 'Send after the reset') : null,
         h('button', { class: `btn slim-btn${limited ? ' ghost' : ''}`, type: 'button', onclick: () => { tab.queuePaused = false; drain(tab); } }, 'Send next now')) : null,
+      // Idle with messages waiting: the merge window, never a hidden delay.
+      merging(tab) ? h('div', { class: 'queue-merging', title: 'Messages typed close together go to Claude as one turn, which saves your usage. Enter on an empty box or Ctrl+Enter sends now.' },
+        h('span', { text: q.length > 1 ? `Sending these ${q.length} together in a moment…` : 'Sending in a moment, with anything else you type…' }),
+        h('button', { class: 'btn slim-btn', type: 'button', onclick: () => flushMerge(tab) }, 'Send now')) : null,
       ...q.map((m, i) => h('div', { class: `queue-item${m.taken ? ' taken' : ''}` },
         h('span', { class: 'queue-tag', text: L.queueTag(m, i) }),
         h('button', { class: 'queue-text', type: 'button', disabled: !!m.taken, title: m.taken ? 'Claude is reading this now' : 'Edit (puts it back in the box)', onclick: () => editQueued(tab, i) },
@@ -115,14 +151,28 @@
   }
   SB.editQueued = editQueued;
 
+  // What's queued goes as one turn: every plain message up to the first /command
+  // (or one with a file picked) together, each its own paragraph, with all their
+  // files (queue-turns.js nextTurn). A send that fails puts them back as they were.
+  // fromQueue: sent by the queue after a turn, which isn't you back at the PC
+  // (Keep warm); the merge window's send is you, a moment later.
   async function drain(tab) {
-    if (tab.busy || tab.queuePaused || !tab.queue.length) return;
-    const next = tab.queue.shift();
-    if (!(await sendNow(tab, next.text, next.attachments, { ...(next.selected ? { selected: next.selected } : {}), fromQueue: true }))) tab.queue.unshift(next);
+    clearMerge(tab);
+    const merged = !!tab.merged; // tab-send.js: what's waiting was typed just now
+    tab.merged = false;
+    if (tab.busy || tab.draining || tab.queuePaused || !tab.queue.length) return;
+    const turn = Q.nextTurn(tab.queue);
+    tab.queue = turn.rest;
+    tab.draining = true;
+    let ok;
+    try {
+      ok = await sendNow(tab, turn.text, turn.attachments, { ...(turn.selected ? { selected: turn.selected } : {}), fromQueue: !merged });
+    } finally { tab.draining = false; }
+    if (!ok) tab.queue = [...turn.items, ...tab.queue];
     if (tab.isActive) syncBusyUi();
   }
 
-  // A turn ended: send the next queued message, or hand the queue back after Stop.
+  // A turn ended: send what's queued as the next turn, or hand the queue back after Stop.
   SB.onTurnEnded = (tab, result) => {
     // Handed over but never read (main let that process go): ordinary queued messages again.
     tab.queue = tab.queue.map(m => (m.taken ? { ...m, taken: false } : m));
@@ -139,7 +189,7 @@
 
   // A reply from your phone while he worked (wiring/pocket.js): queued as if typed
   // here, with the pictures it carries. Should this turn have ended meanwhile,
-  // drain sends it at once.
+  // drain sends it at once, with anything waiting in the merge window.
   api.onTabQueue(({ tabId, text, files } = {}) => {
     const tab = state.tabs.get(tabId);
     const pictures = Array.isArray(files) ? files.filter(f => typeof f === 'string' && f) : [];

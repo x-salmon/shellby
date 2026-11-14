@@ -114,6 +114,7 @@ const DEFAULTS = {
   spendReserve: 25,  // % of the 5-hour window routines, workflows and away-from-the-PC Autonomous tabs leave you
   spendMaxMinutes: 60, // the longest one routine run may take
   holdBigTasks: false, // hold a message for the reset when it usually takes more than the window has left (usage/ledger.js)
+  mergeSends: true,   // messages typed close together go to Claude as one turn (renderer/panel/queue-turns.js)
   streaks: null,      // work days, projects and nudge settings (see progression/streaks.js)
   stickers: null,     // a sticker per project shipped, and where they sit on each shell (see stickers/index.js)
   beach: null,        // the beach: what you've seen on it and the high-water mark (see beach.js); this PC only

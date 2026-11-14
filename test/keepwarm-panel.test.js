@@ -36,7 +36,9 @@ test('a queued message going out by itself says so, so Keep warm stays on', () =
   const has = (text, part, what) => assert.ok(text.includes(part), what);
   const queue = src('tab-queue.js');
   const drain = queue.slice(queue.indexOf('async function drain(tab)'), queue.indexOf('SB.onTurnEnded'));
-  has(drain, 'sendNow(tab, next.text, next.attachments, { ...(next.selected ? { selected: next.selected } : {}), fromQueue: true })', 'the drain marks what it sends, beside the file picked in All files');
+  // Not a message typed a moment ago and waiting for company (queue-turns.js): that one is you.
+  has(drain, 'const merged = !!tab.merged;', 'the drain knows what was typed just now');
+  has(drain, 'sendNow(tab, turn.text, turn.attachments, { ...(turn.selected ? { selected: turn.selected } : {}), fromQueue: !merged })', 'the drain marks what it sends, beside the file picked in All files');
   has(queue, 'const sendNow = (tab, text, attachments, opts) => SB.sendNow(tab, text, attachments, opts);', 'and the queue passes the mark on');
   has(src('tab-send.js'), 'async function sendNow(tab, text, attachments, opts) {\n    const r = await api.sendTask(tab.id, text, attachments, opts);', 'sendNow hands it to main');
   const preload = fs.readFileSync(path.join(__dirname, '..', 'src', 'preload', 'preload.js'), 'utf8');

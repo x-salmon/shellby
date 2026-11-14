@@ -23,9 +23,11 @@
     $('status').classList.toggle('compacting', busy && !!tab.compacting);
     // While Shellby works you can keep typing: Enter queues the message, and
     // Claude reads it at his next step (or when he finishes, if there's none).
-    $('sendBtn').title = busy ? 'Queue: Claude reads it at his next step' : 'Send · right-click to try it 2, 3 or 4 ways';
+    // With a message waiting for company (tab-queue.js), Enter adds to it.
+    const merging = !!SB.isMerging?.(tab);
+    $('sendBtn').title = busy ? 'Queue: Claude reads it at his next step' : merging ? 'Goes with what\'s waiting · Ctrl+Enter sends now' : 'Send · right-click to try it 2, 3 or 4 ways';
     $('sendBtn').classList.toggle('queueing', busy);
-    $('sendHint').textContent = busy ? 'Enter to queue for his next step · Shift+Enter new line' : 'Enter to send · Shift+Enter new line';
+    $('sendHint').textContent = busy ? 'Enter to queue for his next step · Shift+Enter new line' : merging ? 'Enter adds to it · Ctrl+Enter sends now' : 'Enter to send · Shift+Enter new line';
     if (tab) $('statusText').textContent = busy ? tab.statusText + (tab.queue.length ? ` · ${tab.queue.length} queued` : '') : '';
     if (tab) syncSteers(tab);
     SB.renderModStatus?.(tab);
@@ -127,16 +129,20 @@
   SB.clearComposer = clearComposer;
   SB.renderAttachments = renderAttachments;
 
-  // -> true once it has gone (or is queued, or held for the reset), false if it
-  // stayed where it was. force: send even if it would be held as a big task.
-  SB.send = async (text, { force = false } = {}) => {
+  // -> true once it has gone (or is queued, or held for the reset, or waiting a
+  // moment for company), false if it stayed where it was. force: send even if it
+  // would be held as a big task. now: don't wait for company (Ctrl+Enter).
+  SB.send = async (text, { force = false, now = false } = {}) => {
     const tab = SB.activeTab();
     if (!tab) return false;
     const typed = text == null; // the box is the user's message; a string from code is Shellby's own and carries no pick
     text = (text ?? input.value).trim();
-    if (!text && !tab.attachments.length) return false;
+    // Enter on an empty box while a message waits for company: it goes now.
+    if (!text && !tab.attachments.length) { if (typed && SB.isMerging?.(tab)) { SB.flushMerge(tab); return true; } return false; }
     const attachments = [...tab.attachments];
     const picked = typed ? SB.treePickOpts?.(tab) : undefined; // as it was when you pressed Enter
+    // Typed as a /command: a turn of its own, whatever words it becomes below (queue-turns.js).
+    const solo = /^[/!]/.test(text);
     let snippet = null; // its name, counted as a use once the prompt has gone
     // /subtask <task> and the like go as the words they stand for, shown as sent (builtin-commands.js).
     const rewritten = SB.rewriteBuiltin?.(text);
@@ -176,9 +182,25 @@
         return true;
       }
     }
-    if (tab.busy) {
-      tab.queue.push(queueItem(text, attachments, picked?.selected));
+    const item = queueItem(text, attachments, picked?.selected, { solo });
+    if (tab.busy || tab.draining) {
+      tab.queue.push(item);
       clearComposer(tab);
+      syncBusyUi();
+      if (snippet) api.snippetUsed(snippet);
+      return true;
+    }
+    // Idle: a plain message you typed waits a moment for company, so a thought in
+    // several Enters goes as one turn (tab-queue.js). A command typed while one
+    // waits sends what's waiting now and goes after it, in a turn of its own.
+    const Q = window.ShellbyQueueTurns;
+    const waiting = SB.isMerging?.(tab);
+    if (typed && (Q.canMerge(item, { on: state.settings.mergeSends !== false, paused: !!tab.queuePaused }) || waiting)) {
+      tab.queue.push(item);
+      clearComposer(tab);
+      SB.setView('chat');
+      tab.merged = true;
+      if (now || Q.solo(item)) SB.flushMerge(tab); else SB.armMerge(tab);
       syncBusyUi();
       if (snippet) api.snippetUsed(snippet);
       return true;
@@ -239,7 +261,8 @@
     if (SB.pickKeydown?.(e)) return;
     if (slashKeydown(e)) return;
     if (SB.shortcuts.matches(e, 'zoomPane')) return; // zooms the pane (tabs.js), never sends
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); SB.send(); }
+    // Ctrl+Enter sends now, without waiting a moment for company (tab-queue.js).
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); SB.send(undefined, { now: e.ctrlKey }); }
     if (e.key === 'Tab' && e.shiftKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); SB.cycleMode(); return; }
     // Tab in an empty box takes what Claude guessed you'd ask next, like Claude Code (native-cli.js).
     if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !input.value && SB.takeNextPrompt?.()) { e.preventDefault(); return; }
