@@ -94,7 +94,7 @@ test('tools/list describes every tool with a schema', async () => {
   const { replies } = await talk([INIT, { jsonrpc: '2.0', id: 2, method: 'tools/list' }]);
   const tools = replies[1].result.tools;
   assert.deepEqual(tools.map(t => t.name).sort(),
-    ['add_routine', 'add_task', 'add_workflow', 'celebrate', 'finish_task', 'journal', 'list_routines', 'list_workflows', 'next_up', 'projects', 'run_workflow', 'say', 'server_log', 'status', 'wear']);
+    ['add_routine', 'add_task', 'add_workflow', 'celebrate', 'create_page', 'finish_task', 'journal', 'list_pages', 'list_routines', 'list_workflows', 'next_up', 'projects', 'read_page', 'run_workflow', 'say', 'server_log', 'status', 'update_page', 'wear', 'write_page']);
   for (const t of tools) {
     assert.ok(t.description.length > 40, `${t.name} explains itself`);
     assert.equal(t.inputSchema.type, 'object');
@@ -573,7 +573,11 @@ test('the plugin\'s tools and the app\'s actions are the same set', () => {
   // The MCP server ships inside the plugin and the actions live in the app, so
   // nothing but this test stops them drifting apart.
   const { TOOLS, toAction, MOODS: serverMoods, MAX_TEXT: serverMax } = require(SERVER);
-  assert.deepEqual(TOOLS.map(t => t.name).sort(), [...ACTIONS].sort());
+  // The five page tools travel as one action, 'page', naming which (crabtools.PAGE_TOOL_NAMES).
+  const { PAGE_TOOL_NAMES } = require('../src/main/crabtools');
+  assert.deepEqual(TOOLS.map(t => t.name).filter(n => !PAGE_TOOL_NAMES.includes(n)).sort(), ACTIONS.filter(a => a !== 'page').sort());
+  assert.deepEqual(TOOLS.map(t => t.name).filter(n => PAGE_TOOL_NAMES.includes(n)), PAGE_TOOL_NAMES);
+  for (const n of PAGE_TOOL_NAMES) assert.deepEqual(toAction(n, { id: 'x' }), { action: 'page', args: { tool: n, args: { id: 'x' } } });
   assert.deepEqual(serverMoods, require('../src/main/crabtools').MOODS);
   assert.equal(serverMax, MAX_TEXT);
   const server = require(SERVER);

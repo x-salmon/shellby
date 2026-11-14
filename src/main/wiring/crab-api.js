@@ -82,6 +82,16 @@ function wireCrabApi(d) {
       return d.projects.forTerminal(intent);
     }
 
+    // Pages from a terminal (the plugin's five page tools): your data, and your shelf.
+    if (intent.action === 'page') {
+      if (!crabToken || !clipath.tokenMatches(crabToken, token)) {
+        return { ok: false, error: "Shellby only shows or changes your pages for programs running as you, and this one didn't show his token. Update the Shellby plugin, then try again.", status: 401 };
+      }
+      if (!d.pages?.enabled()) return { ok: false, error: 'Pages are off in Shellby.', status: 403 };
+      return Promise.resolve(d.pages.tool(null, intent.tool, intent.args, 'plugin'))
+        .then(r => (r?.isError ? { ok: false, error: r.text, status: 400 } : { text: r?.text || 'Done.' }));
+    }
+
     // Routines and workflows hold your prompts and can start Claude, so another
     // account on this PC mustn't list or start them through the open port.
     if (crabtools.ROUTINE_ACTIONS.includes(intent.action) && (!crabToken || !clipath.tokenMatches(crabToken, token))) {

@@ -34,7 +34,10 @@ const PROJECT_ACTIONS = ['projects', 'next_up', 'server_log', 'add_task', 'finis
 const TOKEN_ACTIONS = [...PROJECT_ACTIONS, 'journal'];
 // These need the token too, but are answered outside the Projects page.
 const ROUTINE_ACTIONS = ['add_routine', 'list_routines', 'list_workflows', 'run_workflow', 'add_workflow'];
-const ACTIONS = ['say', 'celebrate', 'wear', 'status', 'add_routine', 'list_routines', 'list_workflows', 'run_workflow', 'add_workflow', 'journal', ...PROJECT_ACTIONS];
+// Pages from a terminal (wiring/pages.js): one action carrying which of the five tools.
+// Behind the token too: page data is the user's, and create_page puts something on their shelf.
+const PAGE_TOOL_NAMES = ['list_pages', 'read_page', 'write_page', 'create_page', 'update_page'];
+const ACTIONS = ['say', 'celebrate', 'wear', 'status', 'add_routine', 'list_routines', 'list_workflows', 'run_workflow', 'add_workflow', 'journal', 'page', ...PROJECT_ACTIONS];
 const MAX_PROJECT = 200;
 const MAX_FOLDER = 400;
 const LOG_LINES = { min: 10, max: 200, default: 50 };
@@ -90,6 +93,11 @@ function parseRequest(body) {
       return parseWorkflowProposal(args.workflow);
     case 'journal':
       return parseJournal(args);
+    case 'page': {
+      if (!PAGE_TOOL_NAMES.includes(args.tool)) return { ok: false, error: `Unknown page tool: ${clip(String(args.tool), 40)}` };
+      const a = args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {};
+      return { ok: true, intent: { action, tool: args.tool, args: a } };
+    }
     case 'projects': case 'next_up': case 'server_log': case 'add_task': case 'finish_task':
       return parseProjectAsk(action, args);
     default:
@@ -427,6 +435,7 @@ function parseJournal(args) {
 }
 
 module.exports = {
+  PAGE_TOOL_NAMES,
   parseRequest, matchItem, wearReply, statusReply, ackReply,
   routineQuestion, routineReply, routinesReply,
   parseWorkflowCall, workflowsReply,
