@@ -162,6 +162,34 @@ test('sync: stickers meet too, and each PC keeps its own folders and badges', as
   } finally { await mock.close(); }
 });
 
+test('sync: a second file (pages) is read and written in the same pass, and a failure there never stops the rest', async () => {
+  const mock = await startMockGitHub();
+  try {
+    const gh = new GitHubApi({ token: mock.state.token, api: mock.base });
+    const pc = new MemConfig({ wardrobe: { unlocked: ['first-task'] } });
+    const seen = [];
+    const pages = { file: 'shellby-pages.json', run: async remote => { seen.push(remote ? JSON.parse(remote.content) : null); return { content: JSON.stringify({ n: seen.length }), pulled: false }; } };
+    const first = await syncNow(gh, { get: k => pc.get(k), set: p => pc.set(p), pages });
+    const gist = mock.state.gists.get(first.gistId);
+    assert.deepEqual(JSON.parse(gist.files['shellby-pages.json'].content), { n: 1 }, 'written when the gist is made');
+    assert.deepEqual(seen, [null]);
+    const again = await syncNow(gh, { get: k => pc.get(k), set: p => pc.set(p), pages });
+    assert.deepEqual(seen[1], { n: 1 }, 'the handler sees what the gist holds');
+    assert.deepEqual(JSON.parse(gist.files['shellby-pages.json'].content), { n: 2 });
+    assert.equal(again.pushed, false, 'the main file was not rewritten for it');
+    assert.ok(gist.files[FILE], 'and is still there');
+    // A handler that throws: the main sync carries on and the error is reported.
+    const r = await syncNow(gh, { get: k => pc.get(k), set: p => pc.set(p), pages: { file: 'shellby-pages.json', run: async () => { throw new Error('nope'); } } });
+    assert.equal(r.pages.error, 'nope');
+    assert.deepEqual(JSON.parse(gist.files['shellby-pages.json'].content), { n: 2 }, 'nothing written over it');
+    // GitHub truncates a file past 1 MB in the gist's answer: the handler's gh.raw fetches the full one, from the raw host only.
+    const api2 = new GitHubApi({ token: 't', api: 'https://api.github.com', fetchImpl: async url => ({ ok: true, status: 200, arrayBuffer: async () => Buffer.from(`full:${url}`) }) });
+    assert.equal(await api2.raw('https://gist.githubusercontent.com/me/g1/raw/abc/shellby-pages.json', 1000), 'full:https://gist.githubusercontent.com/me/g1/raw/abc/shellby-pages.json');
+    await assert.rejects(api2.raw('https://evil.example/raw', 1000), /odd address/);
+    await assert.rejects(api2.raw('https://gist.githubusercontent.com/me/g1/raw/abc/x', 3), /bigger/);
+  } finally { await mock.close(); }
+});
+
 test('sync tolerates a hostile gist', async () => {
   const mock = await startMockGitHub();
   try {

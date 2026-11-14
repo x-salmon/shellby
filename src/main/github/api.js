@@ -74,6 +74,27 @@ class GitHubApi {
     return text.length > maxChars ? text.slice(-maxChars) : text;
   }
 
+  /**
+   * A gist file's full text when the gist's answer truncated it (GitHub cuts
+   * files past 1 MB there and gives a raw_url). Only GitHub's own raw host
+   * (or the dev mock's), fetched with no sign-in header, so the token never
+   * leaves for another host; at most maxBytes.
+   */
+  async raw(rawUrl, maxBytes) {
+    let u;
+    try { u = new URL(String(rawUrl)); } catch { throw Object.assign(new Error('GitHub gave an odd address for the file.'), { status: 502 }); }
+    const dev = this.api.startsWith('http:') && u.origin === new URL(this.api).origin;
+    if (!dev && !(u.protocol === 'https:' && u.hostname === 'gist.githubusercontent.com')) throw Object.assign(new Error('GitHub gave an odd address for the file.'), { status: 502 });
+    const RAW_TIMEOUT_MS = 30000;
+    const res = await this.fetchImpl(u.href, { method: 'GET', headers: { 'user-agent': 'Shellby' }, redirect: 'error', signal: AbortSignal.timeout(RAW_TIMEOUT_MS) });
+    if (!res.ok) throw Object.assign(new Error(`GitHub answered ${res.status}`), { status: res.status });
+    // Said too big up front: not read at all.
+    if (Number(res.headers?.get?.('content-length')) > maxBytes) throw Object.assign(new Error('The file is bigger than Shellby reads.'), { status: 413 });
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > maxBytes) throw Object.assign(new Error('The file is bigger than Shellby reads.'), { status: 413 });
+    return buf.toString('utf8');
+  }
+
   get(path) { return this.request('GET', path).then(r => r.data); }
   post(path, body) { return this.request('POST', path, body).then(r => r.data); }
   patch(path, body) { return this.request('PATCH', path, body).then(r => r.data); }

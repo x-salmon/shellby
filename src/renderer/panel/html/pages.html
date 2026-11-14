@@ -12,6 +12,8 @@
         <button type="button" class="btn primary slim-btn" id="pgNew">New page</button>
       </div>
       <p class="pg-off muted" id="pgOff" hidden>Pages are off: Shellby is in just-the-crab mode.</p>
+      <!-- "2 pages came from your laptop": pages from another PC you haven't looked at here (sync/pages.js) -->
+      <div class="pg-arrivals" id="pgArrivals" hidden></div>
       <div class="pg-grid" id="pgGrid" role="list"></div>
       <div class="pg-empty" id="pgEmpty" hidden></div>
     </section>
@@ -39,5 +41,18 @@
         <span class="muted small">Pages can keep their own data, and ask for more only with your OK.</span>
         <button type="button" class="btn primary" id="pgBuild">Build it</button>
       </div>
+    </div>
+  </div>
+  <!-- Where it goes: the page Everywhere / This PC only, its data Goes with it / Stays on this PC (sync/pages.js) -->
+  <div class="card-sheet" id="pgWhereSheet" role="dialog" aria-modal="true" aria-labelledby="pgWhereTitle" hidden>
+    <div class="card-box pg-where-box">
+      <div class="card-head">
+        <h2 id="pgWhereTitle">Where it goes</h2>
+        <button type="button" class="icon-btn" id="pgWhereClose" aria-label="Close" title="Close (Esc)">
+          <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="pgWhereBody"></div>
+      <div class="row pg-where-foot"><button type="button" class="btn" id="pgWhereDone">Done</button></div>
     </div>
   </div>

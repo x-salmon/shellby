@@ -1,9 +1,10 @@
 # Pages: small apps you build with Claude, on every screen you use
 
-**Phase 1 is built** on this branch (2026-11-14): the screens for this PC, the
-five MCP tools in the app and the plugin, and docs/PAGES.md for users. Phases
-2 (phone) and 3 (other PCs) wait for the multi-PC hub branch to reach main.
-Where the build went another way than this plan, see "Built" under Phases.
+**Phases 1 and 3 are built** on this branch (2026-11-14): the screens for this
+PC, the five MCP tools in the app and the plugin, docs/PAGES.md for users, and
+pages following you between PCs through the sync gist. Phase 2 (phone) is on
+its own branch. Where the build went another way than this plan, see "Built"
+under Phases.
 
 Mockups for every feature are in [pages-mockups/](pages-mockups/index.html):
 open `index.html` in a browser (it uses Shellby's own tokens and fonts).
@@ -384,6 +385,35 @@ scope** (chosen 2026-11-13): the 30 marked Core, plus every extra:
    - Not yet: pinned pages on the Beach (screen 6), the phone and sync.
 2. **On the phone: screens 36–42.**
 3. **On your other PCs: screens 43–49.**
+   **Built**, with these departures and details:
+   - The stamps: a page's files carry one stamp (`state.sync.at`, set by the
+     store on every save; an arriving version keeps the other PC's), and each
+     data key carries its own (`data.json`'s `by[key].at`, plus `op`: `append`
+     or `set`, and the PC that wrote it). Removed keys and deleted pages leave
+     markers (`data.json`'s `gone`, `pages\.sync.json`), so an older copy can't
+     bring them back. A list merges item by item only when both PCs' last write
+     to it was an append; a set later than the other PC's append wins whole.
+   - The gist's second file holds `{ pages: { id: { at, from, manifest, files,
+     why, who, thumb, data } }, gone }`. `from` names the PC that changed the
+     page last, so a page passed on by a third PC still says where it's from.
+   - A changed page that arrives waits as `state.sync.pending` (its files are
+     written as a version, with the other PC's name in the log); one never
+     agreed here just takes the new version. The budget card and Where it goes
+     read `state.sync`; a clash is `state.sync.lost`, shown in History.
+   - Where it goes is a sheet from the page's menu and its settings drawer
+     (two choices, the budget line), not a bottom sheet over the page.
+   - The strip under the header shows for an agent's write too, not only
+     data from another PC, since the two should look the same.
+   - Deleting a page here deletes it on your other PCs (a marker, like a
+     routine's); the delete confirmation says so when the page travels.
+   - GitHub truncates a gist file past 1 MB in its answer, so the pages file
+     is fetched from its raw host when that happens (`github/api.js raw`), with
+     no sign-in header. A pages file that can't be read is left as it was.
+   - `pagesSync` is this PC's own setting (not in `sync/prefs.js`), on by
+     default; pages travel only while Sync between PCs is on too.
+   - PCs with different page sets whose union passes 2 MB each push their own
+     fit; the file flips between them until both have every page, and a page
+     missing from the file is never a delete (only a marker is).
 4. **Sharing** (later, maybe): a page to the community gallery as a pack,
    which needs review like skins do, since it's code.
 

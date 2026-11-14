@@ -1852,6 +1852,8 @@
         <button type="button" class="btn primary slim-btn" id="pgNew">New page</button>
       </div>
       <p class="pg-off muted" id="pgOff" hidden>Pages are off: Shellby is in just-the-crab mode.</p>
+      <!-- "2 pages came from your laptop": pages from another PC you haven't looked at here (sync/pages.js) -->
+      <div class="pg-arrivals" id="pgArrivals" hidden></div>
       <div class="pg-grid" id="pgGrid" role="list"></div>
       <div class="pg-empty" id="pgEmpty" hidden></div>
     </section>
@@ -1879,6 +1881,19 @@
         <span class="muted small">Pages can keep their own data, and ask for more only with your OK.</span>
         <button type="button" class="btn primary" id="pgBuild">Build it</button>
       </div>
+    </div>
+  </div>
+  <!-- Where it goes: the page Everywhere / This PC only, its data Goes with it / Stays on this PC (sync/pages.js) -->
+  <div class="card-sheet" id="pgWhereSheet" role="dialog" aria-modal="true" aria-labelledby="pgWhereTitle" hidden>
+    <div class="card-box pg-where-box">
+      <div class="card-head">
+        <h2 id="pgWhereTitle">Where it goes</h2>
+        <button type="button" class="icon-btn" id="pgWhereClose" aria-label="Close" title="Close (Esc)">
+          <svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="pgWhereBody"></div>
+      <div class="row pg-where-foot"><button type="button" class="btn" id="pgWhereDone">Done</button></div>
     </div>
   </div>
 
@@ -2252,6 +2267,19 @@
         <h3>Pages</h3>
         <p class="small muted">Small apps Claude built for you. Each runs sandboxed with no way onto the network or into Shellby, and can do only what you let it. This is everything every page can do, in one place.</p>
         <ul class="pg-set-list" id="pgSetList" aria-label="Every page's access"></ul>
+        <!-- On your other PCs (sync/pages.js): its own switch apart from Sync between PCs, the budget, which pages travel -->
+        <h4 class="pg-set-h">On your other PCs</h4>
+        <label class="toggle"><input type="checkbox" id="pgSyncToggle" aria-describedby="pgSyncNote"><span class="switch"></span>Pages go to my other PCs</label>
+        <p class="small muted" id="pgSyncNote">Through the same private gist as Sync between PCs, in its own file. Each page arrives switched off.</p>
+        <div class="pg-budget" id="pgSyncBar" hidden>
+          <div class="pg-budget-bar"><i class="used" id="pgSyncUsed"></i></div>
+          <div class="pg-budget-legend"><span><i class="used"></i><span id="pgSyncUsedText"></span></span><span class="end" id="pgSyncLast"></span></div>
+        </div>
+        <div id="pgSyncWhich" hidden>
+          <h4 class="pg-set-h">Which pages travel</h4>
+          <div class="pg-set-travel" id="pgSyncTravel" aria-label="Which pages travel"></div>
+          <p class="small muted">Change one from the page's menu, under Where it goes.</p>
+        </div>
         <div class="row wrap">
           <button type="button" class="btn slim-btn" id="pgSetOpen">Open Pages</button>
           <button type="button" class="btn ghost slim-btn" id="pgSetOff">Turn every page off</button>

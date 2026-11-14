@@ -12,8 +12,10 @@
 // personality) is in sync/life.js. Your routines and workflows go one by one,
 // each arriving switched off (sync/plans.js). The Time page's hours go only
 // from the PCs where you switched that on, each PC's share kept apart
-// (sync/hours.js). The gist is yours but is still treated as
-// untrusted input.
+// (sync/hours.js). Your pages travel in a second file of the same gist,
+// shellby-pages.json, read and written in the same pass (sync/pages.js,
+// through the `pages` handler wiring/pages.js gives syncNow). The gist is
+// yours but is still treated as untrusted input.
 const { normalizeStats } = require('../wardrobe/achievements');
 const { normalizeXp, mergeXpCounts, cleanByDevice } = require('../progression/xp');
 const stickers = require('../stickers');
@@ -203,34 +205,57 @@ function patchFor(merged, get, data = {}) {
 
 // ------------------------------------------------------------------ the gist
 
-async function readGist(gh, id) {
-  const g = await gh.get(`/gists/${encodeURIComponent(id)}`);
+/** The main file of a fetched gist, cleaned, or null when it isn't there or can't be read. */
+function readMain(g) {
   const f = g?.files?.[FILE];
   if (!f || f.size > MAX_BYTES) return null;
   try { return clean(JSON.parse(f.content || '{}')); } catch { return null; }
+}
+
+/**
+ * The second file (pages), through its handler: { file, run(remoteFile, gh) ->
+ * { content: string | null, pulled, note } }. A failure there never stops the
+ * main sync: it's reported and tried again next time.
+ */
+async function runSecond(pages, g, gh) {
+  if (!pages) return null;
+  try {
+    const r = await pages.run(g?.files?.[pages.file] || null, gh);
+    return r || { content: null, pulled: false };
+  } catch (e) {
+    return { content: null, pulled: false, error: String(e?.message || e).slice(0, 200) };
+  }
 }
 
 // What's in the gist is settled: nobody else's legacy is pending.
 const settled = snap => { const c = clean(snap); return { ...c, xp: { ...c.xp, legacyPending: false } }; };
 const content = snap => JSON.stringify({ ...settled(snap), note: 'Shellby sync: trophies, XP, outfit, streak days, shell stickers, the Bugdex, finds, his bond, his tank and its saved layouts, your friends list, settings, routines, workflows and the hours from PCs that sync them. Safe to delete; Shellby makes a new one.' }, null, 1);
 
+/** @typedef {{ file: string, run: (remoteFile: any, gh: any) => Promise<any> }} SecondFile  the pages file's handler (wiring/pages.js) */
+
 /**
  * One sync: merge local with the gist, apply what changed locally, push what
- * changed remotely. Returns { gistId, pulled, pushed }.
+ * changed remotely. Returns { gistId, pulled, pushed, pages }.
  *   get/set: config accessors. data(): your own settings (config.data)
+ *   pages: the second file's handler (wiring/pages.js), or null
+ * @param {any} gh
+ * @param {{ get: (k: string) => any, set: (p: object) => void, data?: () => any, pages?: SecondFile | null }} io
  */
-async function syncNow(gh, { get, set, data = () => ({}) }) {
+async function syncNow(gh, { get, set, data = () => ({}), pages = null }) {
   const local = snapshot(get, data());
   const id = await findGist(gh, get('syncGistId'), FILE);
   if (!id) {
-    const created = await gh.post('/gists', { public: false, description: 'Shellby sync', files: { [FILE]: { content: content(local) } } });
+    const second = await runSecond(pages, null, gh);
+    const files = { [FILE]: { content: content(local) }, ...(pages && second?.content ? { [pages.file]: { content: second.content } } : {}) };
+    const created = await gh.post('/gists', { public: false, description: 'Shellby sync', files });
     // This PC's legacy is now the gist's, so it counts in full from here on.
     // This PC's share of the hours is stamped too, so the next sync agrees.
     set({ syncGistId: created.id, xp: { ...normalizeXp(get('xp')), legacyPending: false }, ...hours.patchFor(local.hours, get) });
-    return { gistId: created.id, pulled: false, pushed: true };
+    return { gistId: created.id, pulled: false, pushed: true, pages: second };
   }
   if (id !== get('syncGistId')) set({ syncGistId: id });
-  const remote = await readGist(gh, id) || clean({});
+  const g = await gh.get(`/gists/${encodeURIComponent(id)}`);
+  const remote = readMain(g) || clean({});
   const merged = merge(local, remote);
   const pulled = !same(merged, local);
   if (pulled) set(patchFor(merged, get, data()));
@@ -241,8 +266,13 @@ async function syncNow(gh, { get, set, data = () => ({}) }) {
     if (Object.keys(hoursPatch).length) set(hoursPatch);
   }
   const pushed = !same(merged, remote);
-  if (pushed) await gh.patch(`/gists/${encodeURIComponent(id)}`, { files: { [FILE]: { content: content(merged) } } });
-  return { gistId: id, pulled, pushed };
+  const files = {};
+  if (pushed) files[FILE] = { content: content(merged) };
+  // The pages file, in the same pass and the same write.
+  const second = await runSecond(pages, g, gh);
+  if (pages && second?.content) files[pages.file] = { content: second.content };
+  if (Object.keys(files).length) await gh.patch(`/gists/${encodeURIComponent(id)}`, { files });
+  return { gistId: id, pulled, pushed, pages: second };
 }
 
 module.exports = { snapshot, clean, merge, patchFor, syncNow, findGist, FILE };

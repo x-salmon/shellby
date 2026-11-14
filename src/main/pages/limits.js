@@ -24,6 +24,8 @@ const LIMITS = Object.freeze({
   ASK_PROMPT: 2000,
   READY_MS: 5000,              // no "ready" by then: the page didn't load
   OPEN_PAGES: 5,               // frames kept alive at once
+  SYNC_BYTES: 2 * 1024 * 1024, // what every page together may take in the sync gist (sync/pages.js)
+  SYNC_THUMB_BYTES: 64 * 1024, // a tile's miniature travels only up to this
 });
 
 module.exports = { LIMITS };

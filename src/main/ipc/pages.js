@@ -13,6 +13,8 @@ const OPS = obj({ set: opt(obj()), remove: opt(list(KEY, 200)), append: opt(obj(
 const VERSION = v => Number.isInteger(v) && v > 0 && v < 1e6;
 const AGENTS = str({ max: 10, re: /^(any|shellby|none)$/ });
 const TAB = str({ max: 100 });
+// Where it goes: the page Everywhere or This PC only; its data with it or staying here.
+const WHERE = obj({ where: opt(str({ max: 10, re: /^(everywhere|here)$/ })), data: opt(str({ max: 10, re: /^(with|here)$/ })) });
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
@@ -41,6 +43,12 @@ function registerPagesIpc(ipcMain, d) {
   ipcMain.handle('pages:thumb', (_e, id, rect) => d.pages.thumb(id, rect), [PAGE_ID, obj({ x: NUM, y: NUM, width: NUM, height: NUM })]);
   ipcMain.handle('pages:ask', (_e, id, prompt, mode) => d.pages.ask(id, prompt, mode), [PAGE_ID, text(2000), str({ max: 10, re: /^(ask|plan)$/ })]);
   ipcMain.handle('pages:build', (_e, describe) => d.pages.build(describe), [text(2000)]);
+  // Between PCs (sync/pages.js): the budget and which pages travel, Where it goes, and looking at what arrived.
+  ipcMain.handle('pages:sync', () => d.pages.syncView());
+  ipcMain.handle('pages:where', (_e, id, patch) => d.pages.setWhere(id, patch), [PAGE_ID, WHERE]);
+  ipcMain.handle('pages:turnOn', (_e, id, shown) => d.pages.turnOn(id, shown), [PAGE_ID, VERSION]);
+  ipcMain.handle('pages:decline', (_e, id) => d.pages.decline(id), [PAGE_ID]);
+  ipcMain.handle('pages:opened', (_e, id) => d.pages.opened(id), [PAGE_ID]);
   ipcMain.handle('pages:change', (_e, id, o) => d.pages.change(id, o || {}), [PAGE_ID, opt(obj({ ask: opt(text(2000)), error: opt(text(500)), pointed: opt(obj({ text: opt(text(200)), selector: opt(text(200)) })) }))]);
 }
 
