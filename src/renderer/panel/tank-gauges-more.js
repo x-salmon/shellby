@@ -1,30 +1,76 @@
 /* Shellby panel — three more of his tank's live decor (src/main/tank/gauges.js
-   decides what they show): the tide gauge on the left of the front glass (how
-   much of the 5-hour usage window is left), the Sunken Chest glinting for a
+   decides what they show): the tide gauge, a depth staff planted on the left of
+   the tank (how much of the 5-hour usage window is left), the Sunken Chest glinting for a
    minute when a PR of yours merges, and a message in a bottle bobbing at the
    surface while a recap or a weekly card waits unread. tank-gauges.js calls
    in from its own painting and words; nothing here runs on a timer. Loaded
    after tank-gauges.js. */
 'use strict';
 (function () {
-  const TIDE = { x: 5, top: 6, water: '#5ec8f2', low: '#ff9f43', lowAt: 20 }; // left of the glass's highlight
+  // The tide staff: a harbour depth post planted in the sand on the left of the
+  // tank, beside the glass's highlight. Ten painted bands, one per tenth of the
+  // window (tideOf moves in tenths), with a cork float riding the level.
+  const STAFF = { x: 4, top: 7, sink: 2, bands: 10, lowAt: 20 };
+  const STAFF_INK = {
+    red: '#c8463d', white: '#efe6cf', warn: '#ff7a50', wood: '#7a5c3a', edge: '#3b2e20',
+    cap: '#c9a24a', capLit: '#e8c46a', foam: '#ffffff', foamLow: '#ffd2b8',
+    cork: '#e85d4a', corkLow: '#ff9f43', corkBelly: '#fff6d8', line: '#d8d2c0',
+  };
+  const DRY = 0.32; // bands above the tide: faded, used up
   const CHEST = 'sunken-chest';
   const GLINT = [[4, 1], [1, 2], [7, 3], [6, 1]]; // where on the chest the glint lands, in turn
   const BOTTLE = { glass: '#6fcf97', dark: '#3f8f63', paper: '#fff6d8', cork: '#a87a45' };
 
-  // A narrow tube on the glass, filled to how much of the window is left.
-  function tide(ctx, world, tg) {
+  const clampLeft = left => Math.max(0, Math.min(100, Number(left) || 0));
+
+  /**
+   * Where the staff's parts go for a reading, in art pixels: the rows it spans,
+   * the waterline's row, whether it's running low, and each band from the
+   * bottom up ({ y, h, red, wet }).
+   */
+  function staffOf(world, left) {
+    const pct = clampLeft(left);
+    const bottom = world.sandTop - STAFF.sink, span = bottom - STAFF.top;
+    const rowAt = f => bottom - Math.round(span * f);
+    const level = rowAt(pct / 100);
+    const bands = Array.from({ length: STAFF.bands }, (_, i) => {
+      const y = rowAt((i + 1) / STAFF.bands);
+      return { y, h: rowAt(i / STAFF.bands) - y, red: i % 2 === 0, wet: y >= level };
+    });
+    return { bottom, span, level, half: rowAt(0.5), low: pct <= STAFF.lowAt, bands };
+  }
+
+  function px(ctx, color, x, y, w, h, alpha = 1) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+  }
+
+  function tide(ctx, world, tg, t, still) {
     if (!tg) return;
-    const bottom = world.sandTop - 3, span = bottom - TIDE.top;
-    const fill = Math.round(span * Math.max(0, Math.min(100, tg.left)) / 100);
-    ctx.fillStyle = '#e8f6ff';
-    ctx.globalAlpha = 0.35;
-    ctx.fillRect(TIDE.x - 1, TIDE.top - 1, 3, span + 2);
-    for (let q = 1; q < 4; q++) ctx.fillRect(TIDE.x + 2, TIDE.top + Math.round(span * q / 4), 1, 1); // quarter marks
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = tg.left <= TIDE.lowAt ? TIDE.low : TIDE.water;
-    ctx.fillRect(TIDE.x, bottom - fill, 1, fill);
-    if (fill) { ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.7; ctx.fillRect(TIDE.x, bottom - fill, 1, 1); } // the waterline
+    const s = staffOf(world, tg.left), x = STAFF.x, k = STAFF_INK;
+    px(ctx, k.edge, x - 1, STAFF.top - 2, 5, world.sandTop - STAFF.top + 5, 0.55); // its outline
+    for (const b of s.bands) {
+      const paint = b.red ? (s.low && b.wet ? k.warn : k.red) : k.white;
+      px(ctx, paint, x, b.y, 2, b.h, b.wet ? 1 : DRY);
+      px(ctx, '#000000', x + 2, b.y, 1, b.h, b.wet ? 0.25 : 0.4); // the shaded side
+    }
+    px(ctx, k.wood, x, s.bottom, 3, world.sandTop - s.bottom + 3); // planted in the sand
+    px(ctx, k.cap, x - 1, STAFF.top - 2, 5, 2);
+    px(ctx, k.capLit, x - 1, STAFF.top - 2, 3, 1);
+    px(ctx, k.foam, x - 1, s.half, 1, 1, 0.6); // the half mark
+    // Foam round the staff at the level, with a ripple either side.
+    const sway = still ? 0 : Math.sin(t * 2.2);
+    const wob = Math.round(sway);
+    px(ctx, s.low ? k.foamLow : k.foam, x - 1, s.level, 5, 1, 0.85);
+    px(ctx, k.foam, x - 3 + wob, s.level, 1, 1, 0.45);
+    px(ctx, k.foam, x + 5 - wob, s.level, 1, 1, 0.45);
+    // The cork float on its short line, bobbing a pixel.
+    const fy = s.level - 2 + (sway > 0.5 ? 0 : 1);
+    px(ctx, k.line, x + 3, s.level, 2, 1, 0.6);
+    px(ctx, s.low ? k.corkLow : k.cork, x + 5, fy, 3, 1);
+    px(ctx, k.corkBelly, x + 5, fy + 1, 3, 1);
+    px(ctx, k.foam, x + 6, fy - 1, 1, 1, 0.9); // its flag
     ctx.globalAlpha = 1;
   }
 
@@ -60,7 +106,7 @@
   }
 
   function over(ctx, scene, gg, t, still) {
-    tide(ctx, scene.world, gg.tide);
+    tide(ctx, scene.world, gg.tide, t, still);
     if (gg.chest) glint(ctx, scene, t, still);
     if (gg.bottle) bottle(ctx, scene.world, t, still);
   }
@@ -73,5 +119,7 @@
     return parts.join(' ');
   }
 
-  SB.tankGaugesMore = { over, words };
+  const api = { over, words, staffOf, STAFF };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else SB.tankGaugesMore = api;
 })();

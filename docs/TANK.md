@@ -160,7 +160,7 @@ A few things in his tank quietly show what Shellby already knows about your PC:
 | **Bubblers** (the air stone) | Bubble faster the busier the CPU is. |
 | **Lighthouse** | Lit while one of your dev servers is running. It blinks red when one has crashed. |
 | **The water** | Takes his Health mood: warm when he's hot (and the plants sway faster), swirling when he's dizzy, a pile of boxes in the corner when he's stuffed. It clears with the mood. |
-| **Tide gauge** on the left of the front glass | How much of your 5-hour usage window is left, in tenths. It runs orange below a fifth, and is full again once the window resets. |
+| **Tide gauge**, a depth staff on the left of the tank | How much of your 5-hour usage window is left: ten painted bands, one per tenth, with a cork float at the level and the bands above it faded. The float and the wet red bands turn orange at a fifth or less, and it's full again once the window resets. |
 | **Sunken Chest** | Glints for a minute when a pull request of yours merges. |
 | **Message in a bottle** | Bobs at the surface while a *While you were away* recap or your weekly card is waiting. It sinks once you dismiss the recap or open Trophies & XP. |
 
