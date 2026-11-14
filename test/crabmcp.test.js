@@ -19,10 +19,12 @@ test('notifications get the empty result Claude Code expects', async () => {
 test('lists the crab\'s tools, with suggest only when suggestions are on', async () => {
   const r = await ask({ method: 'tools/list', jsonrpc: '2.0', id: 1 });
   const board = ['post_task', 'list_tasks', 'update_task', 'wait_for_tasks'];
-  assert.deepEqual(r.result.tools.map(t => t.name), ['say', 'celebrate', 'wear', 'status', 'note', 'add_routine', 'list_routines', ...board, 'suggest']);
-  assert.deepEqual(crabmcp.toolsFor({ suggestions: false }).map(t => t.name), ['say', 'celebrate', 'wear', 'status', 'note', 'add_routine', 'list_routines', ...board]);
-  assert.deepEqual(crabmcp.toolsFor({ suggestions: false, board: false }).map(t => t.name), ['say', 'celebrate', 'wear', 'status', 'note', 'add_routine', 'list_routines']);
+  const pages = ['list_pages', 'read_page', 'write_page', 'create_page', 'update_page'];
+  assert.deepEqual(r.result.tools.map(t => t.name), ['say', 'celebrate', 'wear', 'status', 'note', 'add_routine', 'list_routines', ...board, ...pages, 'suggest']);
+  assert.deepEqual(crabmcp.toolsFor({ suggestions: false, pages: false }).map(t => t.name), ['say', 'celebrate', 'wear', 'status', 'note', 'add_routine', 'list_routines', ...board]);
+  assert.deepEqual(crabmcp.toolsFor({ suggestions: false, board: false, pages: false }).map(t => t.name), ['say', 'celebrate', 'wear', 'status', 'note', 'add_routine', 'list_routines']);
   assert.deepEqual(crabmcp.BOARD_TOOL_NAMES, board);
+  assert.deepEqual(crabmcp.PAGE_TOOL_NAMES, pages);
   for (const t of r.result.tools) assert.equal(t.inputSchema.additionalProperties, false, t.name);
 });
 

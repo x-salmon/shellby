@@ -21,12 +21,16 @@ test('the note stays small: it rides along on every turn', () => {
   assert.ok(systemNote().length <= 1600, `note is ${systemNote().length} chars`);
   // add_routine and list_routines moved here from the plugin, which no longer
   // lists its own (about 2000 chars) in Shellby's conversations.
-  const off = JSON.stringify(toolsFor({ board: false })).length;
+  const off = JSON.stringify(toolsFor({ board: false, pages: false })).length;
   assert.ok(off <= 3000, `tools are ${off} chars`);
   // The task board's four tools and its line in the note, while it's on (Settings can turn it off).
-  const on = JSON.stringify(toolsFor()).length;
+  const on = JSON.stringify(toolsFor({ pages: false })).length;
   assert.ok(on - off <= 1400, `the board's tools are ${on - off} chars`);
   assert.ok(systemNote({ board: true }).length - systemNote().length <= 260, "the board's line in the note");
+  // Pages' five tools and their line, while pages are on (wiring/pages.js).
+  const pages = JSON.stringify(toolsFor({ board: false })).length;
+  assert.ok(pages - off <= 1500, `pages' tools are ${pages - off} chars`);
+  assert.ok(systemNote({ pages: true }).length - systemNote().length <= 300, "pages' line in the note");
 });
 
 test('the note names every feature it can offer, and only offers with suggestions on', () => {

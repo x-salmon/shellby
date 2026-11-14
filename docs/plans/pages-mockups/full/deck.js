@@ -4,6 +4,7 @@
 // the seven files, and fills in the parts every screen shares: the title bar
 // (<header class="tb" data-mode="Ask first">) and the rail
 // (<nav class="rail" data-on="pages" data-sub="print" data-pages="print,radar">).
+/* global document, location, history, localStorage, innerWidth, innerHeight, addEventListener */
 (function () {
   'use strict';
 

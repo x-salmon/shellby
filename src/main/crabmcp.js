@@ -108,6 +108,41 @@ const BOARD_TOOLS = [
 ];
 const BOARD_TOOL_NAMES = BOARD_TOOLS.map(t => t.name);
 
+// Pages (wiring/pages.js): small apps that live in Shellby, with data any
+// conversation can read and add to. Kept terse, like the board's: pages/
+// checks and cuts everything it's given, and says why when it refuses.
+// files: { "index.html": "..." }, flat text; access: { read, ask, notify, web }. The
+// page-authoring skill and the save checks' errors say the rest.
+const OBJ = { type: 'object' };
+const PAGE_TOOLS = [
+  {
+    name: 'list_pages',
+    description: "The user's pages (small apps in Shellby): ids, names, data keys.",
+    inputSchema: obj({}),
+  },
+  {
+    name: 'read_page',
+    description: "A page's data, or just some keys.",
+    inputSchema: obj({ id: STR, keys: IDS }, ['id']),
+  },
+  {
+    name: 'write_page',
+    description: "Change a page's data. append adds to list keys without reading them (an array adds each item), so writers don't clash.",
+    inputSchema: obj({ id: STR, set: OBJ, remove: IDS, append: OBJ }, ['id']),
+  },
+  {
+    name: 'create_page',
+    description: 'Make a page, a small app in Shellby: a draft beside this chat until the user saves it.',
+    inputSchema: obj({ name: STR, description: STR, files: OBJ, access: OBJ }, ['name', 'files']),
+  },
+  {
+    name: 'update_page',
+    description: "New files for a page or your draft; why goes in its History.",
+    inputSchema: obj({ id: STR, files: OBJ, why: STR, name: STR, description: STR, access: OBJ }, ['id', 'files', 'why']),
+  },
+];
+const PAGE_TOOL_NAMES = PAGE_TOOLS.map(t => t.name);
+
 const SUGGEST_TOOL = {
   name: 'suggest',
   description: 'Offer the user a Shellby feature as a card they can tap. Nothing happens unless they tap it. The reply says whether it was shown.',
@@ -121,9 +156,9 @@ const SUGGEST_TOOL = {
   }, ['feature', 'why']),
 };
 
-/** The tools a conversation gets: the crab's, the task board's when it's on, and `suggest` when suggestions are on. */
-function toolsFor({ suggestions = true, board = true } = {}) {
-  return [...CRAB_TOOLS, ...(board ? BOARD_TOOLS : []), ...(suggestions ? [SUGGEST_TOOL] : [])];
+/** The tools a conversation gets: the crab's, the task board's and pages' when they're on, and `suggest` when suggestions are on. */
+function toolsFor({ suggestions = true, board = true, pages = true } = {}) {
+  return [...CRAB_TOOLS, ...(board ? BOARD_TOOLS : []), ...(pages ? PAGE_TOOLS : []), ...(suggestions ? [SUGGEST_TOOL] : [])];
 }
 
 /** The mcpServers entry for the one server Shellby hosts itself. */
@@ -169,4 +204,4 @@ async function handle(message, { tools, call }) {
   }
 }
 
-module.exports = { SERVER, BOARD_TOOL_NAMES, MAX_WAIT_SECONDS, toolsFor, servers, handle };
+module.exports = { SERVER, BOARD_TOOL_NAMES, PAGE_TOOLS, PAGE_TOOL_NAMES, MAX_WAIT_SECONDS, toolsFor, servers, handle };

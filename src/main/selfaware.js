@@ -38,7 +38,7 @@ const clip = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').r
  * anything that changes turn to turn belongs in usageNote, never here.
  *   { suggestions }: whether the `suggest` tool is offered
  */
-function systemNote({ suggestions = true, board = false } = {}) {
+function systemNote({ suggestions = true, board = false, pages = false } = {}) {
   const lines = [
     "You are running inside Shellby, a Windows desktop app where a pixel hermit crab runs Claude Code on the user's own Claude plan. The user talks to you in Shellby's panel, not a terminal: permission prompts and your questions appear there as cards, files dropped on the crab arrive as \"Attached files\", and each subagent you start walks out as a helper crab.",
     'A line in a user message that starts with "[Shellby:" was added by the app, not typed by the user.',
@@ -47,6 +47,9 @@ function systemNote({ suggestions = true, board = false } = {}) {
   ];
   if (board) {
     lines.push("Each project has a task board shared by Shellby's conversations. When work splits into parts that can go on at once, post_task hands one to another conversation (start: true starts a helper) and wait_for_tasks waits for the results.");
+  }
+  if (pages) {
+    lines.push("The user's pages are small apps in Shellby with data any conversation can use: list_pages, read_page and write_page reach them. When they ask for a tool, board or tracker to keep, create_page builds one as a draft beside the chat (load the page-authoring skill first if it's there).");
   }
   if (suggestions) {
     lines.push(

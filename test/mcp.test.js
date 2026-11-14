@@ -87,7 +87,7 @@ test('tools/list leaves out the crab tools in a Shellby conversation, which has 
   // is the app's alone: it files under the conversation's project, which only the app knows,
   // and so is the task board, which needs to know which conversation is asking.
   assert.deepEqual([...require('../claude-plugin/mcp/server').CRAB_TOOLS, 'note'].sort(),
-    require('../src/main/crabmcp').toolsFor({ suggestions: false, board: false }).map(t => t.name).sort());
+    require('../src/main/crabmcp').toolsFor({ suggestions: false, board: false, pages: false }).map(t => t.name).sort());
 });
 
 test('tools/list describes every tool with a schema', async () => {

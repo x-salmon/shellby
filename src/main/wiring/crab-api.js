@@ -132,7 +132,8 @@ function wireCrabApi(d) {
     if (!d.config.get('selfAware')) return null;
     const suggestions = !!d.config.get('suggestions');
     const board = !!d.taskBoard?.enabled();
-    return { note: selfaware.systemNote({ suggestions, board }), tools: crabmcp.toolsFor({ suggestions, board }) };
+    const pages = !!d.pages?.enabled();
+    return { note: selfaware.systemNote({ suggestions, board, pages }), tools: crabmcp.toolsFor({ suggestions, board, pages }) };
   }
 
   /**
@@ -146,6 +147,8 @@ function wireCrabApi(d) {
     if (name === 'add_routine' || name === 'list_routines') return routineFrom(name, args);
     // The task board (wiring/taskboard.js): handing work between conversations.
     if (d.taskBoard?.isBoardTool(name)) return d.taskBoard.tool(tab, name, args);
+    // Pages (wiring/pages.js): small apps in Shellby, and their data.
+    if (d.pages?.isPageTool(name)) return d.pages.tool(tab, name, args, 'shellby');
     if (!['say', 'celebrate', 'wear', 'status'].includes(name)) return { text: `Unknown tool: ${name}`, isError: true };
     const r = applyCrabIntent({ action: name, args });
     return r.ok === false ? { text: r.error, isError: true } : { text: r.text };

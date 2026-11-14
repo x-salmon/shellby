@@ -49,6 +49,8 @@ const { wireBugdex } = require('./wiring/bugdex');
 const { wireTimetrack } = require('./wiring/timetrack');
 const { wireCrabApi } = require('./wiring/crab-api');
 const { wireTaskBoard } = require('./wiring/taskboard');
+const { wirePages } = require('./wiring/pages');
+const pagesProtocol = require('./pages/protocol');
 const { wireChannels } = require('./wiring/channels');
 const { wireDeck } = require('./wiring/deck');
 const { wirePhoneTasks } = require('./wiring/phone-tasks');
@@ -314,6 +316,8 @@ process.on('unhandledRejection', reason => snag('unhandled rejection', reason in
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => app.quit());
 // Every page, however it was made: no pop-ups, navigation, redirects or webviews (web-guard.js).
 guardAllWebContents(app);
+// Pages are served from shellby-page://<id>/ (pages/protocol.js); a scheme's privileges are set before ready.
+require('electron').protocol?.registerSchemesAsPrivileged([pagesProtocol.PRIVILEGES]);
 setOpenLog(log);
 // A window or a helper process dying: the panel going blank used to be the only
 // sign, and nothing at all when it was the critter.
@@ -371,6 +375,7 @@ share({ bugdex: wireBugdex(shared) }); // the bugs Claude has fixed for you, in 
 const { createExternal, createHealth, createTimeTracker, stat } = share(wireTimetrack(shared));
 const { createCrabApi } = share(wireCrabApi(shared));
 share(wireTaskBoard(shared)); // the task board: conversations handing each other work (taskboard/)
+share(wirePages(shared)); // pages: small apps built with Claude (pages/, wiring/pages.js)
 const { channelPlace, channelSettings, confirmChannelPlace, createObs, createRemote, loadChannelSecret } = share(wireChannels(shared));
 const { createPhoneTasks } = share(wirePhoneTasks(shared));
 const { createDeck } = share(wireDeck(shared));
@@ -438,6 +443,7 @@ app.whenReady().then(() => {
   electronSession.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
   // ...nor do they get to find out they might (the check behind permissions.query).
   electronSession.defaultSession.setPermissionCheckHandler(() => false);
+  shared.pages.servePages(electronSession.defaultSession); // shellby-page://, before any window could load one
 
   // The README reel shows Shellby big: he's the star.
   if (CAPTURE && process.argv.includes('--reel')) config.set({ critterScale: 2 });
