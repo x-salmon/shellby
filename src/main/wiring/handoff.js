@@ -50,6 +50,9 @@ function wireHandoff(d) {
     const tab = d.manager.tabs.get(id);
     const entry = d.history.get(id);
     if (!tab && !entry) return { ok: false, error: 'That conversation is closed.' };
+    // `claude --resume` carries on a Claude Code session: another agent's (harness/) isn't one.
+    const agent = tab?.harness || entry?.harness;
+    if (agent && agent !== 'claude') return { ok: false, error: 'Only a Claude Code conversation can carry on in a terminal.' };
     const s = tab?.session;
     const sessionId = s?.sessionId || entry?.claudeSessionId || null;
     const check = handoff.continueCheck({

@@ -182,7 +182,7 @@ async function connect(url) {
     await fresh();
     await ev("SB.send('think')");
     await idle();
-    check(await until(panel, "/2\\.1k thinking/.test([...SB.activeTab().el.querySelectorAll('.effort-badge')].pop()?.textContent || '')", 3000), 'the turn says how much it thought, beside what it cost');
+    check(await until(panel, "/2\\.1k tokens of thinking/.test([...SB.activeTab().el.querySelectorAll('.turn-foot .tf-more')].pop()?.textContent || '')", 3000), 'the turn says how much it thought, beside what it cost');
 
     // ---- 8. a helper messaged again
     await fresh();
@@ -196,7 +196,7 @@ async function connect(url) {
     check(await until(panel, "SB.activeTab().el.querySelector('.lane').querySelectorAll('.lane-summary:not([hidden])').length === 2", 6000), 'one lane, both of its answers');
     check(await ev("SB.activeTab().el.querySelectorAll('.lane').length === 1"), 'still one lane');
     // What the helper spent: split out on the turn's cost line, and on its own lane.
-    check(await until(panel, "/\\(helpers 5k\\)/.test([...SB.activeTab().el.querySelectorAll('.turn-cost-line')].at(-1)?.textContent || '')", 4000), "the turn's cost says what its helper spent");
+    check(await until(panel, "(f => /1 helper\\b/.test(f?.querySelector('.tf-soft')?.textContent || '') && /A helper used 5\\.0k of them/.test(f.querySelector('.tf-more')?.textContent || ''))([...SB.activeTab().el.querySelectorAll('.turn-foot')].at(-1))", 4000), "the turn's footer says what its helper spent");
     const laneCost = await ev("(m => [m.textContent, m.title])(SB.activeTab().el.querySelector('.lane .lane-meta'))");
     check(/5\.0k tok/.test(laneCost[0]) && /This helper sent and wrote 5\.0k new tokens/.test(laneCost[1]), `and so does its lane (${laneCost[0]})`);
 

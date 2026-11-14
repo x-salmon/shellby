@@ -107,6 +107,25 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await shot('b2-routines-full');
     const h2 = await scroll('#routinesView', 99999);
     if (h2 > 1100) await shot('b3-routines-full-bottom');
+    // The tide chart near the usage limit: a reset in two and a half hours and a
+    // task waiting for it. Drawn from a pinned outlook, since the fake CLI has no usage.
+    await scroll('#routinesView', 0);
+    await ev(`(() => {
+      const at = Date.now() + 2.5 * 3600000;
+      SB.state.outlook = { ...(SB.state.outlook || {}), resetAt: at, resetText: new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+        held: [{ id: 'shot-held', kind: 'task', name: 'Refactor the billing module', at }] };
+      SB.renderTide();
+    })()`);
+    await shot('c1-tide-reset');
+    await ev("document.querySelector('#routinesView .tide-range button')?.click()");
+    await shot('c2-tide-next-day');
+    await ev("document.querySelectorAll('#routinesView .tide-range button')[1]?.click()");
+    // At a wide window too (the page's own size, not the window's).
+    await call('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+    await wait(300);
+    await ev('SB.renderTide()');
+    await shot('c3-tide-wide');
+    await call('Emulation.clearDeviceMetricsOverride');
     // The wide panel.
     await ev("SB.setView('workflows')");
     await ev("document.querySelector('#workflowsView [data-room-btn]')?.click()");

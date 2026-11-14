@@ -135,16 +135,30 @@ body:not([data-view="chat"]) .subbar { display: none; }
    over its neighbours; the effort is a word or two and keeps its place. */
 #effortLabel, #modelLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .effort-chip { flex: none; }
-.model-chip { flex: 0 1 auto; }
+.model-chip { flex: 0 1 auto; gap: 7px; }
+/* Tier bars: lit by composer.js showTier, sand while the plan picks, sea-glass once you do. */
+.model-chip .model-tier { width: 13px; height: 12px; }
+.model-tier rect { fill: var(--line); transition: fill .15s; }
+@media (prefers-reduced-motion: reduce) { .model-tier rect { transition: none; } }
+.model-tier rect.lit { fill: var(--sand-dim); }
+.model-chip.on:not(.local) .model-tier rect.lit { fill: var(--glass); }
+.model-name { font: 700 var(--fs-12-5) var(--font-body); color: var(--sand); }
+.model-ver { margin-left: 5px; color: var(--sand-faint); }
+.model-tag {
+  display: inline-block; margin-left: 6px; padding: 0 4px; vertical-align: 1px;
+  border: 1px solid var(--line); border-radius: 4px;
+  font: 400 var(--fs-9-5)/14px var(--font-body); color: var(--sand-faint);
+}
+.model-tag.local { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 40%, transparent); font-weight: 700; }
 #folderChip { flex: 0 8 auto; } /* gives way first: the tab's title and tooltip name the folder too */
 /* A narrow panel: the meters say the same with less (their % and the menu say the rest). */
 .subbar { container-type: inline-size; container-name: subbar; }
 @container subbar (max-width: 520px) {
   .ctx-chip .meter-label, .ctx-chip .meter-track { display: none; } /* its % says it */
-  .model-default { display: none; } /* "Sonnet 5.5", not "default (Sonnet 5.5)": the tooltip says it's the default */
-  .model-chip svg { display: none; }
+  .model-ver, .model-tag:not(.local) { display: none; } /* bars and "Opus": the tooltip names the version and the default */
   .usage { gap: 7px; }
-  .usage .meter-track { width: 24px; }
+  .usage .meter-track { width: 22px; }
+  .usage-when { display: none; } /* the menu and the tooltip say it */
 }
 .branch-chip { margin-left: -8px; color: var(--glass); }
 .branch-chip:hover { color: var(--glass); }
@@ -174,10 +188,16 @@ body:not([data-view="chat"]) .subbar { display: none; }
 .usage { margin-left: auto; display: flex; gap: 10px; padding: 3px 5px; border: 0; border-radius: var(--r-sm); background: none; color: inherit; cursor: pointer; }
 .usage:hover, .usage:focus-visible, .usage[aria-expanded="true"] { background: var(--reef-2); outline: none; }
 .meter { display: flex; align-items: center; gap: 5px; color: var(--sand-faint); font: 600 var(--fs-10-5) var(--font-mono); }
-.meter-track { width: 44px; height: 5px; border-radius: 3px; background: var(--reef-2); overflow: hidden; }
+.meter-track { width: 36px; height: 5px; border-radius: 3px; background: var(--reef-2); overflow: hidden; }
 .meter-fill { display: block; height: 100%; width: 100%; background: var(--glass); border-radius: inherit; transform: scaleX(0); transform-origin: left; transition: transform .6s var(--ease-out); }
 .meter.warn .meter-fill { background: var(--amber); }
 .meter.hot .meter-fill { background: var(--danger); }
+/* The number beside each bar, and the time beside both (meter-logic.js): read without hovering. */
+.meter-num { min-width: 3ch; color: var(--sand-dim); font: 600 var(--fs-11) var(--font-mono); font-variant-numeric: tabular-nums; }
+.meter.warn .meter-num { color: var(--amber); }
+.meter.hot .meter-num { color: var(--danger); }
+.usage-when { align-self: center; color: var(--sand-faint); font-size: var(--fs-11-5); white-space: nowrap; }
+.usage-when.full { color: var(--amber); }
 /* Another Claude account's plan (a computer over ssh): named, and outlined so it never reads as yours. */
 .usage-who { display: flex; align-items: center; margin-right: -5px; color: var(--sand-dim); }
 .usage-who svg { width: 11px; height: 11px; }
@@ -245,7 +265,6 @@ body:not([data-view="chat"]) .subbar { display: none; }
 .view { display: none; flex: 1; min-height: 0; position: relative; z-index: 1; overflow-x: hidden; }
 body[data-view="chat"] .view-chat { display: flex; flex-direction: column; }
 body[data-view="history"] .view-history,
-body[data-view="settings"] .view-settings,
 body[data-view="toolbox"] .view-toolbox,
 body[data-view="routines"] .view-routines,
 body[data-view="notes"] .view-notes,
@@ -254,7 +273,7 @@ body[data-view="onboarding"] .view-onboarding { display: block; overflow-y: auto
 /* Scroll areas get their own compositor layer and fade out under the header
    instead of being sliced by it (avoids repaint artifacts in frameless windows). */
 .view, .feed { transform: translateZ(0); }
-.view-history, .view-settings, .view-toolbox, .view-routines, .view-notes, .view-onboarding, .feed {
+.view-history, .view-toolbox, .view-routines, .view-notes, .view-onboarding, .feed {
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
   mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
 }
@@ -323,7 +342,22 @@ body:not([data-view="chat"]) .tabstrip { display: none; }
 .suggestion:hover { border-color: var(--coral); background: var(--reef-2); }
 .suggestion .glyph { font: 600 var(--fs-13) var(--font-pixel); color: var(--coral); width: 16px; text-align: center; transition: transform .2s var(--ease-spring); }
 .suggestion:hover .glyph { transform: translateX(3px); }
-.empty-hint { margin-top: 20px; color: var(--sand-faint); font-size: var(--fs-12); }
+/* The keys worth knowing on day one, as a legend: keys right-aligned in one
+   column, what they do in the next. Each group is a fixed width so their key
+   columns line up when the narrow panel stacks them; a wide one sets them side
+   by side. The key column grows for a long hotkey of your own, and the heading
+   (a subgrid row) stays over what the keys do. */
+.empty-keys {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px 48px;
+  margin-top: 22px; text-align: left; font-size: var(--fs-12-5); color: var(--sand-dim);
+}
+.empty-keys section { display: grid; grid-template-columns: minmax(124px, max-content) 1fr; column-gap: 12px; min-width: 282px; }
+.empty-keys-head { grid-column: 2; margin: 0 0 6px; font: 400 var(--fs-12) var(--font-body); color: var(--sand-faint); }
+.empty-keys dl { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; row-gap: 7px; margin: 0; align-items: center; }
+.empty-keys dt { text-align: right; }
+.empty-keys dd { margin: 0; }
+/* The one that works outside Shellby, so it's the one worth noticing. */
+.empty-keys .hotkey-hint { color: var(--glass); border-color: rgba(127, 214, 194, .35); }
 
 /* The next quest (quests.js): a note pinned above the suggestions, amber like a trophy. */
 .quest-card {
@@ -691,18 +725,10 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
 .meta::before, .meta::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
 .meta.bad { color: var(--danger); }
 .meta.waiting { color: var(--amber); }
-/* What the turn cost, under its meta line: there to read, never to shout. */
-.meta.has-cost { margin-bottom: 2px; }
-.turn-cost {
-  margin: 0 0 18px; text-align: center; color: var(--sand-faint);
-  font: 500 var(--fs-10-5) var(--font-mono); font-stretch: 88%; border-radius: var(--r-sm);
-}
-.turn-cost.flash { background: var(--reef-2); color: var(--sand); }
-/* What the turn was refused (result.permission_denials): a quiet line under the meta, in the cost line's voice. */
+/* What the turn was refused (result.permission_denials): a quiet line under the turn's footer (turn-foot.css). */
 .turn-denials { margin: 0 auto 12px; max-width: 60ch; text-align: center; text-wrap: pretty; color: var(--sand-faint); font-size: var(--fs-11); overflow-wrap: anywhere; }
 .meta:has(+ .turn-denials) { margin-bottom: 2px; }
 /* A note under it (turncost.js turnNotes): what cost more than it needed to, and why. */
-.turn-cost:has(+ .turn-note) { margin-bottom: 4px; }
 .turn-note {
   margin: 0 auto 4px; max-width: 52ch; text-align: center; text-wrap: pretty;
   color: var(--sand-dim); font-size: var(--fs-11); line-height: 1.4;
@@ -1039,8 +1065,11 @@ select.field option { background: var(--reef); }
 
 /* ================================================================ onboarding */
 .hello { text-align: center; padding: 10px 6px 4px; }
-.hello-crab { height: 80px; display: grid; place-items: center; }
-.hello-crab svg { width: 120px; height: auto; animation: breathe 3.2s ease-in-out infinite; }
+/* Sized by the crab himself, not a fixed height: he's taller than 80px at this
+   width, and dressed his view box frames the whole outfit, so a fixed box let
+   him sit on the heading. The cap keeps a tall outfit from pushing the page down. */
+.hello-crab { display: grid; place-items: center; }
+.hello-crab svg { display: block; width: 120px; height: auto; max-height: 150px; animation: breathe 3.2s ease-in-out infinite; }
 .hello-crab .part-claw { animation: wave .6s ease-in-out 3 .6s; transform-box: fill-box; transform-origin: 0% 50%; }
 .hello h1 { font: 600 var(--fs-24) var(--font-pixel); margin: 10px 0 6px; }
 .hello p { margin: 0 auto; color: var(--sand-dim); max-width: 330px; font-size: var(--fs-13-5); }
@@ -1071,23 +1100,45 @@ select.field option { background: var(--reef); }
 .onboarding-modes { border-top: 0; }
 
 /* ================================================================ toast */
+/* Under the header, clear of the newest message and the box you type in (a
+   trophy card lands down there too). Lit from above in its accent: sea-glass,
+   amber for tone 'urgent', red for 'danger' (core.js SB.toast). */
 .toast {
-  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 60;
+  position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 60;
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 14px; border-radius: 99px; max-width: 86%;
-  /* The recap card's surface: reef with a lit edge down the left, sea-glass,
-     amber for tone 'urgent', red for 'danger' (core.js SB.toast). */
+  padding: 8px 14px; border-radius: 99px; max-width: 86%; overflow: hidden;
   --toast-accent: var(--glass);
-  background: radial-gradient(90% 120% at 0% 0%, color-mix(in srgb, var(--toast-accent) 14%, transparent), transparent 65%), var(--reef);
-  border: 1px solid color-mix(in srgb, var(--toast-accent) 34%, var(--line));
-  border-left: 3px solid var(--toast-accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--toast-accent) 11%, var(--reef)), var(--reef) 70%);
+  border: 1px solid color-mix(in srgb, var(--toast-accent) 40%, var(--line));
   color: var(--sand); font-size: var(--fs-12-5); font-weight: 600;
   box-shadow: 0 14px 36px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25);
   animation: toast .3s var(--ease-spring);
 }
 .toast.urgent { --toast-accent: var(--amber); }
 .toast.danger { --toast-accent: var(--danger); }
-@keyframes toast { from { opacity: 0; transform: translate(-50%, 10px) scale(.95); } }
+@keyframes toast { from { opacity: 0; transform: translate(-50%, -10px) scale(.95); } }
+
+/* A job (SB.toast.job): a spinner while it works, a tick once it's done.
+   A failure says so with its colour (tone 'danger'). A result with a title
+   shows its title instead of either (.toast-body is a column). */
+.toast.working > span:first-child:not(.toast-body)::before,
+.toast.finished > span:first-child:not(.toast-body)::before {
+  content: ""; display: inline-block; vertical-align: -2px; margin-right: 8px;
+  width: 10px; height: 10px; box-sizing: border-box;
+}
+.toast.working > span:first-child:not(.toast-body)::before { border: 2px solid color-mix(in srgb, var(--toast-accent) 30%, transparent); border-top-color: var(--toast-accent); border-radius: 50%; animation: toast-spin .8s linear infinite; }
+.toast.finished > span:first-child:not(.toast-body)::before { width: 6px; height: 11px; margin: 0 10px 0 2px; vertical-align: -1px; border: solid var(--toast-accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+@keyframes toast-spin { to { transform: rotate(360deg); } }
+
+/* The time left drains along the bottom, and stops while you're on it. */
+.toast-water { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--toast-accent); transform-origin: left; visibility: hidden; }
+.toast.timed .toast-water { visibility: visible; animation: toast-water var(--toast-ms, 3s) linear forwards; }
+.toast.held .toast-water { animation-play-state: paused; }
+@keyframes toast-water { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .toast-water { display: none; }
+  .toast.working > span:first-child:not(.toast-body)::before { animation-duration: 2.4s; }
+}
 
 /* shared sprite animations */
 .part { transform-box: fill-box; transform-origin: center; }

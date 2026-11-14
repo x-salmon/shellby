@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Us, concept 1: just the beach</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* The beach fills the page. Everything else floats on it, or waits in the drawer. */
+  .scene { position: absolute; left: 0; top: 0; right: 600px; bottom: 150px; background: #050d17; }
+  .scene canvas { position: absolute; left: 0; bottom: 0; }
+
+  .title { position: absolute; left: 64px; top: 52px; text-shadow: 0 3px 0 rgba(5, 13, 23, .6); }
+  .title h1 { font: 500 88px/1 var(--font-pixel); }
+  .title p { margin-top: 14px; font-size: 24px; color: var(--sand); opacity: .85; }
+  .title .temper { margin-top: 18px; display: inline-flex; align-items: center; gap: 12px; padding: 8px 16px 8px 10px;
+    border-radius: 24px; background: rgba(5, 13, 23, .55); font-size: 18px; text-shadow: none; }
+  .title .temper .emoji { font-size: 24px; }
+
+  /* He talks: the story comes to him, not a list under him */
+  .bubble { position: absolute; transform: translate(-70px, calc(-100% - 22px)); white-space: nowrap; padding: 18px 22px 16px;
+    background: var(--sand); color: #1b1612; border-radius: 6px; font-size: 21px; line-height: 1.35;
+    box-shadow: 0 6px 0 rgba(5, 13, 23, .45); }
+  .bubble::after { content: ""; position: absolute; left: 60px; bottom: -18px; border: 10px solid transparent; border-top: 10px solid var(--sand); border-left: 10px solid var(--sand); }
+  .bubble small { display: block; margin-top: 6px; font-size: 16px; color: #6a5d4c; }
+
+  /* Pointing at a castle says what it is: the key under the old page */
+  .tip { position: absolute; transform: translate(-50%, calc(-100% - 20px)); white-space: nowrap; padding: 14px 18px; border-radius: var(--r);
+    background: var(--ink); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
+  .tip b { font-size: 20px; display: block; }
+  .tip span { font-size: 16px; color: var(--sand-dim); }
+  .tip::after { content: ""; position: absolute; left: calc(50% - 8px); bottom: -9px; width: 16px; height: 16px; background: var(--ink);
+    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
+  .ring { position: absolute; transform: translate(-12px, -10px); width: 213px; height: 200px; border: 2px dashed rgba(127, 214, 194, .55); border-radius: 10px; }
+
+  /* The dock: how close you are, and what you can do right now */
+  .dock { position: absolute; left: 0; right: 600px; bottom: 0; height: 150px; display: flex; align-items: center; gap: 36px;
+    padding: 0 64px; background: var(--ink); border-top: 1px solid var(--line); box-shadow: 0 -18px 40px rgba(0, 0, 0, .35); }
+  .bond { width: 470px; }
+  .bond-track { position: relative; display: flex; justify-content: space-between; align-items: center; }
+  .bond-track::before, .bond-track::after { content: ""; position: absolute; left: 16px; right: 16px; top: 50%; height: 4px; margin-top: -2px; background: var(--reef-3); border-radius: 2px; }
+  .bond-track::after { right: auto; width: calc((100% - 32px) * .87); background: #ff8fab; }
+  .stone { position: relative; z-index: 1; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--ink); border: 2px solid #ff8fab; font-size: 16px; }
+  .stone.here { width: 46px; height: 46px; font-size: 22px; box-shadow: 0 0 0 6px rgba(255, 143, 171, .2); }
+  .stone.ahead { border-color: var(--line); filter: grayscale(1); opacity: .7; }
+  .bond p { margin-top: 10px; font-size: 16px; color: var(--sand-dim); }
+  .bond p b { color: var(--sand); }
+  .sep { width: 1px; height: 64px; background: var(--line); }
+  .acts { display: flex; gap: 14px; flex: 1; }
+  .act { height: 64px; padding: 0 22px; display: inline-flex; align-items: center; gap: 12px; border-radius: 12px;
+    background: var(--reef-2); border: 1px solid var(--line); font-weight: 700; font-size: 19px; }
+  .act .emoji { font-size: 26px; }
+  .act.pet { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+  .act.off { opacity: .55; }
+  .act small { display: block; font-weight: 400; font-size: 14px; color: var(--sand-faint); }
+  .act.pet small { color: #6b2a17; }
+  .act > span { line-height: 1.15; }
+
+  /* The drawer: everything you keep */
+  .drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 600px; background: rgba(12, 23, 25, .95);
+    border-left: 1px solid var(--line); backdrop-filter: blur(10px); display: flex; flex-direction: column; }
+  .drawer header { padding: 40px 36px 0; display: flex; align-items: center; justify-content: space-between; }
+  .drawer h2 { font: 500 40px/1 var(--font-pixel); }
+  .seg { display: flex; gap: 6px; margin: 28px 36px 0; padding: 5px; border-radius: 12px; background: var(--abyss); border: 1px solid var(--line); }
+  .seg span { flex: 1; text-align: center; padding: 10px 0; border-radius: 8px; font-weight: 700; font-size: 16px; color: var(--sand-dim); }
+  .seg span.on { background: var(--reef-3); color: var(--sand); }
+  .seg span i { font-style: normal; font-weight: 400; color: var(--sand-faint); margin-left: 6px; }
+  .story { flex: 1; overflow: hidden; padding: 20px 36px; }
+  .month { margin: 22px 0 10px; font-size: 16px; color: var(--glass); font-weight: 700; }
+  .mem { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line-soft); font-size: 18px; }
+  .mem .emoji { font-size: 24px; width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: var(--reef); }
+  .mem time { color: var(--sand-faint); font-size: 15px; }
+  .mem.big { padding: 18px 0; }
+  .mem.big .emoji { background: rgba(255, 143, 171, .18); }
+  .mem.big b { font-size: 20px; }
+  .drawer footer { padding: 22px 36px 30px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 14px; color: var(--sand-dim); font-size: 16px; }
+  .drawer footer .emoji { font-size: 22px; }
+  .drawer footer .btn { margin-left: auto; }
+</style>
+</head>
+<body>
+<main>
+  <div class="scene">
+    <canvas id="b" data-beach='{"k":9,"from":44,"cols":218,"time":"night","orbAt":120}'></canvas>
+  </div>
+
+  <div class="title">
+    <h1>Best friends</h1>
+    <p>187 days together, since he moved in on 10 May</p>
+    <div class="temper"><span class="emoji">🌞</span>He's chipper: delighted by everything</div>
+  </div>
+
+  <div class="ring" aria-hidden="true" data-pin='{"on":"b","x":152,"y":76}'></div>
+  <div class="tip" data-pin='{"on":"b","x":162,"y":75}'><b>bugdex</b><span>15 ships. Released, and past 1.0.</span></div>
+
+  <div class="bubble" data-pin='{"on":"b","x":206,"y":82}'>Remember when you threw me right across the screen?<small>3 July. He brings one up every so often.</small></div>
+
+  <div class="dock">
+    <div class="bond" role="progressbar" aria-label="How close you are" aria-valuenow="87" aria-valuemin="0" aria-valuemax="100">
+      <div class="bond-track">
+        <span class="stone emoji">🥚</span><span class="stone emoji">🐚</span><span class="stone emoji">🦀</span><span class="stone emoji">💛</span><span class="stone here emoji">💞</span><span class="stone ahead emoji">🌟</span>
+      </div>
+      <p><b>176 points</b> to Inseparable, and golden hearts when you pet him</p>
+    </div>
+    <span class="sep"></span>
+    <div class="acts">
+      <button class="act pet"><span class="emoji">♥</span><span>Pet him<small>3 of 10 today</small></span></button>
+      <button class="act"><span class="emoji">🙈</span><span>Hide and seek<small>Best 0:41</small></span></button>
+      <button class="act"><span class="emoji">🎾</span><span>Fetch<small>212 fetches</small></span></button>
+      <button class="act off"><span class="emoji">⛏️</span><span>Dig<small>Ready in 2h 10m</small></span></button>
+    </div>
+    <button class="btn ghost">Share a snapshot</button>
+  </div>
+
+  <aside class="drawer" aria-label="Keepsakes">
+    <header><h2>Keepsakes</h2><button class="btn small ghost" aria-label="Close">Close</button></header>
+    <nav class="seg"><span class="on">Story<i>48</i></span><span>Scenes<i>14/31</i></span><span>Medals<i>3</i></span><span>Clutch<i>2</i></span></nav>
+    <ol class="story">
+      <li class="month">November</li>
+      <li class="mem big"><span class="emoji">💞</span><b>Became Best friends</b><time>9 Nov</time></li>
+      <li class="mem"><span class="emoji">🎮</span>Watched you play Dune: Awakening<time>8 Nov</time></li>
+      <li class="mem"><span class="emoji">✨</span>Found red sea glass<time>4 Nov</time></li>
+      <li class="month">October</li>
+      <li class="mem"><span class="emoji">🏅</span>Finished the Harvest Tide<time>31 Oct</time></li>
+      <li class="mem"><span class="emoji">🙈</span>You found him in hide and seek in 0:41<time>22 Oct</time></li>
+      <li class="mem"><span class="emoji">🐣</span>@mira hatched one of his eggs: Pip<time>14 Oct</time></li>
+      <li class="mem"><span class="emoji">🗓️</span>150 days together<time>7 Oct</time></li>
+      <li class="month">September</li>
+      <li class="mem"><span class="emoji">🏆</span>Finished the Sea glass set<time>28 Sep</time></li>
+      <li class="mem"><span class="emoji">🎢</span>Rode VS Code 4,120 px<time>12 Sep</time></li>
+    </ol>
+    <footer><span class="emoji">🎂</span>Your birthday is in 41 days<button class="btn small ghost">Change</button></footer>
+  </aside>
+</main>
+<p class="caption">Concept 1, just the beach: the scene is the page; the dock holds what you can do, the drawer holds what you keep</p>
+<script src="beach-data.js"></script>
+<script>window.SB = {};</script>
+<script src="../../src/renderer/shared/sprite.js"></script>
+<script src="../../src/renderer/panel/beach-paint.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>

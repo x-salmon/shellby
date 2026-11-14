@@ -1,0 +1,24 @@
+/* The size switch, and the three page arrangements it picks between. */
+.sizer { position: fixed; top: 12px; right: 16px; z-index: 50; display: flex; gap: 2px; padding: 3px; background: rgba(12, 23, 25, .92); border: 1px solid var(--line); border-radius: 99px; box-shadow: 0 8px 24px rgba(0, 0, 0, .4); transition: opacity .2s; }
+.sizer button { background: none; border: 0; border-radius: 99px; padding: 5px 12px; font-size: 12.5px; color: var(--sand-dim); cursor: pointer; }
+.sizer button:hover { color: var(--sand); }
+.sizer button[aria-pressed="true"] { background: var(--glass-dim); color: var(--glass); }
+.sizer .fs { padding: 5px 10px; font-size: 14px; line-height: 1; }
+
+.phone { container: phone / inline-size; transition: width .3s var(--ease-out), height .3s var(--ease-out); }
+
+/* Window: the panel at a laptop-window size, with the notes underneath. */
+[data-size="window"] main { grid-template-columns: minmax(0, 1fr); max-width: none; justify-items: center; padding-top: 64px; }
+[data-size="window"] .phone { width: min(1280px, 100%); height: min(800px, calc(100vh - 96px)); }
+[data-size="window"] .notes { width: min(1280px, 100%); max-width: none; columns: 2 380px; column-gap: 56px; }
+[data-size="window"] .notes > :is(.up, h1, p) { column-span: all; max-width: 70ch; }
+[data-size="window"] .notes > .up { display: inline-block; }
+[data-size="window"] .notes h2 { break-after: avoid; }
+[data-size="window"] .notes :is(li, dt, dd) { break-inside: avoid; }
+
+/* Full screen: the panel is the page. */
+[data-size="full"] body { overflow: hidden; }
+[data-size="full"] .notes { display: none; }
+[data-size="full"] .phone { position: fixed; inset: 0; width: auto; height: auto; max-width: none; border: 0; border-radius: 0; box-shadow: none; z-index: 10; transition: none; }
+[data-size="full"] .sizer { top: auto; bottom: 14px; right: 14px; opacity: .45; }
+[data-size="full"] .sizer:hover, [data-size="full"] .sizer:focus-within { opacity: 1; }

@@ -83,7 +83,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onModels: on('models:changed'), // the picker's list, grown by models a newer Claude Code knows (wiring/models.js)
 
   // tabs + tasks
-  newTab: invoke('tab:new'), setSafeMode: invoke('tab:safe'), // safe mode: { tabId, on } (sessions.js setSafeMode)
+  newTab: invoke('tab:new'), harnessList: invoke('harness:list'), setSafeMode: invoke('tab:safe'), // safe mode: { tabId, on } (sessions.js setSafeMode); harnessList: Gemini CLI, OpenCode, Codex
   closeTab: invoke('tab:close'),
   moveTab: (tabId, beforeId) => ipcRenderer.invoke('tab:reorder', { tabId, beforeId }),
   // a conversation in a window of its own (x/y: where it was dropped, in screen pixels)
@@ -94,7 +94,7 @@ contextBridge.exposeInMainWorld('shellby', {
   shownTab: fire('tab:shown'), savePaneLayout: fire('panes:layout'), // the Stream Deck follows the shown tab; the split view, for the next start
   paneShapes: (list) => ipcRenderer.invoke('panes:shapes', list), // the layouts you saved by name: read them, or (a list) save them
   setTabEffort: (tabId, effort) => ipcRenderer.invoke('tab:effort', { tabId, effort }), // the effort chip, for one conversation
-  setTabModel: (tabId, model) => ipcRenderer.invoke('tab:model', { tabId, model }), // a model of its own, before a conversation starts
+  setTabModel: (tabId, model) => ipcRenderer.invoke('tab:model', { tabId, model }), setTabLocal: (tabId, model) => ipcRenderer.invoke('tab:local', { tabId, model }), // a model of its own, before a conversation starts
   markReviewed: (tabId, reviewed = true, after = null) => ipcRenderer.invoke('tab:reviewed', { tabId, reviewed, after }), // the review inbox
   sendTask: (tabId, text, attachments, opts) => ipcRenderer.invoke('task:send', { tabId, text, attachments, selected: opts?.selected, fromQueue: opts?.fromQueue === true }), // opts.selected: the file picked in All files (files-select.js); opts.fromQueue: the queue sent it (Keep warm)
   stopTask: fire('task:stop'),
@@ -385,7 +385,7 @@ contextBridge.exposeInMainWorld('shellby', {
   // Linear or Jira on Next up (backlog/trackers.js): set it up, and hear when a read in the background lands.
   backlogTrackerChoices: invoke('backlog:tracker-choices'),
   backlogTrackerSet: invoke('backlog:tracker-set'),
-  onBacklogChanged: on('backlog:changed'),
+  onBacklogChanged: on('backlog:changed'), taskBoardView: invoke('taskboard:view'), taskBoardCancel: invoke('taskboard:cancel'), onTaskBoardChanged: on('taskboard:changed'), // and the task board's (wiring/taskboard.js)
   // A project's next release (src/main/projects/releases-ipc.js): nothing is pushed unless you say so.
   getRelease: invoke('releases:get'),
   cutRelease: invoke('releases:cut'),
@@ -759,7 +759,7 @@ contextBridge.exposeInMainWorld('shellby', {
   onTabItem: on('tab:item'),
   onTabSteering: on('tab:steering'), onTabQueue: on('tab:queue'), // queued messages handed to Claude mid-turn; a phone reply joining the queue (wiring/pocket.js)
   onTabs: on('tabs'), keepWarmSet: invoke('keepwarm:set'), keepWarmGet: invoke('keepwarm:get'), onKeepWarm: on('keepwarm'), // Keep warm (keepwarm-service.js)
-  onHomeLine: on('home:line'), // { tabId, title, base, status: 'sorting' | 'home' | 'stuck', ... }
+  onHomeLine: on('home:line'), homePlaces: invoke('home:places'), onHomePlaces: on('home:places'), // home:line { tabId, title, base, status: 'sorting' | 'home' | 'stuck' }; home:places { [tabId]: { position, ahead, sorting } }
   onLaneTrain: on('lanes:train'), // { tabId, index, phase, of } while lining copies up, then { done: true }
   onClashes: on('clashes'), // { clashes, fresh: [key] }: copies that changed the same files
   onTabOpened: on('tab:opened'),

@@ -476,7 +476,7 @@ function discordWebhook(settings, { confirmed = false } = {}) {
  */
 function cardUpload(settings, card, { confirmed = false } = {}) {
   const url = discordWebhook(settings, { confirmed });
-  if (!url) return { error: 'Set up Discord under Settings → Connections first.' };
+  if (!url) return { error: 'Set up Discord under Settings → Alerts first.' };
   const type = CARD_TYPES[(/\.[a-z0-9]+$/i.exec(card?.name || '') || [''])[0].toLowerCase()];
   if (!type || !(card.bytes instanceof Uint8Array) || !card.bytes.length) return { error: "That isn't a card." };
   const form = new FormData();

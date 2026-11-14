@@ -1,8 +1,9 @@
-/* Shellby panel — searching Settings. Typing in the box above the tabs shows
-   every tab at once, cut down to the sections and rows that match (which ones:
-   settings-search-logic.js). A fold that matches opens, and closes again when
-   the search is cleared. Esc, or emptying the box, puts the tabs back as they
-   were. Ctrl+F on Settings comes here instead of the conversation's find bar. */
+/* Shellby panel — searching Settings. Typing in the box shows every area at
+   once, cut down to the sections and rows that match (which ones:
+   settings-search-logic.js), and the rail counts what each area found. A fold
+   that matches opens, and closes again when the search is cleared. Esc, or
+   emptying the box, puts the area you were in back. Ctrl+F on Settings comes
+   here instead of the conversation's find bar. */
 'use strict';
 (function () {
   const { state, $ } = SB;
@@ -10,12 +11,12 @@
   const view = $('settingsView');
   const box = $('settingsSearch');
   const line = $('settingsSearchLine');
-  const tabs = [...$('settingsTabs').querySelectorAll('[role="tab"]')];
+  const tabs = [...$('settingsRail').querySelectorAll('[role="tab"]')];
   const panels = [...view.querySelectorAll('.settings-panel')];
   let opened = new Set(); // folds the search opened, to close again
   let searching = false;
 
-  for (const p of panels) p.dataset.tabName = tabs.find(b => b.dataset.tab === p.dataset.tab)?.textContent.trim() || '';
+  for (const p of panels) p.dataset.tabName = tabs.find(b => b.dataset.tab === p.dataset.tab)?.querySelector('.rail-name')?.textContent.trim() || '';
 
   // A section's rows: each child but its heading, with a help line (p.muted)
   // kept with the row above it, so a match on either shows both.
@@ -46,6 +47,7 @@
       if (searching) {
         searching = false;
         view.classList.remove('searching');
+        SB.markSettingsRail(null);
         SB.showSettingsTab(SB.settingsTab());
       }
       line.textContent = '';
@@ -56,6 +58,7 @@
     view.classList.add('searching');
     for (const p of panels) p.hidden = false;
     let found = 0;
+    const counts = {};
     for (const p of panels) {
       let inPanel = 0;
       for (const g of p.querySelectorAll('.setting-group')) {
@@ -67,7 +70,9 @@
         if (!g.hidden) { found++; inPanel++; }
       }
       if (!inPanel) p.classList.add('search-out');
+      counts[p.dataset.tab] = inPanel;
     }
+    SB.markSettingsRail(counts);
     line.textContent = L.summary(found, box.value);
     line.hidden = false;
   }
@@ -90,7 +95,7 @@
     }
   });
 
-  // Picking a tab, or being sent to a setting (the palette, the tray), ends the search.
+  // Picking an area, or being sent to a setting (the palette, the tray), ends the search.
   for (const b of tabs) b.addEventListener('click', clear, true);
   for (const name of ['jumpToSetting', 'showSetting']) {
     const was = SB[name];

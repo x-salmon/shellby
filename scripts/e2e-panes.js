@@ -332,17 +332,22 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev(`(() => { SB.state.tabs.get('${C}').draft = 'changed while away'; SB.renderTabStrip(); })()`);
     check(await until(`document.querySelector('.pane[data-tab="${C}"] .pane-standin')?.textContent.includes('changed while away')`), 'a stand-in shows a draft that changed while its pane was out of focus');
 
-    // ---- What a conversation left running stays in sight in its pane out of focus,
-    // and a click on that line brings the whole tray, with Output and Stop, to it.
+    // ---- Every pane shows its own tray, focused or not: what its conversation
+    // left running (Output and Stop included) and what Claude guessed you'd ask next.
     await ev(`SB.activate('${A}')`);
-    await ev(`(() => { SB.state.tabs.get('${C}').jobs = [{ id: 'j1', status: 'running', description: 'npm run watch', startedAt: Date.now() }]; SB.renderTabStrip(); })()`);
-    check(await until(`document.querySelector('.pane[data-tab="${C}"] .pane-tray')?.textContent.includes('1 in the background: npm run watch')`), 'an unfocused pane shows what its conversation has running in the background');
-    check(await ev(`!document.querySelector('.pane[data-tab="${A}"] .pane-tray')`), 'and the focused pane has the full tray instead of the line');
-    const trayOf = id => ev(`(() => { const r = document.querySelector('.pane[data-tab="${id}"] .pane-tray').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
-    await panel.click(await trayOf(C));
-    check(await until(`SB.state.activeTab === '${C}'`), 'clicking the line focuses its pane');
-    check(await until(`!document.getElementById('jobs').hidden && document.getElementById('jobs').textContent.includes('npm run watch') && !document.querySelector('.pane[data-tab="${C}"] .pane-tray')`), 'and its background tray opens in the box there');
-    await ev(`(() => { SB.state.tabs.get('${C}').jobs = []; SB.syncBusyUi(); })()`);
+    await ev(`(() => { const t = SB.state.tabs.get('${C}'); t.jobs = [{ id: 'j1', status: 'running', description: 'npm run watch', startedAt: Date.now() }]; t.nextPrompt = 'Now add a test for it'; SB.renderTabStrip(); })()`);
+    const paneJobs = `document.querySelector('.pane[data-tab="${C}"] .pane-extras [data-tray="jobs"]')`;
+    const paneNext = `document.querySelector('.pane[data-tab="${C}"] .pane-extras [data-tray="nextPrompt"]')`;
+    check(await until(`!${paneJobs}?.hidden && ${paneJobs}.textContent.includes('npm run watch') && !!${paneJobs}.querySelector('.job.running')`), 'an unfocused pane shows the full background tray of its conversation');
+    check(await ev(`[...${paneJobs}.querySelectorAll('button')].some(b => b.textContent === 'Stop')`), 'with its Stop there too');
+    check(await until(`!${paneNext}?.hidden && ${paneNext}.textContent.includes('Now add a test for it')`), 'and the prompt Claude Code suggested for it');
+    check(await ev(`!document.querySelector('.pane[data-tab="${A}"] .pane-extras')`), 'while the focused pane keeps its tray over the box');
+    const chipOf = () => ev(`(() => { const r = ${paneNext}.querySelector('.next-chip').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    await panel.click(await chipOf());
+    check(await until(`SB.state.activeTab === '${C}'`), 'clicking the suggestion focuses its pane');
+    check(await until(`document.getElementById('input').value === 'Now add a test for it' && document.getElementById('nextPrompt').hidden`), 'and puts it in the box there, unsent');
+    check(await until(`!document.getElementById('jobs').hidden && document.getElementById('jobs').textContent.includes('npm run watch') && !document.querySelector('.pane[data-tab="${C}"] .pane-extras')`), 'and its background tray moves over the box');
+    await ev(`(() => { document.getElementById('input').value = ''; SB.state.tabs.get('${C}').jobs = []; SB.syncBusyUi(); })()`);
 
     // ---- Closing the focused pane keeps the box.
     await ev(`SB.activate('${B}')`);
@@ -730,10 +735,21 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     check(await ev("document.getElementById('dropHint').hidden && !document.body.classList.contains('swapping-panes')"), 'and the preview goes on letting go');
 
     // ---- A pane's lane: its copy's branch and its last checks.
-    await ev(`(() => { const t = SB.state.tabs.get('${A}'); t.worktree = { branch: 'shellby/fix-login-1a2b', base: 'main', originalCwd: t.cwd }; SB.refreshPaneHeads(); })()`);
-    const laneOf = id => ev(`(() => { const l = document.querySelector('.pane[data-tab="${id}"] .pane-lane'); return { hidden: l.hidden, text: l.textContent, cls: l.className }; })()`);
+    await ev(`(() => { const t = SB.state.tabs.get('${A}'); t.worktree = { branch: 'shellby/fix-login-loop-1a2b3c', base: 'main', originalCwd: t.cwd }; SB.refreshPaneHeads(); })()`);
+    const laneOf = id => ev(`(() => {
+      const l = document.querySelector('.pane[data-tab="${id}"] .pane-lane');
+      const peek = l.querySelector('.lane-peek');
+      return { hidden: l.hidden, text: l.textContent, words: l.querySelector('.lane-branch')?.textContent, kind: l.dataset.kind,
+        cls: l.className, label: l.getAttribute('aria-label'), peek: peek?.textContent, peekShown: !!peek && getComputedStyle(peek).visibility === 'visible' };
+    })()`);
     let lane = await laneOf(A);
-    check(!lane.hidden && lane.text.includes('fix-login-1a2b') && !lane.text.includes('shellby/'), `A's lane shows its branch (${JSON.stringify(lane)})`);
+    check(!lane.hidden && lane.words === 'login loop' && lane.kind === 'fix', `A's lane shows its branch as words, its kind as a colour (${JSON.stringify(lane)})`);
+    check(lane.peek.includes('shellby/fix-login-loop-1a2b3c') && lane.peek.includes('From main') && lane.label.includes('shellby/fix-login-loop-1a2b3c'), 'its card and its label have the full name');
+    check(!lane.peekShown, 'the card waits to be asked for');
+    await ev(`document.querySelector('.pane[data-tab="${A}"] .pane-lane').focus({ focusVisible: true })`);
+    check(await until(`getComputedStyle(document.querySelector('.pane[data-tab="${A}"] .lane-peek')).visibility === 'visible'`), 'focused, it shows');
+    await panel.shot('pane-lane');
+    await ev(`document.querySelector('.pane[data-tab="${A}"] .pane-lane').blur()`);
     check((await laneOf(B)).hidden, 'B, in your own checkout with no checks, has none');
     await ev(`SB.renderChecks(SB.state.tabs.get('${A}'), { status: 'fail', commands: [{ cmd: 'npm test', ok: false, failed: ['login'] }] })`);
     lane = await laneOf(A);

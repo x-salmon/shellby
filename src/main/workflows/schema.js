@@ -23,10 +23,11 @@ const ID = /^[a-z][a-z0-9_]{0,31}$/;
 const WF_ID = /^[\w-]{1,64}$/;
 const SECRET = /^[A-Z][A-Z0-9_]{0,39}$/;
 const STEP_TYPES = ['claude', 'mcp', 'run', 'http', 'ask', 'tell', 'set', 'if', 'each', 'wait', 'file', 'workflow', 'stop', 'worktree', 'pr', 'server'];
-const TRIGGER_TYPES = ['schedule', 'ci', 'issue', 'shipped', 'task', 'flaky', 'health', 'folder', 'workflow', 'startup', 'webhook', 'claude', 'server'];
+const TRIGGER_TYPES = ['schedule', 'ci', 'issue', 'shipped', 'task', 'flaky', 'health', 'folder', 'workflow', 'startup', 'webhook', 'claude', 'server', 'board'];
 const CI_EVENTS = ['failed', 'fixed', 'passed', 'merged', 'review', 'any'];
 const SERVER_EVENTS = ['up', 'crashed', 'stopped', 'any'];
 const SERVER_ACTIONS = ['start', 'stop', 'restart'];
+const BOARD_EVENTS = ['posted', 'done', 'failed', 'any'];
 const ISSUE_EVENTS = ['assigned', 'labelled', 'any'];
 const SHIP_KINDS = ['push', 'deploy', 'release', 'merge', 'any'];
 const OUTCOMES = ['ok', 'error', 'any'];
@@ -131,6 +132,11 @@ function checkTrigger(t, at, err) {
       if (script && !SCRIPT_RE.test(script)) { err(`${at}.script`, 'A script name is letters, digits and : . _ -'); return null; }
       return { type: 'server', on, project: line(t.project, 100), script };
     }
+    case 'board': {
+      const on = t.on ?? 'done';
+      if (!BOARD_EVENTS.includes(on)) { err(`${at}.on`, 'Pick posted, done, failed or any'); return null; }
+      return { type: 'board', on, project: line(t.project, 100) };
+    }
     default:
       return { type: t.type };
   }
@@ -138,6 +144,7 @@ function checkTrigger(t, at, err) {
 
 const SERVER_EVENT_WORDS = { up: 'comes up', crashed: 'crashes', stopped: 'is stopped', any: 'comes up, crashes or is stopped' };
 const SERVER_ACTION_WORDS = { start: 'Start', stop: 'Stop', restart: 'Restart' };
+const BOARD_EVENT_WORDS = { posted: 'is posted', done: 'is done', failed: 'fails', any: 'is posted, done or fails' };
 
 function describeTrigger(t) {
   switch (t.type) {
@@ -154,6 +161,7 @@ function describeTrigger(t) {
     case 'webhook': return 'When a script calls its web hook';
     case 'claude': return 'When Claude Code asks';
     case 'server': return `When ${t.project ? `${t.project}'s` : 'a'} dev server${t.script ? ` (${t.script})` : ''} ${SERVER_EVENT_WORDS[t.on]}`;
+    case 'board': return `When a task on ${t.project ? `${t.project}'s` : 'a'} board ${BOARD_EVENT_WORDS[t.on]}`;
     default: return t.type;
   }
 }
@@ -690,6 +698,6 @@ function riskSignature(wf) {
 }
 
 module.exports = {
-  LIMITS, STEP_TYPES, TRIGGER_TYPES, CONTAINERS, ID, SECRET, SERVER_EVENTS, SERVER_ACTIONS,
+  LIMITS, STEP_TYPES, TRIGGER_TYPES, CONTAINERS, ID, SECRET, SERVER_EVENTS, SERVER_ACTIONS, BOARD_EVENTS,
   validateWorkflow, walkSteps, describeTrigger, capabilities, riskSignature, riskDetail,
 };

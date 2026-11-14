@@ -74,7 +74,7 @@ git('commit', '-qm', 'init');
     await send('hello there');
     await idle();
     await send('edit a.txt first');           // held back, named, moved into a copy
-    await until("!document.getElementById('branchChip').hidden", 15000);
+    await until("!!SB.activeTab().worktree", 15000);
     await idle();
     await send('edit a.txt first');           // now it happens, in the copy
     await idle();
@@ -129,6 +129,8 @@ git('commit', '-qm', 'init');
     check(read(path.join(origCopy, 'a.txt')) === 'second', "the original's file was not touched");
     await send('edit a.txt branch-take');
     await idle();
+    // As above: idle comes a beat before the file settles on a loaded PC.
+    for (let i = 0; i < 100 && read(path.join(a.worktree.path, 'a.txt')) !== 'branch-take'; i++) await wait(100);
     check(read(path.join(a.worktree.path, 'a.txt')) === 'branch-take', 'its own edits land in its own copy');
     check(read(path.join(origCopy, 'a.txt')) === 'second', '...and only there');
 

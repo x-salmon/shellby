@@ -1,0 +1,109 @@
+/* Shellby — the road on Us (us-road.js): a stage per level of your bond, on
+   one line. Down the panel, newest at the top; across the page (.across) when
+   there's room, left to right. The line is pink as far as you've come, and
+   the stage you're at fills it as you get closer (--p). Tokens: panel.css;
+   --us-pink: together.css. */
+
+.us-road-wrap { margin-top: 18px; }
+.us-road { --col: 60px; list-style: none; margin: 0; padding: 0; }
+
+/* ---------------------------------------------------------------- a stage, down the panel */
+.us-stage { --dot: 40px; position: relative; padding: 0 0 20px calc(var(--col) + 12px); }
+.us-here { --dot: 56px; }
+.us-stage::before { /* the line through every dot */
+  content: ""; position: absolute; left: calc(var(--col) / 2 - 1.5px); top: 0; bottom: 0; width: 3px; background: var(--us-pink);
+}
+.us-stage:first-child::before { top: calc(var(--dot) / 2); }
+.us-stage:last-child::before { bottom: auto; height: calc(var(--dot) / 2); }
+.us-stage:only-child::before { display: none; }
+.us-ahead::before { background: var(--line); }
+.us-here::before { background: linear-gradient(to bottom, var(--line) 0 calc(var(--dot) / 2), var(--us-pink) calc(var(--dot) / 2)); }
+.us-here:first-child::before { background: var(--us-pink); } /* as close as it gets: nothing above it */
+
+.us-marker { display: flex; align-items: center; gap: 12px; min-height: var(--dot); margin-left: calc(-1 * (var(--col) + 12px)); }
+.us-dot {
+  position: relative; z-index: 1; flex: none; display: grid; place-items: center;
+  width: var(--dot); height: var(--dot); margin-left: calc((var(--col) - var(--dot)) / 2); border-radius: 50%;
+  font-size: calc(var(--dot) * .44); background: #2a1d27; border: 3px solid var(--us-pink);
+}
+.us-ahead .us-dot { background: var(--ink); border-color: var(--line); filter: grayscale(1); opacity: .6; }
+.us-here .us-dot { box-shadow: 0 0 0 6px rgba(255, 143, 171, .18), 0 0 22px rgba(255, 143, 171, .3); }
+.us-marker-text { min-width: 0; }
+.us-name { margin: 0; font: 600 var(--fs-15)/1.15 var(--font-pixel); color: var(--sand); }
+.us-here .us-name { font-size: var(--fs-21); }
+.us-ahead .us-name { color: var(--sand-dim); }
+.us-when { margin: 3px 0 0; font-size: var(--fs-12); color: var(--sand-faint); }
+
+/* What it opened (or will) */
+.us-unlock { margin: 10px 0 0; padding: 7px 11px; border-radius: var(--r); font-size: var(--fs-12-5); line-height: 1.4; color: var(--sand-dim); border: 1px dashed var(--line); }
+.us-unlock.open { color: var(--sand); background: rgba(255, 143, 171, .08); border-color: transparent; }
+.us-unlock.open::before { content: "✓ " / ""; font-weight: 700; color: var(--us-pink); }
+
+/* What you did while you were there */
+.us-mems { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.us-mems li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: var(--fs-12-5); line-height: 1.35; color: var(--sand-dim); }
+.us-mem-icon { font-size: var(--fs-14); text-align: center; }
+.us-mem-text time { display: block; margin-top: 1px; font-size: var(--fs-11); color: var(--sand-faint); }
+.us-more { margin: 8px 0 0 30px; padding: 2px 0; border: 0; background: none; cursor: pointer; font: 700 var(--fs-12) var(--font-body); color: var(--glass); }
+.us-more:hover { text-decoration: underline; }
+.us-more:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; border-radius: 3px; }
+
+/* ---------------------------------------------------------------- where you are: how close, and today's ways closer */
+.us-temper { margin: 10px 0 0; max-width: 64ch; font-size: var(--fs-12-5); line-height: 1.45; color: var(--sand-dim); }
+.us-temper b { color: var(--sand); }
+.us-closer { margin-top: 14px; container: closer / inline-size; }
+.us-progress { height: 10px; border-radius: 5px; background: var(--reef-3); overflow: hidden; }
+.us-progress i { display: block; height: 100%; width: calc(var(--p) * 100%); border-radius: 5px; background: var(--us-pink); transition: width .6s var(--ease-out); }
+.us-points { margin: 8px 0 0; font-size: var(--fs-13); color: var(--sand-dim); }
+.us-points b { color: var(--sand); }
+.us-closer-h { margin: 16px 0 8px; font-size: var(--fs-12-5); font-weight: 700; color: var(--sand-dim); }
+.us-ways { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; }
+.us-way {
+  display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; text-align: left;
+  border-radius: var(--r); border: 1px solid var(--line); background: var(--reef); color: var(--sand); cursor: pointer;
+  transition: transform .2s var(--ease-spring), border-color .15s;
+}
+.us-way:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--reef-3); }
+.us-way:active:not(:disabled) { transform: translateY(0); }
+.us-way:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+.us-way:disabled { cursor: default; opacity: .5; }
+.us-way-icon { font-size: var(--fs-20); text-align: center; transition: transform .25s var(--ease-spring); }
+.us-way:hover:not(:disabled) .us-way-icon { transform: rotate(-8deg) scale(1.08); }
+.us-way-text { min-width: 0; }
+.us-way-text b { display: block; font-size: var(--fs-13); }
+.us-way-text small { display: block; font-size: var(--fs-11-5); line-height: 1.3; color: var(--sand-faint); }
+.us-way em { font-style: normal; font-weight: 700; font-size: var(--fs-13); color: var(--us-pink); }
+.us-way.go { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+.us-way.go:hover:not(:disabled) { border-color: var(--coral-deep); }
+.us-way.go small { color: #6b2a17; }
+.us-way.go em { color: #2a0d05; }
+/* Too narrow for two side by side: one column, slimmer. */
+@container closer (max-width: 420px) {
+  .us-ways { grid-template-columns: 1fr; gap: 6px; }
+  .us-way { padding: 8px 12px; }
+  .us-way-text small { display: inline; margin-left: 6px; }
+  .us-way-text b { display: inline; }
+}
+.us-stop { width: 100%; margin-top: 8px; }
+.us-day { margin: 10px 0 0; font-size: var(--fs-12); color: var(--sand-faint); }
+
+/* ---------------------------------------------------------------- across the page, left to right */
+.us-road.across { --rail: 34px; display: flex; align-items: stretch; }
+.across .us-stage { --dot: 48px; flex: 1 1 0; min-width: 0; padding: 0 20px 24px; }
+.across .us-here { --dot: 64px; flex-grow: 2.1; padding: 0 30px 26px; border-radius: 0 0 16px 16px; background: linear-gradient(180deg, rgba(255, 143, 171, .07), transparent 70%); }
+.across .us-ahead { flex-grow: 1.15; }
+.across .us-stage + .us-stage { border-left: 1px solid var(--line-soft); }
+.across .us-stage::before { left: 0; right: 0; top: calc(var(--rail) - 1.5px); bottom: auto; width: auto; height: 3px; }
+.across .us-stage:first-child::before { left: calc(20px + var(--dot) / 2); }
+.across .us-stage:last-child::before { right: auto; width: calc(20px + var(--dot) / 2); height: 3px; }
+.across .us-here::before { --at: calc(30px + var(--dot) / 2); background: linear-gradient(90deg, var(--us-pink) calc(var(--at) + (100% - var(--at)) * var(--p)), var(--line) 0); }
+.across .us-marker { flex-direction: column; align-items: flex-start; gap: 12px; min-height: 0; margin-left: 0; }
+.across .us-dot { margin: calc(var(--rail) - var(--dot) / 2) 0 0; }
+.across .us-name { font-size: var(--fs-17); }
+.across .us-here .us-name { font-size: var(--fs-30); }
+.across .us-ahead .us-unlock:not(.open) { background: none; }
+.across .us-ways { grid-template-columns: repeat(2, 1fr); }
+
+@media (prefers-reduced-motion: reduce) {
+  .us-way, .us-way-icon, .us-progress i { transition: none; }
+}

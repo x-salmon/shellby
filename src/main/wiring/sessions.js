@@ -25,6 +25,7 @@ const usage = require('../usage');
 const accounts = require('../usage/accounts');
 const voice = require('../voice');
 const { classifyCommand, markRed } = require('../progression/xp');
+const { harnessFactory } = require('../harness');
 
 /** d: what main shares (main.js `shared`). */
 function wireSessions(d) {
@@ -99,6 +100,9 @@ function wireSessions(d) {
   function createManager() {
     d.manager = new SessionManager({
       argsPrefix: d.FAKE_CLI ? [d.FAKE_CLI] : [],
+      // Another agent's CLI (Gemini CLI, OpenCode, Codex): harness/.
+      // They get this PC's own environment (and SHELLBY_OWNED), not Shellby's GitHub access, which stays Claude Code's.
+      makeHarness: harnessFactory({ fake: d.FAKE_ACP, node: process.env.SHELLBY_NODE || 'node' }),
       history: d.history,
       getExe: () => (d.FAKE_CLI ? process.env.SHELLBY_NODE || 'node' : d.claudeExe()),
       getMode: () => d.config.get('mode'),
@@ -108,6 +112,8 @@ function wireSessions(d) {
       getOutputStyle: () => outputStyles.clean(d.config.get('outputStyle')),
       // A new conversation's local model (local/agent.js), never for a folder on another computer: it keeps it for good (sessions.js).
       getLocalTarget: cwd => (d.remoteService?.placeOf(cwd) ? null : localAgent.agentTarget(d.config.get('localModel'))),
+      // The local server a conversation can be put on from the model chip (sessions.js setTabLocal), the same rule.
+      getLocalServer: cwd => (d.remoteService?.placeOf(cwd) ? null : d.config.get('localModel')?.url || null),
       getFallbackModel: () => d.config.get('fallbackModel') || '',
       getChrome: () => d.config.get('claudeInChrome') === true,
       // The newer flags go only to a Claude Code whose --help lists them (main.js claudeSupports).
@@ -134,7 +140,9 @@ function wireSessions(d) {
         // sets it after this runs): a summary turn that died without a result
         // must not take the next ordinary turn with it.
         tab.freshWanted = false;
-        await d.copyService.armCopy(tab);
+        // Another agent's CLI (harness/) gets its copy before its first message: it can't be stopped mid-edit to move.
+        if (tab.harness && tab.harness !== 'claude') await d.copyService.copyFirst(tab);
+        else await d.copyService.armCopy(tab);
         await beginTurn(tab);
       },
       windowShare: weight => d.windowShare({ weight }),
@@ -177,6 +185,9 @@ function wireSessions(d) {
         return;
       }
       if (item.kind === 'init') {
+        // Another agent's start (harness/) says nothing of Claude Code's skills, agents or MCP servers:
+        // the Toolbox keeps Claude's. sessions.js has already kept its session id.
+        if (!item.toolbox) return;
         d.lastInit = item.toolbox;
         d.toolbox?.setInit(item.toolbox);
         // A server waiting for sign-in: offer it once per server per run, so
@@ -192,7 +203,10 @@ function wireSessions(d) {
         return;
       }
       const win = d.tabWindow(tabId); // the panel, or the conversation's own window (wiring/popouts.js)
-      d.send(win, 'tab:item', { tabId, item });
+      // A turn that ends into a move to its own copy carries on in a turn of Shellby's own: the panel
+      // keeps the tab busy across the gap, so a message typed meanwhile queues instead of being refused.
+      const continues = item.kind === 'result' && !item.interrupted && !!tab.copyWanted;
+      d.send(win, 'tab:item', { tabId, item, continues });
       // The reply as it's written and what you might ask next: only the panel shows them.
       if (item.kind === 'partial' || item.kind === 'next') return;
       d.workflows?.onTabItem(tabId, item);

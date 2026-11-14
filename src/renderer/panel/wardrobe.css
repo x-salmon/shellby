@@ -192,16 +192,33 @@ body[data-view="trophies"] .view-trophies { display: block; overflow-y: auto; pa
 
 /* ---------- XP: titlebar badge + Trophies card ---------- */
 .brand { position: relative; }
-/* its own button right after the logo: it opens Trophies & XP, and never covers the crab */
+/* The nameplate, its own button right after the logo (it opens Trophies & XP):
+   "Lv", the level, its marks in the rank colour, and ten XP cells like a game's
+   health bar. "Lv" is CSS so the button's text stays the level alone. */
 .brand-level {
   -webkit-app-region: no-drag;
-  flex: none; min-width: 18px; height: 18px; padding: 0 5px; margin-left: -6px; border: 0; border-radius: 99px;
-  font: 700 var(--fs-10)/18px var(--font-mono); text-align: center; color: #1f1604; background: var(--rank, #ffd23f);
-  transition: transform .15s var(--ease-spring), box-shadow .15s;
+  flex: none; display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 6px 0 8px; margin-left: -4px;
+  border: 0; border-left: 1px solid var(--line); border-radius: 0; background: none;
+  font-family: var(--font-pixel); color: var(--sand); cursor: pointer;
 }
-.brand-level:hover { transform: scale(1.12); box-shadow: 0 0 0 3px rgba(255, 210, 63, .22); }
-.brand-xp { position: absolute; left: 6px; width: 33px; bottom: 0; height: 2px; border-radius: 2px; background: rgba(255, 210, 63, .15); overflow: hidden; }
-.brand-xp i { display: block; height: 100%; background: var(--rank, #ffd23f); transform-origin: left; transform: scaleX(0); transition: transform .6s var(--ease-out); }
+.brand-level[hidden] { display: none; }
+.brand-level::before { content: "Lv"; font-size: var(--fs-10); line-height: 1; color: var(--sand-dim); }
+.lv-num { font-weight: 700; font-size: var(--fs-15); line-height: 1; transition: color .15s; }
+.lv-mark { font-weight: 700; font-size: var(--fs-10); line-height: 1; color: var(--rank, #ffd23f); margin-left: -3px; }
+.lv-mark:empty { display: none; }
+.lv-cells { display: inline-grid; grid-auto-flow: column; gap: 1px; margin-left: 2px; }
+.lv-cells i { width: 3px; height: 8px; background: color-mix(in srgb, var(--rank, #ffd23f) 20%, transparent); }
+.lv-cells i.on { background: var(--rank, #ffd23f); }
+.lv-cells i.edge { background: color-mix(in srgb, var(--rank, #ffd23f) 55%, #fff); }
+/* the cell being earned blinks only while Claude works, so an idle panel paints nothing */
+body.busy .lv-cells i.edge { animation: lv-edge 1.2s steps(1) infinite; }
+@keyframes lv-edge { 50% { background: color-mix(in srgb, var(--rank, #ffd23f) 20%, transparent); } }
+.brand-level:hover .lv-num { color: var(--rank, #ffd23f); }
+.brand-level:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { body.busy .lv-cells i.edge { animation: none; } }
+/* very narrow panels keep "Lv" and the number, and drop the cells */
+@container titlebar (max-width: 380px) { .lv-cells { display: none; } }
 
 .xp-card {
   margin: 0 0 14px; padding: 14px; border-radius: var(--r-lg);
@@ -242,33 +259,6 @@ body[data-view="trophies"] .view-trophies { display: block; overflow-y: auto; pa
 .xp-sub { margin: 10px 0 5px; font: 600 var(--fs-10) var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--sand-dim); }
 .xp-section > .xp-sub:first-child, .xp-section > :first-child > .xp-sub { margin-top: 0; }
 .xp-sub span { letter-spacing: 0; text-transform: none; color: var(--sand-faint); }
-/* How to earn: reference, so it stays folded until asked for. */
-.xp-ways-box > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; margin: 0; border-radius: 4px; }
-.xp-ways-box > summary::-webkit-details-marker { display: none; }
-.xp-ways-box > summary::before { content: '▸'; font-size: var(--fs-10); letter-spacing: 0; transition: transform .15s var(--ease-out); }
-.xp-ways-box[open] > summary::before { transform: rotate(90deg); }
-.xp-ways-box > summary:hover { color: var(--sand); }
-.xp-ways-box > summary:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
-.xp-ways-box[open] > summary { margin-bottom: 6px; }
-@media (prefers-reduced-motion: reduce) { .xp-ways-box > summary::before { transition: none; } }
-/* The character sheet: his class, then one row per stat (character.js). */
-.xp-class { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255, 210, 63, .22); background: linear-gradient(120deg, rgba(255, 210, 63, .09), rgba(127, 214, 194, .05)); }
-.xp-class-icon { font-size: var(--fs-20); line-height: 1; }
-.xp-class-text { min-width: 0; }
-.xp-class-eyebrow { margin: 0; font: 600 var(--fs-9-5) var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--sand-faint); }
-.xp-class h4 { margin: 0; font: 600 var(--fs-16) var(--font-pixel); color: #ffd23f; }
-.xp-class-blurb { margin: 0; font-size: var(--fs-11-5); color: var(--sand-dim); }
-.xp-stats { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 5px; }
-.xp-stats li { display: grid; grid-template-columns: 18px 64px 1fr 26px 30px; gap: 8px; align-items: center; font-size: var(--fs-12); cursor: default; }
-.xp-stats li.top .xp-stat-name { color: #ffd23f; }
-.xp-stat-bar { height: 6px; border-radius: 99px; background: var(--abyss); border: 1px solid var(--line-soft); overflow: hidden; }
-.xp-stat-bar i { display: block; height: 100%; border-radius: inherit; background: var(--glass); transform-origin: left; transition: transform .8s var(--ease-out); }
-.xp-stats li.top .xp-stat-bar i { background: #ffd23f; }
-.xp-stats b { font: 700 var(--fs-12) var(--font-mono); text-align: right; color: var(--sand); }
-.xp-stat-gain { font: 600 var(--fs-10-5) var(--font-mono); color: #7bd389; }
-.xp-classes { margin: 8px 0 0; font-size: var(--fs-11); color: var(--sand-faint); }
-@media (prefers-reduced-motion: reduce) { .xp-stat-bar i { transition: none; } }
-
 /* the week in review (week-card.js) */
 .xp-week-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .xp-week-head .btn { margin-top: 4px; }
@@ -306,7 +296,11 @@ body[data-view="trophies"] .view-trophies { display: block; overflow-y: auto; pa
   .xp-week-row { grid-template-columns: 1fr; gap: 3px; }
 }
 .xp-bounties ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.xp-bounties li { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 8px; align-items: center; font-size: var(--fs-12); }
+/* A row: check, text, count, the 🎲 reroll when it's offered, XP. Flex, so the reroll
+   coming and going never pushes the XP onto a line of its own. */
+.xp-bounties li { display: flex; gap: 8px; align-items: center; font-size: var(--fs-12); }
+.xp-bounties li > .xp-bounty-check { flex: none; }
+.xp-bounties li > span:nth-child(2) { flex: 1; min-width: 0; }
 .xp-bounties li small { font: 500 var(--fs-10-5) var(--font-mono); color: var(--sand-dim); }
 .xp-bounties li b { font: 700 var(--fs-11) var(--font-mono); color: #ffd23f; }
 .xp-bounty-check { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); display: grid; place-items: center; font-size: var(--fs-10); line-height: 1; }

@@ -404,7 +404,7 @@
         // Working, asking or done: the same mark the strip shows (tab-strip.js tabIcon).
         stand.querySelector('.standin-meta').replaceChildren(...[SB.tabIcon(t), q ? `${q} queued` : null].filter(Boolean));
       }
-      paintTray(p, id, stand ? t : null);
+      paintTray(p, stand ? t : null);
       paintLane(p.head.querySelector('.pane-lane'), t);
       // A conversation in this pane asking for your OK that you aren't looking at: its header lights up.
       p.head.classList.toggle('needs-you', split && (P.byId(state.grid, id)?.tabs || []).some(x => x !== state.activeTab && asking(x)));
@@ -425,36 +425,68 @@
     if (SB.solo && tab) document.title = $('winTitle').textContent = SB.shownTitle(tab);
   };
 
-  // The tray over the box (native-strip.js) shows only the focused pane's
-  // conversation; the others keep a line of it above their stand-in, so what
-  // they left running doesn't vanish when you click away. A click on it brings
-  // the box, and the whole tray with its output and Stop, to that pane.
-  function paintTray(p, paneId, t) {
-    const line = t && window.ShellbyTabLogic.paneTray(t.jobs, window.ShellbyTodos.summary(t.todos));
-    let el = p.slot.querySelector('.pane-tray');
-    if (!line) { el?.remove(); return; }
+  // The tray over the box (native-strip.js, native-cli.js) is the focused
+  // pane's conversation's: its to-do list, what it left running and what you
+  // might ask next. Every other pane keeps its own over its stand-in, Output,
+  // Stop and all, so nothing it has going vanishes when you click away. The
+  // slots stay put while the pane is out of focus; each piece fills its own.
+  const TRAY_KINDS = ['todos', 'jobs', 'nextPrompt'];
+  const TRAY_CLASS = { todos: 'todos', jobs: 'jobs', nextPrompt: 'next-prompt' };
+  const TRAY_LABEL = { todos: "Claude's to-do list", jobs: 'Running in the background' };
+  function paintTray(p, t) {
+    let el = p.slot.querySelector('.pane-extras');
+    if (!t) { el?.remove(); return; }
     if (!el) {
-      el = h('button', { class: 'pane-tray', type: 'button', onclick: () => { const id = activeOf(paneId); if (id) SB.activate(id); } });
+      el = h('div', { class: 'pane-extras' }, TRAY_KINDS.map(kind => h('div', {
+        class: TRAY_CLASS[kind], dataset: { tray: kind }, hidden: true,
+        ...(TRAY_LABEL[kind] ? { role: 'region', 'aria-label': TRAY_LABEL[kind] } : {}),
+      })));
       p.slot.prepend(el);
     }
-    el.textContent = line.text;
-    el.title = line.title;
+    SB.renderTodos?.(t);
+    SB.renderJobs?.(t);
+    SB.renderNextPrompt?.(t);
   }
+  // Where an unfocused pane showing this tab keeps one piece of its tray, or null.
+  SB.paneTrayBox = (tabId, kind) => {
+    if (!TRAY_KINDS.includes(kind)) return null;
+    for (const [id, p] of panes) {
+      if (activeOf(id) !== tabId) continue;
+      const el = p.slot.querySelector(`.pane-extras [data-tray="${kind}"]`);
+      if (el) return el;
+    }
+    return null;
+  };
 
   // A pane's lane, beside its tabs: the branch of the copy its conversation
   // works in, and how its last checks went (turn-checks.js keeps them on the tab).
+  // The branch reads as words with its kind as a colour (shared/branch-label.js),
+  // grows into whatever room the tabs leave, and folds to the glyph in a narrow
+  // pane (components.css). Hovered or focused, a card under it has the full name.
   const CHECK_MARK = { running: '…', pass: '✓', fail: '✗' };
   const CHECK_SAY = { running: 'Its checks are running', pass: 'Its last checks passed', fail: 'Its last checks failed' };
+  const BRANCH_ICON = 'M4.5 2.5v8.7M4.5 10.5c0-3 7-2.5 7-6.5M3.1 12.6a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0M10.1 3.2a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0';
   function paintLane(lane, t) {
-    const branch = t.worktree?.branch ? t.worktree.branch.replace(/^shellby\//, '') : '';
+    const w = t.worktree?.branch ? t.worktree : null;
+    const b = w ? window.ShellbyBranchLabel.branchLabel(w.branch) : null;
     const check = t.checkRunning ? 'running' : t.checkState || '';
-    lane.hidden = !branch && !check;
+    lane.hidden = !b && !check;
     lane.className = check ? `pane-lane ${check}` : 'pane-lane';
+    if (b) lane.dataset.kind = b.colour; else delete lane.dataset.kind;
+    // "From main. Its last checks passed." Under the name in the card, and read out with it.
+    const about = [b && w.base && `From ${w.base}`, check && CHECK_SAY[check]].filter(Boolean).join('. ');
+    lane.tabIndex = lane.hidden ? -1 : 0;
+    lane.setAttribute('aria-label', [b ? `Its own copy, on ${b.full}` : '', about].filter(Boolean).join('. '));
     lane.replaceChildren(...[
       check ? h('span', { class: 'lane-mark', 'aria-hidden': 'true', text: CHECK_MARK[check] }) : null,
-      branch ? h('span', { class: 'lane-branch', text: branch }) : null,
+      b ? SB.icon(BRANCH_ICON, { width: 1.6 }) : null,
+      b ? h('span', { class: 'lane-branch', text: b.words }) : null,
+      // Shown by CSS on hover and focus; aria-label above already says all of it.
+      h('span', { class: 'lane-peek', 'aria-hidden': 'true' },
+        b ? h('b', { class: 'peek-name' }, b.kind ? h('span', { class: 'peek-kind', text: b.kind }) : null, b.words) : null,
+        b ? h('code', { class: 'peek-full', text: b.full }) : null,
+        about ? h('span', { text: `${about}.` }) : null),
     ].filter(Boolean));
-    lane.title = [branch && `Its own copy, on ${t.worktree.branch}`, check && CHECK_SAY[check]].filter(Boolean).join('\n');
   }
 
   // ------------------------------------------------------------ what needs you
@@ -479,8 +511,10 @@
   // can scroll a feed kept at its end up under the pointer before it's let go,
   // and the click would miss. Those focus their pane as they're clicked. Not
   // for a pane's header either: its tabs and buttons do their own thing on the
-  // click, which a redraw on the press would lose.
-  const FEED_CONTROL = '.feed :is(button, a[href], input, select, textarea, summary, label, [role="button"], [role="menuitem"], [role="option"])';
+  // click, which a redraw on the press would lose. Nor for the buttons in an
+  // unfocused pane's tray (Output, Stop, the suggestion): the box moving in
+  // takes the tray away before the click lands. They work where they are.
+  const FEED_CONTROL = ':is(.feed, .pane-extras) :is(button, a[href], input, select, textarea, summary, label, [role="button"], [role="menuitem"], [role="option"])';
   const paneTo = e => {
     if (e.target.closest?.('.pane-head')) return null;
     const id = e.target.closest?.('[data-tab]')?.dataset.tab;

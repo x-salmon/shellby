@@ -131,7 +131,8 @@ function wireCrabApi(d) {
   function getSelfAware() {
     if (!d.config.get('selfAware')) return null;
     const suggestions = !!d.config.get('suggestions');
-    return { note: selfaware.systemNote({ suggestions }), tools: crabmcp.toolsFor({ suggestions }) };
+    const board = !!d.taskBoard?.enabled();
+    return { note: selfaware.systemNote({ suggestions, board }), tools: crabmcp.toolsFor({ suggestions, board }) };
   }
 
   /**
@@ -143,6 +144,8 @@ function wireCrabApi(d) {
     if (name === 'suggest') return suggestCard(tab, args);
     if (name === 'note') return noteFrom(tab, args);
     if (name === 'add_routine' || name === 'list_routines') return routineFrom(name, args);
+    // The task board (wiring/taskboard.js): handing work between conversations.
+    if (d.taskBoard?.isBoardTool(name)) return d.taskBoard.tool(tab, name, args);
     if (!['say', 'celebrate', 'wear', 'status'].includes(name)) return { text: `Unknown tool: ${name}`, isError: true };
     const r = applyCrabIntent({ action: name, args });
     return r.ok === false ? { text: r.error, isError: true } : { text: r.text };

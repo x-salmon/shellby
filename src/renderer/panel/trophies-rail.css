@@ -1,0 +1,69 @@
+/* Shellby panel — the Trophies page's rail and pages (html/trophies.html, trophies-rail.js).
+   Narrow: the level card, a row of page chips, one page. Wide: the level and the page list
+   in a rail that stays put, the page beside it. Tokens come from panel.css. */
+
+.tr-layout { container: trophies / inline-size; }
+.tr-shell { display: block; }
+.tr-rail .xp-card { margin: 0 0 10px; }
+
+/* ---------------------------------------------------------------- the page list */
+.tr-nav {
+  display: flex; gap: 4px; margin: 0 0 12px; padding: 2px 0 4px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.tr-nav::-webkit-scrollbar { display: none; }
+.tr-nav button {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border: 1px solid var(--line); border-radius: 99px; background: none; cursor: pointer;
+  font: 600 var(--fs-12) var(--font-body); color: var(--sand-dim); white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.tr-nav button[hidden] { display: none; }
+.tr-nav button:hover { color: var(--sand); background: var(--reef); }
+.tr-nav button:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+.tr-nav button[aria-current="page"] { color: var(--sand); background: var(--reef-2); border-color: rgba(255, 193, 94, .55); }
+.tr-n { font: 500 var(--fs-10-5) var(--font-mono); font-variant-numeric: tabular-nums; color: var(--sand-faint); }
+.tr-n:empty { display: none; }
+.tr-nav button.waiting .tr-n { color: var(--amber); }
+
+/* ---------------------------------------------------------------- the pages */
+.tr-page { display: grid; gap: 12px; align-content: start; }
+.tr-page[hidden] { display: none; }
+/* Each section is its own panel now, not a band inside the level card. */
+.tr-page > .xp-section {
+  margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--reef);
+}
+.tr-page > .xp-section[hidden] { display: none; }
+.tr-page > .lb-section, .tr-page > .rm-card { margin: 0; }
+.tr-page > .view-lede { margin: 0; }
+.xp-latest .xp-log { margin-top: 0; }
+
+@media (prefers-reduced-motion: reduce) { .tr-nav button { transition: none; } }
+
+/* ---------------------------------------------------------------- wide: a rail */
+@container trophies (min-width: 760px) {
+  .tr-shell { display: grid; grid-template-columns: minmax(260px, 310px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  /* Stays put as a page scrolls; on a short window it scrolls itself so the last page stays reachable. */
+  .tr-rail { position: sticky; top: 0; display: grid; gap: 12px; max-height: calc(100vh - 150px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+  .tr-rail .xp-card { margin: 0; }
+  .tr-rail .xp-head { flex-wrap: wrap; row-gap: 6px; }
+  .tr-nav { flex-direction: column; gap: 2px; margin: 0; padding: 0; overflow: visible; }
+  .tr-nav button {
+    justify-content: space-between; padding: 8px 12px; border: 0; border-radius: var(--r);
+    font-size: var(--fs-13-5); text-align: left;
+  }
+  .tr-nav button[aria-current="page"] { box-shadow: inset 3px 0 0 var(--amber); }
+  .tr-n { font-size: var(--fs-11); }
+  .tr-page { gap: 16px; }
+  .tr-page > .xp-section { padding: 16px 20px; }
+  .xp-history .xp-spark { height: 120px; gap: 4px; }
+}
+
+/* ---------------------------------------------------------------- very wide: side by side */
+@container trophies (min-width: 1200px) {
+  .tr-today { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .tr-today > .xp-latest { grid-column: 1 / -1; }
+  .tr-today:not(:has(> #xpQuests:not([hidden]))) > .xp-bounties { grid-column: 1 / -1; }
+  .tr-page .trophy-list { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
+  .tr-page .xp-ways { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

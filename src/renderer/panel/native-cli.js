@@ -1,7 +1,9 @@
 /* Shellby panel — by the box, for the conversation on screen: the goal Claude
    checks before it stops (/goal, pinned until it's met or cleared), and what
    Claude Code guesses you'll ask next (its prompt suggestions), which Tab or a
-   click puts in the box, unsent. Shellby makes neither: both are Claude Code's. */
+   click puts in the box, unsent. Shellby makes neither: both are Claude Code's.
+   An unfocused pane shows its own guess over its stand-in (tab-panes.js); a
+   click there brings the box to that pane with the guess in it. */
 'use strict';
 (function () {
   const { h, $ } = SB;
@@ -27,21 +29,29 @@
   // syncBusyUi calls this on every turn ending in any tab, every queue change and
   // more. Rebuilt each time, the chip replayed its fade-in and was swapped out
   // from under the pointer: it flashed and wouldn't stay hovered. Only a new
-  // guess (or the chip going away) touches it.
-  let shownNext = { tab: null, text: null };
+  // guess (or the chip going away) touches it. Each box, the composer's and
+  // every pane's, remembers what it shows.
+  /** @type {WeakMap<HTMLElement, { tab: any, text: string | null }>} */
+  const shownNext = new WeakMap();
   function renderNextPrompt(tab) {
-    const box = $('nextPrompt');
-    const text = tab && SB.activeTab() === tab && !tab.busy ? tab.nextPrompt : null;
-    if (text === shownNext.text && (!text || tab === shownNext.tab) && box.hidden === !text) return;
-    shownNext = { tab, text };
+    const active = !tab || SB.activeTab() === tab;
+    const box = active ? $('nextPrompt') : SB.paneTrayBox?.(tab.id, 'nextPrompt');
+    if (!box) return;
+    const text = tab && !tab.busy ? tab.nextPrompt : null;
+    const was = shownNext.get(box);
+    if (was && text === was.text && (!text || tab === was.tab) && box.hidden === !text) return;
+    shownNext.set(box, { tab, text });
     box.hidden = !text;
     if (!text) { box.replaceChildren(); return; }
-    box.replaceChildren(h('button', { class: 'suggestion next-chip', type: 'button', title: 'Put it in the box (Tab). Nothing is sent until you press Enter.', onclick: () => take(tab) },
-      h('span', { class: 'glyph', text: '›' }), text, h('kbd', { class: 'next-key', text: 'Tab' })));
+    box.replaceChildren(h('button', { class: 'suggestion next-chip', type: 'button',
+      title: active ? 'Put it in the box (Tab). Nothing is sent until you press Enter.' : 'Put it in the box, in this pane. Nothing is sent until you press Enter.',
+      onclick: () => take(tab) },
+    h('span', { class: 'glyph', text: '›' }), text, active ? h('kbd', { class: 'next-key', text: 'Tab' }) : null));
   }
 
   function take(tab) {
     if (!tab?.nextPrompt || tab.busy) return false;
+    if (SB.activeTab() !== tab) SB.activate(tab.id); // from an unfocused pane: the box comes to it first
     input.value = tab.nextPrompt;
     tab.nextPrompt = null;
     renderNextPrompt(tab);

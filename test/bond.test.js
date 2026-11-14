@@ -148,6 +148,66 @@ test('the Us page shows unlocks against the current level', () => {
   assert.equal(v.nextMilestone, 30);
 });
 
+test('the road: each stage says when you reached it, what it opened and what you did there', () => {
+  const at = d => T0 + d * DAY;
+  let s = b.hatch(null, at(0));
+  s = b.remember(s, 'first-pet', at(0)).state;
+  s = { ...s, points: 120 };
+  s = b.remember(s, 'level', at(4), { name: 'Pals' }).state;
+  s = b.remember(s, 'first-find', at(6), { item: 'Tiny shell' }).state;
+  s = b.remember(s, 'level', at(20), { name: 'Buddies' }).state;
+  s = b.remember(s, 'first-fetch', at(22)).state;
+  const v = b.view(s, at(30));
+
+  assert.deepEqual(v.stages.map(x => x.state), ['past', 'past', 'here', 'ahead', 'ahead', 'ahead']);
+  assert.deepEqual(v.stages.slice(0, 3).map(x => x.reachedAt), [at(0), at(4), at(20)]);
+  assert.equal(v.stages[3].reachedAt, null);
+  assert.deepEqual(v.stages.map(x => x.unlocks.length), [0, 1, 1, 1, 1, 1], 'each unlock sits on the stage that opens it');
+  assert.equal(v.stages[1].unlocks[0].open, true);
+  assert.equal(v.stages[3].unlocks[0].open, false);
+  // Memories land in the stage you were at when they happened, newest first;
+  // the level-ups themselves are the stages, so they aren't repeated as memories.
+  assert.deepEqual(v.stages[0].memories.map(m => m.kind), ['first-pet', 'hatched']);
+  assert.deepEqual(v.stages[1].memories.map(m => m.kind), ['first-find']);
+  assert.deepEqual(v.stages[2].memories.map(m => m.kind), ['first-fetch']);
+  assert.ok(v.stages.every(x => x.memories.every(m => m.kind !== 'level')));
+});
+
+test('the road: level-ups outlast a full journal, so every stage keeps its date', () => {
+  const at = d => T0 + d * DAY;
+  let s = b.hatch(null, at(0));
+  s = b.remember({ ...s, points: 120 }, 'level', at(1), { name: 'Pals' }).state;
+  for (let i = 0; i < b.JOURNAL_MAX + 20; i++) s = b.remember(s, 'shaken', at(2) + i, { app: 'Code' }).state;
+  assert.equal(b.view(s, at(3)).stages[1].reachedAt, at(1));
+});
+
+test('the road: a stage skipped in one jump has no date, and its memories fall to the one before', () => {
+  const at = d => T0 + d * DAY;
+  let s = b.hatch(null, at(0));
+  s = { ...s, points: 300 };
+  s = b.remember(s, 'level', at(10), { name: 'Close friends' }).state; // straight past Pals and Buddies
+  s = b.remember(s, 'first-fetch', at(5)).state;
+  const v = b.view(s, at(12));
+  assert.deepEqual(v.stages.map(x => x.reachedAt), [at(0), null, null, at(10), null, null]);
+  assert.deepEqual(v.stages.map(x => x.state), ['past', 'past', 'past', 'here', 'ahead', 'ahead']);
+  assert.deepEqual(v.stages[0].memories.map(m => m.kind), ['first-fetch', 'hatched']);
+});
+
+test("the road: today's ways to get closer, with what's left of each cap", () => {
+  let s = b.hatch(null, T0);
+  for (let i = 0; i < 3; i++) s = b.earn(s, 'pet', T0 + i).state;
+  const v = b.view(s, T0 + 1000);
+  assert.deepEqual(v.earn.pet, { points: 1, perDay: 10, today: 3 });
+  assert.deepEqual(v.earn.day, { points: 5, perDay: null, today: 0 });
+  assert.equal(b.view(s, T0 + DAY).earn.pet.today, 0, 'a new day starts the caps again');
+});
+
+test('the road: how long the next stage is at your pace, once there is a pace to go by', () => {
+  assert.equal(b.view({ points: 40, days: 3 }, T0).pace, null, 'too early to say');
+  assert.deepEqual(b.view({ points: 500, days: 50 }, T0).pace, { perDay: 10, days: 10 }, '100 to Best friends at 10 a day');
+  assert.equal(b.view({ points: 2000, days: 100 }, T0).pace, null, 'nothing left to reach');
+});
+
 test('junk from disk is tolerated', () => {
   const s = b.normalize({ points: -5, level: 99, journal: [{ kind: 'nope', at: 1 }, { kind: 'shaken', at: T0, data: { app: 'X'.repeat(200), f: () => 1 } }], birthday: { m: 13, d: 1 } });
   assert.equal(s.points, 0);

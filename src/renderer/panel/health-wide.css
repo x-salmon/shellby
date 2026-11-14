@@ -1,0 +1,100 @@
+/* Shellby panel — Health: the diagnosis under the hero (health-diagnosis.js),
+   and the wide layout, where the verdict leads and the vitals become a rail. */
+
+/* ---------- how it got here: a real sequence, so the steps point onward ---------- */
+.hl-diag { margin-bottom: 16px; }
+.hl-diag .hl-h + .hl-chain { margin-top: 0; }
+.hl-chain {
+  list-style: none; margin: 0 0 14px; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--reef);
+}
+.hl-link-step {
+  --lvl: var(--sand);
+  position: relative; display: grid; align-content: start; gap: 2px; min-width: 0;
+  padding: 10px 12px 11px 14px;
+}
+.hl-link-step + .hl-link-step { border-left: 1px solid var(--line); }
+/* The chevron sits on the seam, pointing to the next step. */
+.hl-link-step + .hl-link-step::before {
+  content: ""; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; margin-top: -5px;
+  background: var(--reef); border-top: 1px solid var(--line); border-right: 1px solid var(--line); transform: rotate(45deg);
+}
+.hl-link-step.lvl-warn { --lvl: var(--amber); background: color-mix(in srgb, var(--amber) 7%, var(--reef)); }
+.hl-link-step.lvl-critical { --lvl: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--reef)); }
+.hl-step-what { font-size: var(--fs-11-5); color: var(--sand-faint); }
+.hl-step-big {
+  font: 600 var(--fs-19)/1.15 var(--font-pixel); color: var(--lvl);
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hl-step-why { font-size: var(--fs-12); color: var(--sand-dim); }
+
+/* ---------- what would help ---------- */
+.hl-fixes { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.hl-fix {
+  display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+  padding: 9px 2px; border-bottom: 1px solid var(--line-soft);
+}
+.hl-fix-words { min-width: 0; }
+.hl-fix-words b { font-size: var(--fs-13); }
+.hl-fix-words p { margin: 1px 0 0; font-size: var(--fs-12); color: var(--sand-dim); line-height: 1.45; }
+.hl-fix .slim-btn { height: 28px; }
+.hl-fix-end { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.hl-fix-end:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+
+/* ---------- wide: the verdict leads, the vitals are a rail ---------- */
+@media (min-width: 1280px) {
+  body[data-view="health"] .view-health {
+    display: grid; align-content: start;
+    grid-template-columns: minmax(0, 1fr) clamp(360px, 27vw, 600px);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "head head" "main rail" "more rail";
+    column-gap: clamp(28px, 2.6vw, 64px);
+    padding: clamp(18px, 1.8vw, 44px) clamp(20px, 2.2vw, 56px) 40px;
+  }
+  .view-health > .view-head { grid-area: head; }
+  .view-health > .hl-main { grid-area: main; min-width: 0; }
+  .view-health > .hl-more { grid-area: more; min-width: 0; }
+  .view-health > .hl-rail { grid-area: rail; min-width: 0; align-self: start; position: sticky; top: 0; }
+
+  /* The verdict, set as a sentence the room can read. */
+  .hl-hero { grid-template-columns: clamp(180px, 13vw, 260px) 1fr; gap: clamp(20px, 2vw, 44px); padding: clamp(18px, 1.6vw, 40px); margin-bottom: 22px; }
+  .hl-tank { height: clamp(140px, 10vw, 220px); }
+  .hl-verdict h3 { font-size: clamp(30px, 2.5vw, 62px); line-height: 1.12; max-width: 24ch; }
+  .hl-sub { font-size: clamp(15px, .95vw, 22px); max-width: 64ch; margin: 12px 0 18px; }
+  .hl-eyebrow { font-size: var(--fs-12); margin-bottom: 8px; }
+
+  .hl-diag { margin-bottom: 26px; }
+  .hl-diag .hl-h { font-size: var(--fs-12); margin-bottom: 12px; }
+  .hl-chain { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 26px; }
+  .hl-link-step { padding: clamp(14px, 1.1vw, 26px) clamp(16px, 1.2vw, 28px); }
+  .hl-link-step + .hl-link-step::before { left: -9px; width: 16px; height: 16px; margin-top: -8px; }
+  .hl-step-what { font-size: clamp(13px, .7vw, 16px); }
+  .hl-step-big { font-size: clamp(24px, 1.7vw, 40px); margin: 4px 0 2px; }
+  .hl-step-why { font-size: clamp(13px, .7vw, 16px); }
+  .hl-fix { padding: clamp(12px, .9vw, 20px) 4px; gap: 24px; }
+  .hl-fix-words b { font-size: clamp(15px, .85vw, 20px); }
+  .hl-fix-words p { font-size: clamp(13px, .7vw, 16px); }
+  .hl-fix .slim-btn { height: 34px; padding: 0 16px; }
+
+  /* Rail: one row per vital, the graph between name and number. Anything off
+     its line keeps its level colour, so the odd one out stands out. */
+  .hl-rail .hl-gauges { grid-template-columns: 1fr; gap: 0; border-top: 1px solid var(--line); }
+  .hl-rail .hl-gauge {
+    grid-template-columns: minmax(0, 1fr) minmax(90px, 1.3fr) auto;
+    grid-template-areas: "label spark value" "sub spark stats" "ask ask ask";
+    column-gap: 16px; align-items: center;
+    padding: 12px 4px 12px 14px; border: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; background: none;
+  }
+  .hl-rail .hl-gauge.lvl-warn, .hl-rail .hl-gauge.lvl-critical { background: color-mix(in srgb, var(--lvl) 7%, transparent); border-color: var(--line-soft); }
+  .hl-rail .hl-gauge::before { top: 12px; bottom: 12px; }
+  .hl-rail .hl-gauge > header { grid-area: label; }
+  .hl-rail .hl-value { grid-area: value; justify-self: end; font-size: clamp(20px, 1.2vw, 28px); }
+  .hl-rail .hl-gsub { grid-area: sub; }
+  .hl-rail .hl-spark-box { grid-area: spark; align-self: stretch; display: flex; align-items: center; }
+  .hl-rail .hl-spark { margin: 0; height: 32px; }
+  .hl-rail .hl-gstats { grid-area: stats; justify-self: end; }
+  .hl-rail .hl-mini { grid-area: ask; }
+  .hl-rail .hl-gauges-head { margin-bottom: 10px; }
+  .hl-rail .setting-group { margin-top: 22px; }
+}

@@ -48,6 +48,7 @@ const { wireYearbook } = require('./wiring/yearbook');
 const { wireBugdex } = require('./wiring/bugdex');
 const { wireTimetrack } = require('./wiring/timetrack');
 const { wireCrabApi } = require('./wiring/crab-api');
+const { wireTaskBoard } = require('./wiring/taskboard');
 const { wireChannels } = require('./wiring/channels');
 const { wireDeck } = require('./wiring/deck');
 const { wirePhoneTasks } = require('./wiring/phone-tasks');
@@ -143,6 +144,8 @@ require('./session').setLogger(log);
 
 // Dev/e2e only: drive the app with the fake CLI from test/fixtures (no Claude account, no usage).
 const FAKE_CLI = !app.isPackaged && process.env.SHELLBY_FAKE_CLAUDE ? path.resolve(process.env.SHELLBY_FAKE_CLAUDE) : null;
+// The same for Gemini CLI, OpenCode and Codex (harness/): one script stands in for every ACP agent.
+const FAKE_ACP = !app.isPackaged && process.env.SHELLBY_FAKE_ACP ? path.resolve(process.env.SHELLBY_FAKE_ACP) : null;
 require('./lighter').lighten(app); // one process fewer: the network service runs inside main
 require('./test-desktop').keepPainting(app); // test runs only: keep covered windows painting, so screenshots and rendering work on a busy desktop
 // Isolated dev/test runs (SHELLBY_USER_DATA) never touch the real status file
@@ -164,7 +167,7 @@ let claudeRecheck = null; // a status check after Claude Code moved (shared.clau
 const shared = {
   ROOT, RENDERER, PRELOAD, CRITTER_PRELOAD, TOY_PRELOAD, FLOOR_PRELOAD, NOTE_PRELOAD, ICON, CAPTURE,
   BASE_PX, MAX_CREW_SHOWN, SLEEP_AFTER_MS, LONG_TASK_MS, CREW_WORTH_MENTIONING, TAB_IDLE_STOP_MS,
-  TAB_IDLE_CHECK_MS, IDLE_BIT_CHANCE, TRICKS_KIND, CARD_MAX_BYTES, PNG_SIGNATURE, FAKE_CLI, ISOLATED,
+  TAB_IDLE_CHECK_MS, IDLE_BIT_CHANCE, TRICKS_KIND, CARD_MAX_BYTES, PNG_SIGNATURE, FAKE_CLI, FAKE_ACP, ISOLATED,
   LOG_DIR, log, every, repeating, randomUUID,
   PRIMARY: false, lastRun: null, sentry: null, // crash reports, started below
   captureClock: { now: null }, // screenshot runs can pretend it's Halloween
@@ -238,6 +241,7 @@ const shared = {
   cancelHeld: null,                // taking one out of the reset queue, set by ipc/routines.js
   dictation: null, ptt: null,      // push-to-talk: hold the hotkey and say the task (see dictation.js)
   motion: null,                    // throws and strolls (see desktop/motion.js)
+  stillGate: null,                 // saves and scans wait while he walks (desktop/still.js, set by wiring/profile.js)
   perching: null,                  // up on your windows (see desktop/perching.js)
   climbing: null,                  // up the edges of the screen and across the top (see desktop/climbing.js)
   pranks: null,                    // mischief, if you asked for it (see pranks.js)
@@ -366,6 +370,7 @@ share(wireFeatureActs(shared)); // What you use: the things you do with him, cou
 share({ bugdex: wireBugdex(shared) }); // the bugs Claude has fixed for you, in jars
 const { createExternal, createHealth, createTimeTracker, stat } = share(wireTimetrack(shared));
 const { createCrabApi } = share(wireCrabApi(shared));
+share(wireTaskBoard(shared)); // the task board: conversations handing each other work (taskboard/)
 const { channelPlace, channelSettings, confirmChannelPlace, createObs, createRemote, loadChannelSecret } = share(wireChannels(shared));
 const { createPhoneTasks } = share(wirePhoneTasks(shared));
 const { createDeck } = share(wireDeck(shared));
@@ -439,6 +444,7 @@ app.whenReady().then(() => {
   createGitHub();
   createComputers(); // before the tabs: a reopened one may be on another computer
   createManager();
+  shared.taskBoard.watchTabs(); // a conversation that closes gives back what it claimed
   watchClashes();
   createCorrections();
   createHealth();
@@ -467,7 +473,7 @@ app.whenReady().then(() => {
   // Forced ("Shut down anyway") there's no session-end, only the question before it.
   let ending = null;
   for (const w of [critter, panel]) {
-    w?.on('session-end', () => crashReport.endRun(LOG_DIR));
+    w?.on('session-end', () => { shared.stillGate?.flush(); crashReport.endRun(LOG_DIR); }); // a save held mid-walk lands first
     w?.on('query-session-end', () => {
       if (!ending) crashReport.markEnding(LOG_DIR);
       clearTimeout(ending);

@@ -110,8 +110,9 @@
   }
 
   function showTurn(tab, turnId) {
-    const el = turnId && [...tab.el.querySelectorAll('.turn-cost')].find(c => c.dataset.turn === turnId);
+    const el = turnId && [...tab.el.querySelectorAll('.turn-foot')].find(c => c.dataset.turn === turnId);
     if (!el) return SB.toast("That turn is further back than this tab keeps. It's in History.");
+    tab.toggleFoot(el, true); // opened: what it cost is why you came
     el.scrollIntoView({ block: 'center' });
     el.classList.add('flash');
     setTimeout(() => el.classList.remove('flash'), 1600);
@@ -169,7 +170,6 @@
     const who = other ? window.ShellbyRemoteLogic.accountLine(other) : null;
     $('usage').hidden = !other && !hasWindows(u);
     $('usage').classList.toggle('other', !!other);
-    $('usage').setAttribute('aria-label', other ? `Usage limits of ${who}` : 'Usage limits: see what used them');
     $('usageWho').hidden = !other;
     // The folder chip already names the computer: a small mark is enough here, and the rest is in its title.
     if (other) $('usageWho').title = hasWindows(other) ? `Plan usage of ${who}, not your own plan` : `${who}: no reading of its plan yet`;
@@ -177,6 +177,7 @@
       if (!win) { el.hidden = true; return; }
       el.hidden = false;
       el.querySelector('.meter-fill').style.transform = `scaleX(${Math.min(100, win.pct) / 100})`;
+      el.querySelector('.meter-num').textContent = `${win.pct}%`;
       // On pace to fill before it resets is as worth a glance as nearly full (forecast.js).
       el.classList.toggle('warn', (win.pct >= 70 || !!pace?.warn) && win.pct < 90);
       el.classList.toggle('hot', win.pct >= 90);
@@ -187,7 +188,19 @@
     // The forecast is your own plan's: another account's meter goes without it.
     set($('meter5h'), u?.fiveHour, '5-hour', other ? null : state.outlook?.pace);
     set($('meter7d'), u?.sevenDay, 'Weekly');
+    // How long until the nearer limit resets, or until the 5-hour one fills at this pace.
+    const when = window.ShellbyMeterLogic.usageWhen(u, other ? null : state.outlook?.pace, Date.now());
+    $('usageWhen').hidden = !when;
+    $('usageWhen').textContent = when?.text || '';
+    $('usageWhen').classList.toggle('full', when?.kind === 'full');
+    // The button's label stands in for what's inside it, so it says the numbers too.
+    const said = [['5-hour', u?.fiveHour], ['weekly', u?.sevenDay]].filter(([, w]) => w).map(([n, w]) => `${n} ${w.pct}%`);
+    const read = [said.join(', '), when?.text].filter(Boolean).join(', ');
+    $('usage').setAttribute('aria-label', other ? `Usage limits of ${who}${read ? `: ${read}` : ''}` : `Usage limits${read ? `: ${read}` : ''}. See what used them`);
   }
+  // The countdown ticks on its own between readings.
+  setInterval(() => { if (!document.hidden && !$('usage').hidden) drawUsage(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) drawUsage(); });
   // A new forecast changes what the 5-hour meter says; another tab or folder may be another account's.
   SB.refreshUsage = drawUsage;
 

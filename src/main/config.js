@@ -82,6 +82,7 @@ const DEFAULTS = {
   soundVolume: 60,   // 25 | 60 | 100: soft, normal, loud
   selfAware: true,   // Claude is told it's in Shellby and gets the crab's tools (see selfaware.js)
   suggestions: true, // ...and may offer Shellby features as one-tap cards
+  taskBoard: true,   // ...and share a task board per project, to hand each other work (wiring/taskboard.js)
   mutedSuggestions: [], // features the user said not to offer again
   voice: null,       // his seed, temperament and what he's said lately (see voice.js)
   finds: null,       // the shelf: everything he's dug up for you (see gifts/index.js)
@@ -235,10 +236,18 @@ const DEFAULTS = {
 const BACKUP_EVERY_MS = 60 * 60 * 1000;
 
 class Config {
-  constructor(dir, { now = Date.now } = {}) {
+  /**
+   * whenStill(key, fn): runs fn now, or once the crab stops walking
+   * (desktop/still.js). Each save is a synchronous write of the whole file, and
+   * mid-stride that is a visible stop. Left out (tests), every set() saves at once.
+   * @param {string} dir
+   * @param {{ now?: () => number, whenStill?: ((key: string, fn: () => void) => unknown) | null }} [opts]
+   */
+  constructor(dir, { now = Date.now, whenStill = null } = {}) {
     this.file = path.join(dir, 'settings.json');
     this.backup = path.join(dir, 'settings.backup.json');
     this.now = now;
+    this.whenStill = whenStill;
     fs.mkdirSync(dir, { recursive: true });
     const { data, recoveredFrom, restoredFrom, unreadable } = loadSettings(this.file, this.backup);
     // Where a damaged settings.json was moved to (main.js logs it), or null.
@@ -279,11 +288,18 @@ class Config {
     const prev = this.data;
     this.data = { ...this.data, ...patch };
     if (!this.unreadable) {
-      writeSettings(this.file, JSON.stringify(this.data, null, 2));
-      if (this.now() - this.backedUpAt >= BACKUP_EVERY_MS) this.backUp();
+      if (this.whenStill) this.whenStill('settings', () => this.save());
+      else this.save();
     }
     this.onSet?.(patch, prev);
     return this.data;
+  }
+
+  // The settings as they are when it runs: a save held while he walked writes
+  // every change made meanwhile.
+  save() {
+    writeSettings(this.file, JSON.stringify(this.data, null, 2));
+    if (this.now() - this.backedUpAt >= BACKUP_EVERY_MS) this.backUp();
   }
 
   addRecentFolder(dir) {

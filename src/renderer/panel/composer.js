@@ -405,6 +405,7 @@
     const waiting = !by && !id && picking();
     $('effortLabel').textContent = id ? effortName(id).toLowerCase() : waiting ? 'fits' : 'auto';
     $('effortChip').classList.toggle('on', !!id);
+    $('effortChip').dataset.level = String(Math.max(0, EFFORTS.findIndex(x => x.id === id))); // the dial (composer.css)
     $('effortChip').title = waiting
       ? 'Effort: picked from your first message, to fit the job. Click to choose it yourself (/effort)'
       : `Effort: ${effortName(id)}${by === 'picked' ? ', picked to fit your first message' : ''}. How hard Claude thinks in this conversation (/effort)`;
@@ -423,36 +424,105 @@
   // Claude Code's default depends on your plan and isn't told before a
   // conversation runs, so the last one a conversation on the default reported
   // is kept, to name it ("default (Opus 5.5)") before the next one starts.
+  // Only a Claude model names the default: a conversation on a local model
+  // (main's local/agent.js) asks for none and reports the local one.
   const DEFAULT_SEEN = 'shellby.defaultModelSeen';
+  const isClaude = id => typeof id === 'string' && (/^claude-/.test(id) || (state.models || []).some(m => m.id === id));
   const askedOf = tab => (typeof tab?.modelAsked === 'string' ? tab.modelAsked : state.settings?.model || '');
+  function defaultSeen(tab) {
+    const mine = !tab?.local && askedOf(tab) === '' && isClaude(tab?.model) ? tab.model : null;
+    const kept = SB.pref(DEFAULT_SEEN);
+    return mine || (isClaude(kept) ? kept : null);
+  }
   function defaultName(tab) {
-    const seen = askedOf(tab) === '' && tab?.model ? tab.model : SB.pref(DEFAULT_SEEN);
+    const seen = defaultSeen(tab);
     return seen ? `default (${modelName(seen)})` : 'default';
+  }
+
+  // The chip's tier bars: how heavy the model is, one bar for Haiku to three
+  // for Opus and Fable (the same top tier as routines.js TOP_MODEL). A local
+  // model, or one Shellby can't place, lights none.
+  const MODEL_TIERS = [[/haiku/i, 1], [/sonnet/i, 2], [/opus|fable/i, 3]];
+  const tierOf = name => MODEL_TIERS.find(([re]) => re.test(name))?.[1] || 0;
+  function showTier(n) {
+    $('modelTier').querySelectorAll('rect').forEach((bar, i) => bar.classList.toggle('lit', i < n));
+  }
+  // "Opus 5.5" → a bold "Opus", the version beside it, then a tag ("default",
+  // "local"). In a narrow panel only the name stays (panel.css @container subbar).
+  function chipLabel(name, tag, local = false) {
+    const [family, ...rest] = name.split(' ');
+    const version = rest.join(' ').replace(/^\((.*)\)$/, '$1'); // "(latest)" → "latest"
+    $('modelLabel').replaceChildren(
+      h('b', { class: 'model-name', text: family }),
+      version && h('span', { class: 'model-ver', text: version }),
+      tag && h('span', { class: local ? 'model-tag local' : 'model-tag', text: tag }));
   }
 
   SB.applyModel = () => {
     const tab = SB.activeTab();
     const asked = askedOf(tab);
-    if (tab && asked === '' && tab.model) SB.pref.set(DEFAULT_SEEN, tab.model);
-    const id = asked === '' ? '' : tab?.model || asked;
+    if (tab && !tab.local && asked === '' && isClaude(tab.model)) SB.pref.set(DEFAULT_SEEN, tab.model);
     const chip = $('modelChip');
     chip.hidden = !tab;
-    // "default (Sonnet 5.5)": in a narrow panel only the name shows (panel.css .model-default).
-    const seen = !id && defaultName(tab).match(/^default \((.+)\)$/);
-    if (seen) $('modelLabel').replaceChildren(h('span', { class: 'model-default', text: 'default (' }), seen[1], h('span', { class: 'model-default', text: ')' }));
-    else $('modelLabel').textContent = id ? modelName(id) : defaultName(tab);
+    chip.classList.toggle('local', !!tab?.local);
+    if (tab?.local) {
+      chipLabel(tab.local, 'local', true);
+      showTier(0);
+      chip.classList.add('on');
+      chip.setAttribute('aria-label', `Model: ${tab.local}, on this PC`);
+      chip.title = `Model: ${tab.local}, on this PC. ${tab.canLocal ? 'Click to switch it before its first message' : 'It stays on this PC for good'} (/model)`;
+      return;
+    }
+    const id = asked === '' ? '' : tab?.model || asked;
+    const seen = id ? null : defaultSeen(tab);
+    const name = id ? modelName(id) : seen ? modelName(seen) : 'default';
+    chipLabel(name, !id && seen ? 'default' : '');
+    showTier(tierOf(`${name} ${id || seen || ''}`)); // the id too: a listed label may not name its family
     chip.classList.toggle('on', !!id);
     chip.title = `Model: ${id || `${defaultName(tab)}, what Claude Code picks for your plan`}. Click to switch this conversation (/model)`;
+    // A narrow panel hides the version and the "default" tag; the button's name keeps them.
+    chip.setAttribute('aria-label', `Model: ${id ? name : defaultName(tab)}`);
   };
+
+  // The local server's models (main's local/model.js listModels), asked for
+  // each time the menu opens; until it answers, the ones Settings names.
+  let localFound = { url: '', models: /** @type {string[]} */ ([]) };
+  let findSeq = 0;
+  function localNames(tab) {
+    const lm = state.settings?.localModel;
+    if (!lm?.url) return tab?.local ? [tab.local] : [];
+    const found = localFound.url === lm.url ? localFound.models : [];
+    return [...new Set([tab?.local, lm.agent?.model, lm.model, ...found].filter(Boolean))];
+  }
+  async function findLocal() {
+    const url = state.settings?.localModel?.url;
+    if (!url) return;
+    const seq = ++findSeq;
+    const r = await api.localModels(url).catch(() => null);
+    if (seq !== findSeq || !r?.ok || !Array.isArray(r.models)) return; // a later look, or nothing there
+    const tab = SB.activeTab();
+    const before = localNames(tab).join('\n');
+    localFound = { url, models: r.models };
+    const menu = $('modelMenu');
+    // Only when the list grew, so the menu you're moving through isn't rebuilt under you.
+    if (menu.hidden || localNames(tab).join('\n') === before) return;
+    menu.replaceChildren(...modelItems().filter(Boolean));
+    /** @type {HTMLElement | null} */ (menu.querySelector('.menu-item:not([disabled])'))?.focus();
+  }
 
   function modelItems() {
     const tab = SB.activeTab();
-    const cur = askedOf(tab);
+    const local = tab?.local || null;
+    const cur = local ? null : askedOf(tab);
     const started = !!tab?.saved;
-    const item = (id, title, sub) => h('button', { class: 'menu-item', role: 'menuitemradio', 'aria-checked': String(cur === id), onclick: () => { SB.closeMenus(); SB.chooseModel(id); } },
-      h('span', { class: 'mi-check', text: cur === id ? '●' : '' }),
+    // Local or Claude is decided for good at its first message (main's sessions.js canMoveLocal).
+    const fixed = !!tab && !tab.canLocal;
+    const radio = (on, disabled, title, sub, pick) => h('button', { class: 'menu-item', role: 'menuitemradio', 'aria-checked': String(on), disabled, onclick: () => { SB.closeMenus(); pick(); } },
+      h('span', { class: 'mi-check', text: on ? '●' : '' }),
       h('span', {}, h('div', { class: 'mi-title', text: title }), sub ? h('div', { class: 'mi-sub', text: sub }) : null));
+    const item = (id, title, sub) => radio(cur === id, fixed && !!local, title, sub, () => SB.chooseModel(id));
     const models = state.models || [];
+    const names = tab ? localNames(tab) : [];
     return [
       h('div', { class: 'menu-label', text: started ? 'Model for this conversation, from its next turn' : 'Model for this conversation' }),
       item('', defaultName(tab).replace(/^d/, 'D'), 'What Claude Code picks for your plan'),
@@ -460,6 +530,13 @@
         h('div', { class: 'menu-sep' }),
         ...models.filter(m => m.group === g).map(m => item(m.id, m.label)),
       ]),
+      ...(names.length ? [
+        h('div', { class: 'menu-sep' }),
+        h('div', { class: 'menu-label', text: 'On this PC' }),
+        ...names.map((n, i) => radio(local === n, fixed && local !== n, n,
+          i === 0 ? (fixed ? (local ? 'Stays on this PC for good' : 'Only before a conversation starts') : 'Free, and nothing leaves this PC') : null,
+          () => SB.chooseLocal(n))),
+      ] : []),
       h('div', { class: 'menu-sep' }),
       h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { SB.closeMenus(); SB.showSetting?.('modelSelect'); } },
         h('span', { class: 'mi-check', text: '' }),
@@ -475,13 +552,27 @@
     if (!tab) return SB.showSetting?.('modelSelect');
     const r = await api.setTabModel(tab.id, id).catch(() => null);
     if (!r?.ok) return SB.toast(r?.error || "Couldn't change its model.", { ms: 6000 });
-    Object.assign(tab, { modelAsked: id, model: id }); // main's next summary says the same
+    Object.assign(tab, { modelAsked: id, model: id, local: null }); // main's next summary says the same
     SB.applyModel();
     const name = id ? modelName(id) : defaultName(tab);
     SB.toast(r.started ? `Switched to ${name}. Its next turn re-reads the conversation, so it costs more once.` : `This conversation starts on ${name}.`, { ms: 5000 });
   };
 
-  $('modelChip').addEventListener('click', () => SB.openMenu($('modelMenu'), $('modelChip'), modelItems));
+  // A local model instead of Claude, before its first message (main's sessions.js setTabLocal).
+  SB.chooseLocal = async (name) => {
+    const tab = SB.activeTab();
+    if (!tab) return;
+    const r = await api.setTabLocal(tab.id, name).catch(() => null);
+    if (!r?.ok) return SB.toast(r?.error || "Couldn't put it on that model.", { ms: 6000 });
+    Object.assign(tab, { local: name, model: name, modelAsked: '' }); // main's next summary says the same
+    SB.applyModel();
+    SB.toast(`This conversation runs on ${name}, on this PC. Its first message settles it for good.`, { ms: 5000 });
+  };
+
+  $('modelChip').addEventListener('click', () => {
+    SB.openMenu($('modelMenu'), $('modelChip'), modelItems);
+    if (!$('modelMenu').hidden) findLocal();
+  });
 
   // This conversation only. With none open yet, it's what new ones start on.
   SB.chooseEffort = async (id) => {
@@ -565,11 +656,11 @@
   }
 
   async function doRewind(tab, p, opts) {
-    SB.toast('Rewinding…', { ms: 15000 });
-    const r = await api.rewind(tab.id, p.turnId, opts);
-    if (!r?.ok) return SB.toast(r?.error || "Couldn't rewind.", { ms: 9000 });
+    const job = SB.toast.job('Rewinding…', { ms: 15000 });
+    const r = await api.rewind(tab.id, p.turnId, opts).catch(() => null);
+    if (!r?.ok) return job.fail(r?.error || "Couldn't rewind.", { ms: 9000 });
     const files = r.restored ? ` Put ${plural(r.restored, 'file')} back.` : '';
-    if (r.kept) return SB.toast(`Code rewound.${files}`, { ms: 6000 });
+    if (r.kept) return job.done(`Code rewound.${files}`, { ms: 6000 });
     tab.reset(r.items || []);
     tab.queue = [];
     if (tab.isActive) {
@@ -582,7 +673,7 @@
       shellMode();
       SB.syncBusyUi();
     } else if (!tab.draft) tab.draft = r.text || '';
-    SB.toast(`Rewound.${files} Your message is back in the box.`, { ms: 6000 });
+    job.done(`Rewound.${files} Your message is back in the box.`, { ms: 6000 });
   }
 
   // ------------------------------------------------------------ branch (branching.js)
@@ -637,13 +728,13 @@
 
   async function doBranch(tab, turnId, at, { send = false } = {}) {
     // Long enough for its copy's packages to install (copy-deps.js); the answer replaces it.
-    SB.toast('Making a branch…', { ms: 180000 });
-    const r = await api.branch(tab.id, turnId, { at, send });
-    if (!r?.ok) return r?.cancelled ? SB.toast('Not branched.') : SB.toast(r?.error || "Couldn't make the branch.", { ms: 9000 });
+    const job = SB.toast.job('Making a branch…', { ms: 180000 });
+    const r = await api.branch(tab.id, turnId, { at, send }).catch(() => null);
+    if (!r?.ok) return r?.cancelled ? job.fail('Not branched.', { ms: 2800, tone: null }) : job.fail(r?.error || "Couldn't make the branch.", { ms: 9000 });
     // The new tab has opened itself (boot.js onTabOpened).
     const where = r.branch ? `its own copy on ${r.branch}` : 'the same folder as the original';
     const note = r.filesNow ? ' The files are as they are now: the ones from then had been tidied away.' : r.approx ? ' The files are as near to then as Shellby can tell.' : '';
-    SB.toast(r.sent ? `Running it again in ${where}.${note}` : at === 'before' ? `Branched into ${where}. Change your message and send it.${note}` : `Branched into ${where}. Carry on from there.${note}`, { ms: 7000 });
+    job.done(r.sent ? `Running it again in ${where}.${note}` : at === 'before' ? `Branched into ${where}. Change your message and send it.${note}` : `Branched into ${where}. Carry on from there.${note}`, { ms: 7000 });
   }
 
   // Esc twice in an empty box (not working), within a moment: the rewind

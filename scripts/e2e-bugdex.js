@@ -107,13 +107,14 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
     hermit = await entry('shell-less-hermit');
     check(hermit?.caught === 1, `the same bug in the same project counts once in 12 hours (×${hermit?.caught})`);
 
-    // ---- 4. passing with nothing changed is not a fix
+    // ---- 4. passing with nothing changed is not a fix: it was never a bug in the code, so it goes free
     await task('bug typeerror-fail');
+    check((await dex()).loose.some(l => l.species === 'shapeshifter-shrimp'), 'a new bug is on the loose');
     await task('bug typeerror-pass');
     v = await dex();
     const shrimp = v.species.find(s => s.id === 'shapeshifter-shrimp');
     check(shrimp?.state === 'seen', `no change, no catch (${shrimp?.state})`);
-    check(v.loose.find(l => l.species === 'shapeshifter-shrimp')?.refused === 'no-change', 'and the loose row says why');
+    check(!v.loose.some(l => l.species === 'shapeshifter-shrimp'), 'and it goes free instead of waiting on the loose');
 
     // ---- 5. deleting the failing test is not a fix
     await task('edit add.test.js test');

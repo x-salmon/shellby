@@ -33,6 +33,7 @@ function wireToolbox(d) {
       getSettings: () => claudeSetup.settingsFiles({ home: os.homedir(), cwd: d.currentCwd() }).map(f => claudeSetup.readSettings(f.file).data || {}),
       seenFile: d.CAPTURE ? null : path.join(app.getPath('userData'), 'toolbox-seen.json'),
       log: d.log,
+      whenStill: d.stillGate?.when,
     });
     d.toolbox.on('changed', tb => d.send(d.panel, 'toolbox', tb));
     d.toolbox.on('learned', trick => {

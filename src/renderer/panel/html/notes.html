@@ -1,16 +1,24 @@
   <!-- ====================== NOTES ====================== -->
+  <!-- The list on the left, the note you picked on the right: what Claude said
+       about it, what's happened to it so far, and its next step. A narrow panel
+       shows one at a time (notes.js). -->
   <main class="view view-notes" id="notesView">
     <div class="view-head">
       <h2>Notes</h2>
       <select class="field slim notes-scope" id="notesScope" aria-label="Which list"></select>
     </div>
-    <p class="view-lede">Things you'd like to do. When you're ready, have Claude plan one, build it, or tell you whether it's worth doing.</p>
-    <form class="note-add" id="noteAdd">
-      <textarea class="field area" id="noteInput" rows="2" maxlength="2000" placeholder="Add a note… (Enter to save, Shift+Enter for a new line)" aria-label="New note"></textarea>
-      <button type="submit" class="btn primary slim-btn">Add</button>
-    </form>
-    <p class="notes-where" id="notesWhere"></p>
-    <input type="search" class="field slim notes-filter" id="notesFilter" placeholder="Find a note…" aria-label="Find a note" hidden>
-    <ul class="note-list" id="noteList"></ul>
-    <div class="notes-done" id="notesDone" hidden></div>
+    <div class="notes-split" id="notesSplit">
+      <section class="notes-pane notes-list-pane" aria-label="Your notes">
+        <form class="note-add" id="noteAdd">
+          <textarea class="field area" id="noteInput" rows="2" maxlength="2000" placeholder="Add a note… (Enter to save, Shift+Enter for a new line)" aria-label="New note"></textarea>
+          <button type="submit" class="btn primary slim-btn">Add</button>
+        </form>
+        <p class="notes-where" id="notesWhere"></p>
+        <input type="search" class="field slim notes-filter" id="notesFilter" placeholder="Find a note…" aria-label="Find a note" hidden>
+        <div class="notes-chips" id="notesChips" role="group" aria-label="Show" hidden></div>
+        <ul class="note-list" id="noteList" aria-label="Open notes"></ul>
+        <div class="notes-done" id="notesDone" hidden></div>
+      </section>
+      <section class="notes-pane note-detail" id="noteDetail" aria-label="The open note"></section>
+    </div>
   </main>

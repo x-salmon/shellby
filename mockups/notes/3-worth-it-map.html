@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notes, concept 3: what's worth doing first</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 640px; gap: 40px; }
+
+  /* ---- the map ---- */
+  .map-wrap { display: grid; grid-template-columns: 56px 1fr; grid-template-rows: 1fr 56px; min-height: 0; }
+  .y-label { writing-mode: vertical-rl; transform: rotate(180deg); display: flex; justify-content: space-between; color: var(--sand-faint); font-size: 16px; padding: 10px 0; }
+  .y-label b { color: var(--sand-dim); }
+  .x-label { grid-column: 2; display: flex; justify-content: space-between; align-items: center; color: var(--sand-faint); font-size: 16px; padding: 0 10px; }
+  .x-label b { color: var(--sand-dim); }
+  .map { position: relative; border-radius: 20px; overflow: hidden;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; background: var(--line); }
+  .q { position: relative; background: var(--ink); padding: 26px 30px; }
+  .q h2 { font: 500 28px/1 var(--font-pixel); }
+  .q p { color: var(--sand-faint); font-size: 16px; margin-top: 8px; max-width: 36ch; }
+  .q.first { background: radial-gradient(120% 120% at 0% 0%, rgba(127,214,194,.13), var(--ink) 60%); }
+  .q.first h2 { color: var(--glass); }
+  .q.plan h2 { color: var(--sand); }
+  .q.tidy h2 { color: var(--sand-dim); }
+  .q.skip h2 { color: var(--sand-faint); }
+  .q.plan, .q.skip { text-align: right; }
+  .q.plan p, .q.skip p { margin-left: auto; }
+  .q.tidy, .q.skip { display: flex; flex-direction: column; justify-content: flex-end; }
+
+  /* notes on the map */
+  .pin { position: absolute; transform: translate(-14px, -14px); display: flex; align-items: center; gap: 12px; max-width: 420px; z-index: 2; }
+  .pin .dot { width: 28px; height: 28px; flex: none; border-radius: 8px; border: 3px solid var(--abyss); box-shadow: 0 0 0 2px currentColor; background: currentColor; }
+  .pin .lbl { background: rgba(7,16,18,.86); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; font-size: 16px; line-height: 1.35; color: var(--sand); }
+  .pin.do { color: var(--glass); }
+  .pin.diff { color: var(--amber); }
+  .pin.skip { color: var(--sand-faint); }
+  .pin.left { flex-direction: row-reverse; transform: translate(calc(-100% + 14px), -14px); }
+  .pin .lbl { white-space: nowrap; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .seg span { padding: 10px 20px; font-size: 17px; color: var(--sand-faint); }
+  .seg span.on { background: var(--reef-2); color: var(--sand); font-weight: 700; }
+  .pin.sel .lbl { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-dim), 0 20px 40px rgba(0,0,0,.5); }
+  .pin.sel .dot { box-shadow: 0 0 0 2px currentColor, 0 0 0 9px var(--coral-dim); }
+  /* uncertainty: how sure Claude is of the effort estimate */
+  .spread { position: absolute; height: 4px; border-radius: 2px; background: currentColor; opacity: .35; transform: translateY(-2px); z-index: 1; }
+
+  /* ---- right rail ---- */
+  .rail { display: flex; flex-direction: column; gap: 26px; min-height: 0; }
+  .ask-all { background: var(--reef); border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; }
+  .ask-all h2 { font-size: 22px; font-weight: 700; }
+  .ask-all p { color: var(--sand-dim); font-size: 17px; margin: 8px 0 18px; }
+  .ask-all ul { list-style: none; display: grid; gap: 10px; margin-bottom: 20px; }
+  .ask-all li { display: flex; gap: 12px; align-items: center; font-size: 16px; color: var(--sand-dim); }
+  .ask-all li .dot { width: 14px; height: 14px; border: 2px dashed var(--sand-faint); border-radius: 4px; flex: none; }
+
+  .picked { background: var(--reef-2); border: 1px solid var(--coral); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+  .picked h2 { font-size: 23px; line-height: 1.35; font-weight: 700; }
+  .scores { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .score { background: var(--ink); border-radius: 12px; padding: 14px 16px; }
+  .score small { display: block; color: var(--sand-faint); font-size: 14px; }
+  .score b { font: 500 26px/1.3 var(--font-pixel); }
+  .score .meter { display: flex; gap: 4px; margin-top: 8px; }
+  .score .meter i { flex: 1; height: 8px; border-radius: 2px; background: var(--line); }
+  .score .meter i.on { background: var(--glass); }
+  .score.effort .meter i.on { background: var(--amber); }
+  .picked .why { color: var(--sand-dim); font-size: 17px; line-height: 1.55; }
+  .picked .row { display: flex; gap: 10px; }
+
+  .legend { display: flex; gap: 18px; color: var(--sand-faint); font-size: 15px; margin-top: auto; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <h1>Notes</h1>
+    <span class="picker"><b>shellby</b> <span class="caret">▾</span></span>
+    <span class="sub">Claude placed each note by how much it helps and how long it takes. Drag one if you disagree.</span>
+    <span class="spacer"></span>
+    <span class="seg"><span class="on">Map</span><span>List</span></span>
+  </header>
+
+  <section class="body">
+    <div class="map-wrap">
+      <div class="y-label"><span>Helps a little</span><b>Helps a lot</b></div>
+      <div class="map">
+        <div class="q first"><h2>Do these first</h2><p>Helps a lot, done in an afternoon.</p></div>
+        <div class="q plan"><h2>Worth a plan</h2><p>Helps a lot, but big enough to plan before building.</p></div>
+        <div class="q tidy"><h2>Small tidy-ups</h2><p>Quick. Batch a few into one session.</p></div>
+        <div class="q skip"><h2>Probably skip</h2><p>Lots of work for little change.</p></div>
+
+        <!-- spreads first so pins sit on top -->
+        <span class="spread" style="left:16%;width:14%;top:21%;color:var(--glass)"></span>
+        <span class="spread" style="left:58%;width:30%;top:15%;color:var(--amber)"></span>
+
+        <div class="pin do sel" style="left:22%;top:21%"><span class="dot"></span><span class="lbl">Bugdex: the spider crab wins 80% of fights</span></div>
+        <div class="pin diff" style="left:34%;top:36%"><span class="dot"></span><span class="lbl">Level cap at 50, Molt as prestige</span></div>
+        <div class="pin diff" style="left:72%;top:15%"><span class="dot"></span><span class="lbl">Agent hub task board for Codex and Gemini</span></div>
+        <div class="pin diff left" style="left:88%;top:38%"><span class="dot"></span><span class="lbl">Fold the Beach into the Tank</span></div>
+        <div class="pin do" style="left:8%;top:64%"><span class="dot"></span><span class="lbl">winget command on the download page</span></div>
+        <div class="pin do" style="left:30%;top:58%"><span class="dot"></span><span class="lbl">Drag to reorder notes</span></div>
+        <div class="pin diff" style="left:38%;top:47%"><span class="dot"></span><span class="lbl">Hide the game at work</span></div>
+        <div class="pin skip left" style="left:90%;top:80%"><span class="dot"></span><span class="lbl">Rewrite the reef renderer in WebGPU</span></div>
+      </div>
+      <span></span>
+      <div class="x-label"><b>An afternoon</b><span>A day</span><span>A few days</span><span>A week or more</span></div>
+    </div>
+
+    <aside class="rail">
+      <div class="ask-all">
+        <h2>2 notes aren't on the map yet</h2>
+        <p>Claude reads the project and places them. It changes nothing.</p>
+        <ul>
+          <li><span class="dot"></span>Routines: show the next run time on each card</li>
+          <li><span class="dot"></span>Pocket: reply to a question from the lock screen</li>
+        </ul>
+        <button class="btn">Ask about both</button>
+      </div>
+
+      <div class="picked">
+        <h2>Bugdex battles: the spider crab wins about 80% of fights. Balance it.</h2>
+        <div class="scores">
+          <div class="score"><small>How much it helps</small><b>High</b><div class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div></div>
+          <div class="score effort"><small>How long it takes</small><b>2 to 4 hours</b><div class="meter"><i class="on"></i><i></i><i></i><i></i><i></i></div></div>
+        </div>
+        <p class="why">The spider's counter move ignores the shell-type bonus. One table in bugdex-battle.js and a test that plays 1,000 rounds would settle it.</p>
+        <div class="row"><button class="btn primary">Build it</button><button class="btn">Plan first</button><button class="btn ghost">Mark as done</button></div>
+      </div>
+
+      <div class="legend">
+        <span><i style="background:var(--glass)"></i>Do it</span>
+        <span><i style="background:var(--amber)"></i>Do it differently</span>
+        <span><i style="background:var(--sand-faint)"></i>Skip it</span>
+        <span><i style="background:var(--glass);opacity:.4;height:4px"></i>How sure Claude is of the time</span>
+      </div>
+    </aside>
+  </section>
+</main>
+<div class="caption">Concept 3: worth-it map</div>
+</body>
+</html>

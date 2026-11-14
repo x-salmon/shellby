@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tide gauge directions</title>
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Bold.ttf"); font-weight: 700; }
+:root {
+  --abyss: #071012; --reef: #11232a; --line: #214049; --line-soft: #183239;
+  --sand: #f3e6cc; --sand-dim: #b3a892; --faint: #7f7a6c; --glass: #7fd6c2; --coral: #ff7657; --gold: #e8c46a;
+  --font-pixel: "Pixelify Sans", monospace; --font-body: "Atkinson Hyperlegible", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--abyss); color: var(--sand); font: 19px/1.5 var(--font-body); }
+.screen { width: 2560px; height: 1440px; padding: 56px 72px; display: grid; grid-template-rows: auto auto auto; align-content: start; gap: 48px; }
+header { display: flex; align-items: baseline; gap: 28px; }
+header .n { font: 600 30px var(--font-pixel); color: var(--glass); }
+header h1 { margin: 0; font: 600 52px/1 var(--font-pixel); }
+header p { margin: 0 0 0 auto; color: var(--sand-dim); font-size: 22px; max-width: 70ch; text-align: right; }
+.main { display: grid; grid-template-columns: 1440px 1fr; gap: 64px; align-items: start; }
+canvas { image-rendering: pixelated; display: block; }
+.tank { width: 1440px; height: 576px; border: 3px solid var(--line); border-radius: 6px; }
+.notes h2 { font: 600 24px var(--font-pixel); color: var(--gold); margin: 0 0 10px; letter-spacing: .02em; }
+.notes ul { margin: 0 0 30px; padding-left: 22px; }
+.notes li { margin-bottom: 8px; }
+.notes li b { color: var(--sand); }
+.notes { color: #d9ceb6; }
+.strip { display: flex; gap: 36px; align-items: end; }
+.cell { display: grid; gap: 12px; justify-items: start; }
+.cell canvas { width: 280px; height: 320px; border: 2px solid var(--line-soft); border-radius: 4px; }
+.cell.today canvas { border-style: dashed; opacity: .9; }
+.cell span { font: 500 20px var(--font-pixel); color: var(--sand-dim); }
+.cell span b { color: var(--sand); font-weight: 600; }
+.cell.low span b { color: var(--coral); }
+.divider { width: 2px; align-self: stretch; background: var(--line-soft); margin: 0 8px; }
+</style>
+</head>
+<body>
+<div class="screen">
+  <header><span class="n" id="n"></span><h1 id="title"></h1><p id="pitch"></p></header>
+  <div class="main">
+    <canvas class="tank" id="tank"></canvas>
+    <div class="notes" id="notes"></div>
+  </div>
+  <div class="strip" id="strip"></div>
+</div>
+<script src="../tank-page/data.js"></script>
+<script src="../tank-page/paint.js"></script>
+<script src="gauges.js"></script>
+<script>
+'use strict';
+const P = (id, x, row = 1, more = {}) => ({ id, x, row, ...more });
+const PIECES = [P('kelp', 150), P('castle-keep', 30, 0), P('rock-cave', 96, 0), P('coral-fan', 50, 1), P('java-fern', 116, 1),
+  P('sunken-chest', 82, 2), P('air-stone', 132, 2), P('rock-round', 22, 2), P('moss-ball', 142, 2)];
+const SCENE = { w: 160, h: 64, light: 'day', floor: 'soft-sand', back: 'plain-water', crab: { x: 64 }, pieces: PIECES };
+const WORLD = { w: 160, h: 64, sandTop: 52 };
+const CROP = 56;
+
+const DIRS = [
+  { key: 'staff', title: 'The tide staff', pitch: 'A harbour depth staff planted in the sand, with a cork float riding the level.',
+    why: ['<b>Ten painted bands, one per tenth.</b> The reading moves in tenths, so every band is a step you can count.',
+      '<b>Above the tide the paint goes dull and dry.</b> What you’ve used reads as faded, and what’s left stays bright.',
+      '<b>It’s a thing in his world.</b> It has wood, a brass cap and foam, so it isn’t a progress bar pasted on the glass.'],
+    low: ['At a fifth or less, the wet bands and the float turn orange and the foam turns peach.',
+      'When the window resets, the float bobs back up to the cap, band by band.'] },
+  { key: 'lowTide', title: 'Low tide', pitch: 'The tank itself is the gauge: the water goes out as you use the window.',
+    why: ['<b>Seen from across the room.</b> The whole surface drops, so you can read it without looking for a gauge.',
+      '<b>A salt crust marks high water,</b> drips run down the dry glass, and a faint scale etched on the left gives the exact tenth.',
+      '<b>The bottle rides the real surface,</b> so the other gauges share one water line.'],
+    low: ['At most half the tank ever drains, so his decor stays underwater.',
+      'Low water turns the surface lip and the bottom two scale marks orange. When it resets, the water rushes back in.'] },
+  { key: 'brassTube', title: 'The brass gauge glass', pitch: 'Today’s tube, done properly: wider, capped, ticked in tenths, with the number on a plaque.',
+    why: ['<b>Three pixels of liquid instead of one,</b> with a meniscus and rising bubbles, so it reads as liquid and not as a line.',
+      '<b>Colour carries the warning:</b> blue, then amber at 40, then coral at 20, before you’ve read a tick.',
+      '<b>The plaque shows the exact number</b> in the tank’s own pixel digits, so 60 means 60% of the window is left.'],
+    low: ['Coral liquid, and the plaque’s digits glow to match.',
+      'When it resets, it fills from the foot and the plaque counts up.'] },
+  { key: 'pearls', title: 'The pearl strand', pitch: 'Ten pearls on a strand of kelp, rising from a clam. Each one is a tenth of the window.',
+    why: ['<b>You count it, you don’t estimate it:</b> six pearls means 60% left.',
+      '<b>A spent pearl leaves a faint ring,</b> so the full ten always shows and the scale never disappears.',
+      '<b>It’s small and calm on the glass,</b> and it fits with the chest and the bottle.'],
+    low: ['With two pearls or fewer, the ones left blush coral and pulse slowly.',
+      'When it resets, the clam opens and new pearls pop up the strand one after another.'] },
+  { key: 'hourglass', title: 'The sand timer', pitch: 'A brass hourglass on the sand. The top bulb holds what’s left of your five hours.',
+    why: ['<b>Everyone knows how to read it,</b> and it says “this runs out and comes back”.',
+      '<b>A thin stream falls while you’re working</b> and stops when you’re idle, so it shows activity as well as the level.',
+      '<b>It stands in the front row like decor,</b> so it scales with the tank and never covers the glass highlight.'],
+    low: ['The last fifth of sand in the top bulb turns orange.',
+      'When the window resets, he walks over and flips it, a nice small moment for the crab.'] },
+];
+
+const v = Math.max(1, Math.min(DIRS.length, Number(new URLSearchParams(location.search).get('v')) || 1));
+const d = DIRS[v - 1];
+const still = /[?&]still/.test(location.search);
+document.getElementById('n').textContent = `Tide gauge · ${v} of ${DIRS.length}`;
+document.getElementById('title').textContent = d.title;
+document.getElementById('pitch').textContent = d.pitch;
+document.getElementById('notes').innerHTML =
+  `<h2>Why it reads better</h2><ul>${d.why.map(x => `<li>${x}</li>`).join('')}</ul>` +
+  `<h2>Running low, and the reset</h2><ul>${d.low.map(x => `<li>${x}</li>`).join('')}</ul>`;
+
+function draw(canvas, gauge, left, t) {
+  TankMock.paint(canvas, SCENE, t);
+  const ctx = canvas.getContext('2d');
+  TideMock[gauge](ctx, WORLD, left, t, still);
+}
+function crop(target, gauge, left, t) {
+  const full = document.createElement('canvas');
+  draw(full, gauge, left, t);
+  target.width = CROP; target.height = WORLD.h;
+  target.getContext('2d').drawImage(full, 0, 0, CROP, WORLD.h, 0, 0, CROP, WORLD.h);
+}
+
+const STATES = [[100, 'full'], [60, ''], [20, 'running low'], [0, 'empty']];
+const strip = document.getElementById('strip');
+strip.innerHTML = `<div class="cell today"><canvas data-g="today" data-left="60"></canvas><span>Today · <b>60%</b></span></div><div class="divider"></div>` +
+  STATES.map(([left, word]) => `<div class="cell${left <= TideMock.LOW_AT ? ' low' : ''}"><canvas data-g="${d.key}" data-left="${left}"></canvas><span><b>${left}%</b>${word ? ' · ' + word : ''}</span></div>`).join('');
+
+const big = document.getElementById('tank');
+const frame = t => {
+  draw(big, d.key, 60, t);
+  strip.querySelectorAll('canvas').forEach(c => crop(c, c.dataset.g, Number(c.dataset.left), t));
+};
+frame(1.3);
+if (!still) { let last = 0; const loop = now => { if (now - last > 100) { last = now; frame(now / 1000); } requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+</script>
+</body>
+</html>

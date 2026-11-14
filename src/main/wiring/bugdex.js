@@ -18,7 +18,6 @@ const lifecycle = require('../bugdex/lifecycle');
 const { judge } = require('../bugdex/cheats');
 const battle = require('../bugdex/battle');
 const { speciesById } = require('../bugdex/species');
-const { cmdKey } = require('../flaky/ids');
 const { projectOf } = require('../gitinfo');
 const { activeSeasons } = require('../wardrobe/seasons');
 const { normalizeXp } = require('../progression/xp');
@@ -240,7 +239,7 @@ function wireBugdex(d) {
     const enc = {
       species: hit.species, fp: hit.fp, project: p.id, name: p.name, source: 'bash',
       // A conflict is caught by settling it, not by the same command passing.
-      keys: conflict ? [] : r.keys, kind: r.kind,
+      keys: conflict ? [] : r.keys, kind: r.kind, narrow: !conflict && r.narrow === true,
       failTree: snap?.tree || null, tabId: at.tabId || null, lang: hit.lang, passed: r.passed,
     };
     if (conflict) { conflicts.set(lifecycle.encId(enc), { files: r.conflictFiles }); bound(conflicts); }
@@ -306,7 +305,7 @@ function wireBugdex(d) {
   async function tryCatch(r, at) {
     const p = await project(at.dir);
     if (!p || !r.key) return;
-    const cands = lifecycle.candidates(state().open, { project: p.id, key: r.key });
+    const cands = lifecycle.candidates(state().open, { project: p.id, key: r.key, scriptKey: r.scriptKey, kind: r.kind, broad: r.broad });
     if (!cands.length) return;
     // The code as it was when the command started and as it ended: if it moved
     // while it ran, the pass proves nothing.
@@ -333,6 +332,15 @@ function wireBugdex(d) {
         files, patch, species: e.species, remedy, revert: !same && wasBefore(p.id, end.tree, e.firstAt),
         passFlags: r.passFlags, counts: { before: e.passed, after: r.passed },
       });
+      // The very same code passing: it was never a bug in the code (a flake, or
+      // something outside it). Nothing could prove it fixed, so it goes free
+      // now instead of waiting on the loose for a day. Only on the same tree:
+      // a diff git failed to read is no proof that nothing changed.
+      if (!verdict.ok && verdict.reason === 'no-change' && same) {
+        update(s => bugdex.closeEncounter(s, lifecycle.encId(e)));
+        d.log.info('bugdex: let go (passed with no change)');
+        continue;
+      }
       if (!verdict.ok) {
         update(s => bugdex.refuse(s, lifecycle.encId(e), verdict.reason));
         fight(e, b => battle.resist(b, { at: Date.now(), reason: verdict.reason }));
@@ -404,9 +412,16 @@ function wireBugdex(d) {
   /** A command is about to run: the code as it is, if an open bug could be caught by it. */
   function commandStart({ command, dir }) {
     if (!on() || !dir) return null;
-    const key = cmdKey(command);
-    if (!key || !state()?.open?.some(e => e.source === 'bash' && e.keys.includes(key))) return null;
+    if (!lifecycle.couldCatch(state()?.open, detect.startOf(command))) return null;
     return snapshotWithin(dir);
+  }
+
+  /** A conversation closed: the bugs it spotted got away (their battles show it), instead of waiting a day. */
+  function tabClosed(tabId) {
+    if (!on() || typeof tabId !== 'string') return;
+    let gone = 0;
+    update(s => { const r = lifecycle.closeTab(s.open, tabId); gone = r.closed.length; return gone ? { ...s, open: r.list } : s; });
+    if (gone) d.log.info(`bugdex: ${gone} got away (conversation closed)`);
   }
 
   /** Claude wrote a file in a tab: whatever is open in that project is being worked on. */
@@ -483,9 +498,9 @@ function wireBugdex(d) {
   const MAX_OUTSIDE = 50;
 
   /** A command is starting in a session outside Shellby: its tree, if it could catch something. */
-  function outsideStart({ toolUseId, key, cwd }) {
-    if (!on() || !toolUseId || !key || !cwd) return;
-    if (!state()?.open?.some(e => e.source === 'bash' && e.keys.includes(key))) return;
+  function outsideStart({ toolUseId, start, cwd }) {
+    if (!on() || !toolUseId || !start?.key || !cwd) return;
+    if (!lifecycle.couldCatch(state()?.open, start)) return;
     outsideStarts.set(toolUseId, snapshotWithin(cwd));
     if (outsideStarts.size > MAX_OUTSIDE) outsideStarts.delete(outsideStarts.keys().next().value);
   }
@@ -725,7 +740,7 @@ function wireBugdex(d) {
   // Main calls these from its own events and never waits: each one logs its
   // own failure instead of letting it reach main's "snag" handler.
   const hooks = Object.fromEntries(Object.entries({
-    commandStart, commandResult, wrote, tool, assist, friendVisited, treeSeen, changed, turnEnded, outsideStart, outsideResult, outsideWrote,
+    commandStart, commandResult, tabClosed, wrote, tool, assist, friendVisited, treeSeen, changed, turnEnded, outsideStart, outsideResult, outsideWrote,
     serverCrashed, serverUp, ciFailed, ciFixed, ciEngaged, homeResult, secretSpotted, secretIgnored, pushedClean,
     flakySeen, flakyFixed, auditIssues, auditPatched,
   }).map(([k, fn]) => [k, guarded(fn)]));

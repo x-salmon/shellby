@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Health, concept 5: tune-up, ranked by payoff</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .main { flex: 1; min-height: 0; display: grid; grid-template-columns: 560px 1fr; gap: 64px; }
+  /* Left: the payoff, if you did everything */
+  .score { display: flex; flex-direction: column; gap: 30px; }
+  .score .crab { width: 180px; height: 180px; }
+  .score h2 { font: 500 52px/1.1 var(--font-pixel); }
+  .score p { color: var(--sand-dim); font-size: 19px; }
+  .gains { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+  .gains div { padding: 22px 0; border-bottom: 1px solid var(--line-soft); }
+  .gains div:nth-child(odd) { padding-right: 20px; }
+  .gains div:nth-child(even) { padding-left: 24px; border-left: 1px solid var(--line-soft); }
+  .gains b { display: block; font: 500 54px/1 var(--font-pixel); color: var(--glass); }
+  .gains span { color: var(--sand-faint); font-size: 16px; }
+  .vitals { margin-top: auto; display: flex; gap: 26px; flex-wrap: wrap; color: var(--sand-dim); font-size: 16px; padding: 18px 22px; border-radius: 14px; background: var(--ink); border: 1px solid var(--line); }
+  .vitals b { color: var(--sand); }
+
+  /* Right: the to-do, grouped by what kind of win it is */
+  .list { display: flex; flex-direction: column; gap: 34px; min-height: 0; }
+  .group h3 { display: flex; align-items: baseline; gap: 16px; font: 500 28px/1 var(--font-pixel); padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .group h3 span { font: 16px var(--font-body); color: var(--sand-faint); }
+  .item { display: grid; grid-template-columns: 34px 1fr 180px 200px; gap: 22px; align-items: center; padding: 18px 0; border-bottom: 1px solid var(--line-soft); }
+  .box { width: 28px; height: 28px; border-radius: 7px; border: 2px solid var(--sand-faint); }
+  .item.done .box { background: var(--glass); border-color: var(--glass); }
+  .item.done .what b { text-decoration: line-through; color: var(--sand-faint); }
+  .what b { font-size: 20px; }
+  .what p { color: var(--sand-dim); font-size: 16px; }
+  .what .safe { color: var(--glass); font-size: 14px; font-weight: 700; }
+  .what .care { color: var(--amber); font-size: 14px; font-weight: 700; }
+  .pay { text-align: right; }
+  .pay b { display: block; font: 500 30px/1 var(--font-pixel); }
+  .pay span { color: var(--sand-faint); font-size: 14px; }
+  .item .btn { justify-self: end; }
+  .meter { height: 8px; border-radius: 4px; background: var(--reef-2); margin-top: 8px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--glass); }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <h1>Health</h1>
+    <span class="sub">Tune-up</span>
+    <span class="spacer"></span>
+    <div class="seg"><span>Right now</span><span class="on">Tune-up</span><span>History</span></div>
+    <button class="btn">Measure again</button>
+  </header>
+
+  <div class="main">
+    <section class="score">
+      <img class="crab" src="crab.png" alt="">
+      <h2>Your PC could be roomier and start faster</h2>
+      <p>Shellby measured everything that piles up while you code: caches, Docker, old builds, and apps that start with Windows. Here is what each fix gives back.</p>
+      <div class="gains">
+        <div><b>96 GB</b><span>free space to win back</span></div>
+        <div><b>−19 s</b><span>off your startup time</span></div>
+        <div><b>2.4 GB</b><span>memory free after boot</span></div>
+        <div><b>3 of 11</b><span>done this month</span></div>
+      </div>
+      <button class="btn primary" style="align-self:flex-start">Do the 6 safe ones</button>
+      <div class="vitals"><span>Right now: <b>GPU 84°C</b></span><span><b>CPU 61°C</b></span><span><b>Memory 58%</b></span><span>C: <b>212 GB free</b></span></div>
+    </section>
+
+    <section class="list">
+      <div class="group">
+        <h3>Free up space <span>96 GB on C:</span></h3>
+        <div class="item"><span class="box"></span><div class="what"><b>Docker images nobody runs</b><p>14 images and 2 stopped containers, the newest from August.</p><span class="safe">Safe: they re-download if needed</span></div><div class="pay"><b>41 GB</b><div class="meter"><i style="width:100%"></i></div></div><button class="btn small primary">Clear them</button></div>
+        <div class="item"><span class="box"></span><div class="what"><b>WSL disk that never shrank</b><p>Ubuntu's disk is 62 GB, but holds 24 GB of files.</p><span class="care">Needs WSL closed for a minute</span></div><div class="pay"><b>38 GB</b><div class="meter"><i style="width:92%"></i></div></div><button class="btn small">Compact it</button></div>
+        <div class="item"><span class="box"></span><div class="what"><b>node_modules in 23 old projects</b><p>Not opened since July. npm puts them back on install.</p><span class="safe">Safe</span></div><div class="pay"><b>14 GB</b><div class="meter"><i style="width:34%"></i></div></div><button class="btn small">Pick which</button></div>
+        <div class="item done"><span class="box"></span><div class="what"><b>npm cache</b><p>Cleared on 13 November.</p></div><div class="pay"><b>18 GB</b><span>won back</span></div><span></span></div>
+      </div>
+
+      <div class="group">
+        <h3>Start faster <span>11 apps start with Windows</span></h3>
+        <div class="item"><span class="box"></span><div class="what"><b>Adobe Creative Cloud</b><p>You last opened an Adobe app 5 months ago.</p><span class="safe">Safe: stays installed</span></div><div class="pay"><b>−8 s</b><span>and 640 MB</span></div><button class="btn small primary">Switch off</button></div>
+        <div class="item"><span class="box"></span><div class="what"><b>Razer Synapse</b><p>Only needed to change mouse lighting.</p><span class="safe">Safe</span></div><div class="pay"><b>−6 s</b><span>and 410 MB</span></div><button class="btn small primary">Switch off</button></div>
+        <div class="item"><span class="box"></span><div class="what"><b>Steam</b><p>Starts minimized; you open it most days.</p><span class="care">You use this one</span></div><div class="pay"><b>−5 s</b><span>and 300 MB</span></div><button class="btn small ghost">Leave it</button></div>
+      </div>
+
+      <div class="group">
+        <h3>Run cooler <span>1 thing</span></h3>
+        <div class="item"><span class="box"></span><div class="what"><b>GPU fans capped at 55%</b><p>An Afterburner curve holds them back; the card reaches 84°C in games.</p><span class="care">A little louder</span></div><div class="pay"><b>−12°C</b><span>in games</span></div><button class="btn small">Ask Shellby</button></div>
+      </div>
+    </section>
+  </div>
+</main>
+<span class="caption">Health, concept 5 · tune-up</span>
+</body>
+</html>

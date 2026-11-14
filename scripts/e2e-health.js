@@ -13,6 +13,8 @@ const { savePng } = require('./lib/shot');
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9343;
 const OUT = process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-health-'));
+// The user runs the panel full screen on 4K: 2560 x 1440 CSS px at 150%.
+const WIDE = { w: 2560, h: 1440, scale: 1.5 };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const SCENARIOS = [
@@ -133,6 +135,14 @@ async function until(fn, ms = 8000) {
         // By app: the two chrome processes are one row.
         const chrome = await panel.ev("[...document.querySelectorAll('#hlHogList .hl-hog')].filter(r => r.querySelector('.hl-hog-name').textContent === 'chrome').map(r => r.querySelector('.hl-hog-count')?.textContent || '')");
         check(chrome.length <= 1 && (!chrome.length || chrome[0] === '×2'), `${sc.name}: chrome grouped (${JSON.stringify(chrome)})`);
+        // The app at the top is named as the cause, and the diagnosis starts from it.
+        const named = await until(async () => { const t = await panel.ev("document.getElementById('hlTitle').textContent"); return t.includes(sc.hogs[1]) && t; });
+        const shout = sc.title.endsWith('!');
+        check(shout ? !named : named === `${sc.title} because of ${sc.hogs[1]}`, `${sc.name}: hero ${shout ? "doesn't name" : 'names'} the cause (${JSON.stringify(named)})`);
+        const step = await until(() => panel.ev("document.querySelector('#hlChain .hl-step-big')?.textContent || ''"));
+        check(step === sc.hogs[1], `${sc.name}: "How it got here" starts from ${step}`);
+        const fix = await panel.ev("document.querySelector('#hlFixes .hl-fix b')?.textContent || ''");
+        check(fix === `Close ${sc.hogs[1]}`, `${sc.name}: first fix is "${fix}"`);
       } else if (sc.name === 'calm') {
         // Calm: closed, but one click away.
         await panel.ev("document.getElementById('hlHogsOpen').click()");
@@ -173,6 +183,10 @@ async function until(fn, ms = 8000) {
       check(setup === !!sc.setup, `${sc.name}: LHM setup card ${sc.setup ? 'shown, fold open' : 'hidden'}`);
       check(await panel.ev("!document.getElementById('hlSettingsFold').open"), `${sc.name}: alert settings folded away`);
 
+      // How it got here: only while there's a mood.
+      const diag = await panel.ev("!document.getElementById('hlDiag').hidden && document.querySelectorAll('#hlChain li').length");
+      check(sc.mood ? diag > 0 : diag === false, `${sc.name}: diagnosis ${sc.mood ? `shown (${diag} steps)` : 'hidden'}`);
+
       // No layout overflow sideways in the Health view.
       const overflow = await panel.ev("(v => v.scrollWidth - v.clientWidth)(document.getElementById('healthView'))");
       check(overflow <= 0, `${sc.name}: no horizontal overflow (${overflow}px)`);
@@ -180,6 +194,18 @@ async function until(fn, ms = 8000) {
       await wait(1600); // let a sparkline point or two land and the overlays animate in
       for (const [who, page] of [['panel', panel], ['critter', critter]]) {
         await savePng((m, p) => page.send(m, p), path.join(OUT, `${sc.name}-${who}.png`));
+      }
+      // Full screen at 4K: the verdict leads and the vitals become a rail beside it.
+      await panel.ev("document.getElementById('healthView').scrollTop = 0"); // the hot run scrolled to an alert's graph
+      await panel.send('Emulation.setDeviceMetricsOverride', { width: WIDE.w, height: WIDE.h, deviceScaleFactor: WIDE.scale, mobile: false });
+      try {
+        const beside = await until(() => panel.ev("(r => r.rail.left >= r.hero.right && r.rail.top < r.hero.bottom)({ rail: document.querySelector('.hl-rail').getBoundingClientRect(), hero: document.getElementById('hlHero').getBoundingClientRect() })"));
+        check(!!beside, `${sc.name}: on a wide screen the vitals sit beside the verdict`);
+        const wideOverflow = await panel.ev("(v => v.scrollWidth - v.clientWidth)(document.getElementById('healthView'))");
+        check(wideOverflow <= 0, `${sc.name}: no horizontal overflow when wide (${wideOverflow}px)`);
+        await savePng((m, p) => panel.send(m, p), path.join(OUT, `${sc.name}-wide.png`));
+      } finally {
+        await panel.send('Emulation.clearDeviceMetricsOverride');
       }
     } catch (e) {
       check(false, `${sc.name}: ${e.message}`);

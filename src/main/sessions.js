@@ -3,9 +3,8 @@
 // up into one state for the desktop critter.
 const { EventEmitter } = require('events');
 const { randomUUID } = require('crypto');
-const { ClaudeSession, EFFORTS, TALK_MS } = require('./session');
+const { ClaudeSession, EFFORTS } = require('./session');
 const { pickEffort } = require('./effort-pick');
-const workPose = require('./work-pose');
 const { cleanTitle } = require('./history');
 const review = require('./review-inbox');
 const turncost = require('./turncost');
@@ -13,31 +12,16 @@ const turnwatch = require('./turnwatch');
 const { classify } = require('./usage/ledger');
 const { isModel } = require('./models');
 const localAgent = require('./local/agent');
+const localTab = require('./local/tab');
+const harnesses = require('./harness/registry');
 const planPace = require('./plan-pace');
 const mods = require('./mods');
-const todos = require('../renderer/shared/todos');
-
-// What a helper is saying, or was just told, for a few seconds (session/crew.js noteMessage): null when quiet.
-function talkOf(c, now = Date.now()) {
-  const said = c.said && now - c.said.at < TALK_MS ? c.said : null;
-  const heard = c.heard && now - c.heard.at < TALK_MS ? c.heard : null;
-  const last = said && (!heard || said.at >= heard.at) ? 'said' : heard ? 'heard' : null;
-  if (last === 'said') return { kind: 'said', text: said.text.slice(0, 80), to: said.to };
-  if (last === 'heard') return { kind: 'heard', text: heard.text.slice(0, 80), from: heard.from };
-  return null;
-}
-
-// A tab's to-do list in the summary: the counts and what Claude is on, or null with none.
-function todoGlance(list) {
-  const s = todos.summary(list);
-  return s.total ? { total: s.total, done: s.done, current: s.current } : null;
-}
+const { talkOf, todoGlance, aggregateOf } = require('./tab-glance');
 
 // Tabs left quiet shed their process (stopIdle), so an open tab is cheap; a busy
 // one is a running CLI, and nothing limits how many of those run at once. The cap
 // is where routines and workflows start recycling old tabs to make room.
 const MAX_TABS = 32;
-const CREW_ENDED_MS = 4000; // how long a finished helper's outcome rides along to the crab window
 // He talks along while a reply is written (work-pose.js 'talk') until it has
 // been this quiet: the reply's 50 ms batches never reach the crab one by one.
 const TALK_QUIET_MS = 700;
@@ -46,6 +30,9 @@ const TAB_ID = /^[\w-]{1,64}$/;
 // An agent's name as Claude Code lists it ("reviewer", "plugin:reviewer"), or ''.
 const AGENT_NAME = /^[\w][\w:.-]{0,119}$/;
 const cleanAgent = v => (typeof v === 'string' && AGENT_NAME.test(v) ? v : '');
+// Runs on Claude Code, not another agent's CLI (harness/): its models, effort, pings and /compact are Claude Code's.
+const onClaude = tab => !tab.harness || tab.harness === harnesses.CLAUDE;
+const NOT_CLAUDE = 'That only works in a Claude Code conversation.';
 
 class SessionManager extends EventEmitter {
   // prepareTurn(tab): an optional promise each turn waits for before Claude
@@ -63,9 +50,10 @@ class SessionManager extends EventEmitter {
   // one of its folders, or null (remote/service.js launch): read at each start.
   // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
   // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
-  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null }) {
+  // makeHarness(id, { cwd, mode, resumeId }) -> a session for another agent's CLI (harness/), or null when none can run.
+  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null, makeHarness = null }) {
     super();
-    Object.assign(this, { getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget });
+    Object.assign(this, { makeHarness, getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer });
     this.tabs = new Map();
   }
 
@@ -73,22 +61,27 @@ class SessionManager extends EventEmitter {
   // allowedTools / mcpConfig: a routine's or workflow step's MCP servers (mcpservers.js),
   // fixed for the life of its process.
   // agent: one of your agents to run the conversation (--agent), kept in History.
-  open({ tabId, cwd, historyEntry = null, mode = null, routineId = null, workflowRunId = null, title = null, allowedTools = [], mcpConfig = null, agent = null }) {
+  // harness: the CLI it runs on (harness/registry.js), Claude Code unless another is picked; kept in History, never changed.
+  open({ tabId, cwd, historyEntry = null, mode = null, routineId = null, workflowRunId = null, title = null, allowedTools = [], mcpConfig = null, agent = null, harness = null }) {
     if (!TAB_ID.test(tabId || '')) throw new Error('bad tab id');
     if (this.tabs.has(tabId)) return this.tabs.get(tabId);
     if (this.tabs.size >= MAX_TABS) throw new Error(`Shellby can run up to ${MAX_TABS} conversations at once. Close one first.`);
-    const exe = this.getExe();
+    const runsOn = harnesses.cleanHarness(historyEntry?.harness ?? harness);
+    const other = runsOn !== harnesses.CLAUDE;
+    // Never carried on by another agent than the one it began on.
+    if (other && !this.makeHarness) throw new Error(`${harnesses.byId(runsOn).name} conversations aren't available here.`);
+    const exe = other ? null : this.getExe();
     // A folder on another computer needs Claude Code there, not here.
-    if (!exe && !this.getRemote(historyEntry?.cwd || cwd)) throw new Error('Claude Code is not installed.');
-    const aware = this.getSelfAware();
+    if (!other && !exe && !this.getRemote(historyEntry?.cwd || cwd)) throw new Error('Claude Code is not installed.');
+    const aware = other ? null : this.getSelfAware();
     // Local model or Claude (local/agent.js), decided once: a saved conversation
     // keeps what it began on, a new one takes Settings' choice now. Never moved
     // later, so a local conversation is never carried on at Anthropic.
-    const localTarget = historyEntry ? localAgent.cleanTarget(historyEntry.local) : this.getLocalTarget(cwd);
+    const localTarget = other ? null : historyEntry ? localAgent.cleanTarget(historyEntry.local) : this.getLocalTarget(cwd);
     let tab = null; // the tools are only ever called once it exists
     // Its own effort, kept in History: you chose it, or Shellby picked it.
     const ownEffort = ['you', 'picked'].includes(historyEntry?.effortBy) && (historyEntry.effort === '' || EFFORTS.includes(historyEntry.effort)) ? historyEntry.effort : null;
-    const session = new ClaudeSession({
+    const session = other ? this.makeHarness(runsOn, { cwd: historyEntry?.cwd || cwd, mode: mode || this.getMode(), resumeId: historyEntry?.claudeSessionId || null }) : new ClaudeSession({
       remote: () => this.getRemote(session.cwd), // only ever called once it exists
       // Asked again at each start: Claude Code may move while the tab is open
       // (session/). The path found now stands in should it go missing, so
@@ -111,7 +104,8 @@ class SessionManager extends EventEmitter {
       supports: flag => this.supports(flag),
       resumeId: historyEntry?.claudeSessionId || null,
       resumeAt: historyEntry?.resumeAt || null,
-      extraEnv: () => ({ ...this.getEnv(), ...localAgent.envFor(localTarget) }),
+      // tab's: it can still move until its first message (local/tab.js).
+      extraEnv: () => ({ ...this.getEnv(), ...localAgent.envFor(tab ? tab.localTarget : localTarget) }),
       context: historyEntry?.context || null,
       allowedTools, mcpConfig,
       systemNote: aware?.note || null,
@@ -119,6 +113,7 @@ class SessionManager extends EventEmitter {
     });
     tab = {
       id: tabId, session, routineId,
+      harness: runsOn,             // the CLI it runs on (harness/registry.js)
       workflowRunId,               // a workflow run's conversation (workflows/service.js)
       pinnedMode: !!mode,          // routines and workflows keep their own mode
       title: historyEntry?.title || title || 'New task',
@@ -129,6 +124,7 @@ class SessionManager extends EventEmitter {
       outcome: historyEntry?.lastOutcome === 'cut' ? 'cut' : null,
       unread: false,
       localTarget,                 // { url, model } on a local model, else null; kept in History
+      localBy: null,               // 'you' once picked on the model chip: Settings no longer decides it
       worktree: historyEntry?.worktree || null, // its own copy of the repo (worktrees/index.js)
       // A branch of another conversation (branch.js): where it came from, the
       // folders it must keep out of, and what Claude is told before its first
@@ -308,6 +304,8 @@ class SessionManager extends EventEmitter {
     if (tab.inTerminal) throw new Error(IN_TERMINAL);
     tab.activeAt = Date.now();
     tab.idleCompacting = false; // set again by wiring/idle-compact.js when the turn is its /compact
+    // Opened before Settings changed (an empty tab left waiting): local or Claude is read again now.
+    localTab.settle(tab, this.getLocalTarget(tab.session.cwd), this.claudeModels());
     if (!tab.saved) {
       this.history.create({ id: tab.id, title: tab.named ? tab.title : userItem.title || userItem.text || tab.title, cwd: tab.session.cwd, mode: tab.session.mode, routineId: tab.routineId });
       // A tab that opened in its own copy before its first message (a Next up draft):
@@ -317,6 +315,7 @@ class SessionManager extends EventEmitter {
       if (tab.session.agent) this.history.update(tab.id, { agent: tab.session.agent });
       if (tab.session.safeMode) this.history.update(tab.id, { safeMode: true });
       if (tab.localTarget) this.history.update(tab.id, { local: tab.localTarget });
+      if (tab.harness !== harnesses.CLAUDE) this.history.update(tab.id, { harness: tab.harness });
       tab.title = this.history.get(tab.id).title;
       tab.saved = true;
       if (tab.effortBy) this.keepEffort(tab); // chosen on the chip before its first message
@@ -465,6 +464,7 @@ class SessionManager extends EventEmitter {
    */
   ping(tabId, text) {
     const tab = this.require(tabId);
+    if (!onClaude(tab)) return Promise.reject(new Error(NOT_CLAUDE)); // keeping a prompt cache warm is Claude's
     const s = tab.session;
     // A process on its way out (a stop asked for, or exited and not yet closed) would drop it unanswered.
     if (!s.proc || s.stopping || s.proc.exitCode != null || s.busy || s.pending.size || tab.inTerminal || tab.pinging) return Promise.reject(new Error("That conversation can't take a ping now."));
@@ -649,6 +649,7 @@ class SessionManager extends EventEmitter {
   /** This conversation's own effort ('' is Auto), from the chip. From its next turn, or this one's next step. */
   setTabEffort(tabId, effort) {
     const tab = this.require(tabId);
+    if (!onClaude(tab)) throw new Error(NOT_CLAUDE);
     if (effort !== '' && !EFFORTS.includes(effort)) throw new Error('bad effort');
     tab.effortBy = 'you';
     tab.session.setEffort(effort);
@@ -663,10 +664,16 @@ class SessionManager extends EventEmitter {
    * since each model has its own cache: -> started, so the panel can say so.
    * Set at once (a first message sent right after starts on it); only a
    * running CLI's answer is waited for, and its no puts the old one back.
+   * byYou: you picked it (chip, /model); Shellby's own picks leave a local one local.
    */
-  setTabModel(tabId, model) {
+  setTabModel(tabId, model, { byYou = false } = {}) {
     const tab = this.require(tabId);
+    if (!onClaude(tab)) throw new Error(NOT_CLAUDE);
     if (typeof model !== 'string' || !isModel(model)) throw new Error("Shellby doesn't know that model.");
+    if (!byYou && tab.localTarget) return Promise.resolve({ ok: true, started: false });
+    // Before its first message, yours goes to Claude whatever Settings says. It can only
+    // move with no process, where setModel never says no, so the revert below never undoes it.
+    localTab.pickClaude(tab, this.claudeModels());
     const started = !!(tab.session.proc || tab.session.sessionId);
     const before = { model: tab.session.model, own: tab.ownModel };
     const asked = tab.session.setModel(model);
@@ -684,10 +691,20 @@ class SessionManager extends EventEmitter {
     });
   }
 
+  claudeModels() { return { model: this.getModel(), fallbackModel: this.getFallbackModel() }; }
+
+  // The model chip's On this PC: a local model, before its first message (local/tab.js).
+  setTabLocal(tabId, model) {
+    const tab = this.require(tabId);
+    localTab.pick(tab, this.getLocalServer(tab.session.cwd), model);
+    this.changed();
+    return { ok: true, started: false };
+  }
+
   // Sized from what it was asked, once: only while it follows a default of
   // Auto with picking on. A /command waits for the next real message.
   maybePickEffort(tab, userItem) {
-    if (tab.effortBy || this.getEffort() || !this.getEffortPick()) return;
+    if (tab.effortBy || this.getEffort() || !this.getEffortPick() || !onClaude(tab)) return;
     const level = pickEffort(userItem.text, Array.isArray(userItem.attachments) ? userItem.attachments.length : 0);
     if (!level) return;
     tab.effortBy = 'picked';
@@ -720,6 +737,8 @@ class SessionManager extends EventEmitter {
       model: (t.session.modelSwitched ? t.session.model : t.session.lastModel || t.session.initModel || t.session.model) || '',
       // What it asked for ('' = Claude Code's default), so the panel can name the default it ran on.
       modelAsked: t.session.model || '',
+      // The local model it runs on (local/agent.js), else null; canLocal: it can still move between local and Claude.
+      local: t.localTarget ? t.localTarget.model : null, canLocal: localTab.canMove(t),
       worktree: t.worktree ? { branch: t.worktree.branch, base: t.worktree.base, originalCwd: t.worktree.originalCwd } : null,
       claudeWorktree: t.claudeWorktree ? { branch: t.claudeWorktree.branch, path: t.claudeWorktree.path } : null, // Claude's own (EnterWorktree)
       branchOf: t.branchOf ? { id: t.branchOf.id, title: t.branchOf.title, at: t.branchOf.at, ...(t.branchOf.shared ? { shared: true } : {}) } : null,
@@ -737,41 +756,12 @@ class SessionManager extends EventEmitter {
       jobs: t.session.jobView(),
       planning: !!t.session.planning,
       compacting: !!t.compacting, // Claude Code compacting it now: the phone's working line says so
-      safeMode: !!t.session.safeMode, agent: t.session.agent || null,
+      safeMode: !!t.session.safeMode, agent: t.session.agent || null, harness: t.harness || harnesses.CLAUDE,
     }));
   }
 
-  // One state for the critter: asking beats working beats idle.
-  get aggregate() {
-    let pending = 0, busy = 0, planning = 0, plans = 0, hiddenCrew = 0, compacting = 0, talking = 0, red = 0;
-    const crew = [], tools = [], jobs = [], crewEnded = [];
-    const now = Date.now();
-    for (const t of this.tabs.values()) {
-      pending += t.session.pending.size;
-      if (t.redTests) red++; // its last test run or check failed (work-signs.js)
-      // A keep-warm ping is nobody's work: no crab at work, no "running" in the tray, no
-      // Multitasker. What else the tab has going (its jobs, its helpers) still shows.
-      const working = t.session.busy && !t.pinging;
-      if (working) {
-        busy++;
-        tools.push({ tool: t.session.tool, toolAt: t.session.toolAt, kind: t.session.toolKind });
-        if (t.compacting) compacting++;
-        if (t.talking && !t.session.tool) talking++; // words between tools, not a tool's own chatter
-      }
-      if (working && t.session.planning) planning++;
-      for (const p of t.session.pending.values()) if (p.toolName === 'ExitPlanMode') plans++;
-      for (const j of t.session.jobView()) if (j.status === 'running') jobs.push({ ...j, tabId: t.id });
-      for (const c of t.session.runningCrew()) {
-        crew.push({ id: c.taskId, tabId: t.id, label: c.activity || c.description || c.subagentType || 'helper', type: c.subagentType || 'general-purpose', bubble: talkOf(c), startedAt: c.startedAt }); // Claude Code's own default
-      }
-      hiddenCrew += t.session.hiddenCrew?.() || 0; // an ultracode run's agents past the few out as crabs
-      // Helpers that just finished, and how: one that did its job walks home with it, one that failed slumps.
-      for (const c of t.session.crew) if (c.endedAt && now - c.endedAt < CREW_ENDED_MS) crewEnded.push({ id: c.taskId, ok: c.status === 'completed' });
-    }
-    // What the busy tab that moved last is doing, for how the crab works (work-pose.js).
-    const latest = workPose.latest(tools);
-    return { state: pending ? 'asking' : (busy || crew.length) ? 'working' : 'idle', pending, busy, crew, hiddenCrew, crewEnded, jobs, planning, plans, tool: latest?.tool || null, kind: latest?.kind || null, toolAt: latest?.toolAt || null, compacting: compacting > 0, talking: talking > 0, red };
-  }
+  // One state for the critter: asking beats working beats idle (tab-glance.js).
+  get aggregate() { return aggregateOf(this.tabs.values()); }
 
   changed() {
     // Coalesce bursts (progress events can be chatty) into one update per tick.
@@ -790,4 +780,4 @@ function withPreamble(prompt, preamble) {
   return [{ type: 'text', text: preamble }, ...(Array.isArray(prompt) ? prompt : [{ type: 'text', text: String(prompt) }])];
 }
 
-module.exports = { SessionManager, MAX_TABS, IN_TERMINAL, withPreamble, talkOf, todoGlance };
+module.exports = { SessionManager, MAX_TABS, IN_TERMINAL, NOT_CLAUDE, withPreamble, talkOf, todoGlance, onClaude };

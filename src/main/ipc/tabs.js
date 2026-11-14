@@ -1,6 +1,7 @@
 // Conversation tabs: opening, ordering, compacting, and what each turn changed
 // (changes.js). Kept out of main.js, which only wires it up.
-const { ID, PATH, obj, opt } = require('../ipc-args');
+const { app } = require('electron');
+const { ID, PATH, obj, opt, str } = require('../ipc-args');
 const fs = require('fs');
 const os = require('os');
 const changes = require('../changes');
@@ -10,6 +11,7 @@ const editor = require('../editor');
 const quiz = require('../quiz');
 const problems = require('../problems');
 const panes = require('../../renderer/shared/panes');
+const harnesses = require('../harness/registry');
 const { run: runCli, skipSettings } = require('../claude/cli');
 const { selectedNote } = require('../viewer');
 
@@ -56,6 +58,7 @@ function closeTab(d, tabId) {
   d.queueWaits.delete(tabId);
   d.workflows?.onTabClosed(tabId);
   d.debugMode?.tabClosed(tabId); // its debug receiver stops listening
+  d.bugdex?.tabClosed(tabId); // the bugs it spotted got away with it
   d.remote?.settleTab(tabId);
   return true;
 }
@@ -74,8 +77,15 @@ function registerTabsIpc(ipcMain, d) {
     const agent = d.isStr(opts?.agent) ? agentName(opts.agent, d.lastInit?.agents) : null;
     if (d.isStr(opts?.agent) && !agent) return { ok: false, error: `Claude Code doesn't list an agent called ${opts.agent.slice(0, 80)}.` };
     if (agent && !d.claudeSupports('--agent')) return { ok: false, error: "This Claude Code can't hand a conversation to an agent. Update it, then try again." };
-    try { return { ok: true, tabId: d.openTab({ ...(known ? { cwd: opts.cwd } : {}), ...(agent ? { agent } : {}) }).id }; } catch (err) { return { ok: false, error: err.message }; }
+    // Another agent's CLI to run it on (harness/registry.js): only one Shellby knows, and only once it's installed.
+    const harness = d.isStr(opts?.harness) ? harnesses.byId(opts.harness) : null;
+    if (d.isStr(opts?.harness) && opts.harness !== harnesses.CLAUDE && !harness) return { ok: false, error: "Shellby doesn't know that agent." };
+    if (harness && !d.FAKE_ACP && !harnesses.commandFor(harness.id)) return { ok: false, error: `${harness.name} isn't installed. In a terminal: ${harness.install}`, install: harness.install };
+    if (harness && agent) return { ok: false, error: 'An agent of your own runs on Claude Code only.' };
+    try { return { ok: true, tabId: d.openTab({ ...(known ? { cwd: opts.cwd } : {}), ...(agent ? { agent } : {}), ...(harness ? { harness: harness.id } : {}) }).id }; } catch (err) { return { ok: false, error: err.message }; }
   });
+  // The agents a conversation can run on besides Claude Code, and whether each is installed (harness/registry.js).
+  ipcMain.handle('harness:list', () => harnesses.listHarnesses().map(h => (d.FAKE_ACP ? { ...h, installed: true } : h)));
   // Safe mode for one conversation (sessions.js setSafeMode), from the tab menu.
   ipcMain.handle('tab:safe', (_e, { tabId, on } = {}) => (d.isStr(tabId) ? d.manager.setSafeMode(tabId, on === true) : { ok: false, error: 'Which conversation?' }));
   ipcMain.handle('tab:close', (_e, tabId) => d.isStr(tabId) && closeTab(d, tabId));
@@ -90,8 +100,12 @@ function registerTabsIpc(ipcMain, d) {
   // here too, against the conversations open: config only ever holds a grid
   // within the caps, of tabs that exist, and only a split (one pane writes
   // nothing). Main's tab order becomes each pane's tabs in turn, one pane's
-  // included, so openTabs comes back in that order.
+  // included, so openTabs comes back in that order. Quitting and updating
+  // close every tab with the panel still up (wiring/quit.js, wiring/tray.js),
+  // and it sends the grid shrinking as they go: that's not you closing panes,
+  // so, as with openTabs (wiring/sessions.js), the split stays as it was.
   ipcMain.on('panes:layout', (e, layout) => {
+    if (/** @type {{ isQuitting?: boolean }} */ (app).isQuitting) return;
     if (d.popoutTabOf(e.sender)) return; // a conversation in its own window has no grid
     const clean = panes.clean(layout, [...d.manager.tabs.keys()]);
     if (clean) d.manager.setOrder(panes.tabIds(clean.grid));
@@ -134,8 +148,13 @@ function registerTabsIpc(ipcMain, d) {
 
   // This conversation's model, from the model chip or /model ('' is Claude Code's default), or outlook.js "Use Sonnet for this one".
   ipcMain.handle('tab:model', async (_e, { tabId, model } = {}) => {
-    try { return d.isStr(tabId) && typeof model === 'string' ? await d.manager.setTabModel(tabId, model) : { ok: false, error: 'Which conversation?' }; } catch (err) { return { ok: false, error: err.message }; }
+    try { return d.isStr(tabId) && typeof model === 'string' ? await d.manager.setTabModel(tabId, model, { byYou: true }) : { ok: false, error: 'Which conversation?' }; } catch (err) { return { ok: false, error: err.message }; }
   });
+
+  // The model chip's On this PC section: this conversation on a local model, before its first message (sessions.js setTabLocal).
+  ipcMain.handle('tab:local', (_e, { tabId, model }) => {
+    try { return d.manager.setTabLocal(tabId, model); } catch (err) { return { ok: false, error: err.message }; }
+  }, [obj({ tabId: ID, model: str({ max: 200 }) })]);
 
   // fromQueue: the panel's queue sending what you left behind a turn, by itself.
   ipcMain.handle('task:send', async (_e, { tabId, text, attachments, selected, fromQueue } = {}) => {

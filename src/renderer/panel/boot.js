@@ -14,7 +14,10 @@
   if (SB.solo) $('closeBtn').title = 'Back into the panel';
 
   SB.renderCrabs = () => {
-    for (const id of ['brandCrab', 'helloCrab', 'dockCrab']) $(id).replaceChildren(SB.sprite());
+    for (const id of ['brandCrab', 'dockCrab']) $(id).replaceChildren(SB.sprite());
+    // The welcome crab frames his whole outfit, shell topper too, so the box
+    // around him (panel.css .hello-crab) is as tall as he is drawn.
+    $('helloCrab').replaceChildren(SB.sprite(undefined, { fit: true }));
     SB.syncHomeMark();
     SB.refreshEmptyStates();
   };
@@ -30,13 +33,13 @@
 
   // ------------------------------------------------------------ events from main
 
-  api.onTabItem(({ tabId, item }) => {
+  api.onTabItem(({ tabId, item, continues }) => {
     const tab = state.tabs.get(tabId);
     if (!tab) return;
     tab.render(item);
     if (item.kind === 'user' && item.steerId) SB.onSteered(tab, item.steerId);
     if (item.kind === 'result') {
-      tab.busy = false;
+      tab.busy = !!continues; // main goes straight on to another turn (the move into a copy)
       if (!tab.isShown) tab.unread = true;
       SB.onTurnEnded(tab, item);
       api.listSessions().then(s => { state.sessions = s; });

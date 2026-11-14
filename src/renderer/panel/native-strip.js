@@ -1,9 +1,10 @@
-/* Shellby panel — above the box, for the conversation on screen: Claude's own
+/* Shellby panel — above the box, for each conversation on screen: Claude's own
    to-do list as it works through it (TaskCreate / TaskUpdate, or TodoWrite;
    shared/todos.js keeps it from the feed's items), and the commands and watches
    it left running in the background (main's jobs.js, in each tab's summary),
    each with its output a click away and a Stop. Shellby makes neither list:
-   it shows Claude Code's. */
+   it shows Claude Code's. The focused conversation's go over the box; an
+   unfocused pane's go over its stand-in (tab-panes.js), so every pane shows its own. */
 'use strict';
 (function () {
   const { h, api, $ } = SB;
@@ -18,9 +19,15 @@
 
   const MARK = { completed: '✓', in_progress: '▸', pending: '○' };
 
+  // Where a tab's tray goes: over the box when it's the one you're typing to,
+  // over its pane's stand-in when it's on screen out of focus, nowhere otherwise.
+  // With no tab, the box's own (to clear it).
+  const boxFor = (tab, kind) => (!tab || SB.activeTab() === tab ? $(kind) : SB.paneTrayBox?.(tab.id, kind) || null);
+
   function renderTodos(tab) {
-    const box = $('todos');
-    const s = tab && SB.activeTab() === tab ? T.summary(tab.todos) : null;
+    const box = boxFor(tab, 'todos');
+    if (!box) return;
+    const s = tab ? T.summary(tab.todos) : null;
     // Shown while there's a list and either Claude is at it or something's left on it.
     const show = !!s && s.total > 0 && (tab.busy || s.done < s.total);
     box.hidden = !show;
@@ -47,7 +54,7 @@
 
   // ------------------------------------------------------------ background commands
 
-  const outputs = new Map(); // `${tabId}:${jobId}` -> { text, error, timer } while its output is open
+  const outputs = new Map(); // `${tabId}:${jobId}` -> { tabId, text, error, timer } while its output is open
   /** @type {ReturnType<typeof setInterval> | null} */
   let ticker = null;
 
@@ -69,8 +76,8 @@
     const key = `${tab.id}:${job.id}`;
     const o = outputs.get(key);
     if (o) { clearInterval(o.timer); outputs.delete(key); renderJobs(tab); return; }
-    /** @type {{ text: string | null, error: string | null, timer: ReturnType<typeof setInterval> | null, cut?: boolean }} */
-    const next = { text: null, error: null, timer: null };
+    /** @type {{ tabId: string, text: string | null, error: string | null, timer: ReturnType<typeof setInterval> | null, cut?: boolean }} */
+    const next = { tabId: tab.id, text: null, error: null, timer: null };
     outputs.set(key, next);
     if (job.status === 'running') next.timer = setInterval(() => fetchOutput(tab, job), OUTPUT_EVERY_MS);
     fetchOutput(tab, job);
@@ -101,16 +108,22 @@
         : h('pre', { class: 'job-out', tabindex: '0', 'aria-label': `Output of ${j.description}` }, o.cut ? h('span', { class: 'muted', text: '… the start is cut off\n' }) : null, o.text ?? 'Reading…')) : null);
   }
 
+  // An open output belongs to a tab still on screen; the rest close.
+  const onScreen = id => SB.activeTab()?.id === id || !!SB.isShown?.(id);
+
   function renderJobs(tab) {
-    const box = $('jobs');
+    const box = boxFor(tab, 'jobs');
+    if (!box) return;
     const now = Date.now();
-    const list = tab && SB.activeTab() === tab
-      ? (tab.jobs || []).filter(j => j.status === 'running' || now - (j.endedAt || 0) < KEEP_FINISHED_MS)
-      : [];
+    const list = tab ? (tab.jobs || []).filter(j => j.status === 'running' || now - (j.endedAt || 0) < KEEP_FINISHED_MS) : [];
     box.hidden = !list.length;
-    // Outputs of jobs no longer listed close with them.
-    for (const [key, o] of outputs) if (!list.some(j => `${tab?.id}:${j.id}` === key)) { clearInterval(o.timer); outputs.delete(key); }
-    if (!list.length) { box.replaceChildren(); stopTicker(); return; }
+    box.dataset.jobsOf = tab?.id || '';
+    // Outputs of jobs no longer listed close with them, and so do those of conversations gone from the screen.
+    for (const [key, o] of outputs) {
+      const gone = o.tabId === tab?.id ? !list.some(j => `${tab.id}:${j.id}` === key) : !onScreen(o.tabId);
+      if (gone) { clearInterval(o.timer); outputs.delete(key); }
+    }
+    if (!list.length) { box.replaceChildren(); return; }
     const running = list.filter(j => j.status === 'running').length;
     // Past a few, the finished ones fold into one line so the tray doesn't push the feed off screen.
     const finished = list.length - running;
@@ -135,16 +148,21 @@
     startTicker();
   }
 
-  // One timer while the tray shows: the running clocks tick, and finished ones leave on time.
+  // One timer while any tray shows, the box's or a pane's: the running clocks
+  // tick, and finished ones leave on time.
   function startTicker() {
     if (ticker) return;
     ticker = setInterval(() => {
-      const tab = SB.activeTab();
-      if (!tab || $('jobs').hidden) return stopTicker();
+      const boxes = [...document.querySelectorAll('.jobs:not([hidden])')];
+      if (!boxes.length) return stopTicker();
       const now = Date.now();
-      const stale = (tab.jobs || []).some(j => j.status !== 'running' && now - (j.endedAt || 0) >= KEEP_FINISHED_MS && j.endedAt);
-      if (stale) return renderJobs(tab);
-      for (const el of $('jobs').querySelectorAll('.job.running .job-state')) el.textContent = SB.clock(now - Number(el.dataset.since));
+      for (const box of boxes) {
+        const tab = SB.state.tabs.get(/** @type {HTMLElement} */ (box).dataset.jobsOf || '');
+        if (!tab) continue;
+        const stale = (tab.jobs || []).some(j => j.status !== 'running' && now - (j.endedAt || 0) >= KEEP_FINISHED_MS && j.endedAt);
+        if (stale) { renderJobs(tab); continue; }
+        for (const el of box.querySelectorAll('.job.running .job-state')) el.textContent = SB.clock(now - Number(/** @type {HTMLElement} */ (el).dataset.since));
+      }
     }, 1000);
   }
   function stopTicker() { if (ticker) clearInterval(ticker); ticker = null; }

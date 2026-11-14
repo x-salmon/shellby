@@ -24,6 +24,7 @@ interface Window {
   PocketPhone: any;
   PocketTab: any;
   ShellbyAmbient: any;
+  ShellbyBranchLabel: any;
   ShellbyChirp: any;
   ShellbyClashText: any;
   ShellbyColony: any;
@@ -39,7 +40,9 @@ interface Window {
   ShellbyLineComments: any;
   ShellbyMarkdown: any;
   ShellbyMermaid: any;
+  ShellbyMeterLogic: any;
   ShellbyMiniShell: any;
+  ShellbyNotesLogic: any;
   ShellbyOutlookFormat: any;
   ShellbyPanes: any;
   ShellbyPixelGrid: any;
@@ -57,6 +60,7 @@ interface Window {
   ShellbyTabLogic: any;
   ShellbyTabSort: any;
   ShellbyTextGrid: any;
+  ShellbyTideChart: any;
   ShellbyTimeFormat: any;
   ShellbyTodos: any;
   ShellbyTrail: any;
@@ -70,6 +74,8 @@ interface Window {
 interface ShellbyPanelExtras {
   // a11y.js
   rove: any;
+  // automate-tide.js
+  renderTide: any;
   // backlog.js
   backlog: any;
   // beach-paint.js
@@ -131,6 +137,7 @@ interface ShellbyPanelExtras {
   applyEffort: any;
   applyModel: any;
   chooseEffort: any;
+  chooseLocal: any;
   chooseModel: any;
   chooseNewEffort: any;
   clearConversation: any;
@@ -181,7 +188,6 @@ interface ShellbyPanelExtras {
   relTime: any;
   remotePlace: any;
   renderMarkdownInto: any;
-  reveal: any;
   shortPath: any;
   sprite: any;
   tildify: any;
@@ -310,16 +316,13 @@ interface ShellbyPanelExtras {
   renderTodos: any;
   // nav.js
   goBack: any;
-  jumpToSetting: any;
-  jumpToSettingByName: any;
   openPalette: any;
   openShortcuts: any;
   retitleDock: any;
-  settingsTab: any;
-  showSetting: any;
-  showSettingsTab: any;
   // news.js
   news: any;
+  // notes-detail.js
+  noteDetail: any;
   // notes.js
   openNotes: any;
   // onboarding.js
@@ -420,6 +423,14 @@ interface ShellbyPanelExtras {
   renderUpdates: any;
   // settings-local.js
   renderLocalModel: any;
+  // settings-rail.js
+  jumpToSetting: any;
+  jumpToSettingByName: any;
+  markSettingsRail: any;
+  settingsScroller: any;
+  settingsTab: any;
+  showSetting: any;
+  showSettingsTab: any;
   // settings-remote.js
   remoteNow: any;
   remoteRefresh: any;
@@ -462,6 +473,8 @@ interface ShellbyPanelExtras {
   // tab-git.js
   bringHome: any;
   compareWith: any;
+  homePlaceOf: any;
+  homePlaces: any;
   keepThisOne: any;
   repoItems: any;
   ultraReview: any;
@@ -494,6 +507,7 @@ interface ShellbyPanelExtras {
   paneDir: any;
   paneEls: any;
   paneStripOf: any;
+  paneTrayBox: any;
   placeTab: any;
   popOut: any;
   refreshJump: any;
@@ -551,6 +565,7 @@ interface ShellbyPanelExtras {
   closeTab: any;
   closeTabSafely: any;
   ensureTab: any;
+  harnesses: any;
   hasChanges: any;
   hasClosed: any;
   inChat: any;
@@ -559,8 +574,10 @@ interface ShellbyPanelExtras {
   newTab: any;
   newTabAs: any;
   newTabIn: any;
+  newTabOn: any;
   nudgeTab: any;
   orderTabs: any;
+  refreshHarnesses: any;
   reopenClosed: any;
   showChanges: any;
   stripIds: any;
@@ -578,6 +595,8 @@ interface ShellbyPanelExtras {
   tankPaint: any;
   // tank-render.js
   tankRender: any;
+  // tank-room.js
+  tankRoom: any;
   // tank-tidy.js
   tankTidy: any;
   tankUndo: any;
@@ -585,6 +604,8 @@ interface ShellbyPanelExtras {
   tankApply: any;
   tankEditing: any;
   tankView: any;
+  // taskboard.js
+  taskBoard: any;
   // tide.js
   tide: any;
   // together.js
@@ -599,6 +620,8 @@ interface ShellbyPanelExtras {
   toolboxBatch: any;
   // toolbox-hooks.js
   toolboxHooks: any;
+  // toolbox-mcp.js
+  toolboxMcp: any;
   // toolbox-mods.js
   renderModStatus: any;
   toolboxMods: any;
@@ -613,6 +636,8 @@ interface ShellbyPanelExtras {
   toolboxSnippets: any;
   // toolbox-team.js
   toolboxTeam: any;
+  // toolbox-tidy.js
+  toolboxTidy: any;
   // toolbox.js
   onLearned: any;
   showToolbox: any;
@@ -631,6 +656,9 @@ interface ShellbyPanelExtras {
   giveBackAttachments: any;
   renderTries: any;
   startTries: any;
+  // trophies-rail.js
+  reveal: any;
+  trophyPage: any;
   // turn-checks.js
   decorateChanges: any;
   editorBar: any;
@@ -642,6 +670,8 @@ interface ShellbyPanelExtras {
   renderUltraChip: any;
   renderUltracode: any;
   ultraWords: any;
+  // us-road.js
+  usRoad: any;
   // viewer-find.js
   viewerFind: any;
   // viewer-preview.js
@@ -682,4 +712,6 @@ interface ShellbyPanelExtras {
   wrappedCard: any;
   // wrapped.js
   wrapped: any;
+  // xp-sheet.js
+  characterSheet: any;
 }

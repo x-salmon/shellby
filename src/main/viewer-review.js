@@ -10,7 +10,7 @@ const IMAGE_TYPES = Object.freeze({
 
 const ZERO = /^0+$/;
 // Said in a commit's message by Claude Code (its Co-Authored-By trailer, or the line it ends a PR with).
-const BY_CLAUDE = /^co-authored-by:\s*claude\b|generated with \[?claude code/im;
+const BY_CLAUDE = /(?:^co-authored-by:\s*claude\b)|(?:generated with \[?claude code)/im;
 
 /**
  * `git diff --raw -z --no-abbrev` -> Map(path -> the blob the file ends at, or the one it was for a

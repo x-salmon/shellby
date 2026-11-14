@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby turn footer: Sounding, refined</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../../assets/fonts/AtkinsonHyperlegible-Bold.ttf"); font-weight: 700; }
+@font-face { font-family: "Martian Mono"; src: url("../../assets/fonts/MartianMono.ttf"); font-weight: 100 800; font-stretch: 75% 112.5%; }
+
+:root {
+  --abyss: #071012; --ink: #0c1719; --reef: #11232a; --reef-2: #173039; --reef-3: #1e3d47;
+  --line: #214049; --sand: #f3e6cc; --sand-dim: #b3a892; --sand-faint: #9d9482; --sand-faint-deco: #7d7566;
+  --glass: #7fd6c2; --glass-dim: rgba(127, 214, 194, .14);
+  --coral: #ff7a5c; --amber: #ffc15e; --danger: #ff5a4a;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", sans-serif;
+  --font-pixel: "Pixelify Sans", monospace;
+  --font-mono: "Martian Mono", Consolas, monospace;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 36px 44px 80px; background: var(--abyss); color: var(--sand); font: 15px/1.5 var(--font-body); }
+h1 { font: 600 30px/1.1 var(--font-pixel); margin: 0 0 8px; }
+h2 { font: 600 19px/1.2 var(--font-pixel); margin: 36px 0 6px; }
+.lede { color: var(--sand-dim); max-width: 74ch; margin: 0 0 10px; }
+.lede b, .notes b { color: var(--sand); }
+.notes { color: var(--sand-dim); max-width: 74ch; margin: 0 0 8px; padding-left: 20px; font-size: 14px; }
+.notes li { margin-bottom: 4px; }
+.sub { color: var(--sand-faint); margin: 0 0 14px; font-size: 14px; max-width: 74ch; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 430px), 460px)); gap: 18px; align-items: start; }
+.frame { background: var(--ink); border: 1px solid var(--reef-2); border-radius: 10px; padding: 14px 16px 2px; min-width: 0; }
+.frame.wide { max-width: 1180px; }
+.cap { font: 500 11px var(--font-body); color: var(--sand-faint); margin: 0 0 8px; }
+.reply { margin: 0 0 12px; color: var(--sand); font-size: 13.5px; line-height: 1.55; }
+.replay { margin: 0 0 14px; }
+.replay button { border: 1px solid var(--line); background: var(--reef); color: var(--sand-dim); font: 500 12.5px var(--font-body); padding: 4px 12px; border-radius: 6px; cursor: pointer; }
+.replay button:hover { color: var(--sand); }
+button:focus-visible, .sd:focus-visible { outline: 2px solid var(--glass); outline-offset: 3px; }
+
+/* ================================================================ Sounding */
+/* The whole context window as one bar, filling from the left. Colour says one
+   thing only: how full the conversation is (teal, amber past 60%, coral past
+   80%). The added part's number is printed in the added part's colour, so the
+   label is the key. */
+.sd { --fill: var(--glass); --past: var(--sand-faint-deco);
+  display: block; margin: 0 0 16px; max-width: 760px; border-radius: 6px; cursor: pointer; }
+.sd.filling { --fill: var(--amber); }
+.sd.crowded { --fill: var(--coral); }
+
+.sd-bar { position: relative; height: 6px; border-radius: 3px; background: var(--reef-2); }
+.sd-bar > i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.sd-bar .past { left: 0; width: var(--prev); background: var(--past); opacity: .55; }
+/* this reply's part: at least 3px, so a +1 still shows */
+.sd-bar .added { left: var(--prev); width: max(3px, var(--add)); background: var(--fill); border-radius: 0 3px 3px 0; }
+.sd-bar .past + .added { box-shadow: -1px 0 0 var(--ink); }
+/* after a compact: what was freed, as a hatched ghost of the old fill */
+.sd-bar .freed { left: var(--now); width: calc(var(--was) - var(--now)); opacity: .5;
+  background: repeating-linear-gradient(135deg, var(--sand-faint-deco) 0 2px, transparent 2px 5px); }
+/* 80%: where Shellby asks you to make room (context.js CROWDED_PCT). Drawn
+   with an ink gap either side so it still shows over a fill. */
+.sd-bar .mark { position: absolute; left: 80%; top: -3px; bottom: -3px; width: 1px; background: var(--sand-faint-deco); box-shadow: -1px 0 0 var(--ink), 1px 0 0 var(--ink); }
+.sd.crowded .sd-bar .mark { background: var(--sand); }
+
+.sd-row { display: flex; align-items: baseline; gap: 10px; margin-top: 7px;
+  font: 500 10.5px/1.4 var(--font-mono); font-stretch: 88%; color: var(--sand-faint); white-space: nowrap; }
+.sd-what { display: flex; align-items: baseline; gap: 7px; min-width: 0; }
+.sd-what .st { color: var(--glass); }
+.sd.stopped .st, .sd.waiting .st { color: var(--amber); }
+.sd.failed .st { color: var(--danger); }
+.sd-what .soft { overflow: hidden; text-overflow: ellipsis; }
+.sd-room { margin-left: auto; display: flex; align-items: baseline; gap: 7px; }
+.sd-room .full { color: var(--sand-dim); }
+.sd.filling .sd-room .full { color: var(--amber); }
+.sd.crowded .sd-room .full { color: var(--coral); }
+.sd-room .plus { color: var(--fill); }
+.sd-room .minus { color: var(--sand-faint); }
+
+/* effort: how many of five are lit. No colour: colour is for the context. */
+.pips { display: inline-flex; gap: 2px; align-self: center; }
+.pips i { width: 3px; height: 7px; border-radius: 1px; background: var(--reef-3); }
+.pips i.on { background: var(--sand-faint); }
+
+.sd-act { border: 0; padding: 1px 8px; border-radius: 4px; cursor: pointer; font: 700 10.5px var(--font-body);
+  color: var(--fill); background: color-mix(in srgb, var(--fill) 14%, transparent); }
+.sd-act:hover { background: color-mix(in srgb, var(--fill) 24%, transparent); }
+
+/* opened: the rest, said once, in plain words */
+.sd-more { display: none; margin-top: 8px; padding: 9px 11px; border-radius: 6px; background: var(--reef);
+  font: 400 12px/1.55 var(--font-body); color: var(--sand-dim); white-space: normal; }
+.sd-more b { color: var(--sand); font-weight: 700; }
+.sd-more .acts { display: flex; gap: 6px; margin-top: 8px; }
+.sd-more .acts button { border: 1px solid var(--line); background: var(--ink); color: var(--sand-dim); font: 500 11.5px var(--font-body); padding: 3px 10px; border-radius: 5px; cursor: pointer; }
+.sd-more .acts button:hover { color: var(--sand); }
+.sd[aria-expanded="true"] .sd-more { display: block; }
+.sd:hover .sd-bar { background: var(--reef-3); }
+
+/* the one moment of motion: when a turn ends, its part grows out from where the last one stopped */
+@media (prefers-reduced-motion: no-preference) {
+  .sd.live .sd-bar .added { animation: grow .6s var(--ease-out) .1s both; transform-origin: left; }
+  .sd.live .sd-room .plus { animation: in .3s ease-out .55s both; }
+}
+@keyframes grow { from { transform: scaleX(0); } }
+@keyframes in { from { opacity: 0; } }
+
+/* the key, as it would never need to appear in the app */
+.key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 4px 0 16px; font-size: 13px; color: var(--sand-dim); }
+.key span { display: inline-flex; align-items: center; gap: 7px; }
+.key i { width: 18px; height: 6px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<h1>Sounding, refined</h1>
+<p class="lede">One bar for the whole conversation, filling from the left, and one line under it: <b>what happened</b> on the left,
+<b>how full the conversation is</b> on the right. Click a footer for the rest. Every state it will meet is drawn below at the panel's real size.</p>
+<ul class="notes">
+  <li><b>Colour has one job: how full the conversation is.</b> Teal, then amber past 60% ("Filling up"), then coral past 80% ("Getting crowded"), the same two levels as Shellby's warning above the box. The effort bars are plain now.</li>
+  <li><b>The label is the key.</b> "+19" is printed in the same colour as the part of the bar it describes, so there's nothing to learn.</li>
+  <li><b>Thinking is no longer in the bar.</b> Claude drops thinking from earlier turns, so it doesn't take up room in the conversation. It moves into the details.</li>
+  <li><b>Compacting has its own state.</b> The bar shrinks and the freed room shows hatched, so a drop never reads as a glitch.</li>
+  <li><b>One bit of motion.</b> When a turn ends, its part grows out from where the last one stopped. Replayed history stays still, and so does reduced motion.</li>
+</ul>
+<div class="key">
+  <span><i style="background:var(--sand-faint-deco);opacity:.55"></i>Earlier replies</span>
+  <span><i style="background:var(--glass)"></i>This reply</span>
+  <span><i style="background:var(--amber)"></i>Past 60%</span>
+  <span><i style="background:var(--coral)"></i>Past 80%</span>
+  <span><i style="background:repeating-linear-gradient(135deg,var(--sand-faint-deco) 0 2px,transparent 2px 5px)"></i>Freed by a compact</span>
+  <span><i style="background:var(--reef-2)"></i>Room left</span>
+</div>
+
+<h2>As a turn ends</h2>
+<p class="sub">The one motion. Press replay to watch this reply's part grow onto the bar.</p>
+<div class="replay"><button type="button" id="replay">Replay</button></div>
+<div class="grid" id="live"></div>
+
+<h2>Every state</h2>
+<p class="sub">Panel width, 460px. Hover any one for its tooltip, click it to open.</p>
+<div class="grid" id="states"></div>
+
+<h2>Full screen</h2>
+<p class="sub">On a wide window the footer stops at 760px, about the width of the reply above it, so "what happened" and "how full" stay within one glance.</p>
+<div id="wide"></div>
+
+<script>
+const SOON = 60, CROWDED = 80;
+const EFFORT = { low: 1, medium: 2, high: 3, xhigh: 4, max: 5 };
+const EFFORT_NAME = { low: 'low', medium: 'medium', high: 'high', xhigh: 'extra high', max: 'max' };
+
+const T = {
+  quick: { cap: 'A quick reply (your screenshot)', reply: 'The status line reads from turncost.js; the badge comes from effortBadge().',
+    state: 'done', ms: 15000, steps: 1, effort: 'medium', thinking: 61, tokens: 44000, share: 2, ctx: 7, prev: 4 },
+  first: { cap: 'The first reply in a conversation', reply: 'Here’s the plan: three steps, starting with the hook payloads.',
+    state: 'done', ms: 9000, steps: 1, effort: 'high', thinking: 1900, tokens: 18000, share: 1, ctx: 3, prev: 0 },
+  big: { cap: 'A long turn with helpers', reply: 'Both helpers are back. The suite passes and the three flaky e2e checks now wait on real events.',
+    state: 'done', ms: 252000, steps: 23, effort: 'high', thinking: 8400, tokens: 312000, share: 9, ctx: 41, prev: 22, helpers: { n: 2, tokens: 120000 } },
+  waiting: { cap: 'Done, but something it started still runs', reply: 'The dev server is starting in the background; I’ll check the page once it’s up.',
+    state: 'waiting', label: 'Waiting on 1 task', ms: 21000, steps: 4, effort: 'medium', thinking: 300, tokens: 26000, share: 1, ctx: 33, prev: 30 },
+  filling: { cap: 'Past 60%: filling up', reply: 'Refactored the queue into three modules and updated every import.',
+    state: 'done', ms: 63000, steps: 6, effort: 'max', thinking: 21000, tokens: 96000, share: 4, ctx: 72, prev: 58 },
+  crowded: { cap: 'Past 80%: getting crowded', reply: 'Updated the remaining twelve call sites and the tests that cover them.',
+    state: 'done', ms: 88000, steps: 9, effort: 'high', thinking: 6200, tokens: 71000, share: 3, ctx: 86, prev: 76 },
+  compacted: { cap: 'Right after a compact', reply: 'Picking up where we were: the queue modules are in, the call sites are next.',
+    state: 'done', ms: 12000, steps: 1, effort: 'medium', thinking: 0, tokens: 31000, share: 1, ctx: 18, prev: 86, summary: 14, compacted: true },
+  stopped: { cap: 'Stopped by you', reply: 'Reading the hook payloads to see where the',
+    state: 'stopped', ms: 38000, steps: 3, effort: 'low', thinking: 0, tokens: 9100, share: 1, ctx: 12, prev: 10 },
+  failed: { cap: 'Ended with an error', reply: 'API Error: 529 overloaded.',
+    state: 'failed', label: 'Ended with an error', ms: 6000, steps: 1, effort: 'medium', thinking: 0, tokens: 2100, share: 0.3, ctx: 12, prev: 12 },
+  unknown: { cap: 'An older turn, from before Shellby kept context', reply: 'Done. The README now covers the worktree setup.',
+    state: 'done', ms: 31000, steps: 2, effort: 'medium', thinking: 420, tokens: 22000, share: null, ctx: null, prev: null },
+};
+
+const k = n => (n >= 1000 ? `${(n / 1000).toFixed(n < 10000 ? 1 : 0).replace(/\.0$/, '')}k` : String(n));
+const dur = ms => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const level = t => (t.ctx == null ? '' : t.ctx >= CROWDED ? 'crowded' : t.ctx >= SOON ? 'filling' : '');
+const stateWord = t => t.label || (t.state === 'stopped' ? 'Stopped' : 'Done');
+const pips = e => `<span class="pips" aria-hidden="true">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= EFFORT[e] ? 'on' : ''}"></i>`).join('')}</span>`;
+const share = s => (s == null ? null : s < 1 ? 'under 1%' : `about ${Math.round(s)}%`);
+
+function bar(t) {
+  if (t.ctx == null) return '';
+  const mark = '<i class="mark" title="80%: past here, Shellby asks you to make room"></i>';
+  // After a compact: the summary is the earlier part, this reply sits on it, and the freed room is hatched up to where it was.
+  const before = t.compacted ? t.summary : t.prev;
+  const add = Math.max(0, t.ctx - before);
+  return `<div class="sd-bar" style="--prev:${before}%;--add:${add}%;--now:${t.ctx}%;--was:${t.prev}%">`
+    + `${t.compacted ? '<i class="freed"></i>' : ''}${before ? '<i class="past"></i>' : ''}${add ? '<i class="added"></i>' : ''}${mark}</div>`;
+}
+
+function room(t) {
+  if (t.ctx == null) return `<span class="sd-room"><span>${k(t.tokens)} tokens</span></span>`;
+  const lv = level(t);
+  const change = t.compacted ? `<span class="minus">compacted from ${t.prev}%</span>`
+    : t.ctx > t.prev ? `<span class="plus">+${t.ctx - t.prev}</span>` : '';
+  const act = lv ? `<button class="sd-act" type="button">${lv === 'crowded' ? 'Make room' : 'Compact'}</button>` : '';
+  return `<span class="sd-room"><span class="full">${t.ctx}% full</span>${change}${act ? '' : `<span>· ${k(t.tokens)}</span>`}${act}</span>`;
+}
+
+function more(t) {
+  const lines = [];
+  lines.push(`<b>${k(t.tokens)}</b> new tokens${t.share != null ? `, ${share(t.share)} of your 5-hour window` : ''}.`);
+  if (t.helpers) lines.push(`${plural(t.helpers.n, 'helper')} used <b>${k(t.helpers.tokens)}</b> of them, in their own context, so they don’t fill this one.`);
+  lines.push(`${EFFORT_NAME[t.effort][0].toUpperCase()}${EFFORT_NAME[t.effort].slice(1)} effort, ${t.thinking ? `<b>${k(t.thinking)}</b> tokens of thinking` : 'no thinking'}.`);
+  if (t.compacted) lines.push(`The conversation was summarised before this reply, which freed <b>${t.prev - t.ctx}%</b>.`);
+  else if (t.ctx != null) lines.push(`This reply took <b>${Math.max(0, t.ctx - t.prev)}%</b> of the conversation’s room; <b>${100 - t.ctx}%</b> is left.`);
+  return `<div class="sd-more">${lines.join(' ')}<div class="acts"><button type="button">Branch from here</button>${level(t) ? '<button type="button">Compact now</button>' : ''}</div></div>`;
+}
+
+function sounding(t, opts = {}) {
+  const lv = level(t);
+  const value = t.ctx == null ? '' : ` role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${t.ctx}" aria-valuetext="${t.ctx}% of the conversation used${t.compacted ? `, down from ${t.prev}% after a compact` : `, ${Math.max(0, t.ctx - t.prev)}% by this reply`}"`;
+  const tip = `${stateWord(t)} in ${dur(t.ms)}, ${plural(t.steps, 'step')}, ${EFFORT_NAME[t.effort]} effort. Click for details.`;
+  return `<div class="sd ${t.state} ${lv}${opts.live ? ' live' : ''}" role="button" tabindex="0" aria-expanded="${opts.open ? 'true' : 'false'}" title="${tip}">
+    ${bar(t).replace('class="sd-bar"', `class="sd-bar"${value}`)}
+    <div class="sd-row">
+      <span class="sd-what"><span class="st">${stateWord(t)}</span><span class="soft">· ${dur(t.ms)} · ${plural(t.steps, 'step')}${t.helpers ? ` · ${plural(t.helpers.n, 'helper')}` : ''}</span>${pips(t.effort)}</span>
+      ${room(t)}
+    </div>
+    ${more(t)}
+  </div>`;
+}
+
+const frame = (t, opts, cls = '') => `<div class="frame ${cls}"><p class="cap">${opts.cap || t.cap}</p><p class="reply">${t.reply}</p>${sounding(t, opts)}</div>`;
+
+function render() {
+  document.getElementById('live').innerHTML = [T.quick, T.big].map(t => frame(t, { live: true })).join('');
+  document.getElementById('states').innerHTML = [
+    frame(T.quick, {}), frame(T.first, {}), frame(T.big, {}), frame(T.big, { open: true, cap: 'Opened (click any footer)' }),
+    frame(T.waiting, {}), frame(T.filling, {}), frame(T.crowded, {}), frame(T.compacted, {}),
+    frame(T.stopped, {}), frame(T.failed, {}), frame(T.unknown, {}),
+  ].join('');
+  document.getElementById('wide').innerHTML = frame(T.big, { cap: 'A 1180px panel: the footer stops at 760px' }, 'wide');
+}
+render();
+
+document.addEventListener('click', e => {
+  if (e.target.closest('button')) return;
+  const sd = e.target.closest('.sd');
+  if (sd) sd.setAttribute('aria-expanded', sd.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+});
+document.addEventListener('keydown', e => {
+  const sd = e.target.closest?.('.sd');
+  if (sd && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sd.click(); }
+});
+document.getElementById('replay').addEventListener('click', () => {
+  const live = document.getElementById('live');
+  live.innerHTML = '';
+  requestAnimationFrame(() => { live.innerHTML = [T.quick, T.big].map(t => frame(t, { live: true })).join(''); });
+});
+</script>
+</body>
+</html>

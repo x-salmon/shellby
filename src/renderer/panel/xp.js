@@ -26,15 +26,27 @@
     badge.hidden = false;
     // XP ticks in constantly while chats stream. Rewriting the badge's text or
     // title, even to the same value, closes its open tooltip, so only touch them on change.
-    const text = marks ? `${v.level}★${marks}` : String(v.level);
-    if (badge.textContent !== text) badge.textContent = text;
-    $('brandXp').style.transform = `scaleX(${v.progress.toFixed(3)})`;
+    const num = $('brandLevelNum'), mark = $('brandLevelMark');
+    const markText = marks ? `★${marks}` : '';
+    if (num.textContent !== String(v.level)) num.textContent = String(v.level);
+    if (mark.textContent !== markText) mark.textContent = markText;
+    fillCells($('brandXp').children, v.progress);
     const tip = `${levelLine(v)}${v.needed ? ` · ${fmt(v.into)}/${fmt(v.needed)} XP to ${nextName(v)}` : ''}. Open Trophies & XP`;
     if (badge.title !== tip) badge.title = tip;
     const label = `${levelLine(v)}: open Trophies and XP`;
     if (badge.getAttribute('aria-label') !== label) badge.setAttribute('aria-label', label);
     moltRing($('brandLevel'), v);
     if (state.view === 'trophies') render();
+  }
+
+  // The nameplate's XP cells: whole tenths lit, and the one being earned marked
+  // as the edge (it blinks while Claude works). Only classes that change are touched.
+  function fillCells(cells, progress) {
+    const lit = Math.min(cells.length, Math.floor(Math.max(0, progress) * cells.length));
+    for (let i = 0; i < cells.length; i++) {
+      cells[i].classList.toggle('on', i < lit);
+      cells[i].classList.toggle('edge', i === lit);
+    }
   }
 
   // After a molt, a ring round the level badge in the tier's colour, with its numeral (molting.js moltBadge).
@@ -112,39 +124,16 @@
       h('span', { text: KIND_ICON[k.kind] || '✦' }), h('span', { text: KIND_NAME[k.kind] || k.kind }), h('b', { text: fmt(k.xp) }))));
   }
 
-  // The character sheet: his class and four stats, each with what this week added.
-  // Every stat is Claude Code work, so just the crab leaves it off.
-  function renderSheet(c) {
+  // The character sheet (xp-sheet.js). Every stat is Claude Code work, so just the crab leaves it off.
+  function renderSheet(c, ways) {
     $('xpSheet').hidden = !c || !!state.settings.crabOnly;
-    if ($('xpSheet').hidden) return;
-    $('xpClassIcon').textContent = c.cls.icon;
-    $('xpClassName').textContent = c.cls.name;
-    $('xpClassBlurb').textContent = c.cls.blurb;
-    $('xpSheetWeek').textContent = c.weekCls && c.weekCls.id !== c.cls.id ? `· played as a ${c.weekCls.name} this week` : '';
-    // Bars against the top stat, so their shape is what picks the class.
-    const top = Math.max(10, ...c.stats.map(s => s.value));
-    $('xpStats').replaceChildren(...c.stats.map(s => {
-      const next = s.next ? `${fmt(s.next)} XP to ${s.value + 1}` : 'maxed out';
-      const week = s.week ? ` · +${fmt(s.week)} XP this week` : '';
-      const title = `${s.name} ${s.value}: ${s.what}. ${fmt(s.xp)} XP${week} · ${next}`;
-      return h('li', { class: c.cls.stats.includes(s.id) ? 'top' : '', title },
-        h('span', { 'aria-hidden': 'true', text: s.icon }),
-        h('span', { class: 'xp-stat-name', text: s.name }),
-        h('span', { class: 'xp-stat-bar', 'aria-hidden': 'true' }, h('i', { style: `transform:scaleX(${(s.value / top).toFixed(3)})` })),
-        h('b', { text: String(s.value) }),
-        h('span', { class: 'xp-stat-gain', text: s.gain ? `+${s.gain}` : '' }),
-        h('span', { class: 'sr-only', text: title }));
-    }));
-    // The classes he has been, once there's more than the one he is.
-    const met = c.seen.filter(x => x.id !== c.cls.id);
-    $('xpClasses').hidden = !met.length;
-    $('xpClasses').textContent = met.length ? `Has also been: ${met.map(x => `${x.icon} ${x.name}`).join(', ')}` : '';
+    if (!$('xpSheet').hidden) SB.characterSheet.render(c, ways);
   }
 
   function render() {
     const v = state.xp;
     if (!v) return;
-    renderSheet(v.character);
+    renderSheet(v.character, v.ways);
     $('xpLevel').textContent = v.level;
     moltRing($('xpLevel'), v);
     $('xpTitle').textContent = v.title;

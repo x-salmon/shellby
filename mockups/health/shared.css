@@ -1,0 +1,26 @@
+/* Shared base for the Health mockups: Shellby's tokens, full-screen 4K panel (2560x1440 CSS px at 150%). */
+@import url("../../src/renderer/shared/tokens.css");
+@import url("../../src/renderer/shared/fonts.css");
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 2560px; height: 1440px; overflow: hidden; }
+body { background: var(--abyss); color: var(--sand); font: 18px/1.5 var(--font-body); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.frame { height: 1440px; padding: 44px 56px 40px; display: flex; flex-direction: column; gap: 28px; }
+.head { display: flex; align-items: center; gap: 24px; }
+.head h1 { font: 500 44px/1 var(--font-pixel); }
+.head .sub { color: var(--sand-dim); font-size: 18px; }
+.head .spacer { flex: 1; }
+.live { display: inline-flex; align-items: center; gap: 8px; color: var(--glass); font-size: 16px; }
+.live::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--glass); box-shadow: 0 0 0 4px var(--glass-dim); }
+.btn { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 20px; border-radius: var(--r);
+  background: var(--reef-2); border: 1px solid var(--line); font-weight: 700; font-size: 17px; white-space: nowrap; }
+.btn.primary { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+.btn.ghost { background: none; }
+.btn.small { height: 36px; padding: 0 14px; font-size: 15px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.seg span { padding: 8px 16px; font-size: 15px; color: var(--sand-dim); }
+.seg span.on { background: var(--reef-2); color: var(--sand); font-weight: 700; }
+.mono { font-family: var(--font-mono); font-size: 13px; color: var(--sand-faint); }
+.ok { color: var(--glass); } .warn { color: var(--amber); } .hot { color: var(--coral); }
+.crab { image-rendering: pixelated; }
+.caption { position: fixed; right: 24px; bottom: 16px; font: 13px var(--font-mono); color: var(--sand-faint-deco); }

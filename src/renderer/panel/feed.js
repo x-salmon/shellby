@@ -118,7 +118,10 @@
       const e = this.empty;
       e.querySelector('.empty-crab').replaceChildren(SB.sprite());
       e.querySelector('.empty-folder').textContent = SB.tildify(this.cwd || state.cwd);
-      e.querySelector('.hotkey-hint').textContent = SB.prettyAccel(state.settings.hotkey) || 'The tray icon';
+      // Written like the shortcut table ("Ctrl+K"), not like Settings ("Ctrl + K"), so the legend reads as one.
+      e.querySelector('.hotkey-hint').textContent = SB.prettyAccel(state.settings.hotkey).replace(/ \+ /g, '+') || 'The tray icon';
+      // Some of these can be changed in the shortcut list, so they come from it.
+      for (const k of e.querySelectorAll('kbd[data-key]')) k.textContent = SB.shortcuts?.primary(k.dataset.key) || k.textContent;
       // A quest card takes the third suggestion's room.
       // A new install's first tasks lead with a tour of a project, until it's opened once.
       // Shuffled once per conversation. This runs again whenever his look changes
@@ -217,10 +220,9 @@
       SB.filesTake?.(this, item, replay); // and lit up in All files (files-dock.js)
       this.noteTurn?.(item); // what the turn was, in case Claude didn't answer it (feed-local.js)
       // Claude's to-do list moves with its tool calls, replayed or live (native-strip.js draws it;
-      // an unfocused pane keeps a line of it, tab-panes.js).
+      // an unfocused pane shows its own over its stand-in, tab-panes.js).
       if ((item.kind === 'tool' || item.kind === 'tool_result') && T.apply(this.todos, item)) {
-        if (this.isActive) SB.renderTodos?.(this);
-        else if (!replay && this.isShown) SB.refreshPaneHeads?.();
+        if (this.isActive || !replay) SB.renderTodos?.(this);
       }
       // The reply as it was being written gives way to whatever comes next on
       // the main thread: the finished words themselves, usually. Those keep the
@@ -268,7 +270,7 @@
           // Something you just sent always comes into view, even if you'd scrolled up.
           if (!replay) { this.stuck = true; this.dropCutOff(); }
           // What Claude guessed you'd ask next is spent once you've asked something.
-          if (!replay && this.nextPrompt) { this.nextPrompt = null; if (this.isActive) SB.renderNextPrompt?.(this); }
+          if (!replay && this.nextPrompt) { this.nextPrompt = null; SB.renderNextPrompt?.(this); } // over the box or its pane's stand-in
           return this.renderUser(item);
         // Claude's reply as it's written (--include-partial-messages), formatted
         // as it goes, so the finished one takes its place without a jump.
@@ -290,7 +292,7 @@
         case 'next':
           if (replay) return;
           this.nextPrompt = item.text;
-          if (this.isActive) SB.renderNextPrompt?.(this);
+          SB.renderNextPrompt?.(this); // in whichever pane shows it (native-cli.js)
           return;
         // A goal Claude checks before it stops (/goal), pinned by the box until it's met or cleared.
         case 'goal':
@@ -302,6 +304,10 @@
         case 'agent':
           return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: '🤖' }),
             h('span', {}, 'Your ', h('b', { text: item.name }), " agent runs this conversation: its own instructions, tools and model, from the first message.")));
+        // Another agent's CLI runs this conversation (main's harness/): Gemini CLI, OpenCode, Codex.
+        case 'harness':
+          return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: '🔌' }),
+            h('span', {}, h('b', { text: item.name }), ' runs this conversation, with its own model, tools and sign-in. Permission prompts still come here.')));
         // Safe mode turned on or off for this conversation (sessions.js setSafeMode).
         case 'safe':
           return this.append(h('div', { class: 'home-mark' }, h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: item.on ? '🛟' : '🧩' }),
@@ -356,7 +362,7 @@
         // conversation reopened later shows only what came after it.
         case 'cleared':
           this.wipe();
-          if (this.isActive) SB.renderTodos?.(this);
+          SB.renderTodos?.(this); // in whichever pane shows it (native-strip.js)
           // falls through
         case 'moved': case 'wt-in': case 'wt-out': case 'phone': case 'home': case 'home-wait': case 'pushed': case 'compacted': case 'fresh': case 'rewound': case 'hook-failed': {
           const mark = F.markFor(item, SB.compact);
@@ -445,7 +451,7 @@
     reset(items) {
       this.wipe();
       for (const item of items) this.render(item, { replay: true });
-      if (this.isActive) SB.renderTodos?.(this);
+      SB.renderTodos?.(this);
       this.scrollToEnd();
     }
 
@@ -571,30 +577,15 @@
 
     renderResult(item, replay = false) {
       for (const el of this.tools.values()) if (el.classList.contains('pending')) el.classList.replace('pending', item.ok ? 'ok' : 'err');
-      const { label, waiting } = F.resultLabel(item);
-      // A reply you might want to take somewhere else: a new tab that remembers
-      // everything up to here, with the files as this turn left them.
-      const turnId = this.lastTurnId;
-      const fork = turnId && item.anchor ? h('button', { class: 'meta-branch', type: 'button', title: 'Branch from here: a new tab that carries on from this reply, leaving this one as it is', onclick: () => SB.openBranch(this, turnId, 'after') }, SB.forkIcon(), 'branch') : null;
-      const cost = item.cost?.line ? item.cost : null;
       // Each helper's part goes on its own lane (turncost.js helperCosts).
       for (const c of item.cost?.helpers || []) this.lanes.get(c.id)?.setCost(c);
-      this.append(h('div', { class: `meta${item.ok || item.interrupted ? '' : ' bad'}${waiting ? ' waiting' : ''}${cost ? ' has-cost' : ''}`, title: waiting ? 'This turn ended, but something it started is still running.' : null },
-        h('span', { text: [label, SB.duration(item.durationMs), item.turns ? `${item.turns} turns` : null].filter(Boolean).join(' · ') }), fork));
+      this.append(this.turnFoot(item, replay));
       // What the turn was refused by a rule or a hook (feed-logic.js denialsLine): one quiet line.
       if (item.denials?.length) this.append(h('div', { class: 'turn-denials', role: 'note', title: 'Tool calls Claude Code refused this turn: a permission rule, a hook, or a No from you.', text: F.denialsLine(item.denials) }));
-      // What the turn cost (src/main/turncost.js): the context chip's menu scrolls back to it.
-      if (cost) {
-        // How hard it thought, beside what it cost (turncost.js effortBadge).
-        const badge = cost.effortBadge;
-        this.append(h('div', { class: 'turn-cost', title: cost.detail || null, dataset: turnId ? { turn: turnId } : {} },
-          badge ? h('span', { class: `effort-badge effort-${badge.level}`, title: badge.detail, text: badge.text }) : null,
-          h('span', { class: 'turn-cost-line', text: cost.line })));
-        // A warm cache it missed, helpers that outspent it, pictures piling up (turncost.js turnNotes).
-        // A reopened conversation's old notes keep their words but not their buttons:
-        // a fresh start offered before an earlier one would throw away this one.
-        for (const n of cost.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note' }, h('span', { text: n.text }), replay ? null : this.noteAction(n.action, n)));
-      }
+      // A warm cache it missed, helpers that outspent it, pictures piling up (turncost.js turnNotes).
+      // A reopened conversation's old notes keep their words but not their buttons:
+      // a fresh start offered before an earlier one would throw away this one.
+      for (const n of item.cost?.notes || []) this.append(h('div', { class: `turn-note is-${n.kind}`, role: 'note' }, h('span', { text: n.text }), replay ? null : this.noteAction(n.action, n)));
       // A turn whose process went (main's session/index.js ended()): its error block is just above.
       if (!item.ok && !item.interrupted && item.error && !item.crashed) this.append(this.troubleBlock(item.trouble, item.error));
       // ...and its helpers went with it.

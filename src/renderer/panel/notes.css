@@ -1,5 +1,30 @@
-/* Shellby panel — Notes (see notes.js). */
+/* Shellby panel — Notes (see notes.js and notes-detail.js).
+   Two panes from 820px up (notes.js WIDE): the list, and the note you picked
+   with a rail for its story so far. Below that, one pane at a time. Type grows
+   with the window, so a full-screen panel on a big monitor reads at arm's length. */
+
+/* The view fills the window and each pane scrolls on its own. */
+body[data-view="notes"] .view-notes { display: flex; flex-direction: column; overflow: hidden; }
+.view-notes .view-head { flex: none; }
 .view-head .notes-scope { margin-left: auto; max-width: 55%; text-overflow: ellipsis; }
+
+.notes-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; }
+.notes-pane { min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.notes-split .note-detail { display: none; }
+.notes-split.reading .notes-list-pane { display: none; }
+.notes-split.reading .note-detail { display: block; }
+
+@media (min-width: 820px) {
+  .notes-split {
+    grid-template-columns: minmax(300px, clamp(320px, 32%, 820px)) 1fr;
+    border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--ink); overflow: hidden;
+  }
+  .notes-list-pane { padding: 14px 0 16px; border-right: 1px solid var(--line); }
+  .notes-list-pane > :not(.note-list) { margin-left: 14px; margin-right: 14px; }
+  .notes-split .note-detail { display: block; }
+}
+
+/* ------------------------------------------------------------ the list pane */
 
 /* The box and its Add button are one surface: type, then save from the corner. */
 .note-add { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 6px; padding: 4px 6px 6px 0;
@@ -7,24 +32,41 @@
 .note-add:focus-within { border-color: var(--glass); }
 .note-add .field.area { min-height: 0; resize: none; background: transparent; border: 0; }
 .note-add .slim-btn { height: 30px; flex: none; }
-.notes-where { margin: 0 0 14px 2px; overflow-wrap: anywhere; font: 11px var(--font-mono); font-stretch: 88%; color: var(--sand-faint); }
+.notes-where { margin: 0 0 12px 2px; overflow-wrap: anywhere; font: 11px var(--font-mono); font-stretch: 88%; color: var(--sand-faint); }
+.notes-filter { width: calc(100% - 28px); margin-bottom: 10px; }
 
-.notes-filter { width: 100%; margin: 0 0 8px; }
+.notes-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.notes-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--line); border-radius: 13px;
+  background: none; color: var(--sand-dim); font: inherit; font-size: var(--fs-12); cursor: pointer; }
+.notes-chip:hover { border-color: var(--sand-faint); color: var(--sand); }
+.notes-chip.on { background: var(--sand); border-color: var(--sand); color: var(--ink); font-weight: 700; }
+.notes-chip-n { color: var(--sand-faint); font-weight: 400; }
+.notes-chip.on .notes-chip-n { color: color-mix(in srgb, var(--ink) 70%, var(--sand)); }
+.notes-chip:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
 
 /* One page of lines, not a stack of cards. */
 .note-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--reef); overflow: hidden; }
 .note-list:empty { display: none; }
 .note-list:has(> .note-empty) { border: 0; background: none; }
-.note { display: flex; gap: 12px; align-items: flex-start; padding: 11px 8px 10px 14px; }
-.note + .note { border-top: 1px solid var(--line-soft); }
-.note:hover, .note:focus-within { background: color-mix(in srgb, var(--reef-2) 55%, var(--reef)); }
-.note.pinned { box-shadow: inset 2px 0 0 var(--amber); }
+@media (min-width: 820px) {
+  .notes-list-pane > .note-list { border: 0; border-radius: 0; background: none; border-top: 1px solid var(--line-soft); }
+}
+
+.note-group { padding: 14px 14px 6px; color: var(--sand-faint); font-size: var(--fs-12); }
+.note-group + .note { border-top: 0; }
+
+.note { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 11px 12px 10px 14px; }
+.note + .note, .note-group:not(:first-child) { border-top: 1px solid var(--line-soft); }
+.note:hover { background: color-mix(in srgb, var(--reef-2) 55%, var(--reef)); }
+.note.on { background: var(--reef-2); }
+/* The open note: a coral notch at the edge, the one the detail pane is about. */
+.note.on::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 2px 2px 0; background: var(--coral); }
 .note.done .note-text, .note.done .note-meta { opacity: .55; }
 .note.done .note-text { text-decoration: line-through; text-decoration-color: var(--sand-faint); }
 
 /* A round tick, quiet until you're on it. */
 .note-check {
-  appearance: none; flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin: 1px 0 0;
+  appearance: none; flex: none; display: grid; place-items: center; width: 18px; height: 18px; margin: 2px 0 0;
   border: 1.5px solid var(--sand-faint); border-radius: 50%; background: transparent; cursor: pointer;
   transition: border-color .12s ease-out, background-color .12s ease-out;
 }
@@ -36,45 +78,109 @@
 .note-check:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .note-check { transition: none; } }
 
-.note-main { flex: 1; min-width: 0; }
-.note-text { max-width: 72ch; margin: 0 -4px; padding: 0 4px; font-size: 13.5px; line-height: 1.45; color: var(--sand); white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; border-radius: var(--r-sm); }
-.note-text:hover { background: var(--reef-2); }
-.note-text:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
-.note-edit { min-height: 0; }
-.note-meta { margin-top: 4px; font: 11px var(--font-mono); font-stretch: 88%; color: var(--sand-faint); }
-.note-meta { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+/* The rest of the row is one button: it opens the note. */
+.note-open { flex: 1; min-width: 0; display: block; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.note-open:focus-visible { outline: 2px solid var(--glass); outline-offset: 4px; border-radius: 2px; }
+.note-open .note-text {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: clamp(13.5px, .62vw, 17px); line-height: 1.45; color: var(--sand); white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.note-meta { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font: 11px var(--font-mono); font-stretch: 88%; color: var(--sand-faint); }
 .note-tag { padding: 0 5px; border: 1px solid var(--line); border-radius: var(--r-sm); line-height: 16px; }
-.note-from { color: var(--sand-dim); }
-.note-pin { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, transparent); }
+.note-from { color: var(--glass); border-color: color-mix(in srgb, var(--glass) 35%, transparent); }
+.note-pin { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 45%, transparent); }
 .note-verdict.v-do { color: var(--glass); border-color: color-mix(in srgb, var(--glass) 45%, transparent); }
 .note-verdict.v-differently { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, transparent); }
-.note-verdict.v-skip { color: var(--coral); border-color: color-mix(in srgb, var(--coral) 45%, transparent); }
-.note-last { border: 0; padding: 0; background: none; color: var(--glass); font: inherit; cursor: pointer; }
-.note-last:hover { text-decoration: underline; }
-
-/* The run buttons stay out of the way until you're on the note: hover, or focus anywhere in it.
-   The ⋯ button always shows, so the row still reads as having actions. */
-.note-actions { display: flex; gap: 4px; align-items: center; flex: none; }
-.note-run { opacity: 0; transition: opacity .12s ease-out; }
-.note:hover .note-run, .note:focus-within .note-run { opacity: 1; }
-@media (hover: none) { .note-run { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .note-run { transition: none; } }
-.note-run { height: 26px; padding: 0 9px; font-size: 12px; }
-.note-plan:hover:not(:disabled) { border-color: #8fb3ff; }   /* the Plan mode dot's colour */
-.note-ask:hover:not(:disabled) { border-color: var(--glass); }
-.note-build:hover:not(:disabled) { border-color: var(--coral); }
-.note-more { width: 26px; }
+.note-verdict.v-skip { color: var(--sand-dim); border-color: var(--line); }
 
 .notes-done { margin-top: 12px; }
 .notes-done-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; font-size: 12px; }
 .notes-done-toggle { text-decoration: none; color: var(--sand-dim); }
 .notes-clear { margin-left: auto; color: var(--sand-faint); }
+@media (min-width: 820px) { .notes-done > .note-list { margin: 0 -14px; border: 0; border-radius: 0; background: none; border-top: 1px solid var(--line-soft); } }
 
-.note-empty { padding: 14px 4px; color: var(--sand-dim); font-size: 13px; }
+/* Nothing to list: a short heading and a hint, centred with room to breathe. */
+.note-empty { display: grid; gap: 8px; justify-items: center; padding: clamp(36px, 9vh, 96px) 24px; text-align: center; }
+.note-empty p { margin: 0; max-width: 40ch; }
+.note-empty-title { font: 600 clamp(15px, .85vw, 20px) var(--font-pixel); color: var(--sand); letter-spacing: .02em; }
+.note-empty-hint { font-size: clamp(13px, .7vw, 16px); line-height: 1.55; color: var(--sand-dim); }
 
-/* A narrow panel: the buttons go under the text. */
-@media (max-width: 420px) {
-  .note { flex-wrap: wrap; }
-  .note-actions { width: 100%; padding-left: 30px; }
-  .note-run { opacity: 1; }
+/* ------------------------------------------------------------ the open note */
+
+.note-detail { padding: 14px 2px 24px; }
+@media (min-width: 820px) { .note-detail { padding: 0; } }
+
+.nd-empty { max-width: 46ch; margin: 18vh auto 0; padding: 0 24px; color: var(--sand-dim); font-size: clamp(14px, .8vw, 19px); line-height: 1.55; text-align: center; }
+
+.nd-top { display: flex; align-items: center; gap: 6px; padding: 0 0 10px; }
+@media (min-width: 820px) { .nd-top { position: sticky; top: 0; z-index: 2; padding: 10px 14px; background: var(--ink); border-bottom: 1px solid var(--line-soft); } }
+.nd-spacer { flex: 1; }
+.nd-back { font-size: var(--fs-13); text-decoration: none; }
+.nd-tick[aria-pressed="true"] { color: var(--glass); }
+
+.nd-body { display: grid; grid-template-columns: 1fr; gap: 24px; }
+@media (min-width: 1280px) { .nd-body { grid-template-columns: minmax(0, 1fr) clamp(260px, 22%, 460px); gap: 0; min-height: calc(100% - 52px); } }
+
+.nd-main { min-width: 0; display: flex; flex-direction: column; gap: clamp(16px, 1.4vw, 32px); }
+@media (min-width: 820px) { .nd-main { padding: clamp(18px, 2.2vw, 56px) clamp(18px, 2.6vw, 72px); } }
+
+.nd-text {
+  max-width: 34ch; margin: 0 -6px; padding: 2px 6px; border-radius: var(--r-sm);
+  font-size: clamp(19px, 1.35vw, 34px); line-height: 1.3; font-weight: 700; letter-spacing: -.005em;
+  color: var(--sand); white-space: pre-wrap; overflow-wrap: anywhere; cursor: text;
 }
+.nd-text:hover { background: var(--reef); }
+.nd-text:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+.note-edit { min-height: 0; font-size: clamp(15px, .9vw, 22px); }
+.nd-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: calc(-1 * clamp(8px, .7vw, 18px)); color: var(--sand-faint); font-size: clamp(12px, .62vw, 16px); }
+.nd-meta-done { color: var(--glass); }
+
+/* What Claude said: a speech bubble, since it's Claude talking. */
+.nd-reply { position: relative; max-width: 1000px; padding: clamp(14px, 1.2vw, 32px) clamp(16px, 1.4vw, 36px);
+  background: var(--reef); border: 1px solid var(--line); border-radius: clamp(12px, .8vw, 18px); }
+.nd-reply::before { content: ''; position: absolute; left: 32px; top: -8px; width: 14px; height: 14px; background: var(--reef);
+  border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+.nd-reply-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; font-size: clamp(12px, .62vw, 16px); }
+.nd-reply-head b { color: var(--glass); }
+.nd-reply-head span { color: var(--sand-faint); }
+.nd-reply-head .link-btn { margin-left: auto; }
+.nd-verdict { margin: 0 0 10px; font: 400 clamp(18px, 1.1vw, 28px)/1.2 var(--font-pixel); color: var(--sand); }
+.nd-reply.v-do .nd-verdict { color: var(--glass); }
+.nd-reply.v-differently .nd-verdict { color: var(--amber); }
+.nd-reply.v-skip .nd-verdict { color: var(--sand-dim); }
+.nd-answer.msg.assistant { max-width: 68ch; margin: 0; padding: 0; background: none; border: 0; animation: none; font-size: clamp(13.5px, .78vw, 20px); line-height: 1.6; }
+.nd-answer.msg.assistant::before { display: none; } /* the crab's mark is for replies in the chat */
+.nd-answer-missing, .nd-reply.waiting p { margin: 0; color: var(--sand-dim); font-size: clamp(13px, .7vw, 18px); }
+.nd-reply.waiting { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+
+.nd-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.nd-actions .btn { height: clamp(32px, 2.2vw, 56px); padding: 0 clamp(12px, 1vw, 26px); font-size: clamp(12.5px, .7vw, 18px); border-radius: clamp(8px, .55vw, 14px); }
+.nd-actions .note-plan:hover:not(:disabled):not(.primary) { border-color: #8fb3ff; }   /* the Plan mode dot's colour */
+.nd-actions .note-ask:hover:not(:disabled):not(.primary) { border-color: var(--glass); }
+.nd-actions .note-build:hover:not(:disabled):not(.primary) { border-color: var(--coral); }
+.nd-hint { flex-basis: 100%; margin: 2px 0 0; color: var(--sand-faint); font-size: clamp(11.5px, .6vw, 15px); }
+
+/* The rail: what's happened so far, a real sequence, then the keys. */
+.nd-rail { padding: 0 0 8px; }
+@media (min-width: 1280px) { .nd-rail { padding: clamp(18px, 2.2vw, 56px) clamp(16px, 1.6vw, 40px); border-left: 1px solid var(--line-soft); background: color-mix(in srgb, var(--abyss) 60%, var(--ink)); } }
+.nd-rail h3 { margin: 0 0 12px; font: 400 clamp(15px, .85vw, 22px)/1 var(--font-pixel); color: var(--sand); }
+.nd-rail h3 + * + h3 { margin-top: clamp(20px, 2vw, 44px); }
+.nd-story { list-style: none; margin: 0; padding: 0 0 0 24px; position: relative; }
+.nd-story::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 10px; width: 2px; background: var(--line); }
+.nd-story li { position: relative; padding-bottom: clamp(12px, 1vw, 24px); font-size: clamp(12.5px, .66vw, 17px); }
+.nd-story li::before { content: ''; position: absolute; left: -23px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); border: 2px solid var(--sand-faint); }
+.nd-story li.k-ask::before { border-color: var(--amber); background: var(--amber); }
+.nd-story li.k-plan::before { border-color: #8fb3ff; background: #8fb3ff; }
+.nd-story li.k-build::before { border-color: var(--glass); background: var(--glass); }
+.nd-story li.next::before { border-style: dashed; border-color: var(--coral); }
+.nd-story b, .nd-story-link { display: block; font-weight: 700; color: var(--sand); }
+.nd-story li.next b { color: var(--coral); }
+.nd-story span { color: var(--sand-faint); font-size: .9em; }
+.nd-story-link { padding: 0; border: 0; background: none; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.nd-story-link:hover { color: var(--glass); text-decoration: underline; }
+.nd-story-link:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+.nd-keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 0; font-size: clamp(11.5px, .6vw, 15px); color: var(--sand-faint); }
+.nd-keys dd { margin: 0; }
+.nd-keys kbd { padding: 1px 7px; border: 1px solid var(--line); border-radius: 5px; font: 11px var(--font-mono); color: var(--sand-dim); white-space: nowrap; }
+/* No keys on a touch screen or a narrow panel, where they'd crowd the note. */
+@media (max-width: 819px), (hover: none) { .nd-keys, .nd-rail h3:nth-of-type(2) { display: none; } }

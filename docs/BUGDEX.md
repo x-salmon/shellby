@@ -6,9 +6,13 @@ Every kind of bug Claude fixes for you is a pixel creature, and Shellby keeps th
 
 ## How a bug gets caught
 
-1. **Spotted.** A command fails in one of Shellby's tabs (or in Claude Code anywhere on this PC, with the [Shellby plugin](CLAUDE-CODE.md)), and its output matches a kind of bug. The bug shows up **on the loose** at the top of the Bugdex page, and as a silhouette with its name in the grid. Seeing one earns nothing.
+1. **Spotted.** A command fails in one of Shellby's tabs (or in Claude Code anywhere on this PC, with the [Shellby plugin](CLAUDE-CODE.md)), and its output matches a kind of bug. The bug shows up **on the loose** at the top of the Bugdex page, and as a silhouette with its name in the grid. Seeing one earns nothing. Claude's own scratch work never counts: code typed straight onto the command line (`node -e`, `python -c`), a script fed in on stdin, or one run from a temp folder. A slip there isn't a bug in your code, and nothing could run it again to prove it fixed.
 2. **Worked on.** Claude edits files in that project, or runs a fix like clearing a cache or freeing a port.
-3. **Caught.** The same command passes on changed code. Then Shellby scoops it into a jar on your desktop, and it's in colour on the page with its stats.
+3. **Caught.** The command passes again on changed code. Then Shellby scoops it into a jar on your desktop, and it's in colour on the page with its stats. "Again" means one of these:
+   - the very same command,
+   - a broader run of it (`npm test -- auth` failed, `npm test` passed),
+   - the same script with other arguments (`node scripts/seed.js --fresh` failed, `node scripts/seed.js` passed),
+   - or, when only some tests or files were checked (`node --test test/cart.test.js`, `pytest -k login`, `eslint src/a.js`), the project's whole check of that kind: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, or the tool with no filter (`node --test`, `pytest`, `eslint .`). Another suite doesn't count: an e2e run passing says nothing about the unit tests.
 
 The same goes for other places a bug turns up:
 
@@ -20,7 +24,10 @@ The same goes for other places a bug turns up:
 - **A flaky test,** caught when the [flaky test detective](PROJECTS.md#flaky-tests) proves it fixed for good.
 - **A dependency audit with issues,** caught when the [weekly check](PROJECTS.md#dependencies) patches them.
 
-A bug that isn't fixed in time (a day for most; a week for a red build or a branch that won't come home, three days for a stopped push) slips away quietly. It stays seen, and nothing is taken off you.
+A bug that isn't fixed in time (a day for most; a week for a red build or a branch that won't come home, three days for a stopped push) slips away quietly. It stays seen, and nothing is taken off you. Two kinds go sooner, because nothing could ever catch them:
+
+- **It passed on the very same code.** Then it was never a bug in the code (a flaky run, or something outside it, like a missing install), so it's let go at once.
+- **Its conversation closed.** A bug a Shellby tab spotted got away with it (its battle says it fled).
 
 ### It can't be fooled
 
@@ -31,7 +38,7 @@ A catch never comes from making the failure go away. Shellby refuses one, and sa
 - a check was switched off instead (`@ts-ignore`, `as any`, `eslint-disable`, `# type: ignore`, `# noqa` and the like),
 - only the snapshots were updated, a timeout was just made bigger, or a certificate check was skipped.
 
-And it has to be the same command passing: a grep through a log that happens to come back clean is not a fix.
+And it has to be the same check passing (see **Caught** above), never a narrower one: a grep through a log that happens to come back clean is not a fix, and one test file passing can't vouch for a whole suite that failed.
 
 And a few limits keep it honest: the same bug in the same project counts once in 12 hours and pays XP once a week, at most 3 of one kind and 12 in all count in a day, and a bug back in the same project within 3 days **got away once**. That line is the only mark against it. Nothing you've caught is ever taken away.
 
@@ -159,7 +166,7 @@ There are no battles between friends: that would rank people by how many bugs th
 
 ## Settings
 
-All under **Settings → Shellby → Games**:
+All under **Settings → Games**:
 
 - **Catch bugs for the Bugdex** (on): the whole thing.
 - **Bug battles: watch Claude take on each bug while it's loose** (on)

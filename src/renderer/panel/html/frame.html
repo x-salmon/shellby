@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="../shared/fonts.css">
 <link rel="stylesheet" href="panel.css">
 <link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="toolbox.css">
 <link rel="stylesheet" href="notes.css">
 <link rel="stylesheet" href="files.css">
 <link rel="stylesheet" href="trail.css">
@@ -19,6 +20,7 @@
 <link rel="stylesheet" href="painter.css">
 <link rel="stylesheet" href="stickers.css">
 <link rel="stylesheet" href="together.css">
+<link rel="stylesheet" href="us-road.css">
 <link rel="stylesheet" href="bugdex.css">
 <link rel="stylesheet" href="bugdex-battle.css">
 <link rel="stylesheet" href="tide.css">
@@ -29,12 +31,14 @@
 <link rel="stylesheet" href="tank-layouts.css">
 <link rel="stylesheet" href="../shared/health.css">
 <link rel="stylesheet" href="health-view.css">
+<link rel="stylesheet" href="health-wide.css">
 <link rel="stylesheet" href="card.css">
 <link rel="stylesheet" href="crabonly.css">
 <link rel="stylesheet" href="github.css">
 <link rel="stylesheet" href="nav.css">
 <link rel="stylesheet" href="native.css">
 <link rel="stylesheet" href="composer.css">
+<link rel="stylesheet" href="turn-foot.css">
 <link rel="stylesheet" href="line-comments.css">
 <link rel="stylesheet" href="code.css">
 <link rel="stylesheet" href="turn-checks.css">
@@ -44,12 +48,15 @@
 <link rel="stylesheet" href="hooks.css">
 <link rel="stylesheet" href="remote.css">
 <link rel="stylesheet" href="workflows.css">
+<link rel="stylesheet" href="automate-tide.css">
 <link rel="stylesheet" href="workflow-canvas.css">
 <link rel="stylesheet" href="wf-chat.css">
 <link rel="stylesheet" href="time.css">
 <link rel="stylesheet" href="projects.css">
 <link rel="stylesheet" href="viewer.css">
 <link rel="stylesheet" href="logbook.css">
+<link rel="stylesheet" href="trophies-rail.css">
+<link rel="stylesheet" href="xp-sheet.css">
 <link rel="stylesheet" href="reef.css">
 <link rel="stylesheet" href="molt.css">
 <link rel="stylesheet" href="wrapped.css">
@@ -61,9 +68,9 @@
     <button type="button" class="brand" id="brandBtn" title="Shellby's outfits and trophies" aria-label="Shellby: outfits and trophies">
       <span class="brand-crab" id="brandCrab"></span>
       <span class="brand-name">Shellby</span>
-      <span class="brand-xp" aria-hidden="true"><i id="brandXp"></i></span>
     </button>
-    <button type="button" class="brand-level" id="brandLevel" hidden></button>
+    <!-- the nameplate: "Lv" (CSS), the level, its marks, and ten XP cells (xp.js). Its text is only the level and marks. -->
+    <button type="button" class="brand-level" id="brandLevel" hidden><span class="lv-num" id="brandLevelNum"></span><span class="lv-mark" id="brandLevelMark"></span><span class="lv-cells" id="brandXp" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
     <span class="win-title" id="winTitle"></span>
     <button class="mode-chip" id="modeChip" type="button" aria-haspopup="menu" title="Permission mode (Shift+Tab in the message box cycles it)" aria-keyshortcuts="Shift+Tab">
       <span class="mode-dot"></span><span id="modeLabel">Ask</span>
@@ -127,11 +134,11 @@
       <span id="branchLabel">own copy</span>
     </button>
     <button type="button" class="folder-chip effort-chip" id="effortChip" aria-haspopup="menu" title="How hard Claude thinks (effort)">
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2 9.4 6l3.9.3-3 2.5 1 3.9L8 10.6l-3.3 2.1 1-3.9-3-2.5L6.6 6z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      <svg class="effort-dial" viewBox="0 0 16 16" aria-hidden="true"><path class="dial-track" d="M1.8 12A6.2 6.2 0 0 1 14.2 12"/><path class="dial-fill" d="M1.8 12A6.2 6.2 0 0 1 14.2 12" pathLength="100"/><path class="dial-needle" d="M8 12H2.8"/><circle class="dial-hub" cx="8" cy="12" r="1.5"/></svg>
       <span id="effortLabel">auto</span>
     </button>
     <button type="button" class="folder-chip model-chip" id="modelChip" aria-haspopup="menu" title="The model this conversation runs (/model)" hidden>
-      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 14 8l-6 6.2L2 8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      <svg class="model-tier" id="modelTier" viewBox="0 0 13 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".5"/><rect x="5" y="4" width="3" height="8" rx=".5"/><rect x="10" y="0" width="3" height="12" rx=".5"/></svg>
       <span id="modelLabel"></span>
     </button>
     <button type="button" class="ctx-chip" id="ctxChip" aria-haspopup="menu" hidden>
@@ -141,8 +148,9 @@
     </button>
     <button type="button" class="usage" id="usage" aria-haspopup="menu" aria-label="Usage limits: see what used them" hidden>
       <span class="usage-who" id="usageWho" hidden><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="4" r="2.2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1.8 11c.5-2.3 2.2-3.5 4.2-3.5s3.7 1.2 4.2 3.5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span>
-      <span class="meter" id="meter5h"><span class="meter-label">5h</span><span class="meter-track"><span class="meter-fill"></span></span></span>
-      <span class="meter" id="meter7d"><span class="meter-label">7d</span><span class="meter-track"><span class="meter-fill"></span></span></span>
+      <span class="meter" id="meter5h"><span class="meter-label">5h</span><span class="meter-track"><span class="meter-fill"></span></span><span class="meter-num"></span></span>
+      <span class="meter" id="meter7d"><span class="meter-label">7d</span><span class="meter-track"><span class="meter-fill"></span></span><span class="meter-num"></span></span>
+      <span class="usage-when" id="usageWhen" hidden></span>
     </button>
     <button type="button" class="icon-btn pop-btn" id="trailBtn" title="File manager: the Trail and All files (Ctrl+Shift+E · Ctrl+Shift+F)" aria-label="File manager" aria-pressed="false" aria-controls="trail" aria-keyshortcuts="Control+Shift+E Control+Shift+F">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 4.2c0-.7.5-1.2 1.2-1.2h3l1.4 1.5H13c.7 0 1.2.5 1.2 1.2v6.1c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
@@ -466,11 +474,13 @@
 <script src="../shared/time-format.js"></script>
 <script src="../shared/streaks-format.js"></script>
 <script src="../shared/panes.js"></script>
+<script src="../shared/branch-label.js"></script>
 <script src="../shared/workposes.js"></script>
 <script src="../shared/trail.js"></script>
 <script src="../shared/viewer-logic.js"></script>
 <script src="../shared/review-lenses.js"></script>
 <script src="../shared/files-logic.js"></script>
+<script src="../shared/tide-chart.js"></script>
 <script src="shortcuts.js"></script>
 <script src="core.js"></script>
 <script src="a11y.js"></script>
@@ -483,6 +493,7 @@
 <script src="textmenu.js"></script>
 <script src="feed-logic.js"></script>
 <script src="feed.js"></script>
+<script src="feed-foot.js"></script>
 <script src="feed-notes.js"></script>
 <script src="feed-conflicts.js"></script>
 <script src="feed-asks.js"></script>
@@ -518,6 +529,7 @@
 <script src="tab-chips.js"></script>
 <script src="tab-git.js"></script>
 <script src="ship-it.js"></script>
+<script src="meter-logic.js"></script>
 <script src="tab-meters.js"></script>
 <script src="clash-text.js"></script>
 <script src="clashes.js"></script>
@@ -539,6 +551,8 @@
 <script src="toolbox-team.js"></script>
 <script src="toolbox-mods.js"></script>
 <script src="toolbox-batch.js"></script>
+<script src="toolbox-mcp.js"></script>
+<script src="toolbox-tidy.js"></script>
 <script src="toolbox.js"></script>
 <script src="shop.js"></script>
 <script src="mcp-picker.js"></script>
@@ -556,8 +570,11 @@
 <script src="wf-runs.js"></script>
 <script src="wf-save.js"></script>
 <script src="workflows.js"></script>
+<script src="automate-tide.js"></script>
 <script src="settings-text.js"></script>
 <script src="settings-search-logic.js"></script>
+<script src="notes-logic.js"></script>
+<script src="notes-detail.js"></script>
 <script src="notes.js"></script>
 <script src="settings.js"></script>
 <script src="settings-account.js"></script>
@@ -578,6 +595,7 @@
 <script src="painter.js"></script>
 <script src="stickers.js"></script>
 <script src="crew.js"></script>
+<script src="us-road.js"></script>
 <script src="together.js"></script>
 <script src="bugdex.js"></script>
 <script src="bugdex-battle.js"></script>
@@ -586,6 +604,7 @@
 <script src="health-gauges.js"></script>
 <script src="health-drives.js"></script>
 <script src="health-hogs.js"></script>
+<script src="health-diagnosis.js"></script>
 <script src="card.js"></script>
 <script src="moment-card.js"></script>
 <script src="moment-clip.js"></script>
@@ -597,6 +616,7 @@
 <script src="tank-gauges-more.js"></script>
 <script src="tank-life.js"></script>
 <script src="tank-render.js"></script>
+<script src="tank-room.js"></script>
 <script src="tank.js"></script>
 <script src="tank-layouts.js"></script>
 <script src="tank-tidy.js"></script>
@@ -614,6 +634,7 @@
 <script src="first-run.js"></script>
 <script src="workmode.js"></script>
 <script src="outfitcode.js"></script>
+<script src="xp-sheet.js"></script>
 <script src="xp.js"></script>
 <script src="week-card.js"></script>
 <script src="time.js"></script>
@@ -621,12 +642,14 @@
 <script src="focus.js"></script>
 <script src="startfrom.js"></script>
 <script src="backlog.js"></script>
+<script src="taskboard.js"></script>
 <script src="project-facts.js"></script>
 <script src="inbox.js"></script>
 <script src="releases.js"></script>
 <script src="project-report.js"></script>
 <script src="projects-logic.js"></script>
 <script src="projects.js"></script>
+<script src="projects-split.js"></script>
 <script src="project-page.js"></script>
 <script src="projects-servers.js"></script>
 <script src="tool-tabs.js"></script>
@@ -641,6 +664,7 @@
 <script src="social.js"></script>
 <script src="friends.js"></script>
 <script src="nav.js"></script>
+<script src="settings-rail.js"></script>
 <script src="settings-search.js"></script>
 <script src="levels-ui.js"></script>
 <script src="molt.js"></script>
@@ -651,6 +675,7 @@
 <script src="wrapped-card.js"></script>
 <script src="wrapped.js"></script>
 <script src="logbook.js"></script>
+<script src="trophies-rail.js"></script>
 <script src="boot.js"></script>
 </body>
 </html>

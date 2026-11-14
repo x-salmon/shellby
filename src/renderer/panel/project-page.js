@@ -14,7 +14,7 @@
 
   // The page's parts, in order, as the links at the top name them.
   const SECTIONS = [
-    ['next', 'Next up'], ['pulse', 'Pulse'], ['notes', 'Notes'], ['health', 'Health'], ['releases', 'Releases'],
+    ['next', 'Next up'], ['board', 'Task board'], ['pulse', 'Pulse'], ['notes', 'Notes'], ['health', 'Health'], ['releases', 'Releases'],
     ['helpers', 'Helpers'], ['convos', 'Conversations'], ['report', 'Report'], ['clones', 'On this PC'],
   ];
   const sectionId = key => `pj-sec-${key}`;
@@ -28,6 +28,8 @@
     const cards = [
       // What to work on comes first: it's why you opened the page (backlog.js).
       ['next', (main || p.github) && SB.backlog.card({ root: main?.root || null, repo: p.github?.repo || null, name: p.name }, { onClone: repo => P.openClone(repo) })],
+      // What the conversations handed each other here; hidden while it's empty (taskboard.js).
+      ['board', main && SB.taskBoard.card({ root: main.root })],
       ['pulse', main && F.pulse(p, { onChange: reload })],
       ['notes', main && F.journal(p, { newHere: P.newHere, onChange: reload, keptDetails: P.keptDetails })],
       ['health', F.health(p)],
@@ -42,7 +44,8 @@
       h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Remove from Projects', onclick: () => removeProject(p) }),
       main && h('button', { type: 'button', class: 'btn ghost slim-btn', text: "Forget Claude's history here…", title: "Delete Claude Code's transcripts, to-dos and memory for this folder (claude purge). Your code isn't touched.", onclick: () => forgetClaude(p, main.root) }));
     SB.keepFocus($('pjDetailScreen'), () => $('pjDetailScreen').replaceChildren(
-      head(p), needsStrip(p), jumpLinks(present), ...cards.map(([, el]) => el), clones, foot,
+      // The cards share one wrapper so a wide page can set them in columns (projects.css).
+      head(p), needsStrip(p), jumpLinks(present), h('div', { class: 'pj-cards' }, ...cards.map(([, el]) => el), clones), foot,
     ));
   }
 
@@ -56,7 +59,7 @@
     const sticker = p.insights?.sticker;
     const dev = P.devAction(p);
     return h('div', { class: 'pj-detail-head' },
-      h('button', { type: 'button', class: 'btn ghost slim-btn', text: '← Projects', onclick: P.closeProject }),
+      h('button', { type: 'button', class: 'btn ghost slim-btn pj-back', text: '← Projects', onclick: P.closeProject }),
       h('div', { class: 'pj-hero' },
         F.tile(p, 'lg'),
         h('div', { class: 'pj-hero-text' },

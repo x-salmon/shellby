@@ -49,7 +49,9 @@
   const listOf = R.listOf;
   const editing = () => !!draft;
   const layout = () => draft || v.layout;
-  const scene = () => P.resolve(layout(), v);
+  // Decorating with the light on the clock, the lights come up so you can see what you place.
+  const lit = lay => (draft && lay.style?.light === 'clock' ? { ...lay, style: { ...lay.style, light: 'day' } } : lay);
+  const scene = () => P.resolve(lit(layout()), v);
   const trayItem = ref => v.tray.find(t => t.ref === ref);
   const capacityOf = id => (v.sizes.find(s => s.id === id) || v.size).cap;
   const pieceOf = uid => layout().placed.find(p => p.uid === uid);
@@ -60,11 +62,10 @@
     if (!v) return;
     const { world } = scene();
     const dpr = window.devicePixelRatio || 1;
+    const room = SB.tankRoom?.fit(); // the stage, less the controls above it (tank-room.js); else half the tab
     const pad = parseFloat(getComputedStyle(stage).paddingLeft) * 2 || 0;
-    const cssW = (stage.clientWidth || 420) - pad;
-    // Width alone made him fill a maximized panel; the tray has to stay in
-    // reach below the glass while you decorate, so he gets about half its height.
-    const cssH = (view.clientHeight || 600) * TANK_SHARE;
+    const cssW = room ? room.w : (stage.clientWidth || 420) - pad;
+    const cssH = room ? room.h : (view.clientHeight || 600) * TANK_SHARE;
     K = Math.max(1, Math.floor(Math.min((cssW * dpr) / world.w, (cssH * dpr) / world.h)));
     u = K / dpr;
     canvas.width = world.w * K;
@@ -127,7 +128,7 @@
       walker.x = walker.target;
       walker.target = null;
       walker.rest = now + (walker.act ? walker.act.ms : 1500 + Math.random() * 3500);
-      if (walker.act) { walker.act.start = now; say(TL.describe(walker.act), { quiet: true }); }
+      if (walker.act) { walker.act.start = now; say(TL.describe(walker.act), { quiet: true }); SB.tankRoom?.doing(TL.describe(walker.act)); }
       return;
     }
     walker.dir = Math.sign(d);
@@ -254,7 +255,10 @@
 
   function renderHits() {
     if (!v) return;
-    R.renderHits({ v, hits, pieces: scene().pieces, edit: editing(), selected, u, crab });
+    const pieces = scene().pieces;
+    R.renderHits({ v, hits, pieces, edit: editing(), selected, u, crab });
+    SB.tankRoom?.render({ editing: editing(), u, pieces });
+    SB.tankRoom?.placePicked(selected && hitFor(selected));
   }
 
   const tag = btn => R.tag(btn, !!drag);
@@ -265,6 +269,7 @@
     if (!p || !b) return;
     b.style.left = `${(p.x - 1) * u}px`;
     b.style.top = `${(p.y - p.h) * u}px`;
+    SB.tankRoom?.placePicked(uid === selected ? b : null);
   }
 
   hits.addEventListener('pointerover', e => tag(e.target.closest('.tk-hit')));
@@ -616,6 +621,8 @@
     const edit = editing();
     const p = edit && selected && pieceOf(selected);
     R.renderTools({ edit, history, future, item: p && trayItem(p.ref) });
+    if (edit) $('tkCount').textContent = `${draft.placed.length} of ${plural(capacityOf(draft.size), 'piece')}`;
+    SB.tankRoom?.placePicked(p && hitFor(selected));
   }
 
   function renderTray() {
@@ -735,6 +742,7 @@
   }
 
   async function open() {
+    SB.tankRoom?.open();
     SB.tankGauges?.refresh();
     refreshLife();
     apply(await fetchTank());
@@ -773,6 +781,7 @@
   const resized = new ResizeObserver(() => { if (state.view === 'tank' && v) { size(); keepingFocus(renderHits); kick(); } });
   resized.observe(stage);
   resized.observe(view); // a taller or shorter window changes his share, not the stage's width
+  resized.observe($('tkBar')); // ...and so do the controls over the glass, when they change height
   document.addEventListener('visibilitychange', kick);
   // ...and the calm lifting (or falling) is the same: back to life, or one still frame.
   let wasCalm = calm();

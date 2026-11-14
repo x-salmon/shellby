@@ -41,6 +41,7 @@ function wireQuit(d) {
     d.dictation?.stop();
     d.media?.stop(); // its PowerShell loop never reads stdin, so it won't notice we've gone
     d.history?.flush(); // transcript lines and index changes still waiting (history/index.js)
+    d.stillGate?.flush(); // a settings save held while he walked, the ones just above included (desktop/still.js)
     // Last: whatever a task started and its owner didn't get to end (process-job.js).
     const left = processJob.sweepAll();
     if (left.length) d.log?.info?.('ended at quit', left.join(', '));

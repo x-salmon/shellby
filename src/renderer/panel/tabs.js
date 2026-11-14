@@ -49,6 +49,8 @@
       cache: summary.cache !== undefined ? summary.cache : tab.cache || null,
       model: summary.model ?? tab.model ?? '', // the model it runs (the model chip, composer.js)
       modelAsked: summary.modelAsked ?? tab.modelAsked ?? '', // what it asked for: '' is Claude Code's default
+      local: summary.local !== undefined ? summary.local : tab.local || null, // the local model it runs on (main's local/agent.js)
+      canLocal: summary.canLocal ?? tab.canLocal ?? !(summary.saved ?? tab.saved), // still free to move between local and Claude
       // The tests' last verdict and the latest changes' review (main's review-inbox.js), for the review inbox.
       checks: summary.checks !== undefined ? summary.checks : tab.checks || null,
       ready: summary.ready !== undefined ? summary.ready : tab.ready || null,
@@ -189,6 +191,22 @@
     tab.render({ kind: 'agent', name: agent });
     input.focus();
   };
+
+  // A fresh conversation on another agent's CLI (Gemini CLI, OpenCode, Codex: main's
+  // harness/), in the usual folder. Not installed: the error says how to install it.
+  SB.newTabOn = async (/** @type {{ id: string, name: string }} */ harness) => {
+    const r = await api.newTab({ harness: harness.id });
+    if (!r.ok) return SB.toast(r.error, r.install ? { action: 'Copy command', onAction: () => api.copyText(r.install) } : {});
+    const tab = SB.ensureTab({ id: r.tabId, title: 'New task', cwd: state.cwd });
+    SB.setView('chat');
+    SB.activate(r.tabId);
+    tab.render({ kind: 'harness', name: harness.name });
+    input.focus();
+  };
+  // What's installed, read at start and again when the palette opens (nav.js).
+  SB.harnesses = [];
+  SB.refreshHarnesses = () => api.harnessList().then(list => { SB.harnesses = Array.isArray(list) ? list : []; }).catch(() => {});
+  SB.refreshHarnesses();
 
   // A fresh tab in a known project (or the usual folder), with a prompt ready to
   // send (from a nudge).

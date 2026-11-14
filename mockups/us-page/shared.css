@@ -1,0 +1,56 @@
+/* Shared base for the Us mockups: Shellby's own tokens and fonts, full screen
+   at 2560x1440 CSS px (a 4K screen at 150%), inside the panel's real frame. */
+@import url("../../src/renderer/shared/tokens.css");
+@import url("../../src/renderer/shared/fonts.css");
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 2560px; height: 1440px; overflow: hidden; }
+body {
+  background: var(--abyss); color: var(--sand);
+  font: 18px/1.5 var(--font-body); -webkit-font-smoothing: antialiased;
+  display: grid; grid-template-rows: 72px 1fr 84px;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+canvas { display: block; image-rendering: pixelated; }
+:focus-visible { outline: 2px solid var(--glass); outline-offset: 3px; }
+ul, ol { list-style: none; }
+
+/* ------------------------------------------------ the app's frame */
+.app-top {
+  display: flex; align-items: center; gap: 22px; padding: 0 28px;
+  background: var(--ink); border-bottom: 1px solid var(--line);
+}
+.app-crab { display: inline-grid; place-items: center; }
+.app-pill { display: inline-flex; align-items: center; gap: 10px; height: 40px; padding: 0 18px;
+  border: 1px solid var(--line); border-radius: 20px; background: var(--reef); font-weight: 700; }
+.app-pill i { width: 9px; height: 9px; border-radius: 50%; background: var(--glass); }
+.app-tabs { display: flex; gap: 4px; margin-left: 16px; padding: 4px; border-radius: 12px; background: var(--abyss); border: 1px solid var(--line); }
+.app-tabs span { padding: 7px 18px; border-radius: 9px; color: var(--sand-dim); font-weight: 700; font-size: 16px; }
+.app-tabs span.on { background: var(--reef-3); color: var(--sand); }
+.app-icons { margin-left: auto; display: flex; gap: 22px; color: var(--sand-dim); }
+.app-nav {
+  display: flex; justify-content: center; gap: 64px; align-items: center;
+  background: var(--ink); border-top: 1px solid var(--line);
+}
+.app-nav > span { display: grid; justify-items: center; gap: 4px; font-size: 15px; font-weight: 700; color: var(--sand-dim); min-width: 72px; }
+.app-nav > span.on { color: var(--sand); }
+.app-nav svg { color: var(--sand-dim); }
+
+main { position: relative; overflow: hidden; min-height: 0; }
+
+/* ------------------------------------------------ shared pieces */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  height: 48px; padding: 0 22px; border-radius: var(--r);
+  background: var(--reef-2); border: 1px solid var(--line); font-weight: 700; font-size: 17px;
+}
+.btn.primary { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+.btn.ghost { background: none; }
+.btn.small { height: 38px; padding: 0 16px; font-size: 15px; }
+.pixel { font-family: var(--font-pixel); font-weight: 500; letter-spacing: .01em; }
+.dim { color: var(--sand-dim); }
+.faint { color: var(--sand-faint); }
+.emoji { font-family: "Segoe UI Emoji", sans-serif; font-style: normal; }
+
+/* The mockup's own label, bottom-right, so a screenshot says which concept it is */
+.caption { position: fixed; left: 28px; bottom: 30px; font: 14px var(--font-body); color: var(--sand-faint-deco); z-index: 50; }

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby effort symbol: 5 directions</title>
+<style>
+@font-face { font-family: "Pixelify Sans"; src: url("../assets/fonts/PixelifySans.ttf"); font-weight: 400 700; }
+@font-face { font-family: "Martian Mono"; src: url("../assets/fonts/MartianMono.ttf"); font-weight: 100 800; font-stretch: 75% 112.5%; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../assets/fonts/AtkinsonHyperlegible-Regular.ttf"); }
+
+:root {
+  --abyss: #071012; --reef: #11232a; --line: #214049;
+  --sand: #f3e6cc; --sand-dim: #b3a892; --amber: #ffc15e; --coral: #ff7a5c; --glass: #7fd6c2;
+  --font-pixel: "Pixelify Sans", monospace; --font-mono: "Martian Mono", Consolas, monospace;
+  --font-body: "Atkinson Hyperlegible", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 40px 64px; background: var(--abyss); color: var(--sand); font: 15px/1.5 var(--font-body); }
+h1 { font: 600 28px/1.1 var(--font-pixel); margin: 0 0 6px; }
+.lede { color: var(--sand-dim); max-width: 70ch; margin: 0 0 28px; }
+.dir { display: grid; grid-template-columns: 300px 1fr; gap: 28px; padding: 26px 0; border-top: 1px solid var(--line); }
+.dir h2 { font: 600 20px/1.2 var(--font-pixel); margin: 0 0 6px; }
+.dir h2 small { color: var(--sand-dim); font: 400 14px var(--font-pixel); margin-right: 6px; }
+.dir p { color: var(--sand-dim); margin: 0 0 8px; font-size: 14px; }
+.dir .why { color: var(--sand); }
+
+/* the composer's chip row, at real size */
+.bar { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; width: 440px; background: #0d1a1d; border-radius: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 3px 6px; border-radius: 6px;
+  color: var(--sand-dim); font: 500 11.5px var(--font-mono); font-stretch: 88%; cursor: pointer; }
+.chip:hover { background: var(--reef); color: var(--sand); }
+.chip svg { height: 14px; flex: none; overflow: visible; }
+.chip.on { color: var(--amber); }
+.chip.max { color: var(--coral); }
+
+.states { display: flex; flex-wrap: wrap; gap: 22px 30px; align-items: end; margin-top: 20px; }
+.state { display: grid; justify-items: center; gap: 8px; margin: 0; }
+.zoom { zoom: 2.5; }
+.state figcaption { font-size: 12px; color: var(--sand-dim); }
+
+/* motion on hover, so each direction shows how it could feel */
+.d3 .chip:hover .fl { animation: flick .5s steps(2) infinite; transform-origin: 50% 100%; }
+@keyframes flick { 50% { transform: scaleY(1.08) scaleX(.94); } }
+.d5 .chip:hover .bub { animation: rise .9s steps(3) infinite; }
+.d5 .chip:hover .bub:nth-child(2n) { animation-delay: -.3s; }
+@keyframes rise { 50% { transform: translateY(-1px); } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+<h1>Effort symbol</h1>
+<p class="lede">Today the chip shows the same hollow star at every level, so the word does all the work. Each direction below
+makes the symbol itself say how hard Claude is thinking: you can read the level at a glance and the word becomes a confirmation.
+Auto stays quiet (dim, hollow). Max turns coral as a nudge that it spends your limits fastest. Hover a chip to see it move.</p>
+
+<div id="dirs"></div>
+
+<script>
+const LEVELS = ['auto', 'low', 'medium', 'high', 'extra high', 'max'];
+const dim = 'opacity=".3"';
+
+/* Each direction draws level n (0 = auto, 1..5) as an SVG at 16px tall. */
+const DIRS = [
+  {
+    name: 'Signal bars', w: 16,
+    what: 'Five rising bars, lit up to the level, like a phone\'s signal.',
+    why: 'The most familiar "how much" glyph there is; reads instantly at 14px and sits well beside the context meter.',
+    draw(n) {
+      let s = '';
+      for (let i = 0; i < 5; i++) {
+        const h = 3 + i * 2.6, x = 0.5 + i * 3.2, on = n > i;
+        s += n === 0
+          ? `<rect x="${x + .5}" y="${15.5 - h}" width="1.6" height="${h - .5}" fill="none" stroke="currentColor" stroke-width="1" ${dim}/>`
+          : `<rect x="${x}" y="${16 - h}" width="2.4" height="${h}" rx=".4" fill="currentColor" ${on ? '' : dim}/>`;
+      }
+      return s;
+    },
+  },
+  {
+    name: 'Dial', w: 16,
+    what: 'A small gauge whose needle swings right as the effort goes up.',
+    why: 'Says "setting you can turn", which is what the chip is. The filled arc gives a second cue besides the needle angle.',
+    draw(n) {
+      const cx = 8, cy = 12, r = 6.2;
+      const pt = deg => [cx + r * Math.cos(deg * Math.PI / 180), cy - r * Math.sin(deg * Math.PI / 180)];
+      const [ax, ay] = pt(180), [bx, by] = pt(0);
+      let s = `<path d="M${ax} ${ay}A${r} ${r} 0 0 1 ${bx} ${by}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" ${n ? dim : 'stroke-dasharray="1.4 1.6" opacity=".55"'}/>`;
+      if (n === 0) return s + `<circle cx="${cx}" cy="${cy}" r="1.3" fill="currentColor" opacity=".6"/>`;
+      const deg = 180 - n * 36 + 18; // 162 → 18
+      const [ex, ey] = pt(deg), [nx, ny] = [cx + 5.2 * Math.cos(deg * Math.PI / 180), cy - 5.2 * Math.sin(deg * Math.PI / 180)];
+      s += `<path d="M${ax} ${ay}A${r} ${r} 0 0 1 ${ex.toFixed(2)} ${ey.toFixed(2)}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`;
+      s += `<path d="M${cx} ${cy}L${nx.toFixed(2)} ${ny.toFixed(2)}" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>`;
+      return s + `<circle cx="${cx}" cy="${cy}" r="1.5" fill="currentColor"/>`;
+    },
+  },
+  {
+    name: 'Pixel flame', w: 16, cls: 'd3',
+    what: 'A stepped pixel flame that grows with the level; max throws off sparks.',
+    why: 'The most Shellby of the five: pixel art like the crab, and "burning harder" maps neatly to spending more of your plan.',
+    draw(n) {
+      // flame drawn on a 1px grid, scaled from the bottom
+      const flame = 'M7 1h2v2h1v2h1v1h1v2h1v4h-1v2h-1v1H5v-1H4v-2H3V8h1V6h1V5h1V3h1z';
+      const core = 'M7 8h2v1h1v3h-1v1H7v-1H6V9h1z';
+      const k = n === 0 ? 0.9 : 0.6 + n * 0.08;
+      const t = `transform="translate(${8 - 8 * k} ${16 - 15 * k}) scale(${k})"`;
+      if (n === 0) return `<path ${t} d="${flame}" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55"/>`;
+      let s = `<g class="fl"><path ${t} d="${flame}" fill="currentColor"/><path ${t} d="${core}" fill="#071012" opacity=".55"/></g>`;
+      if (n === 5) s += '<rect x="1" y="2" width="1.5" height="1.5" fill="currentColor"/><rect x="13.5" y="0" width="1.5" height="1.5" fill="currentColor"/>';
+      return s;
+    },
+  },
+  {
+    name: 'Pip stairs', w: 22,
+    what: 'Five square pips climbing like steps, filled up to the level.',
+    why: 'Exact and countable ("3 of 5"), echoes the quest pips already in the panel, and a little wider so each pip stays crisp.',
+    draw(n) {
+      let s = '';
+      for (let i = 0; i < 5; i++) {
+        const x = i * 4.5, y = 12 - i * 3;
+        s += n > i
+          ? `<rect x="${x}" y="${y}" width="4" height="4" fill="currentColor"/>`
+          : `<rect x="${x + .5}" y="${y + .5}" width="3" height="3" fill="none" stroke="currentColor" stroke-width="1" opacity="${n ? .35 : .55}"/>`;
+      }
+      return s;
+    },
+  },
+  {
+    name: 'Thought bubbles', w: 16, cls: 'd5',
+    what: 'Bubbles rising from the corner, one more per level, like the crab blowing them underwater.',
+    why: 'Literally "thinking", and on theme for a hermit crab. Hover makes them drift up while Claude is working.',
+    draw(n) {
+      const B = [[1.6, 14.4, 1.5], [4.6, 11.4, 1.8], [8.2, 8.2, 2.1], [11.4, 4.4, 2.3], [14.6, 1, 2.2]];
+      return B.map(([x, y, r], i) => n > i
+        ? `<circle class="bub" cx="${x}" cy="${y}" r="${r}" fill="currentColor"/>`
+        : `<circle cx="${x}" cy="${y}" r="${r - .4}" fill="none" stroke="currentColor" stroke-width=".9" opacity="${n ? .35 : .55}"/>`).join('');
+    },
+  },
+];
+
+const svg = (d, n, h = 14) => `<svg viewBox="0 0 ${d.w} 16" style="height:${h}px;width:${h * d.w / 16}px" aria-hidden="true">${d.draw(n)}</svg>`;
+const chip = (d, n) => `<button type="button" class="chip${n ? ' on' : ''}${n === 5 ? ' max' : ''}">${svg(d, n)}<span>${n ? LEVELS[n] : 'auto'}</span></button>`;
+const BRANCH = '<button type="button" class="chip"><svg viewBox="0 0 16 16" style="width:14px"><path d="M4.5 2.5v11M4.5 10.5c0-3 7-2.5 7-6.5M11.5 2.5v1.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="4.5" cy="12.6" r="1.4" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="11.5" cy="3.2" r="1.4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg><span>own copy</span></button>';
+const MODEL = '<button type="button" class="chip"><svg viewBox="0 0 16 16" style="width:14px"><path d="M8 1.8 14 8l-6 6.2L2 8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg><span>opus</span></button>';
+
+document.getElementById('dirs').innerHTML = DIRS.map((d, i) => `
+  <section class="dir ${d.cls || ''}">
+    <div>
+      <h2><small>${i + 1}.</small>${d.name}</h2>
+      <p>${d.what}</p>
+      <p class="why">${d.why}</p>
+    </div>
+    <div>
+      <div class="bar">${BRANCH}${chip(d, 2)}${MODEL}</div>
+      <div class="states">${LEVELS.map((l, n) => `
+        <figure class="state"><div class="zoom">${chip(d, n)}</div><figcaption>${l}</figcaption></figure>`).join('')}
+      </div>
+    </div>
+  </section>`).join('');
+</script>
+</body>
+</html>

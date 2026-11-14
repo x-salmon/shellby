@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Notes, concept 4: one note at a time</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 760px; grid-template-rows: 1fr auto; gap: 32px 48px; }
+
+  /* ---- the one in focus ---- */
+  .focus { position: relative; border-radius: 28px; padding: 64px 72px 56px; overflow: hidden;
+    background:
+      radial-gradient(90% 70% at 100% 100%, rgba(127,214,194,.10), transparent 60%),
+      linear-gradient(180deg, var(--reef) 0%, var(--ink) 100%);
+    border: 1px solid var(--line); display: flex; flex-direction: column; }
+  .focus .label { display: flex; align-items: center; gap: 16px; color: var(--sand-dim); font-size: 18px; }
+  .focus .label b { font: 500 24px/1 var(--font-pixel); color: var(--coral); }
+  .focus h2 { margin-top: 30px; font-size: 64px; line-height: 1.16; font-weight: 700; letter-spacing: -.015em; max-width: 22ch; }
+  .reason { margin-top: 20px; display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: end; max-width: 1100px; }
+  .reason img { width: 390px; height: 255px; image-rendering: pixelated; margin-bottom: -10px; }
+  .bubble { position: relative; background: var(--abyss); border: 1px solid var(--line); border-radius: 18px; padding: 24px 28px; margin-bottom: 40px; }
+  .bubble::after { content: ""; position: absolute; left: -11px; bottom: 30px; width: 20px; height: 20px; background: var(--abyss);
+    border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
+  .bubble b { color: var(--glass); font-size: 17px; display: block; margin-bottom: 8px; }
+  .bubble p { font-size: 21px; line-height: 1.55; }
+  .focus .actions { margin-top: auto; display: flex; gap: 16px; align-items: center; }
+  .focus .actions .btn { height: 64px; padding: 0 32px; font-size: 20px; border-radius: 14px; }
+  .focus .actions .later { margin-left: auto; color: var(--sand-faint); font-size: 17px; }
+  .facts { display: flex; gap: 36px; margin-top: 34px; color: var(--sand-faint); font-size: 17px; }
+  .facts b { color: var(--sand); font-weight: 700; }
+
+  .steps { margin-top: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1400px; }
+  .steps h3 { grid-column: 1 / -1; font-size: 17px; color: var(--sand-dim); font-weight: 700; }
+  .step { border-top: 2px solid var(--line); padding-top: 14px; font-size: 17px; color: var(--sand-dim); line-height: 1.45; }
+  .step b { display: block; font: 500 20px/1.2 var(--font-pixel); color: var(--sand); margin-bottom: 6px; }
+  .week-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .week-wrap small { color: var(--sand-faint); font-size: 15px; }
+  .week { flex: 1; }
+
+  /* ---- the queue: a real order, so it's numbered ---- */
+  .queue { display: flex; flex-direction: column; min-height: 0; }
+  .queue h3 { font: 500 28px/1 var(--font-pixel); display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .queue h3 span { font: 400 16px var(--font-body); color: var(--sand-faint); }
+  .queue ol { list-style: none; counter-reset: q; display: flex; flex-direction: column; }
+  .queue li { counter-increment: q; display: grid; grid-template-columns: 22px 46px 1fr; gap: 12px; align-items: start; padding: 22px 0; border-bottom: 1px solid var(--line-soft); }
+  .queue li::before { content: counter(q); grid-column: 2; grid-row: 1; font: 500 28px/1 var(--font-pixel); color: var(--sand-faint-deco); padding-top: 2px; }
+  .grip { grid-column: 1; grid-row: 1; width: 12px; height: 22px; margin-top: 4px;
+    background: radial-gradient(circle, var(--sand-faint-deco) 1.6px, transparent 2px) 0 0 / 6px 6px; }
+  .queue .t { grid-column: 3; grid-row: 1; font-size: 20px; line-height: 1.4; }
+  .queue .m { display: flex; gap: 12px; align-items: center; margin-top: 10px; color: var(--sand-faint); font-size: 15px; }
+  .queue li.lifted { background: var(--reef-2); border-radius: 14px; padding-left: 14px; padding-right: 14px; margin: 0 -14px; border-bottom-color: transparent; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+  .queue .more { margin-top: 18px; color: var(--sand-faint); font-size: 17px; }
+
+  /* ---- bottom band: capture + the week ---- */
+  .band { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 760px; gap: 48px; align-items: stretch; }
+  .band .capture { height: 88px; border-radius: 20px; }
+  .band .capture .ph { font-size: 22px; }
+  .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+  .day { border-radius: 14px; background: var(--ink); border: 1px solid var(--line-soft); padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between; }
+  .day small { color: var(--sand-faint); font-size: 14px; }
+  .day .shells { display: flex; gap: 5px; }
+  .day .shells i { width: 14px; height: 14px; border-radius: 4px; background: var(--glass); }
+  .day.today { border-color: var(--coral); }
+  .day.today small { color: var(--coral); }
+</style>
+</head>
+<body>
+<main class="frame">
+  <header class="head">
+    <h1>Notes</h1>
+    <span class="picker"><b>shellby</b> <span class="caret">▾</span></span>
+    <span class="spacer"></span>
+    <span class="picker" style="background:none"><span class="sub">See all 7 as a list</span></span>
+  </header>
+
+  <section class="body">
+    <article class="focus">
+      <div class="label"><b>Next up</b><span>Claude picked this one. Reorder the queue to change it.</span></div>
+      <h2>Bugdex battles: the spider crab wins about 80% of fights. Balance it.</h2>
+      <div class="facts">
+        <span>About <b>2 to 4 hours</b></span>
+        <span>Claude said <b style="color:var(--glass)">Do it</b></span>
+        <span>Noted <b>Nov 9</b></span>
+      </div>
+      <div class="reason">
+        <img src="../../docs/img/critter-idle.png" alt="">
+        <div class="bubble">
+          <b>Why this one</b>
+          <p>It's the smallest change that players will notice this week, and nothing else in the queue depends on it. The other two on top are bigger and want a plan first.</p>
+        </div>
+      </div>
+      <div class="steps">
+        <h3>If you build it now, Claude will</h3>
+        <div class="step"><b>1. Test it</b>Play 1,000 rounds per crab and record who wins.</div>
+        <div class="step"><b>2. Fix it</b>Give the spider's counter move the shell-type bonus it skips.</div>
+        <div class="step"><b>3. Prove it</b>Rerun the rounds: no crab above 60%. In a copy, on its own branch.</div>
+      </div>
+      <div class="actions">
+        <button class="btn primary">Build it now</button>
+        <button class="btn">Plan first</button>
+        <button class="btn ghost">Ask again</button>
+        <span class="later">Not today? <u>Skip to the next one</u></span>
+      </div>
+    </article>
+
+    <aside class="queue">
+      <h3>After that <span>Drag to reorder</span></h3>
+      <ol>
+        <li><span class="grip"></span><div class="t">Cap levels at 50 and make Molt the prestige<div class="m"><span class="verdict v-diff">Claude's version</span><span>A day</span></div></div></li>
+        <li class="lifted"><span class="grip"></span><div class="t">A "Hide the game" switch, separate from Work mode<div class="m"><span class="verdict v-diff">Claude's version</span><span>An afternoon</span></div></div></li>
+        <li><span class="grip"></span><div class="t">Drag notes to reorder them, and pin the next one<div class="m"><span class="verdict v-none">Not asked</span><span>An afternoon</span></div></div></li>
+        <li><span class="grip"></span><div class="t">Agent hub: a task board that hands notes to Codex or Gemini<div class="m"><span class="from-claude">From Claude</span><span>Plan ready to review</span></div></div></li>
+        <li><span class="grip"></span><div class="t">Fold the Beach into the Tank as a second scene<div class="m"><span class="verdict v-diff">Claude's version</span><span>A few days</span></div></div></li>
+      </ol>
+      <p class="more">2 more, and 1 Claude suggests skipping</p>
+    </aside>
+
+    <div class="band">
+      <form class="capture">
+        <span class="ph">Add to the queue… it goes to the bottom unless you say "next"</span>
+        <div class="tools">
+          <button class="icon-btn" aria-label="Attach a screenshot"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="m21 17-5-5-8 7"/></svg></button>
+          <button class="icon-btn" aria-label="Say it"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+        </div>
+        <button class="btn primary">Add</button>
+      </form>
+      <div class="week-wrap"><small>Done this week: 6</small><div class="week" aria-label="Notes done this week">
+        <div class="day"><small>Sat</small><div class="shells"></div></div>
+        <div class="day"><small>Sun</small><div class="shells"><i></i></div></div>
+        <div class="day"><small>Mon</small><div class="shells"></div></div>
+        <div class="day"><small>Tue</small><div class="shells"><i></i><i></i></div></div>
+        <div class="day"><small>Wed</small><div class="shells"><i></i></div></div>
+        <div class="day"><small>Thu</small><div class="shells"></div></div>
+        <div class="day today"><small>Today</small><div class="shells"><i></i><i></i></div></div>
+      </div></div>
+    </div>
+  </section>
+</main>
+<div class="caption">Concept 4: next up</div>
+</body>
+</html>

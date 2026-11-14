@@ -138,15 +138,6 @@
 .plan-overall { display: block; width: 100%; margin: 8px 0 0; font-size: var(--fs-12-5); }
 .decided .plan-overall:placeholder-shown { display: none; }
 
-/* ---------------------------------------------------------------- the effort a turn ran at */
-.effort-badge {
-  display: inline-block; margin-right: 8px; padding: 0 7px; border-radius: 99px;
-  border: 1px solid var(--line); color: var(--sand-dim); background: var(--reef);
-}
-.effort-badge.effort-high, .effort-badge.effort-xhigh { color: var(--glass); border-color: rgba(127, 214, 194, .35); }
-.effort-badge.effort-max { color: var(--coral); border-color: rgba(255, 122, 92, .4); }
-.effort-badge.effort-low { color: var(--sand-faint); }
-
 /* ---------------------------------------------------------------- Toolbox → Memory: what Claude remembers */
 .auto-memory { margin: 14px 0 6px; padding: 10px 12px; border-radius: var(--r); background: var(--reef); border: 1px solid var(--line); }
 .auto-memory[hidden] { display: none; }
@@ -214,18 +205,24 @@
 @media (prefers-reduced-motion: reduce) { .goal-pin, .next-chip { animation: none; } }
 
 /* Ultracode (ultracode.js): the chip under the box, its line above it, and a run's card in the feed */
+/* A pixel button in the crab's own look: the four 2px shadows step its corners,
+   the inset one is the lower bevel. On, it fills solid amber. */
 .ultra-chip {
-  display: inline-flex; align-items: center; gap: 5px; flex: none; margin: -2px auto -2px 0;
-  height: 22px; padding: 0 9px 0 7px; border: 1px solid var(--line); border-radius: 99px;
-  background: var(--ink); color: var(--sand-dim); font: inherit; font-size: var(--fs-11); font-weight: 600; cursor: pointer;
-  transition: border-color .12s, background .12s, color .12s;
+  --px: var(--reef-2); --px-bevel: color-mix(in srgb, var(--px) 70%, black);
+  display: inline-flex; align-items: center; gap: 6px; flex: none; margin: -2px auto -2px 2px;
+  height: 20px; padding: 0 9px 1px 7px; border: 0; border-radius: 0;
+  background: var(--px); color: var(--sand-dim); font: 500 var(--fs-12) var(--font-pixel); letter-spacing: .02em; cursor: pointer;
+  box-shadow: 0 -2px 0 var(--px), 0 2px 0 var(--px), -2px 0 0 var(--px), 2px 0 0 var(--px), inset 0 -2px 0 var(--px-bevel);
+  transition: background .12s, box-shadow .12s, color .12s;
 }
-.ultra-chip svg { width: 8px; height: 11px; flex: none; opacity: .55; transition: opacity .12s, filter .12s; }
-.ultra-chip:hover { border-color: var(--glass); color: var(--sand); }
-.ultra-chip:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
-.ultra-chip.on { border-color: color-mix(in srgb, var(--amber) 70%, transparent); background: color-mix(in srgb, var(--amber) 14%, var(--ink)); color: var(--sand); }
-.ultra-chip.on svg { color: var(--amber); opacity: 1; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--amber) 60%, transparent)); }
-.ultra-chip.on:hover { border-color: var(--amber); }
+.ultra-chip svg { width: 8px; height: 11px; flex: none; color: var(--sand-faint); transition: color .12s; }
+.ultra-chip:hover { --px: var(--reef-3); color: var(--sand); }
+.ultra-chip:hover svg { color: var(--sand-dim); }
+.ultra-chip:active { transform: translateY(1px); }
+.ultra-chip:focus-visible { outline: 2px solid var(--glass); outline-offset: 4px; }
+.ultra-chip.on { --px: var(--amber); --px-bevel: color-mix(in srgb, var(--amber) 72%, var(--ink)); color: var(--ink); }
+.ultra-chip.on svg { color: var(--ink); }
+.ultra-chip.on:hover { --px: color-mix(in srgb, var(--amber) 88%, var(--sand)); }
 .ultra-note { margin: 0 0 8px; padding: 4px 10px; border-radius: var(--r-sm); background: var(--reef); border: 1px solid var(--line); border-left: 2px solid var(--amber); font-size: var(--fs-12); color: var(--sand-dim); }
 .ultra-card { margin: 6px 0 14px 16px; padding: 8px 11px 9px; border: 1px solid var(--line-soft); border-left: 2px solid var(--amber); border-radius: var(--r-sm); background: var(--ink); font-size: var(--fs-12); color: var(--sand-dim); }
 .ultra-card.status-completed { border-left-color: var(--glass); }

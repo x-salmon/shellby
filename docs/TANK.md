@@ -4,9 +4,17 @@ Shellby has a home, and you decorate it. Put in a sandcastle, a rock cave, kelp,
 
 Stickers decorate his shell, and the beach at the top of **Us** shows what you've shipped. The tank is the part you arrange yourself.
 
+## The room
+
+His tank fills the Tank tab, lit in a dark room, as big as it fits at whole pixels. Under it are the time, what he's up to, and your readings: the GPU (or CPU) temperature, how much of your 5-hour window is left, and whether a dev server is up.
+
+Move the mouse and a bar wakes on the glass: **Decorate**, **Layouts**, **Readings** (what the thermometer, lighthouse and chest are reading, written over them), 📸 to share, and **Settings**. It goes back to sleep after 3 seconds without the mouse, and stays up while the keyboard is on it. In a narrow panel it always shows, above the glass.
+
+**Settings** and **Layouts** open a sheet beside the tank with everything else: where decor comes from, layouts, tidying up, the gauges' switches, whether it's on your cards, and coral. **Esc** or **Close** puts it away.
+
 ## Decorating
 
-Press **Decorate**. While you decorate, he steps to one side and goes see-through, so nothing hides behind him.
+Press **Decorate**. The tank stays where it is and the tray rises under it like a drawer. While you decorate, he steps to one side and goes see-through, so nothing hides behind him, and with the light following your clock, the lights come up so you can see what you place. The piece you've picked has **Flip**, **Back**, **Forward** and **Put away** just above it.
 
 - **Put something in:** drag it from the tray into the tank, or click it, or press **Enter** on it. It goes in at the first good spot.
 - **Move it:** drag it, or use the arrow keys. **Shift** moves it further. **Up** and **Down** move it a row back or forward.
@@ -152,7 +160,7 @@ A few things in his tank quietly show what Shellby already knows about your PC:
 | **Bubblers** (the air stone) | Bubble faster the busier the CPU is. |
 | **Lighthouse** | Lit while one of your dev servers is running. It blinks red when one has crashed. |
 | **The water** | Takes his Health mood: warm when he's hot (and the plants sway faster), swirling when he's dizzy, a pile of boxes in the corner when he's stuffed. It clears with the mood. |
-| **Tide gauge** on the left of the front glass | How much of your 5-hour usage window is left, in tenths. It runs orange below a fifth, and is full again once the window resets. |
+| **Tide gauge**, a depth staff on the left of the tank | How much of your 5-hour usage window is left: ten painted bands, one per tenth, with a cork float at the level and the bands above it faded. The float and the wet red bands turn orange at a fifth or less, and it's full again once the window resets. |
 | **Sunken Chest** | Glints for a minute when a pull request of yours merges. |
 | **Message in a bottle** | Bobs at the surface while a *While you were away* recap or your weekly card is waiting. It sinks once you dismiss the recap or open Trophies & XP. |
 
@@ -178,7 +186,7 @@ His tank is on the **crab card** (📸 Share) once there's something in it: he s
 
 Your **calling card** (Visiting crabs) and **profile card** are public, so his tank stays off them until you turn on **Show his tank** at the bottom of the Tank. Then:
 
-- Friends see a **Peek at their tank** button next to your name in Settings → Connections → GitHub → Visiting crabs. It shows his size of tank, the floor, the back glass, the light and up to 24 pieces, drawn with their own Shellby's art. Specimen jars and decor from packs stay home.
+- Friends see a **Peek at their tank** button next to your name in Settings → Accounts → GitHub → Visiting crabs. It shows his size of tank, the floor, the back glass, the light and up to 24 pieces, drawn with their own Shellby's art. Specimen jars and decor from packs stay home.
 - Your **profile card** shows him standing in it, with the same pieces.
 - A friend's crab dropping by while it's on earns **House Guest**, and the Guest Bench.
 
@@ -202,6 +210,7 @@ Pieces from a pack you've removed, or that are locked again because you switched
 - `src/main/wardrobe/catalog.js`: the `decor` kind. `src/wardrobe/tank-decor.json` is the built-in pack.
 - **Milestones:** `src/wardrobe/milestones.json` is a built-in pack of decor gated on `unlock: { achievement }`, each the one reward of its own entry in `wardrobe/achievements.js` `ACHIEVEMENTS` (the stats come from every game system, `docs/GAMIFICATION-PLAN.md` section 1.4). `test/packs.test.js` checks the pairing both ways and that every system has a piece. `tank.library` puts a piece from the `milestones` pack on the `milestone` shelf (whatever its catalog category) with `milestone: true`, and gives every locked piece `hint` (the trophy's description, from the wardrobe's `lockInfo`) and, for a trophy, `progress: { current, goal }`; `view` passes them to the tray and the placed pieces. `tank-render.js` paints locked milestone tiles as a silhouette (every palette key in its darkest colour, at 35%), with the lock and a conic progress ring (`--ms-fill`), earned ones with a gold corner, and plays `frames` while a tile is hovered or focused (never with motion turned down). `tank.js` turns the trophy toast into **Put it in the tank**. Tank sizes are gated on `d.everLevel()`, so a Molt keeps them. `ipc/tank.js` fires the tank quests (`decorate`, `bigger`, `milestone-piece`, `jar-in-tank`, `tank-share`; an id quests.js doesn't have yet does nothing). Covered in `test/tank.test.js`, and the shelf end to end in `scripts/e2e-wrapped.js`.
 - `src/renderer/panel/tank-paint.js`: paints a tank in art pixels at a whole-number scale, for the Tank tab and the Health porthole. `resolve` lays out a draft the same way `tank.view` does.
+- `src/renderer/panel/tank-room.js`: the room round the tank. `fit()` says how much room the canvas has, `render()` swaps the time-and-readings strip for the tray while you decorate and writes the readings on the glass, `doing()` says what he's up to, `placePicked()` puts the picked piece's tools just above it; it wakes and sleeps the bar on the glass and opens the sheet. `tank.js` calls it through `SB.tankRoom?.`, so the frame loop's test runs without it.
 - `src/renderer/panel/tank.js` and `tank.css`: the Tank tab and the editor. It draws at 10 frames a second only while the tab is showing, and a single still frame when motion is turned down or the panel is calm (behind your windows, away, a game up).
 - `src/main/tank/gauges.js` (pure) turns a Health snapshot, his mood, `DevServers#summary()`, `config.lastUsage`, the last merge and the unread cards into coarse readings (`tempOf`, `loadStep`, `moodOf`, `lighthouseOf`, `tideOf`, `chestOf`, `bottleOf`, `gauges`); `src/main/ipc/tank-gauges.js` keeps the latest, hears the monitor's `sample`, the mood, the dev servers' `change`, each usage reading (`wiring/sessions.js`), a merge (`wiring/github.js`, with a timer to end the glint) and a recap or weekly card going out (`away-service.js`, `wiring/progress.js`), and pushes `tank:gauges` only when the reading differs and the panel is showing. `tank:gauges` asks once, `tank:live` turns one off (`config.tankLive`, per PC), `tank:bottle-read` says the recap was dismissed (`recap.js`) or the week seen (the Trophies page). `src/renderer/panel/tank-gauges.js` paints the reading into placed `glass-thermometer` pieces, the lighthouse, bubbles, plant sway and moods through `tank-paint.js`'s `gauges` option; `tank-gauges-more.js` paints the tide gauge, the chest's glint and the bottle. Covered in `test/tank-gauges.test.js` and `test/tank-gauges-feed.test.js`.
 - `src/main/tank/glass.js`: `withStickers` adds `sticker:<projectId>` pieces (the Sticker Book's small art, one each) to the tank's library. `tank/share.js` and `github/profile-card.js` keep them off the cards. Covered in `test/tank-glass.test.js`.

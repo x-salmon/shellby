@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Us, concept 5: scrapbook</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  main { display: grid; grid-template-columns: 500px 1fr; }
+
+  /* Him, and what you can do with him */
+  .him { display: flex; flex-direction: column; gap: 26px; padding: 48px 44px 40px; background: var(--ink); border-right: 1px solid var(--line); }
+  .portrait { position: relative; height: 250px; border-radius: 18px; overflow: hidden; display: grid; place-items: end center; padding-bottom: 26px;
+    background: linear-gradient(#142c3d, #0d3440 58%, #3f4b50 58%); }
+  .portrait::after { content: ""; position: absolute; left: 50%; bottom: 22px; width: 190px; height: 14px; margin-left: -95px; border-radius: 50%; background: rgba(0, 0, 0, .3); }
+  .portrait > span { position: relative; z-index: 1; }
+  .him h1 { font: 500 52px/1 var(--font-pixel); }
+  .him .sub { margin-top: 10px; font-size: 19px; color: var(--sand-dim); }
+  .meter { margin-top: 16px; height: 12px; border-radius: 6px; background: var(--reef-3); overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 71%; background: #ff8fab; }
+  .meter-note { margin-top: 8px; font-size: 16px; color: var(--sand-dim); }
+  .acts { display: grid; gap: 10px; }
+  .act { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 14px; height: 64px; padding: 0 18px; border-radius: 12px; text-align: left;
+    background: var(--reef-2); border: 1px solid var(--line); font-weight: 700; font-size: 19px; }
+  .act .emoji { font-size: 26px; text-align: center; }
+  .act small { font-weight: 400; font-size: 15px; color: var(--sand-faint); }
+  .act.pet { background: var(--coral); border-color: var(--coral); color: #2a0d05; }
+  .act.pet small { color: #6b2a17; }
+  .act.off { opacity: .55; }
+  .stickers h2 { font-size: 17px; font-weight: 700; color: var(--sand-dim); display: flex; justify-content: space-between; }
+  .stickers h2 span { font-weight: 400; color: var(--sand-faint); }
+  .stickers ul { margin-top: 12px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .stickers li { aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-size: 22px; background: var(--reef-2); border: 2px solid var(--sand); }
+  .stickers li.no { background: none; border: 2px dashed var(--line); color: var(--sand-faint-deco); font: 500 16px var(--font-pixel); }
+
+  /* The wall */
+  .wall { padding: 44px 60px 40px; display: flex; flex-direction: column; gap: 26px; min-width: 0;
+    background: radial-gradient(circle at 70% 20%, rgba(127, 214, 194, .05), transparent 50%), var(--abyss); }
+  .wall header { display: flex; align-items: center; gap: 30px; }
+  .wall h2 { font: 500 44px/1 var(--font-pixel); }
+  .chips { display: flex; gap: 8px; }
+  .chips span { padding: 8px 18px; border-radius: 20px; border: 1px solid var(--line); font-size: 16px; font-weight: 700; color: var(--sand-dim); }
+  .chips span.on { background: var(--sand); color: var(--abyss); border-color: var(--sand); }
+  .wall header .btn { margin-left: auto; }
+  .board { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: auto auto 1fr; gap: 30px 30px; align-items: start; }
+
+  /* A snapshot: the beach as it was that day */
+  .snap { position: relative; padding: 16px 16px 18px; background: #f3e6cc; color: #241b14; border-radius: 3px;
+    box-shadow: 0 2px 0 #c9b893, 0 18px 36px rgba(0, 0, 0, .45); }
+  .snap canvas { width: 100% !important; height: auto !important; border-radius: 1px; }
+  .snap figcaption { margin-top: 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 16px; font-size: 18px; font-weight: 700; line-height: 1.3; }
+  .snap time { flex: none; font: 500 16px var(--font-pixel); color: #7b6a55; }
+  .tape { position: absolute; top: -12px; left: 50%; width: 110px; height: 28px; margin-left: -55px; background: rgba(127, 214, 194, .45); transform: rotate(-3deg); }
+  .feature { grid-column: 1 / 3; grid-row: 1 / 3; transform: rotate(-.8deg); }
+  .feature figcaption { font-size: 24px; }
+  .feature figcaption small { display: block; font-size: 17px; font-weight: 400; color: #6a5d4c; margin-top: 4px; }
+  .r1 { transform: rotate(1.4deg); }
+  .r2 { transform: rotate(-1.2deg); }
+  .r3 { transform: rotate(.7deg); }
+
+  /* Things that weren't a picture: notes, a medal, a hatching */
+  .note { position: relative; padding: 24px 24px 22px; border-radius: 4px; font-size: 19px; line-height: 1.4; box-shadow: 0 14px 30px rgba(0, 0, 0, .4); }
+  .note .emoji { font-size: 34px; display: block; margin-bottom: 10px; }
+  .note time { display: block; margin-top: 12px; font: 500 16px var(--font-pixel); opacity: .7; }
+  .note.amber { background: #ffd98f; color: #3a2a0c; transform: rotate(-1.6deg); }
+  .note.glass { background: #a9e6d7; color: #0f3029; transform: rotate(1.2deg); }
+  .note.pink { background: #ffc2cf; color: #3d1520; transform: rotate(-.6deg); }
+  .medal { display: grid; justify-items: center; text-align: center; padding: 26px 20px; border-radius: 16px; background: var(--reef); border: 1px solid var(--line); transform: rotate(.8deg); }
+  .medal .emoji { font-size: 64px; line-height: 1; }
+  .medal b { margin-top: 12px; font: 500 22px var(--font-pixel); }
+  .medal span { font-size: 16px; color: var(--sand-dim); }
+  .pair { display: flex; align-items: flex-end; gap: 4px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <aside class="him">
+    <div class="portrait"><span data-crab="9"></span></div>
+    <div>
+      <h1>Best friends</h1>
+      <p class="sub">187 days together. He's chipper: delighted by everything.</p>
+      <div class="meter"><i></i></div>
+      <p class="meter-note">176 points to Inseparable</p>
+    </div>
+    <div class="acts">
+      <button class="act pet"><span class="emoji">♥</span>Pet him<small>+1</small></button>
+      <button class="act"><span class="emoji">🙈</span>Hide and seek<small>+3</small></button>
+      <button class="act"><span class="emoji">🎾</span>Fetch<small>+3</small></button>
+      <button class="act off"><span class="emoji">⛏️</span>Dig<small>in 2h 10m</small></button>
+    </div>
+    <div class="stickers">
+      <h2>Scenes you've caught <span>14 of 31</span></h2>
+      <ul>
+        <li class="emoji">🤹</li><li class="emoji">🌠</li><li class="emoji">🏰</li><li class="emoji">🖱️</li><li class="emoji">💧</li><li class="emoji">🎸</li><li class="emoji">💗</li><li class="emoji">😮</li>
+        <li class="emoji">🎣</li><li class="emoji">🎈</li><li class="emoji">🥊</li><li class="emoji">💅</li><li class="emoji">🐝</li><li class="emoji">🤧</li><li class="no">?</li><li class="no">?</li>
+      </ul>
+    </div>
+  </aside>
+
+  <section class="wall" aria-label="Our story">
+    <header>
+      <h2>Our story</h2>
+      <nav class="chips"><span class="on">Everything</span><span>Firsts</span><span>Finds</span><span>Friends</span><span>Medals</span></nav>
+      <button class="btn ghost">Share a snapshot</button>
+    </header>
+
+    <div class="board">
+      <figure class="snap feature">
+        <span class="tape"></span>
+        <canvas data-beach='{"k":7,"from":140,"cols":121,"top":28,"rows":72,"time":"dusk","orbAt":172,"pops":[{"x":210,"y":80,"age":0.1,"gold":true},{"x":201,"y":75,"age":0.35},{"x":216,"y":72,"age":0.6}]}'></canvas>
+        <figcaption><span>You became Best friends<small>He leans on your cursor now, and he got a trophy for it.</small></span><time>9 Nov</time></figcaption>
+      </figure>
+
+      <figure class="snap r1">
+        <canvas data-beach='{"k":5,"from":226,"cols":70,"top":44,"rows":56,"time":"dawn","crabX":238,"hearts":false}'></canvas>
+        <figcaption>He moved onto your desktop<time>10 May</time></figcaption>
+      </figure>
+      <div class="note amber"><span class="emoji">🤫</span>He kept quiet through your first call<time>8 Jul</time></div>
+
+      <div class="medal"><span class="emoji">🏅</span><b>Harvest Tide</b><span>Finished while it was on, 31 Oct</span></div>
+      <figure class="snap r2">
+        <canvas data-beach='{"k":5,"from":176,"cols":70,"top":38,"rows":30,"time":"day","hearts":false}'></canvas>
+        <figcaption>Finished the Sea glass set<time>28 Sep</time></figcaption>
+      </figure>
+
+      <figure class="snap r3">
+        <canvas data-beach='{"k":5,"from":136,"cols":70,"top":64,"rows":36,"time":"night","crabX":171,"hearts":false}'></canvas>
+        <figcaption>You found him in 0:41<time>22 Oct</time></figcaption>
+      </figure>
+      <div class="note glass"><div class="pair"><span data-crab="3"></span><span data-crab="1.8" data-flip="1"></span></div>@mira hatched one of his eggs. Meet Pip.<time>14 Oct</time></div>
+      <div class="note pink"><span class="emoji">🎢</span>He rode VS Code 4,120 px across your screen<time>12 Sep</time></div>
+      <figure class="snap r1">
+        <canvas data-beach='{"k":5,"from":2,"cols":70,"top":50,"rows":48,"time":"day","hearts":false,"crabX":300}'></canvas>
+        <figcaption>His first castle: shellby<time>20 May</time></figcaption>
+      </figure>
+    </div>
+  </section>
+</main>
+<p class="caption">Concept 5, scrapbook: your story as snapshots of the beach on the day; he and his games sit beside it</p>
+<script src="beach-data.js"></script>
+<script>window.SB = {};</script>
+<script src="../../src/renderer/shared/sprite.js"></script>
+<script src="../../src/renderer/panel/beach-paint.js"></script>
+<script src="kit.js"></script>
+</body>
+</html>
