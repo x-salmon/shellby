@@ -85,7 +85,7 @@
         {
           "type": "object", "required": ["season"], "additionalProperties": false,
           "properties": {
-            "season": { "enum": ["halloween", "winter", "valentine", "spring", "summer", "autumn"] }
+            "season": { "enum": ["halloween", "winter", "valentine", "spring", "summer", "autumn", "new-year", "st-patricks", "easter", "earth-day", "mothers-day", "memorial-day", "fathers-day", "independence-day", "labor-day", "veterans-day", "thanksgiving"] }
           }
         },
         {
@@ -292,7 +292,7 @@
         "cursor": { "const": true },
         "find": { "const": true },
         "bond": { "type": "integer", "minimum": 1, "maximum": 5 },
-        "season": { "enum": ["halloween", "winter", "valentine", "spring", "summer", "autumn"] }
+        "season": { "enum": ["halloween", "winter", "valentine", "spring", "summer", "autumn", "new-year", "st-patricks", "easter", "earth-day", "mothers-day", "memorial-day", "fathers-day", "independence-day", "labor-day", "veterans-day", "thanksgiving"] }
       }
     },
     "scene": {

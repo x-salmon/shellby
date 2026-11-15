@@ -2,7 +2,7 @@
 // Pure logic over config + the catalog (no Electron), so it's unit-tested.
 const { EventEmitter } = require('events');
 const { loadCatalog, installPack, removePack } = require('./catalog');
-const { SEASONS, KNOWN_SEASONS, activeSeasons, featuredSeason, isActive, nextStart } = require('./seasons');
+const { SEASONS, KNOWN_SEASONS, activeSeasons, featuredSeason, isActive, nextStart, forYear } = require('./seasons');
 const { ACHIEVEMENTS, KNOWN_ACHIEVEMENTS, normalizeStats, recordStat, evaluate, progress } = require('./achievements');
 const { encodeOutfit, decodeOutfit, resolveEntries } = require('./codes');
 const { everLevel } = require('../progression/levels');
@@ -28,13 +28,13 @@ const DEFAULTS = {
 // Start date of the season window containing `date` (for per-year overrides and banners).
 function windowStart(season, date) {
   const y = date.getFullYear();
-  const [sm, sd] = season.start;
-  const start = new Date(y, sm - 1, sd);
-  return start > date ? new Date(y - 1, sm - 1, sd) : start;
+  const at = year => { const [sm, sd] = forYear(season, year).start; return new Date(year, sm - 1, sd); };
+  const start = at(y);
+  return start > date ? at(y - 1) : start;
 }
 function windowEnd(season, date) {
   const s = windowStart(season, date);
-  const [em, ed] = season.end;
+  const [em, ed] = forYear(season, s.getFullYear()).end;
   let end = new Date(s.getFullYear(), em - 1, ed, 23, 59, 59);
   if (end < s) end = new Date(s.getFullYear() + 1, em - 1, ed, 23, 59, 59);
   return end;

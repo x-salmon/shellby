@@ -132,19 +132,19 @@ test('wardrobe: unlock references must be known achievements/seasons', () => {
     hat({ id: 'a', unlock: { achievement: 'ten-tasks' } }),
     hat({ id: 'b', unlock: { achievement: 'nope' } }),
     hat({ id: 'c', unlock: { season: 'halloween' } }),
-    hat({ id: 'd', unlock: { season: 'easter' } }),
+    hat({ id: 'd', unlock: { season: 'nope-season' } }),
     hat({ id: 'e', unlock: { default: true } }),
     hat({ id: 'f', unlock: { default: false } }),
     hat({ id: 'g', unlock: { achievement: 'ten-tasks', season: 'halloween' } }),
     hat({ id: 'h', unlock: { bribe: 1 } }),
   ];
-  const { pack: p, warnings } = validatePack(pack({ accessories, skins: [skin({ unlock: { season: 'easter' } })] }), known);
+  const { pack: p, warnings } = validatePack(pack({ accessories, skins: [skin({ unlock: { season: 'nope-season' } })] }), known);
   assert.deepEqual(p.accessories.map(a => [a.id, a.unlock]), [
     ['a', { achievement: 'ten-tasks' }], ['c', { season: 'halloween' }], ['e', { default: true }],
   ]);
   assert.equal(p.skins.length, 0);
   assert.ok(warnings.includes('skipped accessory b: unknown achievement "nope"'));
-  assert.ok(warnings.includes('skipped accessory d: unknown season "easter"'));
+  assert.ok(warnings.includes('skipped accessory d: unknown season "nope-season"'));
   // Without known sets, every reference is unknown.
   assert.deepEqual(validatePack(pack({ accessories })).pack.accessories.map(a => a.id), ['e']);
 });
@@ -361,7 +361,36 @@ test('seasons: nextStart returns the current or next window start', () => {
   assert.deepEqual(seasons.nextStart('winter', day(2026, 12, 31)), day(2026, 12, 1, 0));
   assert.deepEqual(seasons.nextStart('winter', day(2027, 1, 8)), day(2027, 12, 1, 0));
   assert.equal(seasons.nextStart('nope'), null);
-  assert.deepEqual([...seasons.KNOWN_SEASONS].sort(), ['autumn', 'halloween', 'spring', 'summer', 'valentine', 'winter']);
+  assert.deepEqual([...seasons.KNOWN_SEASONS].sort(), [
+    'autumn', 'earth-day', 'easter', 'fathers-day', 'halloween', 'independence-day', 'labor-day', 'memorial-day',
+    'mothers-day', 'new-year', 'spring', 'st-patricks', 'summer', 'thanksgiving', 'valentine', 'veterans-day', 'winter',
+  ]);
+});
+
+test('seasons: moving holidays find their day each year', () => {
+  const window = (id, y) => { const s = seasons.forYear(seasons.SEASONS.find(x => x.id === id), y); return [s.start, s.end]; };
+  assert.deepEqual(window('easter', 2026), [[3, 29], [4, 6]]);       // Easter Sunday Apr 5
+  assert.deepEqual(window('easter', 2027), [[3, 21], [3, 29]]);      // Mar 28
+  assert.deepEqual(window('thanksgiving', 2026), [[11, 23], [11, 29]]); // Thu Nov 26
+  assert.deepEqual(window('mothers-day', 2027), [[5, 7], [5, 9]]);
+  assert.deepEqual(window('memorial-day', 2027), [[5, 29], [5, 31]]);
+  assert.deepEqual(window('fathers-day', 2026), [[6, 19], [6, 21]]);
+  assert.deepEqual(window('labor-day', 2028), [[9, 2], [9, 4]]);
+  assert.deepEqual(seasons.nextStart('thanksgiving', day(2026, 12, 1)), day(2027, 11, 22, 0));
+  for (const y of [2026, 2027, 2028, 2029, 2030]) {
+    for (const s of seasons.SEASONS.filter(x => x.dates)) {
+      const [a, b] = window(s.id, y);
+      assert.ok(a[0] * 100 + a[1] >= s.start[0] * 100 + s.start[1] && b[0] * 100 + b[1] <= s.end[0] * 100 + s.end[1], `${s.id} ${y} inside its widest window`);
+    }
+  }
+});
+
+test('seasons: holidays beat the season around them', () => {
+  assert.equal(seasons.featuredSeason(day(2026, 11, 11)).id, 'veterans-day');
+  assert.equal(seasons.featuredSeason(day(2026, 11, 26)).id, 'thanksgiving');
+  assert.equal(seasons.featuredSeason(day(2026, 12, 31)).id, 'new-year');
+  assert.equal(seasons.featuredSeason(day(2026, 12, 25)).id, 'winter');
+  assert.equal(seasons.featuredSeason(day(2026, 7, 4)).id, 'independence-day');
 });
 
 // ---- achievements
