@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.99.5: Ollama start and stop, and the start-fresh nudge
+
+### New
+- Settings → Local model has a Start Ollama button for when Ollama was quit from its tray icon and Detect can't find it. It shows up once Ollama is installed, starts it the way Ollama does itself, then looks for its models. While it's running, the same button stops it.
+
+### Fixed
+- The Haiku card shows up in your chats again: it counts only what the chat itself has added, not the instructions and tools every chat starts with.
+- The "start fresh" line shows up in long chats: it used to wait until 60% of the context window was full, which a 1M window almost never reaches. It now also comes once the chat itself has added 60,000 tokens.
+
 ## 0.99.4: Holiday outfits and shelf portraits
 
 ### New
