@@ -541,7 +541,15 @@ function wirePages(d) {
     if (!enabled()) return { on: false, pages: [] };
     const s = pages();
     const withThumb = p => { const t = s.thumb(p.id); return t ? { ...p, thumb: `data:image/jpeg;base64,${t.toString('base64')}` } : p; };
-    return { on: true, pages: s.list().map(withThumb), limits: { pages: LIMITS.PAGES, open: LIMITS.OPEN_PAGES } };
+    // Drafts aren't pages yet, but the shelf lists them so one made while its
+    // conversation was out of sight can still be opened and saved.
+    const drafts = [];
+    for (const id of s.draftIds()) {
+      const p = s.summary(id);
+      if (p) drafts.push({ ...p, tab: s.state(id).tab || null });
+    }
+    drafts.sort((a, b) => b.updatedAt - a.updatedAt);
+    return { on: true, pages: s.list().map(withThumb), drafts, limits: { pages: LIMITS.PAGES, open: LIMITS.OPEN_PAGES } };
   }
 
   const act = (id, fn, kind = 'meta') => {

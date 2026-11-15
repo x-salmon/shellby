@@ -170,10 +170,25 @@
     return true;
   }
 
-  // A draft Claude just made opens beside the conversation that made it, if it's on screen.
+  // A draft Claude just made opens beside the conversation that made it: now
+  // if that's on screen, else when you next go to it (shown, below). The
+  // Pages screen lists every draft too, should this one be closed or missed.
+  const waiting = new Map(); // tabId -> the draft made while it was out of sight
   api.pages.onChanged(ev => {
-    if (ev?.kind === 'draft' && ev.tab && (state.activeTab === ev.tab || SB.isShown?.(ev.tab))) openPage(ev.id);
+    if (ev?.kind === 'saved' || ev?.kind === 'removed') {
+      for (const [tab, id] of waiting) if (id === ev.id || id === ev.draft) waiting.delete(tab);
+    }
+    if (ev?.kind !== 'draft' || !ev.tab) return;
+    if (state.activeTab === ev.tab || SB.isShown?.(ev.tab)) openPage(ev.id);
+    else waiting.set(ev.tab, ev.id);
   });
+  /** A conversation came on screen (tabs.js activate): its waiting draft opens beside it. */
+  function shown(tabId) {
+    const id = waiting.get(tabId);
+    if (!id) return;
+    waiting.delete(tabId);
+    openPage(id);
+  }
 
   function close(toolId) {
     if (!P.paneWith(state.grid, toolId)) return;
@@ -203,6 +218,7 @@
     chip: toolId => h('span', { class: 'tool-chip', role: 'tab', 'aria-selected': 'true', text: mounted.get(toolId)?.title() || 'Tool' }),
     openServer,
     openPage,
+    shown,
     close,
     prune,
   };
