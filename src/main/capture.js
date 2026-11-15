@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const demo = require('./capture-demo');
+const { capture099 } = require('./capture-099');
 const streaks = require('./progression/streaks');
 const voice = require('./voice');
 const { xpSummary } = require('./progression/xp');
@@ -312,7 +313,8 @@ async function run({ app, critter, panel, showPanel, send, ROOT, setCrewSlots, w
 
     await captureLife({ critter, panel, send, out, wardrobe, config, broadcastSkin, base });
     await capturePages({ panel, send, out, config, base, makeTimeTracker });
-    await captureWide({ panel, send, out, base });
+    await capture099({ panel, send, out, base, shot, tabs: DEMO_TABS });
+    await captureWide({ panel, send, out, base, health });
   } catch (e) {
     console.error('capture failed:', e);
   }
@@ -503,9 +505,9 @@ async function capturePages({ panel, send, out, config, base, makeTimeTracker })
 // doesn't carry 4K PNGs; each is the `-wide` twin of the panel-sized shot.
 const WIDE_SIZE = { width: 2560, height: 1440 };
 const WIDE_OUT_WIDTH = 1920;
-const WIDE_VIEWS = ['crew', 'toolbox', 'time', 'projects', 'us'];
+const WIDE_VIEWS = ['crew', 'toolbox', 'time', 'projects', 'us', 'pcs', 'health'];
 
-async function captureWide({ panel, send, out, base }) {
+async function captureWide({ panel, send, out, base, health }) {
   const { screen } = require('electron');
   const js = code => panel.webContents.executeJavaScript(code);
   const bounds = panel.getBounds();
@@ -516,6 +518,8 @@ async function captureWide({ panel, send, out, base }) {
   await wait(800);
   try {
     for (const name of WIDE_VIEWS) {
+      // Health leads with its verdict: a hot GPU, so there's one to show.
+      if (name === 'health') { health.sensors.setScenario('hot'); await health.monitor.poll(); }
       send(panel, 'demo', { ...base, tabs: DEMO_TABS, active: 'demo-crew', ...(name === 'crew' ? {} : { view: name }) });
       await wait(1500);
       await js('document.activeElement?.blur(); 1');
