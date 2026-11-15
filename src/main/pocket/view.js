@@ -255,7 +255,7 @@ function phonePcs(list) {
  *   host:     the PC itself, for the hub's roster (hub/host.js)
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', pcs = [], tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, health = null, mood = null, host = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', pcs = [], tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, locals = [], health = null, mood = null, host = null, now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -279,6 +279,8 @@ function phoneView({ pc = '', pcs = [], tabs = [], prompts = [], crab = null, ex
     // What a new task can start on (models.js), and the desk's own pick ('' or null: Claude Code's).
     models: (Array.isArray(models) ? models : []).slice(0, 40).map(m => ({ id: line(m?.id, 60), label: line(m?.label, 60) })).filter(m => m.id),
     model: line(model, 60) || null,
+    // The local models on the PC a new task can run on instead (pocket/locals.js), as the desk's "On this PC".
+    locals: (Array.isArray(locals) ? locals : []).slice(0, 40).map(n => line(n, 200)).filter(Boolean),
     allow: allow ? { push: !!allow.push, files: !!allow.files } : { push: false, files: false },
     rights: normalizeRights(rights),
     quiet: normalizeQuiet(quiet),

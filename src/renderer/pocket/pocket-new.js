@@ -19,16 +19,27 @@
 
     // ---------------------------------------------------------------- the model a new task starts on
 
-    /** The PC's models, with "as on your PC" first, where each new task starts; value is '' for that. */
+    // A local model's option value: its name after this, so it can't be taken for a Claude id.
+    const LOCAL = 'local:';
+
+    /**
+     * The PC's models, with "as on your PC" first, where each new task starts
+     * (value ''), then the local models on the PC under their own heading.
+     */
     function modelPicker() {
       const models = S.view?.models || [];
+      const locals = S.view?.locals || [];
       const desk = models.find(m => m.id === S.view?.model);
       const sel = h('select', { class: 'mode-pick', 'aria-label': 'Model' },
         h('option', { value: '', text: desk ? `As on your PC: ${desk.label}` : 'As on your PC' }),
-        ...models.map(m => h('option', { value: m.id, text: m.label })));
+        ...models.map(m => h('option', { value: m.id, text: m.label })),
+        locals.length ? h('optgroup', { label: 'On your PC (free)' }, ...locals.map(n => h('option', { value: LOCAL + n, text: n }))) : null);
       sel.value = '';
       return sel;
     }
+
+    /** The picker's value -> what the task asks for: { model } or { local }. */
+    const modelBody = v => (v.startsWith(LOCAL) ? { model: '', local: v.slice(LOCAL.length) } : { model: v });
 
     // ---------------------------------------------------------------- when it starts
 
@@ -82,7 +93,8 @@
             if (!picked) { toast('Pick a project first.'); return; }
             if (photos.some(p => !p.id)) { toast('A picture is still on its way. One moment.'); return; }
             if (when.value && photos.length) { toast('Pictures only go with a task that starts now.'); return; }
-            const body = { project: picked, text: said, key, mode: mode.value, model: model.value, photos: photos.map(p => p.id), ...(when.value ? { when: when.value } : {}) };
+            if (when.value && model.value.startsWith(LOCAL)) { toast('A local model doesn’t use your plan, so it starts now. Leave When on Now.'); return; }
+            const body = { project: picked, text: said, key, mode: mode.value, ...modelBody(model.value), photos: photos.map(p => p.id), ...(when.value ? { when: when.value } : {}) };
             const r = await later.send('task', body, { label: L.promptChip(said), timeoutMs: 180000 });
             if (!r.ok) { if (r.error) toast(r.error, { tone: 'warn', ms: 4800 }); return; }
             key = L.newKey();
@@ -115,7 +127,7 @@
           h('div', { class: 'task-tools' }, voiceButton(text), photoButton(photos, strip, { given: prefill.photos || [] })),
           strip,
           h('label', { class: 'mode-row' }, h('span', { text: 'Mode' }), mode),
-          (S.view?.models || []).length ? h('label', { class: 'mode-row' }, h('span', { text: 'Model' }), model) : null,
+          (S.view?.models || []).length || (S.view?.locals || []).length ? h('label', { class: 'mode-row' }, h('span', { text: 'Model' }), model) : null,
           h('label', { class: 'mode-row' }, h('span', { text: 'When' }), when),
           h('p', { class: 'rule' }, icon('shield'), h('span', { text: `Runs in its own copy when it can.${lim ? ` ${lim.open} of ${lim.atOnce} phone tasks open.` : ''}` })),
           send, keep);

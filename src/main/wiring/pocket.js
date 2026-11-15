@@ -246,6 +246,7 @@ function wirePocket(d) {
     return { state: d.lastStatus?.state || own.state, work: d.lastStatus?.work || null, say: d.said, crew: own.crew };
   }
 
+  const locals = require('../pocket/locals').createLocals({ settings: () => d.config.get('localModel'), onChange: () => pushView(), log: d.log }); // local models a phone task can start on
   function currentView() {
     return view.phoneView({
       pc: ts.dnsName ? ts.dnsName.split('.')[0] : require('os').hostname(), pcs: d.config.get('hubPeers'), // pcs: only names and addresses reach the phone (view.js phonePcs)
@@ -262,7 +263,7 @@ function wirePocket(d) {
       pushKey: vapid?.publicKey || null,
       allow: settings().allow,
       mode: d.config.get('mode'),
-      models: models(), model: d.config.get('model') || null,
+      models: models(), model: d.config.get('model') || null, locals: locals.names(),
       focus: d.focusState?.() || null,
       guard: guard.settingsOf(k => d.config.get(k)),
       quiet: settings().quiet,
@@ -401,12 +402,12 @@ function wirePocket(d) {
   }
   const task = body => once('task', body, startTask);
 
-  async function startTask({ project, text, mode, photos, model, when }) {
+  async function startTask({ project, text, mode, photos, model, local, when }) {
     const runAs = modeOf(mode);
     if (modeBlocked(runAs)) return no(AUTONOMOUS_OFF);
-    // '' or none: the desk's own model. Anything else must be one models.js lists.
-    const on = typeof model === 'string' && model ? model : null;
-    if (on && !isModel(on)) return no("Shellby doesn't know that model. Pick one from the list.");
+    // A Claude model (models.js), a local one (the desk's "On this PC"), or neither: the desk's own.
+    const { on, onPc, runOn, error } = locals.pick({ model, local, when }, isModel);
+    if (error) return no(error);
     const prompt =pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
     if (!prompt) return no('Say what you want done first.');
     if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
@@ -417,10 +418,9 @@ function wirePocket(d) {
     const now = Date.now();
     const gate = claimStart(now);
     if (!gate.ok) return no(gate.reply);
-    // At the limit, or past what you keep for yourself: it waits for the reset.
+    // At the limit, or past what you keep for yourself: it waits for the reset. Not on a local model, which spends none of it.
     const w = d.usageService?.limitWait();
-    const usage = d.config.get('lastUsage');
-    if (w || guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), usage, now)) {
+    if (!onPc && (w || guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), d.config.get('lastUsage'), now))) {
       const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: runAs, fromPhone: true, ...(on ? { model: on } : {}) });
       if (!held.ok) return no(`Couldn't queue it: ${held.error}`);
       d.sendOutlook?.();
@@ -434,8 +434,8 @@ function wirePocket(d) {
     starting++;
     let r;
     try {
-      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: runAs, ...(on ? { model: on } : {}), ...(files.length ? { attachments: () => files } : {}) });
-      if (!r.ok && r.noCopy) r = d.startTask(files.length && d.composePrompt ? d.composePrompt(prompt, files) : prompt, title, { mode: runAs, cwd: target.key, ...(on ? { model: on } : {}) });
+      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: runAs, ...runOn, ...(files.length ? { attachments: () => files } : {}) });
+      if (!r.ok && r.noCopy) r = d.startTask(files.length && d.composePrompt ? d.composePrompt(prompt, files) : prompt, title, { mode: runAs, cwd: target.key, ...runOn });
       if (r.ok) adopt(r.tabId);
     } finally { starting--; }
     if (!r.ok) return no(r.error || "Couldn't start it.");

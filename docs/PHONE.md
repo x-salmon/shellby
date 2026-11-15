@@ -60,6 +60,7 @@ Those say why they wait for the desk (*"It changes your hooks: check it at the d
 
 - They run in the mode you pick (Ask first unless you change it: Smart, Auto-edit, Plan only or Autonomous), in their own copy when the folder is a git repository.
 - They start on the model you pick, or the one your PC uses. A conversation keeps its model once it has started, as at the desk.
+- With a local model set up (Settings → Claude → Local model), the Model list has an **On your PC (free)** group: the same models as the desk's model chip. A task on one starts now, even at your limit, since it spends nothing of your plan.
 - At most 30 start an hour and 10 at once. At your usage limit, or past what the spending guard keeps for you, a task waits for the reset and says when it'll start.
 - `!` commands and settings never come from the phone. A new task can't start with a `/` command, and a reply can run only `/compact`, `/context` or `/goal`; the rest stay at the desk.
 - You can reply to any conversation, in the mode you pick under the reply box. The conversation keeps that mode until you change it at the desk.

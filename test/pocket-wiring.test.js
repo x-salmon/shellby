@@ -686,6 +686,26 @@ test('a task from the phone starts on the model picked, or the desk’s own, and
   } finally { stop(w); }
 });
 
+test('a task from the phone can start on a local model the PC offers, now, even at the limit', async () => {
+  const w = await paired();
+  try {
+    // Port 9: nothing answers, so only Settings' own names are offered.
+    w.d.config.set({ localModel: { on: false, url: 'http://127.0.0.1:9', model: 'qwen3:8b' } });
+    const view = w.d.pocket.onOpen(w.device, { tab: null }).view;
+    assert.deepEqual(view.locals, ['qwen3:8b']);
+    const act = body => w.d.pocket.onAction(w.device, 'task', body);
+    assert.match((await act({ project: PROJECT, text: 'Fix it', local: 'llama-nope' })).error, /isn't set up on your PC/);
+    assert.match((await act({ project: PROJECT, text: 'Fix it', local: 'qwen3:8b', model: 'sonnet' })).error, /not both/);
+    assert.match((await act({ project: PROJECT, text: 'Fix it', local: 'qwen3:8b', when: 'tonight' })).error, /starts now/);
+    assert.equal(w.of('startTaskInCopy').length, 0);
+    // A local model spends nothing of the plan, so the limit doesn't hold it.
+    w.d.usageService.limitWait = () => ({ at: Date.now() + 60000 });
+    await act({ project: PROJECT, text: 'Fix it', local: 'qwen3:8b' });
+    assert.equal(w.of('holdForReset').length, 0);
+    assert.deepEqual(w.of('startTaskInCopy').map(c => c[3]), [{ mode: 'ask', local: 'qwen3:8b' }]);
+  } finally { stop(w); }
+});
+
 test('Look over my changes from the phone reviews a repo in Ask first, and a read-only phone can’t ask for it', async () => {
   // This checkout is a git repository: a conversation working in it can be looked over.
   const w = await paired({ tabs: [tabOf('t1', { session: { pending: new Map(), mode: 'acceptEdits', cwd: ROOT, busy: false } })] });
