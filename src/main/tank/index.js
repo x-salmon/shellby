@@ -15,6 +15,7 @@
 
 const bugdex = require('../bugdex');
 const { speciesById } = require('../bugdex/species');
+const { scenePortrait } = require('../gifts');
 
 const SIZES = Object.freeze([
   { id: 'nano', name: 'Nano tank', w: 96, h: 56, cap: 10, level: 1, shipped: 0 },
@@ -170,8 +171,9 @@ function library({ decor = [], findState = null, finds = [], bugState = null, co
     lib.set(`find:${f.id}`, {
       ref: `find:${f.id}`, kind: 'find', name: f.name, description: f.blurb || '', rarity: f.rarity,
       category: 'find', layer: 'floor',
-      palette: f.palette, pixels: f.pixels, frames: [], fps: 0, spots: [],
-      ...sizeOfPixels(f.pixels), max: have, locked: null, isNew: unseen.has(f.id),
+      // The shelf's portrait, painted at half size (gifts.scenePortrait).
+      ...scenePortrait(f), frames: [], fps: 0, spots: [],
+      max: have, locked: null, isNew: unseen.has(f.id),
       unlock: null,
     });
   }
@@ -262,7 +264,7 @@ const depthOf = p => (p.category === 'sticker' ? 6 : p.layer === 'back' ? 0 : p.
 const art = e => ({
   ref: e.ref, kind: e.kind, name: e.name, description: e.description, rarity: e.rarity, category: e.category, layer: e.layer,
   palette: { ...e.palette }, pixels: [...e.pixels], frames: e.frames.map(f => [...f]), fps: e.fps,
-  spots: e.spots.map(s => ({ kind: s.kind, at: [...s.at] })), w: e.w, h: e.h,
+  spots: e.spots.map(s => ({ kind: s.kind, at: [...s.at] })), w: e.w, h: e.h, fine: e.fine || 1,
   unlock: e.unlock ? { ...e.unlock } : null,
   milestone: !!e.milestone, hint: e.hint || null, progress: e.progress ? { ...e.progress } : null,
 });

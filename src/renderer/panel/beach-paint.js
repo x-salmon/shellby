@@ -310,12 +310,14 @@
 
   function drawFind(ctx, T, f, t, still) {
     const img = sprite(f.pixels, f.palette);
-    ctx.drawImage(img, f.x, f.y - img.height);
+    // A portrait is drawn `fine` pixels to one of the beach's (gifts.scenePortrait).
+    const fine = f.fine || 1, w = img.width / fine, h = img.height / fine;
+    ctx.drawImage(img, f.x, f.y - h, w, h);
     const shine = f.rarity === 'legendary' || f.rarity === 'special' || f.isNew;
     if (shine && !still && Math.floor(t * 1.5 + f.x) % 4 === 0) {
       ctx.fillStyle = f.rarity === 'legendary' ? FIXED.g : '#ffffff';
-      ctx.fillRect(f.x + img.width, f.y - img.height - 1, 1, 1);
-      ctx.fillRect(f.x + img.width - 1, f.y - img.height - 2, 1, 1);
+      ctx.fillRect(Math.round(f.x + w), Math.round(f.y - h) - 1, 1, 1);
+      ctx.fillRect(Math.round(f.x + w) - 1, Math.round(f.y - h) - 2, 1, 1);
     }
   }
 
@@ -368,7 +370,7 @@
 
     // Back to front, by where each thing stands on the sand.
     const items = [
-      ...v.finds.map(f => ({ y: f.y, x: f.x, w: 9, draw: () => drawFind(ctx, T, f, t, still) })),
+      ...v.finds.map(f => ({ y: f.y, x: f.x, w: f.w || 9, draw: () => drawFind(ctx, T, f, t, still) })),
       ...v.plots.map(p => ({ ...p, draw: () => { shadow(ctx, p.x, p.y, p.w); ctx.drawImage(sprite(v.art.plot, { ...T.castle, k: FIXED.k, i: FIXED.i, b: FIXED.b, B: FIXED.B }), p.x, p.y - p.h); } })),
       ...(v.stake ? [{ ...v.stake, draw: () => ctx.drawImage(sprite(v.art.stake, { f: FIXED.stakeFlag, p: FIXED.p, S: T.castle.S }), v.stake.x, v.stake.y - v.stake.h) }] : []),
       ...v.castles.map(c => ({ ...c, draw: () => drawCastle(ctx, T, c, reveal ? reveal.get(c.id) ?? 1 : 1, t) })),

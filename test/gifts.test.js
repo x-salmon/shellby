@@ -263,3 +263,13 @@ test('moonlit finds only turn up after dark under their own moon, and say so on 
   const shelf = g.view({}).finds.find(f => f.id === set.members[0]);
   assert.match(shelf.blurb, /under a (full|new) moon/);
 });
+
+test('the tank and the beach show a find\'s shelf portrait at half size', () => {
+  for (const f of g.FINDS) {
+    const s = g.scenePortrait(f);
+    const p = g.portrait(f);
+    assert.equal(s.pixels, p.pixels, `${f.id} uses the shelf's drawing`);
+    assert.equal(s.fine, f.portrait ? 2 : 1);
+    assert.ok(s.w <= 10 && s.h <= 10, `${f.id} is no bigger than 10×10 beside him`);
+  }
+});

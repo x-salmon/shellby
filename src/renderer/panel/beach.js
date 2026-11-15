@@ -223,7 +223,7 @@
     const out = [
       ...v.castles.map(c => ({ kind: 'castle', id: c.id, x: c.x, y: c.y, w: c.w, h: c.h, name: c.name, label: `${c.name}, a ${c.kind.toLowerCase()} from ${plural(c.ships, 'ship')}` })),
       ...v.plots.map(p => ({ kind: 'plot', id: p.key, x: p.x, y: p.y, w: p.w, h: p.h, name: p.name, label: `${p.name}, a plot waiting for its castle` })),
-      ...findsShown().map(f => ({ kind: 'find', id: f.id, x: f.x, y: f.y, ...sizeOf(f.pixels), name: f.name, label: f.held ? `${f.name}, his favourite` : `${f.name}, washed up` })),
+      ...findsShown().map(f => ({ kind: 'find', id: f.id, x: f.x, y: f.y, ...(f.w ? { w: f.w, h: f.h } : sizeOf(f.pixels)), name: f.name, label: f.held ? `${f.name}, his favourite` : `${f.name}, washed up` })),
       ...(v.pool ? [{ kind: 'pool', id: 'pool', x: v.pool.x, y: v.pool.y, w: v.pool.w, h: v.pool.h, name: 'Tide pool', label: poolLabel() }] : []),
     ];
     if (crab) out.push({ kind: 'crab', id: 'crab', x: v.crab.x, y: v.crab.y, w: crab.w, h: crab.h, name: 'Shellby', label: 'Pet Shellby' });
