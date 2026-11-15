@@ -177,6 +177,13 @@ function wireUsagePlan(d) {
    * -> { ask: true, cls, model, modelName, cheaper, estimate, words }
    *  | { auto, cls, model, modelName, cheaper } | { ask: false, why }
    */
+  /** What the chat itself holds: the context past its first reading (the fixed setup), or all of it when unknown. */
+  function grownTokens(session) {
+    const tokens = session?.context?.tokens || 0;
+    const base = Number.isFinite(session?.contextBase) ? session.contextBase : 0;
+    return Math.max(0, tokens - base);
+  }
+
   function suggestModel(tabId, text, { files = 0, ultracode = false } = {}) {
     const tab = tabId ? d.manager?.tabs.get(tabId) : null;
     if (!tab || !onClaude(tab) || tab.inTerminal) return { ask: false, why: 'tab' };
@@ -185,7 +192,7 @@ function wireUsagePlan(d) {
     const decision = modelPick.suggest({
       text, files, model, defaultModel: d.config.get('model') || '',
       enabled: d.config.get('modelSuggest') !== false, always: d.config.get('modelAlways') || {},
-      ultracode: ultracode || hasUltracode(text), local: !!tab.localTarget, contextTokens: tab.session?.context?.tokens || 0,
+      ultracode: ultracode || hasUltracode(text), local: !!tab.localTarget, contextTokens: grownTokens(tab.session),
     });
     if (!decision.ask && !decision.auto) return decision;
     const named = { model: model || '', modelName: modelPick.familyName(model), cheaper: modelPick.CHEAPER };
