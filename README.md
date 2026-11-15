@@ -186,6 +186,10 @@ Already use Claude Code on this PC? The tool screens are on the bar from the sta
 
 - **Projects:** the repos you work in, here and on GitHub, with their branches and unpushed work. **Start** a dev server and a `:5173` pill sits by the crab.
 - **When a server crashes** he holds up a red sign. The card marks the error lines and shows exactly what would go to Claude, and nothing is sent until you say so.
+- **Point at it:** a running dev server's card opens your site in a Shellby window. Click the part you want changed (<kbd>Shift</kbd>+click for up to five), say what should change, and it goes to Claude in that project with a picture of it. <kbd>F2</kbd> points again, and in a draft page what you point at goes to the conversation building it.
+
+<p align="center"><img src="docs/img/screenshot-point.png" width="640" alt="Pointing at a page: You pointed at 2 parts, the Print queue heading and a Cable clip row, with a picture of them, a box for what should change, and Change it with Claude"></p>
+<p align="center"><sub>Point at the parts you want changed and say how</sub></p>
 - **Start from where the work is:** **Fix this build** on a red pull request sends Claude the failing step's log, **Address the review** quotes the comments still open (a new review comment offers it on its notification), and **Next up** ranks what to work on in each project (your tasks, your notes, its GitHub issues and milestones, the TODOs in its code), each with **Do this**: a conversation in a copy on its own branch, the prompt waiting for you to send.
 - **Notes for later:** jot an idea on a project's Notes, or ask Claude to note it from the chat. **Plan**, **Build** or **Ask** turns one into a conversation, Plan and Build in a copy of their own. Pick a note to read Claude's answer beside it, and **Plan Claude's version** when it said to do it differently.
 - **Time on each project:** hours worked out from what he already sees, a month at a time on a calendar where you fix any day's hours and timesheet lines, clients and rates, a PDF or CSV timesheet, and a day at a time to Toggl, Clockify or Harvest when you send it. Off until you turn it on.
@@ -303,14 +307,14 @@ The rest is there if you want it, and none of it needs Claude or an account:
 </td>
 <td width="33%" valign="top">
 
-**🔍 Review a whole branch** · 0.98<br>
-<sub>Comments on any line, the words changed inside a line, viewed ticks, ignore whitespace, find and go to line, all in the file viewer. [See](CHANGELOG.md#0980-review-in-the-viewer)</sub>
+**👉 Point at it** · 0.99.2<br>
+<sub>Open your dev server's site in Shellby, click the parts you want changed, say what should change, and it goes to Claude with a picture. [See](CHANGELOG.md#0992-point-at-it)</sub>
 
 </td>
 </tr>
 </table>
 
-<sub>And before that: dev servers he finds, answers from your notifications, your phone doing more, a leaner Claude, the Crab Painter, Shellby on your phone, switching models mid-conversation, Wrapped naming your best reef, all files beside the chat, keep warm, Ultracode, the Logbook and levels to 99, reef health, Claude Code installed for you, a Council that reads your project first, Shellby Wrapped, background sessions, combining tries, the file viewer, the trail, marks past 99, twelve panes, code in colour, the Outline and Problems, <code>/debug</code>, routines that follow you, the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
+<sub>And before that: reviewing a whole branch, dev servers he finds, answers from your notifications, your phone doing more, a leaner Claude, the Crab Painter, Shellby on your phone, switching models mid-conversation, Wrapped naming your best reef, all files beside the chat, keep warm, Ultracode, the Logbook and levels to 99, reef health, Claude Code installed for you, a Council that reads your project first, Shellby Wrapped, background sessions, combining tries, the file viewer, the trail, marks past 99, twelve panes, code in colour, the Outline and Problems, <code>/debug</code>, routines that follow you, the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
 
 ## Install
 
