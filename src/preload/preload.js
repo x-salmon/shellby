@@ -68,7 +68,7 @@ contextBridge.exposeInMainWorld('shellby', {
   claudeStatus: invoke('claude:status'),
   // Settings' local model: Detect, Try it, its tally and resting models (local/model.js, local/tally.js)
   localDetect: invoke('local:detect'), localTry: invoke('local:try'), localState: invoke('local:state'), localWake: invoke('local:wake'), localResetTally: invoke('local:reset-tally'), localAnswerInstead: invoke('local:answer-instead'),
-  localModels: invoke('local:models'), // Settings' Find models: what a local server on this PC has (local/model.js)
+  localModels: invoke('local:models'), ollamaStatus: invoke('local:ollama'), ollamaStart: invoke('local:ollama-start'), ollamaStop: invoke('local:ollama-stop'), // Settings' Find models (local/model.js), Start/Stop Ollama (local/ollama.js)
   claudeLogin: invoke('claude:login'), installClaude: invoke('claude:install'), practiceFolder: invoke('first-run:practice'), // onboarding's installer; First steps' practice folder
   claudeLogout: (opts = {}) => ipcRenderer.invoke('claude:logout', { thenSignIn: !!opts.thenSignIn }), // thenSignIn: "Switch account"
   onClaudeStatus: on('claude:status'), // re-checked after the sign-in window closes, or a sign-out

@@ -75,6 +75,49 @@
     renderAnswers(lm, names);
     renderAgent(lm, names);
     refreshTally();
+    refreshOllama();
+  }
+
+  // Start/Stop Ollama: only once it's installed. Running is whatever answers on its port.
+  let ollamaSeq = 0;
+  let ollamaBusy = false;
+  async function refreshOllama() {
+    if (ollamaBusy) return;
+    const seq = ++ollamaSeq;
+    let st;
+    try { st = await api.ollamaStatus(); } catch { return; } // extra: Settings works without it
+    if (seq !== ollamaSeq || ollamaBusy || !st) return;
+    showOllama(st);
+  }
+  function showOllama(st) {
+    const btn = $('ollamaPower');
+    btn.hidden = !st.installed && !st.running;
+    btn.textContent = st.running ? 'Stop Ollama' : 'Start Ollama';
+    btn.dataset.running = st.running ? '1' : '';
+  }
+  async function toggleOllama() {
+    if (ollamaBusy) return;
+    const btn = $('ollamaPower');
+    const stopping = btn.dataset.running === '1';
+    ollamaBusy = true;
+    ollamaSeq++;
+    btn.setAttribute('aria-busy', 'true');
+    say(stopping ? 'Stopping Ollama…' : 'Starting Ollama…');
+    let r;
+    try {
+      r = await (stopping ? api.ollamaStop() : api.ollamaStart());
+    } catch {
+      r = { ok: false, error: stopping ? 'Couldn\'t stop Ollama.' : 'Couldn\'t start Ollama.' };
+    } finally {
+      ollamaBusy = false;
+      btn.removeAttribute('aria-busy');
+    }
+    if (typeof r?.running === 'boolean') showOllama({ installed: true, running: r.running });
+    if (!r?.ok) { say(r?.error || 'Couldn\'t do that.'); return; }
+    if (stopping) { say('Ollama is off. Claude writes the drafts until it\'s back.'); return; }
+    // Running again: show what it has, as Detect would.
+    if (!current().model || serverKey(current().url) === serverKey(DEFAULT_URL)) await detectServers();
+    else say('Ollama is running.');
   }
 
   // Each job: on or off, and a model of its own or the one above.
@@ -264,6 +307,7 @@
 
   $('localModelFind').addEventListener('click', findModels);
   $('localModelDetect').addEventListener('click', detectServers);
+  $('ollamaPower').addEventListener('click', toggleOllama);
   $('localModelAsk').addEventListener('click', tryIt);
   $('localModelQuestion').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tryIt(); } });
   $('localModelWake').addEventListener('click', async () => {

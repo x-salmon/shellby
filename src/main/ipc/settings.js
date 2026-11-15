@@ -13,6 +13,7 @@ const { COLONY_MAX } = require('../desktop/floor');
 const filelinks = require('../filelinks');
 const guard = require('../guard');
 const localModel = require('../local/model');
+const { createOllama } = require('../local/ollama');
 const mischief = require('../mischief');
 const { str, obj, opt, text } = require('../ipc-args');
 const localTally = require('../local/tally');
@@ -215,6 +216,11 @@ function registerSettingsIpc(ipcMain, d) {
   ipcMain.handle('local:models', (_e, url) => localModel.listModels(url), [str({ max: 500 })]);
   // Detect: which of Ollama and LM Studio answer on their usual ports, with their models.
   ipcMain.handle('local:detect', () => localModel.detect());
+  // Start and stop Ollama, for when it was quit from its tray icon. Nothing to pass: main finds the install.
+  const ollama = createOllama({ log: d.log });
+  ipcMain.handle('local:ollama', () => ollama.status());
+  ipcMain.handle('local:ollama-start', () => ollama.start());
+  ipcMain.handle('local:ollama-stop', () => ollama.stop());
   // Try it: one question to a model, shown in Settings with how long it took.
   ipcMain.handle('local:try', (_e, req) => localModel.tryModel(req), [obj({ url: str({ max: 500 }), model: str({ max: 200 }), question: opt(text(2000)) })]);
   // What it's saved so far, and whether a model is resting after failing.
