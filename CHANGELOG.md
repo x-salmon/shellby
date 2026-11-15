@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.99.6: Code scanning tidy-up
+
+### Fixed
+- Tidied a few spots that GitHub's code scanning flagged, in the card, pointing and prompts code. Nothing looks different.
+
 ## 0.99.5: Ollama start and stop, and the start-fresh nudge
 
 ### New
