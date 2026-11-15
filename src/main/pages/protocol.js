@@ -75,10 +75,15 @@ function answer(rawUrl, pages, sideFiles) {
   return { status: 200, type, body: type === 'text/html' ? withGuard(buf.toString('utf8')) : buf };
 }
 
+/** The picker (point at it), shared with a dev server's window (devpoint.js). */
+const pickerSource = () => fs.readFileSync(path.join(PAGE_SIDE, 'picker.js'), 'utf8');
+/** shellby.js as a page gets it: the picker and the bridge in one function, so the picker is no global of the page's. */
+const bridgeSource = () => `(function () {\n${pickerSource()}\n${fs.readFileSync(path.join(PAGE_SIDE, 'shellby.js'), 'utf8')}\n})();\n`;
+
 /** Serve pages on a session's protocol (Electron's protocol.handle). */
 function servePages(protocol, pages) {
   const sideFiles = {
-    'shellby.js': fs.readFileSync(path.join(PAGE_SIDE, 'shellby.js'), 'utf8'),
+    'shellby.js': bridgeSource(),
     'guard.js': fs.readFileSync(path.join(PAGE_SIDE, 'guard.js'), 'utf8'),
   };
   protocol.handle(SCHEME, req => {
@@ -89,4 +94,4 @@ function servePages(protocol, pages) {
   });
 }
 
-module.exports = { SCHEME, CSP, CSP_INERT, HEADERS, PRIVILEGES, urlOf, withGuard, answer, servePages };
+module.exports = { SCHEME, CSP, CSP_INERT, HEADERS, PRIVILEGES, urlOf, withGuard, answer, servePages, pickerSource, bridgeSource };

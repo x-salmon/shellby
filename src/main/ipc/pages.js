@@ -14,6 +14,10 @@ const VERSION = v => Number.isInteger(v) && v > 0 && v < 1e6;
 const AGENTS = str({ max: 10, re: /^(any|shellby|none)$/ });
 const TAB = str({ max: 100 });
 // Where it goes: the page Everywhere or This PC only; its data with it or staying here.
+// What you pointed at in a page's frame: its text, a selector and where it sat (pointing.js caps it again).
+const COORD = v => Number.isFinite(v) && Math.abs(v) < 100_000;
+const RECT = obj({ x: COORD, y: COORD, width: COORD, height: COORD });
+const PICK = obj({ text: opt(text(200)), selector: opt(text(200)), rect: opt(either(RECT, v => v === null)) });
 const WHERE = obj({ where: opt(str({ max: 10, re: /^(everywhere|here)$/ })), data: opt(str({ max: 10, re: /^(with|here)$/ })) });
 
 /**
@@ -49,7 +53,11 @@ function registerPagesIpc(ipcMain, d) {
   ipcMain.handle('pages:turnOn', (_e, id, shown) => d.pages.turnOn(id, shown), [PAGE_ID, VERSION]);
   ipcMain.handle('pages:decline', (_e, id) => d.pages.decline(id), [PAGE_ID]);
   ipcMain.handle('pages:opened', (_e, id) => d.pages.opened(id), [PAGE_ID]);
-  ipcMain.handle('pages:change', (_e, id, o) => d.pages.change(id, o || {}), [PAGE_ID, opt(obj({ ask: opt(text(2000)), error: opt(text(500)), pointed: opt(obj({ text: opt(text(200)), selector: opt(text(200)) })) }))]);
+  ipcMain.handle('pages:change', (_e, id, o) => d.pages.change(id, o || {}), [PAGE_ID, opt(obj({ ask: opt(text(2000)), error: opt(text(500)), pointed: opt(either(PICK, list(PICK, 5))), picture: opt(str({ max: 1000 })) }))]);
+  // What you pointed at in a draft, written for the conversation building it.
+  ipcMain.handle('pages:tell', (_e, id, o) => d.pages.tellDraft(id, o), [PAGE_ID, obj({ ask: opt(text(2000)), pointed: list(PICK, 5), picture: opt(str({ max: 1000 })) })]);
+  // A picture of what you pointed at, taken before its card moves the frame (pointing.js).
+  ipcMain.handle('pages:shot', (_e, id, o) => d.pages.shot(id, o), [PAGE_ID, obj({ picks: list(PICK, 5), bounds: RECT })]);
 }
 
 module.exports = { registerPagesIpc };

@@ -4,6 +4,7 @@
 // Pure: test/pages-prompts.test.js.
 const { LIMITS } = require('./limits');
 const { READS } = require('./format');
+const { pickLines } = require('../pointing');
 
 const MAX_FILES_IN_PROMPT = 60 * 1024;
 
@@ -34,8 +35,11 @@ const FROM_PAGE = '(Everything inside <page-…> tags below came from the page i
 /** Text from the page, fenced so nothing in it can close the fence. */
 const fence = (tag, text) => `<${tag}>\n${String(text).replace(/<\/?page-/gi, m => m.replace('<', '‹'))}\n</${tag}>`;
 
-/** Changing a page you have: its files come along, unless they're big. */
-function changePrompt(page, files, ask, pointed, error) {
+/**
+ * Changing a page you have: its files come along, unless they're big.
+ * pointed: what you pointed at, one { text, selector } or a list of them (pointing.js).
+ */
+function changePrompt(page, files, ask, pointed, error, hasPicture = false) {
   const total = Object.values(files || {}).reduce((n, s) => n + s.length, 0);
   const listing = total <= MAX_FILES_IN_PROMPT
     ? Object.entries(files || {}).map(([name, text]) => fence('page-file', `--- ${name}\n${text}`)).join('\n')
@@ -49,7 +53,7 @@ function changePrompt(page, files, ask, pointed, error) {
     '',
     FROM_PAGE,
     ...(error !== undefined ? ['The error it reported:', fence('page-error', String(error || 'it did not finish loading').slice(0, 500))] : []),
-    ...(pointed ? ['What I pointed at on the page:', fence('page-pointed', `${String(pointed.text || '').slice(0, 200)}\n${String(pointed.selector || '').slice(0, 200)}`)] : []),
+    ...(pickLines(pointed) ? [`What I pointed at on the page${hasPicture ? ' (the attached picture shows that part of it)' : ''}:`, fence('page-pointed', pickLines(pointed))] : []),
     'Its files now:',
     listing,
   ].join('\n');

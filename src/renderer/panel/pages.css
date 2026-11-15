@@ -79,6 +79,15 @@ body[data-view="pages"] .view-pages { display: flex; flex-direction: column; ove
 .pg-card-text { display: grid; gap: 3px; }
 .pg-card-text code { font-size: var(--fs-12); color: var(--sand-dim); white-space: pre-wrap; word-break: break-word; }
 .pg-card-text q { color: var(--sand); }
+/* What you pointed at: each part, its picture, and what should change. */
+.pg-pointed { flex-wrap: wrap; }
+.pg-pointed .pg-card-text { flex-basis: 100%; gap: 6px; }
+.pg-picks { margin: 0; padding-left: 1.4em; display: grid; gap: 2px; }
+.pg-picks li { overflow-wrap: anywhere; }
+.pg-picks code { margin-left: 6px; }
+.pg-pick-shot { max-width: min(320px, 100%); max-height: 160px; object-fit: contain; object-position: left top; border-radius: 6px; border: 1px solid var(--line); }
+.pg-point-ask { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--ink); color: var(--sand); }
+.pg-point-ask:focus-visible { outline: 2px solid var(--glass); outline-offset: 1px; }
 
 .pg-stage { flex: 1; min-height: 0; display: flex; background: var(--abyss); }
 .pg-frame-box { flex: 1; display: flex; min-height: 0; }

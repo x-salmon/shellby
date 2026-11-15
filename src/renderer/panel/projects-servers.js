@@ -22,6 +22,32 @@
   const FOUND_MS = 15 * 1000;
   const modeTitle = () => SB.MODES.find(m => m.id === state.settings.mode)?.title || 'your current mode';
 
+  // ------------------------------------------------------------------ point at it
+  // The server opens in a Shellby window (devpoint.js); what you click there and
+  // say should change comes back here and goes to a conversation in that project:
+  // the one you're in if it's there, else the newest one there, else a new one.
+  async function pointAt(id) {
+    const r = await api.pointAtServer(id).catch(err => ({ ok: false, error: err.message }));
+    if (!r?.ok) SB.toast(r?.error || "Couldn't open it.");
+  }
+  const folderKey = p => String(p || '').replace(/[\\/]+$/, '').toLowerCase();
+  const inside = (cwd, root) => { const c = folderKey(cwd); const r = folderKey(root); return !!r && (c === r || c.startsWith(`${r}\\`) || c.startsWith(`${r}/`)); };
+  function tabFor(root) {
+    const active = SB.activeTab();
+    if (active && inside(active.cwd, root)) return active;
+    return [...state.tabs.values()].reverse().find(t => inside(t.cwd, root) && !t.routineId) || null;
+  }
+  api.onDevPointed(async (/** @type {{ root?: string, text?: string, files?: string[] }} */ { root, text, files } = {}) => {
+    if (typeof root !== 'string' || typeof text !== 'string' || !text) return;
+    SB.setView('chat');
+    let tab = tabFor(root);
+    if (tab) SB.activate(tab.id);
+    else { await SB.newTabIn({ cwd: root }); tab = SB.activeTab(); }
+    if (!tab) return;
+    for (const f of Array.isArray(files) ? files : []) if (typeof f === 'string' && !tab.attachments.includes(f)) tab.attachments.push(f);
+    await SB.send(text);
+  });
+
   // ------------------------------------------------------------------ servers in a clone
 
   function serversSection(c) {
@@ -82,6 +108,7 @@
     const buttons = [
       fixed && act('Restart', () => serverAction('restartServer', s.id), 'btn primary slim-btn'),
       L.isUp(s) && s.url && act('Open', () => api.openServer(s.id), 'btn slim-btn'),
+      L.isUp(s) && s.url && s.kind === 'server' && !SB.solo && act('Point at it', () => pointAt(s.id)),
       isLive(s) && s.kind === 'server' && act('Restart', () => serverAction('restartServer', s.id)),
       isLive(s) && act('Stop', () => serverAction('stopServer', s.id)),
       crashed && !fixed && s.kind === 'server' && act('Restart', () => serverAction('restartServer', s.id)),

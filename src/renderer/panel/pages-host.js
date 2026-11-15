@@ -58,7 +58,8 @@
     let frameFor = null;  // which id the frame shows
     let pointing = false;
     /** @type {any} */
-    let pointed = null;   // what you last pointed at
+    let pointed = null;   // what you last pointed at: { picks, picture, preview }
+    let pointAsk = '';    // what you've typed should change about it
     const shown = new Set(); // refusals already shown, "kind:what"
     /** @type {any} */
     let ask = null;       // a pending shellby.ask
@@ -143,7 +144,19 @@
           if (view && !view.draft) api.pages.broken(view.id, message);
         },
         // Only while you've turned Point at it on, and it only fills a card: a page can't start anything.
-        onPointed: p => { if (!pointing) return; pointed = p; setPoint(false); drawCards(); },
+        // The picture is taken first, while the frame is still where the picks were measured.
+        onPointed: async p => {
+          if (!pointing || !view) return;
+          setPoint(false);
+          const forId = view.id;
+          const r = await api.pages.shot(forId, { picks: p.picks, bounds: p.bounds }).catch(() => null);
+          if (view?.id !== forId) return;
+          pointed = { picks: p.picks, picture: r?.ok ? r.picture : null, preview: r?.ok ? r.preview : null };
+          pointAsk = '';
+          drawCards();
+          cards.querySelector('.pg-point-ask')?.focus();
+        },
+        onPointCancel: () => { if (pointing) setPoint(false); },
         onRefused: r => {
           const key = `${r.refused?.kind}:${r.refused?.what || ''}`;
           if (shown.has(key)) return;
@@ -259,13 +272,7 @@
           btn('Ask Claude', () => { ask = null; drawCards(); api.pages.ask(view.id, a.prompt, a.mode).then(fail); }, 'btn primary slim-btn'),
           btn('Not now', () => { ask = null; drawCards(); }, 'btn ghost slim-btn')));
       }
-      if (pointed && !view.draft) {
-        const p = pointed;
-        out.push(card('ask',
-          h('div', { class: 'pg-card-text' }, h('b', { text: 'You pointed at' }), h('q', { text: p.text || p.selector })),
-          btn('Change it with Claude', () => change(p), 'btn primary slim-btn'),
-          btn('Not now', () => { pointed = null; drawCards(); }, 'btn ghost slim-btn')));
-      }
+      if (pointed) out.push(pointedCard(pointed));
       if (refused) {
         const r = refused;
         out.push(card('warn',
@@ -274,6 +281,47 @@
           btn('OK', () => { refused = null; drawCards(); }, 'btn ghost slim-btn')));
       }
       cards.replaceChildren(...out);
+    }
+
+    /**
+     * What you pointed at: each part, its picture, and a box for what should
+     * change. A saved page starts a conversation to change it; a draft tells
+     * the conversation that's building it.
+     */
+    function pointedCard(p) {
+      const n = p.picks.length;
+      const input = h('input', {
+        type: 'text', class: 'pg-point-ask', maxlength: '2000', value: pointAsk,
+        placeholder: n > 1 ? `What should change about these ${n}?` : 'What should change?', 'aria-label': 'What should change',
+      });
+      input.addEventListener('input', () => { pointAsk = input.value; });
+      const go = () => (view.draft ? tell(p) : change(p));
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); go(); }
+        if (e.key === 'Escape') { e.preventDefault(); pointed = null; drawCards(); }
+      });
+      return card('ask pg-pointed',
+        h('div', { class: 'pg-card-text' },
+          h('b', { text: n > 1 ? `You pointed at ${n} parts` : 'You pointed at' }),
+          h('ol', { class: 'pg-picks' }, ...p.picks.map(k => h('li', {}, h('q', { text: k.text || k.selector }), k.text && k.selector ? h('code', { class: 'muted small', text: k.selector }) : null))),
+          p.preview ? h('img', { class: 'pg-pick-shot', src: p.preview, alt: 'A picture of what you pointed at' }) : null,
+          input),
+        btn(view.draft ? 'Tell Claude' : 'Change it with Claude', go, 'btn primary slim-btn'),
+        btn('Point again', () => { pointed = null; drawCards(); setPoint(true); }, 'btn ghost slim-btn'),
+        btn('Not now', () => { pointed = null; drawCards(); }, 'btn ghost slim-btn'));
+    }
+
+    /** A draft: what you pointed at goes to the conversation building it, as your message. */
+    async function tell(p) {
+      const r = fail(await api.pages.tell(view.id, { ask: pointAsk, pointed: p.picks, picture: p.picture }).catch(err => ({ ok: false, error: err.message })));
+      if (!r?.ok) return;
+      const tab = SB.state.tabs.get(r.tabId);
+      if (!tab) { SB.toast("The conversation building this draft isn't open."); return; }
+      pointed = null; pointAsk = '';
+      drawCards();
+      SB.activate(r.tabId);
+      for (const f of r.files || []) if (!tab.attachments.includes(f)) tab.attachments.push(f);
+      await SB.send(r.text);
     }
 
     const fail = r => { if (r?.ok === false && r.error) SB.toast(r.error); return r; };
@@ -308,12 +356,19 @@
       frame?.point(on);
     }
     pointBtn.addEventListener('click', () => setPoint(!pointing));
+    // Escape stops pointing from the panel too: the frame only hears keys once you've clicked into it.
+    const onEscape = e => { if (pointing && e.key === 'Escape') { e.preventDefault(); setPoint(false); } };
+    document.addEventListener('keydown', onEscape, true);
 
-    /** Change with Claude: only ever from your click (the header's button, or the pointed-at card). */
+    /**
+     * Change with Claude: only ever from your click (the header's button, or the pointed-at card).
+     * @param {{ picks: any[], picture?: string | null } | null} [p]
+     */
     function change(p = null) {
       if (!view || view.draft) return;
-      api.pages.change(view.id, p ? { pointed: p } : {}).then(fail);
-      pointed = null;
+      const o = p ? { pointed: p.picks, ...(p.picture ? { picture: p.picture } : {}), ...(pointAsk.trim() ? { ask: pointAsk.trim() } : {}) } : {};
+      api.pages.change(view.id, o).then(fail);
+      pointed = null; pointAsk = '';
       drawCards();
     }
 
@@ -334,7 +389,7 @@
       refresh: () => (view ? show(view.id) : null),
       reload: () => frame?.reload(),
       snapshot,
-      close: () => { clearTimeout(snapTimer); hideStrip(); frame?.close(); frame = null; frameFor = null; el.remove(); },
+      close: () => { clearTimeout(snapTimer); hideStrip(); document.removeEventListener('keydown', onEscape, true); frame?.close(); frame = null; frameFor = null; el.remove(); },
     };
   }
 

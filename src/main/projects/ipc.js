@@ -229,6 +229,8 @@ function registerProjectsIpc(ipcMain, d) {
     d.openExternal(s.url);
     return true;
   }, [SRV]);
+  // Point at it: the server in a Shellby window (devpoint.js); only one Shellby runs and that's up on localhost.
+  ipcMain.handle('servers:point', (_e, id) => (isId(id) ? d.pointAtServer?.(id) ?? { ok: false } : { ok: false }), [SRV]);
   ipcMain.handle('servers:open-log', (_e, id) => {
     const s = isId(id) ? S()?.servers.get(id) : null;
     if (!s?.log) return false;

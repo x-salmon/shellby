@@ -409,7 +409,8 @@ function wireTimetrack(d) {
   // opts.copyLater: yours rather than his (a note's Ask): it starts here too,
   // but moves into a copy if you go on to have it change things.
   // opts.model: a model of its own (models.js), set before its first message.
-  function startTask(prompt, title, { mode = null, cwd = null, copyLater = false, model = null } = {}) {
+  // opts.files: attached to the first message, as if you'd added them (a picture of what you pointed at).
+  function startTask(prompt, title, { mode = null, cwd = null, copyLater = false, model = null, files = [] } = {}) {
     if (d.config.get('crabOnly') || !d.claudeStatus?.installed || !d.claudeStatus?.loggedIn) return { ok: false, needsClaude: true, error: 'That needs Claude Code: set it up first.' };
     try {
       const tabId = d.randomUUID();
@@ -417,7 +418,8 @@ function wireTimetrack(d) {
       // last commit, and "look over my changes" is about what isn't committed yet.
       openTab({ tabId, title, mode, ...(cwd ? { cwd } : {}) }).noCopy = !copyLater;
       if (model) d.manager.setTabModel(tabId, model);
-      d.manager.send(tabId, prompt, { kind: 'user', text: prompt, title });
+      const attached = Array.isArray(files) ? files.filter(f => typeof f === 'string' && f) : [];
+      d.manager.send(tabId, attached.length ? composePrompt(prompt, attached) : prompt, { kind: 'user', text: prompt, title, ...(attached.length ? { attachments: attached } : {}) });
       d.wake();
       d.send(d.panel, 'tab:opened', { tabId, entry: d.history.get(tabId), items: d.history.load(tabId), background: false });
       return { ok: true, tabId };

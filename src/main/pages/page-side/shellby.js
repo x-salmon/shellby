@@ -15,7 +15,7 @@
 //   shellby.say(text)            the crab says it
 //   shellby.theme                Shellby's colours and fonts, to match or not
 'use strict';
-/* global window, document, requestAnimationFrame, Promise, Map, Error, JSON, CSS */
+/* global window, document, requestAnimationFrame, Promise, Map, Error, JSON, shellbyPicker */
 (function () {
   const parent = window.parent;
   if (!parent || parent === window || /** @type {any} */ (window).shellby) return;
@@ -68,46 +68,10 @@
   });
 
   // ------------------------------------------------------------ point at it
-  let pointOn = false;
-  /** @type {HTMLDivElement | null} */
-  let box = null;
-  function selectorOf(el) {
-    const parts = [];
-    for (let n = el; n && n.nodeType === 1 && parts.length < 4; n = n.parentElement) {
-      let p = n.localName;
-      if (n.id) { parts.unshift(`${p}#${CSS.escape(n.id)}`); break; }
-      const cls = [...n.classList].slice(0, 2).map(c => `.${CSS.escape(c)}`).join('');
-      p += cls;
-      parts.unshift(p);
-    }
-    return parts.join(' > ').slice(0, 200);
-  }
-  function outline(el) {
-    if (!box) {
-      const el = document.createElement('div');
-      box = el;
-      el.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;border:2px solid #ff7a5c;border-radius:4px;background:rgba(255,122,92,.12);transition:all .06s';
-      document.documentElement.append(el);
-    }
-    const r = el.getBoundingClientRect();
-    Object.assign(box.style, { left: `${r.left - 2}px`, top: `${r.top - 2}px`, width: `${r.width + 4}px`, height: `${r.height + 4}px`, display: 'block' });
-  }
-  const onMove = e => { if (e.target instanceof window.Element) outline(e.target); };
-  const onClick = e => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    const el = e.target;
-    try { post({ type: 'pointed', text: String(el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200), selector: selectorOf(el) }); } catch { /* too big: ignored */ }
-  };
-  function pointing(on) {
-    if (on === pointOn) return;
-    pointOn = on;
-    const fn = on ? 'addEventListener' : 'removeEventListener';
-    window[fn]('mousemove', onMove, true);
-    window[fn]('click', onClick, true);
-    if (!on && box) box.style.display = 'none';
-    document.documentElement.style.cursor = on ? 'crosshair' : '';
-  }
+  // picker.js comes first in the same function (pages/protocol.js serves them together).
+  // @ts-ignore -- defined by picker.js, served ahead of this file
+  const picker = shellbyPicker({ post });
+  const pointing = on => picker.set(on);
 
   // ------------------------------------------------------------------ ready
   function ready() { requestAnimationFrame(() => { try { post({ type: 'ready' }); } catch { /* ignored */ } }); }

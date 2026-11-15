@@ -64,7 +64,7 @@ function createPocketPages(d, { devices, claimStart, adopt, pushView, once, noti
   /** @type {Map<string, { deviceId: string, pageId: string, expiresAt: number }>} */
   const caps = new Map();
   const sideFiles = {
-    'shellby.js': fs.readFileSync(path.join(PAGE_SIDE, 'shellby.js'), 'utf8'),
+    'shellby.js': protocol.bridgeSource(), // the bridge with its picker, as the desk serves it
     'guard.js': fs.readFileSync(path.join(PAGE_SIDE, 'guard.js'), 'utf8'),
   };
   const notified = new Map(); // page id -> when its last push went

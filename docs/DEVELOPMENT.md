@@ -495,6 +495,8 @@ src/main/        Electron main process
   cli-commands.js  Claude Code's own slash commands and how Shellby handles each (pure; the panel gets a copy)
   checks.js        turn checks: which test commands a folder has, running them (cmd, fixed lines only), the verdict and the bring-home gate
   shots.js         before/after pictures of a dev server either side of a turn, in a hidden locked-down window
+  devpoint.js      Point at it on a dev server: its own locked-down window, the picker in an isolated world, the pick to the panel
+  pointing.js      what you pointed at (a page or a dev server): picks capped, the picture's crop, the fenced lines Claude reads
   editor.js        "Open in VS Code": a turn's file in VS Code's diff, both sides read out of git
   problems.js      Problems: the file:line errors in check output (tsc, ESLint, gcc, rustc, mypy…), and the fenced Fix prompt (pure)
   outline.js       the Ctrl+Shift+O outline: each message and the files its turn touched (pure)

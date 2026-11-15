@@ -13,6 +13,7 @@
 //     the store does; github/sync.js calls syncRun in each pass)
 //
 // Kept out of main.js, which only wires it up.
+const crypto = require('crypto');
 const os = require('os');
 const path = require('path');
 const { app } = require('electron');
@@ -25,6 +26,7 @@ const { pageFetch } = require('../pages/fetch');
 const protocol = require('../pages/protocol');
 const confirm = require('../confirm');
 const prompts = require('../pages/prompts');
+const pointing = require('../pointing');
 const sync = require('../sync/pages');
 const { normalizeXp } = require('../progression/xp');
 
@@ -203,6 +205,48 @@ function wirePages(d) {
       pages().writeThumb(id, img.resize({ width: Math.min(480, r.width) }).toJPEG(72));
       return { ok: true };
     } catch { return { ok: false }; }
+  }
+
+  // Pictures of what you pointed at: only paths made here go to Claude, never one the panel names.
+  const issued = new Set();
+  const picturesDir = () => path.join(app.getPath('userData'), 'point-pictures');
+  /**
+   * A picture of what you pointed at in a page's frame, taken before its card moves anything.
+   * o.picks: as the frame sent them; o.bounds: the frame in the panel (CSS px).
+   * -> { ok, picture, preview } | { ok: false }
+   */
+  async function shot(id, o) {
+    const wc = d.panel?.webContents;
+    if (!wc || !pages().known(id)) return { ok: false };
+    const picks = pointing.cleanPicks(o?.picks);
+    const bounds = pointing.cleanRect(o?.bounds);
+    const rect = bounds && pointing.cropRect(picks, bounds, { offset: bounds, zoom: wc.getZoomFactor?.() || 1 });
+    if (!rect) return { ok: false };
+    try {
+      const img = await wc.capturePage(rect);
+      if (img.isEmpty()) return { ok: false };
+      const picture = pointing.savePicture(picturesDir(), img.toPNG(), crypto.randomUUID());
+      if (!picture) return { ok: false };
+      issued.add(picture);
+      return { ok: true, picture, preview: img.resize({ width: Math.min(320, img.getSize().width) }).toDataURL() };
+    } catch { return { ok: false }; }
+  }
+  const ownPicture = p => (typeof p === 'string' && issued.has(p) ? p : null);
+  /**
+   * What you pointed at in a draft, for the conversation building it: the
+   * panel sends it there like a message of yours, so a busy turn queues it.
+   * -> { ok, tabId, text, files } | { ok: false, error }
+   * @param {string} id @param {{ ask?: string, pointed?: any, picture?: string }} [o]
+   */
+  function tellDraft(id, { ask, pointed, picture } = {}) {
+    if (!format.isDraftId(id) || !pages().known(id)) return { ok: false, error: 'No such draft.' };
+    const tabId = pages().state(id).tab;
+    if (!tabId) return { ok: false, error: "The conversation building this draft isn't open." };
+    const picks = pointing.cleanPicks(pointed);
+    if (!picks.length) return { ok: false, error: 'Point at something first.' };
+    const pic = ownPicture(picture);
+    const text = pointing.draftMessage({ ask, picks, name: pages().manifest(id)?.name || 'page', hasPicture: !!pic });
+    return { ok: true, tabId, text, files: pic ? [pic] : [] };
   }
 
   // ------------------------------------------------------------ MCP tools
@@ -460,7 +504,8 @@ function wirePages(d) {
     const m = draft ? null : measure().pages.find(p => p.id === id);
     const t = draft ? null : s.thumb(id);
     return {
-      ...sum, draft, url: protocol.urlOf(id), servable: servable(id), thumb: t ? `data:image/jpeg;base64,${t.toString('base64')}` : null,
+      // tab: the conversation building a draft, where what you point at in it goes.
+      ...sum, draft, tab: draft ? st.tab || null : null, url: protocol.urlOf(id), servable: servable(id), thumb: t ? `data:image/jpeg;base64,${t.toString('base64')}` : null,
       words: format.accessWords(man?.access), pending: s.pendingAccess(id).map(g => ({ ...g, text: growthWord(g) })),
       added: st.added, agreed: st.agreed, versions: st.versions.slice().reverse(),
       arrived: st.arrived,
@@ -527,12 +572,13 @@ function wirePages(d) {
   /**
    * Start a conversation that works on pages: the panel opens the page beside it.
    * show: false leaves the panel where it is (a task from the phone).
-   * @param {string} prompt @param {string} title @param {string | null} id @param {string | null} [mode] @param {{ show?: boolean }} [o]
+   * files: attached to the first message (a picture of what you pointed at).
+   * @param {string} prompt @param {string} title @param {string | null} id @param {string | null} [mode] @param {{ show?: boolean, files?: string[] }} [o]
    */
-  function startWith(prompt, title, id, mode = null, { show = true } = {}) {
+  function startWith(prompt, title, id, mode = null, { show = true, files = [] } = {}) {
     const man = id ? pages().manifest(id) : null;
     const cwd = man?.project || d.currentCwd();
-    const r = d.startTask(prompt, title, { cwd, ...(mode ? { mode } : {}) });
+    const r = d.startTask(prompt, title, { cwd, ...(mode ? { mode } : {}), ...(files.length ? { files } : {}) });
     if (!r?.ok) return r || { ok: false, error: "Couldn't start the conversation." };
     if (mode) d.manager?.modeToStart?.(r.tabId);
     if (show) d.showPanel?.({ focusInput: false, tabId: r.tabId });
@@ -545,18 +591,20 @@ function wirePages(d) {
   }
   /**
    * Change with Claude, or Fix it with Claude when error is given.
-   * @param {string} id @param {{ ask?: string, pointed?: { text?: string, selector?: string }, error?: string }} [o] @param {{ show?: boolean }} [where]
+   * pointed: what you pointed at, one or a list (pointing.js); picture: a path shot() made.
+   * @param {string} id @param {{ ask?: string, pointed?: any, picture?: string, error?: string }} [o] @param {{ show?: boolean }} [where]
    */
-  function change(id, { ask, pointed, error } = {}, where = {}) {
+  function change(id, { ask, pointed, picture, error } = {}, where = {}) {
     const s = pages();
     const man = s.manifest(id);
     if (!man || !format.isId(id)) return { ok: false, error: 'No such page.' };
     if (!allow('change', 4, Date.now())) return { ok: false, error: 'That started a few conversations just now. Give it a moment.' };
     const page = { id, name: man.name };
     const files = s.files(id) || {};
-    const prompt = error !== undefined ? prompts.fixPrompt(page, files, error) : prompts.changePrompt(page, files, ask, pointed);
+    const pic = error === undefined ? ownPicture(picture) : null;
+    const prompt = error !== undefined ? prompts.fixPrompt(page, files, error) : prompts.changePrompt(page, files, ask, pointing.cleanPicks(pointed), undefined, !!pic);
     // Ask first: the prompt carries the page's own files and errors, which a model wrote.
-    return startWith(prompt, `${error !== undefined ? 'Fix' : 'Change'}: ${man.name}`.slice(0, 60), id, 'ask', where);
+    return startWith(prompt, `${error !== undefined ? 'Fix' : 'Change'}: ${man.name}`.slice(0, 60), id, 'ask', { ...where, files: pic ? [pic] : [] });
   }
 
   /**
@@ -582,7 +630,7 @@ function wirePages(d) {
 
   return {
     pages: {
-      servePages, servable, call, tool, isPageTool, view, list, saveDraft, offAll, enabled, build, change, ask, thumb,
+      servePages, servable, call, tool, isPageTool, view, list, saveDraft, offAll, enabled, build, change, ask, thumb, shot, tellDraft,
       store: () => pages(),
       /** Hear every change (the phone forwards them): -> stop listening. */
       onChanged: fn => { listeners.add(fn); return () => listeners.delete(fn); },

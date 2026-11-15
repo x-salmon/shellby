@@ -385,7 +385,7 @@ contextBridge.exposeInMainWorld('shellby', {
   // Linear or Jira on Next up (backlog/trackers.js): set it up, and hear when a read in the background lands.
   backlogTrackerChoices: invoke('backlog:tracker-choices'),
   backlogTrackerSet: invoke('backlog:tracker-set'),
-  onBacklogChanged: on('backlog:changed'), taskBoardView: invoke('taskboard:view'), taskBoardCancel: invoke('taskboard:cancel'), onTaskBoardChanged: on('taskboard:changed'), pages: { list: invoke('pages:list'), view: invoke('pages:view'), drafts: invoke('pages:drafts'), call: invoke('pages:call'), data: invoke('pages:data'), write: invoke('pages:write'), activity: invoke('pages:activity'), files: invoke('pages:files'), set: invoke('pages:set'), agents: invoke('pages:agents'), agree: invoke('pages:agree'), addHost: invoke('pages:addHost'), revert: invoke('pages:revert'), remove: invoke('pages:remove'), save: invoke('pages:save'), broken: invoke('pages:broken'), offAll: invoke('pages:offAll'), build: invoke('pages:build'), ask: invoke('pages:ask'), thumb: invoke('pages:thumb'), change: invoke('pages:change'), sync: invoke('pages:sync'), where: invoke('pages:where'), turnOn: invoke('pages:turnOn'), decline: invoke('pages:decline'), opened: invoke('pages:opened'), onChanged: on('pages:changed') }, // and the task board's (wiring/taskboard.js); pages: the shelf, one page and its frame's bridge (wiring/pages.js)
+  onBacklogChanged: on('backlog:changed'), taskBoardView: invoke('taskboard:view'), taskBoardCancel: invoke('taskboard:cancel'), onTaskBoardChanged: on('taskboard:changed'), pages: { list: invoke('pages:list'), view: invoke('pages:view'), drafts: invoke('pages:drafts'), call: invoke('pages:call'), data: invoke('pages:data'), write: invoke('pages:write'), activity: invoke('pages:activity'), files: invoke('pages:files'), set: invoke('pages:set'), agents: invoke('pages:agents'), agree: invoke('pages:agree'), addHost: invoke('pages:addHost'), revert: invoke('pages:revert'), remove: invoke('pages:remove'), save: invoke('pages:save'), broken: invoke('pages:broken'), offAll: invoke('pages:offAll'), build: invoke('pages:build'), ask: invoke('pages:ask'), thumb: invoke('pages:thumb'), shot: invoke('pages:shot'), tell: invoke('pages:tell'), change: invoke('pages:change'), sync: invoke('pages:sync'), where: invoke('pages:where'), turnOn: invoke('pages:turnOn'), decline: invoke('pages:decline'), opened: invoke('pages:opened'), onChanged: on('pages:changed') }, // and the task board's (wiring/taskboard.js); pages: the shelf, one page and its frame's bridge (wiring/pages.js)
   // A project's next release (src/main/projects/releases-ipc.js): nothing is pushed unless you say so.
   getRelease: invoke('releases:get'),
   cutRelease: invoke('releases:cut'),
@@ -593,7 +593,7 @@ contextBridge.exposeInMainWorld('shellby', {
   serverLog: invoke('servers:log'),
   serverFixDraft: invoke('servers:fix-draft'),
   sendServerFix: invoke('servers:fix-send'),
-  openServer: invoke('servers:open'),
+  openServer: invoke('servers:open'), pointAtServer: invoke('servers:point'), onDevPointed: on('devpoint:picked'), // point at it: devpoint.js
   openServerLog: invoke('servers:open-log'),
   stopAllServers: invoke('servers:stop-all'),
   // The port doctor (doctor.js) and servers Shellby didn't start (discover.js).

@@ -118,6 +118,39 @@ const ESCAPE = [
     check(activity?.some(a => a.who?.kind === 'agent' && /added 2 to rows/.test(a.text)), 'the activity list signs the write with the conversation');
     await shot('3-page-with-rows');
 
+    // ---- point at it: Shift+click the heading, click the first row, say what should change
+    const mouse = async (type, x, y, modifiers = 0) => send('Input.dispatchMouseEvent', { type, x, y, modifiers, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: type === 'mouseMoved' ? 0 : 1 });
+    const clickAt = async (x, y, modifiers = 0) => { await mouse('mouseMoved', x, y); await wait(60); await mouse('mousePressed', x, y, modifiers); await mouse('mouseReleased', x, y, modifiers); await wait(150); };
+    await ev("document.querySelector('#pgOpen .pg-point').click()");
+    check(await until("document.querySelector('#pgOpen .pg-point')?.getAttribute('aria-pressed') === 'true'"), 'Point at it turns pointing on');
+    const fr = await ev("(() => { const r = document.querySelector('#pgOpen iframe.pg-frame').getBoundingClientRect(); return { x: r.x, y: r.y }; })()");
+    await clickAt(fr.x + 60, fr.y + 55, 8);   // the heading, Shift held: picked, still pointing
+    await clickAt(fr.x + 40, fr.y + 124);     // the first row: picked, and done
+    check(await until("!!document.querySelector('#pgOpen .pg-pointed')"), 'a click in the page brings up the pointed-at card');
+    const picked = await ev("[...document.querySelectorAll('#pgOpen .pg-picks q')].map(q => q.textContent)");
+    check(picked?.length === 2 && picked[0] === 'Print queue', `Shift+click picks more than one (${JSON.stringify(picked)})`);
+    check(await until("!!document.querySelector('#pgOpen .pg-pick-shot')?.src?.startsWith('data:image/')"), 'with a picture of what was picked');
+    check(await ev("document.activeElement?.classList.contains('pg-point-ask')"), 'and the box for what should change has the focus');
+    await shot('3b-pointed');
+    const homeTab = await ev('SB.state.activeTab');
+    await ev('window.__tabsBefore = [...SB.state.tabs.keys()]');
+    await ev("(() => { const i = document.querySelector('#pgOpen .pg-point-ask'); i.value = 'Make the title bigger'; i.dispatchEvent(new Event('input')); })()");
+    await ev("[...document.querySelectorAll('#pgOpen .pg-pointed button')].find(b => b.textContent === 'Change it with Claude').click()");
+    const newTab = "[...SB.state.tabs.keys()].find(k => !window.__tabsBefore.includes(k))";
+    check(await until(`!!${newTab}`), 'Change it with Claude starts a conversation');
+    // Its first message, as the conversation shows it.
+    await ev(`SB.setView('chat'); SB.activate(${newTab})`);
+    check(await until("/Make the title bigger[\\s\\S]*Print queue/.test(document.body.innerText)"), 'its first message says what to change and what was pointed at');
+    check(await until("[...document.querySelectorAll('.att.pic')].some(a => a.offsetParent !== null)"), 'and carries the picture');
+    await shot('3c-change-conversation');
+    await ev(`SB.activate(${JSON.stringify(homeTab)})`); // the rest runs its tools in the first conversation
+    await ev("SB.openPage('print-queue')");
+    await until("!!document.querySelector('#pgOpen:not([hidden]) .pg-point')");
+    await ev("document.querySelector('#pgOpen .pg-point').click()");
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    check(await until("document.querySelector('#pgOpen .pg-point')?.getAttribute('aria-pressed') === 'false'"), 'Escape stops pointing');
+
     // ---- a hostile page
     await ev("SB.setView('chat')");
     await tool('create_page', { name: 'Escape', files: { 'index.html': '<!doctype html><script src="shellby.js"></script><script src="app.js"></script>', 'app.js': ESCAPE } });

@@ -24,6 +24,8 @@
   const frames = new Set();
   let useClock = 0;
 
+  const COORD = n => (Number.isFinite(n) && Math.abs(n) < 100000 ? Math.round(n) : 0);
+  const rectOf = r => (r && typeof r === 'object' ? { x: COORD(r.x), y: COORD(r.y), width: COORD(r.width), height: COORD(r.height) } : null);
   const send = (f, msg) => { try { f.frame.contentWindow?.postMessage({ shellby: 1, ...msg }, '*'); } catch { /* gone */ } };
 
   function theme() {
@@ -52,7 +54,7 @@
   }
 
   /**
-   * A frame showing page id. handlers: onReady, onBroken(message), onPointed({ text, selector }),
+   * A frame showing page id. handlers: onReady, onBroken(message), onPointed({ picks, bounds }), onPointCancel(),
    * onRefused({ refused, error }), onAsk({ prompt, mode }), onData(change).
    * -> { el, reload(), point(on), close(), id }
    */
@@ -106,8 +108,17 @@
       case 'error':
         f.handlers.onBroken?.(`${String(m.message || 'An error').slice(0, 300)}${m.file ? ` (${String(m.file).slice(0, 60)}${m.line ? `, line ${Number(m.line)}` : ''})` : ''}`);
         break;
-      case 'pointed':
-        f.handlers.onPointed?.({ text: String(m.text || '').slice(0, 200), selector: String(m.selector || '').slice(0, 200) });
+      case 'pointed': {
+        // Picks with where they sat in the frame; bounds: the frame in the panel, for the picture (main caps it all again).
+        const picks = (Array.isArray(m.picks) ? m.picks : [m]).slice(0, 5).map(p => ({
+          text: String(p?.text || '').slice(0, 200), selector: String(p?.selector || '').slice(0, 200), rect: rectOf(p?.rect),
+        })).filter(p => p.text || p.selector);
+        const b = f.frame.getBoundingClientRect();
+        if (picks.length) f.handlers.onPointed?.({ picks, bounds: { x: b.x, y: b.y, width: b.width, height: b.height } });
+        break;
+      }
+      case 'point-cancel':
+        f.handlers.onPointCancel?.();
         break;
       default:
         break;

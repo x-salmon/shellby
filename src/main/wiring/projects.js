@@ -2,7 +2,9 @@
 // the Projects page and dev servers, and workflows (the Automate page).
 // Kept out of main.js, which only wires it up.
 const { ID, text } = require('../ipc-args');
-const { app, clipboard, safeStorage } = require('electron');
+const { app, clipboard, safeStorage, BrowserWindow, Menu, session } = require('electron');
+const { openSafe } = require('../safe-open');
+const { createDevPoint } = require('../devpoint');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -138,6 +140,24 @@ function wireProjects(d) {
     d.showPanel({ focusInput: false });
     d.send(d.panel, 'panel:view', 'projects');
     d.send(d.panel, 'projects:show', { serverId: serverId || d.devServers?.summary().firstId || null });
+  }
+
+  // Point at your dev server (devpoint.js): its own window; what you pick goes
+  // to the panel, which sends it into a conversation in that project.
+  let devPoint = null;
+  function pointAtServer(serverId) {
+    const s = d.devServers?.servers.get(serverId);
+    if (!s?.url || !s.root || s.status !== 'up') return { ok: false, error: "That dev server isn't up." };
+    if (!devPoint) {
+      devPoint = createDevPoint({
+        electron: { BrowserWindow, Menu, session },
+        picturesDir: path.join(app.getPath('userData'), 'point-pictures'),
+        openExternal: url => openSafe(url),
+        onPicked: picked => { d.showPanel({ focusInput: false }); d.send(d.panel, 'devpoint:picked', picked); },
+        log: d.log,
+      });
+    }
+    return devPoint.open({ id: s.id, url: s.url, root: s.root, project: s.project });
   }
 
   // Quitting with servers running: they keep running unless you chose otherwise
@@ -368,7 +388,7 @@ function wireProjects(d) {
 
   return {
     createDepWatch, createProjects, createWorkflows, registerWorkflowIpc, runClaudeOnce,
-    dropUnsentCopy, serversOnQuit, showServer, startTaskInCopy, startDraft,
+    dropUnsentCopy, serversOnQuit, showServer, startTaskInCopy, startDraft, pointAtServer,
   };
 }
 
