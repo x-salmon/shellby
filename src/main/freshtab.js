@@ -15,6 +15,7 @@ const todos = require('../renderer/shared/todos');
 
 // Past this the context is "well filled": worth a fresh tab for a new topic.
 const HANDOFF_PCT = 60;
+const HANDOFF_TOKENS = 60000; // what the chat itself added past its fixed setup (session contextBase)
 const MIN_WORDS = 3;        // a message with fewer content words is a follow-up, not a topic
 const OVERLAP_MAX = 0.2;    // this share of the message's words seen lately, or fewer, reads as new
 const RECENT_TURNS = 4;     // the asks (and the replies after them) that count as "lately"
@@ -128,8 +129,12 @@ function looksNewTopic(text, recent) {
   return { fresh: overlap <= OVERLAP_MAX, why: overlap <= OVERLAP_MAX ? 'new' : 'same', overlap: Math.round(overlap * 100) / 100, files: [] };
 }
 
-/** Offer a fresh tab? Only past HANDOFF_PCT, and only for what reads as a new topic. */
-const shouldOffer = ({ pct, topic }) => Number.isFinite(pct) && pct >= HANDOFF_PCT && !!topic?.fresh;
+/** Is the conversation heavy enough to offer a fresh tab? Past HANDOFF_PCT of the window,
+ *  or HANDOFF_TOKENS of its own (a 1M window is rarely 60% full, yet every turn re-reads it all). */
+const isHeavy = ({ pct, grown }) => (Number.isFinite(pct) && pct >= HANDOFF_PCT) || (Number.isFinite(grown) && grown >= HANDOFF_TOKENS);
+
+/** Offer a fresh tab? Only when heavy, and only for what reads as a new topic. */
+const shouldOffer = ({ pct, grown, topic }) => isHeavy({ pct, grown }) && !!topic?.fresh;
 
 const tokensOf = text => Math.ceil(str(text).length / CHARS_PER_TOKEN);
 
@@ -193,5 +198,5 @@ function firstMessage(summary, ask) {
 
 module.exports = {
   words, filesIn, recentOf, looksNewTopic, shouldOffer, summarize, saved, firstMessage, titleFor, tokensOf,
-  HANDOFF_PCT, MIN_WORDS, OVERLAP_MAX, RECENT_TURNS, MAX_ASKS, MAX_FILES, MAX_COMMITS, MAX_TODOS, MAX_SUMMARY, CHARS_PER_TOKEN, TITLE_CHARS,
+  HANDOFF_PCT, HANDOFF_TOKENS, isHeavy, MIN_WORDS, OVERLAP_MAX, RECENT_TURNS, MAX_ASKS, MAX_FILES, MAX_COMMITS, MAX_TODOS, MAX_SUMMARY, CHARS_PER_TOKEN, TITLE_CHARS,
 };

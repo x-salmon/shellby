@@ -104,6 +104,9 @@ test('shouldOffer needs a well-filled context and a new topic', () => {
   assert.equal(ft.shouldOffer({ pct: 90, topic: { fresh: false } }), false);
   assert.equal(ft.shouldOffer({ pct: null, topic: fresh }), false);
   assert.equal(ft.shouldOffer({ pct: 90, topic: null }), false);
+  // A big window that's barely filled still counts once the chat itself has grown heavy.
+  assert.equal(ft.shouldOffer({ pct: 8, grown: ft.HANDOFF_TOKENS, topic: fresh }), true);
+  assert.equal(ft.shouldOffer({ pct: 8, grown: ft.HANDOFF_TOKENS - 1, topic: fresh }), false);
 });
 
 // ---- the summary
