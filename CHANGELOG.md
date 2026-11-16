@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.100.0: Your key, your receipts
+
+### New
+- **Bill your API key instead of your plan.** Settings → Claude has "Use my API key instead": paste an Anthropic API key and new conversations bill it per token. The key is encrypted by Windows, kept on this PC only (never synced), and never shown again after you save it, only its last four characters. Switching to it asks first, and "Always use my Claude plan" switches back.
+
+### Changed
+- When a rule or a hook blocks something Claude tried, the line under the turn now has buttons: Try again asks Claude to retry it, Show rule opens the deny rule that blocked it in the Toolbox, and Fine puts the plain line back.
+- An opened turn footer reads like a receipt: each figure in its own column, what it means beside it.
+- Undo to here is quieter: a step you can go back to gets a small pin on the tool rail and a teal link instead of a boxed button. Pressing it once colours the pin, fades the steps that would go with it, and says how many (“Undo 3 steps?”) before the second press undoes them.
+
 ## 0.99.6: Code scanning tidy-up
 
 ### Fixed
