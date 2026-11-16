@@ -157,15 +157,31 @@
     renderStepPoint(item) {
       const el = this.tools.get(item.toolId);
       if (!el) return;
-      const btn = h('button', { class: 'btn ghost slim-btn step-undo', type: 'button', hidden: true, title: 'Puts the files back the way they were just before this step. Later steps of this turn go too; the conversation stays.' }, 'Undo to here');
-      const step = { toolId: item.toolId, btn, el, done: false };
+      const btn = h('button', { class: 'step-undo', type: 'button', hidden: true, title: 'Puts the files back the way they were just before this step. Later steps of this turn go too; the conversation stays.' }, 'Undo to here');
+      const step = { toolId: item.toolId, btn, el, done: false, disarm: null };
       let armed = null;
-      const disarm = () => { clearTimeout(armed); armed = null; btn.textContent = 'Undo to here'; btn.classList.remove('deny'); };
+      // Armed: this step's pin goes coral and the steps that would go with it fade.
+      const later = () => { const all = this.stepUndos?.get(item.turnId) || []; return all.slice(all.indexOf(step)); };
+      const disarm = () => {
+        clearTimeout(armed); armed = null; btn.textContent = 'Undo to here'; btn.classList.remove('deny');
+        el.classList.remove('step-armed');
+        for (const s of later().slice(1)) s.el.classList.remove('step-doomed');
+      };
+      step.disarm = disarm;
+      const arm = () => {
+        const going = later();
+        for (const s of this.stepUndos?.get(item.turnId) || []) if (s !== step) s.disarm?.();
+        btn.textContent = going.length > 1 ? `Undo ${going.length} steps?` : 'Undo this step?';
+        btn.classList.add('deny');
+        el.classList.add('step-armed');
+        for (const s of going.slice(1)) s.el.classList.add('step-doomed');
+        armed = setTimeout(disarm, 4000);
+      };
       btn.addEventListener('click', async e => {
         e.preventDefault(); // a button in the row's summary: no folding open
         e.stopPropagation();
         if (step.done) return;
-        if (!armed) { btn.textContent = 'Undo from here on?'; btn.classList.add('deny'); armed = setTimeout(disarm, 4000); return; }
+        if (!armed) { arm(); return; }
         disarm();
         btn.disabled = true;
         const r = await api.undoToStep({ tabId: this.id, turnId: item.turnId, toolId: item.toolId });
@@ -183,7 +199,7 @@
       if (!cp?.turnId) return;
       this.stepEnds ??= new Map();
       if (cp.end) this.stepEnds.set(cp.end, cp.turnId);
-      for (const s of this.stepUndos?.get(cp.turnId) || []) if (!s.done) s.btn.hidden = false;
+      for (const s of this.stepUndos?.get(cp.turnId) || []) if (!s.done) { s.btn.hidden = false; s.el.classList.add('step-point'); }
     }
 
     // That step and every later one of the turn are undone.
@@ -203,7 +219,7 @@
     markUndone(item) {
       // The whole turn went back: its steps have nothing left to undo.
       const turnId = this.stepEnds?.get(item.after);
-      for (const s of (turnId && this.stepUndos?.get(turnId)) || []) { s.done = true; s.btn.hidden = true; }
+      for (const s of (turnId && this.stepUndos?.get(turnId)) || []) { s.done = true; s.btn.hidden = true; s.el.classList.remove('step-point'); }
       const el = [...this.el.querySelectorAll('details.changes')].find(d => d.dataset.after === item.after);
       if (!el || el.classList.contains('undone')) return;
       el.classList.add('undone');

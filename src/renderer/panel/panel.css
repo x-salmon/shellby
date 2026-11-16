@@ -618,9 +618,29 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
 .chg-actions { display: flex; align-items: center; gap: 10px; padding: 6px 11px 9px; border-top: 1px solid var(--line-soft); }
 .chg-actions .btn.deny { border-color: var(--coral); color: var(--coral); }
 /* Undo to here, on a step of a turn (feed-changes.js) */
-.tool > summary .step-undo { margin-left: auto; flex: none; height: 22px; padding: 0 8px; font-size: var(--fs-11-5); }
+/* A pin on the row's rail marks a point the files can go back to; the button is a link. */
+.tool.step-point > summary { position: relative; }
+.tool.step-point > summary::before {
+  content: ""; position: absolute; left: -7px; top: 50%; translate: 0 -50%;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--abyss); border: 2px solid var(--glass);
+  transition: background-color .15s, border-color .15s;
+}
+.tool.step-armed > summary::before { background: var(--coral); border-color: var(--coral); }
+.tool.step-undone > summary::before { border-color: var(--sand-faint); }
+.tool.step-doomed { opacity: .45; transition: opacity .15s; }
+.tool.step-doomed > summary .t-label, .tool.step-doomed > summary .t-detail { text-decoration: line-through; }
+.tool > summary .step-undo {
+  margin-left: auto; flex: none; padding: 0 2px; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: var(--fs-11-5); color: var(--glass);
+  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
+  transition: text-decoration-color .12s;
+}
+.tool > summary:hover .step-undo, .tool > summary .step-undo:focus-visible { text-decoration-color: currentColor; }
+.tool > summary .step-undo:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; border-radius: 3px; }
 .tool > summary .step-undo[hidden] { display: none; }
-.tool > summary .step-undo.deny { border-color: var(--coral); color: var(--coral); }
+.tool > summary .step-undo.deny { color: var(--coral); font-weight: 600; text-decoration: none; }
+.tool > summary .step-undo:disabled { color: var(--sand-faint); cursor: default; text-decoration: none; }
 .tool.step-undone > summary .t-label { text-decoration: line-through; opacity: .7; }
 /* "Quiz me" on a turn's changes (feed-changes.js) */
 .quiz { padding: 4px 11px 10px; border-top: 1px solid var(--line-soft); }
