@@ -43,8 +43,10 @@ button.tf-open:focus-visible { outline: 2px solid var(--glass); outline-offset: 
 .tf-state { color: var(--glass); flex: none; }
 .is-stopped .tf-state, .is-waiting .tf-state { color: var(--amber); }
 .is-failed .tf-state { color: var(--danger); }
-.is-waiting .tf-state { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; max-width: 22ch; }
-.tf-soft { overflow: hidden; text-overflow: ellipsis; }
+/* What it's waiting on matters more than the time and steps beside it, so those give way
+   first. Only a long single task's description is cut, at the row's width. */
+.is-waiting .tf-state { overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; max-width: 100%; }
+.tf-soft { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .tf-room { margin-left: auto; flex: none; display: flex; align-items: baseline; gap: 7px; }
 .tf-full { color: var(--sand-dim); }
 .is-filling .tf-full { color: var(--amber); }
