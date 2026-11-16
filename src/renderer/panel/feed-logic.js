@@ -351,6 +351,29 @@
     return out.join(' ');
   }
 
+  // The same, as receipt lines for the opened footer: [{ num, text }], the
+  // figure in its own column (num null leaves it blank).
+  function soundingReceipt(cost, bar, compact) {
+    const rows = [];
+    const share = windowWords(cost.share);
+    rows.push({ num: compact(cost.tokens), text: `new tokens, at full price${share ? `, ${share} of your 5-hour window` : ''}` });
+    if (cost.read) rows.push({ num: compact(cost.read), text: 're-read from the prompt cache, at a tenth of the price' });
+    const helpers = (cost.helpers || []).filter(x => Number.isFinite(x?.tokens));
+    if (helpers.length) {
+      const spent = helpers.reduce((n, x) => n + x.tokens, 0);
+      rows.push({ num: compact(spent), text: `of them used by ${helpers.length === 1 ? 'a helper, in its' : `${helpers.length} helpers, in their`} own context, so they don't fill this one` });
+    }
+    if (typeof cost.effort === 'string') {
+      const word = EFFORT_WORD[cost.effort] || 'Auto';
+      const thought = Number.isFinite(cost.thinking) ? cost.thinking : null;
+      rows.push(thought === null ? { num: null, text: `${word} effort` } : { num: thought ? compact(thought) : '0', text: `tokens of thinking, at ${word} effort` });
+    }
+    if (bar?.freedTo) rows.push({ num: `${bar.freedTo - bar.past - bar.added}%`, text: "of the conversation's room freed: it was summed up during this turn" });
+    else if (bar && pct(cost.contextBefore) !== null && pct(cost.contextBefore) <= bar.past + bar.added) rows.push({ num: `${bar.added}%`, text: `of the conversation's room used by this reply; ${100 - bar.past - bar.added}% is left` });
+    else if (bar) rows.push({ num: `${bar.past}%`, text: 'of the conversation is full' });
+    return rows;
+  }
+
   /**
    * What a turn's footer shows: { state, word, title, soft, effort, bar, level,
    * full, change, tokens, details, meter }. fmt: { compact, duration } (SB's).
@@ -383,6 +406,7 @@
       full: now === null ? null : `${now}% full`, change,
       tokens: cost ? fmt.compact(cost.tokens) : null,
       details: cost ? soundingDetails(cost, bar, fmt.compact) : null,
+      receipt: cost ? soundingReceipt(cost, bar, fmt.compact) : null,
       meter,
     };
   }

@@ -151,6 +151,11 @@ test('sounding: a quick reply says one step, and how much of the conversation it
   assert.equal(v.tokens, '44k');
   assert.equal(v.meter, '7% of the conversation used, 3% by this reply');
   assert.match(v.details, /^44k new tokens, about 2% of your 5-hour window\. Medium effort, 61 tokens of thinking\. This reply took 3% of the conversation's room; 93% is left\.$/);
+  assert.deepEqual(v.receipt, [
+    { num: '44k', text: 'new tokens, at full price, about 2% of your 5-hour window' },
+    { num: '61', text: 'tokens of thinking, at Medium effort' },
+    { num: '3%', text: "of the conversation's room used by this reply; 93% is left" },
+  ]);
 });
 
 test('sounding: steps and helpers are counted in words, and past 60% or 80% it says so', () => {
@@ -159,6 +164,7 @@ test('sounding: steps and helpers are counted in words, and past 60% or 80% it s
   assert.deepEqual(v.soft, ['252s', '23 steps', '2 helpers']);
   assert.equal(v.level, 'filling');
   assert.match(v.details, /2 helpers used 120k of them, in their own context/);
+  assert.deepEqual(v.receipt.find(r => r.num === '120k'), { num: '120k', text: "of them used by 2 helpers, in their own context, so they don't fill this one" });
   assert.equal(F.sounding({ ok: true, cost: costAt({ contextLevel: 'crowded' }) }, fmt).level, 'crowded');
 });
 
