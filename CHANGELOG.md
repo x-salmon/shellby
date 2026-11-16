@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.100.1: Room to wait
+
+### Fixed
+- A turn's footer shows "Waiting on 5 background tasks" in full again, instead of cutting it off after "Waiting on 5 backgro…". The time and steps beside it make room first.
+
+### Changed
+- Your PCs has a tab of its own now, beside Health: **This PC | Your PCs** at the top of the Health screen. Before, only search and a link in Settings led to it.
+
 ## 0.100.0: Your key, your receipts
 
 ### New
