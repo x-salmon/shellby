@@ -285,6 +285,8 @@
     load();
   });
 
+  // A tab beside Health (This PC | Your PCs, html/health.html): Health stays lit in the dock.
+  SB.NAV_SECTION.pcs = 'health';
   SB.api.onHubChanged(() => { if (state.view === 'pcs') load(); });
   // From Settings, Alerts, On your phone: how another PC joins (html/settings-alerts.html).
   $('pocketHubLink')?.addEventListener('click', () => SB.setView('pcs'));

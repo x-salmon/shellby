@@ -26,6 +26,8 @@ body.crab-only [data-view-btn="workflows"], body.crab-only [data-view-btn="proje
 body.crab-only [data-view-btn="history"], body.crab-only [data-view-btn="notes"] { display: none !important; }
 /* the Bugdex is only Claude's work, so its tab and page go too (Finds stays) */
 body.crab-only .shellby-tabs [data-goto="bugdex"], body.crab-only .view-bugdex { display: none !important; }
+/* Your PCs starts work on other PCs, which needs Claude: Health loses its This PC | Your PCs switch */
+body.crab-only .pc-switch { display: none !important; }
 
 /* ---------- Work mode (workmode.js): its switch leads Personality, and just the crab has no tools for it ---------- */
 .work-mode-row { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--line-soft); }

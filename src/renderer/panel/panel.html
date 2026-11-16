@@ -580,6 +580,10 @@
   </main>
   <!-- ====================== YOUR PCS (the hub) ====================== -->
   <main class="view view-pcs" id="pcsView">
+    <nav class="seg auto-switch pc-switch" aria-label="PCs">
+      <button type="button" data-goto-view="health">This PC</button>
+      <button type="button" aria-current="page">Your PCs</button>
+    </nav>
     <div class="view-head">
       <h2>Your PCs</h2>
       <button type="button" class="btn slim-btn" id="pcsAddBtn">Add a PC</button>
@@ -603,6 +607,10 @@
 
   <!-- ====================== HEALTH ====================== -->
   <main class="view view-health" id="healthView">
+    <nav class="seg auto-switch pc-switch" aria-label="PCs">
+      <button type="button" aria-current="page">This PC</button>
+      <button type="button" data-goto-view="pcs">Your PCs</button>
+    </nav>
     <div class="view-head">
       <h2>Health</h2>
       <span class="hl-live" id="hlLive"><i></i>live</span>
