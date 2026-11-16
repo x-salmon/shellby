@@ -320,6 +320,39 @@ test('the hook line names the hook, and the denials line each refused tool once,
   assert.equal(F.denialsLine(many), 'Claude was blocked from: Tool0, Tool1, Tool2, Tool3, Tool4 and 2 more');
 });
 
+test('try again asks Claude to retry what was blocked', () => {
+  assert.equal(F.retryPrompt([{ toolName: 'Write', summary: 'src/a.js' }, { toolName: 'Bash', summary: '' }]),
+    'That was blocked: Write (src/a.js), Bash. Try it again.');
+});
+
+test('blockingRule finds the deny rule that refused a step, in Claude Code rule syntax', () => {
+  const where = { cwd: 'C:\\proj', home: 'C:\\Users\\me' };
+  const rule = (r, path = 'C:\\proj\\.claude\\settings.local.json', list = 'deny') => ({ list, rule: r, path, scope: 'local' });
+  const write = target => ({ toolName: 'Write', target });
+  const key = 'C:\\proj\\src\\main\\claude\\api-key.js';
+
+  assert.equal(F.blockingRule(write(key), [rule('Write(api-key.js)')], where)?.rule, 'Write(api-key.js)', 'a bare name matches at any depth');
+  assert.equal(F.blockingRule(write(key), [rule('Edit(src/**)')], where)?.rule, 'Edit(src/**)', 'Edit rules cover Write, relative to where Claude runs');
+  assert.equal(F.blockingRule(write(key), [rule('Edit(/src/main/**)')], where)?.rule, 'Edit(/src/main/**)', '/ is the settings file\'s project');
+  assert.equal(F.blockingRule(write(key), [rule('Write(//c/proj/src/**)')], where)?.rule, 'Write(//c/proj/src/**)', '// is the whole disk');
+  assert.equal(F.blockingRule(write('C:\\Users\\me\\.ssh\\id'), [rule('Read(~/.ssh/**)'), rule('Edit(~/.ssh/**)')], where)?.rule, 'Edit(~/.ssh/**)', '~ is home; Read rules don\'t block writes');
+  assert.equal(F.blockingRule(write(key), [rule('Write')], where)?.rule, 'Write', 'a whole tool');
+  assert.equal(F.blockingRule(write(key), [rule('Write(src/*.js)'), rule('Write(other/**)')], where), null, '* stays in one folder');
+  assert.equal(F.blockingRule(write(key), [rule('Write(api-key.js)', undefined, 'allow')], where), null, 'only deny rules');
+  assert.equal(F.blockingRule({ toolName: 'Write' }, [rule('Write(api-key.js)')], where), null, 'no target, no path match');
+
+  const bash = target => ({ toolName: 'Bash', target });
+  assert.equal(F.blockingRule(bash('git push --force origin'), [rule('Bash(git push:*)')], where)?.rule, 'Bash(git push:*)');
+  assert.equal(F.blockingRule(bash('git pull'), [rule('Bash(git push:*)')], where), null);
+  assert.equal(F.blockingRule(bash('rm -rf dist'), [rule('Bash(rm * dist)')], where)?.rule, 'Bash(rm * dist)');
+  assert.equal(F.blockingRule(bash('npm test'), [rule('Bash(npm)')], where), null, 'without :* or * it is the exact command');
+
+  const fetch = target => ({ toolName: 'WebFetch', target });
+  assert.equal(F.blockingRule(fetch('https://api.example.com/x'), [rule('WebFetch(domain:*.example.com)')], where)?.rule, 'WebFetch(domain:*.example.com)');
+  assert.equal(F.blockingRule(fetch('https://example.org/'), [rule('WebFetch(domain:example.com)')], where), null);
+  assert.equal(F.blockingRule({ toolName: 'mcp__github__push' }, [rule('mcp__github')], where)?.rule, 'mcp__github');
+});
+
 test('a failed hook leaves a mark naming it', () => {
   assert.equal(F.markFor({ kind: 'hook-failed', name: 'PreToolUse:Bash', outcome: 'error', exitCode: 2, text: 'blocked' }).text,
     'A hook failed: PreToolUse:Bash (exit 2). blocked');

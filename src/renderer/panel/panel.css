@@ -728,6 +728,17 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
 /* What the turn was refused (result.permission_denials): a quiet line under the turn's footer (turn-foot.css). */
 .turn-denials { margin: 0 auto 12px; max-width: 60ch; text-align: center; text-wrap: pretty; color: var(--sand-faint); font-size: var(--fs-11); overflow-wrap: anywhere; }
 .meta:has(+ .turn-denials) { margin-bottom: 2px; }
+/* Live, it's a soft coral strip with what to do about it (feed.js deniedStrip); Fine turns it back into the line. */
+.turn-denied {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px;
+  margin: 0 auto 12px; max-width: 72ch; padding: 6px 12px; border-radius: 8px;
+  background: color-mix(in srgb, var(--coral) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--coral) 28%, transparent);
+  color: var(--sand-dim); font-size: var(--fs-11); text-wrap: pretty;
+}
+.turn-denied .denied-text { overflow-wrap: anywhere; text-align: center; min-width: 0; }
+.turn-denied .denied-acts { display: flex; gap: 6px; flex: none; }
+.meta:has(+ .turn-denied) { margin-bottom: 4px; }
 /* A note under it (turncost.js turnNotes): what cost more than it needed to, and why. */
 .turn-note {
   margin: 0 auto 4px; max-width: 52ch; text-align: center; text-wrap: pretty;

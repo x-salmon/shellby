@@ -196,8 +196,8 @@ test("what the turn was refused rides on its result, less what you refused yours
   s.send('denied');
   const r = await result(s);
   assert.deepEqual(r.denials, [
-    { toolName: 'Bash', toolUseId: 'tu_den_1_1', summary: 'rm -rf dist' },
-    { toolName: 'Edit', toolUseId: 'tu_den_1_2', summary: 'C:\\x\\.env' },
+    { toolName: 'Bash', toolUseId: 'tu_den_1_1', summary: 'rm -rf dist', target: 'rm -rf dist' },
+    { toolName: 'Edit', toolUseId: 'tu_den_1_2', summary: 'C:\\x\\.env', target: 'C:\\x\\.env' },
   ]);
   s.send('tool please');
   const perm = await waitFor(s, 'item', i => i.kind === 'permission');
