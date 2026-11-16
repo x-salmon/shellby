@@ -92,19 +92,34 @@ function deskOnlyReason(item, { shownInFull = false } = {}) {
 }
 
 /**
- * The phone app (pocket/) shows a question's options and a plan in full, so
- * those two are its to answer; everything else stays as deskOnlyReason says.
+ * What the paired phone app should know before it allows this prompt, or null:
+ * the reasons deskOnlyReason gives a one-line channel (a file Claude wrote, a
+ * change to Shellby's own config, more than the screen shows). The app shows it
+ * as a warning above Allow instead of holding the conversation until you're
+ * back; it only ever allows once (no always-allow) and the notification's own
+ * buttons leave it alone (pocket/notices.js).
+ */
+function appCaution(item) {
+  if (!item || typeof item !== 'object') return null;
+  const sheet = ['AskUserQuestion', 'ExitPlanMode'].includes(item.toolName);
+  if (item.runsCreated?.length) return `It runs a file Claude wrote this session (${String(item.runsCreated[0]).slice(0, 80)}): the card can’t show what’s in it.`;
+  if (item.selfConfig) return `It changes ${item.selfConfig}.`;
+  if (sheet) return null;
+  if (typeof item.deskOnly === 'string' && item.deskOnly) return item.deskOnly.replace(/: (check|answer) it at the desk\.$/, '.');
+  const shown = appShowsInFull(item);
+  if (deskOnlyReason(item, { shownInFull: shown })) return 'The phone shows only part of it.';
+  // deskOnlyReason measures a file's path, not what goes in it.
+  return !shown && FILE_TOOLS.has(item.toolName) ? 'The phone shows only part of it.' : null;
+}
+
+/**
+ * What the phone app (pocket/) can't answer at all: a question with no options
+ * to pick, a plan with nothing (or too much) to read. Everything else it may
+ * allow, with appCaution's warning on it.
  */
 function appDeskOnlyReason(item) {
-  if (!['AskUserQuestion', 'ExitPlanMode'].includes(item?.toolName)) {
-    const shown = appShowsInFull(item);
-    const why = deskOnlyReason(item, { shownInFull: shown });
-    if (why) return why;
-    // deskOnlyReason measures a file's path, not what goes in it: the app must show both.
-    return !shown && FILE_TOOLS.has(item?.toolName) ? 'The phone can’t show all of it: check it at the desk.' : null;
-  }
-  if (item.runsCreated?.length) return 'It runs a file Claude wrote this session: check it at the desk.';
-  if (item.selfConfig) return `It changes ${item.selfConfig}: check it at the desk.`;
+  if (!item || typeof item !== 'object') return 'Answer it at the desk.';
+  if (!['AskUserQuestion', 'ExitPlanMode'].includes(item.toolName)) return null;
   if (item.toolName === 'AskUserQuestion' && !Array.isArray(item.input?.questions)) return 'It has a question for you: answer it at the desk.';
   // Nothing to read means nothing to approve from here.
   const plan = String(item.plan ?? item.input?.plan ?? '');
@@ -475,6 +490,6 @@ class RemoteAnswers {
 }
 
 module.exports = {
-  RemoteAnswers, supportsReplies, newNonce, deskOnlyReason, appDeskOnlyReason,
+  RemoteAnswers, supportsReplies, newNonce, deskOnlyReason, appDeskOnlyReason, appCaution,
   parseNtfyMessage, parseTelegramCallback, NONCE, TTL_MS, PHONE_MAX, PLAN_MAX, APP_SHOW_MAX, appShowsInFull, INBOX_POLL_MS, MAX_BACKOFF_MS,
 };

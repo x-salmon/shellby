@@ -13,7 +13,7 @@
 // Pure: wiring/pocket.js gathers the inputs.
 const path = require('path');
 const { standing } = require('../../renderer/panel/tab-sort');
-const { appDeskOnlyReason, PLAN_MAX: MAX_PLAN, APP_SHOW_MAX } = require('../channels/replies');
+const { appDeskOnlyReason, appCaution, PLAN_MAX: MAX_PLAN, APP_SHOW_MAX } = require('../channels/replies');
 const { normalizeQuiet } = require('./quiet');
 const { normalizeRights } = require('./rights');
 const { validPicture } = require('../tool-pictures');
@@ -119,6 +119,8 @@ function alwaysLabel(s) {
 /** A permission prompt waiting on you. deskOnly: why the phone may only look (channels/replies.js). */
 function phonePrompt(p, titleOf) {
   const deskOnly = appDeskOnlyReason(p);
+  // Allowed from here all the same, once, with what the card can't show said first.
+  const caution = deskOnly ? null : appCaution(p);
   const suggestion = Array.isArray(p.suggestions) ? p.suggestions[0] : null;
   return {
     tabId: p.tabId,
@@ -128,7 +130,7 @@ function phonePrompt(p, titleOf) {
     label: line(p.label, 120),
     detail: line(p.detail, 400),
     ask: line(p.plain?.ask, 200) || null,
-    warnings: (p.warnings || []).slice(0, 4).map(w => line(w, 140)),
+    warnings: [...(caution ? [caution] : []), ...(p.warnings || [])].slice(0, 4).map(w => line(w, 200)),
     helper: p.agent ? line(p.agent.description || p.agent.type, 80) : null,
     preview: preview(p),
     question: p.toolName === 'AskUserQuestion' ? line(p.questions?.[0]?.question, 300) : null,
@@ -138,7 +140,7 @@ function phonePrompt(p, titleOf) {
     planText: p.toolName === 'ExitPlanMode' ? clip(p.plan ?? p.input?.plan, MAX_PLAN) || null : null,
     deskOnly,
     // Questions and plans are answered on their own sheets: no always-allow there.
-    always: deskOnly || ['AskUserQuestion', 'ExitPlanMode'].includes(p.toolName) ? null : alwaysLabel(suggestion),
+    always: deskOnly || caution || ['AskUserQuestion', 'ExitPlanMode'].includes(p.toolName) ? null : alwaysLabel(suggestion),
   };
 }
 

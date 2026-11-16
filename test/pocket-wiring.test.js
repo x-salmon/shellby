@@ -287,17 +287,22 @@ test('a plan is approved from the phone only once it was read, and a no carries 
   } finally { stop(w); }
 });
 
-test('a desk-only prompt can be turned down from the phone, never allowed', async () => {
+test('a prompt the card warns about is allowed once from the phone, never always', async () => {
   const t = tabOf('t1');
-  t.session.pending.set('r1', { requestId: 'r1', toolName: 'Bash', input: { command: 'node build.js' }, runsCreated: ['build.js'] });
-  t.session.pending.set('r2', { requestId: 'r2', toolName: 'Bash', input: { command: 'node build.js' }, runsCreated: ['build.js'] });
+  const wrote = id => ({ requestId: id, toolName: 'Bash', input: { command: 'node build.js' }, runsCreated: ['build.js'], suggestions: [{ type: 'addRules' }] });
+  t.session.pending.set('r1', wrote('r1'));
+  t.session.pending.set('r2', wrote('r2'));
+  t.session.pending.set('r3', wrote('r3'));
+  t.session.pending.set('q', { requestId: 'q', toolName: 'AskUserQuestion', input: {} });
   const w = await paired({ tabs: [t] });
   try {
     const act = body => w.d.pocket.onAction(w.device, 'answer', body);
-    assert.match((await act({ tabId: 't1', requestId: 'r1', decision: 'allow' })).error, /at the desk/);
-    assert.match((await act({ tabId: 't1', requestId: 'r2', decision: 'always' })).error, /always-allow|at the desk/);
-    assert.equal((await act({ tabId: 't1', requestId: 'r1', decision: 'deny' })).ok, true);
-    assert.deepEqual(w.of('answerPermission'), [['t1', 'r1', 'deny', { via: 'pocket' }]]);
+    assert.match((await act({ tabId: 't1', requestId: 'r2', decision: 'always' })).error, /this once/);
+    assert.equal((await act({ tabId: 't1', requestId: 'r1', decision: 'allow' })).ok, true);
+    assert.equal((await act({ tabId: 't1', requestId: 'r3', decision: 'deny' })).ok, true);
+    // A question with nothing to pick still waits for the desk, but a no is always safe.
+    assert.match((await act({ tabId: 't1', requestId: 'q', decision: 'allow' })).error, /at the desk/);
+    assert.deepEqual(w.of('answerPermission').map(c => c.slice(1, 3)), [['r1', 'allow'], ['r3', 'deny']]);
   } finally { stop(w); }
 });
 
