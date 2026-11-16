@@ -14,6 +14,21 @@ const BILLING_ENV = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BAS
 let planOnly = false;
 function setPlanOnly(on) { planOnly = !!on; }
 
+// "Bill to: my API key" (claude/api-key.js). The key is read, sealed, from its
+// file each time Claude Code starts; Shellby never keeps it in memory.
+let useApiKey = false;
+let readApiKey = () => '';
+/** @param {boolean} on @param {() => string} [read] */
+function setApiKeyBilling(on, read) {
+  useApiKey = !!on;
+  if (read) readApiKey = read;
+}
+
+// Claude Code leaves these Anthropic and cloud credentials out of everything it
+// starts itself (the Bash tool, hooks, MCP servers), so a script Claude writes
+// can't read the key out of its environment.
+const SUBPROCESS_SCRUB = 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB';
+
 // A sign-in Claude Code turned down mid-turn ("OAuth session expired and could
 // not be refreshed"). `claude auth status` still says signed in then: it only
 // looks for saved credentials, not whether they still work, so Settings said
@@ -45,9 +60,17 @@ function billingEnv(base = process.env) {
   return BILLING_ENV.filter(k => base[k]);
 }
 
-function claudeEnv(base = process.env, { onlyPlan = planOnly } = {}) {
+// Plan only: every billing variable out. API key: every one out too (nothing set
+// on this PC competes with the key you chose), then the key in. API key chosen
+// but none saved, or it won't open: still all out, so it falls back to the plan
+// rather than to whatever this PC has set.
+function claudeEnv(base = process.env, { onlyPlan = planOnly, keyMode = useApiKey, key = keyMode && !onlyPlan ? readApiKey() : '' } = {}) {
   const env = { ...base };
-  if (onlyPlan) for (const k of BILLING_ENV) delete env[k];
+  if (onlyPlan || keyMode) for (const k of BILLING_ENV) delete env[k];
+  if (keyMode && !onlyPlan && key) {
+    env.ANTHROPIC_API_KEY = key;
+    env[SUBPROCESS_SCRUB] = '1';
+  }
   // Our own sessions tell the Shellby Claude Code plugin's hooks not to report
   // back to us (their tabs already drive the crab).
   env.SHELLBY_OWNED = '1';
@@ -56,8 +79,11 @@ function claudeEnv(base = process.env, { onlyPlan = planOnly } = {}) {
 
 // A conversation carried on in a terminal (handoff.js) is outside Shellby from
 // then on: the same scrubbing, but without the marker, so the plugin reports it.
-function terminalEnv(base = process.env, { onlyPlan = planOnly } = {}) {
-  const env = claudeEnv(base, { onlyPlan });
+// The API key never goes to a terminal: it would sit in that shell's environment
+// for anything typed there afterwards. A conversation carried on in one runs on
+// your plan instead.
+function terminalEnv(base = process.env, { onlyPlan = planOnly, keyMode = useApiKey } = {}) {
+  const env = claudeEnv(base, { onlyPlan, keyMode, key: '' });
   delete env.SHELLBY_OWNED;
   return env;
 }
@@ -110,7 +136,7 @@ function signInWithoutSettings(home) {
 }
 
 // The variables a terminal must drop for "Always use my Claude plan" (none when it's off).
-const billingScrub = (onlyPlan = planOnly) => (onlyPlan ? [...BILLING_ENV] : []);
+const billingScrub = (onlyPlan = planOnly, keyMode = useApiKey) => (onlyPlan || keyMode ? [...BILLING_ENV] : []);
 
 // configured: a path the user picked in Settings when the search below missed
 // (unusual installs, a portable copy, a drive we'd never guess). It's tried
@@ -259,9 +285,13 @@ async function checkStatus({ configured = null } = {}) {
     email: info.email || null,
     configDir: info.configDirectory || null,
     planOnly,
-    billingEnv: planOnly ? [] : billingEnv(),
+    apiKeyBilling: useApiKey && !planOnly,
+    billingEnv: planOnly || useApiKey ? [] : billingEnv(),
   });
-  if (status.billingEnv.length) {
+  // With a key chosen, the key is what Claude Code bills, signed in or not.
+  if (status.apiKeyBilling) {
+    if (!readApiKey()) status.warning = 'Billing is set to your API key, but no key is saved, so conversations use your Claude plan. Add a key in Settings.';
+  } else if (status.billingEnv.length) {
     status.warning = `${status.billingEnv.join(', ')} ${status.billingEnv.length > 1 ? 'are' : 'is'} set on this PC, so Claude Code may bill that instead of your Claude plan. Turn on "Always use my Claude plan" in Settings to ignore ${status.billingEnv.length > 1 ? 'them' : 'it'}.`;
   } else if (status.loggedIn && status.authMethod && status.authMethod !== 'claude.ai') {
     status.warning = `Claude Code is signed in with "${status.authMethod}", which bills per token. Sign in with your Claude account to use your subscription.`;
@@ -269,4 +299,4 @@ async function checkStatus({ configured = null } = {}) {
   return status;
 }
 
-module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, skipSettings, signInWithoutSettings, candidatePaths, run, BILLING_ENV };
+module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings, signInWithoutSettings, candidatePaths, run, BILLING_ENV };

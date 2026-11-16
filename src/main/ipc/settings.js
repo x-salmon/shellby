@@ -4,7 +4,7 @@ const { dialog } = require('electron');
 const fs = require('fs');
 const attach = require('../attachments');
 const { TIMEOUTS_MIN } = require('../checks');
-const { setPlanOnly } = require('../claude/cli');
+const { setApiKeyBilling, setPlanOnly } = require('../claude/cli');
 const { SETTINGS: CLIMB_SETTINGS } = require('../desktop/climb');
 const { CREW_SIDES, MODES } = require('../config');
 const confirm = require('../confirm');
@@ -71,7 +71,12 @@ function registerSettingsIpc(ipcMain, d) {
     if ('shareWrapped' in allowed) d.friends?.republish?.().catch(() => {}); // your year on your calling card, or off it
     if ('clashWarnings' in allowed) d.refreshClashes?.(); // off clears the markers; on looks straight away
     if ('effort' in allowed) d.manager.setEffort(allowed.effort);
-    if ('planOnly' in allowed) setPlanOnly(allowed.planOnly);
+    // Plan or API key: the two are one choice, and main keeps them apart (below).
+    if ('planOnly' in allowed || 'apiKeyBilling' in allowed) {
+      setPlanOnly(!!d.config.get('planOnly'));
+      setApiKeyBilling(!!d.config.get('apiKeyBilling'));
+      d.recheckClaude?.().catch(() => { /* the next check will tell */ }); // Settings shows what Claude Code bills now
+    }
     if ('openAtLogin' in allowed) d.applyLoginItem(allowed.openAtLogin);
     if ('skin' in allowed) d.broadcastSkin();
     if ('onTop' in allowed) d.applyLayer();
@@ -117,7 +122,7 @@ function registerSettingsIpc(ipcMain, d) {
 
   ipcMain.handle('settings:set', async (_e, patch = {}) => {
     const allowed = {};
-    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'localModel', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'taskBoard', 'handoffAsk', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest', 'modelAlways', 'pagesSync']) {
+    for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'apiKeyBilling', 'localModel', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'taskBoard', 'handoffAsk', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest', 'modelAlways', 'pagesSync']) {
       if (k in patch) allowed[k] = patch[k];
     }
     // Turning on Autonomous for the first time needs a confirmation that renderer
@@ -161,7 +166,7 @@ function registerSettingsIpc(ipcMain, d) {
     if ('helperModel' in allowed && !isModel(allowed.helperModel)) delete allowed.helperModel;
     if ('effort' in allowed && allowed.effort !== '' && !EFFORTS.includes(allowed.effort)) delete allowed.effort;
     if ('outputStyle' in allowed) allowed.outputStyle = outputStyles.clean(allowed.outputStyle);
-    for (const k of ['openAtLogin', 'notifications', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'sounds', 'soundFx', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effortPick', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'turnShots', 'spendGuard', 'holdBigTasks', 'selfAware', 'suggestions', 'taskBoard', 'handoffAsk', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest', 'pagesSync']) if (k in allowed) allowed[k] = !!allowed[k];
+    for (const k of ['openAtLogin', 'notifications', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'sounds', 'soundFx', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effortPick', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'apiKeyBilling', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'turnShots', 'spendGuard', 'holdBigTasks', 'selfAware', 'suggestions', 'taskBoard', 'handoffAsk', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest', 'pagesSync']) if (k in allowed) allowed[k] = !!allowed[k];
     if ('localModel' in allowed) { const local = localModel.cleanSettings(allowed.localModel); if (local) allowed.localModel = local; else delete allowed.localModel; }
     if ('modelAlways' in allowed) allowed.modelAlways = modelPick.cleanAlways(allowed.modelAlways, isModel); // the kinds of small message that go to a model by themselves
     if ('checkTimeoutMin' in allowed && !TIMEOUTS_MIN.includes(allowed.checkTimeoutMin)) delete allowed.checkTimeoutMin;
@@ -206,6 +211,22 @@ function registerSettingsIpc(ipcMain, d) {
       const r = await d.dictation.warm();
       if (!r.ok) { pushToTalkError = r.error; delete allowed.pushToTalk; }
     }
+    // Bill to your API key or to your plan: one or the other, never both. Moving
+    // to per-token billing asks first in a window the panel can't click through.
+    if (allowed.apiKeyBilling && allowed.planOnly) delete allowed.planOnly;
+    if (allowed.apiKeyBilling === true && !d.config.get('apiKeyBilling')) {
+      const response = await confirm.ask(d.panel, {
+        ...d.dialogLook(), icon: '🔑', danger: true,
+        title: 'Bill your API key?',
+        message: 'New conversations will use your Anthropic API key and be billed per token, not your Claude plan.',
+        detail: d.apiKey?.view().saved ? 'Usage goes to the Anthropic Console account the key belongs to.' : 'No key is saved yet: until you add one, conversations stay on your plan.',
+        note: 'Switch back any time in Settings. Conversations already open keep how they started.',
+        buttons: [{ label: 'Use my API key', style: 'danger' }, { label: 'Cancel' }], defaultId: 1, cancelId: 1,
+      });
+      if (response !== 0) delete allowed.apiKeyBilling;
+    }
+    if (allowed.apiKeyBilling === true) allowed.planOnly = false;
+    if (allowed.planOnly === true) allowed.apiKeyBilling = false;
     const before = d.config.data;
     d.config.set(allowed);
     applied(allowed, asked, before, { taste: true });

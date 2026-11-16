@@ -1,11 +1,12 @@
 // Your profile, opened first at boot: the settings (config.js) and the
 // conversations' history (history/index.js), each tidied as it opens.
 // Kept out of main.js, which only wires it up.
-const { app } = require('electron');
+const { app, safeStorage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const attach = require('../attachments');
-const { setPlanOnly } = require('../claude/cli');
+const { createApiKeyStore } = require('../claude/api-key');
+const { setApiKeyBilling, setPlanOnly } = require('../claude/cli');
 const { Config } = require('../config');
 const { createStillGate, isMoving } = require('../desktop/still');
 const { History } = require('../history');
@@ -55,6 +56,9 @@ function wireProfile(d) {
       if (had) config.set({ rooms: rooms.reachCore(config.get('rooms')).state });
     }
     setPlanOnly(config.get('planOnly')); // before anything launches Claude Code
+    // Your API key, sealed by Windows in its own file (claude/api-key.js).
+    d.apiKey = createApiKeyStore(path.join(userData, 'anthropic-key.bin'), safeStorage);
+    setApiKeyBilling(!!config.get('apiKeyBilling'), d.apiKey.read);
     const history = d.history = new History(path.join(userData, 'sessions'), { onError: (what, err) => log.error(`history: ${what}`, err) });
     // Transcripts orphaned by an older build (which trimmed the index without
     // deleting them) or by an interrupted delete. Cheap, and it only ever removes

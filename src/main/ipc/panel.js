@@ -1,7 +1,7 @@
 // The panel itself: opening and closing it, Claude Code's sign-in and status,
 // pictures and files for the composer (attachments.js), and updates.
 // Kept out of main.js, which only wires it up.
-const { ID, PATH } = require('../ipc-args');
+const { ID, PATH, text } = require('../ipc-args');
 const { BrowserWindow, app, dialog, nativeImage } = require('electron');
 const { execFile } = require('child_process');
 const os = require('os');
@@ -147,6 +147,7 @@ function registerPanelIpc(ipcMain, d) {
     d.send(d.panel, 'claude:status', d.claudeStatus);
     return d.claudeStatus;
   }
+  d.recheckClaude = recheckClaude;
   // A turn here failed as signed out (wiring/sessions.js): the sign-in is dead
   // even though Claude Code still keeps it, so Settings stops saying "Signed in".
   d.claudeLapsed = () => {
@@ -297,6 +298,20 @@ function registerPanelIpc(ipcMain, d) {
   // ---- keeping Claude Code itself up to date (claude/update.js)
   ipcMain.handle('claude:tricks-dismiss', () => { d.dismissClaudeTricks(); return true; });
   ipcMain.handle('claude:update-check', async () => (d.claudeUpdates ? d.claudeUpdates.check() : null));
+  // Your API key (claude/api-key.js). The panel hands it over once, to be sealed;
+  // nothing ever hands it back: only whether one is saved and its last four.
+  const keyView = () => d.apiKey?.view() || { saved: false, hint: null, canEncrypt: false };
+  ipcMain.handle('claude:api-key', () => keyView());
+  ipcMain.handle('claude:api-key-save', async (_e, key) => {
+    const r = d.apiKey ? d.apiKey.save(key) : { ok: false, error: 'Not available in this run.' };
+    if (r.ok) await recheckClaude().catch(() => { /* the next check will tell */ });
+    return { ...r, key: keyView() };
+  }, [text(1000)]);
+  ipcMain.handle('claude:api-key-clear', async () => {
+    d.apiKey?.clear();
+    await recheckClaude().catch(() => { /* the next check will tell */ });
+    return { ok: true, key: keyView() };
+  });
   ipcMain.handle('claude:update-mode', (_e, mode) => (d.claudeUpdates ? d.claudeUpdates.setMode(mode) : null), [ID]);
   // Runs Claude Code's own `claude update`. A conversation mid-turn keeps the
   // copy it started with, so it isn't stopped, but you're told before it's swapped.

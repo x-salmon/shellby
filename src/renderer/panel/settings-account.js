@@ -12,9 +12,18 @@
   // Plan only, or Claude Code deciding, and whether this PC is set up to bill an API key.
   function renderBillingGuard() {
     const on = !!state.settings.planOnly;
+    const keyMode = !!state.settings.apiKeyBilling && !on;
+    const saved = state.apiKey || { saved: false, hint: null, canEncrypt: true };
     const billing = state.status?.billingEnv || [];
-    const key = T.billingState(on, billing);
+    const key = T.billingState(on, billing, keyMode, saved.saved);
     $('planOnlyToggle').checked = on;
+    $('apiKeyBillingToggle').checked = keyMode;
+    $('apiKeySaved').hidden = !saved.saved;
+    $('apiKeySaved').textContent = saved.saved ? `Saved: ${saved.hint}` : '';
+    $('apiKeyInput').placeholder = saved.saved ? 'Paste a new key to replace it' : 'sk-ant-…';
+    $('apiKeyInput').disabled = !saved.canEncrypt;
+    $('apiKeySave').disabled = !saved.canEncrypt;
+    $('apiKeyClear').hidden = !saved.saved;
     $('billingGuard').dataset.state = key;
     $('billingGuardTitle').textContent = T.BILLING_GUARD[key].title;
     $('billingGuardPill').textContent = T.BILLING_GUARD[key].pill;
@@ -218,7 +227,51 @@
     else if (after.version === before.version) SB.toast(`v${after.version} is still the newest.`);
   });
 
+  // ------------------------------------------------------------ your API key
+  // The key goes to main once, to be sealed; the field is emptied straight after,
+  // and nothing but "saved" and its last four characters ever comes back.
+
+  async function loadApiKey() {
+    state.apiKey = await api.apiKeyView();
+    renderBillingGuard();
+  }
+  async function afterKeyChange(r) {
+    state.apiKey = r.key;
+    state.status = await api.claudeStatus(); // what Claude Code bills depends on it
+    renderSettings();
+  }
+  $('apiKeyForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const input = $('apiKeyInput');
+    const value = input.value;
+    input.value = '';
+    if (!value.trim()) return;
+    $('apiKeySave').disabled = true;
+    try {
+      const r = await api.saveApiKey(value);
+      await afterKeyChange(r);
+      if (!r.ok) return SB.toast(r.error || "Couldn't save the key.", { ms: 6000 });
+      SB.toast(state.settings.apiKeyBilling ? 'Key saved. New conversations bill it.' : 'Key saved. Turn on "Use my API key instead" to bill it.', { ms: 5000 });
+    } finally { $('apiKeySave').disabled = false; }
+  });
+  $('apiKeyClear').addEventListener('click', async () => {
+    const r = await api.clearApiKey();
+    await afterKeyChange(r);
+    SB.toast('Key removed from this PC.');
+  });
+  $('apiKeyBillingToggle').addEventListener('change', async e => {
+    const r = await api.setSettings({ apiKeyBilling: e.target.checked });
+    state.settings = r.settings;
+    state.status = await api.claudeStatus();
+    renderSettings();
+    if (e.target.checked && !state.settings.apiKeyBilling) return; // cancelled in the confirm window
+    SB.toast(state.settings.apiKeyBilling
+      ? (state.apiKey?.saved ? 'New conversations will bill your API key.' : 'Add your key below: until then, conversations stay on your plan.')
+      : 'New conversations will sign in however Claude Code is set up.', { ms: 5000 });
+  });
+
   SB.renderBillingGuard = renderBillingGuard;
+  SB.onSettingsOpen(loadApiKey);
   SB.renderFacts = renderFacts;
   SB.onSettingsOpen(renderUpdates);
 })();

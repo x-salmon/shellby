@@ -72,6 +72,10 @@ contextBridge.exposeInMainWorld('shellby', {
   claudeLogin: invoke('claude:login'), installClaude: invoke('claude:install'), practiceFolder: invoke('first-run:practice'), // onboarding's installer; First steps' practice folder
   claudeLogout: (opts = {}) => ipcRenderer.invoke('claude:logout', { thenSignIn: !!opts.thenSignIn }), // thenSignIn: "Switch account"
   onClaudeStatus: on('claude:status'), // re-checked after the sign-in window closes, or a sign-out
+  // Your API key: handed over once to be sealed by Windows; only { saved, hint } ever comes back.
+  apiKeyView: invoke('claude:api-key'),
+  saveApiKey: key => ipcRenderer.invoke('claude:api-key-save', String(key)),
+  clearApiKey: invoke('claude:api-key-clear'),
   locateClaude: invoke('claude:locate'), // when the search missed it (unusual install)
   // Keeping Claude Code current (claude/update.js): a daily look, `claude update` on request, tell | auto | off.
   checkClaudeUpdate: invoke('claude:update-check'),

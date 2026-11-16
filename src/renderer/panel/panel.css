@@ -1136,6 +1136,10 @@ select.field option { background: var(--reef); }
 .billing-guard-pill { margin-left: auto; padding: 2px 8px; border-radius: 999px; font: 700 var(--fs-10-5) var(--font-mono); text-transform: uppercase; letter-spacing: .04em; background: color-mix(in srgb, var(--bg-tone) 18%, transparent); color: var(--bg-tone); }
 .billing-guard .toggle { margin-top: 6px; font-weight: 700; }
 .billing-guard p { margin: 4px 0 0; color: var(--sand-dim); }
+.billing-guard[data-state="key"] .billing-guard-icon::after { content: "¤"; }
+.api-key-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; }
+.api-key-row .field { flex: 1 1 180px; min-width: 0; font-family: var(--font-mono); }
+.api-key-row #apiKeySaved { flex-basis: 100%; font-family: var(--font-mono); color: var(--sand); }
 #billingEnvNote { color: var(--bg-tone); font-weight: 700; }
 .onboarding-modes { border-top: 0; }
 
