@@ -21,6 +21,7 @@ const { originOf, MAX_PEERS } = require('../hub/peers');
 
 const VERSION = 1;
 const MAX_TABS = 40;
+const MAX_WARNINGS = 4;          // the desk card's own; a phone caution comes on top, never in their place
 const MAX_ITEMS = 300;          // a transcript's tail, when the phone opens it
 const MAX_TEXT = 8000;          // Claude's reply, per item
 const MAX_FILES = 60;
@@ -130,7 +131,7 @@ function phonePrompt(p, titleOf) {
     label: line(p.label, 120),
     detail: line(p.detail, 400),
     ask: line(p.plain?.ask, 200) || null,
-    warnings: [...(caution ? [caution] : []), ...(p.warnings || [])].slice(0, 4).map(w => line(w, 200)),
+    warnings: [...(caution ? [caution] : []), ...(p.warnings || []).slice(0, MAX_WARNINGS)].map(w => line(w, 200)),
     helper: p.agent ? line(p.agent.description || p.agent.type, 80) : null,
     preview: preview(p),
     question: p.toolName === 'AskUserQuestion' ? line(p.questions?.[0]?.question, 300) : null,
