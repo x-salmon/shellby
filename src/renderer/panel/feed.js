@@ -632,17 +632,14 @@
       return strip;
     }
 
-    // Try again fills with coral and presses itself (feed-logic.js RETRY_COUNTDOWN_MS).
-    // Hovering or focusing the strip, or the panel being hidden, holds it; Cancel puts
-    // the quiet line back. It stops for good, leaving the plain buttons, once he's busy
-    // again (you sent something) or you've gone to another tab. The same block
-    // twice running is a hook that means it: no second countdown, or they'd loop.
+    // Try again fills with coral and presses itself (RETRY_COUNTDOWN_MS). Hover, focus or a
+    // hidden panel holds it; Cancel restores the quiet line; busy or another tab stops it.
+    // The same block twice running is a hook that means it: no second countdown (a loop).
     retryCountdown(strip, tryBtn, fine, retry, prompt) {
       if (this.busy || this.autoRetried === prompt) return;
       const fill = h('span', { class: 'denied-fill', 'aria-hidden': 'true' });
       const secs = h('span', { class: 'denied-secs', 'aria-hidden': 'true' });
-      let left = F.RETRY_COUNTDOWN_MS;
-      let last = performance.now();
+      let left = F.RETRY_COUNTDOWN_MS, last = performance.now();
       const show = () => { secs.textContent = `${F.countdownSecs(left)}s`; };
       const stop = () => {
         clearInterval(timer);
@@ -654,8 +651,7 @@
       };
       const timer = setInterval(() => {
         const now = performance.now();
-        const step = now - last;
-        last = now;
+        const step = now - last; last = now;
         if (!strip.isConnected) return clearInterval(timer);
         if (this.busy || !this.isActive) return stop();
         const held = document.hidden || strip.matches(':hover, :focus-within');
@@ -669,8 +665,7 @@
           retry();
         }
       }, 250);
-      tryBtn.prepend(fill);
-      tryBtn.append(secs);
+      tryBtn.prepend(fill); tryBtn.append(secs);
       tryBtn.title = 'Claude tries the blocked step again by itself when this fills up. Point at it to hold.';
       fine.textContent = 'Cancel';
       strip.style.setProperty('--retry-ms', `${F.RETRY_COUNTDOWN_MS}ms`);
