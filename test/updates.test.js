@@ -256,6 +256,38 @@ test('a rejection with no error event still reaches the user', async () => {
   assert.deepEqual(logged, ['404 not found']);
 });
 
+test('a download that fails is reported once, and never as an unhandled rejection', async () => {
+  // electron-updater's autoDownload: checkForUpdates resolves with a
+  // downloadPromise that emits `error` and then rejects with the same error.
+  const failure = new Error('Cannot download "https://release-assets.githubusercontent.com/x", status 403: Forbidden');
+  const { u, updater, logged } = make();
+  /** @type {Promise<unknown> | null} */
+  let download = null;
+  updater.checkForUpdates = async () => {
+    updater.emit('update-available', { version: '0.19.0' });
+    download = (async () => {
+      await new Promise(r => setImmediate(r));
+      updater.emit('error', failure);
+      throw failure;
+    })();
+    return { downloadPromise: download };
+  };
+  const unhandled = [];
+  const onUnhandled = e => unhandled.push(e);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    u.start(); // the first check, as at launch
+    await new Promise(r => setImmediate(r));
+    await assert.rejects(/** @type {Promise<unknown>} */ (download));
+    await new Promise(r => setImmediate(r)); // let Node report any unhandled rejection
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+  }
+  assert.deepEqual(unhandled, []);
+  assert.deepEqual([u.view().state, u.view().error], ['error', "The download didn't finish."]);
+  assert.equal(logged.length, 1, 'logged once, by the error event');
+});
+
 test('common errors come out in plain words', () => {
   assert.equal(plainError('getaddrinfo ENOTFOUND github.com'), "Couldn't reach GitHub. Is this PC online?");
   assert.equal(plainError('net::ERR_INTERNET_DISCONNECTED'), "Couldn't reach GitHub. Is this PC online?");
@@ -264,6 +296,9 @@ test('common errors come out in plain words', () => {
   assert.equal(plainError('net::ERR_CONTENT_LENGTH_MISMATCH'), "The download didn't finish.");
   assert.equal(plainError('socket hang up', { downloading: true }), "The download didn't finish.");
   assert.equal(plainError('net::ERR_NETWORK_CHANGED', { downloading: true }), 'The download stopped: this PC went offline.');
+  // A file GitHub's storage refused isn't GitHub asking him to slow down.
+  assert.equal(plainError('Cannot download "https://release-assets.githubusercontent.com/x", status 403: Forbidden', { downloading: true }), "The download didn't finish.");
+  assert.equal(plainError('HttpError: 429 Too Many Requests', { downloading: true }), 'GitHub asked him to slow down for a bit.');
   assert.equal(plainError('something odd'), "Couldn't check for updates.");
 });
 

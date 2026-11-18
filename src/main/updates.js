@@ -20,6 +20,9 @@ const messageOf = e => String((e && e.message) || e || 'Update check failed').sp
 
 const OFFLINE = /ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ERR_NETWORK_CHANGED|ERR_CONNECTION_(?:REFUSED|RESET|CLOSED|TIMED_OUT)|ERR_ADDRESS_UNREACHABLE|ERR_PROXY_CONNECTION_FAILED|ERR_TIMED_OUT|ENOTFOUND|EAI_AGAIN|ENETUNREACH|ECONNREFUSED|ETIMEDOUT/;
 const RATE_LIMITED = /\b(?:403|429)\b|rate limit/i;
+// A 403 on the installer itself is GitHub's storage refusing that one request
+// (a signed link it wouldn't honour), not the API asking him to slow down.
+const REFUSED_FILE = /Cannot download\b.*\b403\b/i;
 const INTERRUPTED = /ERR_CONTENT_LENGTH_MISMATCH|ERR_INCOMPLETE_CHUNKED_ENCODING|sha512 checksum mismatch/i;
 
 /**
@@ -30,7 +33,7 @@ function plainError(raw, { downloading = false } = {}) {
   const m = String(raw || '');
   if (/ENOSPC/.test(m)) return 'There was no room on the disk for the update.';
   if (OFFLINE.test(m)) return downloading ? 'The download stopped: this PC went offline.' : "Couldn't reach GitHub. Is this PC online?";
-  if (RATE_LIMITED.test(m)) return 'GitHub asked him to slow down for a bit.';
+  if (RATE_LIMITED.test(m) && !REFUSED_FILE.test(m)) return 'GitHub asked him to slow down for a bit.';
   if (downloading || INTERRUPTED.test(m)) return "The download didn't finish.";
   return "Couldn't check for updates.";
 }
@@ -174,7 +177,12 @@ class Updates extends EventEmitter {
     if (this.state === 'ready') this.#set('ready', { rechecking: true, error: null });
     else this.#set('checking', { error: null });
     try {
-      await this.updater.checkForUpdates();
+      const result = await this.updater.checkForUpdates();
+      // With autoDownload, a failed download emits `error` (handled in start())
+      // and then rejects this promise too. Nothing else awaits it, so left
+      // alone it surfaced as an unhandled rejection on top of the error shown.
+      const download = /** @type {{ downloadPromise?: Promise<unknown> | null } | null | undefined} */ (result)?.downloadPromise;
+      download?.catch(() => {});
     } catch (e) {
       // The `error` event normally beats us here; this covers a bare rejection.
       if (this.state === 'checking') this.#failed(e);
