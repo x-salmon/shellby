@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.100.4: Blocked countdown, update download fix
+
+### Fixed
+- **A refused update download says so.** When GitHub turns down the installer partway, Settings now says the download didn't finish (and tries again soon) instead of claiming GitHub asked him to slow down.
+
+### Changed
+- When a hook blocks something Claude tried, and none of your deny rules did, Try again now fills up over 10 seconds and then presses itself. Point at the strip to hold it, or press Cancel to leave it be. It stops by itself once you send something else or switch tabs.
+
 ## 0.100.3: Every warning
 
 ### Fixed
