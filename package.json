@@ -51,17 +51,17 @@
     "release:ready": "node scripts/release-guard.js ready --wait"
   },
   "dependencies": {
-    "@sentry/electron": "^8.3.0",
+    "@sentry/electron": "^8.4.0",
     "electron-updater": "^6.8.11",
-    "koffi": "^3.3.7",
+    "koffi": "^3.3.8",
     "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.6",
-    "electron": "^45.2.3",
+    "electron": "^45.3.2",
     "electron-builder": "^26.18.0",
-    "eslint": "^10.14.0",
+    "eslint": "^10.15.0",
     "typescript": "^7.0.2"
   },
   "overrides": {
