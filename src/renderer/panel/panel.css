@@ -758,6 +758,17 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
 }
 .turn-denied .denied-text { overflow-wrap: anywhere; text-align: center; min-width: 0; }
 .turn-denied .denied-acts { display: flex; gap: 6px; flex: none; }
+/* Counting down to trying again by itself (feed.js retryCountdown): Try again fills with coral, its seconds beside the words. */
+.turn-denied .denied-try { position: relative; overflow: hidden; }
+.turn-denied .denied-try > span { position: relative; }
+.turn-denied .denied-try > .denied-fill {
+  position: absolute; inset: 0; background: color-mix(in srgb, var(--coral) 34%, transparent);
+  transform: scaleX(0); transform-origin: left; animation: denied-fill var(--retry-ms, 10s) linear forwards;
+}
+.turn-denied.held .denied-fill { animation-play-state: paused; }
+.turn-denied .denied-secs { min-width: 3ch; text-align: right; font: 600 var(--fs-11) var(--font-mono); font-variant-numeric: tabular-nums; color: var(--amber); }
+@keyframes denied-fill { to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .turn-denied .denied-fill { animation: none; } }
 .meta:has(+ .turn-denied) { margin-bottom: 4px; }
 /* A note under it (turncost.js turnNotes): what cost more than it needed to, and why. */
 .turn-note {

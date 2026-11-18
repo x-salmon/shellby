@@ -87,6 +87,11 @@
     return `That was blocked: ${parts.join(', ')}. Try it again.`;
   }
 
+  // Try again presses itself after this long unless you hold it (hover, focus) or say Cancel.
+  const RETRY_COUNTDOWN_MS = 10000;
+  // The seconds on its countdown: 10 down to 1, then 0 when it's time.
+  const countdownSecs = leftMs => (leftMs > 0 ? Math.ceil(leftMs / 1000) : 0);
+
   // ---- which deny rule blocked a denial (Claude Code's permission rule syntax)
 
   const EDIT_TOOLS = /^(Edit|Write|MultiEdit|NotebookEdit)$/;
@@ -574,7 +579,7 @@
 
   const api = {
     contextSegments, insightsReportIn, subtaskPrompt,
-    files, storySteps, markFor, compactingLine, retryLine, hookLine, denialsLine, retryPrompt, blockingRule, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
+    files, storySteps, markFor, compactingLine, retryLine, hookLine, denialsLine, retryPrompt, RETRY_COUNTDOWN_MS, countdownSecs, blockingRule, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
     decisionVerdict, questionVerdict, resultLabel, sounding, soundingBar, refusalLike, refusalOf, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
   };

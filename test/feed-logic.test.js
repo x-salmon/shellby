@@ -326,6 +326,16 @@ test('the hook line names the hook, and the denials line each refused tool once,
   assert.equal(F.denialsLine(many), 'Claude was blocked from: Tool0, Tool1, Tool2, Tool3, Tool4 and 2 more');
 });
 
+test('try again counts down whole seconds from ten, and reaches zero only when time is up', () => {
+  assert.equal(F.RETRY_COUNTDOWN_MS, 10000);
+  assert.equal(F.countdownSecs(F.RETRY_COUNTDOWN_MS), 10);
+  assert.equal(F.countdownSecs(9001), 10, 'part of a second still shows as that second');
+  assert.equal(F.countdownSecs(9000), 9);
+  assert.equal(F.countdownSecs(1), 1);
+  assert.equal(F.countdownSecs(0), 0);
+  assert.equal(F.countdownSecs(-250), 0, 'a late tick never goes negative');
+});
+
 test('try again asks Claude to retry what was blocked', () => {
   assert.equal(F.retryPrompt([{ toolName: 'Write', summary: 'src/a.js' }, { toolName: 'Bash', summary: '' }]),
     'That was blocked: Write (src/a.js), Bash. Try it again.');

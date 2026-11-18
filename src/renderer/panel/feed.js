@@ -52,6 +52,7 @@
       Object.assign(this, { id, title, cwd, saved, routineId });
       this.busy = false;
       this.busySince = null;      // when the running turn started (main's clock, or ours until it reports)
+      this.autoRetried = null;    // the last blocked step Try again's countdown sent by itself (retryCountdown)
       this.pending = 0;
       this.crew = 0;
       this.outcome = null;
@@ -607,25 +608,74 @@
     // like the move into a copy), Show rule (when one of your deny rules did it:
     // trying again would only be refused again) and Fine (back to the quiet line).
     deniedStrip(denials) {
-      const tryBtn = h('button', { class: 'btn slim-btn', type: 'button', title: 'Ask Claude to try the blocked step again',
-        onclick: () => {
-          if (this.busy) return SB.toast('Let him finish first.');
-          SB.activate(this.id);
-          SB.send(F.retryPrompt(denials));
-          strip.replaceWith(this.deniedLine(denials));
-        } }, 'Try again');
+      const retry = () => {
+        if (this.busy) return SB.toast('Let him finish first.');
+        SB.activate(this.id);
+        SB.send(F.retryPrompt(denials));
+        strip.replaceWith(this.deniedLine(denials));
+      };
+      const tryBtn = h('button', { class: 'btn slim-btn denied-try', type: 'button', title: 'Ask Claude to try the blocked step again', onclick: retry },
+        h('span', { text: 'Try again' }));
       const fine = h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => strip.replaceWith(this.deniedLine(denials)) }, 'Fine');
       const acts = h('span', { class: 'denied-acts' }, tryBtn, fine);
       const strip = h('div', { class: 'turn-denied', role: 'note' },
         h('span', { class: 'denied-text', text: F.denialsLine(denials) }), acts);
       // Your rules are read for the project on screen, so only this tab's own can be checked.
       if (this.isActive) this.findBlockingRule(denials).then(found => {
-        if (!found || !strip.isConnected) return;
+        if (!strip.isConnected) return;
+        // Nothing of yours blocked it, so it may well go through now: count down to trying again.
+        if (!found) return this.retryCountdown(strip, tryBtn, fine, retry, F.retryPrompt(denials));
         // Every one a rule blocked: trying again would just be refused again.
         if (found.all) tryBtn.remove();
         acts.prepend(h('button', { class: 'btn slim-btn', type: 'button', title: found.rule.rule, onclick: () => SB.showRule?.(found.rule) }, 'Show rule'));
       });
       return strip;
+    }
+
+    // Try again fills with coral and presses itself (feed-logic.js RETRY_COUNTDOWN_MS).
+    // Hovering or focusing the strip, or the panel being hidden, holds it; Cancel puts
+    // the quiet line back. It stops for good, leaving the plain buttons, once he's busy
+    // again (you sent something) or you've gone to another tab. The same block
+    // twice running is a hook that means it: no second countdown, or they'd loop.
+    retryCountdown(strip, tryBtn, fine, retry, prompt) {
+      if (this.busy || this.autoRetried === prompt) return;
+      const fill = h('span', { class: 'denied-fill', 'aria-hidden': 'true' });
+      const secs = h('span', { class: 'denied-secs', 'aria-hidden': 'true' });
+      let left = F.RETRY_COUNTDOWN_MS;
+      let last = performance.now();
+      const show = () => { secs.textContent = `${F.countdownSecs(left)}s`; };
+      const stop = () => {
+        clearInterval(timer);
+        fill.remove();
+        secs.remove();
+        strip.classList.remove('counting', 'held');
+        fine.textContent = 'Fine';
+        tryBtn.title = 'Ask Claude to try the blocked step again';
+      };
+      const timer = setInterval(() => {
+        const now = performance.now();
+        const step = now - last;
+        last = now;
+        if (!strip.isConnected) return clearInterval(timer);
+        if (this.busy || !this.isActive) return stop();
+        const held = document.hidden || strip.matches(':hover, :focus-within');
+        strip.classList.toggle('held', held);
+        if (held) return;
+        left -= step;
+        show();
+        if (left <= 0) {
+          clearInterval(timer);
+          this.autoRetried = prompt;
+          retry();
+        }
+      }, 250);
+      tryBtn.prepend(fill);
+      tryBtn.append(secs);
+      tryBtn.title = 'Claude tries the blocked step again by itself when this fills up. Point at it to hold.';
+      fine.textContent = 'Cancel';
+      strip.style.setProperty('--retry-ms', `${F.RETRY_COUNTDOWN_MS}ms`);
+      strip.classList.add('counting');
+      show();
     }
 
     // The first of your deny rules that blocked one of these, and whether rules blocked them all.
