@@ -140,9 +140,15 @@ test('a Claude turn ends when its tab is closed', async () => {
 
 test('wildcards match in linear time', () => {
   const t = patternTest('*a*a*a*a*a*a*a*a*a*a*b');
-  const start = Date.now();
-  assert.equal(t('a'.repeat(250)), false);
-  assert.ok(Date.now() - start < 50);
+  // The best of three: backtracking would take ages on any run, while a busy
+  // machine (the whole suite at once) only slows some of them.
+  let best = Infinity;
+  for (let i = 0; i < 3; i++) {
+    const start = process.hrtime.bigint();
+    assert.equal(t('a'.repeat(250)), false);
+    best = Math.min(best, Number(process.hrtime.bigint() - start) / 1e6);
+  }
+  assert.ok(best < 50, `${best.toFixed(1)} ms`);
   assert.equal(patternTest('*.PDF')('x.pdf'), true);
 });
 

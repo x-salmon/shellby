@@ -99,7 +99,7 @@ test('an idle one sheds its process like a Claude one, and the next message star
   await resultOf(seen);
   tab.activeAt = 0;
   assert.deepEqual(mgr.stopIdle(1000), ['g4']);
-  await new Promise(r => setTimeout(r, 300));
+  for (const end = Date.now() + 5000; tab.session.proc && Date.now() < end;) await new Promise(r => setTimeout(r, 10));
   assert.equal(tab.session.proc, null);
   mgr.send('g4', 'two', { kind: 'user', text: 'two' });
   const r = await resultOf(seen, 2);

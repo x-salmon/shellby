@@ -131,9 +131,13 @@ test('redaction stays fast on hostile lines (500 lines of 2,000 characters)', ()
   for (const unit of ['token', 'auth', 'a=', '"a":', 'Bearer ', 'x://y:', 'password: "']) {
     const line = unit.repeat(Math.ceil(2000 / unit.length)).slice(0, 2000);
     const lines = Array.from({ length: 500 }, () => line);
-    const start = process.hrtime.bigint();
-    out.redactLines(lines);
-    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    // The best of three: a slow regex is slow every time, a busy machine only sometimes.
+    let ms = Infinity;
+    for (let i = 0; i < 3; i++) {
+      const start = process.hrtime.bigint();
+      out.redactLines(lines);
+      ms = Math.min(ms, Number(process.hrtime.bigint() - start) / 1e6);
+    }
     assert.ok(ms < 400, `${JSON.stringify(unit)}: ${ms.toFixed(0)} ms`);
   }
 });

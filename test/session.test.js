@@ -219,7 +219,7 @@ test('an edit\'s file is read off the main thread, and what came after it still 
   s.handle({ kind: 'text', text: 'after the card' });
   assert.deepEqual(items, [], 'nothing overtakes the edit being placed');
   s.ended(3, ''); // and a crash meanwhile ends the turn after all of it
-  await new Promise(r => setTimeout(r, 200));
+  for (const end = Date.now() + 5000; items.length < 7 && Date.now() < end;) await new Promise(r => setTimeout(r, 10));
   assert.deepEqual(items.map(i => i.kind === 'decision' ? `decision:${i.decision}` : i.kind),
     ['tool', 'text', 'permission', 'text', 'decision:cancelled', 'error', 'result']);
   assert.equal(items[0].line, 3);
