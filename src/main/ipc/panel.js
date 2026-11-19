@@ -7,7 +7,7 @@ const { execFile } = require('child_process');
 const os = require('os');
 const path = require('path');
 const attach = require('../attachments');
-const { checkStatus, signInLapsed, run: runCli, verifyClaude } = require('../claude/cli');
+const { checkStatus, signInLapsed, accountOf, accountChanged, run: runCli, verifyClaude } = require('../claude/cli');
 const installer = require('../claude/install');
 const practice = require('../practice');
 const { models } = require('../models');
@@ -141,18 +141,42 @@ function registerPanelIpc(ipcMain, d) {
   ipcMain.handle('claude:status', async () => (d.claudeStatus = d.CAPTURE || d.FAKE_CLI ? require('../capture').FAKE_STATUS : await checkStatus({ configured: d.claudePath() })));
   // Checks again and tells the panel, so Settings and onboarding follow a
   // sign-in or sign-out without a "Check again" press.
+  // The account open conversations started on: its email ('' when Claude Code
+  // doesn't say), null once signed out, undefined until first seen. Kept apart
+  // from d.claudeStatus, which other checks refresh too (a move, an update), so
+  // a sign-in one of them sees first still counts as a change here.
+  let account;
   async function recheckClaude() {
+    const known = account !== undefined ? account : accountOf(d.claudeStatus);
     d.claudeStatus = d.CAPTURE || d.FAKE_CLI ? require('../capture').FAKE_STATUS : await checkStatus({ configured: d.claudePath() });
+    // Signed in (the window Sign in opened, /login, a terminal) or as someone else:
+    // open conversations still hold what they read when they started.
+    if (accountChanged(known, d.claudeStatus)) restartForSignIn('signed in');
+    // A check that failed for a moment (signed out, by its reckoning) forgets nothing.
+    account = d.claudeStatus?.loggedIn ? accountOf(d.claudeStatus) : known === undefined ? null : known;
     d.refreshStatusLine();
     d.send(d.panel, 'claude:status', d.claudeStatus);
     return d.claudeStatus;
   }
   d.recheckClaude = recheckClaude;
+  // Claude Code reads its sign-in once, as it starts: after a sign-out or a new
+  // sign-in, each open conversation gets a new process on its next message
+  // (sessions.js stopForSignIn). Without this, they all failed "Not logged in"
+  // until Shellby was restarted.
+  function restartForSignIn(why) {
+    if (d.CAPTURE || d.FAKE_CLI) return; // a faked status never changes account
+    const stopped = d.manager?.stopForSignIn?.() || [];
+    if (stopped.length) d.log.info('Restarting conversations for the new sign-in', `${stopped.length} (${why})`);
+  }
   // A turn here failed as signed out (wiring/sessions.js): the sign-in is dead
   // even though Claude Code still keeps it, so Settings stops saying "Signed in".
-  d.claudeLapsed = () => {
+  // startedAt: when that turn's process started. One from before the current
+  // sign-in proves nothing about it (signInLapsed).
+  d.claudeLapsed = (startedAt = 0) => {
     if (d.CAPTURE || d.FAKE_CLI || !d.claudeStatus?.loggedIn) return;
-    d.claudeStatus = signInLapsed(d.claudeStatus);
+    const next = signInLapsed(d.claudeStatus, startedAt);
+    if (next === d.claudeStatus) return;
+    d.claudeStatus = next;
     d.refreshStatusLine();
     d.send(d.panel, 'claude:status', d.claudeStatus);
   };
@@ -282,6 +306,8 @@ function registerPanelIpc(ipcMain, d) {
       return { ok: false, error: "Claude Code didn't sign out. Try `claude auth logout` in a terminal.", status: d.claudeStatus };
     }
     d.log.info('signed out of Claude Code', thenSignIn ? '(switching account)' : '');
+    restartForSignIn('signed out');
+    account = null; // whoever signs in next, even the same account, is a new sign-in to them
     if (thenSignIn) startClaudeLogin();
     return { ok: true, status: d.claudeStatus };
   });

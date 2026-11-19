@@ -17,6 +17,7 @@ const harnesses = require('./harness/registry');
 const planPace = require('./plan-pace');
 const mods = require('./mods');
 const { talkOf, todoGlance, aggregateOf } = require('./tab-glance');
+const tabStops = require('./tab-stops');
 
 // Tabs left quiet shed their process (stopIdle), so an open tab is cheap; a busy
 // one is a running CLI, and nothing limits how many of those run at once. The cap
@@ -361,6 +362,7 @@ class SessionManager extends EventEmitter {
       tab.turnModel = { was: tab.session.model || '' };
       tab.session.setModel(turnModel);
     }
+    tabStops.beforeSend(tab); // still on the sign-in from before a change: a fresh process takes this one
     try { tab.session.send(prompt, this.prepareTurn?.(tab) || null); } catch (e) { this.restoreTurnModel(tab); throw e; }
     // On disk at once, so a power cut mid-turn still leaves it marked unfinished.
     this.history.markTurn?.(tab.id, { turnId: userItem.turnId, at: Date.now() });
@@ -610,24 +612,14 @@ class SessionManager extends EventEmitter {
 
   closeAll(opts) { for (const id of [...this.tabs.keys()]) this.close(id, opts); }
 
-  /**
-   * Stop the process of every tab that has sat quiet for idleMs. Each one holds
-   * a claude process and a full set of MCP servers (dozens of processes, over a
-   * GB) for nothing; the tab stays open, and its next message resumes it. Not a
-   * tab that's working, waiting on you, or has something running in the
-   * background. keep(id): true for a tab Keep warm still keeps
-   * (keepwarm-service.js isKept). -> the ids of the tabs stopped.
-   */
-  stopIdle(idleMs, now = Date.now(), keep = () => false) {
-    const stopped = [];
-    for (const tab of this.tabs.values()) {
-      const s = tab.session;
-      if (!s.proc || s.busy || s.pending.size || s.hasBackgroundWork()) continue;
-      if (now - tab.activeAt < idleMs || keep(tab.id)) continue; // keep: Keep warm still needs its process
-      s.stop().catch(() => {});
-      stopped.push(tab.id);
-    }
-    return stopped;
+  // Tab processes ended while the tabs stay open (tab-stops.js): the quiet ones, and
+  // every one on the sign-in from before a sign-out or account switch.
+  stopIdle(idleMs, now = Date.now(), keep = () => false) { return tabStops.stopIdle(this.tabs.values(), idleMs, now, keep); }
+  stopForSignIn(now = Date.now()) { return tabStops.stopForSignIn(this.tabs.values(), onClaude, now); }
+  /** A turn here was turned down as signed out: its next message gets a fresh process (tab-stops.js beforeSend). */
+  signedOut(tabId, now = Date.now()) {
+    const tab = this.tabs.get(tabId);
+    if (tab && onClaude(tab) && !tab.session.remoteHost) tab.signInAt = now;
   }
 
   setMode(mode) {

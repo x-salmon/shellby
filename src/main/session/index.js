@@ -159,6 +159,7 @@ class ClaudeSession extends Base {
     this.modelSwitched = false;    // set_model sent, and no reply on the new model yet (control.js setModel)
     this.windows = null;          // { model: contextWindow } as Claude Code last reported it
     this.proc = null;
+    this.procStartedAt = 0;       // when this.proc started (start())
     this.busy = false;
     this.busySince = null;         // when the current turn started, for the panel's running clock
     this.sessionId = resumeId;
@@ -239,6 +240,7 @@ class ClaudeSession extends Base {
         cwd: this.cwd, env: { ...claudeEnv(), ...crabEnv, ...this.extraEnv() }, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
       });
     this.proc = proc;
+    this.procStartedAt = Date.now(); // a sign-in newer than this is one the process never read (claude/cli.js signInLapsed)
     this.resumedProc = !!this.sessionId; // its first call is where a changed setup misses the cache (cachebreak.js)
     // The remote end reads its MCP config from the first line, before Claude Code starts.
     if (remote && this.mcpConfig) this.proc.stdin.write(JSON.stringify(this.fullMcpConfig()) + '\n');

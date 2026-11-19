@@ -229,6 +229,73 @@ test('a quiet tab keeps its process while it waits on you or runs something in t
   }
 });
 
+// Claude Code reads its sign-in once, as it starts: after a sign-out or switch,
+// every open conversation needs a new process, or each one fails "Not logged in"
+// until Shellby restarts.
+const exited = proc => new Promise(r => (proc.exitCode !== null ? r() : proc.once('exit', r)));
+
+test('a new sign-in stops every free local conversation\'s process now, and the rest once they\'re free', async () => {
+  const mgr = new SessionManager({ getExe: () => process.execPath, argsPrefix: [FAKE], history: new History(tmp()), getMode: () => 'ask', getModel: () => '' });
+  try {
+    let results = 0;
+    mgr.on('item', (_tabId, item) => { if (item.kind === 'result') results++; });
+    for (const id of ['plain', 'serving', 'asking', 'elsewhere']) {
+      mgr.open({ tabId: id, cwd: os.tmpdir() });
+      mgr.send(id, 'hello', { kind: 'user', text: 'hello' });
+    }
+    mgr.open({ tabId: 'unsent', cwd: os.tmpdir() }); // no process yet: nothing to stop
+    await until(mgr, () => results === 4);
+    const tab = id => mgr.tabs.get(id);
+    tab('serving').session.handle({ kind: 'task', phase: 'started', taskId: 'j1', taskType: 'local_bash', description: 'npm run dev' });
+    tab('asking').session.pending.set('req-1', { requestId: 'req-1' }); // a question still on screen
+    tab('elsewhere').session.remoteHost = 'devbox'; // signs in on that computer
+    const plain = tab('plain').session.proc;
+
+    assert.deepEqual(mgr.stopForSignIn(), ['plain']);
+    await exited(plain);
+    assert.equal(tab('plain').session.proc, null);
+    assert.ok(tab('serving').session.proc, 'its dev server keeps running for now');
+    assert.ok(tab('asking').session.proc, 'a question waiting on you is never cut off');
+    assert.ok(tab('elsewhere').session.proc);
+    assert.deepEqual(mgr.stopIdle(30 * 60 * 1000), [], 'not while they are taken up');
+
+    // Free again: the next pass stops it at once, not after half an hour.
+    const serving = tab('serving').session.proc;
+    tab('serving').session.handle({ kind: 'task', phase: 'done', taskId: 'j1', taskType: 'local_bash', status: 'completed', summary: 'exit 0' });
+    assert.deepEqual(mgr.stopIdle(30 * 60 * 1000), ['serving']);
+    await exited(serving);
+
+    // Written to before the pass comes: the message goes in a fresh process.
+    tab('asking').session.pending.clear();
+    const asking = tab('asking').session.proc;
+    mgr.send('asking', 'still there?', { kind: 'user', text: 'still there?' });
+    await until(mgr, () => results === 5);
+    assert.notEqual(tab('asking').session.proc, asking, 'a new process took the message');
+    assert.ok(tab('asking').session.proc);
+    assert.deepEqual(mgr.stopIdle(30 * 60 * 1000), [], 'a process on the new sign-in is left alone');
+  } finally {
+    mgr.closeAll();
+  }
+});
+
+test('a turn turned down as signed out gets a fresh process for the next message', async () => {
+  const mgr = new SessionManager({ getExe: () => process.execPath, argsPrefix: [FAKE], history: new History(tmp()), getMode: () => 'ask', getModel: () => '' });
+  try {
+    let results = 0;
+    mgr.on('item', (_tabId, item) => { if (item.kind === 'result') results++; });
+    mgr.open({ tabId: 'lapsed', cwd: os.tmpdir() });
+    mgr.send('lapsed', 'hello', { kind: 'user', text: 'hello' });
+    await until(mgr, () => results === 1);
+    const first = mgr.tabs.get('lapsed').session.proc;
+    mgr.signedOut('lapsed');
+    mgr.send('lapsed', 'again', { kind: 'user', text: 'again' });
+    await until(mgr, () => results === 2);
+    assert.notEqual(mgr.tabs.get('lapsed').session.proc, first);
+  } finally {
+    mgr.closeAll();
+  }
+});
+
 test('a tab renamed before its first message keeps that name; a saved one renames its History entry', () => {
   const history = new History(tmp());
   const mgr = new SessionManager({ getExe: () => process.execPath, argsPrefix: [FAKE], history, getMode: () => 'ask', getModel: () => '' });

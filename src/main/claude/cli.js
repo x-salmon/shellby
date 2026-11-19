@@ -40,12 +40,37 @@ let lapsed = null;
 const mtimeOf = f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
 const credentialsFile = configDir => path.join(configDir || path.join(require('os').homedir(), '.claude'), '.credentials.json');
 
-/** A turn failed as signed out: the status to show now. Only for a claude.ai sign-in (an API key isn't ours to redo). */
-function signInLapsed(status) {
+/**
+ * A turn failed as signed out: the status to show now. Only for a claude.ai
+ * sign-in (an API key isn't ours to redo). startedAt: when the failing process
+ * started. Claude Code reads its sign-in once, so a process older than the
+ * credentials file failed on the sign-in from before (an account switch), not
+ * this one, and the status stays as it is.
+ * @param {any} status @param {number} [startedAt]
+ */
+function signInLapsed(status, startedAt = 0) {
   if (!status?.loggedIn || status.authMethod !== 'claude.ai') return status;
   const file = credentialsFile(status.configDir);
-  lapsed = { file, mtimeMs: mtimeOf(file) };
+  const mtimeMs = mtimeOf(file);
+  if (startedAt && mtimeMs > startedAt) return status;
+  lapsed = { file, mtimeMs };
   return { ...status, loggedIn: false, lapsed: true };
+}
+
+/** Who a status is signed in as: the email ('' when it doesn't say), null when signed out, undefined when there's no status yet. */
+function accountOf(status) {
+  if (!status) return undefined;
+  return status.loggedIn ? status.email || '' : null;
+}
+
+/**
+ * Signed in now, and not as `known` (accountOf what open conversations started
+ * on): a sign-in after a sign-out, or another account. Their processes still
+ * hold the sign-in they read as they started. Not knowing yet isn't a change.
+ * @param {string | null | undefined} known @param {any} now
+ */
+function accountChanged(known, now) {
+  return !!now?.loggedIn && known !== undefined && known !== accountOf(now);
 }
 
 /** A fresh status, still signed out while the lapsed sign-in's credentials haven't changed. */
@@ -299,4 +324,4 @@ async function checkStatus({ configured = null } = {}) {
   return status;
 }
 
-module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings, signInWithoutSettings, candidatePaths, run, BILLING_ENV };
+module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, accountOf, accountChanged, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings, signInWithoutSettings, candidatePaths, run, BILLING_ENV };

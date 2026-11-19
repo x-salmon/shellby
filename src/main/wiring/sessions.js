@@ -230,7 +230,12 @@ function wireSessions(d) {
       const failed = item.trouble && item.trouble.kind !== 'no-copy';
       if (failed) d.log.warn(`turn failed (${item.trouble.kind})`, detailOf(item.kind === 'error' ? item.text : item.error));
       // Signed out on this PC (not on another computer, over ssh): Settings says so too.
-      if (failed && item.trouble.kind === 'signed-out' && !d.remoteService?.placeOf(tab.session?.cwd || '')) d.claudeLapsed?.();
+      // Its next message gets a fresh process too: Claude Code reads its sign-in once,
+      // as it starts, so after signing in again it kept failing until Shellby restarted.
+      if (failed && item.trouble.kind === 'signed-out' && !d.remoteService?.placeOf(tab.session?.cwd || '')) {
+        d.claudeLapsed?.(tab.session?.procStartedAt || 0);
+        d.manager.signedOut(tabId);
+      }
       // Claude Code stopping mid-turn sends no result: a routine's row still has to say it failed
       // (and offer Fix with Claude), not "started 2h ago" for ever.
       if (failed && item.kind === 'error' && d.routineTabs.has(tabId)) d.routineService.updateRoutine(d.routineTabs.get(tabId), { lastStatus: 'error' });
