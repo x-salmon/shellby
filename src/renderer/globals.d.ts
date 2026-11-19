@@ -148,6 +148,7 @@ interface ShellbyPanelExtras {
   chooseNewEffort: any;
   clearConversation: any;
   composerInput: any;
+  continueOnClaude: any;
   EFFORTS: any;
   escRewind: any;
   hidePick: any;

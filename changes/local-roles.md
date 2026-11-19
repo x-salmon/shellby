@@ -5,3 +5,4 @@
 - When a Local mode preset names a model you don't have, Settings offers to get it, with its size, a progress bar and Stop. It checks for free disk space first, and a stopped download picks up where it left off.
 - Local model in Settings now helps you get set up: with no Ollama it recommends models for this PC and installs Ollama with winget (after you confirm), starts it if it isn't running, updates one too old for local conversations, and gets the recommended models in one press.
 - Each local model in use shows how it suits this PC: fits in the GPU, partly in RAM, or too big. One with a short context (under the 32K tokens Claude Code needs) gets Make a 32K copy, which makes a copy that starts with enough and picks it.
+- A local conversation's model menu has Continue on Claude: a new Claude conversation, drafted for you to send, that reads the local one's record and carries on. The local one stays as it was.

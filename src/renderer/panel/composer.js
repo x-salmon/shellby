@@ -537,6 +537,13 @@
           i === 0 ? (fixed ? (local ? 'Stays on this PC for good' : 'Only before a conversation starts') : 'Free, and nothing leaves this PC') : null,
           () => SB.chooseLocal(n))),
       ] : []),
+      ...(local && started ? [
+        h('div', { class: 'menu-sep' }),
+        h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { SB.closeMenus(); SB.continueOnClaude(); } },
+          h('span', { class: 'mi-check', text: '' }),
+          h('span', {}, h('div', { class: 'mi-title', text: 'Continue on Claude…' }),
+            h('div', { class: 'mi-sub', text: 'A new conversation reads this one and carries on. Uses your plan' }))),
+      ] : []),
       h('div', { class: 'menu-sep' }),
       h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { SB.closeMenus(); SB.showSetting?.('modelSelect'); } },
         h('span', { class: 'mi-check', text: '' }),
@@ -567,6 +574,21 @@
     Object.assign(tab, { local: name, model: name, modelAsked: '' }); // main's next summary says the same
     SB.applyModel();
     SB.toast(`This conversation runs on ${name}, on this PC. Its first message settles it for good.`, { ms: 5000 });
+  };
+
+  // A new Claude conversation that reads this local one's record (main's local/tab.js continuePrompt).
+  // Drafted, not sent: spending the plan is your call. This one stays as it was.
+  SB.continueOnClaude = async () => {
+    const tab = SB.activeTab();
+    if (!tab?.local) return;
+    const r = await api.continueOnClaude(tab.id).catch(() => null);
+    if (!r?.ok) return SB.toast(r?.error || "Couldn't read this conversation.", { ms: 6000 });
+    await SB.newTabIn({ cwd: r.cwd, draft: r.prompt });
+    const fresh = SB.activeTab();
+    if (!fresh || fresh.id === tab.id) return;
+    // On Claude even with Local mode on for new conversations.
+    const m = await api.setTabModel(fresh.id, '').catch(() => null);
+    if (m?.ok) { Object.assign(fresh, { local: null, modelAsked: '', model: '' }); SB.applyModel(); }
   };
 
   $('modelChip').addEventListener('click', () => {

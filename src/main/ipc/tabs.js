@@ -16,6 +16,8 @@ const harnesses = require('../harness/registry');
 const { run: runCli, skipSettings } = require('../claude/cli');
 const { selectedNote } = require('../viewer');
 const { isModel } = require('../models');
+const localTab = require('../local/tab');
+const { findSession } = require('../worktrees/claude-session');
 const { CLASS_WORDS } = require('../model-pick');
 
 // The most queued messages that go in at once, and files across all of them (as one task:send).
@@ -158,6 +160,17 @@ function registerTabsIpc(ipcMain, d) {
   ipcMain.handle('tab:local', (_e, { tabId, model }) => {
     try { return d.manager.setTabLocal(tabId, model); } catch (err) { return { ok: false, error: err.message }; }
   }, [obj({ tabId: ID, model: str({ max: 200 }) })]);
+
+  // Continue on Claude: a local conversation's record, for a new Claude one to read (local/tab.js continuePrompt).
+  ipcMain.handle('tab:continue-on-claude', (_e, tabId) => {
+    const tab = d.manager.tabs.get(tabId);
+    if (!tab?.localTarget) return { ok: false, error: 'This conversation is already on Claude.' };
+    const sessionId = tab.session.sessionId;
+    if (!sessionId) return { ok: false, error: 'Nothing to carry on yet: send it a message first.' };
+    const transcript = findSession({ configDir: d.claudeConfigDir(), sessionId, prefer: /** @type {string[]} */ ([tab.session.cwd]) });
+    if (!transcript) return { ok: false, error: 'Claude Code has no record of this conversation on this PC.' };
+    return { ok: true, cwd: tab.session.cwd, prompt: localTab.continuePrompt({ model: tab.localTarget.model, transcript }) };
+  }, [ID]);
 
   // fromQueue: the panel's queue sending what you left behind a turn, by itself.
   // model: this one turn on a cheaper model, as you picked on the card (model-pick.js) or as

@@ -69,4 +69,18 @@ function settle(tab, target, claude) {
   if (!tab.localBy && canMove(tab)) apply(tab, target, claude);
 }
 
-module.exports = { canMove, apply, pick, pickClaude, settle, STAYS_LOCAL, STAYS_CLAUDE };
+/**
+ * The first message of a Claude conversation that carries on a local one: it
+ * reads the local one's own record rather than a summary the small model wrote.
+ * The local conversation stays as it was, in History.
+ * @param {{ model: string, transcript: string }} o
+ */
+function continuePrompt({ model, transcript }) {
+  return [
+    `I started this task in another conversation on a local model (${model}) and want you to carry it on.`,
+    `Its full record is Claude Code's transcript at ${transcript} (JSON lines: one message or tool call per line).`,
+    'Read it, check the files it changed for anything it got wrong or left half done, then tell me in a few lines where it got to and what you would do next before doing it.',
+  ].join(' ');
+}
+
+module.exports = { continuePrompt, canMove, apply, pick, pickClaude, settle, STAYS_LOCAL, STAYS_CLAUDE };
