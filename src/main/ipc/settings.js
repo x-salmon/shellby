@@ -19,6 +19,7 @@ const localTally = require('../local/tally');
 const localPresets = require('../local/presets');
 const localPull = require('../local/pull');
 const localSetup = require('../local/setup');
+const localFit = require('../local/fit');
 const { isModel } = require('../models');
 const modelPick = require('../model-pick');
 const outputStyles = require('../outputstyles');
@@ -260,6 +261,26 @@ function registerSettingsIpc(ipcMain, d) {
     return r;
   }, [opt(v => typeof v === 'boolean')]);
   ipcMain.handle('local:start', () => localSetup.start());
+  // Local mode's fit check (local/fit.js): a chip for each model in use, and the 32K copy that fixes a short context.
+  let fitHw = null;
+  const inUse = lm => [lm.model, lm.models?.quiz, lm.agent.model, lm.agent.helpers, lm.agent.quick].filter(Boolean);
+  ipcMain.handle('local:fit', async () => {
+    const lm = localModel.cleanSettings(d.config.get('localModel'));
+    if (!lm) return {};
+    fitHw ||= await localSetup.hardware();
+    return localFit.read({ url: lm.url, models: inUse(lm), hw: fitHw });
+  });
+  ipcMain.handle('local:ctx-copy', async (_e, model) => {
+    const lm = localModel.cleanSettings(d.config.get('localModel'));
+    if (!lm || !inUse(lm).includes(model)) return { ok: false, error: 'Pick that model first.' };
+    const r = await localFit.makeCopy({ url: lm.url, model });
+    if (!r.ok) return r;
+    const swap = v => (v === model ? r.model : v);
+    const models = Object.fromEntries(Object.entries(lm.models).map(([k, v]) => [k, swap(v)]));
+    const agent = { ...lm.agent, model: swap(lm.agent.model), helpers: swap(lm.agent.helpers), quick: swap(lm.agent.quick) };
+    d.config.set({ localModel: localModel.cleanSettings({ ...lm, model: swap(lm.model), models, agent, preset: 'custom' }) });
+    return { ok: true, model: r.model, settings: d.panelSettings() };
+  }, [str({ max: 200 })]);
   // Try it: one question to a model, shown in Settings with how long it took.
   ipcMain.handle('local:try', (_e, req) => localModel.tryModel(req), [obj({ url: str({ max: 500 }), model: str({ max: 200 }), question: opt(text(2000)) })]);
   // What it's saved so far, and whether a model is resting after failing.

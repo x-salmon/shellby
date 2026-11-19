@@ -79,6 +79,7 @@
     renderAgent(lm, names);
     renderPreset(lm);
     SB.refreshLocalSetup?.();
+    SB.refreshLocalFit?.();
     refreshTally();
   }
 
@@ -184,7 +185,7 @@
     renderMissing(missing);
     const r = await api.localPull(model);
     pullingNow = null;
-    if (r?.ok) { say(`${model} is ready.`); await pickPreset(current().preset, true); return; }
+    if (r?.ok) { say(`${model} is ready.`); await pickPreset(current().preset, true); SB.refreshLocalFit?.(true); return; }
     renderMissing(missing);
     say(r?.error || `Couldn't get ${model}.`);
   });

@@ -1034,6 +1034,12 @@ select.field option { background: var(--reef); }
 .local-setup { margin: 6px 0 10px; padding: 10px 12px; border: 1px solid var(--line, currentColor); border-radius: 8px; }
 .local-setup-title { margin: 0 0 4px; font-weight: 600; }
 .local-setup-actions { display: flex; gap: 8px; margin-top: 8px; }
+.local-fit { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 4px; }
+.local-fit li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fit-chip { font-size: 0.85em; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); }
+.fit-chip.gpu { color: var(--glass); }
+.fit-chip.ram { color: var(--sand); }
+.fit-chip.bad { color: var(--coral); }
 .local-job { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .local-job .toggle { flex: 1 1 auto; margin: 0; }
 .local-job select { max-width: 180px; }
