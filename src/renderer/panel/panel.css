@@ -1027,6 +1027,10 @@ select.field option { background: var(--reef); }
 .local-needs { margin: 8px 0 2px; }
 .local-jobs { display: grid; gap: 4px; margin: 6px 0; padding: 0; border: 0; }
 .local-jobs legend { padding: 0; margin-bottom: 2px; }
+.local-preset { margin: 4px 0; }
+.local-pull { display: grid; gap: 6px; margin: 6px 0; }
+.local-pull-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.local-pull-row progress { flex: 1 1 120px; min-width: 120px; }
 .local-job { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .local-job .toggle { flex: 1 1 auto; margin: 0; }
 .local-job select { max-width: 180px; }

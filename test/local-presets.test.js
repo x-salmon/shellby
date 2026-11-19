@@ -21,14 +21,14 @@ test('a model named without a tag matches its :latest', () => {
 
 test('slots with nothing installed are named so Settings can offer them', () => {
   const { settings, missing } = applyPreset(lm, 'coding', ['qwen3:4b']);
-  assert.deepStrictEqual(missing, [{ slot: 'main', model: PRESETS.coding.main[0] }]);
+  assert.deepStrictEqual(missing, [{ slot: 'main', model: PRESETS.coding.main[0], sizeGb: 19 }]);
   assert.strictEqual(settings.agent.on, false);
   assert.strictEqual(settings.on, true);
 });
 
 test('with no quick model, quick tasks run on the main one', () => {
   const { settings, missing } = applyPreset(lm, 'chat', ['gpt-oss:20b']);
-  assert.deepStrictEqual(missing, [{ slot: 'quick', model: 'qwen3:4b' }]);
+  assert.deepStrictEqual(missing, [{ slot: 'quick', model: 'qwen3:4b', sizeGb: 2.5 }]);
   assert.strictEqual(settings.agent.quick, '');
   assert.strictEqual(settings.model, 'gpt-oss:20b');
 });
@@ -52,4 +52,9 @@ test('an unknown preset reads as custom', () => {
   assert.strictEqual(cleanPreset('turbo'), 'custom');
   assert.strictEqual(cleanPreset(undefined), 'custom');
   assert.strictEqual(applyPreset(lm, 'nope', []).settings.preset, 'custom');
+});
+
+test('every preset model has a download size', () => {
+  const { SIZES } = require('../src/main/local/presets');
+  for (const p of Object.values(PRESETS)) for (const m of [...p.main, ...p.quick]) assert.ok(SIZES[m] > 0, m);
 });

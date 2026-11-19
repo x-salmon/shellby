@@ -143,15 +143,58 @@
       b.tabIndex = on ? 0 : -1;
     }
   }
-  async function pickPreset(name) {
-    if (name === current().preset) return;
+  async function pickPreset(name, again = false) {
+    if (name === current().preset && !again) return;
     say(name === 'off' ? 'Turning local models off…' : 'Picking models…');
     const r = await api.localPreset(name);
     if (!r?.ok) { say(r?.error || 'Couldn\'t switch.'); return; }
     state.settings = r.settings;
     renderLocalModel();
-    if (r.missing?.length) say(`Not installed: ${r.missing.map(m => m.model).join(', ')}. Get ${r.missing.length === 1 ? 'it' : 'them'} with ollama pull, then pick ${name === 'coding' ? 'Coding' : 'Chat'} again.`);
+    renderMissing(r.missing || []);
   }
+
+  // The preset's models that aren't installed, each with a Get button
+  // (main's local/pull.js). Only one downloads at a time.
+  let missing = [];
+  let pullingNow = null;
+  const gb = n => `${n >= 10 ? Math.round(n) : n.toFixed(1)} GB`;
+  function renderMissing(list) {
+    missing = list;
+    const box = $('localPull');
+    box.hidden = !list.length;
+    box.replaceChildren(...list.map(m => {
+      const busy = pullingNow === m.model;
+      const row = h('div', { class: 'local-pull-row', 'data-model': m.model });
+      row.append(
+        h('button', { type: 'button', class: 'btn slim-btn', text: busy ? 'Stop' : `Get ${m.model} · ${gb(m.sizeGb)}`, disabled: !!pullingNow && !busy }),
+        h('progress', { max: 100, value: 0, hidden: !busy, 'aria-label': `Getting ${m.model}` }),
+        h('span', { class: 'muted small' }),
+      );
+      return row;
+    }));
+    if (list.length && !pullingNow) say(`${list.length === 1 ? 'One model isn\'t' : 'Some models aren\'t'} installed yet. Get ${list.length === 1 ? 'it' : 'them'} here; the rest already work.`);
+  }
+  $('localPull').addEventListener('click', async e => {
+    const row = e.target.closest('.local-pull-row');
+    if (!row || !e.target.closest('button')) return;
+    const model = row.dataset.model;
+    if (pullingNow === model) { await api.localPullCancel(); return; }
+    pullingNow = model;
+    renderMissing(missing);
+    const r = await api.localPull(model);
+    pullingNow = null;
+    if (r?.ok) { say(`${model} is ready.`); await pickPreset(current().preset, true); return; }
+    renderMissing(missing);
+    say(r?.error || `Couldn't get ${model}.`);
+  });
+  api.onLocalPull(p => {
+    const row = $('localPull').querySelector(`[data-model="${CSS.escape(p.model)}"]`);
+    if (!row || p.done) return;
+    const bar = row.querySelector('progress');
+    bar.hidden = false;
+    if (p.total) bar.value = Math.floor((p.completed / p.total) * 100); else bar.removeAttribute('value');
+    row.querySelector('span').textContent = p.total ? `${gb(p.completed / 1024 ** 3)} of ${gb(p.total / 1024 ** 3)}` : p.status;
+  });
   $('localPreset').addEventListener('click', e => {
     const b = e.target.closest('[data-preset]');
     if (b) pickPreset(b.dataset.preset);

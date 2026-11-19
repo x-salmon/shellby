@@ -18,6 +18,13 @@ const PRESETS = Object.freeze({
   chat: { main: ['gpt-oss:20b', 'qwen3:30b-a3b', 'qwen3:8b'], quick: QUICK },
 });
 
+// Download sizes in GB, as Ollama's library lists them (it has no size query
+// before a pull). Only these can be fetched from Settings (pull.js).
+const SIZES = Object.freeze({
+  'qwen3-coder:30b': 19, 'devstral': 14, 'gpt-oss:20b': 14, 'qwen2.5-coder:7b': 4.7,
+  'qwen3:30b-a3b': 19, 'qwen3:8b': 5.2, 'qwen3:4b': 2.5, 'llama3.2': 2,
+});
+
 /** The saved preset name, or 'custom' for anything else. */
 function cleanPreset(raw) {
   return typeof raw === 'string' && PRESET_NAMES.includes(raw) ? raw : 'custom';
@@ -43,7 +50,7 @@ function firstInstalled(list, installed) {
  * @param {any} lm localModel, cleaned
  * @param {string} name a preset name
  * @param {string[]} installed the server's models
- * @returns {{ settings: any, missing: { slot: 'main' | 'quick', model: string }[] }}
+ * @returns {{ settings: any, missing: { slot: 'main' | 'quick', model: string, sizeGb: number }[] }}
  */
 function applyPreset(lm, name, installed) {
   const preset = cleanPreset(name);
@@ -56,8 +63,8 @@ function applyPreset(lm, name, installed) {
   const quick = firstInstalled(lists.quick, installed) || main;
   const drafts = quick || lm.model;
   const missing = [
-    ...(main ? [] : [{ slot: /** @type {'main'} */ ('main'), model: lists.main[0] }]),
-    ...(firstInstalled(lists.quick, installed) ? [] : [{ slot: /** @type {'quick'} */ ('quick'), model: lists.quick[0] }]),
+    ...(main ? [] : [{ slot: /** @type {'main'} */ ('main'), model: lists.main[0], sizeGb: SIZES[lists.main[0]] }]),
+    ...(firstInstalled(lists.quick, installed) ? [] : [{ slot: /** @type {'quick'} */ ('quick'), model: lists.quick[0], sizeGb: SIZES[lists.quick[0]] }]),
   ];
   const models = { ...lm.models, quiz: main || lm.models?.quiz || '' };
   if (!models.quiz) delete models.quiz;
@@ -74,4 +81,4 @@ function applyPreset(lm, name, installed) {
   };
 }
 
-module.exports = { applyPreset, cleanPreset, PRESETS, PRESET_NAMES, PRESETS_VERSION };
+module.exports = { SIZES, applyPreset, cleanPreset, PRESETS, PRESET_NAMES, PRESETS_VERSION };

@@ -12,6 +12,7 @@ function wireQuit(d) {
   app.on('window-all-closed', e => e.preventDefault());
   app.on('will-quit', () => {
     d.typing?.stop(); // lets go of the keyboard (keystrokes.js)
+    require('../local/pull').cancel(); // a model download stops with him; Ollama resumes it next time
     statusLine.clearStatus(d.statusFile()); // Claude Code's status line goes quiet when Shellby does
     globalShortcut.unregisterAll();
     d.routineService.stop();

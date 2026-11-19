@@ -17,6 +17,7 @@ const mischief = require('../mischief');
 const { str, obj, opt, text } = require('../ipc-args');
 const localTally = require('../local/tally');
 const localPresets = require('../local/presets');
+const localPull = require('../local/pull');
 const { isModel } = require('../models');
 const modelPick = require('../model-pick');
 const outputStyles = require('../outputstyles');
@@ -230,6 +231,15 @@ function registerSettingsIpc(ipcMain, d) {
     d.config.set({ localModel: localModel.cleanSettings(settings) });
     return { ok: true, settings: d.panelSettings(), missing };
   }, [str({ re: /^(off|coding|chat|custom)$/ })]);
+  // Local mode's Get button (local/pull.js): one preset model at a time, progress on 'local:pull'.
+  ipcMain.handle('local:pull', async (_e, model) => {
+    const lm = localModel.cleanSettings(d.config.get('localModel'));
+    if (!lm) return { ok: false, error: 'Set a server address first.' };
+    const r = await localPull.pull({ url: lm.url, model, onProgress: p => d.send(d.panel, 'local:pull', p) });
+    d.send(d.panel, 'local:pull', { model, done: true, ok: r.ok });
+    return r;
+  }, [str({ max: 200 })]);
+  ipcMain.handle('local:pull-cancel', () => localPull.cancel());
   // Try it: one question to a model, shown in Settings with how long it took.
   ipcMain.handle('local:try', (_e, req) => localModel.tryModel(req), [obj({ url: str({ max: 500 }), model: str({ max: 200 }), question: opt(text(2000)) })]);
   // What it's saved so far, and whether a model is resting after failing.
