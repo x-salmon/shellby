@@ -65,6 +65,7 @@ function copySession({ configDir, file, to }) {
  * was written, which may not be where its tab is now (it moved into a copy,
  * or the copy was brought home since). `prefer`: folders to look in first.
  * Otherwise the newest copy anywhere. -> path | null
+ * @param {{ configDir: string, sessionId: string, prefer?: string[] }} o
  */
 function findSession({ configDir, sessionId, prefer = [] }) {
   if (!SESSION_ID.test(sessionId || '')) return null;

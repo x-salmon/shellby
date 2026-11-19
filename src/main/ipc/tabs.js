@@ -167,7 +167,7 @@ function registerTabsIpc(ipcMain, d) {
     if (!tab?.localTarget) return { ok: false, error: 'This conversation is already on Claude.' };
     const sessionId = tab.session.sessionId;
     if (!sessionId) return { ok: false, error: 'Nothing to carry on yet: send it a message first.' };
-    const transcript = findSession({ configDir: d.claudeConfigDir(), sessionId, prefer: /** @type {string[]} */ ([tab.session.cwd]) });
+    const transcript = findSession({ configDir: d.claudeConfigDir(), sessionId, prefer: [tab.session.cwd] });
     if (!transcript) return { ok: false, error: 'Claude Code has no record of this conversation on this PC.' };
     return { ok: true, cwd: tab.session.cwd, prompt: localTab.continuePrompt({ model: tab.localTarget.model, transcript }) };
   }, [ID]);
