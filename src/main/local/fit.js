@@ -30,6 +30,12 @@ function fitOf({ sizeBytes, numCtx, vramGb, ramGb }) {
   return { place, shortCtx: !numCtx || numCtx < NEED_CTX };
 }
 
+/** Ollama's own default for models that don't set one, when this PC sets it (OLLAMA_CONTEXT_LENGTH), or null. */
+function serverCtx(env = process.env) {
+  const n = Number(env.OLLAMA_CONTEXT_LENGTH);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 /** Ollama's `parameters` text ("num_ctx 32768\nstop ...") -> num_ctx, or null. */
 function numCtxOf(parameters) {
   const m = /(?:^|\n)\s*num_ctx\s+(\d+)/.exec(typeof parameters === 'string' ? parameters : '');
@@ -60,7 +66,7 @@ async function read({ url: rawUrl, models, hw, fetchFn = globalThis.fetch, env =
   await Promise.all(names.map(async name => {
     const show = await getJson(fetchFn, `${url}/api/show`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: name }) });
     const sizeBytes = sizes.get(name) ?? sizes.get(`${name}:latest`) ?? null;
-    const numCtx = numCtxOf(show?.parameters);
+    const numCtx = numCtxOf(show?.parameters) ?? serverCtx(env);
     out[name] = { ...fitOf({ sizeBytes, numCtx, ...hw }), sizeGb: sizeBytes ? Math.round((sizeBytes / GB) * 10) / 10 : null, numCtx };
   }));
   return out;
@@ -88,4 +94,4 @@ async function makeCopy({ url: rawUrl, model, fetchFn = globalThis.fetch, env = 
   } catch { return { ok: false, error: 'Ollama didn\'t answer. Is it running?' }; }
 }
 
-module.exports = { fitOf, numCtxOf, read, makeCopy, copyName, NEED_CTX };
+module.exports = { fitOf, numCtxOf, serverCtx, read, makeCopy, copyName, NEED_CTX };

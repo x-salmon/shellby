@@ -52,9 +52,9 @@ class SessionManager extends EventEmitter {
   // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
   // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
   // makeHarness(id, { cwd, mode, resumeId }) -> a session for another agent's CLI (harness/), or null when none can run.
-  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null, makeHarness = null }) {
+  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null, warmLocal = null, makeHarness = null }) {
     super();
-    Object.assign(this, { makeHarness, getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer });
+    Object.assign(this, { makeHarness, getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer, warmLocal });
     this.tabs = new Map();
   }
 
@@ -323,6 +323,7 @@ class SessionManager extends EventEmitter {
       if (tab.session.agent) this.history.update(tab.id, { agent: tab.session.agent });
       if (tab.session.safeMode) this.history.update(tab.id, { safeMode: true });
       if (tab.localTarget) this.history.update(tab.id, { local: tab.localTarget });
+      if (tab.localTarget) this.warmLocal?.(tab.localTarget); // its quick model loaded beside the main one (local/ollama.js keepLoaded)
       if (tab.harness !== harnesses.CLAUDE) this.history.update(tab.id, { harness: tab.harness });
       tab.title = this.history.get(tab.id).title;
       tab.saved = true;

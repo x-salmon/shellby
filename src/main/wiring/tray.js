@@ -9,6 +9,7 @@ const confirm = require('../confirm');
 const crashReport = require('../crash-report');
 const feedback = require('../feedback');
 const focus = require('../focus');
+const localPresets = require('../local/presets');
 const { Updates, fakeUpdater, installedBy, trayLabel: updateLabel } = require('../updates');
 const workmode = require('../workmode');
 
@@ -53,6 +54,7 @@ function wireTray(d) {
       { label: d.healthMood ? `Health: ${d.HEALTH_TIP[d.healthMood.mood]} (${d.healthMood.text})` : 'Health', click: d.showHealth },
       modeMenu(),
       focusMenu(),
+      claude && localModeMenu(),
       playMenu(),
       { type: 'separator' },
       ...(agg?.busy ? [{ label: `${agg.busy} task${agg.busy > 1 ? 's' : ''} running`, enabled: false }, { type: 'separator' }] : []),
@@ -228,6 +230,22 @@ function wireTray(d) {
         },
       })),
     };
+  }
+
+  // Local mode's presets (local/presets.js), for switching without opening Settings.
+  // New conversations only, as in Settings. A preset that's missing a model says so in Settings.
+  const PRESET_LABELS = { off: 'Off', coding: 'Coding', chat: 'Chat', custom: 'Custom' };
+  function localModeMenu() {
+    if (!d.applyLocalPreset) return null;
+    const now = localPresets.cleanPreset(d.config.get('localModel')?.preset);
+    const pick = async name => {
+      const r = await d.applyLocalPreset(name).catch(() => null);
+      if (r?.ok) d.send(d.panel, 'settings', r.settings);
+      if (!r?.ok || r.missing?.length) { d.showPanel({ focusInput: false }); d.send(d.panel, 'panel:view', 'settings'); }
+    };
+    return { label: 'Local mode', submenu: localPresets.PRESET_NAMES.map(name => ({
+      label: PRESET_LABELS[name], type: 'radio', checked: name === now, enabled: name !== 'custom' || now === 'custom', click: () => pick(name),
+    })) };
   }
 
   function focusMenu() {

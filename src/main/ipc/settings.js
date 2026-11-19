@@ -242,7 +242,8 @@ function registerSettingsIpc(ipcMain, d) {
   // Detect: which of Ollama and LM Studio answer on their usual ports, with their models.
   ipcMain.handle('local:detect', () => localModel.detect());
   // Local mode's presets (local/presets.js): fill every picker from what the server has, and say what's missing.
-  ipcMain.handle('local:preset', async (_e, name) => {
+  // Shared with the crab's menu (wiring/tray.js localModeMenu), which then tells the panel.
+  d.applyLocalPreset = async name => {
     const lm = localModel.cleanSettings(d.config.get('localModel'));
     if (!lm) return { ok: false, error: 'Set a server address first.' };
     let installed = [];
@@ -254,13 +255,19 @@ function registerSettingsIpc(ipcMain, d) {
     const { settings, missing } = localPresets.applyPreset(lm, name, installed);
     d.config.set({ localModel: localModel.cleanSettings(settings) });
     return { ok: true, settings: d.panelSettings(), missing };
-  }, [str({ re: /^(off|coding|chat|custom)$/ })]);
+  };
+  ipcMain.handle('local:preset', (_e, name) => d.applyLocalPreset(name), [str({ re: /^(off|coding|chat|custom)$/ })]);
   // Local mode's Get button (local/pull.js): one preset model at a time, progress on 'local:pull'.
   ipcMain.handle('local:pull', async (_e, model) => {
     const lm = localModel.cleanSettings(d.config.get('localModel'));
     if (!lm) return { ok: false, error: 'Set a server address first.' };
-    const r = await localPull.pull({ url: lm.url, model, onProgress: p => d.send(d.panel, 'local:pull', p) });
+    let told = false; // he says so once it's really under way, not for a refusal
+    const r = await localPull.pull({ url: lm.url, model, onProgress: p => {
+      if (!told && p.total) { told = true; d.speak?.('milestone', { text: `Fetching ${model}. It's a big one, so I'll say when it's in.` }); }
+      d.send(d.panel, 'local:pull', p);
+    } });
     d.send(d.panel, 'local:pull', { model, done: true, ok: r.ok });
+    if (told && r.ok) d.speak?.('milestone', { text: `${model} is in. It runs on this PC now.` });
     return r;
   }, [str({ max: 200 })]);
   ipcMain.handle('local:pull-cancel', () => localPull.cancel());

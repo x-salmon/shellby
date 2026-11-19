@@ -40,6 +40,14 @@ test('read asks tags and show, and matches a :latest tag', async () => {
   assert.strictEqual(fit['qwen3:4b'].shortCtx, false);
 });
 
+test('a model with no context of its own takes OLLAMA_CONTEXT_LENGTH, when set', async () => {
+  const fetchFn = async url => json(url.endsWith('/api/tags') ? { models: [{ name: 'qwen3:4b', size: GB }] } : { parameters: '' });
+  const hw = { vramGb: 12, ramGb: 32 };
+  assert.strictEqual((await read({ url: URL_OK, models: ['qwen3:4b'], hw, fetchFn, env: { OLLAMA_CONTEXT_LENGTH: '65536' } }))['qwen3:4b'].shortCtx, false);
+  assert.strictEqual((await read({ url: URL_OK, models: ['qwen3:4b'], hw, fetchFn, env: { OLLAMA_CONTEXT_LENGTH: '8192' } }))['qwen3:4b'].shortCtx, true);
+  assert.strictEqual((await read({ url: URL_OK, models: ['qwen3:4b'], hw, fetchFn, env: {} }))['qwen3:4b'].shortCtx, true);
+});
+
 test('read never asks a server off this PC', async () => {
   let asked = false;
   const fit = await read({ url: 'http://example.com', models: ['x'], hw: { vramGb: 12, ramGb: 32 }, fetchFn: async () => { asked = true; return json({}); }, env: {} });

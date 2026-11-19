@@ -169,3 +169,14 @@ describe('a conversation keeps local or Claude for good', () => {
     assert.strictEqual(tab.session.extraEnv().ANTHROPIC_BASE_URL, undefined);
   });
 });
+
+test('a local conversation loads its quick model beside the main one, and only a different one', async () => {
+  const { keepLoaded } = require('../src/main/local/ollama');
+  const sent = [];
+  const fetchFn = async (url, init) => { sent.push({ url, body: JSON.parse(init.body) }); return { ok: true }; };
+  assert.strictEqual(await keepLoaded({ url: 'http://127.0.0.1:11434', model: 'qwen3-coder:30b', quick: 'qwen3:4b' }, fetchFn), true);
+  assert.deepStrictEqual(sent, [{ url: 'http://127.0.0.1:11434/api/generate', body: { model: 'qwen3:4b', keep_alive: '30m' } }]);
+  assert.strictEqual(await keepLoaded({ url: 'http://127.0.0.1:11434', model: 'devstral' }, fetchFn), false);
+  assert.strictEqual(await keepLoaded({ url: 'http://example.com', model: 'a', quick: 'b' }, fetchFn), false);
+  assert.strictEqual(sent.length, 1);
+});

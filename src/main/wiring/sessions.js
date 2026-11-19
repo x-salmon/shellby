@@ -114,6 +114,8 @@ function wireSessions(d) {
       getLocalTarget: cwd => (d.remoteService?.placeOf(cwd) ? null : localAgent.agentTarget(d.config.get('localModel'))),
       // The local server a conversation can be put on from the model chip (sessions.js setTabLocal), the same rule.
       getLocalServer: cwd => (d.remoteService?.placeOf(cwd) ? null : d.config.get('localModel')?.url || null),
+      // A local conversation's quick model, loaded as it starts so its titles and checks don't push the main one out.
+      warmLocal: target => { require('../local/ollama').keepLoaded(target).catch(() => {}); },
       getFallbackModel: () => d.config.get('fallbackModel') || '',
       getChrome: () => d.config.get('claudeInChrome') === true,
       // The newer flags go only to a Claude Code whose --help lists them (main.js claudeSupports).

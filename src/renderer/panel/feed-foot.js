@@ -56,6 +56,8 @@
         h('span', { class: 'tf-what' },
           h('span', { class: 'tf-state', text: v.word }),
           v.soft.length ? h('span', { class: 'tf-soft', text: `· ${v.soft.join(' · ')}` }) : null,
+          // A local conversation says which model did the work: it's on that one for good (main's local/agent.js).
+          tab.local ? h('span', { class: 'tf-soft tf-local', title: 'Ran on this PC', text: `· ${tab.local}` }) : null,
           footEffort(v.effort)),
         footRoom(v),
       ];

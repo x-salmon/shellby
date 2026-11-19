@@ -150,4 +150,32 @@ function runQuietly(file, args) {
   }));
 }
 
-module.exports = { createOllama, findInstall, answers, URL_BASE, START_WAIT_MS, STOP_WAIT_MS, APP_EXE, SERVER_EXE };
+const KEEP_LOADED = '30m';
+const KEEP_ASK_MS = 120000; // loading a model from disk takes a while; nothing waits on it
+
+/**
+ * Load a local conversation's quick model next to its main one, so Claude Code's
+ * small calls (titles, summaries, checks) don't unload the big model each time.
+ * An empty /api/generate loads a model without asking it anything. Only when the
+ * quick model differs; Ollama keeps both if OLLAMA_MAX_LOADED_MODELS and memory
+ * allow, else it's a no-op that costs nothing. LM Studio answers 404: ignored.
+ * @param {{ url: string, model: string, quick?: string }} target local/agent.js's
+ * @param {typeof fetch} [fetchFn]
+ * @returns {Promise<boolean>} whether it was asked
+ */
+async function keepLoaded(target, fetchFn = globalThis.fetch) {
+  const { baseUrl, modelName } = require('./model');
+  const url = baseUrl(target?.url);
+  const quick = modelName(target?.quick);
+  if (!url || !quick || quick === target.model) return false;
+  try {
+    await fetchFn(`${url}/api/generate`, {
+      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(KEEP_ASK_MS),
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: quick, keep_alive: KEEP_LOADED }),
+    });
+    return true;
+  } catch { return false; }
+}
+
+module.exports = { keepLoaded, createOllama, findInstall, answers, URL_BASE, START_WAIT_MS, STOP_WAIT_MS, APP_EXE, SERVER_EXE };
