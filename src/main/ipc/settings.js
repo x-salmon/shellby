@@ -16,6 +16,7 @@ const localModel = require('../local/model');
 const mischief = require('../mischief');
 const { str, obj, opt, text } = require('../ipc-args');
 const localTally = require('../local/tally');
+const localPresets = require('../local/presets');
 const { isModel } = require('../models');
 const modelPick = require('../model-pick');
 const outputStyles = require('../outputstyles');
@@ -215,6 +216,20 @@ function registerSettingsIpc(ipcMain, d) {
   ipcMain.handle('local:models', (_e, url) => localModel.listModels(url), [str({ max: 500 })]);
   // Detect: which of Ollama and LM Studio answer on their usual ports, with their models.
   ipcMain.handle('local:detect', () => localModel.detect());
+  // Local mode's presets (local/presets.js): fill every picker from what the server has, and say what's missing.
+  ipcMain.handle('local:preset', async (_e, name) => {
+    const lm = localModel.cleanSettings(d.config.get('localModel'));
+    if (!lm) return { ok: false, error: 'Set a server address first.' };
+    let installed = [];
+    if (name !== 'off' && name !== 'custom') {
+      const r = await localModel.listModels(lm.url);
+      if (!r.ok && !/no models/.test(r.error || '')) return { ok: false, error: r.error };
+      installed = r.ok ? r.models : [];
+    }
+    const { settings, missing } = localPresets.applyPreset(lm, name, installed);
+    d.config.set({ localModel: localModel.cleanSettings(settings) });
+    return { ok: true, settings: d.panelSettings(), missing };
+  }, [str({ re: /^(off|coding|chat|custom)$/ })]);
   // Try it: one question to a model, shown in Settings with how long it took.
   ipcMain.handle('local:try', (_e, req) => localModel.tryModel(req), [obj({ url: str({ max: 500 }), model: str({ max: 200 }), question: opt(text(2000)) })]);
   // What it's saved so far, and whether a model is resting after failing.

@@ -47,6 +47,7 @@
       models: lm.models && typeof lm.models === 'object' ? { ...lm.models } : {},
       answers: { on: lm.answers?.on === true, model: typeof lm.answers?.model === 'string' ? lm.answers.model : '' },
       agent: { on: lm.agent?.on === true, ...Object.fromEntries(['model', ...AGENT_ROLES.map(r => r.key)].map(k => [k, typeof lm.agent?.[k] === 'string' ? lm.agent[k] : ''])) },
+      preset: ['off', 'coding', 'chat', 'custom'].includes(lm.preset) ? lm.preset : 'custom',
     };
   }
   const say = text => { $('localModelStatus').textContent = text; };
@@ -76,6 +77,7 @@
     renderJobs(lm, names);
     renderAnswers(lm, names);
     renderAgent(lm, names);
+    renderPreset(lm);
     refreshTally();
   }
 
@@ -132,6 +134,37 @@
       $(r.id).disabled = !lm.agent.on;
     }
   }
+
+  // Local mode's presets (main's local/presets.js): Off / Coding / Chat / Custom.
+  function renderPreset(lm) {
+    for (const b of $('localPreset').querySelectorAll('[data-preset]')) {
+      const on = b.dataset.preset === lm.preset;
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+  }
+  async function pickPreset(name) {
+    if (name === current().preset) return;
+    say(name === 'off' ? 'Turning local models off…' : 'Picking models…');
+    const r = await api.localPreset(name);
+    if (!r?.ok) { say(r?.error || 'Couldn\'t switch.'); return; }
+    state.settings = r.settings;
+    renderLocalModel();
+    if (r.missing?.length) say(`Not installed: ${r.missing.map(m => m.model).join(', ')}. Get ${r.missing.length === 1 ? 'it' : 'them'} with ollama pull, then pick ${name === 'coding' ? 'Coding' : 'Chat'} again.`);
+  }
+  $('localPreset').addEventListener('click', e => {
+    const b = e.target.closest('[data-preset]');
+    if (b) pickPreset(b.dataset.preset);
+  });
+  $('localPreset').addEventListener('keydown', e => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const btns = [...$('localPreset').querySelectorAll('[data-preset]')];
+    const next = btns[(btns.indexOf(document.activeElement) + step + btns.length) % btns.length];
+    next.focus();
+    pickPreset(next.dataset.preset);
+  });
 
   const plural = (n, one) => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
   const tokens = n => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n));
@@ -231,7 +264,7 @@
 
   // -> whether main saved it as asked (it turns `on` off without a model).
   async function save(patch) {
-    const want = { ...current(), ...patch };
+    const want = { ...current(), preset: 'custom', ...patch }; // a picker changed by hand: Custom
     const r = await api.setSettings({ localModel: want });
     state.settings = r.settings;
     renderLocalModel();
