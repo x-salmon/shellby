@@ -45,6 +45,7 @@ const control = {
       if (item.toolName === 'ExitPlanMode' && afterPlan && afterPlan !== 'plan' && CLI_MODE[afterPlan]) {
         response.updatedPermissions = [...(response.updatedPermissions || []), { type: 'setMode', mode: CLI_MODE[afterPlan], destination: 'session' }];
         this.mode = afterPlan;
+        this.afterPlan = afterPlan; // until Claude Code says where it landed (index.js 'mode')
       }
     }
     this.write({ type: 'control_response', response: { subtype: 'success', request_id: requestId, response } });

@@ -345,12 +345,25 @@ test("a note's Plan, approved, carries on in your mode", () => {
     assert.equal(tab.session.mode, 'autonomous');
     assert.equal(tab.pinnedMode, false);
 
+    // Claude Code left plan mode for its default instead (the setMode refused):
+    // Shellby asks for your mode outright, and never reads that as Ask.
+    tab.session.proc = {};
+    tab.session.handleNow({ kind: 'mode', mode: 'ask' });
+    assert.equal(tab.session.mode, 'autonomous');
+    assert.deepEqual(sent[1].request, { subtype: 'set_permission_mode', mode: 'bypassPermissions' });
+    tab.session.handleNow({ kind: 'mode', mode: 'ask' });
+    assert.equal(tab.session.mode, 'autonomous', 'a late report of the old mode is stale');
+    tab.session.handleNow({ kind: 'mode', mode: 'autonomous' });
+    assert.equal(sent.length, 2, 'asked once');
+    tab.session.proc = null;
+    sent.length = 0;
+
     // A routine's own plan mode isn't a note's: approving it changes nothing of yours.
     const own = mgr.open({ tabId: 'plan-routine', cwd: os.tmpdir(), mode: 'plan' });
     own.session.write = msg => sent.push(msg);
     own.session.pending.set('r2', { toolName: 'ExitPlanMode', input: { plan: 'p' }, suggestions: [] });
     mgr.respond('plan-routine', 'r2', 'allow');
-    assert.equal(sent[1].response.response.updatedPermissions, undefined);
+    assert.equal(sent[0].response.response.updatedPermissions, undefined);
     assert.equal(own.pinnedMode, true);
   } finally {
     mgr.closeAll();
