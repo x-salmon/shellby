@@ -453,6 +453,8 @@ interface ShellbyPanelExtras {
   renderClaudeUpdate: any;
   renderFacts: any;
   renderUpdates: any;
+  // settings-local-setup.js
+  refreshLocalSetup: any;
   // settings-local.js
   renderLocalModel: any;
   // settings-rail.js

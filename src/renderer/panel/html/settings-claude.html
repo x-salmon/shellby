@@ -96,6 +96,11 @@
 
       <section class="setting-group" id="localModelGroup" data-nav="Local model">
         <h3>Local model</h3>
+        <div class="local-setup" id="localSetupCard" aria-live="polite" hidden>
+          <p class="local-setup-title" id="localSetupTitle"></p>
+          <p class="muted small" id="localSetupText"></p>
+          <div class="local-setup-actions" id="localSetupActions"></div>
+        </div>
         <div class="seg local-preset" id="localPreset" role="radiogroup" aria-label="Local mode" aria-describedby="localPresetText">
           <button type="button" role="radio" data-preset="off" aria-checked="false">Off</button>
           <button type="button" role="radio" data-preset="coding" aria-checked="false">Coding</button>

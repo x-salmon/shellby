@@ -18,6 +18,7 @@ const { str, obj, opt, text } = require('../ipc-args');
 const localTally = require('../local/tally');
 const localPresets = require('../local/presets');
 const localPull = require('../local/pull');
+const localSetup = require('../local/setup');
 const { isModel } = require('../models');
 const modelPick = require('../model-pick');
 const outputStyles = require('../outputstyles');
@@ -240,6 +241,25 @@ function registerSettingsIpc(ipcMain, d) {
     return r;
   }, [str({ max: 200 })]);
   ipcMain.handle('local:pull-cancel', () => localPull.cancel());
+  // Local mode's setup card (local/setup.js): where things stand, then install or start Ollama when asked.
+  ipcMain.handle('local:setup', () => localSetup.status({ url: d.config.get('localModel')?.url }));
+  ipcMain.handle('local:install', async (_e, upgrade) => {
+    if (!localSetup.findWinget()) { require('electron').shell.openExternal(localSetup.DOWNLOAD_PAGE); return { ok: false, opened: true }; }
+    const verb = upgrade ? 'Update' : 'Install';
+    const response = await confirm.ask(d.panel, {
+      ...d.dialogLook(), icon: '🦙',
+      title: `${verb} Ollama?`,
+      message: `${verb} Ollama with winget?`,
+      detail: 'Ollama, by Ollama Inc., runs models on this PC. winget downloads it from Ollama (about 1 GB) and checks its signature before installing. It is free and runs in your tray.',
+      note: 'Models are a separate download, after this.',
+      buttons: [{ label: verb, style: 'primary' }, { label: 'Cancel' }], defaultId: 0, cancelId: 1,
+    });
+    if (response !== 0) return { ok: false, cancelled: true };
+    const r = await localSetup.install({ upgrade: upgrade === true });
+    if (r.ok && !upgrade) await localSetup.start();
+    return r;
+  }, [opt(v => typeof v === 'boolean')]);
+  ipcMain.handle('local:start', () => localSetup.start());
   // Try it: one question to a model, shown in Settings with how long it took.
   ipcMain.handle('local:try', (_e, req) => localModel.tryModel(req), [obj({ url: str({ max: 500 }), model: str({ max: 200 }), question: opt(text(2000)) })]);
   // What it's saved so far, and whether a model is resting after failing.

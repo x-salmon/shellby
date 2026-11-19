@@ -25,6 +25,35 @@ const SIZES = Object.freeze({
   'qwen3:30b-a3b': 19, 'qwen3:8b': 5.2, 'qwen3:4b': 2.5, 'llama3.2': 2,
 });
 
+// When the recommendation table was last checked against Ollama's library. A
+// test fails once it's over six months old, so new models get looked at.
+const RECOMMEND_CHECKED = '2026-11-19';
+const DISK_SPARE_GB = 10;
+
+/**
+ * What to get on this PC: a main model and a quick one, with a reason.
+ * vramGb is null when it can't be read (no NVIDIA GPU): RAM decides then.
+ * @param {{ vramGb: number | null, ramGb: number, freeGb: number | null }} hw
+ * @returns {{ main: string, quick: string, note: string }}
+ */
+function recommend({ vramGb, ramGb, freeGb }) {
+  const quick = 'qwen3:4b';
+  const fits = m => freeGb == null || freeGb >= SIZES[m] + (m === quick ? 0 : SIZES[quick]) + DISK_SPARE_GB;
+  let main = '';
+  let note;
+  if ((vramGb == null || vramGb < 6) && ramGb < 16) note = 'This PC suits small drafts. Local conversations need more memory.';
+  else if (vramGb == null || vramGb < 6) { main = 'qwen3:30b-a3b'; note = vramGb == null ? 'Runs mostly on the CPU: slow but usable. Your GPU may manage more.' : 'Runs mostly on the CPU: slow but usable.'; }
+  else if (vramGb < 12) { main = ramGb >= 32 ? 'qwen3-coder:30b' : 'qwen2.5-coder:7b'; note = ramGb >= 32 ? 'Part runs in RAM; fine for this kind of model.' : 'Sized for your GPU.'; }
+  else if (vramGb < 24) { main = 'qwen3-coder:30b'; note = 'A strong coder that fits this PC well.'; }
+  else { main = 'qwen3-coder:30b'; note = 'Fits entirely on your GPU, with room for a bigger one.'; }
+  if (main && !fits(main)) {
+    const smaller = 'qwen2.5-coder:7b';
+    main = fits(smaller) ? smaller : '';
+    note = main ? 'A smaller pick: your drive is short of space for the bigger one.' : 'Your drive is short of space for a coding model.';
+  }
+  return { main, quick, note };
+}
+
 /** The saved preset name, or 'custom' for anything else. */
 function cleanPreset(raw) {
   return typeof raw === 'string' && PRESET_NAMES.includes(raw) ? raw : 'custom';
@@ -81,4 +110,4 @@ function applyPreset(lm, name, installed) {
   };
 }
 
-module.exports = { SIZES, applyPreset, cleanPreset, PRESETS, PRESET_NAMES, PRESETS_VERSION };
+module.exports = { SIZES, recommend, RECOMMEND_CHECKED, applyPreset, cleanPreset, PRESETS, PRESET_NAMES, PRESETS_VERSION };

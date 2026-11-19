@@ -78,6 +78,7 @@
     renderAnswers(lm, names);
     renderAgent(lm, names);
     renderPreset(lm);
+    SB.refreshLocalSetup?.();
     refreshTally();
   }
 
