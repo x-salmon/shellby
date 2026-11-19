@@ -167,9 +167,13 @@ test('the command checks stay fast on a long, flag-heavy command', () => {
     `node ${'--a '.repeat(500)}zz`, `python ${'-a '.repeat(600)}zz`, `${'a=a=a '.repeat(300)}node x`,
     `node ${'tmp '.repeat(500)}`, `npm test ${'--x '.repeat(500)}`, `$env:A=${'b'.repeat(1990)}`,
   ];
-  const t0 = process.hrtime.bigint();
-  for (const c of longs) { d.isScratch(c); d.scriptKey(c); d.isBroad(c); d.isNarrow(c); d.startOf(c); d.matchKeys(c); }
-  const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+  // The best of three: a slow regex is slow every time, a busy machine (the whole suite) only sometimes.
+  let ms = Infinity;
+  for (let i = 0; i < 3; i++) {
+    const t0 = process.hrtime.bigint();
+    for (const c of longs) { d.isScratch(c); d.scriptKey(c); d.isBroad(c); d.isNarrow(c); d.startOf(c); d.matchKeys(c); }
+    ms = Math.min(ms, Number(process.hrtime.bigint() - t0) / 1e6);
+  }
   assert.ok(ms < 250, `${ms} ms`);
 });
 
