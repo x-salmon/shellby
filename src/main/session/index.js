@@ -433,12 +433,21 @@ class ClaudeSession extends Base {
         this.initModel = item.model || this.initModel || null; // what Claude Code says it runs, before any reply
         this.resumeAt = null; // the fork is made: from here on it's an ordinary resume
         this.modeAsked = null;
+        this.afterPlan = null; // a new process starts in the mode it was given
         break;
       // The mode Claude Code says it's in (init, and each change): the session
       // follows, with no request back, so the mode chip and planning stay right.
       case 'mode':
         if (this.modeAsked && item.mode !== this.modeAsked) return; // sent before our set_permission_mode landed
         this.modeAsked = null;
+        // A note's approved plan rode your mode on the approval, but Claude Code
+        // can leave plan mode for its own default instead (Autonomous's setMode
+        // refused, say): ask for your mode outright rather than read that as Ask.
+        if (this.afterPlan && item.mode !== 'plan') {
+          const want = this.afterPlan;
+          this.afterPlan = null;
+          if (item.mode !== want) { this.setMode(want); return; }
+        }
         this.mode = item.mode;
         this.setPlanning(item.mode === 'plan');
         break;
@@ -483,6 +492,8 @@ class ClaudeSession extends Base {
       case 'result':
         if (item.sessionId) this.sessionId = item.sessionId;
         if (this.interrupting) { item.interrupted = true; item.ok = false; item.error = null; }
+        // Claude Code never said which mode the approved plan left it in: say it again, for the next turn.
+        if (this.afterPlan) { const want = this.afterPlan; this.afterPlan = null; this.setMode(want); }
         this.interrupting = false;
         this.pauseAtResult(item); // parked, or it finished before it could pause
         // What went wrong, in a sentence and a next step (trouble.js); the CLI's own words stay in `error`.
