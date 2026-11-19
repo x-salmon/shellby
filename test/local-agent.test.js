@@ -33,12 +33,31 @@ test('agent stays off without any model', () => {
 });
 
 test('cleanAgent drops bad model names', () => {
-  assert.deepStrictEqual(cleanAgent({ on: true, model: 'a b; rm' }), { on: true, model: '' });
+  assert.deepStrictEqual(cleanAgent({ on: true, model: 'a b; rm', quick: 'x y' }), { on: true, model: '', helpers: '', quick: '' });
 });
 
 test('saved settings keep the agent', () => {
-  assert.deepStrictEqual(cleanSettings({ ...base, agent: { on: true, model: 'devstral' } }).agent, { on: true, model: 'devstral' });
-  assert.deepStrictEqual(cleanSettings(base).agent, { on: false, model: '' });
+  assert.deepStrictEqual(cleanSettings({ ...base, agent: { on: true, model: 'devstral' } }).agent, { on: true, model: 'devstral', helpers: '', quick: '' });
+  assert.deepStrictEqual(cleanSettings(base).agent, { on: false, model: '', helpers: '', quick: '' });
+});
+
+test('roles send helpers and quick tasks to their own models', () => {
+  const env = agentEnv({ ...base, agent: { on: true, model: '', helpers: 'devstral', quick: 'qwen3:4b' } });
+  assert.strictEqual(env.ANTHROPIC_MODEL, 'qwen3-coder:30b');
+  assert.strictEqual(env.ANTHROPIC_DEFAULT_OPUS_MODEL, 'qwen3-coder:30b');
+  assert.strictEqual(env.ANTHROPIC_DEFAULT_SONNET_MODEL, 'qwen3-coder:30b');
+  assert.strictEqual(env.CLAUDE_CODE_SUBAGENT_MODEL, 'devstral');
+  assert.strictEqual(env.ANTHROPIC_DEFAULT_HAIKU_MODEL, 'qwen3:4b');
+});
+
+test('a role on the main model is left out of the target', () => {
+  assert.deepStrictEqual(agentTarget({ ...base, agent: { on: true, quick: 'qwen3-coder:30b', helpers: '' } }),
+    { url: 'http://127.0.0.1:11434', model: 'qwen3-coder:30b' });
+});
+
+test('a reopened conversation keeps its roles, checked again', () => {
+  assert.deepStrictEqual(cleanTarget({ url: 'http://127.0.0.1:11434', model: 'devstral', quick: 'qwen3:4b', helpers: 'a b' }),
+    { url: 'http://127.0.0.1:11434', model: 'devstral', quick: 'qwen3:4b' });
 });
 
 test('cleanTarget only takes a server on this PC and a real model name', () => {

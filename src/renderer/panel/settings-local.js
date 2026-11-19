@@ -7,6 +7,8 @@
   const { h, api, state, $ } = SB;
   const DEFAULT_URL = 'http://127.0.0.1:11434'; // main's local/model.js DEFAULT_URL
   const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+  // The roles a local conversation splits its work into (main's local/agent.js, ROLE_VARS).
+  const AGENT_ROLES = [{ key: 'helpers', id: 'localAgentHelpers' }, { key: 'quick', id: 'localAgentQuick' }];
   // main's local/model.js JOBS and JOB_DEFAULTS, in the order Settings lists them.
   const JOBS = [
     { id: 'rules', label: 'Wording of the rules Shellby learns', on: true },
@@ -44,7 +46,7 @@
       jobs: Object.fromEntries(JOBS.map(j => [j.id, typeof lm.jobs?.[j.id] === 'boolean' ? lm.jobs[j.id] : j.on])),
       models: lm.models && typeof lm.models === 'object' ? { ...lm.models } : {},
       answers: { on: lm.answers?.on === true, model: typeof lm.answers?.model === 'string' ? lm.answers.model : '' },
-      agent: { on: lm.agent?.on === true, model: typeof lm.agent?.model === 'string' ? lm.agent.model : '' },
+      agent: { on: lm.agent?.on === true, ...Object.fromEntries(['model', ...AGENT_ROLES.map(r => r.key)].map(k => [k, typeof lm.agent?.[k] === 'string' ? lm.agent[k] : ''])) },
     };
   }
   const say = text => { $('localModelStatus').textContent = text; };
@@ -113,15 +115,22 @@
     $('localAnswersModel').disabled = !lm.answers.on;
   }
 
-  // Conversations on a local model (main's local/agent.js): its own on/off and model.
+  // Conversations on a local model (main's local/agent.js): its own on/off and
+  // model, and a model for each role (empty: the main one).
+  function fillPicker(sel, own, names, blank) {
+    sel.replaceChildren(
+      h('option', { value: '', text: blank }),
+      ...[...new Set([...names, ...(own ? [own] : [])])].map(n => h('option', { value: n, text: n })));
+    sel.value = own;
+  }
   function renderAgent(lm, names) {
     $('localAgentToggle').checked = lm.agent.on;
-    const own = lm.agent.model;
-    $('localAgentModel').replaceChildren(
-      h('option', { value: '', text: 'Same model' }),
-      ...[...new Set([...names, ...(own ? [own] : [])])].map(n => h('option', { value: n, text: n })));
-    $('localAgentModel').value = own;
+    fillPicker($('localAgentModel'), lm.agent.model, names, 'Same model');
     $('localAgentModel').disabled = !lm.agent.on;
+    for (const r of AGENT_ROLES) {
+      fillPicker($(r.id), lm.agent[r.key], names, 'Same as main');
+      $(r.id).disabled = !lm.agent.on;
+    }
   }
 
   const plural = (n, one) => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
@@ -297,6 +306,11 @@
   $('localAgentModel').addEventListener('change', async e => {
     if (!(await save({ agent: { ...current().agent, model: e.target.value } }))) say('Couldn\'t save that model.');
   });
+  for (const r of AGENT_ROLES) {
+    $(r.id).addEventListener('change', async e => {
+      if (!(await save({ agent: { ...current().agent, [r.key]: e.target.value } }))) say('Couldn\'t save that model.');
+    });
+  }
   $('localModelToggle').addEventListener('change', async e => {
     if (!(await save({ on: e.target.checked }))) say('Couldn\'t save that.');
   });

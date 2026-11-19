@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Local mode — mockups</title>
+<link rel="stylesheet" href="../../src/renderer/shared/tokens.css">
+<style>
+  body { margin: 0; padding: 32px; background: var(--ink); color: var(--sand); font: 14px/1.5 var(--font-body); }
+  h1 { font: 22px var(--font-pixel); color: var(--glass); margin: 0 0 4px; }
+  h2 { font: 15px var(--font-pixel); color: var(--sand-dim); margin: 0 0 10px; letter-spacing: .04em; }
+  .intro { color: var(--sand-dim); max-width: 70ch; margin-bottom: 28px; }
+  .board { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .frame { width: 460px; background: var(--reef); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .note { color: var(--sand-faint); font-size: 12px; margin-top: 10px; }
+  h3 { margin: 0 0 6px; font-size: 15px; }
+  .muted { color: var(--sand-dim); } .small { font-size: 12px; }
+
+  .seg { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin: 10px 0 4px; }
+  .seg span { text-align: center; padding: 7px 0; font-size: 13px; color: var(--sand-dim); border-right: 1px solid var(--line); }
+  .seg span:last-child { border-right: 0; }
+  .seg .on { background: var(--glass-dim); color: var(--glass); font-weight: 700; }
+
+  .role { display: grid; grid-template-columns: 96px 1fr auto; gap: 8px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line-soft); }
+  .role b { font-weight: 400; color: var(--sand-dim); font-size: 13px; }
+  .sel { background: var(--reef-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: 12px var(--font-mono); display: flex; justify-content: space-between; }
+  .sel::after { content: "▾"; color: var(--sand-faint); }
+  .chip { font-size: 11px; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .fit { background: var(--glass-dim); color: var(--glass); }
+  .ram { background: rgba(243,230,204,.10); color: var(--sand); }
+  .big, .ctx { background: var(--coral-dim); color: var(--coral); }
+  .sub { grid-column: 2 / 4; font-size: 12px; color: var(--sand-faint); margin-top: -4px; }
+  .btn { display: inline-block; border: 1px solid var(--glass); color: var(--glass); border-radius: 6px; padding: 5px 12px; font-size: 12px; }
+  .btn.ghost { border-color: var(--line); color: var(--sand-dim); }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+  .sw { width: 28px; height: 16px; border-radius: 99px; background: var(--glass); position: relative; flex: none; }
+  .sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); }
+  .sw.off { background: var(--reef-3); } .sw.off::after { left: 2px; right: auto; background: var(--sand-faint); }
+
+  .pull { grid-column: 2 / 4; }
+  .bar { height: 6px; border-radius: 3px; background: var(--reef-3); overflow: hidden; margin: 5px 0 3px; }
+  .bar i { display: block; height: 100%; width: 62%; background: var(--glass); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+  .tip { background: var(--reef-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12px; margin-top: 8px; }
+  .tip dt { color: var(--sand-faint); } .tip dd { margin: 0 0 4px; }
+  .tip dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 6px 0 0; }
+
+  .menu { width: 230px; background: var(--reef-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px; font-size: 13px; }
+  .menu div { padding: 6px 10px; border-radius: 5px; display: flex; justify-content: space-between; }
+  .menu .hl { background: var(--reef-3); }
+  .menu .sep { height: 1px; padding: 0; margin: 4px 0; background: var(--line); }
+  .menu .ck { color: var(--glass); }
+  .pair { display: flex; gap: 6px; align-items: flex-start; }
+
+  .chathead { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .badge { font: 11px var(--font-mono); color: var(--glass); background: var(--glass-dim); padding: 3px 8px; border-radius: 4px; }
+  .msg { background: var(--reef-2); border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: 13px; }
+  .foot { display: flex; gap: 10px; margin-top: 6px; font: 11px var(--font-mono); color: var(--sand-faint); }
+  .helper { margin-top: 10px; padding-left: 12px; border-left: 2px solid var(--line); font-size: 12px; color: var(--sand-dim); }
+</style>
+</head>
+<body>
+<h1>Local mode</h1>
+<p class="intro">Mockups for <a href="local-mode.md" style="color:var(--glass)">local-mode.md</a>. Panel width 460 px, the narrowest size. The colours and fonts come from Shellby's tokens. Each frame shows one state.</p>
+
+<div class="board">
+
+  <section>
+    <h2>0a · Nothing installed</h2>
+    <div class="frame">
+      <h3>Local model</h3>
+      <div class="tip" style="margin-top:4px">
+        <strong>Run models on this PC: free, and nothing leaves it</strong>
+        <dl>
+          <dt>This PC</dt><dd>RTX 3080 Ti, 12 GB · 32 GB RAM · 142 GB free</dd>
+          <dt>Main</dt><dd><span style="font-family:var(--font-mono)">qwen3-coder:30b</span> · 18 GB<br><span class="muted">The best coder that runs well here</span></dd>
+          <dt>Quick</dt><dd><span style="font-family:var(--font-mono)">qwen3:4b</span> · 2.5 GB<br><span class="muted">Titles, drafts, small checks</span></dd>
+        </dl>
+        <div class="row" style="margin-top:10px"><span class="btn">Install Ollama</span><span class="muted small">Free · about 1 GB · via winget</span></div>
+      </div>
+      <p class="muted small">Using LM Studio already? Start its server and press <u>Detect</u>. Or <u>let Claude set it up</u> (uses your plan).</p>
+    </div>
+    <p class="note">Install opens a confirm dialog naming the publisher first. Without winget, the button opens ollama.com/download.</p>
+  </section>
+
+  <section>
+    <h2>0b · Ollama running, no models yet</h2>
+    <div class="frame">
+      <h3>Local model</h3>
+      <div class="tip" style="margin-top:4px">
+        <strong>Ollama is running. Two models suit this PC:</strong>
+        <div class="role"><b>Quick</b>
+          <div class="pull"><div class="row"><span style="font:12px var(--font-mono)">qwen3:4b</span><span class="small" style="color:var(--glass)">Ready ✓</span></div></div></div>
+        <div class="role"><b>Main</b>
+          <div class="pull">
+            <div class="row"><span style="font:12px var(--font-mono)">qwen3-coder:30b</span><span class="btn ghost">Cancel</span></div>
+            <div class="bar"><i></i></div>
+            <div class="row small muted"><span>11.2 of 18 GB</span><span>Drafts already work</span></div>
+          </div></div>
+      </div>
+      <p class="muted small">The quick model comes first, so drafts work within minutes.</p>
+    </div>
+    <p class="note">Ollama installed but stopped: the card reads "Ollama isn't running" with a Start Ollama button.</p>
+  </section>
+
+  <section>
+    <h2>1 · Coding preset, everything installed</h2>
+    <div class="frame">
+      <h3>Local model</h3>
+      <p class="muted small" style="margin:0">Run work on models on this PC, without your plan.</p>
+      <div class="seg" role="radiogroup" aria-label="Local mode"><span>Off</span><span class="on">Coding</span><span>Chat</span><span>Custom</span></div>
+      <p class="muted small" style="margin:0 0 6px">New conversations use these. Ones already open keep their models.</p>
+
+      <div class="role"><b>Main work</b><div class="sel">qwen3-coder:30b</div><span class="chip ram">Partly in RAM</span></div>
+      <div class="role"><b>Helper crabs</b><div class="sel">Same as main</div><span></span></div>
+      <div class="role"><b>Quick tasks</b><div class="sel">qwen3:4b</div><span class="chip fit">Fits in GPU</span>
+        <div class="sub">Titles, summaries and small checks.</div></div>
+      <div class="toggle"><span class="sw"></span>Keep the quick model loaded beside the main one</div>
+
+      <div class="role"><b>Drafts</b><div class="sel">qwen3:4b</div><span class="chip fit">Fits in GPU</span>
+        <div class="sub">Rules, routines, hooks, workflows, timesheet · quiz on main</div></div>
+    </div>
+    <p class="note">Changing any picker by hand moves the control to Custom. Nothing is lost.</p>
+  </section>
+
+  <section>
+    <h2>2 · A model missing, downloading</h2>
+    <div class="frame">
+      <div class="seg"><span>Off</span><span class="on">Coding</span><span>Chat</span><span>Custom</span></div>
+      <div class="role"><b>Main work</b>
+        <div class="pull">
+          <div class="row"><span style="font:12px var(--font-mono)">qwen3-coder:30b</span><span class="btn ghost">Cancel</span></div>
+          <div class="bar"><i></i></div>
+          <div class="row small muted"><span>11.2 of 18 GB · about 4 min</span><span>142 GB free</span></div>
+        </div>
+      </div>
+      <div class="role"><b>Quick tasks</b>
+        <div class="pull">
+          <div class="row"><span class="small">qwen3:4b isn't installed</span><span class="btn">Get it · 2.5 GB</span></div>
+        </div>
+      </div>
+      <div class="role"><b>Helper crabs</b><div class="sel">Same as main</div><span></span></div>
+      <p class="muted small">Downloads go through Ollama and pick up where they stopped if cancelled. One at a time.</p>
+    </div>
+    <p class="note">Too little disk space: the button reads "Needs 18 GB, 9 GB free" and is disabled.</p>
+  </section>
+
+  <section>
+    <h2>3 · Fit check details and short context</h2>
+    <div class="frame">
+      <div class="role"><b>Main work</b><div class="sel">devstral</div><span class="chip ctx">4K context</span></div>
+      <div class="tip">
+        <strong style="color:var(--coral)">Too short for conversations</strong><br>
+        Claude Code needs about 32K tokens of context. Ollama started this model with 4K, so long tasks lose their start.
+        <div style="margin-top:8px"><span class="btn">Make a 32K copy</span> <span class="muted">→ devstral-32k, picked for you</span></div>
+      </div>
+      <div class="role" style="margin-top:10px"><b>Main work</b><div class="sel">qwen3-coder:30b</div><span class="chip ram">Partly in RAM</span></div>
+      <div class="tip">
+        <dl>
+          <dt>Size</dt><dd>18 GB</dd>
+          <dt>This PC</dt><dd>RTX 3080 Ti, 12 GB · 32 GB RAM</dd>
+          <dt>Context</dt><dd>32K ✓</dd>
+          <dt>Expect</dt><dd>Quick for its size: only part of it runs per word (MoE)</dd>
+        </dl>
+      </div>
+      <div class="role"><b>Main work</b><div class="sel">qwen2.5-coder:32b</div><span class="chip big">Too big</span></div>
+      <p class="muted small" style="margin:0">About 2–5 words a second here. A 30B model with 3B active (above) is far quicker.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>4 · Crab menu</h2>
+    <div class="pair">
+      <div class="menu">
+        <div>New conversation</div>
+        <div>Guard my focus</div>
+        <div class="hl">Local mode <span>›</span></div>
+        <div class="sep"></div>
+        <div>Settings</div>
+      </div>
+      <div class="menu" style="width:170px">
+        <div>Off</div>
+        <div>Coding <span class="ck">✓</span></div>
+        <div>Chat</div>
+        <div>Custom</div>
+      </div>
+    </div>
+    <p class="note">For new conversations only, as in Settings. With nothing installed, Coding and Chat open Settings at the local model section.</p>
+  </section>
+
+  <section>
+    <h2>5 · A local conversation</h2>
+    <div class="frame">
+      <div class="chathead">
+        <div><strong>Fix the tally reset</strong> <span class="badge">local · Coding</span></div>
+        <span class="btn">Continue on Claude</span>
+      </div>
+      <div class="msg">Found it: <code>resetTally</code> writes the old object back. I've changed it to return a new one and added a test.
+        <div class="foot"><span>qwen3-coder:30b</span><span>38 words/s</span><span>2 files</span></div>
+        <div class="helper">Helper crab checked the tests · <span style="font-family:var(--font-mono)">qwen3-coder:30b</span></div>
+      </div>
+      <p class="muted small" style="margin-top:12px">Continue on Claude branches this onto your plan with a summary of where it got to. This local one stays in History.</p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
