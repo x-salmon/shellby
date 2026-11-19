@@ -59,7 +59,16 @@ async function connect(url) {
     const idle = () => until(panel, '!SB.activeTab().busy', 10000);
     const lastReply = () => ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant:not(.sub)')].pop()?.textContent || ''");
     const fresh = async () => { await ev('SB.newTab({ reuse: false })'); await wait(400); };
-    const argsOf = async () => { await ev("SB.send('args')"); await idle(); try { return JSON.parse(await lastReply()); } catch { return []; } };
+    // Waits for a new reply: right after a restart (safe mode) the tab isn't busy yet,
+    // so idle() alone passed at once and read the previous answer.
+    const REPLIES = "SB.activeTab().el.querySelectorAll('.msg.assistant:not(.sub)').length";
+    const argsOf = async () => {
+      const before = await ev(REPLIES);
+      await ev("SB.send('args')");
+      await until(panel, `${REPLIES} > ${before}`, 10000);
+      await idle();
+      try { return JSON.parse(await lastReply()); } catch { return []; }
+    };
 
     await panelBooted(ev);
     await ev("shellby.setSettings({ onboarded: true }).then(r => { SB.state.settings = r.settings; SB.setView('chat'); })");

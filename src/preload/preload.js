@@ -58,7 +58,6 @@ contextBridge.exposeInMainWorld('shellby', {
   attachThumb: invoke('attach:thumb'),
   filePicture: invoke('pictures:file'),            // a picture Claude wrote, sized for its step in the chat
   pickFiles: invoke('attach:pick'),
-
   bootstrap: invoke('app:bootstrap'),
 
   // file links (Settings → Editor) and the panel's text size
@@ -68,10 +67,12 @@ contextBridge.exposeInMainWorld('shellby', {
   claudeStatus: invoke('claude:status'),
   // Settings' local model: Detect, Try it, its tally and resting models (local/model.js, local/tally.js)
   localDetect: invoke('local:detect'), localTry: invoke('local:try'), localState: invoke('local:state'), localWake: invoke('local:wake'), localResetTally: invoke('local:reset-tally'), localAnswerInstead: invoke('local:answer-instead'),
-  localModels: invoke('local:models'), localPreset: invoke('local:preset'), localPull: invoke('local:pull'), localPullCancel: invoke('local:pull-cancel'), onLocalPull: on('local:pull'), localSetup: invoke('local:setup'), localInstall: invoke('local:install'), localStart: invoke('local:start'), localFit: invoke('local:fit'), localCtxCopy: invoke('local:ctx-copy'), // Settings' Find models: what a local server on this PC has (local/model.js)
+  localModels: invoke('local:models'), localPreset: invoke('local:preset'), localPull: invoke('local:pull'), localPullCancel: invoke('local:pull-cancel'), onLocalPull: on('local:pull'), localSetup: invoke('local:setup'), localInstall: invoke('local:install'), localStart: invoke('local:start'), localFit: invoke('local:fit'), localCtxCopy: invoke('local:ctx-copy'), ollamaStatus: invoke('local:ollama'), ollamaStart: invoke('local:ollama-start'), ollamaStop: invoke('local:ollama-stop'), // Settings' Find models (local/model.js), Start/Stop Ollama (local/ollama.js)
   claudeLogin: invoke('claude:login'), installClaude: invoke('claude:install'), practiceFolder: invoke('first-run:practice'), // onboarding's installer; First steps' practice folder
   claudeLogout: (opts = {}) => ipcRenderer.invoke('claude:logout', { thenSignIn: !!opts.thenSignIn }), // thenSignIn: "Switch account"
   onClaudeStatus: on('claude:status'), // re-checked after the sign-in window closes, or a sign-out
+  // Your API key: handed over once to be sealed by Windows; only { saved, hint } ever comes back.
+  apiKeyView: invoke('claude:api-key'), saveApiKey: key => ipcRenderer.invoke('claude:api-key-save', String(key)), clearApiKey: invoke('claude:api-key-clear'),
   locateClaude: invoke('claude:locate'), // when the search missed it (unusual install)
   // Keeping Claude Code current (claude/update.js): a daily look, `claude update` on request, tell | auto | off.
   checkClaudeUpdate: invoke('claude:update-check'),
@@ -205,7 +206,6 @@ contextBridge.exposeInMainWorld('shellby', {
   reportProblem: fire('feedback:problem'), suggestIdea: fire('feedback:idea'), // GitHub drafts (wiring/tray.js)
   pickTextMenu: fire('text-menu:pick'), // the right-click menu for text (textmenu.js, main/context-menu.js)
   onTextMenu: on('text-menu'),
-
   // toolbox
   getToolbox: invoke('toolbox:get'),
   rescanToolbox: invoke('toolbox:rescan'),

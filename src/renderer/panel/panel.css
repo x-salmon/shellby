@@ -618,9 +618,29 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
 .chg-actions { display: flex; align-items: center; gap: 10px; padding: 6px 11px 9px; border-top: 1px solid var(--line-soft); }
 .chg-actions .btn.deny { border-color: var(--coral); color: var(--coral); }
 /* Undo to here, on a step of a turn (feed-changes.js) */
-.tool > summary .step-undo { margin-left: auto; flex: none; height: 22px; padding: 0 8px; font-size: var(--fs-11-5); }
+/* A pin on the row's rail marks a point the files can go back to; the button is a link. */
+.tool.step-point > summary { position: relative; }
+.tool.step-point > summary::before {
+  content: ""; position: absolute; left: -7px; top: 50%; translate: 0 -50%;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--abyss); border: 2px solid var(--glass);
+  transition: background-color .15s, border-color .15s;
+}
+.tool.step-armed > summary::before { background: var(--coral); border-color: var(--coral); }
+.tool.step-undone > summary::before { border-color: var(--sand-faint); }
+.tool.step-doomed { opacity: .45; transition: opacity .15s; }
+.tool.step-doomed > summary .t-label, .tool.step-doomed > summary .t-detail { text-decoration: line-through; }
+.tool > summary .step-undo {
+  margin-left: auto; flex: none; padding: 0 2px; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: var(--fs-11-5); color: var(--glass);
+  text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
+  transition: text-decoration-color .12s;
+}
+.tool > summary:hover .step-undo, .tool > summary .step-undo:focus-visible { text-decoration-color: currentColor; }
+.tool > summary .step-undo:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; border-radius: 3px; }
 .tool > summary .step-undo[hidden] { display: none; }
-.tool > summary .step-undo.deny { border-color: var(--coral); color: var(--coral); }
+.tool > summary .step-undo.deny { color: var(--coral); font-weight: 600; text-decoration: none; }
+.tool > summary .step-undo:disabled { color: var(--sand-faint); cursor: default; text-decoration: none; }
 .tool.step-undone > summary .t-label { text-decoration: line-through; opacity: .7; }
 /* "Quiz me" on a turn's changes (feed-changes.js) */
 .quiz { padding: 4px 11px 10px; border-top: 1px solid var(--line-soft); }
@@ -728,6 +748,28 @@ a[data-href]:hover, a[data-href]:focus-visible { color: var(--sand); }
 /* What the turn was refused (result.permission_denials): a quiet line under the turn's footer (turn-foot.css). */
 .turn-denials { margin: 0 auto 12px; max-width: 60ch; text-align: center; text-wrap: pretty; color: var(--sand-faint); font-size: var(--fs-11); overflow-wrap: anywhere; }
 .meta:has(+ .turn-denials) { margin-bottom: 2px; }
+/* Live, it's a soft coral strip with what to do about it (feed.js deniedStrip); Fine turns it back into the line. */
+.turn-denied {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 10px;
+  margin: 0 auto 12px; max-width: 72ch; padding: 6px 12px; border-radius: 8px;
+  background: color-mix(in srgb, var(--coral) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--coral) 28%, transparent);
+  color: var(--sand-dim); font-size: var(--fs-11); text-wrap: pretty;
+}
+.turn-denied .denied-text { overflow-wrap: anywhere; text-align: center; min-width: 0; }
+.turn-denied .denied-acts { display: flex; gap: 6px; flex: none; }
+/* Counting down to trying again by itself (feed.js retryCountdown): Try again fills with coral, its seconds beside the words. */
+.turn-denied .denied-try { position: relative; overflow: hidden; }
+.turn-denied .denied-try > span { position: relative; }
+.turn-denied .denied-try > .denied-fill {
+  position: absolute; inset: 0; background: color-mix(in srgb, var(--coral) 34%, transparent);
+  transform: scaleX(0); transform-origin: left; animation: denied-fill var(--retry-ms, 10s) linear forwards;
+}
+.turn-denied.held .denied-fill { animation-play-state: paused; }
+.turn-denied .denied-secs { min-width: 3ch; text-align: right; font: 600 var(--fs-11) var(--font-mono); font-variant-numeric: tabular-nums; color: var(--amber); }
+@keyframes denied-fill { to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .turn-denied .denied-fill { animation: none; } }
+.meta:has(+ .turn-denied) { margin-bottom: 4px; }
 /* A note under it (turncost.js turnNotes): what cost more than it needed to, and why. */
 .turn-note {
   margin: 0 auto 4px; max-width: 52ch; text-align: center; text-wrap: pretty;
@@ -1149,6 +1191,10 @@ select.field option { background: var(--reef); }
 .billing-guard-pill { margin-left: auto; padding: 2px 8px; border-radius: 999px; font: 700 var(--fs-10-5) var(--font-mono); text-transform: uppercase; letter-spacing: .04em; background: color-mix(in srgb, var(--bg-tone) 18%, transparent); color: var(--bg-tone); }
 .billing-guard .toggle { margin-top: 6px; font-weight: 700; }
 .billing-guard p { margin: 4px 0 0; color: var(--sand-dim); }
+.billing-guard[data-state="key"] .billing-guard-icon::after { content: "¤"; }
+.api-key-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; }
+.api-key-row .field { flex: 1 1 180px; min-width: 0; font-family: var(--font-mono); }
+.api-key-row #apiKeySaved { flex-basis: 100%; font-family: var(--font-mono); color: var(--sand); }
 #billingEnvNote { color: var(--bg-tone); font-weight: 700; }
 .onboarding-modes { border-top: 0; }
 

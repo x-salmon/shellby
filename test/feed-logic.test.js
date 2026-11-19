@@ -151,6 +151,11 @@ test('sounding: a quick reply says one step, and how much of the conversation it
   assert.equal(v.tokens, '44k');
   assert.equal(v.meter, '7% of the conversation used, 3% by this reply');
   assert.match(v.details, /^44k new tokens, about 2% of your 5-hour window\. Medium effort, 61 tokens of thinking\. This reply took 3% of the conversation's room; 93% is left\.$/);
+  assert.deepEqual(v.receipt, [
+    { num: '44k', text: 'new tokens, at full price, about 2% of your 5-hour window' },
+    { num: '61', text: 'tokens of thinking, at Medium effort' },
+    { num: '3%', text: "of the conversation's room used by this reply; 93% is left" },
+  ]);
 });
 
 test('sounding: steps and helpers are counted in words, and past 60% or 80% it says so', () => {
@@ -159,6 +164,7 @@ test('sounding: steps and helpers are counted in words, and past 60% or 80% it s
   assert.deepEqual(v.soft, ['252s', '23 steps', '2 helpers']);
   assert.equal(v.level, 'filling');
   assert.match(v.details, /2 helpers used 120k of them, in their own context/);
+  assert.deepEqual(v.receipt.find(r => r.num === '120k'), { num: '120k', text: "of them used by 2 helpers, in their own context, so they don't fill this one" });
   assert.equal(F.sounding({ ok: true, cost: costAt({ contextLevel: 'crowded' }) }, fmt).level, 'crowded');
 });
 
@@ -318,6 +324,49 @@ test('the hook line names the hook, and the denials line each refused tool once,
     'Claude was blocked from: Bash (rm -rf dist), Edit');
   const many = Array.from({ length: 7 }, (_, i) => ({ toolName: `Tool${i}`, toolUseId: `tu_${i}`, summary: '' }));
   assert.equal(F.denialsLine(many), 'Claude was blocked from: Tool0, Tool1, Tool2, Tool3, Tool4 and 2 more');
+});
+
+test('try again counts down whole seconds from ten, and reaches zero only when time is up', () => {
+  assert.equal(F.RETRY_COUNTDOWN_MS, 10000);
+  assert.equal(F.countdownSecs(F.RETRY_COUNTDOWN_MS), 10);
+  assert.equal(F.countdownSecs(9001), 10, 'part of a second still shows as that second');
+  assert.equal(F.countdownSecs(9000), 9);
+  assert.equal(F.countdownSecs(1), 1);
+  assert.equal(F.countdownSecs(0), 0);
+  assert.equal(F.countdownSecs(-250), 0, 'a late tick never goes negative');
+});
+
+test('try again asks Claude to retry what was blocked', () => {
+  assert.equal(F.retryPrompt([{ toolName: 'Write', summary: 'src/a.js' }, { toolName: 'Bash', summary: '' }]),
+    'That was blocked: Write (src/a.js), Bash. Try it again.');
+});
+
+test('blockingRule finds the deny rule that refused a step, in Claude Code rule syntax', () => {
+  const where = { cwd: 'C:\\proj', home: 'C:\\Users\\me' };
+  const rule = (r, path = 'C:\\proj\\.claude\\settings.local.json', list = 'deny') => ({ list, rule: r, path, scope: 'local' });
+  const write = target => ({ toolName: 'Write', target });
+  const key = 'C:\\proj\\src\\main\\claude\\api-key.js';
+
+  assert.equal(F.blockingRule(write(key), [rule('Write(api-key.js)')], where)?.rule, 'Write(api-key.js)', 'a bare name matches at any depth');
+  assert.equal(F.blockingRule(write(key), [rule('Edit(src/**)')], where)?.rule, 'Edit(src/**)', 'Edit rules cover Write, relative to where Claude runs');
+  assert.equal(F.blockingRule(write(key), [rule('Edit(/src/main/**)')], where)?.rule, 'Edit(/src/main/**)', '/ is the settings file\'s project');
+  assert.equal(F.blockingRule(write(key), [rule('Write(//c/proj/src/**)')], where)?.rule, 'Write(//c/proj/src/**)', '// is the whole disk');
+  assert.equal(F.blockingRule(write('C:\\Users\\me\\.ssh\\id'), [rule('Read(~/.ssh/**)'), rule('Edit(~/.ssh/**)')], where)?.rule, 'Edit(~/.ssh/**)', '~ is home; Read rules don\'t block writes');
+  assert.equal(F.blockingRule(write(key), [rule('Write')], where)?.rule, 'Write', 'a whole tool');
+  assert.equal(F.blockingRule(write(key), [rule('Write(src/*.js)'), rule('Write(other/**)')], where), null, '* stays in one folder');
+  assert.equal(F.blockingRule(write(key), [rule('Write(api-key.js)', undefined, 'allow')], where), null, 'only deny rules');
+  assert.equal(F.blockingRule({ toolName: 'Write' }, [rule('Write(api-key.js)')], where), null, 'no target, no path match');
+
+  const bash = target => ({ toolName: 'Bash', target });
+  assert.equal(F.blockingRule(bash('git push --force origin'), [rule('Bash(git push:*)')], where)?.rule, 'Bash(git push:*)');
+  assert.equal(F.blockingRule(bash('git pull'), [rule('Bash(git push:*)')], where), null);
+  assert.equal(F.blockingRule(bash('rm -rf dist'), [rule('Bash(rm * dist)')], where)?.rule, 'Bash(rm * dist)');
+  assert.equal(F.blockingRule(bash('npm test'), [rule('Bash(npm)')], where), null, 'without :* or * it is the exact command');
+
+  const fetch = target => ({ toolName: 'WebFetch', target });
+  assert.equal(F.blockingRule(fetch('https://api.example.com/x'), [rule('WebFetch(domain:*.example.com)')], where)?.rule, 'WebFetch(domain:*.example.com)');
+  assert.equal(F.blockingRule(fetch('https://example.org/'), [rule('WebFetch(domain:example.com)')], where), null);
+  assert.equal(F.blockingRule({ toolName: 'mcp__github__push' }, [rule('mcp__github')], where)?.rule, 'mcp__github');
 });
 
 test('a failed hook leaves a mark naming it', () => {

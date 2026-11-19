@@ -41,12 +41,13 @@ test("the turn's refused tool calls ride on its result, each with a short summar
     { tool_name: 'Nothing' },
     null, { tool_use_id: 'no-name' },
   ] }).denials, [
-    { toolName: 'Bash', toolUseId: 'tu_1', summary: 'rm -rf dist' },
-    { toolName: 'Edit', toolUseId: 'tu_2', summary: 'C:\\x\\.env' },
+    { toolName: 'Bash', toolUseId: 'tu_1', summary: 'rm -rf dist', target: 'rm -rf dist' },
+    { toolName: 'Edit', toolUseId: 'tu_2', summary: 'C:\\x\\.env', target: 'C:\\x\\.env' },
     { toolName: 'Nothing', toolUseId: null, summary: '' },
   ]);
   const long = ev({ permission_denials: [{ tool_name: 'Bash', tool_use_id: 'tu_1', tool_input: { command: 'x'.repeat(200) } }] });
   assert.ok(long.denials[0].summary.length <= 81, 'the summary is short');
+  assert.equal(long.denials[0].target.length, 200, 'the target is whole, for matching rules');
 });
 
 test('assistant content becomes text, thinking and tool items', () => {

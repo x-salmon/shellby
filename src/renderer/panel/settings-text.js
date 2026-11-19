@@ -31,8 +31,11 @@
     safe: { title: 'Billing: your Claude plan', pill: 'Protected' },
     off: { title: 'Billing: Claude Code decides', pill: 'Not protected' },
     risk: { title: 'Heads up: this may bill your API key', pill: 'Pay per token' },
+    key: { title: 'Billing: your API key', pill: 'Per token' },
   };
-  const billingState = (planOnly, billingEnv) => (planOnly ? 'safe' : billingEnv.length ? 'risk' : 'off');
+  // keyMode with no key saved falls back to the plan (claude/cli.js claudeEnv), so it reads as safe.
+  const billingState = (planOnly, billingEnv, keyMode = false, keySaved = false) => (
+    keyMode && !planOnly ? (keySaved ? 'key' : 'safe') : planOnly ? 'safe' : billingEnv.length ? 'risk' : 'off');
 
   // The line under who's signed in.
   function planLabel(st) {

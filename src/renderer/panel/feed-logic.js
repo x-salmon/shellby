@@ -81,6 +81,104 @@
     return `Claude was blocked from: ${parts.join(', ')}${more > 0 ? ` and ${more} more` : ''}`;
   }
 
+  // Try again under the denials line: what goes to Claude.
+  function retryPrompt(denials = []) {
+    const parts = denials.slice(0, MAX_DENIALS_SHOWN).map(d => (d.summary ? `${d.toolName} (${d.summary})` : d.toolName));
+    return `That was blocked: ${parts.join(', ')}. Try it again.`;
+  }
+
+  // Try again presses itself after this long unless you hold it (hover, focus) or say Cancel.
+  const RETRY_COUNTDOWN_MS = 10000;
+  // The seconds on its countdown: 10 down to 1, then 0 when it's time.
+  const countdownSecs = leftMs => (leftMs > 0 ? Math.ceil(leftMs / 1000) : 0);
+
+  // ---- which deny rule blocked a denial (Claude Code's permission rule syntax)
+
+  const EDIT_TOOLS = /^(Edit|Write|MultiEdit|NotebookEdit)$/;
+  const READ_TOOLS = /^(Read|Grep|Glob)$/;
+  const SHELL_TOOLS = /^(Bash|PowerShell)$/;
+  const slashes = p => String(p || '').replace(/\\/g, '/');
+  const escapeRe = s => s.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+
+  // A gitignore-style glob -> a regex over a whole path: ** any depth, * one name, ? one character.
+  function globRe(glob, { dirs = true } = {}) {
+    let re = '';
+    for (let i = 0; i < glob.length; i++) {
+      const c = glob[i];
+      if (c === '*' && glob[i + 1] === '*') {
+        i++;
+        if (glob[i + 1] === '/') { i++; re += '(?:.*/)?'; } else re += '.*';
+      } else if (c === '*') re += dirs ? '[^/]*' : '.*';
+      else if (c === '?') re += dirs ? '[^/]' : '.';
+      else re += escapeRe(c);
+    }
+    return re;
+  }
+
+  // Claude Code's file rule paths: //abs, ~/home, /relative to the settings
+  // file's project, anything else relative to where Claude runs. A pattern with
+  // no slash matches that name at any depth, as in .gitignore.
+  function fileRuleMatches(spec, file, { cwd, home, base }) {
+    const target = slashes(file).toLowerCase();
+    let s = slashes(spec);
+    let root;
+    if (s.startsWith('//')) { s = s.slice(2); root = ''; if (/^[a-z]\//i.test(s)) s = `${s[0]}:${s.slice(1)}`; } // //c/Users -> c:/Users
+    else if (s.startsWith('~/')) { root = slashes(home); s = s.slice(2); }
+    else if (s.startsWith('/')) { root = slashes(base); s = s.slice(1); }
+    else if (!s.includes('/')) return new RegExp(`(?:^|/)${globRe(s.toLowerCase())}(?:/.*)?$`).test(target);
+    else { root = slashes(cwd); s = s.replace(/^\.\//, ''); }
+    const full = (root ? `${root.replace(/\/+$/, '')}/${s}` : s).toLowerCase();
+    return new RegExp(`^${globRe(full)}(?:/.*)?$`).test(target);
+  }
+
+  function shellRuleMatches(spec, command) {
+    const cmd = String(command || '').trim();
+    if (spec.endsWith(':*')) return cmd.startsWith(spec.slice(0, -2));
+    if (spec.includes('*')) return new RegExp(`^${globRe(spec, { dirs: false })}$`).test(cmd);
+    return cmd === spec;
+  }
+
+  function hostMatches(spec, url) {
+    if (!spec.startsWith('domain:')) return false;
+    let host;
+    try { host = new URL(url).hostname.toLowerCase(); } catch { return false; }
+    const want = spec.slice(7).toLowerCase();
+    return want.startsWith('*.') ? host.endsWith(want.slice(1)) : host === want;
+  }
+
+  // One rule string against one denial. where: { cwd, home, base } for file rules.
+  function ruleMatches(rule, denial, where) {
+    const m = /^([^()]+?)(?:\((.*)\))?$/s.exec(String(rule || '').trim());
+    if (!m) return false;
+    const [, tool, spec] = m;
+    const name = denial.toolName;
+    if (tool.startsWith('mcp__') && spec === undefined) return name === tool || name.startsWith(`${tool.replace(/__\*$/, '')}__`);
+    const sameTool = tool === name || (tool === 'Edit' && EDIT_TOOLS.test(name)) || (tool === 'Read' && READ_TOOLS.test(name));
+    if (!sameTool) return false;
+    if (spec === undefined || spec === '' || spec === '*') return true;
+    if (!denial.target) return false;
+    if (SHELL_TOOLS.test(name)) return shellRuleMatches(spec, denial.target);
+    if (name === 'WebFetch') return hostMatches(spec, denial.target);
+    if (EDIT_TOOLS.test(name) || READ_TOOLS.test(name)) return fileRuleMatches(spec, denial.target, where);
+    return false;
+  }
+
+  /**
+   * The first deny rule (claude/setup.js scanPermissions' rows) that blocks this
+   * denial, or null: then a hook or the permission mode did it.
+   * @param {{ toolName: string, target?: string }} denial
+   * @param {{ list: string, rule: string, path: string }[]} rules
+   * @param {{ cwd?: string, home?: string }} where
+   */
+  function blockingRule(denial, rules = [], { cwd = '', home = '' } = {}) {
+    if (!denial?.toolName) return null;
+    return rules.find(r => r.list === 'deny' && ruleMatches(r.rule, denial, {
+      cwd, home,
+      // "/x" is relative to the folder the settings file's .claude folder is in.
+      base: slashes(r.path).replace(/\/\.claude\/[^/]+$/, ''),
+    })) || null;
+  }
+
   // The busy line while Claude Code compacts. chars: how much of the summary is
   // written so far, which it says only for automatic compactions. compact: SB.compact.
   const compactingLine = (chars, compact) => (chars
@@ -258,6 +356,29 @@
     return out.join(' ');
   }
 
+  // The same, as receipt lines for the opened footer: [{ num, text }], the
+  // figure in its own column (num null leaves it blank).
+  function soundingReceipt(cost, bar, compact) {
+    const rows = [];
+    const share = windowWords(cost.share);
+    rows.push({ num: compact(cost.tokens), text: `new tokens, at full price${share ? `, ${share} of your 5-hour window` : ''}` });
+    if (cost.read) rows.push({ num: compact(cost.read), text: 're-read from the prompt cache, at a tenth of the price' });
+    const helpers = (cost.helpers || []).filter(x => Number.isFinite(x?.tokens));
+    if (helpers.length) {
+      const spent = helpers.reduce((n, x) => n + x.tokens, 0);
+      rows.push({ num: compact(spent), text: `of them used by ${helpers.length === 1 ? 'a helper, in its' : `${helpers.length} helpers, in their`} own context, so they don't fill this one` });
+    }
+    if (typeof cost.effort === 'string') {
+      const word = EFFORT_WORD[cost.effort] || 'Auto';
+      const thought = Number.isFinite(cost.thinking) ? cost.thinking : null;
+      rows.push(thought === null ? { num: null, text: `${word} effort` } : { num: thought ? compact(thought) : '0', text: `tokens of thinking, at ${word} effort` });
+    }
+    if (bar?.freedTo) rows.push({ num: `${bar.freedTo - bar.past - bar.added}%`, text: "of the conversation's room freed: it was summed up during this turn" });
+    else if (bar && pct(cost.contextBefore) !== null && pct(cost.contextBefore) <= bar.past + bar.added) rows.push({ num: `${bar.added}%`, text: `of the conversation's room used by this reply; ${100 - bar.past - bar.added}% is left` });
+    else if (bar) rows.push({ num: `${bar.past}%`, text: 'of the conversation is full' });
+    return rows;
+  }
+
   /**
    * What a turn's footer shows: { state, word, title, soft, effort, bar, level,
    * full, change, tokens, details, meter }. fmt: { compact, duration } (SB's).
@@ -290,6 +411,7 @@
       full: now === null ? null : `${now}% full`, change,
       tokens: cost ? fmt.compact(cost.tokens) : null,
       details: cost ? soundingDetails(cost, bar, fmt.compact) : null,
+      receipt: cost ? soundingReceipt(cost, bar, fmt.compact) : null,
       meter,
     };
   }
@@ -457,7 +579,7 @@
 
   const api = {
     contextSegments, insightsReportIn, subtaskPrompt,
-    files, storySteps, markFor, compactingLine, retryLine, hookLine, denialsLine, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
+    files, storySteps, markFor, compactingLine, retryLine, hookLine, denialsLine, retryPrompt, RETRY_COUNTDOWN_MS, countdownSecs, blockingRule, trimmedLine, shellName, branchedFrom, branchedOffWhere, compareHead, whoWord, tryLine, combinePrompt, suggestionLabel, modeAfterPlan, planNotesMessage,
     decisionVerdict, questionVerdict, resultLabel, sounding, soundingBar, refusalLike, refusalOf, diffRows, laneMeta, laneCostTitle, laneFirstLine, laneIsolationText, laneIsolationTitle,
     cutOffLine, cutOffToast, CARRY_ON, quizWorthy, quizResult, QUIZ_MIN_LINES,
   };

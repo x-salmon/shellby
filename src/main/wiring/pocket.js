@@ -5,7 +5,7 @@
 // On, it serves 127.0.0.1:47916 and Tailscale serves that on your tailnet.
 //
 // The phone does what the desk does, through the same functions, under the
-// phone's rules (docs/PHONE.md): nothing deskOnlyReason flags but a Deny, tasks in the mode
+// phone's rules (docs/PHONE.md): what appCaution warns about allowed once (never always), tasks in the mode
 // and on the model picked, at most 30 an hour and 10 at once, and nothing at all from a phone set
 // to read-only at the desk (pocket/rights.js).
 const { app, safeStorage } = require('electron');
@@ -14,7 +14,7 @@ const attach = require('../attachments');
 const confirm = require('../confirm');
 const guard = require('../guard');
 const pt = require('../channels/phone-tasks');
-const { appDeskOnlyReason } = require('../channels/replies');
+const { appDeskOnlyReason, appCaution } = require('../channels/replies');
 const { EVENTS } = require('../channels/messages');
 const { MODES: PHONE_MODES } = require('../config');
 const { models, isModel } = require('../models');
@@ -377,9 +377,9 @@ function wirePocket(d) {
     if (!str(tabId) || !str(requestId) || !['allow', 'always', 'deny'].includes(decision)) return no('That answer is not one the phone can give.');
     const pendingItem = d.manager.tabs.get(tabId)?.session.pending.get(requestId);
     if (!pendingItem) return no('That was already answered.');
-    if (decision === 'always' && (!pendingItem.suggestions?.length || ['AskUserQuestion', 'ExitPlanMode'].includes(pendingItem.toolName))) return no('That one has no always-allow. Allow it this once.');
-    // A no is always safe, so a desk-only prompt can still be turned down here: otherwise it holds the conversation until you're back.
-    const why = appDeskOnlyReason(pendingItem);
+    // One the card warns about (appCaution) is allowed once, never always.
+    if (decision === 'always' && (!pendingItem.suggestions?.length || ['AskUserQuestion', 'ExitPlanMode'].includes(pendingItem.toolName) || appCaution(pendingItem))) return no('That one has no always-allow. Allow it this once.');
+    const why = appDeskOnlyReason(pendingItem); // a no is always safe, even to one the phone can't answer
     if (why && decision !== 'deny') return no(why);
     const extra = answerExtra(pendingItem, { decision, answers, notes, read, mayWrite: mayWriteTo(d.manager.tabs.get(tabId)) });
     if (extra.error) return no(extra.error);

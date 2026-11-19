@@ -262,10 +262,12 @@ function registerTabsIpc(ipcMain, d) {
     if (!tab?.saved) return { offer: false, pct: null };
     const pct = tab.session.context?.pct ?? null;
     // Under the mark there's nothing to offer: no need to read the transcript for every pause in typing.
-    if (!force && !(Number.isFinite(pct) && pct >= freshtab.HANDOFF_PCT)) return { offer: false, pct };
+    const base = Number.isFinite(tab.session.contextBase) ? tab.session.contextBase : 0;
+    const grown = Math.max(0, (tab.session.context?.tokens || 0) - base);
+    if (!force && !freshtab.isHeavy({ pct, grown })) return { offer: false, pct };
     const items = d.history.load(tabId);
     const topic = freshtab.looksNewTopic(typed, freshtab.recentOf(items));
-    if (!force && !freshtab.shouldOffer({ pct, topic })) return { offer: false, pct, topic };
+    if (!force && !freshtab.shouldOffer({ pct, grown, topic })) return { offer: false, pct, topic };
     const summary = freshtab.summarize(items, { title: tab.title });
     return { offer: true, pct, topic, summary, saved: freshtab.saved(tab.session.context?.tokens, summary.tokens) };
   }, [obj({ tabId: ID, text: text(50000), force: opt(v => typeof v === 'boolean') })]);

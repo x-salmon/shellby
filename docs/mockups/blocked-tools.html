@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Blocked tool line: 5 mockups</title>
+<style>
+  :root {
+    --bg: #0f1a1a; --surface: #152424; --surface-2: #1b2e2e; --line: #26403f;
+    --sand: #e8dcc4; --sand-dim: #b9ad96; --sand-faint: #7f8a84;
+    --coral: #e8846b; --coral-soft: rgba(232,132,107,.12);
+    --sea: #6cc4b4; --sea-soft: rgba(108,196,180,.12); --amber: #e0b45c;
+    --mono: "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0a1212; color: var(--sand); font: 13px/1.45 "Segoe UI", system-ui, sans-serif; padding: 32px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lede { color: var(--sand-dim); margin: 0 0 28px; max-width: 70ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 24px; }
+  .mock { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .mock header { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .mock header b { color: var(--sea); margin-right: 6px; }
+  .mock header p { margin: 4px 0 0; color: var(--sand-faint); font-size: 12px; }
+  .stage { padding: 18px 16px 22px; }
+  .turn-foot { color: var(--sand-faint); font-size: 11px; text-align: center; margin-bottom: 10px; }
+  code, .path { font-family: var(--mono); font-size: 12px; }
+  .btn { font: inherit; font-size: 12px; border-radius: 6px; padding: 3px 10px; cursor: pointer; border: 1px solid var(--line); background: var(--surface-2); color: var(--sand); }
+  .btn.primary { background: var(--sea); color: #0b1616; border-color: var(--sea); font-weight: 600; }
+  .btn.ghost { background: transparent; color: var(--sand-dim); border-color: transparent; }
+  .btn:hover { filter: brightness(1.15); }
+
+  /* 1: plain English with the reason */
+  .m1 { text-align: center; color: var(--sand-dim); font-size: 12px; max-width: 60ch; margin: 0 auto; }
+  .m1 .why { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 99px; font-size: 11px; background: var(--surface-2); color: var(--amber); border: 1px solid var(--line); }
+  .m1 .path { color: var(--sand); }
+
+  /* 2: line + inline actions */
+  .m2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; padding: 8px 12px; border-radius: 8px; background: var(--coral-soft); border: 1px solid rgba(232,132,107,.25); }
+  .m2 .ico { color: var(--coral); }
+  .m2 .txt { color: var(--sand); }
+  .m2 .acts { display: flex; gap: 6px; }
+
+  /* 3: collapsible card */
+  .m3 { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  .m3 summary { list-style: none; cursor: pointer; padding: 8px 12px; display: flex; gap: 8px; align-items: center; color: var(--sand-dim); }
+  .m3 summary::before { content: "▸"; color: var(--sand-faint); transition: transform .15s; }
+  .m3[open] summary::before { transform: rotate(90deg); }
+  .m3 .count { background: var(--coral); color: #1a0f0b; border-radius: 99px; padding: 0 7px; font-size: 11px; font-weight: 700; }
+  .m3 ul { margin: 0; padding: 0 12px 12px; list-style: none; display: grid; gap: 8px; }
+  .m3 li { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 10px; background: var(--bg); border-radius: 6px; border: 1px solid var(--line); }
+  .m3 .tool { font-weight: 600; font-size: 11px; color: var(--coral); text-transform: uppercase; letter-spacing: .04em; }
+  .m3 .src { grid-column: 2 / 4; color: var(--sand-faint); font-size: 11px; }
+  .m3 .src code { color: var(--amber); }
+
+  /* 4: crab speech bubble */
+  .m4 { display: flex; gap: 12px; align-items: flex-end; }
+  .crab { width: 40px; height: 32px; flex: none; image-rendering: pixelated;
+    background:
+      radial-gradient(circle at 30% 25%, #111 2px, transparent 3px),
+      radial-gradient(circle at 70% 25%, #111 2px, transparent 3px),
+      linear-gradient(var(--coral), #c4654e); border-radius: 12px 12px 6px 6px; }
+  .bubble { position: relative; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px 12px 12px 4px; padding: 10px 12px; max-width: 360px; }
+  .bubble p { margin: 0 0 8px; }
+  .bubble .path { color: var(--amber); }
+  .bubble .acts { display: flex; gap: 6px; }
+
+  /* 5: in-place marker + footer tally */
+  .step { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; color: var(--sand-dim); }
+  .step .k { width: 54px; flex: none; font-size: 11px; color: var(--sand-faint); text-transform: uppercase; }
+  .step.ok .k { color: var(--sea); }
+  .step.blocked { color: var(--sand-faint); text-decoration: line-through; text-decoration-color: rgba(232,132,107,.6); }
+  .step.blocked .k { color: var(--coral); text-decoration: none; }
+  .step .tag { text-decoration: none; display: inline-block; margin-left: 6px; font-size: 11px; color: var(--coral); }
+  .tally { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); display: flex; justify-content: space-between; align-items: center; color: var(--sand-faint); font-size: 12px; }
+  .tally b { color: var(--coral); }
+</style>
+</head>
+<body>
+<h1>The blocked-tool line: 5 mockups</h1>
+<p class="lede">Today: <em>"Claude was blocked from: Write (C:\Users\…\src\main\claude\api-key.js)"</em>, a quiet centered line under the turn.
+It doesn't say why, shows the full path, and offers no way to undo a block you didn't mean.</p>
+
+<div class="grid">
+
+  <section class="mock">
+    <header><b>1</b>Plain words + the reason
+      <p>Same quiet line, rewritten: a verb instead of the tool name, a path relative to the project, and a chip saying what blocked it. Smallest change.</p></header>
+    <div class="stage">
+      <div class="turn-foot">Opus · 42s · 3 files</div>
+      <div class="m1">Claude couldn't write <span class="path" title="C:\Users\jacob\Documents\GitHub\shellby\src\main\claude\api-key.js">src/main/claude/api-key.js</span><span class="why" title="Deny rule in .claude/settings.local.json">blocked by a rule</span></div>
+    </div>
+  </section>
+
+  <section class="mock">
+    <header><b>2</b>Inline actions
+      <p>A soft coral strip with "Allow once" (reruns that step) and "Always allow" (adds an allow rule, with the same preview as deny-rules.js). "Fine" dismisses it.</p></header>
+    <div class="stage">
+      <div class="turn-foot">Opus · 42s · 3 files</div>
+      <div class="m2">
+        <span class="ico">⛔</span>
+        <span class="txt">Blocked: write to <span class="path">api-key.js</span></span>
+        <span class="acts">
+          <button class="btn primary">Allow once</button>
+          <button class="btn">Always allow…</button>
+          <button class="btn ghost">Fine</button>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <section class="mock">
+    <header><b>3</b>Collapsible list with the source
+      <p>A one-line summary that opens to each block: tool, target and the rule or hook that matched, with Edit rule / Retry. Holds up with 5+ denials.</p></header>
+    <div class="stage">
+      <details class="m3" open>
+        <summary><span class="count">2</span> actions blocked this turn</summary>
+        <ul>
+          <li><span class="tool">Write</span><span class="path">src/main/claude/api-key.js</span><button class="btn">Retry</button>
+              <span class="src">Deny rule <code>Write(**/api-key.js)</code> · .claude/settings.local.json · <a style="color:var(--sea)">Edit rule</a></span></li>
+          <li><span class="tool">Bash</span><span class="path">git push --force</span><button class="btn">Retry</button>
+              <span class="src">You said no at 02:19</span></li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <section class="mock">
+    <header><b>4</b>Shellby says it
+      <p>The crab tells you himself in a speech bubble. It suits the app's voice and stands out more than a gray line, without the alarm of an error.</p></header>
+    <div class="stage">
+      <div class="m4">
+        <div class="crab" aria-hidden="true"></div>
+        <div class="bubble">
+          <p>I wasn't allowed to write <span class="path">api-key.js</span>. A rule in this project keeps me out of it.</p>
+          <div class="acts"><button class="btn primary">Let me this once</button><button class="btn ghost">Good call</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mock" style="grid-column: 1 / -1; max-width: 720px;">
+    <header><b>5</b>Marked where it happened + a footer tally
+      <p>The blocked step is struck through in place in the turn's steps, so you can see what Claude was trying to do at that moment. The footer counts the blocks and opens the list from #3.</p></header>
+    <div class="stage">
+      <div class="step ok"><span class="k">Read</span><span class="path">src/main/claude/setup.js</span></div>
+      <div class="step ok"><span class="k">Edit</span><span class="path">src/main/claude/index.js</span></div>
+      <div class="step blocked"><span class="k">Write</span><span class="path">src/main/claude/api-key.js</span><span class="tag">⛔ blocked by rule</span></div>
+      <div class="step ok"><span class="k">Bash</span><span class="path">npm test</span></div>
+      <div class="tally"><span>Opus · 42s · 3 files · <b>1 blocked</b></span><button class="btn">Review blocks</button></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

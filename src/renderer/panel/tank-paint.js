@@ -134,7 +134,8 @@
 
   function piece(ctx, p, t, still, alpha = 1) {
     const img = B.sprite(frameOf(p, t, still), p.palette);
-    const top = p.y - p.h + 1;
+    // A find's portrait is drawn `fine` pixels to one of the tank's (gifts.scenePortrait).
+    const fine = p.fine || 1, dw = img.width / fine, top = p.y + 1 - img.height / fine;
     if (p.layer !== 'float') { // a soft shadow where it meets the floor
       ctx.fillStyle = '#000';
       ctx.globalAlpha = 0.2 * alpha;
@@ -143,12 +144,12 @@
     ctx.globalAlpha = alpha;
     if (p.flip) {
       ctx.save();
-      ctx.translate(p.x + p.w, top);
+      ctx.translate(p.x + dw, top);
       ctx.scale(-1, 1);
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, dw, img.height / fine);
       ctx.restore();
     } else {
-      ctx.drawImage(img, p.x, top);
+      ctx.drawImage(img, p.x, top, dw, img.height / fine);
     }
     ctx.globalAlpha = 1;
   }

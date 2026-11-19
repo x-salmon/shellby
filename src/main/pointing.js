@@ -64,7 +64,7 @@ function cropRect(picks, bounds, { offset = { x: 0, y: 0 }, zoom = 1, pad = PAD 
 }
 
 /** Text from a page, fenced under tag so nothing in it can close the fence. Pure. */
-const fence = (tag, text) => `<${tag}>\n${String(text).replace(/<\/?(page|dev)-/gi, m => m.replace('<', '‹'))}\n</${tag}>`;
+const fence = (tag, text) => `<${tag}>\n${String(text).replace(/<\/?(page|dev)-/gi, m => `‹${m.slice(1)}`)}\n</${tag}>`;
 
 /** The picks as numbered lines: "1. "Save" (button.save)". Pure. */
 function pickLines(picks) {

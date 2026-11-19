@@ -24,6 +24,7 @@ key community packs get. Two packs in here must therefore never use the same ite
 | `harvest.json` | 7 accessories, 1 effect | Autumn had 2 items. |
 | `sweetheart.json` | 6 accessories, 1 effect | Valentine had 2 items. |
 | `haunted-shell.json` | 8 accessories, 3 effects, 2 skins | Spooky Season had 4 items and the ghost skin. Every slot gets at least one, all seasonal. |
+| `holidays.json` | 30 accessories, 3 effects | The smaller holidays (`src/main/wardrobe/seasons.js`): New Year’s Eve, St. Patrick’s, Easter, Earth Day, Mother’s and Father’s Day, Memorial Day, the Fourth of July, Labor Day, Veterans Day and Thanksgiving. Each holiday’s outfit uses only its own items, so none of it is stripped for being locked. |
 | `high-places.json` | 8 accessories | One per slot from the window-perching trophies (`window-sill`, `hang-on`, `rodeo`, `leap-of-faith`, `trapeze`), plus three from climbing the screen and mischief (`spider-crab`, `sticky-feet`, `little-gremlin`). |
 | `crab-species.json` | 4 skins | Reshaped crabs. Three move their `anchors` so accessories still land correctly. |
 | `theme-crabs.json` | 6 skins | Recolours for themed desktops. |

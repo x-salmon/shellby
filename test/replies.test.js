@@ -4,7 +4,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  RemoteAnswers, supportsReplies, newNonce, deskOnlyReason, appDeskOnlyReason, APP_SHOW_MAX,
+  RemoteAnswers, supportsReplies, newNonce, deskOnlyReason, appDeskOnlyReason, appCaution, APP_SHOW_MAX,
   parseNtfyMessage, parseTelegramCallback, TTL_MS,
 } = require('../src/main/channels/replies');
 const channels = require('../src/main/channels');
@@ -43,16 +43,31 @@ test('the phone app answers a long command or edit, since it shows all of it', (
   assert.equal(appDeskOnlyReason({ toolName: 'Edit', input: { file_path: 'a.js', old_string: 'a'.repeat(9000), new_string: 'b' } }), null);
   assert.equal(appDeskOnlyReason({ toolName: 'Write', input: { file_path: 'a.js', content: 'w'.repeat(9000) } }), null);
   assert.equal(appDeskOnlyReason({ toolName: 'MultiEdit', input: { file_path: 'a.js', edits: [{ old_string: 'a'.repeat(400), new_string: 'b' }] } }), null);
-  assert.match(appDeskOnlyReason({ toolName: 'Bash', input: { command: 'x'.repeat(APP_SHOW_MAX + 1) } }), /too long/, 'past what the app shows: the desk');
-  assert.match(appDeskOnlyReason({ toolName: 'mcp__x__y', detail: 'y'.repeat(500), input: { q: 'y'.repeat(500) } }), /too long/, 'nothing it shows whole');
-  assert.match(appDeskOnlyReason({ ...long, runsCreated: ['build.ps1'] }), /wrote/, 'the other desk rules still hold');
-  // Where it writes matters as much as what: a path the app can't show whole stays at the desk.
-  assert.match(appDeskOnlyReason({ toolName: 'Write', input: { file_path: `C:/${'d/'.repeat(200)}a.js`, content: 'w'.repeat(400) } }), /too long/);
-  assert.match(appDeskOnlyReason({ toolName: 'Edit', input: { file_path: 'a.js' + String.fromCharCode(10) + 'b.js', old_string: 'a', new_string: 'b' } }), /can’t show all/);
-  assert.match(appDeskOnlyReason({ toolName: 'Write', input: { file_path: 'a.js', content: 'w'.repeat(APP_SHOW_MAX + 1) } }), /can’t show all/);
-  // Only a shell's command is all there is to read; another tool's may come with more.
-  assert.match(appDeskOnlyReason({ toolName: 'mcp__x__run', input: { command: 'x'.repeat(400), env: { A: '1' } } }), /too long/);
-  assert.equal(appDeskOnlyReason({ toolName: 'PowerShell', input: { command: 'x'.repeat(400) } }), null);
+  assert.equal(appCaution(long), null, 'shown in full: nothing to warn about');
+  assert.equal(appCaution({ toolName: 'PowerShell', input: { command: 'x'.repeat(400) } }), null);
+});
+
+test('the phone app allows what a channel keeps for the desk, with a warning first', () => {
+  const cases = [
+    [{ toolName: 'Bash', input: { command: 'x'.repeat(APP_SHOW_MAX + 1) } }, /only part/],
+    [{ toolName: 'mcp__x__y', detail: 'y'.repeat(500), input: { q: 'y'.repeat(500) } }, /only part/],
+    [{ toolName: 'Bash', input: { command: 'python3 build.py' }, runsCreated: ['build.py'] }, /wrote this session \(build\.py\)/],
+    [{ toolName: 'Edit', input: { file_path: 'a.js', old_string: 'a', new_string: 'b' }, selfConfig: 'your hooks' }, /changes your hooks/],
+    [{ toolName: 'Write', input: { file_path: `C:/${'d/'.repeat(200)}a.js`, content: 'w'.repeat(400) } }, /only part/],
+    [{ toolName: 'Edit', input: { file_path: 'a.js' + String.fromCharCode(10) + 'b.js', old_string: 'a', new_string: 'b' } }, /only part/],
+    [{ toolName: 'Write', input: { file_path: 'a.js', content: 'w'.repeat(APP_SHOW_MAX + 1) } }, /only part/],
+    [{ toolName: 'mcp__x__run', input: { command: 'x'.repeat(400), env: { A: '1' } } }, /only part/],
+    [{ toolName: 'Bash', deskOnly: 'It changes 3 files and the card shows one: check it at the desk.' }, /^It changes 3 files and the card shows one\.$/],
+  ];
+  for (const [item, warns] of cases) {
+    assert.equal(appDeskOnlyReason(item), null, JSON.stringify(item).slice(0, 80));
+    assert.match(appCaution(item), warns);
+  }
+  assert.ok(deskOnlyReason(cases[2][0]), 'a one-line channel still waits for the desk');
+  // Only what the phone has no way to answer stays at the desk.
+  assert.match(appDeskOnlyReason({ toolName: 'AskUserQuestion', input: {} }), /question/);
+  assert.match(appDeskOnlyReason({ toolName: 'ExitPlanMode', input: { plan: ' ' } }), /plan/);
+  assert.ok(appDeskOnlyReason(null));
 });
 
 test('ntfy replies parse only the exact allow/deny shape', () => {

@@ -6,7 +6,7 @@
 
 .meta.turn-foot {
   --tf-fill: var(--glass);
-  display: block; max-width: 760px; margin: 8px 0 18px;
+  display: block; max-width: 760px; margin: 8px auto 18px;
   color: var(--sand-faint); font: 500 var(--fs-10-5) var(--font-mono); font-stretch: 88%;
 }
 .meta.turn-foot::before, .meta.turn-foot::after { content: none; }
@@ -43,8 +43,10 @@ button.tf-open:focus-visible { outline: 2px solid var(--glass); outline-offset: 
 .tf-state { color: var(--glass); flex: none; }
 .is-stopped .tf-state, .is-waiting .tf-state { color: var(--amber); }
 .is-failed .tf-state { color: var(--danger); }
-.is-waiting .tf-state { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; max-width: 22ch; }
-.tf-soft { overflow: hidden; text-overflow: ellipsis; }
+/* What it's waiting on matters more than the time and steps beside it, so those give way
+   first. Only a long single task's description is cut, at the row's width. */
+.is-waiting .tf-state { overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; max-width: 100%; }
+.tf-soft { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .tf-room { margin-left: auto; flex: none; display: flex; align-items: baseline; gap: 7px; }
 .tf-full { color: var(--sand-dim); }
 .is-filling .tf-full { color: var(--amber); }
@@ -71,6 +73,9 @@ button.tf-open:focus-visible { outline: 2px solid var(--glass); outline-offset: 
 
 /* ---------------------------------------------------------------- opened */
 .tf-more { margin-top: 6px; padding: 8px 11px; border-radius: var(--r-sm); background: var(--reef); }
+.tf-receipt { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 14px; margin: 0; font: 400 var(--fs-12) / 1.55 var(--font-body); }
+.tf-receipt dt { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--sand); }
+.tf-receipt dd { margin: 0; max-width: 64ch; color: var(--sand-dim); text-wrap: pretty; }
 .tf-more p { margin: 0; max-width: 64ch; font: 400 var(--fs-12) / 1.55 var(--font-body); color: var(--sand-dim); text-wrap: pretty; white-space: normal; }
 
 /* The costliest-turns menu (tab-meters.js) lands here. */

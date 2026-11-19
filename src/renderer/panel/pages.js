@@ -31,6 +31,8 @@
 
   /** @type {any[]} */
   let list = [];
+  /** @type {any[]} */
+  let drafts = []; // made by a conversation, not saved yet (wiring/pages.js list)
   let on = true;
   /** @type {string | null} */
   let openId = null;
@@ -70,6 +72,34 @@
     const a = arrived(p);
     if (!a) return null;
     return a.kind === 'new' ? 'Off: look before it runs' : 'Your version still runs';
+  }
+
+  /**
+   * A draft beside the conversation building it, while that conversation is
+   * open (so it can still change it and hears what you point at); full size here otherwise.
+   */
+  async function openDraft(d) {
+    if (d.tab && state.tabs.has(d.tab)) {
+      SB.activate(d.tab);
+      if (await SB.tools?.openPage(d.id)) return;
+    }
+    open(d.id);
+  }
+
+  /** Drafts not saved yet, above the shelf: one made while its chat was out of sight has no other way back. */
+  function draftsNotice() {
+    if (!drafts.length) return null;
+    const rows = drafts.map(d => h('div', { class: 'pg-arrive-row' },
+      h('span', { class: 'pg-arrive-icon', 'aria-hidden': 'true', text: d.icon || '▦' }),
+      h('span', { text: d.name }),
+      h('span', { class: 'pg-arrive-when faint small', text: SB.relTime(d.updatedAt) }),
+      h('button', { type: 'button', class: 'btn slim-btn', text: 'Open', 'aria-label': `Open the draft of ${d.name}`, onclick: () => openDraft(d) }),
+      h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Throw away', 'aria-label': `Throw away the draft of ${d.name}`, onclick: () => api.pages.remove(d.id).then(fail) })));
+    return h('div', { class: 'pg-card pg-arrive', role: 'region', 'aria-label': 'Drafts' },
+      h('div', { class: 'pg-arrive-body' },
+        h('h3', { text: drafts.length === 1 ? 'A draft, not saved yet' : `${drafts.length} drafts, not saved yet` }),
+        h('p', { class: 'muted small', text: 'Open one and press Save to my pages to keep it.' }),
+        ...rows));
   }
 
   /** "2 pages came from your laptop", above the shelf, with Look at them. */
@@ -145,6 +175,9 @@
     const notice = query.trim() ? null : arrivalsNotice();
     $('pgArrivals').replaceChildren(...(notice ? [notice] : []));
     $('pgArrivals').hidden = !notice;
+    const draftBox = on && !query.trim() ? draftsNotice() : null;
+    $('pgDrafts').replaceChildren(...(draftBox ? [draftBox] : []));
+    $('pgDrafts').hidden = !draftBox;
     $('pgGrid').replaceChildren(...found.map(f => tile(f.p, f.hit)));
     $('pgGrid').hidden = !found.length;
     const empty = $('pgEmpty');
@@ -387,6 +420,7 @@
     const r = await api.pages.list().catch(() => null);
     on = !!r?.on;
     list = r?.pages || [];
+    drafts = r?.drafts || [];
     state.pages = list;
     SB.refreshTabList?.(); // its Pinned pages row (tab-overview.js)
     if (!openId) renderShelf();

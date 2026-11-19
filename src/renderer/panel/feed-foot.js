@@ -70,9 +70,11 @@
         const id = `tf-more-${++footIds}`;
         // What every turn carries before your words, once the Lean tab has measured it ("setup ~14k/turn").
         const setup = SB.lean?.line?.() || '';
+        // A receipt: each figure right-aligned in its own column, its words beside it.
+        const setupNum = /~?[\d.,]+[kKM]?/.exec(setup)?.[0];
+        const rows = [...(v.receipt || []), ...(setupNum ? [{ num: setupNum, text: 'setup on every turn, before your words. Toolbox → Lean lists it' }] : [])];
         more = h('div', { class: 'tf-more', id, hidden: true },
-          h('p', { text: v.details }),
-          setup ? h('p', { class: 'tf-setup', text: `${setup}: what every message carries before your words. Toolbox → Lean lists it.` }) : null,
+          h('dl', { class: 'tf-receipt' }, ...rows.flatMap(r => [h('dt', { text: r.num || '' }), ' ', h('dd', { text: r.text })])),
           fork ? h('div', { class: 'tf-acts' }, fork) : null);
         row = h('button', { class: 'tf-open', type: 'button', 'aria-expanded': 'false', 'aria-controls': id, title: fork ? 'What this turn cost, and branching from here' : 'What this turn cost',
           onclick: () => this.toggleFoot(foot) }, summary);

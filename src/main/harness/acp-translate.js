@@ -36,7 +36,7 @@ function textOf(content) {
 function argvText(argv) {
   return argv.map(a => {
     const s = String(a ?? '');
-    return /[\s"']/.test(s) || !s ? `"${s.replace(/"/g, '\\"')}"` : s;
+    return /[\s"']/.test(s) || !s ? `"${s.replace(/[\\"]/g, '\\$&')}"` : s;
   }).join(' ').slice(0, MAX_TEXT);
 }
 

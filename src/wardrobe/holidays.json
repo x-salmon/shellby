@@ -1,0 +1,626 @@
+{
+  "$schema": "https://raw.githubusercontent.com/x-salmon/shellby/main/docs/addon.schema.json",
+  "format": 1,
+  "id": "holidays",
+  "name": "Holidays",
+  "author": "x-salmon",
+  "version": "1.0.0",
+  "description": "Outfits for the holidays between the big seasons: New Year’s Eve, St. Patrick’s Day, Easter, Earth Day, Mother’s Day, Memorial Day, Father’s Day, the Fourth of July, Labor Day, Veterans Day and Thanksgiving.",
+  "homepage": "https://github.com/x-salmon/shellby",
+  "accessories": [
+    {
+      "id": "new-year-tiara",
+      "name": "New Year Tiara",
+      "description": "New Year’s Eve collectible. Worn from about ten to midnight.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "new-year" },
+      "pivot": [3, 2],
+      "palette": { "w": "#fff4e4", "g": "#ffd23f", "s": "#9bf6ff", "G": "#c99a2e" },
+      "pixels": [
+        "..w.w..",
+        ".gsgsg.",
+        "GGGGGGG"
+      ]
+    },
+    {
+      "id": "countdown-glasses",
+      "name": "Countdown Glasses",
+      "description": "New Year’s Eve collectible. Ten, nine, eight, he loses count.",
+      "slot": "face",
+      "unlock": { "season": "new-year" },
+      "pivot": [4, 1],
+      "palette": { "g": "#ffd23f", "k": "#2b2d42", "y": "#fff3b0" },
+      "pixels": [
+        "gggg.gggg",
+        "gkygggykg",
+        ".gg...gg."
+      ]
+    },
+    {
+      "id": "noisemaker",
+      "name": "Noisemaker",
+      "description": "New Year’s Eve collectible. One toot per year. He saves it.",
+      "slot": "held",
+      "unlock": { "season": "new-year" },
+      "pivot": [1, 5],
+      "palette": { "y": "#ffd23f", "r": "#e63946" },
+      "pixels": [
+        ".y.",
+        ".r.",
+        ".y.",
+        ".r.",
+        "yry",
+        "rrr"
+      ]
+    },
+    {
+      "id": "leprechaun-hat",
+      "name": "Lucky Hat",
+      "description": "St. Patrick’s Day collectible. Green, tall and a size too big.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "st-patricks" },
+      "pivot": [3, 4],
+      "palette": { "G": "#2a9d55", "k": "#1b1b1b", "y": "#ffd23f" },
+      "pixels": [
+        "..GGG..",
+        "..GGG..",
+        "..kyk..",
+        "..GGG..",
+        "GGGGGGG"
+      ]
+    },
+    {
+      "id": "shamrock-pin",
+      "name": "Shamrock Pin",
+      "description": "St. Patrick’s Day collectible. Three leaves. He checked twice for a fourth.",
+      "slot": "neck",
+      "unlock": { "season": "st-patricks" },
+      "pivot": [3, 2],
+      "palette": { "g": "#52b788", "G": "#2a9d55" },
+      "pixels": [
+        "..g.g..",
+        "GGGgGGG",
+        "...G..."
+      ]
+    },
+    {
+      "id": "pot-of-gold",
+      "name": "Pot of Gold",
+      "description": "St. Patrick’s Day collectible. Found at the end of a very short rainbow.",
+      "slot": "held",
+      "unlock": { "season": "st-patricks" },
+      "pivot": [2, 3],
+      "palette": { "y": "#ffd23f", "Y": "#fff3b0", "k": "#2b2d42", "K": "#4a4e69" },
+      "pixels": [
+        ".yYy.",
+        "kkkkk",
+        ".kKk.",
+        ".kkk."
+      ]
+    },
+    {
+      "id": "bunny-ears",
+      "name": "Bunny Ears",
+      "description": "Easter collectible. He hops now. Sideways.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "easter" },
+      "pivot": [3, 4],
+      "palette": { "w": "#fff4f7", "p": "#ffb3c6" },
+      "pixels": [
+        ".w...w.",
+        "wpw.wpw",
+        "wpw.wpw",
+        ".w...w.",
+        ".wwwww."
+      ]
+    },
+    {
+      "id": "egg-basket",
+      "name": "Egg Basket",
+      "description": "Easter collectible. Three found. He hid them himself.",
+      "slot": "held",
+      "unlock": { "season": "easter" },
+      "pivot": [2, 3],
+      "palette": { "k": "#9b6b45", "K": "#6b4a2f", "p": "#ffb3c6", "b": "#a0c4ff", "g": "#b9fbc0" },
+      "pixels": [
+        ".pbg.",
+        "kkkkk",
+        "kKkKk",
+        ".kkk."
+      ]
+    },
+    {
+      "id": "painted-egg",
+      "name": "Painted Egg",
+      "description": "Easter collectible. A shell for the shell.",
+      "slot": "shell",
+      "rarity": "epic",
+      "unlock": { "season": "easter" },
+      "pivot": [2, 5],
+      "palette": { "p": "#ffb3c6", "y": "#ffe66d", "b": "#a0c4ff", "g": "#b9fbc0" },
+      "pixels": [
+        ".ppp.",
+        "pyyyp",
+        "bbbbb",
+        "pgpgp",
+        "ppppp",
+        ".ppp."
+      ]
+    },
+    {
+      "id": "sapling-hat",
+      "name": "Sapling",
+      "description": "Earth Day collectible. Planted on his head. Watered daily.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "earth-day" },
+      "pivot": [2, 4],
+      "palette": { "g": "#52b788", "s": "#6b4a2f", "K": "#c1693c" },
+      "pixels": [
+        "g...g",
+        ".g.g.",
+        "..s..",
+        ".KKK.",
+        "KKKKK"
+      ]
+    },
+    {
+      "id": "little-globe",
+      "name": "Little Globe",
+      "description": "Earth Day collectible. He holds it carefully. It’s the only one.",
+      "slot": "held",
+      "unlock": { "season": "earth-day" },
+      "pivot": [2, 4],
+      "palette": { "b": "#4895ef", "g": "#52b788" },
+      "pixels": [
+        ".bbb.",
+        "bggbb",
+        "bbggb",
+        "bgbbb",
+        ".bbb."
+      ]
+    },
+    {
+      "id": "moss-shell",
+      "name": "Moss Shell",
+      "description": "Earth Day collectible. Something is growing on him, on purpose.",
+      "slot": "shell",
+      "unlock": { "season": "earth-day" },
+      "pivot": [3, 2],
+      "palette": { "f": "#fff4e4", "g": "#52b788", "G": "#2d6a4f" },
+      "pixels": [
+        "..f.f..",
+        ".GgGgG.",
+        "GgGgGgG"
+      ]
+    },
+    {
+      "id": "pearl-necklace",
+      "name": "Pearl Necklace",
+      "description": "Mother’s Day collectible. Borrowed. He will give it back.",
+      "slot": "neck",
+      "rarity": "rare",
+      "unlock": { "season": "mothers-day" },
+      "pivot": [4, 2],
+      "palette": { "w": "#fff4f7", "W": "#f2c6d4" },
+      "pixels": [
+        "w.......w",
+        ".w.....w.",
+        "..wwWww.."
+      ]
+    },
+    {
+      "id": "carnation",
+      "name": "Carnation",
+      "description": "Mother’s Day collectible. Picked this morning, for someone.",
+      "slot": "held",
+      "unlock": { "season": "mothers-day" },
+      "pivot": [1, 5],
+      "palette": { "p": "#ff5d8f", "P": "#ffb3c6", "g": "#52b788" },
+      "pixels": [
+        "pPp",
+        "PpP",
+        ".g.",
+        "gg.",
+        ".g.",
+        ".g."
+      ]
+    },
+    {
+      "id": "remembrance-ribbon",
+      "name": "Remembrance Ribbon",
+      "description": "Memorial Day collectible. Worn quietly.",
+      "slot": "neck",
+      "unlock": { "season": "memorial-day" },
+      "pivot": [2, 3],
+      "palette": { "r": "#e63946" },
+      "pixels": [
+        ".rrr.",
+        "r...r",
+        ".r.r.",
+        "r...r"
+      ]
+    },
+    {
+      "id": "memorial-wreath",
+      "name": "Small Wreath",
+      "description": "Memorial Day collectible. For the ones who aren’t here.",
+      "slot": "held",
+      "unlock": { "season": "memorial-day" },
+      "pivot": [2, 4],
+      "palette": { "g": "#2d6a4f", "r": "#e63946" },
+      "pixels": [
+        ".ggg.",
+        "gr.rg",
+        "g...g",
+        "gr.rg",
+        ".ggg."
+      ]
+    },
+    {
+      "id": "dad-cap",
+      "name": "Dad Cap",
+      "description": "Father’s Day collectible. Brim forward. Always forward.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "fathers-day" },
+      "pivot": [3, 2],
+      "palette": { "b": "#3a86ff", "w": "#fff4e4", "B": "#1d4e9e" },
+      "pixels": [
+        ".bbbb..",
+        "bbwbbb.",
+        "BBBBBBB"
+      ]
+    },
+    {
+      "id": "grill-spatula",
+      "name": "Grill Spatula",
+      "description": "Father’s Day collectible. He is in charge of the grill today.",
+      "slot": "held",
+      "unlock": { "season": "fathers-day" },
+      "pivot": [1, 6],
+      "palette": { "s": "#c0c6cf", "k": "#2b2d42" },
+      "pixels": [
+        "sss",
+        "sss",
+        ".s.",
+        ".k.",
+        ".k.",
+        ".k.",
+        ".k."
+      ]
+    },
+    {
+      "id": "star-topper",
+      "name": "Star Topper",
+      "description": "Fourth of July collectible. Stripes on the hat, stars on the band.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "independence-day" },
+      "pivot": [2, 4],
+      "palette": { "b": "#1d3557", "w": "#fff4e4", "r": "#e63946" },
+      "pixels": [
+        ".bwb.",
+        ".rrr.",
+        ".www.",
+        ".rrr.",
+        "bbbbb"
+      ]
+    },
+    {
+      "id": "sparkler",
+      "name": "Sparkler",
+      "description": "Fourth of July collectible. Held at arm’s length. Claw’s length.",
+      "slot": "held",
+      "unlock": { "season": "independence-day" },
+      "pivot": [1, 6],
+      "palette": { "y": "#ffd23f", "Y": "#fff3b0", "k": "#8d99ae" },
+      "pixels": [
+        "y.y",
+        ".Y.",
+        "y.y",
+        ".k.",
+        ".k.",
+        ".k.",
+        ".k."
+      ]
+    },
+    {
+      "id": "builder-helmet",
+      "name": "Builder Helmet",
+      "description": "Labor Day collectible. A day off, dressed for work anyway.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "labor-day" },
+      "pivot": [3, 2],
+      "palette": { "y": "#ffb703", "Y": "#ffe8a3" },
+      "pixels": [
+        ".yyyy..",
+        "yyYyyy.",
+        "yyyyyyy"
+      ]
+    },
+    {
+      "id": "work-bandana",
+      "name": "Work Bandana",
+      "description": "Labor Day collectible. Tied on like he means it.",
+      "slot": "neck",
+      "unlock": { "season": "labor-day" },
+      "pivot": [3, 2],
+      "palette": { "r": "#d62828", "w": "#fff4e4" },
+      "pixels": [
+        "rrrrrrr",
+        ".rwrwr.",
+        "..rrr.."
+      ]
+    },
+    {
+      "id": "lunch-pail",
+      "name": "Lunch Pail",
+      "description": "Labor Day collectible. Sandwich, apple, a note.",
+      "slot": "held",
+      "unlock": { "season": "labor-day" },
+      "pivot": [2, 4],
+      "palette": { "k": "#2b2d42", "b": "#c0c6cf", "B": "#8d99ae" },
+      "pixels": [
+        ".kkk.",
+        "k...k",
+        "bbbbb",
+        "bBBBb",
+        "bbbbb"
+      ]
+    },
+    {
+      "id": "garrison-cap",
+      "name": "Garrison Cap",
+      "description": "Veterans Day collectible. Worn straight, with thanks.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "veterans-day" },
+      "pivot": [3, 1],
+      "palette": { "O": "#4b5320", "y": "#ffd23f" },
+      "pixels": [
+        ".OOOOO.",
+        "OOOOOOy"
+      ]
+    },
+    {
+      "id": "service-medal",
+      "name": "Service Medal",
+      "description": "Veterans Day collectible. For service.",
+      "slot": "neck",
+      "unlock": { "season": "veterans-day" },
+      "pivot": [1, 0],
+      "palette": { "r": "#d62828", "b": "#1d3557", "y": "#ffd23f", "Y": "#fff3b0" },
+      "pixels": [
+        "rbr",
+        "rbr",
+        ".y.",
+        "yYy",
+        ".y."
+      ]
+    },
+    {
+      "id": "poppy",
+      "name": "Poppy",
+      "description": "Veterans Day collectible. Red for remembering.",
+      "slot": "held",
+      "unlock": { "season": "veterans-day" },
+      "pivot": [1, 5],
+      "palette": { "r": "#d62828", "k": "#1b1b1b", "g": "#2d6a4f" },
+      "pixels": [
+        "rrr",
+        "rkr",
+        "rrr",
+        ".g.",
+        ".g.",
+        ".g."
+      ]
+    },
+    {
+      "id": "turkey-hat",
+      "name": "Turkey Hat",
+      "description": "Thanksgiving collectible. Gobbles when he nods.",
+      "slot": "hat",
+      "rarity": "rare",
+      "unlock": { "season": "thanksgiving" },
+      "pivot": [3, 3],
+      "palette": { "o": "#e8772e", "r": "#b4531b", "y": "#ffd23f", "b": "#7e5233", "w": "#fff4e4" },
+      "pixels": [
+        "o.r.y.o",
+        ".oryro.",
+        "..bbb..",
+        "..bwb.."
+      ]
+    },
+    {
+      "id": "napkin-bib",
+      "name": "Napkin Bib",
+      "description": "Thanksgiving collectible. Tucked in. Ready.",
+      "slot": "neck",
+      "unlock": { "season": "thanksgiving" },
+      "pivot": [2, 0],
+      "palette": { "w": "#fff4e4", "c": "#e0cdb4" },
+      "pixels": [
+        "wwwww",
+        ".wcw.",
+        "..w.."
+      ]
+    },
+    {
+      "id": "drumstick",
+      "name": "Drumstick",
+      "description": "Thanksgiving collectible. Bigger than his claw.",
+      "slot": "held",
+      "unlock": { "season": "thanksgiving" },
+      "pivot": [1, 4],
+      "palette": { "b": "#a0522d", "w": "#fff4e4" },
+      "pixels": [
+        ".bb",
+        "bbb",
+        "bb.",
+        ".w.",
+        "w.w"
+      ]
+    },
+    {
+      "id": "cornucopia",
+      "name": "Cornucopia",
+      "description": "Thanksgiving collectible. Plenty, carried on his back.",
+      "slot": "shell",
+      "rarity": "epic",
+      "unlock": { "season": "thanksgiving" },
+      "pivot": [3, 3],
+      "palette": { "k": "#c99a5b", "K": "#9b6b45", "o": "#e8772e", "g": "#52b788", "y": "#ffd23f", "r": "#e63946" },
+      "pixels": [
+        "kk.....",
+        "kKk.ogy",
+        ".kKkoro",
+        "..kkkk."
+      ]
+    }
+  ],
+  "effects": [
+    {
+      "id": "midnight-confetti",
+      "name": "Midnight Confetti",
+      "description": "New Year’s Eve collectible. It’s been falling since midnight.",
+      "motion": "fall",
+      "count": 10,
+      "speed": 0.6,
+      "fps": 3,
+      "rarity": "rare",
+      "unlock": { "season": "new-year" },
+      "sprites": [
+        {
+          "palette": { "y": "#ffd23f", "H": "#fff3b0" },
+          "pixels": [
+            "y.",
+            ".H"
+          ],
+          "frames": [
+            [
+              ".y",
+              "H."
+            ]
+          ]
+        },
+        {
+          "palette": { "s": "#9bf6ff", "H": "#e0fbff" },
+          "pixels": [
+            "s.",
+            ".H"
+          ],
+          "frames": [
+            [
+              ".s",
+              "H."
+            ]
+          ]
+        },
+        {
+          "palette": { "p": "#ff8fab", "H": "#ffd1dc" },
+          "pixels": [
+            "p.",
+            ".H"
+          ],
+          "frames": [
+            [
+              ".p",
+              "H."
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clovers",
+      "name": "Clovers",
+      "description": "St. Patrick’s Day collectible. Mostly three leaves. Keep looking.",
+      "motion": "fall",
+      "count": 10,
+      "speed": 0.6,
+      "fps": 3,
+      "rarity": "rare",
+      "unlock": { "season": "st-patricks" },
+      "sprites": [
+        {
+          "palette": { "g": "#52b788", "G": "#2a9d55", "s": "#2d6a4f" },
+          "pixels": [
+            ".g.",
+            "gGg",
+            ".s."
+          ],
+          "frames": [
+            [
+              "g.g",
+              ".G.",
+              "..s"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fireworks",
+      "name": "Fireworks",
+      "description": "Fourth of July collectible. Small ones, close up.",
+      "motion": "twinkle",
+      "count": 10,
+      "speed": 0.6,
+      "fps": 3,
+      "rarity": "epic",
+      "unlock": { "season": "independence-day" },
+      "sprites": [
+        {
+          "palette": { "r": "#e63946", "R": "#ffb3b8" },
+          "pixels": [
+            "r.r",
+            ".R.",
+            "r.r"
+          ],
+          "frames": [
+            [
+              ".r.",
+              "rRr",
+              ".r."
+            ]
+          ]
+        },
+        {
+          "palette": { "w": "#fff4e4", "W": "#ffffff" },
+          "pixels": [
+            "w.w",
+            ".W.",
+            "w.w"
+          ],
+          "frames": [
+            [
+              ".w.",
+              "wWw",
+              ".w."
+            ]
+          ]
+        },
+        {
+          "palette": { "b": "#4895ef", "B": "#a0c4ff" },
+          "pixels": [
+            "b.b",
+            ".B.",
+            "b.b"
+          ],
+          "frames": [
+            [
+              ".b.",
+              "bBb",
+              ".b."
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

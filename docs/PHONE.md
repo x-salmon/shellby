@@ -31,12 +31,12 @@ Settings walks you through it a step at a time, ticking each one off as it works
 
 **The beach** is everything at a glance, in the same order as the desk's tabs: what's waiting on you first, then what's ready to review, then what's finished, working and quiet. Shellby himself sits at the top, the real crab in the skin you chose, doing what he's doing on your desktop, with your 5-hour usage window under him. When Health is on at your PC, a line under that says how the PC itself is doing: the CPU's and graphics card's load and heat, memory, and the battery, with Health's own warning when something runs hot. Worth a look before you send something heavy off from the sofa.
 
-**A permission prompt** shows as a card with the plain sentence, the command (or the edit, line by line), and any warning the desk card would show. However long the command, the edit or the file being written, all of it is there, in a box you scroll, so **Allow** and **Deny** answer it straight from the beach, and when the desk card offers **Allow all edits** or **Always allow**, so does the phone. Some prompts are only ever answered at the desk:
+**A permission prompt** shows as a card with the plain sentence, the command (or the edit, line by line), and any warning the desk card would show. However long the command, the edit or the file being written, all of it is there, in a box you scroll, so **Allow** and **Deny** answer it straight from the beach, and when the desk card offers **Allow all edits** or **Always allow**, so does the phone. Some prompts come with a warning first, because the card can't show everything they do:
 
-- running a file Claude wrote this session, or changing Claude Code's own setup
+- running a file Claude wrote this session (the card shows the command, not what's in the file), or changing Claude Code's own setup
 - one the app can't show whole: a tool with no command or edit to show and a long description, or a command over 200,000 characters
 
-Those say why they wait for the desk (*"It changes your hooks: check it at the desk."*), with **Deny** and **See the conversation**.
+Those say why at the top of the card (*"It changes your hooks."*), and **Allow** and **Deny** still answer them from the phone, so nothing waits until you're back. They're allowed once only: no **Always allow**, and the notification's own buttons open the app instead of answering.
 
 **Questions and plans** open in a sheet. A question shows its options as buttons, with a box for your own answer, and **Skip** lets him carry on with his best judgement. A plan shows in full, and **Approve** stays shut until you've scrolled to the end. **Keep planning** sends your notes back with it.
 
@@ -126,7 +126,7 @@ This is the one feature that lets another device drive Claude Code on your PC, s
 - **Shellby listens on `127.0.0.1:47916` only.** Nothing on your Wi-Fi can reach it. Only Tailscale's `serve` can, and only for devices on your tailnet.
 - **Only your Tailscale login gets in.** Tailscale tells Shellby who each request is from, and anyone else on a shared tailnet is turned away. **Funnel** (which puts an address on the open internet) is never turned on, and if it's ever on for this address, Shellby stops serving.
 - **Each phone needs a code from your PC's screen** to pair, and keeps a token only it has. Shellby keeps a hash of it, never the token, and **Forget** in Settings ends that phone's access at once.
-- **The phone's rules:** Allow, Deny and the desk's always-allow, the mode you pick, limits on how many, and everything the desk card would warn about stays at the desk.
+- **The phone's rules:** Allow, Deny and the desk's always-allow, the mode you pick, limits on how many, and what the card can't show in full is allowed once, with a warning, never always.
 - **Each phone's rights** are checked on your PC on every call: a read-only phone is refused anything but looking, its own notifications and forgetting itself, whatever its app asks for.
 
 The details are in [SECURITY.md](../SECURITY.md#shellby-on-your-phone).

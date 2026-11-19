@@ -52,6 +52,7 @@
       Object.assign(this, { id, title, cwd, saved, routineId });
       this.busy = false;
       this.busySince = null;      // when the running turn started (main's clock, or ours until it reports)
+      this.autoRetried = null;    // the last blocked step Try again's countdown sent by itself (retryCountdown)
       this.pending = 0;
       this.crew = 0;
       this.outcome = null;
@@ -587,7 +588,8 @@
       for (const c of item.cost?.helpers || []) this.lanes.get(c.id)?.setCost(c);
       this.append(this.turnFoot(item, replay));
       // What the turn was refused by a rule or a hook (feed-logic.js denialsLine): one quiet line.
-      if (item.denials?.length) this.append(h('div', { class: 'turn-denials', role: 'note', title: 'Tool calls Claude Code refused this turn: a permission rule, a hook, or a No from you.', text: F.denialsLine(item.denials) }));
+      // Live, it carries what to do about it (deniedStrip); a reopened conversation keeps just the words.
+      if (item.denials?.length) this.append(replay ? this.deniedLine(item.denials) : this.deniedStrip(item.denials));
       // A warm cache it missed, helpers that outspent it, pictures piling up (turncost.js turnNotes).
       // A reopened conversation's old notes keep their words but not their buttons:
       // a fresh start offered before an earlier one would throw away this one.
@@ -596,6 +598,91 @@
       if (!item.ok && !item.interrupted && item.error && !item.crashed) this.append(this.troubleBlock(item.trouble, item.error));
       // ...and its helpers went with it.
       if (item.interrupted || item.crashed) for (const lane of this.lanes.values()) if (lane.status === 'running') lane.finish({ ok: false, stopped: true });
+    }
+
+    deniedLine(denials) {
+      return h('div', { class: 'turn-denials', role: 'note', title: 'Tool calls Claude Code refused this turn: a permission rule or a hook.', text: F.denialsLine(denials) });
+    }
+
+    // What the turn was refused, with Try again (a hook that's since let go,
+    // like the move into a copy), Show rule (when one of your deny rules did it:
+    // trying again would only be refused again) and Fine (back to the quiet line).
+    deniedStrip(denials) {
+      const retry = () => {
+        if (this.busy) return SB.toast('Let him finish first.');
+        SB.activate(this.id);
+        SB.send(F.retryPrompt(denials));
+        strip.replaceWith(this.deniedLine(denials));
+      };
+      const tryBtn = h('button', { class: 'btn slim-btn denied-try', type: 'button', title: 'Ask Claude to try the blocked step again', onclick: retry },
+        h('span', { text: 'Try again' }));
+      const fine = h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => strip.replaceWith(this.deniedLine(denials)) }, 'Fine');
+      const acts = h('span', { class: 'denied-acts' }, tryBtn, fine);
+      const strip = h('div', { class: 'turn-denied', role: 'note' },
+        h('span', { class: 'denied-text', text: F.denialsLine(denials) }), acts);
+      // Your rules are read for the project on screen, so only this tab's own can be checked.
+      if (this.isActive) this.findBlockingRule(denials).then(found => {
+        if (!strip.isConnected) return;
+        // Nothing of yours blocked it, so it may well go through now: count down to trying again.
+        if (!found) return this.retryCountdown(strip, tryBtn, fine, retry, F.retryPrompt(denials));
+        // Every one a rule blocked: trying again would just be refused again.
+        if (found.all) tryBtn.remove();
+        acts.prepend(h('button', { class: 'btn slim-btn', type: 'button', title: found.rule.rule, onclick: () => SB.showRule?.(found.rule) }, 'Show rule'));
+      });
+      return strip;
+    }
+
+    // Try again fills with coral and presses itself (RETRY_COUNTDOWN_MS). Hover, focus or a
+    // hidden panel holds it; Cancel restores the quiet line; busy or another tab stops it.
+    // The same block twice running is a hook that means it: no second countdown (a loop).
+    retryCountdown(strip, tryBtn, fine, retry, prompt) {
+      if (this.busy || this.autoRetried === prompt) return;
+      const fill = h('span', { class: 'denied-fill', 'aria-hidden': 'true' });
+      const secs = h('span', { class: 'denied-secs', 'aria-hidden': 'true' });
+      let left = F.RETRY_COUNTDOWN_MS, last = performance.now();
+      const show = () => { secs.textContent = `${F.countdownSecs(left)}s`; };
+      const stop = () => {
+        clearInterval(timer);
+        fill.remove();
+        secs.remove();
+        strip.classList.remove('counting', 'held');
+        fine.textContent = 'Fine';
+        tryBtn.title = 'Ask Claude to try the blocked step again';
+      };
+      const timer = setInterval(() => {
+        const now = performance.now();
+        const step = now - last; last = now;
+        if (!strip.isConnected) return clearInterval(timer);
+        if (this.busy || !this.isActive) return stop();
+        const held = document.hidden || strip.matches(':hover, :focus-within');
+        strip.classList.toggle('held', held);
+        if (held) return;
+        left -= step;
+        show();
+        if (left <= 0) {
+          clearInterval(timer);
+          this.autoRetried = prompt;
+          retry();
+        }
+      }, 250);
+      tryBtn.prepend(fill); tryBtn.append(secs);
+      tryBtn.title = 'Claude tries the blocked step again by itself when this fills up. Point at it to hold.';
+      fine.textContent = 'Cancel';
+      strip.style.setProperty('--retry-ms', `${F.RETRY_COUNTDOWN_MS}ms`);
+      strip.classList.add('counting');
+      show();
+    }
+
+    // The first of your deny rules that blocked one of these, and whether rules blocked them all.
+    async findBlockingRule(denials) {
+      const setup = await api.getClaudeSetup().catch(() => null);
+      const perms = setup?.permissions;
+      if (!perms?.rules?.length) return null;
+      const dir = scope => perms.files.find(f => f.scope === scope)?.path.replace(/[\\/]\.claude[\\/][^\\/]+$/, '') || '';
+      const where = { home: dir('user'), cwd: dir('project') };
+      const hits = denials.map(d => F.blockingRule(d, perms.rules, where));
+      const rule = hits.find(Boolean);
+      return rule ? { rule, all: hits.every(Boolean) } : null;
     }
 
     // The button on a note under a turn's cost, or null: helpers on Sonnet until

@@ -252,3 +252,13 @@ test('a milestone hint never shows more progress than the goal, and tolerates ju
   assert.equal(l.get('snow-globe').progress, null, 'seasons have no progress');
   assert.equal(l.get('snow-globe').hint, '❄️ Winter collectible');
 });
+
+test('a find in the tank is its shelf portrait, sized at half', () => {
+  const g = require('../src/main/gifts');
+  const f = g.FINDS.find(x => x.portrait);
+  const lib = T.library({ findState: { items: { [f.id]: { n: 1 } } }, finds: g.FINDS });
+  const e = lib.get(`find:${f.id}`);
+  assert.deepEqual(e.pixels, [...f.portrait.pixels]);
+  assert.equal(e.fine, 2);
+  assert.equal(e.w, Math.ceil(Math.max(...f.portrait.pixels.map(r => r.length)) / 2));
+});

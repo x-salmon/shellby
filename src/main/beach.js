@@ -230,7 +230,7 @@ function plotsOf(streakState, projects) {
  * castles, a find's width apart so none hides another. When one line fills up
  * they wash up just above it, then just below; only past that do they pile up.
  */
-const FIND_GAP = 9; // the widest find is 8 pixels
+const FIND_GAP = 11; // the widest find is 10 pixels (a 20-pixel portrait at half size)
 function placeFinds(owned, width, line, taken) {
   if (!owned.length) return [];
   const blocked = x => taken.some(([a, b]) => x + FIND_GAP - 1 > a && x - 1 < b);
@@ -337,7 +337,7 @@ function view({ stickerState, streakState, findState, bugState = null, state: st
     .filter(/** @returns {x is { f: NonNullable<ReturnType<typeof gifts.findById>>, it: any }} */ x => !!x.f)
     .sort((a, b) => a.it.first - b.it.first || a.f.id.localeCompare(b.f.id))
     .map(({ f, it }) => ({
-      id: f.id, name: f.name, rarity: f.rarity, blurb: f.blurb, pixels: f.pixels, palette: f.palette,
+      id: f.id, name: f.name, rarity: f.rarity, blurb: f.blurb, ...gifts.scenePortrait(f), // the shelf's drawing, at half size
       count: it.n, first: it.first, isNew: since > 0 && it.first > since,
     }));
   // Only what stands tall enough to hide the wrack line takes room on it; if

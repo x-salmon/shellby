@@ -58,7 +58,7 @@ test('a prompt says why the phone may only look, by the same rule as the phone n
     { tabId: 't1', requestId: 'r1', toolName: 'Bash', label: 'Run', detail: 'npm test', input: { command: 'npm test' }, plain: { ask: 'Run the tests' }, warnings: ['Goes online'] },
     { tabId: 't1', requestId: 'r2', toolName: 'ExitPlanMode', input: {}, planSummary: '4 steps' },
     { tabId: 't1', requestId: 'r3', toolName: 'Bash', input: { command: 'x'.repeat(400) } },
-    { tabId: 't1', requestId: 'r4', toolName: 'Bash', input: { command: 'node build.js' }, runsCreated: ['build.js'] },
+    { tabId: 't1', requestId: 'r4', toolName: 'Bash', input: { command: 'node build.js' }, runsCreated: ['build.js'], warnings: ['w1', 'w2', 'w3', 'w4', 'w5'] },
     { tabId: 't1', requestId: 'r5', toolName: 'mcp__x__y', detail: 'y'.repeat(500), input: { query: 'y'.repeat(500) } },
   ];
   const view = v.phoneView({ tabs, prompts });
@@ -72,8 +72,13 @@ test('a prompt says why the phone may only look, by the same rule as the phone n
   // A long command is shown whole on the phone, so it is the phone's to allow.
   assert.equal(view.prompts[2].deskOnly, null);
   assert.equal(view.prompts[2].preview.command.length, 400);
-  assert.match(view.prompts[3].deskOnly, /file Claude wrote/);
-  assert.match(view.prompts[4].deskOnly, /too long/, 'nothing the phone shows in full: still the desk');
+  // What the card can't show is the phone's to allow too, once, with the reason first.
+  assert.equal(view.prompts[3].deskOnly, null);
+  assert.match(view.prompts[3].warnings[0], /file Claude wrote/);
+  assert.equal(view.prompts[3].always, null, 'never always-allowed from the phone');
+  assert.deepEqual(view.prompts[3].warnings.slice(1), ['w1', 'w2', 'w3', 'w4'], 'the caution never pushes out a desk card warning');
+  assert.equal(view.prompts[4].deskOnly, null);
+  assert.match(view.prompts[4].warnings[0], /only part/);
 });
 
 test('an edit shows what it changes before you say yes', () => {
@@ -153,7 +158,9 @@ test('questions come with their options, and a plan in full, for the phone to an
   assert.deepEqual(view.prompts[0].questions, [{ question: 'Which?', header: 'DB', multiSelect: true, options: [{ label: 'A', description: 'first' }] }]);
   assert.equal(view.prompts[1].deskOnly, null);
   assert.equal(view.prompts[1].planText, '# Plan\n1. Go');
-  assert.match(view.prompts[2].deskOnly, /hooks/);
+  // Read in full, so the phone may approve it: what it touches is said first.
+  assert.equal(view.prompts[2].deskOnly, null);
+  assert.match(view.prompts[2].warnings[0], /hooks/);
 });
 
 test('a plan too long to show in full goes to the desk', () => {

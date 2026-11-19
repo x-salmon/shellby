@@ -569,14 +569,26 @@ function modeOf(ev) {
 }
 
 // What the turn was refused: Claude Code's own record of every tool call denied,
-// by you, a rule or a hook (result.permission_denials). [{ toolName, toolUseId, summary }].
+// by you, a rule or a hook (result.permission_denials). [{ toolName, toolUseId, summary, target? }].
+// target: the whole path, command or address it reached for, which the panel
+// matches against your deny rules (feed-logic.js blockingRule).
 const MAX_DENIALS = 20;
+const MAX_TARGET = 1000;
+function denialTarget(input) {
+  const i = input && typeof input === 'object' ? input : {};
+  const t = [i.file_path, i.notebook_path, i.command, i.url, i.path].find(v => typeof v === 'string' && v.trim());
+  return t ? oneLine(t, MAX_TARGET) : '';
+}
 function denialsOf(list) {
   if (!Array.isArray(list)) return [];
-  return list.slice(0, MAX_DENIALS).filter(d => d && typeof d.tool_name === 'string').map(d => ({
-    toolName: d.tool_name, toolUseId: typeof d.tool_use_id === 'string' ? d.tool_use_id : null,
-    summary: oneLine(describeTool(d.tool_name, d.tool_input).detail, 80),
-  }));
+  return list.slice(0, MAX_DENIALS).filter(d => d && typeof d.tool_name === 'string').map(d => {
+    const target = denialTarget(d.tool_input);
+    return {
+      toolName: d.tool_name, toolUseId: typeof d.tool_use_id === 'string' ? d.tool_use_id : null,
+      summary: oneLine(describeTool(d.tool_name, d.tool_input).detail, 80),
+      ...(target ? { target } : {}),
+    };
+  });
 }
 
 // Returns an array of UI items for one parsed stream-json event.

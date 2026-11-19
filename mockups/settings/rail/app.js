@@ -412,7 +412,8 @@
   });
 
   // The area is in the address, so Back and Forward step through where you've been.
-  const fromHash = () => (byKey[location.hash.slice(1)] ? location.hash.slice(1) : null);
+  // The key comes back from RAIL, never from the address: "#constructor" is truthy in byKey too.
+  const fromHash = () => RAIL.find(a => a.key === location.hash.slice(1))?.key ?? null;
   addEventListener('popstate', () => open(fromHash() || 'code', { push: false }));
 
   buildRail();

@@ -674,6 +674,7 @@ interface ShellbyPanelExtras {
   toolboxMods: any;
   // toolbox-setup.js
   setupKit: any;
+  showRule: any;
   toolboxSetup: any;
   // toolbox-snippets.js
   applySnippets: any;

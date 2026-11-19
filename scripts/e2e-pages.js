@@ -3,6 +3,8 @@
 // fake Claude CLI, whose "mcp <tool> <json>" calls the in-app MCP server:
 //   - create_page from a chat makes a draft that opens beside it, and runs
 //   - Save to my pages puts it on the shelf; the Pages screen opens it
+//   - a draft made while its chat is out of sight is listed on the shelf and
+//     opens when you go back to that chat; Throw away removes it
 //   - write_page from a conversation reaches the page (its onChange writes back)
 //   - a hostile page can't reach Shellby's DOM, top.location, storage or the
 //     network, even with the save checks dodged
@@ -101,6 +103,28 @@ const ESCAPE = [
 
     await ev("[...document.querySelectorAll('.pg-host.pane button')].find(b => b.textContent === 'Save to my pages').click()");
     check(await until("shellby.pages.list().then(r => r.pages.some(p => p.id === 'print-queue'))"), 'Save to my pages puts it on the shelf as print-queue');
+
+    // ---- a draft made while its chat is out of sight: listed on the shelf, and opens when you go back
+    const maker = await ev('SB.state.activeTab');
+    await ev('SB.newTab()');
+    check(await until(`SB.state.activeTab && SB.state.activeTab !== ${JSON.stringify(maker)}`), 'another conversation takes the screen');
+    const later = { name: 'Reading list', files: { 'index.html': INDEX, 'style.css': STYLE, 'app.js': APP } };
+    await ev(`shellby.sendTask(${JSON.stringify(maker)}, ${JSON.stringify(`mcp create_page ${JSON.stringify(later)}`)})`);
+    check(await until('shellby.pages.list().then(r => r.drafts?.length === 1)'), 'the draft is made in the background conversation');
+    const laterId = await ev('shellby.pages.list().then(r => r.drafts[0].id)');
+    const laterOpen = `JSON.stringify(SB.state.grid).includes(${JSON.stringify(`page:${laterId}`)})`;
+    await wait(400);
+    check(!(await ev(laterOpen)), "it doesn't open beside a conversation you aren't looking at");
+    await ev("SB.setView('pages')");
+    check(await until("[...document.querySelectorAll('#pgDrafts:not([hidden]) .pg-arrive-row')].some(r => r.textContent.includes('Reading list'))"), 'the Pages screen lists it under drafts');
+    await shot('2a-drafts-on-shelf');
+    await ev(`SB.activate(${JSON.stringify(maker)})`);
+    check(await until(laterOpen), 'going back to its conversation opens it beside it');
+    await ev("SB.setView('pages')");
+    await ev("[...document.querySelectorAll('#pgDrafts button')].find(b => b.textContent === 'Throw away').click()");
+    check(await until("shellby.pages.list().then(r => r.drafts.length === 0 && document.getElementById('pgDrafts').hidden)"), 'Throw away removes the draft from the shelf');
+    await ev(`SB.tools.close(${JSON.stringify(`page:${laterId}`)})`);
+    await ev("SB.setView('chat')");
 
     // ---- the shelf, and the page full size
     await ev("SB.setView('pages')");

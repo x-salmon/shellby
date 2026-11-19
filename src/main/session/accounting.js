@@ -131,6 +131,9 @@ const accounting = {
     if (!t) return;
     this.lastModel = t.model || this.lastModel;
     if (t.model) this.modelSwitched = false; // a reply on the model it was switched to
+    // A new chat's first reading is mostly the fixed setup (instructions, CLAUDE.md, tools):
+    // model-pick weighs only what the chat added since. A resumed one has no base, so counts it all.
+    if (this.contextBase == null && !this.resumeId && !this.context) this.contextBase = t.tokens;
     this.setContext(t.tokens, this.lastModel);
     // The first reading after a compact is the summary the turn carried on from.
     const compacted = this.turn?.compact;

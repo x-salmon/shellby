@@ -261,6 +261,8 @@
   // Which rules are opened up, so a rescan or a removal doesn't fold them all shut.
   const openRules = new Set();
   const ruleKey = r => `${r.scope}\n${r.list}\n${r.rule}`;
+  // The rule a blocked step's Show rule opened (feed.js deniedStrip): scrolled to once it's drawn.
+  let focusRule = null;
 
   async function removeRule(r) {
     const res = await call(() => api.removeRule(r.scope, r.list, r.rule));
@@ -290,6 +292,10 @@
           h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => api.revealSetupFile(r.path) }, 'Show file'),
           h('button', { class: 'btn danger slim-btn', type: 'button', onclick: () => removeRule(r) }, 'Remove rule'))));
     row.addEventListener('toggle', () => { if (row.open) openRules.add(key); else openRules.delete(key); });
+    if (focusRule === key) {
+      focusRule = null;
+      requestAnimationFrame(() => { row.scrollIntoView({ block: 'center' }); row.querySelector('summary')?.focus(); });
+    }
     return h('li', {}, row);
   }
 
@@ -363,6 +369,14 @@
 
   // A card added a rule (lessons.js): the next Memory view reads the files again.
   const learnedChanged = () => { learned = { at: 0, view: null }; };
+  // Show rule under a blocked step: the Rules list, with that one open.
+  SB.showRule = r => {
+    const key = ruleKey(r);
+    openRules.add(key);
+    focusRule = key;
+    SB.showToolbox('rule');
+  };
+
   SB.toolboxSetup = { owns: k => KINDS.has(k), count, refresh, reload, render, hide, learnedChanged };
   // What toolbox-hooks.js shares with the other tabs.
   SB.setupKit = { call, rerender, sourceLabel, WHERE };

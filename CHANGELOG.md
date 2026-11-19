@@ -1,5 +1,72 @@
 # Changelog
 
+## 0.100.4: Blocked countdown, update download fix
+
+### Fixed
+- **A refused update download says so.** When GitHub turns down the installer partway, Settings now says the download didn't finish (and tries again soon) instead of claiming GitHub asked him to slow down.
+
+### Changed
+- When a hook blocks something Claude tried, and none of your deny rules did, Try again now fills up over 10 seconds and then presses itself. Point at the strip to hold it, or press Cancel to leave it be. It stops by itself once you send something else or switch tabs.
+
+## 0.100.3: Every warning
+
+### Fixed
+- A prompt allowed from the phone with a warning on top shows all of the desk card's own warnings again. The new warning used to push the last one off the card.
+
+## 0.100.2: From the phone
+
+### Changed
+- The phone can allow every permission prompt now. The ones it used to keep for the desk (running a file Claude wrote, a change to Claude Code's own setup, a command too long to show) carry a warning at the top of the card instead, and can be allowed once from the phone, so a conversation no longer waits until you're back.
+
+## 0.100.1: Room to wait
+
+### Fixed
+- A turn's footer shows "Waiting on 5 background tasks" in full again, instead of cutting it off after "Waiting on 5 backgro…". The time and steps beside it make room first.
+
+### Changed
+- Your PCs has a tab of its own now, beside Health: **This PC | Your PCs** at the top of the Health screen. Before, only search and a link in Settings led to it.
+
+## 0.100.0: Your key, your receipts
+
+### New
+- **Bill your API key instead of your plan.** Settings → Claude has "Use my API key instead": paste an Anthropic API key and new conversations bill it per token. The key is encrypted by Windows, kept on this PC only (never synced), and never shown again after you save it, only its last four characters. Switching to it asks first, and "Always use my Claude plan" switches back.
+
+### Changed
+- When a rule or a hook blocks something Claude tried, the line under the turn now has buttons: Try again asks Claude to retry it, Show rule opens the deny rule that blocked it in the Toolbox, and Fine puts the plain line back.
+- An opened turn footer reads like a receipt: each figure in its own column, what it means beside it.
+- Undo to here is quieter: a step you can go back to gets a small pin on the tool rail and a teal link instead of a boxed button. Pressing it once colours the pin, fades the steps that would go with it, and says how many (“Undo 3 steps?”) before the second press undoes them.
+
+## 0.99.6: Code scanning tidy-up
+
+### Fixed
+- Tidied a few spots that GitHub's code scanning flagged, in the card, pointing and prompts code. Nothing looks different.
+
+## 0.99.5: Ollama start and stop, and the start-fresh nudge
+
+### New
+- Settings → Local model has a Start Ollama button for when Ollama was quit from its tray icon and Detect can't find it. It shows up once Ollama is installed, starts it the way Ollama does itself, then looks for its models. While it's running, the same button stops it.
+
+### Fixed
+- The Haiku card shows up in your chats again: it counts only what the chat itself has added, not the instructions and tools every chat starts with.
+- The "start fresh" line shows up in long chats: it used to wait until 60% of the context window was full, which a 1M window almost never reaches. It now also comes once the chat itself has added 60,000 tokens.
+
+## 0.99.4: Holiday outfits and shelf portraits
+
+### New
+- He dresses up for the smaller holidays now too: New Year's Eve, St. Patrick's Day, Easter, Earth Day, Mother's Day, Memorial Day, Father's Day, the Fourth of July, Labor Day, Veterans Day and Thanksgiving. That's 30 new collectibles and 3 new effects (confetti, clovers and fireworks), and the holidays that move, like Easter and Thanksgiving, land on the right days every year.
+
+### Fixed
+- A page Claude drafts while you're looking at another conversation no longer goes missing. It opens beside its chat when you go back there, and the Pages screen lists every draft you haven't saved yet, with Open and Throw away.
+
+### Changed
+- The line under each finished turn (Done, its time and how full the conversation is) sits in the middle of a wide panel instead of hugging the left.
+- **Finds in the tank and on the beach use their shelf drawings.** The big shaded portraits from the shelf now show up in the tank and wash up on the beach too, drawn small enough to sit beside him.
+
+## 0.99.3: Local models from your phone
+
+### Fixed
+- A new task from your phone can run on a local model. The phone's Model list now has an On your PC group, with the same Ollama or LM Studio models as the model chip at your desk. A task on one starts straight away, even at your limit, because it doesn't use your plan.
+
 ## 0.99.2: Point at it
 
 ### New

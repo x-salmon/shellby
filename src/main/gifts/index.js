@@ -314,6 +314,20 @@ const clampBoost = (v, max) => Math.max(1, Math.min(max, Number(v) || 1));
 /** Its portrait for the shelf, or its little art if it has none yet. */
 const portrait = find => find.portrait || find;
 
+/** How many portrait pixels make one scene pixel in the tank and on the beach. */
+const SCENE_FINE = 2;
+/**
+ * Its portrait for a scene beside him (the tank, the beach): the shelf's drawing,
+ * painted at 1/SCENE_FINE size so it's no bigger than he is, with the box (in the
+ * scene's pixels) it takes up there. Little art (no portrait yet) stays full size.
+ */
+function scenePortrait(find) {
+  const a = portrait(find);
+  const fine = a === find ? 1 : SCENE_FINE;
+  const w = Math.max(1, ...a.pixels.map(r => r.length));
+  return { pixels: a.pixels, palette: a.palette, fine, w: Math.ceil(w / fine), h: Math.ceil(a.pixels.length / fine) };
+}
+
 /**
  * A find in its sparkly colours (the Bugdex's shiny turn, bugdex/art.js):
  * its little art for his claw, or with `big` its portrait for the panel.
@@ -512,6 +526,6 @@ module.exports = {
   FINDS, SETS, RARITY, DIG_CHANCE, DRY_SPELL, DAILY_CAP, FIND_GAP, MANUAL_EVERY, LEGENDARY_AFTER,
   SPARKLE_CHANCE, EVENT_NAMES,
   normalize, findById, eligible, pickFind, dig, keepsake, canDig, nextDigAt, favourite, foundLine, view, setFavourite, markSeen, total,
-  portrait, sparkly, sparkles,
+  portrait, scenePortrait, sparkly, sparkles,
   spare, hold, release, handOver, receive, swapLists, finishes,
 };

@@ -580,6 +580,10 @@
   </main>
   <!-- ====================== YOUR PCS (the hub) ====================== -->
   <main class="view view-pcs" id="pcsView">
+    <nav class="seg auto-switch pc-switch" aria-label="PCs">
+      <button type="button" data-goto-view="health">This PC</button>
+      <button type="button" aria-current="page">Your PCs</button>
+    </nav>
     <div class="view-head">
       <h2>Your PCs</h2>
       <button type="button" class="btn slim-btn" id="pcsAddBtn">Add a PC</button>
@@ -603,6 +607,10 @@
 
   <!-- ====================== HEALTH ====================== -->
   <main class="view view-health" id="healthView">
+    <nav class="seg auto-switch pc-switch" aria-label="PCs">
+      <button type="button" aria-current="page">This PC</button>
+      <button type="button" data-goto-view="pcs">Your PCs</button>
+    </nav>
     <div class="view-head">
       <h2>Health</h2>
       <span class="hl-live" id="hlLive"><i></i>live</span>
@@ -1858,6 +1866,8 @@
       <p class="pg-off muted" id="pgOff" hidden>Pages are off: Shellby is in just-the-crab mode.</p>
       <!-- "2 pages came from your laptop": pages from another PC you haven't looked at here (sync/pages.js) -->
       <div class="pg-arrivals" id="pgArrivals" hidden></div>
+      <!-- Drafts Claude made that you haven't saved yet: open one to save it (pages-host.js) -->
+      <div class="pg-arrivals" id="pgDrafts" hidden></div>
       <div class="pg-grid" id="pgGrid" role="list"></div>
       <div class="pg-empty" id="pgEmpty" hidden></div>
     </section>
@@ -2146,6 +2156,14 @@
           <label class="toggle"><input type="checkbox" id="planOnlyToggle" aria-describedby="billingGuardText billingEnvNote"><span class="switch"></span>Always use my Claude plan</label>
           <p class="small" id="billingGuardText">If an API key or another provider (Bedrock, Vertex, Foundry) is set on this PC, Claude Code bills that, per token, instead of your Pro or Max plan. Turn this on and Shellby leaves them out, so every conversation runs on your plan. Applies to new conversations.</p>
           <p class="small" id="billingEnvNote" hidden></p>
+          <label class="toggle"><input type="checkbox" id="apiKeyBillingToggle" aria-describedby="apiKeyText"><span class="switch"></span>Use my API key instead</label>
+          <p class="small" id="apiKeyText">Bills your Anthropic API key per token, not your plan. The key is encrypted by Windows, kept on this PC only, and never shown again after you save it. Applies to new conversations; a conversation moved to a terminal stays on your plan.</p>
+          <form class="api-key-row" id="apiKeyForm" autocomplete="off">
+            <span class="small" id="apiKeySaved" hidden></span>
+            <input type="password" class="field slim" id="apiKeyInput" placeholder="sk-ant-…" aria-label="Anthropic API key" spellcheck="false" autocomplete="off" maxlength="300">
+            <button type="submit" class="btn primary slim-btn" id="apiKeySave">Save key</button>
+            <button type="button" class="btn ghost slim-btn" id="apiKeyClear" hidden>Remove key</button>
+          </form>
         </div>
         <label class="toggle"><input type="checkbox" id="selfAwareToggle"><span class="switch"></span>Tell Claude it's running in Shellby</label>
         <label class="toggle"><input type="checkbox" id="suggestToggle"><span class="switch"></span>Let Claude offer Shellby features</label>
@@ -2233,6 +2251,7 @@
           <button type="button" class="btn slim-btn" id="localModelFind">Find models</button>
           <button type="button" class="btn ghost slim-btn" id="localModelDetect" title="Looks for Ollama and LM Studio on their usual ports">Detect</button>
           <button type="button" class="btn ghost slim-btn" id="localModelSetup" title="Starts a task asking Claude to install Ollama and a small model" hidden>Let Claude set it up</button>
+          <button type="button" class="btn ghost slim-btn" id="ollamaPower" title="Starts or stops Ollama on this PC" hidden>Start Ollama</button>
         </div>
         <div class="row">
           <label class="inline-label" for="localModelSelect">Model</label>
