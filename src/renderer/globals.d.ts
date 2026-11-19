@@ -459,6 +459,7 @@ interface ShellbyPanelExtras {
   // settings-local-setup.js
   refreshLocalSetup: any;
   // settings-local.js
+  refreshOllama: any;
   renderLocalModel: any;
   // settings-rail.js
   jumpToSetting: any;

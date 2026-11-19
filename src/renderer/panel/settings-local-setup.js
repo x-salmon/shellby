@@ -1,8 +1,8 @@
 /* Shellby panel — Settings: Local mode's setup card. One card at the top of
    Local model for whatever this PC is missing: Ollama itself, Ollama running,
    or a first model, with a recommendation for this hardware. main's
-   local/setup.js does the looking, installing (winget, after a confirm) and
-   starting; downloads go through the same Get as presets (local/pull.js). */
+   local/setup.js does the looking and installing (winget, after a confirm),
+   local/ollama.js the starting; downloads go through the same Get as presets (local/pull.js). */
 'use strict';
 (function () {
   const { h, api, $ } = SB;
@@ -28,12 +28,14 @@
 
   function render(s) {
     last = s;
+    // While the card offers Start Ollama, the Server row's own Start button would only repeat it.
+    $('ollamaPower').classList.toggle('setup-has-it', s?.state === 'stopped');
     if (!s || s.state === 'ready' || s.state === 'lmstudio' || s.state === 'proxied') { $('localSetupCard').hidden = true; return; }
     if (s.state === 'none') {
       show('Run models on this PC, free and private', `Ollama runs AI models on your own GPU, so drafts and whole conversations need none of your plan. ${recLine(s)}`,
         [button(s.winget ? 'Install Ollama' : 'Get Ollama', () => act(() => api.localInstall(false), 'Installing Ollama… this takes a few minutes.'))]);
     } else if (s.state === 'stopped') {
-      show('Ollama is installed but not running', 'Start it and it stays in your tray.', [button('Start Ollama', () => act(() => api.localStart(), 'Starting Ollama…'))]);
+      show('Ollama is installed but not running', 'Start it and it stays in your tray.', [button('Start Ollama', () => act(async () => { const r = await api.ollamaStart(); SB.refreshOllama?.(); return r; }, 'Starting Ollama…'))]);
     } else if (s.state === 'old') {
       show(`Ollama ${s.version} is too old for local conversations`, 'Local conversations need Ollama 0.14 or newer. Drafts still work.',
         [button('Update Ollama', () => act(() => api.localInstall(true), 'Updating Ollama…'))]);

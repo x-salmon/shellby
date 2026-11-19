@@ -95,6 +95,7 @@
     if (seq !== ollamaSeq || ollamaBusy || !st) return;
     showOllama(st);
   }
+  SB.refreshOllama = refreshOllama;
   function showOllama(st) {
     const btn = $('ollamaPower');
     btn.hidden = !st.installed && !st.running;
@@ -196,6 +197,7 @@
     state.settings = r.settings;
     renderLocalModel();
     renderMissing(r.missing || []);
+    SB.refreshLocalSetup?.(true); // a model may have arrived: the setup card may be done
   }
 
   // The preset's models that aren't installed, each with a Get button

@@ -61,6 +61,7 @@ test('status: installed but not running', async () => {
   const dir = path.join(env.LOCALAPPDATA, 'Programs', 'Ollama');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'ollama app.exe'), '');
+  fs.writeFileSync(path.join(dir, 'ollama.exe'), '');
   assert.ok(findOllama(env).app);
   assert.strictEqual((await status({ hw, env, fetchFn: fakeFetch({}) })).state, 'stopped');
 });

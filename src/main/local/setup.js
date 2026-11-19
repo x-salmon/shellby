@@ -1,26 +1,23 @@
 // Local mode's setup card: what this PC has (Ollama installed? running? which
-// version? any models?), what to get for its hardware, and the two steps
-// Shellby takes for the user when asked: installing Ollama with winget (which
-// checks the installer's hash and signature; Shellby never downloads or runs
-// one itself) and starting it.
+// version? any models?), what to get for its hardware, and installing Ollama
+// with winget when asked (winget checks the installer's hash and signature;
+// Shellby never downloads or runs one itself). Starting it is ollama.js's.
 //
-// status() only reads. install() and start() are behind a button and, for
-// install, a confirm in main (ipc/settings.js).
+// status() only reads. install() is behind a button and a confirm in main (ipc/settings.js).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { execFile, spawn } = require('child_process');
+const { execFile } = require('child_process');
 const { baseUrl, listModels, proxied } = require('./model');
 const { recommend } = require('./presets');
 const { freeBytes } = require('./pull');
 const { findNvidiaSmi } = require('../health/sensors');
+const { findInstall } = require('./ollama');
 
 const OLLAMA_URL = 'http://127.0.0.1:11434';
 const LMSTUDIO_URL = 'http://127.0.0.1:1234';
 const MIN_VERSION = [0, 14, 0]; // the first with Anthropic's /v1/messages, which local conversations need
 const ASK_MS = 1500;
-const START_WAIT_MS = 20000;
-const START_POLL_MS = 500;
 const INSTALL_MAX_MS = 15 * 60 * 1000;
 const WINGET_ID = 'Ollama.Ollama';
 const DOWNLOAD_PAGE = 'https://ollama.com/download';
@@ -28,14 +25,8 @@ const GB = 1024 ** 3;
 
 const exists = p => { try { return fs.statSync(p).isFile(); } catch { return false; } };
 
-/** Ollama's tray app and CLI where the installer puts them, or nulls. */
-function findOllama(env = process.env) {
-  const dir = path.join(env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Programs', 'Ollama');
-  const app = path.join(dir, 'ollama app.exe');
-  const cli = path.join(dir, 'ollama.exe');
-  const onPath = (env.PATH || env.Path || '').split(path.delimiter).filter(Boolean).map(d => path.join(d, 'ollama.exe')).find(exists);
-  return { app: exists(app) ? app : null, cli: exists(cli) ? cli : onPath || null };
-}
+/** Ollama, if it's installed (ollama.js decides where it looks). */
+const findOllama = (env = process.env) => findInstall(env);
 
 /** winget, if this Windows has it. */
 function findWinget(env = process.env) {
@@ -94,32 +85,13 @@ async function status({ url, fetchFn = globalThis.fetch, env = process.env, hw }
   const v = await askJson(`${ollamaUrl}/api/version`, fetchFn);
   if (!v) {
     if (await askJson(`${LMSTUDIO_URL}/v1/models`, fetchFn)) return { ...base, state: 'lmstudio' };
-    const found = findOllama(env);
-    return { ...base, state: found.app || found.cli ? 'stopped' : 'none' };
+    return { ...base, state: findOllama(env) ? 'stopped' : 'none' };
   }
   const version = typeof v.version === 'string' ? v.version.slice(0, 40) : '';
   if (!newEnough(version)) return { ...base, state: 'old', version };
   const list = await listModels(ollamaUrl, fetchFn, env);
   const models = list.ok ? list.models : [];
   return { ...base, state: models?.length ? 'ready' : 'empty', version, models: models || [] };
-}
-
-/** Start the tray app (it starts the server), then wait for it to answer. */
-async function start({ fetchFn = globalThis.fetch, env = process.env, wait = START_WAIT_MS } = {}) {
-  const found = findOllama(env);
-  const exe = found.app || found.cli;
-  if (!exe) return { ok: false, error: 'Ollama isn\'t installed.' };
-  try {
-    const child = spawn(exe, found.app ? [] : ['serve'], { detached: true, stdio: 'ignore', windowsHide: !found.app });
-    child.on('error', () => {});
-    child.unref(); // Ollama's own server: it keeps running after Shellby, as it would started by hand
-  } catch { return { ok: false, error: 'Couldn\'t start Ollama.' }; }
-  const until = Date.now() + wait;
-  while (Date.now() < until) {
-    if (await askJson(`${OLLAMA_URL}/api/version`, fetchFn)) return { ok: true };
-    await new Promise(r => setTimeout(r, START_POLL_MS));
-  }
-  return { ok: false, error: 'Ollama started but isn\'t answering yet. Give it a moment, then check again.' };
 }
 
 /** winget install (or upgrade) Ollama. -> { ok } or { ok: false, error }. */
@@ -135,4 +107,4 @@ function install({ upgrade = false, env = process.env } = {}) {
   });
 }
 
-module.exports = { status, start, install, hardware, findOllama, findWinget, newEnough, OLLAMA_URL, WINGET_ID, DOWNLOAD_PAGE, MIN_VERSION };
+module.exports = { status, install, hardware, findOllama, findWinget, newEnough, OLLAMA_URL, WINGET_ID, DOWNLOAD_PAGE, MIN_VERSION };

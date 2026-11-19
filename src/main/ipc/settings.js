@@ -279,10 +279,9 @@ function registerSettingsIpc(ipcMain, d) {
     });
     if (response !== 0) return { ok: false, cancelled: true };
     const r = await localSetup.install({ upgrade: upgrade === true });
-    if (r.ok && !upgrade) await localSetup.start();
+    if (r.ok && !upgrade) await ollama.start();
     return r;
   }, [opt(v => typeof v === 'boolean')]);
-  ipcMain.handle('local:start', () => localSetup.start());
   // Local mode's fit check (local/fit.js): a chip for each model in use, and the 32K copy that fixes a short context.
   let fitHw = null;
   const inUse = lm => [lm.model, lm.models?.quiz, lm.agent.model, lm.agent.helpers, lm.agent.quick].filter(Boolean);
