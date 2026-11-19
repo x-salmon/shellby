@@ -160,6 +160,7 @@ const control = {
   },
 
   setMode(mode) {
+    this.afterPlan = null; // a mode you chose since the plan's approval wins over it
     this.mode = mode;
     this.setPlanning(mode === 'plan');
     if (this.proc) {

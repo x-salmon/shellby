@@ -433,6 +433,7 @@ class ClaudeSession extends Base {
         this.initModel = item.model || this.initModel || null; // what Claude Code says it runs, before any reply
         this.resumeAt = null; // the fork is made: from here on it's an ordinary resume
         this.modeAsked = null;
+        this.afterPlan = null; // a new process starts in the mode it was given
         break;
       // The mode Claude Code says it's in (init, and each change): the session
       // follows, with no request back, so the mode chip and planning stay right.

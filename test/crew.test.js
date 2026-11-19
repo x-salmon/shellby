@@ -358,6 +358,14 @@ test("a note's Plan, approved, carries on in your mode", () => {
     tab.session.proc = null;
     sent.length = 0;
 
+    // A mode you pick after approving wins: the turn's end doesn't put the plan's back.
+    tab.session.pending.set('r3', { toolName: 'ExitPlanMode', input: { plan: 'p' }, suggestions: [] });
+    tab.session.respond('r3', 'allow', null, null, null, 'autonomous');
+    tab.session.setMode('ask');
+    tab.session.handleNow({ kind: 'result', ok: true });
+    assert.equal(tab.session.mode, 'ask');
+    sent.length = 0;
+
     // A routine's own plan mode isn't a note's: approving it changes nothing of yours.
     const own = mgr.open({ tabId: 'plan-routine', cwd: os.tmpdir(), mode: 'plan' });
     own.session.write = msg => sent.push(msg);
