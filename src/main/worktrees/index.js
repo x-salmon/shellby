@@ -185,12 +185,15 @@ function onlyLooks(command) {
   if (/[{}()@]/.test(cmd.replace(/'[^']*'|"[^"]*"/g, ''))) return false;
   // A lone & runs what follows too: `ls & touch x` is two commands.
   return cmd.split(/&&|\|\||[;|\n&]/).every(part => {
-    const words = part.trim().split(/\s+/).filter(Boolean);
-    if (!words.length) return true;
-    const name = path.basename(words[0].replace(/^["']|["']$/g, '')).toLowerCase().replace(/\.exe$/, '');
+    const raw = part.trim().split(/\s+/).filter(Boolean);
+    if (!raw.length) return true;
+    const name = path.basename(raw[0].replace(/^["']|["']$/g, '')).toLowerCase().replace(/\.exe$/, '');
+    // Each word as the program gets it: the shell takes quotes and backslash
+    // escapes out first, so "--ext-diff" and --ext\-diff are --ext-diff.
+    const words = raw.map(w => w.replace(/["'\\]/g, ''));
     if (name === 'git') return gitLooks(words);
     // -i edits in place; a script's w, W and e commands (or s///w, s///e) write a file or run one.
-    if (name === 'sed') return !words.some(w => /^-[a-z]*i|^--in-place/.test(w)) && !/(^|[\s;{}'"\d$/])[wWe](\s|['";]|$)/.test(words.slice(1).join(' '));
+    if (name === 'sed') return !words.some(w => /^-[a-z]*i|^--in-place/.test(w)) && !/(^|[\s;{}'"\d$/])[wWe](\s|['";]|$)/.test(raw.slice(1).join(' '));
     if (name === 'sort') return !words.some(w => /^-[a-z]*o|^--output|^--compress-program/.test(w));
     if (name === 'find') return !words.some(w => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)\b/.test(w));
     // fd -x / -X (alone or in a cluster like -Hx) and --exec(-batch) run a command per match.

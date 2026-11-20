@@ -472,6 +472,8 @@ test('commands that pass for looking but can run anything count as work', () => 
     // Quotes this check can't read the way the shell does.
     `Write-Output ${String.fromCharCode(0x2018)}'${String.fromCharCode(0x2019)} { Remove-Item a } ${String.fromCharCode(0x2018)}'${String.fromCharCode(0x2019)}`,
     "echo \\' { rm a } \\'", "ls # ' { x } '",
+    // The shell takes quotes and backslashes out before the program sees its flags.
+    'git diff "--ext-diff"', "git diff '--output=x'", 'git diff --ext\\-diff', 'find . "-delete"', "fd '-x' rm", 'rg "--pre" sh x',
   ];
   for (const c of works) assert.equal(worktrees.startsWork('PowerShell', { command: c }), true, c);
   // Braces and brackets inside quotes are only text.
