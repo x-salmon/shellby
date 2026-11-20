@@ -358,6 +358,10 @@
    * opts: { time, t (seconds), crab: { img, w, h, hop }, reveal: id -> 0..1,
    *         pops: [{ x, y, age }] (hearts, age 0..1), still: no flicker,
    *         hearts: the ones he's drawn in the sand }.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {any} v
+   * @param {{ time?: string, t?: number, x0?: number, x1?: number, crab?: { img: CanvasImageSource, w: number, h: number, hop?: number } | null,
+   *   reveal?: Map<string, number> | null, pops?: any[], still?: boolean, hearts?: boolean }} [opts]
    */
   function paint(ctx, v, { time = timeOfDay(), t = 0, x0 = 0, x1 = v.paintWidth, crab = null, reveal = null, pops = [], still = false, hearts = false } = {}) {
     const T = THEMES[time] || THEMES.night;

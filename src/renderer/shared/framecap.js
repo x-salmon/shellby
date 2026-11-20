@@ -142,6 +142,7 @@
       if (fresh.get(el)?.has(`${pseudo}|${a.animationName}`)) return false;
       let names = lists.get(el)?.get(pseudo);
       if (!names) {
+        /** @type {CSSStyleDeclaration | null} */
         let style = null;
         try { style = styleOf(el, pseudo); } catch { /* not ours to judge */ }
         if (!style || typeof style.animationName !== 'string') return true;

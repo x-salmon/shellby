@@ -16,6 +16,7 @@
   const USD_PER_WEIGHT = 1e-6;
   // A token costs at least a cache read: a tenth of the model's input price.
   const CHEAPEST_SHARE = 0.1;
+  /** @type {[RegExp, number][]} */
   const RATES = [[/haiku/i, 1], [/sonnet/i, 3], [/opus|fable/i, 5]];
   const DEFAULT_RATE = 3;
 

@@ -24,9 +24,10 @@
   class ConflictsFeed {
     /** r: main's worktree:conflicts answer, with files: [{ path, hunks: [{ at, ours, theirs, prompt }] }]. */
     renderConflicts(r) {
+      const tab = /** @type {any} */ (this); // a Tab once SB.extendTab copies this across
       const ask = prompt => {
-        if (this.busy) return SB.toast('Let him finish first.');
-        SB.activate(this.id);
+        if (tab.busy) return SB.toast('Let him finish first.');
+        SB.activate(tab.id);
         SB.send(prompt);
       };
       const clashes = r.files.reduce((n, f) => n + Math.max(1, f.hunks.length), 0);
@@ -48,7 +49,7 @@
         h('div', { class: 'chg-actions' },
           h('button', { class: 'btn slim-btn', type: 'button', onclick: () => ask(r.prompt) }, 'Let Claude resolve them all'),
           h('span', { class: 'small muted', text: `He merges ${r.base} into the copy and sorts each one out. Then bring it home again.` })));
-      this.append(el);
+      tab.append(el);
       el.scrollIntoView({ block: 'nearest' });
     }
   }

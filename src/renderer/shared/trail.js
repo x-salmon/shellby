@@ -330,6 +330,8 @@
    * counts and the signals. upTo: a step number, for the replay (state as it
    * was then). scope 'turn': only the latest turn shown; 'all': the whole
    * conversation, with earlier turns marked as earlier.
+   * @param {any} s
+   * @param {{ upTo?: number, scope?: string, busy?: boolean }} [opts]
    */
   function view(s, { upTo = Infinity, scope = 'all', busy } = {}) {
     const atEnd = upTo >= s.seq;

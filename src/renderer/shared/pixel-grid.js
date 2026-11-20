@@ -15,7 +15,7 @@
    were never touched leaves them out and keeps up with the defaults. */
 (function (root) {
   'use strict';
-  const S = typeof module !== 'undefined' && module.exports ? (require('./sprite'), globalThis.ShellbySprite) : root.ShellbySprite;
+  const S = typeof module !== 'undefined' && module.exports ? require('./sprite') : root.ShellbySprite;
 
   const EMPTY = '.';
   // The characters a colour can be, in the order they're handed out.
@@ -78,6 +78,7 @@
     const w = clampInt(Math.max(1, ...src.map(r => r.length)), 1, MODES.skin.w), h = clampInt(src.length || 1, 1, MODES.skin.h);
     const parts = {};
     for (const [k, v] of Object.entries(skin.parts || {})) if (palette[k] && PARTS.includes(v)) parts[k] = v;
+    /** @type {Record<string, number[]> | null} */
     let anchors = null;
     if (skin.anchors && typeof skin.anchors === 'object') {
       anchors = effectiveAnchors({ anchors: null });
@@ -172,7 +173,7 @@
     const cells = [];
     const stack = [[x, y]];
     while (stack.length) {
-      const [cx, cy] = stack.pop();
+      const [cx, cy] = /** @type {number[]} */ (stack.pop());
       const k = cy * doc.w + cx;
       if (seen.has(k) || at(doc, cx, cy) !== from) continue;
       seen.add(k);
