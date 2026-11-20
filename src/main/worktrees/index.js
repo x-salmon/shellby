@@ -145,11 +145,15 @@ const HARMLESS_REDIRECT = /\d?>\s*&\s*\d|\d?>\s*(\/dev\/null|\$null|nul)\b/gi;
 
 function gitLooks(words) {
   let i = 1;
-  while (words[i] === '--no-pager' || words[i] === '-C' || /^-c$/.test(words[i])) i += words[i] === '--no-pager' ? 1 : 2;
+  // Only --no-pager and -C <dir> before the subcommand: `-c core.pager=…`,
+  // --config-env and --exec-path can each have git run any program.
+  while (words[i] === '--no-pager' || words[i] === '-C') i += words[i] === '--no-pager' ? 1 : 2;
   const sub = words[i];
+  if (typeof sub !== 'string' || sub.startsWith('-')) return false;
   const rest = words.slice(i + 1);
-  // `git diff --output=f` writes a file; `git grep -O<cmd>` runs a command.
-  if (GIT_LOOKS.has(sub)) return !rest.some(w => /^(--output|--open-files-in-pager|-O)/.test(w));
+  // `git diff --output=f` writes a file; `git grep -O<cmd>` runs a command; an
+  // external diff or a textconv filter runs one too.
+  if (GIT_LOOKS.has(sub)) return !rest.some(w => /^(--output|--open-files-in-pager|-O|--ext-diff|--textconv)/.test(w));
   // `git branch foo` and `git tag v1` make one; listing them doesn't.
   if (sub === 'branch') return rest.every(w => /^(-a|-r|-v|-vv|-l|--list|--all|--remotes|--show-current)$/.test(w));
   if (sub === 'tag') return rest.length === 0 || rest.some(w => /^(-l|--list)$/.test(w));
@@ -163,6 +167,11 @@ function gitLooks(words) {
 function onlyLooks(command) {
   const cmd = String(command || '').replace(HARMLESS_REDIRECT, ' ');
   if (!cmd.trim() || /[>`]|\$\(|<\(/.test(cmd)) return false;
+  // Outside quotes, a script block ({ }), a subexpression or array (( ), @( ))
+  // or a splat can run anything: `Where-Object { Remove-Item $_ }` is a delete.
+  // Single-quoted text is literal in both shells; double-quoted text only
+  // expands $( ), refused above.
+  if (/[{}()@]/.test(cmd.replace(/'[^']*'|"[^"]*"/g, ''))) return false;
   // A lone & runs what follows too: `ls & touch x` is two commands.
   return cmd.split(/&&|\|\||[;|\n&]/).every(part => {
     const words = part.trim().split(/\s+/).filter(Boolean);
@@ -172,7 +181,9 @@ function onlyLooks(command) {
     // -i edits in place; a script's w, W and e commands (or s///w, s///e) write a file or run one.
     if (name === 'sed') return !words.some(w => /^-[a-z]*i|^--in-place/.test(w)) && !/(^|[\s;{}'"\d$/])[wWe](\s|['";]|$)/.test(words.slice(1).join(' '));
     if (name === 'sort') return !words.some(w => /^-[a-z]*o|^--output|^--compress-program/.test(w));
-    if (name === 'find' || name === 'fd') return !words.some(w => /^-(delete|exec|execdir|ok|fprint|fls)|^--exec/.test(w));
+    if (name === 'find') return !words.some(w => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)\b/.test(w));
+    // fd -x / -X (alone or in a cluster like -Hx) and --exec(-batch) run a command per match.
+    if (name === 'fd') return !words.some(w => /^-[a-zA-Z]*[xX]|^--exec/.test(w));
     // rg --pre runs a command on each file, and -z its decompressors.
     if (name === 'rg') return !words.some(w => /^--pre|^-[a-zA-Z]*z|^--search-zip/.test(w));
     if (name === 'tree') return !words.some(w => /^-o/.test(w));

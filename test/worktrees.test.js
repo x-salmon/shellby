@@ -456,6 +456,24 @@ test('only a change to files starts the work: reading and looking around do not'
   for (const c of works) assert.equal(worktrees.startsWork('PowerShell', { command: c }), true, c);
 });
 
+test('commands that pass for looking but can run anything count as work', () => {
+  const works = [
+    // A script block, subexpression, array or splat runs whatever is in it.
+    'Get-ChildItem | Where-Object { Remove-Item $_ }', 'Get-ChildItem | Select-Object @{n="x";e={Remove-Item a}}',
+    'Get-Content (Remove-Item a)', 'Write-Output @(Remove-Item a)', 'Get-ChildItem @args',
+    // fd runs a command per match with -x, -X or a cluster holding one.
+    'fd -x rm', 'fd -X rm', 'fd -Hx rm', 'fd --exec-batch rm', 'fd --exec rm',
+    'find . -okdir rm {} ;', 'find . -fprintf out x',
+    // git's own config can name the pager, an external diff or where its commands live.
+    'git -c core.pager=calc log', 'git -c diff.external=calc diff', 'git --config-env=core.pager=X log',
+    'git --exec-path=. log', 'git diff --ext-diff', 'git log -p --textconv', 'git -C . -c core.pager=calc log',
+  ];
+  for (const c of works) assert.equal(worktrees.startsWork('PowerShell', { command: c }), true, c);
+  // Braces and brackets inside quotes are only text.
+  const looks = ['rg "fn\\(x\\)" src', "grep '{' a.js", 'fd -H "*.js"', 'find . -name "*(1)*"', 'git -C ../x log -5'];
+  for (const c of looks) assert.equal(worktrees.startsWork('Bash', { command: c }), false, c);
+});
+
 test('the branch name comes from what Claude called the work', () => {
   assert.equal(worktrees.suggestedName('Branch: fix-login-redirect'), 'fix-login-redirect');
   assert.equal(worktrees.suggestedName('Sure.\n\n**Branch:** `Add-Dark_Mode`'), 'add-dark-mode');
