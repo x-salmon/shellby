@@ -63,7 +63,7 @@ const BROWSER_GLOBALS = {
   Audio: 'readonly', XMLSerializer: 'readonly', AudioContext: 'readonly', Blob: 'readonly', File: 'readonly',
   FileReader: 'readonly', FormData: 'readonly', URL: 'readonly', URLSearchParams: 'readonly',
   fetch: 'readonly', EventSource: 'readonly', Event: 'readonly', CustomEvent: 'readonly', DOMParser: 'readonly',
-  HTMLElement: 'readonly', SVGElement: 'readonly', Node: 'readonly', devicePixelRatio: 'readonly',
+  Element: 'readonly', HTMLElement: 'readonly', SVGElement: 'readonly', Node: 'readonly', devicePixelRatio: 'readonly',
   performance: 'readonly', crypto: 'readonly', structuredClone: 'readonly', queueMicrotask: 'readonly',
   NodeFilter: 'readonly', Range: 'readonly', Highlight: 'readonly', CSS: 'readonly', // Ctrl+F (find.js)
   // Shellby's own: the preload bridge, and the namespace the panel's files share.

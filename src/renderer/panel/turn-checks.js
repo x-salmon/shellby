@@ -127,6 +127,7 @@
     };
     const b = thumb('before', 'Before');
     const a = thumb('after', 'After');
+    /** @type {Promise<{ before: string, after: string } | null> | null} */
     let loaded = null;
     const load = () => {
       loaded ||= Promise.all([ids.before, ids.after].map(id => api.shotImage({ tabId: tab.id, id }))).then(([x, y]) => {
@@ -170,7 +171,7 @@
         h('div', { class: 'shot-head' }, h('b', { text: 'Before and after' }), h('span', { class: 'small muted', text: url || '' }), side, close),
         stage, slider,
         h('p', { class: 'small muted', text: 'Left of the line is before, right of it is after.' })));
-    const shut = () => { viewerOpen = false; box.remove(); document.removeEventListener('keydown', onKey, true); back?.focus?.(); };
+    const shut = () => { viewerOpen = false; box.remove(); document.removeEventListener('keydown', onKey, true); if (back instanceof HTMLElement) back.focus(); };
     const onKey = e => {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); shut(); }
       if (e.key === 'Tab') { // keep focus inside

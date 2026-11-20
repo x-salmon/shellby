@@ -11,6 +11,7 @@
 
   const REFRESH_MS = 800;
   let lanes = new Map();      // tabId -> lane
+  /** @type {{ order: { lanes: unknown[] }[], prompts: { count: number }[], training: boolean }} */
   let view = { order: [], prompts: [], training: false };
   let timer = 0;
   let busy = false;           // an answer or a line-up on its way

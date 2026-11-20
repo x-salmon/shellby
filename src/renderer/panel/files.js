@@ -31,10 +31,10 @@
   // One listener for every link, wherever it is: inside a tool row's <summary>
   // preventDefault also stops the row from opening.
   document.addEventListener('click', e => {
-    const a = e.target.closest?.('a.file-link');
+    const a = e.target instanceof Element ? /** @type {HTMLElement | null} */ (e.target.closest('a.file-link')) : null;
     if (!a) return;
     e.preventDefault();
-    const feed = a.closest('.feed');
+    const feed = /** @type {HTMLElement | null} */ (a.closest('.feed'));
     const tabId = feed?.dataset.tab || state.activeTab;
     const line = Number(a.dataset.line) || null;
     // Ctrl: your editor, as a click used to be. Shift: its folder. A popped-out window has only its
@@ -63,7 +63,7 @@
     // And in plain prose, outside backticks, but only when it can't be anything
     // else: a folder in it and an extension code uses (`see src/main/x.js:42`).
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
-      acceptNode: n => (n.parentElement.closest('pre, code, a, button') || !/[\\/]/.test(n.nodeValue) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+      acceptNode: n => (n.parentElement?.closest('pre, code, a, button') || !/[\\/]/.test(n.nodeValue ?? '') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
     });
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);

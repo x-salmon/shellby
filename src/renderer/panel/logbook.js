@@ -10,7 +10,9 @@
 (function () {
   const { api, h, $ } = SB;
 
+  /** @type {{ cards: { id: string }[] } | null} */
   let view = null;   // main's logbookView()
+  /** @type {{ chaptersDone: number, totalChapters: number, chapters: { id: string, done?: boolean, unlocked?: boolean }[] } | null} */
   let quests = null; // main's questsView(), for the chapter list
 
   const VIEW_NAMES = {
@@ -158,7 +160,7 @@
     if (SB.state.view === 'trophies' && was !== 'trophies') act('open');
   };
 
-  api.onGame(({ what, view: v } = {}) => {
+  api.onGame((/** @type {{ what?: string, view?: unknown }} */ { what, view: v } = {}) => {
     if (what === 'logbook') received(v);
     if (what === 'quests' && v) { quests = v; renderChapters(); }
   });

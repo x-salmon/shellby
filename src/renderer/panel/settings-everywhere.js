@@ -111,7 +111,7 @@
     else if (!before.installed) SB.toast('Added. Open a new terminal for it to show up.');
   });
 
-  document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => {
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-copy]')).forEach(b => b.addEventListener('click', () => {
     api.copyText($(b.dataset.copy).textContent);
     SB.toast('Copied. Paste it into Claude Code.');
   }));

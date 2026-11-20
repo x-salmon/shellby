@@ -29,7 +29,9 @@
     const pre = h('pre', { class: 'pj-log tp-log', tabindex: '0' });
     const el = h('div', { class: 'tool-pane', dataset: { tool: toolId } },
       h('div', { class: 'tp-head' }, dot, name, status), actions, pre);
-    let lastRead = 0, timer = null;
+    let lastRead = 0;
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    let timer = null;
     let readFor = null; // the status of a stopped server whose log has been read: it won't change
 
     const act = (text, fn, cls = 'btn ghost slim-btn') => h('button', { type: 'button', class: cls, text, onclick: fn });
@@ -87,7 +89,7 @@
     return {
       el, draw,
       title: () => { const s = serverOf(toolId); return s ? nameOf(s) : 'Server log'; },
-      destroy: () => { clearTimeout(timer); el.remove(); },
+      destroy: () => { if (timer) clearTimeout(timer); el.remove(); },
     };
   }
 

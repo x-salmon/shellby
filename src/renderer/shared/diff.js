@@ -70,13 +70,15 @@
    * (`line`: the old text's first line in the file). Long unchanged runs fold
    * into { t: '…', n } so a one-line change in a big block stays one screen.
    *   [{ t, s, a?, b? }]  a = old line number, b = new line number
+   * @param {{ old?: string | null, new?: string }} edit
+   * @param {{ line?: number | null, context?: number }} [opts]
    */
   function rows(edit, { line = null, context = 3 } = {}) {
     const lines = edit.old == null ? split(edit.new).map(s => ({ t: '+', s })) : diffLines(edit.old, edit.new);
     let a = line, b = line;
     const numbered = lines.map(r => {
       const row = { ...r };
-      if (a != null) {
+      if (a != null && b != null) {
         if (r.t !== '+') row.a = a++;
         if (r.t !== '-') row.b = b++;
       }

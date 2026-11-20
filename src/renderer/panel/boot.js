@@ -34,7 +34,7 @@
   // ------------------------------------------------------------ events from main
 
   api.onTabItem(({ tabId, item, continues }) => {
-    const tab = state.tabs.get(tabId);
+    const tab = tabId ? state.tabs.get(tabId) : undefined;
     if (!tab) return;
     tab.render(item);
     if (item.kind === 'user' && item.steerId) SB.onSteered(tab, item.steerId);
@@ -48,7 +48,7 @@
     if (item.kind === 'decision' || item.kind === 'result') SB.syncBusyUi();
   });
   api.onTabSteering(({ tabId, ids }) => {
-    const tab = state.tabs.get(tabId);
+    const tab = tabId ? state.tabs.get(tabId) : undefined;
     if (tab && Array.isArray(ids)) SB.onSteering(tab, ids);
   });
   // Main sends every conversation again each time any one moves; a busy panel handles the newest list once
@@ -70,8 +70,8 @@
   api.onTabFocus(tabId => { if (state.tabs.has(tabId)) SB.activate(tabId); });
   // A Stream Deck key that needs the panel (main shows it first): the same as
   // Ctrl+Shift+H on that conversation, or opening the review inbox.
-  api.onDeckPress(({ what, tabId } = {}) => {
-    const tab = state.tabs.get(tabId);
+  api.onDeckPress((/** @type {{ what?: string, tabId?: string }} */ { what, tabId } = {}) => {
+    const tab = tabId ? state.tabs.get(tabId) : undefined;
     if (what === 'home' && tab?.worktree) SB.bringHome(tab);
     if (what === 'review') SB.openReview?.();
   });
@@ -80,7 +80,7 @@
   api.onOtherUsage(SB.applyOtherUsage);
   api.onRecap(d => SB.showRecap(d));
   // A server waiting for sign-in when a conversation starts: one tap opens its page.
-  api.onMcpNeedsAuth(({ tabId, names } = {}) => {
+  api.onMcpNeedsAuth((/** @type {{ tabId?: string, names?: string[] }} */ { tabId, names } = {}) => {
     if (!Array.isArray(names) || !names.length) return;
     const one = names.length === 1 ? names[0] : null;
     // Plugins can bring dozens of these: name two, count the rest (the Toolbox lists them all).

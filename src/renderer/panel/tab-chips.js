@@ -76,6 +76,7 @@
 
   // A tab in its own copy (worktrees.js) still shows the project you know,
   // with the branch beside it, rather than a path inside Shellby's folder.
+  /** @param {string} cwd @param {{ worktree?: { originalCwd?: string, branch?: string, base?: string } | null } | null} [tab] */
   function applyFolderLabel(cwd, tab = null) {
     const w = tab?.worktree;
     const shown = w?.originalCwd || cwd;
@@ -83,7 +84,7 @@
     $('folderChip').title = w ? `Working folder: ${shown}\nThis conversation works in its own copy: ${cwd}` : `Working folder: ${cwd}`;
     if (w) {
       $('branchChip').hidden = false;
-      $('branchLabel').textContent = w.branch.replace(/^shellby\//, '');
+      $('branchLabel').textContent = (w.branch ?? '').replace(/^shellby\//, '');
       $('branchChip').title = `Its own copy, on branch ${w.branch} (from ${w.base})`;
     } else if (SB.hasTries(tab)) {
       // In your checkout, it says so once there are other tries at this to compare with or keep.

@@ -9,6 +9,7 @@
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const RARITY_ORDER = { legendary: 0, special: 1, rare: 2, uncommon: 3, common: 4 };
   let selected = null; // the find whose card is open
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let seenTimer = null;
 
   const life = () => state.life;
@@ -128,7 +129,7 @@
     const today = new Date(); today.setHours(0, 0, 0, 0);
     let next = new Date(today.getFullYear(), bd.m - 1, bd.d);
     if (next < today) next = new Date(today.getFullYear() + 1, bd.m - 1, bd.d);
-    return Math.round((next - today) / 86400000);
+    return Math.round((next.getTime() - today.getTime()) / 86400000);
   }
 
   function renderBirthday(bd) {
@@ -159,7 +160,7 @@
     if (!v) return;
     state.life = v;
     document.querySelectorAll('.fd-count').forEach(el => { el.textContent = v.finds.kinds ? String(v.finds.kinds) : ''; });
-    document.querySelectorAll('.fd-badge').forEach(el => { el.hidden = !v.finds.unseen.length; });
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.fd-badge')).forEach(el => { el.hidden = !v.finds.unseen.length; });
     SB.refreshShellbyBadge?.();
     if (state.view === 'finds') renderFinds();
     if (state.view === 'us') renderUs();
@@ -169,7 +170,7 @@
 
   // Looking at the shelf counts as seeing what's new on it, after a moment to notice.
   function noticeFinds() {
-    clearTimeout(seenTimer);
+    if (seenTimer) clearTimeout(seenTimer);
     if (!life()?.finds.unseen.length) return;
     seenTimer = setTimeout(() => { if (state.view === 'finds') api.findsSeen(); }, 2500);
   }
