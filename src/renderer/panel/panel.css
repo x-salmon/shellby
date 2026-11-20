@@ -1218,6 +1218,35 @@ select.field option { background: var(--reef); }
 .toast.danger { --toast-accent: var(--danger); }
 @keyframes toast { from { opacity: 0; transform: translate(-50%, -10px) scale(.95); } }
 
+/* The stack: what waits behind a toast with a button peeks out under it, a
+   card per waiting one (two at most), and a line names the next (core.js
+   renderToastStack). The cards are shadows, so the toast's own overflow (which
+   keeps the water line inside its corners) doesn't clip them. Each is a fill
+   over a 1px-larger outline. */
+.toast { transition: box-shadow .2s var(--ease-out); }
+.toast[data-waiting] { flex-wrap: wrap; row-gap: 8px; }
+/* Wrapping lets items wrap before they shrink: from zero the message only
+   takes the room the buttons leave, so they stay on its row. */
+.toast[data-waiting] > :first-child { flex: 1 1 0; }
+.toast[data-waiting="1"] {
+  box-shadow: 0 10px 0 -5px var(--reef-2), 0 10px 0 -4px var(--line),
+    0 18px 36px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25);
+}
+.toast[data-waiting="2"] {
+  box-shadow: 0 10px 0 -5px var(--reef-2), 0 10px 0 -4px var(--line),
+    0 20px 0 -10px var(--reef-3), 0 20px 0 -9px var(--line),
+    0 26px 36px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25);
+}
+.toast-next {
+  flex-basis: 100%; padding-top: 7px; border-top: 1px solid var(--line-soft);
+  font-size: var(--fs-11); font-weight: 500; color: var(--sand-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toast-next b { font-weight: 700; color: var(--sand-dim); }
+/* Answering the front one brings the next forward out of the stack. */
+.toast.promoted > :first-child { animation: toast-promote .32s var(--ease-spring); }
+@keyframes toast-promote { from { opacity: 0; transform: translateY(8px) scale(.96); } }
+
 /* A job (SB.toast.job): a spinner while it works, a tick once it's done.
    A failure says so with its colour (tone 'danger'). A result with a title
    shows its title instead of either (.toast-body is a column). */

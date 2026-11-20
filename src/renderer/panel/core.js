@@ -218,6 +218,10 @@ let toastWorkingUntil = 0; // when a working job gives up, or 0 when none is up
 let toastOwed = 0;         // a job's result that came while you were on it: its whole time, for when you leave
 /** @type {HTMLElement | null} */
 let toastWater = null;  // the draining line of the toast that's up
+let toastStackTimer;    // re-draws the stack when the first waiting one goes stale
+/** @type {HTMLElement | null} */
+let toastNext = null;   // the line naming what waits behind it
+const TOAST_GHOSTS_MAX = 2; // cards drawn peeking out behind the one that's up
 
 function toastSlot() {
   const t = SB.$('toast');
@@ -257,10 +261,33 @@ function armToast(ms, { line = true } = {}) {
   }
 }
 
+// The ones waiting behind the toast that's up show as a stack: cards peeking
+// out under it (data-waiting, drawn in panel.css) and a line naming the next.
+// Only ones still worth saying count, and it re-draws when the first goes stale.
+function renderToastStack() {
+  clearTimeout(toastStackTimer);
+  const t = SB.$('toast');
+  // Only the line itself goes: re-inserting the rest would drop focus off a
+  // button and restart the water line.
+  toastNext?.remove();
+  toastNext = null;
+  const now = Date.now();
+  const live = t.children.length ? toastWaiting.filter(w => w.until > now) : [];
+  if (!live.length) { delete t.dataset.waiting; return; }
+  t.dataset.waiting = String(Math.min(live.length, TOAST_GHOSTS_MAX));
+  const [next] = live;
+  const more = live.length > 1 ? ` and ${live.length - 1} more` : '';
+  // Hidden from the status region: changing it would read the whole toast out again.
+  toastNext = SB.h('span', { class: 'toast-next', 'aria-hidden': 'true' }, 'Next: ', SB.h('b', { text: next.opts.title || next.msg }), more);
+  t.append(toastNext);
+  toastStackTimer = setTimeout(renderToastStack, Math.min(...live.map(w => w.until)) - now);
+}
+
 // The slot empties, and the next one still worth saying takes it.
 function endToast() {
   clearTimeout(toastTimer);
-  SB.$('toast').replaceChildren();
+  const t = SB.$('toast');
+  t.replaceChildren();
   toastHolds = false;
   toastWorkingUntil = 0;
   toastOwed = 0;
@@ -268,7 +295,10 @@ function endToast() {
   const now = Date.now();
   toastWaiting = toastWaiting.filter(w => w.until > now);
   const next = toastWaiting.shift();
-  if (next) showToast(next.msg, { ...next.opts, ms: Math.min(next.opts.ms ?? TOAST_MS, next.until - now) });
+  if (next) {
+    showToast(next.msg, { ...next.opts, ms: Math.min(next.opts.ms ?? TOAST_MS, next.until - now) });
+    t.classList.add('promoted'); // it slides forward from the stack
+  } else renderToastStack();
 }
 
 function dismissToasts() {
@@ -289,6 +319,7 @@ function showToast(msg, { title, note, action, onAction, actions, tone = null, m
   const t = toastSlot();
   // A job that ends under your pointer waits for you to move off before its time starts.
   const looking = (job === 'done' || job === 'failed') && t.classList.contains('held');
+  t.classList.remove('promoted');
   t.classList.toggle('urgent', tone === 'urgent');
   t.classList.toggle('danger', tone === 'danger');
   t.classList.toggle('working', job === 'working');
@@ -304,6 +335,8 @@ function showToast(msg, { title, note, action, onAction, actions, tone = null, m
   const pick = a => {
     clearTimeout(toastTimer);
     t.replaceChildren();
+    toastNext = null;
+    delete t.dataset.waiting;
     toastHolds = false;
     a.onAction();
     if (!t.children.length) endToast();
@@ -322,6 +355,7 @@ function showToast(msg, { title, note, action, onAction, actions, tone = null, m
   if (toastWorkingUntil) armToast(ms, { line: false });
   else if (looking) t.classList.remove('timed'); // still held: leaving it starts the time
   else armToast(time);
+  renderToastStack();
   toastShown += 1;
   return toastShown;
 }
@@ -334,6 +368,7 @@ SB.toast =(msg, opts = {}) => {
   if (!toastHolds) return showToast(msg, opts);
   const until = Date.now() + (opts.ms ?? TOAST_MS) + (opts.staleMs ?? TOAST_STALE_MS);
   toastWaiting = [...toastWaiting, { msg, opts, until }].slice(-TOAST_WAITING_MAX);
+  renderToastStack();
 };
 
 // One toast for the whole of something slow: SB.toast.job('Pushing…') spins,
