@@ -12,28 +12,12 @@
 const surroundings = require('./surroundings');
 const scenes = require('./scenes');
 const gifts = require('./gifts');
-const moon = require('./moon');
 const bond = require('./bond');
-const banter = require('./banter');
 const voice = require('./voice');
+const { createFinds } = require('./life-finds');
+const { createVisit } = require('./life-visit');
+const { MINUTE, WATCH_MS, TANK_REMARK_GAP, MIC_MS, LOOK_MS, HERE_IDLE_S, SCENE_EVERY, SCENE_CHANCE, RECALL_CHANCE, NAP_CHECK_MS, NAP_MS, DIG_MS, CLUMSY_MS, NEAR_PX } = require('./life-constants');
 
-const SECOND = 1000;
-const MINUTE = 60 * SECOND;
-
-const WATCH_MS = 15 * SECOND;       // what's in front, the day, the special days
-const TANK_REMARK_GAP = 47 * 60 * SECOND; // how often he even thinks of mentioning his tank
-const MIC_MS = 20 * SECOND;         // who has the microphone (a `reg query`)
-const LOOK_MS = 280;                // where your cursor is, for his eyes
-const HERE_IDLE_S = 90;             // input within this long: you're at your PC, so he's awake
-const SCENE_EVERY = { normal: 6 * MINUTE, chatty: 2.5 * MINUTE };
-const SCENE_CHANCE = 0.45;          // of an idle habit, once a scene is due, being a scene instead
-const RECALL_CHANCE = 0.12;         // of an idle habit bringing up a memory
-const NAP_CHECK_MS = 12 * MINUTE;
-const NAP_MS = [3 * MINUTE, 6 * MINUTE];
-const PRESENT_MS = 2800;            // holding up a find
-const DIG_MS = 2600;                // voice.js BITS run this long (critter.js BIT_MS)
-const CLUMSY_MS = 1700;             // a trip or a stuck claw, before he owns up to it
-const NEAR_PX = 380;                // the cursor counts as "near him" within this
 const MIC_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone';
 
 // What his claw holds for a scene that isn't a find. The renderer draws these
@@ -69,8 +53,6 @@ function createLife(d) {
   let lookSent = '';
   /** @type {string | null} */
   let lastDay = null;
-  /** @type {NodeJS.Timeout[]} */
-  let visitTimers = [];
   // One-off moments queued for a little later (a find after a dig, a keepsake,
   // a line once the desktop is back). cancel() and stop() drop them all.
   const pending = new Set();
@@ -78,7 +60,6 @@ function createLife(d) {
   const dropPending = () => { pending.forEach(clearTimeout); pending.clear(); };
   // Free for something of his own: not busy, not in a game, not in your hand.
   const free = () => d.isIdle() && !onCall && !scene && !presenting && !d.playing?.();
-  let visitUsed = [];
 
   // ---------------------------------------------------------------- state on disk
   const getBond = () => bond.normalize(d.config.get('bond'));
@@ -386,139 +367,15 @@ function createLife(d) {
     clearProps();
   }
 
-  // ---------------------------------------------------------------- gifts
-  function dug({ manual = false } = {}) {
-    if (!manual && !free()) return null;
-    const t = now();
-    const tide = d.tide?.() || {};
-    const r = gifts.dig(getFinds(), { seasons: d.seasons(), night: isNight(t), moon: moon.special(t), manual, event: tide.event || null, digBoost: tide.digBoost, shinyBoost: tide.shinyBoost }, t);
-    if (r.shiny) r.odds = Math.round(1 / (gifts.SPARKLE_CHANCE * Math.max(1, Math.min(4, tide.shinyBoost || 1))));
-    setFinds(r.state);
-    if (!r.find) { if (manual) changed(); return null; }
-    present(r.find, r);
-    return r.find;
-  }
-
-  const isNight = t => { const h = new Date(t).getHours(); return h >= 20 || h < 6; };
-
-  // A bug Claude fixed, in a jar (bugdex/index.js): he lunges, corks it and holds it
-  // up. Catches land while he's working, so one waits until he's free; a newer
-  // one replaces it, and it goes stale after JAR_WAIT_MS.
-  /** @type {any} */
-  let jarWaiting = null;
-  const JAR_MS = 2600;
-  const JAR_WAIT_MS = 10 * MINUTE;
-  function presentJar(card) {
-    if (!card?.pixels || !card.palette) return;
-    jarWaiting = { ...card, at: now() };
-    jarIfFree();
-  }
-  /** @type {NodeJS.Timeout | null} */
-  let jarRetry = null;
-  const JAR_RETRY_MS = 3000;
-  function jarIfFree() {
-    clearTimeout(/** @type {any} */ (jarRetry));
-    if (!jarWaiting) return;
-    if (now() - jarWaiting.at > JAR_WAIT_MS) { jarWaiting = null; return; }
-    // Busy (a scene, a dig, a task): look again shortly, rather than at the next idle tick.
-    if (!free() || napping()) { jarRetry = setTimeout(jarIfFree, JAR_RETRY_MS); return; }
-    const j = jarWaiting;
-    jarWaiting = null;
-    presenting = `jar:${j.species}`;
-    d.toCrab('critter:bit', { bit: 'catch', ms: JAR_MS });
-    d.toCrab('critter:prop', { prop: 'jar', ms: JAR_MS, ghost: !!j.ghost });
-    later(700, () => d.toCrab('critter:hold', { pixels: j.pixels, palette: j.palette }));
-    if (j.line) d.speak('found', { force: true, text: j.line });
-    // Its cry as the cork goes on (critter/sound.js CUES.cry).
-    if (j.cry) later(900, () => d.toCrab('critter:sound', { cue: 'cry', ...j.cry }));
-    presentDone = () => {
-      presentDone = null;
-      presenting = null;
-      d.toCrab('critter:hold', null);
-      d.toCrab('critter:prop', { prop: null });
-    };
-    later(PRESENT_MS + 700, () => presentDone?.());
-  }
-
-  function present(find, r) {
-    presenting = find.id;
-    const shiny = !!r?.shiny;
-    // A sparkly one: held up in its own colours, a longer glint and a chime, and his loudest line.
-    const look = shiny ? gifts.sparkly(find) : find;
-    const ms = shiny ? PRESENT_MS + 1800 : PRESENT_MS;
-    d.toCrab('critter:bit', { bit: 'present', ms });
-    d.toCrab('critter:hold', { pixels: look.pixels, palette: look.palette, shiny });
-    const rare = find.rarity === 'rare' || find.rarity === 'legendary';
-    if (rare || shiny) d.toCrab('critter:prop', { prop: 'sparkle', ms, big: shiny });
-    if (shiny) d.toCrab('critter:sound', { cue: 'sparkle' });
-    d.speak('found', { force: true, text: shiny ? '✨ a SPARKLY one!!' : gifts.foundLine(find) });
-    // A trophy it earns has a line of its own: after he's shown you the find, not over it.
-    // Cut short (cancel()), it still counts, straight away.
-    presentDone = () => {
-      presentDone = null;
-      presenting = null;
-      d.toCrab('critter:hold', null);
-      d.toCrab('critter:prop', { prop: null });
-      if (r) credit(find, r);
-    };
-    later(ms, () => presentDone?.());
-    if (r) d.toPanel('life:found', { ...findCard(find), isNew: r.isNew, shiny });
-    if (r && shiny) {
-      const big = /** @type {{ pixels: any, palette: any }} */ (gifts.sparkly(find, { big: true })); // the reveal has room for its portrait
-      d.toPanel('sparkle:reveal', {
-        kind: 'find', id: find.id, name: find.name, rarity: find.rarity, pixels: big.pixels, palette: big.palette,
-        odds: r.odds || Math.round(1 / gifts.SPARKLE_CHANCE), after: Math.max(0, gifts.total(r.state) - 1), at: now(), level: d.level?.() || 1,
-        first: !!r.firstShiny,
-      });
-    }
-  }
-
-  // The find counts: a stat (trophies), XP, the bond, the story, any set it finished.
-  function credit(find, r) {
-    const rare = find.rarity === 'rare' || find.rarity === 'legendary';
-    // What the tide events' goals look at (events.js): which find, and whether it was the event's own.
-    d.stat('find-made', { id: find.id, event: find.event });
-    d.awardXp(rare ? 'treasure' : 'find', { label: `He found you a ${find.name.toLowerCase()}` });
-    if (r.shiny) {
-      d.stat('sparkle-found');
-      if (find.rarity === 'legendary') d.stat('sparkle-legendary');
-      d.awardXp('sparkle', { label: `A sparkly ${find.name.toLowerCase()}` });
-      remember('first-shiny', { item: find.name });
-    }
-    grow('find');
-    const bondNow = getBond();
-    if (!bondNow.journal.some(e => e.kind === 'first-find')) remember('first-find', { item: find.name });
-    else if (rare && r.isNew) remember('rare-find', { item: find.name });
-    if (find.rarity === 'legendary') { d.stat('legendary-find'); d.burst(); }
-    for (const setId of r.completed) {
-      const set = /** @type {(typeof gifts.SETS)[number]} */ (gifts.SETS.find(s => s.id === setId)); // dig() only completes sets it knows
-      d.stat('set-completed');
-      d.awardXp('treasure', { label: `Completed the ${set.name} set` });
-      remember('set-done', { set: set.name });
-      d.burst();
-      d.toPanel('life:moment', { eyebrow: 'Set complete', icon: set.icon, title: set.name, text: 'Every one of them, on the shelf.' });
-    }
-    changed();
-  }
-
-  const findCard = f => ({ id: f.id, name: f.name, rarity: f.rarity, rarityLabel: gifts.RARITY[f.rarity].label, blurb: f.blurb, pixels: f.pixels, palette: f.palette });
-
-  /** "Dig for treasure" from his menu: a proper dig, then whatever he finds. */
-  function digNow() {
-    if (!gifts.canDig(getFinds(), now()) || presenting) return false;
-    cancel();
-    d.toCrab('critter:bit', { bit: 'dig', ms: DIG_MS + 400 });
-    d.say('digging…', DIG_MS, 'scene');
-    later(DIG_MS + 200, () => { if (!onCall && !d.playing?.() && !d.working?.()) dug({ manual: true }); });
-    return true;
-  }
-
-  function digMenuItem() {
-    const s = getFinds();
-    if (gifts.canDig(s, now())) return { label: 'Dig for treasure', click: digNow };
-    const mins = Math.max(1, Math.ceil((gifts.nextDigAt(s) - now()) / MINUTE));
-    return { label: `Dig for treasure (in ${mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`})`, enabled: false };
-  }
+  // He's standing in: what the parts below read and set (presenting, on a call).
+  const st = {
+    get presenting() { return presenting; }, set presenting(v) { presenting = v; },
+    get presentDone() { return presentDone; }, set presentDone(v) { presentDone = v; },
+    get onCall() { return onCall; },
+  };
+  const finds = createFinds(d, { now, free, napping, later, cancel, changed, getFinds, setFinds, getBond, grow, remember, st });
+  const { dug, present, findCard, presentJar, jarIfFree, digNow, digMenuItem } = finds;
+  const { visit } = createVisit(d, { now, temperament, getBond, getFinds, chatter, grow, remember, st });
 
   // ---------------------------------------------------------------- what happened elsewhere
   function onPet() {
@@ -554,55 +411,6 @@ function createLife(d) {
     changed();
   }
 
-  // ---------------------------------------------------------------- a friend's crab, talking
-  /**
-   * A visit started (v) or ended (null). The two of them say hello, chat between
-   * the things they do together, and say goodbye before the visitor walks off.
-   *   v: { login, card, until, signed }; ctx: what there is to talk about
-   * @param {any} v
-   * @param {{ visitMs?: number, togetherAt?: number[], myCard?: any }} [ctx]
-   */
-  function visit(v, { visitMs = 0, togetherAt = [], myCard = {} } = {}) {
-    visitTimers.forEach(clearTimeout);
-    visitTimers = [];
-    if (!v) return;
-    visitUsed = [];
-    const who = { me: temperament(), them: v.card?.temperament };
-    const first = !getBond().journal.some(e => e.kind === 'visitor' && e.data.login === v.login);
-    if (v.signed) {
-      grow('visit');
-      if (first) remember('visitor', { login: v.login });
-    }
-    const ctxFor = () => ({
-      firstVisit: first, myStickers: myCard.stickers?.length || 0, theirStickers: v.card?.stickers?.length || 0,
-      myLevel: myCard.level || 1, theirLevel: v.card?.level || 1,
-      myFind: gifts.favourite(getFinds())?.name || null, theirFind: gifts.findById(v.card?.find)?.name || null,
-      music: !!d.music(), hour: new Date(now()).getHours(), seasons: d.seasons(),
-    });
-    const talk = (at, phase) => visitTimers.push(setTimeout(() => {
-      // Only work, a call or your focus stops them: a trophy going off mid-visit doesn't.
-      if (d.working() || onCall || d.guarding() || chatter() === 'quiet') return;
-      const lines = banter.conversation(phase, who, ctxFor(), Math.random, visitUsed);
-      if (!lines.length) return;
-      if (phase === 'chat') visitUsed.push(lines[0].text);
-      let t = 0;
-      for (const l of lines) {
-        const ms = banter.lineMs(l.text);
-        visitTimers.push(setTimeout(() => {
-          if (l.who === 'me') d.say(l.text, ms, 'banter');
-          else d.toCrab('critter:visitor-say', { text: l.text, ms });
-        }, t));
-        t += ms + 250;
-      }
-      if (phase === 'chat') { d.stat('banter'); grow('banter'); }
-    }, at));
-    talk(4500, 'hello'); // after his "@friend dropped by!"
-    // Chat in the gaps between the things they do together.
-    const gaps = togetherAt.map(t => t + 6500).filter(t => t < visitMs - 20000);
-    for (const t of gaps.slice(0, 3)) talk(t, 'chat');
-    talk(visitMs - 9000, 'bye');
-  }
-
   // ---------------------------------------------------------------- the Us and Finds pages
   function view() {
     const t = temperament();
@@ -636,8 +444,7 @@ function createLife(d) {
   function stop() {
     for (const t of [watchTimer, micTimer, lookTimer]) if (t) clearInterval(t);
     watchTimer = micTimer = lookTimer = null;
-    clearTimeout(/** @type {any} */ (jarRetry));
-    jarWaiting = null;
+    finds.resetJar();
     cancel();
   }
 

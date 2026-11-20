@@ -649,6 +649,8 @@ src/main/        Electron main process
   board.js         the friends' board (pure): you and friends who share their Bugdex, ranked by this month's catches
   gifts/           index.js (finds from digging, pure: rarities, sets, sparkly ones, the shelf); portraits/ holds the big
                    drawings, one file per set (scripts/finds-sheet.js draws them to a PNG); life.js does the digging
+  life.js          his life between tasks: waking, scenes, your day, his eyes; its parts are life-finds.js (digging, a find or a jar held up,
+                   what a find is worth), life-visit.js (a friend's crab visiting, and the banter) and life-constants.js (the clock it runs on)
   swaps.js         swapping finds with friends (pure): offers, answers and call-offs as letters on calling cards (github/mail.js)
   eggs.js          crab eggs (pure): laying, the hash on your card, hatching, the baby both crabs get; wiring/social.js ties both in
   crab-line.js     the crab in a line (pure): the PR badge's text and the bring-home commit trailer
