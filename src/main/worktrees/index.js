@@ -209,8 +209,9 @@ function onlyLooks(command) {
   // Single-quoted text is literal in both shells; double-quoted text only
   // expands $( ), refused above. Anything that could make a quote mean
   // something else to the shell than to this check is refused first:
-  // PowerShell's curly quotes, a backslash before a quote, a comment.
-  if (/[\u2018-\u201f#]|\\['"]/.test(cmd)) return false;
+  // PowerShell's curly quotes, a backslash before a quote, a comment, and
+  // bash's $'...' and $"...", which decode escapes ($'\x2d-ext-diff').
+  if (/[\u2018-\u201f#]|\\['"]|\$['"]/.test(cmd)) return false;
   if (/[{}()@]/.test(cmd.replace(/'[^']*'|"[^"]*"/g, ''))) return false;
   // A lone & runs what follows too: `ls & touch x` is two commands.
   return cmd.split(/&&|\|\||[;|\n&]/).every(part => {
