@@ -74,7 +74,19 @@
         <!-- Ultracode on for this conversation: what it means, in a line (ultracode.js) -->
         <div class="ultra-note" id="ultraNote" role="status" hidden><span class="ultra-note-text"><b>Ultracode is on.</b> Claude may send out many agents, and they use a lot of tokens.</span><span class="ultra-note-est" id="ultraEst" hidden></span></div>
         <!-- Engineer mode on for this conversation (engineer.js) -->
-        <div class="ultra-note eng-note" id="engNote" role="status" hidden><span class="ultra-note-text"><b>Engineer mode is on.</b> Claude puts its decision on a card before it changes anything, and builds only once you approve it.</span></div>
+        <div class="ultra-note eng-note" id="engNote" hidden>
+          <span class="ultra-note-text"><b>Engineer mode is on.</b> Claude puts its decision on a card before it changes anything, builds only once you approve it, and keeps to the files it named.</span>
+          <span class="eng-project" id="engProject" hidden>
+            <label class="eng-project-on"><input type="checkbox" id="engProjectOn"> On for every new conversation in <b id="engProjectName"></b></label>
+            <button type="button" class="link-btn inline" id="engAllowBtn" aria-expanded="false" aria-controls="engAllow">Commands before deciding</button>
+          </span>
+          <div class="eng-allow" id="engAllow" hidden>
+            <p class="small muted" id="engAllowChecks"></p>
+            <label class="small" for="engAllowInput">Claude may also run these before you approve a decision, one per line, exactly as written:</label>
+            <textarea class="field eng-allow-input" id="engAllowInput" rows="3" spellcheck="false" placeholder="npm run lint&#10;node scripts/bench.js"></textarea>
+            <div class="eng-actions"><button type="button" class="btn slim-btn" id="engAllowSave">Save for this project</button><span class="small muted" id="engAllowSaved" role="status"></span></div>
+          </div>
+        </div>
         <div class="mod-status" id="modStatus" role="status" aria-label="What your mods say" hidden></div>
         <div class="outlook" id="outlook" role="status" hidden></div>
         <div class="review-bar" id="review" role="region" aria-label="Review comments waiting to be sent" hidden></div>

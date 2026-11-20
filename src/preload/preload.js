@@ -123,7 +123,7 @@ contextBridge.exposeInMainWorld('shellby', {
   // Try it N ways (wiring/tries.js): main always asks, with the cost, before any start
   startTries: (/** @type {string} */ tabId, /** @type {{ n?: number, text?: string, arg?: string, attachments?: string[] }} */ { n, text, arg, attachments } = {}) => ipcRenderer.invoke('tries:start', { tabId, n, text, arg, attachments }),
   stopTries: invoke('tries:stop'), triesStatus: invoke('tries:status'),
-  engineer: { set: (tabId, on) => ipcRenderer.invoke('engineer:set', { tabId, on }), act: (tabId, id, answer) => ipcRenderer.invoke('engineer:act', { tabId, id, ...answer }) }, // Engineer mode (wiring/engineer.js)
+  engineer: { set: (tabId, on) => ipcRenderer.invoke('engineer:set', { tabId, on }), act: (tabId, id, answer) => ipcRenderer.invoke('engineer:act', { tabId, id, ...answer }), project: tabId => ipcRenderer.invoke('engineer:project', { tabId }), setProject: (tabId, change) => ipcRenderer.invoke('engineer:project-set', { tabId, ...change }) }, // Engineer mode (wiring/engineer.js)
   debug: { start: (tabId, bug) => ipcRenderer.invoke('debug:start', { tabId, bug }), act: (id, what) => ipcRenderer.invoke('debug:act', { id, what }), status: invoke('debug:status'), onLines: on('debug:lines') }, // /debug (wiring/debug-mode.js)
   onTriesDone: on('tries:done'),                   // { runId, firstId, text }
   // learning from corrections: review comments in, the rule card's buttons, Toolbox → Memory (corrections.js)

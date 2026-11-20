@@ -85,6 +85,8 @@ const DEFAULTS = {
   suggestions: true, // ...and may offer Shellby features as one-tap cards
   taskBoard: true,   // ...and share a task board per project, to hand each other work (wiring/taskboard.js)
   engineerRecords: true, // Engineer mode: an approved decision is written down in the repo (docs/decisions)
+  engineerChecksFirst: true, // Engineer mode: Claude may run the project's own checks before a decision
+  engineerProjects: {}, // Engineer mode per project (by checks.projectKey): { on: every new conversation, allow: commands before a decision }
   handoffAsk: true,  // ...and a hand_off from one conversation to another waits on a card for your yes (wiring/chatlink.js)
   mutedSuggestions: [], // features the user said not to offer again
   voice: null,       // his seed, temperament and what he's said lately (see voice.js)

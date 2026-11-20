@@ -217,6 +217,8 @@ interface ShellbyPanelExtras {
   // debug-mode.js
   renderDebug: any;
   startDebug: any;
+  // engineer-card.js
+  engineerCard: any;
   // engineer.js
   renderEngineer: any;
   renderEngineerChip: any;

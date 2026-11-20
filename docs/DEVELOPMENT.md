@@ -169,6 +169,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | `node scripts/e2e-first-run.js [--shots <dir>]` | A fresh profile's first run with the fake CLI ([first-run.js](../src/main/first-run.js)): the welcome screen, then First steps on the chat with hello done; × and Settings → System → Screens bringing them back; each step done by the real thing (a folder chosen, a task sent, his changes opened, Outfits visited); Finds, Stickers (its button on Outfits) and Review mastery's card shut until the core loop, then open with a card and a "new" that a visit takes off; Show everything now; and profiles from 0.85 and from before rooms seeing no change. Screenshots go in `[dir]` (default `%TEMP%\shellby-e2e-first-run`) |
 | `node scripts/e2e-history-done.js` | The Done tick in History: a ticked conversation leaves the default list, the Not done / Done / All tabs only appear once something is done, Undo puts it back, and sending a done conversation more work un-ticks it |
 | `node scripts/e2e-crab-only.js` | A brand-new user picks "Just the crab": Health as home, chat hidden, Claude features become the upsell, survives a restart |
+| `node scripts/e2e-engineer.js` | Engineer mode: the chip and its tools, a change held back until a decision is approved, the card with its scope and its critic and spike-first buttons, approve, an edit outside the scope held back until the amendment is allowed, check_decision and Shellby's look at the diff, the card and chip after a reopen, and off again |
 | `node scripts/e2e-work-mode.js` | A brand-new user with a lively crab picks Work mode: the Claude setup, a bar that leads with the tools, Work mode's quiet settings on show while the file keeps theirs, a pal added in Work mode kept as its own, and Ctrl+K → Leave Work mode putting everything back |
 | `node scripts/e2e-card.js` | The crab card: Share, preview, a 1200×630 PNG in the test profile, the Show-Off trophy, junk bytes refused; every moment card (`MOMENT_KINDS` in moment-card.js), the week and Wrapped in Wide and Square from the sheet's switch, each by its PNG's size, and a size switch not counting as another share; the beach; the Tank's 📸; his tank painted on the card, and on the profile card only once you share it |
 | `node scripts/e2e-tides.js [folder]` | Tide events with the day pinned inside The Haunting (`SHELLBY_TODAY`): the Us page's banner (countdown, goals, its bug and finds, the medal), the event bug out now in the Bugdex, its finds on the shelf, the sparkly reveal (odds, the keyboard on Share), the shiny and medal cards as 1200×630 PNGs, and the switch hiding it all. Screenshots go in `[folder]` |
@@ -504,7 +505,8 @@ src/main/        Electron main process
                    (the trail, Ctrl+Shift+E, is the panel's own: renderer/shared/trail.js; parity.js answers its trail:tests)
   filelinks.js     file links in a conversation: which editor, its vscode://-style link, and what's never opened (pure); ipc/files.js opens them
   safety.js        flags "runs a file Claude wrote" / "changes Claude Code itself"
-  worktrees/       a copy of the project per tab: index.js (making, moving into and bringing home copies), claude-session.js
+  worktrees/       a copy of the project per tab: index.js (making, moving into and bringing home copies), looks.js (whether
+                   a tool call changes files: the read-only command check, pure), claude-session.js
                    (carrying Claude Code's transcript of a conversation into its copy), copy-deps.js
                    (node_modules for a new copy), copy-service.js, clash.js (copies that changed the same files, pure) and
                    clash-scan.js (asking git which files each changed), home-line.js (copies coming home into one checkout
@@ -661,8 +663,10 @@ src/main/        Electron main process
                    fenced as a block; wiring/mention-context.js lists a tab's own, saves a pick's snapshot and reads it back for composePrompt
   debug-mode.js    Debug mode (pure): the prompts, a reproduction's lines, the marked lines left behind; debug-ingest.js is the
                    127.0.0.1 receiver the logging posts to; wiring/debug-mode.js runs the rounds and the card
-  engineer.js      Engineer mode (pure, docs/ENGINEER.md): the decide and check_decision tools, the line each message gets, the
-                   answers the card sends and the gate on the work hook; wiring/engineer.js keeps each conversation's decision
+  engineer.js      Engineer mode (pure, docs/ENGINEER.md): its five tools (decide, check_decision, amend_decision, spike,
+                   end_spike), what each accepts, and the cards' view; engineer-gate.js is the gate on the work hook (scope,
+                   spikes, commands allowed before a decision) and the diff check; engineer-prompts.js what Claude is told;
+                   wiring/engineer.js keeps each conversation's decision and spike, puts a spike's files back, and runs the plan
   statusline.js    Shellby's line for Claude Code's status line, and adding/removing it in Claude's settings
   updates.js       the self-update state machine behind the button in Settings → System → About (electron-updater is injected, so it's testable)
   github/          sign-in (device flow, encrypted token), the REST client, gist sync, pack publishing, CI on your pull requests (ci.js), calling cards and waves for visiting crabs (card.js, mail.js), finding your own gists (gists.js), conversation history through its own gist (history-gist.js), and the service tying them together

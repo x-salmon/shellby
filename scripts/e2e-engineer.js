@@ -1,15 +1,18 @@
-// ci: engineer: the chip, its tools from the next start, changes held back, the decision card, approve, build, check, restored
+// ci: engineer: the chip, its tools from the next start, changes held back, the decision card, approve, build in scope, amend, check, restored
 // End-to-end check of Engineer mode against the dev app over CDP, driven by the
 // fake Claude CLI (test/fixtures/fake-claude.js): `mcp <tool> <json>` plays
 // Claude calling one of the crab's tools, `edit <file> <words>` a Write.
 //   1. The Engineer chip under the box is off; on, it says what it means, and
 //      the conversation's next process has decide and check_decision.
 //   2. With nothing approved, a change is held back: the file isn't written.
-//   3. decide puts the decision on a card: the options, Claude's pick, the
-//      test plan. Send it back needs a note.
+//   3. decide puts the decision on a card: the options, Claude's pick, its
+//      scope, the test plan, and the critic and spike-first buttons. Send it
+//      back needs a note.
 //   4. Approve sends Claude the answer; the weighing folds away, and the same
-//      change now goes through.
-//   5. check_decision puts how it went on the same card.
+//      change now goes through. A file outside the scope is held back until
+//      you allow the amendment Claude asks for on the same card.
+//   5. check_decision puts how it went on the same card, and Shellby's own
+//      look at the diff under it.
 //   6. Closed and brought back: the card as it ended, and the chip still on.
 //   7. Off again: the tools go with it.
 //   node scripts/e2e-engineer.js
@@ -36,6 +39,7 @@ const DECISION = {
   ],
   choice: 'Plain file',
   why: 'One file, one line.',
+  scope: ['a.txt'],
   test_plan: ['a.txt exists and says hi'],
   risks: ['None worth naming'],
 };
@@ -97,7 +101,8 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     check(await until("SB.$('engChip').getAttribute('aria-pressed') === 'true' && !SB.$('engNote').hidden"), 'on, it says so above the box');
     check(/decision on a card/.test(await ev("SB.$('engNote').textContent")), 'the line says Claude decides on a card first');
     await say('mcp tools');
-    check(/decide,check_decision/.test(await lastReply()), 'the next process has decide and check_decision');
+    check(/decide,check_decision,amend_decision,spike,end_spike/.test(await lastReply()), 'the next process has decide, check_decision, amend_decision, spike and end_spike');
+    check(await ev("SB.$('engProject').hidden"), 'a folder that is not a git project has no project settings to show');
 
     // 2. Held back with nothing approved.
     await say('edit a.txt hi');
@@ -108,6 +113,8 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     check(await until(`${card}?.classList.contains('phase-proposed')`), 'decide puts a card in the conversation, waiting for you');
     check(await ev(`${card}.querySelectorAll('.eng-option').length === 2 && /Claude's pick/.test(${card}.querySelector('.eng-option.chosen').textContent)`), "both options are on it, Claude's pick marked");
     check(await ev(`/a.txt exists and says hi/.test(${card}.querySelector('.eng-plan').textContent)`), 'the test plan is on it');
+    check(await ev(`${card}.querySelector('.eng-scope code')?.textContent === 'a.txt'`), 'and the scope: the files it will change');
+    check(await ev(`['Ask a critic', 'Spike it first'].every(t => [...${card}.querySelectorAll('.eng-actions button')].some(b => b.textContent === t))`), 'a critic or a spike first are a button away');
     if (SHOTS) await ev(`${card}.scrollIntoView({ block: 'start' })`);
     await shot('proposed');
     await ev(`[...${card}.querySelectorAll('.eng-actions button')].find(b => /Send it back/.test(b.textContent)).click()`);
@@ -125,12 +132,23 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     check(await ev(`[...${card}.querySelectorAll('.eng-actions button')].some(b => b.textContent === 'Close this decision')`), 'while it is being built, it can be closed');
     await say('edit a.txt hi');
     check(fs.existsSync(file), 'approved, the same change goes through');
+    const other = path.join(work, 'b.txt');
+    await say('edit b.txt hi');
+    check(!fs.existsSync(other), 'a file outside the scope is held back');
+    await say(`mcp amend_decision ${JSON.stringify({ add_scope: ['b.txt'], why: 'The greeting needs a second file' })}`);
+    check(await until(`/waiting for you/.test(${card}?.querySelector('.eng-amend')?.textContent || '')`), 'the amendment shows on the same card, waiting for you');
+    await ev(`[...${card}.querySelectorAll('.eng-amend button')].find(b => /^Allow/.test(b.textContent)).click()`);
+    check(await until("[...SB.activeTab().el.querySelectorAll('.user, .msg.user')].some(m => /Scope widened: b.txt/.test(m.textContent))"), 'allowing it goes to Claude as your message');
+    await idle();
+    await say('edit b.txt hi');
+    check(fs.existsSync(other), 'allowed, the file outside the scope goes through');
 
     // 5. Checked.
     await say(`mcp check_decision ${JSON.stringify(OUTCOME)}`);
     check(await until(`${card}?.classList.contains('phase-checked')`), 'check_decision puts how it went on the card');
     check(await ev(`/Built as decided/.test(${card}.textContent) && /passed/.test(${card}.querySelector('.eng-tests').textContent)`), 'built as decided, each check with how it went');
     check(await ev("SB.activeTab().el.querySelectorAll('.eng-card').length === 1"), 'one card for the decision, moved along as it went');
+    check(await until(`!!${card}?.querySelector('.eng-audit')`), "Shellby's own look at the diff is under it");
     await shot('checked');
 
     // 6. Closed and brought back.

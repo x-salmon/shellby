@@ -2,17 +2,25 @@
 //
 // With the Engineer chip on, Claude looks around, then puts its decision on a
 // card through the crab's `decide` tool: the goal, what constrains it, the
-// options it weighed with their trade-offs, which one it picks and why, how
-// it'll be tested, and the risks. Nothing that changes a file runs until you
-// approve one (the gate below, on the work hook). When the work is done,
-// `check_decision` says how it went against what was decided.
+// options it weighed with their trade-offs, which one it picks and why, the
+// files it will change (its scope), how it'll be tested, and the risks.
+// Nothing that changes a file runs until you approve one, and once you have,
+// only files inside the scope (engineer-gate.js). `amend_decision` asks to
+// widen it; `spike` asks to try something first, thrown away after.
+// `check_decision` says how it went, and Shellby checks that for itself:
+// what the diff really touched, and the test plan's commands, run by Shellby.
 //
-// Pure: the tools, their checks, the card's view, the line each message gets
-// and the gate. The conversation's side is wiring/engineer.js.
+// This file is pure: the tools, their checks, and the card's view. The gate
+// is engineer-gate.js, what Claude is told engineer-prompts.js, and the
+// conversation's side wiring/engineer.js.
+const checks = require('./checks');
 
 const DECIDE = 'decide';
 const CHECK = 'check_decision';
-const TOOL_NAMES = Object.freeze([DECIDE, CHECK]);
+const AMEND = 'amend_decision';
+const SPIKE = 'spike';
+const END_SPIKE = 'end_spike';
+const TOOL_NAMES = Object.freeze([DECIDE, CHECK, AMEND, SPIKE, END_SPIKE]);
 
 const MAX_TITLE = 80;
 const MAX_TEXT = 1200;
@@ -20,7 +28,12 @@ const MAX_ITEM = 300;
 const MAX_ITEMS = 8;
 const MAX_OPTIONS = 4;
 const MAX_NOTE = 2000;
+const MAX_SCOPE = 24;
+const MAX_PATH = 200;
+const MAX_TOUCHED = 300;
 const RESULTS = Object.freeze(['passed', 'failed', 'skipped']);
+const LEVELS = Object.freeze(['low', 'medium', 'high']);
+const REVERSIBILITY = Object.freeze(['easy', 'moderate', 'hard']);
 // Where an approved decision is written down in the repo (when Settings keeps them).
 const RECORD_DIR = 'docs/decisions';
 
@@ -28,22 +41,10 @@ const RECORD_DIR = 'docs/decisions';
 // returned: you sent it back. checked: the work's done and compared with it.
 // closed: you closed it (or turned the chip off) before it was checked.
 const PHASES = Object.freeze(['proposed', 'approved', 'returned', 'checked', 'closed']);
-
-// What Claude may still use with no decision approved, once the gate sees
-// every tool (session/args.js initHooks): reading, searching, asking, planning,
-// and the crab's tools that change nothing in the project. Anything else, an
-// MCP server's included, waits for an approval. Bash and PowerShell go by what
-// the command does (worktrees.startsWork). Helpers' own tools pass the gate too.
-const LOOKS = new Set([
-  'Read', 'Glob', 'Grep', 'LS', 'NotebookRead', 'WebFetch', 'WebSearch', 'TodoWrite', 'TodoRead', 'Task', 'Agent',
-  'AskUserQuestion', 'EnterPlanMode', 'ExitPlanMode', 'ToolSearch', 'Skill', 'ListMcpResourcesTool', 'ReadMcpResourceTool',
-  'BashOutput', 'TaskOutput', 'TaskStop', 'KillShell', 'Monitor', 'Bash', 'PowerShell',
-]);
-const CRAB = 'mcp__shellby__';
-const CRAB_LOOKS = new Set([
-  DECIDE, CHECK, 'say', 'celebrate', 'wear', 'status', 'note', 'suggest',
-  'list_routines', 'list_tasks', 'wait_for_tasks', 'list_chats', 'read_chat', 'list_pages', 'read_page',
-]);
+// A spike: asked (on its card), running, ending (end_spike called, put back
+// when the turn ends), done, refused (you said no) or failed (couldn't put back).
+const SPIKE_PHASES = Object.freeze(['asked', 'running', 'ending', 'done', 'refused', 'failed']);
+const AMEND_PHASES = Object.freeze(['proposed', 'approved', 'refused']);
 
 const STR = { type: 'string' };
 const LIST = { type: 'array', items: STR };
@@ -53,8 +54,9 @@ const TOOLS = Object.freeze([
   {
     name: DECIDE,
     description: 'Only while Shellby\'s Engineer mode is on: put your decision before the user, as a card, before changing any file. '
-      + 'Explore first. Give the real options you weighed (two or more where there are; one only when nothing else is sane, and say why) with honest trade-offs, '
-      + 'pick one, and say how you will know it works. Then end your turn: their answer arrives as their next message, and file changes are blocked until they approve.',
+      + 'Explore first, including earlier decision records in docs/decisions. Give the real options you weighed (two or more where there are; one only when nothing else is sane, and say why) with honest trade-offs, '
+      + 'pick one, name the files or folders you will change (scope), and say how you will know it works. Then end your turn: their answer arrives as their next message, '
+      + 'and file changes are blocked until they approve, then held to the scope.',
     inputSchema: obj({
       title: { type: 'string', description: 'The decision in a few words, e.g. "Cache prices in memory"' },
       goal: { type: 'string', description: 'What done means, in a sentence or two' },
@@ -65,15 +67,28 @@ const TOOLS = Object.freeze([
       },
       choice: { type: 'string', description: 'The name of the option you pick' },
       why: { type: 'string', description: 'Why that one over the others' },
-      test_plan: { ...LIST, description: 'How you will check it works' },
+      scope: { ...LIST, description: 'The files or folders you will change, relative to the repo root: "src/cache.js", "src/cache/", "test/*.test.js". Edits outside it are blocked until the user approves an amendment.' },
+      test_plan: {
+        type: 'array',
+        description: 'How you will check it works. Give a check the project\'s own command where there is one ("npm run test", "npm run typecheck", "cargo test", "go test ./...", "python -m pytest -q"): Shellby runs those itself afterwards.',
+        items: { anyOf: [STR, obj({ check: STR, command: STR }, ['check'])] },
+      },
       risks: { ...LIST, description: 'What could go wrong, and what would change your mind' },
-    }, ['title', 'goal', 'options', 'choice', 'why', 'test_plan']),
+      steps: { ...LIST, description: 'For work too big for one go: the steps in order. Report each with check_decision({ step }).' },
+      related: { ...LIST, description: 'Earlier decision records this builds on, e.g. "docs/decisions/0003-cache-layer.md"' },
+      supersedes: { type: 'string', description: 'An earlier decision record this one replaces, if any' },
+      confidence: { type: 'string', enum: [...LEVELS], description: 'How sure you are this is the right choice' },
+      reversibility: { type: 'string', enum: [...REVERSIBILITY], description: 'How hard it would be to undo once built' },
+      critique: { ...LIST, description: 'When the user asked for a critic: the strongest points it made against your pick' },
+    }, ['title', 'goal', 'options', 'choice', 'why', 'scope', 'test_plan']),
   },
   {
     name: CHECK,
-    description: 'Only while Shellby\'s Engineer mode is on: once the approved work is done, say how it went against the decision. '
-      + 'Run the test plan first and report each check truthfully. Further file changes need a new decision.',
+    description: 'Only while Shellby\'s Engineer mode is on: once the approved work (or one step of it) is done, say how it went against the decision. '
+      + 'Run the test plan first and report each check truthfully; Shellby runs the plan\'s commands itself too and shows both. '
+      + 'Give step for one step of a decision with steps; the last step, or no step, closes it, and further file changes need a new decision.',
     inputSchema: obj({
+      step: { type: 'integer', description: 'Which step this reports, counting from 1, for a decision with steps' },
       followed: { type: 'boolean', description: 'Whether the work did what was decided' },
       summary: { type: 'string', description: 'What was done, in a sentence or two' },
       deviations: { type: 'array', items: obj({ what: STR, why: STR }, ['what', 'why']), description: 'Where the work left the decision, and why' },
@@ -81,16 +96,84 @@ const TOOLS = Object.freeze([
       record: { type: 'string', description: 'The decision record file you wrote, if you wrote one' },
     }, ['followed', 'summary']),
   },
+  {
+    name: AMEND,
+    description: 'Only while Shellby\'s Engineer mode is on and a decision is approved: ask to change files outside its scope. '
+      + 'Say which and why; it shows on the decision card. Then end your turn: edits outside the scope stay blocked until the user approves.',
+    inputSchema: obj({
+      add_scope: { ...LIST, description: 'The files or folders to add, relative to the repo root' },
+      why: { type: 'string', description: 'Why the work needs them' },
+    }, ['add_scope', 'why']),
+  },
+  {
+    name: SPIKE,
+    description: 'Only while Shellby\'s Engineer mode is on, before a decision: ask to try something out when the right choice depends on what only trying will show '
+      + '(does the library do X, how slow is Y). Every change you make in the spike is put back afterwards. Then end your turn and wait for the user to allow it.',
+    inputSchema: obj({
+      question: { type: 'string', description: 'What the spike will find out' },
+      plan: { type: 'string', description: 'What you will try, briefly' },
+    }, ['question', 'plan']),
+  },
+  {
+    name: END_SPIKE,
+    description: 'Only during an Engineer mode spike: say what you found. Shellby puts every file the spike changed back when this turn ends. '
+      + 'Then call decide, using what you found.',
+    inputSchema: obj({
+      findings: { type: 'string', description: 'What the spike showed' },
+      answer: { type: 'string', description: 'The answer to the spike\'s question, in a sentence' },
+    }, ['findings']),
+  },
 ]);
 
 // One line, control characters and runs of blanks gone, cut to n.
 const line = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 // Several lines kept as they are (a goal can be a short paragraph), the rest cleaned.
 const para = (v, n) => String(v ?? '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, n);
-const items = (v, n = MAX_ITEM) => (Array.isArray(v) ? v : []).map(x => line(x, n)).filter(Boolean).slice(0, MAX_ITEMS);
+const items = (v, n = MAX_ITEM, max = MAX_ITEMS) => (Array.isArray(v) ? v : []).map(x => line(x, n)).filter(Boolean).slice(0, max);
 // A title or an option's name: it goes inside Shellby's own bracketed lines to
 // Claude, so no brackets or quotes that could pass for the end of one.
 const named = v => line(String(v ?? '').replace(/[[\]"`]/g, ''), MAX_TITLE);
+const oneOf = (v, list) => (list.includes(/** @type {string} */ (v)) ? /** @type {string} */ (v) : null);
+const record = v => (v && typeof v === 'object' ? /** @type {Record<string, unknown>} */ (v) : {});
+
+/**
+ * A scope path from Claude -> its normal form ("src/cache/", "test/*.js"), or
+ * null for one that isn't a path inside the repo. Relative, forward slashes,
+ * no .. and no drive or leading slash: a scope can't reach outside the project.
+ */
+function scopePath(v) {
+  const p = line(v, MAX_PATH).replace(/\\/g, '/').replace(/^(\.\/)+/, '').replace(/\/{2,}/g, '/');
+  if (!p || p === '.' || p.startsWith('/') || /^[a-z]:/i.test(p) || p.split('/').includes('..') || /[[\]"`]/.test(p)) return null;
+  return p;
+}
+
+/** A list of scope paths -> { paths } | { error } */
+function readScope(v, what = 'scope') {
+  const raw = (Array.isArray(v) ? v : []).slice(0, MAX_SCOPE);
+  const paths = [];
+  for (const x of raw) {
+    const p = scopePath(x);
+    if (!p) return { error: `${what}: "${line(x, 60)}" isn't a path inside the repo. Give paths relative to its root, like "src/cache.js" or "src/cache/".` };
+    if (!paths.includes(p)) paths.push(p);
+  }
+  if (!paths.length) return { error: `Say which files or folders you will change (${what}), relative to the repo root.` };
+  return { paths };
+}
+
+/**
+ * A test plan item -> { check, command? }. A command is kept only when it's
+ * one Shellby would build itself (checks.isSafeCommand): those it runs after
+ * the work; any other stays a check Claude reports on.
+ */
+function planItem(x) {
+  if (typeof x === 'string') { const check = line(x, MAX_ITEM); return check ? { check } : null; }
+  const o = record(x);
+  const check = line(o.check, MAX_ITEM);
+  if (!check) return null;
+  const command = line(o.command, 100).replace(/^npm test$/, 'npm run test');
+  return checks.isSafeCommand(command) ? { check, command } : { check };
+}
+const readPlan = v => (Array.isArray(v) ? v : []).map(planItem).filter(Boolean).slice(0, MAX_ITEMS);
 
 /**
  * `decide`'s arguments -> { decision } | { error }. The decision is what the
@@ -98,14 +181,14 @@ const named = v => line(String(v ?? '').replace(/[[\]"`]/g, ''), MAX_TITLE);
  * @param {unknown} args
  */
 function readDecision(args) {
-  const a = args && typeof args === 'object' ? /** @type {Record<string, unknown>} */ (args) : {};
+  const a = record(args);
   const title = named(a.title);
   const goal = para(a.goal, MAX_TEXT);
   const why = para(a.why, MAX_TEXT);
   if (!title) return { error: 'Give the decision a title.' };
   if (!goal) return { error: 'Say what done means (goal).' };
   const options = (Array.isArray(a.options) ? a.options : []).slice(0, MAX_OPTIONS).map(o => {
-    const x = o && typeof o === 'object' ? /** @type {Record<string, unknown>} */ (o) : {};
+    const x = record(o);
     return { name: named(x.name), summary: para(x.summary, MAX_TEXT), pros: items(x.pros), cons: items(x.cons) };
   }).filter(o => o.name);
   if (!options.length) return { error: 'List the options you weighed, each with a name and a summary.' };
@@ -114,33 +197,83 @@ function readDecision(args) {
   const choice = options.findIndex(o => o.name.toLowerCase() === named(a.choice).toLowerCase());
   if (choice < 0) return { error: `choice must be one of the options' names: ${options.map(o => o.name).join(', ')}.` };
   if (!why) return { error: 'Say why you picked it (why).' };
-  const testPlan = items(a.test_plan);
+  const scope = readScope(a.scope);
+  if (scope.error) return { error: scope.error };
+  const testPlan = readPlan(a.test_plan);
   if (!testPlan.length) return { error: 'Say how you will check it works (test_plan).' };
+  const supersedes = line(a.supersedes, MAX_PATH).replace(/[[\]"`]/g, '');
   return {
-    decision: { title, goal, constraints: items(a.constraints), options, choice, why, testPlan, risks: items(a.risks) },
+    decision: {
+      title, goal, constraints: items(a.constraints), options, choice, why, scope: scope.paths, testPlan, risks: items(a.risks),
+      steps: items(a.steps, MAX_ITEM, MAX_ITEMS),
+      related: items(a.related, MAX_PATH).map(r => r.replace(/[[\]"`]/g, '')).filter(Boolean),
+      ...(supersedes ? { supersedes } : {}),
+      confidence: oneOf(a.confidence, LEVELS), reversibility: oneOf(a.reversibility, REVERSIBILITY),
+      critique: items(a.critique),
+    },
   };
 }
 
+/** Low confidence in something hard to undo: worth trying before building. Pure. */
+const worthASpike = d => d?.confidence === 'low' && d?.reversibility === 'hard';
+
 /**
- * `check_decision`'s arguments -> { outcome } | { error }.
+ * `check_decision`'s arguments -> { outcome } | { error }. steps: how many the
+ * decision has (0 for none): a step out of range is refused.
  * @param {unknown} args
  */
-function readOutcome(args) {
-  const a = args && typeof args === 'object' ? /** @type {Record<string, unknown>} */ (args) : {};
+function readOutcome(args, steps = 0) {
+  const a = record(args);
   if (typeof a.followed !== 'boolean') return { error: 'Say whether the work followed the decision (followed: true or false).' };
   const summary = para(a.summary, MAX_TEXT);
   if (!summary) return { error: 'Say what was done (summary).' };
+  /** @type {number | null} */
+  let step = null;
+  if (a.step != null) {
+    if (!steps) return { error: 'This decision has no steps: leave step out.' };
+    if (!Number.isInteger(a.step) || /** @type {number} */ (a.step) < 1 || /** @type {number} */ (a.step) > steps) return { error: `step is a number from 1 to ${steps}.` };
+    step = /** @type {number} */ (a.step);
+  }
   const deviations = (Array.isArray(a.deviations) ? a.deviations : []).slice(0, MAX_ITEMS).map(d => {
-    const x = d && typeof d === 'object' ? /** @type {Record<string, unknown>} */ (d) : {};
+    const x = record(d);
     return { what: line(x.what, MAX_ITEM), why: line(x.why, MAX_ITEM) };
   }).filter(d => d.what);
   const tests = (Array.isArray(a.tests) ? a.tests : []).slice(0, MAX_ITEMS).map(t => {
-    const x = t && typeof t === 'object' ? /** @type {Record<string, unknown>} */ (t) : {};
-    return { check: line(x.check, MAX_ITEM), result: RESULTS.includes(/** @type {string} */ (x.result)) ? x.result : 'skipped' };
+    const x = record(t);
+    return { check: line(x.check, MAX_ITEM), result: oneOf(x.result, RESULTS) || 'skipped' };
   }).filter(t => t.check);
   // A path in the repo, shown as text: never opened or trusted from here.
-  const record = line(a.record, 260);
-  return { outcome: { followed: a.followed, summary, deviations, tests, ...(record ? { record } : {}) } };
+  const rec = line(a.record, 260);
+  return { outcome: { followed: a.followed, summary, deviations, tests, ...(rec ? { record: rec } : {}), ...(step ? { step } : {}) } };
+}
+
+/** `amend_decision`'s arguments -> { amendment: { add, why } } | { error } */
+function readAmendment(args) {
+  const a = record(args);
+  const scope = readScope(a.add_scope, 'add_scope');
+  if (scope.error) return { error: scope.error };
+  const why = para(a.why, MAX_TEXT);
+  if (!why) return { error: 'Say why the work needs them (why).' };
+  return { amendment: { add: scope.paths, why } };
+}
+
+/** `spike`'s arguments -> { spike: { question, plan } } | { error } */
+function readSpike(args) {
+  const a = record(args);
+  const question = named(a.question);
+  if (!question) return { error: 'Say what the spike will find out (question).' };
+  const plan = para(a.plan, MAX_TEXT);
+  if (!plan) return { error: 'Say what you will try (plan).' };
+  return { spike: { question, plan } };
+}
+
+/** `end_spike`'s arguments -> { findings, answer? } | { error } */
+function readFindings(args) {
+  const a = record(args);
+  const findings = para(a.findings, MAX_TEXT);
+  if (!findings) return { error: 'Say what the spike showed (findings).' };
+  const answer = line(a.answer, MAX_ITEM);
+  return { findings, ...(answer ? { answer } : {}) };
 }
 
 /** A decision's file name under RECORD_DIR, without its number: a slug of the title. */
@@ -148,91 +281,10 @@ function recordSlug(title) {
   return line(title, MAX_TITLE).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'decision';
 }
 
-// ------------------------------------------------------------------ the line each message gets
-
-/**
- * The bracketed line a message carries while Engineer mode is on (selfaware's
- * "[Shellby:" convention), or '' when it needs none. state: the conversation's
- * engineer state (wiring/engineer.js), { phase } of its latest decision or null.
- */
-function turnNote(state) {
-  const phase = state?.decision?.phase;
-  if (phase === 'approved') {
-    return `[Shellby: Engineer mode is on. The approved decision "${state.decision.title}" covers this work. If this message asks for something it doesn't cover, call mcp__shellby__decide again first.]`;
-  }
-  if (phase === 'proposed') {
-    return '[Shellby: Engineer mode is on. Your decision is waiting on the user\'s card. Answer what they ask, but change no files until they approve it; if this message changes what is needed, call mcp__shellby__decide again with the new decision.]';
-  }
-  return '[Shellby: Engineer mode is on. Before changing any file, explore, then call mcp__shellby__decide with your decision and end your turn. File changes are blocked until the user approves one. Questions that need no changes can be answered directly.]';
-}
-
-/** Appends the line to a prompt (a string, or content blocks when pictures go with it). */
-function withNote(prompt, note) {
-  if (!note) return prompt;
-  if (Array.isArray(prompt)) return [...prompt, { type: 'text', text: note }];
-  return `${prompt}\n\n${note}`;
-}
-
-// ------------------------------------------------------------------ what you answer
-
-/**
- * What Claude is told when you press a button on the card. what: 'approve' |
- * 'pick' (another option, by index) | 'return'. keepRecords: Settings' "keep
- * decision records in the repo". -> { prompt, shown } | { error }
- */
-function answerPrompt(decision, { what, option = -1, note = '', keepRecords = true }) {
-  const said = para(note, MAX_NOTE);
-  const theirs = said ? `\nTheir note: ${said}` : '';
-  if (what === 'return') {
-    if (!said) return { error: 'Say what should change, then send it back.' };
-    return {
-      prompt: `[Shellby: The user sent the decision "${decision.title}" back without approving it.${theirs}\nRethink it, then call mcp__shellby__decide again. File changes stay blocked until they approve one.]`,
-      shown: `Sent back: ${line(said, 200)}`,
-    };
-  }
-  const picked = what === 'pick' ? option : decision.choice;
-  const chosen = decision.options[picked];
-  if (!chosen) return { error: 'That option is gone. Look at the card again.' };
-  const instead = picked !== decision.choice ? ` They chose "${chosen.name}" rather than your pick, "${decision.options[decision.choice].name}".` : '';
-  const record = keepRecords
-    ? `\nFirst write the decision down: ${RECORD_DIR}/NNNN-${recordSlug(decision.title)}.md, with NNNN the next free four-digit number there, in this shape: # NNNN. Title; Status: Accepted; Date; ## Context (goal and constraints); ## Options considered (each with its trade-offs); ## Decision (the chosen option and why); ## Test plan; ## Risks. Follow the house style if the folder already has records.`
-    : '';
-  return {
-    prompt: `[Shellby: The user approved the decision "${decision.title}".${instead}${theirs}\nFile changes are unblocked for this work.${record}\nThen do the work, run the test plan, and finish with mcp__shellby__check_decision.]`,
-    shown: picked !== decision.choice ? `Go with "${chosen.name}"${said ? `: ${line(said, 160)}` : ''}` : `Approved: ${decision.title}${said ? `: ${line(said, 160)}` : ''}`,
-    picked,
-  };
-}
-
-// ------------------------------------------------------------------ the gate
-
-/** Whether a tool call may run with no decision approved: it only looks around. */
-function looks(toolName, toolInput, startsWork) {
-  const tool = String(toolName || '');
-  if (startsWork(tool, toolInput)) return false;
-  if (tool.startsWith(CRAB)) return CRAB_LOOKS.has(tool.slice(CRAB.length));
-  return LOOKS.has(tool);
-}
-
-/** The hook output that holds a tool call back, saying why. */
-const deny = why => ({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: why } });
-
-/**
- * The work hook's answer while Engineer mode is on: deny anything but looking
- * around until a decision is approved. startsWork(tool, input): whether the
- * call changes files (worktrees.startsWork). -> hook output, or null to let it through.
- */
-function gate(state, toolName, toolInput, startsWork) {
-  if (!state?.on || state.decision?.phase === 'approved') return null;
-  if (looks(toolName, toolInput, startsWork)) return null;
-  const why = state.decision?.phase === 'proposed'
-    ? 'Engineer mode: the decision is still waiting on the user\'s card. End your turn and wait for their answer before changing anything.'
-    : 'Engineer mode: no approved decision covers this step. Call mcp__shellby__decide with your decision, end your turn, and wait for the user to approve it.';
-  return deny(why);
-}
-
-/** What the hook answers when the gate itself failed: no, rather than a step nobody checked. */
-const gateFailed = () => deny('Engineer mode could not check this step, so it was held back. Try it again; if it keeps happening, the user can turn Engineer mode off.');
+/** The scope as it stands: the decision's, and every amendment you approved. Pure. */
+const scopeOf = d => [...(d?.scope || []), ...(d?.amendments || []).filter(m => m.phase === 'approved').flatMap(m => m.add)];
+/** The amendment waiting on the card, if any. */
+const pendingAmendment = d => (d?.amendments || []).find(m => m.phase === 'proposed') || null;
 
 // ------------------------------------------------------------------ the card
 
@@ -241,11 +293,46 @@ function view(d) {
   return {
     kind: 'engineer', id: d.id, phase: d.phase, title: d.title, goal: d.goal,
     constraints: d.constraints, options: d.options, choice: d.choice, why: d.why,
-    testPlan: d.testPlan, risks: d.risks,
+    scope: d.scope, testPlan: d.testPlan, risks: d.risks,
+    steps: d.steps || [], related: d.related || [], critique: d.critique || [],
+    ...(d.supersedes ? { supersedes: d.supersedes } : {}),
+    ...(d.confidence ? { confidence: d.confidence } : {}),
+    ...(d.reversibility ? { reversibility: d.reversibility } : {}),
+    ...(d.amendments?.length ? { amendments: d.amendments } : {}),
+    ...(d.progress?.length ? { progress: d.progress } : {}),
     ...(Number.isInteger(d.picked) ? { picked: d.picked } : {}),
     ...(d.note ? { note: d.note } : {}),
+    ...(d.asked ? { asked: d.asked } : {}),
     ...(d.outcome ? { outcome: d.outcome } : {}),
+    ...(d.root ? { root: d.root } : {}),
+    ...(d.touched ? { touched: d.touched } : {}),
+    ...(d.audit ? { audit: d.audit } : {}),
+    ...(d.verify ? { verify: d.verify } : {}),
+    ...(d.spike ? { spike: d.spike } : {}),
   };
+}
+
+/** A path list read back from History: strings, in the repo, clipped. */
+const paths = (v, max) => (Array.isArray(v) ? v : []).map(scopePath).filter(Boolean).slice(0, max);
+
+/** What Shellby's diff check found, read back from History. */
+function reviveAudit(a) {
+  const x = record(a);
+  if (!Array.isArray(x.unplanned)) return null;
+  return { files: Math.max(0, Math.min(100000, Number(x.files) || 0)), unplanned: paths(x.unplanned, MAX_TOUCHED) };
+}
+
+/** Shellby's run of the test plan's commands, read back from History. */
+function reviveVerify(v) {
+  const x = record(v);
+  const status = oneOf(x.status, ['running', 'done', 'declined', 'none', 'cancelled', 'error']);
+  if (!status) return null;
+  const results = (Array.isArray(x.results) ? x.results : []).slice(0, MAX_ITEMS).map(r => {
+    const o = record(r);
+    const cmd = line(o.cmd, 100);
+    return checks.isSafeCommand(cmd) ? { cmd, status: oneOf(o.status, checks.STATUSES) || 'error', tail: para(o.tail, 4000) } : null;
+  }).filter(Boolean);
+  return { status, results };
 }
 
 /**
@@ -255,14 +342,40 @@ function view(d) {
  */
 function revive(i) {
   const options = Array.isArray(i.options) ? i.options : [];
-  const r = readDecision({ title: i.title, goal: i.goal, constraints: i.constraints, options, choice: options[i.choice]?.name, why: i.why, test_plan: i.testPlan, risks: i.risks });
+  // Older cards kept the plan as plain strings and had no scope: open scope ('**') for those.
+  const scope = Array.isArray(i.scope) && i.scope.length ? i.scope : ['**'];
+  const r = readDecision({
+    title: i.title, goal: i.goal, constraints: i.constraints, options, choice: options[i.choice]?.name, why: i.why,
+    scope, test_plan: i.testPlan, risks: i.risks, steps: i.steps, related: i.related, supersedes: i.supersedes,
+    confidence: i.confidence, reversibility: i.reversibility, critique: i.critique,
+  });
   if (!r.decision) return null;
-  const outcome = i.outcome ? readOutcome(i.outcome).outcome : null;
+  const steps = r.decision.steps.length;
+  const outcome = i.outcome ? readOutcome(i.outcome, steps).outcome : null;
+  const progress = (Array.isArray(i.progress) ? i.progress : []).map(p => readOutcome(p, steps).outcome).filter(p => p?.step).slice(0, MAX_ITEMS);
+  const amendments = (Array.isArray(i.amendments) ? i.amendments : []).slice(0, MAX_ITEMS).map(m => {
+    const x = record(m);
+    const a = readAmendment({ add_scope: x.add, why: x.why }).amendment;
+    const phase = oneOf(x.phase, AMEND_PHASES);
+    return a && phase && typeof x.id === 'string' ? { id: x.id.slice(0, 64), phase, ...a } : null;
+  }).filter(Boolean);
+  const audit = i.audit ? reviveAudit(i.audit) : null;
+  const verify = i.verify ? reviveVerify(i.verify) : null;
+  const sp = i.spike ? readSpike(i.spike).spike : null;
+  const found = sp && i.spike.findings ? readFindings(i.spike) : null;
   return {
     id: i.id, phase: i.phase, ...r.decision,
     ...(Number.isInteger(i.picked) && r.decision.options[i.picked] ? { picked: i.picked } : {}),
     ...(typeof i.note === 'string' && i.note ? { note: i.note.slice(0, MAX_NOTE) } : {}),
+    ...(i.asked === 'critic' || i.asked === 'spike-first' ? { asked: i.asked } : {}),
     ...(outcome ? { outcome } : {}),
+    ...(progress.length ? { progress } : {}),
+    ...(amendments.length ? { amendments } : {}),
+    ...(typeof i.root === 'string' && i.root.length < 400 ? { root: i.root } : {}),
+    ...(Array.isArray(i.touched) ? { touched: paths(i.touched, MAX_TOUCHED) } : {}),
+    ...(audit ? { audit } : {}),
+    ...(verify ? { verify } : {}),
+    ...(sp && found && !found.error ? { spike: { question: sp.question, ...found } } : {}),
   };
 }
 
@@ -278,7 +391,53 @@ function latestFrom(transcript) {
   return last ? revive(last) : null;
 }
 
+// ------------------------------------------------------------------ the spike's card
+
+/** The transcript item for a spike. refs: each turn's diff while it ran, to put back. */
+function spikeView(s) {
+  return {
+    kind: 'engineer-spike', id: s.id, phase: s.phase, question: s.question, plan: s.plan,
+    ...(s.findings ? { findings: s.findings } : {}),
+    ...(s.answer ? { answer: s.answer } : {}),
+    ...(s.refs?.length ? { refs: s.refs } : {}),
+    ...(s.restored ? { restored: s.restored } : {}),
+    ...(s.note ? { note: s.note } : {}),
+    ...(s.used ? { used: true } : {}),
+  };
+}
+
+const TREE = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
+
+/** A spike read back from History. -> the spike or null */
+function reviveSpike(i) {
+  const r = readSpike({ question: i.question, plan: i.plan });
+  if (!r.spike || typeof i.id !== 'string' || !SPIKE_PHASES.includes(i.phase)) return null;
+  const f = i.findings ? readFindings({ findings: i.findings, answer: i.answer }) : null;
+  const refs = (Array.isArray(i.refs) ? i.refs : []).slice(0, 200).map(x => {
+    const o = record(x);
+    if (typeof o.root !== 'string' || !TREE.test(String(o.before)) || !TREE.test(String(o.after))) return null;
+    return { root: o.root, before: o.before, after: o.after, ...(Array.isArray(o.paths) ? { paths: o.paths.filter(p => typeof p === 'string').slice(0, 100) } : {}) };
+  }).filter(Boolean);
+  const rs = record(i.restored);
+  return {
+    id: i.id.slice(0, 64), phase: i.phase, ...r.spike,
+    ...(f && !f.error ? f : {}),
+    ...(refs.length ? { refs } : {}),
+    ...(i.restored ? { restored: { ok: rs.ok === true, files: Math.max(0, Number(rs.files) || 0), ...(rs.error ? { error: line(rs.error, MAX_ITEM) } : {}) } } : {}),
+    ...(typeof i.note === 'string' && i.note ? { note: i.note.slice(0, MAX_NOTE) } : {}),
+    ...(i.used === true ? { used: true } : {}),
+  };
+}
+
+/** The latest spike in a transcript, for a reopened conversation. */
+function latestSpikeFrom(transcript) {
+  let last = null;
+  for (const i of Array.isArray(transcript) ? transcript : []) if (i?.kind === 'engineer-spike' && typeof i.id === 'string') last = i;
+  return last ? reviveSpike(last) : null;
+}
+
 module.exports = {
-  DECIDE, CHECK, TOOL_NAMES, TOOLS, PHASES, RESULTS, RECORD_DIR, MAX_NOTE,
-  readDecision, readOutcome, recordSlug, turnNote, withNote, answerPrompt, gate, gateFailed, looks, view, latestFrom,
+  DECIDE, CHECK, AMEND, SPIKE, END_SPIKE, TOOL_NAMES, TOOLS, PHASES, SPIKE_PHASES, RESULTS, LEVELS, REVERSIBILITY, RECORD_DIR, MAX_NOTE, MAX_TOUCHED,
+  line, para, named, scopePath, readScope, readDecision, readOutcome, readAmendment, readSpike, readFindings, recordSlug,
+  scopeOf, pendingAmendment, worthASpike, view, latestFrom, spikeView, latestSpikeFrom,
 };

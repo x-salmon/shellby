@@ -115,7 +115,7 @@ Already use Claude Code on this PC? The tool screens are on the bar from the sta
 - **Run checks** stamps your test results on a turn, with before and after pictures.
 - **Comment on the diff,** line by line, and send all your comments back as one follow-up.
 - **Review a whole branch** in the file viewer: comment on any line, see the words that changed inside a line, tick files as viewed, hide whitespace-only changes, and <kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>G</kbd> to find and jump.
-- **Engineer mode:** Claude weighs the options and puts its decision on a card before it builds anything. Approve it, pick another option or send it back. Your files stay untouched until you do, and the decision is written into `docs/decisions` for whoever comes next.
+- **Engineer mode:** Claude weighs the options and puts its decision on a card before it builds anything. Approve it, pick another option, send it back, ask a critic, or have Claude try it out first (every change put back). Your files stay untouched until you approve, then only the files it named are changed. Shellby checks the result itself: the diff against the plan, and the test plan's commands, run by Shellby. Each decision is written into `docs/decisions` for whoever comes next.
 - **Learns from your corrections:** correct Claude the same way twice and he offers to add it to `CLAUDE.md` as a rule.
 
 **See what it costs**

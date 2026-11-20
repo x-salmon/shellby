@@ -152,6 +152,8 @@ function wireSessions(d) {
       // and a line about the plan's usage once it runs high. A /command goes as typed.
       getSelfAware: () => d.getSelfAware(),
       onTool: (tab, name, args) => d.crabTool(tab, name, args),
+      // A new conversation in a project with Engineer mode on for every one (wiring/engineer.js).
+      engineerDefault: tab => d.engineer?.engineerDefault(tab) || false,
       decorate: (tab, prompt) => {
         d.engineer?.arm(tab); // Engineer mode's gate, in step with its chip and Settings
         if (!d.config.get('selfAware') || selfaware.isSlashCommand(prompt)) return prompt;
@@ -398,7 +400,7 @@ function wireSessions(d) {
     const t = d.manager.tabs.get(tabId);
     const cwd = t?.claudeWorktree?.path || t?.session.cwd;
     if (cwd) fileIndex.forget(cwd); // what it created can be @-mentioned straight away
-    if (!start) { d.shotsAfterTurn?.(tabId, null); return; }
+    if (!start) { d.shotsAfterTurn?.(tabId, null); engineerAfter(tabId, null); return; }
     try {
       const end = await changes.snapshot(start.root);
       // Other conversations' turns that overlapped this one (a later edit of theirs, still running, counts too).
@@ -444,6 +446,12 @@ function wireSessions(d) {
     } catch (err) {
       d.log.info(`checks: ${err.message}`);
     }
+    engineerAfter(tabId, summary);
+  }
+
+  // Engineer mode keeps each turn's files: a spike's to put back, a decision's to check (wiring/engineer.js).
+  function engineerAfter(tabId, summary) {
+    d.engineer?.turnChanged(tabId, summary)?.catch?.(err => d.log.info(`engineer: ${err.message}`));
   }
 
   // ---- the usage meter
