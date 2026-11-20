@@ -88,11 +88,13 @@
   // ---------------------------------------------------------------- the folder browser
 
   async function browse(alias, dir) {
-    browsing = { alias, dir, here: null, folders: [], error: null, loading: true };
+    // Typing in the box: keep the cursor there through the re-draws, to type on.
+    const typing = !!document.activeElement?.closest?.('.rc-browse .row');
+    browsing = { alias, dir, here: null, folders: [], error: null, loading: true, typing };
     render();
     const r = await api.remoteBrowse(alias, dir);
     if (browsing?.alias !== alias) return;
-    browsing = r?.ok ? { alias, dir: r.dir, here: r.here, folders: r.folders, error: null, loading: false } : { ...browsing, error: r?.error || "Couldn't look there.", loading: false };
+    browsing = r?.ok ? { alias, dir: r.dir, here: r.here, folders: r.folders, error: null, loading: false, typing } : { ...browsing, error: r?.error || "Couldn't look there.", loading: false };
     render();
   }
 
@@ -106,22 +108,39 @@
     SB.toast(`Added ${r.label}`, { action: 'Work there', onAction: () => workHere(r.anchor), ms: 8000 });
   }
 
+  // The folders listed, narrowed to what's typed after the folder shown.
+  function dirRows(alias, b, filter) {
+    const up = L.parentDir(b.dir);
+    const shown = L.matchFolders(b.folders, filter);
+    return [
+      up && !filter ? h('li', {}, h('button', { type: 'button', class: 'link-btn', text: '.. (up one)', onclick: () => browse(alias, up) })) : null,
+      ...shown.map(f => h('li', {},
+        h('button', { type: 'button', class: 'link-btn', text: `${f.name}/`, onclick: () => browse(alias, L.joinDir(b.dir, f.name)) }),
+        f.git ? h('span', { class: 'pj-tag', text: 'git' }) : null)),
+      filter && !shown.length ? h('li', { class: 'small muted', text: `No folders here match "${filter}". Press Enter to go to what you typed.` }) : null,
+    ];
+  }
+
   function browser(alias) {
     const b = browsing;
     const input = h('input', { type: 'text', class: 'field', value: b.dir, spellcheck: 'false', autocomplete: 'off', 'aria-label': `A folder on ${alias}` });
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); browse(alias, input.value.trim() || '~'); } });
-    const up = L.parentDir(b.dir);
-    const rows = [
-      up ? h('li', {}, h('button', { type: 'button', class: 'link-btn', text: '.. (up one)', onclick: () => browse(alias, up) })) : null,
-      ...b.folders.map(f => h('li', {},
-        h('button', { type: 'button', class: 'link-btn', text: `${f.name}/`, onclick: () => browse(alias, L.joinDir(b.dir, f.name)) }),
-        f.git ? h('span', { class: 'pj-tag', text: 'git' }) : null)),
-    ];
+    const list = !b.loading && !b.error ? h('ul', { class: 'rc-dirs' }, ...dirRows(alias, b, '')) : null;
+    // Enter opens the best match when the box is filtering, else goes to what's typed.
+    const go = () => {
+      const filter = L.folderFilter(b.dir, input.value);
+      const best = filter ? L.matchFolders(b.folders, filter)[0] : null;
+      browse(alias, best ? L.joinDir(b.dir, best.name) : input.value.trim() || '~');
+    };
+    input.addEventListener('input', () => { if (list) list.replaceChildren(...dirRows(alias, b, L.folderFilter(b.dir, input.value))); });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    if (b.typing) queueMicrotask(() => {
+      if (!b.loading && browsing === b) browsing = { ...b, typing: false }; // once: later re-draws don't take focus
+      input.focus(); input.setSelectionRange(input.value.length, input.value.length); });
     return h('div', { class: 'rc-browse' },
-      h('div', { class: 'row wrap' }, input, h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Go', onclick: () => browse(alias, input.value.trim() || '~') })),
+      h('div', { class: 'row wrap' }, input, h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Go', onclick: go })),
       b.loading ? h('p', { class: 'small muted', text: 'Looking…' }) : null,
       b.error ? h('p', { class: 'small warn', role: 'alert', text: b.error }) : null,
-      !b.loading && !b.error ? h('ul', { class: 'rc-dirs' }, ...rows) : null,
+      list,
       h('div', { class: 'row wrap end' },
         h('button', { type: 'button', class: 'btn ghost slim-btn', text: 'Cancel', onclick: () => { browsing = null; render(); } }),
         h('button', { type: 'button', class: 'btn primary slim-btn', text: 'Work in this folder', disabled: b.loading || !!b.error, onclick: () => addFolder(alias, b.dir) })));

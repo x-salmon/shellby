@@ -123,8 +123,16 @@ function otherComputer() {
     await press('homebox', 'Add a folder there…');
     const dirsOf = () => ev(`JSON.stringify([...(${card('homebox')}).querySelectorAll('.rc-dirs li')].map(li => li.textContent))`).then(JSON.parse);
     check(await until(`(${card('homebox')})?.querySelectorAll('.rc-dirs li').length > 0`), 'the browser lists the home folder');
-    await ev(`[...(${card('homebox')}).querySelectorAll('.rc-dirs .link-btn')].find(b => b.textContent === 'code/').click()`);
-    check(await until(`[...(${card('homebox')})?.querySelectorAll('.rc-dirs li') || []].some(li => li.textContent === 'app/git')`), 'code/ holds app, marked as a git repo');
+    // Typing part of a name narrows the list; Enter opens the best match.
+    const typeInBox = text => ev(`(() => { const i = (${card('homebox')}).querySelector('.rc-browse input'); i.focus(); i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input')); })()`);
+    await typeInBox('~/cOd');
+    const narrowed = await dirsOf();
+    check(narrowed.includes('code/') && narrowed.every(t => /cod/i.test(t)), `typing "~/cOd" keeps only matching folders (${narrowed.join(' | ')})`);
+    await typeInBox('~zzz-none');
+    check((await dirsOf()).every(t => t.startsWith('No folders here match')), 'a filter matching nothing says so');
+    await typeInBox('~/code');
+    await ev(`(${card('homebox')}).querySelector('.rc-browse input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))`);
+    check(await until(`[...(${card('homebox')})?.querySelectorAll('.rc-dirs li') || []].some(li => li.textContent === 'app/git')`), 'Enter opens code/, which holds app, marked as a git repo');
     console.log('       in code:', (await dirsOf()).join(' | '));
     await ev(`[...(${card('homebox')}).querySelectorAll('.rc-dirs .link-btn')].find(b => b.textContent === 'app/').click()`);
     check(await until(`(${card('homebox')}).querySelector('.rc-browse input').value === '~/code/app' && !!(${card('homebox')}).querySelector('.rc-dirs')`), 'inside app, the listing is in');
