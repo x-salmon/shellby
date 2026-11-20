@@ -1,7 +1,7 @@
 // Conversation tabs: opening, ordering, compacting, and what each turn changed
 // (changes.js). Kept out of main.js, which only wires it up.
 const { app } = require('electron');
-const { ID, PATH, list, obj, opt, str, text } = require('../ipc-args');
+const { ID, PATH, bool, either, list, num, obj, oneOf, opt, str, text } = require('../ipc-args');
 const fs = require('fs');
 const os = require('os');
 const changes = require('../changes');
@@ -25,6 +25,11 @@ const MAX_STEERS = 20;
 const MAX_STEER_FILES = 20;
 // What Claude is told when you say no: a reason, or your notes on its plan.
 const MAX_DENY_MESSAGE = 4000;
+// The most a message from the box may run to before it's cut (d.PANEL_MAX_TEXT is 50,000).
+const MAX_SENT_TEXT = 200_000;
+// A turn's changes as the feed names them (copy-service.js changeRef checks them against history).
+const CHANGE_REF = obj({ tabId: ID, root: opt(PATH), before: opt(str({ max: 200 })), after: opt(str({ max: 200 })), file: opt(PATH) });
+const QUEUED = obj({ id: opt(ID), text: opt(text(MAX_SENT_TEXT)), attachments: opt(list(PATH, 100)) });
 
 /**
  * The agent's name as Claude Code takes it (--agent): as listed, or a plugin's
@@ -88,19 +93,19 @@ function registerTabsIpc(ipcMain, d) {
     if (harness && !d.FAKE_ACP && !harnesses.commandFor(harness.id)) return { ok: false, error: `${harness.name} isn't installed. In a terminal: ${harness.install}`, install: harness.install };
     if (harness && agent) return { ok: false, error: 'An agent of your own runs on Claude Code only.' };
     try { return { ok: true, tabId: d.openTab({ ...(known ? { cwd: opts.cwd } : {}), ...(agent ? { agent } : {}), ...(harness ? { harness: harness.id } : {}) }).id }; } catch (err) { return { ok: false, error: err.message }; }
-  });
+  }, [opt(obj({ cwd: opt(PATH), agent: opt(str({ max: 200 })), harness: opt(ID) }))]);
   // The agents a conversation can run on besides Claude Code, and whether each is installed (harness/registry.js).
   ipcMain.handle('harness:list', () => harnesses.listHarnesses().map(h => (d.FAKE_ACP ? { ...h, installed: true } : h)));
   // Safe mode for one conversation (sessions.js setSafeMode), from the tab menu.
-  ipcMain.handle('tab:safe', (_e, { tabId, on } = {}) => (d.isStr(tabId) ? d.manager.setSafeMode(tabId, on === true) : { ok: false, error: 'Which conversation?' }));
-  ipcMain.handle('tab:close', (_e, tabId) => d.isStr(tabId) && closeTab(d, tabId));
+  ipcMain.handle('tab:safe', (_e, { tabId, on } = {}) => (d.isStr(tabId) ? d.manager.setSafeMode(tabId, on === true) : { ok: false, error: 'Which conversation?' }), [obj({ tabId: ID, on: opt(bool) })]);
+  ipcMain.handle('tab:close', (_e, tabId) => d.isStr(tabId) && closeTab(d, tabId), [ID]);
   // Dragging a tab along the strip. The order lives in the manager, and the
   // `tabs` listener in main.js writes it back to `openTabs`, so it survives a restart.
   ipcMain.handle('tab:reorder', (_e, { tabId, beforeId } = {}) =>
-    d.isStr(tabId) && d.manager.reorder(tabId, d.isStr(beforeId) ? beforeId : null));
-  ipcMain.on('tab:seen', (_e, tabId) => { if (d.isStr(tabId)) d.manager.markRead(tabId); });
+    d.isStr(tabId) && d.manager.reorder(tabId, d.isStr(beforeId) ? beforeId : null), [obj({ tabId: ID, beforeId: opt(ID) })]);
+  ipcMain.on('tab:seen', (_e, tabId) => { if (d.isStr(tabId)) d.manager.markRead(tabId); }, [ID]);
   // The conversation on screen: the Stream Deck's Stop and Bring it home follow it (deck.js).
-  ipcMain.on('tab:shown', (_e, tabId) => { if (d.isStr(tabId) && d.manager.tabs.has(tabId)) d.deckShownTab(tabId); });
+  ipcMain.on('tab:shown', (_e, tabId) => { if (d.isStr(tabId) && d.manager.tabs.has(tabId)) d.deckShownTab(tabId); }, [ID]);
   // The split view as it stands (tab-panes.js), for the next start. Cleaned
   // here too, against the conversations open: config only ever holds a grid
   // within the caps, of tabs that exist, and only a split (one pane writes
@@ -117,7 +122,7 @@ function registerTabsIpc(ipcMain, d) {
     const keep = clean && panes.count(clean.grid) > 1 ? clean : null;
     if (JSON.stringify(keep) === JSON.stringify(d.config.get('paneLayout') ?? null)) return;
     d.config.set({ paneLayout: keep });
-  });
+  }, [obj({ grid: list(Array.isArray, 16), sizes: opt(obj()) })]);
   // The layouts you saved by name (shapes only, no conversations): the list
   // as it stands, after saving `list` if one is given. Cleaned on the way in.
   ipcMain.handle('panes:shapes', (e, list) => {
@@ -127,34 +132,34 @@ function registerTabsIpc(ipcMain, d) {
       if (JSON.stringify(keep) !== JSON.stringify(d.config.get('paneShapes') ?? [])) d.config.set({ paneShapes: keep });
     }
     return panes.cleanShapes(d.config.get('paneShapes'));
-  });
+  }, [opt(list(obj({ name: text(400), cols: list(obj(), 16) }), 50))]);
   // A conversation in a window of its own (wiring/popouts.js). x, y: where it was
   // dropped, in screen pixels; carry: what was typed in the panel but not sent.
   ipcMain.handle('tab:pop-out', (_e, { tabId, x, y, carry } = {}) => {
     if (!d.isStr(tabId) || !d.manager.tabs.has(tabId)) return { ok: false, error: 'That conversation is closed.' };
     d.setCarry(tabId, carry);
     return { ok: d.popOut(tabId, { x, y }) };
-  });
+  }, [obj({ tabId: ID, x: opt(num()), y: opt(num()), carry: opt(obj()) })]);
   // Its window's own ×: back into the panel, with whatever was typed there.
   ipcMain.on('tab:pop-in', (e, { tabId, carry } = {}) => {
     if (!d.isStr(tabId) || d.popoutTabOf(e.sender) !== tabId) return;
     d.setCarry(tabId, carry);
     d.popIn(tabId);
-  });
+  }, [obj({ tabId: ID, carry: opt(obj()) })]);
   // The review inbox (review-inbox.js): you've looked at its latest changes, or want them back in the list.
   // after: the changes you looked at. Newer ones that landed meanwhile stay unreviewed.
   ipcMain.handle('tab:reviewed', (_e, { tabId, reviewed = true, after = null } = {}) =>
-    d.isStr(tabId) && d.manager.setReviewed(tabId, reviewed !== false, d.isStr(after) ? after : null));
+    d.isStr(tabId) && d.manager.setReviewed(tabId, reviewed !== false, d.isStr(after) ? after : null), [obj({ tabId: ID, reviewed: opt(bool), after: opt(ID) })]);
 
   // The effort chip: this conversation's own effort ('' is Auto).
   ipcMain.handle('tab:effort', (_e, { tabId, effort } = {}) => {
     try { d.isStr(tabId) && d.manager.setTabEffort(tabId, effort); return { ok: true }; } catch (err) { return { ok: false, error: err.message }; }
-  });
+  }, [obj({ tabId: ID, effort: opt(text(40)) })]);
 
   // This conversation's model, from the model chip or /model ('' is Claude Code's default), or outlook.js "Use Sonnet for this one".
   ipcMain.handle('tab:model', async (_e, { tabId, model } = {}) => {
     try { return d.isStr(tabId) && typeof model === 'string' ? await d.manager.setTabModel(tabId, model, { byYou: true }) : { ok: false, error: 'Which conversation?' }; } catch (err) { return { ok: false, error: err.message }; }
-  });
+  }, [obj({ tabId: ID, model: text(200) })]);
 
   // The model chip's On this PC section: this conversation on a local model, before its first message (sessions.js setTabLocal).
   ipcMain.handle('tab:local', (_e, { tabId, model }) => {
@@ -199,7 +204,7 @@ function registerTabsIpc(ipcMain, d) {
     const r = d.sendToTab(tabId, text, files, { note, model: turnModel, modelBy: by, modelCls: cls });
     if (r.ok) d.firstRunStep?.('message'); // First steps (first-run.js)
     return r.ok ? { ok: true, tabId: r.tabId, turnId: r.turnId } : r;
-  });
+  }, [obj({ tabId: opt(ID), text: opt(text(MAX_SENT_TEXT)), attachments: opt(list(PATH, 100)), selected: opt(PATH), fromQueue: opt(bool), model: opt(text(100)), modelBy: opt(text(20)), modelCls: opt(text(40)) })]);
   // A cheaper model for a small message, asked before it goes (model-pick.js): whether to ask, what the
   // message usually takes on the tab's model and on Haiku, and the card's words. files: how many are attached.
   ipcMain.handle('tab:model-suggest', (_e, { tabId, text: typed, files, ultracode }) => d.usagePlan.suggestModel(tabId, typed, { files: Number.isInteger(files) ? files : 0, ultracode: ultracode === true }),
@@ -223,14 +228,14 @@ function registerTabsIpc(ipcMain, d) {
       list.push({ id: m.id, text: text.startsWith('!!') ? text.slice(1) : text, attachments: files });
     }
     d.manager.steer(tabId, turnId, list);
-  });
+  }, [obj({ tabId: ID, turnId: ID, items: list(QUEUED, 500) })]);
   // A queued message taken back: by its id, so one Claude already has can't be. -> { ok } | { ok: false, taken: true }.
   ipcMain.handle('task:unsteer', (_e, { tabId, id } = {}) => {
     if (!d.isStr(tabId) || !d.isStr(id)) return { ok: false };
     return d.manager.unsteer(tabId, id) ? { ok: true } : { ok: false, taken: true };
-  });
+  }, [obj({ tabId: ID, id: ID })]);
   // Your Stop ends a parked pause too, even with a Keep warm ping running on it (session/pause.js).
-  ipcMain.on('task:stop', (_e, tabId) => { if (d.isStr(tabId)) { d.manager.tabs.get(tabId)?.session.clearParked?.(); d.manager.interrupt(tabId); } });
+  ipcMain.on('task:stop', (_e, tabId) => { if (d.isStr(tabId)) { d.manager.tabs.get(tabId)?.session.clearParked?.(); d.manager.interrupt(tabId); } }, [ID]);
   // Pause at the end of the step he's on, and Continue a held pause (session/pause.js). -> { ok } | { ok: false, error }
   ipcMain.handle('task:pause', (_e, tabId) => d.manager.pause(tabId), [ID]);
   ipcMain.handle('task:resume', (_e, tabId) => d.manager.resume(tabId), [ID]);
@@ -249,9 +254,9 @@ function registerTabsIpc(ipcMain, d) {
     } catch (err) {
       return { ok: false, error: err.message };
     }
-  });
+  }, [ID]);
   // What this conversation has cost so far, for the context chip's menu (turncost.js).
-  ipcMain.handle('tab:cost', (_e, tabId) => (d.isStr(tabId) ? d.tabCost(tabId) : null));
+  ipcMain.handle('tab:cost', (_e, tabId) => (d.isStr(tabId) ? d.tabCost(tabId) : null), [ID]);
 
   // A fresh tab with a summary Shellby writes (freshtab.js): offered while you
   // type, when the context is well filled and the message reads as a new topic.
@@ -298,10 +303,10 @@ function registerTabsIpc(ipcMain, d) {
       : undefined;
     // Up to a page: notes on a plan go back to Claude as the reason it wasn't approved (feed-logic.js planNotesMessage).
     return d.answerPermission(tabId, requestId, decision, { message: typeof message === 'string' ? message.slice(0, MAX_DENY_MESSAGE) : undefined, answers: clean });
-  });
+  }, [obj({ tabId: ID, requestId: ID, decision: oneOf('allow', 'always', 'deny'), message: opt(text(MAX_SENT_TEXT)), answers: opt(obj()) })]);
 
   // ---- what a turn changed
-  ipcMain.handle('changes:diff', (_e, raw) => diffChanges(raw));
+  ipcMain.handle('changes:diff', (_e, raw) => diffChanges(raw), [CHANGE_REF]);
   // Also the phone's (wiring/pocket.js): one way to read a turn's diff.
   function diffChanges(raw) {
     const ref = d.changeRef(raw);
@@ -334,7 +339,7 @@ function registerTabsIpc(ipcMain, d) {
     } finally {
       if (tab) tab.undoingStep = false;
     }
-  });
+  }, [obj({ tabId: ID, file: PATH, hunk: num({ int: true, min: 0 }), header: str({ max: 1000 }) })]);
   // "Quiz me" on a turn's changes (quiz.js): Claude writes the questions from the
   // diff, and the answers stay here until each one is picked.
   ipcMain.handle('quiz:start', async (_e, raw) => {
@@ -361,7 +366,7 @@ function registerTabsIpc(ipcMain, d) {
     if (!r.ok) return { ok: false, error: r.error };
     tab.quiz = { after: ref.after, lines: (Number(item.added) || 0) + (Number(item.removed) || 0), ...quiz.start(r.questions) };
     return { ok: true, questions: quiz.view(r.questions) };
-  });
+  }, [CHANGE_REF]);
   ipcMain.handle('quiz:pick', (_e, { tabId, after, question, choice } = {}) => {
     const tab = d.isStr(tabId) && d.manager.tabs.get(tabId);
     if (!tab?.quiz || tab.quiz.after !== after) return { error: 'That quiz has gone. Ask for a new one.' };
@@ -374,8 +379,8 @@ function registerTabsIpc(ipcMain, d) {
       tab.quiz = null;
     }
     return { right: r.right, answer: r.answer, why: r.why, done: r.done, score: r.score };
-  });
-  ipcMain.handle('changes:undo', (_e, raw) => undoChanges(raw));
+  }, [obj({ tabId: ID, after: opt(str({ max: 200 })), question: num({ int: true, min: 0 }), choice: num({ int: true, min: 0 }) })]);
+  ipcMain.handle('changes:undo', (_e, raw) => undoChanges(raw), [CHANGE_REF]);
   // Also the phone's (wiring/pocket.js): one way to undo a turn.
   async function undoChanges(raw) {
     const ref = d.changeRef(raw);
@@ -395,13 +400,13 @@ function registerTabsIpc(ipcMain, d) {
   }
   d.undoChanges = undoChanges;
   // Undo to here: the files back to a checkpoint before one step of a turn (wiring/step-undo.js).
-  ipcMain.handle('changes:undo-step', (_e, raw) => d.stepUndo.undoStep(raw));
+  ipcMain.handle('changes:undo-step', (_e, raw) => d.stepUndo.undoStep(raw), [obj({ tabId: ID, turnId: ID, toolId: ID })]);
   // The project's own tests, on demand, whatever the setting says (wiring/checks.js).
   ipcMain.handle('checks:run', async (_e, raw) => {
     const ref = d.changeRef(raw);
     if (!ref) return { ok: false, error: "That isn't a change from this conversation." };
     return d.runChecksFor(ref);
-  });
+  }, [CHANGE_REF]);
   // ---- Problems: what this conversation's last checks found, file by file (problems.js)
   const lastChecks = tabId => [...d.history.load(tabId)].reverse().find(i => i?.kind === 'checks') || null;
   ipcMain.handle('problems:get', (_e, tabId) => {
@@ -409,8 +414,8 @@ function registerTabsIpc(ipcMain, d) {
     const v = lastChecks(tabId);
     if (!v) return { problems: [], never: true };
     return { at: v.at, status: v.status, problems: problems.ofVerdict(v), commands: (v.commands || []).map(c => ({ cmd: c.cmd, ok: !!c.ok })) };
-  });
-  ipcMain.handle('problems:run', (_e, tabId) => (d.isStr(tabId) && d.manager.tabs.has(tabId) ? d.findProblems(tabId) : { ok: false, error: 'That conversation has closed.' }));
+  }, [ID]);
+  ipcMain.handle('problems:run', (_e, tabId) => (d.isStr(tabId) && d.manager.tabs.has(tabId) ? d.findProblems(tabId) : { ok: false, error: 'That conversation has closed.' }), [ID]);
   // The message that asks Claude to fix some of them, written here from what
   // main noted, never from text the panel sends (at: which checks they're from).
   ipcMain.handle('problems:fix', (_e, { tabId, at, picked } = {}) => {
@@ -419,7 +424,7 @@ function registerTabsIpc(ipcMain, d) {
     const all = problems.ofVerdict(v);
     const list = Array.isArray(picked) ? [...new Set(picked)].filter(i => Number.isInteger(i) && all[i]).map(i => all[i]) : all;
     return list.length ? { text: problems.fixPrompt(list) } : { error: 'Nothing to fix there.' };
-  });
+  }, [obj({ tabId: ID, at: opt(either(num(), str())), picked: opt(list(num({ int: true, min: 0 }))) })]);
   // One file of a turn in VS Code's diff (editor.js): both sides come out of git, never a path from here.
   ipcMain.handle('changes:open-editor', async (_e, raw) => {
     const ref = d.isStr(raw?.file) ? d.changeRef(raw) : null;
@@ -430,12 +435,12 @@ function registerTabsIpc(ipcMain, d) {
   ipcMain.handle('shots:image', (_e, { tabId, id } = {}) => {
     const url = d.isStr(tabId) && d.isStr(id) ? d.shotImage(tabId, id) : null;
     return url ? { ok: true, url } : { ok: false, error: 'That picture has been tidied away.' };
-  });
+  }, [obj({ tabId: ID, id: ID })]);
   // A picture a tool handed Claude, by the id its tool_result names (tool-pictures.js).
   ipcMain.handle('pictures:tool', (_e, { tabId, id } = {}) => {
     const url = d.isStr(tabId) && d.isStr(id) ? d.toolPicture(tabId, id) : null;
     return url ? { ok: true, url } : { ok: false, error: 'That picture has been tidied away.' };
-  });
+  }, [obj({ tabId: ID, id: ID })]);
 }
 
 module.exports = { closeTab, registerTabsIpc };
