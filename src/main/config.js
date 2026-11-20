@@ -42,7 +42,7 @@ const DEFAULTS = {
   idleCompact: false, // compact a long conversation shortly before its hour-long cache runs out (wiring/idle-compact.js)
   planOnly: false,  // leave API keys and other providers out of Claude Code's environment (see claude/cli.js)
   apiKeyBilling: false, // bill the API key saved in Settings instead (claude/api-key.js; the key is NOT here). This PC only: never synced
-  localModel: { on: false, url: 'http://127.0.0.1:11434', model: '', jobs: {}, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '', helpers: '', quick: '' }, preset: 'off' }, // small drafts on a local model first, Claude if it fails (local/model.js)
+  localModel: { on: false, url: 'http://127.0.0.1:11434', model: '', jobs: {}, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '', helpers: '', quick: '' }, preset: 'off', makeRoom: true }, // small drafts on a local model first, Claude if it fails (local/model.js)
   localModelTally: null, // what the local model wrote and saved, for Settings (local/tally.js)
   onboarded: false,
   firstTour: false,  // a new install's first New task offers Show me around until it's opened once (onboarding.js, feed.js)

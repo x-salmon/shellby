@@ -163,7 +163,20 @@ function wireSessions(d) {
       savePictures,
     });
 
-    d.manager.on('spend', (_tabId, s, tab) => d.usageService.onSpend(s, tab));
+    // Local models make room for a game (local/game-room.js); wiring/windows.js giveWayToGame tells it on every poll.
+    const localTabs = () => [...d.manager.tabs.values()].filter(t => t.localTarget);
+    d.gameRoom = require('../local/game-room').createGameRoom({
+      settings: () => d.config.get('localModel'),
+      targets: () => localTabs().map(t => t.localTarget),
+      busy: () => localTabs().some(t => t.session.busy),
+      log: d.log,
+      onRoom: room => {
+        const gb = room.bytes / 1e9;
+        d.speak?.('milestone', { text: gb >= 1 ? `Moved my local model out of the way: ${gb.toFixed(1)} GB of graphics memory is yours.` : 'Moved my local model out of the way for your game.' });
+      },
+    });
+
+    d.manager.on('spend',(_tabId, s, tab) => d.usageService.onSpend(s, tab));
     // An Ultracode run ended: its cost goes in the per-turn ledger as a run, for the estimate before the next (usage/runcost.js).
     d.manager.on('run', (_tabId, r, tab) => { try { d.usagePlan?.endRun(tab, r); } catch (err) { d.log.info(`usage plan: ${err.message}`); } });
     d.manager.on('call', (_tabId, c, tab) => { if (!d.CAPTURE) d.lean?.onCall(c, tab); });

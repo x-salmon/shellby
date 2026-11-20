@@ -163,6 +163,11 @@
           <p class="muted small" id="localAgentText">Claude Code does the work as usual, with every tool, but thinks with this model instead of Claude, so nothing is spent from your plan and nothing leaves this PC. Needs Ollama 0.14 or LM Studio 0.4.1 or newer, and a model made for coding and tool use with a long context (32K tokens or more; Ollama starts most models with less). Each conversation keeps what it started on for good, reopened or branched later too, and a local one can't be sent to a terminal. Smaller models make more mistakes: watch what they change.</p>
           <ul class="local-fit" id="localFit" aria-label="How the models in use suit this PC" hidden></ul>
         </div>
+        <div class="local-answers" id="localGameRoom">
+          <label class="toggle"><input type="checkbox" id="localMakeRoomToggle" aria-describedby="localMakeRoomText"><span class="switch"></span>Make room for games</label>
+          <p class="muted small" id="localMakeRoomText">When a game comes to the front, Shellby unloads the local models it uses that aren't busy, so the game gets their graphics memory. Once the game has gone, an open local conversation's models load again, so your next message there doesn't wait. Only Ollama, and only Shellby's own models.</p>
+          <p class="small" id="localMakeRoomLast" role="status" hidden></p>
+        </div>
         <div class="local-try" id="localModelTry">
           <div class="row wrap">
             <label class="inline-label" for="localModelQuestion">Try it</label>
