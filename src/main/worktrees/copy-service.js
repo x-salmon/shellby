@@ -24,6 +24,29 @@ const samePath = (a, b) => path.resolve(a).toLowerCase() === path.resolve(b).toL
  *   routineTabs, queueTabs, queueWaits, turnStarts (the tab maps a closed copy leaves)
  */
 function createCopies(d) {
+  // The repository a tab's folder is in, or null when it shouldn't get a copy:
+  // not a repo, or already one of our copies. A folder on another computer is
+  // asked over ssh (its stand-in here has no files).
+  async function repoOf(cwd) {
+    const place = worktrees.placeOf(cwd);
+    if (place) {
+      if (place.copy) return null;
+      const r = await worktrees.git(cwd, ['rev-parse', '--show-toplevel'], { timeout: 15000 });
+      return r.ok && r.out.trim() ? cwd : null;
+    }
+    const root = await changes.rootOf(cwd);
+    const home = path.resolve(d.worktreeHome()).toLowerCase() + path.sep;
+    return root && !(path.resolve(root) + path.sep).toLowerCase().startsWith(home) ? root : null;
+  }
+
+  // Claude Code's record of the conversation, carried to where it resumes in the
+  // copy: on this PC, or on the other computer the conversation runs on.
+  function carry(sessionId, from, to) {
+    const [a, b] = [worktrees.placeOf(from), worktrees.placeOf(to)];
+    if (a || b) return a && b && d.remoteService ? d.remoteService.carryTranscript(a.host, { sessionId, from: a.dir, to: b.dir }) : Promise.resolve(false);
+    return worktrees.carryTranscript({ configDir: d.claudeConfigDir(), sessionId, from, to });
+  }
+
   // Before each turn: while the tab has no copy, a hook on the tools that
   // change files sees each call first. The first real change is held back,
   // Claude is asked for a branch name, and when that turn ends moveIntoCopy
@@ -44,12 +67,10 @@ function createCopies(d) {
       return;
     }
     if (tab.session.beforeWork || tab.staysPut) return;
-    const root = await changes.rootOf(tab.session.cwd);
-    const home = path.resolve(d.worktreeHome()).toLowerCase() + path.sep;
     // Not a repo, already one of our copies, or a conversation that has already
     // changed files here: it stays where it is. For good (staysPut): the tab's
     // folder doesn't change, so git and its History aren't asked again every turn.
-    if (!root || (path.resolve(root) + path.sep).toLowerCase().startsWith(home)) { tab.staysPut = true; return; }
+    if (!await repoOf(tab.session.cwd)) { tab.staysPut = true; return; }
     if (tab.saved && d.history.load(tab.id).some(i => i.kind === 'changes')) { tab.staysPut = true; return; }
     tab.session.beforeWork = input => {
       if (tab.worktree || tab.noCopy || !d.config.get('worktrees')) return {};
@@ -71,9 +92,7 @@ function createCopies(d) {
     // Its session began here: moving it would split it from what the agent remembers.
     if (tab.session.sessionId) { tab.staysPut = true; return; }
     const from = tab.session.cwd;
-    const root = await changes.rootOf(from);
-    const home = path.resolve(d.worktreeHome()).toLowerCase() + path.sep;
-    if (!root || (path.resolve(root) + path.sep).toLowerCase().startsWith(home)) { tab.staysPut = true; return; }
+    if (!await repoOf(from)) { tab.staysPut = true; return; }
     const made = await worktrees.create(from, { home: d.worktreeHome(), title: tab.title });
     if (!d.manager.tabs.has(tab.id)) { if (made?.ok) worktrees.remove(made.worktree, { force: true }); return; }
     if (!made?.ok) {
@@ -89,7 +108,7 @@ function createCopies(d) {
     d.log.info(`worktree: ${w.branch} for ${path.basename(w.root)} (another agent, before its first message)`);
     d.manager.note(tab.id, { kind: 'moved', branch: w.branch, base: w.base, from, cwd: w.cwd, left: made.left?.from || null, stuck: made.stuck });
     d.manager.changed();
-    const deps = await installCopyDeps(w);
+    const deps = worktrees.placeOf(w.path) ? { skipped: true } : await installCopyDeps(w);
     if (deps.error) d.log.info(`worktree: npm ci in the copy failed: ${deps.error}`);
   }
 
@@ -123,7 +142,7 @@ function createCopies(d) {
     if (!made?.ok) return stayHere(made?.error || "Couldn't make a copy: this folder isn't in a git repository.", made?.detail);
     const w = made.worktree;
     await session.stop();
-    if (!await worktrees.carryTranscript({ configDir: d.claudeConfigDir(), sessionId: session.sessionId, from, to: w.cwd })) {
+    if (!await carry(session.sessionId, from, w.cwd)) {
       await worktrees.remove(w, { force: true });
       return stayHere("Claude Code's record of this conversation couldn't be carried into the copy");
     }
@@ -137,12 +156,16 @@ function createCopies(d) {
     manager.note(tab.id, { kind: 'moved', branch: w.branch, base: w.base, from, cwd: w.cwd, left: made.left?.from || null, stuck: made.stuck });
     manager.changed();
     // Its packages, if your checkout has them (worktrees/copy-deps.js), so its tests run straight away.
-    const deps = await installCopyDeps(w);
+    // On another computer the copy's packages are left for Claude to install there.
+    const there = worktrees.placeOf(w.path);
+    const deps = there ? { skipped: true } : await installCopyDeps(w);
     if (deps.error) d.log.info(`worktree: npm ci in the copy failed: ${deps.error}`);
     if (!manager.tabs.has(tab.id)) return; // closed while it installed
-    carryOn(`Shellby has moved this conversation into its own copy of the repository, at ${w.path}, on branch ${w.branch}, started from ${w.base} at its last commit. `
+    const at = there ? `${there.dir} on ${there.host}` : w.path;
+    const was = there ? worktrees.placeOf(w.root)?.dir || w.root : w.root;
+    carryOn(`Shellby has moved this conversation into its own copy of the repository, at ${at}, on branch ${w.branch}, started from ${w.base} at its last commit. `
       + (made.left ? `(Your checkout was on ${made.left.from}, which is already all in ${made.left.to}, so Shellby switched it to ${made.left.to} first.) ` : '')
-      + `Work there from now on: the project that was at ${w.root} is at ${w.path} in this copy, so use paths under it. `
+      + `Work there from now on: the project that was at ${was} is at ${there ? there.dir : w.path} in this copy, so use paths under it. `
       + depsSentence(deps, w)
       + 'Carry on with what you were about to do.');
   }
