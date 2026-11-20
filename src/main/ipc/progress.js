@@ -6,7 +6,7 @@ const { dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const confirm = require('../confirm');
-const { ID, PATH, opt, str } = require('../ipc-args');
+const { either, ID, list, obj, opt, PATH, str, text } = require('../ipc-args');
 const recap = require('../recap');
 const { repoOf } = require('../gitinfo');
 const { reviewPrompt, LENSES } = require('../review');
@@ -31,13 +31,13 @@ function registerProgressIpc(ipcMain, d) {
     d.onUsage(item);
     d.refreshOutlook();
     return d.outlookView();
-  });
+  }, [opt(obj())]);
   // A routine comes due now, as the scheduler would have it: run, or held near the limit (routines/pace.js).
   if (d.FORECAST_TEST) ipcMain.handle('dev:routine-due', (_e, id) => {
     const r = d.routines().find(x => x.id === id);
     return r ? d.runOrHoldRoutine(r, 'scheduled') : { ok: false, error: 'Routine not found.' };
   }, [ID]);
-  if (d.RECAP_TEST) ipcMain.handle('dev:away', (_e, r = {}) => d.checkAway({ idleMs: Number(r.idleMs) || 0, locked: !!r.locked }));
+  if (d.RECAP_TEST) ipcMain.handle('dev:away', (_e, r = {}) => d.checkAway({ idleMs: Number(r.idleMs) || 0, locked: !!r.locked }), [opt(obj())]);
   ipcMain.handle('streaks:set', (_e, patch = {}) => {
     const s = streaks.normalize(d.config.get('streaks'));
     const next = { ...s };
@@ -48,17 +48,17 @@ function registerProgressIpc(ipcMain, d) {
     d.saveStreaks(streaks.normalize(rested));
     if ('restDays' in patch) d.send(d.panel, 'xp', d.xpView());
     return d.streaksView();
-  });
+  }, [opt(obj())]);
   ipcMain.handle('streaks:mute', (_e, { key, muted } = {}) => {
     if (d.isStr(key)) d.saveStreaks(streaks.setMuted(d.config.get('streaks'), key, muted));
     return d.streaksView();
-  });
+  }, [opt(obj())]);
   ipcMain.on('streaks:open', (_e, key) => {
     const s = streaks.normalize(d.config.get('streaks'));
     const p = d.isStr(key) && s.projects[key];
     // From the project's handoff notes when there are some (wiring/journal.js): Claude starts from them, not from scratch.
     if (p) d.send(d.panel, 'tab:new-in', { cwd: key, draft: d.journal.draftFor(key, p.name) });
-  });
+  }, [opt(text(32_767))]);
   // "Look over my changes": a read-only security review of what's pending in one
   // project, in that project's own folder. Only a folder Shellby already tracks
   // is accepted, and the task runs in Ask-first mode whatever mode you're in, so
@@ -75,7 +75,7 @@ function registerProgressIpc(ipcMain, d) {
     if (r.ok) d.showPanel({ focusInput: false, tabId: r.tabId });
     if (r.ok) d.questDone?.('look-over');
     return r;
-  });
+  }, [opt(text(32_767)), opt(text(100))]);
 
   // A conversation's first message of your own since it was last cleared: what it was asked to do.
   function firstAsk(tabId) {
@@ -100,21 +100,21 @@ function registerProgressIpc(ipcMain, d) {
     const r = d.startTask(reviewPrompt(repo.name, { lens: l, goal }), titleOf(l, repo.name), { mode: 'ask', cwd: repo.root });
     if (r.ok) d.showPanel({ focusInput: false, tabId: r.tabId });
     return r;
-  });
+  }, [opt(text(300)), opt(text(100))]);
   // feature null: offer them all again.
   ipcMain.handle('suggest:mute', (_e, feature, muted = true) => {
     if (feature !== null && !selfaware.FEATURES[feature]) return d.config.get('mutedSuggestions');
     const list = (d.config.get('mutedSuggestions') || []).filter(f => selfaware.FEATURES[f] && f !== feature);
     d.config.set({ mutedSuggestions: feature === null ? [] : muted ? [...list, feature] : list });
     return d.config.get('mutedSuggestions');
-  });
+  }, [opt(text(100)), opt(v => typeof v === 'boolean')]);
 
   // A hand-off card (wiring/chatlink.js): the user let one conversation's brief through to another, or not.
   ipcMain.handle('chats:decide', (_e, id, yes) => d.chatLink.decide(id, yes === true), [ID]);
 
   // ---- focus sessions
   ipcMain.handle('focus:get', () => d.focusView());
-  ipcMain.handle('focus:start', (_e, minutes) => d.startFocus(minutes));
+  ipcMain.handle('focus:start', (_e, minutes) => d.startFocus(minutes), [opt(either(Number.isFinite, text(20)))]);
   ipcMain.handle('focus:stop', () => d.stopFocus());
 
   // ---- shell stickers (stickers/index.js)
@@ -129,42 +129,42 @@ function registerProgressIpc(ipcMain, d) {
   ipcMain.handle('stickers:place', (_e, { id, slot, shell } = {}) => {
     if (!stickerId(id) || slotOf(slot) === null) return { ok: false, error: 'That sticker or spot is not there.', view: d.stickersView() };
     return placed(d.editStickers(shell, (s, sh, _n, now) => stickers.place(s, sh, id, slot, now)));
-  });
-  ipcMain.handle('stickers:remove', (_e, { id, shell } = {}) => (stickerId(id) ? d.editStickers(shell, (s, sh, _n, now) => stickers.remove(s, sh, id, now)) : { ok: false, view: d.stickersView() }));
+  }, [opt(obj())]);
+  ipcMain.handle('stickers:remove', (_e, { id, shell } = {}) => (stickerId(id) ? d.editStickers(shell, (s, sh, _n, now) => stickers.remove(s, sh, id, now)) : { ok: false, view: d.stickersView() }), [opt(obj())]);
   ipcMain.handle('stickers:restack', (_e, { id, dir, shell } = {}) => (stickerId(id) && (dir === 'up' || dir === 'down')
-    ? d.editStickers(shell, (s, sh, _n, now) => stickers.restack(s, sh, id, dir, now)) : { ok: false, view: d.stickersView() }));
-  ipcMain.handle('stickers:flip', (_e, { id, shell } = {}) => (stickerId(id) ? d.editStickers(shell, (s, sh, _n, now) => stickers.flip(s, sh, id, now)) : { ok: false, view: d.stickersView() }));
-  ipcMain.handle('stickers:arrange', (_e, { shell } = {}) => placed(d.editStickers(shell, (s, sh, n, now) => stickers.arrange(s, sh, n, now))));
+    ? d.editStickers(shell, (s, sh, _n, now) => stickers.restack(s, sh, id, dir, now)) : { ok: false, view: d.stickersView() }), [opt(obj())]);
+  ipcMain.handle('stickers:flip', (_e, { id, shell } = {}) => (stickerId(id) ? d.editStickers(shell, (s, sh, _n, now) => stickers.flip(s, sh, id, now)) : { ok: false, view: d.stickersView() }), [opt(obj())]);
+  ipcMain.handle('stickers:arrange', (_e, { shell } = {}) => placed(d.editStickers(shell, (s, sh, n, now) => stickers.arrange(s, sh, n, now))), [opt(obj())]);
   ipcMain.handle('stickers:hide', (_e, { id, hidden } = {}) => {
     if (stickerId(id)) d.config.set({ stickers: stickers.setHidden(d.config.get('stickers'), id, !!hidden, Date.now()) });
     return d.stickersView();
-  });
+  }, [opt(obj())]);
   ipcMain.handle('stickers:options', (_e, opts) => {
     if (opts && typeof opts === 'object') d.config.set({ stickers: stickers.setOptions(d.config.get('stickers'), { auto: opts.auto, card: opts.card }) });
     return d.stickersView();
-  });
+  }, [opt(obj())]);
   ipcMain.on('stickers:seen', (_e, ids) => {
     if (!Array.isArray(ids)) return;
     const s = d.stickerState();
     const next = stickers.markSeen(s, ids.filter(stickerId));
     if (next.unseen.length !== s.unseen.length) d.config.set({ stickers: next });
-  });
+  }, [opt(list(text(100)))]);
   // "Pick up where we left off" in a project, from its page in the Sticker Book.
   ipcMain.on('stickers:open', (_e, id) => {
     const p = stickerId(id) && d.stickerState().projects[id];
     if (!p?.root || !fs.existsSync(p.root)) return;
     d.send(d.panel, 'tab:new-in', { cwd: p.root, draft: d.journal.draftFor(p.root, p.name, { since: 'since we last shipped it' }) });
-  });
+  }, [opt(text(300))]);
   // "Check its dependencies", from its page in the Sticker Book.
   ipcMain.handle('stickers:checkup', (_e, id) => {
     const p = stickerId(id) && d.stickerState().projects[id];
     return p?.root ? d.runCheckup(p.root) : { ok: false, error: "Shellby doesn't know where that project lives on this PC." };
-  });
+  }, [opt(text(300))]);
 
   // ---- dependency checkups and the week in review
   ipcMain.handle('checkups:get', () => d.checkupsView());
   // Only a folder already in the list: the renderer can't point this anywhere new.
-  ipcMain.handle('checkups:run', (_e, key) => (d.isStr(key) && d.checkupsView().some(c => c.key === key) ? d.runCheckup(key) : { ok: false, error: 'Unknown project.' }));
+  ipcMain.handle('checkups:run', (_e, key) => (d.isStr(key) && d.checkupsView().some(c => c.key === key) ? d.runCheckup(key) : { ok: false, error: 'Unknown project.' }), [opt(text(32_767))]);
   // ---- the flaky test detective. Only a test already on the list, by its project and name.
   ipcMain.handle('flaky:get', () => ({ on: d.config.get('flakyTests') !== false, list: d.flakyView() }));
   ipcMain.handle('flaky:act', (_e, o) => {
@@ -172,7 +172,7 @@ function registerProgressIpc(ipcMain, d) {
     if (!d.isStr(src.key) || !d.isStr(src.id) || src.id.length > 200 || !d.isStr(src.action)) return { ok: false, error: 'Unknown test.' };
     if (d.config.get('crabOnly')) return { ok: false, error: 'That needs Claude Code: Shellby is in just-the-crab mode.' };
     return d.flakyAct(src.key, src.id, src.action);
-  });
+  }, [opt(obj())]);
   ipcMain.handle('flaky:forget', async () => {
     const response = await confirm.ask(d.panel, {
       ...d.dialogLook(), icon: '🎲',
@@ -190,8 +190,8 @@ function registerProgressIpc(ipcMain, d) {
   const speciesId = id => (id === null || (typeof id === 'string' && /^[a-z0-9-]{1,40}$/.test(id)) ? id : undefined);
   ipcMain.handle('bugdex:get', () => ({ ...d.bugdex.view(), on: d.bugdex.on() }));
   ipcMain.on('bugdex:seen', () => d.bugdex.seen());
-  ipcMain.handle('bugdex:favourite', (_e, id) => (speciesId(id) === undefined ? d.bugdex.view() : d.bugdex.setFavourite(id)));
-  ipcMain.on('bugdex:open-tab', (_e, tabId) => { if (typeof tabId === 'string' && tabId.length <= 80) d.bugdex.openTab(tabId); });
+  ipcMain.handle('bugdex:favourite', (_e, id) => (speciesId(id) === undefined ? d.bugdex.view() : d.bugdex.setFavourite(id)), [opt(text(40))]);
+  ipcMain.on('bugdex:open-tab', (_e, tabId) => { if (typeof tabId === 'string' && tabId.length <= 80) d.bugdex.openTab(tabId); }, [opt(text(80))]);
   ipcMain.handle('bugdex:forget', () => d.bugdex.forget());
   // Bug battles: what's being fought, and the sounds the battle screen asks him to make.
   ipcMain.handle('bugdex:battles', () => (d.bugdex.on() && d.config.get('bugBattles') !== false ? d.bugdex.battles() : []));
@@ -200,7 +200,7 @@ function registerProgressIpc(ipcMain, d) {
     // The catch or the escape comes once a battle, when it played out on screen: a battle watched (feature-use.js).
     if (name === 'caught' || name === 'fled') d.featureAct?.('battle');
     d.bugdex.cue(name, { species: typeof opts?.species === 'string' ? opts.species.slice(0, 40) : null });
-  });
+  }, [text(40), opt(obj())]);
   ipcMain.handle('week:get', () => d.weekView());
   // ---- tide events (events.js, wiring/events.js): the banner and the medals. Read-only from the panel.
   ipcMain.handle('events:get', () => d.eventsView());
@@ -219,22 +219,22 @@ function registerProgressIpc(ipcMain, d) {
     };
   };
   const timeKey = k => (d.isStr(k) && k.length <= 400 && path.isAbsolute(k) ? k : null); // a project is a folder
-  ipcMain.handle('time:get', async (_e, o) => ({ ...await d.timeTracker.view(timeOpts(o)), sync: d.timeSync.view() }));
-  ipcMain.handle('time:settings', (_e, patch) => d.timeTracker.setSettings(patch && typeof patch === 'object' ? patch : {}));
-  ipcMain.handle('time:project', (_e, key, patch) => d.timeTracker.setProject(timeKey(key), patch && typeof patch === 'object' ? patch : {}));
-  ipcMain.handle('time:remove', (_e, key) => d.timeTracker.removeProject(timeKey(key)));
+  ipcMain.handle('time:get', async (_e, o) => ({ ...await d.timeTracker.view(timeOpts(o)), sync: d.timeSync.view() }), [opt(obj())]);
+  ipcMain.handle('time:settings', (_e, patch) => d.timeTracker.setSettings(patch && typeof patch === 'object' ? patch : {}), [opt(obj())]);
+  ipcMain.handle('time:project', (_e, key, patch) => d.timeTracker.setProject(timeKey(key), patch && typeof patch === 'object' ? patch : {}), [opt(text(32_767)), opt(obj())]);
+  ipcMain.handle('time:remove', (_e, key) => d.timeTracker.removeProject(timeKey(key)), [opt(text(32_767))]);
   ipcMain.handle('time:add', (_e, entry) => {
     const e = entry && typeof entry === 'object' ? entry : {};
     return d.timeTracker.addTime({ key: timeKey(e.key), day: DAY.test(e.day) ? e.day : null, minutes: Number(e.minutes) || 0, note: typeof e.note === 'string' ? e.note.slice(0, 400) : undefined });
-  });
+  }, [opt(obj())]);
   ipcMain.handle('time:add-folder', async () => {
     const r = await dialog.showOpenDialog(d.panel, { title: 'Which project folder should Shellby keep time for?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
     if (r.canceled || !r.filePaths[0] || !d.isFolder(r.filePaths[0])) return { ok: false, canceled: true };
     return d.timeTracker.addFolder(r.filePaths[0]);
   });
-  ipcMain.handle('time:export-csv', (_e, o) => d.timeTracker.exportCsv(timeOpts(o)).catch(e => { d.log.error('time csv', e); return { ok: false, error: "Couldn't save that file." }; }));
-  ipcMain.handle('time:export-pdf', (_e, o) => d.timeTracker.exportPdf(timeOpts(o)).catch(e => { d.log.error('time pdf', e); return { ok: false, error: "Couldn't make the timesheet." }; }));
-  ipcMain.handle('time:copy', (_e, o) => d.timeTracker.copyText(timeOpts(o)));
+  ipcMain.handle('time:export-csv', (_e, o) => d.timeTracker.exportCsv(timeOpts(o)).catch(e => { d.log.error('time csv', e); return { ok: false, error: "Couldn't save that file." }; }), [opt(obj())]);
+  ipcMain.handle('time:export-pdf', (_e, o) => d.timeTracker.exportPdf(timeOpts(o)).catch(e => { d.log.error('time pdf', e); return { ok: false, error: "Couldn't make the timesheet." }; }), [opt(obj())]);
+  ipcMain.handle('time:copy', (_e, o) => d.timeTracker.copyText(timeOpts(o)), [opt(obj())]);
   // Writing up a day (timetrack/daywrite.js): the day's view, Shellby's lines, keeping or dropping them.
   const DAY_ARG = str({ max: 10, re: DAY });
   ipcMain.handle('time:day', (_e, day) => d.timeTracker.dayView(day), [DAY_ARG]);
@@ -246,17 +246,17 @@ function registerProgressIpc(ipcMain, d) {
   }, [DAY_ARG, opt(PATH)]);
   ipcMain.handle('time:drop-draft', (_e, day, key) => d.timeTracker.dropDraft(day, timeKey(key)), [DAY_ARG, PATH]);
   // Sending days to a time tracker (timetrack/timesync.js). The token goes in and never comes back out.
-  ipcMain.handle('time:sync-connect', (_e, provider, token) => d.timeSync.connect(typeof provider === 'string' ? provider : '', typeof token === 'string' ? token.slice(0, 400) : ''));
+  ipcMain.handle('time:sync-connect', (_e, provider, token) => d.timeSync.connect(typeof provider === 'string' ? provider : '', typeof token === 'string' ? token.slice(0, 400) : ''), [opt(text(100)), opt(text(10_000))]);
   ipcMain.handle('time:sync-disconnect', () => d.timeSync.disconnect());
-  ipcMain.handle('time:sync-projects', (_e, o) => d.timeSync.projects({ fresh: !!o?.fresh }));
-  ipcMain.handle('time:sync-link', (_e, key, target) => d.timeSync.link(timeKey(key), typeof target === 'string' ? target : null));
-  ipcMain.handle('time:sync-send', (_e, day) => d.timeSync.sendDay(DAY.test(day) ? day : null).catch(e => { d.log.error('time sync', e); return { ok: false, error: "Couldn't send that day." }; }));
+  ipcMain.handle('time:sync-projects', (_e, o) => d.timeSync.projects({ fresh: !!o?.fresh }), [opt(obj())]);
+  ipcMain.handle('time:sync-link', (_e, key, target) => d.timeSync.link(timeKey(key), typeof target === 'string' ? target : null), [opt(text(32_767)), opt(text(1000))]);
+  ipcMain.handle('time:sync-send', (_e, day) => d.timeSync.sendDay(DAY.test(day) ? day : null).catch(e => { d.log.error('time sync', e); return { ok: false, error: "Couldn't send that day." }; }), [opt(text(40))]);
   // Only a file this page just saved: it says where, and nothing else gets opened.
   ipcMain.handle('time:show-file', (_e, file) => {
     if (!d.isStr(file) || !d.timeTracker.wasSaved(file) || !fs.existsSync(file)) return false;
     shell.showItemInFolder(file);
     return true;
-  });
+  }, [opt(text(32_767))]);
 }
 
 module.exports = { registerProgressIpc };

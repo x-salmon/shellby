@@ -235,7 +235,7 @@ test('card:post-discord sends only a card Shellby saved, from Pictures/Shellby',
 
   for (const bad of [outside, notACard, path.join(path.dirname(saved.path), '..', '..', 'shellby-trophy-20260101-120000.png'),
     path.join(path.dirname(saved.path), 'shellby-trophy-19990101-000000.png'), 'C:\\Windows\\win.ini', '', null, 42, { path: saved.path }]) {
-    const r = await ipc.invoke('card:post-discord', bad, 'hi');
+    const r = await ipc.invoke('card:post-discord', bad, 'hi').catch(() => ({ ok: false })); // not a path at all: refused before the handler
     assert.equal(r.ok, false, String(bad));
   }
   assert.equal(net.sent.length, 0, 'nothing went anywhere');
@@ -358,24 +358,23 @@ test('card:copy is ok only for a real PNG', async () => {
   const { ipc } = setup();
 
   assert.deepEqual(await ipc.invoke('card:copy', png()), { ok: true });
-  assert.deepEqual(await ipc.invoke('card:copy', 'png'), { ok: false });
+  await assert.rejects(ipc.invoke('card:copy', 'png'), /Shellby accepts/);
 });
 
 test('health handlers pass on only the types they expect', async () => {
   const { ipc, rec } = setup();
 
-  await ipc.invoke('health:end-task', '1234');
   await ipc.invoke('health:end-task', 1234);
-  await ipc.invoke('health:end-group', { name: 'chrome' });
-  await ipc.invoke('health:set-startup', 7, 'yes');
-  await ipc.invoke('health:set', 'all-off');
-  const asked = await ipc.invoke('health:ask', 99);
+  await ipc.invoke('health:end-task', null);
+  for (const [channel, ...args] of [['health:end-task', '1234'], ['health:end-group', { name: 'chrome' }], ['health:set-startup', 7, 'yes'],
+    ['health:set', 'all-off'], ['health:ask', 99]]) {
+    await assert.rejects(ipc.invoke(channel, ...args), /Shellby accepts/, channel); // the wrong type never reaches the handler
+  }
 
-  assert.deepEqual(rec.of('health.endTask'), [[null], [1234]]);
-  assert.deepEqual(rec.of('health.endGroup'), [[null]]);
-  assert.deepEqual(rec.of('health.setStartup'), [[null, false]]);
-  assert.deepEqual(rec.of('health.setSettings'), [[{}]]);
-  assert.deepEqual(asked, { ok: false, error: 'Unknown reading.' });
+  assert.deepEqual(rec.of('health.endTask'), [[1234], [null]]);
+  assert.deepEqual(rec.of('health.endGroup'), []);
+  assert.deepEqual(rec.of('health.setStartup'), []);
+  assert.deepEqual(rec.of('health.setSettings'), []);
   assert.deepEqual(rec.of('health.ask'), []);
 });
 
@@ -392,13 +391,13 @@ test('obs:set keeps the port to 1024-65535 integers', async () => {
 test('typing:set and weather:set ignore a payload that is not an object', async () => {
   const { ipc, config, rec } = setup();
 
-  await ipc.invoke('typing:set', 'enabled');
+  await assert.rejects(ipc.invoke('typing:set', 'enabled'), /Shellby accepts/);
   await ipc.invoke('weather:set', null);
-  await ipc.invoke('weather:search', { q: 'Oslo' });
+  await assert.rejects(ipc.invoke('weather:search', { q: 'Oslo' }), /Shellby accepts/);
 
-  assert.deepEqual(config.get('typing'), { enabled: false, remarks: true });
+  assert.equal(config.get('typing'), undefined, 'refused before it changed anything');
   assert.deepEqual(rec.of('weather.set'), [[{}]]);
-  assert.deepEqual(rec.of('weather.search'), [['']]);
+  assert.deepEqual(rec.of('weather.search'), []);
 });
 
 test('discord:set takes only a real true, and starts and stops on the switch alone', async () => {
@@ -413,10 +412,10 @@ test('discord:set takes only a real true, and starts and stops on the switch alo
   assert.deepEqual(config.get('discord'), { enabled: true, task: true });
   assert.equal(rec.of('presence.start').length, 1, 'sharing the task is a repaint, not a reconnect');
 
-  await ipc.invoke('discord:set', 'enabled');
+  await assert.rejects(ipc.invoke('discord:set', 'enabled'), /Shellby accepts/);
   assert.deepEqual(config.get('discord'), { enabled: true, task: true }, 'a payload that is not an object changes nothing');
 
   await ipc.invoke('discord:set', { enabled: false });
   assert.equal(rec.of('presence.stop').length, 1);
-  assert.equal(rec.of('updatePresence').length, 5, 'every call repaints, even one that changed nothing');
+  assert.equal(rec.of('updatePresence').length, 4, 'every call repaints, even one that changed nothing');
 });

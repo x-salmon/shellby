@@ -68,7 +68,7 @@ test('critter:reduced-motion: only the crab\'s page tells main, and only a true 
   registerCritterIpc(ipc.ipcMain, { setReducedMotion: on => told.push(on) });
   ipc.sendAs(ipc.senders.critter, 'critter:reduced-motion', true);
   ipc.sendAs(ipc.senders.critter, 'critter:reduced-motion', 'yes');
-  assert.deepEqual(told, [true, false]);
+  assert.deepEqual(told, [true], 'anything but a boolean is dropped');
   ipc.sendAs(ipc.senders.stranger, 'critter:reduced-motion', true);
-  assert.deepEqual(told, [true, false], 'a stranger is refused');
+  assert.deepEqual(told, [true], 'a stranger is refused');
 });

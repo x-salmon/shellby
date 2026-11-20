@@ -130,7 +130,7 @@ test('snippets:expand expands /name args and passes anything else through as nul
 
   assert.deepEqual(await ipc.invoke('snippets:expand', '/review the auth module'), { ok: true, text: 'review:the auth module' });
   assert.equal(await ipc.invoke('snippets:expand', 'just a message'), null);
-  assert.equal(await ipc.invoke('snippets:expand', { text: '/review' }), null);
+  await assert.rejects(ipc.invoke('snippets:expand', { text: '/review' }), /Shellby accepts/);
   assert.equal(rec.of('expandSnippet').length, 1);
 });
 
@@ -188,7 +188,7 @@ test('setup:sample-hook-input refuses an unknown hook event', async () => {
   const { ipc } = setup();
 
   assert.equal(await ipc.invoke('setup:sample-hook-input', { event: 'NotAnEvent' }), null);
-  assert.equal(await ipc.invoke('setup:sample-hook-input', 'PreToolUse'), null);
+  await assert.rejects(ipc.invoke('setup:sample-hook-input', 'PreToolUse'), /Shellby accepts/);
 });
 
 test('shop:open only opens the link the CLI reported for a listed plugin', () => {

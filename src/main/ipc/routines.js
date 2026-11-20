@@ -2,7 +2,7 @@
 // test runs, the weekly dependency watch (depwatch/index.js), and the usage forecast
 // with the work held for after a reset (forecast.js, held.js).
 // Kept out of main.js, which only wires it up.
-const { ID, obj, opt, str } = require('../ipc-args');
+const { ID, obj, opt, str, text } = require('../ipc-args');
 const confirm = require('../confirm');
 const crabtools = require('../crabtools');
 const depwatch = require('../depwatch');
@@ -24,7 +24,7 @@ function registerRoutinesIpc(ipcMain, d) {
     if (!text.trim() || d.config.get('crabOnly')) return null;
     // ultracode: the chip is on for the tab, so this message starts a run of many agents.
     return d.usagePlan.estimateFor(d.isStr(req.tabId) ? req.tabId : null, text, { ultracode: req.ultracode === true });
-  });
+  }, [opt(obj())]);
   // What a run usually costs before it starts (usage/runcost.js): an Ultracode
   // run, one workflow by its id, or a turn that fans out to several helpers.
   ipcMain.handle('usage:estimate-run', (_e, req) => (d.config.get('crabOnly') ? null : d.usagePlan.estimateRunFor({ kind: req.kind, workflowId: req.workflowId || null })),
@@ -54,39 +54,39 @@ function registerRoutinesIpc(ipcMain, d) {
     if (list.length > 50) return { ok: false, errors: ['That is a lot of routines. Delete some first (limit 50).'] };
     d.saveRoutines(list);
     return { ok: true, routine, routines: d.routinesView() };
-  });
-  ipcMain.handle('routines:draft', (_e, text) => d.draftRoutine(text));
+  }, [opt(obj())]);
+  ipcMain.handle('routines:draft', (_e, text) => d.draftRoutine(text), [opt(text(100_000))]);
   // Build it with Claude (the routine editor's chat) and its test runs. A test
   // is the saved routine run by hand; stopping or reading one only works on a
   // tab that is one of those tests.
   const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
   ipcMain.handle('routines:chat', (_e, req) => (isObj(req)
     ? d.chatRoutine({ routine: isObj(req.routine) ? req.routine : {}, messages: req.messages, runId: d.isStr(req.runId) ? req.runId : null })
-    : { ok: false, error: 'Nothing to send.' }));
-  ipcMain.handle('routines:repair', (_e, id) => (d.isStr(id) ? d.repairRoutine(id) : { ok: false, error: 'That routine is gone.' }));
-  ipcMain.handle('routines:test', (_e, id) => (d.isStr(id) ? d.testRoutine(id) : { ok: false, error: 'Save it first.' }));
-  ipcMain.handle('routines:test-status', (_e, tabId) => (d.isStr(tabId) && d.routineTests.has(tabId) ? d.routineTestView(tabId) : null));
+    : { ok: false, error: 'Nothing to send.' }), [opt(obj())]);
+  ipcMain.handle('routines:repair', (_e, id) => (d.isStr(id) ? d.repairRoutine(id) : { ok: false, error: 'That routine is gone.' }), [opt(text(300))]);
+  ipcMain.handle('routines:test', (_e, id) => (d.isStr(id) ? d.testRoutine(id) : { ok: false, error: 'Save it first.' }), [opt(text(300))]);
+  ipcMain.handle('routines:test-status', (_e, tabId) => (d.isStr(tabId) && d.routineTests.has(tabId) ? d.routineTestView(tabId) : null), [opt(text(300))]);
   ipcMain.handle('routines:test-stop', (_e, tabId) => {
     if (!d.isStr(tabId) || !d.routineTests.has(tabId) || !d.manager.tabs.has(tabId)) return false;
     d.manager.interrupt(tabId);
     return true;
-  });
+  }, [opt(text(300))]);
   d.registerWorkflowIpc(ipcMain);
   ipcMain.handle('routines:delete', (_e, id) => {
     d.saveRoutines(d.routines().filter(r => r.id !== id));
     const list = d.heldList();
     if (list.some(h => h.kind === 'routine' && h.routineId === id)) d.saveHeld(list.filter(h => !(h.kind === 'routine' && h.routineId === id)));
     return d.routinesView();
-  });
+  }, [opt(text(300))]);
   ipcMain.handle('routines:run', (_e, id) => {
     const r = d.routines().find(x => x.id === id);
     return r ? d.runRoutine(r, { reason: 'manual' }) : { ok: false, error: 'Routine not found.' };
-  });
+  }, [opt(text(300))]);
 
   // ---- dependency watch (depwatch/index.js). Only a project from the last check is
   // accepted: the renderer names one, it never hands over a folder of its own.
   ipcMain.handle('depwatch:get', () => d.depWatch.view());
-  ipcMain.handle('depwatch:set', (_e, on) => d.depWatch.setEnabled(on === true));
+  ipcMain.handle('depwatch:set', (_e, on) => d.depWatch.setEnabled(on === true), [opt(v => typeof v === 'boolean')]);
   ipcMain.handle('depwatch:scan', () => d.depWatch.scan());
   // key: the folder; manager: which of its package managers (a folder may have two).
   ipcMain.handle('depwatch:bump', async (_e, key, manager) => {
@@ -97,7 +97,7 @@ function registerRoutinesIpc(ipcMain, d) {
     const res = await d.startTaskInCopy(r.key, `Bump dependencies in ${r.name}`, w => depwatch.bumpPrompt(r, { branch: w.branch, base: w.base }));
     if (res.ok) d.showPanel({ focusInput: false, tabId: res.tabId });
     return res;
-  });
+  }, [opt(text(32_767)), opt(text(100))]);
   // A routine for the editor to fill in: saving it goes through routines:save
   // like any other, with its confirmation.
   ipcMain.handle('depwatch:routine', (_e, key, manager) => {
@@ -109,7 +109,7 @@ function registerRoutinesIpc(ipcMain, d) {
       cwd: r.key, mode: 'smart',
       schedule: { type: 'weekly', time: '10:00', days: [1] },
     };
-  });
+  }, [opt(text(32_767)), opt(text(100))]);
 
   // ---- usage forecast, and work held for after the reset
   ipcMain.handle('outlook:get', () => d.outlookView());
@@ -118,7 +118,7 @@ function registerRoutinesIpc(ipcMain, d) {
     const r = await holdOne(input);
     if (r?.ok) d.questDone?.('reset');
     return r;
-  });
+  }, [opt(obj())]);
   async function holdOne(input) {
     if (d.config.get('crabOnly')) return { ok: false, error: 'That needs Claude Code.' };
     if (input?.kind === 'task') return d.queueTask(input);
@@ -140,7 +140,7 @@ function registerRoutinesIpc(ipcMain, d) {
     return d.holdForReset({ kind: 'message', tabId: tab.id, cwd: tab.session.cwd, title: tab.title, text, attachments: files });
   }
   // Answers with what was held, so a message can go back in the box to edit.
-  ipcMain.handle('held:cancel', (_e, id) => cancelHeld(id));
+  ipcMain.handle('held:cancel', (_e, id) => cancelHeld(id), [opt(text(300))]);
   // Also the phone's Queue (wiring/pocket.js).
   function cancelHeld(id) {
     const list = d.heldList();
@@ -157,7 +157,7 @@ function registerRoutinesIpc(ipcMain, d) {
     d.syncKeepAwake();
     d.sendOutlook();
     return { ok: true, keepAwake: on === true };
-  });
+  }, [opt(v => typeof v === 'boolean')]);
 }
 
 module.exports = { registerRoutinesIpc };

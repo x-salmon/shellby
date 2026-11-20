@@ -3,6 +3,7 @@
 // sign-in stays glab's; nothing here ever handles a token.
 // Kept out of main.js, which only wires it up.
 
+const { obj, opt } = require('../ipc-args');
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps)
@@ -15,7 +16,7 @@ function registerGitlabIpc(ipcMain, d) {
       ...(typeof p.ci === 'boolean' ? { ci: p.ci } : {}),
       ...(Array.isArray(p.hosts) ? { hosts: p.hosts.filter(h => typeof h === 'string').slice(0, 20).map(h => h.slice(0, 260)) } : {}),
     });
-  });
+  }, [opt(obj())]);
   ipcMain.handle('gitlab:check', () => d.checkGitLab());
 }
 

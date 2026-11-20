@@ -15,7 +15,7 @@ const guard = require('../guard');
 const localModel = require('../local/model');
 const { createOllama } = require('../local/ollama');
 const mischief = require('../mischief');
-const { str, obj, opt, text } = require('../ipc-args');
+const { obj, opt, str, text } = require('../ipc-args');
 const localTally = require('../local/tally');
 const localPresets = require('../local/presets');
 const localPull = require('../local/pull');
@@ -236,7 +236,7 @@ function registerSettingsIpc(ipcMain, d) {
     applied(allowed, asked, before, { taste: true });
     if (allowed.onboarded && !before.onboarded) d.firstRunStep?.('welcome'); // through the welcome screen: First steps' hello (first-run.js)
     return { settings: d.panelSettings(), hotkeyError, pushToTalkError };
-  });
+  }, [opt(obj())]);
   // Settings' Find models: what the local server (Ollama, LM Studio) has. Only addresses on this PC are asked.
   ipcMain.handle('local:models', (_e, url) => localModel.listModels(url), [str({ max: 500 })]);
   // Detect: which of Ollama and LM Studio answer on their usual ports, with their models.
@@ -337,7 +337,7 @@ function registerSettingsIpc(ipcMain, d) {
     const recent = d.isStr(dir) && (d.ISOLATED ? (attach.isLocalPath(dir) && dir)
       : (d.config.get('recentFolders') || []).find(d => d.toLowerCase() === dir.toLowerCase()));
     return recent && fs.existsSync(recent) ? d.setFolder(recent) : null;
-  });
+  }, [opt(text(32_767))]);
   ipcMain.handle('folder:pick-any', async () => {
     const r = await dialog.showOpenDialog(d.panel, { title: 'Choose a folder', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
     return r.canceled ? null : r.filePaths[0] || null;

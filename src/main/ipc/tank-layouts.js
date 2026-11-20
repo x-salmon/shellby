@@ -10,6 +10,7 @@
 // time you open it): nothing runs on a timer for them.
 const layouts = require('../tank/layouts');
 const { activeSeasons } = require('../wardrobe/seasons');
+const { obj, opt, text } = require('../ipc-args');
 
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const isId = v => typeof v === 'string' && /^[a-z0-9]{1,12}$/.test(v);
@@ -61,7 +62,7 @@ function registerTankLayoutsIpc(ipcMain, deps) {
     if (r.replaced) undo = { kind: 'replace', layout: r.replaced, at: 0, seasonal: null, editedAt: r.state.editedAt };
     else if (undo?.kind !== 'use') undo = null; // the list moved on from what undo would put back
     return reply({ replaced: !!r.replaced });
-  });
+  }, [opt(obj())]);
 
   ipcMain.handle('tank:layout-use', (_e, id) => {
     const l = isId(id) && get().list.find(x => x.id === id);
@@ -70,7 +71,7 @@ function registerTankLayoutsIpc(ipcMain, deps) {
     const r = deps.tank.keep(layouts.asTank(l));
     undo = { kind: 'use', before, after: shape() };
     return reply({ dropped: r.dropped, view: r.view });
-  });
+  }, [opt(text(300))]);
 
   ipcMain.handle('tank:layout-remove', (_e, id) => {
     if (!isId(id)) return { ok: false, layouts: layouts.view(get()) };
@@ -80,14 +81,14 @@ function registerTankLayoutsIpc(ipcMain, deps) {
     set(next);
     undo = at < 0 ? undo : { kind: 'remove', layout: s.list[at], at, seasonal: s.seasonal?.id === id ? s.seasonal : null, editedAt: next.editedAt };
     return reply();
-  });
+  }, [opt(text(300))]);
 
   ipcMain.handle('tank:layout-season', (_e, arg) => {
     if (!isObj(arg) || !isId(arg.id)) return { ok: false, layouts: layouts.view(get()) };
     set(layouts.tag(get(), arg.id, arg.season, now()));
     if (undo?.kind !== 'use') undo = null; // the list moved on from what undo would put back
     return reply();
-  });
+  }, [opt(obj())]);
 
   // Take back the last put up, replace or remove. Refused once things have
   // changed since (you redecorated, or the list changed here or by sync), so

@@ -4,6 +4,8 @@
 //
 // The panel only names things: a pull request by the key the CI watcher gave
 // it. Main looks it up before using it.
+
+const { obj, opt } = require('../ipc-args');
 const KINDS = new Set(['build', 'review']);
 const KEY_RE = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}#\d{1,9}$/;
 const HASH_RE = /^[0-9a-f]{64}$/;
@@ -18,10 +20,10 @@ const noteOf = n => (typeof n === 'string' ? n.slice(0, 500) : '');
 function registerStartFromIpc(ipcMain, d) {
   const no = { ok: false, error: 'That isn\'t something Shellby can start from.' };
   ipcMain.handle('startfrom:draft', (_e, { kind, key, note, fresh } = {}) => (KINDS.has(kind) && isKey(key)
-    ? d.startFromDraft({ kind, key, note: noteOf(note), fresh: fresh === true }) : no));
+    ? d.startFromDraft({ kind, key, note: noteOf(note), fresh: fresh === true }) : no), [opt(obj())]);
   // ack: the "I've looked at these" tick, when the draft named files or people to check.
   ipcMain.handle('startfrom:send', (_e, { kind, key, note, hash, ack } = {}) => (KINDS.has(kind) && isKey(key) && HASH_RE.test(String(hash))
-    ? d.startFromSend({ kind, key, note: noteOf(note), hash, ack: ack === true }) : no));
+    ? d.startFromSend({ kind, key, note: noteOf(note), hash, ack: ack === true }) : no), [opt(obj())]);
 }
 
 module.exports = { registerStartFromIpc };

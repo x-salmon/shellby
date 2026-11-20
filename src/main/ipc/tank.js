@@ -12,6 +12,7 @@ const tankLife = require('../tank/life');
 const gifts = require('../gifts');
 const friends = require('../friends');
 const { LOGIN_RE, sameLogin } = require('../github/card');
+const { list, obj, opt, text } = require('../ipc-args');
 
 const isRef = v => typeof v === 'string' && tank.REF_RE.test(v);
 const MAX_SEEN = 200;
@@ -82,7 +83,7 @@ function registerTankIpc(ipcMain, d) {
     const r = keep(draft);
     if (r.ok) d.featureAct?.('tank'); // What you use: you decorated it (feature-use.js)
     return r;
-  });
+  }, [opt(obj())]);
 
   // ---- his life in it (tank/life.js): kept apart from the layout, per PC, never synced
 
@@ -137,7 +138,7 @@ function registerTankIpc(ipcMain, d) {
     }
     if (JSON.stringify(next) !== JSON.stringify(before)) d.config.set({ tankLife: next });
     return lifeView(st);
-  });
+  }, [opt(obj())]);
 
   // A word about his tank for the desktop (life.js asks now and then), or null.
   function remark() {
@@ -160,7 +161,7 @@ function registerTankIpc(ipcMain, d) {
     }
     if (on) d.questDone?.('tank-share');
     return { ok: true, view: view() };
-  });
+  }, [opt(v => typeof v === 'boolean')]);
 
   // A friend's tank, from the calling card fetched last time, drawn with this PC's art.
   ipcMain.handle('tank:peek', (_e, login) => {
@@ -169,14 +170,14 @@ function registerTankIpc(ipcMain, d) {
     if (!f) return { ok: false, error: 'No such friend.' };
     const peek = f.card?.tank && tankShare.peekView(f.card.tank, { decor: d.wardrobe()?.decorView() || [], finds: gifts.FINDS });
     return peek ? { ok: true, login: f.login, view: peek } : { ok: false, error: `@${f.login} isn’t sharing their tank.` };
-  });
+  }, [opt(text(100))]);
 
   // Decor you've seen in the tray stops being new (the wardrobe keeps the dots).
   ipcMain.on('tank:seen', (_e, refs) => {
     if (!Array.isArray(refs)) return;
     const keys = refs.slice(0, MAX_SEEN).filter(r => isRef(r) && !r.startsWith('find:') && !r.startsWith('jar:') && !tankGlass.isSticker(r));
     if (keys.length) d.wardrobe()?.markSeen(keys);
-  });
+  }, [opt(list(text(300)))]);
 
   // For saved layouts (ipc/tank-layouts.js): the tank as the panel draws it, and keeping one.
   // remark: a word about his tank for the desktop (life.js, through shared.tankRemark).

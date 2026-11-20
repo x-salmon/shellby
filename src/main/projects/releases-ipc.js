@@ -8,7 +8,7 @@
 // The panel names a clone only by a root the Projects page listed (knowsRoot),
 // and a release only by the commit it read: a clone that has moved since isn't
 // released. Nothing is pushed unless the push box was ticked or Push pressed.
-const { PATH, obj, str: nonEmpty } = require('../ipc-args');
+const { obj, opt, PATH, str: nonEmpty } = require('../ipc-args');
 const { caseKey } = require('./merge');
 const rg = require('./release-git');
 const R = require('./releases');
@@ -97,7 +97,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
   ipcMain.handle('releases:get', (_e, { root } = {}) => {
     const r = known(root);
     return r ? view(r) : no;
-  });
+  }, [opt(obj())]);
 
   ipcMain.handle('releases:cut', (_e, o = {}) => {
     const root = known(o.root);
@@ -124,7 +124,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
       d.projects.emit?.('change');
       return r;
     });
-  });
+  }, [opt(obj())]);
 
   ipcMain.handle('releases:push', (_e, { root: given, tag } = {}) => {
     const root = known(given);
@@ -147,7 +147,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
       d.projects.emit?.('change');
       return r;
     });
-  });
+  }, [opt(obj())]);
 
   // "Write it with Claude": the ask for a new conversation's box. You read it and send it.
   ipcMain.handle('releases:polish', async (_e, { root: given, version } = {}) => {
@@ -164,7 +164,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
         notes: state.notes.length ? state.draft.notes : '',
       }),
     };
-  });
+  }, [opt(obj())]);
 }
 
 module.exports = { registerReleasesIpc };

@@ -1,6 +1,6 @@
 // The Wardrobe's IPC: outfits, voices, packs from a file or the gallery, and
 // outfit codes (SHB-XXXX-XXXX). Kept out of main.js, which only wires it up.
-const { ID, PATH, obj, opt } = require('../ipc-args');
+const { ID, list, obj, opt, PATH, text } = require('../ipc-args');
 const fs = require('fs');
 const attach = require('../attachments');
 const { fetchRegistryCatalog } = require('../registry');
@@ -43,7 +43,7 @@ function registerWardrobeIpc(ipcMain, d) {
 
   ipcMain.handle('wardrobe:view', () => W().view());
   ipcMain.handle('external:clear-background', () => d.clearBackground());
-  ipcMain.handle('wardrobe:set-outfit', (_e, patch) => withView(dressed(W().setOutfit(patch && typeof patch === 'object' ? patch : {}))));
+  ipcMain.handle('wardrobe:set-outfit', (_e, patch) => withView(dressed(W().setOutfit(patch && typeof patch === 'object' ? patch : {}))), [opt(obj())]);
   ipcMain.handle('wardrobe:wear-season', () => withView(dressed(W().wearSeason())));
   ipcMain.handle('wardrobe:randomize', () => withView(dressed(W().randomize())));
   ipcMain.handle('wardrobe:set-voice', (_e, key) => {
@@ -51,9 +51,9 @@ function registerWardrobeIpc(ipcMain, d) {
     // His don't-repeat memory points into the old voice's lines: start it afresh.
     if (r.ok) d.config.set({ voice: { ...d.voice.normalize(d.config.get('voice')), recent: {} } });
     return withView(r);
-  });
-  ipcMain.handle('wardrobe:options', (_e, opts) => { W().setOptions(opts || {}); return W().view(); });
-  ipcMain.on('wardrobe:seen', (_e, keys) => { if (Array.isArray(keys)) W().markSeen(keys.filter(isStr)); });
+  }, [opt(text(100))]);
+  ipcMain.handle('wardrobe:options', (_e, opts) => { W().setOptions(opts || {}); return W().view(); }, [opt(obj())]);
+  ipcMain.on('wardrobe:seen', (_e, keys) => { if (Array.isArray(keys)) W().markSeen(keys.filter(isStr)); }, [opt(list(text(300)))]);
   ipcMain.handle('wardrobe:install', async (_e, filePath) => {
     const file = isStr(filePath) ? filePath : await d.pickPackFile();
     if (!file) return { ok: false, canceled: true };
@@ -63,13 +63,13 @@ function registerWardrobeIpc(ipcMain, d) {
   }, [opt(PATH)]); // no file: the open dialog
   // Removing a pack puts it in the trash for a week (catalog.js removePack), so
   // the toast can offer it back. { ok, view }: ok false if nothing was removed.
-  ipcMain.handle('wardrobe:remove-pack', (_e, packId) => ({ ok: isStr(packId) && !!W().remove(packId), view: W().view() }));
+  ipcMain.handle('wardrobe:remove-pack', (_e, packId) => ({ ok: isStr(packId) && !!W().remove(packId), view: W().view() }), [opt(text(300))]);
   ipcMain.handle('wardrobe:restore-pack', (_e, packId) => {
     const w = W();
     const ok = isStr(packId) && PACK_ID.test(packId) && restorePack(packId, w.userDir);
     if (ok) { w.load(); w.emit('changed'); } // what Wardrobe.remove does after a file goes, the other way round
     return { ok, view: w.view() };
-  });
+  }, [opt(text(300))]);
 
   // ---- outfit codes: a whole look as a pasteable string
   ipcMain.handle('wardrobe:code', () => ({ code: W().outfitCode(d.activeSkin()?.id) }));
@@ -80,7 +80,7 @@ function registerWardrobeIpc(ipcMain, d) {
     // Items from community packs you don't have: find them in the gallery's catalog.
     const cat = await fetchRegistryCatalog({ baseUrl: d.registryUrl() });
     return { ...p, ...packsFor(p.missing, cat), catalogError: cat.ok ? null : cat.errors[0] };
-  });
+  }, [opt(text(10_000))]);
   ipcMain.handle('wardrobe:code-wear', (_e, text) => {
     if (!isStr(text) || text.length > MAX_CODE) return { ok: false, error: NOT_A_CODE };
     const r = W().wearCode(text, d.builtinSkins());
@@ -91,9 +91,9 @@ function registerWardrobeIpc(ipcMain, d) {
       if (sk && !sk.locked) { d.config.set({ skin: r.skin }); d.broadcastSkin(); }
     }
     return withView(r);
-  });
+  }, [opt(text(10_000))]);
   // "Get the pack" from an outfit code: the same confirmed install as a gallery link.
-  ipcMain.handle('wardrobe:install-registry', (_e, packId) => (isStr(packId) && PACK_ID.test(packId) ? d.installFromRegistry(packId) : { ok: false }));
+  ipcMain.handle('wardrobe:install-registry', (_e, packId) => (isStr(packId) && PACK_ID.test(packId) ? d.installFromRegistry(packId) : { ok: false }), [opt(text(300))]);
   ipcMain.on('wardrobe:open-folder', () => { fs.mkdirSync(W().userDir, { recursive: true }); d.openPath(W().userDir); });
   ipcMain.on('skins:open-folder', () => d.openPath(d.userSkinsDir()));
 
@@ -105,24 +105,24 @@ function registerWardrobeIpc(ipcMain, d) {
   // Save: { ok, id, warnings }. Strict checks, a fresh id or your own, written atomically, then a reload.
   ipcMain.handle('skins:save', (_e, skin, opts) => (isObj(skin) && idOk(skin.id) ? P.saveSkin(skin, { replace: opts?.replace === true }) : { ok: false, error: 'That isn’t a skin.' }), [obj({ id: ID }), opt(obj())]);
   // A skin to start from or edit: { ok, skin, source, basedOn? }. Locked pack skins are refused.
-  ipcMain.handle('skins:read', (_e, id) => (isStr(id) && id.length <= 81 ? P.readSkin(id) : { ok: false }));
+  ipcMain.handle('skins:read', (_e, id) => (isStr(id) && id.length <= 81 ? P.readSkin(id) : { ok: false }), [opt(text(300))]);
   // The desktop crab wears it for a minute (null: back to his own now).
-  ipcMain.handle('skins:preview', (_e, skin) => (skin === null || isObj(skin) ? P.preview(skin) : { ok: false }));
+  ipcMain.handle('skins:preview', (_e, skin) => (skin === null || isObj(skin) ? P.preview(skin) : { ok: false }), [opt(obj())]);
   ipcMain.handle('painter:drafts', () => P.drafts());
-  ipcMain.handle('painter:draft-save', (_e, draft) => (isObj(draft) ? P.saveDraft(draft) : { ok: false }));
-  ipcMain.handle('painter:draft-delete', (_e, id) => (idOk(id) ? P.deleteDraft(id) : false));
-  ipcMain.handle('painter:wishes', (_e, kind) => (kind == null || kindOk(kind) ? P.wishes(kind || null) : []));
-  ipcMain.handle('painter:items', (_e, kind) => (kindOk(kind) && kind !== 'skin' ? P.items(kind) : []));
-  ipcMain.handle('painter:save-item', (_e, kind, item, opts) => (kindOk(kind) && kind !== 'skin' && isObj(item) && idOk(item.id) ? P.saveItem(kind, item, { replace: opts?.replace === true }) : { ok: false, error: 'That isn’t something the Painter saves.' }));
+  ipcMain.handle('painter:draft-save', (_e, draft) => (isObj(draft) ? P.saveDraft(draft) : { ok: false }), [opt(obj())]);
+  ipcMain.handle('painter:draft-delete', (_e, id) => (idOk(id) ? P.deleteDraft(id) : false), [opt(text(300))]);
+  ipcMain.handle('painter:wishes', (_e, kind) => (kind == null || kindOk(kind) ? P.wishes(kind || null) : []), [opt(text(100))]);
+  ipcMain.handle('painter:items', (_e, kind) => (kindOk(kind) && kind !== 'skin' ? P.items(kind) : []), [opt(text(100))]);
+  ipcMain.handle('painter:save-item', (_e, kind, item, opts) => (kindOk(kind) && kind !== 'skin' && isObj(item) && idOk(item.id) ? P.saveItem(kind, item, { replace: opts?.replace === true }) : { ok: false, error: 'That isn’t something the Painter saves.' }), [opt(text(100)), opt(obj()), opt(obj())]);
   ipcMain.handle('painter:share', (_e, kind, id, opts) => {
     if (!kindOk(kind) || !idOk(id)) return { ok: false };
     const contest = typeof opts?.contest === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(opts.contest) ? opts.contest : null;
     const wish = Number.isInteger(opts?.wish) && opts.wish > 0 ? opts.wish : null;
     return P.share(kind, id, { contest, wish });
-  });
+  }, [opt(text(100)), opt(text(300)), opt(obj())]);
   ipcMain.handle('painter:gallery', () => P.gallery());
-  ipcMain.handle('painter:export', (_e, kind, id) => (kindOk(kind) && idOk(id) ? P.exportPack(kind, id) : { ok: false }));
-  ipcMain.handle('painter:code', (_e, kind, id) => (kindOk(kind) && idOk(id) ? P.code(kind, id) : { ok: false }));
+  ipcMain.handle('painter:export', (_e, kind, id) => (kindOk(kind) && idOk(id) ? P.exportPack(kind, id) : { ok: false }), [opt(text(100)), opt(text(300))]);
+  ipcMain.handle('painter:code', (_e, kind, id) => (kindOk(kind) && idOk(id) ? P.code(kind, id) : { ok: false }), [opt(text(100)), opt(text(300))]);
   ipcMain.on('painter:studio', () => P.studio());
 }
 

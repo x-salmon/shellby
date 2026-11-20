@@ -1,7 +1,7 @@
 // The panel itself: opening and closing it, Claude Code's sign-in and status,
 // pictures and files for the composer (attachments.js), and updates.
 // Kept out of main.js, which only wires it up.
-const { ID, PATH, text } = require('../ipc-args');
+const { ID, obj, opt, PATH, text } = require('../ipc-args');
 const { BrowserWindow, app, dialog, nativeImage } = require('electron');
 const { execFile } = require('child_process');
 const os = require('os');
@@ -30,7 +30,7 @@ function registerPanelIpc(ipcMain, d) {
   }, [v => v instanceof Uint8Array]);
   ipcMain.handle('attach:thumb', (_e, file) => (d.isStr(file) ? attach.thumbnail(file, { nativeImage }) : null), [PATH]);
   // A picture Claude wrote or edited, big enough to see on its step in the chat.
-  ipcMain.handle('pictures:file', (_e, file) => (d.isStr(file) ? attach.thumbnail(file, { nativeImage, edge: attach.PREVIEW_EDGE }) : null));
+  ipcMain.handle('pictures:file', (_e, file) => (d.isStr(file) ? attach.thumbnail(file, { nativeImage, edge: attach.PREVIEW_EDGE }) : null), [opt(text(32_767))]);
   ipcMain.handle('attach:pick', async () => {
     const r = await dialog.showOpenDialog(d.panel, {
       title: 'Attach files', properties: ['openFile', 'multiSelections'],
@@ -48,7 +48,7 @@ function registerPanelIpc(ipcMain, d) {
     if (!win || win === d.critter) return;
     if (win.isMaximized()) win.unmaximize(); else win.maximize();
   });
-  ipcMain.handle('panel:roomy', (_e, on) => d.setPanelRoomy(on === true));
+  ipcMain.handle('panel:roomy', (_e, on) => d.setPanelRoomy(on === true), [opt(v => typeof v === 'boolean')]);
   // Room for more panes: grow the panel to { width, height } DIP (wiring/panel.js fitPanel).
   // The panel's alone: a popped-out conversation shares the bridge but has no panes to fit.
   ipcMain.handle('panel:fit', (e, want) => {
@@ -56,7 +56,7 @@ function registerPanelIpc(ipcMain, d) {
     const n = x => typeof x === 'number' && Number.isFinite(x) && x > 0 && x < 20000;
     if (!want || !n(want.width) || !n(want.height)) return { ok: false, grew: false };
     return d.fitPanel({ width: want.width, height: want.height });
-  });
+  }, [opt(obj())]);
 
   ipcMain.handle('app:bootstrap', async () => {
     d.claudeStatus = d.CAPTURE || d.FAKE_CLI ? require('../capture').FAKE_STATUS : await checkStatus({ configured: d.claudePath() });
@@ -357,7 +357,7 @@ function registerPanelIpc(ipcMain, d) {
     account = null; // whoever signs in next, even the same account, is a new sign-in to them
     if (thenSignIn) startClaudeLogin();
     return { ok: true, status: d.claudeStatus };
-  });
+  }, [opt(obj())]);
 
   // ---- updates
   ipcMain.handle('updates:check', () => (d.updates ? d.updates.check() : d.updateView()));

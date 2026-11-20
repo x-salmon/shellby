@@ -25,8 +25,8 @@ function registerDebugIpc(ipcMain, d) {
     if (what === 'again') return d.debugMode.again(id);
     if (what === 'stop') return d.debugMode.stop(id);
     return { ok: false, error: 'Unknown step.' };
-  });
-  ipcMain.handle('debug:status', (_e, id) => (isId(id) && d.debugMode ? d.debugMode.status(id) : null));
+  }, [opt(obj())]);
+  ipcMain.handle('debug:status', (_e, id) => (isId(id) && d.debugMode ? d.debugMode.status(id) : null), [opt(text(300))]);
 }
 
 module.exports = { registerDebugIpc };

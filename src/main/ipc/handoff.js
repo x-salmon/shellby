@@ -1,4 +1,4 @@
-const { ID } = require('../ipc-args');
+const { ID, obj, opt, text } = require('../ipc-args');
 
 // Moving a conversation between Shellby and a terminal (wiring/handoff.js).
 // Kept out of main.js, which only wires it up.
@@ -9,10 +9,10 @@ const { ID } = require('../ipc-args');
  */
 function registerHandoffIpc(ipcMain, d) {
   // A tab, or a History row that may not be open.
-  ipcMain.handle('handoff:terminal', (_e, id) => (d.isStr(id) ? d.handoff.continueInTerminal(id) : { ok: false, error: 'Which conversation?' }));
-  ipcMain.handle('handoff:pickup', (_e, tabId) => (d.isStr(tabId) ? d.handoff.pickUp(tabId) : { ok: false, error: 'Which conversation?' }));
+  ipcMain.handle('handoff:terminal', (_e, id) => (d.isStr(id) ? d.handoff.continueInTerminal(id) : { ok: false, error: 'Which conversation?' }), [opt(text(300))]);
+  ipcMain.handle('handoff:pickup', (_e, tabId) => (d.isStr(tabId) ? d.handoff.pickUp(tabId) : { ok: false, error: 'Which conversation?' }), [opt(text(300))]);
   // An outside session, by its Claude Code id. force: you've said it's closed there.
-  ipcMain.handle('handoff:bring', (_e, { id, force } = {}) => d.handoff.bringIn({ id: d.isStr(id) ? id : null, force: force === true }));
+  ipcMain.handle('handoff:bring', (_e, { id, force } = {}) => d.handoff.bringIn({ id: d.isStr(id) ? id : null, force: force === true }), [opt(obj())]);
   // Claude Code's background sessions (wiring/bg-sessions.js), by agent view's id.
   ipcMain.handle('bg:list', async () => { await d.bgSessions.refresh(); return d.bgSessions.view(); });
   ipcMain.handle('bg:logs', (_e, id) => d.bgSessions.logs(id), [ID]);
@@ -23,7 +23,7 @@ function registerHandoffIpc(ipcMain, d) {
   // A cloud session in a terminal: { kind: teleport | cloud | ultraplan | pr, value?, tabId? } (handoff.js cloudArgs checks the rest).
   ipcMain.handle('handoff:cloud', (_e, { kind, value, tabId } = {}) => (['teleport', 'cloud', 'ultraplan', 'pr'].includes(kind)
     ? d.handoff.openCloud({ kind, value: d.isStr(value) ? value : null, tabId: d.isStr(tabId) ? tabId : null })
-    : { ok: false, error: 'Which kind of cloud session?' }));
+    : { ok: false, error: 'Which kind of cloud session?' }), [opt(obj())]);
 }
 
 module.exports = { registerHandoffIpc };

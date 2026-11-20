@@ -1,6 +1,7 @@
 // The Crew page (wiring/crew.js, crew-roster.js): the roster, renaming a crew
 // member and picking its hat. Kept out of main.js, which only wires it up.
 
+const { text } = require('../ipc-args');
 const isType = t => typeof t === 'string' && t.trim().length > 0 && t.length <= 200;
 
 /**
@@ -9,8 +10,8 @@ const isType = t => typeof t === 'string' && t.trim().length > 0 && t.length <= 
  */
 function registerCrewIpc(ipcMain, d) {
   ipcMain.handle('crew:get', () => d.crewRoster?.view() || null);
-  ipcMain.handle('crew:rename', (_e, type, name) => (isType(type) && typeof name === 'string' ? d.crewRoster?.rename(type, name.slice(0, 200)) : null) || null);
-  ipcMain.handle('crew:hat', (_e, type, hat) => (isType(type) && typeof hat === 'string' ? d.crewRoster?.setHat(type, hat.slice(0, 60)) : null) || null);
+  ipcMain.handle('crew:rename', (_e, type, name) => (isType(type) && typeof name === 'string' ? d.crewRoster?.rename(type, name.slice(0, 200)) : null) || null, [text(300), text(1000)]);
+  ipcMain.handle('crew:hat', (_e, type, hat) => (isType(type) && typeof hat === 'string' ? d.crewRoster?.setHat(type, hat.slice(0, 60)) : null) || null, [text(300), text(1000)]);
 }
 
 module.exports = { registerCrewIpc };

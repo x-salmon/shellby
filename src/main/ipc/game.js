@@ -2,17 +2,18 @@
 // changes one. Names outside the hub's list, and actions that aren't short
 // lowercase words, come back null.
 const { ACTION_RE, isView } = require('../game-hub');
+const { text } = require('../ipc-args');
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
  * @param d  what main shares with its IPC (main.js ipcDeps): d.gameHub
  */
 function registerGameIpc(ipcMain, d) {
-  ipcMain.handle('game:get', (_e, what, arg) => (isView(what) ? d.gameHub.get(what, arg) : null));
+  ipcMain.handle('game:get', (_e, what, arg) => (isView(what) ? d.gameHub.get(what, arg) : null), [text(100)]);
   ipcMain.handle('game:act', (_e, what, action, payload) => {
     if (!isView(what) || typeof action !== 'string' || !ACTION_RE.test(action)) return null;
     return d.gameHub.act(what, action, payload);
-  });
+  }, [text(100), text(100)]);
 }
 
 module.exports = { registerGameIpc };

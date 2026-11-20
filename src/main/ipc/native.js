@@ -73,7 +73,7 @@ function registerNativeIpc(ipcMain, d) {
     if (!jobs.outputPathOk(file, realTmp())) return { ok: false, error: "That output isn't somewhere Shellby reads." };
     const t = await tail(file, OUTPUT_TAIL);
     return t ? { ok: true, text: t.text, cut: t.cut } : { ok: false, error: "Couldn't read its output." };
-  });
+  }, [opt(obj())]);
 
   // ---- "Attach what I just saw" (just-saw.js): opt-in, and only read when pressed
 
@@ -122,7 +122,7 @@ function registerNativeIpc(ipcMain, d) {
     const tab = tabOf(tabId);
     if (!tab || !d.isStr(jobId)) return { ok: false, error: 'That conversation is closed.' };
     return tab.session.stopJob(jobId);
-  });
+  }, [opt(obj())]);
 
   // ---- ultracode runs (Claude Code's Workflow tool, ultracode.js)
 
@@ -130,13 +130,13 @@ function registerNativeIpc(ipcMain, d) {
     const tab = tabOf(tabId);
     if (!tab || !d.isStr(runId) || !ID.test(runId)) return { ok: false, error: 'That conversation is closed.' };
     return tab.session.stopRun(runId);
-  });
+  }, [opt(obj())]);
 
   // A card replayed from History: the run as it is now, or null when this process never saw it.
   ipcMain.handle('ultracode:status', (_e, { tabId, runId } = {}) => {
     const tab = tabOf(tabId);
     return tab && d.isStr(runId) && ID.test(runId) ? tab.session.runView(runId) : null;
-  });
+  }, [opt(obj())]);
 
   // Before the first ultracode message in a conversation: asked in the confirm window,
   // which the panel's own code can't click through.
@@ -158,7 +158,7 @@ function registerNativeIpc(ipcMain, d) {
       buttons: [{ label: 'Send with Ultracode', style: 'primary' }, { label: 'Cancel' }], defaultId: 1, cancelId: 1,
     });
     return response === 0 ? { ok: true } : { ok: false, cancelled: true };
-  });
+  }, [opt(text(300))]);
 
   // ---- what Claude remembers (auto memory)
 
@@ -175,7 +175,7 @@ function registerNativeIpc(ipcMain, d) {
     // Named after its project; a conversation in your home folder has none to name.
     const where = cwds[cwds.length - 1] || '';
     return { ...r, project: where && path.resolve(where) !== path.resolve(os.homedir()) ? path.basename(where) : null };
-  });
+  }, [opt(text(300))]);
 
   ipcMain.handle('memory:save', (_e, { tabId, file, body, mtimeMs } = {}) => {
     if (!d.isStr(file) || !MEMORY_FILE.test(file) || typeof body !== 'string') return { ok: false, error: "That isn't one of Claude's memories." };
@@ -185,14 +185,14 @@ function registerNativeIpc(ipcMain, d) {
   ipcMain.handle('memory:forget', (_e, { tabId, file } = {}) => {
     if (!d.isStr(file) || !MEMORY_FILE.test(file)) return { ok: false, error: "That isn't one of Claude's memories." };
     return automemory.forget(dirOf(tabId), file, p => shell.trashItem(p));
-  });
+  }, [opt(obj())]);
 
   ipcMain.handle('memory:open-folder', async (_e, tabId) => {
     const dir = dirOf(tabId);
     if (!dir || !fs.existsSync(dir)) return { ok: false, error: "Claude hasn't written anything down for this project yet." };
     const err = await shell.openPath(dir);
     return err ? { ok: false, error: err } : { ok: true };
-  });
+  }, [opt(text(300))]);
 
   // ---- cloud routines (/schedule)
 
@@ -208,13 +208,13 @@ function registerNativeIpc(ipcMain, d) {
     if (!r.ok) return { ok: false, error: r.error, signedOut: !!r.signedOut };
     cached = { at: Date.now(), result: { ok: true, routines: r.routines, more: r.more } };
     return { ...cached.result, at: cached.at };
-  });
+  }, [opt(obj())]);
 
   ipcMain.handle('cloud:runs', async (_e, id) => {
     if (!d.isStr(id) || !ID.test(id)) return { ok: false, error: "That isn't a routine." };
     const r = await cloudAsk({ action: 'list_runs', trigger_id: id });
     return r.ok ? { ok: true, runs: r.runs } : { ok: false, error: r.error };
-  });
+  }, [opt(text(300))]);
 
   // Running one starts a session in Anthropic's cloud on your plan: asked in the confirm window first.
   ipcMain.handle('cloud:run', async (_e, id) => {
@@ -231,12 +231,12 @@ function registerNativeIpc(ipcMain, d) {
     if (response !== 0) return { ok: false, cancelled: true };
     const r = await cloudAsk({ action: 'run', trigger_id: id });
     return r.ok ? { ok: true, url: cloud.routineUrl(id) } : { ok: false, error: r.error };
-  });
+  }, [opt(text(300))]);
 
-  ipcMain.on('cloud:open', (_e, id) => { openSafe(d.isStr(id) && ID.test(id) ? cloud.routineUrl(id) : cloud.ROUTINES_URL); });
+  ipcMain.on('cloud:open', (_e, id) => { openSafe(d.isStr(id) && ID.test(id) ? cloud.routineUrl(id) : cloud.ROUTINES_URL); }, [opt(text(300))]);
 
   // ---- the ultra review: Claude Code's own, in a terminal of its own
-  ipcMain.handle('review:ultra', (_e, tabId) => (d.isStr(tabId) ? d.handoff.ultraReview(tabId) : { ok: false, error: 'That conversation is closed.' }));
+  ipcMain.handle('review:ultra', (_e, tabId) => (d.isStr(tabId) ? d.handoff.ultraReview(tabId) : { ok: false, error: 'That conversation is closed.' }), [opt(text(300))]);
 
   // ---- /insights: Claude Code writes its report to its own folder, and only
   // the newest one there is ever opened, so the panel names no path at all.

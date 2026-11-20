@@ -3,6 +3,7 @@
 // in Toolbox → Memory. The wiring (wiring/corrections.js) checks every id and
 // project against what it knows, so the panel can't aim a write anywhere else.
 
+const { obj, opt, text } = require('../ipc-args');
 const MAX_COMMENTS = 50;
 const isId = s => typeof s === 'string' && s.length > 0 && s.length <= 80;
 const ruleText = s => (typeof s === 'string' && s.length <= 1000 ? s : '');
@@ -22,14 +23,14 @@ function registerCorrectionsIpc(ipcMain, d) {
     if (d.manager?.tabs.has(tabId) && comments.some(c => c && d.isStr(c.body))) d.questDone?.('comment');
     if (d.manager?.tabs.has(tabId)) d.reviewComments?.(tabId, comments.slice(0, MAX_COMMENTS)); // review mastery (wiring/review.js)
     return true;
-  });
-  ipcMain.handle('lesson:state', (_e, id) => (isId(id) ? d.lessonState(id) : null));
-  ipcMain.handle('lesson:preview', (_e, { id, rule } = {}) => (isId(id) ? d.lessonPreview(id, ruleText(rule)) : { ok: false }));
-  ipcMain.handle('lesson:add', (_e, { id, rule, added } = {}) => (isId(id) && typeof added === 'string' ? d.addLesson(id, ruleText(rule), added) : { ok: false }));
-  ipcMain.handle('lesson:dismiss', (_e, id) => (isId(id) ? d.dismissLesson(id) : { ok: false }));
-  ipcMain.handle('lesson:draft', (_e, id) => (isId(id) ? d.draftLesson(id) : { ok: false }));
+  }, [opt(obj())]);
+  ipcMain.handle('lesson:state', (_e, id) => (isId(id) ? d.lessonState(id) : null), [opt(text(300))]);
+  ipcMain.handle('lesson:preview', (_e, { id, rule } = {}) => (isId(id) ? d.lessonPreview(id, ruleText(rule)) : { ok: false }), [opt(obj())]);
+  ipcMain.handle('lesson:add', (_e, { id, rule, added } = {}) => (isId(id) && typeof added === 'string' ? d.addLesson(id, ruleText(rule), added) : { ok: false }), [opt(obj())]);
+  ipcMain.handle('lesson:dismiss', (_e, id) => (isId(id) ? d.dismissLesson(id) : { ok: false }), [opt(text(300))]);
+  ipcMain.handle('lesson:draft', (_e, id) => (isId(id) ? d.draftLesson(id) : { ok: false }), [opt(text(300))]);
   ipcMain.handle('learned:list', () => d.learnedView());
-  ipcMain.handle('learned:change', (_e, { root, index, was, text } = {}) => d.changeLearned({ root, index, was, text: text == null ? null : ruleText(text) }));
+  ipcMain.handle('learned:change', (_e, { root, index, was, text } = {}) => d.changeLearned({ root, index, was, text: text == null ? null : ruleText(text) }), [opt(obj())]);
 }
 
 module.exports = { registerCorrectionsIpc };
