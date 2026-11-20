@@ -87,7 +87,7 @@ function withList(s, scope, notes, project) {
  * for a project that has no notes yet. Newest first.
  * -> { state, note } or { state, error }
  */
-function add(stateIn, scope, text, /** @type {{ id?: string, now?: number, project?: string, from?: string }} */ { id, now, project, from = 'you' } = {}) {
+function add(stateIn, scope, text, /** @type {{ id?: string, now?: number, project?: { root?: string, key?: string, name?: string }, from?: string }} */ { id, now, project, from = 'you' } = {}) {
   const s = normalize(stateIn);
   const t = cleanText(text);
   if (!t) return { state: s, error: 'Write something first.' };
@@ -141,7 +141,7 @@ function clearDone(stateIn, scope) {
  * the panel, so each is cleaned up as a stored one is; one whose id is back
  * already, or that would overfill the list, stays out. project: as for add().
  */
-function restore(stateIn, scope, removed, { project } = {}) {
+function restore(stateIn, scope, removed, /** @type {{ project?: { root?: string, key?: string, name?: string } }} */ { project } = {}) {
   const s = normalize(stateIn);
   if (scope !== GENERAL && !s.projects[scope] && !project) return { state: s, error: 'Pick a project for that note.' };
   const list = [...listOf(s, scope)];
@@ -158,7 +158,7 @@ function restore(stateIn, scope, removed, { project } = {}) {
 }
 
 /** Move a note to another list (General to a project, or back). project: as for add(). */
-function move(stateIn, from, id, to, { project } = {}) {
+function move(stateIn, from, id, to, /** @type {{ project?: { root?: string, key?: string, name?: string } }} */ { project } = {}) {
   const s = normalize(stateIn);
   const note = listOf(s, from).find(n => n.id === id);
   if (!note || from === to) return { state: s };
