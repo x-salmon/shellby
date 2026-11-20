@@ -232,7 +232,9 @@ const isProtected = rel => String(rel || '').split(/[\\/]/).some(part => PROTECT
 // A command naming either folder as a path (not `git status`, `.gitignore`):
 // with trailing dots or spaces, as an 8.3 short name (GIT~1), or behind a glob
 // (.gi?, .g*). A guard against slips, like the rest of a spike's rules.
-const TOUCHES_PROTECTED = /(^|[\s'"=/\\])(\.(git|claude)[. ]*([/\\]|['"\s]|$)|(git|claude)~\d|\.[gc][^\s/\\'"]*[*?[])/i;
+// After a redirect or separator too (x>.git/hooks/a); any dotted name holding a
+// glob (.[!a]it), or a glob that ends in git or claude (*git).
+const TOUCHES_PROTECTED = /(^|[\s'"=/\\<>|;&(])(\.(git|claude)[. ]*([/\\]|['"\s;&|)]|$)|(git|claude)~\d|\.[^\s/\\'"]*[*?[])|[*?[\]][^\s/\\'"]*(git|claude)\b/i;
 const SPIKE_PROTECTED = 'Engineer mode: during a spike, .git and .claude are off limits: what changes there can run code, and the spike couldn\'t put it back.';
 
 /** During a spike: anything local, nothing that would outlive the spike. */

@@ -230,7 +230,7 @@ test('gate: a spike may change the project\'s files, nothing that would outlive 
   assert.match(deniedWhy(g(state, 'Write', inRoot('.git./hooks/pre-commit'))), /off limits/);
   assert.match(deniedWhy(g(state, 'Write', inRoot('.git::$INDEX_ALLOCATION/hooks/pre-commit'))), /off limits/);
   assert.match(deniedWhy(g(state, 'Write', inRoot('GIT~1/hooks/pre-commit'))), /off limits/);
-  for (const command of ['echo x > GIT~1/hooks/a', 'cp a .gi?/hooks/', 'cp a .c*/settings.json', 'cp a ".git. /config"']) {
+  for (const command of ['echo x > GIT~1/hooks/a', 'cp a .gi?/hooks/', 'cp a .c*/settings.json', 'cp a ".git. /config"', 'echo x>.git/hooks/a', 'cp a .[!a]it/hooks/', 'cp a ?git/config', 'cp a *claude/settings.json']) {
     assert.match(deniedWhy(g(state, 'Bash', { command })), /off limits/, command);
   }
   assert.equal(g(state, 'Bash', { command: 'git status' }), null);
