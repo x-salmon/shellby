@@ -117,6 +117,24 @@ test("a routine's strict set of servers stays strict: no gateway beside it", asy
   assert.deepEqual(Object.keys(JSON.parse(seen.text).mcpServers), ['linear']);
 });
 
+test('when the config file cannot be written, that start goes without the gateway, never with its key inline', () => {
+  const session = require('../src/main/session');
+  const fsMod = require('fs');
+  const real = fsMod.writeFileSync;
+  fsMod.writeFileSync = (f, ...rest) => { if (String(f).includes('shellby-mcp-')) throw new Error('disk full'); return real(f, ...rest); };
+  const s = new session.ClaudeSession({ exe: process.execPath, argsPrefix: ['-e', 'setTimeout(() => {}, 50)'], cwd: os.tmpdir(), mode: 'ask',
+    extraMcp: () => gateway.claudeServers({ url: 'https://g.example.com/mcp', key: 'topsecret', header: 'Authorization' }) });
+  try {
+    s.start();
+    assert.ok(!s.buildArgs().join(' ').includes('topsecret'));
+    assert.equal(s.extraServers, null);
+  } finally {
+    fsMod.writeFileSync = real;
+    s.kill?.();
+    s.close?.();
+  }
+});
+
 test('no gateway saved: the command line is as it always was', async () => {
   const { seen } = await runWith({ extraMcp: () => null });
   assert.equal(seen.file, null);

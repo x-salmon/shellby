@@ -232,6 +232,8 @@ class ClaudeSession extends Base {
     // Never over ssh: a gateway's key stays on this PC.
     this.extraServers = remote || this.mcpConfig ? null : this.extraMcp() || null;
     const configFile = (this.mcpConfig || this.extraServers) && !remote ? writeConfig(this.fullMcpConfig()) : null;
+    // Fail closed: no file, no gateway, so its key never falls back onto the command line (args.js).
+    if (!configFile) this.extraServers = null;
     this.mcpConfigFile = remote && this.mcpConfig ? remoteSsh.MCP_FILE : configFile;
     // SHELLBY_CRAB_TOOLS: the crab's tools are served from here, so the plugin's
     // MCP server leaves its copies of them out of every request.
