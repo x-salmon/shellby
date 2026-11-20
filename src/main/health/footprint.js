@@ -20,12 +20,22 @@ const HISTORY_MAX = 120;         // ten minutes of the monitor's 5 s samples
 const HEAVY = Object.freeze({ cpu: 5, mem: 1024 * MB });
 
 /**
+ * One of his processes, as readMetrics keys them.
+ * @typedef {{ pid: number, type: string, created: number, cpuSeconds: number | null, percent: number, bytes: number }} Proc
+ * @typedef {Map<string, Proc>} Reading  one app.getAppMetrics() read, by `${pid}:${created}`
+ * @typedef {ReturnType<typeof footprintBetween>} Footprint
+ */
+
+/**
  * app.getAppMetrics() -> Map(key -> { pid, type, created, cpuSeconds, percent, bytes }).
  * Keyed by pid and creation time, because Windows reuses a dead process's pid.
  * cpuSeconds is null on an Electron without cumulativeCPUUsage; percent is
  * then the fallback (an average over its own, shared interval).
+ * @param {Electron.ProcessMetric[] | null | undefined} metrics
+ * @returns {Reading}
  */
 function readMetrics(metrics) {
+  /** @type {Reading} */
   const out = new Map();
   for (const m of Array.isArray(metrics) ? metrics : []) {
     const pid = Number(m?.pid);
@@ -51,8 +61,11 @@ function readMetrics(metrics) {
  * share of the whole machine, mem the working sets added up (bytes, what
  * scripts/idle-cost.js reports). A process that started inside the window
  * counts all its CPU time; one gone by the end counts for nothing.
+ * @param {Reading | null | undefined} prev
+ * @param {Reading} next
+ * @param {{ prevAt: number, at: number, cores?: number }} window  when each reading was taken
  */
-function footprintBetween(prev, next, { prevAt, at, cores = os.cpus().length } = {}) {
+function footprintBetween(prev, next, { prevAt, at, cores = os.cpus().length }) {
   const seconds = Math.max(0.001, (at - prevAt) / 1000);
   let cpuCore = 0;
   let mem = 0;
@@ -82,6 +95,7 @@ function size(bytes) {
   return bytes >= 1000 * MB ? `${(bytes / (1024 * MB)).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / MB))} MB`;
 }
 
+/** @param {Footprint | null | undefined} fp @param {{ cpu: number, mem: number }} [limits] */
 const isHeavy = (fp, limits = HEAVY) => !!fp && (fp.cpu >= limits.cpu || fp.mem >= limits.mem);
 
 /**
@@ -91,16 +105,20 @@ const isHeavy = (fp, limits = HEAVY) => !!fp && (fp.cpu >= limits.cpu || fp.mem 
  * `whenClosed` is his CPU as a share of the machine while the panel was closed
  * (null until he's been measured that way), so the hint can say what closing
  * it really does on this PC instead of quoting a number from somebody else's.
+ * @param {Footprint | null | undefined} fp
+ * @param {{ whenClosed?: number | null, limits?: { cpu: number, mem: number } }} [o]
  */
 function describe(fp, { whenClosed = null, limits = HEAVY } = {}) {
   if (!fp) return null;
   const line = `Shellby himself: ${pct(fp.cpu)} CPU, ${size(fp.mem)}`;
   const detail = `Added up across his ${fp.procs} process${fp.procs === 1 ? '' : 'es'}. CPU is a share of the whole PC, like Task Manager shows: ${pct(fp.cpuCore)} of one core.`;
   const heavy = isHeavy(fp, limits);
+  /** @type {string | null} */
   let hint = null;
+  /** @type {string | null} */
   let jump = null;
   if (heavy && fp.cpu >= limits.cpu) {
-    const closed = Number.isFinite(whenClosed) && whenClosed < fp.cpu
+    const closed = whenClosed != null && Number.isFinite(whenClosed) && whenClosed < fp.cpu
       ? `with it closed he settles to about ${pct(whenClosed)} on this PC`
       : 'close it and he settles to almost nothing';
     hint = `Most of that is this panel's animation: ${closed}. Fewer pals and less wandering make him lighter still.`;
@@ -118,11 +136,20 @@ function describe(fp, { whenClosed = null, limits = HEAVY } = {}) {
  *   deps: { metrics: () => app.getAppMetrics(), panelOpen: () => bool, now?, cores? }
  */
 class FootprintTracker {
+  /** @type {() => Electron.ProcessMetric[]} */ metrics;
+  /** @type {() => boolean} */ panelOpen;
+  /** @type {() => number} */ now;
+  /** @type {number} */ cores;
+
+  /** @param {{ metrics: () => Electron.ProcessMetric[], panelOpen?: () => boolean, now?: () => number, cores?: number }} deps */
   constructor({ metrics, panelOpen = () => false, now = Date.now, cores = os.cpus().length }) {
     Object.assign(this, { metrics, panelOpen, now, cores });
-    this.last = null;      // { at, reading, open }
+    /** @type {{ at: number, reading: Reading, open: boolean } | null} */
+    this.last = null;
+    /** @type {Footprint | null} */
     this.current = null;   // the latest footprint
-    this.history = [];     // [{ open, cpu }] per interval
+    /** @type {{ open: boolean, cpu: number }[]} */
+    this.history = [];     // per interval
   }
 
   sample() {

@@ -19,7 +19,9 @@ function createFakeSensors(name = 'calm') {
   let scenario = SCENARIOS[name] ? name : 'calm';
   let tick = 0;
   // A little wobble so the sparklines look alive; deterministic for screenshots.
-  const wob = (v, amp) => (v == null ? null : Math.round((v + Math.sin(tick * 0.9) * amp + Math.cos(tick * 0.37) * amp * 0.6) * 10) / 10);
+  // A null reading (a scenario without that sensor) stays null.
+  /** @template {number | null} T @param {T} v @param {number} amp @returns {T} */
+  const wob = (v, amp) => /** @type {T} */ (v == null ? null : Math.round((v + Math.sin(tick * 0.9) * amp + Math.cos(tick * 0.37) * amp * 0.6) * 10) / 10);
   const s = () => SCENARIOS[scenario];
   return {
     fake: true,
