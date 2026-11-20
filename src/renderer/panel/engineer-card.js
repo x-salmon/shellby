@@ -119,9 +119,16 @@
   function auditEl(v) {
     const a = v.audit;
     if (!a) return v.outcome && v.phase === 'checked' ? h('p', { class: 'small muted eng-audit', text: 'Comparing with the files the work changed…' }) : null;
-    if (!a.files) return h('p', { class: 'small muted eng-audit', text: 'The diff shows no file changes for this decision.' });
-    if (!a.unplanned.length) return h('p', { class: 'small eng-audit ok' }, h('b', { text: '✓ ' }), `All ${plural(a.files, 'file')} the work changed are inside the scope.`);
+    if (a.unavailable) return h('p', { class: 'small muted eng-audit', text: 'Shellby closed before it could compare this with the files the work changed.' });
+    const partly = a.unseen ? ' Some turns couldn’t be seen, so there may be more.' : '';
+    if (!a.files) {
+      return h('p', { class: 'small muted eng-audit', text: a.unseen
+        ? 'Shellby couldn’t see this folder’s changes (it isn’t a git repository, or a snapshot took too long), so only Claude’s word stands.'
+        : 'The diff shows no file changes for this decision.' });
+    }
+    if (!a.unplanned.length) return h('p', { class: 'small eng-audit ok' }, h('b', { text: '✓ ' }), `All ${plural(a.files, 'file')} the work changed are inside the scope.${partly}`);
     return h('div', { class: 'eng-audit drift' },
+      partly ? h('p', { class: 'small muted', text: partly.trim() }) : null,
       h('p', { class: 'small' }, h('b', { text: `${plural(a.unplanned.length, 'file')} changed outside the scope ` }), `(of ${plural(a.files, 'file')} in all):`),
       h('ul', { class: 'eng-paths' }, a.unplanned.slice(0, 12).map(p => h('li', {}, h('code', { text: p })))),
       a.unplanned.length > 12 ? h('p', { class: 'small muted', text: `and ${a.unplanned.length - 12} more` }) : null);

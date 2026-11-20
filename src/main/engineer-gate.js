@@ -16,7 +16,7 @@
 // the scope (audit).
 const path = require('path');
 const { RECORD_DIR, line, scopeOf, pendingAmendment } = require('./engineer');
-const { shellWords } = require('./worktrees/looks');
+const { shellWords, SHELL_TOOLS } = require('./worktrees/looks');
 
 const MAX_ALLOW = 12;
 const MAX_COMMAND = 200;
@@ -29,7 +29,7 @@ const LOOKS = new Set([
   'AskUserQuestion', 'EnterPlanMode', 'ExitPlanMode', 'ToolSearch', 'Skill', 'ListMcpResourcesTool', 'ReadMcpResourceTool',
   'BashOutput', 'TaskOutput', 'TaskStop', 'KillShell', 'Monitor', 'Bash', 'PowerShell',
 ]);
-const SHELLS = new Set(['Bash', 'PowerShell']);
+const SHELLS = SHELL_TOOLS; // Bash, PowerShell and Monitor (worktrees/looks.js)
 const FILE_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const CRAB = 'mcp__shellby__';
 // The crab's tools that change nothing in the project, Engineer mode's own included.
@@ -148,12 +148,16 @@ function inScope(patterns, rel) {
  * lower case), or null when it's in none of them. Roots: the copy, the
  * checkout it came from, the folder at approval. Pure (path only).
  */
+// A relative path that climbs out of its root (.. itself, or ..\ first), or
+// another drive. A folder called ..foo doesn't.
+const outsideOf = rel => rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
+
 function relIn(roots, abs) {
   for (const root of roots) {
     if (typeof root !== 'string' || !root) continue;
     const rel = path.relative(path.resolve(root), path.resolve(abs));
     if (rel === '') return '';
-    if (!rel.startsWith('..') && !path.isAbsolute(rel)) return rel.split(path.sep).join('/').toLowerCase();
+    if (!outsideOf(rel)) return rel.split(path.sep).join('/').toLowerCase();
   }
   return null;
 }
@@ -161,7 +165,7 @@ function relIn(roots, abs) {
 const under = (dirs, abs) => dirs.some(dir => {
   if (typeof dir !== 'string' || !dir) return false;
   const rel = path.relative(path.resolve(dir), path.resolve(abs));
-  return !rel.startsWith('..') && !path.isAbsolute(rel);
+  return !outsideOf(rel);
 });
 
 /** The file a file tool writes, as an absolute path, or null. */
@@ -182,7 +186,9 @@ function readAllow(v) {
 
 /** A command the project allows before a decision, as typed (blanks squeezed). Pure. */
 function allowedBefore(before, command) {
-  const c = String(command || '').trim().replace(/\s+/g, ' ');
+  // A line break makes it two commands (deploy.sh, then --dry-run on its own): never a match.
+  if (/[\r\n]/.test(String(command || ''))) return false;
+  const c = String(command || '').trim().replace(/[ \t]+/g, ' ');
   if (!c) return false;
   const same = c === 'npm test' ? 'npm run test' : c;
   return (before || []).some(b => b === c || b === same);
@@ -205,6 +211,11 @@ function scopeGate(d, toolName, toolInput, ctx) {
     return deny(`Engineer mode: ${abs} is outside the project, and the approved decision covers only files inside it. Call mcp__shellby__amend_decision if the work truly needs it, and end your turn.`);
   }
   const scope = scopeOf(d);
+  // .git and .claude can run code (hooks, settings): only a scope that names
+  // them reaches them, never a ** on its own.
+  if (/^\.(git|claude)(\/|$)/.test(rel) && !scope.some(p => !p.startsWith('*') && inScope([p], rel))) {
+    return deny(`Engineer mode: ${rel} can change how git or Claude Code runs, so only a scope that names it covers it. Call mcp__shellby__amend_decision with it if the work truly needs it.`);
+  }
   if (inScope(scope, rel)) return null;
   if (pendingAmendment(d)) return deny(`Engineer mode: ${rel} is outside the approved scope, and the amendment asking for more is still waiting on the user's card. End your turn and wait for their answer.`);
   return deny(`Engineer mode: ${rel} is outside the approved scope (${scope.join(', ')}). If the work needs it, call mcp__shellby__amend_decision with add_scope and why, then end your turn. Otherwise keep to the scope.`);

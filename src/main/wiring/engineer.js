@@ -28,8 +28,47 @@ const NEEDS_SELF_AWARE = "Engineer mode needs Claude to know it's in Shellby: tu
 const CLOSED = 'That conversation is closed.';
 const MAX_PROJECTS = 100;
 const SPIKE_ANSWERS = new Set(['spike-yes', 'spike-no', 'spike-stop']);
-// Where Claude keeps its own things outside a project: allowed even when the edit is outside the scope.
-const OUTSIDE_OK = Object.freeze([os.tmpdir(), path.join(os.homedir(), '.claude')]);
+const SPIKE_LOST = "Shellby was closed while the spike ran, so its changes weren't put back. Use Undo or Rewind on its turns.";
+
+// Claude Code's own memory folder for a project: ~/.claude/projects/<the path, - for every other character>/memory.
+const memoryOf = dir => (dir ? path.join(os.homedir(), '.claude', 'projects', dir.replace(/[^a-zA-Z0-9]/g, '-'), 'memory') : null);
+
+/**
+ * Where Claude keeps its own things outside a project, allowed even outside
+ * the scope: temp, its plans and todos, and this project's memory. Never the
+ * rest of ~/.claude: its settings, hooks, agents and skills can run code.
+ */
+const outsideOk = dirs => [
+  os.tmpdir(), path.join(os.homedir(), '.claude', 'plans'), path.join(os.homedir(), '.claude', 'todos'),
+  ...dirs.map(memoryOf),
+].filter(Boolean);
+
+/**
+ * A path in full: 8.3 short names expanded, links and junctions followed, for
+ * the part that exists (a file about to be written doesn't yet). A network
+ * path is never looked up: that alone would send this PC's sign-in there.
+ */
+function longPath(p) {
+  const abs = path.resolve(p);
+  if (/^[\\/]{2}/.test(abs)) return abs;
+  let cur = abs;
+  const tail = [];
+  for (let i = 0; i < 64; i++) {
+    try { return path.join(fs.realpathSync.native(cur), ...tail.reverse()); } catch { /* not there yet: try its folder */ }
+    const up = path.dirname(cur);
+    if (up === cur) return abs;
+    tail.push(path.basename(cur));
+    cur = up;
+  }
+  return abs;
+}
+
+/** A file tool's input with its path made absolute and in full, for the gate. */
+function withLongPath(input, cwd) {
+  if (!input || typeof input !== 'object') return input;
+  const key = typeof input.file_path === 'string' ? 'file_path' : typeof input.notebook_path === 'string' ? 'notebook_path' : null;
+  return key && input[key] ? { ...input, [key]: longPath(path.resolve(cwd || '.', input[key])) } : input;
+}
 
 /** The repo a folder is in, found by its .git (a file in a copy, a folder in a clone), or null. */
 function gitTop(dir) {
@@ -60,12 +99,32 @@ function wireEngineer(d, opts = {}) {
   const cwdOf = tab => tab.claudeWorktree?.path || tab.worktree?.cwd || tab.session.cwd;
   const remote = tab => !!d.remoteService?.placeOf?.(tab.session.cwd);
 
+  // The folders this conversation really works in, in full: what History says is checked against them.
+  const knownRoots = tab => [tab.worktree?.path, tab.worktree?.root, tab.claudeWorktree?.path, gitTop(tab.session.cwd)]
+    .filter(Boolean).map(r => longPath(r).toLowerCase());
+  const known = (tab, root) => typeof root === 'string' && knownRoots(tab).includes(longPath(root).toLowerCase());
+
+  // History is a file: a root it names is kept only when it's one of this conversation's own.
   function decisionOf(tab) {
-    if (!decisions.has(tab)) decisions.set(tab, tab.saved ? eng.latestFrom(d.history.load?.(tab.id)) : null);
+    if (!decisions.has(tab)) {
+      const d0 = tab.saved ? eng.latestFrom(d.history.load?.(tab.id)) : null;
+      if (d0?.root && !known(tab, d0.root)) delete d0.root;
+      decisions.set(tab, d0);
+    }
     return decisions.get(tab);
   }
+  // A spike read back from History: only its own repo's turns to put back, and
+  // one that was running when Shellby closed is over (nothing was put back).
   function spikeOf(tab) {
-    if (!spikes.has(tab)) spikes.set(tab, tab.saved ? eng.latestSpikeFrom(d.history.load?.(tab.id)) : null);
+    if (!spikes.has(tab)) {
+      let s = tab.saved ? eng.latestSpikeFrom(d.history.load?.(tab.id)) : null;
+      if (s) {
+        s = { ...s, refs: (s.refs || []).filter(r => known(tab, r.root)) };
+        if (s.root && !known(tab, s.root)) delete s.root;
+        if (s.phase === 'running' || s.phase === 'ending') s = { ...s, phase: 'failed', restored: { ok: false, files: 0, error: SPIKE_LOST } };
+      }
+      spikes.set(tab, s);
+    }
     return spikes.get(tab);
   }
   const stateOf = tab => ({ on: !!tab.engineer, decision: decisionOf(tab), spike: spikeOf(tab) });
@@ -94,12 +153,15 @@ function wireEngineer(d, opts = {}) {
     return Object.fromEntries([...kept.slice(-(MAX_PROJECTS - 1)), [k, prefs]]);
   }
 
-  // The project's own checks: run before a decision when Settings lets them (on by default).
-  function projectChecks(tab) {
-    if (d.config.get('engineerChecksFirst') === false || remote(tab)) return [];
+  // The project's own checks, as checks.js finds them: its test, typecheck and lint scripts.
+  function ownChecks(tab) {
+    if (remote(tab)) return [];
     const cwd = cwdOf(tab);
     return [...new Set([...checks.detectHome(cwd), ...checks.detectProblems(cwd)])];
   }
+
+  // ...run before a decision when Settings lets them (on by default).
+  const projectChecks = tab => (d.config.get('engineerChecksFirst') === false ? [] : ownChecks(tab));
 
   /** What Claude may run before a decision here: the project's checks and what you allowed. */
   function beforeOf(tab) {
@@ -113,14 +175,15 @@ function wireEngineer(d, opts = {}) {
     const decision = decisionOf(tab);
     const spike = spikeOf(tab);
     const cwd = cwdOf(tab);
+    const outside = outsideOk([cwd, projectRootOf(tab)]).map(longPath);
     // During a spike, only the repo each turn's snapshot is taken of: what it
     // changes anywhere else couldn't be put back.
     if (spike?.phase === 'running' || spike?.phase === 'ending') {
-      return { cwd, roots: [gitTop(cwd) || spike.root].filter(Boolean), outside: OUTSIDE_OK, before: [] };
+      return { cwd, roots: [gitTop(cwd) || spike.root].filter(Boolean).map(longPath), outside, before: [] };
     }
     // Repo roots first: a scope is relative to the root, never to a subfolder.
-    const roots = [tab.worktree?.path, tab.claudeWorktree?.path, tab.worktree?.root, decision?.root, gitTop(cwd), cwd].filter(Boolean);
-    return { cwd, roots: [...new Set(roots)], outside: OUTSIDE_OK, before: tab.engineerBefore || [] };
+    const roots = [tab.worktree?.path, tab.claudeWorktree?.path, tab.worktree?.root, decision?.root, gitTop(cwd), cwd].filter(Boolean).map(longPath);
+    return { cwd, roots: [...new Set(roots)], outside, before: tab.engineerBefore || [] };
   }
 
   // decide and the rest ride along only in a conversation with it on: every
@@ -142,7 +205,10 @@ function wireEngineer(d, opts = {}) {
     syncTools(tab);
     tab.engineerBefore = active(tab) ? beforeOf(tab) : [];
     tab.session.gate = active(tab)
-      ? input => gate.gate(stateOf(tab), input?.tool_name, input?.tool_input, worktrees.startsWork, ctxOf(tab))
+      ? input => {
+        const ctx = ctxOf(tab);
+        return gate.gate(stateOf(tab), input?.tool_name, withLongPath(input?.tool_input, ctx.cwd), worktrees.startsWork, ctx);
+      }
       : null;
   }
 
@@ -221,9 +287,16 @@ function wireEngineer(d, opts = {}) {
     // A new decision replaces one still open: the old card says so.
     if (was?.phase === 'approved' || was?.phase === 'proposed') publish(tab, { ...was, phase: 'closed' });
     if (s?.phase === 'asked') publishSpike(tab, { ...s, phase: 'refused', note: 'Claude decided without it.' });
-    const found = s?.phase === 'done' && !s.used && s.findings ? { question: s.question, findings: s.findings, ...(s.answer ? { answer: s.answer } : {}) } : null;
+    // A spike that's ending counts too: end_spike tells Claude to decide in the same turn,
+    // before the turn ends and its files are put back.
+    const found = (s?.phase === 'done' || s?.phase === 'ending') && !s.used && s.findings ? { question: s.question, findings: s.findings, ...(s.answer ? { answer: s.answer } : {}) } : null;
     if (found) publishSpike(tab, { ...s, used: true });
-    publish(tab, { id: crypto.randomUUID(), phase: 'proposed', ...r.decision, ...(found ? { spike: found } : {}) });
+    // Shellby runs a plan's command only when it's one of the project's own checks
+    // (not any script: `npm run deploy` passes checks.isSafeCommand too). Any other stays Claude's to report.
+    const own = new Set(ownChecks(tab));
+    const decision = /** @type {Record<string, any>} */ (r.decision);
+    const testPlan = decision.testPlan.map(/** @param {{ check: string, command?: string }} t */ t => (t.command && !own.has(t.command) ? { check: t.check } : t));
+    publish(tab, { id: crypto.randomUUID(), phase: 'proposed', ...decision, testPlan, ...(found ? { spike: found } : {}) });
     d.wake?.();
     const hint = eng.worthASpike(r.decision) ? ' You marked it low confidence and hard to undo, so the card offers the user a spike first.' : '';
     return { text: `Shown to the user as a decision card. End your turn now: their answer comes as their next message, and file changes stay blocked until they approve.${hint}` };
@@ -315,10 +388,15 @@ function wireEngineer(d, opts = {}) {
     if (a.error) return { ok: false, error: a.error };
     const said = typeof note === 'string' ? note.trim().slice(0, eng.MAX_NOTE) : '';
     const approving = what === 'approve' || what === 'pick';
+    // The last turn's diff first: it belongs to the turn that decided, not to the work.
+    await settled(tab.id);
     // Where the scope is measured from: the repo, found before the message goes.
     const root = approving ? (tab.worktree?.path || await changes.rootOf(cwdOf(tab)).catch(() => null)) : null;
     if (decisionOf(tab) !== decision) return { ok: false, error: 'That decision has already been answered.' };
     if (tab.session.busy) return { ok: false, error: 'Claude is still finishing its turn. Press it again in a moment.' };
+    // A spike still asking would be stale once a decision is approved.
+    const s = spikeOf(tab);
+    if (approving && s?.phase === 'asked') publishSpike(tab, { ...s, phase: 'refused', note: 'You approved a decision instead.' });
     const phase = approving ? 'approved' : 'returned';
     const next = {
       ...decision, phase, ...(said ? { note: said } : {}),
@@ -348,13 +426,21 @@ function wireEngineer(d, opts = {}) {
     if (what === 'spike-stop') {
       if (spike.phase !== 'running') return { ok: false, error: 'That spike is not running.' };
       if (tab.session.busy) return { ok: false, error: 'Stop Claude first, then put the spike back.' };
-      await putBack(tab, { ...spike, phase: 'ending', note: 'Stopped by you.' });
+      if (restoring.has(tab)) return { ok: false, error: 'Already putting it back.' };
+      // Its last turn's diff first, or that turn's changes would be left behind.
+      await settled(tab.id);
+      const now = spikeOf(tab);
+      if (now?.id !== spike.id || now.phase !== 'running') return { ok: true };
+      await putBack(tab, { ...now, phase: 'ending', note: 'Stopped by you.' });
       return { ok: true };
     }
     if (spike.phase !== 'asked') return { ok: false, error: 'That spike has already been answered.' };
     if (tab.session.busy) return { ok: false, error: 'Claude is still finishing its turn. Press it again in a moment.' };
     const yes = what === 'spike-yes';
+    if (yes && decisionOf(tab)?.phase === 'approved') return { ok: false, error: 'A decision is already approved, so this spike is out of date.' };
     const said = typeof note === 'string' ? note.trim().slice(0, eng.MAX_NOTE) : '';
+    // The last turn's diff first: it belongs to the turn that asked, not to the spike.
+    await settled(tab.id);
     // A spike's files are put back from each turn's snapshots: it needs a git repo.
     const root = yes ? await changes.rootOf(cwdOf(tab)).catch(() => null) : null;
     if (yes && !root) return { ok: false, error: 'A spike needs the project to be a git repository, so Shellby can put its files back.' };
@@ -400,64 +486,107 @@ function wireEngineer(d, opts = {}) {
 
   // ------------------------------------------------------------ after each turn
 
+  // tab id -> its end-of-turn work here still going (turnChanged): a button never runs ahead of it.
+  const inFlight = new Map();
+  // Tabs whose spike is being put back right now: never twice at once.
+  const restoring = new WeakSet();
+
+  /** Waits until the last turn's diff has been noted (wiring/sessions.js turnEnds) and handled here. */
+  async function settled(tabId) {
+    await Promise.resolve(d.turnEnds?.get?.(tabId)).catch(() => {});
+    await Promise.resolve(inFlight.get(tabId)).catch(() => {});
+  }
+
   /** A turn's diff as something changes.undo takes: only its own files when it was cut down. */
   const refOf = s => ({ root: s.root, before: s.before, after: s.after, ...(s.scoped ? { paths: s.files.map(f => f.path) } : {}) });
 
-  /** Puts every file a spike changed back, newest turn first, and says how it went on its card. */
+  /**
+   * Puts every file a spike changed back, newest turn first, and says how it
+   * went on its card. A spike with a turn Shellby couldn't see (its snapshot
+   * failed) can't promise everything came back, so it says so.
+   */
   async function putBack(tab, spike) {
-    const refs = [...(spike.refs || [])].reverse();
-    let files = 0;
-    for (const ref of refs) {
-      const r = await changes.undo(ref).catch(e => ({ ok: false, error: e.message }));
-      if (!r.ok) {
-        publishSpike(tab, { ...spike, phase: 'failed', restored: { ok: false, files, error: r.error || "Couldn't put the files back." } });
+    if (restoring.has(tab)) return;
+    restoring.add(tab);
+    try {
+      const refs = [...(spike.refs || [])].reverse();
+      let files = 0;
+      for (const ref of refs) {
+        const r = await changes.undo(ref).catch(e => ({ ok: false, error: e.message }));
+        if (!r.ok) {
+          publishSpike(tab, { ...spike, phase: 'failed', restored: { ok: false, files, error: r.error || "Couldn't put the files back." } });
+          return;
+        }
+        files += r.restored || 0;
+      }
+      if (spike.blind) {
+        publishSpike(tab, { ...spike, phase: 'failed', restored: { ok: false, files, error: `Shellby couldn't see every turn of the spike${files ? `, so after putting ${files} file${files === 1 ? '' : 's'} back` : ''}, some of its changes may still be there.` } });
         return;
       }
-      files += r.restored || 0;
+      publishSpike(tab, { ...spike, phase: 'done', restored: { ok: true, files } });
+    } finally {
+      restoring.delete(tab);
     }
-    publishSpike(tab, { ...spike, phase: 'done', restored: { ok: true, files } });
   }
 
-  /** The decision's work is checked: the diff against its scope, then the plan's commands, run by Shellby. */
-  async function finish(tab, decision) {
-    const audit = gate.audit(decision, decision.touched || []);
-    const runs = [...new Set(decision.testPlan.filter(t => t.command).map(t => t.command))];
-    const done = { ...decision, auditPending: false, audit, ...(runs.length ? { verify: { status: 'running', results: [] } } : {}) };
-    publish(tab, done);
-    if (!runs.length) return;
+  /** Shellby's own run of the plan's commands, onto the card when it's done. Never throws. */
+  async function verify(tab, decision, runs) {
     const cwd = cwdOf(tab);
     const r = await (d.runCommandsFor?.(tab.id, { cwd, project: projectRootOf(tab) || cwd, commands: runs }) ?? Promise.resolve({ none: true }))
       .catch(e => ({ error: e.message }));
-    const verify = r.verdict
+    const result = r.verdict
       ? { status: 'done', results: r.verdict.commands.map(c => ({ cmd: c.cmd, status: c.ok ? 'pass' : c.timedOut ? 'timeout' : c.error ? 'error' : 'fail', tail: c.ok ? '' : c.tail })) }
       : { status: r.declined ? 'declined' : r.cancelled ? 'cancelled' : r.none ? 'none' : 'error', results: [] };
     // Only if the card is still this one: a newer decision may have come in meanwhile.
-    if (decisionOf(tab)?.id === decision.id) publish(tab, { ...decisionOf(tab), verify });
+    if (decisionOf(tab)?.id === decision.id) publish(tab, { ...decisionOf(tab), verify: result });
+  }
+
+  /**
+   * The decision's work is checked: the diff against its scope now, and the
+   * plan's commands, run by Shellby, after (they can take minutes, and ask
+   * first in a new project: nothing waits on them).
+   */
+  function finish(tab, decision) {
+    const audit = { ...gate.audit(decision, decision.touched || []), ...(decision.unseen ? { unseen: true } : {}) };
+    // Again now: the project's checks may have changed since the card was made.
+    const own = new Set(ownChecks(tab));
+    const runs = [...new Set(decision.testPlan.filter(t => t.command && own.has(t.command)).map(t => t.command))];
+    const { auditPending: _done, ...rest } = decision;
+    publish(tab, { ...rest, audit, ...(runs.length ? { verify: { status: 'running', results: [] } } : {}) });
+    if (runs.length) verify(tab, decision, runs).catch(e => d.log?.info(`engineer: ${e.message}`));
   }
 
   /**
    * A turn has ended (wiring/sessions.js afterChanges), with its diff or null.
-   * A running spike keeps it to put back; an approved decision keeps its files
-   * for the diff check; and whatever ended this turn (end_spike, the last
-   * check_decision) is finished now. Never throws.
+   * seen.unseen: Shellby couldn't take the turn's snapshots, so null doesn't
+   * mean nothing changed. A running spike keeps the diff to put back; an
+   * approved decision keeps its files for the diff check; and whatever ended
+   * this turn (end_spike, the last check_decision) is finished now. Never throws.
    */
-  async function turnChanged(tabId, summary) {
+  function turnChanged(tabId, summary, seen = {}) {
+    const p = handleTurn(tabId, summary, seen).catch(e => d.log?.info(`engineer: ${e.message}`));
+    inFlight.set(tabId, p);
+    p.finally(() => { if (inFlight.get(tabId) === p) inFlight.delete(tabId); });
+    return p;
+  }
+
+  async function handleTurn(tabId, summary, { unseen = false } = {}) {
     const tab = d.manager.tabs.get(tabId);
     if (!tab) return;
     const s = spikeOf(tab);
     if (s && (s.phase === 'running' || s.phase === 'ending')) {
-      const withTurn = summary ? { ...s, refs: [...(s.refs || []), refOf(summary)] } : s;
+      const withTurn = { ...s, ...(summary ? { refs: [...(s.refs || []), refOf(summary)] } : {}), ...(unseen ? { blind: true } : {}) };
       if (s.phase === 'ending') await putBack(tab, withTurn);
-      else if (summary) publishSpike(tab, withTurn);
+      else if (summary || unseen) publishSpike(tab, withTurn);
     }
     const decision = decisionOf(tab);
     if (!decision || !(decision.phase === 'approved' || decision.auditPending)) return;
     const touched = summary
       ? [...new Set([...(decision.touched || []), ...summary.files.map(f => f.path)])].slice(0, eng.MAX_TOUCHED)
       : decision.touched || [];
-    const next = { ...decision, touched, ...(!decision.root && summary?.root ? { root: summary.root } : {}) };
-    if (next.auditPending) await finish(tab, next);
-    else if (summary) publish(tab, next);
+    const next = { ...decision, touched, ...(!decision.root && summary?.root ? { root: summary.root } : {}), ...(unseen ? { unseen: true } : {}) };
+    if (next.auditPending) finish(tab, next);
+    else if (summary || unseen) publish(tab, next);
   }
 
   // ------------------------------------------------------------ the project's settings

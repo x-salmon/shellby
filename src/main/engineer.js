@@ -125,10 +125,14 @@ const TOOLS = Object.freeze([
   },
 ]);
 
+// Characters that change how text around them shows without showing
+// themselves (direction overrides, zero-width ones): a title or path could
+// read as something else on the card.
+const INVISIBLE = /[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g;
 // One line, control characters and runs of blanks gone, cut to n.
-const line = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
+const line = (v, n) => String(v ?? '').replace(INVISIBLE, '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 // Several lines kept as they are (a goal can be a short paragraph), the rest cleaned.
-const para = (v, n) => String(v ?? '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, n);
+const para = (v, n) => String(v ?? '').replace(INVISIBLE, '').replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, n);
 const items = (v, n = MAX_ITEM, max = MAX_ITEMS) => (Array.isArray(v) ? v : []).map(x => line(x, n)).filter(Boolean).slice(0, max);
 // A title or an option's name: it goes inside Shellby's own bracketed lines to
 // Claude, so no brackets or quotes that could pass for the end of one.
@@ -307,6 +311,7 @@ function view(d) {
     ...(d.root ? { root: d.root } : {}),
     ...(d.touched ? { touched: d.touched } : {}),
     ...(d.audit ? { audit: d.audit } : {}),
+    ...(d.auditPending ? { auditPending: true } : {}),
     ...(d.verify ? { verify: d.verify } : {}),
     ...(d.spike ? { spike: d.spike } : {}),
   };
@@ -315,18 +320,26 @@ function view(d) {
 /** A path list read back from History: strings, in the repo, clipped. */
 const paths = (v, max) => (Array.isArray(v) ? v : []).map(scopePath).filter(Boolean).slice(0, max);
 
-/** What Shellby's diff check found, read back from History. */
+/**
+ * What Shellby's diff check found, read back from History. unseen: some turn's
+ * snapshots couldn't be taken (or the folder isn't a git repo); unavailable:
+ * Shellby closed before it could compare.
+ */
 function reviveAudit(a) {
   const x = record(a);
   if (!Array.isArray(x.unplanned)) return null;
-  return { files: Math.max(0, Math.min(100000, Number(x.files) || 0)), unplanned: paths(x.unplanned, MAX_TOUCHED) };
+  return {
+    files: Math.max(0, Math.min(100000, Number(x.files) || 0)), unplanned: paths(x.unplanned, MAX_TOUCHED),
+    ...(x.unseen === true ? { unseen: true } : {}), ...(x.unavailable === true ? { unavailable: true } : {}),
+  };
 }
 
-/** Shellby's run of the test plan's commands, read back from History. */
+/** Shellby's run of the test plan's commands, read back from History. One still running then was cut short. */
 function reviveVerify(v) {
   const x = record(v);
-  const status = oneOf(x.status, ['running', 'done', 'declined', 'none', 'cancelled', 'error']);
-  if (!status) return null;
+  const was = oneOf(x.status, ['running', 'done', 'declined', 'none', 'cancelled', 'error']);
+  if (!was) return null;
+  const status = was === 'running' ? 'cancelled' : was;
   const results = (Array.isArray(x.results) ? x.results : []).slice(0, MAX_ITEMS).map(r => {
     const o = record(r);
     const cmd = line(o.cmd, 100);
@@ -359,7 +372,8 @@ function revive(i) {
     const phase = oneOf(x.phase, AMEND_PHASES);
     return a && phase && typeof x.id === 'string' ? { id: x.id.slice(0, 64), phase, ...a } : null;
   }).filter(Boolean);
-  const audit = i.audit ? reviveAudit(i.audit) : null;
+  // A check that was still to come when Shellby closed never will: the card says so rather than waiting for ever.
+  const audit = i.audit ? reviveAudit(i.audit) : i.auditPending === true ? { files: 0, unplanned: [], unavailable: true } : null;
   const verify = i.verify ? reviveVerify(i.verify) : null;
   const sp = i.spike ? readSpike(i.spike).spike : null;
   const found = sp && i.spike.findings ? readFindings(i.spike) : null;
@@ -399,6 +413,7 @@ function spikeView(s) {
     kind: 'engineer-spike', id: s.id, phase: s.phase, question: s.question, plan: s.plan,
     ...(s.findings ? { findings: s.findings } : {}),
     ...(s.answer ? { answer: s.answer } : {}),
+    ...(s.root ? { root: s.root } : {}),
     ...(s.refs?.length ? { refs: s.refs } : {}),
     ...(s.restored ? { restored: s.restored } : {}),
     ...(s.note ? { note: s.note } : {}),
@@ -421,6 +436,8 @@ function reviveSpike(i) {
   const rs = record(i.restored);
   return {
     id: i.id.slice(0, 64), phase: i.phase, ...r.spike,
+    // Checked against the conversation's own folders by wiring/engineer.js before it's used.
+    ...(typeof i.root === 'string' && i.root.length < 400 ? { root: i.root } : {}),
     ...(f && !f.error ? f : {}),
     ...(refs.length ? { refs } : {}),
     ...(i.restored ? { restored: { ok: rs.ok === true, files: Math.max(0, Number(rs.files) || 0), ...(rs.error ? { error: line(rs.error, MAX_ITEM) } : {}) } } : {}),

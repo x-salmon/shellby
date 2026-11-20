@@ -400,7 +400,7 @@ function wireSessions(d) {
     const t = d.manager.tabs.get(tabId);
     const cwd = t?.claudeWorktree?.path || t?.session.cwd;
     if (cwd) fileIndex.forget(cwd); // what it created can be @-mentioned straight away
-    if (!start) { d.shotsAfterTurn?.(tabId, null); engineerAfter(tabId, null); return; }
+    if (!start) { d.shotsAfterTurn?.(tabId, null); engineerAfter(tabId, null, { unseen: true }); return; }
     try {
       const end = await changes.snapshot(start.root);
       // Other conversations' turns that overlapped this one (a later edit of theirs, still running, counts too).
@@ -422,7 +422,7 @@ function wireSessions(d) {
       afterChanges(tabId, summary);
     } catch (err) {
       d.log.info(`changes: ${err.message}`);
-      afterChanges(tabId, null);
+      afterChanges(tabId, null, { unseen: true });
     }
   }
 
@@ -438,7 +438,8 @@ function wireSessions(d) {
 
   // Then what Shellby checks about a turn: the after picture and the tests
   // (wiring/shots.js, checks.js). Neither may get in the way of the rest.
-  function afterChanges(tabId, summary) {
+  // seen.unseen: the turn's snapshots couldn't be taken, so a null summary doesn't mean nothing changed.
+  function afterChanges(tabId, summary, seen = {}) {
     try {
       d.shotsAfterTurn?.(tabId, summary)?.catch?.(err => d.log.info(`shots: ${err.message}`));
       if (summary) d.surprises?.noteTurn(tabId, summary); // before its checks, which may be the green that proves it
@@ -446,12 +447,12 @@ function wireSessions(d) {
     } catch (err) {
       d.log.info(`checks: ${err.message}`);
     }
-    engineerAfter(tabId, summary);
+    engineerAfter(tabId, summary, seen);
   }
 
   // Engineer mode keeps each turn's files: a spike's to put back, a decision's to check (wiring/engineer.js).
-  function engineerAfter(tabId, summary) {
-    d.engineer?.turnChanged(tabId, summary)?.catch?.(err => d.log.info(`engineer: ${err.message}`));
+  function engineerAfter(tabId, summary, seen = {}) {
+    d.engineer?.turnChanged(tabId, summary, seen)?.catch?.(err => d.log.info(`engineer: ${err.message}`));
   }
 
   // ---- the usage meter

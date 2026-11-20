@@ -67,11 +67,18 @@ note above the box, and the cards).
      changed outside it are listed on the card, whoever wrote them: an edit,
      a script, an install. The decision record's folder never counts.
    - **The test plan.** Each check that came with one of the project's own
-     commands, Shellby runs itself, in the conversation's folder, with the
-     same rules as turn checks (`checks.js`): only command lines Shellby builds
-     (`checks.isSafeCommand`), the first run in a project asks you first, and
-     a pared-down environment. A command Claude wrote that isn't one of those
-     stays Claude's word only, and the card shows which is which.
+     checks (its test, typecheck or lint script, as `checks.js` finds them),
+     Shellby runs itself, in the conversation's folder, with the same rules as
+     turn checks: only command lines Shellby builds, the first run in a
+     project asks you first, and a pared-down environment. Any other command
+     Claude names (`npm run deploy` included, though it's a script too) stays
+     Claude's word only, and the card shows which is which. That's checked
+     when the card is made and again before the run.
+
+   A turn whose snapshots Shellby couldn't take (a folder that isn't a git
+   repo, or one that took too long) is noted, and the card says the diff may
+   be incomplete instead of claiming nothing changed. If Shellby closes before
+   it compares, the card says that too when the conversation is reopened.
 
    The next change needs a new decision.
 
@@ -115,8 +122,10 @@ throws, the step is held back, not let through.
 - shell commands that only read (`worktrees/looks.js`),
 - the project's own checks (its test, typecheck and lint scripts, as
   `checks.js` finds them), so Claude's trade-offs come from what it measured.
-  **Settings → Claude → Let Claude run the project's checks before deciding**
-  turns this off.
+  They're the repo's own scripts, so they can do whatever the repo wrote into
+  them, before anything is approved: in a repo you don't trust, **Settings →
+  Claude → Let Claude run the project's checks before deciding** turns this
+  off. Claude Code's permission mode still asks before each one as usual.
 - the commands you allowed for the project, exactly as written, from
   **Commands before deciding** in the note above the box (at most 12).
 
@@ -131,15 +140,34 @@ shell than to the check counts as a change: script blocks and subexpressions,
 curly quotes, `$'...'`, comments, an unclosed quote. Read-only commands that
 can write or run something with one flag count too, e.g. `git diff --output`
 (or any start of it git would accept, like `--outp`), `git -c`, `rg --pre`,
-`fd -x`, `find -fls`, `sed` with `w` or `e`, and a lone `&`.
+`fd -x`, `find -fls`, `sort --out`, `tree -o`, and a lone `&`. `sed` counts as
+reading only when it prints (`-n` with `1,20p`, `$p` or `/re/p`); pagers and
+`ag` aren't on the list at all (`less +!cmd`, `ag --pager`). A redirect is
+harmless only when it ends at `2>&1` or a null device (`>&1.txt` is a file), a
+network path (`\\host\share`, `//host`) never counts as reading, since opening
+one sends this PC's sign-in there, and a program named with a path (`./git`)
+isn't the real one.
 
 **Once a decision is approved**, file edits (Edit, Write, MultiEdit,
 NotebookEdit) go through only inside the scope and any amendments you allowed.
 Paths are measured from the repo root, whichever copy of it the conversation
-is in. Outside the project, only Claude's own places are allowed (the temp
-folder and `~/.claude`). Shell commands run, since what they'll write can't be
-known beforehand: the diff check catches anything they wrote outside the
-scope. An approval lasts until `check_decision` (the last step's, with steps),
+is in, after 8.3 short names are expanded and links and junctions followed
+(a network path is never looked up). `.git/` and `.claude/` can change how
+git or Claude Code runs, so a broad scope like `**` doesn't reach them: only
+a scope that names them does. Outside the project, only Claude's own places
+are allowed: the temp folder, `~/.claude/plans`, `~/.claude/todos` and this
+project's memory folder, never the rest of `~/.claude` (its settings, hooks,
+agents and skills can run code). Shell commands run, since what they'll write
+can't be known beforehand: the diff check catches anything they wrote outside
+the scope.
+
+`Monitor` runs a command too, so everywhere above it's read like Bash and
+PowerShell.
+
+What History says is checked before it's trusted: a decision's or spike's
+folder is used only if it's one this conversation really works in, and a
+spike that was still running when Shellby closed reads back as over, with
+nothing put back (the card says to use Undo or Rewind on its turns). An approval lasts until `check_decision` (the last step's, with steps),
 until you press **Close this decision** on the card, or until the chip goes
 off. Turning the chip back on doesn't bring an old approval back. The gate is
 on only while Claude has the tools to get past it. If Settings takes the

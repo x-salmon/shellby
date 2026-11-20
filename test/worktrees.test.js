@@ -861,3 +861,29 @@ test('bring it home, signed: the trailer ends the commit and the merge, and a ju
     assert.equal(t.g(t.dir, 'log', '-1', '--format=%B').trim(), 'feat: add e');
   } finally { t.done(); }
 });
+
+test('the read-only check: redirects, pagers, sed scripts, GNU abbreviations, network paths and look-alike programs', () => {
+  const bs = String.fromCharCode(92);
+  const works = [
+    // A redirect that only looks harmless: >&1.txt and > nul-x are files.
+    'echo hi >&1.txt', 'echo hi > nul-x', 'ls 2>/dev/null.x',
+    // sed scripts other than printing: other delimiters, script files.
+    "sed 's,^,,e' x", "sed 's,a,b,w out.txt' x", 'sed -f x.sed y',
+    // GNU tools take any unambiguous start of a long option.
+    'sort --out=f x', 'sort --compr=sh x', 'tree -ao f', 'file -C x',
+    // Pagers and ag can run a command.
+    'ag --pager=sh x', "less '+!touch x' f", 'more f',
+    // Opening a network path sends this PC's sign-in there.
+    `cat ${bs}${bs}evil${bs}share${bs}x`, 'cat //evil/share/x', 'Get-Content --path=//evil/x',
+    // A program the repo ships under a familiar name.
+    './git log', 'scripts/cat x',
+    // git subcommands that change things after all.
+    'git remote -v add n https://x', 'git reflog expire --all', 'git reflog delete HEAD@{1}', 'rg --hostname-bin=sh x',
+  ];
+  for (const c of works) assert.equal(worktrees.startsWork('Bash', { command: c }), true, c);
+  const looks = ['ls 2>&1', 'ls >/dev/null', "sed -n '1,20p' a.txt", "sed -n '/re/p' a.txt", 'sed -n $p a.txt', 'git remote -v', 'git remote show origin', 'git reflog', 'rg "https://example.com" src', 'sort -r x'];
+  for (const c of looks) assert.equal(worktrees.startsWork('Bash', { command: c }), false, c);
+  // Monitor runs a command too.
+  assert.equal(worktrees.startsWork('Monitor', { command: 'rm -rf src' }), true);
+  assert.equal(worktrees.startsWork('Monitor', { command: 'git status' }), false);
+});

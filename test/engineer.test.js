@@ -430,21 +430,26 @@ function setup({ selfAware = true, history = [], saved: isSaved = false, cwd = R
   return { d, tab, session, config, sent, notes, panel, updates, runs, engineer: w.engineer, done, last, hook, stops: () => stops };
 }
 
+// Lets Shellby's own run of the plan land: it goes on after the turn's work, not before it.
+const flush = () => new Promise(r => setImmediate(r));
 const summary = (root, files) => ({ root, before: 'b'.repeat(40), after: 'c'.repeat(40), files: files.map(p => ({ path: p, status: 'M', added: 1, removed: 0 })), added: files.length, removed: 0, more: 0 });
 
 test('wiring: decide, approve, build in scope, amend, check, and Shellby checks it too', async () => {
-  const w = setup();
+  const r = repo();
+  try {
+  const w = setup({ cwd: r.dir });
+  const at = p => ({ file_path: path.join(r.dir, p) });
   assert.deepEqual(await w.engineer.set('t1', true), { ok: true });
   assert.deepEqual(w.session.mcp.tools.map(t => t.name), ['say', ...eng.TOOL_NAMES]);
   assert.equal(w.stops(), 1);
 
   // A message: Claude is told to decide first, and changes are held back.
   assert.match(w.engineer.decorate(w.tab, 'add a price cache'), /call mcp__shellby__decide/);
-  assert.ok(deniedWhy(w.hook({ tool_name: 'Edit', tool_input: inRoot('src/cache/a.js') })));
+  assert.ok(deniedWhy(w.hook({ tool_name: 'Edit', tool_input: at('src/cache/a.js') })));
 
   // The decision arrives on a card.
-  const r = w.engineer.tool(w.tab, 'decide', DECISION);
-  assert.equal(r.isError, undefined);
+  const shown = w.engineer.tool(w.tab, 'decide', DECISION);
+  assert.equal(shown.isError, undefined);
   assert.equal(w.last().phase, 'proposed');
   assert.match(deniedWhy(w.hook({ tool_name: 'Write', tool_input: {} })), /waiting on the user's card/);
 
@@ -463,19 +468,19 @@ test('wiring: decide, approve, build in scope, amend, check, and Shellby checks 
   assert.equal(w.last().phase, 'approved');
 
   // Inside the scope it builds; outside it, it has to ask.
-  assert.equal(w.hook({ tool_name: 'Edit', tool_input: inRoot('src/cache/a.js') }), null);
-  assert.match(deniedWhy(w.hook({ tool_name: 'Edit', tool_input: inRoot('src/db.js') })), /outside the approved scope/);
+  assert.equal(w.hook({ tool_name: 'Edit', tool_input: at('src/cache/a.js') }), null);
+  assert.match(deniedWhy(w.hook({ tool_name: 'Edit', tool_input: at('src/db.js') })), /outside the approved scope/);
   assert.equal(w.engineer.tool(w.tab, 'amend_decision', { add_scope: ['src/db.js'], why: 'Prices are read there' }).isError, undefined);
   assert.ok(w.engineer.tool(w.tab, 'amend_decision', { add_scope: ['lib/'], why: 'x' }).isError, 'one at a time');
   const amendment = w.last().amendments[0];
-  assert.match(deniedWhy(w.hook({ tool_name: 'Edit', tool_input: inRoot('src/db.js') })), /amendment asking for more is still waiting/);
+  assert.match(deniedWhy(w.hook({ tool_name: 'Edit', tool_input: at('src/db.js') })), /amendment asking for more is still waiting/);
   w.done();
   assert.deepEqual(await w.engineer.act('t1', amendment.id, { what: 'amend-yes' }), { ok: true });
   assert.match(w.sent[1].prompt, /approved adding src\/db.js/);
-  assert.equal(w.hook({ tool_name: 'Edit', tool_input: inRoot('src/db.js') }), null);
+  assert.equal(w.hook({ tool_name: 'Edit', tool_input: at('src/db.js') }), null);
 
   // A turn of work ends: its files are kept for the check.
-  await w.engineer.turnChanged('t1', summary(ROOT, ['src/cache/a.js', 'src/db.js', 'lib/oops.js']));
+  await w.engineer.turnChanged('t1', summary(r.dir, ['src/cache/a.js', 'src/db.js', 'lib/oops.js']));
   assert.deepEqual(w.last().touched, ['src/cache/a.js', 'src/db.js', 'lib/oops.js']);
 
   // Checked: Claude's word now, Shellby's own check when the turn ends.
@@ -483,17 +488,22 @@ test('wiring: decide, approve, build in scope, amend, check, and Shellby checks 
   assert.equal(c.isError, undefined);
   assert.match(c.text, /runs npm run test/);
   assert.equal(w.last().phase, 'checked');
-  assert.ok(deniedWhy(w.hook({ tool_name: 'Edit', tool_input: inRoot('src/cache/b.js') })), 'the next change needs a new decision');
-  await w.engineer.turnChanged('t1', summary(ROOT, ['docs/decisions/0001-cache-prices-in-memory.md']));
+  assert.ok(deniedWhy(w.hook({ tool_name: 'Edit', tool_input: at('src/cache/b.js') })), 'the next change needs a new decision');
+  await w.engineer.turnChanged('t1', summary(r.dir, ['docs/decisions/0001-cache-prices-in-memory.md']));
   const end = w.last();
   assert.deepEqual(end.audit, { files: 4, unplanned: ['lib/oops.js'] });
   assert.equal(w.runs.length, 1);
   assert.deepEqual(w.runs[0].commands, ['npm run test']);
-  assert.deepEqual(end.verify, { status: 'done', results: [{ cmd: 'npm run test', status: 'pass', tail: '' }] });
+  await flush();
+  assert.deepEqual(w.last().verify, { status: 'done', results: [{ cmd: 'npm run test', status: 'pass', tail: '' }] });
+  } finally { r.done(); }
 });
 
 test('wiring: a decision with steps stays approved until its last step is reported', async () => {
-  const w = setup();
+  const r = repo();
+  try {
+  const w = setup({ cwd: r.dir });
+  const at = p => ({ file_path: path.join(r.dir, p) });
   w.tab.engineer = true;
   w.engineer.tool(w.tab, 'decide', { ...DECISION, steps: ['Add the cache', 'Use it'], test_plan: [{ check: 'types', command: 'npm run typecheck' }] });
   await w.engineer.act('t1', w.last().id, { what: 'approve' });
@@ -503,12 +513,14 @@ test('wiring: a decision with steps stays approved until its last step is report
   assert.match(w.engineer.tool(w.tab, 'check_decision', { followed: true, summary: 'Added it', step: 1 }).text, /Carry on with step 2/);
   assert.equal(w.last().phase, 'approved');
   assert.equal(w.last().progress.length, 1);
-  assert.equal(w.hook({ tool_name: 'Edit', tool_input: inRoot('src/cache/a.js') }), null, 'still building');
+  assert.equal(w.hook({ tool_name: 'Edit', tool_input: at('src/cache/a.js') }), null, 'still building');
   w.engineer.tool(w.tab, 'check_decision', { followed: false, summary: 'Used it', step: 2, deviations: [{ what: 'x', why: 'y' }] });
   assert.equal(w.last().phase, 'checked');
   assert.equal(w.last().progress.length, 2);
   await w.engineer.turnChanged('t1', null);
+  await flush();
   assert.deepEqual(w.last().verify.results[0], { cmd: 'npm run typecheck', status: 'fail', tail: 'boom' });
+  } finally { r.done(); }
 });
 
 test('wiring: another option, sent back, a critic, or a spike first', async () => {
@@ -628,7 +640,7 @@ function repo() {
   git('config', 'user.name', 'T');
   git('config', 'core.autocrlf', 'false');
   fs.writeFileSync(path.join(dir, 'a.txt'), 'one\n');
-  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'node --test', lint: 'eslint .' } }));
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ scripts: { test: 'node --test', lint: 'eslint .', typecheck: 'tsc' } }));
   git('add', '-A');
   git('commit', '-qm', 'init');
   return { dir, done: () => fs.rmSync(dir, { recursive: true, force: true }) };
@@ -643,7 +655,7 @@ test('wiring: a project can have it on for every new conversation, and allow com
     assert.equal(view.ok, true);
     assert.equal(view.on, true);
     assert.deepEqual(view.allow, ['node bench.js']);
-    assert.deepEqual(view.checks, ['npm run test', 'npm run lint']);
+    assert.deepEqual(view.checks, ['npm run test', 'npm run typecheck', 'npm run lint']);
     assert.equal(view.name, path.basename(r.dir));
 
     // A new conversation there starts with it on, tools and all.
@@ -655,7 +667,7 @@ test('wiring: a project can have it on for every new conversation, and allow com
     // Before a decision: the project's checks and the allowed command run, nothing else.
     w.tab.engineer = true;
     w.engineer.arm(w.tab);
-    assert.match(w.engineer.decorate(w.tab, 'speed it up'), /you may also run: npm run test, npm run lint, node bench.js/);
+    assert.match(w.engineer.decorate(w.tab, 'speed it up'), /you may also run: npm run test, npm run typecheck, npm run lint, node bench.js/);
     assert.equal(w.hook({ tool_name: 'Bash', tool_input: { command: 'node bench.js' } }), null);
     assert.equal(w.hook({ tool_name: 'Bash', tool_input: { command: 'npm run lint' } }), null);
     assert.ok(deniedWhy(w.hook({ tool_name: 'Bash', tool_input: { command: 'node other.js' } })));
@@ -740,4 +752,157 @@ test('wiring: a spike needs a git repo, and a decision already approved', async 
   v.engineer.tool(v.tab, 'decide', DECISION);
   await v.engineer.act('t1', v.last().id, { what: 'approve' });
   assert.match(v.engineer.tool(v.tab, 'spike', { question: 'Q', plan: 'P' }).text, /comes before deciding/);
+});
+
+// ---- what the reviews found
+
+test('gate: Monitor runs a command, so it is read like a shell', () => {
+  const state = { on: true, decision: null };
+  assert.ok(deniedWhy(g(state, 'Monitor', { command: 'rm -rf src' })));
+  assert.equal(g(state, 'Monitor', { command: 'git status' }), null);
+  assert.equal(g(state, 'Monitor', { command: 'npm run test' }, ctx({ before: ['npm run test'] })), null);
+});
+
+test('allowedBefore never matches a command with a line break in it', () => {
+  const nl = String.fromCharCode(10);
+  assert.equal(gate.allowedBefore(['deploy.sh --dry-run'], `deploy.sh${nl}--dry-run`), false);
+  assert.equal(gate.allowedBefore(['npm run test'], 'npm   run test'), true);
+});
+
+test('relIn: a folder called ..foo is inside the root', () => {
+  assert.equal(gate.relIn([ROOT], path.join(ROOT, '..foo', 'x.js')), '..foo/x.js');
+  assert.equal(gate.relIn([ROOT], path.join(ROOT, '..', 'x.js')), null);
+});
+
+test('gate: .git and .claude need a scope that names them, never ** alone', () => {
+  const open = { on: true, decision: { ...decided({ scope: ['**'] }), phase: 'approved' } };
+  assert.match(deniedWhy(g(open, 'Write', inRoot('.git/hooks/pre-commit'))), /only a scope that names it/);
+  assert.match(deniedWhy(g(open, 'Edit', inRoot('.claude/settings.json'))), /only a scope that names it/);
+  assert.equal(g(open, 'Edit', inRoot('src/a.js')), null);
+  const named = { on: true, decision: { ...decided({ scope: ['.claude/'] }), phase: 'approved' } };
+  assert.equal(g(named, 'Edit', inRoot('.claude/settings.json')), null);
+});
+
+test('wiring: outside the project, only Claude\'s plans, todos and this project\'s memory, never its settings', async () => {
+  const r = repo();
+  try {
+    const w = setup({ cwd: r.dir });
+    w.tab.engineer = true;
+    w.engineer.tool(w.tab, 'decide', DECISION);
+    await w.engineer.act('t1', w.last().id, { what: 'approve' });
+    const home = path.join(os.homedir(), '.claude');
+    assert.match(deniedWhy(w.hook({ tool_name: 'Write', tool_input: { file_path: path.join(home, 'settings.json') } })), /outside the project/);
+    assert.match(deniedWhy(w.hook({ tool_name: 'Write', tool_input: { file_path: path.join(home, 'hooks', 'x.js') } })), /outside the project/);
+    assert.equal(w.hook({ tool_name: 'Write', tool_input: { file_path: path.join(home, 'plans', 'plan.md') } }), null);
+    const memory = path.join(home, 'projects', r.dir.replace(/[^a-zA-Z0-9]/g, '-'), 'memory', 'note.md');
+    assert.equal(w.hook({ tool_name: 'Write', tool_input: { file_path: memory } }), null);
+  } finally { r.done(); }
+});
+
+test('wiring: Shellby runs a plan\'s command only when it is one of the project\'s own checks', async () => {
+  const r = repo();
+  try {
+    const w = setup({ cwd: r.dir });
+    w.tab.engineer = true;
+    w.engineer.tool(w.tab, 'decide', { ...DECISION, test_plan: [{ check: 'deploys', command: 'npm run deploy' }, { check: 'tests', command: 'npm run test' }] });
+    assert.deepEqual(w.last().testPlan, [{ check: 'deploys' }, { check: 'tests', command: 'npm run test' }]);
+  } finally { r.done(); }
+});
+
+test('wiring: end_spike then decide in the same turn carries what the spike found', async () => {
+  const r = repo();
+  try {
+    const w = setup({ cwd: r.dir });
+    w.tab.engineer = true;
+    w.engineer.tool(w.tab, 'spike', { question: 'Q', plan: 'P' });
+    await w.engineer.act('t1', w.last('engineer-spike').id, { what: 'spike-yes' });
+    w.done();
+    w.engineer.tool(w.tab, 'end_spike', { findings: 'It works', answer: 'Yes' });
+    w.engineer.tool(w.tab, 'decide', DECISION);
+    assert.deepEqual(w.last().spike, { question: 'Q', findings: 'It works', answer: 'Yes' });
+    await w.engineer.turnChanged('t1', null);
+    assert.equal(w.last('engineer-spike').phase, 'done');
+    assert.equal(w.last('engineer-spike').used, true);
+  } finally { r.done(); }
+});
+
+test('wiring: a spike turn Shellby couldn\'t see means it can\'t promise everything came back', async () => {
+  const r = repo();
+  try {
+    const w = setup({ cwd: r.dir });
+    w.tab.engineer = true;
+    w.engineer.tool(w.tab, 'spike', { question: 'Q', plan: 'P' });
+    await w.engineer.act('t1', w.last('engineer-spike').id, { what: 'spike-yes' });
+    w.done();
+    await w.engineer.turnChanged('t1', null, { unseen: true });
+    w.engineer.tool(w.tab, 'end_spike', { findings: 'x' });
+    await w.engineer.turnChanged('t1', null);
+    const card = w.last('engineer-spike');
+    assert.equal(card.phase, 'failed');
+    assert.match(card.restored.error, /couldn't see every turn/);
+  } finally { r.done(); }
+});
+
+test('wiring: Stop waits for the spike\'s last turn to be noted, and runs once', async () => {
+  const r = repo();
+  try {
+    const w = setup({ cwd: r.dir });
+    w.tab.engineer = true;
+    w.engineer.tool(w.tab, 'spike', { question: 'Q', plan: 'P' });
+    await w.engineer.act('t1', w.last('engineer-spike').id, { what: 'spike-yes' });
+    w.done();
+    const before = await changes.snapshot(r.dir);
+    fs.writeFileSync(path.join(r.dir, 'a.txt'), 'changed\n');
+    const turn = await changes.summarize(before, await changes.snapshot(r.dir));
+    // The turn's diff is still being noted when Stop is pressed.
+    let noted;
+    w.d.turnEnds = new Map([['t1', new Promise(res => { noted = res; })]]);
+    const id = w.last('engineer-spike').id;
+    const stop = w.engineer.act('t1', id, { what: 'spike-stop' });
+    w.engineer.turnChanged('t1', turn);
+    noted();
+    assert.deepEqual(await stop, { ok: true });
+    assert.equal(w.last('engineer-spike').phase, 'done');
+    assert.equal(fs.readFileSync(path.join(r.dir, 'a.txt'), 'utf8'), 'one\n');
+  } finally { r.done(); }
+});
+
+test('wiring: a stale spike card can\'t start once a decision is approved, and approving retires it', async () => {
+  const w = setup();
+  w.tab.engineer = true;
+  w.engineer.tool(w.tab, 'decide', DECISION);
+  w.engineer.tool(w.tab, 'spike', { question: 'Q', plan: 'P' });
+  const spikeId = w.last('engineer-spike').id;
+  await w.engineer.act('t1', w.last().id, { what: 'approve' });
+  assert.equal(w.last('engineer-spike').phase, 'refused');
+  w.done();
+  assert.match((await w.engineer.act('t1', spikeId, { what: 'spike-yes' })).error, /already been answered|out of date/);
+});
+
+test('wiring: History can\'t widen the gate: unknown roots are dropped, and a spike running at close is over', () => {
+  const tree = 'a'.repeat(40);
+  const elsewhere = path.resolve('/shellby-eng-elsewhere-never');
+  const history = [
+    saved('d', 'approved', { root: elsewhere }),
+    eng.spikeView({ id: 's', phase: 'running', question: 'Q', plan: 'P', root: elsewhere, refs: [{ root: elsewhere, before: tree, after: tree }] }),
+  ].map(i => ({ ...i, kind: i.kind || 'engineer' }));
+  const w = setup({ saved: true, history });
+  w.tab.engineer = true;
+  const state = w.engineer.stateOf(w.tab);
+  assert.equal(state.decision.root, undefined);
+  assert.equal(state.spike.phase, 'failed');
+  assert.deepEqual(state.spike.refs, []);
+  assert.match(state.spike.restored.error, /closed while the spike ran/);
+});
+
+test('a check still to come when Shellby closed reads back as unavailable, a run as cut short', () => {
+  const d = eng.latestFrom([saved('p', 'checked', { auditPending: true, verify: { status: 'running', results: [] } })]);
+  assert.deepEqual(d.audit, { files: 0, unplanned: [], unavailable: true });
+  assert.equal(d.verify.status, 'cancelled');
+});
+
+test('text from Claude loses characters that would make it read as something else', () => {
+  const rlo = String.fromCharCode(0x202e);
+  const zw = String.fromCharCode(0x200b);
+  assert.equal(eng.readDecision({ ...DECISION, title: `Cache${rlo}sj.exe${zw}` }).decision.title, 'Cachesj.exe');
 });
