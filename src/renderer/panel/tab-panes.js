@@ -1,25 +1,21 @@
 /* Shellby panel — conversations side by side, and in windows of their own.
    The chat view shows the panes in state.grid (shared/panes.js decides the
    shapes: up to four columns of up to three). Each pane is a group of tabs:
-   a header that is its own tab strip (tab-strip.js draws the tabs), the feed
-   of the tab it shows, and a slot for the box. With one pane the header
-   hides and the top strip holds every conversation, as it always has. The
-   box belongs to the focused pane: the one holding state.activeTab. Room for
-   the panes, and growing the panel to make it, is pane-room.js. A tab
-   dragged out of the window (tab-strip.js) or sent out with its button gets
-   a window of its own (main's wiring/popouts.js). tabs.js owns the tabs. */
+   a header that is its own tab strip (tab-strip.js draws the tabs; its
+   buttons, tray and lane are pane-head.js), the feed of the tab it shows,
+   and a slot for the box. With one pane the header hides and the top strip
+   holds every conversation, as it always has. The box belongs to the focused
+   pane: the one holding state.activeTab. A conversation dropped on a pane,
+   split off, moved by key or left behind by a closing pane is pane-moves.js;
+   room for the panes, and growing the panel to make it, is pane-room.js. A
+   tab dragged out of the window (tab-strip.js) or sent out with its button
+   gets a window of its own (main's wiring/popouts.js). tabs.js owns the tabs. */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
   const P = SB.panes;
   const input = $('input');
   const PLACEHOLDER = input.placeholder;
-  const POP_ICON = 'M9.5 2.5h4v4M13.5 2.5 8 8M12 9.5v3.2c0 .4-.4.8-.8.8H3.3c-.4 0-.8-.4-.8-.8V4.8c0-.4.4-.8.8-.8h3.2';
-  const PLUS_ICON = 'M8 3.5v9M3.5 8h9';
-  const CLOSE_ICON = 'M4.5 4.5l7 7M11.5 4.5l-7 7';
-  const ZOOM_ICON = 'M3 6.5V3h3.5M13 6.5V3H9.5M3 9.5V13h3.5M13 9.5V13H9.5';
-  const FILES_ICON = 'M1.8 4.2c0-.7.5-1.2 1.2-1.2h3l1.4 1.5H13c.7 0 1.2.5 1.2 1.2v6.1c0 .7-.5 1.2-1.2 1.2H3c-.7 0-1.2-.5-1.2-1.2z';
-  const EDGES = new Set(['left', 'right', 'top', 'bottom']);
 
   // On screen: the tab a pane shows.
   SB.isShown = tabId => P.shownTabs(state.grid).includes(tabId);
@@ -54,7 +50,7 @@
   function paneOf(pane) {
     let p = panes.get(pane.id);
     if (!p) {
-      const { head, strip } = paneHead(pane.id);
+      const { head, strip } = SB.paneHead(pane.id); // its buttons and lane (pane-head.js)
       const slot = h('div', { class: 'pane-slot' });
       // Shows while you're scrolled up from the end of its feed; a dot on it says more came in.
       const jump = h('button', { class: 'pane-jump', type: 'button', hidden: true, title: 'Jump to the latest', 'aria-label': 'Jump to the latest',
@@ -305,63 +301,6 @@
     document.addEventListener('lostpointercapture', up, true);
   }
 
-  // A pane's header is its tab strip, with its own edge markers (tab-overview.js),
-  // then a new conversation in this pane, its files, pop out the tab it shows, and close the pane.
-  function paneHead(paneId) {
-    const strip = h('div', { class: 'tabs pane-tabs', role: 'tablist', 'aria-label': 'Conversations in this pane' });
-    const left = h('button', { type: 'button', class: 'tab-edge left', hidden: true });
-    const right = h('button', { type: 'button', class: 'tab-edge right', hidden: true });
-    const head = h('div', { class: 'pane-head', dataset: { pane: paneId }, onpointerdown: e => dragHead(e, paneId) },
-      h('div', { class: 'tabs-wrap' }, strip, left, right),
-      h('span', { class: 'pane-lane', hidden: true }),
-      h('button', { class: 'pane-needs', type: 'button', hidden: true, title: 'Go to it (Alt+J)', onclick: () => SB.goToNeeds() }),
-      h('button', { class: 'pane-btn', type: 'button', title: 'New conversation in this pane (Ctrl+T)', 'aria-label': 'New conversation in this pane', onclick: () => newTabIn(paneId) },
-        SB.icon(PLUS_ICON, { width: 1.6 })),
-      h('button', { class: 'pane-btn pane-zoom', type: 'button', title: 'Fill the chat with this pane, and back (Ctrl+Alt+Enter)', 'aria-label': 'Zoom this pane', 'aria-pressed': 'false', onclick: () => SB.zoomFrom(paneId) },
-        SB.icon(ZOOM_ICON, { width: 1.5 })),
-      h('button', { class: 'pane-btn pane-files', type: 'button', hidden: true, title: "Browse this conversation's files", 'aria-label': 'Browse files', onclick: () => { const id = activeOf(paneId); if (id) SB.viewer?.openTab(id); } },
-        SB.icon(FILES_ICON, { width: 1.3 })),
-      h('button', { class: 'pane-btn', type: 'button', title: 'Open in its own window', 'aria-label': 'Open in its own window', onclick: () => { const id = activeOf(paneId); if (id) SB.popOut(id); } },
-        SB.icon(POP_ICON)),
-      h('button', { class: 'pane-btn pane-close', type: 'button', title: 'Close this pane (its conversations move to the one beside it)', 'aria-label': 'Close this pane', onclick: () => SB.closePane(paneId) },
-        SB.icon(CLOSE_ICON, { width: 1.5 })));
-    SB.wireStrip(strip);
-    SB.watchEdges(strip, left, right);
-    return { head, strip };
-  }
-
-  // A pane's header dragged (anywhere but a tab or a button) onto another pane:
-  // the two trade places (panes.swap). The drop preview covers the pane it
-  // would trade with.
-  function dragHead(e, paneId) {
-    if (e.button !== 0 || SB.solo || P.count(state.grid) < 2 || e.target.closest('.tab, button')) return;
-    const head = e.currentTarget;
-    const x0 = e.clientX, y0 = e.clientY;
-    let moved = false, over = null, done = false;
-    const under = ev => {
-      const id = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.pane')?.dataset.pane;
-      return id && id !== paneId && panes.has(id) ? id : null;
-    };
-    const move = ev => {
-      if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
-      if (!moved) { moved = true; document.body.classList.add('swapping-panes'); }
-      over = under(ev);
-      SB.showDrop(over ? { kind: 'pane', rect: panes.get(over).el.getBoundingClientRect() } : null);
-    };
-    const end = ev => {
-      if (done || ev.pointerId !== e.pointerId) return;
-      done = true;
-      head.removeEventListener('pointermove', move);
-      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) head.removeEventListener(type, end);
-      document.body.classList.remove('swapping-panes');
-      SB.showDrop(null);
-      if (moved && ev.type === 'pointerup' && over) SB.swapPanes(paneId, over);
-    };
-    head.setPointerCapture(e.pointerId);
-    head.addEventListener('pointermove', move);
-    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) head.addEventListener(type, end);
-  }
-
   // Panes a and b trade what they hold; the conversation you're in keeps the box, in its new place.
   SB.swapPanes = (a, b) => {
     const next = P.swap(state.grid, a, b);
@@ -373,13 +312,6 @@
     SB.savePanes();
     return true;
   };
-
-  // A strip's "+": a new conversation in that pane, after the tab it shows.
-  function newTabIn(paneId) {
-    const id = activeOf(paneId);
-    if (id && id !== state.activeTab) SB.activate(id);
-    SB.newTab();
-  }
 
   // Working and asking marks change all the time; the panes are updated in
   // place, so a button being pressed is never swapped out from under you.
@@ -404,8 +336,8 @@
         // Working, asking or done: the same mark the strip shows (tab-strip.js tabIcon).
         stand.querySelector('.standin-meta').replaceChildren(...[SB.tabIcon(t), q ? `${q} queued` : null].filter(Boolean));
       }
-      paintTray(p, stand ? t : null);
-      paintLane(p.head.querySelector('.pane-lane'), t);
+      SB.paintPaneTray(p, stand ? t : null);
+      SB.paintPaneLane(p.head.querySelector('.pane-lane'), t);
       // A conversation in this pane asking for your OK that you aren't looking at: its header lights up.
       p.head.classList.toggle('needs-you', split && (P.byId(state.grid, id)?.tabs || []).some(x => x !== state.activeTab && asking(x)));
     }
@@ -424,70 +356,6 @@
     // A popped-out window is named for its conversation, on the taskbar too.
     if (SB.solo && tab) document.title = $('winTitle').textContent = SB.shownTitle(tab);
   };
-
-  // The tray over the box (native-strip.js, native-cli.js) is the focused
-  // pane's conversation's: its to-do list, what it left running and what you
-  // might ask next. Every other pane keeps its own over its stand-in, Output,
-  // Stop and all, so nothing it has going vanishes when you click away. The
-  // slots stay put while the pane is out of focus; each piece fills its own.
-  const TRAY_KINDS = ['todos', 'jobs', 'nextPrompt'];
-  const TRAY_CLASS = { todos: 'todos', jobs: 'jobs', nextPrompt: 'next-prompt' };
-  const TRAY_LABEL = { todos: "Claude's to-do list", jobs: 'Running in the background' };
-  function paintTray(p, t) {
-    let el = p.slot.querySelector('.pane-extras');
-    if (!t) { el?.remove(); return; }
-    if (!el) {
-      el = h('div', { class: 'pane-extras' }, TRAY_KINDS.map(kind => h('div', {
-        class: TRAY_CLASS[kind], dataset: { tray: kind }, hidden: true,
-        ...(TRAY_LABEL[kind] ? { role: 'region', 'aria-label': TRAY_LABEL[kind] } : {}),
-      })));
-      p.slot.prepend(el);
-    }
-    SB.renderTodos?.(t);
-    SB.renderJobs?.(t);
-    SB.renderNextPrompt?.(t);
-  }
-  // Where an unfocused pane showing this tab keeps one piece of its tray, or null.
-  SB.paneTrayBox = (tabId, kind) => {
-    if (!TRAY_KINDS.includes(kind)) return null;
-    for (const [id, p] of panes) {
-      if (activeOf(id) !== tabId) continue;
-      const el = p.slot.querySelector(`.pane-extras [data-tray="${kind}"]`);
-      if (el) return el;
-    }
-    return null;
-  };
-
-  // A pane's lane, beside its tabs: the branch of the copy its conversation
-  // works in, and how its last checks went (turn-checks.js keeps them on the tab).
-  // The branch reads as words with its kind as a colour (shared/branch-label.js),
-  // grows into whatever room the tabs leave, and folds to the glyph in a narrow
-  // pane (components.css). Hovered or focused, a card under it has the full name.
-  const CHECK_MARK = { running: '…', pass: '✓', fail: '✗' };
-  const CHECK_SAY = { running: 'Its checks are running', pass: 'Its last checks passed', fail: 'Its last checks failed' };
-  const BRANCH_ICON = 'M4.5 2.5v8.7M4.5 10.5c0-3 7-2.5 7-6.5M3.1 12.6a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0M10.1 3.2a1.4 1.4 0 1 0 2.8 0a1.4 1.4 0 1 0-2.8 0';
-  function paintLane(lane, t) {
-    const w = t.worktree?.branch ? t.worktree : null;
-    const b = w ? window.ShellbyBranchLabel.branchLabel(w.branch) : null;
-    const check = t.checkRunning ? 'running' : t.checkState || '';
-    lane.hidden = !b && !check;
-    lane.className = check ? `pane-lane ${check}` : 'pane-lane';
-    if (b) lane.dataset.kind = b.colour; else delete lane.dataset.kind;
-    // "From main. Its last checks passed." Under the name in the card, and read out with it.
-    const about = [b && w.base && `From ${w.base}`, check && CHECK_SAY[check]].filter(Boolean).join('. ');
-    lane.tabIndex = lane.hidden ? -1 : 0;
-    lane.setAttribute('aria-label', [b ? `Its own copy, on ${b.full}` : '', about].filter(Boolean).join('. '));
-    lane.replaceChildren(...[
-      check ? h('span', { class: 'lane-mark', 'aria-hidden': 'true', text: CHECK_MARK[check] }) : null,
-      b ? SB.icon(BRANCH_ICON, { width: 1.6 }) : null,
-      b ? h('span', { class: 'lane-branch', text: b.words }) : null,
-      // Shown by CSS on hover and focus; aria-label above already says all of it.
-      h('span', { class: 'lane-peek', 'aria-hidden': 'true' },
-        b ? h('b', { class: 'peek-name' }, b.kind ? h('span', { class: 'peek-kind', text: b.kind }) : null, b.words) : null,
-        b ? h('code', { class: 'peek-full', text: b.full }) : null,
-        about ? h('span', { text: `${about}.` }) : null),
-    ].filter(Boolean));
-  }
 
   // ------------------------------------------------------------ what needs you
 
@@ -534,178 +402,11 @@
     if (field !== document.activeElement && field?.isConnected && field.closest('.feed') && field.matches('input, textarea, select, [contenteditable]')) field.focus({ preventScroll: true });
   }, true);
 
-  // Drop `tabId` on pane `target` (`zone`: see panes.place; 'strip' with
-  // `before`, the tab to land in front of) and focus it there, growing the
-  // window first if a new pane needs it. -> placed?
-  SB.placeTab = async (tabId, target, zone, before = null) => {
-    SB.unzoom();
-    const was = state.grid;
-    let next = P.place(was, tabId, target, zone, before);
-    if (next === was) return false;
-    let room = { ok: true, space: null };
-    if (EDGES.has(zone)) {
-      room = SB.roomFor(next);
-      if (!room.ok) { SB.toast(SB.NO_ROOM); return false; }
-      if (room.want) {
-        await api.fitPanel(room.want);
-        // The grid may have changed while the window grew (a tab closed, say): place it on that one.
-        if (state.grid !== was) {
-          if ((next = P.place(state.grid, tabId, target, zone, before)) === state.grid) return false;
-          if (!(room = SB.roomFor(next)).ok) { SB.toast(SB.NO_ROOM); return false; }
-        }
-      }
-    }
-    const sizes = P.placeSizes(state.grid, state.paneSizes, tabId, target, zone);
-    state.paneSizes = room.space ? SB.atLeastMin(next, sizes, room.space) : sizes;
-    state.grid = next;
-    SB.activate(tabId);
-    return true;
-  };
-
-  // A pane's ×: the pane goes and its tabs move into the pane beside it
-  // (panes.merge), so no conversation closes by accident. That pane keeps the
-  // tab it shows, and takes the focus if the closed one had it.
-  SB.closePane = (paneId) => {
-    if (P.isToolPane(P.byId(state.grid, paneId))) return SB.tools.close(activeOf(paneId));
-    const { grid, into } = P.merge(state.grid, paneId);
-    if (!into) return;
-    const hadFocus = focusedPane() === paneId;
-    state.grid = grid;
-    if (hadFocus) SB.activate(P.byId(grid, into).active);
-    else { SB.renderPanes(); SB.renderTabStrip(); }
-  };
-
-  // The split shortcut and button. The focused pane's tab goes into a pane of
-  // its own when its pane holds others; otherwise a new conversation does.
-  // Beside the focused pane while there's room for another column, then below
-  // one. ('new' stands in for a new conversation while the room is measured:
-  // an id in no pane, so place treats it as a tab coming from off screen.)
-  SB.splitPane = async () => {
-    if (SB.solo || !state.activeTab || !(await SB.chatShowing())) return;
-    SB.unzoom();
-    const here = P.paneWith(state.grid, state.activeTab);
-    const take = here && here.tabs.length > 1 ? state.activeTab : null;
-    const moving = take || 'new';
-    const spots = [...new Set([here?.id, ...P.paneIds(state.grid)].filter(Boolean))];
-    const fits = zone => id => P.zones(state.grid, id, moving).includes(zone) && SB.roomFor(P.place(state.grid, moving, id, zone)).ok;
-    const side = spots.find(fits('right'));
-    const below = !side && spots.find(fits('bottom'));
-    if (!side && !below) {
-      return SB.toast(P.count(state.grid) >= P.MAX_COLS * P.MAX_ROWS ? 'Twelve is as many as there are. Close a pane first.' : SB.NO_ROOM);
-    }
-    const target = side || below;
-    const zone = side ? 'right' : 'bottom';
-    if (take) return SB.placeTab(take, target, zone);
-    const fresh = (await SB.newTab({ focus: false, reuse: false }))?.id;
-    // Refused after all (the room went while the window grew): the tab made for it goes again.
-    if (fresh && !(await SB.placeTab(fresh, target, zone))) SB.closeTab(fresh);
-  };
-
-  // Ctrl+Alt+arrow: this conversation moves into the pane that way, where it
-  // joins that pane's tabs, or at the left or right edge takes a column of its
-  // own (panes.moveToward decides; placeTab checks the room). From another view
-  // the chat is shown and settled first, as for Split. -> moved?
-  const DIRS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
-  SB.paneDir = key => DIRS[key] || null;
-  SB.movePane = async (tabId, dir) => {
-    if (SB.solo || !(await SB.chatShowing())) return false;
-    const to = P.moveToward(state.grid, tabId, dir);
-    if (to) return SB.placeTab(tabId, to.target, to.zone); // which toasts when the room's not there
-    // At the left or right edge with something to leave behind (other tabs in
-    // its pane, or a pane it shares a column with), but no fifth column: say so.
-    const own = P.paneWith(state.grid, tabId);
-    const at = own && P.find(state.grid, own.id);
-    if ((dir === 'left' || dir === 'right') && at && !P.neighbor(state.grid, own.id, dir) && (own.tabs.length > 1 || state.grid[at.c].length > 1)) {
-      SB.toast(state.grid.length >= P.MAX_COLS ? 'Four columns is as many as there are. Close a pane first.' : SB.NO_ROOM);
-    }
-    return false;
-  };
-
   // Something on top of the chat that has the keyboard: the jump-anywhere
   // palette (#paletteSheet), a dialog sheet (.card-sheet: the shortcut list, the
   // share card and the rest) or an open menu or popover (core.js anyMenuOpen,
   // which counts the slash and @ menus too).
   SB.overlayOpen = () => !!document.querySelector('.palette-sheet:not([hidden]), .card-sheet:not([hidden])') || SB.anyMenuOpen();
-
-  // ------------------------------------------------------------ where a dragged tab lands
-
-  const OUT = 24;   // px past the window's edge before letting go pops the tab out
-
-  // What letting go here would do: reorder the top strip or a pane's own
-  // strip, join a pane (on its strip, where it's dropped; in its middle, at
-  // the end), split one, pop the tab out (well outside the window), or
-  // nothing. For tab-strip.js's drag.
-  SB.dropAt = (x, y, dragId) => {
-    const w = window.innerWidth, ht = window.innerHeight;
-    if (x < -OUT || y < -OUT || x > w + OUT || y > ht + OUT) return SB.solo ? null : { kind: 'out' };
-    x = Math.min(Math.max(x, 0), w - 1);
-    y = Math.min(Math.max(y, 0), ht - 1);
-    if (y < $('tabstrip').getBoundingClientRect().bottom) return { kind: 'strip' }; // hidden while split: a zero rect
-    if (state.view !== 'chat') return null;
-    const inside = r => x >= r.left && x < r.left + r.width && y >= r.top && y < r.top + r.height;
-    for (const pane of state.grid.flat()) {
-      const p = panes.get(pane.id);
-      if (!p) continue;
-      if (P.isToolPane(pane)) { if (inside(p.el.getBoundingClientRect())) return null; continue; } // takes no conversations
-      // Its header is its strip (hidden, a zero rect, with one pane): its own
-      // tab moves along it, any other joins the pane there.
-      if (inside(p.head.getBoundingClientRect())) {
-        const before = stripBefore(p.strip, x, dragId);
-        if (pane.tabs.includes(dragId)) return { kind: 'strip', pane: pane.id, before };
-        return { kind: 'join', target: pane.id, before, rect: barAt(p.strip, before) };
-      }
-      const r = p.el.getBoundingClientRect();
-      if (!inside(r)) continue;
-      // Only where the panes would still fit on this screen.
-      const allowed = P.zones(state.grid, pane.id, dragId).filter(z => z === 'center' || SB.roomFor(P.place(state.grid, dragId, pane.id, z)).ok);
-      const zone = P.zoneAt(r, x, y, allowed);
-      if (!allowed.includes(zone)) return null; // the middle of the pane already showing it
-      return { kind: 'pane', target: pane.id, zone, rect: P.previewRect(zone, r, p.el.parentElement.getBoundingClientRect()) };
-    }
-    return null;
-  };
-
-  // The tab to land in front of on a pane's strip: the first, other than the
-  // one being dragged, whose midpoint is right of the pointer. null: the end.
-  function stripBefore(strip, x, dragId) {
-    for (const el of strip.children) {
-      if (el.dataset.tabId === dragId) continue;
-      const r = el.getBoundingClientRect();
-      if (x < r.left + r.width / 2) return el.dataset.tabId;
-    }
-    return null;
-  }
-
-  // Where on a strip a tab joining it lands, for the drop preview: a thin bar
-  // in front of `before`, or after the strip's last tab.
-  function barAt(strip, before) {
-    const s = strip.getBoundingClientRect();
-    const tabs = [...strip.children];
-    const at = tabs.find(el => el.dataset.tabId === before);
-    const last = tabs.at(-1)?.getBoundingClientRect();
-    const left = at ? at.getBoundingClientRect().left : last ? last.right : s.left;
-    return { left: Math.max(s.left, left - 2), top: s.top, width: 4, height: s.height };
-  }
-
-  // A tab dragged along its own pane's strip, while split: it moves as the
-  // pointer goes, as on the top strip (tab-strip.js); the layout keeps the order.
-  SB.reorderInPane = (tabId, before) => {
-    const pane = P.paneWith(state.grid, tabId);
-    const next = pane && P.join(state.grid, tabId, pane.id, before);
-    if (!next || next === state.grid) return;
-    state.grid = next;
-    SB.renderTabStrip();
-    SB.savePanes();
-  };
-
-  // The preview of where it will land (a pane's half, or a bar on a strip), or none.
-  SB.showDrop = (drop) => {
-    const hint = $('dropHint');
-    hint.hidden = drop?.kind !== 'pane' && drop?.kind !== 'join';
-    if (hint.hidden) return;
-    const r = drop.rect;
-    Object.assign(hint.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-  };
 
   // ------------------------------------------------------------ a window of its own
 
