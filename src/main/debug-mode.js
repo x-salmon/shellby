@@ -23,7 +23,6 @@ const MAX_LEFTOVERS = 20;
 // reproduce it (the receiver keeps lines only now). fixing: Claude is reading
 // them. cleaning: Claude is taking the logging out. leftovers: some marked
 // lines are still there. done / ended: finished, or you stopped it.
-const PHASES = ['instrumenting', 'recording', 'fixing', 'cleaning', 'leftovers', 'done', 'ended'];
 const LIVE = new Set(['instrumenting', 'recording', 'fixing', 'cleaning', 'leftovers']);
 const MARK = '🐞';
 
@@ -150,6 +149,6 @@ function view(s) {
 }
 
 module.exports = {
-  MARKER, MARK, PHASES, LIVE, MAX_LINES, MAX_BUG, PREVIEW,
+  MARKER, MARK, LIVE, MAX_LINES, MAX_BUG, PREVIEW,
   parseBug, startPrompt, evidencePrompt, cleanupPrompt, leftoversPrompt, linesFrom, keep, leftovers, baselineOf, view,
 };

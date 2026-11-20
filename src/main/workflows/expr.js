@@ -12,7 +12,6 @@ const MAX_DEPTH = 32;
 // Where a path may start. Anything else is read as a step id (`diagnose.cause`
 // means `steps.diagnose.cause`).
 const ROOTS = ['trigger', 'inputs', 'vars', 'steps', 'loop', 'run', 'now', 'today', 'secrets'];
-const SEGMENT = /^[A-Za-z_][\w-]{0,63}$/;
 const FILTERS = ['json', 'upper', 'lower', 'trim', 'length', 'first', 'last', 'join', 'default', 'lines', 'slice'];
 
 // ---------------------------------------------------------------- paths
@@ -433,7 +432,7 @@ function valuesInSingleQuotes(text) {
 
 module.exports = {
   renderPowerShell, valuesInSingleQuotes,
-  ROOTS, FILTERS, SEGMENT,
+  ROOTS, FILTERS,
   parsePath, getPath, lookup, toText, truthy,
   parseTemplate, render, resolve, templateRefs, hasTemplate,
   parseCondition, evaluate, test, conditionRefs,
