@@ -96,6 +96,10 @@ interface ShellbyPanelExtras {
   renderCrabs: any;
   starting: any;
   syncHomeMark: any;
+  // bugdex-battle-fx.js
+  battleFx: any;
+  // bugdex-battle-idle.js
+  battleIdle: any;
   // bugdex-battle.js
   battleOf: any;
   bugBattles: any;
