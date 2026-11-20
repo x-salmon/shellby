@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shellby says it: the notification, every case</title>
+<link rel="stylesheet" href="../../src/renderer/shared/fonts.css">
+<link rel="stylesheet" href="../../src/renderer/shared/tokens.css">
+<style>
+  body { margin: 0; padding: 36px 40px 60px; background: var(--abyss); color: var(--sand); font: 14px/1.5 var(--font-body); }
+  h1 { font: 26px var(--font-pixel); margin: 0 0 6px; }
+  .intro { color: var(--sand-dim); max-width: 74ch; margin: 0 0 30px; }
+  h2 { font: 18px var(--font-pixel); color: var(--glass); margin: 40px 0 4px; }
+  h2 + p { color: var(--sand-dim); font-size: 13px; margin: 0 0 14px; max-width: 74ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .cases { display: grid; gap: 18px; width: 460px; }
+  .case-label { font-size: 12px; color: var(--sand-faint); margin-bottom: 6px; }
+  .case-label b { color: var(--sand-dim); font-weight: 700; }
+
+  /* Panel stub */
+  .panel { position: relative; width: 460px; height: 640px; background: var(--ink); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .panel.wide { width: 1180px; height: 360px; }
+  .panel .hd { height: 44px; background: var(--reef); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 14px; font: 14px var(--font-pixel); color: var(--sand-dim); }
+  .panel .hd i { width: 8px; height: 8px; border-radius: 50%; background: var(--glass); }
+  .chat { padding: 28px 18px 0; display: grid; gap: 10px; opacity: .4; }
+  .chat b { display: block; height: 9px; border-radius: 4px; background: var(--reef-3); }
+  .chat b:nth-child(3n+2) { width: 78%; } .chat b:nth-child(3n) { width: 55%; margin-bottom: 18px; }
+  .composer { position: absolute; left: 12px; right: 12px; bottom: 12px; height: 72px; border-radius: 10px; background: var(--reef); border: 1px solid var(--line); }
+  .panel .say { position: absolute; left: 12px; right: 12px; bottom: 94px; }
+  .wide .say { right: auto; width: min(640px, calc(100% - 24px)); }
+
+  /* ================================================ the notification */
+  .say {
+    --acc: var(--glass);
+    display: flex; align-items: flex-end; gap: 8px;
+    max-width: 640px;               /* a wide panel doesn't make a long, thin line */
+    animation: say-in .32s var(--ease-spring);
+  }
+  .say.urgent { --acc: var(--amber); }
+  .say.danger { --acc: var(--danger); }
+  @keyframes say-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+
+  /* The crab, and what he's holding: a count of what's waiting, a spinner while a job runs. */
+  .who { position: relative; flex: none; width: 44px; height: 40px; border-radius: 10px; background: var(--reef-2); border: 1px solid var(--line); display: grid; place-items: center; }
+  .who .waiting { position: absolute; top: -7px; right: -7px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 99px; background: var(--glass); color: var(--ink); font: 700 11px/18px var(--font-body); text-align: center; border: 2px solid var(--ink); }
+  .say.working .who::after { content: ""; position: absolute; inset: -3px; border-radius: 12px; border: 2px solid transparent; border-top-color: var(--acc); border-right-color: var(--acc); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .bubble {
+    position: relative; flex: 1; min-width: 0;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
+    padding: 11px 38px 12px 14px;   /* right: room for the ✕ */
+    background: var(--reef-2);
+    border: 2px solid color-mix(in srgb, var(--acc) 55%, var(--line));
+    border-radius: 14px 14px 14px 4px;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, .5);
+    overflow: hidden;
+  }
+  /* The tail, pointing at him. */
+  .say .tail { flex: none; width: 8px; height: 10px; margin: 0 -10px 8px -2px; background: color-mix(in srgb, var(--acc) 55%, var(--line)); clip-path: polygon(100% 0, 0 100%, 100% 100%); align-self: flex-end; }
+
+  /* The words take their natural width: a short line sits beside its buttons,
+     a long one takes the whole bubble and the buttons drop below it. */
+  .msg { flex: 1 1 auto; min-width: 0; max-width: 100%; max-height: 8.4em; overflow-y: auto; overscroll-behavior: contain; }
+  .msg strong { display: block; font: 15px/1.25 var(--font-pixel); color: var(--acc); margin-bottom: 2px; overflow-wrap: anywhere; }
+  .msg p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--sand); overflow-wrap: anywhere; }
+  .msg small { display: block; margin-top: 3px; font-size: 12px; color: var(--sand-faint); }
+  .msg .tick { display: inline-block; width: 6px; height: 11px; margin: 0 8px 0 2px; vertical-align: -1px; border: solid var(--acc); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+  .acts { flex: 0 1 auto; margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 100%; }
+  .btn { font: 700 12px/1.3 var(--font-body); border-radius: var(--r-sm); padding: 6px 12px; border: 1px solid var(--coral); background: var(--coral); color: #1a0d09; box-shadow: 0 2px 0 var(--coral-deep); cursor: pointer; text-align: center; }
+  .btn:hover { background: #ff8e74; border-color: #ff8e74; }
+  .btn:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--coral-deep); }
+  .btn + .btn { background: var(--reef-3); color: var(--sand); border-color: var(--line); box-shadow: none; }
+  .btn + .btn:hover { border-color: var(--glass); }
+  .x { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; background: none; color: var(--sand-faint); border-radius: 99px; cursor: pointer; font-size: 13px; }
+  .x:hover { color: var(--sand); background: rgba(127, 214, 194, .12); }
+  :focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+
+  /* Time left drains along the bottom edge; stops while you're on it. */
+  .water { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--acc); transform-origin: left; animation: drain 8s linear infinite; }
+  .bubble:hover .water { animation-play-state: paused; }
+  .say.working .water { display: none; }
+  @keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+  svg.crab { image-rendering: pixelated; shape-rendering: crispEdges; display: block; }
+
+  .rules { margin-top: 40px; max-width: 74ch; color: var(--sand-dim); font-size: 13px; }
+  .rules li { margin-bottom: 6px; } .rules b { color: var(--sand); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .say, .water { animation: none; }
+    .water { display: none; }
+    .say.working .who::after { animation-duration: 3s; }
+  }
+</style>
+</head>
+<body>
+<h1>Shellby says it: every kind of notification</h1>
+<p class="intro">Direction 1, built around the app's real messages rather than tidy ones. Most have no title, the longest run to about 180 characters, and some carry two long buttons. The words always take the width they need first; the buttons sit beside a short line and drop below a long one.</p>
+
+<div class="row">
+  <div>
+    <div class="case-label"><b>In the panel</b>, 460 px: the longest real message, two buttons, two more waiting</div>
+    <div class="panel"><div class="hd"><i></i>Shellby</div>
+      <div class="chat"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div>
+      <div class="say">
+        <div class="who" data-crab><span class="waiting" title="2 more waiting">2</span></div><span class="tail"></span>
+        <div class="bubble">
+          <div class="msg"><p>Pull request opened for Pocket shows stale tabs. The gallery's Pack check reviews it next. Your contest entry is open in the browser: add the card and post it.</p></div>
+          <div class="acts"><button class="btn">Open it</button><button class="btn">Post your 3 comments to it</button></div>
+          <button class="x" aria-label="Dismiss">✕</button><i class="water"></i>
+        </div>
+      </div>
+      <div class="composer"></div></div>
+  </div>
+
+  <div class="cases">
+    <div><div class="case-label"><b>Short, nothing to press</b> (most notifications)</div>
+      <div class="say"><div class="who" data-crab></div><span class="tail"></span><div class="bubble">
+        <div class="msg"><p>Sentry is connected. New errors show up on Next up.</p></div>
+        <button class="x" aria-label="Dismiss">✕</button><i class="water"></i></div></div></div>
+
+    <div><div class="case-label"><b>Short with one button</b>: they share a line</div>
+      <div class="say"><div class="who" data-crab></div><span class="tail"></span><div class="bubble">
+        <div class="msg"><p>Update 0.101.0 is ready.</p></div>
+        <div class="acts"><button class="btn">Restart and update</button></div>
+        <button class="x" aria-label="Dismiss">✕</button><i class="water"></i></div></div></div>
+
+    <div><div class="case-label"><b>Failed, two long buttons</b></div>
+      <div class="say danger"><div class="who" data-crab="sad"></div><span class="tail"></span><div class="bubble">
+        <div class="msg"><p>2 copies have failing checks: pocket-stale-tabs (lint) and tide-chart (3 tests). Nothing was brought home.</p></div>
+        <div class="acts"><button class="btn">Bring them all home anyway</button><button class="btn">Ask him to fix them</button></div>
+        <button class="x" aria-label="Dismiss">✕</button><i class="water"></i></div></div></div>
+
+    <div><div class="case-label"><b>Urgent, with a title and a note</b></div>
+      <div class="say urgent"><div class="who" data-crab></div><span class="tail"></span><div class="bubble">
+        <div class="msg"><strong>GitHub needs you</strong><p>Sign in before Claude can use it in this conversation.</p><small>Your other connectors are fine.</small></div>
+        <div class="acts"><button class="btn">Sign in</button></div>
+        <button class="x" aria-label="Dismiss">✕</button><i class="water"></i></div></div></div>
+
+    <div><div class="case-label"><b>A job, working</b>: the spinner rings the crab</div>
+      <div class="say working"><div class="who" data-crab></div><span class="tail"></span><div class="bubble">
+        <div class="msg"><p>Pushing the branch and opening a draft…</p></div>
+        <button class="x" aria-label="Dismiss">✕</button><i class="water"></i></div></div></div>
+
+    <div><div class="case-label"><b>The same job, done</b>, in place</div>
+      <div class="say"><div class="who" data-crab></div><span class="tail"></span><div class="bubble">
+        <div class="msg"><p><span class="tick"></span>Draft #412 is open.</p></div>
+        <div class="acts"><button class="btn">Open on GitHub</button></div>
+        <button class="x" aria-label="Dismiss">✕</button><i class="water"></i></div></div></div>
+
+    <div><div class="case-label"><b>Emoji and a reward</b></div>
+      <div class="say"><div class="who" data-crab></div><span class="tail"></span><div class="bubble">
+        <div class="msg"><p>🪸 tidepool-api's reef: build time reached a new best. +1 polyp (today’s XP is already paid).</p></div>
+        <button class="x" aria-label="Dismiss">✕</button><i class="water"></i></div></div></div>
+  </div>
+</div>
+
+<h2>On a wide panel</h2>
+<p>Full screen on 4K, the bubble stops at 640 px so a long message stays a readable paragraph instead of one line across the screen. Short ones stay short.</p>
+<div class="panel wide"><div class="hd"><i></i>Shellby</div>
+  <div class="chat"><b></b><b></b><b></b><b></b><b></b></div>
+  <div class="say danger">
+    <div class="who" data-crab="sad"></div><span class="tail"></span>
+    <div class="bubble">
+      <div class="msg"><p>2 copies have failing checks: pocket-stale-tabs (lint) and tide-chart (3 tests). Nothing was brought home.</p></div>
+      <div class="acts"><button class="btn">Bring them all home anyway</button><button class="btn">Ask him to fix them</button></div>
+      <button class="x" aria-label="Dismiss">✕</button><i class="water"></i>
+    </div>
+  </div>
+  <div class="composer"></div></div>
+
+<ul class="rules">
+  <li><b>Words first.</b> The message takes its natural width. If it fits beside the buttons they share a line; if not, the buttons wrap below, right-aligned, and wrap again if there are two long ones.</li>
+  <li><b>No length limit that hides words.</b> Up to six lines show in full. Anything longer scrolls inside the bubble, and the time stops while you're reading it.</li>
+  <li><b>A title is optional.</b> Most notifications are just a sentence, in body type. Only ones with a title get the pixel heading in the tone colour.</li>
+  <li><b>The crab carries the state.</b> A count of what's waiting sits on his corner, a spinner rings him while a job runs, and he frowns when something failed. The colour of the bubble's edge says the tone (sea-glass, amber, red), so nothing depends on colour alone: the words say it too.</li>
+  <li><b>The ✕ never moves.</b> It's pinned to the top-right corner, so it doesn't jump around as the bubble changes size.</li>
+</ul>
+
+<script>
+  // A small pixel crab, drawn from a map: c = coral shell, d = deep, e = eye.
+  const CRAB = [
+    '..d.......d..',
+    '.dcd.....dcd.',
+    '..d..e.e..d..',
+    '...ccccccc...',
+    '..ccccccccc..',
+    '.cc.ccccc.cc.',
+    'c..c.....c..c',
+  ];
+  const SAD = CRAB.map((r, i) => (i === 2 ? '..d..d.d..d..' : r));
+  const FILL = { c: 'var(--coral)', d: 'var(--coral-deep)', e: 'var(--sand)' };
+  const ns = 'http://www.w3.org/2000/svg';
+  for (const el of document.querySelectorAll('[data-crab]')) {
+    const map = el.dataset.crab === 'sad' ? SAD : CRAB;
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 13 7');
+    svg.setAttribute('width', '33'); svg.setAttribute('height', '18');
+    svg.setAttribute('class', 'crab'); svg.setAttribute('aria-hidden', 'true');
+    map.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (!FILL[ch]) return;
+      const r = document.createElementNS(ns, 'rect');
+      r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', 1); r.setAttribute('height', 1);
+      r.setAttribute('fill', FILL[ch]); svg.append(r);
+    }));
+    el.prepend(svg);
+  }
+</script>
+</body>
+</html>
