@@ -485,7 +485,9 @@ src/main/        Electron main process
     native.js        the crab noticing what Claude Code does by itself: to-dos ticked off, a background command done, a memory, a skill's first use
   ipc/             the panel's and crab's IPC handlers, one module per area: `registerXIpc(ipcMain, shared)`;
                    index.js registers them all behind the window check (ipc-guard.js)
-  sessions.js      parallel conversations (tabs) + the critter's rolled-up mood
+  sessions.js      parallel conversations (tabs) + the critter's rolled-up mood; its methods are mixed in from session-manager/: lifecycle.js
+                   (open, close, order), turns.js (send, steer, Keep warm's ping, pause), items.js (what a session says, the review inbox),
+                   settings.js (a tab's name, mode, effort, model), shared.js (limits and helpers they share)
   ship.js          Ship it: a copy's tests, commit, secret scan, push and pull request in order, and the pull request's words (pure, deps passed in)
   session/         one Claude Code process per conversation (stream-json + control protocol): index.js its life
                    and what it says; args.js how it starts, control.js answering it, accounting.js what it costs, crew.js its helpers,
