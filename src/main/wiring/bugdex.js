@@ -8,6 +8,11 @@
 // species id and a short hash. A catch needs the code to have changed (or a
 // remedy to have run) and the change to be a fix (cheats.js), so a false
 // catch is rarer than a missed one.
+//
+// Beside it: bugdex-page.js (the book on the panel and the page's buttons),
+// bugdex-sources.js (the other places he sees a bug: outside sessions, turns,
+// dev servers, CI, a copy coming home, a push, the flaky detective),
+// bugdex-battles.js (the fights) and bugdex-reward.js (what a catch pays).
 const crypto = require('crypto');
 const path = require('path');
 const changes = require('../changes');
@@ -22,18 +27,17 @@ const { projectOf } = require('../gitinfo');
 const { activeSeasons } = require('../wardrobe/seasons');
 const { normalizeXp } = require('../progression/xp');
 const events = require('../events');
-const boards = require('../board');
 const { makeBattles } = require('./bugdex-battles');
 const { makeReward, LIVE } = require('./bugdex-reward');
 const { ciSpecies, markersLeft } = require('./bugdex-checks');
+const { makePage } = require('./bugdex-page');
+const { makeSources } = require('./bugdex-sources');
 
 // Everything that can be seen: the book's live species, and the hidden one.
 const RARITY_ORDER = { common: 0, uncommon: 1, rare: 2, legendary: 3, special: 4 };
 const PROJECT_TTL_MS = 60 * 1000;
 const MAX_TREES = 30;              // per project: trees seen, for "that's just a revert"
 const MAX_REMEDIES = 20;
-const STAY_UP_MS = 60 * 1000;      // a fixed dev server has to stay up this long
-const SERVER_FIX_WINDOW_MS = 30 * 60 * 1000;
 const GIT_MS = 5000;
 // Tools that scout rather than change anything: a 'scout' move in a battle.
 const SCOUT_TOOLS = new Set(['Read', 'Grep', 'Glob', 'LS', 'NotebookRead', 'WebFetch', 'WebSearch']);
@@ -61,8 +65,6 @@ function wireBugdex(d) {
   const trees = new Map();           // project id -> [{ tree, at }]
   const remedies = new Map();        // project id -> [{ kind, at }]
   const conflicts = new Map();       // encounter id -> { files } (the files git named)
-  const stayUp = new Map();          // dev server id -> timer
-  const fixTurns = new Map();        // dev server id -> when its fix turn ended
 
   function project(dir) {
     if (!dir) return Promise.resolve(null);
@@ -97,81 +99,9 @@ function wireBugdex(d) {
   const wasBefore = (projectId, tree, firstAt) => (trees.get(projectId) || []).some(t => t.tree === tree && t.at < firstAt);
   const remediesSince = (projectId, at) => (remedies.get(projectId) || []).filter(r => r.at >= at).map(r => r.kind);
 
-  // ---- the panel
+  // ---- the panel: the book's view, the friends' board, his buddy and the page's buttons (bugdex-page.js)
 
-  function nameMap() {
-    const out = {};
-    try { for (const p of Object.values(d.stickerState?.()?.projects || {})) if (p?.id && p.name) out[p.id] = p.name; } catch { /* no stickers yet */ }
-    for (const [id, name] of names) out[id] = name;
-    return out;
-  }
-
-  // Friends whose cards share their Bugdex (github/card.js): their reports, on your page.
-  const friendBooks = () => (d.config.get('friends')?.list || []).filter(f => f?.card?.bugdex).map(f => ({ login: f.login, bugdex: f.card.bugdex }));
-
-  // The tide event going on (events.js), and when each one is next on, for the book's event bugs.
-  function eventInfo() {
-    const where = d.seasonsWhere?.() || {};
-    const day = today();
-    const a = d.activeEvent?.();
-    const back = {};
-    for (const ev of events.EVENTS) { const at = events.backOn(ev.id, day, where); if (at) back[ev.id] = at.getTime(); }
-    return { on: a ? a.ev.id : null, back };
-  }
-
-  function view() {
-    const tabs = new Set(d.manager ? [...d.manager.tabs.keys()] : []);
-    return { ...bugdex.view(state(), Date.now(), { names: nameMap(), tabs, friends: friendBooks(), event: eventInfo() }), board: board() };
-  }
-
-  // The friends' board (board.js): only when you share your Bugdex, and someone else does too.
-  function board() {
-    if (!d.config.get('shareBugdex')) return null;
-    const friends = friendBooks();
-    if (!friends.length) return null;
-    const now = Date.now();
-    const b = boards.board({ me: { login: d.github?.view?.().login || null, month: bugdex.shared(state(), now).month }, friends, key: bugdex.monthKey(now) });
-    const r = boards.settle(d.config.get('boardLast'), b);
-    if (JSON.stringify(r.state) !== JSON.stringify(d.config.get('boardLast'))) d.config.set({ boardLast: r.state });
-    if (r.ended) monthOver(r.ended);
-    return b;
-  }
-
-  // A month on the board is over: where you finished goes in the journal, and first is a trophy.
-  function monthOver(e) {
-    d.log.info(`board: ${e.month} over, ${e.place} of ${e.of}`);
-    d.life?.remember?.('board-month', { place: `${boards.ordinal(e.place)} of ${e.of}`, month: e.month });
-    if (e.place === 1) {
-      d.stat('board-won');
-      d.send(d.panel, 'life:moment', { eyebrow: 'The friends\' board', icon: '🥇', title: `Top crab in ${e.month}`, text: `More bugs fixed than any of your ${e.of - 1} friends on the board.` });
-    }
-  }
-
-  // His favourite catch follows him round the desk (critter.js #buddy): its art, or null.
-  let buddySent = null;
-  function buddy() {
-    const baby = d.babyBuddy?.();
-    if (baby && d.config.get('bugFollower') !== false) return baby;
-    if (!on() || d.config.get('bugFollower') === false) return null;
-    const s = state();
-    const id = bugdex.favourite(s);
-    if (!id) return null;
-    const sp = speciesById(id);
-    const a = bugdex.artFor(sp, s.species[id]); // its portrait, as in the book: critter.js shrinks it to fit beside him
-    return { id, name: sp.name, ghost: sp.habitat === 'wreck', pixels: a.pixels, palette: a.palette };
-  }
-  function sendBuddy({ force = true } = {}) {
-    const b = buddy();
-    const key = JSON.stringify(b);
-    if (!force && key === buddySent) return;
-    buddySent = key;
-    if (d.critter) d.send(d.critter, 'critter:buddy', b);
-  }
-
-  const push = () => {
-    if (d.panel) d.send(d.panel, 'bugdex', view());
-    sendBuddy({ force: false }); // a new favourite (or its next stage) goes straight to the desk
-  };
+  const { view, push, openPage, buddy, sendBuddy, seen, setFavourite, friendVisited, openTab, forget } = makePage({ d, on, state, save, names, today });
 
   /** Change the book, then tell the panel. */
   function update(fn) {
@@ -197,6 +127,11 @@ function wireBugdex(d) {
 
   const { battles, battleOf, fight, fightAll, battleList, cue, endBattle } = makeBattles({ d, on, state, names });
   const reward = makeReward({ d, view: () => view(), names, openPage: id => openPage(id) });
+  // Where else he sees a bug (bugdex-sources.js): handed the seeing and catching below, which hoist.
+  const {
+    engageCi, treeSeen, changed, turnEnded, outsideStart, outsideResult, outsideWrote, serverCrashed, serverUp,
+    ciFailed, ciFixed, ciEngaged, homeResult, secretSpotted, secretIgnored, pushedClean, flakySeen, flakyFixed, auditIssues, auditPatched,
+  } = makeSources({ d, on, state, save, push, device, names, project, update, spot, catchIt, rememberTree, snapshotWithin, handle, bound });
 
   // ---- seeing
 
@@ -293,12 +228,6 @@ function wireBugdex(d) {
         if (got.counted) d.log.info(`bugdex: ${a.ev.bug} came along (${a.ev.id})`);
       } catch (err) { d.log.warn('event bug failed', err.message); }
     }, EVENT_BUG_AFTER_MS);
-  }
-
-  function openPage(id = null) {
-    d.showPanel({ focusInput: false });
-    d.send(d.panel, 'panel:view', 'bugdex');
-    if (id) d.send(d.panel, 'bugdex:focus', { id });
   }
 
   /** A passing command: does it catch anything open for it? */
@@ -490,251 +419,6 @@ function wireBugdex(d) {
     const { output, complete } = detect.fullOutput(item, tail);
     const r = detect.read({ cmd: c.command, output, isError: item.isError, complete, live: LIVE });
     return handle(r, { dir: c.dir, tabId: c.tabId, bugTree: c.bugTree });
-  }
-
-  // ---- Claude Code outside Shellby (external.js): the same, from the plugin's hooks
-
-  const outsideStarts = new Map();   // tool_use_id -> promise of the tree when it started
-  const MAX_OUTSIDE = 50;
-
-  /** A command is starting in a session outside Shellby: its tree, if it could catch something. */
-  function outsideStart({ toolUseId, start, cwd }) {
-    if (!on() || !toolUseId || !start?.key || !cwd) return;
-    if (!lifecycle.couldCatch(state()?.open, start)) return;
-    outsideStarts.set(toolUseId, snapshotWithin(cwd));
-    if (outsideStarts.size > MAX_OUTSIDE) outsideStarts.delete(outsideStarts.keys().next().value);
-  }
-
-  /** ...and finished: external.js has already read it down to a reading. */
-  function outsideResult({ toolUseId, reading, cwd }) {
-    const bugTree = outsideStarts.get(toolUseId) || null;
-    outsideStarts.delete(toolUseId);
-    return handle(reading, { dir: cwd, tabId: null, bugTree });
-  }
-
-  /** Claude wrote a file in a session outside Shellby. */
-  async function outsideWrote({ cwd }) {
-    if (!on() || !state()?.open?.length) return;
-    const p = await project(cwd);
-    if (p) update(s => bugdex.engage(s, p.id, Date.now()));
-  }
-
-  // ---- turns (wiring/sessions.js, timetrack/index.js)
-
-  /** A turn started or ended with the code at this tree: remembered, for the revert check. */
-  async function treeSeen(root, tree) {
-    if (!on()) return;
-    const p = await project(root);
-    if (p) rememberTree(p.id, tree);
-  }
-
-  /** A turn changed files in this folder: Claude's on whatever is open there. */
-  async function changed(root) {
-    if (!on() || !state()?.open?.length) return;
-    const p = await project(root);
-    if (p) update(s => bugdex.engage(s, p.id, Date.now()));
-  }
-
-  /** A turn ended in a tab: a copy's clash or a dev server's fix is being seen to. */
-  function turnEnded(tabId, item) {
-    if (!on() || item?.interrupted) return;
-    // A catch made mid-turn waits for him to be free: he usually is a moment after.
-    setTimeout(() => d.life?.jarIfFree?.(), 1500);
-    const open = state()?.open || [];
-    if (open.some(e => e.source === 'home' && e.tabId === tabId)) update(s => ({ ...s, open: s.open.map(e => (e.source === 'home' && e.tabId === tabId ? { ...e, engaged: true } : e)) }));
-    if (!item?.ok) return;
-    for (const s of d.devServers?.view?.().servers || []) {
-      if (s.fixTabId !== tabId) continue;
-      fixTurns.set(s.id, Date.now());
-      bound(fixTurns);
-      update(st => bugdex.engageKey(st, 'server', s.id));
-    }
-  }
-
-  // ---- dev servers (wiring/projects.js)
-
-  async function serverCrashed(v) {
-    if (!on() || !v?.id) return;
-    clearTimeout(stayUp.get(v.id));
-    stayUp.delete(v.id);
-    const lines = d.devServers?.fixDraft?.(v.id)?.lines || [];
-    const hit = detect.classify(lines.join('\n'), { source: 'server', live: LIVE });
-    const p = await project(v.root);
-    if (!hit || !p) return;
-    const existing = lifecycle.byKey(state().open, 'server', v.id)[0];
-    // A crash after the fix began: it failed again, so the same encounter goes on.
-    await spot({ species: existing?.species || hit.species, fp: existing?.fp || hit.fp, project: p.id, name: p.name, source: 'server', key: v.id, lang: hit.lang });
-  }
-
-  function serverUp(v) {
-    if (!on() || !v?.id) return;
-    const e = lifecycle.byKey(state().open, 'server', v.id)[0];
-    const fixedAt = fixTurns.get(v.id) || 0;
-    if (!e || !e.engaged || Date.now() - fixedAt > SERVER_FIX_WINDOW_MS) return;
-    clearTimeout(stayUp.get(v.id));
-    stayUp.set(v.id, setTimeout(() => {
-      stayUp.delete(v.id);
-      const now = (d.devServers?.view?.().servers || []).find(s => s.id === v.id);
-      const still = lifecycle.byKey(state().open, 'server', v.id)[0];
-      if (now?.status === 'up' && still) { fixTurns.delete(v.id); catchIt(still); }
-    }, STAY_UP_MS));
-  }
-
-  // ---- CI (wiring/github.js, wiring/startfrom.js)
-
-  async function ciProject(pr) {
-    if (pr.forge === 'gitlab') {
-      const root = await d.gitlabCloneOf?.(pr.host, pr.repo);
-      return root ? project(root) : null;
-    }
-    const want = String(pr.repo || '').toLowerCase();
-    const repos = d.projects ? await d.projects.localRepos().catch(() => []) : [];
-    const root = repos.find(r => r.remote && r.remote.toLowerCase() === want)?.root;
-    return root ? project(root) : null;
-  }
-
-  async function ciFailed(pr) {
-    if (!on() || !pr?.key) return;
-    const p = await ciProject(pr);
-    if (!p) return;
-    const species = ciSpecies(pr);
-    await spot({ species, fp: detect.fingerprint(species, `ci:${pr.key}`), project: p.id, name: p.name, source: 'ci', key: String(pr.key).slice(0, 200), lang: 'ci' });
-  }
-
-  async function ciFixed(pr) {
-    if (!on() || !pr?.key) return;
-    const e = lifecycle.byKey(state().open, 'ci', String(pr.key).slice(0, 200))[0];
-    // Only when Shellby took part: "Fix this build", or a push from here since it went red.
-    if (e?.engaged) catchIt(e, { move: 'tests' });
-    else if (e) update(s => bugdex.closeEncounter(s, lifecycle.encId(e)));
-  }
-
-  const ciEngaged = key => { if (on() && key) update(s => bugdex.engageKey(s, 'ci', String(key).slice(0, 200))); };
-  function engageCi(projectId) {
-    if (!state()?.open?.some(e => e.source === 'ci' && e.project === projectId)) return;
-    update(s => ({ ...s, open: s.open.map(e => (e.source === 'ci' && e.project === projectId ? { ...e, engaged: true } : e)) }));
-  }
-
-  // ---- bringing a copy home, and pushing (ipc/repo.js)
-
-  const homeKey = w => `${w.root}|${w.branch}`.toLowerCase().slice(0, 200);
-
-  async function homeResult(tabId, w, merged) {
-    if (!on() || !w?.root) return;
-    const key = homeKey(w);
-    if (merged?.conflict) {
-      const p = await project(w.root);
-      if (p) await spot({ species: 'two-headed-crab', fp: detect.fingerprint('two-headed-crab', `home:${w.branch}`), project: p.id, name: p.name, source: 'home', key, tabId, lang: 'git' });
-      return;
-    }
-    if (!merged?.ok || !merged.merged) return;
-    for (const e of lifecycle.byKey(state().open, 'home', key)) if (e.engaged) catchIt(e, { move: 'git' });
-  }
-
-  async function secretSpotted(root, kinds = []) {
-    if (!on() || !root) return;
-    const p = await project(root);
-    if (!p) return;
-    // Only the kinds of secret (an AWS key, a GitHub token): never where, never what.
-    const what = [...new Set(kinds.map(k => String(k).slice(0, 60)))].sort().join(',');
-    await spot({ species: 'leaky-clam', fp: detect.fingerprint('leaky-clam', what), project: p.id, name: p.name, source: 'push', key: path.resolve(root).toLowerCase().slice(0, 200), lang: null });
-  }
-
-  function secretIgnored(root) {
-    if (!on() || !root) return;
-    const key = path.resolve(root).toLowerCase().slice(0, 200);
-    if (state()?.open?.some(e => e.source === 'push' && e.key === key)) update(s => ({ ...s, open: lifecycle.closeKey(s.open, 'push', key).list }));
-  }
-
-  async function pushedClean(root) {
-    if (!on() || !root) return;
-    const key = path.resolve(root).toLowerCase().slice(0, 200);
-    for (const e of lifecycle.byKey(state().open, 'push', key)) if (e.engaged) catchIt(e, { move: 'git' });
-    const p = await project(root);
-    if (p) engageCi(p.id);
-  }
-
-  // ---- the flaky detective and dependency checkups (wiring/progress.js)
-
-  const flakyFp = id => detect.fingerprint('flaky-phantom', `flaky:${id}`);
-
-  /** A test flaked: the ghost is seen (and if it was caught lately, it got away). */
-  function flakySeen(p, testId) {
-    if (!on() || !p?.id) return;
-    names.set(p.id, p.name);
-    const s = state();
-    const r = bugdex.recordSeen(s, { species: 'flaky-phantom', fp: flakyFp(testId), project: p.id }, Date.now(), { device: device() });
-    save(r.state);
-    push();
-  }
-
-  /** A flaky test fixed for good (20 clean runs over 3 new versions of the code): that's the proof. */
-  function flakyFixed(p, testId, flakes = []) {
-    if (!on() || !p?.id) return;
-    names.set(p.id, p.name);
-    const days = new Set(flakes.filter(Number.isFinite).map(t => new Date(t).toDateString()));
-    const species = flakes.length >= 5 && days.size >= 3 ? 'heisenbug' : 'flaky-phantom';
-    catchIt({ species, fp: detect.fingerprint(species, `flaky:${testId}`), project: p.id, name: p.name, firstAt: Math.min(...flakes.filter(Number.isFinite), Date.now()), reruns: 1 });
-  }
-
-  function auditIssues(p) {
-    if (!on() || !p?.id) return;
-    names.set(p.id, p.name);
-    save(bugdex.recordSeen(state(), { species: 'barnacled-anchor', fp: detect.fingerprint('barnacled-anchor', 'audit'), project: p.id }, Date.now(), { device: device() }).state);
-    push();
-  }
-
-  function auditPatched(p) {
-    if (!on() || !p?.id) return;
-    names.set(p.id, p.name);
-    catchIt({ species: 'barnacled-anchor', fp: detect.fingerprint('barnacled-anchor', 'audit'), project: p.id, name: p.name, firstAt: 0, reruns: 1 });
-  }
-
-  // ---- the page (ipc/progress.js)
-
-  function seen() {
-    if (!d.config) return;
-    save(bugdex.markSeen(state()));
-    push();
-  }
-
-  function setFavourite(id) {
-    if (id != null && (typeof id !== 'string' || !speciesById(id))) return view();
-    save(bugdex.setFavourite(state(), id));
-    const v = view();
-    push();
-    return v;
-  }
-
-  /** A friend who shares their Bugdex dropped by: they leave a jar (one a day each). */
-  function friendVisited(login, theirs) {
-    if (!on()) return;
-    const species = bugdex.giftFor(state(), login, theirs, Date.now());
-    if (!species) return;
-    save(bugdex.addGift(state(), { species, from: login }, Date.now()));
-    push();
-    const sp = speciesById(species);
-    d.sayText?.(`@${login} brought a jar: ${sp.name}!`.slice(0, 60), 'visit', 5000);
-    d.send(d.panel, 'bugdex:gift', { id: species, name: sp.name, from: login });
-  }
-
-  function openTab(tabId) {
-    if (typeof tabId !== 'string' || !view().loose.some(l => l.tabId === tabId)) return;
-    d.showPanel({ focusInput: false, tabId });
-  }
-
-  async function forget() {
-    const response = await d.askOnce({
-      icon: '🫙', title: 'Start the Bugdex over?',
-      message: 'Every bug you\'ve caught, seen and evolved goes, on every PC that syncs with this one. XP and trophies you\'ve earned stay.',
-      buttons: [{ label: 'Start over', style: 'danger' }, { label: 'Keep it' }], defaultId: 1, cancelId: 1,
-    });
-    if (response !== 0) return { ok: false, canceled: true };
-    // A reset marker, not nothing: sync carries it, so other PCs start over too
-    // instead of handing the old counts back (bugdex/index.js merge).
-    save(bugdex.normalize({ resetAt: Date.now() }));
-    push();
-    return { ok: true };
   }
 
   // Main calls these from its own events and never waits: each one logs its
