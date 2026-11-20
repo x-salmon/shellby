@@ -142,25 +142,30 @@ interface ShellbyPanelExtras {
   paintTokens: any;
   restoreCodeView: any;
   resultBox: any;
-  // composer.js
+  // composer-chips.js
   applyEffort: any;
   applyModel: any;
   chooseEffort: any;
   chooseLocal: any;
   chooseModel: any;
   chooseNewEffort: any;
-  clearConversation: any;
-  composerInput: any;
   continueOnClaude: any;
+  effortCommand: any;
   EFFORTS: any;
+  modelCommand: any;
+  // composer-rewind.js
   escRewind: any;
-  hidePick: any;
-  historyKeydown: any;
   historyLink: any;
-  LOCAL_COMMANDS: any;
-  notePrompt: any;
   openBranch: any;
   openRewind: any;
+  // composer.js
+  clearConversation: any;
+  composerInput: any;
+  composerShellMode: any;
+  hidePick: any;
+  historyKeydown: any;
+  LOCAL_COMMANDS: any;
+  notePrompt: any;
   pickKeydown: any;
   runLocal: any;
   // core.js
@@ -220,6 +225,10 @@ interface ShellbyPanelExtras {
   // debug-mode.js
   renderDebug: any;
   startDebug: any;
+  // feed-blocks.js
+  attachmentChips: any;
+  troubleAction: any;
+  unbuiltDiffs: any;
   // feed-changes.js
   renderDiff: any;
   // feed-conflicts.js
@@ -229,12 +238,9 @@ interface ShellbyPanelExtras {
   // feed-native.js
   decorateTool: any;
   // feed.js
-  attachmentChips: any;
   extendTab: any;
   forkIcon: any;
   Tab: any;
-  troubleAction: any;
-  unbuiltDiffs: any;
   // files-dock.js
   filesDock: any;
   filesFollow: any;
@@ -669,6 +675,8 @@ interface ShellbyPanelExtras {
   openMemories: any;
   // toolbox-batch.js
   toolboxBatch: any;
+  // toolbox-detail.js
+  toolboxDetail: any;
   // toolbox-hooks.js
   toolboxHooks: any;
   // toolbox-mcp.js
@@ -690,6 +698,8 @@ interface ShellbyPanelExtras {
   toolboxTeam: any;
   // toolbox-tidy.js
   toolboxTidy: any;
+  // toolbox-usage.js
+  toolboxUsage: any;
   // toolbox.js
   onLearned: any;
   showToolbox: any;
