@@ -99,6 +99,10 @@ interface ShellbyPanelExtras {
   renderCrabs: any;
   starting: any;
   syncHomeMark: any;
+  // bugdex-battle-fx.js
+  battleFx: any;
+  // bugdex-battle-idle.js
+  battleIdle: any;
   // bugdex-battle.js
   battleOf: any;
   bugBattles: any;
@@ -383,6 +387,11 @@ interface ShellbyPanelExtras {
   paintTiles: any;
   // painter.js
   painter: any;
+  // pane-head.js
+  paintPaneLane: any;
+  paintPaneTray: any;
+  paneHead: any;
+  paneTrayBox: any;
   // pane-layouts.js
   applyZoom: any;
   forgetLayout: any;
@@ -397,6 +406,15 @@ interface ShellbyPanelExtras {
   unzoom: any;
   useLayout: any;
   zoomFrom: any;
+  // pane-moves.js
+  closePane: any;
+  dropAt: any;
+  movePane: any;
+  paneDir: any;
+  placeTab: any;
+  reorderInPane: any;
+  showDrop: any;
+  splitPane: any;
   // pane-room.js
   atLeastMin: any;
   chatShowing: any;
@@ -542,30 +560,21 @@ interface ShellbyPanelExtras {
   // tab-panes.js
   applyPaneSizes: any;
   carryOf: any;
-  closePane: any;
-  dropAt: any;
   focusedPane: any;
   forgetTab: any;
   goToNeeds: any;
   isShown: any;
-  movePane: any;
   nextShown: any;
   overlayOpen: any;
-  paneDir: any;
   paneEls: any;
   paneStripOf: any;
-  paneTrayBox: any;
-  placeTab: any;
   popOut: any;
   refreshJump: any;
   refreshPaneHeads: any;
   renderPanes: any;
-  reorderInPane: any;
   savePanes: any;
   settlePanes: any;
-  showDrop: any;
   showInPane: any;
-  splitPane: any;
   swapPanes: any;
   takeCarry: any;
   // tab-queue.js
@@ -636,6 +645,8 @@ interface ShellbyPanelExtras {
   stripIds: any;
   syncTabs: any;
   tryAgain: any;
+  // tank-edit.js
+  tankEditor: any;
   // tank-gauges-more.js
   tankGaugesMore: any;
   // tank-gauges.js

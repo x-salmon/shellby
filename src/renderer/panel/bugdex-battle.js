@@ -2,9 +2,11 @@
    it plays out as a tussle on the seabed: the bug and Shellby face to face on
    the sand, the text box typing out each move, the HP bar draining as failing
    tests clear, and the jar lowered on its line when the fix is proven (src/main/bugdex/
-   battle.js decides all of it; this only draws). A chip under the tabs shows
-   the fight in the conversation where it's happening; the Bugdex's "on the
-   loose" rows open it too. Nothing here is ever put in as HTML. */
+   battle.js decides all of it; this only draws: each move's look is
+   bugdex-battle-fx.js, the fillers between moves bugdex-battle-idle.js). A
+   chip under the tabs shows the fight in the conversation where it's
+   happening; the Bugdex's "on the loose" rows open it too. Nothing here is
+   ever put in as HTML. */
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
@@ -16,37 +18,7 @@
   const CHAR_MS = 18;            // the text box's typing speed
   const LINE_HOLD_MS = 650;
   const MAX_LOG = 40;
-  const IDLE_FIRST_MS = 3500;    // quiet this long between moves, and they fill the gap...
-  const IDLE_EVERY_MS = 6000;    // ...then again this often
   const IDLE_TICK_MS = 1000;
-  // What each type of bug gets up to while it waits: how it moves, and what the text box says.
-  const ANTICS = {
-    runtime: { move: 'glitch', lines: ['{n} throws a stack frame around.', '{n} rattles its call stack.'] },
-    io: { move: 'shiver', lines: ['{n} jiggles the file lock.', '{n} hides in a temp folder.'] },
-    net: { move: 'lag', lines: ['{n} is buffering…', '{n} drops a packet on purpose.'] },
-    vcs: { move: 'peek', lines: ['{n} ties another merge knot.', '{n} rewrites a little history.'] },
-    ci: { move: 'hop', lines: ['{n} turns the light red again.', '{n} waits for a runner.'] },
-    build: { move: 'puff', lines: ['{n} kicks over some rubble.', '{n} sits on a stale cache.'] },
-    types: { move: 'glitch', lines: ['{n} twists into a union type.', '{n} insists it’s any.'] },
-    py: { move: 'coil', lines: ['{n} coils into a new indent.', '{n} mixes tabs and spaces.'] },
-    sys: { move: 'puff', lines: ['{n} squeezes a little more memory.', '{n} grabs another handle.'] },
-    test: { move: 'shiver', lines: ['{n} passes. No, wait, it fails.', '{n} flickers between green and red.'] },
-    sec: { move: 'peek', lines: ['{n} leaves a door unlocked.', '{n} pinches a secret.'] },
-    ghost: { move: 'fade', lines: ['Now you see {n}…', '{n} isn’t there. Or is it?'] },
-  };
-  const WIGGLES = {
-    hop: [{ transform: 'translateY(0)' }, { transform: 'translateY(-14px)', offset: 0.35 }, { transform: 'translateY(0)', offset: 0.6 }, { transform: 'translateY(-5px)', offset: 0.8 }, { transform: 'translateY(0)' }],
-    shiver: Array.from({ length: 9 }, (_, i) => ({ transform: `translateX(${i === 8 ? 0 : i % 2 ? -3 : 3}px)` })),
-    glitch: [{ transform: 'translateX(0)', filter: 'none' }, { transform: 'translateX(5px)', filter: 'hue-rotate(90deg)', offset: 0.2 }, { transform: 'translateX(-4px)', filter: 'hue-rotate(200deg) invert(.15)', offset: 0.4 }, { transform: 'translateX(2px)', filter: 'none', offset: 0.6 }, { transform: 'translateX(0)', filter: 'none' }],
-    lag: [{ transform: 'translateX(0)' }, { transform: 'translateX(8px)', offset: 0.25 }, { transform: 'translateX(8px)', offset: 0.75 }, { transform: 'translateX(0)' }],
-    fade: [{ opacity: 1 }, { opacity: 0.1, offset: 0.3 }, { opacity: 0.1, offset: 0.65 }, { opacity: 1 }],
-    puff: [{ transform: 'scale(1)' }, { transform: 'scale(1.18, 1.1)', offset: 0.5 }, { transform: 'scale(1)' }],
-    coil: [{ transform: 'scale(1)' }, { transform: 'scale(1.1, .82)', offset: 0.3 }, { transform: 'scale(.92, 1.12) translateY(-6px)', offset: 0.6 }, { transform: 'scale(1)' }],
-    peek: [{ transform: 'rotate(0)' }, { transform: 'translateX(-4px) rotate(-10deg)', offset: 0.3 }, { transform: 'translateX(4px) rotate(10deg)', offset: 0.7 }, { transform: 'rotate(0)' }],
-  };
-  // Shellby's moment between moves: what Claude is up to, if the conversation is busy, or just waiting.
-  const THINKING = ['Claude is thinking…', 'Claude sizes up {n}…', 'Claude plans the next move…', 'Claude reads up on {n}…'];
-  const WAITING = ['{n} waits for Claude’s next move.', 'Shellby keeps a claw up.', '{n} circles on its rock.'];
   const MOVE_COLOR = {
     scout: '#8ecae6', patch: '#ffd166', tests: '#90be6d', typecheck: '#9d8cff', lint: '#f9c74f', build: '#ff9f1c',
     install: '#cdb4db', git: '#f3722c', run: '#4cc9f0', remedy: '#b8ffd9', assist: '#ff8fab',
@@ -54,7 +26,6 @@
   const RANK = { boss: 'BOSS', elite: 'DEEP FOUR', champion: 'CHAMPION' };
   // The specimen jar lowered for it: glass, a cork, a glint (the Bugdex's own jar is per bug; this one is empty).
   const JAR = { palette: { j: '#bfe9ff', c: '#b07a4a', h: '#ffffff', g: '#7fb8d6' }, pixels: ['..cccc..', '..cccc..', '.j....j.', 'jh.....j', 'jh.....j', 'j......j', 'j......j', 'jg....gj', '.jjjjjj.'] };
-  const LENS = { palette: { r: '#d9c8a0', g: '#bfe9ff', w: '#ffffff', k: '#5c4a32' }, pixels: ['.rrr...', 'rgwgr..', 'rggggr.', 'rggggr.', '.rrrr..', '....kk.', '.....kk'] };
 
   let battles = [];
   let scene = null;   // the open battle screen: { id, el, parts, shown, queue, playing, last }
@@ -69,6 +40,9 @@
   const live = b => b && !b.over;
   const hpShare = (b, hp = b.hp) => (b.max ? Math.max(0, Math.min(1, hp / b.max)) : 0);
   const hpTone = share => (share > 0.5 ? 'high' : share > 0.2 ? 'mid' : 'low');
+  // Each move's look (bugdex-battle-fx.js), and the fillers between moves (bugdex-battle-idle.js).
+  const FX = SB.battleFx({ scene: () => scene, reduced, wait, cue, setHp });
+  const IDLE = SB.battleIdle({ scene: () => scene, reduced, fx: FX, charMs: CHAR_MS });
 
   // ------------------------------------------------------------ data in
   function apply(list) {
@@ -125,7 +99,7 @@
     // Not ready until the intro has played: moves that come in meanwhile wait for it.
     scene = { id, b, parts, shown: 0, queue: [], playing: false, ready: false, back, hp: b.max, log: [] };
     // Between moves they fill the gap (fidget); gen tells a filler a real move has cut it off.
-    Object.assign(scene, { gen: 0, idleN: 0, idling: false, idleAnims: [], quietSince: Date.now(), idleTimer: setInterval(idleTick, IDLE_TICK_MS) });
+    Object.assign(scene, { gen: 0, idleN: 0, idling: false, idleAnims: [], quietSince: Date.now(), idleTimer: setInterval(IDLE.tick, IDLE_TICK_MS) });
     parts.close.focus({ preventScroll: true });
     intro(b);
   }
@@ -205,7 +179,7 @@
   async function intro(b) {
     const s = scene;
     const { parts } = s;
-    renderParty(b);
+    FX.renderParty(b);
     const rank = b.league || (b.boss ? 'boss' : null);
     cue(rank ? 'boss' : 'battle');
     if (!reduced()) {
@@ -250,7 +224,7 @@
     const { parts } = scene;
     const stripe = h('div', { class: `bb-warning ${rank}` }, h('span', { text: rank === 'champion' ? '★ CHAMPION ★' : rank === 'elite' ? 'THE DEEP FOUR' : '!! HABITAT BOSS !!' }));
     parts.fx.append(stripe);
-    shake(6, 500);
+    FX.shake(6, 500);
     await stripe.animate([{ transform: 'scaleY(0)', opacity: 0 }, { transform: 'scaleY(1)', opacity: 1, offset: 0.15 }, { transform: 'scaleY(1)', opacity: 1, offset: 0.85 }, { transform: 'scaleY(0)', opacity: 0 }], { duration: 1400 }).finished.catch(() => {});
     stripe.remove();
   }
@@ -262,8 +236,8 @@
     if (!b) return;
     scene.b = b;
     for (const m of b.moves) if (m.seq > scene.shown) { scene.queue.push(m); scene.shown = m.seq; }
-    if (scene.queue.length) stopIdle();
-    renderParty(b);
+    if (scene.queue.length) IDLE.stop();
+    FX.renderParty(b);
     if (!scene.playing) run();
   }
 
@@ -280,7 +254,7 @@
   // Jump to now: no more animation for what's queued.
   function skipAhead() {
     if (!scene) return;
-    stopIdle();
+    IDLE.stop();
     const left = scene.queue.splice(0);
     for (const m of left) note(m.line);
     const last = left.at(-1);
@@ -293,14 +267,14 @@
     switch (m.fx) {
       case 'appear': return;
       case 'ko': {
-        await say(m.line, { before: () => faint() });
+        await say(m.line, { before: () => FX.faint() });
         return;
       }
       case 'caught': return catchIt(b, m);
       case 'fled': {
         cue('fled');
         if (!reduced()) {
-          dust(p.foe);
+          FX.dust(p.foe);
           await p.foe.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-6%)', offset: 0.2 }, { transform: 'translateX(160%)' }], { duration: 700, easing: 'ease-in', fill: 'forwards' }).finished;
         }
         await say(m.line);
@@ -312,20 +286,20 @@
     const cut = m.line.indexOf('!') + 1;
     const head = cut > 0 && cut < m.line.length ? m.line.slice(0, cut) : m.line;
     await say(head, { log: false, hold: 200 });
-    const by = m.move === 'assist' ? await helperIn(m.by) : null;
+    const by = m.move === 'assist' ? await FX.helperIn(m.by) : null;
     const attacker = by || p.me;
     // The attack itself
-    if (m.move === 'scout') await scout();
-    else if (m.move === 'patch' && m.fx !== 'resist') await slash(attacker);
-    else if (m.fx !== 'resist') await beam(attacker, MOVE_COLOR[m.move] || '#ffffff', m.fx === 'finish' ? 24 : m.fx === 'crit' ? 18 : m.fx === 'super' ? 14 : 9);
+    if (m.move === 'scout') await FX.scout();
+    else if (m.move === 'patch' && m.fx !== 'resist') await FX.slash(attacker);
+    else if (m.fx !== 'resist') await FX.beam(attacker, MOVE_COLOR[m.move] || '#ffffff', m.fx === 'finish' ? 24 : m.fx === 'crit' ? 18 : m.fx === 'super' ? 14 : 9);
     // ...and how it landed
-    if (m.fx === 'resist') await resist();
-    else if (m.fx === 'miss') await dodge(m.move === 'scout');
-    else if (m.fx === 'heal') await heal();
-    else await impact(m);
+    if (m.fx === 'resist') await FX.resist();
+    else if (m.fx === 'miss') await FX.dodge(m.move === 'scout');
+    else if (m.fx === 'heal') await FX.heal();
+    else await FX.impact(m);
     setHp(m.hp);
-    if (m.strike) await strikeBack();
-    if (by) helperOut(by);
+    if (m.strike) await FX.strikeBack();
+    if (by) FX.helperOut(by);
     await say(m.line, { from: head.length });
   }
 
@@ -375,319 +349,6 @@
     scene.hp = hp;
   }
 
-  // ------------------------------------------------------------ effects
-  // Where something is, in the screen's own coordinates.
-  function centre(el) {
-    const s = scene.parts.screen.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-    return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2, w: r.width, h: r.height };
-  }
-
-  function bit(cls, x, y, style = '') {
-    const el = h('i', { class: `bb-bit ${cls}`, style: `left:${x}px;top:${y}px;${style}` });
-    scene.parts.fx.append(el);
-    return el;
-  }
-
-  const gone = a => a.finished.then(() => a.effect.target.remove(), () => a.effect.target?.remove());
-
-  function shake(px, ms) {
-    if (reduced() || !scene) return;
-    const k = Array.from({ length: 8 }, (_, i) => ({ transform: `translate(${(i % 2 ? -1 : 1) * px * (1 - i / 8)}px, ${(i % 3 - 1) * px * 0.4}px)` }));
-    scene.parts.screen.animate([...k, { transform: 'translate(0,0)' }], { duration: ms });
-  }
-
-  function flash(color = '#ffffff', ms = 220) {
-    if (reduced() || !scene) return;
-    const f = h('i', { class: 'bb-flash', style: `background:${color}` });
-    scene.parts.fx.append(f);
-    gone(f.animate([{ opacity: 0.85 }, { opacity: 0 }], { duration: ms }));
-  }
-
-  function floater(text, cls, at) {
-    if (!scene) return;
-    const el = bit(`bb-float ${cls}`, at.x, at.y - at.h * 0.4);
-    el.textContent = text;
-    if (reduced()) { setTimeout(() => el.remove(), 700); return; }
-    gone(el.animate([{ transform: 'translate(-50%, 0) scale(.6)', opacity: 0 }, { transform: 'translate(-50%, -14px) scale(1.15)', opacity: 1, offset: 0.25 }, { transform: 'translate(-50%, -26px) scale(1)', opacity: 0 }], { duration: 900, easing: 'ease-out' }));
-  }
-
-  function burst(at, color, n = 10, spread = 40) {
-    if (reduced() || !scene) return;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + Math.random() * 0.4;
-      const d = spread * (0.6 + Math.random() * 0.6);
-      const el = bit('bb-spark', at.x, at.y, `background:${color}`);
-      gone(el.animate([{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d}px)) scale(.3)`, opacity: 0 }], { duration: 500 + Math.random() * 300, easing: 'cubic-bezier(.2,.8,.2,1)' }));
-    }
-  }
-
-  async function blink(el, times = 3) {
-    if (reduced()) return;
-    await el.animate(Array.from({ length: times * 2 + 1 }, (_, i) => ({ opacity: i % 2 ? 0.1 : 1 })), { duration: times * 140, easing: 'steps(1, end)' }).finished.catch(() => {});
-  }
-
-  async function lunge(el, dir = 1) {
-    if (reduced()) return;
-    await el.animate([{ transform: 'translate(0,0)' }, { transform: `translate(${-6 * dir}px, 2px)`, offset: 0.3 }, { transform: `translate(${22 * dir}px, -10px)`, offset: 0.6 }, { transform: 'translate(0,0)' }], { duration: 420, easing: 'cubic-bezier(.3,.7,.3,1)' }).finished.catch(() => {});
-  }
-
-  async function slash(attacker) {
-    const p = scene.parts;
-    const claw = attacker === p.me ? p.crab.querySelector('.part-claw') : null;
-    if (claw && !reduced()) claw.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-18deg)' }, { transform: 'rotate(8deg)' }, { transform: 'rotate(0)' }], { duration: 420, transformOrigin: 'center' });
-    const go = lunge(attacker);
-    await wait(220);
-    const at = centre(p.foeArt);
-    if (!reduced()) {
-      for (let i = 0; i < 3; i++) {
-        const el = bit('bb-slash', at.x + (i - 1) * 10, at.y + (i - 1) * 6);
-        gone(el.animate([{ transform: 'translate(-50%,-50%) rotate(-35deg) scaleX(0)', opacity: 1 }, { transform: 'translate(-50%,-50%) rotate(-35deg) scaleX(1)', opacity: 1, offset: 0.5 }, { transform: 'translate(-50%,-50%) rotate(-35deg) scaleX(1)', opacity: 0 }], { duration: 300, delay: i * 70 }));
-      }
-    }
-    await go;
-  }
-
-  async function scout() {
-    const p = scene.parts;
-    const at = centre(p.foeArt);
-    if (reduced()) return;
-    const lens = bit('bb-lens', at.x, at.y);
-    lens.append(SB.Sprite.grid(LENS.pixels, LENS.palette, { px: 3 }));
-    await lens.animate([
-      { transform: 'translate(-90%, -40%) rotate(-10deg)', opacity: 0 },
-      { transform: 'translate(-90%, -40%) rotate(-10deg)', opacity: 1, offset: 0.15 },
-      { transform: 'translate(-10%, -70%) rotate(8deg)', offset: 0.45 },
-      { transform: 'translate(-60%, -10%) rotate(-4deg)', offset: 0.75 },
-      { transform: 'translate(-50%, -50%) rotate(0deg)', opacity: 0 },
-    ], { duration: 900, easing: 'ease-in-out' }).finished.catch(() => {});
-    lens.remove();
-    const q = bit('bb-float scout', at.x, at.y - at.h * 0.6);
-    q.textContent = '?';
-    gone(q.animate([{ transform: 'translate(-50%,0) scale(.4)', opacity: 0 }, { transform: 'translate(-50%,-8px) scale(1.2)', opacity: 1, offset: 0.4 }, { transform: 'translate(-50%,-12px) scale(1)', opacity: 0 }], { duration: 700 }));
-  }
-
-  async function beam(attacker, color, n) {
-    const p = scene.parts;
-    const go = lunge(attacker === p.me ? p.me.querySelector('.bb-me-art') : attacker, 0.5);
-    if (reduced()) { await go; return; }
-    const from = centre(attacker === p.me ? p.crab : attacker);
-    const to = centre(p.foeArt);
-    const runs = [];
-    for (let i = 0; i < n; i++) {
-      const el = bit('bb-shot', from.x, from.y - 6, `background:${color};box-shadow:0 0 6px ${color}`);
-      const wob = (i % 2 ? 1 : -1) * (6 + (i * 7) % 12);
-      runs.push(gone(el.animate([
-        { transform: 'translate(-50%,-50%) scale(.6)', opacity: 0 },
-        { transform: `translate(calc(-50% + ${(to.x - from.x) * 0.5}px), calc(-50% + ${(to.y - from.y) * 0.5 + wob}px)) scale(1)`, opacity: 1, offset: 0.5 },
-        { transform: `translate(calc(-50% + ${to.x - from.x}px), calc(-50% + ${to.y - from.y + 6}px)) scale(.8)`, opacity: 0.9 },
-      ], { duration: 420, delay: i * 30, easing: 'cubic-bezier(.4,.1,.6,1)' })));
-    }
-    await Promise.all([go, ...runs]);
-  }
-
-  async function impact(m) {
-    const p = scene.parts;
-    const at = centre(p.foeArt);
-    const heavy = m.fx === 'crit' || m.fx === 'finish';
-    const big = heavy || m.fx === 'super';
-    cue(heavy ? 'smash' : m.fx === 'super' ? 'super' : 'hit');
-    if (m.fx === 'finish') { flash('#ffffff', 420); shake(12, 640); burst(at, '#ffd23f', 26, 76); burst(at, '#ffffff', 12, 40); }
-    else if (m.fx === 'crit') { flash('#ffffff', 320); shake(9, 520); burst(at, '#ffd23f', 18, 60); }
-    else if (m.fx === 'super') { flash('#fff4d6', 200); shake(5, 380); burst(at, '#ffd166', 12, 46); }
-    else burst(at, '#ffffff', 7, 28);
-    if (m.dmg > 0) floater(`-${m.dmg}`, big ? 'dmg big' : 'dmg', at);
-    await blink(p.foeArt, big ? 4 : 2);
-  }
-
-  async function dodge(scouting) {
-    const p = scene.parts;
-    cue('miss');
-    if (scouting) return;
-    const at = centre(p.foeArt);
-    floater('MISS', 'miss', at);
-    if (reduced()) return;
-    await p.foeArt.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(18px) translateY(-4px)', offset: 0.35 }, { transform: 'translateX(18px)', offset: 0.6 }, { transform: 'translateX(0)' }], { duration: 480, easing: 'ease-out' }).finished.catch(() => {});
-  }
-
-  // The bug's turn: it lunges at the crab, who flinches (he has no HP to lose).
-  async function strikeBack() {
-    const p = scene.parts;
-    const go = lunge(p.foe, -1);
-    if (!reduced()) await wait(250);
-    cue('hit');
-    const at = centre(p.crab);
-    burst(at, '#ff7a5c', 9, 30);
-    shake(4, 300);
-    await Promise.all([go, blink(p.me.querySelector('.bb-me-art'), 2)]);
-  }
-
-  async function heal() {
-    const p = scene.parts;
-    cue('heal');
-    const at = centre(p.foeArt);
-    floater('+HP', 'heal', at);
-    if (reduced()) return;
-    for (let i = 0; i < 10; i++) {
-      const el = bit('bb-spark heal', at.x + (i - 5) * 6, at.y + at.h * 0.3);
-      gone(el.animate([{ transform: 'translate(-50%,0)', opacity: 0 }, { transform: 'translate(-50%,-10px)', opacity: 1, offset: 0.3 }, { transform: 'translate(-50%,-36px)', opacity: 0 }], { duration: 800, delay: i * 50 }));
-    }
-    await p.foeArt.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.6) drop-shadow(0 0 6px #80ed99)' }, { filter: 'brightness(1)' }], { duration: 700 }).finished.catch(() => {});
-  }
-
-  async function resist() {
-    const p = scene.parts;
-    cue('resist');
-    const at = centre(p.foeArt);
-    floater('RESIST', 'resist', at);
-    if (reduced()) return;
-    const shield = bit('bb-shield', at.x, at.y, `width:${at.w * 1.5}px;height:${at.h * 1.5}px`);
-    await gone(shield.animate([{ transform: 'translate(-50%,-50%) scale(.6)', opacity: 0 }, { transform: 'translate(-50%,-50%) scale(1.05)', opacity: 1, offset: 0.3 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, offset: 0.7 }, { transform: 'translate(-50%,-50%) scale(1.2)', opacity: 0 }], { duration: 800 }));
-  }
-
-  async function faint() {
-    const p = scene.parts;
-    setHp(0);
-    cue('faint');
-    if (reduced()) { p.foeArt.style.transform = 'rotate(180deg)'; return; }
-    await blink(p.foeArt, 3);
-    // Belly-up, the way a knocked-out fish floats.
-    p.foeArt.style.animation = 'none';
-    await p.foeArt.animate([{ transform: 'rotate(0)', filter: 'saturate(1)' }, { transform: 'rotate(180deg)', filter: 'saturate(.4)' }], { duration: 520, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'forwards' }).finished.catch(() => {});
-  }
-
-  // Pixel confetti for a badge or the Hall of Fame.
-  function confetti(n) {
-    if (reduced() || !scene) return;
-    const w = scene.parts.screen.clientWidth;
-    const colours = ['#ffd23f', '#ff7a5c', '#7fd6c2', '#9d8cff', '#ffffff', '#80ed99'];
-    for (let i = 0; i < n; i++) {
-      const el = bit('bb-confetti', Math.random() * w, -8, `background:${colours[i % colours.length]}`);
-      const drift = (Math.random() - 0.5) * 80;
-      gone(el.animate([{ transform: 'translate(0,0) rotate(0)' }, { transform: `translate(${drift}px, ${260 + Math.random() * 80}px) rotate(${360 + Math.random() * 360}deg)` }], { duration: 1600 + Math.random() * 1200, delay: Math.random() * 500, easing: 'cubic-bezier(.3,.1,.7,1)' }));
-    }
-  }
-
-  function dust(el) {
-    if (reduced()) return;
-    const at = centre(el);
-    for (let i = 0; i < 6; i++) {
-      const d = bit('bb-dust', at.x - i * 8, at.y + at.h * 0.35);
-      gone(d.animate([{ transform: 'translate(-50%,-50%) scale(.3)', opacity: 0.9 }, { transform: `translate(calc(-50% - ${10 + i * 4}px), calc(-50% - 8px)) scale(1.3)`, opacity: 0 }], { duration: 600, delay: i * 50 }));
-    }
-  }
-
-  // A crew member hops in from the edge to help, then hops back out.
-  async function helperIn(by) {
-    const p = scene.parts;
-    if (!by) return null;
-    const svg = SB.sprite(state.skin, {});
-    svg.style.filter = `hue-rotate(${Number(by.hue) || 0}deg) saturate(1.1)`;
-    const el = h('div', { class: 'bb-helper' }, svg, h('span', { class: 'bb-helper-tag', text: `${by.name} · Lv${by.level || 1}` }));
-    p.screen.insertBefore(el, p.foeHud);
-    if (!reduced()) await el.animate([{ transform: 'translate(-160%, 30%)' }, { transform: 'translate(-30%, -40%)', offset: 0.5 }, { transform: 'translate(0, 0)' }], { duration: 520, easing: 'cubic-bezier(.3,.7,.3,1)' }).finished.catch(() => {});
-    return el;
-  }
-
-  function helperOut(el) {
-    if (reduced()) { el.remove(); return; }
-    gone(el.animate([{ transform: 'translate(0,0)', opacity: 1 }, { transform: 'translate(-20%, -50%)', opacity: 1, offset: 0.4 }, { transform: 'translate(-180%, 20%)', opacity: 0 }], { duration: 600, delay: 400, easing: 'ease-in', fill: 'forwards' }));
-  }
-
-  function renderParty(b) {
-    if (!scene) return;
-    const slots = Array.from({ length: 6 }, (_, i) => b.party[i] || null);
-    scene.parts.party.replaceChildren(...slots.map(m => {
-      if (!m) return h('span', { class: 'bb-slot empty', 'aria-hidden': 'true' });
-      const svg = SB.sprite(state.skin, {});
-      svg.style.filter = `hue-rotate(${Number(m.hue) || 0}deg) saturate(1.1)`;
-      return h('span', { class: 'bb-slot', title: `${m.name} (${m.type}), level ${m.level || 1}` }, svg);
-    }));
-  }
-
-  // ------------------------------------------------------------ between moves
-  // Claude can take minutes over a turn, and moves only come with real work. So
-  // while nothing's queued they fill the gap: the bug acts up in its own way,
-  // and Shellby fidgets while Claude thinks. Never logged; a real move cuts it off.
-  function idleTick() {
-    const s = scene;
-    if (!s?.ready || s.playing || s.idling || s.queue.length || s.b?.over || document.hidden) return;
-    if (Date.now() - s.quietSince < (s.idleN ? IDLE_EVERY_MS : IDLE_FIRST_MS)) return;
-    const gen = s.gen;
-    fidget(s, gen).catch(() => {}).finally(() => {
-      if (scene !== s || s.gen !== gen) return;
-      s.idling = false;
-      s.quietSince = Date.now();
-    });
-  }
-
-  /** A real move is here: whatever filler is playing stops where it is. */
-  function stopIdle() {
-    if (!scene?.idling) return;
-    scene.gen++;
-    for (const a of scene.idleAnims) a.cancel();
-    scene.idleAnims = [];
-    scene.idling = false;
-  }
-
-  // Turn about: Shellby's moment (what Claude is up to), then the bug's.
-  async function fidget(s, gen) {
-    s.idling = true;
-    s.idleAnims = [];
-    const n = s.idleN++;
-    s.parts.screen.dataset.fillers = String(s.idleN); // how many gaps it has filled (e2e-battle)
-    const b = s.b;
-    const p = s.parts;
-    const fill = t => t.replaceAll('{n}', b.name);
-    const round = Math.floor(n / 2);
-    if (n % 2 === 0) {
-      const thinking = !!(b.tabId && state.tabs?.get(b.tabId)?.busy);
-      const pool = thinking ? THINKING : WAITING;
-      if (thinking) floater('…', 'think', centre(p.crab));
-      await Promise.all([crabFidget(round), mutter(fill(pool[round % pool.length]), gen)]);
-      return;
-    }
-    const antic = ANTICS[b.type] || ANTICS.ghost;
-    await Promise.all([wiggle(p.foeArt, WIGGLES[antic.move]), mutter(fill(antic.lines[round % antic.lines.length]), gen)]);
-  }
-
-  function crabFidget(round) {
-    const p = scene.parts;
-    const kind = round % 3;
-    if (kind === 0) {
-      const claw = p.crab.querySelector('.part-claw');
-      return wiggle(claw, [{ transform: 'rotate(0)' }, { transform: 'rotate(-20deg)' }, { transform: 'rotate(4deg)' }, { transform: 'rotate(-20deg)' }, { transform: 'rotate(0)' }], { duration: 640 });
-    }
-    // He glances back over his shell...
-    if (kind === 1) return wiggle(p.crab, [{ transform: 'scaleX(1)' }, { transform: 'scaleX(-1)', offset: 0.2 }, { transform: 'scaleX(-1)', offset: 0.7 }, { transform: 'scaleX(1)' }], { duration: 1100, easing: 'steps(1, end)' });
-    // ...or bounces on his toes.
-    return wiggle(p.me.querySelector('.bb-me-art'), WIGGLES.hop, { duration: 620, easing: 'ease-out' });
-  }
-
-  function wiggle(el, frames, opts = {}) {
-    if (!el || !scene || reduced()) return Promise.resolve();
-    const a = el.animate(frames, { duration: 760, easing: 'steps(8, end)', ...opts });
-    scene.idleAnims.push(a);
-    return a.finished.catch(() => {});
-  }
-
-  /** Type a filler line, stopping the moment a real move takes the box (gen moves on). */
-  async function mutter(line, gen) {
-    const s = scene;
-    if (!s || s.gen !== gen) return;
-    const p = s.parts;
-    p.caret.hidden = true;
-    if (reduced()) p.text.textContent = line;
-    else {
-      for (let i = 1; i <= line.length; i++) {
-        if (scene !== s || s.gen !== gen) return;
-        p.text.textContent = line.slice(0, i);
-        if (line[i - 1] !== ' ') await new Promise(r => setTimeout(r, CHAR_MS));
-      }
-    }
-    if (scene === s && s.gen === gen) p.caret.hidden = false;
-  }
-
   // ------------------------------------------------------------ the catch
   // Out cold, it's collected the Shellby way: a specimen jar lowered on a line,
   // it drifts up into it, the cork goes on, and the jar comes to rest on the rock.
@@ -695,7 +356,7 @@
     const p = scene.parts;
     const jar = h('div', { class: 'bb-jar' }, SB.Sprite.grid(JAR.pixels, JAR.palette, { px: 4 }));
     // Where it stood (its own box: the art itself is floating belly-up).
-    const stood = centre(p.foe);
+    const stood = FX.centre(p.foe);
     const rest = { x: stood.x, y: stood.y + stood.h * 0.32 };
     const hang = { x: stood.x, y: stood.y - stood.h * 0.25 };
     if (reduced()) {
@@ -707,7 +368,7 @@
     }
     // Down it comes on its line.
     cue('lower');
-    const line = bit('bb-line', hang.x, 0, 'height:0');
+    const line = FX.bit('bb-line', hang.x, 0, 'height:0');
     p.fx.append(jar);
     jar.style.cssText = `left:${hang.x}px;top:-30px`;
     await Promise.all([
@@ -722,18 +383,18 @@
     p.foeArt.style.opacity = '0';
     cue('caught');
     jar.classList.add('sealed');
-    const at = centre(jar);
-    burst(at, '#bfe9ff', 10, 34);
+    const at = FX.centre(jar);
+    FX.burst(at, '#bfe9ff', 10, 34);
     // ...and the line sets it down on the rock, then reels in.
     await Promise.all([
       jar.animate([{ top: `${hang.y}px` }, { top: `${rest.y}px` }], { duration: 520, easing: 'cubic-bezier(.5,0,.6,1)', fill: 'forwards' }).finished,
       line.animate([{ height: `${hang.y - 14}px` }, { height: `${rest.y - 14}px` }], { duration: 520, easing: 'cubic-bezier(.5,0,.6,1)', fill: 'forwards' }).finished,
     ]).catch(() => {});
-    gone(line.animate([{ height: `${rest.y - 14}px` }, { height: '0px' }], { duration: 500, delay: 150, easing: 'ease-in', fill: 'forwards' }));
+    FX.gone(line.animate([{ height: `${rest.y - 14}px` }, { height: '0px' }], { duration: 500, delay: 150, easing: 'ease-in', fill: 'forwards' }));
     for (let i = 0; i < 3; i++) {
-      const star = bit('bb-star', rest.x + (i - 1) * 16, rest.y - 18);
+      const star = FX.bit('bb-star', rest.x + (i - 1) * 16, rest.y - 18);
       star.textContent = '✦';
-      gone(star.animate([{ transform: 'translate(-50%,-50%) scale(.2)', opacity: 0 }, { transform: 'translate(-50%,-120%) scale(1.2)', opacity: 1, offset: 0.4 }, { transform: 'translate(-50%,-180%) scale(.8)', opacity: 0 }], { duration: 1000, delay: i * 120 }));
+      FX.gone(star.animate([{ transform: 'translate(-50%,-50%) scale(.2)', opacity: 0 }, { transform: 'translate(-50%,-120%) scale(1.2)', opacity: 1, offset: 0.4 }, { transform: 'translate(-50%,-180%) scale(.8)', opacity: 0 }], { duration: 1000, delay: i * 120 }));
     }
     await say(m.line);
     await showCaught(b, m);
@@ -764,7 +425,7 @@
       card.animate([{ transform: 'translate(-50%, 30%) scale(.8)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1.2)', fill: 'backwards' });
       const art = card.querySelector('.bb-reg-badge svg');
       if (art) art.animate([{ transform: 'rotateY(0)' }, { transform: 'rotateY(720deg)' }], { duration: 1400, easing: 'cubic-bezier(.2,.8,.2,1)' });
-      if (jar.fame || jar.badge) confetti(jar.fame ? 60 : 30);
+      if (jar.fame || jar.badge) FX.confetti(jar.fame ? 60 : 30);
     }
     card.querySelector('.btn.primary')?.focus({ preventScroll: true });
   }

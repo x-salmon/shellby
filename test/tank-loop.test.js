@@ -11,6 +11,7 @@ const vm = require('vm');
 
 const panelFile = name => fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'panel', name), 'utf8');
 const TANK_RENDER = panelFile('tank-render.js'); // loaded before tank.js, as in the panel
+const TANK_EDIT = panelFile('tank-edit.js');     // ...and the editor tank.js makes at load
 const TANK = panelFile('tank.js');
 const flush = () => new Promise(r => setImmediate(r));
 
@@ -51,6 +52,7 @@ function loadTank() {
     setTimeout: fn => { timers.push(fn); return timers.length; }, clearTimeout() {},
   });
   vm.runInContext(TANK_RENDER, context, { filename: 'tank-render.js' });
+  vm.runInContext(TANK_EDIT, context, { filename: 'tank-edit.js' });
   vm.runInContext(TANK, context, { filename: 'tank.js' });
   return {
     timers, paints, docListeners,
