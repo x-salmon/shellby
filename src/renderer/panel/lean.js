@@ -14,9 +14,12 @@
 (function () {
   const { h, api, state, $ } = SB;
   const TRIM_FROM = 400;   // tokens: smaller memory files aren't worth a trim
+  /** @type {Promise<any> | null} */
   let loading = null;
   let loadingSince = 0;
+  /** @type {ReturnType<typeof setInterval> | null} */
   let tick = null;         // redraws the waiting line each second, so it never looks stuck
+  /** @type {string | null} */
   let error = null;
   const busy = new Set();  // plugin ids / server names with a change in flight
 

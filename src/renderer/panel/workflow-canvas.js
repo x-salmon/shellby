@@ -52,6 +52,8 @@
     const v = saved ? { ...saved } : { x: 0, y: 0, z: 1, placed: false, auto: true, insp: 0 };
     const records = [];   // every node: { sel, btn, cell, refresh, step, place }
     const links = [];     // [from, to, kind, via]
+    /** @typedef {{ el: HTMLElement, list: any[], index: number }} Gap */
+    /** @type {Gap[]} */
     const gaps = [];      // every +: { el, list, index }
     let selected = o.sel || null;
     let justDragged = false;
@@ -97,22 +99,25 @@
       h('span', { class: 'wfc-icon', 'aria-hidden': 'true' }, o.icon(info.icon || info.type)),
       h('span', { class: 'wfc-text' }, title, sub), badge, note);
       const cell = h('div', { class: `wfc-cell k-${info.kind}`, 'data-type': info.type || '' }, btn);
-      const rec = { sel: info.sel, btn, cell, ...extra };
-      rec.refresh = next => {
-        const i = next || info;
-        title.textContent = i.title || '';
-        sub.textContent = i.sub || '';
-        sub.hidden = !i.sub;
-        badge.textContent = i.badge || '';
-        badge.hidden = !i.badge;
-        note.textContent = i.note ? `. ${i.note}` : '';
-        btn.dataset.fk = `node-${i.sel}`;
-        // Marks other code owns (problems, selection, a drag) outlive a repaint.
-        const kept = ['has-err', 'selected', 'drag-src'].filter(c => cell.classList.contains(c));
-        cell.className = `wfc-cell k-${i.kind}${i.status ? ` s-${i.status}` : ''}${i.ran ? ' ran' : ''}${i.dashed ? ' dashed' : ''}`;
-        cell.classList.add(...kept);
-        rec.removable = !!i.removable;
-        rec.sel = i.sel;
+      const rec = {
+        sel: info.sel, btn, cell, removable: false,
+        refresh: (next = null) => {
+          const i = next || info;
+          title.textContent = i.title || '';
+          sub.textContent = i.sub || '';
+          sub.hidden = !i.sub;
+          badge.textContent = i.badge || '';
+          badge.hidden = !i.badge;
+          note.textContent = i.note ? `. ${i.note}` : '';
+          btn.dataset.fk = `node-${i.sel}`;
+          // Marks other code owns (problems, selection, a drag) outlive a repaint.
+          const kept = ['has-err', 'selected', 'drag-src'].filter(c => cell.classList.contains(c));
+          cell.className = `wfc-cell k-${i.kind}${i.status ? ` s-${i.status}` : ''}${i.ran ? ' ran' : ''}${i.dashed ? ' dashed' : ''}`;
+          cell.classList.add(...kept);
+          rec.removable = !!i.removable;
+          rec.sel = i.sel;
+        },
+        ...extra,
       };
       rec.refresh();
       if (info.at && o.register) {
@@ -447,6 +452,7 @@
       const btn = e.currentTarget;
       const sx = e.clientX;
       const sy = e.clientY;
+      /** @type {ReturnType<typeof beginDrag> | null} */
       let drag = null;
       btn.setPointerCapture(e.pointerId);
       const move = ev => {
@@ -482,7 +488,7 @@
       rec.cell.classList.add('drag-src');
       const ghost = h('div', { class: 'wfc-ghost-node', 'aria-hidden': 'true' }, rec.btn.querySelector('.wfc-icon').cloneNode(true), h('span', { text: rec.btn.querySelector('.wfc-title').textContent }));
       document.body.append(ghost);
-      const drag = { rec, targets, ghost, hot: null, done: false };
+      const drag = { rec, targets, ghost, hot: /** @type {Gap | null} */ (null), done: false };
       drag.onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishDrag(drag, false); } };
       document.addEventListener('keydown', drag.onKey, true);
       return drag;
@@ -496,6 +502,7 @@
       const ex = ev.clientX < s.left + EDGE_PAN ? 1 : ev.clientX > s.right - EDGE_PAN ? -1 : 0;
       const ey = ev.clientY < s.top + EDGE_PAN ? 1 : ev.clientY > s.top + visibleHeight() - EDGE_PAN ? -1 : 0;
       if (ex || ey) { v.x += ex * EDGE_SPEED; v.y += ey * EDGE_SPEED; apply(); }
+      /** @type {Gap | null} */
       let best = null;
       let bestD = DROP_REACH;
       for (const g of drag.targets) {

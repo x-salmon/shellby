@@ -8,10 +8,13 @@
   const RARITY = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
   let slot = 'hat';
   let mood = 'idle';
-  let tryOn = null;      // { slot, key } while hovering a tile
-  let stageFx = null;
+  /** @type {{ slot: string, key: string | null } | null} */
+  let tryOn = null;      // while hovering a tile (key null: the slot's None)
+  /** @type {any} */
+  let stageFx = null;    // the stage's effect layer (shared/effects.js mount)
 
   const wd = () => state.wardrobe;
+  const slotButtons = () => /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#wdSlots [data-slot]'));
 
   // ------------------------------------------------------------ helpers
   function itemsFor(s) {
@@ -75,11 +78,12 @@
   // ------------------------------------------------------------ stage
   function renderStage() {
     const w = wd();
-    const outfit = outfitWith(tryOn);
-    const skin = tryOn?.slot === 'skin' ? state.skins.find(s => s.id === tryOn.key) || state.skin : state.skin;
-    const shell = tryOn?.slot === 'home' ? shellFor(tryOn.key) : state.outfit?.home || null;
+    const trying = tryOn;
+    const outfit = outfitWith(trying);
+    const skin = trying?.slot === 'skin' ? state.skins.find(s => s.id === trying.key) || state.skin : state.skin;
+    const shell = trying?.slot === 'home' ? shellFor(trying.key) : state.outfit?.home || null;
     // Stickers belong to the shell (and skin) he's wearing, so trying on another goes bare.
-    const stickers = tryOn?.slot === 'home' || tryOn?.slot === 'skin' ? [] : state.outfit?.stickers || [];
+    const stickers = trying?.slot === 'home' || trying?.slot === 'skin' ? [] : state.outfit?.stickers || [];
     const svg = SB.Sprite.build(skin, { accessories: renderedAccessories(outfit), shell, stickers, fit: false });
     $('wdCrab').replaceChildren(svg);
     const stage = $('wdStage');
@@ -93,7 +97,7 @@
     if (home) bits.unshift(home.name);
     const talking = voiceFor(w?.voice);
     if (talking) bits.push(`💬 ${talking.name}`);
-    $('wdCaption').textContent = tryOn?.slot === 'voice' ? voiceCaption(voiceFor(tryOn.key)) : tryOn ? `Trying on: ${(itemsFor(tryOn.slot).find(i => (i.key || i.id) === tryOn.key) || {}).name || 'nothing'}` : bits.length ? bits.join(' · ') : 'Just the shell';
+    $('wdCaption').textContent = trying?.slot === 'voice' ? voiceCaption(voiceFor(trying.key)) : trying ? `Trying on: ${(itemsFor(trying.slot).find(i => (i.key || i.id) === trying.key) || {}).name || 'nothing'}` : bits.length ? bits.join(' · ') : 'Just the shell';
   }
 
   // ------------------------------------------------------------ voices
@@ -164,10 +168,10 @@
     }, h('span', { class: 'wd-art none-art', text: '∅' }), h('span', { class: 'wd-name', text: 'None' }));
     // Unlocked first, then by rarity; locked items stay visible as goals.
     const order = { common: 0, rare: 1, epic: 2, legendary: 3 };
-    const sorted = [...items].sort((a, b) => (!!a.locked - !!b.locked) || (order[a.rarity] ?? 0) - (order[b.rarity] ?? 0));
+    const sorted = [...items].sort((a, b) => (Number(!!a.locked) - Number(!!b.locked)) || (order[a.rarity] ?? 0) - (order[b.rarity] ?? 0));
     grid.replaceChildren(...[none, ...sorted.map(tile)].filter(Boolean));
     $('wdHint').hidden = !(slot === 'voice' && !items.length);
-    document.querySelectorAll('#wdSlots [data-slot]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.slot === slot)));
+    slotButtons().forEach(b => b.setAttribute('aria-selected', String(b.dataset.slot === slot)));
     refreshBadge();
   }
 
@@ -299,7 +303,7 @@
     // New stickers (stickers.js), finds (together.js) and bugs in the Bugdex (bugdex.js) too.
     $('wardrobeBadge').hidden = !fresh && !state.stickers?.unseen?.length && !state.life?.finds?.unseen?.length && !state.bugdex?.unseen?.length;
     $('markSeenBtn').hidden = !fresh;
-    document.querySelectorAll('#wdSlots [data-slot]').forEach(b => b.classList.toggle('has-new', itemsFor(b.dataset.slot).some(i => i.isNew && !i.locked)));
+    slotButtons().forEach(b => b.classList.toggle('has-new', itemsFor(b.dataset.slot).some(i => i.isNew && !i.locked)));
   };
 
   // Acknowledge new items (by key; homes by shell id): hovering one, "Mark all
@@ -362,10 +366,12 @@
   }
 
   // ------------------------------------------------------------ wiring
-  document.querySelectorAll('#wdSlots [data-slot]').forEach(b => b.addEventListener('click', () => { slot = b.dataset.slot; tryOn = null; renderGrid(); renderStage(); }));
-  document.querySelectorAll('.stage-moods [data-mood]').forEach(b => b.addEventListener('click', () => {
-    mood = b.dataset.mood;
-    document.querySelectorAll('.stage-moods [data-mood]').forEach(x => {
+  // The slot tabs and the mood buttons each carry their value in a data attribute, so it's always there.
+  slotButtons().forEach(b => b.addEventListener('click', () => { slot = /** @type {string} */ (b.dataset.slot); tryOn = null; renderGrid(); renderStage(); }));
+  const moodButtons = () => /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.stage-moods [data-mood]'));
+  moodButtons().forEach(b => b.addEventListener('click', () => {
+    mood = /** @type {string} */ (b.dataset.mood);
+    moodButtons().forEach(x => {
       x.classList.toggle('on', x === b);
       x.setAttribute('aria-pressed', String(x === b));
     });
@@ -379,7 +385,7 @@
   $('brandBtn').addEventListener('click', () => SB.setView('wardrobe'));
   $('brandLevel').addEventListener('click', () => SB.setView('trophies'));
   // His screen's tabs, the Paint and Stickers row on Outfits, and their pages' way back.
-  document.querySelectorAll('.shellby-tabs [data-goto], .wd-make [data-goto], .back-btn[data-goto]').forEach(b => b.addEventListener('click', () => SB.setView(b.dataset.goto)));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.shellby-tabs [data-goto], .wd-make [data-goto], .back-btn[data-goto]')).forEach(b => b.addEventListener('click', () => SB.setView(b.dataset.goto)));
   $('seasonalToggle').addEventListener('change', async e => applyView(await api.setWardrobeOptions({ seasonalAuto: e.target.checked })));
   $('crewToggle').addEventListener('change', async e => applyView(await api.setWardrobeOptions({ crewOutfits: e.target.checked })));
   $('unlockAllToggle').addEventListener('change', async e => applyView(await api.setWardrobeOptions({ unlockAll: e.target.checked })));
@@ -405,7 +411,7 @@
   // Drop a pack .json onto the Wardrobe to install it (instead of attaching it to a task).
   window.addEventListener('drop', e => {
     if (!['wardrobe', 'trophies'].includes(state.view)) return;
-    const paths = api.pathsForFiles(e.dataTransfer.files).filter(p => /\.json$/i.test(p));
+    const paths = api.pathsForFiles(e.dataTransfer?.files).filter(p => /\.json$/i.test(p)); // the preload reads none as no files
     if (!paths.length) return;
     e.preventDefault();
     e.stopImmediatePropagation();

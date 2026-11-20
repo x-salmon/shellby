@@ -41,8 +41,10 @@
   function open(el, item) {
     const perm = isPerm(item.type);
     let rule = item.rule || '';
-    let shown = null;        // the last preview: { file, where, added, fresh }
+    /** @type {any} */
+    let shown = null;        // the last preview (main's lessonPreview): { file, where, added, fresh }
     let asking = 0;          // the newest preview asked for, so a slow one can't land late
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
     let wordedBy = '';       // the note when a local model worded it, kept until you change the words
 

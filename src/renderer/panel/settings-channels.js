@@ -7,7 +7,8 @@
   const T = window.ShellbySettingsText;
 
   // ---------------------------------------------------------------- telling you elsewhere
-  let channels = null;
+  /** @type {any} */
+  let channels = null; // main's channels view (channels/index.js)
   // The subscribe link as pixel art: ink modules on sand, with the 4-module
   // quiet zone a phone camera needs to find the code.
   function drawQr(rows) {

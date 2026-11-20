@@ -117,6 +117,7 @@
 
   function markdown(text) {
     const box = h('div', { class: 'md' });
+    /** @type {HTMLElement | null} */
     let list = null;
     for (const b of L.markdown(text)) {
       if (b.t === 'li' || b.t === 'oli') {
@@ -137,6 +138,10 @@
 
   // ---------------------------------------------------------------- a diff
   // onRow(row): a tap on a line (a word about it goes back as a reply, pocket-tab.js).
+  /**
+   * @param {{ path: string, hunks: any[], binary: boolean }} file
+   * @param {{ onRow?: ((row: any) => void) | null }} [opts]
+   */
   function diffFile(file, { onRow = null } = {}) {
     if (file.binary) return h('p', { class: 'muted small pad', text: 'A binary file: nothing to show on a phone.' });
     if (!file.hunks.length) return h('p', { class: 'muted small pad', text: 'No line changes (a rename or a mode change).' });

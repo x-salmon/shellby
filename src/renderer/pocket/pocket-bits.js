@@ -6,6 +6,7 @@
 (function (root) {
   root.PocketBits = ({ S, L, D, N, h, icon, toast, buzz, act, actButton }) => {
     // after(): once an answer went (the prompt screen goes back to the beach).
+    /** @param {(() => void) | null} [after] */
     function questionSheet(p, after = null) {
       return { label: 'Question', tall: true, build: close => {
         const done = () => { close(); after?.(); };
@@ -58,6 +59,7 @@
     }
 
     // A plan, in full. Approve stays shut until you've scrolled to the end; Keep planning sends your notes.
+    /** @param {(() => void) | null} [after] */
     function planSheet(p, after = null) {
       return { label: 'The plan', tall: true, build: closeSheet => {
         const close = () => { closeSheet(); after?.(); };
@@ -122,7 +124,7 @@
       const W = 1080, H = 1080;
       const c = document.createElement('canvas');
       c.width = W; c.height = H;
-      const g = c.getContext('2d');
+      const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
       g.fillStyle = '#071012'; g.fillRect(0, 0, W, H);
       const img = new Image();
       img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
@@ -159,6 +161,7 @@
     function voiceButton(box) {
       const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!Rec) return null;
+      /** @type {any} */ // the browser's SpeechRecognition, which the dom lib doesn't type
       let rec = null;
       const b = h('button', { type: 'button', class: 'btn ghost slim', 'aria-pressed': 'false' }, icon('mic'), h('span', { class: 'btn-label', text: 'Speak' }));
       const done = () => { rec = null; b.setAttribute('aria-pressed', 'false'); b.querySelector('.btn-label').textContent = 'Speak'; };
@@ -188,7 +191,7 @@
       const scale = Math.min(1, PHOTO_MAX / Math.max(bmp.width, bmp.height));
       const c = document.createElement('canvas');
       c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
-      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      /** @type {CanvasRenderingContext2D} */ (c.getContext('2d')).drawImage(bmp, 0, 0, c.width, c.height);
       bmp.close?.();
       return new Promise(res => c.toBlob(res, 'image/jpeg', 0.85));
     }
@@ -262,8 +265,8 @@
     // A lock that arrives once it's no longer wanted (the conversation closed,
     // the app went to the back) is let go at once, and only one is ever asked for at a time.
     const wake = {
-      lock: null,
-      asking: null,
+      lock: /** @type {WakeLockSentinel | null} */ (null),
+      asking: /** @type {Promise<WakeLockSentinel | null> | null} */ (null),
       can: () => 'wakeLock' in navigator,
       wanted: () => N.store.get(AWAKE_KEY) === '1',
       still: () => wake.wanted() && document.visibilityState === 'visible' && !!S.screen?.tabId,

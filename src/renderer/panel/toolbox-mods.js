@@ -18,7 +18,8 @@
   const fresh = (map, m) => { const got = map.get(m.id); return got && got.stamp === m.stamp ? got : null; };
   const busy = new Map();    // id -> what it's doing ('check', 'switch', 'test', 'remove')
   const openRows = new Set();
-  let form = null;           // { name, idea, error, sending } while New mod is open
+  /** @type {{ name: string, idea: string, error?: string, sending?: boolean } | null} */
+  let form = null;           // while New mod is open
 
   const mods = () => state.toolbox?.mods || [];
   const find = id => mods().find(m => m.id === id) || null;
@@ -50,6 +51,7 @@
   }
 
   // A failed check is said in the row, so it doesn't toast as well.
+  /** @param {any} m @param {string | null} [sel] the row's button to put the keyboard back on */
   const check = (m, sel = null) => act(m.id, 'check', async () => {
     const r = await api.checkMod(m.id);
     reports.set(m.id, r?.ok ? { stamp: r.stamp, report: r.report } : { stamp: m.stamp, error: r?.error || "Couldn't check it." });
@@ -267,7 +269,7 @@
       pane.dataset.mounted = key;
     }
     const items = mods().filter(m => !q || m.name.toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q))
-      .sort((a, b) => (isNew(b) - isNew(a)) || (b.enabled - a.enabled) || a.name.localeCompare(b.name));
+      .sort((a, b) => (Number(isNew(b)) - Number(isNew(a))) || (b.enabled - a.enabled) || a.name.localeCompare(b.name));
     const refocus = keepFocus($('toolList'));
     $('toolList').replaceChildren(...(items.length ? items.map(row) : [emptyState(q)]));
     refocus();
@@ -276,12 +278,12 @@
   // A redraw (a rescan landing after a switch) replaces every row: put the
   // keyboard back on the same button of the same row.
   function keepFocus(list) {
-    const a = document.activeElement;
-    const li = a && list.contains(a) ? a.closest('.tool-item[data-key]') : null;
+    const a = /** @type {HTMLElement | null} */ (document.activeElement);
+    const li = a && list.contains(a) ? /** @type {HTMLElement | null} */ (a.closest('.tool-item[data-key]')) : null;
     if (!li) return () => {};
-    const nth = [...li.querySelectorAll('button')].indexOf(a);
+    const nth = [...li.querySelectorAll('button')].indexOf(/** @type {HTMLButtonElement} */ (a));
     return () => {
-      const again = [...list.querySelectorAll('.tool-item[data-key]')].find(r => r.dataset.key === li.dataset.key);
+      const again = [.../** @type {NodeListOf<HTMLElement>} */ (list.querySelectorAll('.tool-item[data-key]'))].find(r => r.dataset.key === li.dataset.key);
       again?.querySelectorAll('button')[nth]?.focus({ preventScroll: true });
     };
   }

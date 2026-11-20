@@ -277,6 +277,7 @@
   function cloneFor(projects, folder) {
     const want = folderKey(folder);
     if (!want || !Array.isArray(projects)) return null;
+    /** @type {{ project: any, clone: any, len: number } | null} */
     let best = null;
     for (const project of projects) {
       for (const clone of project?.local || []) {

@@ -21,6 +21,7 @@
     function loaded({ title, active = 'more', back = '#/more', backLabel = 'More', name, body = {}, draw }) {
       const scroll = h('div', { class: 'scroll' });
       const el = h('div', { class: 'screen' }, topbar({ back, backLabel }), h('div', { class: 'offline-slot' }), scroll, dock(active));
+      /** @type {Record<string, any> | null} */ // the PC's answer, or { error }
       let data = null;
       let asked = false;
       let drawnMay = null;
@@ -68,6 +69,7 @@
         h('span', { class: 'card-m', text: sub }));
       // The cards are redrawn only when the focus or the rights change: redrawing on
       // each push from the PC threw the list back to the top, so it wouldn't scroll.
+      /** @type {string | null} */
       let drawn = null;
       function update() {
         el.replaceChild(topbar(), el.firstChild);

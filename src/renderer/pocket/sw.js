@@ -6,6 +6,31 @@
    that it never touches /pocket/v1: what Shellby is doing always comes live
    from the PC. */
 'use strict';
+
+/**
+ * The worker's own globals, as far as this file uses them. The typecheck reads
+ * the page's dom lib (the worker lib can't sit beside it), which knows none of these.
+ * @typedef {Event & { waitUntil(p: Promise<unknown>): void }} ExtendableEvent
+ * @typedef {ExtendableEvent & { request: Request, respondWith(r: Response | Promise<Response>): void }} FetchEvent
+ * @typedef {ExtendableEvent & { data: { json(): any, text(): string } | null }} PushEvent
+ * @typedef {ExtendableEvent & { notification: Notification, action: string }} NotificationEvent
+ * @typedef {{ url: string, focused: boolean, visibilityState: string, focus(): Promise<unknown>, postMessage(m: unknown): void }} WindowClient
+ * @typedef {{ claim(): Promise<void>, matchAll(q?: { type?: string, includeUncontrolled?: boolean }): Promise<WindowClient[]>, openWindow(url: string): Promise<unknown> }} Clients
+ * @typedef {NotificationOptions & { actions?: { action: string, title: string }[], renotify?: boolean, timestamp?: number }} SwNotificationOptions
+ * @typedef {{
+ *   addEventListener(type: 'install' | 'activate', fn: (e: ExtendableEvent) => void): void,
+ *   addEventListener(type: 'fetch', fn: (e: FetchEvent) => void): void,
+ *   addEventListener(type: 'push', fn: (e: PushEvent) => void): void,
+ *   addEventListener(type: 'notificationclick', fn: (e: NotificationEvent) => void): void,
+ *   skipWaiting(): Promise<void>,
+ *   clients: Clients,
+ *   location: Location,
+ *   navigator: Navigator,
+ *   registration: { showNotification(title: string, options?: SwNotificationOptions): Promise<void> },
+ * }} SwScope
+ */
+const sw = /** @type {SwScope} */ (/** @type {unknown} */ (self));
+
 const CACHE = 'shellby-pocket-7';
 // A tap, kept for a moment: a phone can drop a message to an app it has
 // paused, and an iPhone may open the start page instead of the URL. The app
@@ -34,26 +59,26 @@ const SHELL = [
 ];
 const KEEP = [CACHE, TAPPED, KEY, SHARED, PAGES];
 
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting()));
+sw.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => sw.skipWaiting()));
 });
 
 // Older copies go, and so does anything in this one the app no longer uses.
-self.addEventListener('activate', e => {
+sw.addEventListener('activate', e => {
   e.waitUntil((async () => {
     await Promise.all((await caches.keys()).filter(k => !KEEP.includes(k)).map(k => caches.delete(k)));
     try {
       const cache = await caches.open(CACHE);
       for (const req of await cache.keys()) if (!SHELL.includes(new URL(req.url).pathname)) await cache.delete(req);
     } catch { /* tidied next time */ }
-    await self.clients.claim();
+    await sw.clients.claim();
   })());
 });
 
 // The PC first, so an update to Shellby reaches the phone; the copy here when it's asleep.
-self.addEventListener('fetch', e => {
+sw.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== sw.location.origin) return;
   if (e.request.method === 'POST' && url.pathname === '/share') { e.respondWith(takeShare(e.request)); return; }
   // A page's files (/pages/<cap>/) always come live from the PC: a page never runs from a copy here.
   if (e.request.method !== 'GET' || url.pathname.startsWith('/pocket/') || url.pathname.startsWith('/pages/')) return;
@@ -75,7 +100,7 @@ self.addEventListener('fetch', e => {
 async function takeShare(req) {
   // A share comes from the phone itself; a form on some web page posting here
   // is another site's words, so nothing of it is kept.
-  if (req.headers.get('sec-fetch-site') === 'cross-site') return Response.redirect(new URL('/', self.location.origin).href, 303);
+  if (req.headers.get('sec-fetch-site') === 'cross-site') return Response.redirect(new URL('/', sw.location.origin).href, 303);
   try {
     const form = await req.formData();
     const words = ['title', 'text', 'url'].map(k => form.get(k)).filter(v => typeof v === 'string' && v.trim()).map(v => v.trim());
@@ -86,10 +111,11 @@ async function takeShare(req) {
     for (const [i, f] of photos.entries()) await kept.put(`${SHARED_URL}/${i}`, new Response(f, { headers: { 'content-type': f.type } }));
     await kept.put(SHARED_URL, new Response(JSON.stringify({ text, photos: photos.length, at: Date.now() }), { headers: { 'content-type': 'application/json' } }));
   } catch { /* the app opens on a new task without it */ }
-  return Response.redirect(new URL('/#/share', self.location.origin).href, 303);
+  return Response.redirect(new URL('/#/share', sw.location.origin).href, 303);
 }
 
-self.addEventListener('push', e => {
+sw.addEventListener('push', e => {
+  /** @type {Record<string, any>} */ // what the PC sent, read as JSON
   let m = {};
   try { m = e.data ? e.data.json() : {}; } catch { m = { title: 'Shellby', body: e.data ? e.data.text() : '' }; }
   const url = typeof m.url === 'string' && m.url.startsWith('/') ? m.url : '/';
@@ -98,9 +124,9 @@ self.addEventListener('push', e => {
   const answer = m.answer && ID.test(String(m.answer.tabId)) && ID.test(String(m.answer.requestId)) ? { tabId: m.answer.tabId, requestId: m.answer.requestId } : null;
   e.waitUntil((async () => {
     if (Number.isFinite(m.badge)) {
-      try { if (m.badge > 0) await self.navigator.setAppBadge?.(m.badge); else await self.navigator.clearAppBadge?.(); } catch { /* no badges here */ }
+      try { if (m.badge > 0) await sw.navigator.setAppBadge?.(m.badge); else await sw.navigator.clearAppBadge?.(); } catch { /* no badges here */ }
     }
-    await self.registration.showNotification(String(m.title || 'Shellby').slice(0, 120), {
+    await sw.registration.showNotification(String(m.title || 'Shellby').slice(0, 120), {
       body: String(m.body || '').slice(0, 600),
       tag,
       // "Working on it" sits quietly; the "done" that replaces it (same tag) buzzes.
@@ -116,9 +142,9 @@ self.addEventListener('push', e => {
   })());
 });
 
-const sameOrigin = asked => (typeof asked === 'string' && asked.startsWith('/') && new URL(asked, self.location.origin).origin === self.location.origin ? asked : '/');
+const sameOrigin = asked => (typeof asked === 'string' && asked.startsWith('/') && new URL(asked, sw.location.origin).origin === sw.location.origin ? asked : '/');
 
-self.addEventListener('notificationclick', e => {
+sw.addEventListener('notificationclick', e => {
   e.notification.close();
   const url = sameOrigin(e.notification.data?.url);
   const answer = e.notification.data?.answer;
@@ -131,8 +157,8 @@ async function openApp(url) {
     const kept = await caches.open(TAPPED);
     await kept.put(TAPPED_KEY, new Response(JSON.stringify({ url, at: Date.now() }), { headers: { 'content-type': 'application/json' } }));
   } catch { /* the message below still goes */ }
-  const open = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
-    .filter(c => new URL(c.url).origin === self.location.origin);
+  const open = (await sw.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+    .filter(c => new URL(c.url).origin === sw.location.origin);
   // The one you were looking at, if there's more than one.
   const app = open.find(c => c.focused) || open.find(c => c.visibilityState === 'visible') || open[0];
   if (app) {
@@ -140,13 +166,14 @@ async function openApp(url) {
     app.postMessage({ open: url });
     return;
   }
-  try { await self.clients.openWindow(url); } catch { /* nothing to open */ }
+  try { await sw.clients.openWindow(url); } catch { /* nothing to open */ }
 }
 
 // Allow or Deny from the notification's own button, under the same checks as
 // the app's (the PC decides). When it doesn't go, a notification says why, and
 // a tap on that one opens the prompt in the app.
 async function answerFromHere(answer, decision, url) {
+  /** @type {{ ok?: boolean, error?: string } | null} */
   let said = null;
   try {
     const res = await (await caches.open(KEY)).match(KEY_URL);
@@ -162,7 +189,7 @@ async function answerFromHere(answer, decision, url) {
     }
   } catch { said = null; }
   if (said?.ok) return;
-  await self.registration.showNotification('Shellby', {
+  await sw.registration.showNotification('Shellby', {
     body: said?.error ? `${said.error} Tap to open it.` : 'That didn’t reach your PC. Tap to answer it in the app.',
     tag: `ask-${answer.tabId}`,
     icon: '/icons/icon-192.png',

@@ -345,7 +345,7 @@
       if (oli) { flush(); out.push({ t: 'oli', n: Number(oli[1]), runs: inline(oli[2]) }); continue; }
       const quote = /^\s*>\s?(.*)$/.exec(line);
       if (quote) { flush(); out.push({ t: 'quote', runs: inline(quote[1]) }); continue; }
-      if (/^\s*([-*_])\s*\1\s*\1[\s\1]*$/.test(line)) { flush(); out.push({ t: 'hr' }); continue; }
+      if (/^\s*([-*_])\s*\1\s*\1(?:\s|\1)*$/.test(line)) { flush(); out.push({ t: 'hr' }); continue; }
       para.push(line.trim());
     }
     flush();
@@ -372,12 +372,24 @@
   // ---------------------------------------------------------------- a diff
 
   /**
+   * @typedef {{ kind: 'add' | 'del' | 'ctx', text: string, a: number | null, b: number | null }} DiffRow
+   * @typedef {{ header: string, rows: DiffRow[] }} DiffHunk
+   * @typedef {{ path: string, hunks: DiffHunk[], binary: boolean }} DiffFile
+   */
+
+  /**
    * A unified diff -> files of hunks of rows.
    *   [{ path, hunks: [{ header, rows: [{ kind: 'add' | 'del' | 'ctx', text, a, b }] }], binary }]
+   * @returns {DiffFile[]}
    */
   function parsePatch(patch) {
+    /** @type {DiffFile[]} */
     const files = [];
-    let file = null, hunk = null, a = 0, b = 0;
+    /** @type {DiffFile | null} */
+    let file = null;
+    /** @type {DiffHunk | null} */
+    let hunk = null;
+    let a = 0, b = 0;
     for (const line of String(patch ?? '').split('\n')) {
       if (line.startsWith('diff --git ')) {
         const m = / b\/(.+)$/.exec(line);
@@ -487,7 +499,9 @@
   /** The base64url VAPID key -> the bytes pushManager.subscribe wants. */
   function keyBytes(b64) {
     const s = String(b64 || '').replace(/-/g, '+').replace(/_/g, '/');
-    const bin = typeof atob === 'function' ? atob(s + '='.repeat((4 - (s.length % 4)) % 4)) : Buffer.from(s, 'base64').toString('binary');
+    // Node's Buffer stands in for atob where the tests run this without one.
+    const node = /** @type {{ Buffer: { from(s: string, enc: string): { toString(enc: string): string } } }} */ (/** @type {unknown} */ (globalThis));
+    const bin = typeof atob === 'function' ? atob(s + '='.repeat((4 - (s.length % 4)) % 4)) : node.Buffer.from(s, 'base64').toString('binary');
     return Uint8Array.from(bin, c => c.charCodeAt(0));
   }
 

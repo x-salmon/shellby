@@ -18,6 +18,7 @@
     const OUTBOX_KEY = 'shellby.pocket.outbox';
     const RETRY_MS = 15000; // the stream can think the PC is there for a while after it went
     let flushing = false;
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let retry = null;
     const listeners = new Set();
 
@@ -43,6 +44,9 @@
     /**
      * A task or a reply: sent now, or kept for when the PC answers. -> the PC's
      * answer, or { ok: true, kept: true } when it waits on the phone.
+     * @param {string} name
+     * @param {Record<string, any>} body
+     * @param {{ label?: string, timeoutMs?: number }} [opts]
      */
     async function send(name, body, { label, timeoutMs } = {}) {
       const withKey = { ...body, key: body.key || L.newKey() };

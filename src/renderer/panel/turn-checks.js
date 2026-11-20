@@ -127,6 +127,7 @@
     };
     const b = thumb('before', 'Before');
     const a = thumb('after', 'After');
+    /** @type {Promise<{ before: string, after: string } | null> | null} */
     let loaded = null;
     const load = () => {
       loaded ||= Promise.all([ids.before, ids.after].map(id => api.shotImage({ tabId: tab.id, id }))).then(([x, y]) => {
@@ -150,7 +151,7 @@
   function openViewer({ before, after }, url) {
     if (viewerOpen) return; // a double click is one viewer
     viewerOpen = true;
-    const back = document.activeElement;
+    const back = /** @type {HTMLElement | null} */ (document.activeElement);
     const top = h('img', { class: 'shot-after', src: after, alt: 'After this turn' });
     const slider = h('input', { type: 'range', min: '0', max: '100', value: '50', class: 'shot-slider', 'aria-label': 'Slide between before and after' });
     const stage = h('div', { class: 'shot-stage' }, h('img', { class: 'shot-before', src: before, alt: 'Before this turn' }), top);

@@ -76,6 +76,7 @@
 
   // A tab in its own copy (worktrees.js) still shows the project you know,
   // with the branch beside it, rather than a path inside Shellby's folder.
+  /** @param {string} cwd @param {any} [tab] */
   function applyFolderLabel(cwd, tab = null) {
     const w = tab?.worktree;
     const shown = w?.originalCwd || cwd;

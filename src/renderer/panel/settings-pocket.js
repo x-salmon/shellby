@@ -9,7 +9,9 @@
   const { h, api, state, $ } = SB;
   const T = window.ShellbySettingsText;
 
-  let view = null;
+  /** @type {any} */
+  let view = null; // main's pocket view (wiring/pocket.js)
+  /** @type {ReturnType<typeof setInterval> | null} */
   let codeTimer = null;
   const forgetting = new Set(); // phones whose Forget was pressed once
 

@@ -9,7 +9,7 @@
   // Theirs, reached when they're called (the files load after this one).
   const renderQueue = () => SB.renderQueue();
   const syncSteers = tab => SB.syncSteers(tab);
-  const queueItem = (text, attachments, selected) => SB.queueItem(text, attachments, selected);
+  const queueItem = (text, attachments, selected, opts) => SB.queueItem(text, attachments, selected, opts);
   const editQueued = (tab, i) => SB.editQueued(tab, i);
   const updateSlash = () => SB.updateSlash();
   const slashKeydown = e => SB.slashKeydown(e);
@@ -49,6 +49,7 @@
   // through Claude's to-do list and roughly how long the rest takes (plan-pace.js).
   // One timer, alive only while the tab on screen is working; main's tab summaries
   // bring the tokens and the plan (sessions.js) and re-render it between ticks.
+  /** @type {ReturnType<typeof setInterval> | null} */
   let clockTimer = null;
   function tickClock() {
     const tab = SB.activeTab();
@@ -109,6 +110,7 @@
   // A message has gone to Claude: from the box, the queue, or held for the
   // usage reset and sent by main (boot.js onTabSent). onModel: the cheaper
   // model this turn runs on, and why ({ model, modelBy, modelCls }), if one does.
+  /** @param {any} tab @param {string} text @param {any[]} attachments @param {string} turnId @param {{ model: string, modelBy: string, modelCls: string | null }} [onModel] */
   function markSent(tab, text, attachments, turnId, onModel = undefined) {
     tab.render({ kind: 'user', text, attachments, turnId, ...(onModel || {}) });
     tab.busy = true;
@@ -150,6 +152,7 @@
     const picked = typed ? SB.treePickOpts?.(tab) : undefined; // as it was when you pressed Enter
     // Typed as a /command: a turn of its own, whatever words it becomes below (queue-turns.js).
     const solo = /^[/!]/.test(text);
+    /** @type {string | null} */
     let snippet = null; // its name, counted as a use once the prompt has gone
     // /subtask <task> and the like go as the words they stand for, shown as sent (builtin-commands.js).
     const rewritten = SB.rewriteBuiltin?.(text);
@@ -363,7 +366,7 @@
     e.preventDefault();
     dragDepth = 0;
     document.body.classList.remove('dropping');
-    if (e.dataTransfer.files.length) attachFrom(e.dataTransfer.files);
+    if (e.dataTransfer?.files.length) attachFrom(e.dataTransfer.files);
   });
 
   // A picture with no file behind it (a snip, an image out of a browser) is saved

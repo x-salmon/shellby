@@ -37,12 +37,12 @@
     const n = ++chatN;
     const noun = host.noun || 'workflow';
     const s = {
-      turns: [],         // what Claude sees: { role: 'user' | 'claude' | 'run', text }
+      turns: /** @type {{ role: string, text: string }[]} */ ([]), // what Claude sees: { role: 'user' | 'claude' | 'run', text }
       busy: false,       // a Claude call or a test run is under way
       stopped: false,    // Stop pressed: no more rounds until you say something
       rounds: 0,         // tests Claude has started since your last message
-      run: null,         // { id, line } while a test run is going
-      poll: null,        // the interval checking on it
+      run: /** @type {{ id: string, li: HTMLElement, body: HTMLElement } | null} */ (null), // its line in the log, while a test run is going
+      poll: /** @type {ReturnType<typeof setInterval> | null} */ (null), // the interval checking on it
       text: '',
     };
 

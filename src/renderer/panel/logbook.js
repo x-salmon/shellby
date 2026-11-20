@@ -10,7 +10,9 @@
 (function () {
   const { api, h, $ } = SB;
 
+  /** @type {any} */
   let view = null;   // main's logbookView()
+  /** @type {any} */
   let quests = null; // main's questsView(), for the chapter list
 
   const VIEW_NAMES = {
@@ -158,7 +160,7 @@
     if (SB.state.view === 'trophies' && was !== 'trophies') act('open');
   };
 
-  api.onGame(({ what, view: v } = {}) => {
+  api.onGame(/** @param {{ what?: string, view?: any }} [e] */ ({ what, view: v } = {}) => {
     if (what === 'logbook') received(v);
     if (what === 'quests' && v) { quests = v; renderChapters(); }
   });

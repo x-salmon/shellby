@@ -80,7 +80,7 @@
 
   function render() {
     const v = ev();
-    for (const box of document.querySelectorAll('[data-ev-banner]')) {
+    for (const box of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-ev-banner]'))) {
       const where = box.dataset.evBanner; // 'us' shows it all; the rest a line
       if (!v || !v.on) { box.hidden = true; box.replaceChildren(); continue; }
       const compact = where !== 'us';

@@ -12,10 +12,14 @@
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const sheet = $('wrappedSheet');
+  /** @type {any} */
   let view = null;      // the year on show (game view 'wrapped', with a year)
+  /** @type {any[]} */
   let years = [];       // every year with a Wrapped, newest first
-  let week = null;      // Wrapped week, January 2nd to 8th: { year, dayOf, friendsShared, sharing, open }, else null
+  /** @type {{ year: number, dayOf: number, friendsShared: number, sharing: boolean, open: boolean } | null} */
+  let week = null;      // Wrapped week, January 2nd to 8th, else null
   let at = 0;
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let timer = null;
 
   // Pixel art ({ pixels, palette }) on a small canvas, `px` device pixels a pixel.
@@ -26,7 +30,7 @@
     const px = Math.max(2, Math.floor(box / Math.max(w, ht)));
     c.width = w * px;
     c.height = ht * px;
-    const g = c.getContext('2d');
+    const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
     art.pixels.forEach((row, y) => [...row].forEach((ch, x) => {
       const col = art.palette?.[ch];
       if (ch === '.' || !HEX.test(col || '')) return;
@@ -108,16 +112,17 @@
 
   // The 🎁 banner on the Us page and Trophies, all week.
   function renderWeek() {
-    for (const box of document.querySelectorAll('[data-wrapped-week]')) {
-      if (!week) { box.hidden = true; box.replaceChildren(); continue; }
-      const friends = week.friendsShared ? `${week.friendsShared} friend${week.friendsShared === 1 ? ' has' : 's have'} shared theirs` : 'Show yours to friends from the card';
+    const wk = week;
+    for (const box of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-wrapped-week]'))) {
+      if (!wk) { box.hidden = true; box.replaceChildren(); continue; }
+      const friends = wk.friendsShared ? `${wk.friendsShared} friend${wk.friendsShared === 1 ? ' has' : 's have'} shared theirs` : 'Show yours to friends from the card';
       box.hidden = false;
       box.replaceChildren(h('div', { class: 'ww-card' },
         h('span', { class: 'ww-emoji', 'aria-hidden': 'true', text: '🎁' }),
         h('div', { class: 'ww-text' },
           h('h3', { text: 'Wrapped week: share your year' }),
-          h('p', { text: `${week.year} with Shellby, until January 8th. ${friends}.` })),
-        week.open ? h('button', { type: 'button', class: 'btn primary slim-btn', dataset: { openWrapped: String(week.year) }, onclick: () => open(week.year) }, 'Open Wrapped') : null));
+          h('p', { text: `${wk.year} with Shellby, until January 8th. ${friends}.` })),
+        wk.open ? h('button', { type: 'button', class: 'btn primary slim-btn', dataset: { openWrapped: String(wk.year) }, onclick: () => open(wk.year) }, 'Open Wrapped') : null));
     }
   }
 
@@ -142,12 +147,11 @@
 
   // It moves on by itself, unless motion is turned down or you've taken the wheel.
   function autoplay() {
-    clearTimeout(timer);
-    timer = null;
+    stopAuto();
     if (still() || sheet.hidden || !view || at >= view.slides.length - 1) return;
     timer = setTimeout(() => { at += 1; render(); autoplay(); }, AUTO_MS);
   }
-  const stopAuto = () => { clearTimeout(timer); timer = null; };
+  const stopAuto = () => { if (timer) clearTimeout(timer); timer = null; };
 
   function go(step) {
     stopAuto();
@@ -167,6 +171,7 @@
   }
 
   /** Open a year's Wrapped (the one due, or the newest, when none is named). */
+  /** @type {Promise<any> | null} */
   let opening = null; // the load-time check and main's "due" can both arrive at once
   function open(year) {
     if (!opening) opening = openYear(year).finally(() => { opening = null; });

@@ -14,7 +14,8 @@
   const LOG_REFRESH_MS = 1500; // a running server's log is read again this often while its pane is open
 
   const mounted = new Map(); // toolId -> { el, title, draw, destroy }
-  let servers = [];
+  /** @type {any[]} */
+  let servers = []; // main's dev servers (projects/servers.js)
 
   const serverOf = toolId => servers.find(s => s.id === P.toolOf(toolId)?.target) || null;
   const nameOf = s => (s.kind === 'install' ? `${s.manager || 'npm'} install` : `${s.manager} run ${s.script}`);
@@ -29,7 +30,10 @@
     const pre = h('pre', { class: 'pj-log tp-log', tabindex: '0' });
     const el = h('div', { class: 'tool-pane', dataset: { tool: toolId } },
       h('div', { class: 'tp-head' }, dot, name, status), actions, pre);
-    let lastRead = 0, timer = null;
+    let lastRead = 0;
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    let timer = null;
+    /** @type {string | null} */
     let readFor = null; // the status of a stopped server whose log has been read: it won't change
 
     const act = (text, fn, cls = 'btn ghost slim-btn') => h('button', { type: 'button', class: cls, text, onclick: fn });

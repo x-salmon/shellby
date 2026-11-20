@@ -18,6 +18,7 @@
 
   // ---- the bar under the XP bar
 
+  /** @type {HTMLElement | null} */
   let box = null;
   function mount() {
     if (box || !$('xpBarWrap')) return box;
@@ -33,10 +34,11 @@
   }
 
   function render(v) {
-    if (!v || !mount()) return;
+    const root = mount();
+    if (!v || !root) return;
     const u = v.unlock;
-    const text = box.querySelector('.lv-next-text');
-    const bar = box.querySelector('.lv-next-bar');
+    const text = /** @type {HTMLElement} */ (root.querySelector('.lv-next-text'));
+    const bar = /** @type {HTMLElement} */ (root.querySelector('.lv-next-bar'));
     if (!u) {
       text.textContent = v.molts ? `Every unlock is his. ★ marks from here.` : 'Every title, shell, badge and perk is his!';
       text.title = '';
@@ -52,7 +54,7 @@
       bar.firstChild.style.transform = `scaleX(${p.toFixed(3)})`;
       bar.setAttribute('aria-valuenow', String(Math.round(p * 100)));
     }
-    const molt = box.querySelector('.lv-molt-btn');
+    const molt = /** @type {HTMLElement} */ (root.querySelector('.lv-molt-btn'));
     molt.hidden = !(v.canMolt || v.molts);
     molt.textContent = v.canMolt ? '🐚 Molt' : `🐚 Molt ${v.moltBadge?.text || ''}`.trim();
     molt.classList.toggle('ready', !!v.canMolt);
@@ -61,8 +63,9 @@
   // ---- the ladder: every level from 2 to 99
 
   async function toggleLadder() {
-    const list = box.querySelector('.lv-ladder');
-    const btn = box.querySelector('.lv-ladder-btn');
+    if (!box) return; // only its own button calls this, so the bar is mounted
+    const list = /** @type {HTMLElement} */ (box.querySelector('.lv-ladder'));
+    const btn = /** @type {HTMLElement} */ (box.querySelector('.lv-ladder-btn'));
     const open = list.hidden;
     list.hidden = !open;
     btn.setAttribute('aria-expanded', String(open));
@@ -84,6 +87,7 @@
 
   // ---- the ceremony for a milestone level
 
+  /** @type {HTMLElement | null} */
   let sheet = null;
   function closeCeremony() {
     if (!sheet) return;
@@ -104,7 +108,7 @@
     const title = h('h2', { class: 'lv-cer-title', 'aria-label': e.title });
     const cards = h('ul', { class: 'lv-cards' });
     const hasDecor = unlocks.some(u => u.kind === 'decor');
-    sheet = h('div', { class: `lv-ceremony${legend ? ' legend' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': `Level ${e.level}: ${e.title}`, style: `--cer:${e.rank?.color || 'var(--rank)'}` },
+    const el = h('div', { class: `lv-ceremony${legend ? ' legend' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': `Level ${e.level}: ${e.title}`, style: `--cer:${e.rank?.color || 'var(--rank)'}` },
       h('div', { class: 'lv-cer-sweep', 'aria-hidden': 'true' }),
       h('div', { class: 'lv-cer-body' },
         h('p', { class: 'lv-cer-eyebrow', text: `${legend ? 'Legendary' : 'Milestone'} · Level ${e.level} · ${e.rank?.name || ''} rank` }),
@@ -117,9 +121,10 @@
           e.canMolt && SB.openMolt ? h('button', { type: 'button', class: 'btn', onclick: () => { closeCeremony(); SB.openMolt(); } }, '🐚 Molt…') : null,
           SB.shareButtons?.() !== false ? h('button', { type: 'button', class: 'btn ghost lv-cer-share', onclick: () => { closeCeremony(); SB.momentCard?.share('level', e); } }, '📸 Share') : null,
           h('button', { type: 'button', class: 'btn ghost', onclick: closeCeremony }, 'Lovely'))));
-    sheet.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); closeCeremony(); } });
-    document.body.append(sheet);
-    sheet.querySelector('.lv-cer-actions .btn')?.focus();
+    sheet = el;
+    el.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); closeCeremony(); } });
+    document.body.append(el);
+    el.querySelector('.lv-cer-actions .btn')?.focus();
     // The title writes itself letter by letter, then the cards flip in; with reduced motion, all at once.
     const still = reduced();
     if (still) title.textContent = e.title; else [...e.title].forEach((ch, i) => setTimeout(() => { title.textContent += ch; }, i * TITLE_MS));
