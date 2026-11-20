@@ -3,7 +3,7 @@
 //
 // The panel never hands in a path: folders come from a dialog main opens, or
 // are picked from what the service listed (knowsRoot); servers are named by id.
-const { ID: SRV, PATH, list, obj, opt, str } = require('../ipc-args');
+const { ID: SRV, PATH, list, obj, opt, str, text } = require('../ipc-args');
 const fs = require('fs');
 const { checkRepo } = require('./remote');
 const doctorIo = require('../devservers/doctor-io');
@@ -17,6 +17,8 @@ const isStr = s => typeof s === 'string' && s.length > 0 && s.length < 2000;
 const isId = s => typeof s === 'string' && /^srv-[a-z0-9]{8}$/.test(s);
 const isTodoId = s => typeof s === 'string' && ID.test(s);
 const LOCAL_URL = /^https?:\/\/localhost:\d{1,5}\/\S*$/;
+const KEY = str({ max: 2000 }); // a project as the page lists it (isStr)
+const JOURNAL_REF = obj({ root: PATH, pinId: opt(str({ max: 64 })), sessionId: opt(str({ max: 64 })) });
 
 /**
  * d: {
@@ -56,10 +58,10 @@ function registerProjectsIpc(ipcMain, d) {
   const portLooks = new Map(); // server id -> { port, holders: [{ pid, name, createdAt }], free }
   let pickedCloneParent = null; // the folder the clone sheet's dialog returned: the only one clone takes
 
-  ipcMain.handle('projects:list', (_e, opts) => P()?.list({ refresh: !!opts?.refresh }) ?? null);
-  ipcMain.handle('projects:detail', (_e, key) => (isStr(key) ? P()?.detail(key) ?? null : null));
+  ipcMain.handle('projects:list', (_e, opts) => P()?.list({ refresh: !!opts?.refresh }) ?? null, [opt(obj())]);
+  ipcMain.handle('projects:detail', (_e, key) => (isStr(key) ? P()?.detail(key) ?? null : null), [KEY]);
   // A standup or weekly report for one project (standup.js), as text to copy.
-  ipcMain.handle('projects:report', (_e, a) => (isStr(a?.key) ? P()?.report(a.key, typeof a.kind === 'string' ? a.kind : 'standup') ?? null : null));
+  ipcMain.handle('projects:report', (_e, a) => (isStr(a?.key) ? P()?.report(a.key, typeof a.kind === 'string' ? a.kind : 'standup') ?? null : null), [obj({ key: KEY, kind: opt(str({ max: 40 })) })]);
 
   ipcMain.handle('projects:add', async () => {
     const dir = await d.pickFolder({ title: 'Add a repository' });
@@ -76,8 +78,8 @@ function registerProjectsIpc(ipcMain, d) {
   // ---------------------------------------------------------------- the inbox (inbox.js)
   // Deleting work that exists nowhere else is asked here, in main's own dialog,
   // never on the panel's say-so.
-  ipcMain.handle('projects:inbox', (_e, opts) => P()?.inbox({ refresh: !!opts?.refresh }) ?? null);
-  ipcMain.handle('projects:inbox-dismiss', (_e, id) => (isStr(id) ? P()?.dismiss(id) : { ok: false }));
+  ipcMain.handle('projects:inbox', (_e, opts) => P()?.inbox({ refresh: !!opts?.refresh }) ?? null, [opt(obj())]);
+  ipcMain.handle('projects:inbox-dismiss', (_e, id) => (isStr(id) ? P()?.dismiss(id) : { ok: false }), [KEY]);
   ipcMain.handle('projects:delete-branch', async (_e, arg) => {
     const { root, name } = arg && typeof arg === 'object' ? arg : {};
     if (!isStr(root) || !isStr(name) || !P()) return { ok: false };
@@ -131,7 +133,7 @@ function registerProjectsIpc(ipcMain, d) {
     if (!pickedCloneParent) return { error: 'Choose a folder to clone into first.' };
     const t = P()?.cloneTarget(repo, pickedCloneParent);
     return t?.error ? { error: t.error } : { dest: t?.dest || null, parent: pickedCloneParent };
-  });
+  }, [text(2000)]);
   ipcMain.handle('projects:clone', async (_e, repo) => {
     if (!checkRepo(repo)) return { ok: false, error: "That isn't a GitHub repository name." };
     if (!pickedCloneParent) return { ok: false, error: 'Choose a folder to clone into first.' };
@@ -161,7 +163,7 @@ function registerProjectsIpc(ipcMain, d) {
     if (yes !== 0) return { ok: false, cancelled: true };
     const done = await d.runClaude(purgeArgs(known, { dryRun: false }), 60000);
     return done.ok ? { ok: true, items: plan.items } : { ok: false, error: (done.stderr || done.stdout || 'claude purge failed').trim().slice(0, 300) };
-  });
+  }, [PATH]);
 
   ipcMain.handle('projects:open-folder', (_e, root) => {
     const known = P()?.knowsRoot(root);
@@ -175,22 +177,22 @@ function registerProjectsIpc(ipcMain, d) {
   }, [str({ max: 2000 })]);
   // The project's to-do list. The key must be one the page was shown (addTodo checks).
   ipcMain.handle('projects:todo-add', (_e, { key, text } = {}) => (isStr(key) && typeof text === 'string'
-    ? P()?.addTodo(key, text, 'you') ?? { ok: false } : { ok: false }));
+    ? P()?.addTodo(key, text, 'you') ?? { ok: false } : { ok: false }), [obj({ key: KEY, text: text(10_000) })]);
   ipcMain.handle('projects:todo-done', (_e, { key, id } = {}) => (isStr(key) && isTodoId(id)
-    ? P()?.finishTodo(key, id) ?? { ok: false } : { ok: false }));
+    ? P()?.finishTodo(key, id) ?? { ok: false } : { ok: false }), [obj({ key: KEY, id: str({ max: 100 }) })]);
   // The handoff notes on a project's page: pin a line of your own, or take one off.
   ipcMain.handle('projects:journal-pin', (_e, { root, kind, text } = {}) => {
     const known = P()?.knowsRoot(root);
     if (!known || typeof text !== 'string') return { ok: false, error: 'Unknown project folder.' };
     return d.journal()?.pinFor(known, { kind, text }, { fromPanel: true }) ?? { ok: false };
-  });
+  }, [obj({ root: PATH, kind: opt(str({ max: 40 })), text: text(10_000) })]);
   ipcMain.handle('projects:journal-remove', (_e, { root, pinId, sessionId } = {}) => {
     const known = P()?.knowsRoot(root);
     if (!known) return { ok: false };
     const id = v => (typeof v === 'string' && /^[\w-]{1,64}$/.test(v) ? v : null);
     if (!id(pinId) && !id(sessionId)) return { ok: false };
     return d.journal()?.remove(known, { pinId: id(pinId), sessionId: id(sessionId) }) ?? { ok: false };
-  });
+  }, [JOURNAL_REF]);
   // ...and Undo: the one just taken off goes back (main kept it; the page only names it).
   ipcMain.handle('projects:journal-restore', (_e, { root, pinId, sessionId } = {}) => {
     const known = P()?.knowsRoot(root);
@@ -198,11 +200,11 @@ function registerProjectsIpc(ipcMain, d) {
     const id = v => (typeof v === 'string' && /^[\w-]{1,64}$/.test(v) ? v : null);
     if (!id(pinId) && !id(sessionId)) return { ok: false };
     return d.journal()?.restore?.(known, { pinId: id(pinId), sessionId: id(sessionId) }) ?? { ok: false };
-  });
+  }, [JOURNAL_REF]);
   ipcMain.handle('projects:install', (_e, root) => {
     const known = P()?.knowsRoot(root);
     return known ? S().start({ root: known, kind: 'install', project: P().nameFor(known) }) : { ok: false, error: 'Unknown project folder.' };
-  });
+  }, [PATH]);
 
   // ---------------------------------------------------------------- servers
 

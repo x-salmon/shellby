@@ -37,6 +37,15 @@ const opt = check => v => v === undefined || v === null || check(v);
 /** Any of these. @param {...Check} checks @returns {Check} */
 const either = (...checks) => v => checks.some(check => check(v));
 
+/** @type {Check} */
+const bool = v => typeof v === 'boolean';
+
+/** A finite number, within bounds; int: a whole one. @param {{ min?: number, max?: number, int?: boolean }} [o] @returns {Check} */
+const num = ({ min = -Infinity, max = Infinity, int = false } = {}) => v => typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max && (!int || Number.isInteger(v));
+
+/** Exactly one of these values (a mode, a kind). @param {...unknown} values @returns {Check} */
+const oneOf = (...values) => v => values.includes(v);
+
 /** The ids the panel passes around: a tab, a session, a plugin, a pack. */
 const ID = str({ max: 300 });
 /** Absolute paths and repo-relative ones. Windows' long-path limit is 32,767. */
@@ -45,4 +54,4 @@ const PATH = str({ max: 32_767 });
 /** Whether args pass a schema (one Check per argument). @param {Check[]} schema @param {unknown[]} args */
 const matches = (schema, args) => schema.every((check, i) => check(args[i]));
 
-module.exports = { ID, PATH, MAX_STRING, either, list, matches, obj, opt, str, text };
+module.exports = { ID, PATH, MAX_STRING, bool, either, list, matches, num, obj, oneOf, opt, str, text };

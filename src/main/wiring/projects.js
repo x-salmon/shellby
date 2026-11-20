@@ -1,7 +1,7 @@
 // Projects and what runs in them: the weekly dependency watch (depwatch/index.js),
 // the Projects page and dev servers, and workflows (the Automate page).
 // Kept out of main.js, which only wires it up.
-const { ID, text } = require('../ipc-args');
+const { ID, PATH, list, obj, opt, str, text } = require('../ipc-args');
 const { app, clipboard, safeStorage, BrowserWindow, Menu, session } = require('electron');
 const { openSafe } = require('../safe-open');
 const { createDevPoint } = require('../devpoint');
@@ -364,28 +364,29 @@ function wireProjects(d) {
     const off = { ok: false, error: 'Workflows are off in just-the-crab mode.' };
     const ready = () => !!d.workflows && !d.config.get('crabOnly');
     ipcMain.handle('workflows:list', () => (d.workflows ? d.workflows.view() : null));
-    ipcMain.handle('workflows:validate', (_e, def) => (d.workflows ? d.workflows.validate(def) : off));
-    ipcMain.handle('workflows:save', (_e, def) => (ready() && isObj(def) ? d.workflows.save(def, { source: 'panel' }) : { ok: false, errors: [{ path: '', message: off.error }] }));
-    ipcMain.handle('workflows:delete', (_e, id) => (d.workflows && isId(id) ? d.workflows.remove(id) : null));
-    ipcMain.handle('workflows:run', (_e, id, inputs) => (ready() && isId(id) ? d.workflows.runManual(id, isObj(inputs) ? inputs : {}) : off));
-    ipcMain.handle('workflows:draft', (_e, text) => (ready() ? d.workflows.draft(text) : off));
-    ipcMain.handle('workflows:repair', (_e, runId) => (ready() && isId(runId) ? d.workflows.repair(runId) : off));
-    ipcMain.handle('workflows:chat', (_e, req) => (ready() && isObj(req) ? d.workflows.chat({ workflow: isObj(req.workflow) ? req.workflow : {}, messages: req.messages, runId: isId(req.runId) ? req.runId : null }) : off));
+    ipcMain.handle('workflows:validate', (_e, def) => (d.workflows ? d.workflows.validate(def) : off), [obj()]);
+    ipcMain.handle('workflows:save', (_e, def) => (ready() && isObj(def) ? d.workflows.save(def, { source: 'panel' }) : { ok: false, errors: [{ path: '', message: off.error }] }), [obj()]);
+    ipcMain.handle('workflows:delete', (_e, id) => (d.workflows && isId(id) ? d.workflows.remove(id) : null), [ID]);
+    ipcMain.handle('workflows:run', (_e, id, inputs) => (ready() && isId(id) ? d.workflows.runManual(id, isObj(inputs) ? inputs : {}) : off), [ID, opt(obj())]);
+    ipcMain.handle('workflows:draft', (_e, text) => (ready() ? d.workflows.draft(text) : off), [text(50_000)]);
+    ipcMain.handle('workflows:repair', (_e, runId) => (ready() && isId(runId) ? d.workflows.repair(runId) : off), [ID]);
+    ipcMain.handle('workflows:chat', (_e, req) => (ready() && isObj(req) ? d.workflows.chat({ workflow: isObj(req.workflow) ? req.workflow : {}, messages: req.messages, runId: isId(req.runId) ? req.runId : null }) : off),
+      [obj({ workflow: opt(obj()), messages: opt(list(obj(), 500)), runId: opt(ID) })]);
     ipcMain.handle('workflows:import', (_e, text) => (d.workflows ? d.workflows.importText(text) : off), [text(32 * 1024 * 1024)]);
-    ipcMain.handle('workflows:export', (_e, id) => (d.workflows && isId(id) ? d.workflows.exportText(id) : off));
-    ipcMain.handle('workflows:runs', (_e, id) => (d.workflows ? d.workflows.listRuns(isId(id) ? id : null) : []));
-    ipcMain.handle('workflows:run-get', (_e, runId) => (d.workflows && isId(runId) ? d.workflows.getRun(runId) : null));
-    ipcMain.handle('workflows:run-stop', (_e, runId) => (d.workflows && isId(runId) ? d.workflows.stopRun(runId) : off));
-    ipcMain.handle('workflows:run-resume', (_e, runId) => (ready() && isId(runId) ? d.workflows.resumeRun(runId) : off));
-    ipcMain.handle('workflows:run-answer', (_e, runId, key, choice) => (d.workflows && isId(runId) && typeof key === 'string' && typeof choice === 'string' ? d.workflows.answer(runId, key, choice) : off));
+    ipcMain.handle('workflows:export', (_e, id) => (d.workflows && isId(id) ? d.workflows.exportText(id) : off), [ID]);
+    ipcMain.handle('workflows:runs', (_e, id) => (d.workflows ? d.workflows.listRuns(isId(id) ? id : null) : []), [opt(ID)]);
+    ipcMain.handle('workflows:run-get', (_e, runId) => (d.workflows && isId(runId) ? d.workflows.getRun(runId) : null), [ID]);
+    ipcMain.handle('workflows:run-stop', (_e, runId) => (d.workflows && isId(runId) ? d.workflows.stopRun(runId) : off), [ID]);
+    ipcMain.handle('workflows:run-resume', (_e, runId) => (ready() && isId(runId) ? d.workflows.resumeRun(runId) : off), [ID]);
+    ipcMain.handle('workflows:run-answer', (_e, runId, key, choice) => (d.workflows && isId(runId) && typeof key === 'string' && typeof choice === 'string' ? d.workflows.answer(runId, key, choice) : off), [ID, text(200), text(10_000)]);
     ipcMain.handle('workflows:secret-set', (_e, name, value) => (d.workflows ? d.workflows.setSecret(name, value) : off), [ID, text(64 * 1024)]);
-    ipcMain.handle('workflows:secret-delete', (_e, name) => (d.workflows && typeof name === 'string' ? d.workflows.deleteSecret(name) : null));
+    ipcMain.handle('workflows:secret-delete', (_e, name) => (d.workflows && typeof name === 'string' ? d.workflows.deleteSecret(name) : null), [str({ max: 200 })]);
     // The MCP servers a workflow step or a routine can pick, and one server's
     // tools (which starts it for a moment). Both editors use them.
     // Never a network share: reading one makes Windows sign in to that machine.
     const folderArg = v => (typeof v === 'string' && v.length <= 1024 && path.isAbsolute(v) && !/^[\\/]{2}/.test(v) ? v : null);
-    ipcMain.handle('workflows:mcp-servers', (_e, cwd) => (ready() ? d.workflows.mcpServerList(folderArg(cwd)) : []));
-    ipcMain.handle('workflows:mcp-tools', (_e, server, cwd) => (ready() && typeof server === 'string' && mcpServers.NAME.test(server) ? d.workflows.mcpTools(server, folderArg(cwd)) : off));
+    ipcMain.handle('workflows:mcp-servers', (_e, cwd) => (ready() ? d.workflows.mcpServerList(folderArg(cwd)) : []), [opt(PATH)]);
+    ipcMain.handle('workflows:mcp-tools', (_e, server, cwd) => (ready() && typeof server === 'string' && mcpServers.NAME.test(server) ? d.workflows.mcpTools(server, folderArg(cwd)) : off), [str({ max: 200 }), opt(PATH)]);
   }
 
   return {
