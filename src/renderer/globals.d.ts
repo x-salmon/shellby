@@ -217,6 +217,10 @@ interface ShellbyPanelExtras {
   // debug-mode.js
   renderDebug: any;
   startDebug: any;
+  // feed-blocks.js
+  attachmentChips: any;
+  troubleAction: any;
+  unbuiltDiffs: any;
   // feed-changes.js
   renderDiff: any;
   // feed-conflicts.js
@@ -226,12 +230,9 @@ interface ShellbyPanelExtras {
   // feed-native.js
   decorateTool: any;
   // feed.js
-  attachmentChips: any;
   extendTab: any;
   forkIcon: any;
   Tab: any;
-  troubleAction: any;
-  unbuiltDiffs: any;
   // files-dock.js
   filesDock: any;
   filesFollow: any;
