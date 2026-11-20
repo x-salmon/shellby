@@ -181,6 +181,7 @@ const names = list => list.slice(0, 8).join(', ') + (list.length > 8 ? ', …' :
  *   { kind: 'help' } | { kind: 'status' }
  *   { kind: 'task', prompt, project }   project null: the default folder
  *   { kind: 'reply', reply }            nothing to start; say this back
+ * @param {{ projects?: { name: string, path: string }[] }} [opts]
  */
 function parseCommand(raw, { projects = [] } = {}) {
   let text = cleanText(raw);

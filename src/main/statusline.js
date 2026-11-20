@@ -120,7 +120,12 @@ let lastWritten = null;
 let written = [];       // the files the last write made, which keepFresh touches
 /** @type {NodeJS.Timeout | null} */
 let freshTimer = null;
-/** Write the emoji line, and the plain twin when given. */
+/**
+ * Write the emoji line, and the plain twin when given.
+ * @param {string} line
+ * @param {string} [file]
+ * @param {string | null} [plain]
+ */
 function writeStatus(line, file = STATUS_FILE, plain = null) {
   const key = `${line}\n${plain}`;
   if (key === lastWritten) return;

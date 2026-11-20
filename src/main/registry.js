@@ -156,9 +156,10 @@ async function fetchBytes(url, { fetchImpl, maxBytes, timeoutMs, base, what }) {
 /**
  * Look a pack up in the registry index, download it, and verify it against the
  * index's sha256. Never throws.
- * @returns {Promise<{ ok: boolean, entry?: object, text?: string, errors: string[] }>}
+ * @returns {Promise<{ ok: true, entry: { id: string, name: string, version: string, url: string, sha256: string, bytes: number }, text: string, errors: string[] } | { ok: false, errors: string[] }>}
  */
 async function fetchRegistryPack(packId, { baseUrl = REGISTRY_URL, fetchImpl = globalThis.fetch, maxBytes = 512 * 1024, timeoutMs = 15000 } = {}) {
+  /** @type {(msg: string) => { ok: false, errors: string[] }} */
   const fail = msg => ({ ok: false, errors: [msg] });
   if (typeof packId !== 'string' || !PACK_ID_RE.test(packId)) return fail("That isn't a valid Shellby pack id.");
   const base = normalizeBase(baseUrl);

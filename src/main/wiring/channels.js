@@ -89,6 +89,8 @@ function wireChannels(d) {
    * Send one event, if the user asked for that kind. Never throws, never waits.
    * onSent(result, message) hears how it went, when it went at all.
    * always: about a task the phone started (channels.shouldSend).
+   * @param {(result: any, message: any) => void} [onSent]
+   * @param {{ always?: boolean }} [opts]
    */
   function tellChannel(event, onSent = () => {}, { always = false } = {}) {
     if (!d.config) return false;
@@ -132,7 +134,10 @@ function wireChannels(d) {
     return went;
   }
 
-  // The one way a permission prompt gets answered, from the card or the phone.
+  /**
+   * The one way a permission prompt gets answered, from the card or the phone.
+   * @param {{ message?: string, answers?: any, via?: string }} [how]
+   */
   function answerPermission(tabId, requestId, decision, { message, answers, via } = {}) {
     const pending = d.manager.tabs.get(tabId)?.session.pending.get(requestId);
     if (pending) {

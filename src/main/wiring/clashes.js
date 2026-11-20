@@ -22,12 +22,19 @@ const REFRESH_MS = 2 * 60 * 1000;
  *   home()     -> Shellby's worktree folder; only copies in it count
  *   enabled()  -> the setting
  *   push(view) -> to the panel: { clashes, fresh: [key] }
+ * @param {{ tabs: () => Map<string, any> | null | undefined, home: () => string, enabled: () => boolean, push: (view: any) => void,
+ *   log?: { info?: (msg: string) => void } | null, scan?: typeof clashScan, debounceMs?: number }} deps
  */
 function createClashWatch({ tabs, home, enabled, push, log, scan = clashScan, debounceMs = DEBOUNCE_MS }) {
+  /** @type {any[]} */
   let current = [];
+  /** @type {Map<string, any[]>} */
   const byRoot = new Map(); // rootKey -> [entry] as last scanned
+  /** @type {'all' | Set<string> | null} */
   let pending = null;       // 'all' | Set(rootKey)
+  /** @type {NodeJS.Timeout | null} */
   let timer = null;
+  /** @type {Promise<unknown> | null} */
   let running = null;       // the run in progress
   let copySig = '';
 
@@ -76,7 +83,7 @@ function createClashWatch({ tabs, home, enabled, push, log, scan = clashScan, de
     const open = tabs();
     // A tab closed while its repository was being looked at is no clash any more.
     const entries = [...byRoot.values()].flat().filter(e => e.checkout || open?.has(e.tabId))
-      .map(e => (e.checkout ? e : { ...e, title: open.get(e.tabId)?.title || e.title }));
+      .map(e => (e.checkout ? e : { ...e, title: open?.get(e.tabId)?.title || e.title }));
     publish(findClashes(entries));
   }
 
@@ -88,7 +95,7 @@ function createClashWatch({ tabs, home, enabled, push, log, scan = clashScan, de
   }
 
   function schedule() {
-    clearTimeout(timer);
+    clearTimeout(/** @type {NodeJS.Timeout} */ (timer));
     timer = setTimeout(kick, debounceMs);
     timer.unref?.();
   }
@@ -146,6 +153,7 @@ function wireClashes(d) {
     push: view => d.send(d.panel, 'clashes', view),
     log: d.log,
   });
+  /** @type {NodeJS.Timeout | null} */
   let ticking = null;
   function watchClashes() {
     if (ticking) return;

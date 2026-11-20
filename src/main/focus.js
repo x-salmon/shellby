@@ -16,7 +16,10 @@ function start(now, minutes) {
   return { phase: 'focus', minutes: m, breakMinutes: BREAKS[m], startedAt: now, endsAt: now + m * MIN };
 }
 
-/** Tolerate anything read from disk. null when there's no session. */
+/**
+ * Tolerate anything read from disk. null when there's no session.
+ * @returns {{ phase: 'focus' | 'break', minutes: number, breakMinutes: number, startedAt: number, endsAt: number } | null}
+ */
 function normalize(raw) {
   if (!raw || typeof raw !== 'object' || !['focus', 'break'].includes(raw.phase)) return null;
   if (!LENGTHS.includes(raw.minutes) || !Number.isFinite(raw.startedAt) || !Number.isFinite(raw.endsAt)) return null;

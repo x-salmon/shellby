@@ -49,6 +49,7 @@ function wireCrash(d) {
     // Before settings load (or if reading them throws) the gate holds everything.
     const crashGate = crashReport.makeGate(() => d.config && { consent: d.config.get('crashReports'), decisions: d.config.get('crashReportDecisions') });
     try {
+      // @ts-expect-error @sentry/electron's types aren't in the program (jsconfig's noResolve)
       const S = require('@sentry/electron/main');
       const scrub = s => d.log.scrub(s);
       S.init({
