@@ -672,6 +672,8 @@ interface ShellbyPanelExtras {
   openMemories: any;
   // toolbox-batch.js
   toolboxBatch: any;
+  // toolbox-detail.js
+  toolboxDetail: any;
   // toolbox-hooks.js
   toolboxHooks: any;
   // toolbox-mcp.js
@@ -693,6 +695,8 @@ interface ShellbyPanelExtras {
   toolboxTeam: any;
   // toolbox-tidy.js
   toolboxTidy: any;
+  // toolbox-usage.js
+  toolboxUsage: any;
   // toolbox.js
   onLearned: any;
   showToolbox: any;

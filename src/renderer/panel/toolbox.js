@@ -6,9 +6,10 @@
    Skills, agents and commands are one row each: kind, name and what it's for,
    how often it's used and what it costs in every conversation (lean.js usage),
    with Use and the pin where the pointer or keyboard is. They can be filtered by
-   where they come from and sorted by use, and open up to show the rest: where
-   they live, edit, remove (skillremove.js). A wide panel adds a rail of sources
-   and a pane for the open row (toolbox-tidy.js).
+   where they come from and sorted by use (the numbers are toolbox-usage.js), and
+   open up to show the rest: where they live, edit, remove (toolbox-detail.js,
+   over skillremove.js). A wide panel adds a rail of sources and a pane for the
+   open row (toolbox-tidy.js).
    The Hooks, Rules and Memory tabs live in toolbox-setup.js, Team (the
    repo's .shellby/team.json) in toolbox-team.js, and Mods in toolbox-mods.js.
    Picking many, parking and the health line are toolbox-batch.js. The tab,
@@ -19,8 +20,6 @@
   const NEW_FOR_MS = 3 * 24 * 3600 * 1000;
   const PAGE = 150;               // rows drawn at a time: plugins can bring hundreds of skills
   const SEARCH_WAIT_MS = 120;
-  const USAGE_RETRY_MS = 30 * 1000;
-  const MIN_BAR_PCT = 3;          // a cost bar never shrinks to nothing, so every row has one to compare
   const listKey = { skill: 'skills', agent: 'agents', command: 'commands', mcp: 'mcp', mod: 'mods' };
   const MERGED = ['skill', 'agent', 'command'];   // listed together under All ('tool')
   const LISTED = new Set(['tool', ...MERGED]);     // the kinds with source and order pickers
@@ -36,7 +35,6 @@
     tool: 'skills, agents and commands', skill: 'skills', agent: 'agents', command: 'commands', mcp: 'MCP servers', mod: 'mods', snippet: 'snippets',
     hook: 'hooks', rule: 'rules', memory: 'memory files', lean: 'plugins, servers and skills', team: 'the team pack',
   };
-  const LIST_NAME = { tool: 'All tools', skill: 'Skills', agent: 'Agents', command: 'Commands' };
   const STAR = 'M8 2.3l1.75 3.6 3.95.55-2.86 2.77.68 3.93L8 11.3l-3.52 1.85.68-3.93L2.3 6.45l3.95-.55z';
 
   const isNew = t => (state.learned || []).some(l => l.kind === t.kind && l.name === t.name && Date.now() - l.at < NEW_FOR_MS);
@@ -44,42 +42,10 @@
   const itemsOf = (tb, k) => (k === 'tool' ? MERGED.flatMap(m => tb[listKey[m]] || []) : tb[listKey[k]] || []);
   const shown = t => (t.kind === 'command' || t.kind === 'skill' ? `/${t.name}` : t.name);
 
-  // ------------------------------------------------------------ usage and cost
-
-  /** @type {any} */
-  let usage = null;        // { tools: { 'kind:name': { uses, lastUsed, listTokens, useTokens } }, watchedFrom }
-  /** @type {Promise<void> | null} */
-  let usageLoading = null;
-  let usageTried = false;  // asked once; after one retry, a failure waits for Rescan
-  let usageFailed = false;
-  let usageRetried = false;
-  /** @type {ReturnType<typeof setTimeout> | null} */
-  let usageRetry = null;
-  const removing = new Set();
-
-  function loadUsage(refresh = false) {
-    if (usageLoading) return usageLoading;
-    usageTried = true;
-    clearTimeout(usageRetry ?? undefined);
-    usageRetry = null;
-    usageLoading = api.leanUsage(refresh)
-      .then(r => { usageFailed = !r?.ok; if (r?.ok) usage = r; })
-      .catch(() => { usageFailed = true; })
-      .finally(() => {
-        usageLoading = null;
-        if (usageFailed && !usageRetried) {
-          usageRetried = true;
-          usageRetry = setTimeout(() => loadUsage(), USAGE_RETRY_MS);
-        }
-        if (state.view === 'toolbox') render();
-      });
-    return usageLoading;
-  }
-
-  const usageOf = t => usage?.tools?.[`${t.kind}:${t.name}`] || null;
-  const num = v => (Number.isFinite(v) ? v : 0);
-  // Listed in every conversation and not once used lately: what a cleanup is after.
-  const isIdle = u => !!u && !u.uses && !!usage?.watchedFrom;
+  const U = SB.toolboxUsage;  // how often each is used and what it costs (toolbox-usage.js)
+  const D = SB.toolboxDetail; // what a row opens to, and editing your own (toolbox-detail.js)
+  const { usageOf, isIdle, num, tok, numbers } = U;
+  const { toolDetail, sourceLabel } = D;
 
   // ------------------------------------------------------------ where from, and in what order
 
@@ -148,164 +114,6 @@
     sel.value = sources[kind];
   }
 
-  // A line above the list when the order needs usage that isn't here (yet).
-  function sortNote() {
-    if (sort === 'name' || usage) return null;
-    const text = usageLoading || !usageTried ? 'Counting uses from Claude Code history…'
-      : usageRetry ? "Couldn't read usage yet. Trying again shortly; A to Z until then."
-        : "Couldn't read usage, so this is A to Z. Rescan to try again.";
-    return h('li', { class: 'tool-note', role: 'status', text });
-  }
-
-  const tok = n => `~${SB.compact(n)} tokens`;
-
-  function statsLine(t) {
-    const u = usageOf(t);
-    if (!u) return null;
-    const parts = [
-      u.uses ? `used ${u.uses}× lately` : usage.watchedFrom ? 'not used lately' : null,
-      Number.isFinite(u.lastUsed) ? `last ${SB.relTime(u.lastUsed)}` : null,
-      u.listTokens ? `${tok(u.listTokens)} in every conversation` : null,
-      u.useTokens ? `${tok(u.useTokens)} each use` : null,
-    ].filter(Boolean);
-    if (!parts.length) return null;
-    const text = parts.join(' · ');
-    return h('p', { class: `tool-stats${u.uses ? '' : ' unused'}`, text: text[0].toUpperCase() + text.slice(1),
-      title: `From the last ${usage.lookbackDays} days or so of this PC's Claude Code history, Shellby and the terminal both. Its name and description are listed for Claude in every conversation; the rest of its file is read only when it's used.` });
-  }
-
-  // Two columns at the end of a row: how often it's been used lately (and when last), and what
-  // it costs in every conversation, with a bar against the costliest one listed. Amber when
-  // it costs something and hasn't been used lately.
-  let maxList = 0;
-  function numbers(u) {
-    if (!u) return h('span', { class: 'tool-nums' });
-    const idle = isIdle(u);
-    const uses = num(u.uses);
-    const fill = h('i');
-    const pct = maxList ? (100 * num(u.listTokens)) / maxList : 0;
-    fill.style.setProperty('--w', `${Math.max(MIN_BAR_PCT, Math.round(pct))}%`);
-    const last = Number.isFinite(u.lastUsed) ? SB.relTime(u.lastUsed) : '';
-    return h('span', { class: `tool-nums${idle ? ' idle' : ''}` },
-      h('span', { class: 'tool-uses', title: uses ? `${uses} ${uses === 1 ? 'use' : 'uses'} lately${last ? `, last ${last}` : ''}` : 'Not used lately' },
-        uses ? h('b', { text: String(uses) }) : null,
-        h('small', { text: uses ? last : idle ? 'not lately' : '' })),
-      h('span', { class: 'tool-cost', title: u.listTokens ? `${tok(u.listTokens)} in every conversation` : 'Nothing until it’s used' },
-        h('b', { text: u.listTokens ? SB.compact(u.listTokens) : '0' }),
-        h('span', { class: 'cost-bar', 'aria-hidden': 'true' }, fill)));
-  }
-
-  async function removeTool(t) {
-    const key = `${t.kind}:${t.name}`;
-    if (removing.has(key)) return;
-    removing.add(key);
-    render();
-    let r;
-    try { r = await api.removeTool(t.kind, t.name); } catch { r = { ok: false, error: "Shellby couldn't do that." }; }
-    removing.delete(key);
-    if (r?.ok) {
-      if (r.toolbox) state.toolbox = r.toolbox;
-      if (toolEd?.path === t.path) toolEd = null;
-      openRows.delete(key);
-      state.pinned = (state.pinned || []).filter(p => !(p.kind === t.kind && p.name === t.name));
-      SB.refreshEmptyStates();
-      SB.toast(`Moved ${t.kind === 'agent' ? t.name : `/${t.name}`} to the Recycle Bin. Restore it from there if you change your mind.`, { ms: 8000 });
-    } else if (!r?.cancelled) SB.toast(r?.error || "Couldn't remove that.", { ms: 8000 });
-    render();
-  }
-
-  // ------------------------------------------------------------ editing your own
-
-  // One open editor, kept while you look at other tabs. Named by its file: saving a
-  // new name: in the frontmatter renames the tool but not the file. It belongs to
-  // the list it was opened from (view), which may be All rather than its own kind.
-  /** @type {any} */
-  let toolEd = null; // { kind, view, path, name, original, text, mtimeMs, error, conflict, leaving }
-  const NOUN = { skill: 'skill', agent: 'agent', command: 'command' };
-  const ownTool = t => MERGED.includes(t.kind) && (t.source === 'user' || t.source === 'project') && !!t.path;
-
-  async function openTool(t, view = kind) {
-    // Another file open with unsaved changes: back to it, rather than losing them.
-    if (toolEd && toolEd.path !== t.path && toolEd.text !== toolEd.original) {
-      SB.toast(`Save or discard your changes to ${toolEd.kind === 'agent' ? toolEd.name : `/${toolEd.name}`} first.`, { ms: 6000 });
-      choose(toolEd.view);
-      return;
-    }
-    let r;
-    try { r = await api.readTool(t.kind, t.path); } catch { r = null; }
-    if (!r?.ok) { SB.toast(r?.error || "Couldn't open that file.", { ms: 8000 }); return; }
-    toolEd = { kind: t.kind, view, path: t.path, name: t.name, original: r.text, text: r.text, mtimeMs: r.mtimeMs, error: '', conflict: false, leaving: false };
-    $('setupPane').dataset.mounted = '';
-    render();
-    if (kind === view) $('setupPane').querySelector('.mem-text')?.focus();
-  }
-
-  function toolEditor(ed) {
-    const area = h('textarea', { class: 'field area mono mem-text', spellcheck: 'false', 'aria-label': `Edit ${ed.path}` });
-    area.value = ed.text;
-    const dirty = () => ed.text !== ed.original;
-    const saveable = () => dirty() && !ed.gone;
-    const hint = () => ed.error || 'The name and description at the top are what Claude sees in every conversation. Ctrl+S saves.';
-    const status = h('p', { class: `setup-status${ed.error ? ' err' : ''}`, role: 'status', text: hint() });
-    const save = h('button', { class: 'btn primary slim-btn', type: 'button', disabled: !saveable() }, 'Save');
-    const back = h('button', { class: 'back-btn', type: 'button' }, `← ${LIST_NAME[ed.view]}`);
-    const reloadBtn = h('button', { class: 'btn ghost slim-btn', type: 'button', hidden: !ed.conflict, onclick: () => openTool(ed, ed.view) }, 'Reload');
-    const setStatus = (text, err) => { status.textContent = text; status.classList.toggle('err', !!err); };
-
-    async function doSave() {
-      if (!saveable() || save.disabled) return;
-      save.disabled = true;
-      let r;
-      try { r = await api.writeTool(ed.kind, ed.path, ed.text, ed.mtimeMs); } catch { r = null; }
-      if (r?.ok) {
-        if (r.toolbox) state.toolbox = r.toolbox;
-        const now = state.toolbox?.[listKey[ed.kind]]?.find(t => t.path === ed.path);
-        Object.assign(ed, { original: ed.text, mtimeMs: r.mtimeMs, error: '', conflict: false, name: now?.name || ed.name });
-        setStatus(hint());
-        SB.toast(`Saved ${ed.kind === 'agent' ? ed.name : `/${ed.name}`}. New conversations use this version.`);
-      } else {
-        Object.assign(ed, { error: r?.error || "Couldn't save that file.", conflict: !!r?.conflict });
-        setStatus(ed.error, true);
-        reloadBtn.hidden = !ed.conflict;
-      }
-      save.disabled = !saveable();
-    }
-
-    area.addEventListener('input', () => {
-      ed.text = area.value;
-      save.disabled = !saveable();
-      if (ed.leaving) { ed.leaving = false; back.textContent = back.dataset.label; }
-    });
-    area.addEventListener('keydown', e => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); doSave(); }
-    });
-    save.addEventListener('click', doSave);
-    // Leaving with unsaved text takes a second click, as in Memory.
-    back.dataset.label = back.textContent;
-    back.addEventListener('click', () => {
-      if (dirty() && !ed.leaving) { ed.leaving = true; back.textContent = 'Discard changes?'; return; }
-      toolEd = null;
-      render();
-      focusRow(`${ed.kind}:${ed.name}`, '.tool-toggle');
-    });
-
-    return h('div', { class: 'setup-form mem-editor' },
-      h('div', { class: 'setup-head' },
-        back,
-        h('strong', { text: `${ed.kind === 'agent' ? ed.name : `/${ed.name}`}` }),
-        h('code', { class: 'mem-path', text: SB.shortPath(ed.path, 46), title: ed.path }),
-        h('button', { class: 'icon-btn', type: 'button', title: 'Show file', 'aria-label': 'Show file', onclick: () => api.revealTool(ed.path) },
-          SB.icon(SB.ICONS.folder, { width: 1.3 }))),
-      area,
-      h('div', { class: 'row setup-actions' }, status, reloadBtn, save));
-  }
-
-  function sourceLabel(src) {
-    if (!src) return '';
-    if (src.startsWith('plugin:')) return src.slice(7);
-    return { user: 'yours', project: 'this project', cli: 'built in' }[src] || src;
-  }
-
   SB.toolChip = (p) => h('button', {
     class: 'trick-chip', type: 'button', title: p.kind === 'agent' ? `Use the ${p.name} agent` : `/${p.name}`,
     onclick: () => SB.useTool(p),
@@ -316,76 +124,6 @@
   const openRows = new Set(); // 'kind:name' of the rows showing their details
   let shownOwn = [];          // your own ones in the list as filtered, for Shift+click ranges
   let rowSeq = 0;
-
-  const WHERE_FROM = {
-    user: 'Yours: it\'s in your own Claude folder, so every project has it.',
-    project: 'This project\'s: it\'s in the repo, so anyone working here has it too.',
-    cli: 'Built into Claude Code.',
-  };
-  const MCP_SAYS = {
-    connected: 'Connected.',
-    failed: 'Couldn\'t connect. Reconnect to try again.',
-    'needs-auth': 'Waiting for you to sign in. Sign in opens its page in your browser.',
-    pending: 'Still connecting.',
-    disabled: 'Turned off for open conversations.',
-  };
-  function whereFrom(t) {
-    if (t.kind === 'mcp') return MCP_SAYS[t.status] || null;
-    if ((t.source || '').startsWith('plugin:')) return `Comes with the ${t.source.slice(7)} plugin. Turn it off or remove it in Get more.`;
-    return WHERE_FROM[t.source] || null;
-  }
-
-// A skill Claude never reaches for: Claude Code picks skills by their
-  // description alone, so one that doesn't say when to use it sits idle. Yours
-  // can be sharpened by Claude; a plugin's can only be noted.
-  function skillHint(t) {
-    if (t.kind !== 'skill' || !isIdle(usageOf(t))) return null;
-    const own = ownTool(t);
-    return h('div', { class: 'tool-hint' },
-      h('p', { text: own
-        ? "Claude hasn't reached for this lately. It decides from the description alone, so one that says plainly when to use it (in the words you'd use) gets used."
-        : "Claude hasn't reached for this lately. It decides from the description alone; if you never need it, turning its plugin off saves room in every conversation." }),
-      own ? h('button', { class: 'btn ghost slim-btn', type: 'button', onclick: () => SB.prefillNew(
-        `Look at my skill "${t.name}" in ${t.path}. Claude Code decides whether to use a skill from its description alone, and it hasn't used this one lately. `
-        + "Rewrite the description in its frontmatter so it says plainly what the skill does and when to reach for it, in the words I'd use when I need it. "
-        + 'Keep it under 1024 characters, leave the rest of the file alone, and show me the change before you save it.') }, 'Sharpen its description with Claude') : null);
-  }
-
-  const actBtn = (icon, label, attrs) => h('button', { class: 'btn ghost slim-btn tool-act', type: 'button', ...attrs },
-    SB.icon(icon, { width: 1.4 }), label);
-
-  function toolDetail(t, id) {
-    const own = MERGED.includes(t.kind) && (t.source === 'user' || t.source === 'project');
-    const acts = t.kind === 'mcp'
-      ? [actBtn(SB.ICONS.trash, 'Remove', { class: 'btn ghost slim-btn tool-act danger-hover', 'aria-label': `Remove ${t.name}`, disabled: SB.toolboxMcp.isBusy(t.name),
-        onclick: () => SB.toolboxMcp.remove(t) })]
-      : [
-        t.path ? actBtn(SB.ICONS.folder, 'Show file', { onclick: () => api.revealTool(t.path) }) : null,
-        ownTool(t) ? actBtn(SB.ICONS.edit, 'Edit', { 'aria-label': `Edit ${t.name}`, onclick: () => openTool(t) }) : null,
-        own ? actBtn(SB.ICONS.trash, 'Remove', { class: 'btn ghost slim-btn tool-act danger-hover', 'aria-label': `Remove ${t.name}`,
-          title: 'Shellby asks first, and it goes to the Recycle Bin', disabled: removing.has(`${t.kind}:${t.name}`), onclick: () => removeTool(t) }) : null,
-      ].filter(Boolean);
-    const where = whereFrom(t);
-    return h('div', { class: 'tool-detail', id },
-      where ? h('p', { class: 'tool-where', text: where }) : null,
-      t.kind === 'mcp' ? null : statsLine(t),
-      skillHint(t),
-      t.path ? h('code', { class: 'tool-path', text: SB.shortPath(t.path, 64), title: t.path }) : null,
-      hiddenCopies(t),
-      acts.length ? h('div', { class: 'tool-detail-actions' }, acts) : null);
-  }
-
-  // The same name where Claude Code looks first wins: say which copy loads, and where the others are.
-  function hiddenCopies(t) {
-    if (!t.hides?.length) return null;
-    const others = t.hides.length === 1 ? 'Another copy hides' : `${t.hides.length} other copies hide`;
-    return h('div', { class: 'tool-hint' },
-      h('p', { text: `Only this copy (${sourceLabel(t.source)}) loads. ${others} behind it; remove the one you don't want, so there's no doubt which Claude gets.` }),
-      ...t.hides.map(x => h('div', { class: 'tool-hidden-copy' },
-        h('span', { class: 'src-pill', text: sourceLabel(x.source) }),
-        x.path ? h('code', { class: 'tool-path', text: SB.shortPath(x.path, 52), title: x.path }) : null,
-        x.path ? actBtn(SB.ICONS.folder, 'Show file', { onclick: () => api.revealTool(x.path) }) : null)));
-  }
 
   // What stays in reach with the row closed: Use and the pin, or a server's switches.
   function quickActions(t) {
@@ -417,6 +155,7 @@
 
   // A list's row leads with its kind as a letter; on your own ones the box to pick it takes
   // that place when the pointer or keyboard is on the row, or once anything is picked.
+  const NOUN = { skill: 'skill', agent: 'agent', command: 'command' };
   const GLYPH = { skill: 'S', agent: 'A', command: '/' };
   const lead = t => h('span', { class: 'tool-lead' },
     h('span', { class: `kind-glyph k-${t.kind}`, role: 'img', 'aria-label': NOUN[t.kind], title: NOUN[t.kind], text: GLYPH[t.kind] }),
@@ -513,7 +252,7 @@
       h('span', { text: groupName(src) }),
       src.startsWith('plugin:') ? h('span', { class: 'tool-group-kind', text: 'plugin' }) : null,
       h('span', { class: 'tool-group-n', text: String(rows.length) })),
-    usage ? h('span', { class: `tool-group-meta${used ? '' : ' idle'}` }, used ? `${used} used lately` : 'None used lately', cost ? `, ${tok(cost)}` : '') : null,
+    U.has() ? h('span', { class: `tool-group-meta${used ? '' : ' idle'}` }, used ? `${used} used lately` : 'None used lately', cost ? `, ${tok(cost)}` : '') : null,
     open && own.length > 1 ? h('button', { class: 'tool-group-all', type: 'button', onclick: () => SB.toolboxBatch.pickAll(own) }, `Select all ${own.length}`) : null);
   }
 
@@ -561,7 +300,7 @@
     const search = $('toolSearch');
     const what = SEARCH_WHAT[kind] || 'tools';
     if (search.placeholder !== `Search ${what}…`) { search.placeholder = `Search ${what}…`; search.setAttribute('aria-label', `Search ${what}`); }
-    const listed = LISTED.has(kind) && !(toolEd && toolEd.view === kind);
+    const listed = LISTED.has(kind) && !D.editing(kind);
     $('toolSource').hidden = $('toolSort').hidden = !listed;
     list.classList.toggle('is-tidy', listed);
     // The picked bar is rebuilt below. Keep the keyboard on its button, even through the redraw
@@ -579,31 +318,17 @@
     if (kind === 'snippet') return SB.toolboxSnippets.render(q);
     if (kind === 'mod') return SB.toolboxMods.render(q);
     if (kind === 'team') return SB.toolboxTeam.render(q);
-    if (toolEd && toolEd.view === kind) {
-      // Rebuilt only for another file, so a toolbox update can't take the cursor out of it,
-      // or once to say the file has gone (your text stays, to copy somewhere).
-      const pane = $('setupPane');
-      const gone = !!tb && !itemsOf(tb, toolEd.kind).some(t => t.path === toolEd.path);
-      if (gone && !toolEd.gone) {
-        Object.assign(toolEd, { gone: true, error: 'This file was moved or removed outside Shellby, so it can\'t be saved here. Copy your text if you need it.' });
-        pane.dataset.mounted = '';
-      }
-      const key = `tool:${toolEd.path}`;
-      pane.hidden = false;
-      list.hidden = true;
-      if (pane.dataset.mounted !== key) { pane.replaceChildren(toolEditor(toolEd)); pane.dataset.mounted = key; }
-      return;
-    }
+    if (D.showEditor(kind, tb)) return; // one of your own open in the editor, in place of the list
     if (kind === 'mcp') {
       const key = SB.toolboxMcp.paneKey();
       $('setupPane').hidden = false;
       if ($('setupPane').dataset.mounted !== key) { $('setupPane').replaceChildren(...SB.toolboxMcp.pane()); $('setupPane').dataset.mounted = key; }
     }
     if (!tb) { list.replaceChildren(h('li', { class: 'history-empty', text: 'Scanning…' })); return; }
-    if (kind !== 'mcp' && !usageTried) loadUsage();
+    if (kind !== 'mcp' && !U.tried()) U.load();
     const all = itemsOf(tb, kind);
     if (listed) syncSourcePicker(all);
-    const order = listed && usage ? SORTS[sort] : SORTS.name;
+    const order = listed && U.has() ? SORTS[sort] : SORTS.name;
     const items = all
       .filter(t => !listed || fromSource(t))
       .filter(t => !q || t.name.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q))
@@ -637,11 +362,11 @@
       list.replaceChildren(...[healthRow, h('li', { class: 'history-empty', text: hint }), ...parkedRows].filter(Boolean));
       return;
     }
-    maxList = items.reduce((m, t) => Math.max(m, num(usageOf(t)?.listTokens)), 0);
+    U.setMax(items);
     const refocus = focusedIn(list);
     // What the two columns of numbers are, once usage is here to fill them.
-    const cols = listed && usage ? h('li', { class: 'tool-cols', 'aria-hidden': 'true' }, h('span', { text: 'Used', title: 'How often Claude used it lately, and when last' }), h('span', { text: 'Tokens', title: 'What its name and description cost in every conversation' })) : null;
-    list.replaceChildren(...[healthRow, listed ? sortNote() : null, cols, ...page(entries), ...parkedRows].filter(Boolean));
+    const cols = listed && U.has() ? h('li', { class: 'tool-cols', 'aria-hidden': 'true' }, h('span', { text: 'Used', title: 'How often Claude used it lately, and when last' }), h('span', { text: 'Tokens', title: 'What its name and description cost in every conversation' })) : null;
+    list.replaceChildren(...[healthRow, listed ? U.sortNote(sort) : null, cols, ...page(entries), ...parkedRows].filter(Boolean));
     refocus();
   }
 
@@ -719,13 +444,12 @@
   $('toolSort').addEventListener('change', e => {
     sort = e.target.value;
     saveView();
-    if (sort !== 'name' && !usage && !usageLoading) { usageRetried = false; loadUsage(); }
+    if (sort !== 'name' && !U.has() && !U.loading()) U.retry();
     render();
   });
   $('rescanBtn').addEventListener('click', async () => {
     [state.toolbox] = await Promise.all([api.rescanToolbox(), SB.toolboxSetup.reload(), SB.toolboxTeam.refresh()]);
-    usageRetried = false;
-    loadUsage(true);
+    U.retry(true);
     render();
     SB.toast('Toolbox rescanned');
   });
@@ -778,10 +502,12 @@
 
   loadView();
   $('toolSort').value = sort;
+  SB.toolboxUsage.init({ render });
+  SB.toolboxDetail.init({ render, choose, focusRow, kind: () => kind, forget: key => openRows.delete(key), listKey, merged: MERGED });
   SB.toolboxBatch.init({ render, isIdle: t => isIdle(usageOf(t)) });
   SB.toolboxMcp.init(render);
   SB.toolboxTidy.init({
-    render, usageOf, hasUsage: () => !!usage, glyph: t => GLYPH[t.kind], detail: toolDetail, sourceLabel,
+    render, usageOf, hasUsage: U.has, glyph: t => GLYPH[t.kind], detail: toolDetail, sourceLabel,
     actions: t => [t.kind === 'agent' ? SB.crewPill?.(t.name) : null, quickActions(t)],
     name: shown, noun: t => NOUN[t.kind],
     close: () => {
