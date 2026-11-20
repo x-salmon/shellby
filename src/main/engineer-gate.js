@@ -213,13 +213,19 @@ function scopeGate(d, toolName, toolInput, ctx) {
   const scope = scopeOf(d);
   // .git and .claude can run code (hooks, settings): only a scope that names
   // them reaches them, never a ** on its own.
-  if (/^\.(git|claude)(\/|$)/.test(rel) && !scope.some(p => !p.startsWith('*') && inScope([p], rel))) {
+  if (PROTECTED.test(rel) &&!scope.some(p => !p.startsWith('*') && inScope([p], rel))) {
     return deny(`Engineer mode: ${rel} can change how git or Claude Code runs, so only a scope that names it covers it. Call mcp__shellby__amend_decision with it if the work truly needs it.`);
   }
   if (inScope(scope, rel)) return null;
   if (pendingAmendment(d)) return deny(`Engineer mode: ${rel} is outside the approved scope, and the amendment asking for more is still waiting on the user's card. End your turn and wait for their answer.`);
   return deny(`Engineer mode: ${rel} is outside the approved scope (${scope.join(', ')}). If the work needs it, call mcp__shellby__amend_decision with add_scope and why, then end your turn. Otherwise keep to the scope.`);
 }
+
+// .git and .claude: they change how git or Claude Code runs.
+const PROTECTED = /^\.(git|claude)(\/|$)/;
+// A command naming either folder as a path (not `git status`).
+const TOUCHES_PROTECTED = /(^|[\s'"=/\\])\.(git|claude)([/\\]|['"\s]|$)/i;
+const SPIKE_PROTECTED = 'Engineer mode: during a spike, .git and .claude are off limits: what changes there can run code, and the spike couldn\'t put it back.';
 
 /** During a spike: anything local, nothing that would outlive the spike. */
 function spikeGate(toolName, toolInput, ctx) {
@@ -233,10 +239,14 @@ function spikeGate(toolName, toolInput, ctx) {
   }
   if (FILE_TOOLS.has(tool)) {
     const abs = fileOf(toolInput, ctx.cwd);
-    if (abs && relIn(ctx.roots, abs) === null && !under(ctx.outside || [], abs)) {
+    const rel = abs ? relIn(ctx.roots, abs) : '';
+    if (abs && rel === null && !under(ctx.outside || [], abs)) {
       return deny(`Engineer mode: ${abs} is outside the project, so the spike couldn't put it back. Keep the spike inside the project.`);
     }
+    // Snapshots never hold .git, and .claude's settings and hooks run code: neither could be put back.
+    if (rel && PROTECTED.test(rel)) return deny(SPIKE_PROTECTED);
   }
+  if (SHELLS.has(tool) && TOUCHES_PROTECTED.test(String(toolInput?.command || ''))) return deny(SPIKE_PROTECTED);
   return null;
 }
 

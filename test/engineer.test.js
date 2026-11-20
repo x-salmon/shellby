@@ -219,6 +219,14 @@ test('gate: a spike may change the project\'s files, nothing that would outlive 
   assert.equal(g(state, 'mcp__shellby__end_spike'), null);
   assert.match(deniedWhy(g(state, 'Write', { file_path: path.resolve('/elsewhere/x.js') })), /couldn't put it back/);
   assert.equal(g({ ...state, spike: { phase: 'ending' } }, 'Edit', inRoot('a.js')), null, 'until its turn ends');
+  // .git and .claude: never in a spike, by edit or by command.
+  assert.match(deniedWhy(g(state, 'Write', inRoot('.git/hooks/post-checkout'))), /off limits/);
+  assert.match(deniedWhy(g(state, 'Edit', inRoot('.claude/settings.json'))), /off limits/);
+  for (const command of ['echo x > .git/hooks/pre-commit', 'cp evil.json .claude/settings.json', "node -e \"fs.writeFileSync('.git/config','')\""]) {
+    assert.match(deniedWhy(g(state, 'Bash', { command })), /off limits/, command);
+  }
+  assert.equal(g(state, 'Bash', { command: 'git status' }), null);
+  assert.equal(g(state, 'Bash', { command: 'cat .gitignore' }), null);
 });
 
 test('spikeOutlives reads each command word by word, inline code and git\'s own options included', () => {
