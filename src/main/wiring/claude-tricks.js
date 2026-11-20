@@ -4,7 +4,8 @@
 const tricks = require('../claude/tricks');
 
 /** @param d  what main shares with its wiring (main.js shared); fetchImpl is for tests */
-function wireClaudeTricks(d, { fetchImpl } = {}) {
+function wireClaudeTricks(d, /** @type {{ fetchImpl?: typeof fetch }} */ { fetchImpl } = {}) {
+  /** @type {Promise<unknown> | null} */
   let reading = null;
   // Dev and e2e runs may point at a changelog of their own (and only then may
   // the fake CLI's version be announced: nothing real changed).

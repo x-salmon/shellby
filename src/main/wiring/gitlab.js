@@ -20,6 +20,7 @@ function settingsOf(raw) {
 /** d: what main shares (main.js `shared`). */
 function wireGitlab(d) {
   const apis = new Map();
+  /** @type {{ installed: boolean, version: string | null } | null} */
   let glab = null; // { installed, version } once asked
 
   const gitlabSettings = () => settingsOf(d.config.get('gitlab'));

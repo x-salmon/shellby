@@ -22,6 +22,7 @@
   const ancestors = rel => String(rel).split('/').slice(0, -1).map((_s, i, parts) => parts.slice(0, i + 1).join('/'));
 
   /** A tool's path relative to the tree's root, or null (none, outside it, or the root itself). cwd: for a relative path. */
+  /** @param {unknown} p @param {string | undefined} rootDir @param {string | null} [cwd] */
   function relOf(p, rootDir, cwd = null) {
     if (typeof p !== 'string' || !p || !rootDir) return null;
     const abs = isAbs(p) ? p : cwd ? `${cwd}/${p}` : null;
@@ -52,7 +53,7 @@
    * their result asks for the next status read to be compared with the one before (ranShell).
    * -> whether anything changed
    */
-  function take(s, item, { root: rootDir, cwd = null, now = Date.now(), replay = false } = {}) {
+  function take(s, item, /** @type {{ root?: string, cwd?: string | null, now?: number, replay?: boolean }} */ { root: rootDir, cwd = null, now = Date.now(), replay = false } = {}) {
     if (replay || !item || typeof item !== 'object') return false;
     if (item.kind === 'tool') {
       if (item.agent) return false;

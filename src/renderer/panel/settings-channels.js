@@ -7,6 +7,7 @@
   const T = window.ShellbySettingsText;
 
   // ---------------------------------------------------------------- telling you elsewhere
+  /** @type {{ providers: { name: string, findsTarget?: boolean }[], provider: string, target?: string, events?: Record<string, boolean> } | null} */
   let channels = null;
   // The subscribe link as pixel art: ink modules on sand, with the 4-module
   // quiet zone a phone camera needs to find the code.
@@ -103,7 +104,8 @@
     if (!typed) return;
     renderChannels(await api.setChannelSecret(typed));
     // A fresh bot token and no chat yet: go and look, so pasting is the whole job.
-    if (channels.providers.find(p => p.name === channels.provider)?.findsTarget && !channels.target) findChat();
+    const ch = channels;
+    if (ch && ch.providers.find(p => p.name === ch.provider)?.findsTarget && !ch.target) findChat();
   });
   async function findChat() {
     $('chFind').disabled = true;
@@ -119,7 +121,7 @@
   $('chFind').addEventListener('click', findChat);
   $('chEvents').addEventListener('change', async e => {
     const key = e.target.dataset?.event;
-    if (key) renderChannels(await api.setChannels({ events: { ...channels.events, [key]: e.target.checked } }));
+    if (key) renderChannels(await api.setChannels({ events: { ...channels?.events, [key]: e.target.checked } }));
   });
   $('chTest').addEventListener('click', async () => {
     $('chTest').disabled = true;

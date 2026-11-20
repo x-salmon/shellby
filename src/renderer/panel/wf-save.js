@@ -116,7 +116,7 @@
       startRun: id => api.runWorkflow(id, {}),
       stopRun: runId => api.stopRun(runId),
       getRun: runId => api.getRun(runId),
-      apply: (def, { since } = {}) => {
+      apply: (def, /** @type {{ since?: unknown }} */ { since } = {}) => {
         if (!alive()) return false;
         if (ed.json) applyJson();
         if (since && JSON.stringify(ed.def) !== since) return 'conflict';

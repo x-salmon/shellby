@@ -129,8 +129,9 @@
     renderMarketSelect(sh);
     const all = sh?.plugins || [];
     const installed = all.filter(p => p.installed);
-    document.querySelectorAll('#shopTabs [data-filter]').forEach(b => {
-      b.querySelector('.n').textContent = sh ? (b.dataset.filter === 'installed' ? installed.length : all.length) : '';
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#shopTabs [data-filter]')).forEach(b => {
+      const count = b.querySelector('.n');
+      if (count) count.textContent = sh ? (b.dataset.filter === 'installed' ? installed.length : all.length) : '';
       b.setAttribute('aria-selected', String(b.dataset.filter === filter));
     });
     $('shopRefresh').disabled = loading;
@@ -173,7 +174,7 @@
   $('shopRefresh').addEventListener('click', () => load({ refresh: true }));
   $('shopSearch').addEventListener('input', render);
   $('shopMarket').addEventListener('change', render);
-  document.querySelectorAll('#shopTabs [data-filter]').forEach(b => b.addEventListener('click', () => { filter = b.dataset.filter; render(); }));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#shopTabs [data-filter]')).forEach(b => b.addEventListener('click', () => { filter = b.dataset.filter || filter; render(); }));
   $('shopAddForm').addEventListener('submit', e => {
     e.preventDefault();
     const v = $('shopAddInput').value.trim();

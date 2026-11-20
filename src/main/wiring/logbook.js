@@ -61,6 +61,7 @@ function wireLogbook(d) {
   }
 
   // A refresh a second after the last change, and only while someone could see it.
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let timer = null;
   function schedule() {
     if (timer || d.CAPTURE) return;

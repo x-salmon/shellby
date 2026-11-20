@@ -7,7 +7,9 @@
 (function () {
   const { h, api, plural } = SB;
   const queue = [];
+  /** @type {Element | null} */
   let showing = null;
+  /** @type {Element | null} */
   let returnFocus = null;
 
   const day = t => new Date(t).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
@@ -36,7 +38,7 @@
     showing.remove();
     showing = null;
     if (queue.length) { setTimeout(() => show(queue.shift()), 300); return; }
-    returnFocus?.focus?.({ preventScroll: true });
+    if (returnFocus instanceof HTMLElement) returnFocus.focus({ preventScroll: true });
     returnFocus = null;
   }
 

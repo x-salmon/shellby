@@ -8,7 +8,8 @@ const clean = s => String(s ?? '').replace(/[\u0000-\u001f\u007f‪-‮⁦-⁩]+
 function mixin(target, ...parts) {
   for (const part of parts) {
     for (const name of Object.getOwnPropertyNames(part.prototype)) {
-      if (name !== 'constructor') Object.defineProperty(target.prototype, name, Object.getOwnPropertyDescriptor(part.prototype, name));
+      const descriptor = Object.getOwnPropertyDescriptor(part.prototype, name);
+      if (name !== 'constructor' && descriptor) Object.defineProperty(target.prototype, name, descriptor);
     }
   }
   return target;

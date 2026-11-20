@@ -11,10 +11,11 @@
 (function () {
   const { h, api, $ } = SB;
   const menu = $('textMenu');
+  /** @type {Element | null} */
   let returnTo = null; // the field the menu was opened on
 
   function restoreFocus() {
-    if (returnTo?.isConnected && menu.contains(document.activeElement)) returnTo.focus();
+    if (returnTo?.isConnected && menu.contains(document.activeElement) && returnTo instanceof HTMLElement) returnTo.focus();
   }
 
   function close({ refocus = true } = {}) {

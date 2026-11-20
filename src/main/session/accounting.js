@@ -82,6 +82,7 @@ const accounting = {
     this.calls.set(c.messageId, { input: Math.max(c.input, prev?.input || 0), write: Math.max(c.write, prev?.write || 0), read: Math.max(c.read, prev?.read || 0) });
     if (this.calls.size > 500) this.calls.delete(this.calls.keys().next().value);
     // A brand-new conversation's first call is everything it carries before your first word.
+    /** @type {number | null} */
     let setup = null;
     if (c.main && !prev && this.setupChars !== null) {
       setup = eff.setupTokens(c, this.setupChars);

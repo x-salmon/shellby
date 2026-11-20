@@ -38,6 +38,7 @@ class HealthMonitor extends EventEmitter {
     this.unwatched = unwatched;
     this.wake = null;             // resolves the slow wait early (the panel opened)
     this.timing = timing;           // undefined -> rules.TIMING
+    /** @type {ReturnType<typeof setTimeout> | null} */
     this.timer = null;
     this.running = false;
     this.inflight = null;         // the poll in progress, shared by concurrent callers
@@ -51,7 +52,9 @@ class HealthMonitor extends EventEmitter {
     this.disks = null;
     this.disksAt = -Infinity;     // never read yet
     this.lhm = { state: 'unknown', nextTryAt: 0 };  // 'ok' | 'off' | 'auth' | 'unknown'
+    /** @type {string | null} */
     this.app = null;              // which sensor app answered: 'lhm' | 'hwinfo' | null
+    /** @type {{ nvidia: boolean, lhm: string, app: string | null, [k: string]: boolean | string | null }} */
     this.sources = { nvidia: !!sensors.hasNvidia, lhm: 'unknown', app: null };
   }
 
@@ -68,7 +71,7 @@ class HealthMonitor extends EventEmitter {
     };
     this.wake = (delay = 0) => {
       if (!this.running || epoch !== this.epoch || this.inflight) return;
-      clearTimeout(this.timer);
+      if (this.timer) clearTimeout(this.timer);
       this.timer = setTimeout(loop, delay);
     };
     loop();
@@ -94,7 +97,8 @@ class HealthMonitor extends EventEmitter {
   stop() {
     this.running = false;
     this.epoch++;                 // a poll still awaiting its sensors must not revive anything
-    clearTimeout(this.timer);
+    if (this.timer) clearTimeout(this.timer);
+    /** @type {ReturnType<typeof setTimeout> | null} */
     this.timer = null;
     this.checks = {};
     this.latest = null;

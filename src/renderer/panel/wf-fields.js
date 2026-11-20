@@ -17,12 +17,14 @@
     return err;
   }
 
-  function wrap(labelText, control, { at, hint, insert, cls = '' } = {}) {
+  function wrap(labelText, control, /** @type {{ at?: string, hint?: string, insert?: unknown, cls?: string }} */ { at, hint, insert, cls = '' } = {}) {
     if (!control.id) control.id = uid('f');
+    /** @type {HTMLElement | null} */
     let hintEl = null;
     if (hint) {
-      hintEl = h('p', { class: 'field-hint', id: uid('hint'), text: hint });
-      control.setAttribute('aria-describedby', hintEl.id);
+      const made = h('p', { class: 'field-hint', id: uid('hint'), text: hint });
+      hintEl = made;
+      control.setAttribute('aria-describedby', made.id);
     }
     const err = slot(at, control);
     const body = insert ? h('div', { class: 'wf-with-insert' }, control, insertBtn(control, insert, labelText)) : control;
@@ -54,9 +56,9 @@
 
   // options: [[value, label, disabled?]] or [{ group, options }]
   function selectControl(options, value, onChange, attrs = {}) {
-    const opt = ([v, l, dis]) => h('option', { value: v, text: l, disabled: !!dis });
+    const opt = (/** @type {[string, string, boolean?]} */ [v, l, dis]) => h('option', { value: v, text: l, disabled: !!dis });
     const el = h('select', { class: 'field', ...attrs },
-      options.map(o => (Array.isArray(o) ? opt(o) : h('optgroup', { label: o.group }, o.options.map(opt)))));
+      options.map(o => (Array.isArray(o) ? opt(/** @type {[string, string, boolean?]} */ (o)) : h('optgroup', { label: o.group }, o.options.map(opt)))));
     el.value = value ?? '';
     el.addEventListener('change', () => { onChange(el.value); changed(); });
     return el;
@@ -71,7 +73,7 @@
     return sel(label, options, value || '', onChange, opts);
   }
 
-  function check(label, checked, onChange, { hint, at } = {}) {
+  function check(label, checked, onChange, /** @type {{ hint?: string, at?: string }} */ { hint, at } = {}) {
     const input = h('input', { type: 'checkbox', checked: !!checked, onchange: e => { onChange(e.target.checked); changed(); } });
     const hintEl = hint ? h('span', { class: 'field-hint', text: hint }) : null;
     return h('div', { class: 'wf-field' },
@@ -79,7 +81,7 @@
       at ? slot(at, input) : null);
   }
 
-  function folderField(label, value, onChange, { at, placeholder, hint } = {}) {
+  function folderField(label, value, onChange, /** @type {{ at?: string, placeholder?: string, hint?: string }} */ { at, placeholder, hint } = {}) {
     const input = textControl('input', value, onChange, { placeholder });
     input.id = uid('dir');
     const choose = h('button', {

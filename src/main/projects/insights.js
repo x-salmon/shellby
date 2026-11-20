@@ -68,7 +68,7 @@ function insightsFor(p, sources) {
 
   const time = s.time ? weekOf(s.time, own) : null;
   // The latest check; of a folder's two managers (pnpm and Rust, say), the one that needs something.
-  const deps = (s.deps || []).filter(r => own(r.key)).sort((a, b) => (b.at || 0) - (a.at || 0) || !!b.attention - !!a.attention)[0] || null;
+  const deps = (s.deps || []).filter(r => own(r.key)).sort((a, b) => (b.at || 0) - (a.at || 0) || Number(!!b.attention) - Number(!!a.attention))[0] || null;
   const flaky = (s.flaky || []).filter(r => own(r.root) && r.status !== 'fixed').slice(0, MAX_FLAKY);
   const prs = prsOf(p, s.prs).slice(0, MAX_PRS);
   const sticker = (s.stickers || []).find(x => own(x.root)) || null;

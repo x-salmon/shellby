@@ -119,7 +119,7 @@ function normalize(stored) {
  * keeps its place in the list.
  *   { ok: true, list, name } | { ok: false, error }
  */
-function save(list, input, was = null) {
+function save(list, input, /** @type {string | null} */ was = null) {
   const r = check(input);
   if (!r.ok) return r;
   const { snippet } = r;

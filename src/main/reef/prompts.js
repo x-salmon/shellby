@@ -28,6 +28,7 @@ const canImprove = (sig, s) => roomOf(sig, s) > 0;
 
 /** The signal with the most room, in the reef's order when they tie: sig id or null. */
 function worstOf(p) {
+  /** @type {{ sig: string, r: number } | null} */
   let best = null;
   for (const sig of Object.keys(SIGNALS)) {
     const r = roomOf(sig, p?.signals?.[sig]);

@@ -9,7 +9,7 @@
 const fs = require('fs');
 
 /** Write `data` to `file` via `file.tmp`, flushed to disk before the rename. */
-function writeFileDurable(file, data, { mode, rename = (from, to) => fs.renameSync(from, to) } = {}) {
+function writeFileDurable(file, data, /** @type {{ mode?: number, rename?: (from: string, to: string) => void }} */ { mode, rename = (from, to) => fs.renameSync(from, to) } = {}) {
   const tmp = `${file}.tmp`;
   const fd = fs.openSync(tmp, 'w', mode);
   try {

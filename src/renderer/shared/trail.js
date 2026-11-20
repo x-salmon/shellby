@@ -331,7 +331,7 @@
    * was then). scope 'turn': only the latest turn shown; 'all': the whole
    * conversation, with earlier turns marked as earlier.
    */
-  function view(s, { upTo = Infinity, scope = 'all', busy } = {}) {
+  function view(s, /** @type {{ upTo?: number, scope?: string, busy?: boolean }} */ { upTo = Infinity, scope = 'all', busy } = {}) {
     const atEnd = upTo >= s.seq;
     // Whether he's still at it: the panel knows best (a turn cut off leaves no result behind).
     const working = atEnd ? (typeof busy === 'boolean' ? busy && s.working : s.working) : true;

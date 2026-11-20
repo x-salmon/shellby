@@ -193,12 +193,13 @@
   // at once (now) when a split closes down: main stores no layout for one
   // pane, so one pane writes nothing and starts as it always has, but takes
   // that pane's order (ipc/tabs.js panes:layout).
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let saveTimer = null;
   SB.savePanes = ({ now = false } = {}) => {
     if (SB.solo) return;
     const split = P.count(state.grid) > 1;
     if (!split && !state.panesSaved && !now) return;
-    clearTimeout(saveTimer);
+    if (saveTimer) clearTimeout(saveTimer);
     const send = () => {
       state.panesSaved = split;
       api.savePaneLayout({ grid: state.grid, sizes: state.paneSizes });
@@ -256,6 +257,7 @@
 
   // The line between two columns (axis 'w', after column c) or two panes in
   // column c (axis 'h', after pane r). Drag it; double-click to even them out.
+  /** @param {string} axis @param {number} c @param {number | null} [r] */
   function divider(axis, c, r = null) {
     return h('div', {
       class: `pane-divider ${axis === 'w' ? 'across' : 'down'}`, role: 'separator',
@@ -337,9 +339,11 @@
     if (e.button !== 0 || SB.solo || P.count(state.grid) < 2 || e.target.closest('.tab, button')) return;
     const head = e.currentTarget;
     const x0 = e.clientX, y0 = e.clientY;
-    let moved = false, over = null, done = false;
+    let moved = false, done = false;
+    /** @type {string | null} */
+    let over = null;
     const under = ev => {
-      const id = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.pane')?.dataset.pane;
+      const id = /** @type {HTMLElement | null | undefined} */ (document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.pane'))?.dataset.pane;
       return id && id !== paneId && panes.has(id) ? id : null;
     };
     const move = ev => {
@@ -531,7 +535,7 @@
     if (!id || !e.target.closest(FEED_CONTROL)) return;
     const field = document.activeElement;
     SB.activate(id);
-    if (field !== document.activeElement && field?.isConnected && field.closest('.feed') && field.matches('input, textarea, select, [contenteditable]')) field.focus({ preventScroll: true });
+    if (field !== document.activeElement && field instanceof HTMLElement && field.isConnected && field.closest('.feed') && field.matches('input, textarea, select, [contenteditable]')) field.focus({ preventScroll: true });
   }, true);
 
   // Drop `tabId` on pane `target` (`zone`: see panes.place; 'strip' with

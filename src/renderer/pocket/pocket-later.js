@@ -18,6 +18,7 @@
     const OUTBOX_KEY = 'shellby.pocket.outbox';
     const RETRY_MS = 15000; // the stream can think the PC is there for a while after it went
     let flushing = false;
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let retry = null;
     const listeners = new Set();
 
@@ -44,7 +45,7 @@
      * A task or a reply: sent now, or kept for when the PC answers. -> the PC's
      * answer, or { ok: true, kept: true } when it waits on the phone.
      */
-    async function send(name, body, { label, timeoutMs } = {}) {
+    async function send(name, body, /** @type {{ label?: string, timeoutMs?: number }} */ { label, timeoutMs } = {}) {
       const withKey = { ...body, key: body.key || L.newKey() };
       // Pictures wait on the PC for a little while only, so a message with them isn't kept.
       const kept = () => (body.photos?.length
@@ -57,7 +58,7 @@
 
     // Another go a little later, while anything waits: the stream may not have noticed the PC go and come back.
     function later() {
-      clearTimeout(retry);
+      if (retry) clearTimeout(retry);
       retry = outbox().length ? setTimeout(() => { retry = null; flush().finally(later); }, RETRY_MS) : null;
     }
 

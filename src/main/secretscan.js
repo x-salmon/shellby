@@ -79,7 +79,9 @@ function scanPatch(patch, where = 'unpushed') {
   const out = [];
   const seen = new Set();
   const add = f => { const k = `${f.file}\0${f.line || 0}\0${f.kind}`; if (!seen.has(k)) { seen.add(k); out.push({ ...f, where }); } };
-  let file = null, lineNo = 0;
+  /** @type {string | null} */
+  let file = null;
+  let lineNo = 0;
   for (const raw of String(patch || '').split('\n')) {
     const l = raw.replace(/\r$/, '');
     if (l.startsWith('diff --git ')) { file = l.slice(l.lastIndexOf(' b/') + 3) || null; lineNo = 0; continue; }
@@ -156,7 +158,7 @@ const SAFE_REF = /^(?!-)[\w./-]{1,250}$/;
  * rev: what's pushed (HEAD); remote: where to, so only what that remote has
  * counts as gone already (any remote, when not given).
  */
-async function outgoing(root, run = git, { rev = 'HEAD', remote } = {}) {
+async function outgoing(root, run = git, /** @type {{ rev?: string, remote?: string }} */ { rev = 'HEAD', remote } = {}) {
   if (!SAFE_REF.test(rev) || (remote != null && !SAFE_REF.test(remote))) return result([], { ok: false });
   const r = await run(root, [...PATCH, rev, '--not', remote ? `--remotes=${remote}` : '--remotes']);
   if (!r.ok) return result([], { ok: false });

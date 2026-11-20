@@ -182,7 +182,7 @@
     $('usageWho').hidden = !other;
     // The folder chip already names the computer: a small mark is enough here, and the rest is in its title.
     if (other) $('usageWho').title = hasWindows(other) ? `Plan usage of ${who}, not your own plan` : `${who}: no reading of its plan yet`;
-    const set = (el, win, name, pace = null) => {
+    const set = (el, win, name, /** @type {{ warn?: boolean, hitAt: number, resetsAt: number, hitText: string } | null | undefined} */ pace = null) => {
       if (!win) { el.hidden = true; return; }
       el.hidden = false;
       el.querySelector('.meter-fill').style.transform = `scaleX(${Math.min(100, win.pct) / 100})`;

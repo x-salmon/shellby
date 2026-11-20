@@ -22,7 +22,10 @@
   }
 
   class ConflictsFeed {
-    /** r: main's worktree:conflicts answer, with files: [{ path, hunks: [{ at, ours, theirs, prompt }] }]. */
+    /**
+     * r: main's worktree:conflicts answer, with files: [{ path, hunks: [{ at, ours, theirs, prompt }] }].
+     * @this {{ busy: boolean, id: string, append: (el: Element) => void }}
+     */
     renderConflicts(r) {
       const ask = prompt => {
         if (this.busy) return SB.toast('Let him finish first.');

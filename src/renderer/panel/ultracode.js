@@ -130,9 +130,10 @@
   };
 
   // The clock on running cards: one timer, alive only while one is on screen.
+  /** @type {ReturnType<typeof setInterval> | null} */
   let timer = null;
   function tick() {
-    const running = [...document.querySelectorAll('.ultra-card.status-running')];
+    const running = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.ultra-card.status-running'))];
     for (const c of running) {
       const t = c.querySelector('.ultra-elapsed');
       if (t) t.textContent = SB.clock(Date.now() - Number(c.dataset.started));

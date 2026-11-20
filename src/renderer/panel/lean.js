@@ -14,9 +14,12 @@
 (function () {
   const { h, api, state, $ } = SB;
   const TRIM_FROM = 400;   // tokens: smaller memory files aren't worth a trim
+  /** @type {Promise<void> | null} */
   let loading = null;
   let loadingSince = 0;
+  /** @type {ReturnType<typeof setInterval> | null} */
   let tick = null;         // redraws the waiting line each second, so it never looks stuck
+  /** @type {string | null} */
   let error = null;
   const busy = new Set();  // plugin ids / server names with a change in flight
 
@@ -32,7 +35,7 @@
     loading = api.leanReport(refresh)
       .then(r => { if (r?.ok) state.lean = r; else error = r?.error || "Couldn't read that from Claude Code."; })
       .catch(() => { error = "Couldn't read that from Claude Code."; })
-      .finally(() => { loading = null; clearInterval(tick); tick = null; rerender(); });
+      .finally(() => { loading = null; if (tick) clearInterval(tick); tick = null; rerender(); });
     if (!state.lean) tick ??= setInterval(() => { const el = document.querySelector('#toolList .lean-wait'); if (el) el.textContent = waited(); }, 1000);
     rerender();
     return loading;

@@ -148,7 +148,7 @@ function registerGithubIpc(ipcMain, d) {
       title: 'Add Shellby to Claude Code?',
       message: "Show Shellby's mood, level and XP in Claude Code's status line.",
       detail: now.state === 'other'
-        ? `This replaces your current status line:\n\n${now.command.slice(0, 200)}\n\nShellby keeps it and puts it back if you remove Shellby's.`
+        ? `This replaces your current status line:\n\n${(now.command ?? '').slice(0, 200)}\n\nShellby keeps it and puts it back if you remove Shellby's.`
         : 'This adds a statusLine entry to your Claude Code settings (~/.claude/settings.json). A backup is kept, and Remove takes it out again.',
       note: 'It works in the terminal and in VS Code. When Shellby is closed, the line is simply empty.',
       buttons: [{ label: now.state === 'other' ? 'Replace it' : 'Add it', style: 'primary' }, { label: 'Cancel' }], defaultId: 0, cancelId: 1,

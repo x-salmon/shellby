@@ -197,8 +197,8 @@
   // A reply from your phone while he worked (wiring/pocket.js): queued as if typed
   // here, with the pictures it carries. Should this turn have ended meanwhile,
   // drain sends it at once, with anything waiting in the merge window.
-  api.onTabQueue(({ tabId, text, files } = {}) => {
-    const tab = state.tabs.get(tabId);
+  api.onTabQueue((/** @type {{ tabId?: string, text?: string, files?: unknown[] }} */ { tabId, text, files } = {}) => {
+    const tab = tabId ? state.tabs.get(tabId) : undefined;
     const pictures = Array.isArray(files) ? files.filter(f => typeof f === 'string' && f) : [];
     if (!tab || typeof text !== 'string' || (!text && !pictures.length)) return;
     tab.queue.push(queueItem(text, pictures));

@@ -19,10 +19,14 @@
   const kindOf = m => (KIND.some(([k]) => k === m.type) ? m.type : 'other');
 
   const open = new Set(); // files shown in full
+  /** @type {{ file: string, text: string, mtimeMs?: number, error: string } | null} */
   let editing = null;    // { file, text, mtimeMs, error }
+  /** @type {string | null} */
   let forgetting = null; // the file whose Forget was pressed once
+  /** @type {{ memories: { file: string, body?: string, mtimeMs?: number }[], exists: boolean, error?: boolean } | null} */
   let last = null;       // the last list, so a re-render doesn't re-read every file
   let lastAt = 0;
+  /** @type {string | null} */
   let lastTab = null;    // ...for this conversation's project
   const STALE_MS = 5000;
 
@@ -57,8 +61,10 @@
       : isOpen ? SB.renderMarkdownInto(h('div', { class: 'am-body msg assistant' }), m.body || '(empty)') : null;
 
     async function save() {
-      const r = await api.saveMemory(tabId(), m.file, editing.text, m.mtimeMs).catch(() => null);
-      if (!r?.ok) { editing.error = r?.error || "Couldn't save it."; redraw(); return; }
+      const cur = editing;
+      if (!cur) return;
+      const r = await api.saveMemory(tabId(), m.file, cur.text, m.mtimeMs).catch(() => null);
+      if (!r?.ok) { cur.error = r?.error || "Couldn't save it."; redraw(); return; }
       editing = null;
       open.add(m.file);
       SB.toast('Saved. Claude reads it that way from its next conversation here.');

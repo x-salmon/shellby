@@ -16,6 +16,7 @@
   const USD_PER_WEIGHT = 1e-6;
   // A token costs at least a cache read: a tenth of the model's input price.
   const CHEAPEST_SHARE = 0.1;
+  /** @type {[RegExp, number][]} */
   const RATES = [[/haiku/i, 1], [/sonnet/i, 3], [/opus|fable/i, 5]];
   const DEFAULT_RATE = 3;
 
@@ -36,7 +37,7 @@
   /** The message as sent with Ultracode off: the word kept, but no longer the keyword. */
   const withoutKeyword = text => (typeof text === 'string' ? text.replace(EVERY_WORD, `$1$2${JOINER}$3`) : '');
 
-  const rateOf = model => (RATES.find(([re]) => re.test(model || '')) || [null, DEFAULT_RATE])[1];
+  const rateOf = model => RATES.find(([re]) => re.test(model || ''))?.[1] ?? DEFAULT_RATE;
 
   /** The least `tokens` can have cost on `model`, in dollars: every one a cache read. */
   const floorUsd = (tokens, model) => (Number.isFinite(tokens) && tokens > 0 ? tokens * rateOf(model) * CHEAPEST_SHARE * USD_PER_WEIGHT : 0);

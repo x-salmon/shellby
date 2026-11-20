@@ -211,7 +211,7 @@ function openThreads(threads) {
       })).filter(c => c.body),
     }))
     .filter(t => t.comments.length)
-    .sort((a, b) => a.outdated - b.outdated)
+    .sort((a, b) => Number(a.outdated) - Number(b.outdated))
     .slice(0, MAX_THREADS);
 }
 

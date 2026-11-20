@@ -345,7 +345,7 @@
       if (oli) { flush(); out.push({ t: 'oli', n: Number(oli[1]), runs: inline(oli[2]) }); continue; }
       const quote = /^\s*>\s?(.*)$/.exec(line);
       if (quote) { flush(); out.push({ t: 'quote', runs: inline(quote[1]) }); continue; }
-      if (/^\s*([-*_])\s*\1\s*\1[\s\1]*$/.test(line)) { flush(); out.push({ t: 'hr' }); continue; }
+      if (/^\s*([-*_])\s*\1\s*\1(?:\s|\1)*$/.test(line)) { flush(); out.push({ t: 'hr' }); continue; }
       para.push(line.trim());
     }
     flush();

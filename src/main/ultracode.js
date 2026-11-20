@@ -36,6 +36,7 @@ function create() {
 }
 
 /** A task_* item that is an ultracode run. Only task_started says task_type. */
+/** @param {{ byId: Map<string, unknown> } | null} [state] */
 function isRun(item, state = null) {
   if (item?.kind !== 'task' || !item.taskId) return false;
   if (typeof item.taskType === 'string') return item.taskType === 'local_workflow';

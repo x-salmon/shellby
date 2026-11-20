@@ -162,7 +162,8 @@ function wirePhoneTasks(d) {
     if (response !== 0) return { ...phoneTasksView(), cancelled: true };
     // Changed while the window was open: the yes was for somewhere else.
     if (consentKey() !== key || problem()) return { ...phoneTasksView(), error: problem() || 'Where notifications go changed. Try again.' };
-    let shown = null;
+    /** @type {string | null} */
+  let shown = null;
     if (ntfy && !passphrase) {
       shown = newPassphrase();
       if (!shown) return { ...phoneTasksView(), error: "Windows can't keep a passphrase safe on this PC." };

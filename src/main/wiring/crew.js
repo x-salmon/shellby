@@ -97,6 +97,7 @@ function wireCrew(d) {
 
   // The critter refreshes often (every helper's progress): each member's level
   // and look are worked out once per roster, and each hat copied once per item.
+  /** @type {{ of: unknown, byType: Map<string, unknown> | null }} */
   let members = { of: undefined, byType: null };
   const membersNow = () => {
     const s = state();
