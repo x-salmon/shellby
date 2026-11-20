@@ -134,11 +134,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
  * Photograph a localhost page. -> PNG Buffer | null. Never throws, never takes
  * longer than timeoutMs: an unpainted window's capturePage can hang for ever.
  * electron: { BrowserWindow, session }.
+ * @param {string} url
+ * @param {{ electron?: { BrowserWindow: typeof import('electron').BrowserWindow, session: typeof import('electron').session }, timeoutMs?: number }} [opts]
  */
 async function capture(url, { electron, timeoutMs = CAPTURE_TIMEOUT_MS } = {}) {
   const origin = localOrigin(url);
   if (!origin || !electron?.BrowserWindow) return null;
+  /** @type {import('electron').BrowserWindow | null} */
   let win = null;
+  /** @type {NodeJS.Timeout | null} */
   let timer = null;
   const work = (async () => {
     const ses = electron.session.fromPartition(PARTITION, { cache: false });
@@ -168,7 +172,7 @@ async function capture(url, { electron, timeoutMs = CAPTURE_TIMEOUT_MS } = {}) {
   try {
     return await Promise.race([work, late]);
   } finally {
-    clearTimeout(timer);
+    clearTimeout(timer ?? undefined);
     try { if (win && !win.isDestroyed()) win.destroy(); } catch { /* gone */ }
   }
 }

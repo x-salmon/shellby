@@ -23,7 +23,13 @@ const MCP_TASK = 'mcp_task';
 
 const text = v => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, TEXT) : '');
 
-/** { byId: task id -> job, tools: tool use id -> { name, command, outputFile } } */
+/** @typedef {{ id: string, toolUseId: string | null, kind: string, description: string, command: string, outputFile: string | null, status: string, startedAt: number, endedAt: number | null, summary: string }} Job */
+/** @typedef {{ byId: Map<string, Job>, tools: Map<string, { name: string, command: string, outputFile?: string }> }} JobsState */
+
+/**
+ * { byId: task id -> job, tools: tool use id -> { name, command, outputFile } }
+ * @returns {JobsState}
+ */
 function create() {
   return { byId: new Map(), tools: new Map() };
 }
@@ -31,6 +37,8 @@ function create() {
 /**
  * A task_* item that is a background command or watch rather than a helper.
  * Only task_started says task_type: later events are known by their task id.
+ * @param {any} item
+ * @param {JobsState | null} [state]
  */
 function isJob(item, state = null) {
   if (item?.kind !== 'task') return false;

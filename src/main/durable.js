@@ -8,7 +8,12 @@
 // is either the old one or the new one, never zeros.
 const fs = require('fs');
 
-/** Write `data` to `file` via `file.tmp`, flushed to disk before the rename. */
+/**
+ * Write `data` to `file` via `file.tmp`, flushed to disk before the rename.
+ * @param {string} file
+ * @param {string | NodeJS.ArrayBufferView} data
+ * @param {{ mode?: fs.Mode, rename?: (from: string, to: string) => void }} [opts]
+ */
 function writeFileDurable(file, data, { mode, rename = (from, to) => fs.renameSync(from, to) } = {}) {
   const tmp = `${file}.tmp`;
   const fd = fs.openSync(tmp, 'w', mode);

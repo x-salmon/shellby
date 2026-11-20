@@ -45,6 +45,7 @@ function launchArgs(port = DEFAULT_PORT) {
 // The copy we started, until it exits. Its first device scan can take minutes
 // on SMBus boards; a second copy started meanwhile fights it for the bus and
 // neither opens the port.
+/** @type {import('child_process').ChildProcess | null} */
 let started = null;
 const stillStarting = () => !!started;
 

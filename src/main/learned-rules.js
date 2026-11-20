@@ -148,6 +148,7 @@ function change(root, index, was, text) {
   if (!r.ok) return r;
   const rules = rulesIn(r.text);
   if (!Number.isInteger(index) || rules[index] !== was) return { ok: false, error: 'CLAUDE.md changed since this list was made. Have another look.' };
+  /** @type {string | null} */
   let t = null;
   if (text != null) {
     t = cleanRule(text);

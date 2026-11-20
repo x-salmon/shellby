@@ -24,6 +24,9 @@ const MAX_KEYS = 64;            // more than three seconds of anyone's typing
 const TICK_MS = 120;            // while you type: the beat he taps on, and how often the speed is read
 const LEVELS = Object.freeze(['none', 'typing', 'fast']);
 
+/** @typedef {{ keys: number[], fastSince: number | null, bursting: boolean, peak: number }} Rhythm */
+
+/** @type {() => Rhythm} */
 const emptyRhythm = () => ({ keys: [], fastSince: null, bursting: false, peak: 0 });
 
 /** Keys a second over the recent window, 0 with fewer than two keys in it. */
@@ -40,6 +43,9 @@ const wpmOf = kps => Math.round((kps * 60) / CHARS_PER_WORD);
  *   -> { state, level, wpm, burst: 'start' | 'end' | null, peak }
  * A burst starts after BURST_MS of fast typing and lasts until you stop, so
  * slowing down for a word or two doesn't end it; `peak` is its best wpm.
+ * @param {Rhythm | null} state
+ * @param {number} t
+ * @param {{ key?: boolean }} [beat]
  */
 function step(state, t, { key = false } = {}) {
   const prev = state || emptyRhythm();
@@ -50,6 +56,7 @@ function step(state, t, { key = false } = {}) {
   const level = !typing ? 'none' : wpm >= wpmOf(FAST_KPS) ? 'fast' : 'typing';
 
   let { fastSince, bursting, peak } = prev;
+  /** @type {'start' | 'end' | null} */
   let burst = null;
   if (bursting) {
     peak = Math.max(peak, wpm);
@@ -88,10 +95,14 @@ function createTyping(d) {
   const every = d.every || ((fn, ms) => setInterval(fn, ms));
   const stopEvery = d.stopEvery || (id => clearInterval(id));
   let rhythm = emptyRhythm();
+  /** @type {(() => void) | null} */
   let stopWatch = null;
+  /** @type {boolean | null} */
   let available = null;          // null: not tried yet; false: the keyboard can't be heard
+  /** @type {ReturnType<typeof setInterval> | null} */
   let timer = null;
   let keyed = false;             // a key since the last beat
+  /** @type {{ level: string | null, impressed: boolean | null }} */
   let sent = { level: 'none', impressed: false };
   let burstSeen = false;         // he was looking on for some of this burst
 

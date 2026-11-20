@@ -64,7 +64,10 @@ function parseTarget(raw, cwd) {
   // A network path (\\host\share) would make Windows log in to that host with
   // your account just to look at it, so only local files open.
   if (/^[\\/]{2}/.test(s)) return null;
-  let line = null, col = null;
+  /** @type {number | null} */
+  let line = null;
+  /** @type {number | null} */
+  let col = null;
   const m = s.match(/(?::(\d+))(?::(\d+))?$/) || s.match(/\((\d+)(?:,\s*(\d+))?\)$/);
   if (m && !/^[A-Za-z]:$/.test(s.slice(0, m.index))) {
     line = Number(m[1]) || null;

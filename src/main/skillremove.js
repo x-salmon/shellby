@@ -97,6 +97,7 @@ function createSkillRemover(deps) {
 
     // How often it's used, if that's quick to hand: a first transcript scan can
     // take a while, and the question makes sense without it.
+    /** @type {{ uses?: number, lastUsed?: number } | null} */
     let u = null;
     let timer;
     try {

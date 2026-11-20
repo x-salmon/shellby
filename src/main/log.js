@@ -19,6 +19,7 @@ const MAX_DETAIL = 2000;            // one entry can't run away with the file
 // GitHub's token prefixes, plus Authorization headers. Deliberately narrow:
 // scrubbing anything that merely looks random would eat the text that makes a
 // report useful.
+/** @type {[RegExp, string][]} */
 const SECRETS = [
   [/\b(gh[pousr]_[A-Za-z0-9]{6})[A-Za-z0-9]+/g, '$1…'],
   [/\b(github_pat_[A-Za-z0-9]{6})[A-Za-z0-9_]+/g, '$1…'],
