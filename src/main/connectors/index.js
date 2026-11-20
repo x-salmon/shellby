@@ -65,7 +65,10 @@ function createConnectors({ file, crypto, switches, list = listTools }) {
         const tools = await list({ type: 'http', url: s.url, headers: gateway.authHeaders(s) }, { timeoutMs: TEST_TIMEOUT_MS, env: {} });
         return { ok: true, tools: tools.length, names: tools.slice(0, 8).map(t => t.name) };
       } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : "Couldn't reach it." };
+        const msg = err instanceof Error ? err.message : '';
+        // mcpclient's words for a 401 are about workflow steps; here it's the key.
+        if (/sign in/.test(msg)) return { ok: false, error: 'It turned the key down. Check the key, and the header it goes in.' };
+        return { ok: false, error: msg || "Couldn't reach it." };
       }
     },
   };

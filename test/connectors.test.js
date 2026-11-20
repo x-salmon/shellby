@@ -82,6 +82,8 @@ test('Test lists its tools without your environment', async () => {
   assert.deepEqual(seen[0][1].env, {}, 'nothing from your environment goes along');
   const failing = createConnectors({ file: path.join(dir, 'c.bin'), crypto, switches: () => ({}), list: async () => { throw new Error('401 Unauthorized'); } });
   assert.deepEqual(await failing.test(), { ok: false, error: '401 Unauthorized' });
+  const refused = createConnectors({ file: path.join(dir, 'c.bin'), crypto, switches: () => ({}), list: async () => { throw new Error('This server needs you to sign in, which Shellby can\'t do for it.'); } });
+  assert.match((await refused.test()).error, /turned the key down/);
 });
 
 // A stand-in CLI that copies whatever --mcp-config names, and the flags, then exits.
