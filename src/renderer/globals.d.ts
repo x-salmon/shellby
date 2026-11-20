@@ -139,25 +139,30 @@ interface ShellbyPanelExtras {
   paintTokens: any;
   restoreCodeView: any;
   resultBox: any;
-  // composer.js
+  // composer-chips.js
   applyEffort: any;
   applyModel: any;
   chooseEffort: any;
   chooseLocal: any;
   chooseModel: any;
   chooseNewEffort: any;
-  clearConversation: any;
-  composerInput: any;
   continueOnClaude: any;
+  effortCommand: any;
   EFFORTS: any;
+  modelCommand: any;
+  // composer-rewind.js
   escRewind: any;
-  hidePick: any;
-  historyKeydown: any;
   historyLink: any;
-  LOCAL_COMMANDS: any;
-  notePrompt: any;
   openBranch: any;
   openRewind: any;
+  // composer.js
+  clearConversation: any;
+  composerInput: any;
+  composerShellMode: any;
+  hidePick: any;
+  historyKeydown: any;
+  LOCAL_COMMANDS: any;
+  notePrompt: any;
   pickKeydown: any;
   runLocal: any;
   // core.js
