@@ -1,9 +1,10 @@
 /* Shellby panel — the Tank tab of Shellby's screen: a home you decorate.
    Watching, he wanders the middle row among what you've put in. Decorating,
-   you work on a draft: drag pieces in from the tray (or press Enter on one),
-   move them with the mouse or the arrow keys, and press Done; main checks the
-   draft (tank.js sanitize) before it's kept. The scene is one canvas
-   (tank-paint.js); the buttons over it are what you can point at and tab to. */
+   you work on a draft (tank-edit.js): drag pieces in from the tray (or press
+   Enter on one), move them with the mouse or the arrow keys, and press Done;
+   main checks the draft (tank.js sanitize) before it's kept. The scene is one
+   canvas (tank-paint.js); the buttons over it are what you can point at and
+   tab to. */
 'use strict';
 (function () {
   const { api, state, $ } = SB;
@@ -14,18 +15,12 @@
   const WALK = 7;            // art px a second
   const HURRY = 3;           // ...and how much faster he gets out of your way when you decorate
   const DECORATING_ALPHA = 0.45;
-  const MAX_HISTORY = 100;
-  const DRAG_START = 4;      // css px before a press becomes a drag
-  const TALL = 10;           // pieces this tall go to the back row by default
   const TANK_SHARE = 0.5;    // of the tab's height, the most the tank takes
 
   const view = $('tankView'), stage = $('tkStage'), canvas = $('tkCanvas'), hits = $('tkHits');
   const ctx = canvas.getContext('2d');
 
   let v = null;              // the tank, from main
-  let draft = null;          // the layout being decorated (null while watching)
-  let history = [], future = [];
-  let selected = null;       // uid of the piece picked in the editor
   let shelf = null;          // the tray's open category
   let K = 3, u = 3;          // device px and css px per art pixel
   let crab = null, crabKey = null;
@@ -36,7 +31,6 @@
   const lived = { uses: {}, napped: false, n: 0 };
   const LIVED_FLUSH = 6;     // activities before main hears about them (or when you leave the tab)
   let timer = 0, lastTick = 0, dirty = true;
-  let drag = null;           // { kind: 'piece' | 'new', ... }
   let seq = 0;
   const seen = new Set();    // decor refs already reported as seen this session
 
@@ -44,17 +38,25 @@
   // Nobody looking (boot.js onCalm: the panel's behind your windows, you're away,
   // a game's up or the screen's locked): he holds still, like a hidden tab.
   const calm = () => document.body.classList.contains('calm');
-  const clone = o => JSON.parse(JSON.stringify(o));
   const plural = (n, one, many) => SB.plural(n, one, many, x => x.toLocaleString());
   const listOf = R.listOf;
-  const editing = () => !!draft;
-  const layout = () => draft || v.layout;
+  const editing = () => E.editing();
+  const layout = () => E.draft() || v.layout;
   // Decorating with the light on the clock, the lights come up so you can see what you place.
-  const lit = lay => (draft && lay.style?.light === 'clock' ? { ...lay, style: { ...lay.style, light: 'day' } } : lay);
+  const lit = lay => (E.draft() && lay.style?.light === 'clock' ? { ...lay, style: { ...lay.style, light: 'day' } } : lay);
   const scene = () => P.resolve(lit(layout()), v);
   const trayItem = ref => v.tray.find(t => t.ref === ref);
   const capacityOf = id => (v.sizes.find(s => s.id === id) || v.size).cap;
   const pieceOf = uid => layout().placed.find(p => p.uid === uid);
+
+  // The draft you decorate, and everything that changes it (tank-edit.js). It
+  // draws and speaks through what's handed in here, and is asked what's going on.
+  const E = SB.tankEditor({
+    stage, hits, canvas, view: () => v, scene, trayItem, capacityOf, pieceOf, rowName: p => rowName(p), reason: r => reason(r), plural, say,
+    unit: () => u, refit: () => { if (scene().size.w !== canvas.width / K) size(); }, size, redraw: () => { dirty = true; kick(); },
+    renderAll, renderHits, renderTools, renderTray, renderTitle: () => renderTitle(), renderSettings: () => renderSettings(),
+    hitFor: uid => hitFor(uid), moveHit, tag: btn => tag(btn),
+  });
 
   // ------------------------------------------------------------ sizing
 
@@ -205,6 +207,7 @@
     timer = 0;
     if (state.view !== 'tank' || !v || document.hidden) { flushLived(); return; }
     const now = performance.now();
+    const drag = E.drag();
     // Calm: the frame as it stands, where he stands (no jump to his still spot).
     if (calm() && !drag) { flushLived(); draw(now, reduced()); dirty = false; lastTick = 0; return; }
     const dt = lastTick ? Math.min(0.25, (now - lastTick) / 1000) : 0;
@@ -222,6 +225,7 @@
     ctx.setTransform(K, 0, 0, K, 0, 0);
     ctx.clearRect(0, 0, sc.world.w, sc.world.h);
     let ghost = null;
+    const drag = E.drag();
     if (drag?.kind === 'new' && drag.over) {
       const it = trayItem(drag.ref);
       ghost = { ...it, uid: 0, x: drag.x, row: drag.row, y: P.baseline(sc.world, it.layer, drag.row), flip: false };
@@ -256,12 +260,13 @@
   function renderHits() {
     if (!v) return;
     const pieces = scene().pieces;
+    const selected = E.selected();
     R.renderHits({ v, hits, pieces, edit: editing(), selected, u, crab });
     SB.tankRoom?.render({ editing: editing(), u, pieces });
     SB.tankRoom?.placePicked(selected && hitFor(selected));
   }
 
-  const tag = btn => R.tag(btn, !!drag);
+  const tag = btn => R.tag(btn, !!E.drag());
   const hitFor = uid => hits.querySelector(`.tk-hit[data-uid="${uid}"]`);
   // A piece being dragged: its button follows it, without being rebuilt.
   function moveHit(uid) {
@@ -269,7 +274,7 @@
     if (!p || !b) return;
     b.style.left = `${(p.x - 1) * u}px`;
     b.style.top = `${(p.y - p.h) * u}px`;
-    SB.tankRoom?.placePicked(uid === selected ? b : null);
+    SB.tankRoom?.placePicked(uid === E.selected() ? b : null);
   }
 
   hits.addEventListener('pointerover', e => tag(e.target.closest('.tk-hit')));
@@ -280,66 +285,21 @@
     const btn = e.target.closest('.tk-hit');
     if (!btn || stage.dataset.dragged) return;
     if (btn.classList.contains('tk-hit-crab')) return pet();
-    if (editing()) select(Number(btn.dataset.uid));
+    if (editing()) E.select(Number(btn.dataset.uid));
   });
 
-  // ------------------------------------------------------------ editing
-
-  // One step to undo, unless it changed nothing (an arrow key against the glass).
-  function commit(change, { announce = null, keepFocus = true } = {}) {
-    const before = clone(draft);
-    change(draft);
-    if (JSON.stringify(before) === JSON.stringify(draft)) return;
-    history.push(before);
-    if (history.length > MAX_HISTORY) history.shift();
-    future = [];
-    afterChange(keepFocus);
-    if (announce) say(announce);
-  }
+  // ------------------------------------------------------------ done decorating
 
   // Rebuilding the buttons mustn't throw away where the keyboard was.
   // The pieces, the crab, the tray's items and its shelves carry data-keep for it.
   const keepingFocus = render => SB.keepFocus($('tankView'), render, { preventScroll: true });
-
-  function afterChange(keepFocus = true) {
-    const focused = keepFocus && document.activeElement?.closest?.('.tk-hit')?.dataset.uid;
-    if (selected && !pieceOf(selected)) selected = null;
-    if (scene().size.w !== canvas.width / K) size();
-    renderHits();
-    renderTools();
-    renderTray();
-    renderTitle();
-    if (focused && hitFor(focused)) hitFor(focused).focus({ preventScroll: true });
-    dirty = true;
-    kick();
-  }
-
-  function startEditing() {
-    if (editing()) return;
-    draft = clone(v.layout);
-    history = [];
-    future = [];
-    selected = null;
-    stage.classList.add('editing');
-    renderAll();
-    $('tkTray').querySelector('.tk-item:not([disabled])')?.focus();
-    say('Decorating. Pick something from the tray, then press Done.');
-  }
-
-  function stopEditing() {
-    draft = null;
-    selected = null;
-    drag = null;
-    stage.classList.remove('editing');
-    renderAll();
-  }
 
   let saving = 0;
   async function done() {
     const n = ++saving;
     let r;
     try {
-      r = await api.saveTank(draft);
+      r = await api.saveTank(E.draft());
     } catch {
       // Keep the draft: nothing is lost, and Done can be pressed again.
       $('tkNote').textContent = 'Couldn’t save his tank just now. Your changes are still here; try Done again.';
@@ -353,7 +313,7 @@
       return say($('tkNote').textContent);
     }
     if (r?.view) v = r.view;
-    stopEditing();
+    E.stop();
     reactTo(r?.life);
     const dropped = r?.dropped || [];
     $('tkNote').textContent = dropped.length ? `${plural(dropped.length, 'piece')} couldn’t go in: ${listOf([...new Set(dropped.map(d => reason(d.reason)))])}.` : '';
@@ -378,232 +338,10 @@
   const reason = r => ({ full: 'the tank was full', locked: 'it’s locked', 'not-enough': 'he hasn’t found enough of it', unknown: 'it isn’t installed' }[r] || 'it doesn’t go there');
 
   function cancel() {
-    stopEditing();
+    E.stop();
     say('Put back as it was.');
     $('tkDecorate').focus();
   }
-
-  function undo() {
-    if (!history.length) return;
-    future.push(clone(draft));
-    draft = history.pop();
-    afterChange(false);
-    say('Undone.');
-  }
-  function redo() {
-    if (!future.length) return;
-    history.push(clone(draft));
-    draft = future.pop();
-    afterChange(false);
-    say('Redone.');
-  }
-
-  function select(uid) {
-    selected = uid;
-    renderHits();
-    renderTools();
-    hitFor(uid)?.focus({ preventScroll: true });
-  }
-
-  // Somewhere for a new piece: in its row, where it overlaps the least,
-  // starting from the middle.
-  function freeSpot(item, row) {
-    const { world, pieces } = scene();
-    const same = pieces.filter(p => p.layer === item.layer && (item.layer === 'back' || p.row === row));
-    const span = Math.max(0, world.w - item.w);
-    let best = Math.round(span / 2), bestHit = Infinity;
-    for (let i = 0; i <= span; i += 2) {
-      const x = Math.round(span / 2 + (i % 4 === 0 ? i / 2 : -i / 2));
-      if (x < 0 || x > span) continue;
-      const hit = same.reduce((n, p) => n + Math.max(0, Math.min(x + item.w, p.x + p.w) - Math.max(x, p.x)), 0);
-      if (hit < bestHit) { best = x; bestHit = hit; if (!hit) break; }
-    }
-    return best;
-  }
-  const defaultRow = item => (item.layer === 'float' ? 1 : item.layer === 'back' || item.h >= TALL ? 0 : 2);
-
-  function canAdd(item) {
-    if (!item || item.locked) return 'locked';
-    if (draft.placed.length >= capacityOf(draft.size)) return 'full';
-    const used = draft.placed.filter(p => p.ref === item.ref).length;
-    if (item.max !== null && used >= item.max) return 'not-enough';
-    return null;
-  }
-
-  function add(ref, at = null) {
-    const item = trayItem(ref);
-    const why = canAdd(item);
-    if (why === 'full') return say(`His tank is full: ${plural(capacityOf(draft.size), 'piece')}. Put something away, or try a bigger tank.`);
-    if (why) return say(`${item?.name || 'That'} can’t go in: ${reason(why)}.`);
-    const row = at ? at.row : defaultRow(item);
-    const uid = draft.placed.reduce((m, p) => Math.max(m, p.uid), 0) + 1;
-    const x = at ? at.x : freeSpot(item, row);
-    commit(d => { d.placed.push({ uid, ref, x, row, z: topZ(d, row) + 1, flip: false }); }, { keepFocus: false, announce: `${item.name} in, ${rowName({ ...item, row })}.` });
-    select(uid);
-  }
-  const topZ = (d, row) => d.placed.filter(p => p.row === row).reduce((m, p) => Math.max(m, p.z), 0);
-
-  function nudge(uid, fn, words) {
-    const p = pieceOf(uid);
-    if (!p) return;
-    const item = trayItem(p.ref);
-    commit(d => {
-      const q = d.placed.find(x => x.uid === uid);
-      fn(q, item, scene().world);
-      q.x = Math.max(0, Math.min(q.x, scene().size.w - (item?.w || 1)));
-    }, { announce: words });
-  }
-  const moveBy = (uid, dx) => nudge(uid, q => { q.x += dx; }, null);
-  const rowBy = (uid, dr) => nudge(uid, (q, item) => {
-    if (item?.layer === 'back') return;
-    q.row = Math.max(0, Math.min(2, q.row + dr));
-  }, null);
-  const flip = uid => nudge(uid, q => { q.flip = !q.flip; }, 'Flipped.');
-  // Back or forward among the pieces in its row: the row is renumbered 0, 1, 2…
-  // in paint order, with this one moved to the very back or the very front.
-  function restack(uid, dz) {
-    const p = pieceOf(uid);
-    if (!p) return;
-    commit(d => {
-      const row = d.placed.filter(x => x.row === p.row).sort((a, b) => a.z - b.z || a.x - b.x || a.uid - b.uid);
-      const me = row.find(x => x.uid === uid);
-      const others = row.filter(x => x !== me);
-      (dz > 0 ? [...others, me] : [me, ...others]).forEach((x, i) => { x.z = i; });
-    }, { announce: dz > 0 ? 'Brought forward.' : 'Sent back.' });
-  }
-  function putAway(uid) {
-    const p = pieceOf(uid);
-    if (!p) return;
-    const name = trayItem(p.ref)?.name || 'It';
-    commit(d => { d.placed = d.placed.filter(x => x.uid !== uid); }, { keepFocus: false, announce: `${name} put away.` });
-    selected = null;
-    renderTools();
-    (hits.querySelector('.tk-hit:not(.tk-hit-crab)') || $('tkDone')).focus({ preventScroll: true });
-  }
-
-  hits.addEventListener('keydown', e => {
-    const btn = e.target.closest('.tk-hit');
-    if (!btn || btn.classList.contains('tk-hit-crab')) return;
-    const uid = Number(btn.dataset.uid);
-    if (!editing()) {
-      // Watching: arrow keys walk along what's in the tank.
-      const all = [...hits.querySelectorAll('.tk-hit')];
-      const i = all.indexOf(btn);
-      const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: all.length - 1 }[e.key];
-      if (to === undefined) return;
-      e.preventDefault();
-      all[Math.max(0, Math.min(all.length - 1, to))].focus({ preventScroll: true });
-      return;
-    }
-    if (e.ctrlKey || e.metaKey || e.altKey) return; // leave the app's shortcuts alone
-    const step = e.shiftKey ? 8 : 1;
-    const act = {
-      ArrowLeft: () => moveBy(uid, -step), ArrowRight: () => moveBy(uid, step),
-      ArrowUp: () => rowBy(uid, -1), ArrowDown: () => rowBy(uid, 1),
-      f: () => flip(uid), F: () => flip(uid),
-      '[': () => restack(uid, -1), ']': () => restack(uid, 1),
-      Delete: () => putAway(uid), Backspace: () => putAway(uid),
-      Enter: () => select(uid), ' ': () => select(uid),
-      Escape: () => { selected = null; renderHits(); renderTools(); },
-    }[e.key];
-    if (!act) return;
-    e.preventDefault();
-    e.stopPropagation();
-    if (selected !== uid && e.key.startsWith('Arrow')) selected = uid;
-    act();
-  });
-
-  document.addEventListener('keydown', e => {
-    if (state.view !== 'tank' || !editing() || !(e.ctrlKey || e.metaKey) || e.target.closest?.('input, textarea')) return;
-    const k = e.key.toLowerCase();
-    if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-    else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
-  });
-
-  // ------------------------------------------------------------ dragging
-
-  function artAt(e) {
-    const r = canvas.getBoundingClientRect();
-    return { ax: (e.clientX - r.left) / u, ay: (e.clientY - r.top) / u, inside: e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom };
-  }
-  // The row nearest the piece's foot, with the pointer at its middle.
-  function rowAt(item, ay) {
-    const { world } = scene();
-    if (item.layer === 'back') return 0;
-    const lines = item.layer === 'float' ? world.floatY : world.rows;
-    const foot = ay + item.h / 2;
-    let best = 0;
-    lines.forEach((y, i) => { if (Math.abs(y - foot) < Math.abs(lines[best] - foot)) best = i; });
-    return best;
-  }
-
-  hits.addEventListener('pointerdown', e => {
-    const btn = e.target.closest('.tk-hit');
-    if (!editing() || !btn || btn.classList.contains('tk-hit-crab') || e.button !== 0) return;
-    const p = pieceOf(Number(btn.dataset.uid));
-    if (!p) return;
-    const { ax } = artAt(e);
-    drag = { kind: 'piece', uid: p.uid, startX: e.clientX, startY: e.clientY, grab: ax - p.x, moved: false, id: e.pointerId, before: clone(draft) };
-  });
-
-  $('tkTray').addEventListener('pointerdown', e => {
-    const btn = e.target.closest('.tk-item[data-ref]');
-    if (!editing() || !btn || btn.disabled || e.button !== 0 || btn.dataset.style) return;
-    drag = { kind: 'new', ref: btn.dataset.ref, startX: e.clientX, startY: e.clientY, moved: false, id: e.pointerId, over: false, x: 0, row: 0 };
-  });
-
-  document.addEventListener('pointermove', e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    if (!(e.buttons & 1)) return endDrag(e, false);
-    if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < DRAG_START) return;
-    if (!drag.moved) { drag.moved = true; stage.classList.add('dragging'); tag(null); }
-    const { ax, ay, inside } = artAt(e);
-    const sc = scene();
-    if (drag.kind === 'piece') {
-      const q = draft.placed.find(p => p.uid === drag.uid);
-      const item = trayItem(q.ref);
-      q.x = Math.round(Math.max(0, Math.min(sc.size.w - item.w, ax - drag.grab)));
-      q.row = rowAt(item, ay);
-      moveHit(q.uid);
-    } else {
-      const item = trayItem(drag.ref);
-      drag.over = inside;
-      drag.x = Math.round(Math.max(0, Math.min(sc.size.w - item.w, ax - item.w / 2)));
-      drag.row = rowAt(item, ay);
-    }
-    dirty = true;
-    kick();
-  });
-
-  function endDrag(e, dropped = true) {
-    const d = drag;
-    drag = null;
-    stage.classList.remove('dragging');
-    if (!d) return;
-    if (!d.moved) {
-      // A press without a drag: a tray item goes in at the first good spot.
-      if (d.kind === 'new' && dropped) add(d.ref);
-      return;
-    }
-    stage.dataset.dragged = '1';
-    setTimeout(() => { delete stage.dataset.dragged; }, 0);
-    if (d.kind === 'piece') {
-      // The move is one step to undo, from where it started.
-      history.push(d.before);
-      if (history.length > MAX_HISTORY) history.shift();
-      future = [];
-      selected = d.uid;
-      afterChange(false);
-      hitFor(d.uid)?.focus({ preventScroll: true });
-    } else if (dropped && d.over) {
-      add(d.ref, { x: d.x, row: d.row });
-    } else {
-      dirty = true;
-      kick();
-    }
-  }
-  document.addEventListener('pointerup', e => { if (drag && e.pointerId === drag.id) endDrag(e, true); });
-  document.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) endDrag(e, false); });
 
   // ------------------------------------------------------------ words and controls around it
 
@@ -619,8 +357,9 @@
 
   function renderTools() {
     const edit = editing();
+    const draft = E.draft(), selected = E.selected();
     const p = edit && selected && pieceOf(selected);
-    R.renderTools({ edit, history, future, item: p && trayItem(p.ref) });
+    R.renderTools({ edit, history: E.history(), future: E.future(), item: p && trayItem(p.ref) });
     if (edit) $('tkCount').textContent = `${draft.placed.length} of ${plural(capacityOf(draft.size), 'piece')}`;
     SB.tankRoom?.placePicked(p && hitFor(selected));
   }
@@ -628,6 +367,7 @@
   function renderTray() {
     $('tkTray').hidden = !editing();
     if (!editing()) return;
+    const draft = E.draft();
     shelf = R.renderTray({ v, draft, shelf, seen, capacity: capacityOf(draft.size) });
     // Seen once it’s on screen.
     const fresh = v.tray.filter(t => t.category === shelf && t.isNew && !t.locked && t.kind === 'decor' && !seen.has(t.ref)).map(t => t.ref);
@@ -635,7 +375,7 @@
     renderSettings();
   }
 
-  const renderSettings = () => R.renderSettings({ v, draft });
+  const renderSettings = () => R.renderSettings({ v, draft: E.draft() });
 
   $('tkShelves').addEventListener('click', e => {
     const b = e.target.closest('[data-shelf]');
@@ -644,48 +384,10 @@
     renderTray();
     $('tkShelves').querySelector(`[data-shelf="${shelf}"]`)?.focus();
   });
-  $('tkItems').addEventListener('click', e => {
-    const b = e.target.closest('.tk-item');
-    if (!b || b.disabled || !b.dataset.style) return; // pieces go in on pointerup or Enter, see below
-    const role = b.dataset.style, ref = b.dataset.ref;
-    commit(d => { d.style[role] = ref; }, { keepFocus: false, announce: `${trayItem(ref).name} it is.` });
-    [...$('tkItems').querySelectorAll('.tk-item')].find(x => x.dataset.ref === ref)?.focus();
-  });
-  // The keyboard's way in: Enter or Space on a piece in the tray.
-  $('tkItems').addEventListener('keydown', e => {
-    const b = e.target.closest('.tk-item');
-    if (!b || b.dataset.style || !(e.key === 'Enter' || e.key === ' ')) return;
-    e.preventDefault();
-    if (!b.disabled) add(b.dataset.ref);
-  });
-  $('tkSizes').addEventListener('click', e => {
-    const b = e.target.closest('[data-size]');
-    if (!b || b.disabled || b.dataset.size === draft.size) return;
-    const next = v.sizes.find(s => s.id === b.dataset.size);
-    const over = draft.placed.length - next.cap;
-    commit(d => {
-      d.size = next.id;
-      if (over > 0) d.placed = d.placed.slice(0, next.cap); // the newest go back in the tray
-    }, { keepFocus: false, announce: over > 0 ? `The ${next.name.toLowerCase()} holds ${next.cap}: ${plural(over, 'piece')} went back in the tray.` : `Trying the ${next.name.toLowerCase()}.` });
-    size();
-    $('tkSizes').querySelector(`[data-size="${next.id}"]`)?.focus();
-  });
-  $('tkLight').addEventListener('click', e => {
-    const b = e.target.closest('[data-light]');
-    if (!b || b.dataset.light === draft.style.light) return;
-    commit(d => { d.style.light = b.dataset.light; }, { keepFocus: false });
-    renderSettings();
-  });
 
-  $('tkDecorate').addEventListener('click', startEditing);
+  $('tkDecorate').addEventListener('click', E.start);
   $('tkDone').addEventListener('click', done);
   $('tkCancel').addEventListener('click', cancel);
-  $('tkUndo').addEventListener('click', undo);
-  $('tkRedo').addEventListener('click', redo);
-  $('tkFlip').addEventListener('click', () => selected && flip(selected));
-  $('tkBack').addEventListener('click', () => selected && restack(selected, -1));
-  $('tkForward').addEventListener('click', () => selected && restack(selected, 1));
-  $('tkAway').addEventListener('click', () => selected && putAway(selected));
 
   // ------------------------------------------------------------ data in
 
@@ -736,6 +438,7 @@
     if (!next) return;
     v = next;
     badge();
+    const draft = E.draft();
     if (draft && draft.size !== v.layout.size && !v.sizes.find(s => s.id === draft.size)?.unlocked) draft.size = v.layout.size;
     if (state.view === 'tank') keepingFocus(renderAll);
     document.dispatchEvent(new CustomEvent('sb:tank', { detail: v })); // the Health porthole and the profile card
@@ -761,7 +464,7 @@
     pendingPiece = null;
     if (!v?.tray.some(t => t.ref === ref && !t.locked)) return;
     shelf = 'milestone';
-    if (editing()) renderTray(); else startEditing();
+    if (editing()) renderTray(); else E.start();
     const btn = $('tkItems').querySelector(`[data-ref="${CSS.escape(ref)}"]`);
     btn?.classList.add('tk-flash');
     btn?.focus();

@@ -627,6 +627,8 @@ interface ShellbyPanelExtras {
   stripIds: any;
   syncTabs: any;
   tryAgain: any;
+  // tank-edit.js
+  tankEditor: any;
   // tank-gauges-more.js
   tankGaugesMore: any;
   // tank-gauges.js
