@@ -306,6 +306,50 @@ test('beforeWork sees a change before it happens, and can hold it back', async (
   } finally { require('fs').rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('Engineer mode\'s gate is asked before beforeWork, and its no stands', async () => {
+  const dir = require('fs').mkdtempSync(path.join(os.tmpdir(), 'shellby-eng-gate-'));
+  try {
+    const { s } = makeSession({ cwd: dir });
+    const asked = [];
+    s.gate = input => {
+      asked.push(`gate:${input.tool_name}`);
+      return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: 'Engineer mode: decide first' } };
+    };
+    s.beforeWork = () => { asked.push('beforeWork'); return {}; };
+    s.send('edit a.txt hi');
+    await waitFor(s, i => i.kind === 'result');
+    assert.deepEqual(asked, ['gate:Write'], 'beforeWork never saw a change the gate held back');
+    assert.equal(require('fs').existsSync(path.join(dir, 'a.txt')), false, 'held back');
+
+    // Nothing to say (null): beforeWork has its turn, and the change goes ahead.
+    s.gate = () => null;
+    s.send('edit a.txt hi');
+    await waitFor(s, i => i.kind === 'result');
+    assert.deepEqual(asked, ['gate:Write', 'beforeWork']);
+    assert.equal(require('fs').readFileSync(path.join(dir, 'a.txt'), 'utf8'), 'hi\n');
+    await s.stop();
+  } finally { require('fs').rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a gate that throws holds the change back rather than letting it through', async () => {
+  const dir = require('fs').mkdtempSync(path.join(os.tmpdir(), 'shellby-eng-fail-'));
+  try {
+    const { s } = makeSession({ cwd: dir });
+    s.gate = () => { throw new Error('History unreadable'); };
+    s.send('edit a.txt hi');
+    await waitFor(s, i => i.kind === 'result');
+    assert.equal(require('fs').existsSync(path.join(dir, 'a.txt')), false);
+    await s.stop();
+  } finally { require('fs').rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('with Engineer mode on, the work hook sees every tool; otherwise only those that change files', () => {
+  const { initHooks } = require('../src/main/session');
+  assert.equal(initHooks().PreToolUse[0].matcher, 'Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell');
+  assert.equal(initHooks({ everyTool: true }).PreToolUse[0].matcher, '.*');
+  assert.deepEqual(initHooks({ everyTool: true }).PostToolUse, initHooks().PostToolUse);
+});
+
 test('a message sent while the process is on its way out waits for it to close, then goes in a fresh one', async () => {
   const { s, items } = makeSession();
   s.send('first');

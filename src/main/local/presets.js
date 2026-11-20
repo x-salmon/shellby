@@ -8,8 +8,6 @@
 // Settings can offer to get them. Pure: takes the cleaned settings and the
 // installed names, returns new settings.
 
-// Bump when the lists change, so a later release can tell an old pick from a new one.
-const PRESETS_VERSION = 1;
 const PRESET_NAMES = Object.freeze(['off', 'coding', 'chat', 'custom']);
 
 const QUICK = ['qwen3:4b', 'qwen3:8b', 'llama3.2'];
@@ -110,4 +108,4 @@ function applyPreset(lm, name, installed) {
   };
 }
 
-module.exports = { SIZES, recommend, RECOMMEND_CHECKED, applyPreset, cleanPreset, PRESETS, PRESET_NAMES, PRESETS_VERSION };
+module.exports = { SIZES, recommend, RECOMMEND_CHECKED, applyPreset, cleanPreset, PRESETS, PRESET_NAMES };

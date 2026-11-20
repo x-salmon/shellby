@@ -303,10 +303,6 @@ function createSpaceProbe({ platform = process.platform, env = process.env, home
 
 // ------------------------------------------------------------------ rules
 
-// How much there has to be to get back before Shellby mentions it.
-const SPACE_DEFAULTS = Object.freeze({ reclaimWarnGb: 40 });
-const SPACE_LIMITS = Object.freeze({ reclaimWarnGb: [5, 500] });
-
 /**
  * The space snapshot as readings in the shape health/rules.step consumes.
  * One check only: how much is sitting there to reclaim. The rest of the
@@ -369,5 +365,5 @@ function spacePrompt(snap) {
 module.exports = {
   parseSize, parseDockerDf, parseWslList, parseTasklist, vmMemory,
   cacheLocations, diskImageLocations, dirSize, createSpaceProbe,
-  readings, topSources, spacePrompt, SPACE_DEFAULTS, SPACE_LIMITS, REFRESH_MS,
+  readings, topSources, spacePrompt, REFRESH_MS,
 };

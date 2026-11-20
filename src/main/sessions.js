@@ -52,9 +52,9 @@ class SessionManager extends Base {
   // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
   // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
   // makeHarness(id, { cwd, mode, resumeId }) -> a session for another agent's CLI (harness/), or null when none can run.
-  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null, warmLocal = null, makeHarness = null, getConnectorServers = () => null }) {
+  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null, warmLocal = null, makeHarness = null, getConnectorServers = () => null, engineerDefault = null }) {
     super();
-    Object.assign(this, { makeHarness, getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer, warmLocal, getConnectorServers });
+    Object.assign(this, { makeHarness, getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer, warmLocal, getConnectorServers, engineerDefault });
     this.tabs = new Map();
   }
 
@@ -145,6 +145,7 @@ class SessionManager extends Base {
       steeredIds: new Set(),       // ...and what of it has gone in already
       usageTold: 0,                // the usage level Claude was last told about (selfaware.usageNote)
       offered: new Set(),          // features suggested in this conversation
+      engineer: historyEntry?.engineer === true, // Engineer mode's chip (wiring/engineer.js)
       // Who set its effort: 'you' (the chip), 'picked' (Shellby, from its first
       // message) or null, following the default for new conversations.
       effortBy: ownEffort === null ? null : historyEntry.effortBy,
@@ -152,6 +153,8 @@ class SessionManager extends Base {
     // A reopened conversation remembers what it already offered.
     if (historyEntry) for (const i of this.history.load?.(tabId) || []) if (i?.kind === 'suggest') tab.offered.add(i.feature);
     this.tabs.set(tabId, tab);
+    // A new conversation in a project with Engineer mode on by default (wiring/engineer.js).
+    if (!historyEntry) this.engineerDefault?.(tab);
     session.takeSteers = () => this.takeSteers(tab);
     // Where it works, for the plain words on its permission cards (plain-words.js).
     session.inCopy = () => !!tab.worktree;
@@ -378,7 +381,8 @@ class SessionManager extends Base {
       pause: t.session.pauseView?.() || null, // pausing, paused or parked (session/pause.js)
       canPause: canPause(t),
       compacting: !!t.compacting, // Claude Code compacting it now: the phone's working line says so
-      safeMode: !!t.session.safeMode, agent: t.session.agent || null, harness: t.harness || harnesses.CLAUDE,
+      safeMode: !!t.session.safeMode, engineer: !!t.engineer, agent: t.session.agent || null, harness: t.harness || harnesses.CLAUDE,
+      remoteHost: t.session.remoteHost || null, // the computer it runs on: whose plan its usage meter shows (tab-meters.js)
     }));
   }
 

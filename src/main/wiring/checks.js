@@ -131,6 +131,21 @@ function wireChecks(d) {
     }
   }
 
+  /**
+   * Engineer mode's test plan (wiring/engineer.js): exactly these commands,
+   * each one checks.isSafeCommand passes, in the conversation's folder. Asks
+   * once per project like any run, and waits for a run already going in the
+   * tab (the turn's own checks) rather than cutting it short.
+   * -> { verdict } | { declined } | { cancelled } | { none }
+   */
+  async function runCommandsFor(tabId, { cwd, project, commands }) {
+    const safe = [...new Set((commands || []).filter(checks.isSafeCommand))];
+    if (!safe.length || !cwd) return { none: true };
+    const going = running.get(tabId);
+    if (going) await going.done;
+    return run(tabId, { cwd, project: project || cwd, commands: safe, once: true });
+  }
+
   /** A turn that changed files has ended (sessions.js noteTurnChanges). Never throws. */
   function afterTurn(tabId, summary) {
     try {
@@ -263,7 +278,7 @@ function wireChecks(d) {
   const checksRunning = tabId => { const r = running.get(tabId); return r ? { after: r.after } : null; };
   const lastVerdict = tabId => verdicts.get(tabId) || null;
 
-  return { checksOn, afterTurnChecks: afterTurn, runChecksFor: runFor, findProblems, checkTry, gateHome, checkCopy, cancelChecks: cancel, cancelAllChecks: cancelAll, checksRunning, lastVerdict };
+  return { checksOn, afterTurnChecks: afterTurn, runChecksFor: runFor, runCommandsFor, findProblems, checkTry, gateHome, checkCopy, cancelChecks: cancel, cancelAllChecks: cancelAll, checksRunning, lastVerdict };
 }
 
 module.exports = { wireChecks };

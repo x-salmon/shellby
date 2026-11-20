@@ -154,13 +154,17 @@ function wireSessions(d) {
       // and a line about the plan's usage once it runs high. A /command goes as typed.
       getSelfAware: () => d.getSelfAware(),
       onTool: (tab, name, args) => d.crabTool(tab, name, args),
+      // A new conversation in a project with Engineer mode on for every one (wiring/engineer.js).
+      engineerDefault: tab => d.engineer?.engineerDefault(tab) || false,
       decorate: (tab, prompt) => {
+        d.engineer?.arm(tab); // Engineer mode's gate, in step with its chip and Settings
         if (!d.config.get('selfAware') || selfaware.isSlashCommand(prompt)) return prompt;
         const other = accountOfCwd(tab.session?.cwd);
         const reading = other ? accounts.readingFor(d.config.get('usageByHost'), other) : d.config.get('lastUsage');
         const u = selfaware.usageNote(reading, tab.usageTold, Date.now());
         tab.usageTold = u.told;
-        return selfaware.withUsageNote(prompt, u.text);
+        const noted = selfaware.withUsageNote(prompt, u.text);
+        return d.engineer ? d.engineer.decorate(tab, noted) : noted;
       },
       savePictures,
     });
@@ -411,7 +415,7 @@ function wireSessions(d) {
     const t = d.manager.tabs.get(tabId);
     const cwd = t?.claudeWorktree?.path || t?.session.cwd;
     if (cwd) fileIndex.forget(cwd); // what it created can be @-mentioned straight away
-    if (!start) { d.shotsAfterTurn?.(tabId, null); return; }
+    if (!start) { d.shotsAfterTurn?.(tabId, null); engineerAfter(tabId, null, { unseen: true }); return; }
     try {
       const end = await changes.snapshot(start.root);
       // Other conversations' turns that overlapped this one (a later edit of theirs, still running, counts too).
@@ -433,7 +437,7 @@ function wireSessions(d) {
       afterChanges(tabId, summary);
     } catch (err) {
       d.log.info(`changes: ${err.message}`);
-      afterChanges(tabId, null);
+      afterChanges(tabId, null, { unseen: true });
     }
   }
 
@@ -449,7 +453,8 @@ function wireSessions(d) {
 
   // Then what Shellby checks about a turn: the after picture and the tests
   // (wiring/shots.js, checks.js). Neither may get in the way of the rest.
-  function afterChanges(tabId, summary) {
+  // seen.unseen: the turn's snapshots couldn't be taken, so a null summary doesn't mean nothing changed.
+  function afterChanges(tabId, summary, seen = {}) {
     try {
       d.shotsAfterTurn?.(tabId, summary)?.catch?.(err => d.log.info(`shots: ${err.message}`));
       if (summary) d.surprises?.noteTurn(tabId, summary); // before its checks, which may be the green that proves it
@@ -457,12 +462,24 @@ function wireSessions(d) {
     } catch (err) {
       d.log.info(`checks: ${err.message}`);
     }
+    engineerAfter(tabId, summary, seen);
+  }
+
+  // Engineer mode keeps each turn's files: a spike's to put back, a decision's to check (wiring/engineer.js).
+  function engineerAfter(tabId, summary, seen = {}) {
+    d.engineer?.turnChanged(tabId, summary, seen)?.catch?.(err => d.log.info(`engineer: ${err.message}`));
   }
 
   // ---- the usage meter
 
+  // Whose plan this PC's readings are: the account Claude Code is signed in with
+  // here, kept through a check that failed for a moment (ipc/panel.js
+  // claudeAccount), null until known. Kept with each reading, so another
+  // sign-in's never stands in for yours (syncUsageAccount).
+  const ownEmail = () => d.claudeAccount?.() || d.claudeStatus?.email || null;
+
   function applyUsage(item) {
-    d.config.set({ lastUsage: { ...item, at: Date.now() } });
+    d.config.set({ lastUsage: { ...item, account: ownEmail(), at: Date.now() } });
     d.sendEveryWindow('usage', item); // a popped-out conversation's meter too (wiring/popouts.js)
     d.onUsage(item);
     d.refreshOutlook();
@@ -533,21 +550,47 @@ function wireSessions(d) {
     const exe = d.FAKE_CLI ? process.env.SHELLBY_NODE || 'node' : d.claudeExe();
     if (!exe) return;
     const started = Date.now();
+    const owner = ownEmail();
     usageProbe = usage.probe({ exe, argsPrefix: d.FAKE_CLI ? [d.FAKE_CLI] : [], cwd: os.homedir() }).then(u => {
       usageProbe = null;
+      // Signed in as someone else meanwhile: that reading was the last account's.
+      // syncUsageAccount found this probe still running, so ask again for the new one.
+      // A probe started before the account was known (at boot) read whoever is signed in now.
+      if (owner && !accounts.sameEmail(owner, ownEmail())) { refreshUsage(); return; }
       // A turn may have reported fresher numbers while we waited.
       if (u && (d.config.get('lastUsage')?.at || 0) < started) applyUsage(u);
     });
   }
 
-  function watchUsage() {
-    d.panel.on('show', refreshUsage);
-    d.panel.on('focus', refreshUsage);
-    powerMonitor.on('resume', refreshUsage);
+  // The sign-in changed (ipc/panel.js recheckClaude, and at boot): a reading
+  // taken under another account goes, meters and all, and this one's is asked
+  // for now instead of after the usual couple of minutes. Shellby closed on one
+  // account and opened on another (a switch on another device, a /login in a
+  // terminal) is caught the same way, since the reading says whose it was.
+  function syncUsageAccount() {
+    if (d.CAPTURE || d.FAKE_CLI) return; // a faked status never changes account
+    if (!accounts.usageStale(d.config.get('lastUsage'), d.claudeStatus)) return;
+    d.log.info('Usage reading was another account\'s', 'reading again');
+    d.config.set({ lastUsage: null });
+    d.usagePlan?.forgetReading();
+    for (const tab of d.manager?.tabs?.values() || []) tab.usageTold = undefined; // the "plan running high" note is per account
+    d.sendEveryWindow('usage', { kind: 'usage', cleared: true });
+    d.refreshOutlook();
+    d.tankGauges?.usage();
     refreshUsage();
   }
 
-  return { SNAPSHOT_WAIT_MS, beginTurn, openTouch: touchOf, createManager, currentCwd, endTurn, otherUsage, refreshUsage, toolPicture, turnEnds, turnStarts, watchUsage };
+  function watchUsage() {
+    // A sign-in changed elsewhere is looked for first (ipc/panel.js watchSignIn),
+    // so opening the panel shows the right account without waiting for its timer.
+    const look = () => { d.watchSignIn?.(); refreshUsage(); };
+    d.panel.on('show', look);
+    d.panel.on('focus', look);
+    powerMonitor.on('resume', look);
+    refreshUsage();
+  }
+
+  return { SNAPSHOT_WAIT_MS, beginTurn, openTouch: touchOf, createManager, currentCwd, endTurn, otherUsage, refreshUsage, syncUsageAccount, toolPicture, turnEnds, turnStarts, watchUsage };
 }
 
 module.exports = { wireSessions };

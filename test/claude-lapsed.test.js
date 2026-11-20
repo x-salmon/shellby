@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { signInLapsed, applyLapsed, accountOf, accountChanged } = require('../src/main/claude/cli');
+const { signInLapsed, signInStamp, applyLapsed, accountOf, accountChanged } = require('../src/main/claude/cli');
 
 function setup() {
   const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-lapsed-'));
@@ -68,4 +68,14 @@ test('the account changed: signed in after a sign-out, or as someone else', () =
   assert.equal(accountChanged(undefined, me), false, 'not knowing yet is not a change');
   assert.equal(accountChanged('crab@example.com', { loggedIn: false }), false, 'signing out is handled where it happens');
   assert.equal(accountChanged('', { loggedIn: true }), false, 'an account that never says its email');
+});
+
+test('the sign-in stamp moves when the credentials are rewritten, wherever the sign-in happened', () => {
+  const { creds, status } = setup();
+  const before = signInStamp(status.configDir);
+  assert.ok(before > 0);
+  fs.utimesSync(creds, new Date(), new Date(Date.now() + 5000)); // a /login in a terminal
+  assert.notEqual(signInStamp(status.configDir), before);
+  fs.rmSync(creds); // /logout
+  assert.equal(signInStamp(status.configDir), 0);
 });

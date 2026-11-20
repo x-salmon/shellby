@@ -12,7 +12,6 @@
   const F = window.ShellbyFeedLogic;
   const T = window.ShellbyTodos;
 
-
   // Top-level blocks kept in one conversation's feed. Past this the oldest are
   // dropped (see Tab.trim); the transcript on disk is never touched.
   const MAX_BLOCKS = 400;
@@ -355,6 +354,7 @@
         case 'tries': return SB.renderTries?.(this, item, replay); // tries.js
         case 'debug': return SB.renderDebug?.(this, item, replay); // debug-mode.js
         case 'ultracode': return SB.renderUltracode?.(this, item, replay); // ultracode.js
+        case 'engineer': case 'engineer-spike': return SB.renderEngineer?.(this, item); // engineer.js
         case 'context-usage': return SB.renderContextUsage?.(this, item); // /context, as a bar (native-more.js)
         // Shellby's own one-line notes: cleared, moved into a copy, from the phone,
         // brought home, pushed, compacted, started fresh, rewound. /clear empties

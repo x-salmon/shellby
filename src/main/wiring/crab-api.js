@@ -154,6 +154,8 @@ function wireCrabApi(d) {
   async function crabTool(tab, name, args) {
     if (name === 'suggest') return suggestCard(tab, args);
     if (name === 'note') return noteFrom(tab, args);
+    // Engineer mode (wiring/engineer.js): the decision card, and how the work went against it.
+    if (d.engineer?.isTool(name)) return d.engineer.tool(tab, name, args);
     if (name === 'add_routine' || name === 'list_routines') return routineFrom(name, args);
     // The task board (wiring/taskboard.js): handing work between conversations.
     if (d.taskBoard?.isBoardTool(name)) return d.taskBoard.tool(tab, name, args);
@@ -278,7 +280,8 @@ function wireCrabApi(d) {
     const checked = clipath.parseTaskRequest(body, { modes: MODES.filter(m => m !== 'autonomous'), isDir: d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } } });
     if (!checked.ok) return { ok: false, error: checked.error, status: 400 };
 
-    const { cwd, mode, snippet } = checked.task;
+    const { cwd, snippet } = checked.task;
+    const mode = clipath.terminalMode(checked.task.mode, d.config.get('mode'));
     let { prompt } = checked.task;
     if (snippet) {
       const x = d.expandSnippet(snippet, prompt, { sigil: '@', max: 4000, cwd: cwd || undefined });

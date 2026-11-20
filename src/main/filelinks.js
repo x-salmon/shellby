@@ -30,7 +30,8 @@ const RUNS = new Set(['exe', 'com', 'bat', 'cmd', 'ps1', 'psm1', 'psd1', 'ps1xml
   'library-ms', 'search-ms', 'iso', 'img', 'vhd', 'vhdx', 'cab', 'py', 'pyw', 'pyc', 'pyz', 'pyzw', 'rb', 'rbw', 'pl', 'sh',
   'bash', 'ahk', 'au3', 'xll', 'xlam', 'ppam', 'docm', 'dotm', 'xlsm', 'xltm', 'pptm', 'potm', 'jnlp', 'wsc', 'ws', 'vb',
   'shs', 'msh', 'msh1', 'msh2', 'mshxml', 'msh1xml', 'msh2xml', 'ps2', 'ps2xml', 'psc2', 'ins', 'isp', 'mde', 'ade', 'adp',
-  'theme', 'themepack', 'desktopthemepackfile', 'ocx', 'dll', 'sys', 'drv', 'cer', 'crt', 'der', 'p7b', 'pfx', 'ppkg']);
+  'theme', 'themepack', 'desktopthemepackfile', 'ocx', 'dll', 'sys', 'drv', 'cer', 'crt', 'der', 'p7b', 'pfx', 'ppkg',
+  'rdp', 'appinstaller', 'iqy', 'slk', 'mht', 'mhtml', 'xlm', 'xla']);
 
 /**
  * Which editor to use: an id from EDITORS, or null for "the default app".

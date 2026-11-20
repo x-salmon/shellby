@@ -154,12 +154,18 @@
   let lastUsage = null; // main's last usage reading (usage/index.js)
   const otherHere = () => {
     const tab = SB.activeTab();
-    return window.ShellbyRemoteLogic?.accountUsageFor(state.settings?.otherUsage, state.settings?.remoteFolders, tab?.cwd || state.cwd) || null;
+    // A conversation moved into its own copy there sits in a remoteCopies stand-in, which may be
+    // newer than these settings: the host main reports for the tab settles it (sessions.js summary).
+    const folders = [...(state.settings?.remoteFolders || []), ...(state.settings?.remoteCopies || [])];
+    const paths = [tab?.cwd || state.cwd, tab?.worktree?.originalCwd];
+    return window.ShellbyRemoteLogic?.accountUsageFor(state.settings?.otherUsage, folders, paths, tab?.remoteHost) || null;
   };
   const hasWindows = u => !!(u && (u.fiveHour || u.sevenDay));
 
   SB.applyUsage = (u) => {
-    if (hasWindows(u)) lastUsage = u;
+    // cleared: the last reading was another account's (src/main/wiring/sessions.js syncUsageAccount).
+    if (u?.cleared) lastUsage = null;
+    else if (hasWindows(u)) lastUsage = u;
     drawUsage();
   };
   // Kept with the settings, which bring it too (src/main/wiring/settings.js).

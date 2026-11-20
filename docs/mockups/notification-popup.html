@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notification popup: five directions</title>
+<link rel="stylesheet" href="../../src/renderer/shared/tokens.css">
+<style>
+  @font-face { font-family: "Atkinson Hyperlegible"; src: url(../../assets/fonts/AtkinsonHyperlegible-Regular.ttf); font-weight: 400; }
+  @font-face { font-family: "Atkinson Hyperlegible"; src: url(../../assets/fonts/AtkinsonHyperlegible-Bold.ttf); font-weight: 700; }
+  @font-face { font-family: "Pixelify Sans"; src: url(../../assets/fonts/PixelifySans.ttf); }
+  @font-face { font-family: "Martian Mono"; src: url(../../assets/fonts/MartianMono.ttf); }
+
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--abyss); color: var(--sand); font: 15px/1.5 var(--font-body); padding: 48px 32px 80px; }
+  .intro { max-width: 62ch; margin: 0 auto 40px; }
+  .intro h1 { font: 400 34px/1.1 var(--font-pixel); margin-bottom: 12px; }
+  .intro p { color: var(--sand-dim); }
+
+  .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 48px 40px; max-width: 1180px; margin: 0 auto; }
+  figure { display: grid; gap: 14px; }
+  figcaption h2 { font: 400 22px/1.2 var(--font-pixel); color: var(--sand); }
+  figcaption h2 span { color: var(--glass); }
+  figcaption p { color: var(--sand-dim); max-width: 60ch; margin-top: 4px; }
+
+  /* ---------- the fake desktop corner ---------- */
+  .desk { position: relative; height: 360px; border-radius: var(--r); overflow: hidden;
+    background: radial-gradient(120% 90% at 20% 10%, #5a6b86 0%, #33405a 45%, #1d2433 100%); }
+  .desk::before { content: ""; position: absolute; left: 24px; top: 24px; width: 46%; height: 52%;
+    background: #e9ecf1; border-radius: 6px; opacity: .14; } /* someone's window, out of focus */
+  .taskbar { position: absolute; inset: auto 0 0 0; height: 40px; background: #1f2329; border-top: 1px solid #2c3139;
+    display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 0 14px; color: #c9ced6; font: 12px "Segoe UI", sans-serif; }
+  .taskbar i { width: 18px; height: 18px; border-radius: 4px; background: #3a404a; }
+  .crab { position: absolute; right: 96px; bottom: 38px; width: 48px; height: 36px; image-rendering: pixelated; }
+  .crab svg { width: 100%; height: 100%; display: block; }
+
+  .pop { position: absolute; }
+  button { font: 700 13.5px/1 var(--font-body); cursor: pointer; border: 0; }
+  button:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+  kbd { font: 400 10.5px/1 var(--font-mono); opacity: .7; margin-left: 6px; }
+  code { font: 400 12.5px/1.4 var(--font-mono); }
+
+  /* one entrance per popup, nothing else moves unless it means something */
+  @media (prefers-reduced-motion: no-preference) {
+    .pop { animation: rise .42s var(--ease-spring) both; animation-delay: .25s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+  }
+
+  /* ---------- 1. Speech bubble ---------- */
+  .bubble { right: 60px; bottom: 92px; width: 300px; filter: drop-shadow(0 8px 0 rgba(7,16,18,.35)); }
+  .bubble .edge { background: var(--glass); padding: 3px;
+    clip-path: polygon(0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0, calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 6px, 100% 6px, 100% calc(100% - 6px), calc(100% - 3px) calc(100% - 6px), calc(100% - 3px) calc(100% - 3px), calc(100% - 6px) calc(100% - 3px), calc(100% - 6px) 100%, 6px 100%, 6px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 6px), 0 calc(100% - 6px)); }
+  .bubble .in { background: var(--reef); padding: 14px 16px 14px;
+    clip-path: polygon(0 3px, 3px 3px, 3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px)); }
+  .bubble .tail { position: absolute; right: 52px; bottom: -15px; width: 18px; height: 18px; }
+  .bubble p { font: 400 16px/1.35 var(--font-pixel); }
+  .bubble code { display: block; margin: 8px 0 12px; color: var(--glass); }
+  .bubble .acts { display: flex; gap: 8px; }
+  .bubble .yes { background: var(--glass); color: var(--ink); padding: 8px 12px; border-radius: 3px; }
+  .bubble .no { background: transparent; color: var(--sand-dim); padding: 8px 6px; }
+
+  /* ---------- 2. Note in his claw ---------- */
+  .note { width: 286px; }
+  .note .paper { background: var(--sand); color: var(--ink); padding: 16px 18px 16px 18px; border-radius: 2px; transform: rotate(-2deg);
+    box-shadow: 0 1px 0 #d9c9a8, 0 14px 24px -10px rgba(7,16,18,.6);
+    background-image: repeating-linear-gradient(transparent 0 25px, rgba(12,23,25,.07) 25px 26px); background-position: 0 12px; }
+  .note .who { font: 400 13px/1 var(--font-pixel); color: #a83a22; } /* coral-deep darkened to pass 4.5:1 on sand */
+  .note h3 { font: 700 17px/1.3 var(--font-body); margin: 8px 0 6px; }
+  .note code { background: rgba(12,23,25,.08); padding: 2px 6px; border-radius: 3px; }
+  .note .acts { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+  .note .yes { background: var(--ink); color: var(--sand); padding: 9px 14px; border-radius: 4px; }
+  .note .no { background: none; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; padding: 0; }
+  .note { right: 86px; bottom: 104px; }
+  .arm { position: absolute; right: 93px; bottom: 56px; width: 15px; height: 57px; }
+
+  /* ---------- 3. Porthole ---------- */
+  .port { right: 20px; bottom: 96px; width: 380px; display: grid; grid-template-columns: 84px 1fr; gap: 16px; align-items: start;
+    background: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; box-shadow: 0 20px 40px -16px rgba(0,0,0,.7); }
+  .port .hole { position: relative; width: 84px; height: 84px; border-radius: 50%; overflow: hidden;
+    box-shadow: inset 0 0 0 3px var(--reef-3), 0 0 0 3px var(--line); }
+  .port .hole img { width: 230%; position: absolute; left: -54%; top: -36%; image-rendering: pixelated; }
+  .port .hole::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 3px var(--coral); }
+  @media (prefers-reduced-motion: no-preference) {
+    .port .hole::after { animation: beckon 2.4s ease-in-out infinite; animation-delay: 1s; }
+    @keyframes beckon { 50% { box-shadow: inset 0 0 0 3px var(--coral), 0 0 0 6px var(--coral-dim); } }
+  }
+  .port .where { color: var(--sand-faint); font-size: 13px; }
+  .port h3 { font: 700 16px/1.3 var(--font-body); margin: 2px 0 8px; }
+  .port pre { background: var(--abyss); border-radius: var(--r-sm); padding: 8px 10px; color: var(--glass); margin-bottom: 12px; }
+  .port .acts { display: flex; gap: 8px; }
+  .port .yes { background: var(--coral); color: var(--ink); padding: 9px 14px; border-radius: var(--r-sm); }
+  .port .no { background: var(--reef-2); color: var(--sand); padding: 9px 14px; border-radius: var(--r-sm); }
+  .port .later { background: none; color: var(--sand-dim); margin-left: auto; padding: 9px 2px; font-weight: 400; }
+
+  /* ---------- 4. Tide slip ---------- */
+  .slip { right: 12px; bottom: 82px; width: 420px; height: 52px; display: flex; align-items: center; gap: 12px;
+    background: var(--reef); border-radius: 8px; padding: 0 8px 0 0; overflow: hidden; box-shadow: 0 10px 24px -12px rgba(0,0,0,.7); }
+  .slip .tide { align-self: stretch; width: 6px; background: var(--reef-3); position: relative; }
+  .slip .tide::after { content: ""; position: absolute; inset: 0; background: var(--glass); transform-origin: bottom; }
+  @media (prefers-reduced-motion: no-preference) {
+    .slip .tide::after { animation: ebb 14s linear .6s both; }
+    @keyframes ebb { to { transform: scaleY(0); } }
+  }
+  .slip p { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+  .slip p code { color: var(--glass); }
+  .slip p span { color: var(--sand-faint); }
+  .slip button { padding: 8px 10px; border-radius: 6px; }
+  .slip .yes { background: var(--glass-dim); color: var(--glass); }
+  .slip .no { background: none; color: var(--sand-dim); }
+
+  /* ---------- 5. Shell stack ---------- */
+  .stack { right: 18px; bottom: 74px; width: 360px; }
+  .stack .card { background: var(--reef); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; }
+  .stack .ghost { position: absolute; left: 0; right: 0; height: 40px; border-radius: var(--r-lg); border: 1px solid var(--line); }
+  .stack .g1 { top: -9px; transform: scaleX(.95); background: var(--reef-2); }
+  .stack .g2 { top: -17px; transform: scaleX(.9); background: var(--reef-3); opacity: .7; }
+  .stack .front { position: relative; box-shadow: 0 18px 36px -14px rgba(0,0,0,.75); }
+  .stack .head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--sand-faint); }
+  .stack .head svg { width: 20px; height: 15px; }
+  .stack .head b { color: var(--sand); font-weight: 700; }
+  .stack .head .count { margin-left: auto; font: 400 13px/1 var(--font-pixel); color: var(--amber); }
+  .stack h3 { font: 700 16px/1.3 var(--font-body); margin: 10px 0 4px; }
+  .stack code { color: var(--glass); }
+  .stack .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .stack .acts button { padding: 10px; border-radius: var(--r-sm); }
+  .stack .yes { background: var(--glass); color: var(--ink); }
+  .stack .no { background: var(--reef-3); color: var(--sand); }
+  .stack .next { display: block; margin-top: 10px; font-size: 13px; color: var(--sand-faint); }
+  .stack .next b { color: var(--sand-dim); font-weight: 400; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="crab" viewBox="0 0 16 12" shape-rendering="crispEdges">
+    <rect x="3" y="3" width="5" height="1" fill="#7fd6c2"/><rect x="2" y="4" width="7" height="5" fill="#4fbfa8"/><rect x="3" y="9" width="5" height="1" fill="#3a9e8b"/>
+    <rect x="3" y="4" width="2" height="1" fill="#bdf0e3"/>
+    <rect x="4" y="5" width="3" height="1" fill="#2a7a6b"/><rect x="4" y="6" width="1" height="2" fill="#2a7a6b"/><rect x="5" y="7" width="2" height="1" fill="#2a7a6b"/><rect x="6" y="6" width="1" height="1" fill="#2a7a6b"/>
+    <rect x="9" y="5" width="4" height="4" fill="#ff7a5c"/><rect x="13" y="6" width="2" height="2" fill="#ff7a5c"/><rect x="14" y="5" width="1" height="1" fill="#ff7a5c"/>
+    <rect x="9" y="9" width="1" height="2" fill="#e2573a"/><rect x="11" y="9" width="1" height="2" fill="#e2573a"/><rect x="13" y="8" width="1" height="2" fill="#e2573a"/>
+    <rect x="10" y="3" width="1" height="2" fill="#e2573a"/><rect x="12" y="3" width="1" height="2" fill="#e2573a"/>
+    <rect x="10" y="2" width="1" height="1" fill="#fff"/><rect x="12" y="2" width="1" height="1" fill="#fff"/>
+  </symbol>
+</svg>
+
+<header class="intro">
+  <h1>Notification popup: five directions</h1>
+  <p>Each one shows the same moment: Claude wants to run a command in the shellby project and is waiting for you. They're drawn by Shellby rather than by Windows, so they can sit right by the crab.</p>
+</header>
+
+<main class="gallery">
+
+  <!-- 1 -->
+  <figure>
+    <div class="desk">
+      <div class="pop bubble" role="alertdialog" aria-label="Claude wants to run a command">
+        <div class="edge"><div class="in">
+          <p>Can Claude run this in shellby?</p>
+          <code>npm run e2e:ci</code>
+          <div class="acts"><button class="yes">Allow once</button><button class="no">Deny</button></div>
+        </div></div>
+        <svg class="tail" viewBox="0 0 6 6" shape-rendering="crispEdges"><rect x="0" y="0" width="6" height="1" fill="#11232a"/><rect x="0" y="0" width="1" height="2" fill="#7fd6c2"/><rect x="5" y="0" width="1" height="2" fill="#7fd6c2"/><rect x="1" y="1" width="4" height="1" fill="#11232a"/><rect x="1" y="2" width="1" height="2" fill="#7fd6c2"/><rect x="4" y="2" width="1" height="1" fill="#7fd6c2"/><rect x="2" y="2" width="2" height="1" fill="#11232a"/><rect x="2" y="3" width="1" height="1" fill="#11232a"/><rect x="3" y="3" width="1" height="1" fill="#7fd6c2"/><rect x="2" y="4" width="1" height="1" fill="#7fd6c2"/></svg>
+      </div>
+      <div class="crab"><svg><use href="#crab"/></svg></div>
+      <div class="taskbar"><i></i><i></i><i></i><span>14:32</span></div>
+    </div>
+    <figcaption>
+      <h2><span>1</span> Speech bubble</h2>
+      <p>The crab says it. A pixel-stepped bubble with its tail pointing at him, written in his own pixel voice. The most Shellby of the five, though it only works while he's on screen.</p>
+    </figcaption>
+  </figure>
+
+  <!-- 2 -->
+  <figure>
+    <div class="desk">
+      <div class="pop note" role="alertdialog" aria-label="Claude wants to run a command">
+        <div class="paper">
+          <span class="who">From shellby</span>
+          <h3>Claude wants to run a command</h3>
+          <code>npm run e2e:ci</code>
+          <div class="acts"><button class="yes">Allow once</button><button class="no">Deny</button></div>
+        </div>
+      </div>
+      <svg class="arm" viewBox="0 0 5 19" shape-rendering="crispEdges" aria-hidden="true"><rect x="0" y="0" width="2" height="3" fill="#ff7a5c"/><rect x="3" y="0" width="2" height="3" fill="#ff7a5c"/><rect x="0" y="3" width="5" height="2" fill="#ff7a5c"/><rect x="1" y="5" width="3" height="14" fill="#e2573a"/><rect x="1" y="5" width="1" height="14" fill="#ff7a5c"/></svg>
+      <div class="crab"><svg><use href="#crab"/></svg></div>
+      <div class="taskbar"><i></i><i></i><i></i><span>14:32</span></div>
+    </div>
+    <figcaption>
+      <h2><span>2</span> Note in his claw</h2>
+      <p>He holds up a sand-coloured note, tilted like it was just handed over. Inverting to light paper makes it the brightest thing on a dark desktop, which suits asks that need an answer.</p>
+    </figcaption>
+  </figure>
+
+  <!-- 3 -->
+  <figure>
+    <div class="desk">
+      <div class="pop port" role="alertdialog" aria-label="Claude wants to run a command">
+        <div class="hole"><img src="../../assets/toast/hero-alert.png" alt=""></div>
+        <div>
+          <span class="where">shellby, Notification mockups</span>
+          <h3>Claude wants to run a command</h3>
+          <pre><code>npm run e2e:ci</code></pre>
+          <div class="acts"><button class="yes">Allow once</button><button class="no">Deny</button><button class="later">Open chat</button></div>
+        </div>
+      </div>
+      <div class="crab"><svg><use href="#crab"/></svg></div>
+      <div class="taskbar"><i></i><i></i><i></i><span>14:32</span></div>
+    </div>
+    <figcaption>
+      <h2><span>3</span> Porthole</h2>
+      <p>The tank seen through a porthole, with a coral ring that breathes slowly while Claude waits. It's the roomiest, so long commands and the chat name fit, and it keeps the toast art you already have.</p>
+    </figcaption>
+  </figure>
+
+  <!-- 4 -->
+  <figure>
+    <div class="desk">
+      <div class="pop slip" role="alertdialog" aria-label="Claude wants to run a command">
+        <div class="tide" title="Hides in 14 seconds; stays in the panel"></div>
+        <p>Run <code>npm run e2e:ci</code>? <span>shellby</span></p>
+        <button class="yes">Allow<kbd>Alt+A</kbd></button><button class="no">Deny</button>
+      </div>
+      <div class="crab"><svg><use href="#crab"/></svg></div>
+      <div class="taskbar"><i></i><i></i><i></i><span>14:32</span></div>
+    </div>
+    <figcaption>
+      <h2><span>4</span> Tide slip</h2>
+      <p>One line, parked above the taskbar. The water on its left edge drains while the timer runs, and when it's gone the slip hides while the ask waits in the panel. Quietest of the five, made for when you're mid-game or in a call.</p>
+    </figcaption>
+  </figure>
+
+  <!-- 5 -->
+  <figure>
+    <div class="desk">
+      <div class="pop stack" role="alertdialog" aria-label="Claude wants to run a command, 2 more waiting">
+        <div class="ghost g2"></div><div class="ghost g1"></div>
+        <div class="card front">
+          <div class="head"><svg><use href="#crab"/></svg><b>shellby</b> just now <span class="count">3 waiting</span></div>
+          <h3>Claude wants to run <code>npm run e2e:ci</code></h3>
+          <div class="acts"><button class="yes">Allow once<kbd>Alt+A</kbd></button><button class="no">Deny<kbd>Alt+D</kbd></button></div>
+          <span class="next">Next: <b>rack-builder finished its task</b></span>
+        </div>
+      </div>
+      <div class="crab"><svg><use href="#crab"/></svg></div>
+      <div class="taskbar"><i></i><i></i><i></i><span>14:32</span></div>
+    </div>
+    <figcaption>
+      <h2><span>5</span> Shell stack</h2>
+      <p>When several chats need you at once, they pile up into one stack instead of a column of toasts. Answer the front one and the next slides forward, and the keyboard shortcuts let you clear the pile without the mouse.</p>
+    </figcaption>
+  </figure>
+
+</main>
+</body>
+</html>

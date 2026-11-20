@@ -156,6 +156,8 @@
     $('soundsToggle').checked = !!state.settings.sounds;
     $('selfAwareToggle').checked = state.settings.selfAware !== false;
     $('suggestToggle').checked = state.settings.suggestions !== false;
+    $('engineerRecordsToggle').checked = state.settings.engineerRecords !== false;
+    $('engineerChecksFirstToggle').checked = state.settings.engineerChecksFirst !== false;
     $('taskBoardToggle').checked = state.settings.taskBoard !== false;
     $('plainCardsToggle').checked = state.settings.plainCards !== false;
     $('idleCompactToggle').checked = !!state.settings.idleCompact;
@@ -332,6 +334,8 @@
   $('selfAwareToggle').addEventListener('change', async e => { const r = await api.setSettings({ selfAware: e.target.checked }); state.settings = r.settings; renderSettings(); });
   $('plainCardsToggle').addEventListener('change', async e => { const r = await api.setSettings({ plainCards: e.target.checked }); state.settings = r.settings; });
   $('idleCompactToggle').addEventListener('change', async e => { const r = await api.setSettings({ idleCompact: e.target.checked }); state.settings = r.settings; });
+  $('engineerRecordsToggle').addEventListener('change', async e => { const r = await api.setSettings({ engineerRecords: e.target.checked }); state.settings = r.settings; });
+  $('engineerChecksFirstToggle').addEventListener('change', async e => { const r = await api.setSettings({ engineerChecksFirst: e.target.checked }); state.settings = r.settings; });
   $('suggestToggle').addEventListener('change', async e => { const r = await api.setSettings({ suggestions: e.target.checked }); state.settings = r.settings; });
   $('taskBoardToggle').addEventListener('change', async e => { const r = await api.setSettings({ taskBoard: e.target.checked }); state.settings = r.settings; $('handoffAskToggle').disabled = !e.target.checked; });
   $('handoffAskToggle').addEventListener('change', async e => { const r = await api.setSettings({ handoffAsk: e.target.checked }); state.settings = r.settings; });

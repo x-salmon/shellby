@@ -147,6 +147,13 @@ class ObsServer extends EventEmitter {
       res.writeHead(405, { Allow: 'GET, HEAD' }).end();
       return;
     }
+    // Only this PC by its own name: a web page that points its domain at
+    // 127.0.0.1 (DNS rebinding) sends its own Host, and is turned away.
+    const host = String(req.headers.host || '').toLowerCase();
+    if (host !== `127.0.0.1:${this.port}` && host !== `localhost:${this.port}`) {
+      res.writeHead(421, { 'Content-Type': 'text/plain' }).end('Not here.');
+      return;
+    }
     // Query strings and fragments are not part of a route (OBS appends neither,
     // but a person pasting a URL might).
     const url = String(req.url || '').split('?')[0].split('#')[0];

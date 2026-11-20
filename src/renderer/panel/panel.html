@@ -263,6 +263,20 @@
         <!-- A fresh tab for a new topic in a well-filled conversation is a dashed line in the feed itself (handoff.js, feed-savers.js) -->
         <!-- Ultracode on for this conversation: what it means, in a line (ultracode.js) -->
         <div class="ultra-note" id="ultraNote" role="status" hidden><span class="ultra-note-text"><b>Ultracode is on.</b> Claude may send out many agents, and they use a lot of tokens.</span><span class="ultra-note-est" id="ultraEst" hidden></span></div>
+        <!-- Engineer mode on for this conversation (engineer.js) -->
+        <div class="ultra-note eng-note" id="engNote" hidden>
+          <span class="ultra-note-text"><b>Engineer mode is on.</b> Claude puts its decision on a card before it changes anything, builds only once you approve it, and keeps to the files it named.</span>
+          <span class="eng-project" id="engProject" hidden>
+            <label class="eng-project-on"><input type="checkbox" id="engProjectOn"> On for every new conversation in <b id="engProjectName"></b></label>
+            <button type="button" class="link-btn inline" id="engAllowBtn" aria-expanded="false" aria-controls="engAllow">Commands before deciding</button>
+          </span>
+          <div class="eng-allow" id="engAllow" hidden>
+            <p class="small muted" id="engAllowChecks"></p>
+            <label class="small" for="engAllowInput">Claude may also run these before you approve a decision, one per line, exactly as written:</label>
+            <textarea class="field eng-allow-input" id="engAllowInput" rows="3" spellcheck="false" placeholder="npm run lint&#10;node scripts/bench.js"></textarea>
+            <div class="eng-actions"><button type="button" class="btn slim-btn" id="engAllowSave">Save for this project</button><span class="small muted" id="engAllowSaved" role="status"></span></div>
+          </div>
+        </div>
         <div class="mod-status" id="modStatus" role="status" aria-label="What your mods say" hidden></div>
         <div class="outlook" id="outlook" role="status" hidden></div>
         <div class="review-bar" id="review" role="region" aria-label="Review comments waiting to be sent" hidden></div>
@@ -285,7 +299,7 @@
       </form>
       <div class="slash-menu" id="slashMenu" role="listbox" hidden></div>
       <div class="slash-menu pick-menu" id="pickMenu" role="listbox" hidden></div>
-      <div class="input-hint"><button type="button" class="ultra-chip" id="ultraChip" aria-pressed="false" title="Ultracode: adds the word “ultracode” to what you send here, so Claude can run a crew of agents in the background"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M6 1 1.5 8H5l-1 5 4.5-7H5l1-5Z" fill="currentColor"/></svg>Ultracode</button><span id="modeHint"></span><span id="costHint" class="cost-hint" hidden></span><span id="sendHint">Enter to send · Shift+Enter new line</span></div>
+      <div class="input-hint"><button type="button" class="ultra-chip eng-chip" id="engChip" aria-pressed="false" title="Engineer mode: Claude weighs the options and puts its decision on a card for you to approve before it builds anything"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 11 11 1M1 11h10M3 11V8.5M5.5 11V9.5M8 11V8.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Engineer</button><button type="button" class="ultra-chip" id="ultraChip" aria-pressed="false" title="Ultracode: adds the word “ultracode” to what you send here, so Claude can run a crew of agents in the background"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M6 1 1.5 8H5l-1 5 4.5-7H5l1-5Z" fill="currentColor"/></svg>Ultracode</button><span id="modeHint"></span><span id="costHint" class="cost-hint" hidden></span><span id="sendHint">Enter to send · Shift+Enter new line</span></div>
     </footer>
   </main>
 
@@ -2172,6 +2186,10 @@
         <label class="toggle"><input type="checkbox" id="handoffAskToggle" aria-describedby="handoffAskText"><span class="switch"></span>Ask me before a hand-off</label>
         <p class="small muted" id="handoffAskText">When one conversation passes work to another, a card shows you the brief first and nothing is sent until you say so.</p>
         <p class="small muted">Claude gets a short note about Shellby and can make him talk, celebrate or dress up. The note never changes, so Claude Code caches it and it costs very little of your plan. When your usage passes 80%, Claude is told so it can keep things lean. Offers show up as cards and nothing happens unless you tap them. Changes apply to new conversations.</p>
+        <label class="toggle"><input type="checkbox" id="engineerRecordsToggle" aria-describedby="engineerRecordsText"><span class="switch"></span>Write Engineer decisions into the repo</label>
+        <p class="small muted" id="engineerRecordsText">With the Engineer chip on, Claude puts its decision on a card before it builds anything. Once you approve one, Claude writes it to docs/decisions in the project, so the next person (or the next conversation) can see why the code is the way it is.</p>
+        <label class="toggle"><input type="checkbox" id="engineerChecksFirstToggle" aria-describedby="engineerChecksFirstText"><span class="switch"></span>Let Claude run the project's checks before deciding</label>
+        <p class="small muted" id="engineerChecksFirstText">With the Engineer chip on, Claude may run the project's own tests, typecheck and lint before you approve a decision, so its trade-offs come from what it measured rather than guesses. Other commands that change things still wait for your approval, unless you allow them for the project from the note above the box.</p>
         <label class="toggle"><input type="checkbox" id="plainCardsToggle"><span class="switch"></span>Say what Claude is doing in plain words</label>
         <p class="small muted">Permission cards and the Working bar say what a step does ("Run your tests in its own copy of the repo") and point out deletes, files outside the project, installs and anything that goes online. The command itself is still shown. Worked out by Shellby from the step itself, so it costs no usage.</p>
         <label class="toggle"><input type="checkbox" id="idleCompactToggle" aria-describedby="idleCompactText"><span class="switch"></span>Compact long conversations while they're idle</label>
@@ -3447,6 +3465,8 @@
 <script src="builtin-commands.js"></script>
 <script src="tries.js"></script>
 <script src="debug-mode.js"></script>
+<script src="engineer-card.js"></script>
+<script src="engineer.js"></script>
 <script src="ultracode.js"></script>
 <script src="toolbox-setup.js"></script>
 <script src="toolbox-automemory.js"></script>

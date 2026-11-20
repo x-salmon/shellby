@@ -12,7 +12,7 @@ On the **Pro or Max plan you already pay for**, on Windows 10 and 11. No API key
 
 ### [⬇ Download for Windows](https://github.com/x-salmon/shellby/releases/latest)
 
-[Website](https://getshellby.com/) · [What's new](#whats-new) · [Why Shellby, if you have Claude Code?](docs/WHY-SHELLBY.md) · [Community packs](https://getshellby.com/community/) · [How it works](#how-it-works) · [Skins](docs/SKINS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md)
+[Why Shellby, if you have Claude Code?](docs/WHY-SHELLBY.md) · [Website](https://getshellby.com/) · [What's new](#whats-new) · [Security](SECURITY.md)
 
 <br>
 
@@ -24,21 +24,10 @@ On the **Pro or Max plan you already pay for**, on Windows 10 and 11. No API key
 
 </div>
 
-### 🌿 Several tasks at once, each on its own branch
-
-Open a tab per task. With **copies** on (one switch in Settings → Code), each tab works in its own copy of your repo, on its own branch, so two tasks never trip over each other's files. When one is done, **Bring it home** merges it back, never with a force-push, or **Ship it** opens a pull request. If the merge would clash, nothing is merged and he can sort it out on his branch first.
-
-### ↩️ Undo any turn
-
-Didn't like what Claude did? **Undo** puts back every file the turn changed, or just one step of it, including what a script or `npm install` did.
-
-### 🌙 Work that starts when your limit resets
-
-Queue heavy tasks ("refactor X", "write tests for Y") for when your 5-hour window resets, or for tonight. They start by themselves, one after another, with the PC kept awake. A task that runs out of usage partway picks its conversation back up after the next reset.
-
-### 🖥️ Every PC and every agent, in one place
-
-**Your PCs** shows every PC you run Shellby on: what each one is doing, what's waiting on you, and its load and heat. Start a task on any of them and answer its prompts from the one in front of you. A conversation can run on **Gemini CLI, OpenCode or Codex** as well as Claude Code, or on a **local model** that uses none of your plan.
+- 🌿 **Several tasks at once, each on its own branch.** Every tab works in its own copy of your repo, so two tasks never touch each other's files. **Bring it home** merges one back (never with a force-push, and nothing is merged if it would clash), or **Ship it** opens a pull request.
+- ↩️ **Undo any turn.** Puts back every file the turn changed, or just one step of it, including what a script or `npm install` did.
+- 🌙 **Work that starts when your limit resets.** Queue heavy tasks for the reset or for tonight. They run one after another with the PC kept awake, and a task that runs out partway carries on after the next reset.
+- 🖥️ **Every PC and every agent.** See and answer every PC running Shellby from the one in front of you, and run a conversation on Gemini CLI, OpenCode, Codex or a local model as well as Claude Code.
 
 <sub>[Everything else he can do →](#everything-he-can-do)</sub>
 
@@ -126,6 +115,7 @@ Already use Claude Code on this PC? The tool screens are on the bar from the sta
 - **Run checks** stamps your test results on a turn, with before and after pictures.
 - **Comment on the diff,** line by line, and send all your comments back as one follow-up.
 - **Review a whole branch** in the file viewer: comment on any line, see the words that changed inside a line, tick files as viewed, hide whitespace-only changes, and <kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>G</kbd> to find and jump.
+- **Engineer mode:** Claude weighs the options and puts its decision on a card before it builds anything. Approve it, pick another option, send it back, ask a critic, or have Claude try it out first (every change put back). Your files stay untouched until you approve, then only the files it named are changed. Shellby checks the result itself: the diff against the plan, and the test plan's commands, run by Shellby. Each decision is written into `docs/decisions` for whoever comes next.
 - **Learns from your corrections:** correct Claude the same way twice and he offers to add it to `CLAUDE.md` as a rule.
 
 **See what it costs**

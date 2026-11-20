@@ -285,8 +285,10 @@ jobs:
           # Passing --token on the command line risks it being logged; the tool
           # reads this variable instead.
           WINGET_CREATE_GITHUB_TOKEN: ${{ env.WINGET_TOKEN }}
+          # Through env, never spliced into the script: a value can't become code.
+          TAG: ${{ github.ref_name }}
         run: |
-          $tag = "${{ github.ref_name }}"
+          $tag = $env:TAG
           $version = $tag.TrimStart('v')
           $url = "https://github.com/x-salmon/shellby/releases/download/$tag/Shellby-Setup-$version.exe"
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe

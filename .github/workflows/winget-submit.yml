@@ -30,8 +30,11 @@ jobs:
 
       - name: Check the manifests exist
         shell: pwsh
+        env:
+          # Through env, never spliced into the script: a value can't become code.
+          VERSION: ${{ inputs.version }}
         run: |
-          $dir = "packaging/winget/${{ inputs.version }}"
+          $dir = "packaging/winget/$env:VERSION"
           if (-not (Test-Path $dir)) { throw "No manifests at $dir" }
           Get-ChildItem $dir -Filter *.yaml | ForEach-Object { "found $($_.Name)" }
 
@@ -46,11 +49,12 @@ jobs:
         env:
           # --token can end up in logs; the tool reads this instead.
           WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          VERSION: ${{ inputs.version }}
         run: |
           if (-not $env:WINGET_CREATE_GITHUB_TOKEN) {
             throw "WINGET_TOKEN secret is not set - see packaging/winget/README.md"
           }
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          .\wingetcreate.exe submit "packaging/winget/${{ inputs.version }}" `
-            --prtitle "New package: x-salmon.Shellby version ${{ inputs.version }}" `
+          .\wingetcreate.exe submit "packaging/winget/$env:VERSION" `
+            --prtitle "New package: x-salmon.Shellby version $env:VERSION" `
             --no-open

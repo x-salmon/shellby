@@ -64,15 +64,6 @@ function decodeHeader(buf) {
 const packColor = ({ r, g, b }) => ((clamp255(b) << 16) | (clamp255(g) << 8) | clamp255(r)) >>> 0;
 const clamp255 = v => Math.max(0, Math.min(255, Math.round(Number(v) || 0)));
 
-/** A length-prefixed string: u16 length including the null, then the bytes. */
-function encodeString(s) {
-  const body = Buffer.from(`${s}\0`, 'utf8');
-  const out = Buffer.alloc(2 + body.length);
-  out.writeUInt16LE(body.length, 0);
-  body.copy(out, 2);
-  return out;
-}
-
 /**
  * A cursor over a controller-data buffer. Every read is bounds-checked, because
  * this is a struct from another program and a short read must fail loudly here
@@ -445,7 +436,7 @@ const short = e => String(e?.message || e).replace(/[\u0000-\u001f\u007f]+/g, ' 
   .replace(/^connect ECONNREFUSED.*/, 'OpenRGB is not running (or its SDK server is off)');
 
 module.exports = {
-  OpenRgbClient, colorFor, encodePacket, decodeHeader, encodeString,
+  OpenRgbClient, colorFor, encodePacket, decodeHeader,
   encodeUpdateLeds, encodeUpdateMode, encodeLedWords, parseControllerData, packColor,
   PACKET, DEFAULT_PORT, OUR_PROTOCOL, HEADER_SIZE, MAGIC,
 };

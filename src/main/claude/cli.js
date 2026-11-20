@@ -136,30 +136,6 @@ function skipSettings(home) {
   return ['--setting-sources', ''];
 }
 
-// Variables in settings' env that sign in, pick the service, or reach it (a proxy, a certificate).
-const REACH_ENV = /^(?:ANTHROPIC_|CLAUDE_CODE_(?:USE_|CLIENT_|OAUTH)|AWS_|GOOGLE_|CLOUD_ML_|VERTEX_|SSL_|NODE_TLS|NODE_EXTRA_CA_CERTS$|HTTPS?_PROXY$|NO_PROXY$)/i;
-
-/**
- * Whether a call that ignores your settings files (--restricted) could still sign in
- * and reach Claude: false when they sign in, choose the service or set a proxy, or
- * can't be read. Finer than skipSettings(): an env with only your own variables is fine.
- */
-function signInWithoutSettings(home) {
-  for (const name of ['settings.json', 'settings.local.json']) {
-    let text;
-    try { text = fs.readFileSync(path.join(home, '.claude', name), 'utf8'); } catch (e) {
-      if (e.code === 'ENOENT') continue;
-      return false;
-    }
-    let s;
-    try { s = JSON.parse(text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text); } catch { return false; }
-    if (!s || typeof s !== 'object') continue;
-    if (SIGN_IN_SETTINGS.some(k => k !== 'env' && Object.hasOwn(s, k))) return false;
-    if (s.env && typeof s.env === 'object' && Object.keys(s.env).some(k => REACH_ENV.test(k))) return false;
-  }
-  return true;
-}
-
 // The variables a terminal must drop for "Always use my Claude plan" (none when it's off).
 const billingScrub = (onlyPlan = planOnly, keyMode = useApiKey) => (onlyPlan || keyMode ? [...BILLING_ENV] : []);
 
@@ -324,4 +300,12 @@ async function checkStatus({ configured = null } = {}) {
   return status;
 }
 
-module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, accountOf, accountChanged, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings, signInWithoutSettings, candidatePaths, run, BILLING_ENV };
+/**
+ * When the saved sign-in last changed: the credentials file's mtime (0 when
+ * there's none). Every sign-in, sign-out and token refresh rewrites it, wherever
+ * it was done (Shellby, /login in a terminal), so a change means "ask again".
+ * @param {string | null | undefined} configDir  status.configDir, or CLAUDE_CONFIG_DIR
+ */
+const signInStamp = configDir => mtimeOf(credentialsFile(configDir));
+
+module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, signInStamp, accountOf, accountChanged, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings,candidatePaths, run, BILLING_ENV };

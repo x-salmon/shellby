@@ -36,6 +36,7 @@ const turns = {
       // ...and so would the agent it was opened with, or safe mode turned on before it.
       if (tab.session.agent) this.history.update(tab.id, { agent: tab.session.agent });
       if (tab.session.safeMode) this.history.update(tab.id, { safeMode: true });
+      if (tab.engineer) this.history.update(tab.id, { engineer: true });
       if (tab.localTarget) this.history.update(tab.id, { local: tab.localTarget });
       if (tab.localTarget) this.warmLocal?.(tab.localTarget); // its quick model loaded beside the main one (local/ollama.js keepLoaded)
       if (tab.harness !== harnesses.CLAUDE) this.history.update(tab.id, { harness: tab.harness });

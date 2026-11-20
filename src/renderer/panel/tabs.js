@@ -68,7 +68,10 @@
       canPause: summary.canPause !== undefined ? !!summary.canPause : !!tab.canPause,
       // Started without your customizations (safe mode), and the agent that runs it, if one does.
       safeMode: summary.safeMode !== undefined ? !!summary.safeMode : !!tab.safeMode,
+      engineer: summary.engineer !== undefined ? !!summary.engineer : !!tab.engineer, // Engineer mode's chip (engineer.js)
       agent: summary.agent !== undefined ? summary.agent : tab.agent || null,
+      // The computer it runs on, once started (main's session.remoteHost): whose plan the usage meter shows.
+      remoteHost: summary.remoteHost !== undefined ? summary.remoteHost : tab.remoteHost || null,
     });
     // The pause has landed: every step he had going is done and held. Said once, where you'll see it.
     if (wasPausing && tab.pause?.phase === 'paused') {

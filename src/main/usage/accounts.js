@@ -12,6 +12,7 @@
 // computer while this PC itself isn't signed in (Claude Code only over there:
 // that computer's plan is the only one you use).
 
+/** @param {unknown} a @param {unknown} b */
 const sameEmail = (a, b) => typeof a === 'string' && typeof b === 'string' && a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /**
@@ -72,4 +73,18 @@ function othersView(computers, byHost, local) {
     });
 }
 
-module.exports = { accountFor, withReading, readingFor, othersView, hostKey };
+/**
+ * Is this PC's saved reading (config.lastUsage) someone else's? Each reading
+ * keeps the email it was taken under (`account`). One from another account, or
+ * from before readings said whose they were, no longer fits a sign-in with an
+ * email. Signed out, or a sign-in with no email (an API key): there's no way to
+ * tell, so it stays.
+ * @param {{ account?: string | null } | null | undefined} reading
+ * @param {{ loggedIn?: boolean, email?: string | null } | null | undefined} local
+ */
+function usageStale(reading, local) {
+  if (!reading || !local?.loggedIn || typeof local.email !== 'string' || !local.email) return false;
+  return !sameEmail(reading.account, local.email);
+}
+
+module.exports = { accountFor, withReading, readingFor, othersView, hostKey, usageStale, sameEmail };
