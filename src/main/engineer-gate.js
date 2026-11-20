@@ -16,6 +16,7 @@
 // the scope (audit).
 const path = require('path');
 const { RECORD_DIR, line, scopeOf, pendingAmendment } = require('./engineer');
+const { shellWords } = require('./worktrees/looks');
 
 const MAX_ALLOW = 12;
 const MAX_COMMAND = 200;
@@ -38,6 +39,10 @@ const CRAB_LOOKS = new Set([
 ]);
 // During a spike: what would outlive it. Its files are put back; a commit, a
 // push, a publish or a request that changes something elsewhere wouldn't be.
+// A guard against slips, not a sandbox: code the spike runs can still reach
+// outside the project, which is why the permission modes still apply (and the
+// card says so). Read word by word (spikeOutlives), with this pattern over the
+// raw text as well, which also catches one inside a string (node -e "...").
 const LEAVES_THE_FOLDER = new RegExp([
   String.raw`\bgit\s+(-C\s+\S+\s+)?(commit|push|pull|fetch|merge|rebase|reset|checkout|switch|stash|tag|branch|cherry-pick|revert|am|apply|worktree|clean|restore|remote|config|update-ref|gc|prune|filter-branch|replace|notes|submodule)\b`,
   String.raw`\b(npm|pnpm|yarn|bun)\s+(publish|unpublish|deprecate|login|logout|adduser|token|owner|dist-tag|access)\b`,
@@ -45,6 +50,52 @@ const LEAVES_THE_FOLDER = new RegExp([
   String.raw`\b(curl|wget)\b.*\s(-X\s*(POST|PUT|PATCH|DELETE)|--request\s+(POST|PUT|PATCH|DELETE)|-d\b|--data|-F\b|--form|-T\b|--upload-file)`,
   String.raw`\b(Invoke-WebRequest|Invoke-RestMethod|iwr|irm)\b.*-(Method\s+(Post|Put|Patch|Delete)|Body|InFile)`,
 ].join('|'), 'i');
+const GIT_OUTLIVES = new Set(['commit', 'push', 'pull', 'fetch', 'merge', 'rebase', 'reset', 'checkout', 'switch', 'stash', 'tag', 'branch', 'cherry-pick', 'revert', 'am', 'apply', 'worktree', 'clean', 'restore', 'remote', 'config', 'update-ref', 'gc', 'prune', 'filter-branch', 'filter-repo', 'replace', 'notes', 'submodule', 'send-email', 'request-pull', 'daemon', 'svn', 'p4']);
+const PACKAGE_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun', 'npx', 'pnpx', 'bunx', 'pip', 'pip3', 'cargo', 'gem', 'twine', 'poetry', 'dotnet', 'nuget', 'mvn', 'gradle']);
+const PACKAGE_OUTLIVES = /^(publish|unpublish|deprecate|login|logout|adduser|token|owner|dist-tag|access|upload|push|yank)$/;
+const REACHES_OUT = new Set(['gh', 'glab', 'az', 'aws', 'gcloud', 'vercel', 'netlify', 'fly', 'flyctl', 'heroku', 'kubectl', 'helm', 'terraform', 'ssh', 'scp', 'sftp', 'rsync', 'ftp', 'git-lfs']);
+// Interpreters that take code inline: that code is read the same way.
+const INLINE = { node: ['-e', '--eval', '-p', '--print'], deno: ['eval'], python: ['-c'], python3: ['-c'], py: ['-c'], bash: ['-c'], sh: ['-c'], zsh: ['-c'], pwsh: ['-c', '-command'], powershell: ['-c', '-command'], cmd: ['/c', '/k'] };
+
+function curlSends(words) {
+  return words.some((w, i) => /^(-d|--data.*|-F|--form.*|-T|--upload-file|--json)$/i.test(w) || /^-[a-zA-Z]*[dFT]$/.test(w)
+    || (/^(-X|--request)$/i.test(w) && /^(POST|PUT|PATCH|DELETE)$/i.test(words[i + 1] || '')) || /^-X(POST|PUT|PATCH|DELETE)$/i.test(w));
+}
+
+/** One command's words -> would what it does outlive the spike? */
+function segmentOutlives(words, depth) {
+  const name = path.basename(words[0]).toLowerCase().replace(/\.(exe|cmd|bat|ps1)$/, '');
+  if (name === 'git') {
+    let i = 1;
+    while (words[i] === '-C') i += 2;
+    // Any other global option (-c, --git-dir, --exec-path ...) could point git anywhere.
+    if (!words[i] || words[i].startsWith('-')) return true;
+    return GIT_OUTLIVES.has(words[i].toLowerCase());
+  }
+  if (PACKAGE_MANAGERS.has(name)) return words.slice(1).some(w => PACKAGE_OUTLIVES.test(w.toLowerCase()));
+  if (REACHES_OUT.has(name)) return true;
+  if (name === 'docker' || name === 'podman') return words.some(w => /^(push|login)$/i.test(w));
+  if (name === 'curl' || name === 'wget') return curlSends(words);
+  if (/^(invoke-webrequest|invoke-restmethod|iwr|irm)$/.test(name)) return words.some(w => /^-(method|body|infile)$/i.test(w));
+  const inline = INLINE[name];
+  if (!inline) return false;
+  // PowerShell's encoded command can't be read at all.
+  if ((name === 'pwsh' || name === 'powershell') && words.some(w => /^-(e|ec|enc|encodedcommand)$/i.test(w))) return true;
+  const at = words.findIndex(w => inline.includes(w.toLowerCase()));
+  return at > 0 && spikeOutlives(words.slice(at + 1).join(' '), depth + 1);
+}
+
+/** A shell command -> would it outlive the spike (a commit, a push, a publish, a request elsewhere)? Pure. */
+function spikeOutlives(command, depth = 0) {
+  const cmd = String(command || '');
+  if (depth > 3 || LEAVES_THE_FOLDER.test(cmd)) return true;
+  for (const part of cmd.split(/&&|\|\||[;|\n&]/)) {
+    const words = shellWords(part);
+    if (!words) return true;
+    if (words.length && segmentOutlives(words, depth)) return true;
+  }
+  return false;
+}
 
 /** The hook output that holds a tool call back, saying why. */
 const deny = why => ({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: why } });
@@ -166,7 +217,7 @@ function spikeGate(toolName, toolInput, ctx) {
     return CRAB_LOOKS.has(tool.slice(CRAB.length)) ? null : deny('Engineer mode: during a spike, only changes that can be put back. This tool reaches outside the project.');
   }
   if (tool.startsWith('mcp__')) return deny('Engineer mode: during a spike, another MCP server\'s tools are held back: what they change can\'t be put back with the spike.');
-  if (SHELLS.has(tool) && LEAVES_THE_FOLDER.test(String(toolInput?.command || ''))) {
+  if (SHELLS.has(tool) && spikeOutlives(toolInput?.command)) {
     return deny('Engineer mode: during a spike, no commits, pushes, branch changes, publishing or requests that change things elsewhere: those would outlive the spike. Try it in the files only.');
   }
   if (FILE_TOOLS.has(tool)) {
@@ -214,4 +265,4 @@ function audit(d, touched) {
   return { files: files.length, unplanned: files.filter(p => !inScope(scope, p)) };
 }
 
-module.exports = { LOOKS, CRAB_LOOKS, FILE_TOOLS, LEAVES_THE_FOLDER, MAX_ALLOW, deny, gateFailed, looks, scopeRe, inScope, relIn, readAllow, allowedBefore, gate, audit };
+module.exports = { LOOKS, CRAB_LOOKS, FILE_TOOLS, LEAVES_THE_FOLDER, MAX_ALLOW, spikeOutlives, deny, gateFailed, looks, scopeRe, inScope, relIn, readAllow, allowedBefore, gate, audit };

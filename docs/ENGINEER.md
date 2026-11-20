@@ -87,10 +87,14 @@ puts every file the spike changed back (newest turn first, with the same undo
 that refuses to overwrite a file changed again since) once that turn ends.
 What it found goes on the spike's card, and on the next decision's card.
 
-A spike can't leave anything behind that the undo wouldn't catch, so while it
-runs the gate holds back commits, pushes, branch changes, stashes, publishing,
-requests that change something elsewhere (`curl -X POST`, `gh`, cloud CLIs),
-other MCP servers' tools, and edits outside the project. **Stop and put it
+So that a spike leaves nothing behind the undo wouldn't catch, the gate holds
+back commits, pushes, branch changes, stashes, publishing, requests that change
+something elsewhere (`curl -X POST`, `gh`, `ssh`, cloud CLIs), other MCP
+servers' tools, and edits outside the repo being snapshotted. Each command is
+read word by word, git's global options count, and so does code passed inline
+to an interpreter (`node -e`, `python -c`, `bash -c`). That's a guard against
+slips, not a sandbox: a script the spike runs can still reach beyond the
+project, so the permission modes still apply as usual, and the card says so. **Stop and put it
 back** on the card ends it at once; so does turning the chip off. A spike needs
 the project to be a git repo, since the snapshots are git trees.
 

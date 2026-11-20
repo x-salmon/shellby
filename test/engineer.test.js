@@ -221,6 +221,17 @@ test('gate: a spike may change the project\'s files, nothing that would outlive 
   assert.equal(g({ ...state, spike: { phase: 'ending' } }, 'Edit', inRoot('a.js')), null, 'until its turn ends');
 });
 
+test('spikeOutlives reads each command word by word, inline code and git\'s own options included', () => {
+  const outlives = [
+    'git -c core.hooksPath=x commit -m a', 'git --git-dir=/x push', 'git -C "a b" push', 'node -e "require(\'child_process\').execSync(\'git commit -am x\')"',
+    'bash -c "git push"', 'python -c "import os; os.system(\'npm publish\')"', 'pwsh -EncodedCommand ZQBjAGgAbwA=', 'ssh build-box', 'rsync -a . host:/x',
+    'curl -XPOST https://x', 'curl -d a=1 https://x', 'curl --json {} https://x', 'npx np publish', 'cargo publish', 'docker push img', 'git "unclosed',
+  ];
+  for (const c of outlives) assert.equal(gate.spikeOutlives(c), true, c);
+  const stays = ['npm install fast-lib', 'node bench.js', 'python -c "print(1)"', 'git status', 'git -C sub diff', 'curl https://example.com', 'npm run test'];
+  for (const c of stays) assert.equal(gate.spikeOutlives(c), false, c);
+});
+
 test('gateFailed holds the step back', () => {
   assert.match(deniedWhy(gate.gateFailed()), /could not check/);
 });
@@ -670,6 +681,10 @@ test('wiring: a spike tries things, and every file it changed is put back when i
     assert.match(w.sent[0].prompt, /allowed the spike/);
     assert.match(w.sent[0].prompt, /a spike is running/);
     assert.equal(w.hook({ tool_name: 'Write', tool_input: { file_path: path.join(r.dir, 'a.txt') } }), null);
+    // Only the repo being snapshotted: another checkout the conversation knows of couldn't be put back.
+    w.tab.worktree = { path: r.dir, root: path.resolve('/shellby-eng-original-never') };
+    assert.match(deniedWhy(w.hook({ tool_name: 'Write', tool_input: { file_path: path.join(w.tab.worktree.root, 'a.txt') } })), /couldn't put it back/);
+    delete w.tab.worktree;
     assert.ok(w.engineer.tool(w.tab, 'decide', DECISION).isError, 'end the spike first');
 
     // A turn of the spike: Shellby's own before and after snapshots, as wiring/sessions.js takes them.

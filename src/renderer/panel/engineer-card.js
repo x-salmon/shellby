@@ -232,7 +232,7 @@
         h('span', { class: 'eng-title', text: `Spike: ${s.question}` }),
         h('span', { class: 'kind-pill eng-status', text: SPIKE_PILL[s.phase] || s.phase })),
       h('p', { class: 'eng-goal' }, h('b', { text: 'Plan ' }), s.plan),
-      s.phase === 'asked' ? h('p', { class: 'small muted', text: 'Claude may change any file in the project while it tries this. Every change is put back when it’s done; commits, pushes and anything outside the project stay blocked.' }) : null,
+      s.phase === 'asked' ? h('p', { class: 'small muted', text: 'Claude may change any file in the project while it tries this, and every file it changes there is put back when it’s done. Commits, pushes and publishing are held back, but code it runs can still reach beyond the project, so your permission mode still applies.' }) : null,
       s.findings ? h('div', { class: 'eng-outcome followed' },
         h('h4', { class: 'eng-label', text: 'What it found' }),
         s.answer ? h('p', { class: 'eng-summary', text: s.answer }) : null,

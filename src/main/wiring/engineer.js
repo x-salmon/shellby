@@ -113,8 +113,13 @@ function wireEngineer(d, opts = {}) {
     const decision = decisionOf(tab);
     const spike = spikeOf(tab);
     const cwd = cwdOf(tab);
+    // During a spike, only the repo each turn's snapshot is taken of: what it
+    // changes anywhere else couldn't be put back.
+    if (spike?.phase === 'running' || spike?.phase === 'ending') {
+      return { cwd, roots: [gitTop(cwd) || spike.root].filter(Boolean), outside: OUTSIDE_OK, before: [] };
+    }
     // Repo roots first: a scope is relative to the root, never to a subfolder.
-    const roots = [tab.worktree?.path, tab.claudeWorktree?.path, tab.worktree?.root, decision?.root, spike?.root, gitTop(cwd), cwd].filter(Boolean);
+    const roots = [tab.worktree?.path, tab.claudeWorktree?.path, tab.worktree?.root, decision?.root, gitTop(cwd), cwd].filter(Boolean);
     return { cwd, roots: [...new Set(roots)], outside: OUTSIDE_OK, before: tab.engineerBefore || [] };
   }
 
