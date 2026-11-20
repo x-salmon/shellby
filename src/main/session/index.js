@@ -109,6 +109,8 @@ class ClaudeSession extends Base {
   //
   // systemNote: appended to Claude Code's system prompt (see selfaware.js).
   // mcp: { tools, call(name, args) } -> the crab's tools, hosted here (see crabmcp.js).
+  // extraMcp: () => more --mcp-config servers or null, read at each start (the
+  // connectors gateway: connectors/). Left out beside a routine's own strict set.
   //
   // remote: () => { exe, host, dir, env, extra?, argsPrefix? } | null, read each time
   // the process starts: a folder on another computer (remote/service.js), whose
@@ -121,7 +123,7 @@ class ClaudeSession extends Base {
   // left the native one, say): a path fixed when the tab opened would fail
   // every turn after that until Shellby restarted.
   /** @param {SessionOptions} options */
-  constructor({ exe, cwd, mode, model, effort = '', outputStyle = '', fallbackModel = '', chrome = false, safeMode = false, agent = '', name = () => '', supports = () => true, resumeId = null, resumeAt = null, argsPrefix = [], extraEnv = () => ({}), context = null, allowedTools = [], mcpConfig = null, systemNote = null, mcp = null, remote = () => null }) {
+  constructor({ exe, cwd, mode, model, effort = '', outputStyle = '', fallbackModel = '', chrome = false, safeMode = false, agent = '', name = () => '', supports = () => true, resumeId = null, resumeAt = null, argsPrefix = [], extraEnv = () => ({}), context = null, allowedTools = [], mcpConfig = null, extraMcp = () => null, systemNote = null, mcp = null, remote = () => null }) {
     super();
     this.exe = exe;
     this.cwd = cwd;
@@ -140,6 +142,9 @@ class ClaudeSession extends Base {
     this.extraEnv = extraEnv;
     this.allowedTools = allowedTools;
     this.mcpConfig = mcpConfig;
+    this.extraMcp = extraMcp;
+    /** @type {Record<string, object> | null} */
+    this.extraServers = null; // extraMcp's answer for this start
     this.systemNote = systemNote;
     this.mcp = mcp;
     this.remote = remote;
@@ -224,7 +229,9 @@ class ClaudeSession extends Base {
     // On another computer the config goes over stdin instead (remote/ssh.js MCP_FILE).
     const remote = this.remote?.() || null;
     this.remoteHost = remote?.host || null; // before buildArgs(): the newer flags stay here
-    const configFile = this.mcpConfig && !remote ? writeConfig(this.fullMcpConfig()) : null;
+    // Never over ssh: a gateway's key stays on this PC.
+    this.extraServers = remote || this.mcpConfig ? null : this.extraMcp() || null;
+    const configFile = (this.mcpConfig || this.extraServers) && !remote ? writeConfig(this.fullMcpConfig()) : null;
     this.mcpConfigFile = remote && this.mcpConfig ? remoteSsh.MCP_FILE : configFile;
     // SHELLBY_CRAB_TOOLS: the crab's tools are served from here, so the plugin's
     // MCP server leaves its copies of them out of every request.

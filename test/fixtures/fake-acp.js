@@ -19,11 +19,14 @@
 // FAKE_ACP_LOAD_FAILS=1: session/load answers an error.
 // FAKE_ACP_SLOW_START=<ms>: session/new and session/load take that long.
 // FAKE_ACP_NO_MODES=1: offers no session modes at all.
+// FAKE_ACP_MCP_HTTP=1: initialize says it takes http MCP servers, and each reply ends
+//   with the ones session/new or session/load gave it: " [mcp: name url header]".
 // session/load replays the conversation as ACP agents do: a user chunk, the
 // agent's reply and a tool call.
 const readline = require('readline');
 
 let mode = 'default';
+let mcp = []; // session/new's or session/load's mcpServers
 let cancelled = null;  // resolve() of the turn waiting on a cancel
 let nextId = 1000;
 const waiting = new Map(); // our requests to the client -> resolve
@@ -87,6 +90,7 @@ async function prompt(id, { sessionId, prompt: blocks }) {
   }
   update(sessionId, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'echo: ' } });
   update(sessionId, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } });
+  if (process.env.FAKE_ACP_MCP_HTTP === '1') update(sessionId, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: mcp.map(m => ` [mcp: ${m.name} ${m.url} ${(m.headers || []).map(x => x.name).join(',')}]`).join('') || ' [mcp: none]' } });
   update(sessionId, { sessionUpdate: 'usage_update', used: 5300, size: 1000000 });
   send({ id, result: { stopReason: 'end_turn', usage: { inputTokens: 5000, outputTokens: 300, totalTokens: 5300 } } });
 }
@@ -103,10 +107,12 @@ readline.createInterface({ input: process.stdin }).on('line', line => {
   const { id, method, params } = msg;
   switch (method) {
     case 'initialize':
-      return send({ id, result: { protocolVersion: 1, agentCapabilities: { loadSession: process.env.FAKE_ACP_NO_LOAD !== '1' }, authMethods: [] } });
+      return send({ id, result: { protocolVersion: 1, agentCapabilities: { loadSession: process.env.FAKE_ACP_NO_LOAD !== '1', ...(process.env.FAKE_ACP_MCP_HTTP === '1' ? { mcpCapabilities: { http: true } } : {}) }, authMethods: [] } });
     case 'session/new':
+      mcp = Array.isArray(params.mcpServers) ? params.mcpServers : [];
       return later(() => send({ id, result: { sessionId: `sess-${process.pid}`, modes: MODES } }));
     case 'session/load':
+      mcp = Array.isArray(params.mcpServers) ? params.mcpServers : [];
       if (process.env.FAKE_ACP_LOAD_FAILS === '1') return send({ id, error: { code: -32000, message: 'no such session' } });
       update(params.sessionId, { sessionUpdate: 'user_message_chunk', content: { type: 'text', text: 'earlier' } });
       update(params.sessionId, { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'REPLAYED reply' } });

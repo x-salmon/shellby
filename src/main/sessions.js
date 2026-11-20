@@ -52,9 +52,9 @@ class SessionManager extends Base {
   // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
   // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
   // makeHarness(id, { cwd, mode, resumeId }) -> a session for another agent's CLI (harness/), or null when none can run.
-  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null, warmLocal = null, makeHarness = null }) {
+  constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null, warmLocal = null, makeHarness = null, getConnectorServers = () => null }) {
     super();
-    Object.assign(this, { makeHarness, getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer, warmLocal });
+    Object.assign(this, { makeHarness, getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer, warmLocal, getConnectorServers });
     this.tabs = new Map();
   }
 
@@ -109,6 +109,8 @@ class SessionManager extends Base {
       extraEnv: () => ({ ...this.getEnv(), ...localAgent.envFor(tab ? tab.localTarget : localTarget) }),
       context: historyEntry?.context || null,
       allowedTools, mcpConfig,
+      // The connectors gateway (connectors/), but never on a local model: nothing of a local conversation leaves this PC.
+      extraMcp: () => ((tab ? tab.localTarget : localTarget) ? null : this.getConnectorServers?.() || null),
       systemNote: aware?.note || null,
       mcp: aware?.tools && this.onTool ? { tools: aware.tools, call: (name, args) => this.onTool(tab, name, args) } : null,
     });

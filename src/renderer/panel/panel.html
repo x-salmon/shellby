@@ -2228,6 +2228,44 @@
         <p class="muted small">Claude can open pages, click and read them in your own Chrome, signed in as you, through the Claude in Chrome extension, which needs to be installed. Applies to new conversations.</p>
       </section>
 
+      <section class="setting-group" id="connectorsGroup" data-nav="Connectors">
+        <h3>Connectors</h3>
+        <p class="muted small">One gateway, every app: connect your apps once at an MCP gateway like Composio, Pipedream, Zapier MCP or Smithery, paste its address here, and every conversation (Claude, Gemini CLI, OpenCode and Codex) can use them. Each tool still asks before it runs, as any other does. Conversations on a local model and in folders on other computers don't get it.</p>
+        <div id="connectorsSaved" class="row wrap" hidden>
+          <p class="small" id="connectorsSavedText"></p>
+          <button type="button" class="btn ghost slim-btn" id="connectorsTest">Test</button>
+          <button type="button" class="btn ghost slim-btn" id="connectorsReplace">Replace</button>
+          <button type="button" class="btn ghost slim-btn" id="connectorsRemove">Remove</button>
+        </div>
+        <form id="connectorsForm" class="connectors-form" autocomplete="off">
+          <div class="row wrap">
+            <label class="inline-label" for="connectorsPreset">Gateway</label>
+            <select id="connectorsPreset" class="field slim"></select>
+            <a id="connectorsSite" class="small" href="#" hidden>Get an address</a>
+          </div>
+          <div class="row wrap">
+            <label class="inline-label" for="connectorsUrl">MCP address</label>
+            <input type="password" class="field slim" id="connectorsUrl" placeholder="https://…" spellcheck="false" maxlength="2000" required>
+          </div>
+          <div class="row wrap">
+            <label class="inline-label" for="connectorsKey">Key</label>
+            <input type="password" class="field slim" id="connectorsKey" placeholder="If it gave you one" spellcheck="false" maxlength="4000">
+            <label class="inline-label" for="connectorsHeader">sent as</label>
+            <input type="text" class="field slim" id="connectorsHeader" spellcheck="false" maxlength="64">
+          </div>
+          <div class="row wrap">
+            <button type="submit" class="btn slim-btn" id="connectorsSave">Save</button>
+            <button type="button" class="btn ghost slim-btn" id="connectorsCancel" hidden>Cancel</button>
+          </div>
+          <p class="muted small">The address and key are encrypted by Windows on this PC and never shown again. Some gateways put the secret in the address itself, so it's hidden as you type.</p>
+        </form>
+        <label class="toggle"><input type="checkbox" id="connectorsToggle"><span class="switch"></span>Give conversations my connectors</label>
+        <label class="toggle"><input type="checkbox" id="connectorsClaude"><span class="switch"></span>In Claude conversations</label>
+        <label class="toggle"><input type="checkbox" id="connectorsAgents"><span class="switch"></span>In Gemini CLI, OpenCode and Codex conversations</label>
+        <p class="muted small">Applies to new conversations. An agent that can't take a gateway over the web starts without it.</p>
+        <p class="small" id="connectorsStatus" role="status" aria-live="polite"></p>
+      </section>
+
       <section class="setting-group" id="localModelGroup" data-nav="Local model">
         <h3>Local model</h3>
         <div class="local-setup" id="localSetupCard" aria-live="polite" hidden>
@@ -3452,6 +3490,7 @@
 <script src="settings-local-fit.js"></script>
 <script src="settings-everywhere.js"></script>
 <script src="settings-channels.js"></script>
+<script src="settings-connectors.js"></script>
 <script src="settings-pocket.js"></script>
 <script src="settings-desk.js"></script>
 <script src="remote-logic.js"></script>

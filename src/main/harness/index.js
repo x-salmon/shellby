@@ -8,15 +8,15 @@ const registry = require('./registry');
 const { AcpSession } = require('./acp-session');
 
 /**
- * @param {{ fake?: string | null, node?: string, env?: () => Record<string, string> }} [o]
+ * @param {{ fake?: string | null, node?: string, env?: () => Record<string, string>, mcpServers?: (caps: any) => any[] }} [o]
  * @returns {(id: string, opts: { cwd: string, mode?: string, resumeId?: string | null }) => InstanceType<typeof AcpSession>}
  */
-function harnessFactory({ fake = null, node = 'node', env = () => ({}) } = {}) {
+function harnessFactory({ fake = null, node = 'node', env = () => ({}), mcpServers = () => [] } = {}) {
   return (id, { cwd, mode, resumeId = null }) => {
     const harness = registry.byId(id);
     if (!harness) throw new Error('Shellby doesn\'t know that agent.');
     return new AcpSession({
-      harness, cwd, mode, resumeId, env,
+      harness, cwd, mode, resumeId, env, mcpServers,
       args: fake ? [] : harness.args,
       command: () => (fake ? { file: node, prefix: [fake] } : registry.commandFor(id)),
     });

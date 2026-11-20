@@ -102,7 +102,7 @@ function wireSessions(d) {
       argsPrefix: d.FAKE_CLI ? [d.FAKE_CLI] : [],
       // Another agent's CLI (Gemini CLI, OpenCode, Codex): harness/.
       // They get this PC's own environment (and SHELLBY_OWNED), not Shellby's GitHub access, which stays Claude Code's.
-      makeHarness: harnessFactory({ fake: d.FAKE_ACP, node: process.env.SHELLBY_NODE || 'node' }),
+      makeHarness: harnessFactory({ fake: d.FAKE_ACP, node: process.env.SHELLBY_NODE || 'node', mcpServers: caps => d.connectors?.acpServers(caps) || [] }),
       history: d.history,
       getExe: () => (d.FAKE_CLI ? process.env.SHELLBY_NODE || 'node' : d.claudeExe()),
       getMode: () => d.config.get('mode'),
@@ -117,6 +117,8 @@ function wireSessions(d) {
       // A local conversation's quick model, loaded as it starts so its titles and checks don't push the main one out.
       warmLocal: target => { require('../local/ollama').keepLoaded(target).catch(() => {}); },
       getFallbackModel: () => d.config.get('fallbackModel') || '',
+      // The connectors gateway's --mcp-config entry, read at each start (connectors/).
+      getConnectorServers: () => d.connectors?.claudeServers() || null,
       getChrome: () => d.config.get('claudeInChrome') === true,
       // The newer flags go only to a Claude Code whose --help lists them (main.js claudeSupports).
       supports: flag => d.claudeSupports(flag),
