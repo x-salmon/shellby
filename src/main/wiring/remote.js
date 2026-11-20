@@ -11,6 +11,7 @@ const handoff = require('../handoff');
 const { createAgent, SSH } = require('../remote/agent');
 const { createAskpass } = require('../remote/askpass');
 const { createRemoteService } = require('../remote/service');
+const worktrees = require('../worktrees');
 const ssh = require('../remote/ssh');
 const { POWERSHELL, CMD, windowsTerminal } = require('../system32');
 
@@ -93,6 +94,8 @@ function wireRemote(d) {
         fs.writeFileSync(sshConfig, text);
       },
     });
+    // Copies of a repository there are made over there (worktrees/index.js createThere).
+    worktrees.setRemote(d.remoteService);
     d.remoteService.warm();
     app.on('will-quit', () => askpass.close());
     return d.remoteService;

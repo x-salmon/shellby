@@ -200,6 +200,73 @@ function parseList(text) {
   return { here, folders };
 }
 
+// ---- copies of a repository there (worktrees/index.js, through service.js git())
+
+// Git's own safety switches, as worktrees/index.js sets them locally: never a
+// prompt or an editor, and no fsmonitor program named by the repository's config.
+const GIT_ENV = 'GIT_TERMINAL_PROMPT=0 GIT_EDITOR=true GIT_MERGE_AUTOEDIT=no';
+
+/**
+ * One git command in `dir` there. Every argument is a single-quoted literal;
+ * `env` takes only the locale (worktrees' LC_ALL=C), never PATH or a preload.
+ * Exit 97 when the folder is gone, 96 when there's no git.
+ */
+const GIT_VARS = new Set(['LC_ALL', 'LANG']);
+function gitScript(dir, args, env = {}) {
+  const vars = Object.entries(env).filter(([k, v]) => GIT_VARS.has(k) && /^[\w.-]{1,32}$/.test(String(v))).map(([k, v]) => `${k}=${v}`);
+  // Joined word by word: an argument is never touched once it's quoted.
+  const line = ['exec', 'env', GIT_ENV, ...vars, 'git', '-c', 'core.fsmonitor=false', ...args.map(shQuote)].join(' ');
+  return [
+    PRELUDE,
+    PATH_LINE,
+    `cd ${shDir(dir)} 2>/dev/null || { echo "shellby: no folder" >&2; exit 97; }`,
+    'command -v git >/dev/null 2>&1 || { echo "shellby: git: command not found" >&2; exit 96; }',
+    line,
+  ].join('\n');
+}
+
+// A copy's folder name: the suffix of its branch (worktrees/index.js branchName).
+const COPY_ID = /^[0-9a-f]{6}$/;
+
+/** Makes ~/.shellby/worktrees/<id> there and prints its full path. */
+function copyHomeScript(id) {
+  if (!COPY_ID.test(id)) throw new Error('bad copy id');
+  return [PRELUDE, `d="$HOME/.shellby/worktrees/${id}"`, 'mkdir -p "$d" && cd "$d" && pwd -P'].join('\n');
+}
+
+/** Removes ~/.shellby/worktrees/<id> there once it's empty (git has taken the copy itself away). */
+function copyTidyScript(id) {
+  if (!COPY_ID.test(id)) throw new Error('bad copy id');
+  return [PRELUDE, `rmdir "$HOME/.shellby/worktrees/${id}" 2>/dev/null; exit 0`].join('\n');
+}
+
+const SESSION = /^[\w-]{8,64}$/;
+
+/**
+ * Copies a conversation's transcript (and the folder of subagent transcripts
+ * beside it) from the project `from` to the project `to` there, so the same
+ * conversation resumes in the copy (claude-session.js carryTranscript, there).
+ * Claude Code names a project's folder after its full path (what getcwd says,
+ * so pwd -P), every character but letters and digits as "-": worked out over
+ * there, since `from` may be under ~. Prints shellby-ok once it's across.
+ */
+function carryScript({ sessionId, from, to }) {
+  if (!SESSION.test(sessionId || '')) throw new Error('bad session');
+  if (!isRemoteDir(from) || !isRemoteDir(to)) throw new Error('bad folder');
+  return [
+    PRELUDE,
+    'p="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"',
+    `a=$(cd ${shDir(from)} 2>/dev/null && pwd -P | sed 's/[^a-zA-Z0-9]/-/g') && [ -n "$a" ] || exit 1`,
+    `b=$(cd ${shDir(to)} 2>/dev/null && pwd -P | sed 's/[^a-zA-Z0-9]/-/g') && [ -n "$b" ] || exit 1`,
+    `[ -f "$p/$a/${sessionId}.jsonl" ] || exit 1`,
+    '[ "$a" = "$b" ] && { echo shellby-ok; exit 0; }',
+    'mkdir -p "$p/$b" || exit 1',
+    `cp "$p/$a/${sessionId}.jsonl" "$p/$b/" || exit 1`,
+    `if [ -d "$p/$a/${sessionId}" ]; then cp -R "$p/$a/${sessionId}" "$p/$b/" || exit 1; fi`,
+    'echo shellby-ok',
+  ].join('\n');
+}
+
 /** Appends a public key to ~/.ssh/authorized_keys on the other computer (the key comes on stdin). */
 function authorizeScript() {
   return [
@@ -365,6 +432,7 @@ module.exports = {
   isHost, isUser, isAddress, isPort, isRemoteDir, cleanDir,
   shQuote, shDir, wrap,
   sessionScript, probeScript, parseProbe, installScript, signInScript, resumeScript, listScript, parseList, authorizeScript,
+  gitScript, copyHomeScript, copyTidyScript, carryScript,
   sshArgs, parseResolved, parseConfig, hostBlock, appendBlock,
   anchorName, anchorFor, placeLabel, troubleOf,
 };

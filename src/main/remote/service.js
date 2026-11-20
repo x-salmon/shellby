@@ -270,10 +270,71 @@ function createRemoteService(deps) {
     return { ok: true };
   }
 
-  /** Is this cwd a folder on another computer? -> { host, dir, anchor } | null */
+  // ---- copies of a repository there (worktrees/index.js)
+  //
+  // A copy there, and the repository it came from, each get a stand-in here
+  // like any folder, kept apart from yours (remoteCopies) so they never show
+  // as projects of their own. `copy: true` on placeOf tells them apart.
+  const copies = () => (Array.isArray(config.get('remoteCopies')) ? config.get('remoteCopies') : []).filter(f => ssh.isHost(f?.host) && ssh.isRemoteDir(f?.dir) && typeof f?.anchor === 'string');
+
+  /** A stand-in here for `dir` there (a copy, or the repository behind one). -> anchor | null */
+  function addCopy(host, dir) {
+    const dirClean = ssh.cleanDir(dir);
+    if (!computer(host) || !ssh.isRemoteDir(dirClean)) return null;
+    const known = [...folders(), ...copies()].find(f => sameHost(f.host, host) && f.dir === dirClean);
+    if (known) return known.anchor;
+    // A name of its own, long enough that two folders there never share one.
+    const alias = computer(host).alias;
+    const anchor = path.join(anchorsRoot, alias, `copy-${hash(`${alias.toLowerCase()}:${dirClean}`).slice(0, 20)}`);
+    if ([...folders(), ...copies()].some(f => samePath(f.anchor, anchor))) return null;
+    try { fs.mkdirSync(anchor, { recursive: true }); } catch (err) { log(`remote copy: ${err.message}`); return null; }
+    config.set({ remoteCopies: [...copies(), { host: alias, dir: dirClean, anchor }] });
+    return anchor;
+  }
+
+  function dropCopy(anchor) {
+    const f = copies().find(x => samePath(x.anchor, anchor));
+    if (!f) return;
+    config.set({ remoteCopies: copies().filter(x => x !== f) });
+    dropAnchor(f.anchor);
+  }
+
+  /** git in a folder there, answered the way worktrees/index.js git() answers. -> { ok, out, error? } */
+  async function git(place, args, { timeout = 30000, env = {} } = {}) {
+    const r = await runSsh(place.host, ssh.gitScript(place.dir, args, env), { timeout });
+    if (r.code === 0) return { ok: true, out: r.stdout };
+    const why = r.code === 97 ? `${place.dir} isn't on ${place.host} any more.`
+      : r.code === 96 ? `git isn't installed on ${place.host}.`
+        : r.timedOut || ssh.troubleOf(r.stderr) ? failure(r).message : String(r.stderr || '').trim();
+    return { ok: false, out: r.stdout, error: why || `git stopped (code ${r.code}).` };
+  }
+
+  /** Makes the folder a copy goes in there (~/.shellby/worktrees/<id>). -> full path | null */
+  async function copyHome(host, id) {
+    const r = await runSsh(host, ssh.copyHomeScript(id), { timeout: 30000 });
+    const dir = r.code === 0 ? r.stdout.trim().split(/\r?\n/).pop() : '';
+    return dir && dir.startsWith('/') && ssh.isRemoteDir(dir) ? dir : null;
+  }
+
+  async function tidyCopyHome(host, id) {
+    await runSsh(host, ssh.copyTidyScript(id), { timeout: 30000 });
+  }
+
+  /** Carries a conversation's transcript there from one folder's project to another's. -> true | false */
+  async function carryTranscript(host, { sessionId, from, to }) {
+    let script;
+    try { script = ssh.carryScript({ sessionId, from, to }); } catch { return false; }
+    const r = await runSsh(host, script, { timeout: 60000 });
+    return r.code === 0 && /shellby-ok/.test(r.stdout);
+  }
+
+  /** Is this cwd a folder on another computer? -> { host, dir, anchor, copy? } | null */
   function placeOf(cwd) {
     if (typeof cwd !== 'string' || !cwd) return null;
-    return folders().find(f => samePath(f.anchor, cwd)) || null;
+    const mine = folders().find(f => samePath(f.anchor, cwd));
+    if (mine) return mine;
+    const copy = copies().find(f => samePath(f.anchor, cwd));
+    return copy ? { ...copy, copy: true } : null;
   }
 
   /** How a session in `place` starts its Claude Code (session/index.js remote). */
@@ -338,7 +399,8 @@ function createRemoteService(deps) {
   return {
     warm, view, addComputer, createComputer, removeComputer, check, installClaude, signInClaude, setupKey,
     enableAgent: () => agent.enable(), unlockKey: name => agent.add(name),
-    browse, addFolder, removeFolder, placeOf, launch, probeCommand, resumeInTerminal, runSsh,
+    browse, addFolder, removeFolder, placeOf, launch,
+    addCopy, dropCopy, git, copyHome, tidyCopyHome, carryTranscript, probeCommand, resumeInTerminal, runSsh,
   };
 }
 

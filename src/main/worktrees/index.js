@@ -21,6 +21,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { projectDirName, carryTranscript, copySession, findSession } = require('./claude-session');
+const { createRemoteCopies } = require('./remote');
 
 const BRANCH = /^shellby\/[a-z0-9-]{1,40}-[0-9a-f]{6}$/;
 
@@ -32,9 +33,20 @@ const NO_HOOKS = ['-c', 'core.hooksPath=/dev/null'];
 // What execFile says when there's no git to run.
 const NO_GIT = /\bENOENT\b|not recognized as an internal or external command/i;
 
+// Folders on another computer (remote/service.js): their stand-ins on this PC
+// are what a tab and a copy record hold, and git for them runs over there.
+//   { placeOf(cwd), git(place, args, opts), copyHome(host, id), tidyCopyHome(host, id), addCopy(host, dir), dropCopy(anchor) }
+/** @type {any} */
+let remote = null;
+/** Hands this module the remote service (wiring/remote.js). null: none. */
+function setRemote(r) { remote = r || null; }
+const placeOf = dir => (remote && typeof dir === 'string' ? remote.placeOf(dir) : null);
+
 // fsmonitor off: a repository's own config could name a program to run on
 // every status (one Shellby never asked for).
 function git(cwd, args, { timeout = 30000, env = {} } = {}) {
+  const place = placeOf(cwd);
+  if (place) return remote.git(place, args, { timeout, env });
   return new Promise(resolve => {
     execFile('git', ['-C', cwd, '-c', 'core.fsmonitor=false', ...args], {
       windowsHide: true, timeout, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8',
@@ -188,6 +200,8 @@ function suggestedName(text) {
  * @returns {Promise<{ ok: true, worktree: Worktree, left: { from: string, to: string } | null, stuck: string | null } | { ok: false, error: string, detail?: string } | null>}
  */
 async function create(dir, { home, title, named = false, start = 'HEAD' }) {
+  const place = placeOf(dir);
+  if (place) return createThere(dir, place, { title, named, start });
   if (typeof dir !== 'string' || !path.isAbsolute(dir) || !fs.existsSync(dir)) return null;
   // Where the folder sits inside the repo, in git's own words: comparing paths
   // here would trip over 8.3 short names (C:\Users\RUNNER~1\...) that git
@@ -291,6 +305,8 @@ const OBJECT = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
  * -> { ok: true, worktree } | { ok: false, error, gone? }
  */
 async function createAt({ repoRoot, base, head, tree, prefix = '', home, slug, named = false, originalCwd }) {
+  // Snapshots are only taken of folders on this PC (wiring/sessions.js).
+  if (placeOf(repoRoot)) return { ok: false, error: 'That repository is on another computer, where Shellby keeps no snapshots to branch from.' };
   if (typeof repoRoot !== 'string' || !path.isAbsolute(repoRoot) || !fs.existsSync(repoRoot)) return { ok: false, error: 'That repository has moved.' };
   if (!OBJECT.test(tree || '') || !OBJECT.test(head || '')) return { ok: false, error: "That point in the conversation has no snapshot to start from." };
   if (typeof base !== 'string' || !REF.test(base)) return { ok: false, error: 'There is no branch to bring it home to.' };
@@ -515,9 +531,15 @@ function refusal(base, merge) {
  * Remove the copy and its branch. force: also when it has work that was never
  * brought home (Throw away). Without force, an unmerged branch is kept.
  */
-async function remove(w, { force = false } = {}) {
+/**
+ * @param {any} w
+ * @param {{ force?: boolean, there?: string | null }} [opts]
+ */
+async function remove(w, { force = false, there = null } = {}) {
   const bad = checkWorktree(w);
   if (bad) return { ok: false, error: bad };
+  const place = placeOf(w.root);
+  if (place) return removeThere(w, place, { force, there });
   // --force here only means "even with untracked files" (node_modules and the
   // like); everything worth keeping was committed by bringHome first.
   if (fs.existsSync(w.path)) {
@@ -722,8 +744,13 @@ async function caughtUp(w) {
   return has.ok && !mid.ok;
 }
 
+// Copies on another computer (worktrees/remote.js), with this module's own steps.
+const { createThere, removeThere } = createRemoteCopies({
+  git, remote: () => remote, placeOf, branchName, leaveFinishedBranch, copyRefusal, remove, lastLines, firstLine, REF, NO_HOOKS,
+});
+
 module.exports = {
-  git, create, createAt, startingPoint, branchOf, status, commitCopy, bringHome, moveBase, remove, branchName, workMessage, checkWorktree, BRANCH,
+  git, setRemote, placeOf, create, createAt, startingPoint, branchOf, status, commitCopy, bringHome, moveBase, remove, branchName, workMessage, checkWorktree, BRANCH,
   remoteStatus, pushBase, tipOf, bringAllHome, caughtUp, upstreamOf, copyRefusal,
   startsWork, onlyLooks, suggestedName, projectDirName, carryTranscript, copySession, findSession,
 };
