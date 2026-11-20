@@ -81,6 +81,9 @@ a { color: var(--glass); }
 .pc i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
 .pc.off { background: var(--reef); color: var(--sand-faint); }
 .pc.off i { box-shadow: none; }
+/* Your other PCs on the beach (pocket-beach.js otherPcs): its chip, then what it is doing. */
+.other-pc { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-decoration: none; color: inherit; }
+.other-pc .pc { max-width: 100%; }
 /* Your other PCs beside this one (pocket.js pcSwitch): each opens its own Shellby. */
 .pcs { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 62%; padding: 3px; border-radius: 99px; background: var(--reef); border: 1px solid var(--line-soft); overflow-x: auto; scrollbar-width: none; }
 .pcs .pc { max-width: 9.5em; flex: none; gap: 5px; padding: 6px 9px; letter-spacing: 0; }

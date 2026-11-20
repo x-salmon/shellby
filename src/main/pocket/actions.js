@@ -52,6 +52,23 @@ function createPocketActions(d, { settings, save, devices, saveDevices, vapidKey
   // A task the phone sent again (its answer was slow, so it tried once more) is the same task.
   const sent = new Map(); // key -> the promise of its answer
 
+  // A prompt on another of your PCs, answered through this one (the hub: wiring/hub.js answerOn),
+  // under that PC's own answer rules. Only with Settings → On your phone → your other PCs on.
+  const DECISIONS = ['allow', 'always', 'deny'];
+  async function answerElsewhere(body) {
+    if (!settings().allow.otherPcs) return no('Answering your other PCs from the phone is off. Turn it on in Settings → On your phone.');
+    const b = body && typeof body === 'object' ? body : {};
+    const pcId = str(b.pcId, 40);
+    const tabId = str(b.tabId, 100);
+    const requestId = str(b.requestId, 100);
+    if (!pcId || !tabId || !requestId || !DECISIONS.includes(b.decision)) return no("That answer wasn't one Shellby takes.");
+    if (!d.hub) return no("This PC isn't keeping up with your other PCs.");
+    const answers = b.answers && typeof b.answers === 'object' && !Array.isArray(b.answers) ? b.answers : undefined;
+    const notes = typeof b.notes === 'string' ? b.notes.slice(0, 4000) : undefined;
+    const r = await d.hub.answerOn(pcId, { tabId, requestId, decision: b.decision, answers, read: b.read === true, notes });
+    return r && typeof r === 'object' ? r : no("That PC didn't answer.");
+  }
+
   async function onAction(device, name, body) {
     if (!settings().enabled) return no('Shellby on your phone is off.');
     // A read-only phone may look, and little else (pocket/rights.js): checked
@@ -60,6 +77,7 @@ function createPocketActions(d, { settings, save, devices, saveDevices, vapidKey
     if (why) return no(why);
     switch (name) {
       case 'answer': return answer(body);
+      case 'pcs-answer': return answerElsewhere(body);
       case 'task': return task(body);
       case 'stop': return stop(body);
       case 'undo': return undo(body);

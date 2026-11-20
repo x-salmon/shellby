@@ -6,6 +6,22 @@
 'use strict';
 (function (root) {
   root.PocketBeach = ({ S, L, D, N, h, icon, live, go, buzz, canAct, topbar, dock, offlineBanner, promptCard, celebrate, Later, Find, Pages }) => {
+    // Your other PCs, one line each: reachable or not, what's working there, its
+    // conversations' titles, and a link to its own page for anything more.
+    function otherPcs(others) {
+      return [
+        h('h3', { class: 'sect' }, h('span', { text: 'Your other PCs' }), h('b', { text: others.length })),
+        ...others.map(o => {
+          const busy = (o.tabs || []).filter(t => t.busy);
+          const what = !o.live ? 'Not reachable right now' : busy.length ? `Working on ${busy.slice(0, 2).map(t => t.title).join(', ')}${busy.length > 2 ? ` and ${busy.length - 2} more` : ''}` : (o.tabs?.length ? `${o.tabs.length} open, all quiet` : 'Nothing on the go');
+          const body = [h('span', { class: `pc ${o.live ? 'on' : 'off'}` }, h('i'), h('span', { text: o.name })), h('span', { class: 'muted small', text: what })];
+          return /^https:\/\/[a-z0-9.-]+\.ts\.net(:\d+)?$/.test(o.url || '') // only a page on your tailnet, as pocket-wide.js checks
+            ? h('a', { class: 'tab-card other-pc', href: `${o.url}/`, 'aria-label': `Open Shellby on ${o.name}` }, ...body)
+            : h('div', { class: 'tab-card other-pc' }, ...body);
+        }),
+      ];
+    }
+
     function tabCard(t) {
       const go1 = () => go(`#/tab/${encodeURIComponent(t.id)}`);
       const meta = [];
@@ -121,6 +137,12 @@
           parts.push(h('h3', { class: 'sect asking' }, h('i'), h('span', { text: 'Waiting on you' }), h('b', { text: prompts.length })));
           for (const p of prompts) parts.push(promptCard(p));
         }
+        // What's waiting on your other PCs, answered through this one (main's pocket/view.js phoneOthers).
+        for (const o of v.others || []) {
+          if (!o.prompts?.length) continue;
+          parts.push(h('h3', { class: 'sect asking' }, h('i'), h('span', { text: `Waiting on ${o.name}` }), h('b', { text: o.prompts.length })));
+          for (const p of o.prompts) parts.push(promptCard(p));
+        }
         parts.push(...Pages.pinnedRow()); // after what's waiting on you, before what's ready to review, as at the desk
         for (const s of L.sections(v)) {
           if (s.key === 'quiet' && s.tabs.length > 2) {
@@ -132,6 +154,7 @@
           parts.push(h('h3', { class: `sect ${s.key}` }, h('span', { text: s.label }), h('b', { text: s.tabs.length })));
           for (const t of s.tabs) parts.push(tabCard(t));
         }
+        if (v.others?.length) parts.push(...otherPcs(v.others));
         if (!v.tabs?.length && !prompts.length) {
           parts.push(h('div', { class: 'empty' }, h('p', { text: canAct() ? 'Nothing on the go. Give him something to do and he’ll scuttle off with it.' : 'Nothing on the go.' }), canAct() ? h('a', { href: '#/new', class: 'btn go', text: 'Start a task' }) : null));
         }

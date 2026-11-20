@@ -244,6 +244,30 @@ function phonePcs(list) {
   return out.slice(0, MAX_PEERS);
 }
 
+const MAX_OTHER_TABS = 12;
+const MAX_OTHER_PROMPTS = 10;
+/**
+ * Your other PCs, for the phone (wiring/pocket.js otherPcs): each one's name,
+ * whether it's reachable, what's waiting on you there (hub/roster.js's prompts,
+ * each marked with its PC so an answer goes back to it), its conversations'
+ * titles, and its own address on your tailnet for anything more.
+ * @param {any[]} rows
+ */
+function phoneOthers(rows) {
+  const out = [];
+  for (const r of Array.isArray(rows) ? rows.slice(0, MAX_PEERS) : []) {
+    if (!r || typeof r !== 'object' || typeof r.id !== 'string') continue;
+    const url = originOf(r.url);
+    out.push({
+      id: line(r.id, 40), name: line(r.name, 40) || 'A PC', url: url || null,
+      live: r.live === true, state: line(r.state, 20), working: Number.isFinite(r.working) ? r.working : null,
+      prompts: (Array.isArray(r.prompts) ? r.prompts.slice(0, MAX_OTHER_PROMPTS) : []).filter(p => p && typeof p === 'object').map(p => ({ ...p, pcId: line(r.id, 40), pcName: line(r.name, 40) || 'A PC', pcUrl: url || null })),
+      tabs: (Array.isArray(r.tabs) ? r.tabs.slice(0, MAX_OTHER_TABS) : []).filter(x => x && typeof x === 'object').map(x => ({ id: line(x.id, 100), title: line(x.title, 120) || 'Untitled', busy: !!x.busy })),
+    });
+  }
+  return out;
+}
+
 /**
  * The whole phone view.
  *   tabs:     sessions.js summary
@@ -258,7 +282,7 @@ function phonePcs(list) {
  *   host:     the PC itself, for the hub's roster (hub/host.js)
  */
 /** @param {Record<string, any>} [input] */
-function phoneView({ pc = '', pcs = [], tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, locals = [], health = null, mood = null, host = null, now = Date.now() } = {}) {
+function phoneView({ pc = '', pcs = [], tabs = [], prompts = [], crab = null, extras = {}, outlook = null, lastUsage = null, held = [], projects = [], skin = null, limits = null, pushKey = null, allow = null, focus = null, guard = null, rights = null, quiet = null, mode = null, models = [], model = null, locals = [], health = null, mood = null, host = null, others = [], now = Date.now() } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title;
   const order = id => STANDINGS.indexOf(id);
   const shown = tabs.slice(0, MAX_TABS).map(t => phoneTab(t, extras[t.id] || {}));
@@ -284,13 +308,14 @@ function phoneView({ pc = '', pcs = [], tabs = [], prompts = [], crab = null, ex
     model: line(model, 60) || null,
     // The local models on the PC a new task can run on instead (pocket/locals.js), as the desk's "On this PC".
     locals: (Array.isArray(locals) ? locals : []).slice(0, 40).map(n => line(n, 200)).filter(Boolean),
-    allow: allow ? { push: !!allow.push, files: !!allow.files } : { push: false, files: false },
+    allow: allow ? { push: !!allow.push, files: !!allow.files, otherPcs: !!allow.otherPcs } : { push: false, files: false, otherPcs: false },
     rights: normalizeRights(rights),
     quiet: normalizeQuiet(quiet),
     held: (held || []).slice(0, 20).map(phoneHeld),
     machine: phoneMachine(health, mood),
     host: phoneHost(host),
     pcs: phonePcs(pcs), // the hub's other PCs: the switcher opens each one's own page
+    others: phoneOthers(others), // ...and what's waiting on them, answered through this PC (Settings → On your phone)
     projects: (projects || []).slice(0, MAX_PROJECTS).map(p => ({ key: line(p.key, 600), name: line(p.name, 80) })),
     skin: skin || null,
     limits: limits || null,
@@ -378,4 +403,4 @@ function phoneItems(items) {
   return out.reverse();
 }
 
-module.exports = { phoneHost, phonePcs, MAX_ITEMS, MAX_PICS, STANDINGS, pictureFiles, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };
+module.exports = { phoneOthers, phoneHost, phonePcs, MAX_ITEMS, MAX_PICS, STANDINGS, pictureFiles, VERSION, clip, line, phoneHeld, phoneItem, phoneMachine, phoneItems, phonePrompt, phoneTab, phoneUsage, phoneView, preview };

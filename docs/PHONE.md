@@ -109,6 +109,10 @@ There's also a quiet **"working on it"** notification for tasks the phone starte
 
 **When the PC sleeps** the app keeps what it last knew, says how old it is ("This is how things were at 09:12"), and comes back by itself the moment the PC answers. You can still write: a new task, a reply or a word on a line waits on the phone, in a **waiting to send** card on the beach with **Don't send** for each, and goes in order the moment the PC answers. Each one carries a key, so one that reached the PC just as the connection dropped is never done twice. Pictures need the PC there to take them.
 
+### Your other PCs
+
+If this PC is the hub for your others (Your PCs), turn on **See and answer what's waiting on your other PCs** in Settings → Alerts → On your phone. The beach then shows what's waiting on each of them under its name, with the same Allow, Deny, questions and plans as this PC's own, and lists your other PCs below your conversations. Answers go through this PC to that one and follow that PC's own rules; See the conversation and each PC's row open that PC's own page, which you pair with separately. A read-only phone sees them and can't answer.
+
 ## Notifications
 
 Notifications come from your PC, encrypted, through your phone's own push service (Apple's, Google's, Mozilla's or Microsoft's, whichever your browser uses). Only your phone can read them. They follow the same rules as the other phone notifications:

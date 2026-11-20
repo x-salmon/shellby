@@ -7,7 +7,13 @@
 'use strict';
 (function (root) {
   root.PocketAsk = ({ S, L, D, h, icon, go, buzz, act, actButton, canAct, lookOnly, refresh, openSheet, questionSheet, planSheet }) => {
+    // A prompt from another of your PCs (pcId) is answered through this one (main's pocket/actions.js pcs-answer).
+    const answerAct = (p, body, o) => (p.pcId ? act('pcs-answer', { pcId: p.pcId, ...body }, o) : act('answer', body, o));
     // after(): what happens once an answer went (the prompt screen goes back to the beach).
+    // Only ever a page on your tailnet, as the PC switcher (pocket-wide.js) checks.
+    const TAILNET = /^https:\/\/[a-z0-9.-]+\.ts\.net(:\d+)?$/;
+    // Its conversation: here, or on its own PC's page for one from another PC.
+    const seeIt = p => (p.pcId ? (TAILNET.test(p.pcUrl || "") ? location.assign(`${p.pcUrl}/#/tab/${encodeURIComponent(p.tabId)}`) : undefined) : go(`#/tab/${encodeURIComponent(p.tabId)}`));
     function promptCard(p, /** @type {{ inTab?: boolean, after?: (() => void) | null }} */ { inTab = false, after = null } = {}) {
       const sending = S.answering.get(p.requestId);
       const card = h('article', { class: `ask${p.deskOnly ? ' desk' : ''}${sending ? ' sending' : ''}`, 'aria-label': `${p.title}: ${p.ask || p.label}` });
@@ -33,7 +39,7 @@
         cls: decision === 'allow' ? 'allow big' : decision === 'always' ? 'always' : 'big',
         run: async () => {
           S.answering.set(p.requestId, decision);
-          const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision });
+          const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision });
           if (!r.ok) S.answering.delete(p.requestId);
           else buzz(decision === 'deny' ? 12 : [6, 30, 6]);
           refresh();
@@ -43,13 +49,13 @@
       // A phone that may only look sees the prompt, and no way to answer it.
       if (!canAct()) {
         card.append(lookOnly());
-        if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) }));
+        if (!inTab) card.append(h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => seeIt(p) }));
         return card;
       }
       // Only the desk can say yes, but a no from here lets the conversation get on without it.
       if (p.deskOnly) {
         card.append(h('div', { class: 'btns' }, answer('deny'),
-          inTab ? null : h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => go(`#/tab/${encodeURIComponent(p.tabId)}`) })));
+          inTab ? null : h('button', { type: 'button', class: 'btn ghost', text: 'See the conversation', onclick: () => seeIt(p) })));
         return card;
       }
       // In a sheet: the beach redraws its cards as things change, and a half-picked answer mustn't go.

@@ -44,6 +44,12 @@ What's waiting on you on a PC leads its detail, under **Waiting on you**: what i
 
 Select one of its conversations to open it on the hub, live: what you said, each step, and the reply as it's typed, with what's waiting in it underneath. Reply from the box under it (Ctrl+Enter sends): the message goes in in the mode the conversation is in (one on Autonomous is replied to at that PC, never from here), and while it's working it joins the queue for its next step. A conversation in a terminal there can't be replied to from here. **Back** closes it, and leaving Your PCs stops watching it.
 
+## In the dock, and on your phone
+
+Once another PC has joined, Your PCs gets a button of its own in the dock, with a dot while something on one of them is waiting on you. Until then it stays a tab beside Health.
+
+With **See and answer what's waiting on your other PCs** on (Settings → Alerts → On your phone, off until you turn it on), the phone paired with this PC shows what's waiting on each of your other PCs under **Waiting on** that PC's name, and answers it through the hub: each answer goes by that PC's own answer rules, exactly as from the hub here, and a read-only phone can only look. Below your conversations, **Your other PCs** lists each one, what it's working on, and opens its own page.
+
 ## Not yet
 
-Linux machines over ssh in the roster, and Your PCs in the dock.
+Linux machines over ssh in the roster.

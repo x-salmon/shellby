@@ -31,7 +31,7 @@
  */
 const sw = /** @type {SwScope} */ (/** @type {unknown} */ (self));
 
-const CACHE = 'shellby-pocket-7';
+const CACHE = 'shellby-pocket-8';
 // A tap, kept for a moment: a phone can drop a message to an app it has
 // paused, and an iPhone may open the start page instead of the URL. The app
 // looks here whenever it comes to the front (pocket.js).

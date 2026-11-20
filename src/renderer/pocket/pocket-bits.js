@@ -5,6 +5,8 @@
 'use strict';
 (function (root) {
   root.PocketBits = ({ S, L, D, N, h, icon, toast, buzz, act, actButton }) => {
+    // A prompt from another of your PCs (pcId) is answered through this one (main's pocket/actions.js pcs-answer).
+    const answerAct = (p, body, o) => (p.pcId ? act('pcs-answer', { pcId: p.pcId, ...body }, o) : act('answer', body, o));
     // after(): once an answer went (the prompt screen goes back to the beach).
     /** @param {(() => void) | null} [after] */
     function questionSheet(p, after = null) {
@@ -28,14 +30,14 @@
           if (!ready()) { toast('Answer each question first.'); return; }
           const answers = Object.fromEntries(p.questions.map((q, i) => [q.question, answerOf(i)]));
           S.answering.set(p.requestId, 'allow');
-          const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision: 'allow', answers }, { okText: 'Sent.' });
+          const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision: 'allow', answers }, { okText: 'Sent.' });
           if (!r.ok) S.answering.delete(p.requestId);
           else close();
         },
       });
       const skip = actButton({
         label: 'Skip', cls: 'big',
-        run: async () => { const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision: 'deny' }); if (r.ok) close(); },
+        run: async () => { const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision: 'deny' }); if (r.ok) close(); },
       });
       const blocks = p.questions.map((q, i) => {
         const opts = q.options.map(o => {
@@ -70,7 +72,7 @@
           label: 'Approve', cls: 'allow big',
           run: async () => {
             if (!read) { toast('Read it to the end first.'); return; }
-            const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision: 'allow', read: true }, { okText: 'Approved. On to the work.' });
+            const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision: 'allow', read: true }, { okText: 'Approved. On to the work.' });
             if (r.ok) close();
           },
         });
@@ -88,7 +90,7 @@
         const keep = actButton({
           label: 'Keep planning', cls: 'big',
           run: async () => {
-            const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision: 'deny', notes: notes.value }, { okText: 'Sent back to keep planning.' });
+            const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision: 'deny', notes: notes.value }, { okText: 'Sent back to keep planning.' });
             if (r.ok) close();
           },
         });

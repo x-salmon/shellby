@@ -285,9 +285,30 @@
     load();
   });
 
-  // A tab beside Health (This PC | Your PCs, html/health.html): Health stays lit in the dock.
+  // A tab beside Health (This PC | Your PCs, html/health.html): Health stays lit in the dock,
+  // until another PC joins. Then Your PCs has a dock button of its own, with a dot while
+  // something there is waiting on you.
   SB.NAV_SECTION.pcs = 'health';
-  SB.api.onHubChanged(() => { if (state.view === 'pcs') load(); });
+  let docked = false;
+  async function syncDock() {
+    const v = await api.hubView(null).catch(() => null);
+    const others = (v?.rows || []).filter(r => r.kind === 'pc');
+    docked = others.length > 0;
+    $('dockPcs').hidden = !docked;
+    $('pcsBadge').hidden = !others.some(r => r.prompts?.length);
+    if (docked) delete SB.NAV_SECTION.pcs;
+    else SB.NAV_SECTION.pcs = 'health';
+    if (state.view !== 'pcs') return;
+    // On Your PCs now: light whichever button stands for it, as setView (core.js) does.
+    const section = SB.NAV_SECTION.pcs || 'pcs';
+    for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.dock [data-view-btn]'))) {
+      const on = b.dataset.viewBtn === section;
+      b.classList.toggle('active', on);
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    }
+  }
+  SB.api.onHubChanged(() => { if (state.view === 'pcs') load(); syncDock(); });
+  syncDock();
   // From Settings, Alerts, On your phone: how another PC joins (html/settings-alerts.html).
   $('pocketHubLink')?.addEventListener('click', () => SB.setView('pcs'));
 

@@ -40,7 +40,7 @@ const EVENT_LABELS = Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [
 //   push:      push a conversation's branch after bringing it home
 //   files:     read a conversation's files, read-only
 //   notifyAnswers: Allow and Deny on a prompt's notification (Android), which can work from a locked phone
-const ALLOW_KEYS = ['push', 'files', 'notifyAnswers'];
+const ALLOW_KEYS = ['push', 'files', 'notifyAnswers', 'otherPcs']; // otherPcs: what's waiting on your other PCs, answered through this one (the hub)
 
 // Another port for a dev run beside an installed Shellby, or 0 for whichever is free (the tests).
 function portFromEnv(raw) {
@@ -198,10 +198,21 @@ function wirePocket(d) {
   }
 
   const locals = require('../pocket/locals').createLocals({ settings: () => d.config.get('localModel'), onChange: () => pushView(), log: d.log }); // local models a phone task can start on
+  // Your other PCs as the hub sees them (wiring/hub.js), each with its own address, when the desk allows it.
+  function otherPcs() {
+    if (!settings().allow.otherPcs || !d.hub) return [];
+    const origins = new Map((d.config.get('hubPeers') || []).map(p => [p?.id, p?.origin]));
+    try {
+      return d.hub.hubView(null, { plans: true }).rows.filter(r => r.kind === 'pc').map(r => ({ ...r, url: origins.get(r.id) || null }));
+    } catch (e) { d.log.warn('pocket: other PCs', e.message); return []; }
+  }
+  d.pocketHubChanged = () => pushView();
+
   function currentView() {
     const ts = tail.ts();
     return view.phoneView({
       pc: ts.dnsName ? ts.dnsName.split('.')[0] : require('os').hostname(), pcs: d.config.get('hubPeers'), // pcs: only names and addresses reach the phone (view.js phonePcs)
+      others: otherPcs(),
       tabs: d.manager?.summary || [],
       prompts: waitingPrompts(),
       crab: crab(),

@@ -179,7 +179,7 @@ test('the usage view has the week, the guard and focus', () => {
   assert.equal(view.usage.weekPct, 61);
   assert.deepEqual(view.usage.guard, { reserve: 25, ceiling: 75 });
   assert.equal(view.focus.phase, 'focus');
-  assert.deepEqual(view.allow, { push: false, files: false });
+  assert.deepEqual(view.allow, { push: false, files: false, otherPcs: false });
 });
 
 test('a prompt carries the desk’s always-allow label, never on one only the desk may answer', () => {
@@ -222,4 +222,22 @@ test('pictures go to the phone as a count on your message and as ids on a step, 
   assert.deepEqual(step.pics, ['x1-0.png', 'x1-1.jpg']);
   assert.equal(v.phoneItem({ kind: 'tool_result', id: 'x2', isError: false }).pics, undefined);
   assert.deepEqual(v.pictureFiles(['a.png', 'b.gif', 'c.webp', 'd.jpeg', 'e.png']), ['a.png', 'b.gif', 'c.webp', 'd.jpeg']);
+});
+
+test("your other PCs: what's waiting there, each prompt marked with its PC, and only a tailnet address", () => {
+  const rows = [
+    { id: 'p-aaaaaaaaaaaa', name: 'Laptop', url: 'https://laptop.tail3f2c.ts.net', live: true, state: 'online', working: 1,
+      prompts: [{ tabId: 't1', requestId: 'r1', title: 'Fix CI', label: 'Bash' }],
+      tabs: [{ id: 't1', title: 'Fix CI', busy: true, mode: 'ask' }] },
+    { id: 'p-bbbbbbbbbbbb', name: 'Evil', url: 'https://evil.example.com', live: false, state: 'offline', prompts: [], tabs: [] },
+    'junk',
+  ];
+  const out = v.phoneOthers(rows);
+  assert.equal(out.length, 2);
+  assert.deepEqual(out[0].prompts[0], { tabId: 't1', requestId: 'r1', title: 'Fix CI', label: 'Bash', pcId: 'p-aaaaaaaaaaaa', pcName: 'Laptop', pcUrl: 'https://laptop.tail3f2c.ts.net' });
+  assert.deepEqual(out[0].tabs, [{ id: 't1', title: 'Fix CI', busy: true }]);
+  assert.equal(out[1].url, null, 'an address off your tailnet never reaches the phone');
+  assert.deepEqual(v.phoneOthers(null), []);
+  assert.deepEqual(v.phoneView({ others: rows }).others.length, 2);
+  assert.deepEqual(v.phoneView({}).others, []);
 });
