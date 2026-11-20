@@ -36,7 +36,10 @@ function fromDir(dir, source) {
   });
 }
 
-/** Every style a conversation in `cwd` could use; the first with a name wins. */
+/**
+ * Every style a conversation in `cwd` could use; the first with a name wins.
+ * @param {{ home?: string | null, cwd?: string | null }} [where]
+ */
 function list({ home, cwd } = {}) {
   const all = [
     ...BUILT_IN,

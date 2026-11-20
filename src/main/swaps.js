@@ -118,6 +118,11 @@ function cancel(swapsIn, findsIn, sid) {
  *   l: { from, at, act, sid, give?, get? }, friend: is \`from\` on your list?
  *   theirCard: their card's swap lists, to check an offer against
  * -> { swaps, finds, done: { with, gave, got, completed } | null, news: 'offer' | 'declined' | 'cancelled' | null }
+ * @param {any} swapsIn
+ * @param {any} findsIn
+ * @param {any} l
+ * @param {{ friend?: boolean, theirCard?: { offers?: { id: string, shiny?: boolean }[], wants?: string[] } | null }} [who]
+ * @param {number} [now]
  */
 function onLetter(swapsIn, findsIn, l, { friend = false, theirCard = null } = {}, now) {
   const s = normalize(swapsIn);
@@ -209,7 +214,8 @@ function view(swapsIn, now) {
 function options(findsIn, theirCard) {
   const theirs = (theirCard?.offers || []).map(it => ({ ...itemView(it), finishes: gifts.finishes(findsIn, it.id), haveIt: !!gifts.normalize(findsIn).items[it.id] }));
   const wants = new Set(theirCard?.wants || []);
-  const mine = gifts.swapLists(findsIn, { max: 24 }).offers.map(t => { const m = CARD_ITEM_RE.exec(t); return { ...itemView({ id: m[1], shiny: m[2] === '*' }), wanted: wants.has(m[1]) }; });
+  // swapLists writes every offer in the card's own form, so each one matches.
+  const mine = gifts.swapLists(findsIn, { max: 24 }).offers.map(t => { const m = /** @type {RegExpExecArray} */ (CARD_ITEM_RE.exec(t)); return { ...itemView({ id: m[1], shiny: m[2] === '*' }), wanted: wants.has(m[1]) }; });
   return { theirs, mine };
 }
 

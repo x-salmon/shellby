@@ -55,7 +55,7 @@ const CALL_GONE_AFTER = 45 * SECOND;
 const STRETCH_AFTER = 50 * MINUTE;      // most of an hour in one kind of app
 const STRETCH_BREAK = 6 * MINUTE;       // a short look elsewhere doesn't reset the stretch
 
-const base = s => String(s || '').split(/[\\/]/).pop().toLowerCase();
+const base = s => (String(s || '').split(/[\\/]/).pop() || '').toLowerCase();
 
 /**
  * What kind of app this is, from its file name and full path:
@@ -94,17 +94,26 @@ const fileTimeMs = v => Number((v - FILETIME_EPOCH) / 10000n);
  * mic all day (ALWAYS_ON_MIC); and, given `now` and `bootAt`, sessions that
  * started before this boot (Windows never closes them when an app crashes or
  * updates, so they say "in use" forever) or have run longer than any call.
+ * @param {string} regOutput
+ * @param {{ own?: string[], now?: number | null, bootAt?: number | null }} [opts]
  */
 function micUsers(regOutput, { own = [], now = null, bootAt = null } = {}) {
   if (typeof regOutput !== 'string' || !regOutput) return [];
   const mine = own.map(o => String(o).toLowerCase()).filter(Boolean);
+  /** @type {string[]} */
   const users = [];
-  let key = null, start = 0n, stop = null;
-  const current = startMs => (!Number.isFinite(bootAt) || startMs >= bootAt - 60 * SECOND)
-    && (!Number.isFinite(now) || now - startMs <= MAX_CALL);
+  /** @type {string | null} */
+  let key = null;
+  let start = 0n;
+  /** @type {bigint | null} */
+  let stop = null;
+  /** @type {(v: unknown) => v is number} */
+  const isNum = v => typeof v === 'number' && Number.isFinite(v);
+  const current = startMs => (!isNum(bootAt) || startMs >= bootAt - 60 * SECOND)
+    && (!isNum(now) || now - startMs <= MAX_CALL);
   const flush = () => {
     if (key && stop === 0n && start > FILETIME_EPOCH && current(fileTimeMs(start))) {
-      const leaf = key.split('\\').pop();
+      const leaf = key.split('\\').pop() || '';
       // Desktop apps are stored by path with '#' for '\'.
       const name = /#/.test(leaf) ? base(leaf.replace(/#/g, '\\')) : leaf.toLowerCase();
       const lower = key.toLowerCase();

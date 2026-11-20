@@ -17,9 +17,13 @@ function createKeepWarm(d) {
   const every = d.setInterval || setInterval;
   const stopEvery = d.clearInterval || clearInterval;
   const lead = d.leadMs || kw.LEAD_MS;
-  let on = null;           // { endsAt, left } while it's on
+  /** @type {{ endsAt: number, left: boolean } | null} */
+  let on = null;           // while it's on
+  /** @type {NodeJS.Timeout | null} */
   let timer = null;
+  /** @type {number | null} */
   let blocker = null;      // the powerSaveBlocker's id while it's on
+  /** @type {ReturnType<typeof kw.plan>} */
   let lastPlan = [];
   // tabId -> { state: 'kept' | 'dropped', reason, lastPing: { at, read } | null, coldOnce: its last ping found it cold }
   const kept = new Map();

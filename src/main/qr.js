@@ -1,6 +1,7 @@
 // A QR code as rows of '1' (dark) and '0' (light), for the panel to draw as
 // pixel art. Made here because the panel loads no libraries; qrcode-generator
 // is a single dependency-free file.
+// @ts-expect-error qrcode-generator's types aren't in the program (jsconfig's noResolve)
 const qrcode = require('qrcode-generator');
 
 const MAX_TEXT = 300; // a subscribe URL is ~40 characters; anything near this is a mistake

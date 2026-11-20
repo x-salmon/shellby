@@ -327,6 +327,11 @@ function summarizeTest({ ok, stdout = '', stderr = '' } = {}) {
 // ---- making and removing your own
 
 /** A name for a new mod, or an error to show. */
+/**
+ * @param {unknown} name
+ * @param {{ name: string }[]} [existing]
+ * @returns {{ ok: true, name: string } | { ok: false, error: string }}
+ */
 function checkNewName(name, existing = []) {
   const n = typeof name === 'string' ? name.trim() : '';
   if (!n) return { ok: false, error: 'Give it a name, like tidy-commits.' };

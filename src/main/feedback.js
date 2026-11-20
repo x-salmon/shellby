@@ -9,7 +9,10 @@ const ISSUES_URL = 'https://github.com/x-salmon/shellby/issues/new';
 // LEVELS: 2 is Buddies). By then the user knows him well enough to have one.
 const ASK_FOR_IDEA_AT = 2;
 
-/** The idea form (.github/ISSUE_TEMPLATE/idea.yml) with the version filled in. */
+/**
+ * The idea form (.github/ISSUE_TEMPLATE/idea.yml) with the version filled in.
+ * @param {{ version?: string, packaged?: boolean }} [opts]
+ */
 function ideaUrl({ version, packaged = true } = {}) {
   const params = new URLSearchParams({ template: 'idea.yml', labels: 'idea' });
   if (version) params.set('version', `${version}${packaged ? '' : ' (dev build)'}`);

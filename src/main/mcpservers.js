@@ -93,6 +93,8 @@ function readAll({ home, cwd: raw }) {
 /**
  * The server named `name`, as Claude Code would find it for `cwd` (local,
  * then project, then user). -> { ok, scope, def } or { ok: false, error }.
+ * @param {string} name
+ * @param {{ home?: string | null, cwd?: string | null }} [where]
  */
 function resolveServer(name, { home, cwd } = {}) {
   const all = readAll({ home, cwd });
@@ -129,6 +131,7 @@ function configFor(names, opts) {
  * then the Toolbox's live list (plugin servers, claude.ai connectors).
  * live: [{ name, source }]. -> [{ name, scope, transport, direct }]
  * direct: Shellby can load it alone and call its tools itself.
+ * @param {{ home?: string | null, cwd?: string | null, live?: { name: string, source?: string }[] }} [opts]
  */
 function listServers({ home, cwd, live = [] } = {}) {
   const all = readAll({ home, cwd });
