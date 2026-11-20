@@ -337,7 +337,7 @@ test("IPC: an answer for ssh, and nothing past its length", async () => {
   await ipc.invoke('remote:answer', { id: 'q1', answer: 'secret' });
   await ipc.invoke('remote:answer', { id: 'q2', answer: 'x'.repeat(5000) });
   await ipc.invoke('remote:answer', { id: 'q3', answer: null });
-  assert.equal(await ipc.invoke('remote:answer', null), false);
+  await assert.rejects(ipc.invoke('remote:answer', null), /wasn't one Shellby accepts/);
   assert.deepEqual(calls, [['answer', 'q1', 'secret'], ['answer', 'q2', null], ['answer', 'q3', null]]);
 });
 

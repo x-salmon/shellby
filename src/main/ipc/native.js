@@ -132,13 +132,13 @@ function registerNativeIpc(ipcMain, d) {
     const tab = tabOf(tabId);
     if (!tab || !d.isStr(runId) || !ID.test(runId)) return { ok: false, error: 'That conversation is closed.' };
     return tab.session.stopRun(runId);
-  }, [obj({ tabId: TAB_ID, runId: RUN_ID })]);
+  }, [obj({ tabId: TAB_ID, runId: opt(RUN_ID) })]);
 
   // A card replayed from History: the run as it is now, or null when this process never saw it.
   ipcMain.handle('ultracode:status', (_e, { tabId, runId } = {}) => {
     const tab = tabOf(tabId);
     return tab && d.isStr(runId) && ID.test(runId) ? tab.session.runView(runId) : null;
-  }, [obj({ tabId: TAB_ID, runId: RUN_ID })]);
+  }, [obj({ tabId: TAB_ID, runId: opt(RUN_ID) })]);
 
   // Before the first ultracode message in a conversation: asked in the confirm window,
   // which the panel's own code can't click through.

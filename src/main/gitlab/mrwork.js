@@ -143,7 +143,6 @@ async function reviewThreads(gl, mr) {
  * startfrom.prRisks reads (GitHub's), oldest commit first.
  * emails: yours, so your own commits aren't someone else's; me: your username.
  * -> { files: [] | null, commits: [] | null }
- * @param {{ me?: string | null, emails?: string[] }} [who]
  */
 async function mrChanges(gl, mr, { me = null, emails = [] } = {}) {
   if (!idOf(mr?.projectId) || !idOf(mr?.number)) return { files: null, commits: null };

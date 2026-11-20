@@ -42,7 +42,10 @@ function pickEditor(choice, isInstalled) {
   return Object.keys(EDITORS).find(id => isInstalled(EDITORS[id].scheme)) || null;
 }
 
-/** vscode://file/C:/a%20b/x.js:12:3 for a file (or folder) and an optional line and column. */
+/**
+ * vscode://file/C:/a%20b/x.js:12:3 for a file (or folder) and an optional line and column.
+ * @param {string} id @param {string} file @param {number | null} [line] @param {number | null} [col]
+ */
 function editorUrl(id, file, line = null, col = null) {
   const parts = path.resolve(file).split(/[\\/]+/).filter(Boolean)
     .map((seg, i) => (i === 0 && /^[A-Za-z]:$/.test(seg) ? seg.toUpperCase() : encodeURIComponent(seg)));

@@ -5,7 +5,7 @@
 // be one you've added (or one in your ssh config, to add it), a folder must be
 // one ssh.js accepts, and a key a file name in ~/.ssh. Nothing the panel sends
 // is ever put on a command line as it came.
-const { PATH, either, num, obj: shape, opt, str, text } = require('../ipc-args');
+const { MAX_STRING, PATH, either, num, obj: shape, opt, str, text } = require('../ipc-args');
 const ssh = require('../remote/ssh');
 
 const MAX_ANSWER = 1024;
@@ -60,7 +60,7 @@ function registerRemoteIpc(ipcMain, d) {
     if (typeof id !== 'string') return false;
     const text = typeof answer === 'string' && answer.length <= MAX_ANSWER ? answer : null;
     return d.answerRemote(id, text);
-  }, [shape({ id: str({ max: 300 }), answer: opt(text(MAX_ANSWER)) })]);
+  }, [shape({ id: str({ max: 300 }), answer: opt(text(MAX_STRING)) })]); // too long goes on as Cancel, so ssh stops waiting
 }
 
 module.exports = { registerRemoteIpc };

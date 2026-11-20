@@ -90,7 +90,6 @@ function isPinned(win) {
  * Pins now, re-pins when Explorer restarts (it broadcasts "TaskbarCreated"),
  * and runs a slow watchdog for anything else that breaks ownership. `isAway`
  * says he's perched on some app's window right now and must be left there.
- * @param {{ watchdogMs?: number, isAway?: () => boolean }} [opts]
  */
 function keepOnDesktop(win, { watchdogMs = 15000, isAway = () => false } = {}) {
   const a = native.load();
