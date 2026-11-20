@@ -224,8 +224,11 @@ function scopeGate(d, toolName, toolInput, ctx) {
 // .git and .claude, at any depth (a sub-project's too): they change how git or
 // Claude Code runs. Windows drops a name's trailing dots and spaces (.git. is
 // .git), so each part is read that way first.
-const PROTECTED_PART = /^\.(git|claude)$/i;
-const isProtected = rel => String(rel || '').split('/').some(part => PROTECTED_PART.test(part.replace(/[. ]+$/, '')));
+// An NTFS stream suffix (.git::$INDEX_ALLOCATION) names the folder itself, and
+// an 8.3 short name (GIT~1) may not have been expanded if it doesn't exist yet.
+const PROTECTED_PART = /^(\.(git|claude)|(git|claude)~\d+)$/i;
+const asWindowsReads = part => part.split(':')[0].replace(/[. ]+$/, '');
+const isProtected = rel => String(rel || '').split(/[\\/]/).some(part => PROTECTED_PART.test(asWindowsReads(part)));
 // A command naming either folder as a path (not `git status`, `.gitignore`):
 // with trailing dots or spaces, as an 8.3 short name (GIT~1), or behind a glob
 // (.gi?, .g*). A guard against slips, like the rest of a spike's rules.

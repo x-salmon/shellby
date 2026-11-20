@@ -228,6 +228,8 @@ test('gate: a spike may change the project\'s files, nothing that would outlive 
   // At any depth, with Windows' trailing dots and spaces, short names and globs.
   assert.match(deniedWhy(g(state, 'Write', inRoot('packages/x/.git/hooks/pre-commit'))), /off limits/);
   assert.match(deniedWhy(g(state, 'Write', inRoot('.git./hooks/pre-commit'))), /off limits/);
+  assert.match(deniedWhy(g(state, 'Write', inRoot('.git::$INDEX_ALLOCATION/hooks/pre-commit'))), /off limits/);
+  assert.match(deniedWhy(g(state, 'Write', inRoot('GIT~1/hooks/pre-commit'))), /off limits/);
   for (const command of ['echo x > GIT~1/hooks/a', 'cp a .gi?/hooks/', 'cp a .c*/settings.json', 'cp a ".git. /config"']) {
     assert.match(deniedWhy(g(state, 'Bash', { command })), /off limits/, command);
   }
