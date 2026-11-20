@@ -278,7 +278,8 @@ function wireCrabApi(d) {
     const checked = clipath.parseTaskRequest(body, { modes: MODES.filter(m => m !== 'autonomous'), isDir: d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } } });
     if (!checked.ok) return { ok: false, error: checked.error, status: 400 };
 
-    const { cwd, mode, snippet } = checked.task;
+    const { cwd, snippet } = checked.task;
+    const mode = clipath.terminalMode(checked.task.mode, d.config.get('mode'));
     let { prompt } = checked.task;
     if (snippet) {
       const x = d.expandSnippet(snippet, prompt, { sigil: '@', max: 4000, cwd: cwd || undefined });

@@ -13,7 +13,7 @@ const os = require('os');
 const path = require('path');
 const {
   newToken, tokenMatches, cmdShim, shShim, ps1Shim,
-  isOnPath, pathWith, pathWithout, parseTaskRequest, parseFlowRequest, settingChangeArgs,
+  isOnPath, pathWith, pathWithout, parseTaskRequest, terminalMode, parseFlowRequest, settingChangeArgs,
 } = require('../src/main/clipath');
 const { parseArgs, projectArg, MODES, MAX_PROMPT, EXIT, INPUT_KEY, MAX_INPUTS, MAX_INPUT_VALUE, MAX_FLOW_NAME } = require('../src/cli/shellby');
 const crabtools = require('../src/main/crabtools');
@@ -628,4 +628,15 @@ test('the CLI says what Shellby refused with, and exits with an error', async t 
   const bad = await runCli(['next', 'done', 'two'], { port, tmp });
   assert.equal(bad.code, EXIT.usage);
   assert.match(bad.stderr, /Which one\?/);
+});
+
+test('cmd shim never runs a node from the current folder', () => {
+  assert.ok(cmdShim().includes('set "NoDefaultCurrentDirectoryInExePath=1"\r\nnode '), 'set before node runs');
+});
+
+test('terminalMode never falls back to Autonomous', () => {
+  assert.equal(terminalMode(null, 'autonomous'), 'smart');
+  assert.equal(terminalMode(null, 'ask'), 'ask');
+  assert.equal(terminalMode(null, undefined), 'smart');
+  assert.equal(terminalMode('plan', 'autonomous'), 'plan');
 });

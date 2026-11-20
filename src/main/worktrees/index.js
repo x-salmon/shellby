@@ -236,7 +236,8 @@ async function create(dir, { home, title, named = false, start = 'HEAD' }) {
     const known = COPY_REFUSALS.find(([re]) => re.test(err.message));
     return { ok: false, error: `Couldn't make a copy: ${known ? known[1] : "Shellby's folder of copies couldn't be made"}.`, detail: err.message };
   }
-  const add = await git(root, ['worktree', 'add', '--no-track', '-b', branch, wt, start], { timeout: 120000 });
+  // No hooks: post-checkout runs on add, and the start may be a fork's pull request.
+  const add = await git(root, [...NO_HOOKS, 'worktree', 'add', '--no-track', '-b', branch, wt, start], { timeout: 120000 });
   if (!add.ok) return { ok: false, error: copyRefusal(add.error), detail: lastLines(add.error) || undefined };
   const rel = prefix.trim().replace(/\/$/, '');
   const cwd = rel ? path.join(wt, ...rel.split('/')) : wt;
@@ -322,12 +323,12 @@ async function createAt({ repoRoot, base, head, tree, prefix = '', home, slug, n
   const branch = branchName(slug);
   const wt = path.join(home, branch.slice(-6), path.basename(repoRoot));
   fs.mkdirSync(path.dirname(wt), { recursive: true });
-  const add = await git(repoRoot, ['worktree', 'add', '-b', branch, wt, head], { timeout: 120000 });
+  const add = await git(repoRoot, [...NO_HOOKS, 'worktree', 'add', '-b', branch, wt, head], { timeout: 120000 });
   if (!add.ok) return { ok: false, error: copyRefusal(add.error), detail: lastLines(add.error) || undefined };
   // The files as the snapshot has them (deletions too), then the index back
   // on `head`: the difference is uncommitted work, as it was at the time.
-  const files = await git(wt, ['read-tree', '-u', '--reset', tree], { timeout: 120000 });
-  const index = files.ok && await git(wt, ['reset', '-q'], { timeout: 60000 });
+  const files = await git(wt, [...NO_HOOKS, 'read-tree', '-u', '--reset', tree], { timeout: 120000 });
+  const index = files.ok && await git(wt, [...NO_HOOKS, 'reset', '-q'], { timeout: 60000 });
   if (!index?.ok) {
     await remove({ path: wt, root: repoRoot, branch, base }, { force: true });
     return { ok: false, error: `Couldn't put the files back as they were: ${firstLine((index || files).error)}` };
