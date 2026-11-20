@@ -15,9 +15,9 @@ test('the panel turns Keep warm on and off, and reads where it is', async () => 
     view: () => ({ on: false, endsAt: null, tabs: [] }),
   } });
   assert.deepEqual(await ipc.invoke('keepwarm:set', true), { ok: true, on: true, endsAt: null, tabs: [] });
-  await ipc.invoke('keepwarm:set', 'anything truthy');
-  await ipc.invoke('keepwarm:set', 0);
-  assert.deepEqual(asked, [true, true, false]);
+  await assert.rejects(ipc.invoke('keepwarm:set', 'anything truthy'), /Shellby accepts/);
+  await ipc.invoke('keepwarm:set', false);
+  assert.deepEqual(asked, [true, false]);
   assert.deepEqual(await ipc.invoke('keepwarm:get'), { on: false, endsAt: null, tabs: [] });
 });
 

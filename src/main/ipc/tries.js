@@ -3,6 +3,7 @@
 // the panel can ask for tries, never approve them.
 // Kept out of main.js, which only wires it up.
 const tries = require('../tries');
+const { obj, opt, text } = require('../ipc-args');
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
@@ -24,9 +25,9 @@ function registerTriesIpc(ipcMain, d) {
       // Paths, which every try gets (wiring/tries.js, try-files.js). Past the cap, problem() says so.
       attachments: Array.isArray(req.attachments) ? req.attachments.slice(0, 50).filter(f => typeof f === 'string') : [],
     });
-  });
-  ipcMain.handle('tries:stop', (_e, runId) => d.tries.stop(isId(runId) ? runId : null));
-  ipcMain.handle('tries:status', (_e, runId) => d.tries.status(isId(runId) ? runId : null));
+  }, [opt(obj())]);
+  ipcMain.handle('tries:stop', (_e, runId) => d.tries.stop(isId(runId) ? runId : null), [opt(text(300))]);
+  ipcMain.handle('tries:status', (_e, runId) => d.tries.status(isId(runId) ? runId : null), [opt(text(300))]);
 }
 
 module.exports = { registerTriesIpc };

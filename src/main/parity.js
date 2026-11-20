@@ -100,7 +100,7 @@ function register(deps) {
     try {
       return (await fileIndex.suggest(cwdOf(tabId), q, 12)).map(p => ({ path: p, mention: fileIndex.mention(p), dir: p.endsWith('/') }));
     } catch { return []; }
-  });
+  }, [opt(obj())]);
 
   // ---- ! shell commands
   // The first one asks, in the confirm window: from then on ! is yours to use,
@@ -167,7 +167,7 @@ function register(deps) {
     if (r.detail) deps.log?.warn?.(`btw: ${r.detail}`);
     if (r.ok) deps.stat('btw');
     return { ok: r.ok, answer: r.answer, error: r.error };
-  });
+  }, [opt(obj())]);
 
   // ---- rewind
   ipcMain.handle('rewind:points', (_e, tabId) => {
@@ -183,13 +183,13 @@ function register(deps) {
         return { ...p, conversation: plan.conversation, code: live.length, ...rewind.weight(live) };
       }),
     };
-  });
+  }, [opt(text(300))]);
 
   // The outline (Ctrl+Shift+O): every message and the files its turn touched (outline.js).
   ipcMain.handle('outline:get', (_e, tabId) => {
     const tab = tabOf(tabId);
     return { turns: tab?.saved ? outline(history.load(tab.id)) : [] };
-  });
+  }, [opt(text(300))]);
 
   // The trail's untested check: the tests named after each changed file, among
   // the files in the conversation's folder (what git knows, as for @ mentions).
@@ -200,7 +200,7 @@ function register(deps) {
       const index = trail.testIndex(await fileIndex.list(cwdOf(tabId))); // one pass, however many changed
       return { tests: Object.fromEntries(wanted.map(f => [f, trail.testsFor(f, index)]).filter(([, t]) => t.length)) };
     } catch { return { tests: {} }; }
-  });
+  }, [opt(obj())]);
 
   ipcMain.handle('rewind:run', async (_e, { tabId, turnId, conversation = true, code = true } = {}) => {
     const tab = tabOf(tabId);
@@ -212,7 +212,7 @@ function register(deps) {
     if (!conversation && !code) return { ok: false, error: 'Pick the conversation, the code, or both.' };
     tab.rewinding = true;
     try { return await doRewind(tab, turnId, { conversation, code }); } finally { tab.rewinding = false; }
-  });
+  }, [opt(obj())]);
 
   async function doRewind(tab, turnId, { conversation, code }) {
     // Rewinding goes into Claude Code's own transcript: another agent's (harness/) has none to rewind.
@@ -324,7 +324,7 @@ function register(deps) {
       tab.clearing = false;
       s.setBusy(false);
     }
-  });
+  }, [opt(text(300))]);
 
   // ---- /export
   ipcMain.handle('session:export', async (_e, { id, to } = {}) => {
@@ -417,7 +417,7 @@ function register(deps) {
     if (failed.length === results.length) return { ok: false, error: failed[0].error };
     return { ok: true, done: results.length - failed.length, of: results.length };
   }
-  ipcMain.handle('mcp:reconnect', (_e, { tabId, name } = {}) => (isStr(name) ? everyRunning(tabId, 'mcp_reconnect', { serverName: name }, 'Reconnecting') : { ok: false, error: 'Unknown server.' }));
+  ipcMain.handle('mcp:reconnect', (_e, { tabId, name } = {}) => (isStr(name) ? everyRunning(tabId, 'mcp_reconnect', { serverName: name }, 'Reconnecting') : { ok: false, error: 'Unknown server.' }), [opt(obj())]);
   // Sign in to a server that needs it, without a terminal: the CLI's
   // mcp_authenticate hands back the sign-in page and waits on its own
   // localhost callback, then reconnects that conversation by itself. Shellby
@@ -457,7 +457,7 @@ function register(deps) {
     if (r.response.callbackExpected) watchSignIn(t, tabId, name);
     return { ok: true, opened: true, connector: !r.response.callbackExpected };
   }, [obj({ tabId: opt(ID), name: ID })]);
-  ipcMain.handle('mcp:toggle', (_e, { tabId, name, enabled } = {}) => (isStr(name) ? everyRunning(tabId, 'mcp_toggle', { serverName: name, enabled: !!enabled }, 'Turning a server on or off') : { ok: false, error: 'Unknown server.' }));
+  ipcMain.handle('mcp:toggle', (_e, { tabId, name, enabled } = {}) => (isStr(name) ? everyRunning(tabId, 'mcp_toggle', { serverName: name, enabled: !!enabled }, 'Turning a server on or off') : { ok: false, error: 'Unknown server.' }), [opt(obj())]);
 
   ipcMain.handle('mcp:add', async (_e, input) => {
     const built = mcpAdmin.addArgs(input);

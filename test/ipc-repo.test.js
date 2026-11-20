@@ -47,9 +47,10 @@ const theirs = { path: path.join(root, 'elsewhere', 'proj'), root: path.join(roo
 test('worktree:status refuses a tab id that is not a string or not open', async () => {
   const { ipc } = setup({ tabs: { a: { worktree: ours } } });
 
-  for (const tabId of [undefined, null, 42, '', 'missing', { id: 'a' }]) {
+  for (const tabId of [undefined, null, '', 'missing']) {
     assert.deepEqual(await ipc.invoke('worktree:status', tabId), { ok: false, error: NO_COPY }, String(tabId));
   }
+  for (const tabId of [42, { id: 'a' }]) await assert.rejects(ipc.invoke('worktree:status', tabId), /Shellby accepts/, String(tabId));
 });
 
 test('worktree:discard refuses a copy outside Shellby\'s worktree folder', async () => {

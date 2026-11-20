@@ -21,6 +21,7 @@ const tp = require('./teampack');
 const claudeSetup = require('./claude/setup');
 const mcpAdmin = require('./mcpadmin');
 const mcpServers = require('./mcpservers');
+const { obj, opt, text } = require('./ipc-args');
 
 const NOTICE_DELAY_MS = 6000;
 const HOOK_SCOPES = ['local', 'user'];
@@ -259,7 +260,7 @@ function register(deps) {
     deps.pushSnippets();
     deps.stat('team-snippets-on');
     return done({ ok: true });
-  });
+  }, [text(300)]);
 
   ipcMain.handle('team:stop-snippets', () => {
     const p = packAt(deps.currentCwd());
@@ -282,7 +283,7 @@ function register(deps) {
     const r = await service.save(input, { source: 'team' });
     if (r.ok) deps.stat('team-workflow-added');
     return done({ ok: !!r.ok, cancelled: !!r.declined, error: r.ok || r.declined ? null : (r.errors || []).map(e => e.message).join(' ') });
-  });
+  }, [text(300)]);
 
   // By what it is, not where it was in the list: the file may have changed since the panel drew it.
   ipcMain.handle('team:add-hook', async (_e, { key, scope } = {}) => {
@@ -295,7 +296,7 @@ function register(deps) {
     const r = await deps.saveHook({ scope, hook: plain });
     if (r.ok) deps.stat('team-hook-added');
     return done({ ok: !!r.ok, cancelled: !!r.cancelled, error: r.ok || r.cancelled ? null : r.error });
-  });
+  }, [opt(obj())]);
 
   ipcMain.handle('team:add-rule', async (_e, { key, scope } = {}) => {
     const c = current();
@@ -306,7 +307,7 @@ function register(deps) {
     const r = await deps.saveRule({ scope, list: rule.list, rule: rule.rule });
     if (r.ok) deps.stat('team-rule-added');
     return done({ ok: !!r.ok, cancelled: !!r.cancelled, error: r.ok || r.cancelled ? null : r.error });
-  });
+  }, [opt(obj())]);
 
   // ---- MCP servers, and setting it all up at once
 
@@ -356,7 +357,7 @@ function register(deps) {
     const r = await addMcp(server, valuesFor({ [name]: values }, name));
     if (r.ok) deps.stat('team-mcp-added');
     return done(r);
-  });
+  }, [opt(obj())]);
 
   // Everything waiting, after one window that shows every part of it.
   ipcMain.handle('team:setup-all', async (_e, { values } = {}) => {
@@ -440,7 +441,7 @@ function register(deps) {
     const r = { ok: !failed.length, added, failed, later };
     if (failed.length) r.error = `Set up ${added} of ${added + failed.length}. ${failed[0]}${failed.length > 1 ? ` (and ${failed.length - 1} more)` : ''}`;
     return { ...r, view: view() };
-  });
+  }, [opt(obj())]);
 
   ipcMain.on('team:reveal', () => {
     const p = packAt(deps.currentCwd());
@@ -539,7 +540,7 @@ function register(deps) {
     if (fresh?.fileHash && fresh.read?.ok) setTrust(p.root, { seen: fresh.fileHash, snippets: tp.hashOf(fresh.read.pack.snippets), accepted: { hash: fresh.fileHash, at: now() } });
     deps.stat('team-pack-written');
     return { ok: true, notes: built.notes, file: `${tp.DIR}/${tp.FILE}`, view: view() };
-  });
+  }, [opt(obj())]);
 
   return { snippetsFor, notice, folderChanged, view };
 }

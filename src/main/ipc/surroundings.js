@@ -3,7 +3,7 @@
 // keys (deck.js), desk lighting (rgb.js), your Discord profile (discord.js),
 // music, typing, the weather, the shellby command and the crab card.
 // Kept out of main.js, which only wires it up.
-const { ID, obj, opt, str } = require('../ipc-args');
+const { ID, obj, opt, str, text } = require('../ipc-args');
 const { app, clipboard, ClipboardItem, nativeImage, shell } = require('electron');
 const { openSafe } = require('../safe-open');
 const crypto = require('crypto');
@@ -52,27 +52,27 @@ const isClip = (buf, ext) => buf.length > 16 && buf.length <= CLIP_MAX_BYTES && 
  */
 function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   // ---- Claude Code sessions elsewhere
-  ipcMain.on('clipboard:text', (_e, text) => { if (typeof text === 'string' && text.length > 0 && text.length <= MAX_COPY_CHARS) clipboard.writeText(text).catch(e => d.log.warn("couldn't copy text", e?.message)); });
+  ipcMain.on('clipboard:text', (_e, text) => { if (typeof text === 'string' && text.length > 0 && text.length <= MAX_COPY_CHARS) clipboard.writeText(text).catch(e => d.log.warn("couldn't copy text", e?.message)); }, [opt(text(MAX_COPY_CHARS))]);
   ipcMain.handle('external:get', () => d.externalView());
   ipcMain.handle('external:set', (_e, enabled) => {
     d.config.set({ externalSessions: !!enabled });
     if (enabled) d.external.start(); else d.external.stop();
     return d.externalView();
-  });
+  }, [opt(v => typeof v === 'boolean')]);
 
   // ---- health
   ipcMain.handle('health:get', () => d.health.view());
-  ipcMain.handle('health:set', (_e, patch) => d.health.setSettings(patch && typeof patch === 'object' ? patch : {}));
+  ipcMain.handle('health:set', (_e, patch) => d.health.setSettings(patch && typeof patch === 'object' ? patch : {}), [opt(obj())]);
   ipcMain.handle('health:recheck', () => d.health.recheck());
-  ipcMain.handle('health:ask', (_e, checkId) => (d.isStr(checkId) ? d.health.ask(checkId) : { ok: false, error: 'Unknown reading.' }));
-  ipcMain.handle('health:hogs', (_e, metric) => d.health.hogs(d.isStr(metric) ? metric : null));
-  ipcMain.handle('health:end-task', (_e, pid) => d.health.endTask(Number.isInteger(pid) ? pid : null));
-  ipcMain.handle('health:end-group', (_e, name) => d.health.endGroup(d.isStr(name) ? name : null));
+  ipcMain.handle('health:ask', (_e, checkId) => (d.isStr(checkId) ? d.health.ask(checkId) : { ok: false, error: 'Unknown reading.' }), [opt(text(300))]);
+  ipcMain.handle('health:hogs', (_e, metric) => d.health.hogs(d.isStr(metric) ? metric : null), [opt(text(300))]);
+  ipcMain.handle('health:end-task', (_e, pid) => d.health.endTask(Number.isInteger(pid) ? pid : null), [opt(Number.isInteger)]);
+  ipcMain.handle('health:end-group', (_e, name) => d.health.endGroup(d.isStr(name) ? name : null), [opt(text(300))]);
   ipcMain.handle('health:ask-processes', () => d.health.askProcesses());
-  ipcMain.handle('health:startup', (_e, force) => d.health.startupItems({ force: force === true }));
+  ipcMain.handle('health:startup', (_e, force) => d.health.startupItems({ force: force === true }), [opt(v => typeof v === 'boolean')]);
   ipcMain.handle('health:ask-startup', () => d.health.askStartup());
-  ipcMain.handle('health:set-startup', (_e, id, off) => d.health.setStartup(d.isStr(id) ? id : null, off === true));
-  ipcMain.handle('health:lhm-update', (_e, force) => d.health.lhmUpdate(force === true));
+  ipcMain.handle('health:set-startup', (_e, id, off) => d.health.setStartup(d.isStr(id) ? id : null, off === true), [opt(text(1000)), opt(v => typeof v === 'boolean')]);
+  ipcMain.handle('health:lhm-update', (_e, force) => d.health.lhmUpdate(force === true), [opt(v => typeof v === 'boolean')]);
   ipcMain.handle('health:clear-log', () => { d.config.set({ healthLog: [] }); return d.health.view(); });
   ipcMain.on('health:viewed', () => d.stat('health-viewed'));
 
@@ -92,7 +92,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     await d.confirmChannelPlace();
     d.refreshPhoneTasks(); // somewhere else now: the phone's yes to start tasks doesn't carry over
     return d.channelsView();
-  });
+  }, [opt(obj())]);
   ipcMain.handle('channels:findChat', async () => {
     if (d.channelSettings().provider !== 'telegram') return { ...d.channelsView(), found: { error: 'That only works for Telegram.' } };
     const found = await channels.findTelegramChat(d.channelSecret);
@@ -108,7 +108,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     await d.confirmChannelPlace();
     d.refreshPhoneTasks();
     return d.channelsView();
-  });
+  }, [opt(text(10_000))]);
 
   // ---- starting a task from your phone (channels/phone-tasks.js): turning it on asks
   // in the confirmation window, and the folder only comes from the picker.
@@ -116,7 +116,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   ipcMain.handle('phoneTasks:set', (_e, patch) => d.setPhoneTasks({
     ...(patch?.enabled === true || patch?.enabled === false ? { enabled: patch.enabled } : {}),
     ...(patch?.newPassphrase === true ? { newPassphrase: true } : {}),
-  }));
+  }), [opt(obj())]);
   ipcMain.handle('phoneTasks:pickFolder', () => d.pickPhoneTasksFolder());
   ipcMain.handle('channels:test', async () => {
     const built = channels.buildRequest(d.channelSettings(), d.channelSecret,
@@ -144,11 +144,11 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     if (d.obsServer && (next.port !== prev.port || !next.enabled)) d.obsServer.stop();
     if (next.enabled) { d.obsServer.port = next.port; d.obsServer.start(); }
     return d.obsView();
-  });
+  }, [opt(obj())]);
 
   // ---- the Stream Deck keys (deck.js)
   ipcMain.handle('deck:get', () => d.deckView());
-  ipcMain.handle('deck:set', (_e, patch) => d.setDeck(patch && typeof patch === 'object' ? patch : {}));
+  ipcMain.handle('deck:set', (_e, patch) => d.setDeck(patch && typeof patch === 'object' ? patch : {}), [opt(obj())]);
   ipcMain.handle('deck:add', () => d.addToStreamDeck());
 
   // ---- Shellby on your phone (wiring/pocket.js): turning it on asks in the
@@ -163,9 +163,9 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     // A phone's rights: named by its id, as Forget names it.
     if (p.device && typeof p.device === 'object') return d.setPocket({ device: { id: typeof p.device.id === 'string' ? p.device.id.slice(0, 40) : '', rights: p.device.rights } });
     return d.pocketView();
-  });
+  }, [opt(obj())]);
   ipcMain.handle('pocket:pair', () => d.newPocketCode());
-  ipcMain.handle('pocket:forget', (_e, id) => d.forgetPocketDevice(typeof id === 'string' ? id.slice(0, 40) : ''));
+  ipcMain.handle('pocket:forget', (_e, id) => d.forgetPocketDevice(typeof id === 'string' ? id.slice(0, 40) : ''), [opt(text(300))]);
   ipcMain.handle('pocket:test', () => d.testPocketPush());
 
   // ---- the desk lighting (rgb.js)
@@ -188,7 +188,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     if (next.enabled && !prev.enabled) return d.ensureOpenRgb().then(r => ({ ...d.rgbView(), ...r }));
     if (next.enabled) d.paintLights();
     return d.rgbView();
-  });
+  }, [opt(obj())]);
   ipcMain.handle('rgb:test', async () => ({ ...d.rgbView(), ...(await d.ensureOpenRgb()) }));
   ipcMain.handle('rgb:install', () => d.confirmAndInstallOpenRgb());
 
@@ -203,7 +203,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     else if (!next.enabled && prev.enabled) d.presence.stop();
     d.updatePresence();
     return d.presenceView();
-  });
+  }, [opt(obj())]);
 
   // ---- listening along (media.js)
   ipcMain.handle('nowplaying:get', () => d.mediaView());
@@ -215,7 +215,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     if (!next.enabled && d.media.status !== 'off') { d.media.stop(); d.nowPlaying = null; }
     d.broadcastSkin();
     return d.mediaView();
-  });
+  }, [opt(obj())]);
 
   // ---- typing along (typing.js)
   ipcMain.handle('typing:get', () => d.typing.view());
@@ -225,7 +225,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     d.config.set({ typing: next });
     d.typing.sync();
     return d.typing.view();
-  });
+  }, [opt(obj())]);
 
   // ---- the weather outside (weather/service.js)
   ipcMain.handle('weather:get', () => d.weatherView());
@@ -240,8 +240,8 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     d.wardrobe?.collectSeasonals();
     d.broadcastWardrobe();
     return d.weatherView();
-  });
-  ipcMain.handle('weather:search', (_e, query) => d.weatherSvc.search(typeof query === 'string' ? query : ''));
+  }, [opt(obj())]);
+  ipcMain.handle('weather:search', (_e, query) => d.weatherSvc.search(typeof query === 'string' ? query : ''), [opt(text(300))]);
   ipcMain.handle('weather:check', async () => { await d.weatherSvc.check(); return d.weatherView(); });
 
   // ---- the shellby command (clipath.js)
@@ -310,7 +310,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   ipcMain.handle('card:copy', async (_e, bytes) => {
     const card = cardImage(bytes);
     return { ok: !!card && await copyCard(card.buf) };
-  });
+  }, [isBytes]);
   // A card Shellby saved (the sheet's picture or its clip), else the last one saved.
   const savedCard = file => {
     const full = typeof file === 'string' && file.length < 1024 ? path.resolve(file) : null;
@@ -319,7 +319,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
   ipcMain.on('card:reveal', (_e, file) => {
     const shown = savedCard(file) || lastCard;
     if (shown && fs.existsSync(shown)) shell.showItemInFolder(shown);
-  });
+  }, [opt(text(32_767))]);
 
   // ---- a saved card, posted to your Discord webhook (channels/index.js cardUpload).
   // The panel names a file card:save made (the bytes came from the panel then,
@@ -365,7 +365,7 @@ function registerSurroundingsIpc(ipcMain, d, { fetchImpl = undefined } = {}) {
     const r = await channels.deliver(built.request, { fetchImpl, timeoutMs: 20000 });
     if (!r.ok) { d.log.warn("couldn't post a card to Discord", r.error); return { ok: false, error: channels.cardPostError(r) }; }
     return { ok: true };
-  });
+  }, [opt(text(32_767)), opt(text(10_000))]);
 
   // ---- misc
   ipcMain.on('open-external', (_e, url) => {

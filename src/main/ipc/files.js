@@ -1,7 +1,7 @@
 // File links and the panel's zoom: opening a path from a conversation in your
 // editor (filelinks.js), which editors there are, and Ctrl+= / Ctrl+-.
 // Kept out of main.js, which only wires it up.
-const { ID, PATH, obj, opt } = require('../ipc-args');
+const { ID, obj, opt, PATH } = require('../ipc-args');
 const { app, shell } = require('electron');
 const { openSafe } = require('../safe-open');
 const fs = require('fs');
@@ -56,7 +56,7 @@ function registerFilesIpc(ipcMain, d) {
     e.sender.setZoomFactor(next);
     d.config.set({ panelZoom: next });
     return next;
-  });
+  }, [opt(Number.isFinite)]);
 }
 
 module.exports = { registerFilesIpc, ZOOM_STEPS };

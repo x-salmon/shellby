@@ -6,6 +6,7 @@
 // Which gauges are on is `tankLive` in settings: per PC, never synced, never
 // on a card.
 const gaugesOf = require('../tank/gauges');
+const { obj, opt } = require('../ipc-args');
 
 /**
  * deps: {
@@ -57,13 +58,13 @@ function registerTankGaugesIpc(ipcMain, deps) {
     deps.config.set({ tankLive: { ...live, [arg.key]: arg.on } });
     last = current();
     return { ok: true, gauges: last };
-  });
+  }, [opt(obj())]);
 
   // The card the bottle brought was read: { kind: 'recap' | 'week' }.
   ipcMain.handle('tank:bottle-read', (_e, arg) => {
     if (gaugesOf.UNREAD.includes(arg?.kind) && unread.delete(arg.kind)) push();
     return { ok: true };
-  });
+  }, [opt(obj())]);
 
   return {
     health(s) { snap = s && typeof s === 'object' ? s : null; push(); },

@@ -8,7 +8,7 @@
 //
 // The panel names a project by a root the Projects page listed (knowsRoot),
 // never a folder of its own.
-const { PATH, obj } = require('../ipc-args');
+const { obj, opt, PATH, text: textCheck } = require('../ipc-args');
 const tools = require('../projects/tools');
 const worktrees = require('../worktrees');
 const local = require('../projects/local');
@@ -43,7 +43,7 @@ function registerProjectToolsIpc(ipcMain, d, {
     if (!p) return unknown;
     const r = await git(p.root, ['tag', '--sort=-creatordate', '--format=%(refname:short)%1f%(creatordate:iso-strict)', '--merged', 'HEAD'], { timeout: 10000 });
     return { ok: true, tags: r.ok ? tools.parseTags(r.out) : [] };
-  });
+  }, [opt(textCheck(32_767))]);
 
   // "When did this break?": a copy at your HEAD, git bisect in it.
   ipcMain.handle('tools:bisect', async (_e, raw = {}) => {
@@ -73,20 +73,20 @@ function registerProjectToolsIpc(ipcMain, d, {
     const res = await d.startTaskInCopy(p.root, `Docs check: ${p.name}`.slice(0, 80),
       w => tools.docsPrompt({ project: p.name }, { branch: w.branch, base: w.base }), { draft: true });
     return res.ok ? { ok: true, tabId: res.tabId } : res;
-  });
+  }, [opt(textCheck(32_767))]);
 
   // "Make it automatic…": a weekly report for the routine editor to fill in. Never saved here.
   ipcMain.handle('tools:docs-routine', (_e, root) => {
     const p = known(root);
     return p ? { ok: true, routine: tools.docsRoutine({ project: p.name, cwd: p.root }) } : unknown;
-  });
+  }, [opt(textCheck(32_767))]);
 
   // "Show me around": Ask first, whatever mode you're in, in the folder as it is.
   ipcMain.handle('tools:tour', (_e, root) => {
     const p = known(root);
     if (!p) return unknown;
     return d.startDraft(p.root, `Tour of ${p.name}`.slice(0, 80), tools.tourPrompt({ project: p.name }), { mode: 'ask' });
-  });
+  }, [opt(textCheck(32_767))]);
 
   // The same tour, offered once on a new install's first New task. The project
   // is the folder Shellby works in when that's a repository, or one you pick

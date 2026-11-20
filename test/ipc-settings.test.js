@@ -271,7 +271,7 @@ test('folder:set only opens one of the recent folders, matched case-insensitivel
 
     assert.deepEqual(await ipc.invoke('folder:set', dir.toUpperCase()), { cwd: dir });
     assert.equal(await ipc.invoke('folder:set', os.homedir()), null, 'a folder not on the list');
-    assert.equal(await ipc.invoke('folder:set', 42), null);
+    await assert.rejects(ipc.invoke('folder:set', 42), /Shellby accepts/);
     assert.equal(await ipc.invoke('folder:set', ''), null);
     assert.equal(await ipc.invoke('folder:set', null), null);
     assert.deepEqual(rec.of('setFolder'), [[dir]]);

@@ -4,6 +4,8 @@
 // a repository it listed, an item by the id the last list gave it, a task line
 // by the number it was shown at. Main looks each one up before using it.
 // No . or .. as an owner or name (as github/prwork.js): GitHub has neither, and they'd walk an API path.
+
+const { obj, opt, text } = require('../ipc-args');
 const ID_RE = /^(?:t:[0-9a-f]{10}(?:~\d{1,3})?|tk:[A-Z][A-Z0-9_]{0,9}-\d{1,7}|gh:(?!\.{1,2}\/)[A-Za-z0-9_.-]{1,100}\/(?!\.{1,2}#)[A-Za-z0-9_.-]{1,100}#\d{1,9}|todo:[^\0\r\n]{1,1100}:\d{1,7}|se:\d{1,20})$/;
 const REPO_RE = /^(?!\.{1,2}\/)[A-Za-z0-9_.-]{1,100}\/(?!\.{1,2}$)[A-Za-z0-9_.-]{1,100}$/;
 const WORKFLOW_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -38,25 +40,25 @@ function registerBacklogIpc(ipcMain, d) {
   ipcMain.handle('backlog:view', (_e, raw = {}) => {
     const p = project(raw);
     return p ? d.backlogView({ ...p, fresh: raw.fresh === true }) : no;
-  });
+  }, [opt(obj())]);
   ipcMain.handle('backlog:edit', (_e, raw = {}) => {
     if (!isRoot(raw.root) || typeof raw.op !== 'string') return no;
     const to = TO.has(raw.to) ? raw.to : undefined;
     if (raw.op === 'add') return d.backlogEdit({ root: raw.root, op: 'add', title: title(raw.title), to });
     if (!isId(raw.id) || !String(raw.id).startsWith('t:') || !isLine(raw.line)) return no;
     return d.backlogEdit({ root: raw.root, op: raw.op, id: raw.id, line: raw.line, title: title(raw.title), to });
-  });
-  ipcMain.handle('backlog:add-issue', (_e, raw = {}) => (isRoot(raw.root) && isId(raw.id) ? d.backlogAddIssue({ root: raw.root, id: raw.id }) : no));
-  ipcMain.handle('backlog:do', (_e, raw = {}) => withItem(raw, d.backlogDo));
-  ipcMain.handle('backlog:open-doing', (_e, raw = {}) => withItem(raw, d.backlogOpenDoing));
-  ipcMain.handle('backlog:open-todo', (_e, raw = {}) => (isRoot(raw.root) && isId(raw.id) ? d.backlogOpenTodo({ root: raw.root, id: raw.id }) : no));
-  ipcMain.handle('backlog:open-issue', (_e, raw = {}) => withItem(raw, d.backlogOpenIssue));
+  }, [opt(obj())]);
+  ipcMain.handle('backlog:add-issue', (_e, raw = {}) => (isRoot(raw.root) && isId(raw.id) ? d.backlogAddIssue({ root: raw.root, id: raw.id }) : no), [opt(obj())]);
+  ipcMain.handle('backlog:do', (_e, raw = {}) => withItem(raw, d.backlogDo), [opt(obj())]);
+  ipcMain.handle('backlog:open-doing', (_e, raw = {}) => withItem(raw, d.backlogOpenDoing), [opt(obj())]);
+  ipcMain.handle('backlog:open-todo', (_e, raw = {}) => (isRoot(raw.root) && isId(raw.id) ? d.backlogOpenTodo({ root: raw.root, id: raw.id }) : no), [opt(obj())]);
+  ipcMain.handle('backlog:open-issue', (_e, raw = {}) => withItem(raw, d.backlogOpenIssue), [opt(obj())]);
   ipcMain.handle('backlog:hide', (_e, raw = {}) => {
     const p = project(raw);
     if (!p) return no;
     if (raw.show === true) return d.backlogHide({ ...p, show: true });
     return isId(raw.id) ? d.backlogHide({ ...p, id: raw.id }) : no;
-  });
+  }, [opt(obj())]);
   // Sentry: the token only ever goes this way (panel to main), and never back.
   ipcMain.handle('backlog:sentry', (_e, raw = {}) => {
     if (!SENTRY_OPS.has(raw.op)) return no;
@@ -70,26 +72,26 @@ function registerBacklogIpc(ipcMain, d) {
     if (raw.slug === null) return d.backlogSentry({ root: raw.root, op: 'link', slug: null });
     const isSlug = s => typeof s === 'string' && SLUG_RE.test(s);
     return isSlug(raw.org) && isSlug(raw.slug) ? d.backlogSentry({ root: raw.root, op: 'link', org: raw.org, slug: raw.slug }) : no;
-  });
-  ipcMain.handle('backlog:commit', (_e, raw = {}) => (isRoot(raw.root) ? d.backlogCommit({ root: raw.root }) : no));
+  }, [opt(obj())]);
+  ipcMain.handle('backlog:commit', (_e, raw = {}) => (isRoot(raw.root) ? d.backlogCommit({ root: raw.root }) : no), [opt(obj())]);
   ipcMain.handle('backlog:hand', (_e, raw = {}) => (typeof raw.workflowId === 'string' && WORKFLOW_ID_RE.test(raw.workflowId)
-    ? withItem(raw, x => d.backlogHand({ ...x, workflowId: raw.workflowId })) : no));
+    ? withItem(raw, x => d.backlogHand({ ...x, workflowId: raw.workflowId })) : no), [opt(obj())]);
   // A conversation's copy menu: is it from Next up, and can it open a pull request?
-  ipcMain.handle('backlog:tab', (_e, tabId) => (isStr(tabId) ? d.backlogTabInfo(tabId) : { linked: false }));
-  ipcMain.handle('backlog:open-pr', (_e, tabId) => (isStr(tabId) ? d.backlogOpenPr(tabId) : no));
-  ipcMain.handle('backlog:tick-linked', (_e, tabId) => (isStr(tabId) ? d.backlogTick(tabId) : no));
+  ipcMain.handle('backlog:tab', (_e, tabId) => (isStr(tabId) ? d.backlogTabInfo(tabId) : { linked: false }), [opt(text(200))]);
+  ipcMain.handle('backlog:open-pr', (_e, tabId) => (isStr(tabId) ? d.backlogOpenPr(tabId) : no), [opt(text(200))]);
+  ipcMain.handle('backlog:tick-linked', (_e, tabId) => (isStr(tabId) ? d.backlogTick(tabId) : no), [opt(text(200))]);
   // Linear or Jira on a project's list, through one of your MCP servers. Main checks the server is yours.
   ipcMain.handle('backlog:tracker-choices', (_e, raw = {}) => {
     const p = project(raw);
     return p ? d.backlogTrackerChoices(p) : no;
-  });
+  }, [opt(obj())]);
   ipcMain.handle('backlog:tracker-set', (_e, raw = {}) => {
     const p = project(raw);
     if (!p) return no;
     if (raw.off === true) return d.backlogTrackerSet({ ...p, off: true });
     if (![raw.server, raw.kind, raw.scope].every(v => typeof v === 'string' && v.length <= 400)) return no;
     return d.backlogTrackerSet({ ...p, server: raw.server, kind: raw.kind, scope: raw.scope });
-  });
+  }, [opt(obj())]);
 }
 
 module.exports = { registerBacklogIpc, ID_RE };

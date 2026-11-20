@@ -1,6 +1,8 @@
 // History's IPC: listing, opening, renaming and ticking off conversations,
 // Recently deleted, and Clear all history. Kept out of main.js, which only
 // wires it up.
+
+const { obj, opt, text } = require('../ipc-args');
 const isStr = s => typeof s === 'string' && s.length > 0 && s.length < 10000;
 
 /**
@@ -34,7 +36,7 @@ function registerHistoryIpc(ipcMain, d) {
       d.log.warn('history search', err.message);
       return { results: [], facets: { projects: [], pcs: [] }, error: "Couldn't search history." };
     }
-  });
+  }, [opt(obj())]);
   ipcMain.handle('session:open', (_e, id) => {
     const entry = isStr(id) && history.get(id);
     if (!entry) return null;
@@ -44,7 +46,7 @@ function registerHistoryIpc(ipcMain, d) {
       try { d.openTab({ tabId: id, historyEntry: entry }); } catch (err) { return { error: err.message }; }
     }
     return { tabId: id, entry, items: history.load(id) };
-  });
+  }, [opt(text(300))]);
   // Deleting from History is a move to Recently deleted, not the end: the
   // transcript stays until it's restored, purged, or TRASH_DAYS pass.
   ipcMain.handle('session:delete', (_e, id) => {
@@ -52,18 +54,18 @@ function registerHistoryIpc(ipcMain, d) {
     manager.close(id);
     history.trash(id);
     return history.list();
-  });
+  }, [opt(text(300))]);
   ipcMain.handle('session:trash', () => history.trashed());
   // Answers with both lists: the row leaves one and lands in the other.
   ipcMain.handle('session:restore', (_e, id) => {
     if (isStr(id)) history.restore(id);
     return { sessions: history.list(), trash: history.trashed() };
-  });
+  }, [opt(text(300))]);
   // One id, or none for Empty bin.
   ipcMain.handle('session:purge', (_e, id) => {
     history.purge(isStr(id) ? [id] : null);
     return history.trashed();
-  });
+  }, [opt(text(300))]);
   // Clear all history. There's no undo after this, so it asks first, with
   // Cancel as the default, the way signing out with tasks running does.
   ipcMain.handle('session:clear', async () => {
@@ -83,7 +85,7 @@ function registerHistoryIpc(ipcMain, d) {
   ipcMain.handle('session:done', (_e, { id, done } = {}) => {
     if (isStr(id)) history.setDone(id, !!done);
     return history.list();
-  });
+  }, [opt(obj())]);
   // From the tab strip or a History row. An open tab goes through the manager so
   // its strip, notifications and (if not yet sent anything) first save agree.
   ipcMain.handle('session:rename', (_e, { id, title } = {}) => {
@@ -91,7 +93,7 @@ function registerHistoryIpc(ipcMain, d) {
       if (manager.tabs.has(id)) manager.rename(id, title); else history.rename(id, title);
     }
     return history.list();
-  });
+  }, [opt(obj())]);
 }
 
 /** The words of the Clear all history question (main shows them in a message box). */

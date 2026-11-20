@@ -1,6 +1,7 @@
 // Tidying up (tank/tidy.js): asked when you open his tank, never on a timer.
 // His move goes through the tank's own keep() (tank.sanitize) like any edit.
 const tidy = require('../tank/tidy');
+const { opt } = require('../ipc-args');
 
 /**
  * deps: {
@@ -40,7 +41,7 @@ function registerTankTidyIpc(ipcMain, deps) {
     if (typeof on !== 'boolean') return { ok: false, on: get().on };
     deps.config.set({ tankTidy: { ...get(), on } });
     return { ok: true, on };
-  });
+  }, [opt(v => typeof v === 'boolean')]);
 }
 
 module.exports = { registerTankTidyIpc };

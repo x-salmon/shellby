@@ -2,6 +2,7 @@
 // card. The panel also hears `news` with the same { on, items, contest }.
 // Credits (credits.js): the Made by list on About.
 
+const { opt, text } = require('../ipc-args');
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/; // news.js ID_RE
 
 /**
@@ -10,7 +11,7 @@ const ID_RE = /^[a-z0-9][a-z0-9-]{0,59}$/; // news.js ID_RE
  */
 function registerNewsIpc(ipcMain, d) {
   ipcMain.handle('news:get', () => d.newsView());
-  ipcMain.handle('news:dismiss', (_e, id) => (typeof id === 'string' && ID_RE.test(id) ? d.dismissNews(id) : d.newsView()));
+  ipcMain.handle('news:dismiss', (_e, id) => (typeof id === 'string' && ID_RE.test(id) ? d.dismissNews(id) : d.newsView()), [opt(text(300))]);
   ipcMain.handle('credits:get', () => d.creditsView?.() || { groups: [], mine: null });
 }
 

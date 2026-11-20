@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const notes = require('../notes');
-const { ID, obj: shape, opt, str } = require('../ipc-args');
+const { ID, obj: objCheck, obj: shape, opt, str } = require('../ipc-args');
 
 // notes:run's argument. scope and where: 'general', 'here' or a project key (a folded path).
 const RUN_REQ = shape({
@@ -36,7 +36,7 @@ function registerNotesIpc(ipcMain, d) {
     const r = notes.add(d.config.get('notes'), scope, text, { id: d.randomUUID(), now: Date.now(), project: where.project });
     if (r.error) return { ok: false, error: r.error };
     return { ok: true, note: r.note, view: await d.saveNotes(r.state) };
-  });
+  }, [opt(objCheck())]);
   ipcMain.handle('notes:update', (_e, req) => {
     const { scope, id, text, done, pinned } = obj(req);
     const patch = {};
@@ -44,7 +44,7 @@ function registerNotesIpc(ipcMain, d) {
     if (typeof done === 'boolean') patch.done = done;
     if (typeof pinned === 'boolean') patch.pinned = pinned;
     return d.saveNotes(notes.update(d.config.get('notes'), scope, id, patch));
-  });
+  }, [opt(objCheck())]);
   // Delete and Clear done hand back what they took, for the toast's Undo (notes:restore).
   // Taking a project's last note takes the project out of the store, and it may
   // not be one the page offers any more, so main keeps its name and folder for
@@ -58,11 +58,11 @@ function registerNotesIpc(ipcMain, d) {
   ipcMain.handle('notes:delete', (_e, req) => {
     const { scope, id } = obj(req);
     return took(scope, notes.remove(d.config.get('notes'), scope, id));
-  });
+  }, [opt(objCheck())]);
   ipcMain.handle('notes:clear-done', (_e, req) => {
     const { scope } = obj(req);
     return took(scope, notes.clearDone(d.config.get('notes'), scope));
-  });
+  }, [opt(objCheck())]);
   ipcMain.handle('notes:restore', async (_e, req) => {
     const { scope, removed } = obj(req);
     const where = await noteScope(scope);
@@ -71,7 +71,7 @@ function registerNotesIpc(ipcMain, d) {
     const r = notes.restore(d.config.get('notes'), scope, removed, { project });
     if (r.error) return { ok: false, error: r.error };
     return { ok: true, view: await d.saveNotes(r.state) };
-  });
+  }, [opt(objCheck())]);
   ipcMain.handle('notes:move', async (_e, req) => {
     const { from, id, to } = obj(req);
     const where = await noteScope(to);
@@ -79,7 +79,7 @@ function registerNotesIpc(ipcMain, d) {
     const r = notes.move(d.config.get('notes'), from, id, to, { project: where.project });
     if (r.error) return { ok: false, error: r.error };
     return { ok: true, view: await d.saveNotes(r.state) };
-  });
+  }, [opt(objCheck())]);
   // Plan and Build send the note exactly as written, in a copy of the project on
   // a branch of its own (as Next up's Do this does), so nothing lands in your
   // checkout until you bring it home; a folder that isn't a git repository has
