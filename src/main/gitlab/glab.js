@@ -67,11 +67,12 @@ class GlabApi {
     const r = await this.run(['api', p, '--hostname', this.host], opts);
     if (r.ok) return r.out;
     const status = r.missing ? null : statusOf(r.error);
-    const err = new Error(r.missing ? 'glab isn\'t installed' : r.error);
-    err.status = status;
-    err.missing = !!r.missing;
     // Not signed in to this host at all: glab says so before it asks GitLab anything.
-    err.signedOut = status === 401 || /auth(entication)?\s+(required|login)|no token|not (logged|signed) in|glab auth login/i.test(r.error || '');
+    const err = Object.assign(new Error(r.missing ? 'glab isn\'t installed' : r.error), {
+      status,
+      missing: !!r.missing,
+      signedOut: status === 401 || /auth(entication)?\s+(required|login)|no token|not (logged|signed) in|glab auth login/i.test(r.error || ''),
+    });
     throw err;
   }
 

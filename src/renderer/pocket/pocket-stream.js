@@ -78,8 +78,10 @@
    * reopens it for that conversation, or for that page (pocket-pages.js).
    */
   function createStream(handlers) {
+    /** @type {AbortController | null} */
     let ctrl = null;
     let attempt = 0;
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
     let tab = null;
     let page = null;
@@ -90,13 +92,13 @@
     const setLive = on => { if (alive !== on) { alive = on; handlers.live?.(on); } };
 
     function schedule(ms) {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       if (stopped) return;
       timer = setTimeout(open, ms);
     }
 
     async function open() {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       ctrl?.abort();
       if (stopped || !token()) return;
       const mine = new AbortController();
@@ -154,7 +156,7 @@
 
     return {
       start() { stopped = false; now(); },
-      stop() { stopped = true; clearTimeout(timer); ctrl?.abort(); setLive(false); },
+      stop() { stopped = true; if (timer) clearTimeout(timer); ctrl?.abort(); setLive(false); },
       /** Follow one conversation's transcript too, or one page's changes (or neither). */
       watch(tabId, pageId = null) { if (tab === (tabId || null) && page === (pageId || null)) return; tab = tabId || null; page = pageId || null; if (!stopped) now(); },
       get live() { return alive; },

@@ -44,7 +44,7 @@ function encodeOutfit(outfit = {}, skin = DEFAULT_SKIN) {
   bits = bits.padEnd(chars * 5, '0');
   let out = '';
   for (let i = 0; i < bits.length; i += 5) out += ALPHABET[parseInt(bits.slice(i, i + 5), 2)];
-  return `SHB-${out.match(/.{4}/g).join('-')}`;
+  return `SHB-${(out.match(/.{4}/g) || []).join('-')}`;
 }
 
 /** Forgiving parse: any case, spaces or dashes, O->0, I/L->1. */

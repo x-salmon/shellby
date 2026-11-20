@@ -25,6 +25,7 @@ const count = v => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
  * and its change (diff: { files, added, removed } | null). Asking beats
  * working beats red beats ready.
  */
+/** @param {{ files?: unknown[] } | null} [diff] */
 function laneState(tab, diff = null) {
   if (!tab) return 'idle';
   if (count(tab.pending) > 0) return 'waiting';

@@ -108,7 +108,7 @@ function registerNativeIpc(ipcMain, d) {
     const picture = justSaw.looksLikeError(clipText) || found ? null : await clipboardPicture();
     const [best] = justSaw.offers({ clipText, job: found, hasImage: !!picture });
     if (!best) return { ok: false, error: 'Nothing to attach: copy an error first, or let a command fail.' };
-    const cwd = (best.kind === 'job' && found.cwd) || d.currentCwd();
+    const cwd = (best.kind === 'job' && found?.cwd) || d.currentCwd();
     if (best.kind === 'image') {
       const saved = attach.saveImage(picture, d.shotsDir(), { nativeImage });
       if (!saved.path) return { ok: false, error: saved.error };

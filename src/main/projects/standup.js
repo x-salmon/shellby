@@ -213,6 +213,7 @@ function dayItems(x) {
 function standup(input, now) {
   const today = startOfDay(now);
   const day = t => ({ from: t, to: addDays(t, 1) });
+  /** @type {number | null} */
   let prev = null;
   for (let back = 1; back <= LOOKBACK_DAYS && !prev; back++) {
     const t = addDays(today, -back);

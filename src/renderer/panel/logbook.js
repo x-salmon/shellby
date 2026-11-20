@@ -12,7 +12,8 @@
 
   /** @type {{ cards: { id: string }[] } | null} */
   let view = null;   // main's logbookView()
-  /** @type {{ chaptersDone: number, totalChapters: number, chapters: { id: string, done?: boolean, unlocked?: boolean }[] } | null} */
+  /** @typedef {{ chaptersDone: number, totalChapters: number, chapters: { id: string, n: number, icon: string, title: string, blurb: string, teaches: string, unlockText: string, doneCount: number, total: number, done?: boolean, unlocked?: boolean, quests: { icon: string, title: string, how: string, done?: boolean }[] }[] }} Quests */
+  /** @type {Quests | null} */
   let quests = null; // main's questsView(), for the chapter list
 
   const VIEW_NAMES = {
@@ -160,7 +161,7 @@
     if (SB.state.view === 'trophies' && was !== 'trophies') act('open');
   };
 
-  api.onGame((/** @type {{ what?: string, view?: unknown }} */ { what, view: v } = {}) => {
+  api.onGame((/** @type {{ what?: string, view?: Quests }} */ { what, view: v } = {}) => {
     if (what === 'logbook') received(v);
     if (what === 'quests' && v) { quests = v; renderChapters(); }
   });

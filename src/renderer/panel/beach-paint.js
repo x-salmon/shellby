@@ -359,7 +359,7 @@
    *         pops: [{ x, y, age }] (hearts, age 0..1), still: no flicker,
    *         hearts: the ones he's drawn in the sand }.
    */
-  function paint(ctx, v, { time = timeOfDay(), t = 0, x0 = 0, x1 = v.paintWidth, crab = null, reveal = null, pops = [], still = false, hearts = false } = {}) {
+  function paint(ctx, v, /** @type {{ time?: string, t?: number, x0?: number, x1?: number, crab?: { img: CanvasImageSource, w: number, h: number, hop?: number } | null, reveal?: Map<string, number> | null, pops?: { age: number, gold?: boolean, x: number, y: number }[], still?: boolean, hearts?: boolean }} */ { time = timeOfDay(), t = 0, x0 = 0, x1 = v.paintWidth, crab = null, reveal = null, pops = [], still = false, hearts = false } = {}) {
     const T = THEMES[time] || THEMES.night;
     ctx.imageSmoothingEnabled = false;
     x0 = Math.max(0, Math.floor(x0)); x1 = Math.ceil(x1);

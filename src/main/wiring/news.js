@@ -24,6 +24,7 @@ function wireNews(d) {
   const today = () => (d.today ? d.today() : new Date());
   const read = () => news.normalize(d.config?.get('news'));
   const save = patch => d.config.set({ news: { ...read(), ...patch } });
+  /** @type {Promise<unknown> | null} */
   let busy = null;
 
   /** { on, items, contest }: what's current today, minus what you closed. */

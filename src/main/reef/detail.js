@@ -33,6 +33,7 @@ function relTo(file, root) {
 // ------------------------------------------------------------------ escape hatches
 
 // What kind of escape a line holds, first match wins.
+/** @type {[string, RegExp][]} */
 const KINDS = [
   ['ts-ignore', /@ts-ignore/], ['ts-expect-error', /@ts-expect-error/], ['ts-nocheck', /@ts-nocheck/],
   ['eslint-disable', /eslint-disable/], ['biome-ignore', /biome-ignore/], ['noqa', /noqa/],

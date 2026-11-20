@@ -18,6 +18,7 @@
 
   // ---- the bar under the XP bar
 
+  /** @type {HTMLElement | null} */
   let box = null;
   function mount() {
     if (box || !$('xpBarWrap')) return box;
@@ -33,7 +34,8 @@
   }
 
   function render(v) {
-    if (!v || !mount()) return;
+    const box = mount();
+    if (!v || !box) return;
     const u = v.unlock;
     const text = box.querySelector('.lv-next-text');
     const bar = box.querySelector('.lv-next-bar');
@@ -84,6 +86,7 @@
 
   // ---- the ceremony for a milestone level
 
+  /** @type {HTMLElement | null} */
   let sheet = null;
   function closeCeremony() {
     if (!sheet) return;
@@ -104,7 +107,7 @@
     const title = h('h2', { class: 'lv-cer-title', 'aria-label': e.title });
     const cards = h('ul', { class: 'lv-cards' });
     const hasDecor = unlocks.some(u => u.kind === 'decor');
-    sheet = h('div', { class: `lv-ceremony${legend ? ' legend' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': `Level ${e.level}: ${e.title}`, style: `--cer:${e.rank?.color || 'var(--rank)'}` },
+    const dlg = sheet = h('div', { class: `lv-ceremony${legend ? ' legend' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': `Level ${e.level}: ${e.title}`, style: `--cer:${e.rank?.color || 'var(--rank)'}` },
       h('div', { class: 'lv-cer-sweep', 'aria-hidden': 'true' }),
       h('div', { class: 'lv-cer-body' },
         h('p', { class: 'lv-cer-eyebrow', text: `${legend ? 'Legendary' : 'Milestone'} · Level ${e.level} · ${e.rank?.name || ''} rank` }),
@@ -117,9 +120,9 @@
           e.canMolt && SB.openMolt ? h('button', { type: 'button', class: 'btn', onclick: () => { closeCeremony(); SB.openMolt(); } }, '🐚 Molt…') : null,
           SB.shareButtons?.() !== false ? h('button', { type: 'button', class: 'btn ghost lv-cer-share', onclick: () => { closeCeremony(); SB.momentCard?.share('level', e); } }, '📸 Share') : null,
           h('button', { type: 'button', class: 'btn ghost', onclick: closeCeremony }, 'Lovely'))));
-    sheet.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); closeCeremony(); } });
-    document.body.append(sheet);
-    sheet.querySelector('.lv-cer-actions .btn')?.focus();
+    dlg.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); closeCeremony(); } });
+    document.body.append(dlg);
+    dlg.querySelector('.lv-cer-actions .btn')?.focus();
     // The title writes itself letter by letter, then the cards flip in; with reduced motion, all at once.
     const still = reduced();
     if (still) title.textContent = e.title; else [...e.title].forEach((ch, i) => setTimeout(() => { title.textContent += ch; }, i * TITLE_MS));

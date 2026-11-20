@@ -62,7 +62,7 @@ const isRepo = dir => { try { return fs.existsSync(path.join(dir, '.git')); } ca
  * without going into a repository once found. -> { found: [dir], truncated }.
  * signal: an AbortSignal that stops it early (what was found so far comes back).
  */
-async function scanFolder(parent, { signal = null, depth = SCAN_DEPTH, max = SCAN_MAX } = {}) {
+async function scanFolder(parent, /** @type {{ signal?: AbortSignal | null, depth?: number, max?: number }} */ { signal = null, depth = SCAN_DEPTH, max = SCAN_MAX } = {}) {
   const found = [];
   let looked = 0;
   let truncated = false;

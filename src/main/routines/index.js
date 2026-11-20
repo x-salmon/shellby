@@ -199,7 +199,7 @@ function validateRoutine(input, { allowAutonomous = false } = {}) {
   if (errors.length) return { routine: null, errors };
   const routine = { id, name, prompt, cwd, mode, model, schedule, enabled, catchUp, createdAt, lastRunAt, lastStatus };
   if (runNearLimit) routine.runNearLimit = true;
-  if (servers.list.length) {
+  if (servers.list?.length) {
     routine.mcp = servers.list;
     if (input.mcpOnly === true) routine.mcpOnly = true;
   }

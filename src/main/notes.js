@@ -87,7 +87,7 @@ function withList(s, scope, notes, project) {
  * for a project that has no notes yet. Newest first.
  * -> { state, note } or { state, error }
  */
-function add(stateIn, scope, text, { id, now, project, from = 'you' } = {}) {
+function add(stateIn, scope, text, /** @type {{ id?: string, now?: number, project?: string, from?: string }} */ { id, now, project, from = 'you' } = {}) {
   const s = normalize(stateIn);
   const t = cleanText(text);
   if (!t) return { state: s, error: 'Write something first.' };

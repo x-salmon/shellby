@@ -53,7 +53,7 @@ const BODIES = ['#ff9f80', '#ffd2c2', '#f3e6cc', '#ffb4a2', '#b8f2e6', '#ffe8a3'
 // A hatchling: 7×5, shell on its back, little claws.
 const BABY = ['..sss..', '.sSsSs.', 'c.bkbk.', 'cbbbbbc', '.b.b.b.'];
 
-const hashNum = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.codePointAt(0), 16777619) >>> 0; return h; };
+const hashNum = s => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ (ch.codePointAt(0) ?? 0), 16777619) >>> 0; return h; };
 
 /** The baby that hatches from an egg: the same for both crabs. */
 function hatchling(id) {

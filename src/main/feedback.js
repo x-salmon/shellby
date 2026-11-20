@@ -10,7 +10,7 @@ const ISSUES_URL = 'https://github.com/x-salmon/shellby/issues/new';
 const ASK_FOR_IDEA_AT = 2;
 
 /** The idea form (.github/ISSUE_TEMPLATE/idea.yml) with the version filled in. */
-function ideaUrl({ version, packaged = true } = {}) {
+function ideaUrl(/** @type {{ version?: string, packaged?: boolean }} */ { version, packaged = true } = {}) {
   const params = new URLSearchParams({ template: 'idea.yml', labels: 'idea' });
   if (version) params.set('version', `${version}${packaged ? '' : ' (dev build)'}`);
   return `${ISSUES_URL}?${params}`;

@@ -77,7 +77,7 @@ function wireMolting(d) {
       d.stat('molted', { n: r.tier });
       d.stat('ever-level', { n: levels.MAX_LEVEL });
       d.questDone?.('molt-or-stay');
-      d.life?.remember?.('level', { name: `Molt ${badge.text}, in the ${shell.name}` }); // the journal's "Became …"
+      d.life?.remember?.('level', { name: `Molt ${badge?.text}, in the ${shell.name}` }); // the journal's "Became …"
       d.levelUpAt = 1;
       d.levelUpMarks = 0;
       d.send(d.panel, 'xp', d.xpView());

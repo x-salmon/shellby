@@ -39,7 +39,7 @@ function editorCandidates(env = process.env, dirExists = isDir) {
   const out = [];
   const add = p => { if (p && path.isAbsolute(p) && !out.some(o => o.toLowerCase() === p.toLowerCase())) out.push(p); };
   const local = env.LOCALAPPDATA;
-  const pf = [env.ProgramFiles, env['ProgramFiles(x86)']].filter(Boolean);
+  const pf = /** @type {string[]} */ ([env.ProgramFiles, env['ProgramFiles(x86)']].filter(Boolean));
   if (local) add(path.join(local, 'Programs', 'Microsoft VS Code', 'bin', 'code.cmd'));
   for (const p of pf) add(path.join(p, 'Microsoft VS Code', 'bin', 'code.cmd'));
   if (local) add(path.join(local, 'Programs', 'Microsoft VS Code Insiders', 'bin', 'code-insiders.cmd'));

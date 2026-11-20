@@ -130,7 +130,8 @@ function testCount(output) {
   const jest = t.match(/^Tests:[ \t]+(.*)$/m);
   if (jest && /\btotal\b/.test(jest[1])) {
     const skipped = Number(jest[1].match(/(\d+)[ \t]+(?:skipped|todo)/)?.[1] || 0);
-    return count(Number(jest[1].match(/(\d+)[ \t]+total/)[1]) - skipped);
+    const total = jest[1].match(/(\d+)[ \t]+total/)?.[1];
+    if (total) return count(Number(total) - skipped);
   }
   const vitest = t.match(/^[ \t]*Tests[ \t]+(.*)$/m);
   if (vitest) {

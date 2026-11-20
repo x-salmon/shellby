@@ -79,7 +79,7 @@ const asLines = pairs => pairs.map(([who, text]) => ({ who, text }));
  *          theirFind, music, hour, seasons }
  *   used: chat topics already had this visit (by first line), so they don't repeat
  */
-function conversation(phase, { me: meIn, them: themIn } = {}, ctx = {}, rand = Math.random, used = []) {
+function conversation(phase, /** @type {{ me?: unknown, them?: unknown }} */ { me: meIn, them: themIn } = {}, ctx = {}, rand = Math.random, used = []) {
   const me = temperament(meIn), them = temperament(themIn);
   let lines;
   if (phase === 'hello') {

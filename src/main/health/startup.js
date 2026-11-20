@@ -188,9 +188,11 @@ function run(file, args, timeout, env) {
  * set(switch, off) -> { ok, error? }: flips one of your entries the way Task Manager does.
  */
 function createStartupReader({ platform = process.platform, now = () => Date.now() } = {}) {
-  let cached = null;
+  /** @type {unknown[] | null} */
+let cached = null;
   let at = 0;
-  let pending = null;
+  /** @type {Promise<unknown[] | null> | null} */
+let pending = null;
   // Absolute path: never pick up a powershell.exe from PATH or the working dir.
   const ps = () => path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
   return {

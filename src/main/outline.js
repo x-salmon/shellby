@@ -16,6 +16,7 @@ function outline(items) {
   const cleared = list.findLastIndex(i => i?.kind === 'cleared');
   const out = [];
   const byTurn = new Map();
+  /** @type {{ turnId: string, text: string, at: unknown, files: unknown[], added: number, removed: number, tools: number, edits: Map<string, boolean>, diffed: boolean } | null} */
   let current = null;
   for (const i of list.slice(cleared + 1)) {
     if (!i || typeof i !== 'object') continue;

@@ -46,6 +46,7 @@ function wireReef(d) {
 
   // ---------------------------------------------------------------- a reading, and what it pays
 
+  /** @type {number | null} */
   let lastThriving = null;
   function view() { return reef.reefView(d.config?.get('reef'), now()); }
   function push(event) { d.gameHub.push('reef', view(), event); }

@@ -165,6 +165,7 @@ async function probe(root, run = git) {
   // Commits on local branches that no remote-tracking branch has, plus any
   // made on a detached HEAD in a copy, which no branch holds at all. A repo
   // with no remote has nowhere to push, so that's not "unpushed".
+  /** @type {{ commits: number, branches: unknown[] } | null} */
   let unpushed = null;
   const remotes = await run(['-C', root, 'remote']);
   if (remotes === null) return unreadable;

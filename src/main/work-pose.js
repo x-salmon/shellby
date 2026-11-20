@@ -77,6 +77,7 @@ function poseNow(moved, { compacting = false, talking = false } = {}) {
  * started or finished last, or null when none has run one yet.
  */
 function latest(list) {
+  /** @type {{ toolAt: number, tool?: string, kind?: string } | null} */
   let best = null;
   for (const s of list) if (s && Number.isFinite(s.toolAt) && (!best || s.toolAt > best.toolAt)) best = s;
   return best;

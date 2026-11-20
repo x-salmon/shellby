@@ -32,6 +32,7 @@ function create() {
  * A task_* item that is a background command or watch rather than a helper.
  * Only task_started says task_type: later events are known by their task id.
  */
+/** @param {{ byId: Map<string, unknown> } | null} [state] */
 function isJob(item, state = null) {
   if (item?.kind !== 'task') return false;
   if (typeof item.taskType === 'string') return item.taskType !== 'local_agent';
