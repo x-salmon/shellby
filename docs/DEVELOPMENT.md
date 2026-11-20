@@ -492,7 +492,8 @@ src/main/        Electron main process
   session/         one Claude Code process per conversation (stream-json + control protocol): index.js its life
                    and what it says; args.js how it starts, control.js answering it, accounting.js what it costs, crew.js its helpers,
                    pause.js Pause and Continue (held steps, parking before the cache goes cold)
-  stream.js        pure parser: CLI events (incl. subagent tasks) → UI items
+  stream.js        pure parser: CLI events (incl. subagent tasks) → UI items (toItems, parseLine, KNOWN); stream-tools.js has what a tool call
+                   and its result say (describeTool, to-dos, questions, findings, usage), stream-items.js one item per kind of event (tasks, workflows, mods, goal, context, hooks)
   cli-contract.js  what Shellby needs from the Claude Code CLI (flags, modes, effort levels, the protocol), checked nightly (pure)
   cli-coverage.js  everything Claude Code offers and what Shellby does about each: use, skip or gap (pure)
   cli-commands.js  Claude Code's own slash commands and how Shellby handles each (pure; the panel gets a copy)
