@@ -2,10 +2,11 @@
 // what each tap on the phone does. Kept out of main.js, which only wires it up.
 //
 // Off until turned on in Settings → On your phone (the confirmation window asks).
-// On, it serves 127.0.0.1:47916 and Tailscale serves that on your tailnet.
+// On, it serves 127.0.0.1:47916 and Tailscale serves that on your tailnet
+// (pocket/serving.js).
 //
 // The phone does what the desk does, through the same functions, under the
-// phone's rules (docs/PHONE.md): what appCaution warns about allowed once (never always), tasks in the mode
+// phone's rules (docs/PHONE.md, pocket/actions.js): what appCaution warns about allowed once (never always), tasks in the mode
 // and on the model picked, at most 30 an hour and 10 at once, and nothing at all from a phone set
 // to read-only at the desk (pocket/rights.js).
 const { app, safeStorage } = require('electron');
@@ -14,37 +15,24 @@ const attach = require('../attachments');
 const confirm = require('../confirm');
 const guard = require('../guard');
 const pt = require('../channels/phone-tasks');
-const { appDeskOnlyReason, appCaution } = require('../channels/replies');
 const { EVENTS } = require('../channels/messages');
-const { MODES: PHONE_MODES } = require('../config');
-const { models, isModel } = require('../models');
+const { models } = require('../models');
 const { qrRows } = require('../qr');
 
-// The app is paired to this PC, so it gets more room than Telegram or ntfy (pt.MAX_OPEN).
-const APP_MAX_OPEN = 10;
-const APP_STARTS_PER_HOUR = 30;
 const pairing = require('../pocket/pairing');
 const push = require('../pocket/push');
 const { PocketServer, DEFAULT_PORT } = require('../pocket/server');
-const { createTailscale, pickHttpsPort } = require('../pocket/tailscale');
+const { createTailscale } = require('../pocket/tailscale');
+const { createPocketServing } = require('../pocket/serving');
 const view = require('../pocket/view');
-const { answerExtra } = require('../pocket/answers');
 const { createPocketExtras } = require('../pocket/extras');
 const { createPocketNotices } = require('../pocket/notices');
 const { createPocketReview } = require('../pocket/review');
 const quiet = require('../pocket/quiet');
-const { createPocketDevices } = require('../pocket/devices');
 const rights = require('../pocket/rights');
-const { createPocketTalk } = require('../pocket/talk');
-const { createLookOver } = require('../pocket/look-over');
-const { createPocketLater } = require('../pocket/later');
-const { createPocketPages } = require('../pocket/pages'); // pages on your phone: the shelf, a page's files by capability, its bridge
+const { createPocketActions, APP_MAX_OPEN, APP_STARTS_PER_HOUR } = require('../pocket/actions');
 
-const WATCH_MS = 60 * 1000;          // how often Tailscale is looked at while it's on: Funnel never stays on
-const TICK_MS = 5 * 1000;            // the usage meter and the queue change without a tab event
 const SEEN_SAVE_MS = 5 * 60 * 1000;  // "last seen" goes to disk this often at most
-const TAILSCALE_URL = 'https://tailscale.com/download/windows';
-const HTTPS_URL = 'https://login.tailscale.com/admin/dns';
 // The phone app's notifications start as the phone channels do: the same events, on by the same defaults.
 const NOTIFY_DEFAULTS = { enabled: true, events: Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.default])), minSeconds: 60, whileFocused: false, working: false };
 const EVENT_LABELS = Object.fromEntries(Object.entries(EVENTS).map(([k, e]) => [k, e.label]));
@@ -70,14 +58,8 @@ function devTailscale() {
 /** d: what main shares (main.js `shared`). */
 function wirePocket(d) {
   const tailscale = d.tailscaleCli || devTailscale() || createTailscale();
-  let ts = { installed: null, state: 'unknown', dnsName: '', login: '', https: false };
-  let serve = { httpsPort: 0, url: '', funnel: false, taken: [] };
-  /** @type {Promise<typeof ts> | null} */ let checking = null;
-  /** @type {{ text: string, link?: string | null, linkText?: string | null } | null} */ let problem = null;       // why it isn't serving, for Settings: { text, link?, linkText? }
   /** @type {ReturnType<typeof pairing.openPairing> | null} */ let code = null;          // the pairing window: { code, expiresAt, tries }
   /** @type {ReturnType<typeof push.newVapidKeys> | null} */ let vapid = null;
-  /** @type {NodeJS.Timeout | null} */ let watcher = null;
-  /** @type {NodeJS.Timeout | null} */ let ticker = null;
   let lastView = '';
   const lastTurn = new Map(); // watched tab -> the turn whose message the phone has
   // Focus, routines, notes, the wardrobe, files and photos (pocket/extras.js).
@@ -89,7 +71,7 @@ function wirePocket(d) {
   const review = createPocketReview(d, {
     projects: () => projects(),
     prompts: () => waitingPrompts(),
-    reply: body => talk.actions.reply(body), // talk is made further down; called only later
+    reply: body => actions.reply(body), // actions is made further down; called only later
     maxText: pt.MAX_TEXT,
   });
 
@@ -138,41 +120,10 @@ function wirePocket(d) {
     return vapid;
   }
 
-  // ---- Tailscale
+  // ---- Tailscale, and our port on the tailnet (pocket/serving.js)
 
-  // fresh: a look that starts now, after any already on its way (which may have
-  // begun before serve was turned on or off).
-  async function refreshTailscale({ fresh = false } = {}) {
-    if (checking && !fresh) return checking;
-    const before = checking || Promise.resolve();
-    const mine = before.catch(() => {}).then(async () => {
-      ts = await tailscale.status();
-      const port = d.pocket?.port || DEFAULT_PORT;
-      serve = ts.state === 'running' && ts.dnsName ? await tailscale.serveStatus({ port, dnsName: ts.dnsName }) : { httpsPort: 0, url: '', funnel: false, taken: [] };
-      if (serve.funnel && d.pocket?.status === 'listening') {
-        // On the open internet: the one thing this never is. Off now, and Settings says why.
-        d.pocket.stop();
-        problem = { text: 'Tailscale Funnel is on for this address, which puts it on the open internet. Shellby stopped serving your phone. Turn Funnel off, then turn this on again.' };
-        d.log.warn('pocket: funnel is on for our address, stopped');
-      }
-      return ts;
-    }).finally(() => { if (checking === mine) checking = null; });
-    checking = mine;
-    return mine;
-  }
-
-  const place = () => ({ dnsName: ts.dnsName || settings().dnsName, httpsPort: serve.httpsPort || settings().servedPort || 443 });
-  const url = () => serve.url || '';
-
-  // What's missing before it can be on, in order. null: nothing.
-  function setupProblem() {
-    if (ts.installed === false) return { step: 'install', text: 'Tailscale isn’t on this PC yet.', link: TAILSCALE_URL, linkText: 'Get Tailscale' };
-    if (ts.state === 'needs-login' || ts.state === 'stopped') return { step: 'sign-in', text: 'Tailscale is installed but not connected. Open it and sign in.' };
-    if (ts.state !== 'running' || !ts.dnsName) return { step: 'sign-in', text: ts.error || 'Tailscale isn’t running.' };
-    if (!ts.https) return { step: 'https', text: 'Turn on HTTPS certificates for your tailnet (Admin console → DNS). Your phone needs them to install the app.', link: HTTPS_URL, linkText: 'Open the DNS page' };
-    if (!ts.login) return { step: 'sign-in', text: 'Tailscale didn’t say who’s signed in on this PC.' };
-    return null;
-  }
+  const tail = createPocketServing(d, { tailscale, settings, save, vapidKeys, pushView: () => pushView() });
+  const { refreshTailscale, setupProblem } = tail;
 
   // ---- the server
 
@@ -248,6 +199,7 @@ function wirePocket(d) {
 
   const locals = require('../pocket/locals').createLocals({ settings: () => d.config.get('localModel'), onChange: () => pushView(), log: d.log }); // local models a phone task can start on
   function currentView() {
+    const ts = tail.ts();
     return view.phoneView({
       pc: ts.dnsName ? ts.dnsName.split('.')[0] : require('os').hostname(), pcs: d.config.get('hubPeers'), // pcs: only names and addresses reach the phone (view.js phonePcs)
       tabs: d.manager?.summary || [],
@@ -259,7 +211,7 @@ function wirePocket(d) {
       held: d.heldService?.heldViews() || [],
       projects: projects(),
       skin: d.activeSkin?.() || null,
-      limits: { perHour: APP_STARTS_PER_HOUR, atOnce: APP_MAX_OPEN, open: openCount() },
+      limits: { perHour: APP_STARTS_PER_HOUR, atOnce: APP_MAX_OPEN, open: actions.openCount() },
       pushKey: vapid?.publicKey || null,
       allow: settings().allow,
       mode: d.config.get('mode'),
@@ -322,322 +274,30 @@ function wirePocket(d) {
     if (p) d.pocket.item(tabId, p);
   }
 
-  // ---- what the phone does
+  // ---- push notifications (pocket/notices.js)
 
-  const ok = extra => ({ ok: true, ...extra });
-  const no = error => ({ ok: false, error });
-  const str = (v, n = 200) => (typeof v === 'string' && v.length > 0 && v.length <= n ? v : null);
-
-  // "3 at once" counts every task a phone started, from this app or from
-  // Telegram or ntfy, working or waiting on you, plus any on their way to starting.
-  let starting = 0;
-  function openCount() {
-    let n = starting;
-    for (const [id, tab] of d.manager?.tabs || []) {
-      if ((tab.fromPocket || tab.fromPhone) && (d.manager.isBusy(id) || tab.session.pending.size)) n++;
-    }
-    return n;
-  }
-  /** @type {number[]} */ let starts = [];
-  // A task the phone sent again (its answer was slow, so it tried once more) is the same task.
-  const sent = new Map(); // key -> the promise of its answer
-  const KEY = /^[A-Za-z0-9_-]{8,64}$/;
-
-  async function onAction(device, name, body) {
-    if (!settings().enabled) return no('Shellby on your phone is off.');
-    // A read-only phone may look, and little else (pocket/rights.js): checked
-    // on the phone's record as it is now, not as it was when it connected.
-    const why = rights.refuse(devices().find(dv => dv.id === device.id), name);
-    if (why) return no(why);
-    switch (name) {
-      case 'answer': return answer(body);
-      case 'task': return task(body);
-      case 'stop': return stop(body);
-      case 'undo': return undo(body);
-      case 'home': return home(body);
-      case 'reviewed': return reviewed(body);
-      case 'push': return setPush(device, body);
-      case 'forget': return forget(device.id, 'You forgot this phone.');
-      case 'quiet': return setQuiet(body);
-      case 'look-over': return lookOver(body || {});
-      case 'reply': return once('reply', body, b => talk.actions.reply(b || {})); // sent again from the outbox: once
-      default: {
-        if (Object.prototype.hasOwnProperty.call(talk.actions, name)) return talk.actions[name](body || {});
-        const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-        const fn = [extra.actions, review.actions, later.actions, pocketPages.actions].map(a => (own(a, name) ? a[name] : null)).find(Boolean) || null;
-        if (!fn) return no('unknown');
-        const r = await fn(body || {}, device);
-        if (r.ok && ['focus', 'routine-toggle'].includes(name)) pushView();
-        return r;
-      }
-    }
-  }
-
-  function answer({ tabId, requestId, decision, answers, notes, read }) {
-    if (!str(tabId) || !str(requestId) || !['allow', 'always', 'deny'].includes(decision)) return no('That answer is not one the phone can give.');
-    const pendingItem = d.manager.tabs.get(tabId)?.session.pending.get(requestId);
-    if (!pendingItem) return no('That was already answered.');
-    // One the card warns about (appCaution) is allowed once, never always.
-    if (decision === 'always' && (!pendingItem.suggestions?.length || ['AskUserQuestion', 'ExitPlanMode'].includes(pendingItem.toolName) || appCaution(pendingItem))) return no('That one has no always-allow. Allow it this once.');
-    const why = appDeskOnlyReason(pendingItem); // a no is always safe, even to one the phone can't answer
-    if (why && decision !== 'deny') return no(why);
-    const extra = answerExtra(pendingItem, { decision, answers, notes, read, mayWrite: mayWriteTo(d.manager.tabs.get(tabId)) });
-    if (extra.error) return no(extra.error);
-    d.log.info(`pocket: ${decision} for ${pendingItem.toolName}`);
-    return d.answerPermission(tabId, requestId, decision, { via: 'pocket', ...extra }) ? ok() : no('That was already answered.');
-  }
-
-  // Your own words into a conversation (a typed answer, notes on a plan) go
-  // only where a reply could: anywhere but a terminal (pocket/answers.js).
-  const mayWriteTo = tab => !tab?.inTerminal;
-
-  // A task or a look-over asked again with the same key gets the first one's answer.
-  function once(kind, body, start) {
-    const key = typeof body?.key === 'string' && KEY.test(body.key) ? `${kind}-${body.key}` : null;
-    if (key && sent.has(key)) return sent.get(key);
-    const answer = start(body);
-    if (key) sent.set(key, Promise.resolve(answer).then(r => { if (!r?.ok) sent.delete(key); return r; })); // a no (busy, say) may be a yes later
-    while (sent.size > 50) sent.delete(sent.keys().next().value);
-    return answer;
-  }
-  const task = body => once('task', body, startTask);
-
-  async function startTask({ project, text, mode, photos, model, local, when }) {
-    const runAs = modeOf(mode);
-    if (modeBlocked(runAs)) return no(AUTONOMOUS_OFF);
-    // A Claude model (models.js), a local one (the desk's "On this PC"), or neither: the desk's own.
-    const { on, onPc, runOn, error } = locals.pick({ model, local, when }, isModel);
-    if (error) return no(error);
-    const prompt =pt.cleanText(typeof text === 'string' ? text : '').slice(0, pt.MAX_TEXT).trim();
-    if (!prompt) return no('Say what you want done first.');
-    if (/^[/!]/.test(prompt)) return no('Commands that start with / or ! only run at the desk.');
-    const target = projects().find(p => p.key === project);
-    if (!target) return no("That project isn't one Shellby knows. Pick one from the list.");
-    // For later: after the reset or tonight, in the queue, as the Routines page's Queue it does.
-    if (when === 'reset' || when === 'tonight') return later.queueForLater({ prompt, cwd: target.key, mode: runAs, model: on, when, photos });
-    const now = Date.now();
-    const gate = claimStart(now);
-    if (!gate.ok) return no(gate.reply);
-    // At the limit, or past what you keep for yourself: it waits for the reset. Not on a local model, which spends none of it.
-    const w = d.usageService?.limitWait();
-    if (!onPc && (w || guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), d.config.get('lastUsage'), now))) {
-      const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: runAs, fromPhone: true, ...(on ? { model: on } : {}) });
-      if (!held.ok) return no(`Couldn't queue it: ${held.error}`);
-      d.sendOutlook?.();
-      pushView();
-      return ok({ held: true, atText: held.atText });
-    }
-    const title = pt.titleFor(prompt);
-    // Pictures the phone sent first (POST /upload), each used once.
-    const files = extra.takePhotos(photos);
-    // Its place is kept while the copy is made, so two at once can't both slip under the cap.
-    starting++;
-    let r;
-    try {
-      r = await d.startTaskInCopy(target.key, title, () => prompt, { mode: runAs, ...runOn, ...(files.length ? { attachments: () => files } : {}) });
-      if (!r.ok && r.noCopy) r = d.startTask(files.length && d.composePrompt ? d.composePrompt(prompt, files) : prompt, title, { mode: runAs, cwd: target.key, ...runOn });
-      if (r.ok) adopt(r.tabId);
-    } finally { starting--; }
-    if (!r.ok) return no(r.error || "Couldn't start it.");
-    d.log.info('pocket: started a task in', target.name);
-    pushView();
-    return ok({ tabId: r.tabId });
-  }
-
-  // A place under the phone's limits, taken: { ok } or { ok: false, reply }.
-  function claimStart(now = Date.now(), { open = openCount() } = {}) {
-    const gate = pt.startGate({ starts, open, now, maxOpen: APP_MAX_OPEN, perHour: APP_STARTS_PER_HOUR });
-    if (gate.ok) starts = [...pt.recent(starts, now), now];
-    return gate;
-  }
-
-  // The queue, tasks for later, checks again and branching (pocket/later.js); Look over my changes (pocket/look-over.js).
-  const later = createPocketLater(d, { adopt: id => adopt(id), pushView: () => pushView(), claimStart: opts => claimStart(Date.now(), opts), once });
-  const startLookOver = createLookOver(d, { projects: () => projects(), claimStart, adopt: id => adopt(id), pushView: () => pushView() });
-  const lookOver = body => once('look', body, startLookOver);
-
-  // What the phone picked, from the desk's own list; anything else is Ask (pt.MODE).
-  const modeOf = m => (PHONE_MODES.includes(m) ? m : pt.MODE);
-  // Autonomous only once it's been turned on at the desk, as for routines and held tasks.
-  const AUTONOMOUS_OFF = 'Turn on Autonomous in Settings on your PC first.';
-  const modeBlocked = m => m === 'autonomous' && !d.config.get('autonomousAcknowledged');
-
-  function adopt(tabId) {
-    const tab = d.manager.tabs.get(tabId);
-    if (tab) tab.fromPocket = true;
-    d.manager.note(tabId, { kind: 'phone' });
-    d.history.update(tabId, { fromPhone: true });
-  }
-
-  // A reply, one into the desk's queue mid-turn, and the conversation's name,
-  // effort, closing and History (pocket/talk.js).
-  const talk = createPocketTalk(d, {
-    modeOf,
-    blocked: m => (modeBlocked(m) ? AUTONOMOUS_OFF : ''),
-    takePhotos: ids => extra.takePhotos(ids),
-    // Mid-turn: into the desk's own queue (tab-queue.js), which hands it to Claude
-    // at his next step or sends it once the turn ends. The panel keeps the only
-    // list main steers from, so it goes there rather than in beside it.
-    queue(tabId, text, files) {
-      const win = d.tabWindow?.(tabId) || d.panel;
-      d.send(win, 'tab:queue', { tabId, text, ...(files.length ? { files } : {}) });
-    },
-    onSent(tabId, r) {
-      // The desk's panel draws a message it didn't send itself from this.
-      d.send(d.tabWindow?.(tabId) || d.panel, 'tab:sent', { tabId, item: r.item });
-      lastTurn.set(tabId, r.turnId);
-      d.pocket?.item(tabId, view.phoneItem(r.item));
-    },
-    pushView: () => pushView(),
+  const settingsChanged = () => d.send(d.panel, 'pocket', pocketViewNow());
+  const { notify, notifyPage, noticeWork, testPush, badge } = createPocketNotices(d, {
+    settings, devices, saveDevices, vapidKeys, waitingPrompts,
+    changed: settingsChanged,
   });
 
-  function stop({ tabId }) {
-    if (!str(tabId) || !d.manager.isBusy(tabId)) return no("He's not working on that one.");
-    d.manager.interrupt(tabId);
-    return ok();
-  }
+  // ---- what the phone does (pocket/actions.js)
 
-  // A turn's changes, as History has them: the phone names the turn, main finds the rest.
-  function changesOf(tabId, after) {
-    if (!str(tabId) || !str(after, 100) || !d.manager.tabs.has(tabId)) return null;
-    return [...d.history.load(tabId)].reverse().find(i => i?.kind === 'changes' && i.after === after) || null;
-  }
-
-  async function undo({ tabId, after }) {
-    const c = changesOf(tabId, after);
-    if (!c) return no("That isn't a change from this conversation.");
-    const r = await d.undoChanges({ tabId, root: c.root, before: c.before, after: c.after });
-    return r.ok ? ok({ restored: r.restored }) : no(r.error || "Couldn't undo it.");
-  }
-
-  async function onDiff(device, { tab, after, file }) {
-    const c = changesOf(tab, after);
-    if (!c) return no("That isn't a change from this conversation.");
-    if (file && !(c.files || []).some(f => f.path === file)) return no("That file isn't in that change.");
-    const r = await d.diffChanges({ tabId: tab, root: c.root, before: c.before, after: c.after, ...(file ? { file } : {}) });
-    if (r?.error) return no(r.error);
-    // A phone needs a page or two, not a whole refactor.
-    const patch = String(r?.patch || '');
-    return ok({ patch: patch.slice(0, 200000), truncated: !!r?.truncated || patch.length > 200000 });
-  }
-
-  // The desk's "Bring it home and finish", so it moves to Done. push: and push the branch it lands on,
-  // when Settings allows it. The desk's own checks go first (the secret scan, other people's commits).
-  async function home({ tabId, force, push: andPush }) {
-    if (!str(tabId)) return no('That conversation has closed.');
-    if (andPush === true && !settings().allow.push) return no('Pushing from your phone is off. Turn it on in Settings → On your phone.');
-    if (andPush === true && force === true) return no('Red checks and a push together only happen at the desk.');
-    const r = await d.bringTabHome(tabId, { force: force === true, finish: true, ...(andPush === true ? { push: true } : {}) });
-    if (r.red || r.conflict) return { ok: false, ...(r.red ? { red: true } : { conflict: true }), error: r.error }; // red checks: ask; a clash: offer to have him sort it out
-    const pushed = r.push;
-    return r.ok ? ok({ merged: !!r.merged, commits: r.commits || 0, base: r.base || null, ...(andPush === true ? { pushed: !!pushed?.ok, pushError: pushed && !pushed.ok ? String(pushed.error || '') : null } : {}) }) : no(r.error || "Couldn't bring it home.");
-  }
-
-  function reviewed({ tabId, after }) {
-    if (!str(tabId)) return no('That conversation has closed.');
-    return d.manager.setReviewed(tabId, true, str(after, 100)) ? ok() : no('Nothing to mark.');
-  }
-
-  // Its push subscription, the quiet hours and a phone's rights (pocket/devices.js).
-  const { setPush, setQuiet, setDeviceRights } = createPocketDevices(d, {
-    devices, saveDevices, settings, save, vapidKeys,
-    changed: () => d.send(d.panel, 'pocket', pocketViewNow()),
+  const actions = createPocketActions(d, {
+    settings, save, devices, saveDevices, vapidKeys, extra, review, locals, projects, lastTurn, notifyPage,
+    pushView: () => pushView(),
+    changed: settingsChanged,
     resend: () => { lastView = ''; pushView(); },
   });
 
-  function forget(deviceId, reason = 'This phone was forgotten.') {
-    const list = devices();
-    const gone = list.find(dv => dv.id === deviceId);
-    if (!gone) return no('That phone has already gone.');
-    saveDevices(list.filter(dv => dv.id !== deviceId));
-    d.pocket?.dropDevice(deviceId, reason);
-    d.log.info(`pocket: forgot ${gone.name}`);
-    d.send(d.panel, 'pocket', pocketViewNow());
-    return ok();
-  }
-
-  // ---- push notifications (pocket/notices.js)
-
-  const { notify, notifyPage, noticeWork, testPush, badge } = createPocketNotices(d, {
-    settings, devices, saveDevices, vapidKeys, waitingPrompts,
-    changed: () => d.send(d.panel, 'pocket', pocketViewNow()),
-  });
-  const pocketPages = createPocketPages(d, { devices, claimStart: () => claimStart(), adopt, pushView, once, notifyPage, server: () => d.pocket });
-
   // ---- on and off (the panel asks; the confirmation window decides)
-
-  // The server, listening (or not, and why) before Settings is told how it went.
-  /** @returns {Promise<void>} */ function listen() {
-    if (d.pocket.status === 'listening') return Promise.resolve();
-    return new Promise(resolve => {
-      d.pocket.once('status', () => resolve());
-      d.pocket.start();
-    });
-  }
-
-  async function start() {
-    problem = null;
-    vapidKeys(); // the phone needs the key to turn notifications on, after a restart too
-    await listen();
-    if (d.pocket.status !== 'listening') return;
-    // Our port behind Tailscale's https, unless it already is.
-    const port = d.pocket.port;
-    if (!serve.httpsPort) {
-      const httpsPort = pickHttpsPort(serve);
-      if (!httpsPort) { problem = { text: 'Tailscale already serves something else on every port it offers. Free 443 and try again.' }; return; }
-      const r = await tailscale.serveOn({ port, httpsPort });
-      if (!r.ok) {
-        // "Serve is not enabled on your tailnet" comes with the page that turns it on.
-        problem = { text: `Tailscale didn't put Shellby on your tailnet: ${r.error}`, link: r.link || null, linkText: r.link ? 'Turn on Serve' : null };
-        d.log.warn('pocket: serve failed', r.error);
-      } else save({ servedPort: httpsPort });
-      await refreshTailscale({ fresh: true });
-    }
-    if (serve.funnel) {
-      d.pocket.stop();
-      problem = { text: 'Tailscale Funnel is on for this address. Turn it off first: Shellby only serves your phone on your own tailnet.' };
-    }
-    watch();
-  }
-
-  function watch() {
-    clearInterval(/** @type {NodeJS.Timeout} */ (watcher));
-    clearInterval(/** @type {NodeJS.Timeout} */ (ticker));
-    watcher = setInterval(() => { refreshTailscale().catch(() => {}); }, WATCH_MS);
-    ticker = setInterval(() => { pushView(); }, TICK_MS);
-    watcher.unref?.();
-    ticker.unref?.();
-  }
-
-  async function stopServing() {
-    clearInterval(/** @type {NodeJS.Timeout} */ (watcher));
-    clearInterval(/** @type {NodeJS.Timeout} */ (ticker));
-    watcher = ticker = null;
-    d.pocket?.stop();
-    await takeServeBack();
-  }
-
-  // Only what Shellby asked Tailscale for itself, and only while it still points
-  // at us. When Tailscale can't be asked (stopped, signed out), servedPort is
-  // kept, and the next start of Shellby takes it back.
-  async function takeServeBack() {
-    const s = settings();
-    if (!s.servedPort) return;
-    await refreshTailscale({ fresh: true }).catch(() => {});
-    if (ts.state !== 'running') { d.log.info('pocket: Tailscale is not running, so serve is taken back later'); return; }
-    if (serve.httpsPort === s.servedPort) {
-      const r = await tailscale.serveOff({ httpsPort: s.servedPort });
-      if (!r.ok) { d.log.warn('pocket: serve off failed', r.error); return; }
-    }
-    save({ servedPort: 0 });
-    await refreshTailscale({ fresh: true }).catch(() => {});
-  }
 
   async function setPocket(patch = {}) {
     if (patch.enabled === false) {
       save({ enabled: false });
       code = null;
-      await stopServing();
+      await tail.stopServing();
       return pocketView();
     }
     if (patch.allow && typeof patch.allow === 'object') {
@@ -665,11 +325,11 @@ function wirePocket(d) {
       return pocketView();
     }
     if (patch.quiet && typeof patch.quiet === 'object') {
-      const r = setQuiet(patch.quiet);
+      const r = actions.setQuiet(patch.quiet);
       return r.ok ? pocketView() : { ...(await pocketView()), error: r.error };
     }
     if (patch.device && typeof patch.device === 'object') {
-      const r = setDeviceRights(patch.device);
+      const r = actions.setDeviceRights(patch.device);
       return r.ok ? pocketView() : { ...(await pocketView()), error: r.error };
     }
     if (patch.enabled === true) return enable();
@@ -680,7 +340,8 @@ function wirePocket(d) {
     await refreshTailscale();
     const missing = setupProblem();
     if (missing) return { ...(await pocketView()), error: missing.text };
-    if (serve.funnel) return { ...(await pocketView()), error: 'Tailscale Funnel is on for this address. Turn it off first.' };
+    if (tail.serve().funnel) return { ...(await pocketView()), error: 'Tailscale Funnel is on for this address. Turn it off first.' };
+    const ts = tail.ts();
     const who = ts.login;
     d.wake();
     const response = await confirm.ask(d.panel, {
@@ -697,12 +358,12 @@ function wirePocket(d) {
     });
     if (response !== 0) return { ...(await pocketView()), cancelled: true };
     await refreshTailscale();
-    if (setupProblem() || ts.login !== who) return { ...(await pocketView()), error: 'Tailscale changed while that was open. Try again.' };
+    if (setupProblem() || tail.ts().login !== who) return { ...(await pocketView()), error: 'Tailscale changed while that was open. Try again.' };
     // A different account than last time: phones paired by the old one go.
     if (settings().login && settings().login.toLowerCase() !== who.toLowerCase()) saveDevices([]);
-    save({ enabled: true, login: who, dnsName: ts.dnsName });
+    save({ enabled: true, login: who, dnsName: tail.ts().dnsName });
     vapidKeys();
-    await start();
+    await tail.start();
     d.log.info('pocket: on');
     return pocketView();
   }
@@ -714,7 +375,7 @@ function wirePocket(d) {
   }
 
   function forgetDevice(id) {
-    const r = forget(typeof id === 'string' ? id : '', 'This phone was forgotten from the PC.');
+    const r = actions.forget(typeof id === 'string' ? id : '', 'This phone was forgotten from the PC.');
     return r.ok ? pocketViewNow() : { ...pocketViewNow(), error: r.error };
   }
 
@@ -730,7 +391,8 @@ function wirePocket(d) {
     const s = settings();
     const now = Date.now();
     const open = code && now <= code.expiresAt ? code : null;
-    const address = url();
+    const address = tail.url();
+    const ts = tail.ts();
     return {
       enabled: s.enabled,
       server: d.pocket ? d.pocket.view() : { status: 'off', port: DEFAULT_PORT, connected: 0, streams: 0 },
@@ -739,8 +401,8 @@ function wirePocket(d) {
       url: address,
       qr: address && s.enabled ? qrRows(address) : null,
       setup: setupProblem(),
-      problem,
-      funnel: !!serve.funnel,
+      problem: tail.problem(),
+      funnel: !!tail.serve().funnel,
       code: open ? { text: pairing.showCode(open.code), expiresAt: open.expiresAt, triesLeft: pairing.CODE_TRIES - open.tries } : null,
       devices: pairing.devicesView(devices(), now),
       notify: s.notify,
@@ -762,15 +424,11 @@ function wirePocket(d) {
       srcDir: path.join(__dirname, '..', '..'),
       assetsDir: path.join(d.ROOT, 'assets'),
       port: portFromEnv(process.env.SHELLBY_POCKET_PORT),
-      getPlace: place,
+      getPlace: tail.place,
       ownerLogin: () => settings().login,
       findDevice,
-      onPair, onOpen, onAction, onDiff, onPicture: require('../pocket/pictures').createPocketPictures(d).onPicture, onPage: pocketPages.serve,
-      onUpload: (device, bytes) => {
-        if (!settings().enabled) return no('Shellby on your phone is off.');
-        const why = rights.refuseUpload(devices().find(dv => dv.id === device.id));
-        return why ? no(why) : extra.savePhoto(bytes);
-      },
+      onPair, onOpen, onAction: actions.onAction, onDiff: actions.onDiff, onPicture: require('../pocket/pictures').createPocketPictures(d).onPicture, onPage: actions.onPage,
+      onUpload: actions.onUpload,
     });
     d.pocket.on('seen', onSeen);
     d.pocket.on('status', () => {
@@ -783,10 +441,10 @@ function wirePocket(d) {
     d.manager.on('item', onItem);
     if (settings().enabled) {
       // Back on after a restart: Tailscale first, so the address and the login are known.
-      refreshTailscale().then(() => start()).catch(err => d.log.warn('pocket: could not start', err.message));
+      refreshTailscale().then(() => tail.start()).catch(err => d.log.warn('pocket: could not start', err.message));
     } else if (settings().servedPort) {
       // Turned off while Tailscale couldn't be asked: take the serve back now.
-      takeServeBack().catch(err => d.log.warn('pocket: could not take serve back', err.message));
+      tail.takeServeBack().catch(err => d.log.warn('pocket: could not take serve back', err.message));
     }
   }
 
