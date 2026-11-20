@@ -16,8 +16,9 @@ const todos = require('../renderer/shared/todos');
 // Past this the context is "well filled": worth a fresh tab for a new topic.
 const HANDOFF_PCT = 60;
 const HANDOFF_TOKENS = 60000; // what the chat itself added past its fixed setup (session contextBase)
-const MIN_WORDS = 3;        // a message with fewer content words is a follow-up, not a topic
+const MIN_WORDS = 4;        // a message with fewer content words is a follow-up, not a topic
 const OVERLAP_MAX = 0.2;    // this share of the message's words seen lately, or fewer, reads as new
+const REPLY_WEIGHT = 0.5;   // a word seen only in Claude's replies, not in your asks, counts this much
 const RECENT_TURNS = 4;     // the asks (and the replies after them) that count as "lately"
 const REPLY_CHARS = 2000;   // of each reply
 const MAX_ASKS = 4;         // the asks the summary quotes, newest last
@@ -33,7 +34,14 @@ const STOP = new Set(('the a an and or but of to in on at for with from by as is
   + 'them us me my your our their his her do does did done can could should would will shall may might must have has had having not no yes please just also '
   + 'then than so if when where what which who whom how why all any some more most much many few each every very really about into over under again further '
   + 'once here there up down out off own same too only now new let make use using used want need like get go see look take put add set change fix run try '
-  + 'thing things way still back one two first last next sure ok okay thanks thank right good great fine').split(/\s+/));
+  + 'thing things way still back one two first last next sure ok okay thanks thank right good great fine '
+  // How people talk, not what about: contractions (apostrophe dropped, see words) and fillers.
+  + 'dont didnt doesnt isnt arent wasnt werent cant couldnt wont wouldnt shouldnt havent hasnt hadnt '
+  + 'thats whats lets youre youll youve youd theyre theyll theyve theyd ill ive weve well yeah yep nope maybe '
+  + 'cannot think feel even anyway anyways though actually literally basically kind lot lots stuff '
+  + 'something anything everything nothing else properly '
+  // Carrying the work out, whatever it was about.
+  + 'git commit commits committed push pushed pushing pull merge main branch ship ahead finished done ready keep going continue').split(/\s+/));
 
 const EXT = 'js|ts|tsx|jsx|mjs|cjs|json|md|css|scss|html|py|rs|go|java|kt|cs|rb|php|yml|yaml|toml|sh|ps1|sql|txt|xml|svg|png|c|h|cpp|hpp|vue|svelte';
 // A path (something with a separator in it) or a file name with a familiar extension (routines.test.js too).
@@ -46,10 +54,13 @@ const oneLine = (s, n) => {
   return t.length > n ? `${t.slice(0, n - 1).trimEnd()}…` : t;
 };
 
+// A contraction's apostrophe ("don’t", "they'll"), dropped so it reads as one stop word, not "don" and "t".
+const CONTRACTION_RE = /(\p{L})['’](t|s|ll|re|ve|d|m)(?![\p{L}\p{N}_])/gu;
+
 /** The content words of a text: lowercase, three letters or more, not a stop word, not a number. */
 function words(text) {
   const out = new Set();
-  for (const w of str(text).toLowerCase().split(/[^\p{L}\p{N}_]+/u)) {
+  for (const w of str(text).toLowerCase().replace(CONTRACTION_RE, '$1$2').split(/[^\p{L}\p{N}_]+/u)) {
     if (w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w)) out.add(w);
   }
   return out;
@@ -122,9 +133,12 @@ function looksNewTopic(text, recent) {
   const names = new Set(touched.map(p => p.split('/').pop()));
   const hit = filesIn(text).filter(f => touched.includes(norm(f)) || touched.some(t => t.endsWith(`/${norm(f)}`)) || names.has(base(f)));
   if (hit.length) return { fresh: false, why: 'files', overlap: null, files: hit };
-  const seen = words([...(recent?.asks || []), ...(recent?.replies || []), ...touched.map(base)].join(' '));
+  // Your own asks (and the files touched) say what the conversation is about; Claude's
+  // replies use a wide vocabulary, so a word only they used counts for less.
+  const asked = words([...(recent?.asks || []), ...touched.map(base)].join(' '));
+  const replied = words((recent?.replies || []).join(' '));
   let shared = 0;
-  for (const w of mine) if (seen.has(w)) shared++;
+  for (const w of mine) shared += asked.has(w) ? 1 : replied.has(w) ? REPLY_WEIGHT : 0;
   const overlap = shared / mine.size;
   return { fresh: overlap <= OVERLAP_MAX, why: overlap <= OVERLAP_MAX ? 'new' : 'same', overlap: Math.round(overlap * 100) / 100, files: [] };
 }
@@ -198,5 +212,5 @@ function firstMessage(summary, ask) {
 
 module.exports = {
   words, filesIn, recentOf, looksNewTopic, shouldOffer, summarize, saved, firstMessage, titleFor, tokensOf,
-  HANDOFF_PCT, HANDOFF_TOKENS, isHeavy, MIN_WORDS, OVERLAP_MAX, RECENT_TURNS, MAX_ASKS, MAX_FILES, MAX_COMMITS, MAX_TODOS, MAX_SUMMARY, CHARS_PER_TOKEN, TITLE_CHARS,
+  HANDOFF_PCT, HANDOFF_TOKENS, isHeavy, MIN_WORDS, OVERLAP_MAX, REPLY_WEIGHT, RECENT_TURNS, MAX_ASKS, MAX_FILES, MAX_COMMITS, MAX_TODOS, MAX_SUMMARY, CHARS_PER_TOKEN, TITLE_CHARS,
 };

@@ -96,6 +96,26 @@ test('looksNewTopic: a short follow-up is never a new topic', () => {
   assert.equal(ft.looksNewTopic('Explain how the weather widget fetches its forecast', null).fresh, true, 'nothing recent: anything is new');
 });
 
+test('words reads a contraction as one stop word, not its pieces', () => {
+  assert.deepEqual([...ft.words('I don’t think they\'ll like the sourdough crust')], ['sourdough', 'crust']);
+});
+
+test('looksNewTopic: carrying the work out is never a new topic', () => {
+  for (const ask of ['commit and push to main', 'once you are finished commit and push to main', 'keep going with the next phase']) {
+    assert.equal(ft.looksNewTopic(ask, ft.recentOf(CONVO)).why, 'short', ask);
+  }
+});
+
+test('looksNewTopic: a word only Claude used counts for less than one you asked about', () => {
+  const recent = { asks: ['Tidy the scheduler code'], replies: ['The pricing page, invoices and the database layout all look fine.'], files: [] };
+  // pricing and invoices appear only in the reply: 2 × REPLY_WEIGHT of its 10 words.
+  const t = ft.looksNewTopic('Design new pricing invoices around seasonal coupons, gift cards, loyalty points', recent);
+  assert.equal(t.why, 'new');
+  assert.equal(t.overlap, Math.round((2 * ft.REPLY_WEIGHT / 10) * 100) / 100);
+  // The same words from your own asks hold it here.
+  assert.equal(ft.looksNewTopic('Design new pricing invoices around seasonal coupons, gift cards, loyalty points', { ...recent, asks: ['pricing invoices gift cards'] }).why, 'same');
+});
+
 test('shouldOffer needs a well-filled context and a new topic', () => {
   const fresh = { fresh: true };
   assert.equal(ft.shouldOffer({ pct: ft.HANDOFF_PCT, topic: fresh }), true);
