@@ -54,6 +54,7 @@ const promptRef = p => `${p.tabId}\n${p.requestId}`;
  *   shown:   the conversation the panel last showed, or null
  * Each key: { mode: 'idle' | 'ready' | 'look', count, line, ref }.
  * line is the word under the glyph; ref is what a press has to match.
+ * @param {{ prompts?: any[], tabs?: any[], shown?: string | null }} [state]
  */
 function keys({ prompts = [], tabs = [], shown = null } = {}) {
   const titleOf = id => tabs.find(t => t.id === id)?.title || 'Untitled';

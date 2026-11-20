@@ -39,7 +39,7 @@ const VK_SPACE = 0x20, VK_0 = 0x30, VK_A = 0x41, VK_F1 = 0x70;
  */
 function holdKeyOf(accel) {
   if (typeof accel !== 'string' || !accel) return null;
-  const key = accel.split('+').pop().trim();
+  const key = (accel.split('+').pop() || '').trim();
   if (/^space$/i.test(key)) return VK_SPACE;
   if (/^[a-z]$/i.test(key)) return VK_A + key.toUpperCase().charCodeAt(0) - 65;
   if (/^\d$/.test(key)) return VK_0 + Number(key);
@@ -210,17 +210,30 @@ while ($null -ne ($line = [Console]::In.ReadLine())) {
  * ('off' | 'starting' | 'ready' | 'unavailable').
  */
 class Dictation extends EventEmitter {
+  /**
+   * @param {{ platform?: string, env?: NodeJS.ProcessEnv, spawnImpl?: typeof spawn, wav?: string | null, finishMs?: number, readyMs?: number }} [opts]
+   */
   constructor({ platform = process.platform, env = process.env, spawnImpl = spawn, wav = null,
     finishMs = FINISH_MS, readyMs = READY_MS } = {}) {
     super();
-    Object.assign(this, { platform, env, spawnImpl, wav, finishMs, readyMs });
+    this.platform = platform;
+    this.env = env;
+    this.spawnImpl = spawnImpl;
+    this.wav = wav;
+    this.finishMs = finishMs;
+    this.readyMs = readyMs;
+    /** @type {import('child_process').ChildProcess | null} */
     this.child = null;
     this.status = 'off';
+    /** @type {string | null} */
     this.culture = null;
+    /** @type {string | null} */
     this.lastError = null;
     this.buffer = '';
-    this.session = null;   // { id, heard: [], stopping, timer }
+    /** @type {{ id: string, heard: string[], stopping: boolean, timer: NodeJS.Timeout | null, error: string | null } | null} */
+    this.session = null;
     this.seq = 0;
+    /** @type {((r: { ok: boolean, culture?: string | null, error?: string }) => void)[]} */
     this.waiters = [];
   }
 
@@ -330,7 +343,7 @@ class Dictation extends EventEmitter {
   cancel() {
     const s = this.session;
     if (!s) return false;
-    clearTimeout(s.timer);
+    clearTimeout(s.timer ?? undefined);
     this.session = null;
     this.write('cancel');
     return true;
@@ -340,7 +353,7 @@ class Dictation extends EventEmitter {
   endSession() {
     const s = this.session;
     if (!s) return;
-    clearTimeout(s.timer);
+    clearTimeout(s.timer ?? undefined);
     this.session = null;
     this.emit('result', { text: joinHeard(s.heard), error: s.error });
   }
@@ -357,18 +370,19 @@ class Dictation extends EventEmitter {
   }
 
   onMessage({ type, id, text }) {
-    const mine = !!this.session && id === this.session.id;
+    const s = this.session;
+    const mine = s !== null && id === s.id;
     if (type === 'ready') {
       this.culture = text;
       this.setStatus('ready');
       this.settle({ ok: true, culture: text });
     } else if (type === 'heard' && mine && text) {
-      this.session.heard.push(text);
+      s.heard.push(text);
     } else if (type === 'done' && mine) {
       this.endSession();
     } else if (type === 'error') {
       if (id == null) return this.fail(text);   // the engine itself couldn't start
-      if (mine) { this.lastError = this.session.error = friendlyError(text); this.emit('error', this.lastError); }
+      if (mine) { this.lastError = s.error = friendlyError(text); this.emit('error', this.lastError); }
     }
   }
 
@@ -403,12 +417,28 @@ class Dictation extends EventEmitter {
  * Presses while one is being watched are ignored: a held key repeats.
  */
 class PushToTalk {
+  /**
+   * @param {{ isDown?: () => boolean, onPress?: () => void, onTap?: () => void, onHold?: () => void, onRelease?: () => void,
+   *   holdMs?: number, pollMs?: number, maxMs?: number, now?: () => number, setTimer?: typeof setTimeout, clearTimer?: typeof clearTimeout }} [opts]
+   */
   constructor({ isDown, onPress = () => {}, onTap = () => {}, onHold = () => {}, onRelease = () => {},
     holdMs = HOLD_MS, pollMs = POLL_MS, maxMs = MAX_HOLD_MS,
     now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout } = {}) {
-    Object.assign(this, { isDown, onPress, onTap, onHold, onRelease, holdMs, pollMs, maxMs, now, setTimer, clearTimer });
+    this.isDown = isDown;
+    this.onPress = onPress;
+    this.onTap = onTap;
+    this.onHold = onHold;
+    this.onRelease = onRelease;
+    this.holdMs = holdMs;
+    this.pollMs = pollMs;
+    this.maxMs = maxMs;
+    this.now = now;
+    this.setTimer = setTimer;
+    this.clearTimer = clearTimer;
+    /** @type {number | null} */
     this.pressedAt = null;
     this.held = false;
+    /** @type {ReturnType<typeof setTimeout> | null} */
     this.timer = null;
   }
 
@@ -425,10 +455,11 @@ class PushToTalk {
 
   tick() {
     this.timer = null;
-    if (!this.active) return;
-    const elapsed = this.now() - this.pressedAt;
+    const pressedAt = this.pressedAt;
+    if (pressedAt == null) return; // not active
+    const elapsed = this.now() - pressedAt;
     let down;
-    try { down = !!this.isDown(); } catch { down = false; }
+    try { down = !!this.isDown?.(); } catch { down = false; }
     if (!down || elapsed >= this.maxMs) return this.release();
     if (!this.held && elapsed >= this.holdMs) { this.held = true; this.onHold(); }
     this.timer = this.setTimer(() => this.tick(), this.pollMs);

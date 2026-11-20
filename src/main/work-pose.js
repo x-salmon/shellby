@@ -72,14 +72,23 @@ function poseNow(moved, { compacting = false, talking = false } = {}) {
   return pose === 'think' && talking ? 'talk' : pose;
 }
 
+/** @typedef {{ tool?: string | null, toolAt?: number | null, kind?: string | null }} Moved */
+
 /**
  * Of several { tool, toolAt, kind? } (tabs, outside sessions), the one whose tool
  * started or finished last, or null when none has run one yet.
+ * @param {Iterable<Moved | null | undefined>} list
+ * @returns {Moved | null}
  */
 function latest(list) {
-  /** @type {{ toolAt: number, tool?: string, kind?: string } | null} */
+  /** @type {Moved | null} */
   let best = null;
-  for (const s of list) if (s && Number.isFinite(s.toolAt) && (!best || s.toolAt > best.toolAt)) best = s;
+  let bestAt = -Infinity;
+  for (const s of list) {
+    if (!s || typeof s.toolAt !== 'number' || !Number.isFinite(s.toolAt) || s.toolAt <= bestAt) continue;
+    best = s;
+    bestAt = s.toolAt;
+  }
   return best;
 }
 

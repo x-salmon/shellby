@@ -3,9 +3,15 @@
 // card shows. Kept out of main.js, which only wires it up.
 const { clipboard } = require('electron');
 const { openSafe } = require('../safe-open');
+const { bool, list, obj, opt, str, text } = require('../ipc-args');
 const confirm = require('../confirm');
 const statusLine = require('../statusline');
-const { list, obj, opt, text } = require('../ipc-args');
+
+// What the panel names here: a feature by name, a friend by login, a pull request by the CI watcher's key.
+const FEATURE = str({ max: 40 });
+const LOGIN = str({ max: 200 });
+const PR_KEY = str({ max: 300 });
+const MAX_SVG = 2 * 1024 * 1024; // a calling card or PR badge drawn by the panel
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
@@ -36,12 +42,12 @@ function registerGithubIpc(ipcMain, d) {
     if (!(await d.askGitHubFeature(feature))) return { ok: false, canceled: true };
     agreed.add(feature);
     return { ok: true };
-  }, [text(100)]);
+  }, [FEATURE, opt(bool)]);
   ipcMain.handle('github:sign-in', async (_e, features) => {
     const list = Array.isArray(features) ? features.filter(f => FEATURE_NAMES.has(f) && (!GUARDED.has(f) || agreed.has(f))) : [];
     const r = await d.github.signIn(list);
     return { ...r, view: d.github.view() };
-  }, [opt(list(text(100), 50))]);
+  }, [list(FEATURE, 50)]);
   const openDeviceCode = () => {
     const f = d.github.view().flow;
     if (!f) return;
@@ -49,7 +55,7 @@ function registerGithubIpc(ipcMain, d) {
     // Checked against GitHub's own device page in the service; a dev mock (http) isn't opened.
     if (f.url.startsWith('https:')) openSafe(f.url);
   };
-  ipcMain.on('github:open-code', () => openDeviceCode());
+  ipcMain.on('github:open-code', openDeviceCode);
   ipcMain.on('github:cancel', () => d.github.cancel());
   ipcMain.handle('github:sign-out', async () => {
     // The calling card is public: take it down while there's still a sign-in to do it with,
@@ -63,37 +69,37 @@ function registerGithubIpc(ipcMain, d) {
     if (!cardDown.ok) d.send(d.panel, 'github:error', cardDown.error);
     return d.github.view();
   });
-  ipcMain.handle('github:set-feature', (_e, feature, on) => (FEATURE_NAMES.has(feature) ? d.confirmGitHubFeature(feature, !!on) : { ok: false, view: d.github.view() }), [text(100)]);
+  ipcMain.handle('github:set-feature', (_e, feature, on) => (FEATURE_NAMES.has(feature) ? d.confirmGitHubFeature(feature, !!on) : { ok: false, view: d.github.view() }), [FEATURE, opt(bool)]);
   ipcMain.handle('github:sync', async () => ({ ...(await d.github.sync()), view: d.github.view() }));
   ipcMain.handle('profile-card:get', () => d.profileCard.view());
   ipcMain.handle('profile-card:setup', () => d.profileCard.setup());
-  ipcMain.handle('profile-card:publish', async (_e, svg, force) => ({ ...(await d.profileCard.publish(svg, { force: force === true })), view: d.profileCard.view() }), [opt(text(300_000))]);
+  ipcMain.handle('profile-card:publish', async (_e, svg, force) => ({ ...(await d.profileCard.publish(svg, { force: force === true })), view: d.profileCard.view() }), [text(MAX_SVG), opt(bool)]);
   ipcMain.handle('pr-badge:get', () => d.prBadge.view());
   // Only kept for the next pull request: nothing is uploaded until there is one.
-  ipcMain.handle('pr-badge:picture', (_e, svg) => ({ ok: d.prBadge.setSvg(svg), view: d.prBadge.view() }), [opt(text(300_000))]);
+  ipcMain.handle('pr-badge:picture', (_e, svg) => ({ ok: d.prBadge.setSvg(svg), view: d.prBadge.view() }), [text(MAX_SVG)]);
   // ---- Visiting crabs (src/main/friends.js)
   const noFriends = { ok: false, error: 'Visiting crabs is unavailable.' };
   ipcMain.handle('friends:get', () => (d.friends ? d.friendsView() : null));
   ipcMain.handle('friends:refresh', async () => (d.friends ? { ...(await d.friends.refresh()), view: d.friendsView() } : noFriends));
-  ipcMain.handle('friends:add', async (_e, login) => (d.friends && d.isStr(login) ? { ...(await d.friends.add(login.slice(0, 100))), view: d.friendsView() } : noFriends), [text(200)]);
-  ipcMain.handle('friends:remove', (_e, login) => (d.friends && d.isStr(login) ? { ...d.friends.remove(login), view: d.friendsView() } : noFriends), [text(200)]);
-  ipcMain.handle('friends:invite', (_e, login) => (d.friends && d.isStr(login) ? d.friends.invite(login) : noFriends), [text(200)]);
-  ipcMain.handle('friends:wave', (_e, login, wave) => (d.friends && d.isStr(login) && d.isStr(wave) ? d.friends.wave(login, wave) : noFriends), [text(200), text(200)]);
+  ipcMain.handle('friends:add', async (_e, login) => (d.friends && d.isStr(login) ? { ...(await d.friends.add(login.slice(0, 100))), view: d.friendsView() } : noFriends), [LOGIN]);
+  ipcMain.handle('friends:remove', (_e, login) => (d.friends && d.isStr(login) ? { ...d.friends.remove(login), view: d.friendsView() } : noFriends), [LOGIN]);
+  ipcMain.handle('friends:invite', (_e, login) => (d.friends && d.isStr(login) ? d.friends.invite(login) : noFriends), [LOGIN]);
+  ipcMain.handle('friends:wave', (_e, login, wave) => (d.friends && d.isStr(login) && d.isStr(wave) ? d.friends.wave(login, wave) : noFriends), [LOGIN, str({ max: 40 })]);
   // ---- swaps and crab eggs (swaps.js, eggs.js, wiring/social.js). Only ids and logins come from the panel.
   const ID_RE = /^[a-z0-9](?:[a-z0-9-]{0,39})$/;
   const item = x => (x && typeof x === 'object' && typeof x.id === 'string' && ID_RE.test(x.id) ? { id: x.id, shiny: x.shiny === true } : null);
   const sid = x => typeof x === 'string' && /^[a-z0-9]{8}$/.test(x);
   ipcMain.handle('social:get', () => d.socialView());
-  ipcMain.handle('swaps:options', (_e, login) => (d.isStr(login) ? d.swapOptions(login.slice(0, 40)) : noFriends), [text(200)]);
+  ipcMain.handle('swaps:options', (_e, login) => (d.isStr(login) ? d.swapOptions(login.slice(0, 40)) : noFriends), [LOGIN]);
   ipcMain.handle('swaps:offer', (_e, o) => {
     const give = item(o?.give), get = item(o?.get);
     return d.isStr(o?.to) && give && get ? d.swapOffer({ to: o.to.slice(0, 40), give, get }) : { ok: false, error: 'That swap doesn\'t look right.' };
-  }, [opt(obj())]);
-  ipcMain.handle('swaps:cancel', (_e, id) => (sid(id) ? d.swapCancel(id) : { ok: false }), [text(100)]);
-  ipcMain.handle('swaps:answer', (_e, id, yes) => (sid(id) ? d.swapAnswer(id, yes === true) : { ok: false }), [text(100)]);
+  }, [obj({ to: LOGIN, give: obj({ id: str({ max: 40 }) }), get: obj({ id: str({ max: 40 }) }) })]);
+  ipcMain.handle('swaps:cancel', (_e, id) => (sid(id) ? d.swapCancel(id) : { ok: false }), [str({ max: 20 })]);
+  ipcMain.handle('swaps:answer', (_e, id, yes) => (sid(id) ? d.swapAnswer(id, yes === true) : { ok: false }), [str({ max: 20 }), opt(bool)]);
   ipcMain.handle('eggs:lay', () => d.layEgg());
-  ipcMain.handle('eggs:hatch', (_e, code) => (d.isStr(code) ? d.hatchEgg(code.slice(0, 300)) : { ok: false, error: 'Paste the egg code.' }), [text(1000)]);
-  ipcMain.handle('eggs:follow', (_e, id) => d.setBabyFollower(typeof id === 'string' && /^[a-z0-9]{16}$/.test(id) ? id : null), [opt(text(100))]);
+  ipcMain.handle('eggs:hatch', (_e, code) => (d.isStr(code) ? d.hatchEgg(code.slice(0, 300)) : { ok: false, error: 'Paste the egg code.' }), [text(10_000)]);
+  ipcMain.handle('eggs:follow', (_e, id) => d.setBabyFollower(typeof id === 'string' && /^[a-z0-9]{16}$/.test(id) ? id : null), [opt(str({ max: 40 }))]);
   ipcMain.handle('ci:get', () => d.ciView());
   ipcMain.handle('ci:poll', async () => { await d.ci?.poll(); return d.ciView(); });
   const knownPr = key => d.isStr(key) && d.ci && [...d.ci.view().prs, ...d.ci.view().reviews].find(p => p.key === key);
@@ -103,8 +109,8 @@ function registerGithubIpc(ipcMain, d) {
     : { pr: 'pull request', checks: 'checks', cli: 'gh CLI (or the GitHub tools you have)' });
   const refOf = pr => pr.ref || `${pr.repo}#${pr.number}`;
   // Opening one of yours counts as reading what's new on it (the Projects inbox).
-  ipcMain.on('ci:open', (_e, key) => { const pr = knownPr(key); if (pr) { d.ci.markSeen(key); d.openPrUrl(pr); } }, [text(300)]);
-  ipcMain.handle('ci:seen', (_e, key) => { if (knownPr(key)) d.ci.markSeen(key); return d.ciView(); }, [text(300)]);
+  ipcMain.on('ci:open', (_e, key) => { const pr = knownPr(key); if (pr) { d.ci.markSeen(key); d.openPrUrl(pr); } }, [PR_KEY]);
+  ipcMain.handle('ci:seen', (_e, key) => { if (knownPr(key)) d.ci.markSeen(key); return d.ciView(); }, [PR_KEY]);
   // "Read it with Claude" on a review request: a summary and what to look at, posted nowhere.
   ipcMain.handle('ci:review', (_e, key) => {
     const pr = d.isStr(key) && d.ci?.view().reviews.find(p => p.key === key);
@@ -118,7 +124,7 @@ function registerGithubIpc(ipcMain, d) {
       + "Don't edit files, comment, approve or push anything: just report back.", `Review ${refOf(pr)}`, { mode: 'ask' });
     if (r.ok) d.showPanel({ focusInput: false, tabId: r.tabId });
     return r;
-  }, [text(300)]);
+  }, [PR_KEY]);
   // "Ask Shellby why": a task that reads the failing logs and reports back, changing nothing.
   ipcMain.handle('ci:ask', (_e, key) => {
     const pr = knownPr(key);
@@ -133,8 +139,8 @@ function registerGithubIpc(ipcMain, d) {
       + "Don't edit files, commit or push anything: just report back.", `Why is ${refOf(pr)} red?`, { mode: 'ask' });
     if (r.ok) d.showPanel({ focusInput: false, tabId: r.tabId });
     return r;
-  }, [text(300)]);
-  ipcMain.handle('github:publish', (_e, packId) => (d.isStr(packId) && /^[a-z0-9][a-z0-9-]{1,39}$/.test(packId) ? d.confirmAndPublishPack(packId) : { ok: false }), [text(100)]);
+  }, [PR_KEY]);
+  ipcMain.handle('github:publish', (_e, packId) => (d.isStr(packId) && /^[a-z0-9][a-z0-9-]{1,39}$/.test(packId) ? d.confirmAndPublishPack(packId) : { ok: false }), [str({ max: 100 })]);
   ipcMain.on('github:manage', () => openSafe('https://github.com/settings/applications'));
   ipcMain.handle('plugin:install', () => d.confirmAndInstallShellbyPlugin());
   ipcMain.handle('plugin:update', () => d.confirmAndUpdateShellbyPlugin());
@@ -148,7 +154,7 @@ function registerGithubIpc(ipcMain, d) {
       title: 'Add Shellby to Claude Code?',
       message: "Show Shellby's mood, level and XP in Claude Code's status line.",
       detail: now.state === 'other'
-        ? `This replaces your current status line:\n\n${(now.command ?? '').slice(0, 200)}\n\nShellby keeps it and puts it back if you remove Shellby's.`
+        ? `This replaces your current status line:\n\n${now.command.slice(0, 200)}\n\nShellby keeps it and puts it back if you remove Shellby's.`
         : 'This adds a statusLine entry to your Claude Code settings (~/.claude/settings.json). A backup is kept, and Remove takes it out again.',
       note: 'It works in the terminal and in VS Code. When Shellby is closed, the line is simply empty.',
       buttons: [{ label: now.state === 'other' ? 'Replace it' : 'Add it', style: 'primary' }, { label: 'Cancel' }], defaultId: 0, cancelId: 1,

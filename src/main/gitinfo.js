@@ -67,6 +67,7 @@ async function trackedFiles(root) {
  * validates it), or null. Small files only, never followed out of the repo.
  */
 async function stickerFile(root) {
+  /** @type {import('fs/promises').FileHandle | null} */
   let handle = null;
   try {
     const file = path.join(root, '.shellby', 'sticker.json');

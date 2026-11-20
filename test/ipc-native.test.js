@@ -126,7 +126,7 @@ test('the ultra review is handed to the terminal launcher for that tab', async (
   const { ipc, rec } = setup();
   assert.equal((await ipc.invoke('review:ultra', 't1')).ok, true);
   assert.deepEqual(rec.of('ultraReview'), [['t1']]);
-  assert.equal((await ipc.invoke('review:ultra', null)).ok, false);
+  await assert.rejects(ipc.invoke('review:ultra', null), /wasn't one Shellby accepts/);
 });
 
 test("an ultracode run's Stop and status go to that tab's session, by an id that looks like one", async () => {

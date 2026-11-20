@@ -24,6 +24,8 @@ const count = v => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
  * What one conversation is doing, from its summary (sessions.js `summary`)
  * and its change (diff: { files, added, removed } | null). Asking beats
  * working beats red beats ready.
+ * @param {any} tab
+ * @param {{ files?: string[], added?: number, removed?: number } | null} [diff]
  */
 /** @param {{ files?: unknown[] } | null} [diff] */
 function laneState(tab, diff = null) {

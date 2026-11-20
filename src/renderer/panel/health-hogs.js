@@ -8,6 +8,7 @@
   const { setText } = H;
 
   const HOGS_REFRESH_MS = 30 * 1000; // the process list is a ~3 s read; don't add to the heat
+  /** @type {any} */
   let hogs = null;                   // { ok, metric, procs, groups } from main
   let hogsAt = 0;
   let hogsLoading = false;
@@ -15,7 +16,9 @@
   let hogsOpen = false;              // opened by hand (it also opens itself while he sweats)
   let hogMetric = null;              // the user's pick; null follows the mood
   let hogMode = 'app';               // 'app' adds processes up by name, 'proc' lists each
+  /** @type {{ hogs: any, mode: string } | null} */
   let drawnHogs = null;              // what the list shows, so 5 s samples don't rebuild it
+  /** @type {any} */
   let startup = null;                // { ok, items } from main
 
   // ------------------------------------------------------------ what's using it
@@ -49,7 +52,7 @@
       list.replaceChildren(h('li', { class: 'hl-empty', text: "Looking at what's running…" }));
       return;
     }
-    if (drawnHogs?.hogs === hogs && drawnHogs.mode === hogMode) return;
+    if (drawnHogs && drawnHogs.hogs === hogs && drawnHogs.mode === hogMode) return;
     drawnHogs = { hogs, mode: hogMode };
     if (!hogs.ok) return list.replaceChildren(h('li', { class: 'hl-empty', text: hogs.error }));
     const rows = hogMode === 'app' ? hogs.groups || [] : hogs.procs;
@@ -57,7 +60,7 @@
     const ramTotal = view?.sample?.ram?.total || 0;
     // The numbers change with every read, so the rows are rebuilt; a focused
     // button is found again on its row (same app, or same process) afterwards.
-    const focused = list.contains(document.activeElement) ? document.activeElement.closest('.hl-hog')?.dataset.key : null;
+    const focused = list.contains(document.activeElement) ? /** @type {HTMLElement | null} */ (document.activeElement?.closest('.hl-hog'))?.dataset.key : null;
     list.replaceChildren(...rows.map(p => hogRow(p, metric, ramTotal)));
     if (focused) [...list.querySelectorAll('.hl-hog')].find(li => li.dataset.key === focused)?.querySelector('button')?.focus();
   }

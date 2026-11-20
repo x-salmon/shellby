@@ -277,6 +277,12 @@
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.3c0-.5.4-.8.8-.8h3.6c.5 0 .8.4.8.8v3.6c0 .5-.4.8-.8.8H3.3c-.5 0-.8-.4-.8-.8zM8.3 3.3c0-.5.4-.8.8-.8h3.6c.5 0 .8.4.8.8v3.6c0 .5-.4.8-.8.8H9.1c-.5 0-.8-.4-.8-.8zM2.5 9.1c0-.5.4-.8.8-.8h3.6c.5 0 .8.4.8.8v3.6c0 .5-.4.8-.8.8H3.3c-.5 0-.8-.4-.8-.8zM8.3 9.1c0-.5.4-.8.8-.8h3.6c.5 0 .8.4.8.8v3.6c0 .5-.4.8-.8.8H9.1c-.5 0-.8-.4-.8-.8z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
       <span>Pages</span>
     </button>
+    <!-- Your PCs, once another PC has joined the hub (pcs.js syncDock); until then it's a tab beside Health -->
+    <button type="button" class="dock-btn" data-view-btn="pcs" id="dockPcs" hidden>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 3.2h8.4v5.6H1.8zM4.6 11.2h2.8M6 8.8v2.4M11.6 5.2h2.6v6.4H8.4v-1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <span>Your PCs</span>
+      <i class="dot-badge" id="pcsBadge" hidden></i>
+    </button>
     <!-- Someone new: the rooms still to open (rooms.js) -->
     <button type="button" class="dock-btn dock-more" id="dockMore" hidden>
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -506,6 +512,8 @@
 <script src="textmenu.js"></script>
 <script src="feed-logic.js"></script>
 <script src="feed.js"></script>
+<script src="feed-blocks.js"></script>
+<script src="feed-result.js"></script>
 <script src="feed-foot.js"></script>
 <script src="feed-notes.js"></script>
 <script src="feed-conflicts.js"></script>
@@ -525,7 +533,9 @@
 <script src="queue-turns.js"></script>
 <script src="tabs.js"></script>
 <script src="tab-strip.js"></script>
+<script src="pane-head.js"></script>
 <script src="tab-panes.js"></script>
+<script src="pane-moves.js"></script>
 <script src="pane-layouts.js"></script>
 <script src="pane-room.js"></script>
 <script src="viewer.js"></script>
@@ -557,6 +567,8 @@
 <script src="review-queue.js"></script>
 <script src="review-view.js"></script>
 <script src="composer.js"></script>
+<script src="composer-chips.js"></script>
+<script src="composer-rewind.js"></script>
 <script src="builtin-commands.js"></script>
 <script src="tries.js"></script>
 <script src="debug-mode.js"></script>
@@ -575,6 +587,8 @@
 <script src="toolbox-batch.js"></script>
 <script src="toolbox-mcp.js"></script>
 <script src="toolbox-tidy.js"></script>
+<script src="toolbox-usage.js"></script>
+<script src="toolbox-detail.js"></script>
 <script src="toolbox.js"></script>
 <script src="shop.js"></script>
 <script src="mcp-picker.js"></script>
@@ -610,6 +624,7 @@
 <script src="settings-local-fit.js"></script>
 <script src="settings-everywhere.js"></script>
 <script src="settings-channels.js"></script>
+<script src="settings-connectors.js"></script>
 <script src="settings-pocket.js"></script>
 <script src="settings-desk.js"></script>
 <script src="remote-logic.js"></script>
@@ -627,6 +642,8 @@
 <script src="us-road.js"></script>
 <script src="together.js"></script>
 <script src="bugdex.js"></script>
+<script src="bugdex-battle-fx.js"></script>
+<script src="bugdex-battle-idle.js"></script>
 <script src="bugdex-battle.js"></script>
 <script src="health-logic.js"></script>
 <script src="health.js"></script>
@@ -646,6 +663,7 @@
 <script src="tank-life.js"></script>
 <script src="tank-render.js"></script>
 <script src="tank-room.js"></script>
+<script src="tank-edit.js"></script>
 <script src="tank.js"></script>
 <script src="tank-layouts.js"></script>
 <script src="tank-tidy.js"></script>

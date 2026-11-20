@@ -91,9 +91,10 @@
     onclick: () => { SB.closeMenus(); SB.openReview?.(); },
   });
   let query = '';
+  /** @type {string[]} */
   let order = [];          // tab ids as listed
   /** @type {string | null} */
-  let picked = null;     // the highlighted one, by id so a redraw keeps it
+  let picked = null;       // the highlighted one, by id so a redraw keeps it
   let drawn = '';          // what the list last showed; a working tab redraws the strip far more often than this changes
 
   function row(t) {
@@ -192,7 +193,7 @@
   // scroll: bring the highlighted row into view (the keyboard moved it, or the list just opened).
   function paintPick({ scroll = false } = {}) {
     for (const el of rowsEl.querySelectorAll('.tl-row')) el.setAttribute('aria-selected', String(el.id === `tl-${picked}`));
-    const el = picked ? $(`tl-${picked}`) : null;
+    const el = picked && $(`tl-${picked}`);
     if (el) field.setAttribute('aria-activedescendant', el.id);
     else field.removeAttribute('aria-activedescendant');
     if (el && scroll) el.scrollIntoView({ block: 'nearest' });

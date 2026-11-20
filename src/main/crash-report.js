@@ -75,6 +75,8 @@ const readMarker = dir => {
  * started: a restart, the power going, a held power button). Fast Startup keeps
  * the boot time across a plain shut down, which is what 'shutdown' covers.
  * Otherwise null.
+ * @param {string} dir
+ * @param {{ version?: string, now?: () => number, bootedAt?: number | null }} [opts]
  */
 function startRun(dir, { version = '', now = Date.now, bootedAt = null } = {}) {
   const last = readMarker(dir);

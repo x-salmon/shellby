@@ -59,6 +59,8 @@ function wireProfile(d) {
     // Your API key, sealed by Windows in its own file (claude/api-key.js).
     d.apiKey = createApiKeyStore(path.join(userData, 'anthropic-key.bin'), safeStorage);
     setApiKeyBilling(!!config.get('apiKeyBilling'), d.apiKey.read);
+    // One-key connectors: the gateway's URL and key sealed the same way, the switches in settings (connectors/).
+    d.connectors = require('../connectors').createConnectors({ file: path.join(userData, 'connectors.bin'), crypto: safeStorage, switches: () => config.get('connectors') });
     const history = d.history = new History(path.join(userData, 'sessions'), { onError: (what, err) => log.error(`history: ${what}`, err) });
     // Transcripts orphaned by an older build (which trimmed the index without
     // deleting them) or by an interrupted delete. Cheap, and it only ever removes

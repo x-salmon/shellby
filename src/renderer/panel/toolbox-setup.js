@@ -8,11 +8,12 @@
   const { h, api, state, $ } = SB;
   const STALE_MS = 5000;
   const KINDS = new Set(['hook', 'rule', 'memory']);
+  /** @type {Promise<any> | null} */
   let loading = null;
   let lastTry = 0;
   // One open editor per tab, so opening one never throws away the other's unsaved text.
-  /** @type {{ entry: { path: string }, original: string, text: string, mtimeMs: number, error: string, conflict: boolean, leaving: boolean } | null} */
-  let memEd = null;  // { entry, original, text, mtimeMs, error, conflict, leaving }
+  /** @type {{ entry: any, original: string, text: string, mtimeMs: number, error: string, conflict: boolean, leaving: boolean } | null} */
+  let memEd = null;
 
   const SOURCE = { user: 'yours', project: 'this project', local: 'just you', 'user-rule': 'your rule', 'project-rule': 'project rule', parent: 'folder above' };
   const MEMORY_TITLE = {

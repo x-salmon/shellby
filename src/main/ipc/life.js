@@ -3,6 +3,7 @@
 // Kept out of main.js, which only wires it up.
 const { app, dialog, shell } = require('electron');
 const { openSafe } = require('../safe-open');
+const { ID, PATH, list, obj, oneOf, opt, str } = require('../ipc-args');
 const os = require('os');
 const { sendToBottom } = require('../desktop/desktop-layer');
 const confirm = require('../confirm');
@@ -10,7 +11,6 @@ const native = require('../desktop/native-windows');
 const { registerProjectsIpc } = require('../projects/ipc');
 const { run: runCli } = require('../claude/cli');
 const shells = require('../progression/shells');
-const { ID, PATH, list, obj, opt, str } = require('../ipc-args');
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
@@ -19,11 +19,11 @@ const { ID, PATH, list, obj, opt, str } = require('../ipc-args');
 function registerLifeIpc(ipcMain, d) {
   // ---- his life between tasks: the Us and Finds pages (life.js), and games (playtime.js)
   ipcMain.handle('life:get', () => d.life?.view() || null);
-  ipcMain.handle('life:birthday', (_e, bd) => d.life?.setBirthday(bd && typeof bd === 'object' ? { m: Number(bd.m), d: Number(bd.d) } : null) || null, [opt(obj())]);
+  ipcMain.handle('life:birthday', (_e, bd) => d.life?.setBirthday(bd && typeof bd === 'object' ? { m: Number(bd.m), d: Number(bd.d) } : null) || null, [opt(obj())]); // { m, d }, or null to forget it
   ipcMain.handle('life:favourite', (_e, id) => {
     if (typeof id === 'string') d.featureAct?.('find-kept'); // a find made your favourite (taking it back isn't): What you use counts it (feature-use.js)
     return d.life?.setFavourite(typeof id === 'string' ? id.slice(0, 40) : null) || null;
-  }, [opt(ID)]);
+  }, [opt(str({ max: 40 }))]);
   ipcMain.on('life:finds-seen', () => d.life?.findsSeen());
   ipcMain.handle('life:play', (_e, kind) => {
     if (!d.life || !d.playtime) return { ok: false, error: 'Not ready yet.' };
@@ -32,7 +32,7 @@ function registerLifeIpc(ipcMain, d) {
     if (kind === 'dig') return d.life.digNow() ? { ok: true } : { ok: false, error: 'He dug not long ago. Give the sand a rest.' };
     if (kind === 'stop') { d.playtime.stop('aww, ok'); return { ok: true }; }
     return { ok: false, error: 'Unknown game.' };
-  }, [str({ max: 20 })]);
+  }, [oneOf('hide', 'fetch', 'dig', 'stop')]);
   // The pebble for fetch: its own window and bridge (toy-preload.js), dragged like he is.
   ipcMain.on('toy:drag-start', () => d.playtime?.toyDragStart());
   ipcMain.on('toy:drag-move', () => d.playtime?.toyDragMove()); // follows the real cursor, like he does
@@ -92,7 +92,7 @@ function registerLifeIpc(ipcMain, d) {
     d.stat('files-dropped');
     d.showPanel();
     d.send(d.panel, 'panel:attach', files);
-  }, [list(PATH)]);
+  }, [list(PATH, 100)]);
 
   // ---- XP and levels
   ipcMain.handle('xp:get', () => d.xpView());

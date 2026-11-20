@@ -849,3 +849,43 @@ test('tasks for later count in the phone’s hour, and an Autonomous one or one 
     assert.match((await w.d.pocket.onAction(w.device, 'held-edit', { id: 'h1', prompt: 'other words' })).error, /queued at your PC/);
   } finally { stop(w); }
 });
+
+test("answering your other PCs from the phone waits for Settings, then goes through the hub", async () => {
+  const w = await paired({ tabs: [tabOf('t1')] });
+  try {
+    const answered = [];
+    w.d.hub = {
+      hubView: (_focus, o) => ({ rows: [
+        { id: 'this', kind: 'this', name: 'Desk', prompts: [] },
+        { id: 'p-aaaaaaaaaaaa', kind: 'pc', name: 'Laptop', live: true, state: 'online', prompts: [{ tabId: 't9', requestId: 'r9', title: 'Fix CI', planText: o?.plans ? 'the whole plan' : '' }], tabs: [] },
+      ] }),
+      answerOn: async (id, req) => { answered.push([id, req]); return { ok: true }; },
+    };
+    w.d.config.set({ hubPeers: [{ id: 'p-aaaaaaaaaaaa', name: 'Laptop', origin: 'https://laptop.tail3f2c.ts.net' }] });
+    const act = body => w.d.pocket.onAction(w.device, 'pcs-answer', body);
+    assert.deepEqual(w.d.pocketCurrentView().others, [], 'off until the desk turns it on');
+    assert.match((await act({ pcId: 'p-aaaaaaaaaaaa', tabId: 't9', requestId: 'r9', decision: 'allow' })).error, /off/);
+    assert.equal(answered.length, 0);
+
+    await w.d.setPocket({ allow: { otherPcs: true } });
+    const others = w.d.pocketCurrentView().others;
+    assert.equal(others.length, 1, 'this PC itself is not one of your other PCs');
+    assert.equal(others[0].url, 'https://laptop.tail3f2c.ts.net');
+    assert.equal(others[0].prompts[0].planText, 'the whole plan', 'a plan in full: the phone shows it before Approve');
+    assert.equal(others[0].prompts[0].pcId, 'p-aaaaaaaaaaaa');
+
+    assert.match((await act({ pcId: 'p-aaaaaaaaaaaa', tabId: 't9', requestId: 'r9', decision: 'yes please' })).error, /wasn't one/);
+    assert.deepEqual(await act({ pcId: 'p-aaaaaaaaaaaa', tabId: 't9', requestId: 'r9', decision: 'deny', notes: 'not yet', extra: 'dropped' }), { ok: true });
+    assert.deepEqual(answered, [['p-aaaaaaaaaaaa', { tabId: 't9', requestId: 'r9', decision: 'deny', answers: undefined, read: false, notes: 'not yet' }]]);
+  } finally { stop(w); }
+});
+
+test('a read-only phone sees your other PCs but cannot answer them', async () => {
+  const w = await paired({ tabs: [tabOf('t1')] });
+  try {
+    w.d.hub = { hubView: () => ({ rows: [] }), answerOn: async () => ({ ok: true }) };
+    await w.d.setPocket({ allow: { otherPcs: true } });
+    w.d.config.set({ pocketDevices: w.d.config.get('pocketDevices').map(dv => ({ ...dv, rights: 'readonly' })) });
+    assert.match((await w.d.pocket.onAction(w.device, 'pcs-answer', { pcId: 'p-aaaaaaaaaaaa', tabId: 't', requestId: 'r', decision: 'allow' })).error, /only look/);
+  } finally { stop(w); }
+});

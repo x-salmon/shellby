@@ -108,6 +108,7 @@ function parseNowPlaying(line) {
 function appName(raw) {
   const id = clip(raw, 80);
   if (!id) return '';
+  /** @type {[RegExp, string][]} */
   const known = [
     [/spotify/i, 'Spotify'],
     [/chrome/i, 'Chrome'],
@@ -124,7 +125,7 @@ function appName(raw) {
   ];
   for (const [re, name] of known) if (re.test(id)) return name;
   // "Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic" -> "ZuneMusic"
-  const tail = id.split('!').pop().split('.').pop().replace(/\.exe$/i, '');
+  const tail = ((id.split('!').pop() || '').split('.').pop() || '').replace(/\.exe$/i, '');
   return clip(tail, 24) || 'something';
 }
 
@@ -154,12 +155,19 @@ function trackRemark(track, { pick = Math.random } = {}) {
  *   'status' ('off' | 'watching' | 'unavailable')
  */
 class MediaWatcher extends EventEmitter {
+  /** @param {{ platform?: string, env?: NodeJS.ProcessEnv, pollMs?: number, spawnImpl?: typeof spawn }} [opts] */
   constructor({ platform = process.platform, env = process.env, pollMs = POLL_MS, spawnImpl = spawn } = {}) {
     super();
-    Object.assign(this, { platform, env, pollMs, spawnImpl });
+    this.platform = platform;
+    this.env = env;
+    this.pollMs = pollMs;
+    this.spawnImpl = spawnImpl;
+    /** @type {import('child_process').ChildProcess | null} */
     this.child = null;
+    /** @type {ReturnType<typeof parseNowPlaying>} */
     this.track = null;
     this.status = 'off';
+    /** @type {NodeJS.Timeout | null} */
     this.restart = null;
     this.buffer = '';
   }
@@ -202,7 +210,7 @@ class MediaWatcher extends EventEmitter {
   }
 
   stop() {
-    clearTimeout(this.restart);
+    clearTimeout(this.restart ?? undefined);
     this.restart = null;
     this.status = 'off';
     const child = this.child;

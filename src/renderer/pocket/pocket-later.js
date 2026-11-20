@@ -44,6 +44,9 @@
     /**
      * A task or a reply: sent now, or kept for when the PC answers. -> the PC's
      * answer, or { ok: true, kept: true } when it waits on the phone.
+     * @param {string} name
+     * @param {Record<string, any>} body
+     * @param {{ label?: string, timeoutMs?: number }} [opts]
      */
     async function send(name, body, /** @type {{ label?: string, timeoutMs?: number }} */ { label, timeoutMs } = {}) {
       const withKey = { ...body, key: body.key || L.newKey() };

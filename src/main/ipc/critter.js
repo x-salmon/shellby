@@ -6,7 +6,7 @@
 const { app, screen } = require('electron');
 const featureUse = require('../feature-use');
 const focus = require('../focus');
-const { obj, opt, str, text } = require('../ipc-args');
+const { ID, bool, list, num, obj, opt, str, text } = require('../ipc-args');
 const native = require('../desktop/native-windows');
 const quests = require('../quests');
 const rooms = require('../rooms');
@@ -56,11 +56,11 @@ function registerCritterIpc(ipcMain, d) {
     d.settleCritter();
   });
   // Windows' animation effects, as his page sees them (wiring/windows.js setReducedMotion).
-  ipcMain.on('critter:reduced-motion', (_e, on) => d.setReducedMotion?.(on === true), [opt(v => typeof v === 'boolean')]);
+  ipcMain.on('critter:reduced-motion', (_e, on) => d.setReducedMotion?.(on === true), [bool]);
   // Perched, his window lets the mouse through except over the crab himself.
-  ipcMain.on('critter:hit', (_e, over) => d.perching?.hover(!!over), [opt(v => typeof v === 'boolean')]);
+  ipcMain.on('critter:hit', (_e, over) => d.perching?.hover(!!over), [opt(bool)]);
   // The floor strip lets the mouse through except over a pal (desktop/floor.js).
-  ipcMain.on('floor:hit', (_e, over) => d.floor?.hover(!!over), [opt(v => typeof v === 'boolean')]);
+  ipcMain.on('floor:hit', (_e, over) => d.floor?.hover(!!over), [bool]);
   let lastPoke = 0;
   ipcMain.on('floor:poke', () => {
     if (Date.now() - lastPoke < 500) return; // a click is a hello, not a counter to run up
@@ -82,15 +82,15 @@ function registerCritterIpc(ipcMain, d) {
   ipcMain.on('critter:reset-position', () => d.resetCritterPos());
   // ---- rooms: which screens are open yet (rooms.js)
   ipcMain.handle('rooms:get', () => d.roomsPanelView());
-  ipcMain.handle('rooms:open', (_e, id) => d.setRooms(rooms.openRoom(d.config.get('rooms'), String(id || ''))), [opt(text(300))]);
+  ipcMain.handle('rooms:open', (_e, id) => d.setRooms(rooms.openRoom(d.config.get('rooms'), String(id || ''))), [ID]);
   ipcMain.handle('rooms:all', () => d.setRooms(rooms.openAll(d.config.get('rooms'))));
   // A room visited: its "new" on the door goes.
-  ipcMain.handle('rooms:seen', (_e, id) => d.setRooms(rooms.seeRoom(d.config.get('rooms'), String(id || ''))), [opt(text(300))]);
+  ipcMain.handle('rooms:seen', (_e, id) => d.setRooms(rooms.seeRoom(d.config.get('rooms'), String(id || ''))), [ID]);
   // ---- First steps (first-run.js): the card's state, Skip and hide. Steps
   // are done only by the real thing (wiring/first-run.js firstRunStep).
   ipcMain.handle('firstrun:get', () => d.firstRunPanelView());
-  ipcMain.handle('firstrun:skip', (_e, id) => d.skipFirstStep(String(id || '')), [opt(text(300))]);
-  ipcMain.handle('firstrun:hide', (_e, hidden) => d.hideFirstRun(hidden === true), [opt(v => typeof v === 'boolean')]);
+  ipcMain.handle('firstrun:skip', (_e, id) => d.skipFirstStep(String(id || '')), [ID]);
+  ipcMain.handle('firstrun:hide', (_e, hidden) => d.hideFirstRun(hidden === true), [opt(bool)]);
   // A changes block opened in the feed: seeing what changed, as the viewer is.
   ipcMain.on('firstrun:saw-changes', () => d.firstRunStep?.('result'));
 
@@ -101,13 +101,13 @@ function registerCritterIpc(ipcMain, d) {
     if (id === 'wardrobe') d.firstRunStep?.('crab');
     const next = featureUse.record(d.config.get('featureUse'), String(id || ''), Date.now());
     if (JSON.stringify(next) !== JSON.stringify(featureUse.normalize(d.config.get('featureUse')))) d.config.set({ featureUse: next });
-  }, [opt(text(300))]);
+  }, [str({ max: 80 })]);
   // Something done with him from the panel (a reward card opened in chat): one of feature-use.js's ACTIONS, or nothing (wiring/feature-acts.js).
   ipcMain.on('features:act', (_e, id) => d.featureAct?.(id), [str({ max: 40 })]);
   ipcMain.handle('features:report', () => featureUse.report(d.config.get('featureUse'), Date.now()));
   // ---- quests: the features worth finding, and the chat's card for the next one (quests/index.js)
   ipcMain.handle('quests:get', () => d.questsPanelView());
-  ipcMain.handle('quests:hide', (_e, hidden) => d.setQuests(quests.setHidden(d.config.get('quests'), hidden === true)), [opt(v => typeof v === 'boolean')]);
+  ipcMain.handle('quests:hide', (_e, hidden) => d.setQuests(quests.setHidden(d.config.get('quests'), hidden === true)), [opt(bool)]);
 
   // Dev/e2e only: quit the way the tray and an update do (before-quit and all),
   // so a restart check goes through the same doors a real one does.
@@ -118,15 +118,15 @@ function registerCritterIpc(ipcMain, d) {
   // Dev/e2e only: throw him, send him for a stroll, finish a focus session now,
   // make him say something or do one of his idle habits.
   if (!app.isPackaged && process.env.SHELLBY_MOTION_TEST === '1') {
-    ipcMain.handle('dev:say', (_e, occasion) => d.speak(String(occasion || ''), { force: true }), [opt(text(300))]);
+    ipcMain.handle('dev:say', (_e, occasion) => d.speak(String(occasion || ''), { force: true }), [opt(text(200))]);
     ipcMain.handle('dev:bit', (_e, bit) => {
       const chosen = voice.BITS.includes(bit) ? bit : voice.pickBit(voice.normalize(d.config.get('voice')).seed);
       d.send(d.critter, 'critter:bit', { bit: chosen });
       return chosen;
-    }, [opt(text(300))]);
+    }, [opt(str({ max: 40 }))]);
     ipcMain.handle('dev:temperament', () => voice.temperamentOf(voice.normalize(d.config.get('voice')).seed));
     // His life between tasks (life.js): a scene by id, a dig, a moment of your day, a new day.
-    ipcMain.handle('dev:scene', (_e, id) => d.life?.playScene(String(id || '')) || null, [opt(text(300))]);
+    ipcMain.handle('dev:scene', (_e, id) => d.life?.playScene(String(id || '')) || null, [opt(str({ max: 80 }))]);
     ipcMain.handle('dev:life', (_e, { what, ...args } = {}) => {
       if (!d.life) return null;
       if (what === 'dig') return d.life.dig({ manual: true })?.id || null;
@@ -135,12 +135,12 @@ function registerCritterIpc(ipcMain, d) {
       if (what === 'call') return d.life.callForTest(args.on), true;
       if (what === 'nap') return d.life.napForTest(Math.min(Math.max(Number(args.ms) || 4000, 500), 60000));
       return d.life.view();
-    }, [opt(obj())]);
-    ipcMain.handle('dev:quest', (_e, id) => (d.questDone(String(id || '')), d.questsPanelView()), [opt(text(300))]);
+    }, [opt(obj({ what: opt(str({ max: 20 })) }))]);
+    ipcMain.handle('dev:quest', (_e, id) => (d.questDone(String(id || '')), d.questsPanelView()), [str({ max: 80 })]);
     ipcMain.handle('dev:throw', (_e, { vx = 0, vy = 0 } = {}) => {
       const t = Date.now();
       return d.motion.release([{ x: 0, y: 0, t: t - 50 }, { x: vx * 0.05, y: vy * 0.05, t }]);
-    }, [opt(obj())]);
+    }, [opt(obj({ vx: opt(num()), vy: opt(num()) }))]);
     ipcMain.handle('dev:stroll', () => d.motion.stroll((d.config.get('critterPos')?.x ?? d.critter.getPosition()[0]) - d.selfLeft()));
     ipcMain.handle('dev:focus-end', () => {
       const s = focus.normalize(d.config.get('focus'));
@@ -152,11 +152,11 @@ function registerCritterIpc(ipcMain, d) {
     ipcMain.handle('dev:perch', (_e, { hwnd = null, leave = false } = {}) => {
       if (leave) return d.perching.leave('asked');
       return d.perching.tryGoUp({ hwnd: Number.isInteger(hwnd) ? hwnd : null, eye: false, any: !hwnd });
-    }, [opt(obj())]);
-    ipcMain.handle('dev:perch-state', (_e, { debug = false } = {}) => ({ ...d.perching.view(), self: native.hwndOf(d.critter), bounds: d.critter.getBounds(), motion: d.motion.kind, ...(debug ? { debug: d.perching.debug() } : {}) }), [opt(obj())]);
+    }, [opt(obj({ hwnd: opt(num({ int: true })), leave: opt(bool) }))]);
+    ipcMain.handle('dev:perch-state', (_e, { debug = false } = {}) => ({ ...d.perching.view(), self: native.hwndOf(d.critter), bounds: d.critter.getBounds(), motion: d.motion.kind, ...(debug ? { debug: d.perching.debug() } : {}) }), [opt(obj({ debug: opt(bool) }))]);
     // The edges of the screen, mischief and the floor: start a climb (or come down), force a prank, look at it all.
-    ipcMain.handle('dev:climb', (_e, { side = null, leave = false } = {}) => (leave ? d.climbing.leave() : d.climbing.tryClimb({ side: ['left', 'right'].includes(side) ? side : null })), [opt(obj())]);
-    ipcMain.handle('dev:prank', (_e, { kind, ignore = [] } = {}) => d.pranks.force(kind, { ignore: Array.isArray(ignore) ? ignore.filter(x => typeof x === 'string') : [] }), [opt(obj())]);
+    ipcMain.handle('dev:climb', (_e, { side = null, leave = false } = {}) => (leave ? d.climbing.leave() : d.climbing.tryClimb({ side: ['left', 'right'].includes(side) ? side : null })), [opt(obj({ side: opt(str({ max: 20 })), leave: opt(bool) }))]);
+    ipcMain.handle('dev:prank', (_e, { kind, ignore = [] } = {}) => d.pranks.force(kind, { ignore: Array.isArray(ignore) ? ignore.filter(x => typeof x === 'string') : [] }), [opt(obj({ kind: opt(str({ max: 40 })), ignore: opt(list(str({ max: 200 }), 100)) }))]);
     ipcMain.handle('dev:edges', () => ({ climb: d.climbing.view(), mischief: d.pranks.view(), floor: d.floor.view(), bounds: d.critter.getBounds(), motion: d.motion.kind, geo: d.critterGeo() }));
   }
 }

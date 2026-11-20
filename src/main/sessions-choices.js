@@ -1,23 +1,18 @@
-// A tab's own name, mode, effort, model and safe mode (mixed into SessionManager, sessions.js).
-const { EFFORTS } = require('../session');
-const { cleanTitle } = require('../history');
-const { isModel } = require('../models');
-const localTab = require('../local/tab');
-const { onClaude, NOT_CLAUDE } = require('./shared');
+// What a conversation runs on (sessions.js), mixed into SessionManager's
+// prototype: its mode (and the mode a note opened it in), its own model, local
+// or Claude, its effort (chosen or picked from its first message) and safe mode.
 
-class Settings {
-  // A name of your own for an open tab. One not yet sent anything has no History
-  // entry to hold it, so `named` stops the first message from replacing it.
-  rename(tabId, title) {
-    const tab = this.tabs.get(tabId);
-    const t = cleanTitle(title);
-    if (!tab || !t) return false;
-    tab.title = t;
-    if (tab.saved) this.history.rename(tab.id, t); else tab.named = true;
-    this.changed();
-    return true;
-  }
+const { EFFORTS } = require('./session');
+const { pickEffort } = require('./effort-pick');
+const { isModel } = require('./models');
+const localTab = require('./local/tab');
+const harnesses = require('./harness/registry');
 
+// Runs on Claude Code, not another agent's CLI (harness/): its models, effort, pings and /compact are Claude Code's.
+const onClaude = tab => !tab.harness || tab.harness === harnesses.CLAUDE;
+const NOT_CLAUDE = 'That only works in a Claude Code conversation.';
+
+const choices = {
   /**
    * Safe mode on or off for one conversation (session/index.js safeMode): its process
    * is let go of now, so the next message starts it the new way, resumed.
@@ -35,21 +30,11 @@ class Settings {
     this.onItem(tab, { kind: 'safe', on: !!on });
     this.changed();
     return { ok: true };
-  }
-
-  /** Mark a tab as carried on in a terminal (at: a time), or picked back up (null). */
-  setInTerminal(tabId, at) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return false;
-    tab.inTerminal = Number.isFinite(at) ? at : null;
-    if (tab.saved) this.history.update(tab.id, { inTerminal: tab.inTerminal });
-    this.changed();
-    return true;
-  }
+  },
 
   setMode(mode) {
     for (const tab of this.tabs.values()) if (!tab.pinnedMode) tab.session.setMode(mode);
-  }
+  },
 
   // A note's Ask or Plan (ipc/notes.js) keeps the mode it opened in only to
   // start: Ask's until its first answer is in, Plan's until you approve the
@@ -57,20 +42,20 @@ class Settings {
   modeToStart(tabId) {
     const tab = this.tabs.get(tabId);
     if (tab?.pinnedMode) tab.startsIn = tab.session.mode;
-  }
+  },
 
   // Its opening's done: it follows your mode from now on. -> that mode
   followMode(tab) {
     tab.startsIn = null;
     tab.pinnedMode = false;
     return this.getMode();
-  }
+  },
 
   // The default changed: the conversations following it follow it now. One
   // with its own (chosen or picked) keeps that.
   setEffort(effort) {
     for (const tab of this.tabs.values()) if (!tab.effortBy) tab.session.setEffort(effort);
-  }
+  },
 
   /** This conversation's own effort ('' is Auto), from the chip. From its next turn, or this one's next step. */
   setTabEffort(tabId, effort) {
@@ -81,7 +66,7 @@ class Settings {
     tab.session.setEffort(effort);
     this.keepEffort(tab);
     this.changed();
-  }
+  },
 
   /**
    * This conversation's own model, as the terminal's /model switches it ('' is
@@ -115,9 +100,9 @@ class Settings {
       this.changed();
       return { ok: false, error: `Claude Code didn't switch: ${r.error}` };
     });
-  }
+  },
 
-  claudeModels() { return { model: this.getModel(), fallbackModel: this.getFallbackModel() }; }
+  claudeModels() { return { model: this.getModel(), fallbackModel: this.getFallbackModel() }; },
 
   // The model chip's On this PC: a local model, before its first message (local/tab.js).
   setTabLocal(tabId, model) {
@@ -125,11 +110,22 @@ class Settings {
     localTab.pick(tab, this.getLocalServer(tab.session.cwd), model);
     this.changed();
     return { ok: true, started: false };
-  }
+  },
+
+  // Sized from what it was asked, once: only while it follows a default of
+  // Auto with picking on. A /command waits for the next real message.
+  maybePickEffort(tab, userItem) {
+    if (tab.effortBy || this.getEffort() || !this.getEffortPick() || !onClaude(tab)) return;
+    const level = pickEffort(userItem.text, Array.isArray(userItem.attachments) ? userItem.attachments.length : 0);
+    if (!level) return;
+    tab.effortBy = 'picked';
+    tab.session.setEffort(level);
+    this.keepEffort(tab);
+  },
 
   keepEffort(tab) {
     if (tab.saved) this.history.update(tab.id, { effort: tab.session.effort, effortBy: tab.effortBy });
-  }
-}
+  },
+};
 
-module.exports = Settings;
+module.exports = { choices, onClaude, NOT_CLAUDE };

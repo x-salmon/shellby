@@ -33,6 +33,11 @@ const todos = require('../../renderer/shared/todos');
 
 const PROTOCOL_VERSION = 1;
 const START_TIMEOUT_MS = 60 * 1000;     // initialize and session/new: a first run may be slow to sign in
+
+/** The extra MCP servers for session/new: a gateway that can't be read never stops a conversation starting. @param {() => unknown} fn @returns {any[]} */
+function safeServers(fn) {
+  try { const v = fn(); return Array.isArray(v) ? v : []; } catch { return []; }
+}
 const PARTIAL_MS = 50;                  // as ClaudeSession: the reply as it's written, at most this often
 const CLOSE_KILL_MS = 3000;
 const SETTING_TIMEOUT_MS = 15 * 1000;   // set_mode and set_model: a hung one mustn't hold the turn
@@ -48,7 +53,7 @@ class AcpSession extends EventEmitter {
    *   command: () => ({ file: string, prefix: string[] } | null),
    *   args?: string[], cwd: string, mode?: string, model?: string | null,
    *   resumeId?: string | null, env?: () => Record<string, string>,
-   *   spawn?: typeof realSpawn, kill?: (proc: any) => void,
+   *   spawn?: typeof realSpawn, kill?: (proc: any) => void, mcpServers?: (caps: any) => any[],
    * }} o
    */
   constructor(o) {
@@ -61,6 +66,8 @@ class AcpSession extends EventEmitter {
     this.model = o.model || null;
     this.sessionId = o.resumeId || null;
     this.env = o.env || (() => ({}));
+    // caps (its initialize's mcpCapabilities) -> ACP mcpServers: the connectors gateway (connectors/).
+    this.mcpServersFor = o.mcpServers || (() => []);
     this.spawnFn = o.spawn || realSpawn;
     this.killFn = o.kill || (proc => execFile(TASKKILL, ['/PID', String(proc.pid), '/T', '/F'], { windowsHide: true }, () => {}));
 
@@ -174,6 +181,7 @@ class AcpSession extends EventEmitter {
       clientInfo: { name: 'shellby', title: 'Shellby', version: '1' },
     }, { timeout: START_TIMEOUT_MS });
     const canLoad = !!init?.agentCapabilities?.loadSession;
+    const mcpServers = safeServers(() => this.mcpServersFor(init?.agentCapabilities?.mcpCapabilities || {}));
     /** @type {{ sessionId?: string, modes?: { availableModes?: Array<{ id?: string }> }, models?: { currentModelId?: string } } | null} what the agent says of the session */
     let s = null;
     if (this.sessionId && !canLoad) {
@@ -184,7 +192,7 @@ class AcpSession extends EventEmitter {
       // it, so they're read past until the load is done (onUpdate).
       this.loading = true;
       try {
-        s = await peer.request('session/load', { sessionId: this.sessionId, cwd: this.cwd, mcpServers: [] }, { timeout: START_TIMEOUT_MS });
+        s = await peer.request('session/load', { sessionId: this.sessionId, cwd: this.cwd, mcpServers }, { timeout: START_TIMEOUT_MS });
         s = { sessionId: this.sessionId, ...(s || {}) };
       } catch (e) {
         this.emitItem({ kind: 'error', text: `${this.harness.name} couldn't pick up where it left off (${e.message}), so this carries on in a fresh session.` });
@@ -192,7 +200,7 @@ class AcpSession extends EventEmitter {
         this.loading = false;
       }
     }
-    if (!s) s = await peer.request('session/new', { cwd: this.cwd, mcpServers: [] }, { timeout: START_TIMEOUT_MS });
+    if (!s) s = await peer.request('session/new', { cwd: this.cwd, mcpServers }, { timeout: START_TIMEOUT_MS });
     if (!s?.sessionId) throw new Error(`${this.harness.name} didn't start a session.`);
     this.sessionId = s.sessionId;
     this.modes = Array.isArray(s.modes?.availableModes) ? s.modes.availableModes.map(m => m?.id).filter(Boolean) : [];

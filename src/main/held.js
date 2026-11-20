@@ -42,7 +42,19 @@ function taskName(prompt) {
   return t.length > 60 ? `${t.slice(0, 59).trimEnd()}…` : t;
 }
 
-/** One item read from disk or the panel, cleaned up, or null if it can't be used. */
+/** @typedef {{ id: string, at: number, createdAt: number }} HeldBase */
+/** @typedef {HeldBase & { kind: 'routine', routineId: string, name: string, auto: boolean, why?: string }} HeldRoutine */
+/** @typedef {HeldBase & { kind: 'workflow', workflowId: string, name: string, inputs: Record<string, string> }} HeldWorkflow */
+/** @typedef {HeldBase & { kind: 'task', prompt: string, name: string, cwd: string | null, mode: string | null, tabId: string | null, tries: number, fromPhone?: true, when?: 'tonight', model?: string }} HeldTask */
+/** @typedef {HeldBase & { kind: 'message', tabId: string, cwd: string | null, title: string | null, text: string, attachments: string[] }} HeldMessage */
+/** @typedef {HeldRoutine | HeldWorkflow | HeldTask | HeldMessage} HeldItem */
+
+/**
+ * One item read from disk or the panel, cleaned up, or null if it can't be used.
+ * @param {any} raw
+ * @param {number} now
+ * @returns {HeldItem | null}
+ */
 function clean(raw, now) {
   if (!raw || typeof raw !== 'object') return null;
   const at = Number(raw.at);
@@ -105,7 +117,7 @@ function clean(raw, now) {
 /** Whatever was saved, as a usable list, oldest first. */
 function normalize(raw, now) {
   if (!Array.isArray(raw)) return [];
-  return raw.map(r => clean(r, now)).filter(Boolean).sort((a, b) => a.createdAt - b.createdAt).slice(-MAX_HELD);
+  return raw.map(r => clean(r, now)).filter(h => h !== null).sort((a, b) => a.createdAt - b.createdAt).slice(-MAX_HELD);
 }
 
 /**

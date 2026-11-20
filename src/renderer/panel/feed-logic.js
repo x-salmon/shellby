@@ -60,12 +60,15 @@
     }
   }
 
-  // The busy line while Claude Code tries a failed API request again.
-  // { attempt, max, delayMs, status } from the api_retry event, any of them null.
-  function retryLine(/** @type {{ attempt?: number | null, max?: number | null, delayMs?: number | null, status?: number | null }} */ { attempt, max, delayMs, status } = {}) {
-    const why = status === 429 ? 'Rate limited' : status === 529 || (status != null && status >= 500 && status < 600) ? 'The API is busy' : 'A request failed';
+  /**
+   * The busy line while Claude Code tries a failed API request again.
+   * { attempt, max, delayMs, status } from the api_retry event, any of them null.
+   * @param {{ attempt?: number | null, max?: number | null, delayMs?: number | null, status?: number | null }} [retry]
+   */
+  function retryLine({ attempt, max, delayMs, status } = {}) {
+    const why = status === 429 ? 'Rate limited' : status === 529 || (status >= 500 && status < 600) ? 'The API is busy' : 'A request failed';
     const which = attempt ? ` (attempt ${attempt}${max ? ` of ${max}` : ''})` : '';
-    const wait = delayMs != null && delayMs >= 1000 ? ` in ${Math.round(delayMs / 1000)} s` : '';
+    const wait = delayMs >= 1000 ? ` in ${Math.round(delayMs / 1000)} s` : '';
     return `${why}, trying again${wait}${which}…`;
   }
 
@@ -329,9 +332,10 @@
     if (now === null) return null;
     const from = pct(cost.compactedFrom);
     const start = pct(cost.contextBefore);
-    if (start === null) return { past: now, added: 0, freedTo: from !== null && from > now ? from : null };
+    const freedTo = from !== null && from > now ? from : null;
+    if (start === null) return { past: now, added: 0, freedTo };
     const past = Math.min(start, now);
-    return { past, added: now - past, freedTo: from !== null && from > now ? from : null };
+    return { past, added: now - past, freedTo };
   }
 
   // The sentence an opened footer says: tokens, helpers, effort, and the room.
@@ -350,8 +354,9 @@
       const thought = Number.isFinite(cost.thinking) ? cost.thinking : null;
       out.push(thought === null ? `${word} effort.` : thought ? `${word} effort, ${compact(thought)} tokens of thinking.` : `${word} effort, no thinking.`);
     }
+    const before = pct(cost.contextBefore);
     if (bar?.freedTo) out.push(`The conversation was summed up during this turn, which freed ${bar.freedTo - bar.past - bar.added}% of its room.`);
-    else if (bar && (pct(cost.contextBefore) ?? Infinity) <= bar.past + bar.added) out.push(`This reply took ${bar.added}% of the conversation's room; ${100 - bar.past - bar.added}% is left.`);
+    else if (bar && before !== null && before <= bar.past + bar.added) out.push(`This reply took ${bar.added}% of the conversation's room; ${100 - bar.past - bar.added}% is left.`);
     else if (bar) out.push(`The conversation is ${bar.past}% full.`);
     return out.join(' ');
   }
@@ -373,8 +378,9 @@
       const thought = Number.isFinite(cost.thinking) ? cost.thinking : null;
       rows.push(thought === null ? { num: null, text: `${word} effort` } : { num: thought ? compact(thought) : '0', text: `tokens of thinking, at ${word} effort` });
     }
+    const before = pct(cost.contextBefore);
     if (bar?.freedTo) rows.push({ num: `${bar.freedTo - bar.past - bar.added}%`, text: "of the conversation's room freed: it was summed up during this turn" });
-    else if (bar && (pct(cost.contextBefore) ?? Infinity) <= bar.past + bar.added) rows.push({ num: `${bar.added}%`, text: `of the conversation's room used by this reply; ${100 - bar.past - bar.added}% is left` });
+    else if (bar && before !== null && before <= bar.past + bar.added) rows.push({ num: `${bar.added}%`, text: `of the conversation's room used by this reply; ${100 - bar.past - bar.added}% is left` });
     else if (bar) rows.push({ num: `${bar.past}%`, text: 'of the conversation is full' });
     return rows;
   }
@@ -400,8 +406,8 @@
     const change = bar?.freedTo ? { kind: 'freed', text: `compacted from ${bar.freedTo}%` }
       : known && bar.added > 0 ? { kind: 'plus', text: `+${bar.added}` } : null;
     const level = levelOf(cost, now);
-    const meter = now === null ? null
-      : `${now}% of the conversation used${bar?.freedTo ? `, down from ${bar.freedTo}% after a compact` : change ? `, ${bar?.added}% by this reply` : ''}${level ? `: ${LEVEL_WORDS[level]}` : ''}`;
+    const meter = !bar || now === null ? null
+      : `${now}% of the conversation used${bar.freedTo ? `, down from ${bar.freedTo}% after a compact` : change ? `, ${bar.added}% by this reply` : ''}${level ? `: ${LEVEL_WORDS[level]}` : ''}`;
     return {
       state, word: capital(label),
       title: item.parked ? 'You paused it, so this turn ended where he stopped. Continue picks up from here.'

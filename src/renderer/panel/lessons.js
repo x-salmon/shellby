@@ -41,8 +41,8 @@
   function open(el, item) {
     const perm = isPerm(item.type);
     let rule = item.rule || '';
-    /** @type {{ file: string, where: string, added: string, fresh: boolean } | null} */
-    let shown = null;      // the last preview: { file, where, added, fresh }
+    /** @type {any} */
+    let shown = null;        // the last preview (main's lessonPreview): { file, where, added, fresh }
     let asking = 0;          // the newest preview asked for, so a slow one can't land late
     /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
@@ -83,7 +83,7 @@
       note.textContent = wordedBy;
       add.disabled = false;
     }
-    const later = () => { if (timer) clearTimeout(timer); add.disabled = true; timer = setTimeout(preview, PREVIEW_DELAY_MS); };
+    const later = () => { clearTimeout(timer); add.disabled = true; timer = setTimeout(preview, PREVIEW_DELAY_MS); };
 
     input.addEventListener('input', () => { rule = input.value.replace(/\s+/g, ' ').trim(); wordedBy = ''; later(); });
     input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); }); // one line in the file

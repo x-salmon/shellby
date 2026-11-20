@@ -2,7 +2,7 @@
 // throwing it away, pushing the checkout with a secret scan first, and
 // branching a conversation from any turn (branching.js).
 // Kept out of main.js, which only wires it up.
-const { ID, list, obj, opt, PATH, str, text } = require('../ipc-args');
+const { ID, PATH, list, obj, opt, str, text } = require('../ipc-args');
 const prReview = require('../github/pr-review');
 const conflicts = require('../worktrees/conflicts');
 const path = require('path');
@@ -52,7 +52,7 @@ function registerRepoIpc(ipcMain, d) {
   ipcMain.handle('worktree:status', (_e, tabId) => {
     const w = worktreeOf(tabId);
     return w ? worktrees.status(w) : { ok: false, error: 'That conversation has no copy of its own.' };
-  }, [opt(text(300))]);
+  }, [ID]);
   // Bringing it home merges and keeps the conversation going in its copy, so
   // you can carry on and bring it home again. finish: also tidy the copy away
   // (the tab closes; the conversation stays in History).
@@ -203,7 +203,7 @@ function registerRepoIpc(ipcMain, d) {
     const w = worktreeOf(tabId);
     if (!w) return { ok: false, error: 'That conversation has no copy of its own.' };
     return line.sortOut(tabId, w, d.manager.tabs.get(tabId)?.title, { push: opts?.push === true, check: typeof opts?.check === 'boolean' ? opts.check : undefined });
-  }, [opt(text(300)), opt(obj())]);
+  }, [ID, opt(obj())]);
   // Several at once (Bring all home's clashes), in the order given.
   ipcMain.handle('repo:sort-out', (_e, tabIds, opts) => {
     if (!Array.isArray(tabIds)) return { ok: false, error: 'Nothing to sort out.' };
@@ -212,7 +212,7 @@ function registerRepoIpc(ipcMain, d) {
       return w ? line.sortOut(id, w, d.manager.tabs.get(id)?.title, { push: opts?.push === true }) : null;
     }).filter(r => r?.ok);
     return { ok: lined.length > 0, lined: lined.length, error: lined.length ? undefined : 'None of them is open.' };
-  }, [opt(list(text(300))), opt(obj())]);
+  }, [list(ID), opt(obj())]);
 
   // ---- the repository as a whole: push it, and bring every copy home
   //
@@ -298,7 +298,7 @@ ${r.detail}` });
     ]);
     const waiting = copies.filter(c => c.s.ok && (c.s.ahead || c.s.uncommitted));
     return { ...s, root, name: path.basename(root), copies: waiting.length, copiesBusy: waiting.filter(c => c.busy).length };
-  }, [opt(text(300)), opt(obj())]);
+  }, [opt(ID), opt(obj())]); // no tab: the folder Shellby is working in
   ipcMain.handle('repo:push', async (_e, tabId) => {
     const root = await repoOf(tabId);
     if (!root) return { ok: false, error: 'Not a git repository.' };
@@ -356,7 +356,7 @@ ${r.detail}` });
       for (const c of list) retiring.delete(c.id);
       repoBusy = false;
     }
-  }, [opt(text(300)), opt(obj())]);
+  }, [opt(ID), opt(obj())]);
   // The merges and the push, on this checkout's turn (worktrees/home-line.js).
   async function homeAll(root, list, busy, gated, opts, tabId) {
     const before = opts?.push ? await worktrees.tipOf(root, 'HEAD') : null;
@@ -400,8 +400,8 @@ ${r.detail}` });
   ipcMain.handle('clashes:list', () => d.clashesView());
   // Every conversation at once (wiring/lanes.js): the board, lining copies up, one answer for many prompts.
   ipcMain.handle('lanes:view', () => d.lanesView());
-  ipcMain.handle('lanes:line-up', (_e, tabIds) => d.lineUpCopies(tabIds), [opt(list(text(300)))]);
-  ipcMain.handle('lanes:answer', (_e, { key, decision } = {}) => d.answerPromptGroup(key, decision), [opt(obj())]);
+  ipcMain.handle('lanes:line-up', (_e, tabIds) => d.lineUpCopies(tabIds), [list(ID, 100)]);
+  ipcMain.handle('lanes:answer', (_e, { key, decision } = {}) => d.answerPromptGroup(key, decision), [obj({ key: str({ max: 1000 }), decision: str({ max: 40 }) })]);
   ipcMain.handle('worktree:discard', async (_e, tabId) => {
     const w = worktreeOf(tabId);
     if (!w) return { ok: false, error: 'That conversation has no copy of its own.' };

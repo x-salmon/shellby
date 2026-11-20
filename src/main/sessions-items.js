@@ -1,11 +1,14 @@
-// What a session says, as the tab keeps it: items, the review inbox, notes and the talking pose (mixed into SessionManager, sessions.js).
-const review = require('../review-inbox');
-const turncost = require('../turncost');
-const turnwatch = require('../turnwatch');
-const mods = require('../mods');
-const { TALK_QUIET_MS } = require('./shared');
+// What a tab hears from its process (sessions.js), mixed into SessionManager's
+// prototype: each item saved to History, dressed (a turn's cost and its notes,
+// a mod's budget, pictures saved apart) and sent on to the panel, and the
+// review inbox that follows from it (review-inbox.js).
 
-class Items {
+const review = require('./review-inbox');
+const turncost = require('./turncost');
+const turnwatch = require('./turnwatch');
+const mods = require('./mods');
+
+const items = {
   onItem(tab, raw) {
     // The reply as it's written, what you might ask next, and compacting under
     // way are only for the panel now: the reply itself is kept when it's done,
@@ -99,14 +102,14 @@ class Items {
     if (ready !== tab.ready) this.setReady(tab, ready);
     this.emit('item', tab.id, item, tab, tail);
     if (['permission', 'decision', 'result', 'error'].includes(item.kind)) this.changed();
-  }
+  },
 
   // Kept in History without bumping updatedAt (history.setReady): looking at work isn't work on it.
   setReady(tab, ready) {
     tab.ready = ready;
     if (tab.saved) this.history.setReady(tab.id, ready);
     this.changed();
-  }
+  },
 
   /** Mark a tab's latest changes reviewed (or put them back in the inbox). -> whether anything changed. */
   setReviewed(tabId, reviewed = true, after = null) {
@@ -117,29 +120,7 @@ class Items {
     if (ready === tab.ready) return false;
     this.setReady(tab, ready);
     return true;
-  }
+  },
+};
 
-  // Something main.js worked out about a tab (what its last turn changed):
-  // kept in the transcript and shown just like the CLI's own items.
-  note(tabId, item) {
-    const tab = this.tabs.get(tabId);
-    if (tab) this.onItem(tab, item);
-  }
-
-  // Words of the reply arrived: he talks along, until they stop for a moment.
-  talked(tab) {
-    clearTimeout(tab.talkTimer);
-    tab.talkTimer = setTimeout(() => { tab.talkTimer = null; tab.talking = false; this.changed(); }, TALK_QUIET_MS);
-    tab.talkTimer.unref?.();
-    if (!tab.talking) { tab.talking = true; this.changed(); }
-  }
-
-  hush(tab) {
-    clearTimeout(tab.talkTimer);
-    tab.talkTimer = null;
-    tab.talking = false;
-    tab.compacting = false;
-  }
-}
-
-module.exports = Items;
+module.exports = { items };

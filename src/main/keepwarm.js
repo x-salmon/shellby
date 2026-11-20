@@ -33,7 +33,7 @@ function tokensText(n) { return n >= 1000 ? `${Math.round(n / 1000)}k` : String(
 function plan(tabs, kept, now, lead = LEAD_MS) {
   return tabs.map(t => {
     const k = kept.get(t.id);
-    const out = (action, reason = null, dueAt = null) => ({ id: t.id, title: t.title, action, reason, dueAt });
+    const out = (/** @type {string} */ action, /** @type {string | null} */ reason = null, /** @type {number | null} */ dueAt = null) => ({ id: t.id, title: t.title, action, reason, dueAt });
     if (k?.state === 'dropped') return out('skip', k.reason);
     if (k && !t.hasProc) return out('drop', 'its Claude Code process ended');
     if (!t.saved || !t.hasProc || t.inTerminal || !t.cache) return out('skip', 'nothing to keep warm');

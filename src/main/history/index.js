@@ -26,10 +26,14 @@ const INDEX_SAVE_MS = 1000;
 const APPEND_MS = 100;
 
 class History {
-  // onError: called with (what, err) when the disk refuses a write. History is a
-  // convenience, never worth taking the app down for; see append().
-  // onGone: called with the ids of conversations you deleted (trash, clear),
-  // so history sync can tell your other PCs (history/sync.js).
+  /**
+   * onError: called with (what, err) when the disk refuses a write. History is a
+   * convenience, never worth taking the app down for; see append().
+   * onGone: called with the ids of conversations you deleted (trash, clear),
+   * so history sync can tell your other PCs (history/sync.js).
+   * @param {string} dir
+   * @param {{ onError?: (what: string, err: any) => void, onGone?: (ids: string[], now: number) => void, indexSaveMs?: number, appendMs?: number }} [opts]
+   */
   constructor(dir, { onError = () => {}, onGone = () => {}, indexSaveMs = INDEX_SAVE_MS, appendMs = APPEND_MS } = {}) {
     this.dir = dir;
     this.indexSaveMs = indexSaveMs;

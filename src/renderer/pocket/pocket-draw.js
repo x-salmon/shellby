@@ -117,13 +117,13 @@
 
   function markdown(text) {
     const box = h('div', { class: 'md' });
-    /** @type {Element | null} */
+    /** @type {HTMLElement | null} */
     let list = null;
     for (const b of L.markdown(text)) {
       if (b.t === 'li' || b.t === 'oli') {
         const tag = b.t === 'li' ? 'ul' : 'ol';
         if (!list || list.tagName.toLowerCase() !== tag) { list = h(tag); box.append(list); }
-        list?.append(h('li', {}, runs(b.runs)));
+        list.append(h('li', {}, runs(b.runs)));
         continue;
       }
       list = null;
@@ -138,7 +138,11 @@
 
   // ---------------------------------------------------------------- a diff
   // onRow(row): a tap on a line (a word about it goes back as a reply, pocket-tab.js).
-  function diffFile(file, /** @type {{ onRow?: ((r: unknown) => void) | null }} */ { onRow = null } = {}) {
+  /**
+   * @param {{ path: string, hunks: any[], binary: boolean }} file
+   * @param {{ onRow?: ((row: any) => void) | null }} [opts]
+   */
+  function diffFile(file, { onRow = null } = {}) {
     if (file.binary) return h('p', { class: 'muted small pad', text: 'A binary file: nothing to show on a phone.' });
     if (!file.hunks.length) return h('p', { class: 'muted small pad', text: 'No line changes (a rename or a mode change).' });
     const box = h('div', { class: 'diff', role: 'table', 'aria-label': `Changes to ${file.path}` });

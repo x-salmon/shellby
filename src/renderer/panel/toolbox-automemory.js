@@ -19,12 +19,12 @@
   const kindOf = m => (KIND.some(([k]) => k === m.type) ? m.type : 'other');
 
   const open = new Set(); // files shown in full
-  /** @type {{ file: string, text: string, mtimeMs?: number, error: string } | null} */
-  let editing = null;    // { file, text, mtimeMs, error }
+  /** @type {{ file: string, text: string, error: string } | null} */
+  let editing = null;    // the memory open in the editor
   /** @type {string | null} */
   let forgetting = null; // the file whose Forget was pressed once
-  /** @type {{ memories: { file: string, body?: string, mtimeMs?: number }[], exists: boolean, error?: boolean } | null} */
-  let last = null;       // the last list, so a re-render doesn't re-read every file
+  /** @type {any} */
+  let last = null;       // the last list (main's listMemory), so a re-render doesn't re-read every file
   let lastAt = 0;
   /** @type {string | null} */
   let lastTab = null;    // ...for this conversation's project
@@ -61,10 +61,9 @@
       : isOpen ? SB.renderMarkdownInto(h('div', { class: 'am-body msg assistant' }), m.body || '(empty)') : null;
 
     async function save() {
-      const cur = editing;
-      if (!cur) return;
-      const r = await api.saveMemory(tabId(), m.file, cur.text, m.mtimeMs).catch(() => null);
-      if (!r?.ok) { cur.error = r?.error || "Couldn't save it."; redraw(); return; }
+      if (!ed) return; // Save and Ctrl+S only exist while this one is open
+      const r = await api.saveMemory(tabId(), m.file, ed.text, m.mtimeMs).catch(() => null);
+      if (!r?.ok) { ed.error = r?.error || "Couldn't save it."; redraw(); return; }
       editing = null;
       open.add(m.file);
       SB.toast('Saved. Claude reads it that way from its next conversation here.');

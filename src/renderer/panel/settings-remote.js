@@ -7,10 +7,13 @@
   const { h, api, state, $ } = SB;
   const L = window.ShellbyRemoteLogic;
 
-  let view = null;
+  /** @type {any} */
+  let view = null;              // main's remote view: { computers, available, jumps, agent, keys, sshFound }
   // Off on a PC that can't run Windows' ssh agent: never suggested, and ssh asks instead.
   const useAgent = () => state.settings?.sshAgent !== false;
-  let browsing = null;          // { alias, dir, here, folders, error, loading }
+  /** @typedef {{ alias: string, dir: string, here: any, folders: any[], error: string | null, loading: boolean, typing?: boolean }} Browsing */
+  /** @type {Browsing | null} */
+  let browsing = null;          // the folder browser open on one computer's card
   const working = new Map();    // alias -> what's running ("Installing…")
   const removing = new Set();   // aliases whose Remove was pressed once
 
@@ -43,6 +46,7 @@
     }[action.id] || 'Working…';
     working.set(alias, say);
     render();
+    /** @type {any} */
     let r = null;
     try {
       if (action.id === 'check') r = await api.remoteCheck(alias);
@@ -87,6 +91,7 @@
 
   // ---------------------------------------------------------------- the folder browser
 
+  /** @param {string} alias @param {string} dir */
   async function browse(alias, dir) {
     // Typing in the box: keep the cursor there through the re-draws, to type on.
     const typing = !!document.activeElement?.closest?.('.rc-browse .row');
@@ -98,17 +103,20 @@
     render();
   }
 
+  // Only the open browser's own button gets here; Cancel while it's out closes it (null stays).
+  /** @param {string} alias @param {string} dir */
   async function addFolder(alias, dir) {
-    browsing = { ...browsing, loading: true };
+    browsing = browsing && { ...browsing, loading: true };
     render();
     const r = await api.remoteAddFolder(alias, dir);
-    if (!r?.ok) { browsing = { ...browsing, loading: false, error: r?.error || "Couldn't add it." }; render(); return; }
+    if (!r?.ok) { browsing = browsing && { ...browsing, loading: false, error: r?.error || "Couldn't add it." }; render(); return; }
     browsing = null;
     await refresh();
     SB.toast(`Added ${r.label}`, { action: 'Work there', onAction: () => workHere(r.anchor), ms: 8000 });
   }
 
   // The folders listed, narrowed to what's typed after the folder shown.
+  /** @param {string} alias @param {any} b @param {string} filter */
   function dirRows(alias, b, filter) {
     const up = L.parentDir(b.dir);
     const shown = L.matchFolders(b.folders, filter);
@@ -121,8 +129,10 @@
     ];
   }
 
+  /** @param {string} alias */
   function browser(alias) {
     const b = browsing;
+    if (!b) return null; // only drawn on the card whose browser is open
     const input = h('input', { type: 'text', class: 'field', value: b.dir, spellcheck: 'false', autocomplete: 'off', 'aria-label': `A folder on ${alias}` });
     const list = !b.loading && !b.error ? h('ul', { class: 'rc-dirs' }, ...dirRows(alias, b, '')) : null;
     // Enter opens the best match when the box is filtering, else goes to what's typed.
@@ -241,8 +251,10 @@
 
   // ---------------------------------------------------------------- ssh asking
 
-  const queue = [];
-  let asking = null;
+  /** @type {any[]} */
+  const queue = [];   // ssh's questions from main, in the order they came
+  /** @type {any} */
+  let asking = null;  // the one on screen
 
   function showNext() {
     if (asking || !queue.length) return;

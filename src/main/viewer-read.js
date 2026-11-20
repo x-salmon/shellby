@@ -1,6 +1,9 @@
-// What the file viewer reads with, apart from its handles (viewer.js): git run in a folder with
-// timeouts, the checks that keep a read inside its root, and the helpers that find a folder's repo,
-// branch and worktrees. Pure of any handle state; viewer.js re-exports all of it.
+// What the file viewer may read, and where (viewer.js): its git runner, a path
+// resolved with links followed and 8.3 names expanded and confined to a root, a
+// file inside a folder, the repo lookups a handle is opened with, and the checks
+// on a file link and on the file picked in the tree. Nothing here holds a handle.
+//
+// execFile with fixed arguments, timeouts, and never throws to the caller.
 const { execFileTree: execFile } = require('./exec-tree'); // a timeout ends git's whole tree
 const fs = require('fs');
 const os = require('os');
@@ -8,21 +11,14 @@ const path = require('path');
 const changes = require('./changes');
 const { parseTarget } = require('./filelinks');
 const { parseWorktrees, okDir } = require('./leaving');
+
 const { TREE } = changes;
 const HEADS = 'refs/heads/';
 const HEAD_REF = /^refs\/heads\/[^\0\n\r]+$/; // a local branch by its full name, which git never reads as an option
 
 const MAX_BYTES = 2 * 1024 * 1024;   // past this, "Open in editor" instead
 const SNIFF_BYTES = 8 * 1024;        // a NUL in here: not text
-const MAX_HANDLES = 8;               // folders open at once; the oldest goes first
-const REFRESH_MS = 2000;             // a look again sooner than this is answered from the last one
 const GIT_TIMEOUT_MS = 8000;
-const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'; // what a repo with no commits is compared with
-const TREE_MAX = 30000;              // All files on a branch, at most (fileindex.js lists a folder to the same)
-const MAX_PLACE_TREES = 20;          // worktrees in the header's menu
-const MAX_PLACE_BRANCHES = 30;       // branches checked for commits of their own, newest first
-const PLACES_MS = 10000;             // the menu's list is reused this long, per repo
-const AT_ONCE = 4;                   // the menu's git status, rev-list and rev-parse runs at a time, across the whole viewer
 const MAX_PICKED = 300;                                      // the picked file's path, at most (selectedNote)
 const PICK_UNSAFE = /[\0-\x1f\x7f-\x9f\p{Cf}\p{Zl}\p{Zp}]/u; // control, format (bidi) and separator characters
 
@@ -84,13 +80,6 @@ const plainRel = rel => typeof rel === 'string' && !!rel && rel.length <= 1000 &
 // Outside the folder and not there at all answer alike: the panel learns nothing about other files.
 const NOT_HERE = { ok: false, missing: true };
 
-// changes.patchFor's own answers (checkRef's, a moved root, objects tidied away, a diff with no
-// stderr). Any other error is git's stderr, which never reaches the panel.
-const PATCH_SAID = new Set([
-  'Not a project folder.', 'Not a snapshot.', 'Not a file in this change.', 'That project has moved.',
-  'Those changes have been tidied away by git since.', "Couldn't read the diff.",
-]);
-
 /**
  * A file under root, as text. rel: as git names it (forward slashes) or the OS does.
  * opts.raw: its bytes ({ ok, buf, size }) instead, NUL or not (a picture, for its preview).
@@ -149,52 +138,6 @@ async function treesOf(root, home) {
   const listed = parseWorktrees(await git(root, ['worktree', 'list', '--porcelain']))
     .filter(w => okDir(w.path) && !tooWide(w.path, home)).map(w => longPath(w.path)).filter(Boolean);
   return listed.length ? listed : [root];
-}
-
-/**
- * `git status --porcelain -z` -> how many files it names. A rename or copy carries its old path as one more field.
- * skip: folders (relative, forward slashes) whose untracked entries aren't counted: other worktrees nested in this one.
- */
-function countStatus(out, skip = []) {
-  const keys = skip.map(s => String(s).replace(/\/+$/, '').toLowerCase()).filter(Boolean);
-  const nested = name => {
-    const n = name.replace(/\/+$/, '').toLowerCase();
-    return keys.some(k => n === k || n.startsWith(`${k}/`));
-  };
-  const recs = String(out || '').split('\0');
-  let n = 0;
-  for (let i = 0; i < recs.length; i++) {
-    if (recs[i].length < 4) continue; // "XY " and at least one letter of a name
-    if (recs[i].startsWith('?? ') && nested(recs[i].slice(3))) continue;
-    n++;
-    if (/^[RC]|^.[RC]/.test(recs[i])) i++;
-  }
-  return n;
-}
-
-/**
- * The branch the main checkout is on, from `git worktree list --porcelain` (its first entry), or null
- * when the repo is bare or the checkout detached: then there is nothing to compare branches with.
- */
-function checkoutBranch(out) {
-  const first = String(out || '').replace(/\r/g, '').split('\n\n')[0].split('\n');
-  if (first.includes('bare')) return null;
-  const b = first.find(l => l.startsWith(`branch ${HEADS}`));
-  return b ? b.slice(`branch ${HEADS}`.length) : null;
-}
-
-/** At most n of the jobs handed to it run at once, whoever hands them over; the rest wait their turn, in order. */
-function limiter(n) {
-  let running = 0;
-  const queue = [];
-  const pump = () => {
-    while (running < n && queue.length) {
-      const { job, resolve, reject } = queue.shift();
-      running++;
-      Promise.resolve().then(job).then(resolve, reject).finally(() => { running--; pump(); });
-    }
-  };
-  return job => new Promise((resolve, reject) => { queue.push({ job, resolve, reject }); pump(); });
 }
 
 // The repo a folder belongs to, as its git common dir resolved and lower-cased (as changes.sameRepo
@@ -263,5 +206,7 @@ function writeWatch(nudge) {
 }
 
 module.exports = {
-  TREE, HEADS, HEAD_REF, MAX_BYTES, SNIFF_BYTES, MAX_HANDLES, REFRESH_MS, GIT_TIMEOUT_MS, EMPTY_TREE, TREE_MAX, MAX_PLACE_TREES, MAX_PLACE_BRANCHES, PLACES_MS, AT_ONCE, MAX_PICKED, PICK_UNSAFE, git, longPath, isUnder, sameDir, tooWide, plainRel, NOT_HERE, PATCH_SAID, readInside, mainBranchFor, tipOf, treesOf, countStatus, checkoutBranch, limiter, commonDirOf, branchOf, locate, selectedNote, writeWatch,
+  git, longPath, isUnder, sameDir, tooWide, plainRel, NOT_HERE, readInside,
+  mainBranchFor, tipOf, treesOf, commonDirOf, branchOf, locate, selectedNote, writeWatch,
+  HEADS, HEAD_REF, MAX_BYTES, SNIFF_BYTES, GIT_TIMEOUT_MS, MAX_PICKED, PICK_UNSAFE,
 };

@@ -2246,6 +2246,44 @@
         <p class="muted small">Claude can open pages, click and read them in your own Chrome, signed in as you, through the Claude in Chrome extension, which needs to be installed. Applies to new conversations.</p>
       </section>
 
+      <section class="setting-group" id="connectorsGroup" data-nav="Connectors">
+        <h3>Connectors</h3>
+        <p class="muted small">One gateway, every app: connect your apps once at an MCP gateway like Composio, Pipedream, Zapier MCP or Smithery, paste its address here, and every conversation (Claude, Gemini CLI, OpenCode and Codex) can use them. Each tool still asks before it runs, as any other does. Conversations on a local model and in folders on other computers don't get it.</p>
+        <div id="connectorsSaved" class="row wrap" hidden>
+          <p class="small" id="connectorsSavedText"></p>
+          <button type="button" class="btn ghost slim-btn" id="connectorsTest">Test</button>
+          <button type="button" class="btn ghost slim-btn" id="connectorsReplace">Replace</button>
+          <button type="button" class="btn ghost slim-btn" id="connectorsRemove">Remove</button>
+        </div>
+        <form id="connectorsForm" class="connectors-form" autocomplete="off">
+          <div class="row wrap">
+            <label class="inline-label" for="connectorsPreset">Gateway</label>
+            <select id="connectorsPreset" class="field slim"></select>
+            <a id="connectorsSite" class="small" href="#" hidden>Get an address</a>
+          </div>
+          <div class="row wrap">
+            <label class="inline-label" for="connectorsUrl">MCP address</label>
+            <input type="password" class="field slim" id="connectorsUrl" placeholder="https://…" spellcheck="false" maxlength="2000" required>
+          </div>
+          <div class="row wrap">
+            <label class="inline-label" for="connectorsKey">Key</label>
+            <input type="password" class="field slim" id="connectorsKey" placeholder="If it gave you one" spellcheck="false" maxlength="4000">
+            <label class="inline-label" for="connectorsHeader">sent as</label>
+            <input type="text" class="field slim" id="connectorsHeader" spellcheck="false" maxlength="64">
+          </div>
+          <div class="row wrap">
+            <button type="submit" class="btn slim-btn" id="connectorsSave">Save</button>
+            <button type="button" class="btn ghost slim-btn" id="connectorsCancel" hidden>Cancel</button>
+          </div>
+          <p class="muted small">The address and key are encrypted by Windows on this PC and never shown again. Some gateways put the secret in the address itself, so it's hidden as you type.</p>
+        </form>
+        <label class="toggle"><input type="checkbox" id="connectorsToggle"><span class="switch"></span>Give conversations my connectors</label>
+        <label class="toggle"><input type="checkbox" id="connectorsClaude"><span class="switch"></span>In Claude conversations</label>
+        <label class="toggle"><input type="checkbox" id="connectorsAgents"><span class="switch"></span>In Gemini CLI, OpenCode and Codex conversations</label>
+        <p class="muted small">Applies to new conversations. An agent that can't take a gateway over the web starts without it.</p>
+        <p class="small" id="connectorsStatus" role="status" aria-live="polite"></p>
+      </section>
+
       <section class="setting-group" id="localModelGroup" data-nav="Local model">
         <h3>Local model</h3>
         <div class="local-setup" id="localSetupCard" aria-live="polite" hidden>
@@ -2306,6 +2344,11 @@
           </div>
           <p class="muted small" id="localAgentText">Claude Code does the work as usual, with every tool, but thinks with this model instead of Claude, so nothing is spent from your plan and nothing leaves this PC. Needs Ollama 0.14 or LM Studio 0.4.1 or newer, and a model made for coding and tool use with a long context (32K tokens or more; Ollama starts most models with less). Each conversation keeps what it started on for good, reopened or branched later too, and a local one can't be sent to a terminal. Smaller models make more mistakes: watch what they change.</p>
           <ul class="local-fit" id="localFit" aria-label="How the models in use suit this PC" hidden></ul>
+        </div>
+        <div class="local-answers" id="localGameRoom">
+          <label class="toggle"><input type="checkbox" id="localMakeRoomToggle" aria-describedby="localMakeRoomText"><span class="switch"></span>Make room for games</label>
+          <p class="muted small" id="localMakeRoomText">When a game comes to the front, Shellby unloads the local models it uses that aren't busy, so the game gets their graphics memory. Once the game has gone, an open local conversation's models load again, so your next message there doesn't wait. Only Ollama, and only Shellby's own models.</p>
+          <p class="small" id="localMakeRoomLast" role="status" hidden></p>
         </div>
         <div class="local-try" id="localModelTry">
           <div class="row wrap">
@@ -2567,6 +2610,7 @@
             <label class="toggle"><input type="checkbox" data-allow="files"><span class="switch"></span>Read a conversation's files (read-only; .env files, keys and the like stay here)</label>
             <label class="toggle"><input type="checkbox" data-allow="push"><span class="switch"></span>Push after bringing a copy home (the same checks as here first)</label>
             <label class="toggle"><input type="checkbox" data-allow="notifyAnswers"><span class="switch"></span>Allow and Deny on Android notifications (they can work from a locked phone)</label>
+            <label class="toggle"><input type="checkbox" data-allow="otherPcs"><span class="switch"></span>See and answer what's waiting on your other PCs, through this one (Your PCs; each answer goes by that PC's own rules)</label>
           </div>
           <div class="row wrap">
             <button type="button" class="btn ghost slim-btn" id="pocketTest">Send a test</button>
@@ -3126,6 +3170,12 @@
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.3c0-.5.4-.8.8-.8h3.6c.5 0 .8.4.8.8v3.6c0 .5-.4.8-.8.8H3.3c-.5 0-.8-.4-.8-.8zM8.3 3.3c0-.5.4-.8.8-.8h3.6c.5 0 .8.4.8.8v3.6c0 .5-.4.8-.8.8H9.1c-.5 0-.8-.4-.8-.8zM2.5 9.1c0-.5.4-.8.8-.8h3.6c.5 0 .8.4.8.8v3.6c0 .5-.4.8-.8.8H3.3c-.5 0-.8-.4-.8-.8zM8.3 9.1c0-.5.4-.8.8-.8h3.6c.5 0 .8.4.8.8v3.6c0 .5-.4.8-.8.8H9.1c-.5 0-.8-.4-.8-.8z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
       <span>Pages</span>
     </button>
+    <!-- Your PCs, once another PC has joined the hub (pcs.js syncDock); until then it's a tab beside Health -->
+    <button type="button" class="dock-btn" data-view-btn="pcs" id="dockPcs" hidden>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.8 3.2h8.4v5.6H1.8zM4.6 11.2h2.8M6 8.8v2.4M11.6 5.2h2.6v6.4H8.4v-1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <span>Your PCs</span>
+      <i class="dot-badge" id="pcsBadge" hidden></i>
+    </button>
     <!-- Someone new: the rooms still to open (rooms.js) -->
     <button type="button" class="dock-btn dock-more" id="dockMore" hidden>
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -3355,6 +3405,8 @@
 <script src="textmenu.js"></script>
 <script src="feed-logic.js"></script>
 <script src="feed.js"></script>
+<script src="feed-blocks.js"></script>
+<script src="feed-result.js"></script>
 <script src="feed-foot.js"></script>
 <script src="feed-notes.js"></script>
 <script src="feed-conflicts.js"></script>
@@ -3374,7 +3426,9 @@
 <script src="queue-turns.js"></script>
 <script src="tabs.js"></script>
 <script src="tab-strip.js"></script>
+<script src="pane-head.js"></script>
 <script src="tab-panes.js"></script>
+<script src="pane-moves.js"></script>
 <script src="pane-layouts.js"></script>
 <script src="pane-room.js"></script>
 <script src="viewer.js"></script>
@@ -3406,6 +3460,8 @@
 <script src="review-queue.js"></script>
 <script src="review-view.js"></script>
 <script src="composer.js"></script>
+<script src="composer-chips.js"></script>
+<script src="composer-rewind.js"></script>
 <script src="builtin-commands.js"></script>
 <script src="tries.js"></script>
 <script src="debug-mode.js"></script>
@@ -3424,6 +3480,8 @@
 <script src="toolbox-batch.js"></script>
 <script src="toolbox-mcp.js"></script>
 <script src="toolbox-tidy.js"></script>
+<script src="toolbox-usage.js"></script>
+<script src="toolbox-detail.js"></script>
 <script src="toolbox.js"></script>
 <script src="shop.js"></script>
 <script src="mcp-picker.js"></script>
@@ -3459,6 +3517,7 @@
 <script src="settings-local-fit.js"></script>
 <script src="settings-everywhere.js"></script>
 <script src="settings-channels.js"></script>
+<script src="settings-connectors.js"></script>
 <script src="settings-pocket.js"></script>
 <script src="settings-desk.js"></script>
 <script src="remote-logic.js"></script>
@@ -3476,6 +3535,8 @@
 <script src="us-road.js"></script>
 <script src="together.js"></script>
 <script src="bugdex.js"></script>
+<script src="bugdex-battle-fx.js"></script>
+<script src="bugdex-battle-idle.js"></script>
 <script src="bugdex-battle.js"></script>
 <script src="health-logic.js"></script>
 <script src="health.js"></script>
@@ -3495,6 +3556,7 @@
 <script src="tank-life.js"></script>
 <script src="tank-render.js"></script>
 <script src="tank-room.js"></script>
+<script src="tank-edit.js"></script>
 <script src="tank.js"></script>
 <script src="tank-layouts.js"></script>
 <script src="tank-tidy.js"></script>

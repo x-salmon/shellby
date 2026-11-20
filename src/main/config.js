@@ -41,8 +41,9 @@ const DEFAULTS = {
   claudePath: null, // set only when the user points at the CLI by hand (see claude/cli.js)
   idleCompact: false, // compact a long conversation shortly before its hour-long cache runs out (wiring/idle-compact.js)
   planOnly: false,  // leave API keys and other providers out of Claude Code's environment (see claude/cli.js)
+  connectors: { on: false, claude: true, agents: true }, // one-key connectors' switches (connectors/; the gateway itself is sealed in connectors.bin). This PC only: never synced
   apiKeyBilling: false, // bill the API key saved in Settings instead (claude/api-key.js; the key is NOT here). This PC only: never synced
-  localModel: { on: false, url: 'http://127.0.0.1:11434', model: '', jobs: {}, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '', helpers: '', quick: '' }, preset: 'off' }, // small drafts on a local model first, Claude if it fails (local/model.js)
+  localModel: { on: false, url: 'http://127.0.0.1:11434', model: '', jobs: {}, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '', helpers: '', quick: '' }, preset: 'off', makeRoom: true }, // small drafts on a local model first, Claude if it fails (local/model.js)
   localModelTally: null, // what the local model wrote and saved, for Settings (local/tally.js)
   onboarded: false,
   firstTour: false,  // a new install's first New task offers Show me around until it's opened once (onboarding.js, feed.js)

@@ -48,6 +48,7 @@
       answers: { on: lm.answers?.on === true, model: typeof lm.answers?.model === 'string' ? lm.answers.model : '' },
       agent: { on: lm.agent?.on === true, ...Object.fromEntries(['model', ...AGENT_ROLES.map(r => r.key)].map(k => [k, typeof lm.agent?.[k] === 'string' ? lm.agent[k] : ''])) },
       preset: ['off', 'coding', 'chat', 'custom'].includes(lm.preset) ? lm.preset : 'custom',
+      makeRoom: lm.makeRoom !== false, // every save carries it, so another change never turns it back on
     };
   }
   const say = text => { $('localModelStatus').textContent = text; };
@@ -77,6 +78,7 @@
     renderJobs(lm, names);
     renderAnswers(lm, names);
     renderAgent(lm, names);
+    $('localMakeRoomToggle').checked = lm.makeRoom;
     renderPreset(lm);
     SB.refreshLocalSetup?.();
     SB.refreshLocalFit?.();
@@ -278,6 +280,13 @@
     try { st = await api.localState(); } catch { return; } // the tally is extra: Settings works without it
     if (seq !== tallySeq || !st) return;
     const lm = current();
+    // The last time a game got the local models' memory (main's local/game-room.js).
+    const room = st.room;
+    $('localMakeRoomLast').hidden = !room;
+    if (room) {
+      const gb = room.bytes >= 1e9 ? `, ${(room.bytes / 1e9).toFixed(1)} GB` : '';
+      $('localMakeRoomLast').textContent = `Last made room at ${clock(room.at)}: ${room.models.join(', ')}${gb}.`;
+    }
     const any = st.local + st.claude > 0;
     const rest = st.resting?.[0];
     $('localModelTally').hidden = !lm.model || (!any && !rest && !st.lastFail);
@@ -417,6 +426,14 @@
   });
   $('localModelSelect').addEventListener('change', async e => {
     if (!(await save({ model: e.target.value }))) say('Couldn\'t save that model.');
+  });
+  // Not save(): this isn't a model pick, so the preset stays as it is.
+  $('localMakeRoomToggle').addEventListener('change', async e => {
+    try {
+      const r = await api.setSettings({ localModel: { ...current(), makeRoom: e.target.checked } });
+      state.settings = r.settings;
+      renderLocalModel();
+    } catch { say('Couldn\'t save that.'); }
   });
   $('localAnswersToggle').addEventListener('change', async e => {
     if (!(await save({ answers: { ...current().answers, on: e.target.checked } }))) say('Couldn\'t save that.');

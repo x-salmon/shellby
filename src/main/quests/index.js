@@ -104,6 +104,7 @@ function nextQuest(s, open, prefer) {
  * a quest, or its chapter isn't open yet), its chapter, whether that finished
  * the chapter, the quest to suggest next, whether every open chapter is done,
  * and any chapters ctx opened on the way.
+ * @param {{ everLevel?: number, dormant?: Set<string> | string[], eventActive?: boolean } | null} [ctx]
  */
 function completeQuest(v, id, now = Date.now(), ctx = null) {
   const u = unlockChapters(v, ctx, now);
@@ -157,6 +158,8 @@ const publicChapter = c => ({ id: c.id, n: c.n, icon: c.icon, title: c.title, bl
  * every chapter with whether it's open and done, and how it opens.
  *   ctx: as completeQuest's; without one only stored chapters count as open.
  *   names: screen id -> name, for the unlock line.
+ * @param {{ everLevel?: number, dormant?: Set<string> | string[], eventActive?: boolean } | null} [ctx]
+ * @param {Record<string, string>} [names]
  */
 function questsView(v, ctx = null, names = {}) {
   const s = normalizeQuests(v);

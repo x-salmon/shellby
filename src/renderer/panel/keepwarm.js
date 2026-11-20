@@ -17,7 +17,7 @@
     btn.classList.toggle('on', view.on);
     btn.setAttribute('aria-pressed', String(view.on));
     $('keepWarmLeft').hidden = !view.on;
-    if (view.on) $('keepWarmLeft').textContent = `Warm · ${left((view.endsAt ?? Date.now()) - Date.now())}`;
+    if (view.on) $('keepWarmLeft').textContent = `Warm · ${left((view.endsAt ?? 0) - Date.now())}`;
     btn.title = view.on
       ? ['Keeping warm while you\'re away (click to stop)', ...view.tabs.map(t => `${t.title} · ${t.line}`)].join('\n')
       : "Keep warm while you're away";

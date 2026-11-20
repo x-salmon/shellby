@@ -43,8 +43,10 @@ function pickEditor(choice, isInstalled) {
   return Object.keys(EDITORS).find(id => isInstalled(EDITORS[id].scheme)) || null;
 }
 
-/** vscode://file/C:/a%20b/x.js:12:3 for a file (or folder) and an optional line and column. */
-/** @param {string} id @param {string} file @param {number | null} [line] @param {number | null} [col] */
+/**
+ * vscode://file/C:/a%20b/x.js:12:3 for a file (or folder) and an optional line and column.
+ * @param {string} id @param {string} file @param {number | null} [line] @param {number | null} [col]
+ */
 function editorUrl(id, file, line = null, col = null) {
   const parts = path.resolve(file).split(/[\\/]+/).filter(Boolean)
     .map((seg, i) => (i === 0 && /^[A-Za-z]:$/.test(seg) ? seg.toUpperCase() : encodeURIComponent(seg)));
@@ -67,9 +69,9 @@ function parseTarget(raw, cwd) {
   // your account just to look at it, so only local files open.
   if (/^[\\/]{2}/.test(s)) return null;
   /** @type {number | null} */
-    let line = null;
-    /** @type {number | null} */
-    let col = null;
+  let line = null;
+  /** @type {number | null} */
+  let col = null;
   const m = s.match(/(?::(\d+))(?::(\d+))?$/) || s.match(/\((\d+)(?:,\s*(\d+))?\)$/);
   if (m && !/^[A-Za-z]:$/.test(s.slice(0, m.index))) {
     line = Number(m[1]) || null;

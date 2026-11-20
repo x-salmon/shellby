@@ -16,10 +16,13 @@
 
   const TITLES = { build: 'Fix this build', review: 'Address the review' };
 
-  let open = null;    // { kind, key, from } while the sheet is up
-  let shown = null;   // { hash, note, risk }: the draft on screen, the only one Send may send
+  /** @type {{ kind: string, key: string, from: HTMLElement | null } | null} */
+  let open = null;    // while the sheet is up; from: what had the keyboard before it
+  /** @type {{ hash: string, note: string, risk: any } | null} */
+  let shown = null;   // the draft on screen, the only one Send may send
   let pending = false; // a draft is on its way (the note changed): Send waits for it
   let seq = 0;
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let noteTimer = null;
 
   const modeTitle = () => SB.MODES.find(m => m.id === state.settings.mode)?.title || 'your current mode';
@@ -31,7 +34,7 @@
 
   function openSheet(kind, key) {
     if (SB.isCrabOnly()) return SB.claudeUpsell('fix');
-    open = { kind, key, from: document.activeElement };
+    open = { kind, key, from: /** @type {HTMLElement | null} */ (document.activeElement) };
     shown = null;
     $('sfTitle').textContent = TITLES[kind];
     $('sfGitHub').textContent = `Open on ${forgeName(key)}`;

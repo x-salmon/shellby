@@ -70,7 +70,7 @@
    * (`line`: the old text's first line in the file). Long unchanged runs fold
    * into { t: '…', n } so a one-line change in a big block stays one screen.
    *   [{ t, s, a?, b? }]  a = old line number, b = new line number
-   * @param {{ old?: string | null, new?: string }} edit
+   * @param {{ old: string | null, new: string }} edit
    * @param {{ line?: number | null, context?: number }} [opts]
    */
   function rows(edit, { line = null, context = 3 } = {}) {

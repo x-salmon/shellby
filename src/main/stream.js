@@ -3,8 +3,59 @@
 
 const { editsOf } = require('../renderer/shared/diff');
 const { headlessReply } = require('./cli-commands');
-const { MAX_RESULT_CHARS, inWords, cronWords, todoOf, todoIdOf, questionsOf, truncate, describeTool, resultText, resultImages, usageFrom, tokensOf, spendFrom, WRITE_TOOLS, AGENT_TOOLS, strings, writtenPath, writeChars, findingsOf, worktreeOf } = require('./stream-tools');
-const { toolItem, taskItem, workflowOf, workflowLaunchOf, MOD_UI, MAX_COMMANDS, COMMAND_NAME, oneLine, modItem, goalOf, tokenCount, contextUsageOf, partialOf, nextPromptOf, compactingOf, retryOf, hookRunningOf, hookFailedOf, modeOf, denialsOf } = require('./stream-items');
+const tools = require('./stream-tools');
+const notices = require('./stream-notices');
+const { questionsOf, truncate, describeTool, writtenPath, worktreeOf, toolItem, todoIdOf } = tools;
+const { taskItem, workflowLaunchOf, MOD_UI, modItem, commandsOf, oneLine, goalOf, contextUsageOf, partialOf, nextPromptOf, compactingOf, retryOf, hookRunningOf, hookFailedOf, modeOf, denialsOf } = notices;
+
+const MAX_RESULT_CHARS = 8000;
+
+function resultText(content) {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content.map(c => (c.type === 'text' ? c.text : c.type === 'image' ? '[image]' : '')).join('\n');
+  }
+  return content == null ? '' : JSON.stringify(content);
+}
+
+// The pictures in a tool's result (a screenshot it read, a browser capture),
+// as { mediaType, data }: base64 only, and only types the chat can show.
+const PICTURE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+function resultImages(content) {
+  if (!Array.isArray(content)) return [];
+  return content
+    .filter(c => c?.type === 'image' && c.source?.type === 'base64' && PICTURE_TYPES.has(c.source.media_type) && typeof c.source.data === 'string')
+    .map(c => ({ mediaType: c.source.media_type, data: c.source.data }));
+}
+
+function usageFrom(ev) {
+  const info = ev.rate_limit_info || {};
+  const w = info.unifiedWindows || {};
+  const win = x => (x && typeof x.utilization === 'number'
+    ? { pct: Math.round(x.utilization * 100), resetsAt: x.resetsAt ? x.resetsAt * 1000 : null }
+    : null);
+  return { kind: 'usage', status: info.status || null, fiveHour: win(w.five_hour), sevenDay: win(w.seven_day) };
+}
+
+// A result's token counts for the whole turn, or null when it has none.
+function tokensOf(u) {
+  if (!u || typeof u !== 'object') return null;
+  const n = v => (Number.isFinite(v) && v > 0 ? v : 0);
+  const t = { input: n(u.input_tokens), output: n(u.output_tokens), cacheRead: n(u.cache_read_input_tokens), cacheWrite: n(u.cache_creation_input_tokens) };
+  return t.input + t.output + t.cacheRead + t.cacheWrite ? t : null;
+}
+
+// What one API call cost, for the usage-by-project ledger (spend.js). Claude Code
+// sends one assistant event per content block, each repeating the message's id
+// and usage, so callers count each id once (session/). parent: the Agent call
+// a helper's call was made under, or null for the main thread's own.
+function spendFrom(ev) {
+  const m = ev?.type === 'assistant' ? ev.message : null;
+  if (!m || typeof m.id !== 'string' || !m.usage || typeof m.usage !== 'object') return null;
+  return { messageId: m.id, model: typeof m.model === 'string' ? m.model : null, usage: m.usage, parent: typeof ev.parent_tool_use_id === 'string' ? ev.parent_tool_use_id : null };
+}
+
+const strings = a => (Array.isArray(a) ? a.filter(s => typeof s === 'string') : []);
 
 // Returns an array of UI items for one parsed stream-json event.
 function toItems(ev) {
@@ -37,14 +88,8 @@ function toItems(ev) {
       // The API's safety check stopped the reply (stop_reason "refusal") and no
       // fallback model retried it. The panel can offer your local model instead.
       if (ev.subtype === 'model_refusal_no_fallback') return [{ kind: 'refusal', category: oneLine(ev.api_refusal_category, 40) || null }];
-      // Every command the conversation has now, with what each one does: how a
-      // command a mod registers after the session started becomes known.
-      if (ev.subtype === 'commands_changed') {
-        const commands = (Array.isArray(ev.commands) ? ev.commands : []).slice(0, MAX_COMMANDS)
-          .filter(c => c && typeof c.name === 'string' && COMMAND_NAME.test(c.name))
-          .map(c => ({ name: c.name, description: oneLine(c.description, 300) }));
-        return [{ kind: 'commands', commands }];
-      }
+      // Every command the conversation has now (a mod registered one after the session started).
+      if (ev.subtype === 'commands_changed') return commandsOf(ev);
       return [];
     case 'assistant': {
       const out = [];
@@ -177,4 +222,13 @@ function parseLine(line) {
   try { ev = JSON.parse(t); } catch { return { event: null, items: [{ kind: 'log', text: t }] }; }
   return { event: ev, items: toItems(ev) };
 }
-module.exports = { workflowOf, workflowLaunchOf, worktreeOf, findingsOf, questionsOf, todoOf, todoIdOf, goalOf, contextUsageOf, tokenCount, cronWords, inWords, toItems, parseLine, describeTool, resultText, resultImages, truncate, usageFrom, spendFrom, writtenPath, writeChars, WRITE_TOOLS, AGENT_TOOLS, KNOWN };
+
+// The pieces' exports stay reachable from here, as every caller and test expects.
+module.exports = {
+  toItems, parseLine, resultText, resultImages, usageFrom, spendFrom, KNOWN,
+  // stream-tools.js
+  questionsOf, todoOf: tools.todoOf, todoIdOf, cronWords: tools.cronWords, inWords: tools.inWords, describeTool, truncate,
+  writtenPath, writeChars: tools.writeChars, findingsOf: tools.findingsOf, worktreeOf, WRITE_TOOLS: tools.WRITE_TOOLS, AGENT_TOOLS: tools.AGENT_TOOLS,
+  // stream-notices.js
+  workflowOf: notices.workflowOf, workflowLaunchOf, goalOf, contextUsageOf, tokenCount: notices.tokenCount,
+};

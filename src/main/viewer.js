@@ -9,6 +9,11 @@
 // A branch handle (picked from the header's menu by a key main issued) reads a
 // branch nothing has checked out from git alone: no checkout, no index, no hook.
 //
+// This file holds the handles. viewer-read.js is what may be read and where (git,
+// paths confined to a root, a file inside a folder, the repo lookups), viewer-places.js
+// the header's menu, viewer-status.js the file tree's marks and viewer-review.js
+// the Viewed ticks, blame and pictures. Each is re-exported here for its callers.
+//
 // execFile with fixed arguments, timeouts, and never throws to the caller.
 const crypto = require('crypto');
 const os = require('os');
@@ -18,8 +23,25 @@ const fileIndex = require('./fileindex');
 const { okDir } = require('./leaving');
 const { readStatus } = require('./viewer-status');
 const { IMAGE_TYPES, parseRaw, parseBlame, signFiles, blameLine } = require('./viewer-review');
-const { TREE, HEADS, HEAD_REF, MAX_BYTES, SNIFF_BYTES, MAX_HANDLES, REFRESH_MS, EMPTY_TREE, TREE_MAX, MAX_PLACE_TREES, MAX_PLACE_BRANCHES, PLACES_MS, MAX_PICKED, PICK_UNSAFE, git, longPath, isUnder, sameDir, tooWide, plainRel, NOT_HERE, PATCH_SAID, readInside, mainBranchFor, tipOf, treesOf, countStatus, checkoutBranch, limiter, commonDirOf, branchOf, locate, selectedNote, writeWatch } = require('./viewer-git');
-const { createPlaces } = require('./viewer-places');
+const {
+  git, longPath, isUnder, sameDir, tooWide, plainRel, NOT_HERE, readInside, mainBranchFor, tipOf, treesOf, commonDirOf,
+  branchOf, locate, selectedNote, writeWatch, HEADS, HEAD_REF, MAX_BYTES, SNIFF_BYTES, MAX_PICKED, PICK_UNSAFE,
+} = require('./viewer-read');
+const { createPlaces, countStatus, checkoutBranch, limiter, MAX_PLACE_TREES, MAX_PLACE_BRANCHES, PLACES_MS } = require('./viewer-places');
+
+const { TREE } = changes;
+
+const MAX_HANDLES = 8;               // folders open at once; the oldest goes first
+const REFRESH_MS = 2000;             // a look again sooner than this is answered from the last one
+const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'; // what a repo with no commits is compared with
+const TREE_MAX = 30000;              // All files on a branch, at most (fileindex.js lists a folder to the same)
+
+// changes.patchFor's own answers (checkRef's, a moved root, objects tidied away, a diff with no
+// stderr). Any other error is git's stderr, which never reaches the panel.
+const PATCH_SAID = new Set([
+  'Not a project folder.', 'Not a snapshot.', 'Not a file in this change.', 'That project has moved.',
+  'Those changes have been tidied away by git since.', "Couldn't read the diff.",
+]);
 
 /** opts.home: the home folder, never browsed (tests give their own). */
 function createViewer({ home = os.homedir() } = {}) {
@@ -352,6 +374,7 @@ function createViewer({ home = os.homedir() } = {}) {
     return p;
   }
 
+  // The header's menu (viewer-places.js): the repo's worktrees and branches, and a pick from them.
   const { placesOf, switchTo } = createPlaces({ handles, home, liveRoot, open, openBranch });
 
   // The handles a changed folder belongs to. Their last look no longer answers a repeat, and a look
@@ -385,7 +408,6 @@ function createViewer({ home = os.homedir() } = {}) {
     placesOf, switchTo, close: id => { handles.delete(id); }, staleFor, keepTabs,
   };
 }
-
 
 module.exports = {
   readInside, sameDir, isUnder, longPath, tooWide, createViewer, locate, selectedNote, branchOf, writeWatch, countStatus, checkoutBranch, limiter, parseRaw, parseBlame,

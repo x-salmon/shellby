@@ -21,7 +21,7 @@
     function loaded({ title, active = 'more', back = '#/more', backLabel = 'More', name, body = {}, draw }) {
       const scroll = h('div', { class: 'scroll' });
       const el = h('div', { class: 'screen' }, topbar({ back, backLabel }), h('div', { class: 'offline-slot' }), scroll, dock(active));
-      /** @type {{ error?: string } | null} */
+      /** @type {Record<string, any> | null} */ // the PC's answer, or { error }
       let data = null;
       let asked = false;
       let drawnMay = null;

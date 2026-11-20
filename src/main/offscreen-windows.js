@@ -60,11 +60,15 @@ function offScreenOptions(opts = {}, workArea) {
 /** require('electron') -> the same module, with BrowserWindow swapped for `Sub`. */
 function handOut(electron, Sub) {
   const swapped = new Proxy(electron, { get: (t, k) => (k === 'BrowserWindow' ? Sub : t[k]) });
-  const load = Module._load;
-  Module._load = function (request, ...rest) {
+  // Node's module loader, which @types/node leaves out: Module._load(request, parent, isMain).
+  const loader = /** @type {{ _load: (request: string, ...rest: unknown[]) => unknown }} */ (/** @type {unknown} */ (Module));
+  const load = loader._load;
+  loader._load = function (request, ...rest) {
     return request === 'electron' ? swapped : load.call(this, request, ...rest);
   };
 }
+
+/** @typedef {import('electron').BrowserWindow} Win */
 
 /** Patch the bounds, maximize and focus methods. -> the window that has the focus, for tests. */
 function patchWindows(BrowserWindow, getScreen) {
@@ -73,8 +77,10 @@ function patchWindows(BrowserWindow, getScreen) {
   const maxed = new WeakMap(); // window -> the bounds to come back to
   const want = new WeakMap(); // window -> the on-screen bounds Shellby last asked for
   const takesFocus = new WeakMap(); // window -> focusable, as Shellby asked (Windows is told false)
+  /** @type {Win | null} */
   let focused = null;
 
+  /** @type {(w: Win | null | undefined) => w is Win} */
   const alive = w => !!w && !w.isDestroyed();
   const give = win => {
     if (focused === win) return;

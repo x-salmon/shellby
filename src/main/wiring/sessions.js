@@ -102,7 +102,7 @@ function wireSessions(d) {
       argsPrefix: d.FAKE_CLI ? [d.FAKE_CLI] : [],
       // Another agent's CLI (Gemini CLI, OpenCode, Codex): harness/.
       // They get this PC's own environment (and SHELLBY_OWNED), not Shellby's GitHub access, which stays Claude Code's.
-      makeHarness: harnessFactory({ fake: d.FAKE_ACP, node: process.env.SHELLBY_NODE || 'node' }),
+      makeHarness: harnessFactory({ fake: d.FAKE_ACP, node: process.env.SHELLBY_NODE || 'node', mcpServers: caps => d.connectors?.acpServers(caps) || [] }),
       history: d.history,
       getExe: () => (d.FAKE_CLI ? process.env.SHELLBY_NODE || 'node' : d.claudeExe()),
       getMode: () => d.config.get('mode'),
@@ -117,6 +117,8 @@ function wireSessions(d) {
       // A local conversation's quick model, loaded as it starts so its titles and checks don't push the main one out.
       warmLocal: target => { require('../local/ollama').keepLoaded(target).catch(() => {}); },
       getFallbackModel: () => d.config.get('fallbackModel') || '',
+      // The connectors gateway's --mcp-config entry, read at each start (connectors/).
+      getConnectorServers: () => d.connectors?.claudeServers() || null,
       getChrome: () => d.config.get('claudeInChrome') === true,
       // The newer flags go only to a Claude Code whose --help lists them (main.js claudeSupports).
       supports: flag => d.claudeSupports(flag),
@@ -167,7 +169,20 @@ function wireSessions(d) {
       savePictures,
     });
 
-    d.manager.on('spend', (_tabId, s, tab) => d.usageService.onSpend(s, tab));
+    // Local models make room for a game (local/game-room.js); wiring/windows.js giveWayToGame tells it on every poll.
+    const localTabs = () => [...d.manager.tabs.values()].filter(t => t.localTarget);
+    d.gameRoom = require('../local/game-room').createGameRoom({
+      settings: () => d.config.get('localModel'),
+      targets: () => localTabs().map(t => t.localTarget),
+      busy: () => localTabs().some(t => t.session.busy),
+      log: d.log,
+      onRoom: room => {
+        const gb = room.bytes / 1e9;
+        d.speak?.('milestone', { text: gb >= 1 ? `Moved my local model out of the way: ${gb.toFixed(1)} GB of graphics memory is yours.` : 'Moved my local model out of the way for your game.' });
+      },
+    });
+
+    d.manager.on('spend',(_tabId, s, tab) => d.usageService.onSpend(s, tab));
     // An Ultracode run ended: its cost goes in the per-turn ledger as a run, for the estimate before the next (usage/runcost.js).
     d.manager.on('run', (_tabId, r, tab) => { try { d.usagePlan?.endRun(tab, r); } catch (err) { d.log.info(`usage plan: ${err.message}`); } });
     d.manager.on('call', (_tabId, c, tab) => { if (!d.CAPTURE) d.lean?.onCall(c, tab); });

@@ -1,57 +1,9 @@
-// The UI items for one kind of Claude Code event each (stream.js toItems): tool calls, subagent tasks, workflows, mods, goals, context, compacting, retries, hooks, modes and denials. Pure.
-const { clean } = require('./mods');
-const { editsOf } = require('../renderer/shared/diff');
-const plainWords = require('./plain-words');
-const { toolFacts } = require('./turnwatch');
-const { todoText, todoOf, truncate, describeTool, AGENT_TOOLS, AGENT_ISOLATION, AGENT_EFFORT, writtenPath, targetOf, writeChars, findingsOf } = require('./stream-tools');
+// What Claude Code says about itself, as items (stream.js toItems): helper tasks
+// and workflow runs, a mod's lines, /goal, /context, compacting, a retry, hooks,
+// the permission mode and the turn's refusals. Pure: no Electron, no I/O.
 
-function toolItem(b, sub) {
-  const input = b.input || {};
-  // What the turn's notes need from its input (turnwatch.js): a whole-file read, a helper's brief, a commit.
-  const item = { kind: 'tool', id: b.id, name: b.name, ...describeTool(b.name, input), ...toolFacts(b.name, input), ...sub };
-  if (b.name === 'ExitPlanMode') item.plan = input.plan;
-  if (b.name === 'ReportFindings') {
-    const findings = findingsOf(input);
-    if (findings) item.findings = findings;
-  }
-  const todo = todoOf(b.name, input);
-  if (todo) item.todo = todo;
-  // A skill Claude reached for by itself: which one (feed.js says what it's for).
-  if (b.name === 'Skill' && typeof input.skill === 'string') item.skill = input.skill.slice(0, 200);
-  // One agent writing to another (SendMessage): who to, and what it said.
-  if (b.name === 'SendMessage') {
-    const to = input.to ?? input.recipient;
-    const text = input.message ?? input.content;
-    if (typeof to === 'string' && to) item.message = { to: to.slice(0, 120), text: typeof text === 'string' ? text.slice(0, 2000) : '', summary: todoText(input.summary) };
-  }
-  // What it's doing, in plain words, for the Working bar (plain-words.js).
-  const plain = plainWords.describe(b.name, input);
-  if (plain) item.doing = plain.doing;
-  // Its result only says it started: not a finished run (flaky/index.js).
-  if ((b.name === 'Bash' || b.name === 'PowerShell') && input.run_in_background === true) item.background = true;
-  const fp = writtenPath(b.name, input);
-  if (fp) { item.filePath = fp; item.writeChars = writeChars(b.name, input); item.edits = editsOf(b.name, input); }
-  // Where a read or a search went, whole: the detail is cut short and flattened (the trail, shared/trail.js).
-  const target = targetOf(b.name, input);
-  if (target) item.target = target;
-  if (AGENT_TOOLS.has(b.name)) {
-    item.agent = {
-      type: typeof input.subagent_type === 'string' ? input.subagent_type : 'general-purpose',
-      description: typeof input.description === 'string' ? input.description : '',
-      background: !!input.run_in_background,
-    };
-    // The name other agents write to it by (SendMessage { to }).
-    if (typeof input.name === 'string' && input.name.trim()) item.agent.name = input.name.trim().slice(0, 80);
-    // A fork carries on with the whole conversation and Claude's own model, not a fresh specialist.
-    if (item.agent.type === 'fork') item.agent.fork = true;
-    // Where it works: its own copy of the repo, or a cloud session.
-    if (AGENT_ISOLATION.has(input.isolation)) item.agent.isolation = input.isolation;
-    // A model or effort Claude picked for it (forks always use Claude's own).
-    if (typeof input.model === 'string' && input.model.trim() && !item.agent.fork) item.agent.model = input.model.trim().slice(0, 40);
-    if (AGENT_EFFORT.has(input.effort)) item.agent.effort = input.effort;
-  }
-  return item;
-}
+const { clean } = require('./mods');
+const { truncate, describeTool } = require('./stream-tools');
 
 // task_* system events describe subagent lifecycles. task_id is the id that
 // permission requests from that subagent carry as agent_id; tool_use_id is the
@@ -142,6 +94,15 @@ function modItem(ev) {
   if (!text) return [];
   if (kind === 'modtoast') return [{ kind, plugin, text, ms: Number.isFinite(ev.timeout_ms) ? Math.min(Math.max(ev.timeout_ms, 1500), 15000) : 4000 }];
   return [{ kind, plugin, text }];
+}
+
+// Every command the conversation has now, with what each one does: how a
+// command a mod registers after the session started becomes known.
+function commandsOf(ev) {
+  const commands = (Array.isArray(ev.commands) ? ev.commands : []).slice(0, MAX_COMMANDS)
+    .filter(c => c && typeof c.name === 'string' && COMMAND_NAME.test(c.name))
+    .map(c => ({ name: c.name, description: oneLine(c.description, 300) }));
+  return [{ kind: 'commands', commands }];
 }
 
 // Claude Code's own notes about a goal (/goal), as the synthetic replies it
@@ -295,6 +256,4 @@ function denialsOf(list) {
   });
 }
 
-module.exports = {
-  toolItem, taskItem, MAX_WORKFLOW_ENTRIES, AGENT_STATES, count, workflowOf, workflowLaunchOf, MOD_UI, MAX_MOD_TEXT, MAX_COMMANDS, COMMAND_NAME, oneLine, modItem, GOAL_TEXT, goalOf, CONTEXT_TEXT, CONTEXT_CATEGORIES, SCALE, tokenCount, contextUsageOf, partialOf, SUGGESTION_TEXT, nextPromptOf, compactingOf, num, retryOf, hookName, hookRunningOf, hookFailedOf, SHELLBY_MODE, modeOf, MAX_DENIALS, MAX_TARGET, denialTarget, denialsOf,
-};
+module.exports = { taskItem, workflowOf, workflowLaunchOf, MOD_UI, modItem, commandsOf, oneLine, goalOf, contextUsageOf, tokenCount, partialOf, nextPromptOf, compactingOf, retryOf, hookRunningOf, hookFailedOf, modeOf, denialsOf };

@@ -13,6 +13,8 @@ interface Window {
   toy: any;
   webkitSpeechRecognition: any;
   SpeechRecognition: any;
+  PocketAsk: any;
+  PocketBeach: any;
   PocketBits: any;
   PocketDraw: any;
   PocketFind: any;
@@ -23,6 +25,7 @@ interface Window {
   PocketNew: any;
   PocketPages: any;
   PocketPhone: any;
+  PocketSheets: any;
   PocketTab: any;
   PocketWide: any;
   ShellbyAmbient: any;
@@ -96,6 +99,10 @@ interface ShellbyPanelExtras {
   renderCrabs: any;
   starting: any;
   syncHomeMark: any;
+  // bugdex-battle-fx.js
+  battleFx: any;
+  // bugdex-battle-idle.js
+  battleIdle: any;
   // bugdex-battle.js
   battleOf: any;
   bugBattles: any;
@@ -139,25 +146,30 @@ interface ShellbyPanelExtras {
   paintTokens: any;
   restoreCodeView: any;
   resultBox: any;
-  // composer.js
+  // composer-chips.js
   applyEffort: any;
   applyModel: any;
   chooseEffort: any;
   chooseLocal: any;
   chooseModel: any;
   chooseNewEffort: any;
-  clearConversation: any;
-  composerInput: any;
   continueOnClaude: any;
+  effortCommand: any;
   EFFORTS: any;
+  modelCommand: any;
+  // composer-rewind.js
   escRewind: any;
-  hidePick: any;
-  historyKeydown: any;
   historyLink: any;
-  LOCAL_COMMANDS: any;
-  notePrompt: any;
   openBranch: any;
   openRewind: any;
+  // composer.js
+  clearConversation: any;
+  composerInput: any;
+  composerShellMode: any;
+  hidePick: any;
+  historyKeydown: any;
+  LOCAL_COMMANDS: any;
+  notePrompt: any;
   pickKeydown: any;
   runLocal: any;
   // core.js
@@ -222,6 +234,10 @@ interface ShellbyPanelExtras {
   // engineer.js
   renderEngineer: any;
   renderEngineerChip: any;
+  // feed-blocks.js
+  attachmentChips: any;
+  troubleAction: any;
+  unbuiltDiffs: any;
   // feed-changes.js
   renderDiff: any;
   // feed-conflicts.js
@@ -231,12 +247,9 @@ interface ShellbyPanelExtras {
   // feed-native.js
   decorateTool: any;
   // feed.js
-  attachmentChips: any;
   extendTab: any;
   forkIcon: any;
   Tab: any;
-  troubleAction: any;
-  unbuiltDiffs: any;
   // files-dock.js
   filesDock: any;
   filesFollow: any;
@@ -379,6 +392,11 @@ interface ShellbyPanelExtras {
   paintTiles: any;
   // painter.js
   painter: any;
+  // pane-head.js
+  paintPaneLane: any;
+  paintPaneTray: any;
+  paneHead: any;
+  paneTrayBox: any;
   // pane-layouts.js
   applyZoom: any;
   forgetLayout: any;
@@ -393,6 +411,15 @@ interface ShellbyPanelExtras {
   unzoom: any;
   useLayout: any;
   zoomFrom: any;
+  // pane-moves.js
+  closePane: any;
+  dropAt: any;
+  movePane: any;
+  paneDir: any;
+  placeTab: any;
+  reorderInPane: any;
+  showDrop: any;
+  splitPane: any;
   // pane-room.js
   atLeastMin: any;
   chatShowing: any;
@@ -538,30 +565,21 @@ interface ShellbyPanelExtras {
   // tab-panes.js
   applyPaneSizes: any;
   carryOf: any;
-  closePane: any;
-  dropAt: any;
   focusedPane: any;
   forgetTab: any;
   goToNeeds: any;
   isShown: any;
-  movePane: any;
   nextShown: any;
   overlayOpen: any;
-  paneDir: any;
   paneEls: any;
   paneStripOf: any;
-  paneTrayBox: any;
-  placeTab: any;
   popOut: any;
   refreshJump: any;
   refreshPaneHeads: any;
   renderPanes: any;
-  reorderInPane: any;
   savePanes: any;
   settlePanes: any;
-  showDrop: any;
   showInPane: any;
-  splitPane: any;
   swapPanes: any;
   takeCarry: any;
   // tab-queue.js
@@ -632,6 +650,8 @@ interface ShellbyPanelExtras {
   stripIds: any;
   syncTabs: any;
   tryAgain: any;
+  // tank-edit.js
+  tankEditor: any;
   // tank-gauges-more.js
   tankGaugesMore: any;
   // tank-gauges.js
@@ -671,6 +691,8 @@ interface ShellbyPanelExtras {
   openMemories: any;
   // toolbox-batch.js
   toolboxBatch: any;
+  // toolbox-detail.js
+  toolboxDetail: any;
   // toolbox-hooks.js
   toolboxHooks: any;
   // toolbox-mcp.js
@@ -692,6 +714,8 @@ interface ShellbyPanelExtras {
   toolboxTeam: any;
   // toolbox-tidy.js
   toolboxTidy: any;
+  // toolbox-usage.js
+  toolboxUsage: any;
   // toolbox.js
   onLearned: any;
   showToolbox: any;

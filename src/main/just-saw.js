@@ -66,12 +66,17 @@ function clean(text) {
   return output.fence(kept);
 }
 
+/** @typedef {{ tabId: string, cwd: string | null, job: any }} FailedJob */
+
 /**
  * The newest background command that failed, across conversations.
  * tabs: [{ tabId, cwd, title, jobs: [job] }] with jobs as jobs.js keeps them.
  * -> { tabId, cwd, job } | null
+ * @param {any[]} tabs
+ * @returns {FailedJob | null}
  */
 function lastFailedJob(tabs) {
+  /** @type {FailedJob | null} */
   let best = null;
   for (const t of Array.isArray(tabs) ? tabs : []) {
     for (const job of Array.isArray(t?.jobs) ? t.jobs : []) {
@@ -86,6 +91,7 @@ function lastFailedJob(tabs) {
 /**
  * What one press could attach, best first.
  * { clipText, job: lastFailedJob(), jobOutput, hasImage } -> [{ kind, label }]
+ * @param {{ clipText?: string, job?: FailedJob | null, hasImage?: boolean }} [what]
  */
 function offers({ clipText = '', job = null, hasImage = false } = {}) {
   const out = [];
@@ -99,6 +105,8 @@ function offers({ clipText = '', job = null, hasImage = false } = {}) {
  * The draft for a new task with this attached. kind: 'clipboard' | 'job' | 'image'.
  * For 'clipboard', text is what was copied; for 'job', job is lastFailedJob()'s
  * and text the end of its output. A picture goes as an attachment, so its draft is short.
+ * @param {string} kind
+ * @param {{ text?: string, job?: FailedJob | null }} [what]
  */
 function draft(kind, { text = '', job = null } = {}) {
   if (kind === 'image') return 'Here is a screenshot of what I was just looking at. ';

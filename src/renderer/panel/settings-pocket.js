@@ -9,8 +9,8 @@
   const { h, api, state, $ } = SB;
   const T = window.ShellbySettingsText;
 
-  /** @type {{ rightsLevels?: string[] } | null} */
-  let view = null;
+  /** @type {any} */
+  let view = null; // main's pocket view (wiring/pocket.js)
   /** @type {ReturnType<typeof setInterval> | null} */
   let codeTimer = null;
   const forgetting = new Set(); // phones whose Forget was pressed once
@@ -82,14 +82,14 @@
   }
 
   function showCode(v) {
-    if (codeTimer) clearInterval(codeTimer);
+    clearInterval(codeTimer);
     codeTimer = null;
     $('pocketCode').hidden = !v.code;
     if (!v.code) return;
     $('pocketCodeText').textContent = v.code.text;
     const tick = () => {
       if (Date.now() > v.code.expiresAt) {
-        if (codeTimer) clearInterval(codeTimer);
+        clearInterval(codeTimer);
         $('pocketCode').hidden = true;
         $('pocketPair').textContent = 'Pair a phone';
         return;

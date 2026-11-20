@@ -23,6 +23,7 @@ const CONTROL = /[\x00-\x1f\x7f]/;
 function splitArgs(line) {
   const out = [];
   let cur = '';
+  /** @type {string | null} */
   let quote = null;
   let started = false;
   for (const ch of String(line || '')) {
@@ -91,7 +92,7 @@ function addArgs(input, { platform = process.platform } = {}) {
   const args = ['mcp', 'add', '--scope', scope, '--transport', transport];
   if (transport === 'stdio') {
     const env = pairs(i.env, '=');
-    if (env.error) return env;
+    if (!env.list) return env;
     const typed = splitArgs(target);
     if (!typed || !typed.length) return { error: 'That command has a quote that never closes.' };
     const words = withCmdWrapper(typed, platform);
@@ -105,7 +106,7 @@ function addArgs(input, { platform = process.platform } = {}) {
   if (!/^https?:$/.test(url.protocol)) return { error: 'The URL needs to start with https:// (or http:// for a server on this PC).' };
   if (url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return { error: 'Use https:// for a server that isn\'t on this PC.' };
   const headers = pairs(i.headers, ':');
-  if (headers.error) return headers;
+  if (!headers.list) return headers;
   for (const h of headers.list) args.push('--header', h);
   args.push('--', name, url.href);
   return { args, summary: { name, transport, scope, target: url.href, headers: headers.list.map(h => h.split(':')[0]) } };
@@ -123,6 +124,8 @@ function readJson(file) {
  * them in, never by asking the CLI (which starts a server to check on it):
  * local and user scope in ~/.claude.json, project scope in the folder's
  * .mcp.json. -> { scope, target } | null
+ * @param {string} name
+ * @param {{ home?: string | null, cwd?: string | null }} [where]
  */
 function findServer(name, { home, cwd } = {}) {
   const has = (o, k) => !!o && typeof o === 'object' && Object.hasOwn(o, k);

@@ -5,7 +5,7 @@
 // be one you've added (or one in your ssh config, to add it), a folder must be
 // one ssh.js accepts, and a key a file name in ~/.ssh. Nothing the panel sends
 // is ever put on a command line as it came.
-const { obj: objCheck, obj: shape, opt, PATH, str, text } = require('../ipc-args');
+const { MAX_STRING, PATH, either, num, obj: shape, opt, str, text } = require('../ipc-args');
 const ssh = require('../remote/ssh');
 
 const MAX_ANSWER = 1024;
@@ -32,14 +32,14 @@ function registerRemoteIpc(ipcMain, d) {
     const str = (/** @type {unknown} */ v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
     const portNo = port === '' || port === null || port === undefined ? null : Number(port);
     return svc().createComputer({ alias: str(alias), address: str(address), user: str(user), port: portNo, jump: str(jump) });
-  }, [opt(objCheck())]);
+  }, [shape({ alias: opt(text(300)), address: opt(text(300)), user: opt(text(300)), port: opt(either(text(10), num())), jump: opt(text(300)) })]);
   ipcMain.handle('remote:remove', forHost(alias => svc().removeComputer(alias)), [HOST]);
   ipcMain.handle('remote:check', forHost(alias => svc().check(alias)), [HOST]);
   ipcMain.handle('remote:install', forHost(alias => svc().installClaude(alias)), [HOST]);
   ipcMain.handle('remote:sign-in', forHost(alias => svc().signInClaude(alias)), [HOST]);
   ipcMain.handle('remote:setup-key', forHost(alias => svc().setupKey(alias)), [HOST]);
   ipcMain.handle('remote:agent-on', () => svc().enableAgent());
-  ipcMain.handle('remote:unlock', (_e, name) => (typeof name === 'string' && /^[A-Za-z0-9._-]{1,80}$/.test(name) ? svc().unlockKey(name) : { ok: false, error: 'Which key?' }), [opt(text(100))]);
+  ipcMain.handle('remote:unlock', (_e, name) => (typeof name === 'string' && /^[A-Za-z0-9._-]{1,80}$/.test(name) ? svc().unlockKey(name) : { ok: false, error: 'Which key?' }), [str({ max: 80 })]);
   ipcMain.handle('remote:browse', (_e, p) => {
     const { alias, dir } = obj(p);
     return host(alias) ? svc().browse(alias, typeof dir === 'string' ? dir : '~') : nope;
@@ -48,19 +48,19 @@ function registerRemoteIpc(ipcMain, d) {
     const { alias, dir } = obj(p);
     return host(alias) && typeof dir === 'string' ? svc().addFolder(alias, dir) : nope;
   }, [shape({ alias: HOST, dir: PATH })]);
-  ipcMain.handle('remote:remove-folder', (_e, anchor) => (typeof anchor === 'string' ? svc().removeFolder(anchor) : { ok: false, error: 'Which folder?' }), [opt(text(32_767))]);
+  ipcMain.handle('remote:remove-folder', (_e, anchor) => (typeof anchor === 'string' ? svc().removeFolder(anchor) : { ok: false, error: 'Which folder?' }), [PATH]);
   // Work there from now on: only ever one of its folders' stand-ins.
   ipcMain.handle('remote:work-here', (_e, anchor) => {
     const place = typeof anchor === 'string' ? svc().placeOf(anchor) : null;
     return place ? d.setFolder(place.anchor) : { error: 'That folder is no longer one of yours.' };
-  }, [opt(text(32_767))]);
+  }, [PATH]);
   // The answer to a question ssh asked through the panel (remote:ask). null: Cancel.
   ipcMain.handle('remote:answer', (_e, p) => {
     const { id, answer } = obj(p);
     if (typeof id !== 'string') return false;
     const text = typeof answer === 'string' && answer.length <= MAX_ANSWER ? answer : null;
     return d.answerRemote(id, text);
-  }, [opt(objCheck())]);
+  }, [shape({ id: str({ max: 300 }), answer: opt(text(MAX_STRING)) })]); // too long goes on as Cancel, so ssh stops waiting
 }
 
 module.exports = { registerRemoteIpc };

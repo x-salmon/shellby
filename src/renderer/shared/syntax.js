@@ -119,7 +119,7 @@
 
   /** A file's path as a language key, or null. */
   function langFromPath(p) {
-    const base = String(p || '').split(/[\\/]/).pop().toLowerCase();
+    const base = (String(p || '').split(/[\\/]/).pop() || '').toLowerCase();
     if (FILE_NAMES[base]) return FILE_NAMES[base];
     if (base.startsWith('.env')) return 'ini';
     const dot = base.lastIndexOf('.');
@@ -136,6 +136,9 @@
     if (last && last.t === t) last.s += s;
     else out.push({ t, s });
   }
+
+  /** The match at the start of `s`, which the caller has already tested is there. */
+  const head = (re, s) => /** @type {RegExpExecArray} */ (re.exec(s))[0];
 
   // Where a string that opened with `q` ends on this line: the index after its
   // closing quote, or -1 if it runs past the end.
@@ -186,7 +189,7 @@
       const ch = text[i];
 
       if (ch === ' ' || ch === '\t') {
-        const m = /^[ \t]+/.exec(rest)[0];
+        const m = head(/^[ \t]+/, rest);
         push(out, null, m);
         i += m.length;
         continue;
@@ -231,7 +234,7 @@
       if (spec.str && spec.str.includes(ch)) {
         // Rust's lifetimes ('a) aren't strings.
         if (spec.life && ch === "'" && /^'[A-Za-z_]\w*(?!')/.test(rest) && !/^'.'/.test(rest)) {
-          const m = /^'[A-Za-z_]\w*/.exec(rest)[0];
+          const m = head(/^'[A-Za-z_]\w*/, rest);
           push(out, 'type', m);
           i += m.length;
           continue;
@@ -268,7 +271,7 @@
       }
 
       if (spec.deco && ch === spec.deco && /^@[A-Za-z_]/.test(rest)) {
-        const m = /^@[\w.]+/.exec(rest)[0];
+        const m = head(/^@[\w.]+/, rest);
         push(out, 'meta', m);
         i += m.length;
         lineStart = false;
@@ -281,7 +284,7 @@
           if (m) { push(out, 'kw', m[0]); i += m[0].length; lineStart = false; continue; }
         }
         if (ch === '#' && /^#[\da-fA-F]{3,8}\b/.test(rest)) {
-          const m = /^#[\da-fA-F]{3,8}/.exec(rest)[0];
+          const m = head(/^#[\da-fA-F]{3,8}/, rest);
           push(out, 'num', m);
           i += m.length;
           continue;
@@ -325,6 +328,7 @@
         if (spec.css && w.startsWith('-') && !/^-[a-z]/i.test(w)) w = '-';
         const key = spec.nocase ? w.toLowerCase() : w;
         const after = text.slice(i + w.length);
+        /** @type {string | null} */
         let t = null;
         if (spec.kw && spec.kw.has(key)) t = 'kw';
         else if (spec.lit && spec.lit.has(key)) t = 'lit';
@@ -361,7 +365,8 @@
     while (i < n) {
       const rest = text.slice(i);
       if (state.in === 'tag') {
-        const m = /^(\s+)|^(\/?>)|^([^\s=>/"']+)|^(=)|^("[^"]*"?|'[^']*'?)|^(.)/.exec(rest);
+        // Always a match: the last branch takes any one character.
+        const m = /** @type {RegExpExecArray} */ (/^(\s+)|^(\/?>)|^([^\s=>/"']+)|^(=)|^("[^"]*"?|'[^']*'?)|^(.)/.exec(rest));
         if (m[2]) { push(out, 'tag', m[2]); state = {}; }
         else if (m[3]) push(out, 'attr', m[3]);
         else if (m[5]) push(out, 'str', m[5]);
@@ -397,7 +402,7 @@
     if (/^\s{0,3}#{1,6}\s/.test(text)) push(out, 'kw', text);
     else if (/^\s{0,3}(```|~~~)/.test(text)) push(out, 'meta', text);
     else if (/^\s*([-*+]|\d+[.)])\s/.test(text)) {
-      const m = /^\s*([-*+]|\d+[.)])/.exec(text)[0];
+      const m = head(/^\s*([-*+]|\d+[.)])/, text);
       push(out, 'punct', m);
       push(out, null, text.slice(m.length));
     } else if (/^\s*>/.test(text)) push(out, 'com', text);

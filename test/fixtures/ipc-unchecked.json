@@ -1,6 +1,7 @@
 [
   "dialog:resize",
   "dialog:respond",
+  "github:open-code",
   "src/main/capture.js",
   "text-menu:pick"
 ]

@@ -45,3 +45,12 @@ Sign in with a short code you approve on github.com, with no password typed into
 - **…including changes to CI workflows:** its own switch, off by default, because a workflow runs on GitHub's machines with your repository's secrets. It can't be granted by a first sign-in.
 
 Your name and avatar show in Settings and on your crab card. The sign-in is encrypted by Windows and never stored in settings.json.
+
+## 🔌 Connectors: one gateway, every agent
+
+Connect your apps once at an MCP gateway (Composio, Pipedream, Zapier MCP, Smithery, or any other that serves MCP over HTTP), then paste its MCP address, and its key if it gave you one, under **Settings → Claude → Connectors**. With **Give conversations my connectors** on, every new conversation can use them: Claude ones, and Gemini CLI, OpenCode and Codex ones whose agent takes MCP servers over the web. **Test** connects and lists the gateway's tools.
+
+- The address and key are encrypted by Windows in a file of their own, never in settings.json, never synced, and never shown again: Settings only names the gateway's site and the key's last four. Some gateways put the secret in the address, so it's treated as one.
+- Claude Code gets the gateway in the conversation's own config file in the temp folder, removed when the conversation ends, never on its command line. A routine or workflow step with its own set of servers keeps exactly that set.
+- Its tools ask before they run, like any other MCP server's: nothing is allowed for you.
+- Conversations on a local model don't get it (nothing of theirs leaves this PC), and neither do ones in a folder on another computer (the key stays on this one).

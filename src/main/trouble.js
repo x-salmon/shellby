@@ -115,6 +115,8 @@ function firstWords(raw) {
  * Error text (and how it came about) -> { kind, message, action: { id, label } | null }.
  *   exited: the process ended mid-turn (a crash, or a resume that failed)
  *   start:  the process couldn't be started at all
+ * @param {unknown} raw
+ * @param {{ exited?: boolean, start?: boolean }} [opts]
  */
 function troubleOf(raw, { exited = false, start = false } = {}) {
   const said = text(raw);
@@ -129,6 +131,9 @@ function troubleOf(raw, { exited = false, start = false } = {}) {
  * The same for a conversation running on another computer: what ssh or the
  * other end said first (remote/ssh.js), with Settings' Other computers as the
  * next step; anything else is Claude Code's own trouble, as above.
+ * @param {unknown} raw
+ * @param {{ exited?: boolean, start?: boolean }} [opts]
+ * @param {(said: string) => { kind: string, message: string } | null} [remoteKind]
  */
 function remoteTroubleOf(raw, opts = {}, remoteKind = () => null) {
   const hit = remoteKind(text(raw));

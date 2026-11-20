@@ -150,7 +150,8 @@
 
   // Your own plan's, and other computers' signed in to another Claude account
   // (src/main/usage/accounts.js): in one of their tabs, the meter is theirs.
-  let lastUsage = null;
+  /** @type {any} */
+  let lastUsage = null; // main's last usage reading (usage/index.js)
   const otherHere = () => {
     const tab = SB.activeTab();
     // A conversation moved into its own copy there sits in a remoteCopies stand-in, which may be
@@ -182,7 +183,8 @@
     $('usageWho').hidden = !other;
     // The folder chip already names the computer: a small mark is enough here, and the rest is in its title.
     if (other) $('usageWho').title = hasWindows(other) ? `Plan usage of ${who}, not your own plan` : `${who}: no reading of its plan yet`;
-    const set = (el, win, name, /** @type {{ warn?: boolean, hitAt: number, resetsAt: number, hitText: string } | null | undefined} */ pace = null) => {
+    /** @param {HTMLElement} el @param {any} win @param {string} name @param {any} [pace] the forecast (forecast.js) */
+    const set = (el, win, name, pace = null) => {
       if (!win) { el.hidden = true; return; }
       el.hidden = false;
       el.querySelector('.meter-fill').style.transform = `scaleX(${Math.min(100, win.pct) / 100})`;

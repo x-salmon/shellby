@@ -78,6 +78,11 @@ const asLines = pairs => pairs.map(([who, text]) => ({ who, text }));
  *   ctx: { firstVisit, myStickers, theirStickers, myLevel, theirLevel, myFind,
  *          theirFind, music, hour, seasons }
  *   used: chat topics already had this visit (by first line), so they don't repeat
+ * @param {string} phase
+ * @param {{ me?: string | null, them?: string | null }} [who]
+ * @param {Record<string, any>} [ctx]
+ * @param {() => number} [rand]
+ * @param {string[]} [used]
  */
 function conversation(phase, /** @type {{ me?: unknown, them?: unknown }} */ { me: meIn, them: themIn } = {}, ctx = {}, rand = Math.random, used = []) {
   const me = temperament(meIn), them = temperament(themIn);

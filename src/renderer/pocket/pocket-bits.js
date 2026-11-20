@@ -5,7 +5,10 @@
 'use strict';
 (function (root) {
   root.PocketBits = ({ S, L, D, N, h, icon, toast, buzz, act, actButton }) => {
+    // A prompt from another of your PCs (pcId) is answered through this one (main's pocket/actions.js pcs-answer).
+    const answerAct = (p, body, o) => (p.pcId ? act('pcs-answer', { pcId: p.pcId, ...body }, o) : act('answer', body, o));
     // after(): once an answer went (the prompt screen goes back to the beach).
+    /** @param {(() => void) | null} [after] */
     function questionSheet(p, after = null) {
       return { label: 'Question', tall: true, build: close => {
         const done = () => { close(); after?.(); };
@@ -27,14 +30,14 @@
           if (!ready()) { toast('Answer each question first.'); return; }
           const answers = Object.fromEntries(p.questions.map((q, i) => [q.question, answerOf(i)]));
           S.answering.set(p.requestId, 'allow');
-          const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision: 'allow', answers }, { okText: 'Sent.' });
+          const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision: 'allow', answers }, { okText: 'Sent.' });
           if (!r.ok) S.answering.delete(p.requestId);
           else close();
         },
       });
       const skip = actButton({
         label: 'Skip', cls: 'big',
-        run: async () => { const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision: 'deny' }); if (r.ok) close(); },
+        run: async () => { const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision: 'deny' }); if (r.ok) close(); },
       });
       const blocks = p.questions.map((q, i) => {
         const opts = q.options.map(o => {
@@ -58,6 +61,7 @@
     }
 
     // A plan, in full. Approve stays shut until you've scrolled to the end; Keep planning sends your notes.
+    /** @param {(() => void) | null} [after] */
     function planSheet(p, after = null) {
       return { label: 'The plan', tall: true, build: closeSheet => {
         const close = () => { closeSheet(); after?.(); };
@@ -68,7 +72,7 @@
           label: 'Approve', cls: 'allow big',
           run: async () => {
             if (!read) { toast('Read it to the end first.'); return; }
-            const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision: 'allow', read: true }, { okText: 'Approved. On to the work.' });
+            const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision: 'allow', read: true }, { okText: 'Approved. On to the work.' });
             if (r.ok) close();
           },
         });
@@ -86,7 +90,7 @@
         const keep = actButton({
           label: 'Keep planning', cls: 'big',
           run: async () => {
-            const r = await act('answer', { tabId: p.tabId, requestId: p.requestId, decision: 'deny', notes: notes.value }, { okText: 'Sent back to keep planning.' });
+            const r = await answerAct(p, { tabId: p.tabId, requestId: p.requestId, decision: 'deny', notes: notes.value }, { okText: 'Sent back to keep planning.' });
             if (r.ok) close();
           },
         });
@@ -122,7 +126,7 @@
       const W = 1080, H = 1080;
       const c = document.createElement('canvas');
       c.width = W; c.height = H;
-      const g = c.getContext('2d');
+      const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
       g.fillStyle = '#071012'; g.fillRect(0, 0, W, H);
       const img = new Image();
       img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
@@ -159,6 +163,7 @@
     function voiceButton(box) {
       const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!Rec) return null;
+      /** @type {any} */ // the browser's SpeechRecognition, which the dom lib doesn't type
       let rec = null;
       const b = h('button', { type: 'button', class: 'btn ghost slim', 'aria-pressed': 'false' }, icon('mic'), h('span', { class: 'btn-label', text: 'Speak' }));
       const done = () => { rec = null; b.setAttribute('aria-pressed', 'false'); b.querySelector('.btn-label').textContent = 'Speak'; };
@@ -188,7 +193,7 @@
       const scale = Math.min(1, PHOTO_MAX / Math.max(bmp.width, bmp.height));
       const c = document.createElement('canvas');
       c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
-      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      /** @type {CanvasRenderingContext2D} */ (c.getContext('2d')).drawImage(bmp, 0, 0, c.width, c.height);
       bmp.close?.();
       return new Promise(res => c.toBlob(res, 'image/jpeg', 0.85));
     }
@@ -262,8 +267,8 @@
     // A lock that arrives once it's no longer wanted (the conversation closed,
     // the app went to the back) is let go at once, and only one is ever asked for at a time.
     const wake = {
-      lock: null,
-      asking: null,
+      lock: /** @type {WakeLockSentinel | null} */ (null),
+      asking: /** @type {Promise<WakeLockSentinel | null> | null} */ (null),
       can: () => 'wakeLock' in navigator,
       wanted: () => N.store.get(AWAKE_KEY) === '1',
       still: () => wake.wanted() && document.visibilityState === 'visible' && !!S.screen?.tabId,

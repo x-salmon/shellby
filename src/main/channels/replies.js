@@ -157,6 +157,10 @@ function parseTelegramCallback(update, chatId) {
  *   onAnswer(tabId, requestId, decision): true if the prompt was still open
  */
 class RemoteAnswers {
+  /**
+   * @param {{ getChannel: () => any, onAnswer: (tabId: any, requestId: any, decision: string) => any, log?: (msg: string) => void,
+   *   fetchImpl?: typeof fetch, now?: () => number, ntfyPollMs?: number, inboxPollMs?: number, maxBackoffMs?: number }} deps
+   */
   constructor({ getChannel, onAnswer, log = () => {}, fetchImpl = fetch, now = Date.now, ntfyPollMs = NTFY_POLL_MS, inboxPollMs = INBOX_POLL_MS, maxBackoffMs = MAX_BACKOFF_MS }) {
     /** @type {() => any} */
     this.getChannel = getChannel;

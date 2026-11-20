@@ -180,12 +180,14 @@ test('settings that throw, or are missing, leave the call to Claude', async () =
 });
 
 test('Settings can save an address on this PC and a model; it only stays on with a model', () => {
-  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://127.0.0.1:1234/v1', model: ' llama3.2 ' }), { on: true, url: 'http://127.0.0.1:1234', model: 'llama3.2', jobs: { ...local.JOB_DEFAULTS }, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '', helpers: '', quick: '' }, preset: 'custom' });
-  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: '' }), { on: false, url: 'http://localhost:11434', model: '', jobs: { ...local.JOB_DEFAULTS }, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '', helpers: '', quick: '' }, preset: 'custom' });
+  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://127.0.0.1:1234/v1', model: ' llama3.2 ' }), { on: true, url: 'http://127.0.0.1:1234', model: 'llama3.2', jobs: { ...local.JOB_DEFAULTS }, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '', helpers: '', quick: '' }, preset: 'custom', makeRoom: true });
+  assert.deepEqual(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: '' }), { on: false, url: 'http://localhost:11434', model: '', jobs: { ...local.JOB_DEFAULTS }, models: {}, answers: { on: false, model: '' }, agent: { on: false, model: '', helpers: '', quick: '' }, preset: 'custom', makeRoom: true });
   assert.equal(local.cleanSettings({ on: true, url: 'http://192.168.1.5:11434', model: 'm' }), null);
   assert.equal(local.cleanSettings({ on: true, url: 'http://localhost:11434', model: 'rm -rf' }), null);
   assert.equal(local.cleanSettings('on'), null);
   assert.equal(local.cleanSettings({ on: 'yes', url: 'http://localhost:11434', model: 'm' }).on, false);
+  assert.equal(local.cleanSettings({ url: 'http://localhost:11434', model: 'm', makeRoom: false }).makeRoom, false, 'making room for games can be turned off');
+  assert.equal(local.cleanSettings({ url: 'http://localhost:11434', model: 'm', makeRoom: 'no' }).makeRoom, true, 'only false turns it off');
 });
 
 test('Find models lists what the server has, and says plainly when it cannot', async () => {

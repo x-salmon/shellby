@@ -86,9 +86,11 @@ function isPinned(win) {
   return !!host && native.ownerOf(native.hwndOf(win)) === host;
 }
 
-// Pins now, re-pins when Explorer restarts (it broadcasts "TaskbarCreated"),
-// and runs a slow watchdog for anything else that breaks ownership. `isAway`
-// says he's perched on some app's window right now and must be left there.
+/**
+ * Pins now, re-pins when Explorer restarts (it broadcasts "TaskbarCreated"),
+ * and runs a slow watchdog for anything else that breaks ownership. `isAway`
+ * says he's perched on some app's window right now and must be left there.
+ */
 function keepOnDesktop(win, { watchdogMs = 15000, isAway = () => false } = {}) {
   const a = native.load();
   away = isAway;

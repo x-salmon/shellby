@@ -56,14 +56,15 @@ test('junk saves as no layout and sets no order; a popped-out window can\'t save
   assert.deepEqual(orders, []);
 });
 
-test('back to one pane clears the saved layout, whether it comes as one pane or as none', () => {
+test('back to one pane clears the saved layout, and a layout that is not one is dropped', () => {
   const { panel, config, save } = setup();
   save(panel, { grid: [['a'], ['b']] });
   save(panel, { grid: [[pane('p1', ['a', 'b'])]] });
   assert.equal(config.get('paneLayout'), null, 'one pane writes nothing');
   save(panel, { grid: [['a'], ['b']] });
+  const split = config.get('paneLayout');
   save(panel, null);
-  assert.equal(config.get('paneLayout'), null);
+  assert.deepEqual(config.get('paneLayout'), split, 'its schema drops it, so the split stays');
 });
 
 // Updating (wiring/tray.js prepare) and quitting close every tab while the
@@ -113,7 +114,8 @@ test('layouts saved by name: cleaned, kept, and never from a pop-out', async () 
   const { panel, popout, config, shapes } = setup();
   assert.deepEqual(await shapes(panel), [], 'none yet');
   const two = { name: 'Two', cols: [{ w: 1, rows: [1] }, { w: 2, rows: [1] }] };
-  assert.deepEqual(await shapes(panel, [two, { name: 'junk' }, { ...two, name: 'two' }]), [two]);
+  await assert.rejects(shapes(panel, [two, { name: 'junk' }]), /wasn't one Shellby accepts/, 'a shape with no columns');
+  assert.deepEqual(await shapes(panel, [two, { ...two, name: 'two' }]), [two]);
   assert.deepEqual(config.get('paneShapes'), [two]);
   assert.deepEqual(await shapes(popout, []), [], 'a pop-out gets nothing');
   assert.deepEqual(config.get('paneShapes'), [two], 'and saves nothing');

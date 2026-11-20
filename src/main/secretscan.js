@@ -157,6 +157,9 @@ const SAFE_REF = /^(?!-)[\w./-]{1,250}$/;
  * What a push of root's checkout would send. -> { ok, partial, findings, more }
  * rev: what's pushed (HEAD); remote: where to, so only what that remote has
  * counts as gone already (any remote, when not given).
+ * @param {string} root
+ * @param {typeof git} [run]
+ * @param {{ rev?: string, remote?: string | null }} [what]
  */
 async function outgoing(root, run = git, /** @type {{ rev?: string, remote?: string }} */ { rev = 'HEAD', remote } = {}) {
   if (!SAFE_REF.test(rev) || (remote != null && !SAFE_REF.test(remote))) return result([], { ok: false });

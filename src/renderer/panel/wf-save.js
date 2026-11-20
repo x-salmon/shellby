@@ -116,7 +116,11 @@
       startRun: id => api.runWorkflow(id, {}),
       stopRun: runId => api.stopRun(runId),
       getRun: runId => api.getRun(runId),
-      apply: (def, /** @type {{ since?: unknown }} */ { since } = {}) => {
+      /**
+       * @param {Record<string, any>} def
+       * @param {{ since?: string }} [opts]
+       */
+      apply: (def, { since } = {}) => {
         if (!alive()) return false;
         if (ed.json) applyJson();
         if (since && JSON.stringify(ed.def) !== since) return 'conflict';

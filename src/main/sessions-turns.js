@@ -1,16 +1,20 @@
-// A tab's turns: sending, steering, Keep warm's ping, answering and pausing (mixed into SessionManager, sessions.js).
-const { randomUUID } = require('crypto');
-const { pickEffort } = require('../effort-pick');
-const turncost = require('../turncost');
-const turnwatch = require('../turnwatch');
-const { classify } = require('../usage/ledger');
-const { isModel } = require('../models');
-const localTab = require('../local/tab');
-const harnesses = require('../harness/registry');
-const tabStops = require('../tab-stops');
-const { IN_TERMINAL, onClaude, NOT_CLAUDE, canPause, withPreamble } = require('./shared');
+// A message going in (sessions.js), mixed into SessionManager's prototype: send
+// (History, the preamble, the effort pick, a turn on another model), the panel's
+// queue steered into a running turn, and Keep warm's ping through a tab.
 
-class Turns {
+const { randomUUID } = require('crypto');
+const { classify } = require('./usage/ledger');
+const { isModel } = require('./models');
+const localTab = require('./local/tab');
+const harnesses = require('./harness/registry');
+const turncost = require('./turncost');
+const turnwatch = require('./turnwatch');
+const tabStops = require('./tab-stops');
+const { onClaude, NOT_CLAUDE } = require('./sessions-choices');
+
+const IN_TERMINAL = 'This conversation is carrying on in a terminal. Close it there (/exit), then choose Pick it up here.';
+
+const turns = {
   /** One message in. opts.model: this one turn on that model (model-pick.js's card); onItem
    *  puts the tab's own back at the result. Never a local tab or another CLI. -> the turn's id. */
   send(tabId, prompt, userItem, { model: turnModel = null } = {}) {
@@ -78,7 +82,7 @@ class Turns {
     this.history.markTurn?.(tab.id, { turnId: userItem.turnId, at: Date.now() });
     this.changed();
     return userItem.turnId;
-  }
+  },
 
   /** The panel's queue while a turn runs, [{ id, text, attachments }]: it goes in at Claude's next step
    *  (session/control.js steer), only for the turn it was queued behind; what went in already stays out. -> taken? */
@@ -87,7 +91,7 @@ class Turns {
     if (!tab || !tab.session.busy || !turnId || turnId !== tab.turnId) return false;
     tab.steers = list.filter(m => !tab.steeredIds.has(m.id));
     return true;
-  }
+  },
 
   /** A queued message taken back before Claude has it (the chip's ×), by id here where takeSteers() runs:
    *  the panel's list can be a step behind. -> false when it's too late (it went in this turn). */
@@ -97,10 +101,10 @@ class Turns {
     if (tab.steeredIds.has(id)) return false;
     tab.steers = tab.steers.filter(m => m.id !== id);
     return true;
-  }
+  },
 
   // A turn run on a cheaper model (send's opts.model) is over, or never ran: the tab's own model is back.
-  restoreTurnModel(tab) { if (tab.turnModel) { const { was } = tab.turnModel; tab.turnModel = null; tab.session.setModel(was); } }
+  restoreTurnModel(tab) { if (tab.turnModel) { const { was } = tab.turnModel; tab.turnModel = null; tab.session.setModel(was); } },
 
   // What the session hands Claude now, off the list ('steering' locks its chip; the 'user' item's
   // steerId drops it once read). One that can't be put together stays queued, with all after it.
@@ -121,7 +125,7 @@ class Turns {
     }
     if (taken.length) this.emit('steering', tab.id, taken.map(t => t.item.steerId));
     return taken;
-  }
+  },
 
   /**
    * Keep warm's ping (keepwarm-service.js): one message through the tab's
@@ -144,7 +148,7 @@ class Turns {
         resolve({ ok: false, error: err.message, tokens: null, denied: false });
       }
     });
-  }
+  },
 
   // An item of a ping's turn: a tool it asks for is refused (nobody's there to
   // say yes, and a ping uses none), and its result ends the ping.
@@ -157,7 +161,7 @@ class Turns {
     }
     if (item.kind !== 'result') return;
     this.settlePing(tab, { ok: !!item.ok && !p.denied, error: item.error || null, tokens: item.tokens || null, denied: p.denied });
-  }
+  },
 
   settlePing(tab, r) {
     const p = tab.pinging;
@@ -165,34 +169,13 @@ class Turns {
     tab.session.growths = p.growths;
     p.resolve(r);
     this.changed();
-  }
+  },
+};
 
-  respond(tabId, requestId, decision, message, answers, via) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return false;
-    // A note's Plan, approved: the work goes on in your mode, not Claude Code's default.
-    const planApproved = tab.startsIn === 'plan' && decision !== 'deny' && tab.session.pending.get(requestId)?.toolName === 'ExitPlanMode';
-    return tab.session.respond(requestId, decision, message, answers, via, planApproved ? this.followMode(tab) : null) || false;
-  }
-
-  interrupt(tabId) { this.tabs.get(tabId)?.session.interrupt(); }
-
-  // Pause at the end of Claude's current step, or Continue a held pause (session/pause.js). -> { ok } | { ok: false, error }
-  // Not Keep warm's ping, and not a routine's or workflow's turn, which something else is waiting on.
-  pause(tabId) { const t = this.tabs.get(tabId); return t && canPause(t) && !t.pinging ? t.session.requestPause() : { ok: false, error: "This conversation can't pause." }; }
-
-  resume(tabId) { return this.tabs.get(tabId)?.session.resumePause?.() || { ok: false, error: "It isn't paused." }; }
-
-  // Sized from what it was asked, once: only while it follows a default of
-  // Auto with picking on. A /command waits for the next real message.
-  maybePickEffort(tab, userItem) {
-    if (tab.effortBy || this.getEffort() || !this.getEffortPick() || !onClaude(tab)) return;
-    const level = pickEffort(userItem.text, Array.isArray(userItem.attachments) ? userItem.attachments.length : 0);
-    if (!level) return;
-    tab.effortBy = 'picked';
-    tab.session.setEffort(level);
-    this.keepEffort(tab);
-  }
+// A note for Claude ahead of what you typed, as a block of its own so your
+// words reach it exactly as you wrote them (a prompt, or blocks when pictures go with it).
+function withPreamble(prompt, preamble) {
+  return [{ type: 'text', text: preamble }, ...(Array.isArray(prompt) ? prompt : [{ type: 'text', text: String(prompt) }])];
 }
 
-module.exports = Turns;
+module.exports = { turns, IN_TERMINAL, withPreamble };

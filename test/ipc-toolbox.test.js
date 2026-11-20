@@ -63,7 +63,7 @@ test('toolbox:pin ignores unknown kinds, bad names and a snippet that does not e
 
   for (const req of [{ kind: 'shell', name: 'rm', pinned: true }, { kind: 'skill', name: 42, pinned: true },
     { kind: 'skill', name: '', pinned: true }, { kind: 'snippet', name: 'nope', pinned: true }]) {
-    await ipc.invoke('toolbox:pin', req);
+    await ipc.invoke('toolbox:pin', req).catch(() => null); // a bad name never reaches the handler
   }
 
   assert.deepEqual(config.sets, []);
@@ -81,11 +81,11 @@ test('toolbox:pin keeps the last 12 pins', async () => {
   assert.equal(after[0].name, 's1');
 });
 
-test('handlers that take an object answer a null or string payload instead of throwing', async () => {
+test('handlers that take an object refuse a null or string payload cleanly', async () => {
   const { ipc, rec } = setup();
 
-  assert.deepEqual(await ipc.invoke('toolbox:pin', null), []);
-  assert.equal((await ipc.invoke('snippets:save', null)).ok, false);
+  await assert.rejects(ipc.invoke('toolbox:pin', null), /wasn't one Shellby accepts/);
+  await assert.rejects(ipc.invoke('snippets:save', null), /wasn't one Shellby accepts/);
   await assert.rejects(ipc.invoke('setup:write-memory', 'C:\\x.md'), /wasn't one Shellby accepts/); // its schema wants an object
   await ipc.invoke('shop:list', null);
   assert.deepEqual(rec.of('shop.list'), [[{ refresh: false }]]);
@@ -98,10 +98,13 @@ test('snippets:save saves a good snippet and refuses a bad one', async () => {
   assert.equal(ok.ok, true);
   assert.equal(ok.name, 'ship');
 
-  for (const snippet of [{ name: 'has space', text: 'x' }, { name: 'empty', text: '   ' }, { name: 'review', text: 'dupe' }, 'ship', null]) {
+  for (const snippet of [{ name: 'has space', text: 'x' }, { name: 'empty', text: '   ' }, { name: 'review', text: 'dupe' }]) {
     const r = await ipc.invoke('snippets:save', { snippet });
     assert.equal(r.ok, false, JSON.stringify(snippet));
     assert.equal(typeof r.error, 'string');
+  }
+  for (const snippet of ['ship', null]) {
+    await assert.rejects(ipc.invoke('snippets:save', { snippet }), /wasn't one Shellby accepts/, String(snippet));
   }
   assert.equal(rec.of('setSnippets').length, 1);
 });
@@ -130,7 +133,7 @@ test('snippets:expand expands /name args and passes anything else through as nul
 
   assert.deepEqual(await ipc.invoke('snippets:expand', '/review the auth module'), { ok: true, text: 'review:the auth module' });
   assert.equal(await ipc.invoke('snippets:expand', 'just a message'), null);
-  await assert.rejects(ipc.invoke('snippets:expand', { text: '/review' }), /Shellby accepts/);
+  await assert.rejects(ipc.invoke('snippets:expand', { text: '/review' }), /wasn't one Shellby accepts/);
   assert.equal(rec.of('expandSnippet').length, 1);
 });
 
@@ -188,7 +191,7 @@ test('setup:sample-hook-input refuses an unknown hook event', async () => {
   const { ipc } = setup();
 
   assert.equal(await ipc.invoke('setup:sample-hook-input', { event: 'NotAnEvent' }), null);
-  await assert.rejects(ipc.invoke('setup:sample-hook-input', 'PreToolUse'), /Shellby accepts/);
+  await assert.rejects(ipc.invoke('setup:sample-hook-input', 'PreToolUse'), /wasn't one Shellby accepts/);
 });
 
 test('shop:open only opens the link the CLI reported for a listed plugin', () => {

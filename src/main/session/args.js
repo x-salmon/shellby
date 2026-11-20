@@ -108,6 +108,7 @@ const args = {
     if (allowed.length) args.push('--allowedTools', allowed.join(','));
     const mcpConfig = this.fullMcpConfig();
     if (this.mcpConfig) args.push('--strict-mcp-config', '--mcp-config', this.mcpConfigFile || JSON.stringify(mcpConfig));
+    else if (this.mcpConfigFile) args.push('--mcp-config', this.mcpConfigFile); // the gateway's key is in it: never on the command line
     else if (mcpConfig) args.push('--mcp-config', JSON.stringify(mcpConfig));
     if (this.sessionId) {
       args.push('--resume', this.sessionId);
@@ -118,9 +119,11 @@ const args = {
 
   // The MCP servers this process loads beyond the usual ones: a routine's or
   // workflow step's own (strict), with the crab's in-app server alongside.
+  // The connectors gateway (extraServers) only ever beside the usual ones, never a strict set.
   fullMcpConfig() {
-    if (!this.mcp) return this.mcpConfig;
-    return { ...(this.mcpConfig || {}), mcpServers: { ...(this.mcpConfig?.mcpServers || {}), ...crabmcp.servers() } };
+    const extra = this.extraServers || null;
+    if (!this.mcp && !extra) return this.mcpConfig;
+    return { ...(this.mcpConfig || {}), mcpServers: { ...(this.mcpConfig?.mcpServers || {}), ...(extra || {}), ...(this.mcp ? crabmcp.servers() : {}) } };
   },
 };
 

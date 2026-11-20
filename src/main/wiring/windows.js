@@ -442,6 +442,7 @@ function wireWindows(d) {
     const on = game || (gameSeenAt > 0 && now - gameSeenAt < GAME_LINGER_MS);
     if (on !== processJob.givingWay()) d.log.info(on ? 'Giving way to a game — tasks held back' : 'Game over — tasks back to full speed');
     processJob.giveWay(on); // every poll: it catches what the tasks started since the last
+    d.gameRoom?.update(on).catch(err => d.log.info(`game room: ${err.message}`)); // idle local models out of the game's way (local/game-room.js)
   }
   // Apart from the crab's half of the poll: nothing about his window, and no
   // failure to read the one in front, may leave the tasks held back for good.

@@ -10,7 +10,8 @@
   const ago = t => (t ? SB.relTime(t) : '');
   const SHOWN = 3; // rows per group before "N more"
 
-  let view = null;
+  /** @type {any} */
+  let view = null;      // what main worked out (src/main/projects/inbox.js view)
   let loading = 0;
   const opened = new Set(); // groups whose "more" is open
 
@@ -22,9 +23,11 @@
     render();
   }
 
+  /** @param {string | null} [keep] the data-keep key SB.keepFocus finds the button by again */
   const act = (text, onclick, cls = 'btn ghost slim-btn', keep = null) => h('button', { type: 'button', class: cls, text, onclick, dataset: keep ? { keep } : {} });
 
   // One press, then wait: a second press mid-way would do it twice.
+  /** @param {string} text @param {() => any} run what to do; its { ok, error, done, cancelled } says how it went @param {string} [cls] @param {string} [keep] */
   function busyButton(text, run, cls, keep) {
     const btn = act(text, async () => {
       btn.disabled = true;

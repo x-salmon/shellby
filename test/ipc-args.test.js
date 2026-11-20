@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { ID, PATH, either, list, matches, obj, opt, str, text } = require('../src/main/ipc-args');
+const { ID, PATH, bool, either, list, matches, num, obj, oneOf, opt, str, text } = require('../src/main/ipc-args');
 const { guardIpc } = require('../src/main/ipc-guard');
 const { scanMain, scanSource } = require('../scripts/lib/ipc-scan');
 
@@ -60,6 +60,32 @@ test('either takes what any of its checks takes', () => {
   assert.equal(idOrInt('a'), true);
   assert.equal(idOrInt(3), true);
   assert.equal(idOrInt(1.5), false);
+});
+
+test('bool takes only true or false', () => {
+  assert.equal(bool(true), true);
+  assert.equal(bool(false), true);
+  assert.equal(bool(1), false);
+  assert.equal(bool('true'), false);
+});
+
+test('num takes a finite number within its bounds, and a whole one when asked', () => {
+  assert.equal(num()(1.5), true);
+  assert.equal(num()(NaN), false);
+  assert.equal(num()(Infinity), false);
+  assert.equal(num()('1'), false);
+  assert.equal(num({ min: 0, max: 10 })(-1), false);
+  assert.equal(num({ min: 0, max: 10 })(11), false);
+  assert.equal(num({ int: true })(2), true);
+  assert.equal(num({ int: true })(2.5), false);
+});
+
+test('oneOf takes exactly the values it names', () => {
+  const dir = oneOf('up', 'down', null);
+  assert.equal(dir('up'), true);
+  assert.equal(dir(null), true);
+  assert.equal(dir('UP'), false);
+  assert.equal(dir(undefined), false);
 });
 
 test('a Windows long path fits PATH, and an object does not', () => {

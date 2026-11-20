@@ -9,13 +9,14 @@
   class AskCards {
     // ------------------------------------------------------------ permission cards
     renderAsk(item, replay) {
+      const tab = /** @type {any} */ (this); // a Tab once SB.extendTab copies this across
       if (item.toolName === 'AskUserQuestion' && item.questions?.length) return this.renderQuestion(item, replay);
       // A plan gets a card of its own: notes on its lines, sent back together (feed-native.js).
-      if (item.toolName === 'ExitPlanMode' && this.renderPlanAsk) return this.renderPlanAsk(item, replay);
+      if (item.toolName === 'ExitPlanMode' && tab.renderPlanAsk) return tab.renderPlanAsk(item, replay);
       const isPlan = item.toolName === 'ExitPlanMode';
       const always = item.suggestions?.[0];
       const persistent = always && always.destination && always.destination !== 'session';
-      const tabId = this.id;
+      const tabId = tab.id;
 
       const decide = async (decision, message) => {
         const ok = await api.answerPermission(tabId, item.requestId, decision, message);
@@ -34,7 +35,7 @@
           // An edit shows what it changes, the way an editor would, before you say yes.
           ? h('div', { class: 'ask-body' },
               h('div', { class: 'ask-file' },
-                SB.fileLink(item.filePath, { line: item.line, text: SB.relPath(item.filePath, this.cwd) }),
+                SB.fileLink(item.filePath, { line: item.line, text: SB.relPath(item.filePath, tab.cwd) }),
                 item.line ? h('span', { class: 'ask-line', text: `line ${item.line}` }) : null,
                 SB.diffStats(edits)),
               SB.diffView(edits, { line: item.line, file: item.filePath }),
@@ -77,13 +78,13 @@
         body,
         h('div', { class: 'ask-actions' }, actions),
         isPlan ? null : h('div', { class: 'ask-keys' }, 'Keys: ', h('kbd', {}, 'Y'), ' allow · ', always ? [h('kbd', {}, 'A'), ' always · '] : null, h('kbd', {}, 'N'), ' deny'));
-      this.asks.set(item.requestId, card);
+      tab.asks.set(item.requestId, card);
       const laneId = item.agent?.toolUseId;
-      this.append(card, laneId);
-      if (laneId) this.lanes.get(laneId)?.setAsking(true);
+      tab.append(card, laneId);
+      if (laneId) tab.lanes.get(laneId)?.setAsking(true);
       if (!replay) {
-        this.setStatus('Waiting for your OK…');
-        if (this.isActive) {
+        tab.setStatus('Waiting for your OK…');
+        if (tab.isActive) {
           card.querySelector('.btn.allow')?.focus({ preventScroll: true });
           card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
@@ -94,11 +95,13 @@
     // question, options as buttons (number keys pick them), an "Other" box for
     // your own words, then Send. A lone single-choice question sends on click.
     renderQuestion(item, replay) {
-      const tabId = this.id;
+      const tab = /** @type {any} */ (this);
+      const tabId = tab.id;
       const qs = item.questions;
       const chosen = qs.map(() => new Set());
       const other = qs.map(() => '');
       const instant = qs.length === 1 && !qs[0].multiSelect;
+      /** @type {any} */
       let card = null; // built below; the handlers above only read it once it is
 
       const answerText = i => [...chosen[i], ...(other[i].trim() ? [other[i].trim()] : [])].join(', ');
@@ -164,13 +167,13 @@
         h('div', { class: 'ask-body' }, blocks),
         h('div', { class: 'ask-actions' }, instant ? null : sendBtn, h('button', { class: 'btn ghost', type: 'button', onclick: skip }, 'Skip')),
         h('div', { class: 'ask-keys' }, 'Keys: ', h('kbd', {}, '1'), '–', h('kbd', {}, String(Math.min(key, 9))), ' pick'));
-      this.asks.set(item.requestId, card);
+      tab.asks.set(item.requestId, card);
       const laneId = item.agent?.toolUseId;
-      this.append(card, laneId);
-      if (laneId) this.lanes.get(laneId)?.setAsking(true);
+      tab.append(card, laneId);
+      if (laneId) tab.lanes.get(laneId)?.setAsking(true);
       if (!replay) {
-        this.setStatus('Waiting for your answer…');
-        if (this.isActive) {
+        tab.setStatus('Waiting for your answer…');
+        if (tab.isActive) {
           // Focus the first option so number keys pick right away (not typed into the box).
           card.querySelector('.qa-opt')?.focus({ preventScroll: true });
           card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -179,15 +182,17 @@
     }
 
     laneIndexForTask(taskId) {
-      const lane = this.lanes.get(this.taskLane.get(taskId));
+      const tab = /** @type {any} */ (this);
+      const lane = tab.lanes.get(tab.taskLane.get(taskId));
       return lane ? lane.index : 0;
     }
 
     markDecision(item) {
-      const card = this.asks.get(item.requestId);
+      const tab = /** @type {any} */ (this);
+      const card = tab.asks.get(item.requestId);
       if (!card || card.classList.contains('decided')) return;
       card.classList.add('decided');
-      if (card.classList.contains('plan-card')) this.markPlanDecision(card, item);
+      if (card.classList.contains('plan-card')) tab.markPlanDecision(card, item);
       else if (card.classList.contains('question')) {
         // Show what was answered instead of "Allowed".
         const v = F.questionVerdict(item.decision, card.answers);
@@ -197,8 +202,8 @@
         const v = F.decisionVerdict(item.decision, item.via);
         card.append(h('div', { class: `ask-verdict ${v.tone}` }, v.text, this.expandToggle(card)));
       }
-      for (const lane of this.lanes.values()) if (lane.body.contains(card)) lane.setAsking(false);
-      if (this.busy) this.setStatus('Working…');
+      for (const lane of tab.lanes.values()) if (lane.body.contains(card)) lane.setAsking(false);
+      if (tab.busy) tab.setStatus('Working…');
     }
 
     // A decided card shrinks its command to a few lines; this brings the rest

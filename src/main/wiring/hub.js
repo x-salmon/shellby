@@ -86,7 +86,7 @@ function wireHub(d) {
 
   function push() {
     if (pushTimer) return;
-    pushTimer = setTimeout(() => { pushTimer = null; d.send(d.panel, 'hub:changed'); }, PUSH_MS);
+    pushTimer = setTimeout(() => { pushTimer = null; d.send(d.panel, 'hub:changed'); d.pocketHubChanged?.(); }, PUSH_MS); // and the phones that may see your other PCs (wiring/pocket.js)
     pushTimer.unref?.();
   }
 
@@ -124,7 +124,8 @@ function wireHub(d) {
    * focus: the PC on screen. A plan in full (up to 20 KB each) goes only with its
    * prompts; the others say there's a plan, which is all their row shows.
    */
-  function hubView(focus = null) {
+  // plans: every plan in full, for a phone answering through this PC (wiring/pocket.js others): it shows one only to approve it.
+  function hubView(focus = null, { plans = false } = {}) {
     const now = Date.now();
     const seen = snapshots();
     /** @type {any} this PC's phone view (pocket/view.js phoneView) */
@@ -139,7 +140,7 @@ function wireHub(d) {
       const view = link?.view || (last ? { host: last.host, projects: last.projects, pc: last.pc } : null);
       entries.push({ id: p.id, name: p.name, kind: 'pc', state: link?.state || 'connecting', error: link?.error || null, seenAt: link?.seenAt || last?.seenAt || null, view });
     }
-    const rows = roster(entries, now).map(r => (r.id === focus || !r.prompts.some(p => p.planText) ? r
+    const rows = roster(entries, now).map(r => (plans || r.id === focus || !r.prompts.some(p => p.planText) ? r
       : { ...r, prompts: r.prompts.map(p => ({ ...p, planText: '' })) }));
     return { rows, summary: summaryOf(rows), usage: own?.usage || null };
   }
@@ -230,10 +231,10 @@ function wireHub(d) {
   };
 
   /** Allow, always allow or deny a prompt there, through that PC's own answer rules (pocket answer). */
-  async function answerOn(id, { tabId, requestId, decision, answers, read }) {
+  async function answerOn(id, { tabId, requestId, decision, answers, read, notes }) {
     const { link, error } = onlineLink(id);
     if (!link) return { ok: false, error };
-    const r = await link.act('answer', { tabId, requestId, decision, ...(answers ? { answers } : {}), ...(read ? { read: true } : {}) });
+    const r = await link.act('answer', { tabId, requestId, decision, ...(answers ? { answers } : {}), ...(read ? { read: true } : {}), ...(typeof notes === 'string' && notes ? { notes } : {}) });
     if (r?.ok) push();
     return r;
   }

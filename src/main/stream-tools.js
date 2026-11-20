@@ -1,7 +1,10 @@
-// What a tool call and its result say (stream.js): the plain words for a tool, to-dos, questions, findings, results, pictures and what a turn spent. Pure.
+// A tool call as the panel sees it (stream.js toolItem): its verb and detail in
+// words, what it writes and where it reads, Claude's to-dos, a review's findings
+// and a question's options. Pure: no Electron, no I/O (test/stream.test.js).
 
-
-const MAX_RESULT_CHARS = 8000;
+const { editsOf } = require('../renderer/shared/diff');
+const plainWords = require('./plain-words');
+const { toolFacts } = require('./turnwatch');
 
 const TOOL_VERBS = {
   Bash: 'Ran', PowerShell: 'Ran', Read: 'Read', Write: 'Created', Edit: 'Edited',
@@ -170,58 +173,11 @@ function describeTool(name = '', input = {}) {
   return { label, detail: String(detail).replace(/\s+/g, ' ').trim().slice(0, 400) };
 }
 
-function resultText(content) {
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content.map(c => (c.type === 'text' ? c.text : c.type === 'image' ? '[image]' : '')).join('\n');
-  }
-  return content == null ? '' : JSON.stringify(content);
-}
-
-// The pictures in a tool's result (a screenshot it read, a browser capture),
-// as { mediaType, data }: base64 only, and only types the chat can show.
-const PICTURE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
-function resultImages(content) {
-  if (!Array.isArray(content)) return [];
-  return content
-    .filter(c => c?.type === 'image' && c.source?.type === 'base64' && PICTURE_TYPES.has(c.source.media_type) && typeof c.source.data === 'string')
-    .map(c => ({ mediaType: c.source.media_type, data: c.source.data }));
-}
-
-function usageFrom(ev) {
-  const info = ev.rate_limit_info || {};
-  const w = info.unifiedWindows || {};
-  const win = x => (x && typeof x.utilization === 'number'
-    ? { pct: Math.round(x.utilization * 100), resetsAt: x.resetsAt ? x.resetsAt * 1000 : null }
-    : null);
-  return { kind: 'usage', status: info.status || null, fiveHour: win(w.five_hour), sevenDay: win(w.seven_day) };
-}
-
-// A result's token counts for the whole turn, or null when it has none.
-function tokensOf(u) {
-  if (!u || typeof u !== 'object') return null;
-  const n = v => (Number.isFinite(v) && v > 0 ? v : 0);
-  const t = { input: n(u.input_tokens), output: n(u.output_tokens), cacheRead: n(u.cache_read_input_tokens), cacheWrite: n(u.cache_creation_input_tokens) };
-  return t.input + t.output + t.cacheRead + t.cacheWrite ? t : null;
-}
-
-// What one API call cost, for the usage-by-project ledger (spend.js). Claude Code
-// sends one assistant event per content block, each repeating the message's id
-// and usage, so callers count each id once (session/). parent: the Agent call
-// a helper's call was made under, or null for the main thread's own.
-function spendFrom(ev) {
-  const m = ev?.type === 'assistant' ? ev.message : null;
-  if (!m || typeof m.id !== 'string' || !m.usage || typeof m.usage !== 'object') return null;
-  return { messageId: m.id, model: typeof m.model === 'string' ? m.model : null, usage: m.usage, parent: typeof ev.parent_tool_use_id === 'string' ? ev.parent_tool_use_id : null };
-}
-
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
 const AGENT_TOOLS = new Set(['Agent', 'Task']);
 // The Agent tool's isolation and effort values (Claude Code 2.1.303).
 const AGENT_ISOLATION = new Set(['worktree', 'remote']);
 const AGENT_EFFORT = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
-
-const strings = a => (Array.isArray(a) ? a.filter(s => typeof s === 'string') : []);
 
 function writtenPath(name, input) {
   if (!WRITE_TOOLS.has(name) || !input) return null;
@@ -295,6 +251,52 @@ function worktreeOf(r) {
   return null;
 }
 
-module.exports = {
-  MAX_RESULT_CHARS, TOOL_VERBS, pad2, inWords, CRON_DAYS, cronWords, TODO_STATUSES, TODO_TEXT, todoText, todoStatus, todoOf, todoIdOf, STATUS_WORDS, SHELLBY_TOOLS, questionsOf, truncate, describeTool, resultText, PICTURE_TYPES, resultImages, usageFrom, tokensOf, spendFrom, WRITE_TOOLS, AGENT_TOOLS, AGENT_ISOLATION, AGENT_EFFORT, strings, writtenPath, TARGET_PATH, targetOf, writeChars, MAX_FINDINGS, FINDING_TEXT, findingsOf, worktreeOf,
-};
+function toolItem(b, sub) {
+  const input = b.input || {};
+  // What the turn's notes need from its input (turnwatch.js): a whole-file read, a helper's brief, a commit.
+  const item = { kind: 'tool', id: b.id, name: b.name, ...describeTool(b.name, input), ...toolFacts(b.name, input), ...sub };
+  if (b.name === 'ExitPlanMode') item.plan = input.plan;
+  if (b.name === 'ReportFindings') {
+    const findings = findingsOf(input);
+    if (findings) item.findings = findings;
+  }
+  const todo = todoOf(b.name, input);
+  if (todo) item.todo = todo;
+  // A skill Claude reached for by itself: which one (feed.js says what it's for).
+  if (b.name === 'Skill' && typeof input.skill === 'string') item.skill = input.skill.slice(0, 200);
+  // One agent writing to another (SendMessage): who to, and what it said.
+  if (b.name === 'SendMessage') {
+    const to = input.to ?? input.recipient;
+    const text = input.message ?? input.content;
+    if (typeof to === 'string' && to) item.message = { to: to.slice(0, 120), text: typeof text === 'string' ? text.slice(0, 2000) : '', summary: todoText(input.summary) };
+  }
+  // What it's doing, in plain words, for the Working bar (plain-words.js).
+  const plain = plainWords.describe(b.name, input);
+  if (plain) item.doing = plain.doing;
+  // Its result only says it started: not a finished run (flaky/index.js).
+  if ((b.name === 'Bash' || b.name === 'PowerShell') && input.run_in_background === true) item.background = true;
+  const fp = writtenPath(b.name, input);
+  if (fp) { item.filePath = fp; item.writeChars = writeChars(b.name, input); item.edits = editsOf(b.name, input); }
+  // Where a read or a search went, whole: the detail is cut short and flattened (the trail, shared/trail.js).
+  const target = targetOf(b.name, input);
+  if (target) item.target = target;
+  if (AGENT_TOOLS.has(b.name)) {
+    item.agent = {
+      type: typeof input.subagent_type === 'string' ? input.subagent_type : 'general-purpose',
+      description: typeof input.description === 'string' ? input.description : '',
+      background: !!input.run_in_background,
+    };
+    // The name other agents write to it by (SendMessage { to }).
+    if (typeof input.name === 'string' && input.name.trim()) item.agent.name = input.name.trim().slice(0, 80);
+    // A fork carries on with the whole conversation and Claude's own model, not a fresh specialist.
+    if (item.agent.type === 'fork') item.agent.fork = true;
+    // Where it works: its own copy of the repo, or a cloud session.
+    if (AGENT_ISOLATION.has(input.isolation)) item.agent.isolation = input.isolation;
+    // A model or effort Claude picked for it (forks always use Claude's own).
+    if (typeof input.model === 'string' && input.model.trim() && !item.agent.fork) item.agent.model = input.model.trim().slice(0, 40);
+    if (AGENT_EFFORT.has(input.effort)) item.agent.effort = input.effort;
+  }
+  return item;
+}
+
+module.exports = { TOOL_VERBS, inWords, cronWords, todoOf, todoIdOf, todoText, questionsOf, truncate, describeTool, WRITE_TOOLS, AGENT_TOOLS, writtenPath, targetOf, writeChars, findingsOf, worktreeOf, toolItem };

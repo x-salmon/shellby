@@ -9,7 +9,7 @@
 //
 // Every step that makes something (a copy, a History entry, a tab) is undone
 // if a later one fails, so a branch either opens whole or not at all.
-const { ID, obj, opt, text } = require('./ipc-args');
+const { ID, PATH, obj, opt } = require('./ipc-args');
 const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('crypto');
@@ -282,7 +282,7 @@ function register(deps) {
         copy: ours(w) ? { branch: w.branch, base: w.base } : null,
       };
     });
-  }, [opt(text(300))]);
+  }, [ID]);
 
   // ------------------------------------------------------------ comparing two tries
 
@@ -322,7 +322,7 @@ function register(deps) {
       ok: true, same: false, files: who ? s.files.map(f => ({ ...f, who: who(f.path) })) : s.files,
       more: s.more, added: s.added, removed: s.removed, split: !!who, ...about,
     };
-  }, [opt(obj())]);
+  }, [obj({ tabId: ID, otherId: ID })]);
 
   // Where a try's own copy started: noted when it branched, or its first checkpoint.
   const startOf = e => (e ? e.branchOf?.tree || branch.firstTree(history.load(e.id)) : null);
@@ -342,7 +342,7 @@ function register(deps) {
     if (!c) return { error: 'Compare them again: that comparison has gone.' };
     if (!isStr(file) || !c.files.has(file)) return { error: 'Not a file in this comparison.' };
     return changes.patchFor({ root: c.root, before: c.before, after: c.after, file });
-  }, [opt(obj())]);
+  }, [obj({ tabId: ID, otherId: ID, file: PATH })]);
 
   // One file from the other try, as the last comparison saw it, into this
   // one: the best of both without keeping either whole. Never over a change
@@ -364,7 +364,7 @@ function register(deps) {
     const r = await changes.putBack(root, c.before, [one]);
     if (r.ok) deps.stat('branch-took');
     return r.ok ? { ok: true } : r;
-  }, [opt(obj())]);
+  }, [obj({ tabId: ID, otherId: ID, file: PATH })]);
 
   // ------------------------------------------------------------ keeping one
 
@@ -423,7 +423,7 @@ function register(deps) {
     }
     deps.stat('branch-kept');
     return { ok: true, home, discarded, failed, base: mine?.base || null, closed: !!home?.tidied };
-  }, [opt(text(300))]);
+  }, [ID]);
 
   return { run };
 }

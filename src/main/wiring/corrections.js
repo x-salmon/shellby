@@ -160,11 +160,13 @@ function wireCorrections(d) {
   // The projects listed: every one a card added a rule to, and the one Shellby's
   // folder is in if its CLAUDE.md has the section. The panel may only change these.
   async function learnedProjects() {
+    /** @type {{ root: string, name: string, current?: boolean }[]} */
     const list = corrections.learnedRoots(store()).map(p => ({ root: p.root, name: p.project || path.basename(p.root) }));
     const here = await projectOf(d.currentCwd());
     const key = r => r.toLowerCase();
-    if (here && !list.some(p => key(p.root) === key(here.root))) list.push({ root: here.root, name: here.name, current: true });
-    else if (here) list.find(p => key(p.root) === key(here.root)).current = true;
+    const same = here ? list.find(p => key(p.root) === key(here.root)) : null;
+    if (here && !same) list.push({ root: here.root, name: here.name, current: true });
+    else if (same) same.current = true;
     return list;
   }
 
@@ -178,6 +180,7 @@ function wireCorrections(d) {
     return out;
   }
 
+  /** @param {{ root?: string, index?: number, was?: string, text?: string | null }} [change] */
   async function changeLearned({ root, index, was, text } = {}) {
     const known = (await learnedProjects()).find(p => d.isStr(root) && p.root === root);
     if (!known) return { ok: false, error: "Shellby doesn't edit that project's CLAUDE.md." };

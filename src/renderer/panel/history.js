@@ -106,9 +106,9 @@
     if (at == null) { SB.toast('Picked up where you left off'); return; }
     if (!target) target = findInFeed(tab, r.items[at]);
     if (!target?.isConnected) { SB.toast("That message is too far back to show here. It's still in the conversation."); return; }
-    target.scrollIntoView({ block: 'center' });
-    target.classList.add('history-landed');
     const landed = target;
+    landed.scrollIntoView({ block: 'center' });
+    landed.classList.add('history-landed');
     setTimeout(() => landed.classList.remove('history-landed'), LANDED_MS);
   };
   const LANDED_MS = 2400;
@@ -129,7 +129,7 @@
   let foundAsk = 0;
 
   function scheduleFound() {
-    if (foundTimer) clearTimeout(foundTimer);
+    clearTimeout(foundTimer);
     foundTimer = setTimeout(searchFound, FOUND_DELAY_MS);
   }
 

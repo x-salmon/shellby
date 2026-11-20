@@ -1,20 +1,72 @@
-// The file viewer's header menu: the repo's worktrees and the branches still in flight, and switching a
-// handle to one (viewer.js createViewer).
+// The file viewer's header menu (panel/viewer.js, main's viewer.js placesOf and switchTo): the
+// repo's worktrees with how much each has changed, and its branches still in flight. Built once
+// per repo (its git common dir) and reused for 10 s by every handle on it, however many ask at
+// once. Each handle then keeps its own copy under random keys; a pick names a key, never a path or
+// a ref, and is checked again before it opens. git, paths and the repo lookups are viewer-read.js's.
 const crypto = require('crypto');
 const path = require('path');
 const changes = require('./changes');
 const { parseWorktrees, okDir } = require('./leaving');
-const { HEADS, HEAD_REF, MAX_PLACE_TREES, MAX_PLACE_BRANCHES, PLACES_MS, AT_ONCE, git, longPath, isUnder, sameDir, tooWide, countStatus, checkoutBranch, limiter, commonDirOf } = require('./viewer-git');
+const { git, longPath, isUnder, sameDir, tooWide, commonDirOf, HEADS, HEAD_REF } = require('./viewer-read');
+
+const MAX_PLACE_TREES = 20;          // worktrees in the header's menu
+const MAX_PLACE_BRANCHES = 30;       // branches checked for commits of their own, newest first
+const PLACES_MS = 10000;             // the menu's list is reused this long, per repo
+const AT_ONCE = 4;                   // the menu's git status, rev-list and rev-parse runs at a time, across the whole viewer
 
 /**
+ * `git status --porcelain -z` -> how many files it names. A rename or copy carries its old path as one more field.
+ * skip: folders (relative, forward slashes) whose untracked entries aren't counted: other worktrees nested in this one.
+ */
+function countStatus(out, skip = []) {
+  const keys = skip.map(s => String(s).replace(/\/+$/, '').toLowerCase()).filter(Boolean);
+  const nested = name => {
+    const n = name.replace(/\/+$/, '').toLowerCase();
+    return keys.some(k => n === k || n.startsWith(`${k}/`));
+  };
+  const recs = String(out || '').split('\0');
+  let n = 0;
+  for (let i = 0; i < recs.length; i++) {
+    if (recs[i].length < 4) continue; // "XY " and at least one letter of a name
+    if (recs[i].startsWith('?? ') && nested(recs[i].slice(3))) continue;
+    n++;
+    if (/^[RC]|^.[RC]/.test(recs[i])) i++;
+  }
+  return n;
+}
+
+/**
+ * The branch the main checkout is on, from `git worktree list --porcelain` (its first entry), or null
+ * when the repo is bare or the checkout detached: then there is nothing to compare branches with.
+ */
+function checkoutBranch(out) {
+  const first = String(out || '').replace(/\r/g, '').split('\n\n')[0].split('\n');
+  if (first.includes('bare')) return null;
+  const b = first.find(l => l.startsWith(`branch ${HEADS}`));
+  return b ? b.slice(`branch ${HEADS}`.length) : null;
+}
+
+/** At most n of the jobs handed to it run at once, whoever hands them over; the rest wait their turn, in order. */
+function limiter(n) {
+  let running = 0;
+  const queue = [];
+  const pump = () => {
+    while (running < n && queue.length) {
+      const { job, resolve, reject } = queue.shift();
+      running++;
+      Promise.resolve().then(job).then(resolve, reject).finally(() => { running--; pump(); });
+    }
+  };
+  return job => new Promise((resolve, reject) => { queue.push({ job, resolve, reject }); pump(); });
+}
+
+/**
+ * The menu for one viewer (createViewer): its handles, the home folder never browsed, where git runs
+ * for a handle (liveRoot), and the two ways a pick opens (open, openBranch). -> { placesOf, switchTo }
  * @param {{ handles: Map<string, any>, home: string, liveRoot: (h: any) => Promise<string | null>,
- *   open: (opts: any) => Promise<any>, openBranch: (opts: any) => Promise<any> }} deps
+ *   open: (opts: any) => Promise<any>, openBranch: (opts: any) => Promise<any> }} viewer
  */
 function createPlaces({ handles, home, liveRoot, open, openBranch }) {
-  // ---- the header's menu (panel/viewer.js): the repo's worktrees, and its branches still in flight.
-  // Built once per repo (its git common dir) and reused for 10 s by every handle on it, however many
-  // ask at once. Each handle then keeps its own copy under random keys; a pick names a key, never a
-  // path or a ref.
   const lists = new Map();       // git common dir -> { at: when built (null while building), p: Promise<built | null> }
   const slot = limiter(AT_ONCE); // the menu's git status, rev-list and rev-parse runs, across every handle and build
 
@@ -146,4 +198,4 @@ function createPlaces({ handles, home, liveRoot, open, openBranch }) {
   return { placesOf, switchTo };
 }
 
-module.exports = { createPlaces };
+module.exports = { createPlaces, countStatus, checkoutBranch, limiter, MAX_PLACE_TREES, MAX_PLACE_BRANCHES, PLACES_MS, AT_ONCE };

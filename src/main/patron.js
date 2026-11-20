@@ -49,6 +49,7 @@ const FETCH_TIMEOUT_MS = 10000;
 
 // The tiers, in cents (api/patron.js has the same table). Monthly: rank. One-time: gifts, and a rank.
 const MONTHLY_RANKS = [[4000, 4], [1500, 3], [700, 2]];   // below $7, any sponsorship: 1
+/** @type {[number, { rank: number, gifts: number }][]} */
 const ONE_TIME = [[5000, { rank: 3, gifts: 2 }], [1000, { rank: 1, gifts: 1 }]];
 const MAX_RANK = 4;
 const MAX_GIFTS = 2;
@@ -109,6 +110,9 @@ const maskStats = (stats, perks) => ({ ...stats, patronRank: perks ? perks.rank 
  * unexpired and for `login` (and `id`, when given), otherwise null. Anything
  * at all can be passed in. The keys are read from the exports when called, so
  * a test can stand in its own pair.
+ * @param {unknown} proof
+ * @param {{ login?: string | null, id?: number | null, now?: number }} [who]
+ * @param {Record<string, string>} [keys]
  */
 function verifyProof(proof, { login, id = null, now = Date.now() } = {}, keys = module.exports.PUBLIC_KEYS) {
   if (typeof proof !== 'string' || !PROOF_RE.test(proof) || !LOGIN_RE.test(String(login))) return null;
@@ -130,6 +134,8 @@ function verifyProof(proof, { login, id = null, now = Date.now() } = {}, keys = 
  * Ask getshellby.com for a public sponsor's proof. id: your GitHub account's
  * number, which the proof must carry. -> the proof string, false when it says
  * there is none, or null when it couldn't say (offline, an error, an odd answer).
+ * @param {string} login
+ * @param {{ id?: number, fetchImpl?: typeof fetch, url?: string }} [opts]
  */
 async function fetchProof(login, { id, fetchImpl = fetch, url = PROOF_URL } = {}) {
   if (!LOGIN_RE.test(String(login)) || !isId(id)) return null;
@@ -175,7 +181,7 @@ function sealsOf(sponsorConfig) {
 }
 
 /** Every seal that opens, each { login, id, rank, gifts }. */
-const openAll = (crypto, seals) => Object.values(seals).map(v => open(crypto, v)).filter(o => o && seals[o.id] !== undefined);
+const openAll = (crypto, seals) => Object.values(seals).flatMap(v => { const o = open(crypto, v); return o && seals[o.id] !== undefined ? [o] : []; });
 
 /**
  * The perks proven on this PC: reads config's `sponsor`, opens its seals, and
@@ -187,6 +193,7 @@ const openAll = (crypto, seals) => Object.values(seals).map(v => open(crypto, v)
  * -> () => { rank, gifts } | null
  */
 function perksOnThisPc(config, crypto, login = () => null) {
+  /** @type {{ key: string | undefined, opened: ReturnType<typeof openAll> }} */
   let last = { key: undefined, opened: [] };
   return () => {
     const seals = sealsOf(config?.get('sponsor'));
@@ -199,7 +206,7 @@ function perksOnThisPc(config, crypto, login = () => null) {
     }
     const who = login();
     const mine = who ? last.opened.filter(o => sameLogin(who, o.login)) : last.opened;
-    return mine.reduce((best, o) => bestPerks(best, o), null);
+    return mine.reduce((best, o) => bestPerks(best, o), /** @type {ReturnType<typeof bestPerks>} */ (null));
   };
 }
 

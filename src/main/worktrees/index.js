@@ -12,127 +12,25 @@
 // backed out (git merge --abort) so your checkout is never left half-merged,
 // and the tab can be asked to sort it out on its own branch instead.
 //
-// None of that leaves your machine. pushBase is the step that does: it takes
-// in what the remote has first, then pushes your checkout's branch.
+// None of that leaves your machine. pushBase (push.js) is the step that does:
+// it takes in what the remote has first, then pushes your checkout's branch.
+//
+// This file makes, brings home and removes copies. git.js runs git for them
+// (and over ssh for a folder on another computer), names.js says what a copy
+// and its commits are called, looks.js when a conversation moves into
+// one, and remote.js makes one on another computer. All are re-exported here.
 //
 // execFile with fixed arguments, short timeouts, nothing thrown to the caller.
-const { execFileTree: execFile } = require('../exec-tree'); // a timeout ends git's whole tree
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { git, setRemote, remoteService, placeOf, longPath, firstLine, lastLines, NO_HOOKS, NO_GIT, REF } = require('./git');
+const { branchName, suggestedName, workMessage } = require('./names');
+const { startsWork, onlyLooks } = require('./looks');
+const { remoteStatus, pushBase, tipOf, upstreamOf } = require('./push');
 const { projectDirName, carryTranscript, copySession, findSession } = require('./claude-session');
 const { createRemoteCopies } = require('./remote');
 
 const BRANCH = /^shellby\/[a-z0-9-]{1,40}-[0-9a-f]{6}$/;
-
-// For the commits Shellby makes of Claude's work, and the merge that brings
-// them home: no hooks. Claude can edit a tracked hook (.husky/pre-commit) in
-// Auto-edit without a prompt, and git would then run it with your rights when
-// you click. A push stays yours: its hooks run as from a terminal.
-const NO_HOOKS = ['-c', 'core.hooksPath=/dev/null'];
-// What execFile says when there's no git to run.
-const NO_GIT = /\bENOENT\b|not recognized as an internal or external command/i;
-
-// Folders on another computer (remote/service.js): their stand-ins on this PC
-// are what a tab and a copy record hold, and git for them runs over there.
-//   { placeOf(cwd), git(place, args, opts), copyHome(host, id), tidyCopyHome(host, id), addCopy(host, dir), dropCopy(anchor) }
-/** @type {any} */
-let remote = null;
-/** Hands this module the remote service (wiring/remote.js). null: none. */
-function setRemote(r) { remote = r || null; }
-const placeOf = dir => (remote && typeof dir === 'string' ? remote.placeOf(dir) : null);
-
-// fsmonitor off: a repository's own config could name a program to run on
-// every status (one Shellby never asked for).
-function git(cwd, args, { timeout = 30000, env = {} } = {}) {
-  const place = placeOf(cwd);
-  if (place) return remote.git(place, args, { timeout, env });
-  return new Promise(resolve => {
-    execFile('git', ['-C', cwd, '-c', 'core.fsmonitor=false', ...args], {
-      windowsHide: true, timeout, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8',
-      env: { ...process.env, ...env, GIT_TERMINAL_PROMPT: '0', GIT_EDITOR: 'true', GIT_MERGE_AUTOEDIT: 'no' },
-    }, (err, stdout, stderr) => resolve(err
-      ? { ok: false, out: String(stdout || ''), error: String(stderr || err.message).trim() }
-      : { ok: true, out: String(stdout) }));
-  });
-}
-
-// The full spelling of a path that exists (8.3 short names expanded), or the
-// path as given if it doesn't yet.
-const longPath = p => { try { return fs.realpathSync.native(p); } catch { return path.resolve(p); } };
-
-const firstLine = s => String(s || '').trim().split('\n').filter(Boolean).pop() || '';
-const lastLines = (s, n = 15) => String(s || '').trim().split('\n').filter(Boolean).slice(-n).join('\n');
-
-/** A branch name from a task's title: "Fix the login bug!" -> "shellby/fix-the-login-bug-1a2b3c". Pure. */
-function branchName(title, suffix = crypto.randomBytes(3).toString('hex')) {
-  const slug = String(title || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '') || 'task';
-  return `shellby/${slug}-${suffix}`;
-}
-
-// The commits that take a copy's work home. Their subject comes from the branch
-// name Claude chose for the work ("fix-tall-menu-overflow"), which says what
-// changed, or else from the files that changed. Never from the conversation:
-// the tab's title is the start of your prompt, and a commit is public wherever
-// the repository is. A copy only counts as named when Claude named it
-// (`named` on the copy): otherwise its branch was made from that same title.
-// Release drafts group commits by their type, and an untyped subject lands
-// under "Changed" word for word.
-const TYPE_WORDS = new Map([
-  ['feat', 'feat'], ['feature', 'feat'], ['fix', 'fix'], ['bugfix', 'fix'], ['hotfix', 'fix'],
-  ['perf', 'perf'], ['refactor', 'refactor'], ['docs', 'docs'], ['doc', 'docs'],
-  ['test', 'test'], ['tests', 'test'], ['chore', 'chore'], ['ci', 'ci'],
-]);
-const FIX_WORDS = /^(bug|bugs|broken|crash|crashes|regression|typo)$/;
-const FEAT_WORDS = /^(add|adds|new|support|implement)$/;
-const SUBJECT_MAX = 72;
-
-/** "update a.js, b.js and 3 more files", in at most `room` characters. Pure. */
-function changedFiles(files, room) {
-  const names = [...new Set((files || []).map(f => path.posix.basename(String(f).replace(/\\/g, '/'))).filter(Boolean))];
-  if (!names.length) return 'work from Shellby';
-  const say = k => {
-    const shown = names.slice(0, k);
-    const more = names.length - k;
-    if (!more) return `update ${shown.length > 1 ? `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}` : shown[0]}`;
-    return `update ${shown.join(', ')} and ${more} more file${more > 1 ? 's' : ''}`;
-  };
-  for (let k = Math.min(names.length, 3); k > 0; k--) if (say(k).length <= room) return say(k);
-  return `update ${names.length} file${names.length > 1 ? 's' : ''}`;
-}
-
-/**
- * w: the copy ({ branch, named }). files: the paths the commit changes.
- * -> "fix: tall menu overflow", or "Update a.js and b.js" for a copy Claude
- * didn't name. Typed only when the name says which type ("Next up backlog"
- * otherwise): a wrong "feat" would have the release card suggest a minor
- * version for a tweak. Pure.
- */
-function workMessage(w, files = []) {
-  const m = w?.named ? /^shellby\/(.+)-[0-9a-f]{6}$/.exec(String(w.branch || '')) : null;
-  const words = m ? m[1].split('-').filter(Boolean) : [];
-  const named = TYPE_WORDS.get(words[0]);
-  const type = named || (words.some(x => FIX_WORDS.test(x)) ? 'fix' : FEAT_WORDS.test(words[0] || '') ? 'feat' : '');
-  const rest = (named ? words.slice(1) : words).join(' ');
-  const room = SUBJECT_MAX - (type ? type.length + 2 : 0);
-  const what = (rest || changedFiles(files, room)).slice(0, room).trim();
-  return type ? `${type}: ${what}` : what[0].toUpperCase() + what.slice(1);
-}
-
-// ------------------------------------------------------------ when to make one
-//
-// A conversation starts in your checkout, and only moves into a copy the first
-// time it goes to change something. Asking a question makes no branch, and by
-// the time one is needed Claude knows enough about the work to name it.
-
-const { startsWork, onlyLooks } = require('./looks');
-
-/** The branch name Claude suggested ("Branch: fix-login-redirect"), as a slug, or null. Pure. */
-function suggestedName(text) {
-  const m = /branch\s*:[\s`*"']*([a-z0-9][a-z0-9/_-]{1,60})/i.exec(String(text || ''));
-  const slug = m && m[1].toLowerCase().replace(/^shellby\//, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return slug || null;
-}
 
 /**
  * Give a folder in a git repo its own worktree.
@@ -231,10 +129,6 @@ async function leaveFinishedBranch(root, current) {
 
 /**
  * @typedef {{ path: string, cwd: string, branch: string, base: string, root: string, originalCwd: string, named: boolean }} Worktree
- * @typedef {{ ok: boolean, error?: string, branch?: string, remote?: string | null, dest?: string, upstream?: string,
- *   tracked?: boolean, ahead?: number, behind?: number, fetched?: boolean }} RemoteStatus
- * @typedef {{ ok: boolean, error?: string, branch?: string, remote?: string | null, upstream?: string, conflict?: boolean,
- *   detail?: string, pushed?: number, pulled?: number, others?: { count: number, subjects: string[] } }} PushResult
  */
 
 const OBJECT = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
@@ -498,154 +392,6 @@ async function remove(w, { force = false, there = null } = {}) {
   return { ok: true };
 }
 
-// ------------------------------------------------------------ sending it to GitHub
-//
-// Bringing a copy home only ever touches your checkout. Pushing is the
-// separate, deliberate step that publishes it: fetch, merge in whatever the
-// remote has that you don't (a merge, never a rebase, so the "Bring home"
-// merges stay as they were), then a plain push. Never a force push, and a
-// clash is backed out exactly like bringHome's.
-
-// Branch and remote names as git would print them; nothing that reads as an option.
-const REF = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;
-
-/** Where a branch pushes to: its upstream, or origin (or the only remote) under the same name. -> { remote, dest, upstream, tracked } | null */
-async function upstreamOf(root, branch) {
-  const [remote, merge] = await Promise.all([
-    git(root, ['config', '--get', `branch.${branch}.remote`], { timeout: 5000 }),
-    git(root, ['config', '--get', `branch.${branch}.merge`], { timeout: 5000 }),
-  ]);
-  const r = remote.ok ? remote.out.trim() : '';
-  const m = merge.ok ? merge.out.trim().replace(/^refs\/heads\//, '') : '';
-  if (r && r !== '.' && m && REF.test(r) && REF.test(m)) return { remote: r, dest: m, upstream: `${r}/${m}`, tracked: true };
-  const list = await git(root, ['remote'], { timeout: 5000 });
-  const remotes = list.ok ? list.out.split(/\r?\n/).map(s => s.trim()).filter(s => REF.test(s)) : [];
-  const pick = remotes.includes('origin') ? 'origin' : remotes.length === 1 ? remotes[0] : null;
-  return pick ? { remote: pick, dest: branch, upstream: `${pick}/${branch}`, tracked: false } : null;
-}
-
-/** -> { ahead, behind } of branch against upstream (behind 0 when the remote has no such branch yet). */
-async function aheadBehind(root, branch, upstream) {
-  const has = await git(root, ['rev-parse', '--verify', '--quiet', `refs/remotes/${upstream}`], { timeout: 5000 });
-  if (!has.ok) {
-    const all = await git(root, ['rev-list', '--count', branch], { timeout: 15000 });
-    return { ahead: all.ok ? Number(all.out.trim()) || 0 : 0, behind: 0 };
-  }
-  const r = await git(root, ['rev-list', '--left-right', '--count', `${branch}...refs/remotes/${upstream}`], { timeout: 15000 });
-  const [ahead, behind] = r.ok ? r.out.trim().split(/\s+/).map(n => Number(n) || 0) : [0, 0];
-  return { ahead, behind };
-}
-
-/**
- * How your checkout stands against its remote. fetch: ask the remote first
- * (slow, needs the network); otherwise it's as of the last fetch.
- *   -> { ok: true, branch, remote, upstream, ahead, behind, fetched } | { ok: true, branch, remote: null } | { ok: false, error }
- * @returns {Promise<RemoteStatus>}
- */
-async function remoteStatus(root, { fetch = false } = {}) {
-  if (typeof root !== 'string' || !path.isAbsolute(root)) return { ok: false, error: 'That is not a repository.' };
-  const on = await git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { timeout: 5000 });
-  const branch = on.ok ? on.out.trim() : '';
-  if (!REF.test(branch)) return { ok: false, error: 'Your checkout is not on a branch (detached HEAD), so there is nothing to push.' };
-  const up = await upstreamOf(root, branch);
-  if (!up) return { ok: true, branch, remote: null };
-  let fetched = false;
-  if (fetch) {
-    const f = await git(root, ['fetch', '--quiet', up.remote], { timeout: 90000 });
-    if (!f.ok) return { ok: false, error: `Couldn't reach ${up.remote}: ${firstLine(f.error)}` };
-    fetched = true;
-  }
-  return { ok: true, branch, ...up, ...await aheadBehind(root, branch, up.upstream), fetched };
-}
-
-const SHA = /^[0-9a-f]{40,64}$/;
-const SHOWN_OTHERS = 5;
-
-/** The commit a ref is at, or null. Taken before a copy comes home, for pushBase's before. */
-async function tipOf(root, ref) {
-  if (!REF.test(ref)) return null;
-  const r = await git(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { timeout: 5000 });
-  const sha = r.ok ? r.out.trim() : '';
-  return SHA.test(sha) ? sha : null;
-}
-
-/** Commits reachable from before that no branch of remote has. -> { count, subjects: [up to SHOWN_OTHERS] } */
-async function unpublished(root, before, remote) {
-  const range = [before, '--not', `--remotes=${remote}`];
-  const [n, log] = await Promise.all([
-    git(root, ['rev-list', '--count', ...range], { timeout: 15000 }),
-    git(root, ['log', '--no-merges', '--format=%s', '-n', String(SHOWN_OTHERS), ...range], { timeout: 15000 }),
-  ]);
-  return { count: n.ok ? Number(n.out.trim()) || 0 : 0, subjects: log.ok ? log.out.split(/\r?\n/).filter(Boolean) : [] };
-}
-
-/**
- * Push your checkout's branch. base: refuse unless the checkout is on it (a
- * copy brought home lands on its base, and that's what should go out).
- * before: where the branch was before a copy came home. Commits it already
- * had that the remote doesn't (copies brought home without a push, your own
- * work) aren't sent along unasked: they come back as others, unless others
- * is true.
- *   -> { ok: true, branch, remote, pushed, pulled }
- *    | { ok: false, error, conflict?, detail?, others?: { count, subjects } }
- * @param {string} root
- * @param {{ base?: string, before?: string | null, others?: boolean }} [opts]
- * @returns {Promise<PushResult>}
- */
-async function pushBase(root, { base, before = null, others = false } = {}) {
-  const s = await remoteStatus(root, { fetch: true });
-  if (!s.ok) return s;
-  if (base && s.branch !== base) return { ok: false, error: `Your checkout is on ${s.branch} now. Switch back to ${base} to push it.` };
-  if (!s.remote) return { ok: false, error: `${s.branch} has nowhere to go: this repository has no remote.` };
-  if (before && SHA.test(before) && !others) {
-    const extra = await unpublished(root, before, s.remote);
-    if (extra.count) {
-      return {
-        ok: false, others: extra, branch: s.branch, remote: s.remote,
-        error: `Nothing went to ${s.remote}: ${s.branch} also has ${extra.count} commit${extra.count === 1 ? '' : 's'} from before that ${extra.count === 1 ? "isn't" : "aren't"} on ${s.remote} yet.`,
-      };
-    }
-  }
-
-  let pulled = 0;
-  if (s.behind) {
-    const merge = await git(root, ['merge', '--no-edit', '-m', `Merge ${s.upstream} into ${s.branch}`, `refs/remotes/${s.upstream}`], { timeout: 60000 });
-    if (!merge.ok) {
-      const conflict = /CONFLICT|Automatic merge failed/i.test(merge.out + merge.error);
-      if (conflict) await git(root, ['merge', '--abort'], { timeout: 15000 });
-      return {
-        ok: false, conflict, upstream: s.upstream,
-        error: conflict
-          ? `${s.upstream} has ${s.behind} commit${s.behind === 1 ? '' : 's'} that clash with yours. Nothing was merged or pushed.`
-          : `Couldn't take in ${s.upstream} first: ${firstLine(merge.error) || 'git refused the merge.'}`,
-      };
-    }
-    pulled = s.behind;
-  }
-
-  const { ahead } = pulled ? await aheadBehind(root, s.branch, s.upstream) : s;
-  if (!ahead) return { ok: true, branch: s.branch, remote: s.remote, pushed: 0, pulled };
-  // Long timeout: a pre-push hook may run the whole test suite.
-  const push = await git(root, ['push', ...(s.tracked ? [] : ['-u']), s.remote, `refs/heads/${s.branch}:refs/heads/${s.dest}`], { timeout: 10 * 60000 });
-  if (!push.ok) {
-    const rejected = /\[rejected\]|non-fast-forward|fetch first/i.test(push.error);
-    return {
-      ok: false,
-      error: rejected
-        ? `${s.remote} moved on while pushing. Try again.`
-        // "failed to push some refs" is git's last word for a hook's refusal
-        // too; the reason is in the detail.
-        : /failed to push some refs/i.test(push.error)
-          ? `${s.remote} didn't take the push. Nothing went.`
-          : `The push didn't go through: ${firstLine(push.error) || 'git refused it.'}`,
-      // A pre-push hook's own words are what explain a refusal.
-      detail: lastLines(push.error) || undefined,
-      pulled,
-    };
-  }
-  return { ok: true, branch: s.branch, remote: s.remote, pushed: ahead, pulled };
-}
-
 /**
  * Bring several copies home, one after another, into the branch your checkout
  * is on. A copy that clashes is backed out and passed over, so the rest still
@@ -692,7 +438,7 @@ async function caughtUp(w) {
 
 // Copies on another computer (worktrees/remote.js), with this module's own steps.
 const { createThere, removeThere } = createRemoteCopies({
-  git, remote: () => remote, placeOf, branchName, leaveFinishedBranch, copyRefusal, remove, lastLines, firstLine, REF, NO_HOOKS,
+  git, remote: remoteService, placeOf, branchName, leaveFinishedBranch, copyRefusal, remove, lastLines, firstLine, REF, NO_HOOKS,
 });
 
 module.exports = {

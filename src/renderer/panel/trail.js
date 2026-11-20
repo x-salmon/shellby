@@ -49,6 +49,8 @@
     seen: { pixels: ['.1.', '1.1', '.1.'], palette: { 1: '#ffc15e' } },
   };
 
+  /** @typedef {{ node: any, depth: number, el: HTMLElement }} TrailRow a drawn row: its tree node and element */
+
   let open = false;
   /** @type {string | null} */
   let tabId = null;
@@ -59,8 +61,9 @@
   let playTimer = null;
   let frame = 0;            // a paint asked for, not yet run
   let active = -1;          // the row with the keyboard (aria-activedescendant)
-  let rowList = [];         // what's drawn: [{ node, depth, el }]
-  /** @type {Element | null} */
+  /** @type {TrailRow[]} */
+  let rowList = [];         // what's drawn
+  /** @type {HTMLElement | null} */
   let landedEl = null;      // the feed's step lit by the replay
   const closed = new Map(); // tab id -> folder keys closed
   const tests = new Map();  // tab id -> { sig, map } (ipc trail:tests)
@@ -213,7 +216,7 @@
 
   // ------------------------------------------------------------ painting
 
-  const tabNow = () => (tabId ? state.tabs.get(tabId) : null) || null;
+  const tabNow = () => (tabId && state.tabs.get(tabId)) || null;
   const closedOf = id => { if (!closed.has(id)) closed.set(id, new Set()); return closed.get(id); };
 
   function paint() {
@@ -396,7 +399,7 @@
 
   // The row he stands on: his file's, or the nearest folder of it still showing.
   function rowOf(key) {
-    /** @type {{ node: { key: string }, el: Element } | null} */
+    /** @type {TrailRow | null} */
     let best = null;
     for (const r of rowList) {
       const k = r.node.key;
@@ -531,7 +534,7 @@
     drawer.classList.add('playing');
   }
   function stopPlay() {
-    if (playTimer) clearInterval(playTimer);
+    clearInterval(playTimer);
     playTimer = null;
     drawer.classList.remove('playing');
   }

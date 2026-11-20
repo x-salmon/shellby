@@ -28,7 +28,7 @@
   const doors = () => [
     ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.dock [data-view-btn]'))].map(b => ({ id: b.dataset.viewBtn, b })),
     ...[.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.shellby-tabs [data-goto], .wd-make [data-goto]'))].map(b => ({ id: b.dataset.goto, b })),
-  ].filter(d => d.id !== 'wardrobe' && d.id !== 'chat');
+  ].filter(d => d.id !== 'wardrobe' && d.id !== 'chat' && d.id !== 'pcs'); // Your PCs is never a room to open: it's there once a PC has joined
 
   // Every room still shut, doors or not (the Reef card has none).
   const lockedIds = () => {

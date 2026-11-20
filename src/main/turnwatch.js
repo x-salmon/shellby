@@ -138,6 +138,8 @@ function seeItem(watch, item) {
  * conversation; cost: the turn's (turncost.js turnCost); category: what kind
  * of ask it was (usage/ledger.js classify); style: the output style Shellby
  * started it with ('' for Default, or one a plugin's hook chose).
+ * @param {any} watch
+ * @param {{ cost?: { contextPct?: number | null, effort?: string, thinking?: number | null } | null, category?: string, said?: Record<string, boolean>, style?: string, compact?: (n: number) => string }} [ctx]
  */
 function watchNotes(watch, { cost, category = '', said = {}, style = '', compact = n => String(n) } = {}) {
   if (!watch || !cost) return [];

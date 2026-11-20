@@ -37,12 +37,15 @@ const ANY = { success: [null, ...SUCCESS], error: [null, ...ERROR] };
  * pick(state, { temperament, durationMs, missesBefore, rand }) -> a flourish
  * name, or null for his usual move (and for any state but success and error).
  * missesBefore: failed turns in a row on that conversation before this one.
+ * @param {string} state
+ * @param {{ temperament?: string | null, durationMs?: number, missesBefore?: number, rand?: () => number }} [how]
+ * @returns {string | null}
  */
 function pick(state, { temperament = null, durationMs = 0, missesBefore = 0, rand = Math.random } = {}) {
   if (state !== 'success' && state !== 'error') return null;
   if (state === 'success' && missesBefore >= COMEBACK_AFTER) return 'phew';
   if (state === 'success' && durationMs >= BIG_TURN_MS) return 'big';
-  const list = (Object.hasOwn(SUITS, temperament) ? SUITS[temperament] : ANY)[state];
+  const list = (temperament && Object.hasOwn(SUITS, temperament) ? SUITS[temperament] : ANY)[state];
   return list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
 }
 

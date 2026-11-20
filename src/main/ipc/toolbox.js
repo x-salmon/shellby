@@ -1,7 +1,7 @@
 // The Toolbox: its tools, prompt snippets, Claude Code's hooks and memory, and
 // the skill shop (plugin marketplaces). Kept out of main.js, which only wires
 // it up.
-const { either, ID, obj: objCheck, obj: shape, opt, PATH, str, text } = require('../ipc-args');
+const { ID, PATH, bool, either, obj: shape, opt, str, text } = require('../ipc-args');
 const { shell } = require('electron');
 const { openSafe } = require('../safe-open');
 const path = require('path');
@@ -11,6 +11,7 @@ const snippets = require('../snippets');
 const { samePath } = require('../toolbox');
 
 const MAX_MEMORY_TEXT = 512 * 1024; // what claude/setup.js writeMemory takes (MAX_MEMORY); past it the handler says why
+const NAME = str({ max: 400 }); // a tool's or a snippet's name
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
@@ -29,7 +30,7 @@ function registerToolboxIpc(ipcMain, d) {
     const rest = d.pinnedTools().filter(p => !(p.kind === kind && p.name === name));
     d.config.set({ pinnedTools: pinned ? [...rest, { kind, name }].slice(-12) : rest });
     return d.pinnedTools();
-  }, [opt(objCheck())]);
+  }, [shape({ kind: str({ max: 40 }), name: NAME, pinned: opt(bool) })]);
   // ---- prompt snippets (Toolbox → Snippets, /name in the box)
   ipcMain.handle('snippets:save', (_e, req) => {
     const { snippet, was } = obj(req);
@@ -38,13 +39,13 @@ function registerToolboxIpc(ipcMain, d) {
     if (!r.ok) return r;
     const from = snippets.normalizeName(was);
     return { ok: true, name: r.name, ...d.setSnippets(r.list, from && from !== r.name ? { from, to: r.name } : null) };
-  }, [opt(objCheck())]);
-  ipcMain.handle('snippets:remove', (_e, name) => d.setSnippets(snippets.remove(d.snippetList(), d.isStr(name) ? name : '')), [opt(text(1000))]);
+  }, [shape({ snippet: shape(), was: opt(text(400)) })]);
+  ipcMain.handle('snippets:remove', (_e, name) => d.setSnippets(snippets.remove(d.snippetList(), d.isStr(name) ? name : '')), [NAME]);
   ipcMain.handle('snippets:duplicate', (_e, name) => {
     const r = snippets.duplicate(d.snippetList(), d.isStr(name) ? name : '');
     return r.ok ? { ok: true, name: r.name, ...d.setSnippets(r.list) } : r;
-  }, [opt(text(1000))]);
-  ipcMain.on('snippets:used', (_e, name) => { if (d.isStr(name)) d.noteSnippetUse(name); }, [opt(text(1000))]);
+  }, [NAME]);
+  ipcMain.on('snippets:used', (_e, name) => { if (d.isStr(name)) d.noteSnippetUse(name); }, [NAME]);
   ipcMain.handle('snippets:export', () => d.exportSnippets());
   ipcMain.handle('snippets:import', () => d.importSnippets());
   // The five Shellby starts with, for anyone who deleted them and wants them back.
@@ -63,7 +64,7 @@ function registerToolboxIpc(ipcMain, d) {
       return { ok: false, error: `/${call.name} is a team snippet from ${path.basename(d.currentCwd())}, and this conversation is working somewhere else.` };
     }
     return x;
-  }, [opt(text(50_000)), opt(text(300))]);
+  }, [text(200_000), opt(ID)]);
   ipcMain.on('toolbox:reveal', (_e, p) => {
     // Only reveal files the toolbox itself reported (never arbitrary paths from the renderer).
     const known = d.toolbox.current && ['skills', 'agents', 'commands'].some(k => d.toolbox.current[k].some(t => t.path === p || (t.hides || []).some(x => x.path === p)));
@@ -93,13 +94,13 @@ function registerToolboxIpc(ipcMain, d) {
   ipcMain.handle('setup:resume-hook', (_e, id) => d.resumeHook(id), [opt(either(ID, Number.isInteger))]);
   ipcMain.handle('setup:forget-paused-hook', (_e, id) => d.forgetPausedHook(id), [opt(either(ID, Number.isInteger))]);
   ipcMain.handle('setup:test-hook', (_e, req) => d.testHook(req || {}), [shape({ hook: shape() })]);
-  ipcMain.handle('setup:draft-hook', (_e, req) => d.draftHook(req && typeof req === 'object' ? req : {}), [opt(objCheck())]);
+  ipcMain.handle('setup:draft-hook', (_e, req) => d.draftHook(req && typeof req === 'object' ? req : {}), [shape({ request: opt(text(10_000)), hook: opt(shape()), test: opt(either(shape(), text(100_000))) })]);
   // The JSON a hook would get, to show (and change) before a test run.
   ipcMain.handle('setup:sample-hook-input', (_e, hook) => {
     const h = hook && typeof hook === 'object' ? hook : {};
     if (!claudeSetup.HOOK_EVENTS.some(e => e.name === h.event)) return null;
     return hookTest.samplePayload({ event: h.event, matcher: d.isStr(h.matcher) ? h.matcher : '', command: d.isStr(h.command) ? h.command : '' }, d.setupCwd());
-  }, [opt(objCheck())]);
+  }, [shape({ event: str({ max: 100 }), matcher: opt(text(1000)), command: opt(text(10_000)) })]);
   ipcMain.on('setup:reveal', (_e, p) => {
     if (!d.isStr(p)) return;
     const s = d.setupView();

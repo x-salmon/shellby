@@ -7,16 +7,22 @@ const MAX_TEXT = 200;
 const MAX_FILES = 40;
 const MAX_POINTS = 500;
 
+/** @typedef {{ path: string, status?: string, added?: number, removed?: number }} OutlineFile */
+/** @typedef {{ turnId: string, text: string, at: number | null, files: OutlineFile[], added: number, removed: number, tools: number, edits: Map<string, boolean>, diffed: boolean }} Point */
+
 /**
  * -> [{ turnId, text, at, files: [{ path, status?, added?, removed? }], added, removed, tools }]
  * Only since the last /clear, as Rewind does: what came before is off screen.
+ * @param {any[]} items
  */
 function outline(items) {
   const list = Array.isArray(items) ? items : [];
   const cleared = list.findLastIndex(i => i?.kind === 'cleared');
+  /** @type {Point[]} */
   const out = [];
+  /** @type {Map<string, Point>} */
   const byTurn = new Map();
-  /** @type {{ turnId: string, text: string, at: unknown, files: unknown[], added: number, removed: number, tools: number, edits: Map<string, boolean>, diffed: boolean } | null} */
+  /** @type {Point | null} */
   let current = null;
   for (const i of list.slice(cleared + 1)) {
     if (!i || typeof i !== 'object') continue;

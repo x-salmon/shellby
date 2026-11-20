@@ -141,6 +141,7 @@ function effectiveAfter(items, ref) {
 /**
  * What "Undo to here" on a step would do, or why it can't.
  * -> { ok: true, point, root, to, from, after } | { ok: false, error }
+ * @returns {{ ok: true, point: any, root: string, to: string, from: string, after: string, paths?: string[] } | { ok: false, error: string }}
  */
 function planStep(items, turnId, toolId) {
   const list = Array.isArray(items) ? items : [];

@@ -34,7 +34,7 @@
   // ------------------------------------------------------------ events from main
 
   api.onTabItem(({ tabId, item, continues }) => {
-    const tab = tabId ? state.tabs.get(tabId) : undefined;
+    const tab = state.tabs.get(tabId);
     if (!tab) return;
     tab.render(item);
     if (item.kind === 'user' && item.steerId) SB.onSteered(tab, item.steerId);
@@ -48,7 +48,7 @@
     if (item.kind === 'decision' || item.kind === 'result') SB.syncBusyUi();
   });
   api.onTabSteering(({ tabId, ids }) => {
-    const tab = tabId ? state.tabs.get(tabId) : undefined;
+    const tab = state.tabs.get(tabId);
     if (tab && Array.isArray(ids)) SB.onSteering(tab, ids);
   });
   // Main sends every conversation again each time any one moves; a busy panel handles the newest list once
@@ -71,7 +71,7 @@
   // A Stream Deck key that needs the panel (main shows it first): the same as
   // Ctrl+Shift+H on that conversation, or opening the review inbox.
   api.onDeckPress((/** @type {{ what?: string, tabId?: string }} */ { what, tabId } = {}) => {
-    const tab = tabId ? state.tabs.get(tabId) : undefined;
+    const tab = state.tabs.get(tabId);
     if (what === 'home' && tab?.worktree) SB.bringHome(tab);
     if (what === 'review') SB.openReview?.();
   });

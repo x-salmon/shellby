@@ -486,15 +486,12 @@ src/main/        Electron main process
     native.js        the crab noticing what Claude Code does by itself: to-dos ticked off, a background command done, a memory, a skill's first use
   ipc/             the panel's and crab's IPC handlers, one module per area: `registerXIpc(ipcMain, shared)`;
                    index.js registers them all behind the window check (ipc-guard.js)
-  sessions.js      parallel conversations (tabs) + the critter's rolled-up mood; its methods are mixed in from session-manager/: lifecycle.js
-                   (open, close, order), turns.js (send, steer, Keep warm's ping, pause), items.js (what a session says, the review inbox),
-                   settings.js (a tab's name, mode, effort, model), shared.js (limits and helpers they share)
+  sessions.js      parallel conversations (tabs) + the critter's rolled-up mood
   ship.js          Ship it: a copy's tests, commit, secret scan, push and pull request in order, and the pull request's words (pure, deps passed in)
   session/         one Claude Code process per conversation (stream-json + control protocol): index.js its life
                    and what it says; args.js how it starts, control.js answering it, accounting.js what it costs, crew.js its helpers,
                    pause.js Pause and Continue (held steps, parking before the cache goes cold)
-  stream.js        pure parser: CLI events (incl. subagent tasks) → UI items (toItems, parseLine, KNOWN); stream-tools.js has what a tool call
-                   and its result say (describeTool, to-dos, questions, findings, usage), stream-items.js one item per kind of event (tasks, workflows, mods, goal, context, hooks)
+  stream.js        pure parser: CLI events (incl. subagent tasks) → UI items
   cli-contract.js  what Shellby needs from the Claude Code CLI (flags, modes, effort levels, the protocol), checked nightly (pure)
   cli-coverage.js  everything Claude Code offers and what Shellby does about each: use, skip or gap (pure)
   cli-commands.js  Claude Code's own slash commands and how Shellby handles each (pure; the panel gets a copy)
@@ -662,7 +659,7 @@ src/main/        Electron main process
   flaky/           the flaky test detective: index.js (a fail then a pass on the same code), ids, parsers (which tests a
                    runner says failed), store (the per-project ledger, pure) and text (the bubble, the prompts, the issue)
   fileindex.js     @ mentions: the files in a conversation's folder and a fuzzy match over them
-  viewer.js        the file viewer: handles on a folder (reads kept inside it) or on a branch (read from git alone), what changed since each began, and the header menu's worktrees and branches; ipc/viewer.js serves it; viewer-git.js (git runs, reads kept inside a root, finding a folder's repo), viewer-places.js (the header menu's worktrees and branches) and viewer-status.js / viewer-review.js hold its parts
+  viewer.js        the file viewer: handles on a folder (reads kept inside it) or on a branch (read from git alone), what changed since each began, and the header menu's worktrees and branches; ipc/viewer.js serves it
   viewer-status.js the file tree's git status for a viewer handle: each file's mark and +/− against HEAD, the branch and its upstream, and the files a real commit or a git add just touched
   mention-context.js @ what Shellby knows (pure): a dev server, a red build, another chat or a note, ranked for the @ menu and
                    fenced as a block; wiring/mention-context.js lists a tab's own, saves a pick's snapshot and reads it back for composePrompt

@@ -8,7 +8,8 @@
   const { h, api, state, $ } = SB;
   const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const RARITY_ORDER = { legendary: 0, special: 1, rare: 2, uncommon: 3, common: 4 };
-  let selected = null; // the find whose card is open
+  /** @type {string | null} */
+  let selected = null; // the find whose card is open, by id
   /** @type {ReturnType<typeof setTimeout> | null} */
   let seenTimer = null;
 
@@ -170,7 +171,7 @@
 
   // Looking at the shelf counts as seeing what's new on it, after a moment to notice.
   function noticeFinds() {
-    if (seenTimer) clearTimeout(seenTimer);
+    clearTimeout(seenTimer);
     if (!life()?.finds.unseen.length) return;
     seenTimer = setTimeout(() => { if (state.view === 'finds') api.findsSeen(); }, 2500);
   }

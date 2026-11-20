@@ -215,7 +215,8 @@
     const svg = root.ShellbySprite.grid(s.rows, sprite.palette, { px, ink: !!effect.ink });
     win.append(svg);
     el.append(win);
-    const timing = { delay: p.delay * TICK, iterations: p.once ? 1 : Infinity, fill: /** @type {FillMode} */ (p.once ? 'both' : 'auto') };
+    /** @type {KeyframeAnimationOptions} */
+    const timing = { delay: p.delay * TICK, iterations: p.once ? 1 : Infinity, fill: p.once ? 'both' : 'auto' };
     const path = keyframesOf(p.holds, h => ({ transform: `translate(${h.x * px}px, ${h.y * px}px)`, opacity: h.on ? 1 : 0 }));
     el.animate(path.keyframes, { ...timing, duration: path.duration });
     if (p.strip) {
@@ -262,7 +263,7 @@
     layer.className = 'fx-layer';
     layer.setAttribute('aria-hidden', 'true');
     container.append(layer);
-    /** @type {{ count?: number, motion?: string } | null} */
+    /** @type {{ motion: string, sprites: any[], count?: number } | null} */
     let current = null;
     /** @type {{ stop(): void } | null} */
     let flying = null;
@@ -278,10 +279,12 @@
     }
 
     function particles() {
-      const n = Math.max(1, Math.min(24, current?.count || 10));
+      const fx = current;
+      if (!fx) return []; // only ever called with an effect set (fill, below)
+      const n = Math.max(1, Math.min(24, fx.count || 10));
       const f = field();
       size = `${f.wc}x${f.hc}`;
-      return Array.from({ length: n }, (_, i) => particle(current, i, n, f, px, random));
+      return Array.from({ length: n }, (_, i) => particle(fx, i, n, f, px, random));
     }
 
     // The continuous particles go; a burst playing alongside stays.
@@ -290,10 +293,10 @@
 
     // Paths are cut to the layer, so a new size (he grew, a preview came on
     // screen) lays them out again, once it settles.
-    /** @type {ReturnType<typeof setTimeout> | null} */
-    let settle = null;
+    /** @type {number | undefined} */
+    let settle;
     const resized = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
-      if (settle) clearTimeout(settle);
+      clearTimeout(settle);
       settle = setTimeout(() => {
         const f = field();
         if (live && current && `${f.wc}x${f.hc}` !== size) fill();
@@ -334,7 +337,7 @@
     set(effect);
     return {
       set, burst,
-      destroy: () => { flying?.stop(); if (settle) clearTimeout(settle); resized?.disconnect(); layer.remove(); },
+      destroy: () => { flying?.stop(); clearTimeout(settle); resized?.disconnect(); layer.remove(); },
       get effect() { return current; },
     };
   }

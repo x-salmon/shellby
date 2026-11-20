@@ -48,7 +48,7 @@ function wireDebugMode(d, opts = {}) {
     return item;
   }
 
-  /** @type {ReturnType<typeof setTimeout> | null} */
+  /** @type {NodeJS.Timeout | null} */
   let liveTimer = null;
   const pending = new Set();
   function liveSoon(s) {

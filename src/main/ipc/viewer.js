@@ -53,7 +53,7 @@ function registerViewerIpc(ipcMain, d) {
   }, [obj({ tabId: opt(ID), projectRoot: opt(PATH), worktreePath: opt(PATH) })]);
   ipcMain.handle('viewer:tree', (_e, id, opts) => viewer.treeOf(id, { fresh: !!opts?.fresh }), [opt(ID), opt(obj())]); // a folder's index (fresh: read again now), or a branch's own tree
   ipcMain.handle('viewer:status', (_e, id) => viewer.statusOf(id), [opt(ID)]); // the file tree's marks (viewer-status.js); a folder handle only
-  ipcMain.handle('viewer:changes', (_e, id, opts) => viewer.changesOf(id, { uncommittedOnly: !!opts?.uncommittedOnly }), [ID, opt(obj())]);
+  ipcMain.handle('viewer:changes', (_e, id, opts) => viewer.changesOf(id, { uncommittedOnly: !!opts?.uncommittedOnly }), [opt(ID), opt(obj())]);
   ipcMain.handle('viewer:read', (_e, id, rel) => viewer.read(id, rel), [opt(ID), opt(PATH)]);
   ipcMain.handle('viewer:diff', (_e, id, rel, opts) => viewer.diffOf(id, rel, { ignoreSpace: !!opts?.ignoreSpace }), [opt(ID), opt(PATH), opt(obj())]);
   ipcMain.handle('viewer:image', (_e, id, rel) => viewer.imageOf(id, rel), [ID, PATH]); // a picture's preview, as a data: URL
@@ -127,7 +127,7 @@ function registerViewerIpc(ipcMain, d) {
   // The header's menu: the repo's worktrees and unmerged branches, each under a key main issued;
   // a pick names only a key, and main checks it again before it opens (viewer.js switchTo).
   ipcMain.handle('viewer:places', (_e, id) => viewer.placesOf(id), [opt(ID)]);
-  ipcMain.handle('viewer:switch', (_e, id, key) => viewer.switchTo(id, key), [ID, str()]);
+  ipcMain.handle('viewer:switch', (_e, id, key) => viewer.switchTo(id, key), [ID, ID]);
   // Something in a folder may have changed: a nudge for each viewer open on it. commits: a turn
   // ended, a step was undone or a ! command ran, where a commit may have landed, so viewers on the
   // repo's branches look again too; each tool's result leaves them be.

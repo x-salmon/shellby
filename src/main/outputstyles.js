@@ -36,8 +36,11 @@ function fromDir(dir, source) {
   });
 }
 
-/** Every style a conversation in `cwd` could use; the first with a name wins. */
-function list(/** @type {{ home?: string, cwd?: string }} */ { home, cwd } = {}) {
+/**
+ * Every style a conversation in `cwd` could use; the first with a name wins.
+ * @param {{ home?: string | null, cwd?: string | null }} [where]
+ */
+function list({ home, cwd } = {}) {
   const all = [
     ...BUILT_IN,
     ...(cwd ? fromDir(path.join(cwd, '.claude', 'output-styles'), 'project') : []),

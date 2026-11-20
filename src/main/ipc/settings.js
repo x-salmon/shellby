@@ -317,7 +317,7 @@ function registerSettingsIpc(ipcMain, d) {
   // Try it: one question to a model, shown in Settings with how long it took.
   ipcMain.handle('local:try', (_e, req) => localModel.tryModel(req), [obj({ url: str({ max: 500 }), model: str({ max: 200 }), question: opt(text(2000)) })]);
   // What it's saved so far, and whether a model is resting after failing.
-  ipcMain.handle('local:state', () => ({ ...localTally.totals(d.config.get('localModelTally')), jobs: localTally.clean(d.config.get('localModelTally')).jobs, ...(d.localDrafts?.state?.() || { resting: [], lastFail: null }) }));
+  ipcMain.handle('local:state', () => ({ ...localTally.totals(d.config.get('localModelTally')), jobs: localTally.clean(d.config.get('localModelTally')).jobs, ...(d.localDrafts?.state?.() || { resting: [], lastFail: null }), room: d.gameRoom?.view() || null }));
   // Try again now: the resting models are asked again from the next draft.
   ipcMain.handle('local:wake', () => { d.localDrafts?.wake?.(); return true; });
   ipcMain.handle('local:reset-tally', () => { d.config.set({ localModelTally: null }); return true; });
