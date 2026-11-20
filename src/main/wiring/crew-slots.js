@@ -9,12 +9,13 @@ const SHRINK_AFTER_MS = 1100; // let helpers walk home first
 
 /** d: what main shares (main.js `shared`). */
 function wireCrewSlots(d) {
+  /** @type {NodeJS.Timeout | null} */
   let shrinkTimer = null;
 
   function setCrewSlots(n, guest = !!d.visitor) {
     n = Math.min(n, d.MAX_CREW_SHOWN);
     // A shrink still pending from a moment ago would cut off whoever just arrived.
-    clearTimeout(shrinkTimer);
+    clearTimeout(/** @type {NodeJS.Timeout} */ (shrinkTimer));
     if (n === d.crewShown && guest === d.guestShown) return;
     const growing = n > d.crewShown || (guest && !d.guestShown);
     // Helpers and a visiting crab line up on the floor beside him, so he comes

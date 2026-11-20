@@ -38,6 +38,7 @@ function wireChecks(d) {
   const projectOf = (tabId, root) => d.manager.tabs.get(tabId)?.worktree?.root || root;
 
   // ---- asking once per project
+  /** @type {Promise<number> | null} */
   let asking = null;
   /**
    * -> true to run. quiet: an automatic run, which never asks at all once there's
@@ -97,6 +98,8 @@ function wireChecks(d) {
    * Run a folder's checks for a tab.
    * -> { verdict } | { none: true } | { cancelled: true } | { declined: true }.
    * after: the turn's tree the verdict stamps (null: the folder as it is).
+   * @param {{ cwd: string, after?: string | null, project?: string, quiet?: boolean, once?: boolean, commands?: string[] | null }} opts
+   * @returns {Promise<{ verdict?: any, none?: true, cancelled?: true, declined?: true }>}
    */
   async function run(tabId, { cwd, after = null, project, quiet = false, once = false, commands: given = null }) {
     const commands = given || checks.detect(cwd);
@@ -182,6 +185,7 @@ function wireChecks(d) {
    * Before a copy is brought home. -> { ok: true, verdict? } to carry on, or
    * { ok: false, red: true, checks } / { ok: false, error } to stop.
    *   check: ticked for this one (a boolean), or undefined to follow the setting
+   * @param {{ check?: boolean, force?: boolean }} [opts]
    */
   async function gateHome(tabId, w, { check, force } = {}) {
     const gate = typeof check === 'boolean' ? check : checksOn();

@@ -105,8 +105,11 @@ function wireCritter(d) {
     if (d.wardrobe) d.send(d.panel, 'wardrobe', d.wardrobe.view());
   }
 
-  // turn: { durationMs, missesBefore } for a finished turn, so how he takes it
-  // can follow how it went (flourish.js).
+  /**
+   * turn: { durationMs, missesBefore } for a finished turn, so how he takes it
+   * can follow how it went (flourish.js).
+   * @param {{ durationMs?: number, missesBefore?: number } | null} [turn]
+   */
   function flashState(state, ms = 7000, turn = null) {
     const temperament = d.config ? voice.temperamentOf(voice.normalize(d.config.get('voice')).seed) : null;
     d.flash = { state, until: Date.now() + ms, flourish: flourish.pick(state, { temperament, ...turn }) };
@@ -205,12 +208,14 @@ function wireCritter(d) {
   // changing, so he looks again then.
   // refreshCritter runs many times a second while he works, so the timer is only
   // set again when the time it's for moves.
+  /** @type {NodeJS.Timeout | null} */
   let signsTimer = null;
+  /** @type {number | null} */
   let signsDue = null;
   function recheckSigns(ms) {
     const due = ms == null ? null : Date.now() + ms + 50;
     if (due === signsDue || (due != null && signsDue != null && Math.abs(due - signsDue) < 1000)) return;
-    clearTimeout(signsTimer);
+    clearTimeout(/** @type {NodeJS.Timeout} */ (signsTimer));
     signsDue = due;
     if (due == null) return;
     signsTimer = setTimeout(() => { signsDue = null; refreshCritter(); }, due - Date.now());

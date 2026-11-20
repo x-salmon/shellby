@@ -29,6 +29,7 @@ function fromGetUsage(r) {
 /**
  * Resolves to a usage item, or null if the CLI couldn't say (offline, API key login, old CLI).
  * args/env: the whole command line and environment instead, for ssh to another computer.
+ * @param {{ exe: string, argsPrefix?: string[], cwd?: string, timeout?: number, args?: string[], env?: NodeJS.ProcessEnv }} opts
  */
 function probe({ exe, argsPrefix = [], cwd, timeout = TIMEOUT_MS, args = [...argsPrefix, ...PROBE_ARGS], env = claudeEnv() }) {
   return new Promise(resolve => {
