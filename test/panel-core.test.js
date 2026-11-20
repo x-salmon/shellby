@@ -22,8 +22,9 @@ function element(tag) {
   return {
     nodeType: 1, tagName: String(tag).toUpperCase(), children: [], attrs: {}, listeners: {}, dataset: {}, style: { setProperty() {} },
     classList: classSet(),
-    append(...kids) { this.children.push(...kids); },
-    replaceChildren(...kids) { this.children = kids; },
+    append(...kids) { for (const k of kids) if (k && typeof k === 'object') k.parentNode = this; this.children.push(...kids); },
+    replaceChildren(...kids) { for (const k of kids) if (k && typeof k === 'object') k.parentNode = this; this.children = kids; },
+    remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); this.parentNode = null; },
     addEventListener(type, fn) { this.listeners[type] = fn; },
     setAttribute(k, v) { this.attrs[k] = String(v); },
     getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
@@ -222,6 +223,97 @@ test('Escape on a toast dismisses it', withClock(({ SB, slot }) => {
   slot.listeners.keydown({ key: 'Escape', stopPropagation() { stopped = true; } });
   assert.equal(slot.children.length, 0);
   assert.ok(stopped, "Escape doesn't also close whatever is behind it");
+}));
+
+// ------------------------------------------------------------------ the stack
+
+// The fake elements keep no textContent for mixed children: put it together.
+const words = n => n.text ?? n.textContent ?? n.children.map(words).join('');
+const toastNext = t => t.children.find(c => c.className === 'toast-next');
+const toastNextLine = t => { const n = toastNext(t); return n && { textContent: words(n) }; };
+const ask = (SB, msg, ms = 12000) => SB.toast(msg, { ms, action: 'Allow', onAction() {} });
+
+test('a toast with nothing behind it has no stack', withClock(({ SB, slot }) => {
+  ask(SB, 'Run npm run e2e:ci?');
+  assert.equal(slot.dataset.waiting, undefined);
+  assert.equal(toastNextLine(slot), undefined);
+}));
+
+test('what waits behind a button toast peeks out under it and is named', withClock(({ SB, slot }) => {
+  ask(SB, 'Run npm run e2e:ci?');
+  SB.toast('rack-builder finished its task.', { ms: 5000 });
+  assert.equal(slot.dataset.waiting, '1');
+  assert.equal(toastText(slot), 'Run npm run e2e:ci?', 'the front one stays first');
+  assert.equal(toastNextLine(slot).textContent, 'Next: rack-builder finished its task.');
+}));
+
+test('the stack draws two cards at most and counts the rest', withClock(({ SB, slot }) => {
+  ask(SB, 'Run npm run e2e:ci?');
+  SB.toast('Tests passed.', { ms: 5000 });
+  SB.toast('Pushed 2 commits.', { ms: 5000 });
+  SB.toast('Routine finished.', { ms: 5000 });
+  assert.equal(slot.dataset.waiting, '2');
+  assert.equal(toastNextLine(slot).textContent, 'Next: Tests passed. and 2 more');
+  assert.equal(slot.children.filter(c => c.className === 'toast-next').length, 1, 'one line, however many come in');
+}));
+
+test('the next line names a waiting toast by its title when it has one', withClock(({ SB, slot }) => {
+  ask(SB, 'Run npm run e2e:ci?');
+  SB.toast('Two tabs changed it.', { title: 'It clashes with main', ms: 5000 });
+  assert.equal(toastNextLine(slot).textContent, 'Next: It clashes with main');
+}));
+
+test('a waiting toast leaves the stack when it goes stale, not later', withClock(({ SB, slot, tick }) => {
+  ask(SB, 'Run npm run e2e:ci?', 60000);
+  SB.toast('Copied.', { ms: 1000, staleMs: 1000 });
+  tick(1999);
+  assert.equal(slot.dataset.waiting, '1');
+  tick(1);
+  assert.equal(slot.dataset.waiting, undefined);
+  assert.equal(toastNextLine(slot), undefined);
+  assert.equal(toastText(slot), 'Run npm run e2e:ci?');
+}));
+
+test('answering the front one brings the next forward and shrinks the stack', withClock(({ SB, slot }) => {
+  ask(SB, 'Run npm run e2e:ci?');
+  ask(SB, 'Edit src/main/toast.js?');
+  SB.toast('Tests passed.', { ms: 5000 });
+  toastButtons(slot)[0].listeners.click();
+  assert.equal(toastText(slot), 'Edit src/main/toast.js?');
+  assert.ok(slot.classList.contains('promoted'));
+  assert.equal(slot.dataset.waiting, '1');
+  assert.equal(toastNextLine(slot).textContent, 'Next: Tests passed.');
+  toastClose(slot).listeners.click();
+  SB.toast('Copied.');
+  assert.ok(!slot.classList.contains('promoted'), 'only the one that came out of the stack slides');
+}));
+
+test('more coming in leaves the toast itself alone, so a focused button keeps focus', withClock(({ SB, slot, tick }) => {
+  ask(SB, 'Run npm run e2e:ci?', 60000);
+  const [button] = toastButtons(slot);
+  let rebuilt = 0;
+  const replace = slot.replaceChildren;
+  slot.replaceChildren = function (...kids) { rebuilt++; return replace.apply(this, kids); };
+  SB.toast('Tests passed.', { ms: 1000, staleMs: 1000 });
+  SB.toast('Pushed 2 commits.', { ms: 1000, staleMs: 1000 });
+  tick(2000); // both go stale, and the stack is drawn again
+  assert.equal(rebuilt, 0);
+  assert.equal(toastButtons(slot)[0], button);
+  assert.equal(toastNext(slot), undefined);
+}));
+
+test('the next line stays out of what the status region reads', withClock(({ SB, slot }) => {
+  ask(SB, 'Run npm run e2e:ci?');
+  SB.toast('Tests passed.', { ms: 5000 });
+  assert.equal(toastNext(slot).attrs['aria-hidden'], 'true');
+}));
+
+test('the ✕ takes the whole stack with it', withClock(({ SB, slot }) => {
+  ask(SB, 'Run npm run e2e:ci?');
+  SB.toast('Tests passed.', { ms: 5000 });
+  toastClose(slot).listeners.click();
+  assert.equal(slot.children.length, 0);
+  assert.equal(slot.dataset.waiting, undefined);
 }));
 
 // ------------------------------------------------------------------ jobs
