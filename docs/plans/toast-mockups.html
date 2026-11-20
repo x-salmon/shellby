@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>In-app notification — five mockups</title>
+<link rel="stylesheet" href="../../src/renderer/shared/fonts.css">
+<link rel="stylesheet" href="../../src/renderer/shared/tokens.css">
+<style>
+  body { margin: 0; padding: 36px 40px 60px; background: var(--abyss); color: var(--sand); font: 14px/1.5 var(--font-body); }
+  h1 { font: 26px var(--font-pixel); color: var(--sand); margin: 0 0 6px; }
+  .intro { color: var(--sand-dim); max-width: 72ch; margin: 0 0 34px; }
+  .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 44px 36px; }
+  section h2 { font: 19px var(--font-pixel); color: var(--glass); margin: 0 0 2px; }
+  section > p { color: var(--sand-dim); margin: 0 0 14px; max-width: 58ch; font-size: 13px; }
+
+  /* A stub of the panel: header bar, a bit of chat, the composer. */
+  .panel { position: relative; width: 460px; height: 330px; background: var(--ink); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .panel .hd { height: 44px; background: var(--reef); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 14px; font: 14px var(--font-pixel); color: var(--sand-dim); }
+  .panel .hd i { width: 8px; height: 8px; border-radius: 50%; background: var(--glass); }
+  .chat { padding: 70px 18px 0; display: grid; gap: 10px; opacity: .4; }
+  .chat b { display: block; height: 9px; border-radius: 4px; background: var(--reef-3); }
+  .chat b:nth-child(2) { width: 78%; } .chat b:nth-child(3) { width: 55%; }
+  .composer { position: absolute; left: 12px; right: 12px; bottom: 12px; height: 40px; border-radius: 10px; background: var(--reef); border: 1px solid var(--line); }
+  .states { display: grid; gap: 10px; margin-top: 14px; }
+  .state-label { font-size: 12px; color: var(--sand-faint); margin: 6px 0 -4px; }
+
+  .btn { font: 700 12px var(--font-body); border-radius: var(--r-sm); padding: 5px 11px; border: 1px solid var(--coral); background: var(--coral); color: #1a0d09; box-shadow: 0 2px 0 var(--coral-deep); white-space: nowrap; cursor: pointer; }
+  .btn.quiet { background: transparent; color: var(--sand); border-color: var(--line); box-shadow: none; }
+  .x { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border: 0; background: none; color: var(--sand-faint); border-radius: 99px; cursor: pointer; font-size: 14px; }
+  .x:hover { color: var(--sand); background: rgba(127, 214, 194, .12); }
+  :focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
+  svg.crab { image-rendering: pixelated; shape-rendering: crispEdges; display: block; }
+
+  /* ============================================ 1. Shellby says it */
+  .say { --acc: var(--glass); display: flex; align-items: flex-end; gap: 6px; }
+  .say .who { flex: none; width: 46px; height: 40px; border-radius: 10px; background: var(--reef-2); border: 1px solid var(--line); display: grid; place-items: center; }
+  .say .bubble { position: relative; flex: 1; min-width: 0; background: var(--reef-2); border: 2px solid color-mix(in srgb, var(--acc) 55%, var(--line)); border-radius: 12px 12px 12px 3px; padding: 9px 12px 10px; display: flex; gap: 10px; align-items: center; }
+  .say .bubble::before { content: ""; position: absolute; left: -8px; bottom: 6px; width: 8px; height: 8px; background: color-mix(in srgb, var(--acc) 55%, var(--line)); clip-path: polygon(100% 0, 0 100%, 100% 100%); }
+  .say .t { flex: 1; min-width: 0; }
+  .say .t strong { display: block; font: 15px/1.2 var(--font-pixel); color: var(--acc); }
+  .say .t span { font-size: 12.5px; color: var(--sand); }
+  .say.urgent { --acc: var(--amber); } .say.danger { --acc: var(--danger); }
+  .panel .say { position: absolute; left: 12px; right: 12px; bottom: 62px; animation: rise .35s var(--ease-spring); }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+
+  /* ============================================ 2. The tide line */
+  .tide { --acc: var(--glass); position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; background: var(--reef); border-bottom: 1px solid color-mix(in srgb, var(--acc) 35%, var(--line)); overflow: hidden; isolation: isolate; }
+  .tide::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--acc) 13%, transparent); transform-origin: left; animation: ebb 6s linear infinite; }
+  .tide::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--acc); }
+  .tide .t { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; }
+  .tide .t em { font-style: normal; color: var(--sand-dim); font-weight: 400; }
+  .tide.urgent { --acc: var(--amber); } .tide.danger { --acc: var(--danger); }
+  .panel .tide { position: absolute; top: 44px; left: 0; right: 0; animation: drop .3s var(--ease-out); }
+  @keyframes ebb { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  @keyframes drop { from { transform: translateY(-100%); } }
+
+  /* ============================================ 3. The stack (queue you can see) */
+  .stack { position: relative; padding-bottom: 14px; }
+  .stack .card { position: relative; z-index: 3; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 11px 12px 11px 14px; background: var(--reef-2); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: 0 4px 10px rgba(0, 0, 0, .35); }
+  .stack .ghost { position: absolute; left: 10px; right: 10px; bottom: 6px; height: 24px; background: var(--reef-3); border: 1px solid color-mix(in srgb, var(--glass) 25%, var(--line)); border-radius: 0 0 var(--r-lg) var(--r-lg); z-index: 2; }
+  .stack .ghost + .ghost { left: 22px; right: 22px; bottom: 0; z-index: 1; background: var(--reef-2); border-color: var(--line); }
+  .stack .title { font: 14px var(--font-pixel); color: var(--sand); }
+  .stack .body { grid-column: 1; font-size: 12.5px; color: var(--sand-dim); }
+  .stack .acts { grid-column: 2; grid-row: 1 / 3; display: flex; align-items: center; gap: 6px; }
+  .stack .more { position: absolute; right: 18px; bottom: -3px; z-index: 4; font-size: 11px; font-weight: 700; color: var(--ink); background: var(--glass); border-radius: 99px; padding: 3px 10px; border: 0; cursor: pointer; }
+  .stack .tone { display: inline-block; width: 8px; height: 8px; margin-right: 6px; vertical-align: 1px; background: var(--amber); }
+  .panel .stack { position: absolute; left: 14px; right: 14px; top: 56px; animation: rise .35s var(--ease-spring); }
+
+  /* ============================================ 4. Buoy (ring timer, folds to a dot) */
+  .buoy { --acc: var(--glass); --p: .62; display: inline-flex; align-items: center; gap: 10px; padding: 6px 8px 6px 6px; border-radius: 99px; background: var(--reef); border: 1px solid var(--line); box-shadow: 0 10px 26px rgba(0, 0, 0, .5); max-width: 100%; }
+  .buoy .ring { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--acc) calc(var(--p) * 360deg), color-mix(in srgb, var(--acc) 18%, transparent) 0); }
+  .buoy .ring > span { width: 22px; height: 22px; border-radius: 50%; background: var(--reef); display: grid; place-items: center; color: var(--acc); font: 700 12px var(--font-body); }
+  .buoy .t { font-size: 12.5px; font-weight: 600; min-width: 0; }
+  .buoy.urgent { --acc: var(--amber); } .buoy.danger { --acc: var(--danger); --p: 1; }
+  .buoy.spin .ring { animation: turn 1s linear infinite; background: conic-gradient(var(--acc) 90deg, color-mix(in srgb, var(--acc) 18%, transparent) 0); }
+  .buoy.spin .ring > span { animation: turn 1s linear infinite reverse; }
+  @keyframes turn { to { transform: rotate(360deg); } }
+  .dot { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px 5px 7px; border-radius: 99px; background: var(--reef); border: 1px solid var(--line); font-size: 11.5px; color: var(--sand-dim); }
+  .dot i { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); }
+  .panel .buoy { position: absolute; right: 12px; top: 54px; animation: rise .3s var(--ease-spring); }
+  .panel .dot { position: absolute; right: 12px; top: 100px; }
+
+  /* ============================================ 5. Pixel ticket (jobs) */
+  .ticket { --acc: var(--glass); position: relative; padding: 12px 14px 12px; background: var(--reef-2); color: var(--sand);
+    clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)); }
+  .ticket::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: repeating-linear-gradient(90deg, var(--acc) 0 8px, transparent 8px 12px); }
+  .ticket .row { display: flex; align-items: center; gap: 10px; }
+  .ticket .t { flex: 1; min-width: 0; }
+  .ticket .t strong { display: block; font: 15px/1.2 var(--font-pixel); }
+  .ticket .t span { font-size: 12px; color: var(--sand-dim); }
+  .ticket ol { list-style: none; margin: 10px 0 0; padding: 8px 0 0; border-top: 1px dashed var(--line); display: flex; gap: 14px; font-size: 11.5px; color: var(--sand-faint); }
+  .ticket li::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; background: var(--line); vertical-align: 0; }
+  .ticket li.done { color: var(--sand-dim); } .ticket li.done::before { background: var(--glass); }
+  .ticket li.now { color: var(--sand); } .ticket li.now::before { background: var(--acc); animation: blink 1s steps(2) infinite; }
+  .ticket.ok { --acc: var(--glass); } .ticket.danger { --acc: var(--danger); }
+  .ticket .stamp { flex: none; font: 13px var(--font-pixel); color: var(--acc); border: 2px solid var(--acc); padding: 3px 9px; transform: rotate(-6deg); }
+  @keyframes blink { 50% { opacity: .25; } }
+  .panel .ticket { position: absolute; left: 14px; right: 14px; top: 58px; animation: rise .35s var(--ease-spring); }
+
+  .pick { margin-top: 48px; max-width: 72ch; color: var(--sand-dim); font-size: 13px; }
+  .pick strong { color: var(--sand); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<h1>In-app notification: five directions</h1>
+<p class="intro">Today's toast is a centred pill under the header with a line draining along its bottom. Each direction below keeps what it already does (tones, buttons, pause while you're on it, a job that turns into its result) and changes how it looks and where it sits. The real messages come from the app.</p>
+
+<div class="board">
+
+  <!-- 1 -->
+  <section>
+    <h2>1. Shellby says it</h2>
+    <p>The notification comes from the crab, as a speech bubble above the box you type in. The title is in his pixel voice. It suits a crab who already talks; it's the most characterful of the five.</p>
+    <div class="panel"><div class="hd"><i></i>Shellby</div><div class="chat"><b></b><b></b><b></b></div>
+      <div class="say"><div class="who" data-crab></div><div class="bubble"><div class="t"><strong>Update 0.101.0 is ready</strong><span>Restart whenever suits you. Your chats come back.</span></div><button class="btn">Restart and update</button><button class="x" aria-label="Dismiss">✕</button></div></div>
+      <div class="composer"></div></div>
+    <div class="states">
+      <div class="state-label">Urgent</div>
+      <div class="say urgent"><div class="who" data-crab></div><div class="bubble"><div class="t"><strong>GitHub needs you</strong><span>Sign in before Claude can use it.</span></div><button class="btn">Sign in</button></div></div>
+      <div class="state-label">Failed</div>
+      <div class="say danger"><div class="who" data-crab="sad"></div><div class="bubble"><div class="t"><strong>Couldn't connect to Sentry</strong><span>The token was refused. Check it in Settings → Sentry.</span></div><button class="x" aria-label="Dismiss">✕</button></div></div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <h2>2. The tide line</h2>
+    <p>A full-width band docked under the header instead of a floating pill. The time left is the water: the tint ebbs out of the band itself, not a thin line. Quiet, never covers the chat, and reads well on a wide panel.</p>
+    <div class="panel"><div class="hd"><i></i>Shellby</div>
+      <div class="tide"><div class="t">Update 0.101.0 is ready. <em>Your chats come back.</em></div><button class="btn">Restart and update</button><button class="x" aria-label="Dismiss">✕</button></div>
+      <div class="chat"><b></b><b></b><b></b></div><div class="composer"></div></div>
+    <div class="states">
+      <div class="state-label">Urgent</div>
+      <div class="tide urgent"><div class="t">GitHub needs you to sign in before Claude can use it.</div><button class="btn">Sign in</button></div>
+      <div class="state-label">Failed</div>
+      <div class="tide danger"><div class="t">Couldn't connect to Sentry. <em>Check the token in Settings.</em></div><button class="x" aria-label="Dismiss">✕</button></div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <h2>3. The stack</h2>
+    <p>Today, a toast with a button makes the others wait out of sight. Here they stack behind it, so you can see two more are coming, and the badge opens them all. A title in pixel type, the message under it.</p>
+    <div class="panel"><div class="hd"><i></i>Shellby</div><div class="chat"><b></b><b></b><b></b></div>
+      <div class="stack"><div class="card"><span class="title"><i class="tone"></i>Merged</span><span class="body">Tick off “Pocket shows stale tabs”?</span><span class="acts"><button class="btn">Tick it off</button><button class="x" aria-label="Dismiss">✕</button></span></div><div class="ghost"></div><div class="ghost"></div><button class="more">2 more</button></div>
+      <div class="composer"></div></div>
+    <div class="states">
+      <div class="state-label">Opened: everything that was waiting</div>
+      <div class="stack" style="padding:0;display:grid;gap:6px">
+        <div class="card"><span class="title">@reefwalker brought you a jar</span><span class="body">Null pointer, caught in tidepool-api</span><span class="acts"><button class="btn quiet">Bugdex</button></span></div>
+        <div class="card"><span class="title">Sentry is connected</span><span class="body">New errors show up on Next up.</span><span class="acts"><button class="x" aria-label="Dismiss">✕</button></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <h2>4. The buoy</h2>
+    <p>A compact chip in the top-right corner, out of the reading line. The time left runs around a ring instead of a bar, and the ring becomes the spinner for a job. One you haven't answered folds to a dot rather than vanishing.</p>
+    <div class="panel"><div class="hd"><i></i>Shellby</div><div class="chat"><b></b><b></b><b></b></div>
+      <div class="buoy"><span class="ring"><span>i</span></span><span class="t">Sentry is connected.</span><button class="x" aria-label="Dismiss">✕</button></div>
+      <div class="dot"><i></i>GitHub sign-in</div>
+      <div class="composer"></div></div>
+    <div class="states">
+      <div class="state-label">Working, then urgent with a button</div>
+      <div><div class="buoy spin"><span class="ring"><span>↑</span></span><span class="t">Pushing the branch and opening a draft…</span></div></div>
+      <div><div class="buoy urgent"><span class="ring"><span>!</span></span><span class="t">GitHub needs you to sign in.</span><button class="btn">Sign in</button></div></div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section>
+    <h2>5. The ticket</h2>
+    <p>Built for jobs: stepped pixel corners match the crab's world, and slow work shows its steps instead of one spinner. When it ends, a stamp says how. Plain messages use the same ticket without the steps.</p>
+    <div class="panel"><div class="hd"><i></i>Shellby</div><div class="chat"><b></b><b></b><b></b></div>
+      <div class="ticket"><div class="row"><div class="t"><strong>Opening a draft pull request</strong><span>shellby/pocket-stale-tabs</span></div><button class="x" aria-label="Dismiss">✕</button></div>
+        <ol><li class="done">Committed</li><li class="now">Pushing</li><li>Opening draft</li></ol></div>
+      <div class="composer"></div></div>
+    <div class="states">
+      <div class="state-label">Done, in place</div>
+      <div class="ticket ok"><div class="row"><div class="t"><strong>Draft #412 is open</strong><span>shellby/pocket-stale-tabs</span></div><button class="btn quiet">Open on GitHub</button><span class="stamp">done</span></div></div>
+      <div class="state-label">Failed</div>
+      <div class="ticket danger"><div class="row"><div class="t"><strong>The push was refused</strong><span>Turn on “Let Claude tasks push” in Settings → GitHub.</span></div><span class="stamp">stopped</span></div></div>
+    </div>
+  </section>
+
+</div>
+
+<p class="pick"><strong>My pick:</strong> 3 (the stack) for the bones, since it fixes a real problem (the hidden queue), dressed in 1's voice: the pixel title and the crab avatar. 2 is the safe choice if you'd rather it never overlap the chat.</p>
+
+<script>
+  // A small pixel crab, drawn from a map: c = coral shell, d = deep, e = eye.
+  const CRAB = [
+    '..d.......d..',
+    '.dcd.....dcd.',
+    '..d..e.e..d..',
+    '...ccccccc...',
+    '..ccccccccc..',
+    '.cc.ccccc.cc.',
+    'c..c.....c..c',
+  ];
+  const SAD = CRAB.map((r, i) => (i === 2 ? '..d..d.d..d..' : r));
+  const FILL = { c: 'var(--coral)', d: 'var(--coral-deep)', e: 'var(--sand)' };
+  for (const el of document.querySelectorAll('[data-crab]')) {
+    const map = el.dataset.crab === 'sad' ? SAD : CRAB;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 13 7');
+    svg.setAttribute('width', '39'); svg.setAttribute('height', '21');
+    svg.setAttribute('class', 'crab'); svg.setAttribute('aria-hidden', 'true');
+    map.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (!FILL[ch]) return;
+      const r = document.createElementNS(ns, 'rect');
+      r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', 1); r.setAttribute('height', 1);
+      r.setAttribute('fill', FILL[ch]); svg.append(r);
+    }));
+    el.append(svg);
+  }
+</script>
+</body>
+</html>
