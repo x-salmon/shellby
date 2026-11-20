@@ -158,7 +158,9 @@
   const hasWindows = u => !!(u && (u.fiveHour || u.sevenDay));
 
   SB.applyUsage = (u) => {
-    if (hasWindows(u)) lastUsage = u;
+    // cleared: the last reading was another account's (src/main/wiring/sessions.js syncUsageAccount).
+    if (u?.cleared) lastUsage = null;
+    else if (hasWindows(u)) lastUsage = u;
     drawUsage();
   };
   // Kept with the settings, which bring it too (src/main/wiring/settings.js).

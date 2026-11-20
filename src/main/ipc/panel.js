@@ -7,7 +7,7 @@ const { execFile } = require('child_process');
 const os = require('os');
 const path = require('path');
 const attach = require('../attachments');
-const { checkStatus, signInLapsed, accountOf, accountChanged, run: runCli, verifyClaude } = require('../claude/cli');
+const { checkStatus, signInLapsed, signInStamp, accountOf, accountChanged, run: runCli, verifyClaude } = require('../claude/cli');
 const installer = require('../claude/install');
 const practice = require('../practice');
 const { models } = require('../models');
@@ -138,27 +138,74 @@ function registerPanelIpc(ipcMain, d) {
   // e2e run driving the fake CLI had its faked status replaced by a real check the
   // first time the panel asked, so the same run behaved differently depending on
   // whether the machine happened to have Claude Code installed.
-  ipcMain.handle('claude:status', async () => (d.claudeStatus = d.CAPTURE || d.FAKE_CLI ? require('../capture').FAKE_STATUS : await checkStatus({ configured: d.claudePath() })));
-  // Checks again and tells the panel, so Settings and onboarding follow a
-  // sign-in or sign-out without a "Check again" press.
+  // Through recheckClaude, like every other check: this one used to set the
+  // status on its own, so a new account seen here (Settings, onboarding) left
+  // open conversations and the usage meter on the old one.
+  ipcMain.handle('claude:status', () => recheckClaude());
   // The account open conversations started on: its email ('' when Claude Code
   // doesn't say), null once signed out, undefined until first seen. Kept apart
   // from d.claudeStatus, which other checks refresh too (a move, an update), so
   // a sign-in one of them sees first still counts as a change here.
   let account;
-  async function recheckClaude() {
+  // Whose plan this PC's usage readings are (wiring/sessions.js ownEmail): the
+  // last account seen, through a check that failed for a moment.
+  d.claudeAccount = () => account || null;
+
+  // A sign-in changed outside Shellby: /login or /logout in a terminal, another
+  // tool, credentials carried over from another device. Nothing told Shellby, so
+  // Settings, the status line and the meter stayed on the old account until a
+  // restart. The credentials file is rewritten whenever that happens (and on
+  // each token refresh, which costs one more check), so a stat every little
+  // while is all it takes to notice. A sign-in with no credentials file (an API
+  // key) never moves it, and needs no watching.
+  const SIGN_IN_WATCH_MS = 20 * 1000;
+  const signInStampNow = () => signInStamp(d.claudeStatus?.configDir || process.env.CLAUDE_CONFIG_DIR || null);
+  /** @type {number | undefined} */
+  let seenStamp;
+
+  // Checks again and tells the panel, so Settings and onboarding follow a
+  // sign-in or sign-out without a "Check again" press. One at a time, each after
+  // the last: two at once could both see the switch, or the older one finish
+  // last and put the old account back.
+  /** @type {Promise<unknown>} */
+  let checks = Promise.resolve();
+  let pendingChecks = 0;
+  function recheckClaude() {
+    pendingChecks++;
+    const next = checks.then(checkClaudeNow).finally(() => { pendingChecks--; });
+    checks = next.catch(() => { /* the caller hears of it */ });
+    return next;
+  }
+  async function checkClaudeNow() {
     const known = account !== undefined ? account : accountOf(d.claudeStatus);
-    d.claudeStatus = d.CAPTURE || d.FAKE_CLI ? require('../capture').FAKE_STATUS : await checkStatus({ configured: d.claudePath() });
+    const stamp = signInStampNow(); // taken first: a sign-in landing mid-check is seen next time
+    try {
+      d.claudeStatus = d.CAPTURE || d.FAKE_CLI ? require('../capture').FAKE_STATUS : await checkStatus({ configured: d.claudePath() });
+    } finally {
+      seenStamp = stamp; // a check that throws isn't retried every tick until the file changes again
+    }
     // Signed in (the window Sign in opened, /login, a terminal) or as someone else:
     // open conversations still hold what they read when they started.
     if (accountChanged(known, d.claudeStatus)) restartForSignIn('signed in');
     // A check that failed for a moment (signed out, by its reckoning) forgets nothing.
     account = d.claudeStatus?.loggedIn ? accountOf(d.claudeStatus) : known === undefined ? null : known;
+    d.syncUsageAccount?.(); // the meter's last reading may be the old account's
     d.refreshStatusLine();
     d.send(d.panel, 'claude:status', d.claudeStatus);
     return d.claudeStatus;
   }
   d.recheckClaude = recheckClaude;
+
+  function watchSignIn() {
+    if (pendingChecks || d.CAPTURE || d.FAKE_CLI || !d.claudeStatus?.installed) return;
+    const stamp = signInStampNow();
+    if (seenStamp === undefined) { seenStamp = stamp; return; }
+    if (stamp === seenStamp) return;
+    d.log.info('Claude Code sign-in changed', 'checking again');
+    recheckClaude().catch(err => d.log.warn('Claude CLI status check failed after a sign-in change', err?.message || String(err)));
+  }
+  d.watchSignIn = watchSignIn;
+  setInterval(watchSignIn, SIGN_IN_WATCH_MS).unref?.();
   // Claude Code reads its sign-in once, as it starts: after a sign-out or a new
   // sign-in, each open conversation gets a new process on its next message
   // (sessions.js stopForSignIn). Without this, they all failed "Not logged in"

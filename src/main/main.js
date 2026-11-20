@@ -558,8 +558,12 @@ app.whenReady().then(() => {
   setupUpdates();
   createClaudeUpdates();
   // Routines start either way: a failed CLI check must not silently leave them off.
-  checkStatus({ configured: shared.claudePath() })
-    .then(s => { shared.claudeStatus = FAKE_CLI ? require('./capture').FAKE_STATUS : s; noteClaudeVersion(); refreshModels(); })
+  // Through recheckClaude (ipc/panel.js), like every later check: it notes the
+  // sign-in the watch compares against, and Shellby opening on another account
+  // than it closed on drops the meter's reading from the old one. Fake-CLI and
+  // screenshot runs get the faked status there.
+  shared.recheckClaude()
+    .then(() => { noteClaudeVersion(); refreshModels(); })
     .catch(err => log.warn('Claude CLI status check failed at boot', err?.message || String(err)))
     .finally(startScheduler);
 
