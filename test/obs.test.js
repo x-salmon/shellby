@@ -5,6 +5,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 const { ObsServer, routeTable, urlFor, MAX_CLIENTS } = require('../src/main/obs');
 
@@ -127,6 +128,21 @@ test('only GET and HEAD are allowed', async t => {
     assert.equal(res.headers.get('allow'), 'GET, HEAD');
   }
   assert.equal((await get(server, '/', { method: 'HEAD' })).status, 200);
+});
+
+test('another Host is turned away, so a rebinding web page reads nothing', async t => {
+  const server = await boot();
+  t.after(() => server.stop());
+  const status = host => new Promise((resolve, reject) => {
+    http.get({ host: '127.0.0.1', port: server.port, path: '/events', headers: { Host: host } }, res => {
+      res.destroy();
+      resolve(res.statusCode);
+    }).on('error', reject);
+  });
+  assert.equal(await status('evil.example:' + server.port), 421);
+  assert.equal(await status('127.0.0.1:' + (server.port + 1)), 421);
+  assert.equal((await get(server, '/')).status, 200, '127.0.0.1 still works');
+  assert.equal((await fetch(`http://localhost:${server.port}/`)).status, 200, 'localhost still works');
 });
 
 test('a query string or fragment still finds the route', async t => {

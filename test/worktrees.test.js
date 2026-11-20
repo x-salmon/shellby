@@ -123,6 +123,30 @@ test('the copy works on its own branch, keeps the subfolder, and leaves your che
   } finally { t.done(); }
 });
 
+test("making a copy runs none of the repo's own hooks", async () => {
+  // A pull request from a fork can add a hook to a tracked hooks folder; git
+  // would run post-checkout as you the moment the copy is made.
+  const t = setup();
+  try {
+    const marker = path.join(t.base, 'hook-ran');
+    fs.mkdirSync(path.join(t.dir, '.githooks'));
+    fs.writeFileSync(path.join(t.dir, '.githooks', 'post-checkout'), `#!/bin/sh\necho ran > "${marker.replace(/\\/g, '/')}"\n`, { mode: 0o755 });
+    t.g(t.dir, 'config', 'core.hooksPath', '.githooks');
+    t.g(t.dir, 'add', '-A');
+    t.g(t.dir, 'commit', '-qm', 'hooks');
+    // The hook really would run, so the test below proves something.
+    t.g(t.dir, 'checkout', '-q', '-b', 'probe');
+    assert.ok(fs.existsSync(marker), 'git runs this hook on a plain checkout');
+    fs.rmSync(marker);
+    t.g(t.dir, 'checkout', '-q', 'main');
+    fs.rmSync(marker, { force: true });
+
+    const made = await worktrees.create(t.dir, { home: t.home, title: 'hooked' });
+    assert.equal(made.ok, true, made.error);
+    assert.equal(fs.existsSync(marker), false, 'post-checkout ran on worktree add');
+  } finally { t.done(); }
+});
+
 test('bring it home: commits what was left, merges into the base, then tidies up', async () => {
   const t = setup();
   try {

@@ -42,7 +42,7 @@ test('parseTarget reads paths as Claude writes them', () => {
 });
 
 test('files that would run when opened are recognised', () => {
-  for (const f of ['setup.exe', 'x.BAT', 'a.ps1', 'b.lnk', 'c.js', 'd.msi', 'e.vbs', 'f.py', 'g.iso', 'h.xlsm']) assert.equal(E.runsWhenOpened(f), true, f);
+  for (const f of ['setup.exe', 'x.BAT', 'a.ps1', 'b.lnk', 'c.js', 'd.msi', 'e.vbs', 'f.py', 'g.iso', 'h.xlsm', 'i.rdp', 'j.appinstaller', 'k.iqy']) assert.equal(E.runsWhenOpened(f), true, f);
   for (const f of ['notes.txt', 'a.md', 'b.json', 'c.png', 'README', 'd.ts']) assert.equal(E.runsWhenOpened(f), false, f);
 });
 

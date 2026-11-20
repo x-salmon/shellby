@@ -47,6 +47,8 @@ function cmdShim() {
     '@echo off',
     'rem Shellby command line. Written by Shellby; delete the folder to remove it.',
     'setlocal',
+    // cmd looks in the current folder before PATH: a node.exe in a cloned repo would run instead.
+    'set "NoDefaultCurrentDirectoryInExePath=1"',
     'node "%~dp0shellby.js" %*',
     'exit /b %errorlevel%',
     '',
@@ -169,6 +171,16 @@ function parseTaskRequest(body, { modes, maxPrompt = 4000, isDir = () => true } 
 }
 
 /**
+ * The mode a terminal task runs in. No --mode means "whatever Shellby is set to",
+ * except Autonomous: a conversation pinned to Ask could otherwise run
+ * `shellby do` and start one that asks nothing.
+ */
+function terminalMode(requested, current) {
+  if (requested) return requested;
+  return current === 'autonomous' ? 'smart' : current || 'smart';
+}
+
+/**
  * A `shellby flow list` or `shellby flow run <name> [key=value ...]`. The name
  * and inputs get exactly the checks MCP's run_workflow gets (crabtools).
  *   { ok: true, request: { action: 'flow-list' } | { action: 'flow-run', name, inputs } }
@@ -185,6 +197,6 @@ function parseFlowRequest(body) {
 
 module.exports = {
   newToken, tokenMatches, cmdShim, shShim, ps1Shim,
-  isOnPath, pathWith, pathWithout, normalizeEntry, binDir, tokenPath, crabTokenPath, parseTaskRequest, parseFlowRequest, settingChangeArgs,
+  isOnPath, pathWith, pathWithout, normalizeEntry, binDir, tokenPath, crabTokenPath, parseTaskRequest, terminalMode, parseFlowRequest, settingChangeArgs,
   BIN_DIR_NAME, TOKEN_FILE, CRAB_TOKEN_FILE,
 };
