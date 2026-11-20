@@ -657,7 +657,7 @@ src/main/        Electron main process
   flaky/           the flaky test detective: index.js (a fail then a pass on the same code), ids, parsers (which tests a
                    runner says failed), store (the per-project ledger, pure) and text (the bubble, the prompts, the issue)
   fileindex.js     @ mentions: the files in a conversation's folder and a fuzzy match over them
-  viewer.js        the file viewer: handles on a folder (reads kept inside it) or on a branch (read from git alone), what changed since each began, and the header menu's worktrees and branches; ipc/viewer.js serves it
+  viewer.js        the file viewer: handles on a folder (reads kept inside it) or on a branch (read from git alone), what changed since each began, and the header menu's worktrees and branches; ipc/viewer.js serves it; viewer-git.js (git runs, reads kept inside a root, finding a folder's repo), viewer-places.js (the header menu's worktrees and branches) and viewer-status.js / viewer-review.js hold its parts
   viewer-status.js the file tree's git status for a viewer handle: each file's mark and +/− against HEAD, the branch and its upstream, and the files a real commit or a git add just touched
   mention-context.js @ what Shellby knows (pure): a dev server, a red build, another chat or a note, ranked for the @ menu and
                    fenced as a block; wiring/mention-context.js lists a tab's own, saves a pick's snapshot and reads it back for composePrompt
