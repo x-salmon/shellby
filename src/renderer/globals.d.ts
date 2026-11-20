@@ -13,6 +13,8 @@ interface Window {
   toy: any;
   webkitSpeechRecognition: any;
   SpeechRecognition: any;
+  PocketAsk: any;
+  PocketBeach: any;
   PocketBits: any;
   PocketDraw: any;
   PocketFind: any;
@@ -23,6 +25,7 @@ interface Window {
   PocketNew: any;
   PocketPages: any;
   PocketPhone: any;
+  PocketSheets: any;
   PocketTab: any;
   PocketWide: any;
   ShellbyAmbient: any;

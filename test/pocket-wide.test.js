@@ -23,7 +23,7 @@ test('the script and the stylesheet split the screen at the same width', () => {
 });
 
 test('the open conversation is marked in the list, for a screen reader too', () => {
-  const js = read('pocket.js');
+  const js = read('pocket-beach.js'); // the beach's cards (tabCard)
   assert.match(js, /tab-card s-\$\{t\.standing\}\$\{open \? ' sel' : ''\}/);
   assert.match(js, /'aria-current': open \? 'true' : null/);
 });
