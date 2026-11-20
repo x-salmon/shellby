@@ -467,6 +467,11 @@ test('commands that pass for looking but can run anything count as work', () => 
     // git's own config can name the pager, an external diff or where its commands live.
     'git -c core.pager=calc log', 'git -c diff.external=calc diff', 'git --config-env=core.pager=X log',
     'git --exec-path=. log', 'git diff --ext-diff', 'git log -p --textconv', 'git -C . -c core.pager=calc log',
+    // git takes any unambiguous start of a long option, and -O inside a cluster.
+    'git diff --ext-d', 'git diff --outp=x', 'git grep --open-files=calc x', 'git grep --op=calc x', 'git grep -iOcalc x', 'git log --textc',
+    // Quotes this check can't read the way the shell does.
+    `Write-Output ${String.fromCharCode(0x2018)}'${String.fromCharCode(0x2019)} { Remove-Item a } ${String.fromCharCode(0x2018)}'${String.fromCharCode(0x2019)}`,
+    "echo \\' { rm a } \\'", "ls # ' { x } '",
   ];
   for (const c of works) assert.equal(worktrees.startsWork('PowerShell', { command: c }), true, c);
   // Braces and brackets inside quotes are only text.

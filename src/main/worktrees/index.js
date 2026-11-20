@@ -143,6 +143,13 @@ const GIT_LOOKS = new Set([
 // Redirects that throw output away rather than writing a file.
 const HARMLESS_REDIRECT = /\d?>\s*&\s*\d|\d?>\s*(\/dev\/null|\$null|nul)\b/gi;
 
+const GIT_RUNS = ['--output', '--open-files-in-pager', '--ext-diff', '--textconv'];
+function gitRuns(word) {
+  if (/^-[a-zA-Z]*O/.test(word)) return true;
+  const long = word.split('=')[0];
+  return long.length > 2 && long.startsWith('--') && GIT_RUNS.some(opt => opt.startsWith(long) || long.startsWith(opt));
+}
+
 function gitLooks(words) {
   let i = 1;
   // Only --no-pager and -C <dir> before the subcommand: `-c core.pager=…`,
@@ -152,8 +159,9 @@ function gitLooks(words) {
   if (typeof sub !== 'string' || sub.startsWith('-')) return false;
   const rest = words.slice(i + 1);
   // `git diff --output=f` writes a file; `git grep -O<cmd>` runs a command; an
-  // external diff or a textconv filter runs one too.
-  if (GIT_LOOKS.has(sub)) return !rest.some(w => /^(--output|--open-files-in-pager|-O|--ext-diff|--textconv)/.test(w));
+  // external diff or a textconv filter runs one too. git takes any unambiguous
+  // start of a long option (--outp, --ext-d), and -O inside a cluster (-iO).
+  if (GIT_LOOKS.has(sub)) return !rest.some(gitRuns);
   // `git branch foo` and `git tag v1` make one; listing them doesn't.
   if (sub === 'branch') return rest.every(w => /^(-a|-r|-v|-vv|-l|--list|--all|--remotes|--show-current)$/.test(w));
   if (sub === 'tag') return rest.length === 0 || rest.some(w => /^(-l|--list)$/.test(w));
@@ -170,7 +178,10 @@ function onlyLooks(command) {
   // Outside quotes, a script block ({ }), a subexpression or array (( ), @( ))
   // or a splat can run anything: `Where-Object { Remove-Item $_ }` is a delete.
   // Single-quoted text is literal in both shells; double-quoted text only
-  // expands $( ), refused above.
+  // expands $( ), refused above. Anything that could make a quote mean
+  // something else to the shell than to this check is refused first:
+  // PowerShell's curly quotes, a backslash before a quote, a comment.
+  if (/[\u2018-\u201f#]|\\['"]/.test(cmd)) return false;
   if (/[{}()@]/.test(cmd.replace(/'[^']*'|"[^"]*"/g, ''))) return false;
   // A lone & runs what follows too: `ls & touch x` is two commands.
   return cmd.split(/&&|\|\||[;|\n&]/).every(part => {
