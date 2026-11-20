@@ -112,7 +112,7 @@ function connect(url) {
     check(await ev(`SB.activeTab().id === ${JSON.stringify(oldTab)} && /carried on in a fresh tab/.test([...${feed}.querySelectorAll('.cut-rule')].at(-1).textContent) && !${feed}.querySelector('.cut-card') && !${feed}.querySelector('.msg.user.pending')`), 'back in the old one, the line marks where it carried on, and nothing waits');
     await type('Tell me about the tide chart colours and the moon drawing');
     check(await until(`!SB.activeTab().busy && [...${feed}.querySelectorAll('.msg.assistant')].some(m => /echo: Tell me about the tide/.test(m.textContent))`, 15000), 'another new topic goes straight through');
-    check(await ev(`${feed}.querySelectorAll('.cut-divider').length === 2`), 'it is offered once per conversation');
+    check(await ev(`${feed}.querySelectorAll('.cut-divider').length === 2`), 'not offered again so soon after the last one');
 
     // 3. Past the mark.
     await type('big 170000');

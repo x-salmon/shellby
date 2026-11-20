@@ -457,8 +457,14 @@ function wireSessions(d) {
 
   // ---- the usage meter
 
+  // Whose plan this PC's readings are: the account Claude Code is signed in with
+  // here, kept through a check that failed for a moment (ipc/panel.js
+  // claudeAccount), null until known. Kept with each reading, so another
+  // sign-in's never stands in for yours (syncUsageAccount).
+  const ownEmail = () => d.claudeAccount?.() || d.claudeStatus?.email || null;
+
   function applyUsage(item) {
-    d.config.set({ lastUsage: { ...item, at: Date.now() } });
+    d.config.set({ lastUsage: { ...item, account: ownEmail(), at: Date.now() } });
     d.sendEveryWindow('usage', item); // a popped-out conversation's meter too (wiring/popouts.js)
     d.onUsage(item);
     d.refreshOutlook();
@@ -529,21 +535,47 @@ function wireSessions(d) {
     const exe = d.FAKE_CLI ? process.env.SHELLBY_NODE || 'node' : d.claudeExe();
     if (!exe) return;
     const started = Date.now();
+    const owner = ownEmail();
     usageProbe = usage.probe({ exe, argsPrefix: d.FAKE_CLI ? [d.FAKE_CLI] : [], cwd: os.homedir() }).then(u => {
       usageProbe = null;
+      // Signed in as someone else meanwhile: that reading was the last account's.
+      // syncUsageAccount found this probe still running, so ask again for the new one.
+      // A probe started before the account was known (at boot) read whoever is signed in now.
+      if (owner && !accounts.sameEmail(owner, ownEmail())) { refreshUsage(); return; }
       // A turn may have reported fresher numbers while we waited.
       if (u && (d.config.get('lastUsage')?.at || 0) < started) applyUsage(u);
     });
   }
 
-  function watchUsage() {
-    d.panel.on('show', refreshUsage);
-    d.panel.on('focus', refreshUsage);
-    powerMonitor.on('resume', refreshUsage);
+  // The sign-in changed (ipc/panel.js recheckClaude, and at boot): a reading
+  // taken under another account goes, meters and all, and this one's is asked
+  // for now instead of after the usual couple of minutes. Shellby closed on one
+  // account and opened on another (a switch on another device, a /login in a
+  // terminal) is caught the same way, since the reading says whose it was.
+  function syncUsageAccount() {
+    if (d.CAPTURE || d.FAKE_CLI) return; // a faked status never changes account
+    if (!accounts.usageStale(d.config.get('lastUsage'), d.claudeStatus)) return;
+    d.log.info('Usage reading was another account\'s', 'reading again');
+    d.config.set({ lastUsage: null });
+    d.usagePlan?.forgetReading();
+    for (const tab of d.manager?.tabs?.values() || []) tab.usageTold = undefined; // the "plan running high" note is per account
+    d.sendEveryWindow('usage', { kind: 'usage', cleared: true });
+    d.refreshOutlook();
+    d.tankGauges?.usage();
     refreshUsage();
   }
 
-  return { SNAPSHOT_WAIT_MS, beginTurn, openTouch: touchOf, createManager, currentCwd, endTurn, otherUsage, refreshUsage, toolPicture, turnEnds, turnStarts, watchUsage };
+  function watchUsage() {
+    // A sign-in changed elsewhere is looked for first (ipc/panel.js watchSignIn),
+    // so opening the panel shows the right account without waiting for its timer.
+    const look = () => { d.watchSignIn?.(); refreshUsage(); };
+    d.panel.on('show', look);
+    d.panel.on('focus', look);
+    powerMonitor.on('resume', look);
+    refreshUsage();
+  }
+
+  return { SNAPSHOT_WAIT_MS, beginTurn, openTouch: touchOf, createManager, currentCwd, endTurn, otherUsage, refreshUsage, syncUsageAccount, toolPicture, turnEnds, turnStarts, watchUsage };
 }
 
 module.exports = { wireSessions };

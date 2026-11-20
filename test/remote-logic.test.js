@@ -112,6 +112,27 @@ test('moving about the folders there', () => {
   assert.equal(L.joinDir('/', 'srv'), '/srv');
 });
 
+test('typing after the folder shown filters the folders in it', () => {
+  assert.equal(L.folderFilter('~', '~'), '');
+  assert.equal(L.folderFilter('~', ''), '');
+  assert.equal(L.folderFilter('~', '~/rack'), 'rack');
+  assert.equal(L.folderFilter('~', '~rack'), 'rack');
+  assert.equal(L.folderFilter('~', 'rack'), 'rack');
+  assert.equal(L.folderFilter('/', '/sr'), 'sr');
+  assert.equal(L.folderFilter('~/code', '~/code/ap'), 'ap');
+  assert.equal(L.folderFilter('~/code', '~/codex'), null);
+  assert.equal(L.folderFilter('~/code', '~/code/app/src'), null);
+  assert.equal(L.folderFilter('~/code', '/srv'), null);
+});
+
+test('matching folders puts exact and leading matches first', () => {
+  const folders = ['Downloads', 'my-rack', 'rack-builder', 'Rack', 'Music'].map(name => ({ name }));
+  assert.deepEqual(L.matchFolders(folders, 'rack').map(f => f.name), ['Rack', 'rack-builder', 'my-rack']);
+  assert.deepEqual(L.matchFolders(folders, 'zzz'), []);
+  assert.equal(L.matchFolders(folders, ''), folders);
+  assert.equal(L.matchFolders(folders, null), folders);
+});
+
 test('first run without Claude Code here starts in a folder on a computer that is ready', () => {
   const folder = (anchor, dir) => ({ anchor, dir, label: `box: ${dir}` });
   assert.equal(L.readyFolder([]), null);
@@ -135,4 +156,18 @@ test("the usage meter in a folder on a computer that's on another Claude account
   assert.equal(L.accountUsageFor(null, folders, 'C:\\anchors\\devbox-app'), null);
   assert.equal(L.accountLine(others[0]), 'work@corp.com (max) on DevBox');
   assert.equal(L.accountLine({ host: 'devbox', email: null }), 'Another Claude account on devbox');
+});
+
+test('the usage meter follows a conversation moved into its own copy on that computer', () => {
+  const folders = [{ host: 'devbox', dir: '~/app', anchor: 'C:\\anchors\\devbox-app' }];
+  const others = [{ host: 'DevBox', email: 'work@corp.com', plan: 'max', fiveHour: { pct: 30 } }];
+  const copy = 'C:\\anchors\\devbox\\copy-0123456789abcdef0123';
+  // The copy's stand-in isn't in these folders yet (settings older than the copy): the folder it came from names it.
+  assert.equal(L.accountUsageFor(others, folders, [copy, 'C:\\anchors\\devbox-app'])?.email, 'work@corp.com');
+  // Or the copy itself, once remoteCopies has it.
+  assert.equal(L.accountUsageFor(others, [...folders, { host: 'devbox', dir: '~/.shellby/worktrees/abc123/app', anchor: copy }], [copy, null])?.email, 'work@corp.com');
+  // The host main reports for the tab settles it, whatever the folders say.
+  assert.equal(L.accountUsageFor(others, [], [copy], 'devbox')?.email, 'work@corp.com');
+  assert.equal(L.accountUsageFor(others, folders, ['C:\\anchors\\devbox-app'], 'mine'), null, 'running on a computer on your own account');
+  assert.equal(L.accountUsageFor(others, folders, [null, undefined]), null, 'no folder at all');
 });

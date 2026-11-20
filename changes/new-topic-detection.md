@@ -1,0 +1,2 @@
+### Fixed
+- **"New topic" shows up when you really do change the subject.** It used to count every word Claude had used lately against you, so a change of subject in a long conversation almost always read as more of the same. Now your own asks count for more than his replies, "commit and push to main" and the like never pass for a new topic, and after "Stay in this one" a conversation can offer a fresh tab again a few messages later instead of never.

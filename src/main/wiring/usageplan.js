@@ -60,6 +60,9 @@ function wireUsagePlan(d) {
     }
   }
 
+  /** Signed in as someone else: the next reading is the first of their plan, not a rise from the last account's. */
+  function forgetReading() { lastReading = undefined; }
+
   /** The turn ended (timetrack onResult): its row goes in the ledger. A stopped turn is left out. */
   function endTurn(tab, result) {
     const t = open.get(tab.id);
@@ -212,7 +215,7 @@ function wireUsagePlan(d) {
     return cwd ? usageLedger.byBranch(rows(), { pk: d.projectKeyOf(cwd).pk, now: Date.now() }) : [];
   }
 
-  return { beginTurn, onSpend, onUsage, endTurn, endRun, save, clear, estimateFor, estimateRunFor, suggestModel, routineSuggestion, branchCosts };
+  return { beginTurn, onSpend, onUsage, forgetReading, endTurn, endRun, save, clear, estimateFor, estimateRunFor, suggestModel, routineSuggestion, branchCosts };
 }
 
 module.exports = { wireUsagePlan };

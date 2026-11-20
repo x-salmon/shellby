@@ -5,8 +5,8 @@
    with a summary of everything above (title, files changed, commits, open
    to-dos, the last asks), shown for editing, and your message goes with it.
    The message waits under the line until you pick; "Stay in this one" sends
-   it here and leaves the line, so you can come back to it. Offered once per
-   conversation (savers.js runs the gate, feed-savers.js draws it); the
+   it here and leaves the line, so you can come back to it. Offered again only
+   a few messages later (savers.js runs the gate, feed-savers.js draws it); the
    context chip's menu brings it back any time. Never automatic; the old
    conversation stays as it was. Unlike "Start fresh with a summary"
    (tab-meters.js), Claude writes nothing here, so it costs nothing to offer. */
@@ -15,14 +15,18 @@
   const { h, api, $ } = SB;
   const input = $('input');
   const MIN_CHARS = 15;   // shorter than this is a follow-up, not a topic
+  const REARM_SENDS = 5;  // after an offer, your messages before the next one may come
 
   /**
    * Is this message a new topic in a well-filled conversation? Main says
    * (freshtab.js HANDOFF_PCT, looksNewTopic), and under the mark answers
-   * without reading the transcript. Once per conversation. -> the offer, or null.
+   * without reading the transcript. Not again for REARM_SENDS messages after
+   * an offer, so a topic that turns twice in a row isn't offered twice.
+   * -> the offer, or null.
    */
   SB.handoffCheck = async (tab, text) => {
-    if (!tab?.saved || !tab.context || tab.handoffOffered || text.length < MIN_CHARS) return null;
+    if (tab?.handoffQuiet > 0) { tab.handoffQuiet--; return null; }
+    if (!tab?.saved || !tab.context || text.length < MIN_CHARS) return null;
     const r = await api.handoffOffer({ tabId: tab.id, text, force: false }).catch(() => null);
     return r?.offer ? r : null;
   };
@@ -32,7 +36,7 @@
    * saverGate, or the chip's menu). msg: { text, attachments, picked, auto }.
    */
   SB.showHandoff = (tab, offer, msg) => {
-    tab.handoffOffered = true;
+    tab.handoffQuiet = REARM_SENDS;
     SB.clearComposer(tab);
     const has = !!(msg.text || msg.attachments?.length);
     const view = tab.renderHandoffDivider(

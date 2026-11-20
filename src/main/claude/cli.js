@@ -300,4 +300,12 @@ async function checkStatus({ configured = null } = {}) {
   return status;
 }
 
-module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, accountOf, accountChanged, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings,candidatePaths, run, BILLING_ENV };
+/**
+ * When the saved sign-in last changed: the credentials file's mtime (0 when
+ * there's none). Every sign-in, sign-out and token refresh rewrites it, wherever
+ * it was done (Shellby, /login in a terminal), so a change means "ask again".
+ * @param {string | null | undefined} configDir  status.configDir, or CLAUDE_CONFIG_DIR
+ */
+const signInStamp = configDir => mtimeOf(credentialsFile(configDir));
+
+module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, signInStamp, accountOf, accountChanged, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings,candidatePaths, run, BILLING_ENV };

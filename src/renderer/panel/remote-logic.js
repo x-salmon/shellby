@@ -130,13 +130,17 @@
   /**
    * The usage meter while you're in a folder on a computer signed in to another
    * Claude account: that account's entry (settings.otherUsage), or null for your own.
+   * p: a folder, or several (a copy's and the folder it came from).
+   * host: the computer the tab's Claude Code runs on (main's session.remoteHost),
+   * which wins; else the folder (or one of its copies there) names it.
    */
-  function accountUsageFor(others, folders, p) {
-    if (!p || !Array.isArray(others) || !others.length) return null;
-    const low = String(p).toLowerCase();
-    const f = (folders || []).find(x => typeof x?.anchor === 'string' && x.anchor.toLowerCase() === low);
-    if (!f) return null;
-    return others.find(o => typeof o?.host === 'string' && o.host.toLowerCase() === String(f.host).toLowerCase()) || null;
+  function accountUsageFor(others, folders, p, host = null) {
+    if (!Array.isArray(others) || !others.length) return null;
+    const byHost = h => others.find(o => typeof o?.host === 'string' && o.host.toLowerCase() === String(h).toLowerCase()) || null;
+    if (typeof host === 'string' && host) return byHost(host);
+    const paths = (Array.isArray(p) ? p : [p]).filter(x => typeof x === 'string' && x).map(x => x.toLowerCase());
+    const f = (folders || []).find(x => typeof x?.anchor === 'string' && paths.includes(x.anchor.toLowerCase()));
+    return f ? byHost(f.host) : null;
   }
 
   /** Who an other account's meter is for: "work@example.com on devbox". */
@@ -151,7 +155,39 @@
 
   const joinDir = (dir, name) => (dir === '/' ? `/${name}` : `${dir.replace(/\/+$/, '')}/${name}`);
 
-  const api = { whereLine, lockedKeys, signInFixes, steps, ready, readyFolder, agentLine, askText, formProblem, placeName, accountUsageFor, accountLine, parentDir, joinDir };
+  /**
+   * What the browser's box filters the listed folders by: the part typed after
+   * the folder being shown ("~/rack" or "~rack" over "~" is "rack"). '' when the
+   * box just names that folder, null when it names somewhere else (show them all).
+   * @param {string} dir @param {string} typed @returns {string|null}
+   */
+  function folderFilter(dir, typed) {
+    const t = String(typed || '').trim();
+    if (!t || t === dir) return '';
+    if (!t.includes('/') && !t.startsWith('~')) return t;   // just a name
+    if (!t.startsWith(dir)) return null;
+    let rest = t.slice(dir.length);
+    if (rest.startsWith('/')) rest = rest.slice(1);
+    else if (!dir.endsWith('/') && dir !== '~') return null; // "~/codex" isn't inside "~/code"
+    return rest.includes('/') ? null : rest;
+  }
+
+  /**
+   * The folders a filter keeps, ignoring case: an exact name first, then names
+   * starting with it, then names holding it, each in the listing's order.
+   * @template {{ name: string }} F @param {F[]} folders @param {string|null} filter @returns {F[]}
+   */
+  function matchFolders(folders, filter) {
+    const q = (filter || '').toLowerCase();
+    if (!q) return folders;
+    const rank = f => {
+      const n = f.name.toLowerCase();
+      return n === q ? 0 : n.startsWith(q) ? 1 : n.includes(q) ? 2 : 3;
+    };
+    return folders.map(f => ({ f, r: rank(f) })).filter(x => x.r < 3).sort((a, b) => a.r - b.r).map(x => x.f);
+  }
+
+  const api = { whereLine, lockedKeys, signInFixes, steps, ready, readyFolder, agentLine, askText, formProblem, placeName, accountUsageFor, accountLine, parentDir, joinDir, folderFilter, matchFolders };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.ShellbyRemoteLogic = api;
 })(typeof window !== 'undefined' ? window : globalThis);

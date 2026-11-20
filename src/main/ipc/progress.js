@@ -26,7 +26,7 @@ function registerProgressIpc(ipcMain, d) {
     const item = { kind: 'usage', status: r.status === 'rejected' ? 'rejected' : 'allowed', fiveHour: { pct: Number(r.pct), resetsAt: Number(r.resetsAt) }, sevenDay: null };
     const event = recap.usageEvent('dev', 'Dev', item);
     if (event) d.recapLog = recap.record(d.recapLog, { ...event, t: Date.now() - (Number(r.minsAgo) || 0) * 60 * 1000 }, Date.now());
-    d.config.set({ lastUsage: { ...item, at: Date.now() } });
+    d.config.set({ lastUsage: { ...item, account: d.claudeAccount?.() || d.claudeStatus?.email || null, at: Date.now() } });
     d.send(d.panel, 'usage', item);
     d.onUsage(item);
     d.refreshOutlook();

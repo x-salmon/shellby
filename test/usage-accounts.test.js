@@ -50,3 +50,16 @@ test("the panel's view: only computers on another account, with a reading when t
   assert.deepEqual([view[1].fiveHour, view[1].at], [null, null]);
   assert.deepEqual(A.othersView(computers, byHost, { loggedIn: false }), []);
 });
+
+test('a saved reading from another sign-in is stale, one of this sign-in is not', () => {
+  assert.equal(A.usageStale({ account: 'ME@example.com', fiveHour: { pct: 3 } }, local), false);
+  assert.equal(A.usageStale({ account: 'old@example.com', fiveHour: { pct: 90 } }, local), true, 'switched accounts');
+  assert.equal(A.usageStale({ fiveHour: { pct: 90 } }, local), true, 'from before readings said whose they were');
+});
+
+test('with no reading, signed out, or no email to go by, nothing is stale', () => {
+  assert.equal(A.usageStale(null, local), false);
+  assert.equal(A.usageStale({ account: 'old@example.com' }, { loggedIn: false }), false);
+  assert.equal(A.usageStale({ account: 'old@example.com' }, { loggedIn: true, email: '' }), false, 'an API key sign-in');
+  assert.equal(A.usageStale({ account: 'old@example.com' }, undefined), false, 'status not known yet');
+});

@@ -764,6 +764,7 @@ class SessionManager extends EventEmitter {
       canPause: canPause(t),
       compacting: !!t.compacting, // Claude Code compacting it now: the phone's working line says so
       safeMode: !!t.session.safeMode, engineer: !!t.engineer, agent: t.session.agent || null, harness: t.harness || harnesses.CLAUDE,
+      remoteHost: t.session.remoteHost || null, // the computer it runs on: whose plan its usage meter shows (tab-meters.js)
     }));
   }
 
