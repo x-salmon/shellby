@@ -8,7 +8,6 @@
 // Pure apart from fetchChangelog, whose fetch is passed in
 // (test/claude-tricks.test.js). wiring/claude-tricks.js decides when.
 const CHANGELOG_URL = 'https://raw.githubusercontent.com/anthropics/claude-code/main/CHANGELOG.md';
-const CHANGELOG_PAGE = 'https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md';
 
 const FETCH_TIMEOUT_MS = 20000;
 const MAX_BYTES = 6 * 1024 * 1024; // about 1 MB today; anything far bigger isn't it
@@ -159,6 +158,6 @@ async function fetchChangelog({ fetchImpl = globalThis.fetch, url = CHANGELOG_UR
 }
 
 module.exports = {
-  CHANGELOG_URL, CHANGELOG_PAGE, MAX_HIGHLIGHTS,
+  CHANGELOG_URL, MAX_HIGHLIGHTS,
   between, classify, cloudsIn, compare, digest, version, fetchChangelog, normalizeState, parseChangelog, tryPrompt,
 };

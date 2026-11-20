@@ -315,4 +315,4 @@ const TIER_SHELLS = [
   },
 ];
 
-module.exports = { TIER_SHELLS, HAND_MADE: TIER_SHELLS.length };
+module.exports = { TIER_SHELLS };
