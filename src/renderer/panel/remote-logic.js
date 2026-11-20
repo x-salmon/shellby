@@ -130,13 +130,17 @@
   /**
    * The usage meter while you're in a folder on a computer signed in to another
    * Claude account: that account's entry (settings.otherUsage), or null for your own.
+   * p: a folder, or several (a copy's and the folder it came from).
+   * host: the computer the tab's Claude Code runs on (main's session.remoteHost),
+   * which wins; else the folder (or one of its copies there) names it.
    */
-  function accountUsageFor(others, folders, p) {
-    if (!p || !Array.isArray(others) || !others.length) return null;
-    const low = String(p).toLowerCase();
-    const f = (folders || []).find(x => typeof x?.anchor === 'string' && x.anchor.toLowerCase() === low);
-    if (!f) return null;
-    return others.find(o => typeof o?.host === 'string' && o.host.toLowerCase() === String(f.host).toLowerCase()) || null;
+  function accountUsageFor(others, folders, p, host = null) {
+    if (!Array.isArray(others) || !others.length) return null;
+    const byHost = h => others.find(o => typeof o?.host === 'string' && o.host.toLowerCase() === String(h).toLowerCase()) || null;
+    if (typeof host === 'string' && host) return byHost(host);
+    const paths = (Array.isArray(p) ? p : [p]).filter(x => typeof x === 'string' && x).map(x => x.toLowerCase());
+    const f = (folders || []).find(x => typeof x?.anchor === 'string' && paths.includes(x.anchor.toLowerCase()));
+    return f ? byHost(f.host) : null;
   }
 
   /** Who an other account's meter is for: "work@example.com on devbox". */

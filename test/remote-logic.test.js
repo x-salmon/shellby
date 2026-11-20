@@ -157,3 +157,17 @@ test("the usage meter in a folder on a computer that's on another Claude account
   assert.equal(L.accountLine(others[0]), 'work@corp.com (max) on DevBox');
   assert.equal(L.accountLine({ host: 'devbox', email: null }), 'Another Claude account on devbox');
 });
+
+test('the usage meter follows a conversation moved into its own copy on that computer', () => {
+  const folders = [{ host: 'devbox', dir: '~/app', anchor: 'C:\\anchors\\devbox-app' }];
+  const others = [{ host: 'DevBox', email: 'work@corp.com', plan: 'max', fiveHour: { pct: 30 } }];
+  const copy = 'C:\\anchors\\devbox\\copy-0123456789abcdef0123';
+  // The copy's stand-in isn't in these folders yet (settings older than the copy): the folder it came from names it.
+  assert.equal(L.accountUsageFor(others, folders, [copy, 'C:\\anchors\\devbox-app'])?.email, 'work@corp.com');
+  // Or the copy itself, once remoteCopies has it.
+  assert.equal(L.accountUsageFor(others, [...folders, { host: 'devbox', dir: '~/.shellby/worktrees/abc123/app', anchor: copy }], [copy, null])?.email, 'work@corp.com');
+  // The host main reports for the tab settles it, whatever the folders say.
+  assert.equal(L.accountUsageFor(others, [], [copy], 'devbox')?.email, 'work@corp.com');
+  assert.equal(L.accountUsageFor(others, folders, ['C:\\anchors\\devbox-app'], 'mine'), null, 'running on a computer on your own account');
+  assert.equal(L.accountUsageFor(others, folders, [null, undefined]), null, 'no folder at all');
+});
