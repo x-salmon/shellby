@@ -144,6 +144,7 @@ class SessionManager extends EventEmitter {
       steeredIds: new Set(),       // ...and what of it has gone in already
       usageTold: 0,                // the usage level Claude was last told about (selfaware.usageNote)
       offered: new Set(),          // features suggested in this conversation
+      engineer: historyEntry?.engineer === true, // Engineer mode's chip (wiring/engineer.js)
       // Who set its effort: 'you' (the chip), 'picked' (Shellby, from its first
       // message) or null, following the default for new conversations.
       effortBy: ownEffort === null ? null : historyEntry.effortBy,
@@ -323,6 +324,7 @@ class SessionManager extends EventEmitter {
       // ...and so would the agent it was opened with, or safe mode turned on before it.
       if (tab.session.agent) this.history.update(tab.id, { agent: tab.session.agent });
       if (tab.session.safeMode) this.history.update(tab.id, { safeMode: true });
+      if (tab.engineer) this.history.update(tab.id, { engineer: true });
       if (tab.localTarget) this.history.update(tab.id, { local: tab.localTarget });
       if (tab.localTarget) this.warmLocal?.(tab.localTarget); // its quick model loaded beside the main one (local/ollama.js keepLoaded)
       if (tab.harness !== harnesses.CLAUDE) this.history.update(tab.id, { harness: tab.harness });
@@ -759,7 +761,7 @@ class SessionManager extends EventEmitter {
       pause: t.session.pauseView?.() || null, // pausing, paused or parked (session/pause.js)
       canPause: canPause(t),
       compacting: !!t.compacting, // Claude Code compacting it now: the phone's working line says so
-      safeMode: !!t.session.safeMode, agent: t.session.agent || null, harness: t.harness || harnesses.CLAUDE,
+      safeMode: !!t.session.safeMode, engineer: !!t.engineer, agent: t.session.agent || null, harness: t.harness || harnesses.CLAUDE,
     }));
   }
 

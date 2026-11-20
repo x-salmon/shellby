@@ -48,6 +48,7 @@ const { registerSurroundingsIpc } = require('./surroundings');
 const { registerTriesIpc } = require('./tries');
 const { registerMentionsIpc } = require('./mentions');
 const { registerDebugIpc } = require('./debug');
+const { registerEngineerIpc } = require('./engineer');
 const { registerCorrectionsIpc } = require('./corrections');
 const { registerStartFromIpc } = require('./startfrom');
 const { registerBacklogIpc } = require('./backlog');
@@ -258,6 +259,7 @@ function registerIpc(electronIpcMain, d) {
   registerTriesIpc(ipcMain, d);
   registerMentionsIpc(ipcMain, d);
   registerDebugIpc(ipcMain, d);
+  registerEngineerIpc(ipcMain, d);
   registerCorrectionsIpc(ipcMain, d);
   registerStartFromIpc(ipcMain, d);
   registerBacklogIpc(ipcMain, d);

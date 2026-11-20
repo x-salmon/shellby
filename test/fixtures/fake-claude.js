@@ -580,7 +580,8 @@ function onLine(line) {
   // "gitenv" -> reports whether Shellby gave this process GitHub access
   if (content === 'args') { text(JSON.stringify(args)); result(true); return; }
   if (content.startsWith('mcp ')) {
-    const [, tool, ...rest] = content.split(' ');
+    // A line the app adds (Engineer mode's, the usage note) isn't part of the call.
+    const [, tool, ...rest] = content.split('\n\n[Shellby:')[0].split(' ');
     if (tool === 'tools') { text(`tools: ${(mcpTools || []).map(t => t.name).join(',')}`); result(true); return; }
     mcpRequest({ method: 'tools/call', params: { name: tool, arguments: rest.length ? JSON.parse(rest.join(' ')) : {} }, jsonrpc: '2.0', id: 100 + turn }, r => {
       const res = r?.result || {};

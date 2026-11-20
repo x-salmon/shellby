@@ -153,12 +153,14 @@ function wireSessions(d) {
       getSelfAware: () => d.getSelfAware(),
       onTool: (tab, name, args) => d.crabTool(tab, name, args),
       decorate: (tab, prompt) => {
+        d.engineer?.arm(tab); // Engineer mode's gate, in step with its chip and Settings
         if (!d.config.get('selfAware') || selfaware.isSlashCommand(prompt)) return prompt;
         const other = accountOfCwd(tab.session?.cwd);
         const reading = other ? accounts.readingFor(d.config.get('usageByHost'), other) : d.config.get('lastUsage');
         const u = selfaware.usageNote(reading, tab.usageTold, Date.now());
         tab.usageTold = u.told;
-        return selfaware.withUsageNote(prompt, u.text);
+        const noted = selfaware.withUsageNote(prompt, u.text);
+        return d.engineer ? d.engineer.decorate(tab, noted) : noted;
       },
       savePictures,
     });

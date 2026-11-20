@@ -169,6 +169,9 @@ class ClaudeSession extends Base {
     // in a git project has no copy of its own yet. It sees every tool call that
     // could change files before it runs, and can hold it back (worktrees/index.js).
     this.beforeWork = null;
+    // gate(hookInput) -> hook output | null: Engineer mode's (wiring/engineer.js),
+    // asked first. It holds back changes until a decision is approved.
+    this.gate = null;
     // takeSteers() -> [{ content, item }]: set by the manager. What you queued
     // while this turn runs, taken (and so no longer queued) the moment it's
     // handed to Claude. `steered` is what Claude hasn't read yet, oldest first,
@@ -251,7 +254,7 @@ class ClaudeSession extends Base {
     let stderr = '';
     // Also names the servers hosted here: Claude Code then connects to them
     // with mcp_message requests before the first turn.
-    this.write({ type: 'control_request', request_id: randomUUID(), request: { subtype: 'initialize', hooks: initHooks(), promptSuggestions: true, ...(this.mcp ? { sdkMcpServers: [crabmcp.SERVER] } : {}) } });
+    this.write({ type: 'control_request', request_id: randomUUID(), request: { subtype: 'initialize', hooks: initHooks({ everyTool: !!this.gate }), promptSuggestions: true, ...(this.mcp ? { sdkMcpServers: [crabmcp.SERVER] } : {}) } });
 
     readline.createInterface({ input: proc.stdout }).on('line', line => {
       if (this.proc !== proc) return; // dropped: whatever it still says goes unheard

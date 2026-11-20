@@ -40,6 +40,7 @@
     SB.renderTodos?.(tab); // Claude's to-do list and its background commands (native-strip.js)
     SB.renderJobs?.(tab);
     SB.renderUltraChip?.(tab); // whether Ultracode is on here (ultracode.js)
+    SB.renderEngineerChip?.(tab); // and Engineer mode (engineer.js)
     tickClock();
     renderQueue();
   }

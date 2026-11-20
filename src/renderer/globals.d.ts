@@ -217,6 +217,9 @@ interface ShellbyPanelExtras {
   // debug-mode.js
   renderDebug: any;
   startDebug: any;
+  // engineer.js
+  renderEngineer: any;
+  renderEngineerChip: any;
   // feed-changes.js
   renderDiff: any;
   // feed-conflicts.js

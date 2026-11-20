@@ -9,6 +9,7 @@ const { CLI_MODE } = require('../config');
 const crabmcp = require('../crabmcp');
 const todos = require('../../renderer/shared/todos');
 const { EFFORTS } = require('../cli-contract');
+const { gateFailed } = require('../engineer');
 
 const DENY_MESSAGE = 'The user declined this action in Shellby. Ask them how they would like to proceed.';
 // How long Shellby waits for the CLI to answer one of its own control requests.
@@ -198,8 +199,15 @@ const control = {
   },
 
   async answerHook(requestId, input) {
-    let response = {};
-    try { response = (await this.beforeWork?.(input || {})) || {}; } catch { /* let the tool run */ }
+    /** @type {object | null} */
+    let response = null;
+    // Engineer mode's gate goes first, and a gate that fails holds the step back (engineer.js gateFailed).
+    if (this.gate) {
+      try { response = this.gate(input || {}); } catch { response = gateFailed(); }
+    }
+    if (!response) {
+      try { response = (await this.beforeWork?.(input || {})) || {}; } catch { response = {}; /* let the tool run */ }
+    }
     this.write({ type: 'control_response', response: { subtype: 'success', request_id: requestId, response } });
   },
 

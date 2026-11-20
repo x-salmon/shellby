@@ -50,10 +50,12 @@ const removeFile = file => { if (file) fs.rm(file, { force: true }, () => {}); }
 // turned on in Settings mid-conversation, say), so the hook is always there and
 // answers "go ahead" while nothing watches (control.js answerHook): one
 // round trip over stdin, like the steer hook's. scripts/cli-compat.js sends the same.
-function initHooks() {
+// everyTool: Engineer mode is on (wiring/engineer.js), and its gate sees every
+// tool call, an MCP server's included, not only the ones that change files.
+function initHooks({ everyTool = false } = {}) {
   const steerAt = [{ matcher: '.*', hookCallbackIds: [STEER_HOOK], timeout: STEER_TIMEOUT_S }];
   return {
-    PreToolUse: [{ matcher: WORK_TOOLS, hookCallbackIds: [WORK_HOOK] }],
+    PreToolUse: [{ matcher: everyTool ? '.*' : WORK_TOOLS, hookCallbackIds: [WORK_HOOK] }],
     PostToolUse: steerAt,
     PostToolUseFailure: steerAt,
   };
@@ -65,7 +67,7 @@ function initHooks() {
 // 2.1.303 reports no callback hooks at all; this covers a CLI that names them
 // "<event>:<matcher>" the way it names script hooks, or by their callback id.
 const OWN_HOOK_NAMES = new Set([
-  `PostToolUse:.*`, `PostToolUseFailure:.*`, `PreToolUse:${WORK_TOOLS}`, WORK_HOOK, STEER_HOOK,
+  `PostToolUse:.*`, `PostToolUseFailure:.*`, `PreToolUse:${WORK_TOOLS}`, `PreToolUse:.*`, WORK_HOOK, STEER_HOOK,
   `PostToolUse:${STEER_HOOK}`, `PostToolUseFailure:${STEER_HOOK}`, `PreToolUse:${WORK_HOOK}`,
 ]);
 /** @param {string} name */

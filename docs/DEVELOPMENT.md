@@ -661,6 +661,8 @@ src/main/        Electron main process
                    fenced as a block; wiring/mention-context.js lists a tab's own, saves a pick's snapshot and reads it back for composePrompt
   debug-mode.js    Debug mode (pure): the prompts, a reproduction's lines, the marked lines left behind; debug-ingest.js is the
                    127.0.0.1 receiver the logging posts to; wiring/debug-mode.js runs the rounds and the card
+  engineer.js      Engineer mode (pure, docs/ENGINEER.md): the decide and check_decision tools, the line each message gets, the
+                   answers the card sends and the gate on the work hook; wiring/engineer.js keeps each conversation's decision
   statusline.js    Shellby's line for Claude Code's status line, and adding/removing it in Claude's settings
   updates.js       the self-update state machine behind the button in Settings → System → About (electron-updater is injected, so it's testable)
   github/          sign-in (device flow, encrypted token), the REST client, gist sync, pack publishing, CI on your pull requests (ci.js), calling cards and waves for visiting crabs (card.js, mail.js), finding your own gists (gists.js), conversation history through its own gist (history-gist.js), and the service tying them together
