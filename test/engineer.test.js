@@ -225,6 +225,12 @@ test('gate: a spike may change the project\'s files, nothing that would outlive 
   for (const command of ['echo x > .git/hooks/pre-commit', 'cp evil.json .claude/settings.json', "node -e \"fs.writeFileSync('.git/config','')\""]) {
     assert.match(deniedWhy(g(state, 'Bash', { command })), /off limits/, command);
   }
+  // At any depth, with Windows' trailing dots and spaces, short names and globs.
+  assert.match(deniedWhy(g(state, 'Write', inRoot('packages/x/.git/hooks/pre-commit'))), /off limits/);
+  assert.match(deniedWhy(g(state, 'Write', inRoot('.git./hooks/pre-commit'))), /off limits/);
+  for (const command of ['echo x > GIT~1/hooks/a', 'cp a .gi?/hooks/', 'cp a .c*/settings.json', 'cp a ".git. /config"']) {
+    assert.match(deniedWhy(g(state, 'Bash', { command })), /off limits/, command);
+  }
   assert.equal(g(state, 'Bash', { command: 'git status' }), null);
   assert.equal(g(state, 'Bash', { command: 'cat .gitignore' }), null);
 });
@@ -789,6 +795,10 @@ test('gate: .git and .claude need a scope that names them, never ** alone', () =
   assert.equal(g(open, 'Edit', inRoot('src/a.js')), null);
   const named = { on: true, decision: { ...decided({ scope: ['.claude/'] }), phase: 'approved' } };
   assert.equal(g(named, 'Edit', inRoot('.claude/settings.json')), null);
+  // A sub-project's too, and a scope over its folder doesn't name them.
+  const sub = { on: true, decision: { ...decided({ scope: ['packages/x/'] }), phase: 'approved' } };
+  assert.match(deniedWhy(g(sub, 'Write', inRoot('packages/x/.git/hooks/pre-commit'))), /only a scope that names it/);
+  assert.equal(g(sub, 'Write', inRoot('packages/x/index.js')), null);
 });
 
 test('wiring: outside the project, only Claude\'s plans, todos and this project\'s memory, never its settings', async () => {

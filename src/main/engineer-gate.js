@@ -213,7 +213,7 @@ function scopeGate(d, toolName, toolInput, ctx) {
   const scope = scopeOf(d);
   // .git and .claude can run code (hooks, settings): only a scope that names
   // them reaches them, never a ** on its own.
-  if (PROTECTED.test(rel) &&!scope.some(p => !p.startsWith('*') && inScope([p], rel))) {
+  if (isProtected(rel) && !scope.some(p => isProtected(p.replace(/\/+$/, '')) && inScope([p], rel))) {
     return deny(`Engineer mode: ${rel} can change how git or Claude Code runs, so only a scope that names it covers it. Call mcp__shellby__amend_decision with it if the work truly needs it.`);
   }
   if (inScope(scope, rel)) return null;
@@ -221,10 +221,15 @@ function scopeGate(d, toolName, toolInput, ctx) {
   return deny(`Engineer mode: ${rel} is outside the approved scope (${scope.join(', ')}). If the work needs it, call mcp__shellby__amend_decision with add_scope and why, then end your turn. Otherwise keep to the scope.`);
 }
 
-// .git and .claude: they change how git or Claude Code runs.
-const PROTECTED = /^\.(git|claude)(\/|$)/;
-// A command naming either folder as a path (not `git status`).
-const TOUCHES_PROTECTED = /(^|[\s'"=/\\])\.(git|claude)([/\\]|['"\s]|$)/i;
+// .git and .claude, at any depth (a sub-project's too): they change how git or
+// Claude Code runs. Windows drops a name's trailing dots and spaces (.git. is
+// .git), so each part is read that way first.
+const PROTECTED_PART = /^\.(git|claude)$/i;
+const isProtected = rel => String(rel || '').split('/').some(part => PROTECTED_PART.test(part.replace(/[. ]+$/, '')));
+// A command naming either folder as a path (not `git status`, `.gitignore`):
+// with trailing dots or spaces, as an 8.3 short name (GIT~1), or behind a glob
+// (.gi?, .g*). A guard against slips, like the rest of a spike's rules.
+const TOUCHES_PROTECTED = /(^|[\s'"=/\\])(\.(git|claude)[. ]*([/\\]|['"\s]|$)|(git|claude)~\d|\.[gc][^\s/\\'"]*[*?[])/i;
 const SPIKE_PROTECTED = 'Engineer mode: during a spike, .git and .claude are off limits: what changes there can run code, and the spike couldn\'t put it back.';
 
 /** During a spike: anything local, nothing that would outlive the spike. */
@@ -244,7 +249,7 @@ function spikeGate(toolName, toolInput, ctx) {
       return deny(`Engineer mode: ${abs} is outside the project, so the spike couldn't put it back. Keep the spike inside the project.`);
     }
     // Snapshots never hold .git, and .claude's settings and hooks run code: neither could be put back.
-    if (rel && PROTECTED.test(rel)) return deny(SPIKE_PROTECTED);
+    if (rel && isProtected(rel)) return deny(SPIKE_PROTECTED);
   }
   if (SHELLS.has(tool) && TOUCHES_PROTECTED.test(String(toolInput?.command || ''))) return deny(SPIKE_PROTECTED);
   return null;
