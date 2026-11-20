@@ -2,22 +2,20 @@
 // the manager persists transcripts, tracks per-tab status and rolls everything
 // up into one state for the desktop critter.
 const { EventEmitter } = require('events');
-const { randomUUID } = require('crypto');
 const { ClaudeSession, EFFORTS } = require('./session');
-const { pickEffort } = require('./effort-pick');
 const { cleanTitle } = require('./history');
 const review = require('./review-inbox');
 const turncost = require('./turncost');
-const turnwatch = require('./turnwatch');
-const { classify } = require('./usage/ledger');
 const { isModel } = require('./models');
 const localAgent = require('./local/agent');
 const localTab = require('./local/tab');
 const harnesses = require('./harness/registry');
 const planPace = require('./plan-pace');
-const mods = require('./mods');
 const { talkOf, todoGlance, aggregateOf } = require('./tab-glance');
 const tabStops = require('./tab-stops');
+const { items } = require('./sessions-items');
+const { turns, IN_TERMINAL, withPreamble } = require('./sessions-turns');
+const { choices, onClaude, NOT_CLAUDE } = require('./sessions-choices');
 
 // Tabs left quiet shed their process (stopIdle), so an open tab is cheap; a busy
 // one is a running CLI, and nothing limits how many of those run at once. The cap
@@ -26,17 +24,18 @@ const MAX_TABS = 32;
 // He talks along while a reply is written (work-pose.js 'talk') until it has
 // been this quiet: the reply's 50 ms batches never reach the crab one by one.
 const TALK_QUIET_MS = 700;
-const IN_TERMINAL = 'This conversation is carrying on in a terminal. Close it there (/exit), then choose Pick it up here.';
 const TAB_ID = /^[\w-]{1,64}$/;
 // An agent's name as Claude Code lists it ("reviewer", "plugin:reviewer"), or ''.
 const AGENT_NAME = /^[\w][\w:.-]{0,119}$/;
 const cleanAgent = v => (typeof v === 'string' && AGENT_NAME.test(v) ? v : '');
-// Runs on Claude Code, not another agent's CLI (harness/): its models, effort, pings and /compact are Claude Code's.
-const onClaude = tab => !tab.harness || tab.harness === harnesses.CLAUDE;
-const NOT_CLAUDE = 'That only works in a Claude Code conversation.';
 const canPause = t => onClaude(t) && !!t.session.requestPause && !t.localTarget && !t.routineId && !t.workflowRunId;
 
-class SessionManager extends EventEmitter {
+/** @typedef {typeof items & typeof turns & typeof choices} ManagerMixins */
+// EventEmitter at run time: the mixins join the prototype at the end of this
+// file. The cast only lets the class (and tsc) see their methods on `this`.
+const Base = /** @type {new () => EventEmitter & ManagerMixins} */ (/** @type {unknown} */ (EventEmitter));
+
+class SessionManager extends Base {
   // prepareTurn(tab): an optional promise each turn waits for before Claude
   // sees it (main.js snapshots the folder, for the turn's diff).
   // compose(text, files): the content Claude gets for a steer (attachments.js composeContent).
@@ -189,230 +188,6 @@ class SessionManager extends EventEmitter {
     return tab;
   }
 
-  onItem(tab, raw) {
-    // The reply as it's written, what you might ask next, and compacting under
-    // way are only for the panel now: the reply itself is kept when it's done,
-    // a guess goes stale, the compacted mark follows the compacting, a retry
-    // is over once the request goes through, a hook's line goes with the hook,
-    // and the mode is kept on the session itself.
-    if (raw.kind === 'partial' || raw.kind === 'next' || raw.kind === 'compacting' || raw.kind === 'retrying' || raw.kind === 'hook' || raw.kind === 'mode') {
-      tab.activeAt = Date.now();
-      if (raw.kind === 'partial') this.talked(tab);
-      if (raw.kind === 'compacting' && tab.compacting !== !!raw.on) { tab.compacting = !!raw.on; this.changed(); }
-      this.emit('item', tab.id, raw, tab);
-      return;
-    }
-    // A long tool result's tail is only for main to read (flaky/index.js): it's
-    // neither saved with the tab nor sent to the panel.
-    let { tail, images, ...item } = raw;
-    // A tool's pictures are saved apart (tool-pictures.js): the item names them.
-    if (images?.length && this.savePictures) {
-      let ids = [];
-      try { ids = this.savePictures(tab.id, item.id, images) || []; } catch { /* no pictures, the step still shows */ }
-      if (ids.length) item.pictures = ids;
-    }
-    // Pictures the conversation holds, for the note when they pile up (turncost.js
-    // pictureNote): a helper's stay in its own context. A new start has none.
-    // Counted from when this run of Shellby opened the tab: a reopened conversation's
-    // older pictures aren't, so the note can come late but never wrongly.
-    if (images?.length && !item.sub) tab.pictures = (tab.pictures || 0) + images.length;
-    if (item.kind === 'compacted' || item.kind === 'fresh' || item.kind === 'cleared') {
-      tab.pictures = 0;
-      tab.picturesNoted = false;
-      tab.watchSaid = { ...tab.watchSaid, compact: false };
-      tab.turnWatch = turnwatch.startTurn(); // the earlier reads went with what was dropped
-    }
-    // What the turn did that its notes speak of (turnwatch.js).
-    tab.turnWatch = turnwatch.seeItem(tab.turnWatch, item);
-    // A mod's lines and toasts, within its budget: one that says something on
-    // every step would bury the conversation and its history (mods.js).
-    if (item.kind === 'modlog' || item.kind === 'modtoast') {
-      tab.modLines ??= new Map();
-      const say = mods.modLineAllowed(tab.modLines, item.plugin);
-      if (say === 'drop') return;
-      if (say === 'last') item = { kind: 'modlog', plugin: item.plugin, text: 'is saying a lot, so Shellby hides the rest of what it says this minute.' };
-    }
-    tab.activeAt = Date.now();
-    // A rewind's fork exists once Claude Code reports its id: from then on it's an ordinary resume.
-    if (item.kind === 'init' && tab.saved) this.history.update(tab.id, { claudeSessionId: item.sessionId, resumeAt: null });
-    if (item.kind === 'init' && item.model) this.changed(); // the model chip shows it before the first reply
-    if (item.kind === 'init' && tab.preambleSent) {
-      tab.preamble = null;
-      tab.preambleSent = false;
-      if (tab.saved) this.history.update(tab.id, { preamble: null });
-    }
-    // What the turn cost, in words the panel shows as they are.
-    if (item.kind === 'result' && item.cost) {
-      let share = null;
-      try { share = this.windowShare?.(item.cost.weight, tab) ?? null; } catch { /* no reading to go on: tokens and context still show */ }
-      // Each helper's share the same way: its part of what Shellby spent in this window.
-      const helpers = item.cost.helpers?.map(x => {
-        let s = null;
-        try { s = this.windowShare?.(x.weight, tab) ?? null; } catch { /* as above */ }
-        return { ...x, share: Number.isFinite(s) ? s : null, shareText: turncost.shareText(s) };
-      });
-      const cost = { ...item.cost, share: Number.isFinite(share) ? share : null, ...(helpers ? { helpers } : {}) };
-      // A warm cache it missed, and helpers that outspent it or pictures piling up
-      // (each once a conversation): notes under the cost.
-      const notes = turncost.turnNotes(cost, { helpers: !tab.helpersNoted, pictures: tab.picturesNoted ? 0 : tab.pictures || 0 });
-      if (notes.some(n => n.kind === 'helpers')) tab.helpersNoted = true;
-      if (notes.some(n => n.kind === 'pictures')) tab.picturesNoted = true;
-      // A big whole-file read, a long helper brief, a commit worth compacting after, a small job thought hard on.
-      const watched = turnwatch.watchNotes(tab.turnWatch, { cost, category: tab.turnCategory, said: tab.watchSaid, style: tab.session?.outputStyle || '', compact: turncost.compact });
-      tab.watchSaid = turnwatch.markSaid(tab.watchSaid, watched);
-      notes.push(...watched);
-      item.cost = { ...cost, line: turncost.costLine(cost), detail: turncost.costDetail(cost), effortBadge: turncost.effortBadge(cost), ...(notes.length ? { notes } : {}) };
-    }
-    if (item.kind === 'compacted' && tab.compacting) { tab.compacting = false; this.changed(); }
-    // Shellby's own /compact while the tab sat idle (wiring/idle-compact.js): its mark says so.
-    if (item.kind === 'compacted' && tab.idleCompacting) item = { ...item, trigger: 'idle' };
-    if (item.kind === 'result') {
-      this.restoreTurnModel(tab);
-      // A note's Ask has its answer: whatever you say next is in your mode.
-      if (item.ok && tab.startsIn && tab.startsIn !== 'plan') tab.session.setMode(this.followMode(tab));
-      tab.outcome = item.interrupted ? 'stopped' : item.ok ? 'ok' : 'error';
-      if (!(tab.idleCompacting && item.ok && !item.interrupted)) tab.unread = true;
-      if (tab.saved) {
-        this.history.update(tab.id, { lastOutcome: tab.outcome, context: tab.session.context });
-        this.history.markTurn?.(tab.id, null);
-      }
-    }
-    if (tab.saved) this.history.append(tab.id, item);
-    const ready = review.next(tab.ready, item);
-    if (ready !== tab.ready) this.setReady(tab, ready);
-    this.emit('item', tab.id, item, tab, tail);
-    if (['permission', 'decision', 'result', 'error'].includes(item.kind)) this.changed();
-  }
-
-  // Kept in History without bumping updatedAt (history.setReady): looking at work isn't work on it.
-  setReady(tab, ready) {
-    tab.ready = ready;
-    if (tab.saved) this.history.setReady(tab.id, ready);
-    this.changed();
-  }
-
-  /** Mark a tab's latest changes reviewed (or put them back in the inbox). -> whether anything changed. */
-  setReviewed(tabId, reviewed = true, after = null) {
-    const tab = this.tabs.get(tabId);
-    if (!tab?.ready) return false;
-    if (after && tab.ready.after !== after) return false; // a newer turn's changes: not the ones you saw
-    const ready = review.setReviewed(tab.ready, reviewed);
-    if (ready === tab.ready) return false;
-    this.setReady(tab, ready);
-    return true;
-  }
-
-  /** One message in. opts.model: this one turn on that model (model-pick.js's card); onItem
-   *  puts the tab's own back at the result. Never a local tab or another CLI. -> the turn's id. */
-  send(tabId, prompt, userItem, { model: turnModel = null } = {}) {
-    const tab = this.require(tabId);
-    // Before anything below touches History or the turn: session.send would
-    // refuse anyway, but only after a message Claude never saw was saved.
-    if (tab.session.busy) throw new Error('Shellby is still working on the last task.');
-    if (tab.inTerminal) throw new Error(IN_TERMINAL);
-    tab.activeAt = Date.now();
-    tab.session.clearParked?.(); // a message after a parked pause is how it carries on (session/pause.js)
-    tab.idleCompacting = false; // set again by wiring/idle-compact.js when the turn is its /compact
-    // Opened before Settings changed (an empty tab left waiting): local or Claude is read again now.
-    localTab.settle(tab, this.getLocalTarget(tab.session.cwd), this.claudeModels());
-    if (!tab.saved) {
-      this.history.create({ id: tab.id, title: tab.named ? tab.title : userItem.title || userItem.text || tab.title, cwd: tab.session.cwd, mode: tab.session.mode, routineId: tab.routineId });
-      // A tab that opened in its own copy before its first message (a Next up draft):
-      // the copy goes in History with it, or reopening it would lose Bring home.
-      if (tab.worktree) this.history.update(tab.id, { worktree: tab.worktree });
-      // ...and so would the agent it was opened with, or safe mode turned on before it.
-      if (tab.session.agent) this.history.update(tab.id, { agent: tab.session.agent });
-      if (tab.session.safeMode) this.history.update(tab.id, { safeMode: true });
-      if (tab.localTarget) this.history.update(tab.id, { local: tab.localTarget });
-      if (tab.localTarget) this.warmLocal?.(tab.localTarget); // its quick model loaded beside the main one (local/ollama.js keepLoaded)
-      if (tab.harness !== harnesses.CLAUDE) this.history.update(tab.id, { harness: tab.harness });
-      tab.title = this.history.get(tab.id).title;
-      tab.saved = true;
-      if (tab.effortBy) this.keepEffort(tab); // chosen on the chip before its first message
-      if (tab.ownModel) this.history.update(tab.id, { model: tab.session.model }); // and the model, the same way
-    } else if (this.history.get(tab.id)?.done) {
-      // You've just given it more to do, so it plainly isn't done any more.
-      this.history.setDone(tab.id, false);
-    }
-    // Each message you send gets an id of its own, so it can be rewound to later.
-    userItem = { ...userItem, turnId: userItem.turnId || randomUUID() };
-    this.history.append(tab.id, userItem);
-    tab.turnId = userItem.turnId; // the turn now starting, for what main.js notes about it (its diff)
-    tab.steers = [];
-    tab.steeredIds = new Set();
-    // Who sent it: a routine's run, a workflow's step, a task you queued for
-    // the reset, or you (main.js armGuard).
-    tab.turnFrom = { routine: userItem.routine || null, workflow: userItem.workflow || null, queued: userItem.queued || null };
-    // What was asked, for its category in the per-turn ledger (usage/ledger.js). Read once as the turn starts.
-    tab.turnText = typeof userItem.text === 'string' ? userItem.text : '';
-    tab.turnCategory = classify(tab.turnText);
-    tab.turnWatch = turnwatch.startTurn(tab.turnWatch); // what's been read whole, and not changed, carries on
-    tab.outcome = null;
-    // The note goes with the first real message (a /command must still start
-    // with its slash), and is only forgotten once Claude has started with it:
-    // if the process never starts, the next message takes it instead.
-    if (tab.preamble && !(typeof prompt === 'string' && prompt.trimStart().startsWith('/'))) {
-      prompt = withPreamble(prompt, tab.preamble);
-      tab.preambleSent = true;
-    }
-    if (this.decorate) prompt = this.decorate(tab, prompt);
-    tab.pictures = (tab.pictures || 0) + turncost.picturesIn(prompt);
-    this.maybePickEffort(tab, userItem);
-    if (turnModel && onClaude(tab) && !tab.localTarget && isModel(turnModel) && turnModel !== (tab.session.model || '')) {
-      tab.turnModel = { was: tab.session.model || '' };
-      tab.session.setModel(turnModel);
-    }
-    tabStops.beforeSend(tab); // still on the sign-in from before a change: a fresh process takes this one
-    try { tab.session.send(prompt, this.prepareTurn?.(tab) || null); } catch (e) { this.restoreTurnModel(tab); throw e; }
-    // On disk at once, so a power cut mid-turn still leaves it marked unfinished.
-    this.history.markTurn?.(tab.id, { turnId: userItem.turnId, at: Date.now() });
-    this.changed();
-    return userItem.turnId;
-  }
-
-  /** The panel's queue while a turn runs, [{ id, text, attachments }]: it goes in at Claude's next step
-   *  (session/control.js steer), only for the turn it was queued behind; what went in already stays out. -> taken? */
-  steer(tabId, turnId, list) {
-    const tab = this.tabs.get(tabId);
-    if (!tab || !tab.session.busy || !turnId || turnId !== tab.turnId) return false;
-    tab.steers = list.filter(m => !tab.steeredIds.has(m.id));
-    return true;
-  }
-
-  /** A queued message taken back before Claude has it (the chip's ×), by id here where takeSteers() runs:
-   *  the panel's list can be a step behind. -> false when it's too late (it went in this turn). */
-  unsteer(tabId, id) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return true; // nothing of it can reach Claude
-    if (tab.steeredIds.has(id)) return false;
-    tab.steers = tab.steers.filter(m => m.id !== id);
-    return true;
-  }
-
-  // A turn run on a cheaper model (send's opts.model) is over, or never ran: the tab's own model is back.
-  restoreTurnModel(tab) { if (tab.turnModel) { const { was } = tab.turnModel; tab.turnModel = null; tab.session.setModel(was); } }
-
-  // What the session hands Claude now, off the list ('steering' locks its chip; the 'user' item's
-  // steerId drops it once read). One that can't be put together stays queued, with all after it.
-  // No rewind point of its own (code is kept between turns, not mid-turn): turnOf is offered instead.
-  takeSteers(tab) {
-    // After the ping, as a turn of its own; and you picked the cheaper model for one message only.
-    if (tab.pinging || tab.turnModel) return [];
-    const taken = [];
-    for (const m of tab.steers) {
-      let content;
-      try { content = this.compose(m.text, m.attachments); } catch { break; }
-      taken.push({ content, item: { kind: 'user', text: m.text, attachments: m.attachments, steerId: m.id, turnOf: tab.turnId || null } });
-    }
-    tab.steers = tab.steers.slice(taken.length);
-    for (const t of taken) {
-      tab.steeredIds.add(t.item.steerId);
-      tab.pictures = (tab.pictures || 0) + turncost.picturesIn(t.content);
-    }
-    if (taken.length) this.emit('steering', tab.id, taken.map(t => t.item.steerId));
-    return taken;
-  }
-
   // A name of your own for an open tab. One not yet sent anything has no History
   // entry to hold it, so `named` stops the first message from replacing it.
   rename(tabId, title) {
@@ -423,25 +198,6 @@ class SessionManager extends EventEmitter {
     if (tab.saved) this.history.rename(tab.id, t); else tab.named = true;
     this.changed();
     return true;
-  }
-
-  /**
-   * Safe mode on or off for one conversation (session/index.js safeMode): its process
-   * is let go of now, so the next message starts it the new way, resumed.
-   * -> { ok } | { ok: false, error }
-   */
-  async setSafeMode(tabId, on) {
-    const tab = this.tabs.get(tabId);
-    if (!tab) return { ok: false, error: 'That conversation is closed.' };
-    if (tab.session.busy) return { ok: false, error: 'Let Claude finish this turn (or stop it) first.' };
-    if (!this.supports('--safe-mode') || tab.session.remote?.()) return { ok: false, error: "This Claude Code can't start in safe mode. Update it, then try again." };
-    if (tab.session.safeMode === !!on) return { ok: true };
-    tab.session.safeMode = !!on;
-    if (tab.saved) this.history.update(tab.id, { safeMode: !!on });
-    await tab.session.stop();
-    this.onItem(tab, { kind: 'safe', on: !!on });
-    this.changed();
-    return { ok: true };
   }
 
   /** Mark a tab as carried on in a terminal (at: a time), or picked back up (null). */
@@ -459,50 +215,6 @@ class SessionManager extends EventEmitter {
   note(tabId, item) {
     const tab = this.tabs.get(tabId);
     if (tab) this.onItem(tab, item);
-  }
-
-  /**
-   * Keep warm's ping (keepwarm-service.js): one message through the tab's
-   * running process and nothing else send() does. No History, effort pick,
-   * preamble, decorate or prepareTurn, so the conversation's cached prompt
-   * and its effort stay exactly as they were.
-   * -> a promise of { ok, error, tokens, denied } when its turn ends.
-   */
-  ping(tabId, text) {
-    const tab = this.require(tabId);
-    if (!onClaude(tab)) return Promise.reject(new Error(NOT_CLAUDE)); // keeping a prompt cache warm is Claude's
-    const s = tab.session;
-    // A process on its way out (a stop asked for, or exited and not yet closed) would drop it unanswered.
-    if (!s.proc || s.stopping || s.proc.exitCode != null || s.busy || s.pending.size || tab.inTerminal || tab.pinging) return Promise.reject(new Error("That conversation can't take a ping now."));
-    return new Promise(resolve => {
-      // growths: put back after, so a one-word reply doesn't slow the "filling up" pace (turncost.js).
-      tab.pinging = { resolve, denied: false, growths: s.growths };
-      try { s.send(text); } catch (err) {
-        tab.pinging = null;
-        resolve({ ok: false, error: err.message, tokens: null, denied: false });
-      }
-    });
-  }
-
-  // An item of a ping's turn: a tool it asks for is refused (nobody's there to
-  // say yes, and a ping uses none), and its result ends the ping.
-  onPingItem(tab, item) {
-    const p = tab.pinging;
-    if (item.kind === 'permission') {
-      p.denied = true;
-      tab.session.respond(item.requestId, 'deny', 'Keep-warm pings use no tools.');
-      return;
-    }
-    if (item.kind !== 'result') return;
-    this.settlePing(tab, { ok: !!item.ok && !p.denied, error: item.error || null, tokens: item.tokens || null, denied: p.denied });
-  }
-
-  settlePing(tab, r) {
-    const p = tab.pinging;
-    tab.pinging = null;
-    tab.session.growths = p.growths;
-    p.resolve(r);
-    this.changed();
   }
 
   /** Counts as just used, for stopIdle: Keep warm lets go of the tabs it kept (keepwarm-service.js stop). */
@@ -622,101 +334,6 @@ class SessionManager extends EventEmitter {
     if (tab && onClaude(tab) && !tab.session.remoteHost) tab.signInAt = now;
   }
 
-  setMode(mode) {
-    for (const tab of this.tabs.values()) if (!tab.pinnedMode) tab.session.setMode(mode);
-  }
-
-  // A note's Ask or Plan (ipc/notes.js) keeps the mode it opened in only to
-  // start: Ask's until its first answer is in, Plan's until you approve the
-  // plan. From then on it's an ordinary conversation, in your mode.
-  modeToStart(tabId) {
-    const tab = this.tabs.get(tabId);
-    if (tab?.pinnedMode) tab.startsIn = tab.session.mode;
-  }
-
-  // Its opening's done: it follows your mode from now on. -> that mode
-  followMode(tab) {
-    tab.startsIn = null;
-    tab.pinnedMode = false;
-    return this.getMode();
-  }
-
-  // The default changed: the conversations following it follow it now. One
-  // with its own (chosen or picked) keeps that.
-  setEffort(effort) {
-    for (const tab of this.tabs.values()) if (!tab.effortBy) tab.session.setEffort(effort);
-  }
-
-  /** This conversation's own effort ('' is Auto), from the chip. From its next turn, or this one's next step. */
-  setTabEffort(tabId, effort) {
-    const tab = this.require(tabId);
-    if (!onClaude(tab)) throw new Error(NOT_CLAUDE);
-    if (effort !== '' && !EFFORTS.includes(effort)) throw new Error('bad effort');
-    tab.effortBy = 'you';
-    tab.session.setEffort(effort);
-    this.keepEffort(tab);
-    this.changed();
-  }
-
-  /**
-   * This conversation's own model, as the terminal's /model switches it ('' is
-   * Claude Code's default): from its next turn, kept in History. One that has
-   * started reads the whole conversation again on the next turn, at full price,
-   * since each model has its own cache: -> started, so the panel can say so.
-   * Set at once (a first message sent right after starts on it); only a
-   * running CLI's answer is waited for, and its no puts the old one back.
-   * byYou: you picked it (chip, /model); Shellby's own picks leave a local one local.
-   */
-  setTabModel(tabId, model, { byYou = false } = {}) {
-    const tab = this.require(tabId);
-    if (!onClaude(tab)) throw new Error(NOT_CLAUDE);
-    if (typeof model !== 'string' || !isModel(model)) throw new Error("Shellby doesn't know that model.");
-    if (!byYou && tab.localTarget) return Promise.resolve({ ok: true, started: false });
-    // Before its first message, yours goes to Claude whatever Settings says. It can only
-    // move with no process, where setModel never says no, so the revert below never undoes it.
-    localTab.pickClaude(tab, this.claudeModels());
-    const started = !!(tab.session.proc || tab.session.sessionId);
-    const before = { model: tab.session.model, own: tab.ownModel };
-    const asked = tab.session.setModel(model);
-    tab.ownModel = true;
-    if (tab.saved) this.history.update(tab.id, { model });
-    this.changed();
-    return asked.then(r => {
-      if (r.ok) return { ok: true, started };
-      tab.session.model = before.model;
-      tab.session.modelSwitched = false;
-      tab.ownModel = before.own;
-      if (tab.saved) this.history.update(tab.id, { model: before.own ? before.model || '' : undefined });
-      this.changed();
-      return { ok: false, error: `Claude Code didn't switch: ${r.error}` };
-    });
-  }
-
-  claudeModels() { return { model: this.getModel(), fallbackModel: this.getFallbackModel() }; }
-
-  // The model chip's On this PC: a local model, before its first message (local/tab.js).
-  setTabLocal(tabId, model) {
-    const tab = this.require(tabId);
-    localTab.pick(tab, this.getLocalServer(tab.session.cwd), model);
-    this.changed();
-    return { ok: true, started: false };
-  }
-
-  // Sized from what it was asked, once: only while it follows a default of
-  // Auto with picking on. A /command waits for the next real message.
-  maybePickEffort(tab, userItem) {
-    if (tab.effortBy || this.getEffort() || !this.getEffortPick() || !onClaude(tab)) return;
-    const level = pickEffort(userItem.text, Array.isArray(userItem.attachments) ? userItem.attachments.length : 0);
-    if (!level) return;
-    tab.effortBy = 'picked';
-    tab.session.setEffort(level);
-    this.keepEffort(tab);
-  }
-
-  keepEffort(tab) {
-    if (tab.saved) this.history.update(tab.id, { effort: tab.session.effort, effortBy: tab.effortBy });
-  }
-
   require(tabId) {
     const tab = this.tabs.get(tabId);
     if (!tab) throw new Error('That conversation is closed.');
@@ -777,10 +394,8 @@ class SessionManager extends EventEmitter {
   }
 }
 
-// A note for Claude ahead of what you typed, as a block of its own so your
-// words reach it exactly as you wrote them (a prompt, or blocks when pictures go with it).
-function withPreamble(prompt, preamble) {
-  return [{ type: 'text', text: preamble }, ...(Array.isArray(prompt) ? prompt : [{ type: 'text', text: String(prompt) }])];
-}
+// What a tab hears, a message going in, and what it runs on (sessions-items.js,
+// sessions-turns.js, sessions-choices.js).
+Object.assign(SessionManager.prototype, items, turns, choices);
 
 module.exports = { SessionManager, MAX_TABS, IN_TERMINAL, NOT_CLAUDE, withPreamble, talkOf, todoGlance, onClaude };
