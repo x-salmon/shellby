@@ -10,6 +10,7 @@ const native = require('../desktop/native-windows');
 const { registerProjectsIpc } = require('../projects/ipc');
 const { run: runCli } = require('../claude/cli');
 const shells = require('../progression/shells');
+const { ID, PATH, list, obj, opt, str } = require('../ipc-args');
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
@@ -18,11 +19,11 @@ const shells = require('../progression/shells');
 function registerLifeIpc(ipcMain, d) {
   // ---- his life between tasks: the Us and Finds pages (life.js), and games (playtime.js)
   ipcMain.handle('life:get', () => d.life?.view() || null);
-  ipcMain.handle('life:birthday', (_e, bd) => d.life?.setBirthday(bd && typeof bd === 'object' ? { m: Number(bd.m), d: Number(bd.d) } : null) || null);
+  ipcMain.handle('life:birthday', (_e, bd) => d.life?.setBirthday(bd && typeof bd === 'object' ? { m: Number(bd.m), d: Number(bd.d) } : null) || null, [opt(obj())]);
   ipcMain.handle('life:favourite', (_e, id) => {
     if (typeof id === 'string') d.featureAct?.('find-kept'); // a find made your favourite (taking it back isn't): What you use counts it (feature-use.js)
     return d.life?.setFavourite(typeof id === 'string' ? id.slice(0, 40) : null) || null;
-  });
+  }, [opt(ID)]);
   ipcMain.on('life:finds-seen', () => d.life?.findsSeen());
   ipcMain.handle('life:play', (_e, kind) => {
     if (!d.life || !d.playtime) return { ok: false, error: 'Not ready yet.' };
@@ -31,7 +32,7 @@ function registerLifeIpc(ipcMain, d) {
     if (kind === 'dig') return d.life.digNow() ? { ok: true } : { ok: false, error: 'He dug not long ago. Give the sand a rest.' };
     if (kind === 'stop') { d.playtime.stop('aww, ok'); return { ok: true }; }
     return { ok: false, error: 'Unknown game.' };
-  });
+  }, [str({ max: 20 })]);
   // The pebble for fetch: its own window and bridge (toy-preload.js), dragged like he is.
   ipcMain.on('toy:drag-start', () => d.playtime?.toyDragStart());
   ipcMain.on('toy:drag-move', () => d.playtime?.toyDragMove()); // follows the real cursor, like he does
@@ -42,7 +43,7 @@ function registerLifeIpc(ipcMain, d) {
     if (d.said?.occasion === 'flaky' && d.said.until > Date.now()) { d.wake(); d.reachedForShellby(); d.showFlaky(); sendToBottom(d.critter); return; }
     d.wake(); d.togglePanel(); sendToBottom(d.critter); // sendToBottom leaves a perched crab be
   });
-  ipcMain.on('critter:crew-click', (_e, tabId) => { if (d.isStr(tabId)) { d.reachedForShellby(); d.showPanel({ focusInput: false, tabId }); } });
+  ipcMain.on('critter:crew-click', (_e, tabId) => { if (d.isStr(tabId)) { d.reachedForShellby(); d.showPanel({ focusInput: false, tabId }); } }, [ID]);
   // The badge for background work: straight to the list that says what it was.
   ipcMain.on('critter:bg-click', () => {
     d.reachedForShellby();
@@ -91,7 +92,7 @@ function registerLifeIpc(ipcMain, d) {
     d.stat('files-dropped');
     d.showPanel();
     d.send(d.panel, 'panel:attach', files);
-  });
+  }, [list(PATH)]);
 
   // ---- XP and levels
   ipcMain.handle('xp:get', () => d.xpView());
@@ -104,13 +105,13 @@ function registerLifeIpc(ipcMain, d) {
     d.broadcastSkin();
     d.send(d.panel, 'stickers', d.stickersView());
     return { ok: true, view: d.homesView() };
-  });
+  }, [ID]);
   ipcMain.on('homes:seen', (_e, ids) => {
     if (!Array.isArray(ids)) return;
     const h = shells.normalizeHome(d.config.get('home'));
     const seen = [...new Set([...h.seen, ...ids.filter(d.isStr)])];
     if (seen.length !== h.seen.length) d.config.set({ home: shells.normalizeHome({ ...h, seen }) });
-  });
+  }, [list(ID)]);
 }
 
 module.exports = { registerLifeIpc };

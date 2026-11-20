@@ -1,18 +1,6 @@
 [
-  "critter:crew-click",
-  "critter:drop",
   "dialog:resize",
   "dialog:respond",
-  "homes:seen",
-  "homes:wear",
-  "life:birthday",
-  "life:favourite",
-  "life:play",
   "src/main/capture.js",
-  "text-menu:pick",
-  "viewer:branch",
-  "viewer:branches",
-  "viewer:changes",
-  "viewer:locate",
-  "viewer:switch"
+  "text-menu:pick"
 ]
