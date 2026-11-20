@@ -8,15 +8,25 @@
   const statusWord = s => STATUS_WORDS[s] || String(s || '');
   const statusClass = s => (s === '?' ? 'u' : String(s || 'm').toLowerCase());
 
+  /**
+   * @typedef {{ name: string, path: string, dir: true, status: string | null, children: TreeNode[] }} TreeDir
+   * @typedef {{ name: string, path: string, dir: false, status: string | null }} TreeFile
+   * @typedef {TreeDir | TreeFile} TreeNode
+   */
+
   /** fileindex's list ('src/', 'src/a.js', …) and the changes -> a tree of { name, path, dir, status, children }. */
   function buildTree(entries, files = []) {
     const changed = new Map((files || []).map(f => [f.path, f.status]));
+    /** @type {TreeDir} */
     const top = { name: '', path: '', dir: true, status: null, children: [] };
     const dirs = new Map([['', top]]);
     const seen = new Set();
     const parentOf = p => { const cut = p.lastIndexOf('/'); return cut < 0 ? '' : p.slice(0, cut); };
+    /** @type {(p: string) => TreeDir} */
     const dirOf = p => {
-      if (dirs.has(p)) return dirs.get(p);
+      const had = dirs.get(p);
+      if (had) return had;
+      /** @type {TreeDir} */
       const node = { name: p.slice(p.lastIndexOf('/') + 1), path: p, dir: true, status: null, children: [] };
       dirOf(parentOf(p)).children.push(node);
       dirs.set(p, node);
@@ -99,6 +109,7 @@
    * git found no merge-base with the base, and then it says so rather than claim "(from main)".
    * against: from the last changes answer, null before the first; only: Just uncommitted is on
    * (relative to HEAD by choice, so the branch is still from its base).
+   * @param {{ name?: string, branch?: string, base?: string, against?: string | null, only?: boolean, kind?: string }} [place]
    */
   function whereText({ name, branch, base, against, only, kind } = {}) {
     // A branch picked from the header's menu: no folder of its own, and always from its base.
@@ -144,7 +155,11 @@
     return [count, lines].filter(Boolean).join(' · ');
   }
 
-  /** A row's second line in the header's menu (main's viewer.js placesOf). ago: SB.relTime in the panel. */
+  /**
+   * A row's second line in the header's menu (main's viewer.js placesOf). ago: SB.relTime in the panel.
+   * @param {any} p
+   * @param {(when: number) => string} [ago]
+   */
   function placeSub(p, ago = () => '') {
     if (p?.kind === 'branch') return [`${p.ahead} ahead`, p.when ? ago(p.when) : ''].filter(Boolean).join(' · ');
     return [p?.branch || 'detached', Number.isInteger(p?.changed) ? `${p.changed} changed` : ''].filter(Boolean).join(' · ');
@@ -159,7 +174,10 @@
     return (places || []).find(p => p.kind === place.kind && p.label === place.label && p.branch === place.branch) || null;
   }
 
-  /** What the viewer remembers a place's last file by: a branch apart from the folder it was picked from. */
+  /**
+   * What the viewer remembers a place's last file by: a branch apart from the folder it was picked from.
+   * @param {{ kind?: string, root?: string, branch?: string }} [place]
+   */
   function placeKey({ kind, root, branch } = {}) {
     const at = String(root || '').toLowerCase();
     return kind === 'branch' ? `branch|${at}|${branch}` : at;

@@ -11,6 +11,7 @@
   const RECENT_MS = 2 * 60 * 1000;
   const queue = [];
   const recent = []; // [{ c, at }]: the last few shown, so two paths to one moment show it once
+  /** @type {{ el: HTMLElement, c: any, timer: number | undefined, left: number, started: number } | null} */
   let current = null;
 
   const host = h('div', { class: 'celebrate-host', 'aria-live': 'polite' });
@@ -62,7 +63,7 @@
 
   // "Dismiss all (3)" while more cards wait behind this one.
   function syncMore() {
-    const b = current?.el.querySelector('.cel-all');
+    const b = /** @type {HTMLElement | null | undefined} */ (current?.el.querySelector('.cel-all'));
     if (!b) return;
     b.hidden = !queue.length;
     b.textContent = `Dismiss all (${queue.length + 1})`;
@@ -86,10 +87,12 @@
     el.style.setProperty('--show-ms', `${SHOW_MS}ms`);
     host.replaceChildren(el);
     document.body.classList.add('celebrating');
-    current = { el, c, timer: null, left: SHOW_MS, started: Date.now() };
+    current = { el, c, timer: undefined, left: SHOW_MS, started: Date.now() };
     syncMore();
-    const run = () => { current.started = Date.now(); current.timer = setTimeout(dismiss, current.left); el.classList.remove('paused'); };
-    const pause = () => { clearTimeout(current.timer); current.left -= Date.now() - current.started; el.classList.add('paused'); };
+    // Only while this card is the one showing: the mouse still crosses it as it leaves.
+    const mine = () => (current?.el === el ? current : null);
+    const run = () => { const cur = mine(); if (!cur) return; cur.started = Date.now(); cur.timer = setTimeout(dismiss, cur.left); el.classList.remove('paused'); };
+    const pause = () => { const cur = mine(); if (!cur) return; clearTimeout(cur.timer); cur.left -= Date.now() - cur.started; el.classList.add('paused'); };
     el.addEventListener('mouseenter', pause);
     el.addEventListener('mouseleave', run);
     el.addEventListener('focusin', pause);

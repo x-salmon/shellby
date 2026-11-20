@@ -70,7 +70,7 @@
   api.onTabFocus(tabId => { if (state.tabs.has(tabId)) SB.activate(tabId); });
   // A Stream Deck key that needs the panel (main shows it first): the same as
   // Ctrl+Shift+H on that conversation, or opening the review inbox.
-  api.onDeckPress(({ what, tabId } = {}) => {
+  api.onDeckPress((/** @type {{ what?: string, tabId?: string }} */ { what, tabId } = {}) => {
     const tab = state.tabs.get(tabId);
     if (what === 'home' && tab?.worktree) SB.bringHome(tab);
     if (what === 'review') SB.openReview?.();
@@ -80,7 +80,7 @@
   api.onOtherUsage(SB.applyOtherUsage);
   api.onRecap(d => SB.showRecap(d));
   // A server waiting for sign-in when a conversation starts: one tap opens its page.
-  api.onMcpNeedsAuth(({ tabId, names } = {}) => {
+  api.onMcpNeedsAuth((/** @type {{ tabId?: string, names?: string[] }} */ { tabId, names } = {}) => {
     if (!Array.isArray(names) || !names.length) return;
     const one = names.length === 1 ? names[0] : null;
     // Plugins can bring dozens of these: name two, count the rest (the Toolbox lists them all).

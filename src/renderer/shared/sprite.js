@@ -10,6 +10,15 @@
   const HEX = /^#[0-9a-f]{6}$/i;
   const colourOf = (pal, ch) => { const c = pal?.[ch]; return typeof c === 'string' && HEX.test(c) ? c : null; };
 
+  /** A one-colour <rect> in grid cells. @returns {SVGRectElement} */
+  function rect(x, y, w, h, fill) {
+    const r = document.createElementNS(SVG_NS, 'rect');
+    r.setAttribute('x', String(x)); r.setAttribute('y', String(y));
+    r.setAttribute('width', String(w)); r.setAttribute('height', String(h));
+    r.setAttribute('fill', fill);
+    return r;
+  }
+
   // ------------------------------------------------------------ ink
   // Kept equal to bugdex/art.js's, so he's lined like the portraits (test/sprite-ink.test.js).
   const INK = '#141225';
@@ -62,11 +71,7 @@
       for (let i = 0; i < row.length;) {
         let j = i + 1;
         while (j < row.length && row[j][0] === row[j - 1][0] + 1 && row[j][2] === row[i][2]) j++;
-        const r = document.createElementNS(SVG_NS, 'rect');
-        r.setAttribute('x', row[i][0]); r.setAttribute('y', y);
-        r.setAttribute('width', j - i); r.setAttribute('height', 1);
-        r.setAttribute('fill', row[i][2]);
-        out.push(r);
+        out.push(rect(row[i][0], y, j - i, 1, row[i][2]));
         i = j;
       }
     }
@@ -86,7 +91,7 @@
         const stack = [[x, y]];
         seen.add(key);
         while (stack.length) {
-          const [cx, cy] = stack.pop();
+          const [cx, cy] = /** @type {number[]} */ (stack.pop());
           comp.push([cx, cy]);
           for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
             const nx = cx + dx, ny = cy + dy, k = `${nx},${ny}`;
@@ -159,11 +164,7 @@
           if (!gname) { x++; continue; }
           let end = x + 1;
           while (end < row.length && row[end] === ch && groupName(row[end], end, y) === gname) end++;
-          const r = document.createElementNS(SVG_NS, 'rect');
-          r.setAttribute('x', ox + x); r.setAttribute('y', oy + y);
-          r.setAttribute('width', end - x); r.setAttribute('height', 1);
-          r.setAttribute('fill', color);
-          groupFor(gname, partOf ? partOf(gname) : undefined).appendChild(r);
+          groupFor(gname, partOf ? partOf(gname) : undefined).appendChild(rect(ox + x, oy + y, end - x, 1, color));
           for (let i = x; i < end; i++) cellsOf[gname].push([ox + i, oy + y, color]);
           if (!partOf) grow(gname, ox + x, oy + y, end - x);
           all.x0 = Math.min(all.x0, ox + x); all.y0 = Math.min(all.y0, oy + y);
@@ -196,10 +197,7 @@
         let depth = 0;
         while (depth < ROOT && isBody(x, y + 1 + depth)) depth++;
         if (!depth) continue;
-        const r = document.createElementNS(SVG_NS, 'rect');
-        r.setAttribute('x', x); r.setAttribute('y', y + 1);
-        r.setAttribute('width', 1); r.setAttribute('height', depth);
-        r.setAttribute('fill', colour);
+        const r = rect(x, y + 1, 1, depth, colour);
         r.setAttribute('class', 'stalk-root');
         groups.stalks.appendChild(r);
       }
@@ -281,9 +279,9 @@
     const vb = opts.fit ? all : { x0: 0, y0: 0, x1: cols, y1: rows };
     const vw = vb.x1 - vb.x0, vh = vb.y1 - vb.y0;
     svg.setAttribute('viewBox', `${vb.x0} ${vb.y0} ${vw} ${vh}`);
-    if (opts.px) { svg.setAttribute('width', vw * opts.px); svg.setAttribute('height', vh * opts.px); }
-    svg.dataset.cols = cols;
-    svg.dataset.rows = rows;
+    if (opts.px) { svg.setAttribute('width', String(vw * opts.px)); svg.setAttribute('height', String(vh * opts.px)); }
+    svg.dataset.cols = String(cols);
+    svg.dataset.rows = String(rows);
     return svg;
   }
 
@@ -306,9 +304,7 @@
         if (!color) { x++; continue; }
         let end = x + 1;
         while (end < row.length && row[end] === ch) end++;
-        const r = document.createElementNS(SVG_NS, 'rect');
-        r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', end - x); r.setAttribute('height', 1);
-        r.setAttribute('fill', color);
+        const r = rect(x, y, end - x, 1, color);
         const c = cls(ch);
         if (c) r.setAttribute('class', c);
         out.push(r);
@@ -369,9 +365,7 @@
       home.pixels.forEach((row, y) => [...row].forEach((ch, x) => { if (colourOf(home.palette, ch)) cells.push([x, y]); }));
       for (let i = 0; i < sparkle && cells.length; i++) {
         const [x, y] = cells[Math.floor(((i * 0.618034 + 0.31) % 1) * cells.length)];
-        const r = document.createElementNS(SVG_NS, 'rect');
-        r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', 1); r.setAttribute('height', 1);
-        r.setAttribute('fill', '#ffffff');
+        const r = rect(x, y, 1, 1, '#ffffff');
         r.setAttribute('class', `${id}-s`);
         r.style.animationDelay = `${(i * 0.37).toFixed(2)}s`;
         g.appendChild(r);
@@ -394,7 +388,7 @@
     svg.setAttribute('viewBox', `${-pad} ${-pad} ${w} ${hgt}`);
     svg.setAttribute('shape-rendering', 'crispEdges');
     svg.setAttribute('aria-hidden', 'true');
-    if (opts.px) { svg.setAttribute('width', w * opts.px); svg.setAttribute('height', hgt * opts.px); }
+    if (opts.px) { svg.setAttribute('width', String(w * opts.px)); svg.setAttribute('height', String(hgt * opts.px)); }
     if (opts.ink) {
       const cells = [];
       pixelsIn.forEach((row, y) => [...row].forEach((ch, x) => { const c = colourOf(pal, ch); if (c) cells.push([x, y, c]); }));
@@ -407,10 +401,7 @@
         if (!color) { x++; continue; }
         let end = x + 1;
         while (end < row.length && row[end] === row[x]) end++;
-        const r = document.createElementNS(SVG_NS, 'rect');
-        r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', end - x); r.setAttribute('height', 1);
-        r.setAttribute('fill', color);
-        svg.append(r);
+        svg.append(rect(x, y, end - x, 1, color));
         x = end;
       }
     });
@@ -420,7 +411,9 @@
   // An effect's fullest picture: of every sprite and frame, the one with the
   // most pixels drawn (a twinkle's peak, not the dot it starts as). For thumbnails.
   function poster(sprites) {
-    let best = null, most = -1;
+    /** @type {{ pixels: string[], palette: any } | null} */
+    let best = null;
+    let most = -1;
     for (const s of sprites || []) {
       for (const pixels of [s.pixels, ...(s.frames || [])]) {
         const n = [...pixels.join('')].filter(ch => colourOf(s.palette, ch)).length;
@@ -435,4 +428,5 @@
   const SLOT_ANCHOR = { hat: 'head', face: 'face', neck: 'neck', held: 'claw', shell: 'shellTop' };
 
   root.ShellbySprite = { build, grid, poster, components, inkRings, INK, INK_DEPTH, DEFAULT_ANCHORS, SLOT_ANCHOR };
+  if (typeof module !== 'undefined') module.exports = root.ShellbySprite;
 })(typeof window !== 'undefined' ? window : globalThis);

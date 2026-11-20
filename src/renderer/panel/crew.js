@@ -7,7 +7,9 @@
 (function () {
   const { h, api, state, $, plural } = SB;
   const DOCK_MAX = 9; // crabs on the dock; the rest are in the roster below
+  /** The roster as main sends it (wiring/crew.js). @type {{ members: any[], totals: { members: number, runs: number, actedOn: number }, ladder: any[], hatsOn: boolean } | null} */
   let view = null;
+  /** @type {string | null} */
   let open = null; // the type whose drawer is open
 
   const when = t => (t ? SB.relTime(t) : 'never');
@@ -51,7 +53,7 @@
     const pixels = (item, dark) => (item ? SB.Sprite.grid(item.pixels, dark ? Object.fromEntries(Object.keys(item.palette).map(k => [k, '#2b4650'])) : item.palette, { px: 3, ink: true }) : h('span', { text: '?' }));
     return h('div', { class: 'cr-hats', role: 'group', 'aria-label': `${m.name}'s hat` },
       choice('auto', 'Best earned', h('span', { class: 'cr-hat-word', text: 'Best' })),
-      ...view.ladder.map(l => choice(l.id, l.item?.name || l.id, pixels(l.item, l.level > m.level), { locked: l.level > m.level ? l.level : null })),
+      ...(view?.ladder || []).map(l => choice(l.id, l.item?.name || l.id, pixels(l.item, l.level > m.level), { locked: l.level > m.level ? l.level : null })),
       choice('match', 'Same as Shellby', h('span', { class: 'cr-hat-word', text: 'His' })),
       choice('none', 'No hat', h('span', { class: 'cr-hat-word', text: 'None' })));
   }
@@ -85,7 +87,7 @@
       h('summary', { dataset: { focus: 'drawer' }, text: 'Name, hat and latest runs' }),
       renameRow(m),
       h('p', { class: 'cr-field-label', text: hatNote }),
-      view.hatsOn ? hatPicker(m) : h('p', { class: 'muted small', text: 'Helper hats are off (Outfits → Options).' }),
+      view?.hatsOn ? hatPicker(m) : h('p', { class: 'muted small', text: 'Helper hats are off (Outfits → Options).' }),
       recentList(m));
     return h('li', { class: 'cr-row', id: `crew-${m.type}`, dataset: { type: m.type } },
       h('div', { class: 'cr-face', 'aria-hidden': 'true' }, crab(m, 2)),
@@ -128,9 +130,9 @@
 
   // Where the keyboard was in the list (which member, which control), to put it back after a redraw.
   function focusSpot() {
-    const el = document.activeElement;
-    const row = el?.closest?.('#crewList .cr-row');
-    return row && el.dataset.focus ? { type: row.dataset.type, focus: el.dataset.focus } : null;
+    const el = /** @type {HTMLElement | null} */ (document.activeElement);
+    const row = /** @type {HTMLElement | null} */ (el?.closest('#crewList .cr-row') ?? null);
+    return row && el?.dataset.focus ? { type: row.dataset.type, focus: el.dataset.focus } : null;
   }
 
   function render() {

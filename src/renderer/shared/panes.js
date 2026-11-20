@@ -228,7 +228,7 @@
   function zoneAt(rect, x, y, allowed) {
     const fx = (x - rect.left) / rect.width;
     const fy = (y - rect.top) / rect.height;
-    const near = [['left', fx], ['right', 1 - fx], ['top', fy], ['bottom', 1 - fy]]
+    const near = /** @type {[string, number][]} */ ([['left', fx], ['right', 1 - fx], ['top', fy], ['bottom', 1 - fy]])
       .filter(([z]) => allowed.includes(z))
       .sort((a, b) => a[1] - b[1])[0];
     return near && near[1] < EDGE ? near[0] : 'center';
@@ -276,11 +276,13 @@
   function placeSizes(grid, sizes, tabId, paneId, zone) {
     const s = fitSizes(grid, sizes);
     if (!EDGES.includes(zone) || !zones(grid, paneId, tabId).includes(zone)) return s;
+    const at = find(grid, paneId);
+    if (!at) return s; // zones() found it, so it's here
     const id = nextId(grid);
     const out = { w: { ...s.w }, h: { ...s.h } };
     if (zone === 'left' || zone === 'right') {
       const half = s.w[paneId] / 2;
-      for (const p of grid[find(grid, paneId).c]) out.w[p.id] = half;
+      for (const p of grid[at.c]) out.w[p.id] = half;
       out.w[id] = half; out.h[id] = 1;
     } else {
       const half = s.h[paneId] / 2;
@@ -359,6 +361,7 @@
     if (to && !isToolPane(byId(grid, to))) return { target: to, zone: 'center' };
     if (dir !== 'left' && dir !== 'right') return null;
     const at = find(grid, own.id);
+    if (!at) return null; // paneWith() found it, so it's here
     const target = own.tabs.length > 1 ? own.id : grid[at.c].find(p => p.id !== own.id)?.id;
     return target && zones(grid, target, tabId).includes(dir) ? { target, zone: dir } : null;
   }
@@ -375,6 +378,7 @@
   // one tab each, its sizes kept. null when nothing's left. An id every object
   // already has (__proto__, constructor) is junk: the sizes are plain objects
   // keyed by pane id, and it would read or set their prototype.
+  /** @param {any} saved @param {string[] | null} [openIds] */
   function clean(saved, openIds = null) {
     if (!saved || typeof saved !== 'object' || !Array.isArray(saved.grid)) return null;
     const open = openIds && new Set(openIds);
@@ -523,7 +527,9 @@
     const at = find(grid, beside) ? beside : grid[0]?.[0]?.id;
     if (!at) return grid;
     const fresh = { id: nextId(grid), tabs: [toolId], active: toolId };
-    const { c, r } = find(grid, at);
+    const found = find(grid, at);
+    if (!found) return grid; // `at` is a pane that's here, either way
+    const { c, r } = found;
     if (grid.length < MAX_COLS) { const out = [...grid]; out.splice(c + 1, 0, [fresh]); return out; }
     if (grid[c].length < MAX_ROWS) return grid.map((col, i) => (i === c ? [...col.slice(0, r + 1), fresh, ...col.slice(r + 1)] : col));
     return grid;
