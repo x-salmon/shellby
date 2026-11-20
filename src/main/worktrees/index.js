@@ -150,7 +150,36 @@ function gitRuns(word) {
   return long.length > 2 && long.startsWith('--') && GIT_RUNS.some(opt => opt.startsWith(long) || long.startsWith(opt));
 }
 
+/**
+ * One command's words the way a shell splits them: quoted text (with its
+ * spaces) stays one word, quotes and backslash escapes are taken out. null
+ * when a quote is never closed: unsure means no. Pure.
+ */
+function shellWords(text) {
+  const words = [];
+  let word = '';
+  let has = false;
+  let quote = '';
+  const s = String(text || '');
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (quote) {
+      if (c === quote) quote = '';
+      else if (c === '\\' && quote === '"' && i + 1 < s.length) word += s[++i];
+      else word += c;
+    } else if (c === '"' || c === "'") { quote = c; has = true; }
+    else if (c === '\\' && i + 1 < s.length) { word += s[++i]; has = true; }
+    else if (/\s/.test(c)) { if (has || word) words.push(word); word = ''; has = false; }
+    else { word += c; has = true; }
+  }
+  if (quote) return null;
+  if (has || word) words.push(word);
+  return words;
+}
+
 function gitLooks(words) {
+  // Config from the command line, anywhere, can name the program git runs.
+  if (words.some(w => w === '-c' || /^--(config-env|exec-path)/.test(w))) return false;
   let i = 1;
   // Only --no-pager and -C <dir> before the subcommand: `-c core.pager=…`,
   // --config-env and --exec-path can each have git run any program.
@@ -185,15 +214,15 @@ function onlyLooks(command) {
   if (/[{}()@]/.test(cmd.replace(/'[^']*'|"[^"]*"/g, ''))) return false;
   // A lone & runs what follows too: `ls & touch x` is two commands.
   return cmd.split(/&&|\|\||[;|\n&]/).every(part => {
-    const raw = part.trim().split(/\s+/).filter(Boolean);
-    if (!raw.length) return true;
-    const name = path.basename(raw[0].replace(/^["']|["']$/g, '')).toLowerCase().replace(/\.exe$/, '');
-    // Each word as the program gets it: the shell takes quotes and backslash
-    // escapes out first, so "--ext-diff" and --ext\-diff are --ext-diff.
-    const words = raw.map(w => w.replace(/["'\\]/g, ''));
+    // Each word as the program gets it: quoted text with its spaces is one word,
+    // and the quotes and backslash escapes are gone ("--ext-diff" is --ext-diff).
+    const words = shellWords(part);
+    if (!words) return false;
+    if (!words.length) return true;
+    const name = path.basename(words[0]).toLowerCase().replace(/\.exe$/, '');
     if (name === 'git') return gitLooks(words);
     // -i edits in place; a script's w, W and e commands (or s///w, s///e) write a file or run one.
-    if (name === 'sed') return !words.some(w => /^-[a-z]*i|^--in-place/.test(w)) && !/(^|[\s;{}'"\d$/])[wWe](\s|['";]|$)/.test(raw.slice(1).join(' '));
+    if (name === 'sed') return !words.some(w => /^-[a-z]*i|^--in-place/.test(w)) && !/(^|[\s;{}'"\d$/])[wWe](\s|['";]|$)/.test(words.slice(1).join(' '));
     if (name === 'sort') return !words.some(w => /^-[a-z]*o|^--output|^--compress-program/.test(w));
     if (name === 'find') return !words.some(w => /^-(delete|exec|execdir|ok|okdir|fprint|fprint0|fprintf|fls)\b/.test(w));
     // fd -x / -X (alone or in a cluster like -Hx) and --exec(-batch) run a command per match.
