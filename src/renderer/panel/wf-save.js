@@ -116,6 +116,10 @@
       startRun: id => api.runWorkflow(id, {}),
       stopRun: runId => api.stopRun(runId),
       getRun: runId => api.getRun(runId),
+      /**
+       * @param {Record<string, any>} def
+       * @param {{ since?: string }} [opts]
+       */
       apply: (def, { since } = {}) => {
         if (!alive()) return false;
         if (ed.json) applyJson();

@@ -16,6 +16,8 @@
 'use strict';
 (function () {
   const { h, api, state, $ } = SB;
+  // The other workflow files add their parts to it as they load (see above).
+  /** @type {Record<string, any>} */
   const W = SB.wfKit = {};
   const G = window.ShellbyWfGraph;
   // replaceChildren() writes a null as the text "null": optional parts are dropped instead.
@@ -100,6 +102,7 @@
   const FILE_ACTIONS = [['read', 'Read it'], ['write', 'Write it (replace)'], ['append', 'Add to the end']];
   const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'];
   const FIELD_TYPES = ['string', 'number', 'boolean', 'list', 'object'];
+  /** @type {[string, number][]} */
   const WAIT_UNITS = [['seconds', 1], ['minutes', 60], ['hours', 3600], ['days', 86400]];
   const RUN_TRIGGER = { manual: 'By hand', step: 'From a workflow step', ...Object.fromEntries(Object.entries(TRIGGER_INFO).map(([k, v]) => [k, v.name])) };
   const STATUS_GLYPH = { pending: '○', running: '◐', waiting: '⏸', retrying: '↻', ok: '✓', error: '✕', skipped: '–', stopped: '■', interrupted: '!' };
@@ -162,6 +165,7 @@
   const toInt = v => (String(v).trim() === '' ? undefined : Math.round(Number(v)));
 
   function throttle(fn, ms) {
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
     let again = false;
     const tick = () => { if (again) { again = false; fn(); timer = setTimeout(tick, ms); } else timer = null; };
@@ -169,6 +173,7 @@
   }
 
   function debounce(fn, ms) {
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
     const call = () => { clearTimeout(timer); timer = setTimeout(fn, ms); };
     call.cancel = () => clearTimeout(timer);
@@ -223,6 +228,7 @@
 
   // Until the page is `size` (DIP) wide, or a second has gone: main's reply
   // can come before the window's resize reaches the page.
+  /** @returns {Promise<void>} */
   function sizedTo({ width }) {
     const zoom = api.zoomFactor?.() || 1;
     const end = Date.now() + 1000;
@@ -287,6 +293,7 @@
 
   // ================================================================ menu (one popover for the whole view)
 
+  /** @type {HTMLElement | null} */
   let menuAnchor = null;
   function popup(anchor, build) {
     if (!menu.hidden && menuAnchor !== anchor) closePopup();

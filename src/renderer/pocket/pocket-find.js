@@ -55,6 +55,7 @@
     }
 
     // The phone keeps when it last looked. Back after a while, it asks what happened since.
+    /** @type {number | null} */
     let pendingSince = null;
     const markSeen = () => N.store.set(SEEN_KEY, String(Date.now()));
     const lastSeen = () => Number(N.store.get(SEEN_KEY)) || 0;

@@ -6,8 +6,11 @@
 'use strict';
 (function () {
   const { h, api, plural } = SB;
+  /** @type {any[]} */
   const queue = [];
+  /** @type {HTMLElement | null} */
   let showing = null;
+  /** @type {HTMLElement | null} */
   let returnFocus = null;
 
   const day = t => new Date(t).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
@@ -47,7 +50,7 @@
   }
 
   function show(r) {
-    returnFocus = returnFocus || document.activeElement;
+    returnFocus = returnFocus || /** @type {HTMLElement | null} */ (document.activeElement);
     const art = SB.Sprite.grid(r.pixels, r.palette, { px: Math.max(6, Math.floor(160 / Math.max(r.pixels.length, ...r.pixels.map(x => x.length)))) });
     const shareBtn = h('button', { type: 'button', class: 'btn primary', dataset: { shareMoment: '1' }, onclick: () => share(r) }, '📸 Share this');
     const el = h('div', { class: `sp-reveal${reduced() ? ' still' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'spTitle', 'aria-describedby': 'spOdds' },

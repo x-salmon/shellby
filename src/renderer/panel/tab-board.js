@@ -11,7 +11,8 @@
 
   const REFRESH_MS = 800;
   let lanes = new Map();      // tabId -> lane
-  let view = { order: [], prompts: [], training: false };
+  /** @type {{ order: any[], prompts: any[], training: boolean }} */
+  let view = { order: [], prompts: [], training: false }; // main's board view (wiring/lanes.js)
   let timer = 0;
   let busy = false;           // an answer or a line-up on its way
   const box = h('div', { class: 'tb-board', hidden: true });

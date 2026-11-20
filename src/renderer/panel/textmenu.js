@@ -11,6 +11,7 @@
 (function () {
   const { h, api, $ } = SB;
   const menu = $('textMenu');
+  /** @type {HTMLElement | null} */
   let returnTo = null; // the field the menu was opened on
 
   function restoreFocus() {
@@ -41,7 +42,7 @@
 
   function open({ x, y, items, source }) {
     SB.closeMenus();
-    returnTo = document.activeElement !== document.body ? document.activeElement : null;
+    returnTo = document.activeElement !== document.body ? /** @type {HTMLElement | null} */ (document.activeElement) : null;
     const fixes = items.some(i => i.fix);
     menu.replaceChildren(
       ...(fixes ? [h('div', { class: 'menu-label', text: 'Did you mean' })] : []),

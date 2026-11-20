@@ -78,8 +78,10 @@
    * reopens it for that conversation, or for that page (pocket-pages.js).
    */
   function createStream(handlers) {
+    /** @type {AbortController | null} */
     let ctrl = null;
     let attempt = 0;
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
     let tab = null;
     let page = null;

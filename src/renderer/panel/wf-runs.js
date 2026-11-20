@@ -17,7 +17,8 @@
 
   // ================================================================ runs of one workflow
 
-  const runsState = { id: null, list: null, error: '' };
+  // list: the runs from main (src/main/workflows), newest first, once they've loaded.
+  const runsState = { id: /** @type {string | null} */ (null), list: /** @type {any[] | null} */ (null), error: '' };
 
   function renderRuns() {
     setMapMode(false);
@@ -67,7 +68,8 @@
 
   // sel: the map node whose inspector is open (undefined until the run first loads, then
   // whatever needs you: a question, or the step that failed).
-  const runState = { id: null, rec: undefined, busy: '', sel: undefined };
+  // rec: the run from main: undefined until it loads, null when it isn't kept any more.
+  const runState = { id: /** @type {string | null} */ (null), rec: /** @type {any} */ (undefined), busy: '', sel: /** @type {string | null | undefined} */ (undefined) };
   const openOutputs = new Set();
 
   function renderRun() {

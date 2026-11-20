@@ -81,6 +81,7 @@
 
   // Buttons that start a task: one press, then wait, then off to watch it.
   // It stays off once started: a second press would start a second task (and branch).
+  /** @param {string} text @param {() => any} start @param {string} [cls] */
   function taskButton(text, start, cls) {
     const btn = act(text, async () => {
       btn.disabled = true;

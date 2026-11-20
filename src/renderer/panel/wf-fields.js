@@ -17,8 +17,14 @@
     return err;
   }
 
+  /**
+   * @param {string} labelText
+   * @param {HTMLElement} control
+   * @param {{ at?: string, hint?: string, insert?: any, cls?: string }} [opts] insert: what insertBtn offers
+   */
   function wrap(labelText, control, { at, hint, insert, cls = '' } = {}) {
     if (!control.id) control.id = uid('f');
+    /** @type {HTMLElement | null} */
     let hintEl = null;
     if (hint) {
       hintEl = h('p', { class: 'field-hint', id: uid('hint'), text: hint });
@@ -54,6 +60,7 @@
 
   // options: [[value, label, disabled?]] or [{ group, options }]
   function selectControl(options, value, onChange, attrs = {}) {
+    /** @param {any[]} o */
     const opt = ([v, l, dis]) => h('option', { value: v, text: l, disabled: !!dis });
     const el = h('select', { class: 'field', ...attrs },
       options.map(o => (Array.isArray(o) ? opt(o) : h('optgroup', { label: o.group }, o.options.map(opt)))));
@@ -71,6 +78,12 @@
     return sel(label, options, value || '', onChange, opts);
   }
 
+  /**
+   * @param {string} label
+   * @param {boolean} checked
+   * @param {(on: boolean) => void} onChange
+   * @param {{ hint?: string, at?: string }} [opts]
+   */
   function check(label, checked, onChange, { hint, at } = {}) {
     const input = h('input', { type: 'checkbox', checked: !!checked, onchange: e => { onChange(e.target.checked); changed(); } });
     const hintEl = hint ? h('span', { class: 'field-hint', text: hint }) : null;
@@ -79,6 +92,12 @@
       at ? slot(at, input) : null);
   }
 
+  /**
+   * @param {string} label
+   * @param {string | undefined} value
+   * @param {(dir: string) => void} onChange
+   * @param {{ at?: string, placeholder?: string, hint?: string }} [opts]
+   */
   function folderField(label, value, onChange, { at, placeholder, hint } = {}) {
     const input = textControl('input', value, onChange, { placeholder });
     input.id = uid('dir');

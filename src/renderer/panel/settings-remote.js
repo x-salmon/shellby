@@ -7,10 +7,13 @@
   const { h, api, state, $ } = SB;
   const L = window.ShellbyRemoteLogic;
 
-  let view = null;
+  /** @type {any} */
+  let view = null;              // main's remote view: { computers, available, jumps, agent, keys, sshFound }
   // Off on a PC that can't run Windows' ssh agent: never suggested, and ssh asks instead.
   const useAgent = () => state.settings?.sshAgent !== false;
-  let browsing = null;          // { alias, dir, here, folders, error, loading }
+  /** @typedef {{ alias: string, dir: string, here: any, folders: any[], error: string | null, loading: boolean }} Browsing */
+  /** @type {Browsing | null} */
+  let browsing = null;          // the folder browser open on one computer's card
   const working = new Map();    // alias -> what's running ("Installing…")
   const removing = new Set();   // aliases whose Remove was pressed once
 
@@ -43,6 +46,7 @@
     }[action.id] || 'Working…';
     working.set(alias, say);
     render();
+    /** @type {any} */
     let r = null;
     try {
       if (action.id === 'check') r = await api.remoteCheck(alias);
@@ -87,6 +91,7 @@
 
   // ---------------------------------------------------------------- the folder browser
 
+  /** @param {string} alias @param {string} dir */
   async function browse(alias, dir) {
     browsing = { alias, dir, here: null, folders: [], error: null, loading: true };
     render();
@@ -96,18 +101,22 @@
     render();
   }
 
+  // Only the open browser's own button gets here; Cancel while it's out closes it (null stays).
+  /** @param {string} alias @param {string} dir */
   async function addFolder(alias, dir) {
-    browsing = { ...browsing, loading: true };
+    browsing = browsing && { ...browsing, loading: true };
     render();
     const r = await api.remoteAddFolder(alias, dir);
-    if (!r?.ok) { browsing = { ...browsing, loading: false, error: r?.error || "Couldn't add it." }; render(); return; }
+    if (!r?.ok) { browsing = browsing && { ...browsing, loading: false, error: r?.error || "Couldn't add it." }; render(); return; }
     browsing = null;
     await refresh();
     SB.toast(`Added ${r.label}`, { action: 'Work there', onAction: () => workHere(r.anchor), ms: 8000 });
   }
 
+  /** @param {string} alias */
   function browser(alias) {
     const b = browsing;
+    if (!b) return null; // only drawn on the card whose browser is open
     const input = h('input', { type: 'text', class: 'field', value: b.dir, spellcheck: 'false', autocomplete: 'off', 'aria-label': `A folder on ${alias}` });
     input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); browse(alias, input.value.trim() || '~'); } });
     const up = L.parentDir(b.dir);
@@ -222,8 +231,10 @@
 
   // ---------------------------------------------------------------- ssh asking
 
-  const queue = [];
-  let asking = null;
+  /** @type {any[]} */
+  const queue = [];   // ssh's questions from main, in the order they came
+  /** @type {any} */
+  let asking = null;  // the one on screen
 
   function showNext() {
     if (asking || !queue.length) return;

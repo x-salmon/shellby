@@ -7,7 +7,8 @@
   const { h, api, $ } = SB;
   const CI_LABEL = { failing: 'Failing', pending: 'Running', passing: 'Passing', none: 'No pipeline' };
 
-  let view = null;
+  /** @type {any} */
+  let view = null; // main's GitLab view (wiring/gitlab.js)
 
   function render(v) {
     if (!v) return;

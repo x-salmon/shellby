@@ -25,7 +25,7 @@
     layDock();
     $('workModeToggle').checked = SB.isWorkMode();
     const now = SB.modeNow();
-    document.querySelectorAll('#modeSeg [data-mode]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === now)));
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#modeSeg [data-mode]')).forEach(b => b.setAttribute('aria-checked', String(b.dataset.mode === now)));
   };
 
   // Rides along with just the crab's: everything that changes the mode calls it.
@@ -88,7 +88,7 @@
       : 'Claude Code, with a lively crab. Everything is as you left it.', { ms: 5000 });
   };
   api.onMode(id => SB.switchMode(id));
-  document.querySelectorAll('#modeSeg [data-mode]').forEach(b => b.addEventListener('click', () => SB.switchMode(b.dataset.mode)));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#modeSeg [data-mode]')).forEach(b => b.addEventListener('click', () => SB.switchMode(b.dataset.mode)));
 
   $('workModeToggle').addEventListener('change', e => SB.setWorkMode(e.target.checked));
 })();

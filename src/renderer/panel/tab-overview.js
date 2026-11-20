@@ -91,7 +91,9 @@
     onclick: () => { SB.closeMenus(); SB.openReview?.(); },
   });
   let query = '';
+  /** @type {string[]} */
   let order = [];          // tab ids as listed
+  /** @type {string | null} */
   let picked = null;       // the highlighted one, by id so a redraw keeps it
   let drawn = '';          // what the list last showed; a working tab redraws the strip far more often than this changes
 

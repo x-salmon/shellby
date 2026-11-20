@@ -91,6 +91,7 @@
     if (r.popped) return;
     const fresh = !state.tabs.has(r.tabId);
     const tab = SB.ensureTab({ id: r.tabId, title: r.entry.title, cwd: r.entry.cwd, saved: true, routineId: r.entry.routineId, inTerminal: r.entry.inTerminal || null });
+    /** @type {Element | null} */
     let target = null;
     if (fresh) {
       r.items.forEach((item, i) => {
@@ -105,9 +106,10 @@
     if (at == null) { SB.toast('Picked up where you left off'); return; }
     if (!target) target = findInFeed(tab, r.items[at]);
     if (!target?.isConnected) { SB.toast("That message is too far back to show here. It's still in the conversation."); return; }
-    target.scrollIntoView({ block: 'center' });
-    target.classList.add('history-landed');
-    setTimeout(() => target.classList.remove('history-landed'), LANDED_MS);
+    const landed = target;
+    landed.scrollIntoView({ block: 'center' });
+    landed.classList.add('history-landed');
+    setTimeout(() => landed.classList.remove('history-landed'), LANDED_MS);
   };
   const LANDED_MS = 2400;
 
@@ -122,6 +124,7 @@
 
   const FOUND_DELAY_MS = 200;
   const MIN_FOUND = 2;
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let foundTimer = null;
   let foundAsk = 0;
 
@@ -237,6 +240,7 @@
   // Deleting for good takes a second click within a few seconds (as Forget
   // its time does in time.js), since there's no undo after it.
   function armed(btn, sure, act) {
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
     const label = btn.textContent;
     return () => {

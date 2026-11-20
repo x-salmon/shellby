@@ -10,7 +10,14 @@
 
   // ================================================================ the list
 
-  const list = { rows: null, gallery: null, secrets: null, lede: null, pending: false };
+  // The list screen's parts, made together by renderList.
+  const list = {
+    rows: /** @type {HTMLElement | null} */ (null),
+    gallery: /** @type {HTMLElement | null} */ (null),
+    secrets: /** @type {HTMLDetailsElement | null} */ (null),
+    lede: /** @type {HTMLElement | null} */ (null),
+    pending: false,
+  };
   let describeText = '';
   let drafting = false;
   let runFormFor = null;     // workflow id whose inputs form is open
@@ -79,16 +86,17 @@
   // Live updates refill the rows, but never under your cursor: if you're typing
   // in a run form or the secrets box, it waits until you leave.
   function fillList() {
-    if (!list.rows?.isConnected) return;
+    const { rows, gallery, secrets, lede } = list;
+    if (!rows?.isConnected || !gallery || !secrets || !lede) return; // made together: the others are there with the rows
     const a = document.activeElement;
-    if (editing(a) && (list.rows.contains(a) || list.secrets.contains(a))) { list.pending = true; return; }
+    if (editing(a) && (rows.contains(a) || secrets.contains(a))) { list.pending = true; return; }
     list.pending = false;
     keepFocus(() => {
-      fill(list.rows, ...workflows().map(workflowRow));
-      list.rows.hidden = !workflows().length;
-      list.lede.hidden = !!workflows().length;
-      fillGallery();
-      fillSecrets();
+      fill(rows, ...workflows().map(workflowRow));
+      rows.hidden = !workflows().length;
+      lede.hidden = !!workflows().length;
+      fillGallery(gallery);
+      fillSecrets(secrets);
     });
     if (estimatesStale()) refreshEstimates();
   }
@@ -222,7 +230,7 @@
             h('span', { class: 'switch' })))),
       last?.waiting ? waitingBox(last) : null,
       runFormFor === w.id ? runForm(w) : null,
-      estimateFor?.id === w.id ? estimateBox(w) : null);
+      estimateFor?.id === w.id ? estimateBox(w, estimateFor) : null);
   }
 
   // Run, with what a run usually costs on it ("Run · ~3% of your window"); amber when it
@@ -352,7 +360,7 @@
       runFormFor = runFormFor === w.id ? null : w.id;
       runValues = Object.fromEntries(w.inputs.map(i => [i.name, i.default || '']));
       fillList();
-      if (runFormFor) requestAnimationFrame(() => list.rows.querySelector('.wf-runform .field')?.focus());
+      if (runFormFor) requestAnimationFrame(() => /** @type {HTMLElement | null} */ (list.rows?.querySelector('.wf-runform .field'))?.focus());
       return;
     }
     runNow(w, {});
@@ -370,7 +378,7 @@
         estimateFor = { id: w.id, inputs, est };
         runFormFor = null;
         fillList();
-        requestAnimationFrame(() => list.rows?.querySelector('.wf-estimate .wf-run-go')?.focus());
+        requestAnimationFrame(() => /** @type {HTMLElement | null} */ (list.rows?.querySelector('.wf-estimate .wf-run-go'))?.focus());
         return false;
       }
     }
@@ -382,8 +390,9 @@
   }
 
   // Past the limit: the warning, "Run after the reset" first, and the way to run it anyway.
-  function estimateBox(w) {
-    const { est, inputs } = estimateFor;
+  /** @param {NonNullable<typeof estimateFor>} box */
+  function estimateBox(w, box) {
+    const { est, inputs } = box;
     const close = () => { estimateFor = null; fillList(); focusFk(`run-${w.id}`); };
     return h('div', { class: 'wf-estimate over', role: 'group', 'aria-label': `What “${w.name}” would cost` },
       h('p', { class: 'wf-estimate-text', text: est.text }),
@@ -433,9 +442,10 @@
 
   // ------------------------------------------------------------ templates
 
-  function fillGallery() {
+  /** @param {HTMLElement} gallery */
+  function fillGallery(gallery) {
     const templates = state.workflows?.templates || [];
-    if (!templates.length) { fill(list.gallery); return; }
+    if (!templates.length) { fill(gallery); return; }
     const cards = h('div', { class: 'templates' }, templates.map(t => h('button', {
       class: 'template wf-template', type: 'button', 'data-fk': `tpl-${t.key}`,
       onclick: () => openEditor(clone(t.workflow), { title: t.name }),
@@ -443,24 +453,25 @@
     h('span', { class: 'wf-template-icon', 'aria-hidden': 'true', text: t.icon || '⚡' }),
     h('span', { class: 'wf-template-text' }, h('b', { text: t.name }), h('span', { text: t.description || '' })))));
     if (!workflows().length) {
-      fill(list.gallery, h('h3', { class: 'wf-gallery-head', text: 'Start from a template' }), cards);
+      fill(gallery, h('h3', { class: 'wf-gallery-head', text: 'Start from a template' }), cards);
       return;
     }
-    const open = list.gallery.querySelector('details')?.open;
-    fill(list.gallery, h('details', { class: 'wf-disclosure', open: !!open }, h('summary', { text: 'Start from a template' }), cards));
+    const open = gallery.querySelector('details')?.open;
+    fill(gallery, h('details', { class: 'wf-disclosure', open: !!open }, h('summary', { text: 'Start from a template' }), cards));
   }
 
   // ------------------------------------------------------------ secrets
 
   let secretError = '';
-  function fillSecrets() {
+  /** @param {HTMLDetailsElement} secrets */
+  function fillSecrets(secrets) {
     const names = state.workflows?.secrets || [];
     const nameId = uid('sname');
     const valueId = uid('sval');
     const nameEl = h('input', { class: 'field wf-mono', id: nameId, maxlength: 40, autocomplete: 'off', spellcheck: 'false', placeholder: 'GITHUB_TOKEN', 'data-fk': 'secret-name', oninput: e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'); } });
     const valueEl = h('input', { class: 'field', id: valueId, type: 'password', autocomplete: 'off', 'data-fk': 'secret-value' });
     const err = h('p', { class: 'wf-err', role: 'alert', hidden: !secretError, text: secretError });
-    fill(list.secrets,
+    fill(secrets,
       h('summary', {}, 'Secrets', names.length ? h('span', { class: 'wf-count', text: String(names.length) }) : null),
       h('div', { class: 'wf-secrets-body' },
       h('p', { class: 'field-hint' }, 'Use as ', h('code', { text: '{{ secrets.NAME }}' }), ' in commands and web requests. Kept encrypted by Windows.'),
@@ -487,7 +498,7 @@
       h('div', { class: 'wf-field' }, h('label', { class: 'field-label', for: valueId, text: 'Value' }), valueEl),
       h('button', { type: 'submit', class: 'btn slim-btn', 'data-fk': 'secret-add' }, 'Add')),
       err));
-    if (secretError) list.secrets.open = true;
+    if (secretError) secrets.open = true;
     function showSecretError(text, el) { secretError = text; err.hidden = false; err.textContent = text; el.focus(); }
   }
 
@@ -501,7 +512,7 @@
   // ------------------------------------------------------------ import
 
   function openImport() {
-    const returnTo = document.activeElement;
+    const returnTo = /** @type {HTMLElement | null} */ (document.activeElement);
     const titleId = uid('imp');
     const taId = uid('impta');
     const ta = h('textarea', { class: 'field area wf-json', id: taId, rows: 10, spellcheck: 'false', placeholder: '{ "name": "…", "steps": [ … ] }' });

@@ -7,8 +7,11 @@
   const BENCH_PX = 10;   // the crab on the bench, in screen pixels per sprite pixel
   const SPOT = 3;        // a sticker is 3x3 on his shell
   const DRAG_TYPE = 'application/x-shellby-sticker';
+  /** @type {string | null} */
   let shellId = null;    // the shell being decorated (null: the one he's wearing)
+  /** @type {string | null} */
   let selected = null;   // the sticker whose page is open
+  /** @type {string | null} */
   let holding = null;    // the sticker about to go on a spot
 
   const book = () => state.stickers;
@@ -247,7 +250,7 @@
       art: 'Friends see the stickers on his shell as little patches of colour: no names or letters.',
       names: 'Friends also see your three most-shipped stickers, names included (private repos too), and a visit may swap one of them for one of theirs.',
     }[mode];
-    document.querySelectorAll('#stCardMode [data-card]').forEach(b => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#stCardMode [data-card]')).forEach(b => {
       const on = b.dataset.card === mode;
       b.setAttribute('aria-checked', String(on));
     });
@@ -271,7 +274,7 @@
   function refreshBadges() {
     const v = book();
     document.querySelectorAll('.st-count').forEach(el => { el.textContent = v?.totals.projects ? String(v.totals.projects) : ''; });
-    document.querySelectorAll('.st-badge').forEach(el => { el.hidden = !v?.unseen.length; });
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.st-badge')).forEach(el => { el.hidden = !v?.unseen.length; });
     SB.refreshShellbyBadge?.();
   }
 
@@ -288,7 +291,7 @@
   // ------------------------------------------------------------ wiring
   $('stArrange').addEventListener('click', () => edit(api.arrangeStickers(currentShell()?.id), 'Tidied up: the most shipped are in the middle, on top.'));
   $('stAuto').addEventListener('change', async e => apply(await api.setStickerOptions({ auto: e.target.checked })));
-  document.querySelectorAll('#stCardMode [data-card]').forEach(b => b.addEventListener('click', async () => apply(await api.setStickerOptions({ card: b.dataset.card }))));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#stCardMode [data-card]')).forEach(b => b.addEventListener('click', async () => apply(await api.setStickerOptions({ card: b.dataset.card }))));
   // Dropped back on the book: peeled off the shell.
   $('stGrid').addEventListener('dragover', e => { if (dragging(e)) e.preventDefault(); });
   $('stGrid').addEventListener('drop', e => {

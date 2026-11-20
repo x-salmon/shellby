@@ -8,10 +8,12 @@
   const { h, api, state, $ } = SB;
   const STALE_MS = 5000;
   const KINDS = new Set(['hook', 'rule', 'memory']);
+  /** @type {Promise<any> | null} */
   let loading = null;
   let lastTry = 0;
   // One open editor per tab, so opening one never throws away the other's unsaved text.
-  let memEd = null;   // { entry, original, text, mtimeMs, error, conflict, leaving }
+  /** @type {{ entry: any, original: string, text: string, mtimeMs: number, error: string, conflict: boolean, leaving: boolean } | null} */
+  let memEd = null;
 
   const SOURCE = { user: 'yours', project: 'this project', local: 'just you', 'user-rule': 'your rule', 'project-rule': 'project rule', parent: 'folder above' };
   const MEMORY_TITLE = {
@@ -222,6 +224,7 @@
     };
     const show = () => {
       // Two presses to remove, like Undo, so a stray click can't lose a rule.
+      /** @type {ReturnType<typeof setTimeout> | null} */
       let armed = null;
       const remove = h('button', { class: 'btn ghost slim-btn', type: 'button' }, 'Remove');
       remove.addEventListener('click', () => {
@@ -262,6 +265,7 @@
   const openRules = new Set();
   const ruleKey = r => `${r.scope}\n${r.list}\n${r.rule}`;
   // The rule a blocked step's Show rule opened (feed.js deniedStrip): scrolled to once it's drawn.
+  /** @type {string | null} */
   let focusRule = null;
 
   async function removeRule(r) {

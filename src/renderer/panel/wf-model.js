@@ -10,12 +10,15 @@
   // ================================================================ the editor: model
 
   const ed = {
-    def: null, title: '', isNew: true, dirty: false, saved: null, touched: false,
-    errors: [], failedSave: false, saving: false, json: false, jsonText: '', jsonError: '',
+    def: /** @type {any} */ (null),   // the workflow as it is in the editor (src/main/workflows has the shape)
+    title: '', isNew: true, dirty: false, touched: false,
+    saved: /** @type {string | null} */ (null), // JSON of what's on disk, to tell a real change (unsaved)
+    errors: /** @type {{ path: string, message: string }[]} */ ([]),
+    failedSave: false, saving: false, json: false, jsonText: '', jsonError: '',
     layout: pref(PREF.layout, 'map'), // 'map' or 'list'
-    sel: null,                        // the map node the inspector shows: 's<n>', 't<n>', 'manual', 'settings'
-    map: null,                        // the map on screen, while there is one
-    chat: null,                       // Build it with Claude (wf-chat.js), one per workflow (chats)
+    sel: /** @type {string | null} */ (null), // the map node the inspector shows: 's<n>', 't<n>', 'manual', 'settings'
+    map: /** @type {{ el: HTMLElement, update: () => void } | null} */ (null), // the map on screen (workflow-canvas.js mount), while there is one
+    chat: /** @type {{ el: HTMLElement, resume: () => void, tell: (text: string) => void } | null} */ (null), // Build it with Claude (wf-chat.js), one per workflow (chats)
     trial: false,                     // saved only by Claude's test runs so far: kept switched off until you Save
   };
   // Each saved workflow's chat, by id, while the panel is open: leaving the editor
@@ -123,6 +126,10 @@
 
   // ================================================================ the editor: opening and leaving
 
+  /**
+   * @param {Record<string, any>} def
+   * @param {{ title?: string, note?: string | null }} [opts]
+   */
   function openEditor(def, { title, note = null } = {}) {
     const d = normalise(def);
     // A blank new one shows its problems once you start; anything with content is checked straight away.
@@ -261,6 +268,7 @@
   function stepAt(tokens) {
     if (tokens[0] !== 'steps') return null;
     let node = ed.def;
+    /** @type {Record<string, any> | null} */
     let found = null;
     for (const t of tokens) {
       node = node?.[t];
@@ -286,7 +294,7 @@
     const t = tokens[0] === 'when' && ed.def.when[tokens[1]];
     if (t) return trigSel(t);
     if (tokens[0] === 'inputs') return 'manual';
-    return ['description', 'cwd', 'concurrency'].includes(tokens[0]) ? 'settings' : null;
+    return /** @type {(string | number)[]} */ (['description', 'cwd', 'concurrency']).includes(tokens[0]) ? 'settings' : null;
   }
 
   Object.assign(W, {
