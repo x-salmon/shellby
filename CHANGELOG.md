@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.101.0: Engineer mode
+
+### New
+- **Answer every PC from one phone.** With Settings → Alerts → On your phone → "See and answer what's waiting on your other PCs" on, the phone paired with your hub PC shows what's waiting on each of your other PCs, under that PC's name, and Allow, Deny, questions and plans answer it there, by that PC's own rules. Below your conversations, Your other PCs says what each is working on and opens its own page. Off until you turn it on; a read-only phone can only look.
+- **Your PCs in the dock.** Once another PC has joined, Your PCs gets a dock button of its own, with a dot while one of them is waiting on you.
+- **Connectors: one gateway, every agent.** Paste the MCP address from Composio, Pipedream, Zapier MCP, Smithery or another gateway under Settings → Claude → Connectors, and every new conversation, Claude, Gemini CLI, OpenCode and Codex alike, can use the apps you've connected there. Test lists its tools. The address and key are encrypted by Windows and never shown again, each tool still asks before it runs, and conversations on a local model or another computer don't get it.
+- **Engineer mode.** Turn on the **Engineer** chip under the box and Claude decides before it builds. It explores (earlier decisions in `docs/decisions` first), then puts its decision on a card: the goal, what limits it, the options it weighed with their pros and cons, its pick and why, the files it will change, how it'll test it, and the risks. Approve it, go with another option, send it back with a note, **ask a critic** to argue against it first, or have Claude **spike it first**. Nothing touches your files until you approve one, and then only the files it named: anything more needs an amendment you allow on the same card. Claude writes the decision into `docs/decisions` for whoever comes next, builds it (step by step for bigger work), and the card ends by saying how it went.
+- **Engineer mode checks the work itself.** When the work is done, the card lists any file the diff touched outside what was decided, whoever wrote it, and Shellby runs the test plan's own commands (your project's test, typecheck or lint scripts) to show the result beside Claude's.
+- **Spikes.** When the right choice depends on something only trying will show, Claude can ask to try it first. Every file the spike changes is put back afterwards, and what it found goes on the next decision's card. Commits, pushes and publishing are held back while it runs; your permission mode still applies to whatever it runs.
+- **Engineer mode for a whole project.** The note above the box can turn it on for every new conversation in the project, and list commands Claude may run before a decision. Claude can already run the project's own checks before deciding, so its trade-offs come from measurements (**Settings → Claude** turns that off).
+- **Type to find a folder on another computer.** In Settings, Other computers, typing part of a name after the folder shown (`~/rack` or just `rack`) narrows the list to the folders that match, and Enter opens the best one.
+- **A conversation's own window is a whole Shellby.** Break a tab out and the window keeps everything: the usage meter, its own tabs and **+**, Split, pages and dev servers beside the chat, All files, the file viewer, Ctrl+K, the bar and every screen. Conversations you open there stay there, and its × brings them all back to the panel.
+- Right-click a tab for **Open in its own window**, or **Back into the panel** to move one conversation back and leave the rest.
+- **Start with an API key.** The first screen takes an Anthropic API key as well as a Claude sign-in. It's billed per token, so Shellby checks with you first, and Windows encrypts it on this PC.
+- **Local models make room for games.** When a game comes to the front, Shellby unloads the local models it uses that aren't busy, so the game gets their graphics memory, and he says how much he freed. Once the game has gone, an open local conversation's models load again so your next message doesn't wait. Only Ollama's models that Shellby itself uses are touched, never while a local conversation is mid-turn. Turn it off under Settings → Local model → Make room for games, which also says when it last made room.
+- A conversation in a folder on another computer now gets its own copy of the repository too, made over there (in `~/.shellby/worktrees`), the same way it does on this PC. Bring it home, Throw away and Push work on it over ssh, and the conversation carries on in the copy where it left off.
+
+### Fixed
+- A snippet that expands to plain text keeps its "send on its own" mark, so it no longer merges with the messages queued beside it.
+- Four or more dashes, stars or underscores draw a horizontal rule on the phone again.
+- A test summary that mentions "total" without a count no longer trips up the checks reader.
+- The check for commands that only read, which decides when a conversation moves into its own copy, no longer passes PowerShell script blocks, `fd -x`, `git -c` or shortened git options, or quoting the shell reads differently.
+- **Holiday looks no longer overwrite your outfit.** Changing one thing while he was dressed for a season saved the rest of the costume as your own, so he could still be in Halloween's bat wings in February. Your change now stays with that season, and your own outfit comes back when it ends. Wearing an outfit code or Randomize still replaces your own.
+- A message sent the moment another one had gone off could be refused with "Shellby is still working on the last task". It queues behind it now.
+- Pages, notes, routines, Health and the rest stay current in a broken-out window, dialogs open over the window you're in, and a mode or setting changed in one window shows in the others.
+- Closing a broken-out window from the taskbar or with Alt+F4 keeps what you'd typed. Only its × did before.
+- Right-click for copy, paste and spelling works in a broken-out window.
+- **An API key works after a sign-in has lapsed.** If Claude Code turned your saved sign-in down and you switched to an API key, Shellby still said you were signed out.
+- About 200 more of the panel's requests to the app are checked before they run, so a request that isn't one Shellby sends is turned away instead of reaching the code behind it.
+- **"New topic" shows up when you really do change the subject.** It used to count every word Claude had used lately against you, so a change of subject in a long conversation almost always read as more of the same. Now your own asks count for more than his replies, "commit and push to main" and the like never pass for a new topic, and after "Stay in this one" a conversation can offer a fresh tab again a few messages later instead of never.
+- A conversation opened on another computer that's since been removed, on a PC without Claude Code, says it can't find Claude Code instead of failing with nothing said.
+- The usage meter shows the right plan as you switch between conversations on different computers, including one that has moved into its own copy on another computer signed in to a different Claude account.
+- Making a copy of a project no longer runs the repository's own git hooks, so a pull request from a fork can't run code on your PC by adding a `post-checkout` hook.
+- `shellby do` without `--mode` no longer starts an Autonomous conversation when Shellby is set to Autonomous: it uses Smart instead. Pass `--mode` to choose another mode.
+- The `shellby` command in cmd and PowerShell no longer runs a `node.exe` sitting in the folder you ran it from.
+- The OBS overlay only answers requests addressed to this PC, so a web page can't read the crab's speech or project names through DNS rebinding.
+- File links to `.rdp`, `.appinstaller`, Excel web-query, SYLK, `.mht` and Excel add-in files now show the file in its folder instead of opening it.
+- Shellby notices when Claude Code signs in as someone else outside it (`/login` in a terminal, a switch on another device). Settings, the status line and open conversations move to the new account within seconds, instead of staying on the old one until a restart.
+- The usage meter no longer shows the last account's numbers after a switch. It clears and reads the new account's plan straight away, including when Shellby opens on a different account than it closed on.
+- "Send after the reset" works in a conversation on another computer that's signed in to a different Claude account. Shellby used to say he didn't know when your window resets, because he only looked at this PC's plan. Held messages, queued tasks and scheduled routines over there now wait for that account's own limit, and the two plans no longer hold each other up.
+- The limit banner, the estimate of what a message costs and the spending guard go by the plan a conversation really uses, whichever computer it's on.
+- A queued task for a folder on another computer runs when Claude Code isn't signed in on this PC.
+
+### Changed
+- The README is a short front page. The whole tour is in [Everything Shellby can do](docs/FEATURES.md), and installing him, with the SmartScreen warning explained, is in [Installing Shellby](docs/INSTALL.md).
+- Settings and the first screen no longer say Shellby needs a Pro or Max plan: a Claude plan or an API key will do.
+- When notices pile up behind one that's waiting for you, the panel shows them as a stack: a card peeks out under it for each one waiting, and a line names the next. Answer the front one and the next comes forward. ✕ still clears the lot.
+
 ## 0.100.5: Local mode
 
 ### New

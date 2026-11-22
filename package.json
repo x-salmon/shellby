@@ -1,7 +1,7 @@
 {
   "name": "shellby",
   "productName": "Shellby",
-  "version": "0.100.5",
+  "version": "0.101.0",
   "description": "Run Claude Code in parallel on Windows, undo anything, and watch it happen.",
   "main": "src/main/main.js",
   "author": "x-salmon",
