@@ -250,6 +250,7 @@ function checkStep(s, at, depth, ctx) {
   if (++ctx.count > LIMITS.steps) { if (ctx.count === LIMITS.steps + 1) err(at, `A workflow has at most ${LIMITS.steps} steps`); return null; }
   const id = typeof s.id === 'string' && s.id.trim() ? s.id.trim() : null;
   if (id !== null && (!ID.test(id) || expr.ROOTS.includes(id))) err(`${at}.id`, `“${id.slice(0, 32)}” can't be a step name: use lowercase letters, digits and _`);
+  /** @type {Record<string, any>} */ // each type's own fields go on below
   const step = { id: id && ID.test(id) && !expr.ROOTS.includes(id) ? id : null, type: s.type, ...checkCommon(s, at, err) };
 
   switch (s.type) {
@@ -266,7 +267,7 @@ function checkStep(s, at, depth, ctx) {
       // whether they're the only ones it gets.
       const servers = mcpServers.checkNames(s.mcp);
       if (servers.error) err(`${at}.mcp`, servers.error);
-      else if (servers.list.length) {
+      else if (servers.list?.length) {
         step.mcp = servers.list;
         if (s.mcpOnly === true) step.mcpOnly = true;
       }
@@ -552,6 +553,7 @@ function checkRefs(wf, err) {
  * Untrusted input -> { ok, workflow, errors: [{ path, message }] }.
  * opts.allowAutonomous: the user has acknowledged Autonomous.
  */
+/** @returns {{ ok: true, workflow: any, errors: never[] } | { ok: false, workflow: null, errors: { path: string, message: string }[] }} */
 function validateWorkflow(input, { allowAutonomous = false, now = Date.now() } = {}) {
   const errors = [];
   const err = (p, message) => { if (errors.length < 50) errors.push({ path: p, message }); };

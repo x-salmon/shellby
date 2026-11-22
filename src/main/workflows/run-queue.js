@@ -11,7 +11,30 @@ const MAX_QUEUED = 20;
 const MAX_QUEUED_EACH = 5;
 const FOLDER_GRACE_MS = 10000;     // a folder workflow ignores its own changes for a moment after it ends
 
-class RunQueue {
+// Object at run time: only the methods are copied (util.js mixin). The cast lets
+// tsc see what the service gives them.
+const Base = /** @type {new () => {
+  deps: any,
+  workflows: any[],
+  active: Map<string, any>,
+  queue: any[],
+  asks: Map<string, any>,
+  endedAt: Map<string, number>,
+  folderBacklog: Map<string, string[]>,
+  folderTimers: Map<string, ReturnType<typeof setTimeout>>,
+  frozen: boolean,
+  rate: InstanceType<typeof import('./triggers').RateLimit>,
+  secrets: InstanceType<typeof import('./store').SecretStore>,
+  store: InstanceType<typeof import('./store').RunStore>,
+  now(): number,
+  get(id: string): any,
+  persist(list: any[]): void,
+  pushView(): void,
+  pushRun(rec: any): void,
+  effectsFor(run: any): any,
+}} */ (/** @type {unknown} */ (Object));
+
+class RunQueue extends Base {
   /** Run by hand from the panel. */
   runManual(id, inputs = {}) {
     const wf = this.get(id);
@@ -20,6 +43,7 @@ class RunQueue {
   }
 
   /** A trigger fired: enabled workflows only, rate-limited, inputs from defaults. */
+  /** @returns {{ ok: boolean, runId?: string, queued?: boolean, error?: string }} */
   trigger(wf, trigger, inputs = {}) {
     if (!wf.enabled) return { ok: false, error: `“${wf.name}” is paused.` };
     if (wf.concurrency !== 'queue' && this.isRunning(wf.id)) return { ok: false, error: `“${wf.name}” is already running.` };
@@ -104,7 +128,7 @@ class RunQueue {
 
   drain() {
     // Paused or deleted since it was queued: it doesn't run.
-    this.queue = this.queue.filter(q => this.get(q.workflow.id)?.enabled);
+    this.queue.splice(0, this.queue.length, ...this.queue.filter(q => this.get(q.workflow.id)?.enabled));
     while (this.busyCount() < MAX_ACTIVE && this.queue.length) {
       const i = this.queue.findIndex(q => !this.isRunning(q.workflow.id));
       if (i < 0) return;
@@ -115,6 +139,7 @@ class RunQueue {
 
   /** Create the record and engine, and set it going. Returns the run at once. */
   launch(wf, trigger, inputs, { depth = 0, parentRunId = null, record = null, origin = null, budget = { executions: 0 } } = {}) {
+    /** @type {Record<string, any>} */
     const rec = record || {
       id: `run-${randomUUID()}`, workflowId: wf.id, workflowName: wf.name,
       trigger: { type: trigger.type, data: trigger.data ?? {} }, inputs,
@@ -123,6 +148,7 @@ class RunQueue {
     };
     // Never the definition itself: a run only ever runs a workflow from the checked list.
     delete rec.definition;
+    /** @type {any} */
     const run = { record: rec, workflowId: wf.id, tabs: new Set(), convos: new Map(), engine: null, child: depth > 0, origin: rec.origin || origin || trigger.type, budget };
     run.engine = new Engine({
       workflow: wf, record: rec, effects: this.effectsFor(run), secrets: this.secrets.all(),

@@ -10,7 +10,19 @@ const { clean } = require('./util');
 const MAX_CONFIRM_DETAIL = 12000;  // what the confirmation window shows in full
 const MODE_NAMES = { ask: 'Ask first', smart: 'Smart', acceptEdits: 'Auto-edit', plan: 'Plan only', autonomous: 'Autonomous' };
 
-class Approvals {
+// Object at run time: only the methods are copied (util.js mixin). The cast lets
+// tsc see what the service gives them.
+const Base = /** @type {new () => {
+  deps: any,
+  workflows: any[],
+  broken: any[],
+  now(): number,
+  folders: InstanceType<typeof import('./triggers').FolderWatch>,
+  get(id: string): any,
+  pushView(): void,
+}} */ (/** @type {unknown} */ (Object));
+
+class Approvals extends Base {
   /**
    * What's in settings.json, checked again: it's a file anything on this PC
    * can write. A workflow that no longer validates is kept as it was (never
@@ -29,6 +41,7 @@ class Approvals {
         this.deps.log.warn(`workflow "${clean(w?.name).slice(0, 60)}" not loaded: ${r.errors.map(e => e.message).join('; ')}`);
         continue;
       }
+      /** @type {Record<string, any>} */
       const wf = { ...r.workflow, updatedAt: w.updatedAt || r.workflow.updatedAt };
       if (wf.enabled && !this.approved(wf)) {
         wf.enabled = false;
@@ -50,6 +63,7 @@ class Approvals {
   // ---- approvals: an HMAC of each workflow's risk signature, under a key
   // kept encrypted by Windows. A risky workflow written into settings.json by
   // anything other than Shellby's own Save has no valid one.
+  /** @returns {Buffer | null} */
   approvalKey() {
     if (this.key !== undefined) return this.key;
     const file = path.join(this.deps.dataDir, 'approval.key');

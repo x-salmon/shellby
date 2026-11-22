@@ -57,7 +57,7 @@ function noteUnknown(event) {
 /**
  * What a ClaudeSession is made with (the constructor's comment says what each is).
  * @typedef {object} SessionOptions
- * @property {string | (() => string)} exe
+ * @property {string | (() => string | null)} exe
  * @property {string} cwd
  * @property {string} mode
  * @property {string} [model]
@@ -76,6 +76,7 @@ function noteUnknown(event) {
  * @property {{ tokens?: number, window?: number } | null} [context]
  * @property {string[]} [allowedTools]
  * @property {{ mcpServers?: Record<string, unknown> } | null} [mcpConfig]
+ * @property {() => Record<string, object> | null} [extraMcp]
  * @property {string | null} [systemNote]
  * @property {{ tools: unknown[], call: Function } | null} [mcp]
  * @property {() => { exe: string, host: string, dir: string, env: Record<string, string>, extra?: string[], argsPrefix?: string[] } | null} [remote]

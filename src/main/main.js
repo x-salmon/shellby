@@ -169,6 +169,7 @@ const ISOLATED = !app.isPackaged && !!process.env.SHELLBY_USER_DATA;
 const repeating = [];
 const every = (fn, ms) => { const t = setInterval(fn, ms); repeating.push(t); return t; };
 
+/** @type {Promise<unknown> | null} */
 let claudeRecheck = null; // a status check after Claude Code moved (shared.claudeExe), one at a time
 
 // ================================================================ shared
@@ -183,7 +184,7 @@ const shared = {
   LOG_DIR, log, every, repeating, randomUUID,
   PRIMARY: false, lastRun: null, sentry: null, // crash reports, started below
   captureClock: { now: null }, // screenshot runs can pretend it's Halloween
-  today: null,                  // what day it is for seasons and tide events (today.js), set just below
+  today: /** @type {(() => Date) | null} */ (null),                  // what day it is for seasons and tide events (today.js), set just below
   deskPreview: null,            // { skin, until }: the Painter's "Try him on the desk" (wiring/painter.js)
   isStr: s => typeof s === 'string' && s.length > 0 && s.length < 10000,
   isFolder: d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } }, // missing or unreadable: not a folder
@@ -230,9 +231,9 @@ const shared = {
   get recapLog() { return shared.awayService.recapLog; }, set recapLog(v) { shared.awayService.recapLog = v; },
 
   // ---- made at boot
-  config: null, history: null, skins: null, wardrobe: null, manager: null, toolbox: null, shop: null,
-  health: null, external: null, github: null, ci: null, ciGithub: null, ciGitlab: null, issues: null, updates: null, friends: null,
-  profileCard: null, prBadge: null, critter: null, panel: null, tray: null, timeTracker: null, timeSync: null,
+  config: /** @type {InstanceType<typeof import('./config').Config> | null} */ (null), history: null, skins: /** @type {any[] | null} */ (null), wardrobe: /** @type {InstanceType<typeof import('./wardrobe/service').Wardrobe> | null} */ (null), manager: null, toolbox: null, shop: null,
+  health: /** @type {InstanceType<typeof import('./health/service').HealthService> | null} */ (null), external: null, github: null, ci: null, ciGithub: null, ciGitlab: null, issues: null, updates: null, friends: null,
+  profileCard: null, prBadge: null, critter: /** @type {import('electron').BrowserWindow | null} */ (null), panel: /** @type {import('electron').BrowserWindow | null} */ (null), tray: null, timeTracker: null, timeSync: null,
   workflows: null,                 // the Automate page's engine (workflows/service.js)
   depWatch: null,                  // the weekly look at your projects' packages (depwatch/index.js)
   claudeUpdates: null,             // the daily look at Claude Code's own version (claude/update.js)
@@ -240,7 +241,7 @@ const shared = {
   projects: null,                  // the Projects page (projects/service.js)
   remoteService: null,             // other computers Claude Code runs on, over ssh (remote/service.js)
   devServers: null,                // the dev servers in them (devservers/service.js)
-  parityIpc: null,
+  parityIpc: /** @type {{ rememberPrompt(text: string): void } | null} */ (null),
   teamIpc: null,                   // Toolbox → Team: the repo's .shellby/team.json (team-ipc.js)
   lean: null,                      // Lean Shell: the prompt cache, setup weight and idle tools (lean.js)
   telemetry: null,                 // Claude Code's own metrics, received on 127.0.0.1 (telemetry-service.js)
@@ -253,21 +254,21 @@ const shared = {
   cancelHeld: null,                // taking one out of the reset queue, set by ipc/routines.js
   dictation: null, ptt: null,      // push-to-talk: hold the hotkey and say the task (see dictation.js)
   motion: null,                    // throws and strolls (see desktop/motion.js)
-  stillGate: null,                 // saves and scans wait while he walks (desktop/still.js, set by wiring/profile.js)
+  stillGate: /** @type {{ flush(): void } | null} */ (null),                 // saves and scans wait while he walks (desktop/still.js, set by wiring/profile.js)
   perching: null,                  // up on your windows (see desktop/perching.js)
   climbing: null,                  // up the edges of the screen and across the top (see desktop/climbing.js)
   pranks: null,                    // mischief, if you asked for it (see pranks.js)
   floor: null,                     // the strip of floor with his pals and footprints (see desktop/floor.js)
-  life: null,                      // his life between tasks: scenes, gifts, the bond, your day (see life.js)
+  life: /** @type {{ resendLook(): void } | null} */ (null),                      // his life between tasks: scenes, gifts, the bond, your day (see life.js)
   tankRemark: null,                // a word about his tank for the desktop, set by ipc/tank.js (tank/life.js)
   homeTurnEnded: null,             // a tab's turn ended: its place on the home line moves on, set by ipc/repo.js (worktrees/home-line.js)
   settingsSynced: null,            // settings changed on another PC take effect here, set by ipc/settings.js (sync/prefs.js)
   playtime: null,                  // hide and seek, fetch (see playtime.js)
-  typing: null,                    // tapping along while you type (see typing.js)
+  typing: /** @type {{ resend(): void } | null} */ (null),                    // tapping along while you type (see typing.js)
   weatherSvc: null,                // the weather outside, for what he wears (see weather/service.js)
 
   // ---- as he runs
-  claudeStatus: null,
+  claudeStatus: /** @type {Awaited<ReturnType<typeof checkStatus>> | null} */ (null),
   // Does the installed Claude Code take this flag? Its --help says (claude/cli.js helpFlags); the fake CLI takes anything.
   claudeSupports: flag => !!FAKE_CLI || !!shared.claudeStatus?.flags?.includes(flag),
   lastInit: null,                 // the newest init report from a conversation: its MCP list is refreshed from mcp_status
@@ -443,13 +444,13 @@ const { startSocial } = share(wireSocial(shared)); // swaps with friends and cra
 
 app.whenReady().then(() => {
   openProfile(); // settings and history, before anything reads them
-  const { config } = shared;
+  const config = /** @type {InstanceType<typeof import('./config').Config>} */ (shared.config); // made just above
   createWardrobe(); // credits past usage on its first run, so before any stat()
   stat('active');
   // This PC's own XP count, so sync can add PCs together (progression/xp.js).
   if (!CAPTURE && !config.get('xp')?.device) config.set({ xp: withDevice(config.get('xp'), randomUUID()) });
   awardXp('day');
-  every(() => { shared.wardrobe.collectSeasonals(); broadcastWardrobe(); eventsTick(); }, HOUR_MS);
+  every(() => { shared.wardrobe?.collectSeasonals(); broadcastWardrobe(); eventsTick(); }, HOUR_MS);
   setTimeout(() => { sweepTmp(); }, TMP_SWEEP_DELAY_MS).unref(); // old temp leftovers, once he's up
   shared.skins = loadSkins(userSkinsDir());
 
@@ -475,7 +476,7 @@ app.whenReady().then(() => {
   watchIdleCost();
   watchAway();
   watchLeaving();
-  const { critter, panel } = shared;
+  const { critter, panel } = /** @type {{ critter: import('electron').BrowserWindow, panel: import('electron').BrowserWindow }} */ (shared); // both made above
   critter.webContents.on('did-finish-load', () => { broadcastSkin(); refreshCritter(); sendVisitor(); shared.life?.resendLook(); shared.typing?.resend(); });
 
   if (CAPTURE) {
@@ -491,12 +492,13 @@ app.whenReady().then(() => {
   createTray();
   // Windows signing out or shutting down ends him without will-quit: that's no crash.
   // Forced ("Shut down anyway") there's no session-end, only the question before it.
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let ending = null;
   for (const w of [critter, panel]) {
     w?.on('session-end', () => { shared.stillGate?.flush(); crashReport.endRun(LOG_DIR); }); // a save held mid-walk lands first
     w?.on('query-session-end', () => {
       if (!ending) crashReport.markEnding(LOG_DIR);
-      clearTimeout(ending);
+      if (ending) clearTimeout(ending);
       ending = setTimeout(() => { ending = null; crashReport.markEnding(LOG_DIR, false); }, crashReport.ENDING_GRACE_MS);
     });
   }
@@ -505,7 +507,7 @@ app.whenReady().then(() => {
   // turned down leaves the disk, and what was okayed goes.
   setTimeout(drainCrashQueue, 10 * 1000);
   setTimeout(eventsTick, 12 * 1000); // a tide event that started while he was closed: said once he's up
-  shared.health.start();
+  /** @type {InstanceType<typeof import('./health/service').HealthService>} */ (shared.health).start();
   createExternal();
   shared.bgSessions.start(every);
   createTimeTracker();
@@ -570,7 +572,7 @@ app.whenReady().then(() => {
     .finally(startScheduler);
 
   const reclamp = () => {
-    const c = clampToDisplays(shared.critter.getBounds(), workAreas());
+    const c = clampToDisplays(/** @type {import('electron').BrowserWindow} */ (shared.critter).getBounds(), workAreas());
     placeCritter(c.x, c.y);
   };
   screen.on('display-removed', reclamp);

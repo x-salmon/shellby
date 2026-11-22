@@ -125,6 +125,7 @@ function registerSettingsIpc(ipcMain, d) {
   };
 
   ipcMain.handle('settings:set', async (_e, patch = {}) => {
+    /** @type {{ [key: string]: unknown, localModel?: unknown, pushToTalk?: unknown, apiKeyBilling?: unknown }} */
     const allowed = {};
     for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'apiKeyBilling', 'localModel', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'engineerRecords', 'engineerChecksFirst', 'taskBoard', 'handoffAsk', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest', 'modelAlways', 'pagesSync']) {
       if (k in patch) allowed[k] = patch[k];
@@ -155,36 +156,36 @@ function registerSettingsIpc(ipcMain, d) {
       });
       if (response === 0) d.autonomousOkThisRun = true; else delete allowed.mode;
     }
-    if ('mode' in allowed && !MODES.includes(allowed.mode)) delete allowed.mode;
+    if ('mode' in allowed && !MODES.includes(/** @type {string} */ (allowed.mode))) delete allowed.mode;
     if ('skin' in allowed) {
       const sk = d.allSkins().find(x => x.id === allowed.skin);
       if (!sk || sk.locked) delete allowed.skin;
     }
     if (allowed.mode === 'autonomous' && !d.config.get('autonomousAcknowledged') && allowed.autonomousAcknowledged !== true) delete allowed.mode;
     if (allowed.autonomousAcknowledged === false) delete allowed.autonomousAcknowledged; // can't be un-acknowledged silently either
-    if ('critterScale' in allowed) allowed.critterScale = [0.75, 1, 1.5, 2].includes(allowed.critterScale) ? allowed.critterScale : 1;
-    if ('crewSide' in allowed && !CREW_SIDES.includes(allowed.crewSide)) delete allowed.crewSide;
+    if ('critterScale' in allowed) allowed.critterScale = [0.75, 1, 1.5, 2].includes(/** @type {number} */ (allowed.critterScale)) ? allowed.critterScale : 1;
+    if ('crewSide' in allowed && !CREW_SIDES.includes(/** @type {string} */ (allowed.crewSide))) delete allowed.crewSide;
     if ('model' in allowed && !isModel(allowed.model)) delete allowed.model;
     if ('shareButtons' in patch) allowed.shareButtons = !!patch.shareButtons; // 📸 on celebrations (share-moments.md)
     if ('fallbackModel' in allowed && !isModel(allowed.fallbackModel)) delete allowed.fallbackModel;
     if ('helperModel' in allowed && !isModel(allowed.helperModel)) delete allowed.helperModel;
-    if ('effort' in allowed && allowed.effort !== '' && !EFFORTS.includes(allowed.effort)) delete allowed.effort;
+    if ('effort' in allowed && allowed.effort !== '' && !EFFORTS.includes(/** @type {string} */ (allowed.effort))) delete allowed.effort;
     if ('outputStyle' in allowed) allowed.outputStyle = outputStyles.clean(allowed.outputStyle);
     for (const k of ['openAtLogin', 'notifications', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'sounds', 'soundFx', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effortPick', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'apiKeyBilling', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'turnShots', 'spendGuard', 'holdBigTasks', 'selfAware', 'suggestions', 'engineerRecords', 'engineerChecksFirst', 'taskBoard', 'handoffAsk', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest', 'pagesSync']) if (k in allowed) allowed[k] = !!allowed[k];
     if ('localModel' in allowed) { const local = localModel.cleanSettings(allowed.localModel); if (local) allowed.localModel = local; else delete allowed.localModel; }
     if ('modelAlways' in allowed) allowed.modelAlways = modelPick.cleanAlways(allowed.modelAlways, isModel); // the kinds of small message that go to a model by themselves
-    if ('checkTimeoutMin' in allowed && !TIMEOUTS_MIN.includes(allowed.checkTimeoutMin)) delete allowed.checkTimeoutMin;
+    if ('checkTimeoutMin' in allowed && !TIMEOUTS_MIN.includes(/** @type {number} */ (allowed.checkTimeoutMin))) delete allowed.checkTimeoutMin;
     if ('keybindings' in allowed) allowed.keybindings = shortcuts.sanitizeOverrides(allowed.keybindings);
-    if ('spendReserve' in allowed && !guard.RESERVES.includes(allowed.spendReserve)) delete allowed.spendReserve;
-    if ('spendMaxMinutes' in allowed && !guard.MAX_MINUTES.includes(allowed.spendMaxMinutes)) delete allowed.spendMaxMinutes;
-    if ('chatter' in allowed && !voice.CHATTER.includes(allowed.chatter)) delete allowed.chatter;
-    if ('editor' in allowed && !filelinks.CHOICES.includes(allowed.editor)) delete allowed.editor;
-    if ('ambient' in allowed && !sounds.AMBIENTS.includes(allowed.ambient)) delete allowed.ambient;
-    if ('soundVolume' in allowed && !sounds.VOLUMES.includes(allowed.soundVolume)) delete allowed.soundVolume;
-    if ('crashReports' in allowed && !crashReport.CONSENTS.includes(allowed.crashReports)) delete allowed.crashReports;
+    if ('spendReserve' in allowed && !guard.RESERVES.includes(/** @type {number} */ (allowed.spendReserve))) delete allowed.spendReserve;
+    if ('spendMaxMinutes' in allowed && !guard.MAX_MINUTES.includes(/** @type {number} */ (allowed.spendMaxMinutes))) delete allowed.spendMaxMinutes;
+    if ('chatter' in allowed && !voice.CHATTER.includes(/** @type {string} */ (allowed.chatter))) delete allowed.chatter;
+    if ('editor' in allowed && !filelinks.CHOICES.includes(/** @type {string} */ (allowed.editor))) delete allowed.editor;
+    if ('ambient' in allowed && !sounds.AMBIENTS.includes(/** @type {string} */ (allowed.ambient))) delete allowed.ambient;
+    if ('soundVolume' in allowed && !sounds.VOLUMES.includes(/** @type {number} */ (allowed.soundVolume))) delete allowed.soundVolume;
+    if ('crashReports' in allowed && !crashReport.CONSENTS.includes(/** @type {string} */ (allowed.crashReports))) delete allowed.crashReports;
     if ('perch' in allowed && !PERCH_SETTINGS.includes(/** @type {string} */ (allowed.perch))) delete allowed.perch;
     if ('climb' in allowed && !CLIMB_SETTINGS.includes(/** @type {string} */ (allowed.climb))) delete allowed.climb;
-    if ('mischief' in allowed && !mischief.LEVELS.includes(allowed.mischief)) delete allowed.mischief;
+    if ('mischief' in allowed && !mischief.LEVELS.includes(/** @type {string} */ (allowed.mischief))) delete allowed.mischief;
     if ('mischiefPranks' in allowed) allowed.mischiefPranks = mischief.prankSet(allowed.mischiefPranks);
     if ('colony' in allowed) allowed.colony = Number.isInteger(allowed.colony) ? Math.max(0, Math.min(COLONY_MAX, allowed.colony)) : d.config.get('colony');
     // The only edit the panel makes to this list is taking an app back off it.
@@ -246,11 +247,12 @@ function registerSettingsIpc(ipcMain, d) {
   d.applyLocalPreset = async name => {
     const lm = localModel.cleanSettings(d.config.get('localModel'));
     if (!lm) return { ok: false, error: 'Set a server address first.' };
+    /** @type {any[]} */
     let installed = [];
     if (name !== 'off' && name !== 'custom') {
       const r = await localModel.listModels(lm.url);
       if (!r.ok && !/no models/.test(r.error || '')) return { ok: false, error: r.error };
-      installed = r.ok ? r.models : [];
+      installed = (r.ok && r.models) || [];
     }
     const { settings, missing } = localPresets.applyPreset(lm, name, installed);
     d.config.set({ localModel: localModel.cleanSettings(settings) });
@@ -290,6 +292,7 @@ function registerSettingsIpc(ipcMain, d) {
     return r;
   }, [opt(v => typeof v === 'boolean')]);
   // Local mode's fit check (local/fit.js): a chip for each model in use, and the 32K copy that fixes a short context.
+  /** @type {Awaited<ReturnType<typeof localSetup.hardware>> | null} */
   let fitHw = null;
   const inUse = lm => [lm.model, lm.models?.quiz, lm.agent.model, lm.agent.helpers, lm.agent.quick].filter(Boolean);
   ipcMain.handle('local:fit', async () => {

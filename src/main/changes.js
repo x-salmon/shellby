@@ -37,6 +37,7 @@ const MAX_PATCH = 400 * 1024;                   // one file's diff, as text
 // A -c before the subcommand, so any git takes it (GIT_CONFIG_COUNT would need 2.31).
 // A folder of this run's own, unguessable, so nobody can put a hook in it; removed on exit
 // (tmp-sweep.js removes one a crash left).
+/** @type {string | null} */
 let noHooksDir = null;
 const noHooks = () => {
   try {
@@ -59,14 +60,19 @@ const NO_FETCH_ARGS = ['-c', 'protocol.allow=never'];
 const NO_FETCH_ENV = { GIT_NO_LAZY_FETCH: '1' };
 
 // noFetch: a look only (NO_FETCH_ARGS above). The -c goes before the subcommand, as git wants it.
+/**
+ * @param {string} cwd @param {string[]} args
+ * @param {{ env?: Record<string, string>, input?: string, timeout?: number, maxBuffer?: number, noFetch?: boolean }} [opts]
+ * @returns {Promise<{ ok: true, out: string, error?: undefined } | { ok: false, error: string, out?: undefined }>}
+ */
 function git(cwd, args, { env, input, timeout = SNAPSHOT_TIMEOUT_MS, maxBuffer = 8 * 1024 * 1024, noFetch = false } = {}) {
   return new Promise(resolve => {
     const child = execFile('git', ['-C', cwd, '-c', 'core.quotepath=off', '-c', 'core.fsmonitor=false', ...(noFetch ? NO_FETCH_ARGS : []), ...args], {
       windowsHide: true, timeout, maxBuffer, encoding: 'utf8',
       // Literal pathspecs: a file a turn named "*.js" or ":(top)x" means that file, not every match.
       env: { ...process.env, ...env, ...(noFetch ? NO_FETCH_ENV : null), GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0', GIT_LITERAL_PATHSPECS: '1' },
-    }, (err, stdout, stderr) => resolve(err ? { ok: false, error: String(stderr || err.message).trim().split('\n').pop() } : { ok: true, out: stdout }));
-    if (input != null) { child.stdin.on('error', () => {}); child.stdin.end(input); }
+    }, (err, stdout, stderr) => resolve(err ? { ok: false, error: String(stderr || err.message).trim().split('\n').pop() ?? '' } : { ok: true, out: stdout }));
+    if (input != null) { child.stdin?.on('error', () => {}); child.stdin?.end(input); }
   });
 }
 
@@ -81,6 +87,7 @@ async function rootOf(dir) {
 // Git reports the root in full; the folder it was asked about may be an 8.3
 // short name (C:\Users\RUNNER~1\...). Compare the two with names expanded.
 const longPath = p => { try { return fs.realpathSync.native(p); } catch { return path.resolve(p); } };
+/** @param {string | null} root @param {string} dir @returns {root is string} */
 const sameRoot = (root, dir) => !!root && longPath(root).toLowerCase() === longPath(dir).toLowerCase();
 
 /**
@@ -95,7 +102,7 @@ const sameRoot = (root, dir) => !!root && longPath(root).toLowerCase() === longP
  * opts.hooks: false for a look only (the file viewer): the repo's hooks don't run.
  * opts.noFetch: true for a look only, too: git fetches no object the repo lacks (NO_FETCH_ARGS).
  */
-async function snapshot(dir, info = null, { hooks = true, noFetch = false } = {}) {
+async function snapshot(dir, /** @type {{ skipped?: string } | null} */ info = null, { hooks = true, noFetch = false } = {}) {
   const root = await rootOf(dir);
   if (!root) return null;
   const [idx, at] = await Promise.all([
@@ -191,7 +198,7 @@ async function changedFiles(root, before, after, { noFetch = false } = {}) {
  * opts.noFetch: a look only (NO_FETCH_ARGS). opts.info: given failed = true when git couldn't make
  * the diff at all (a missing object, a timeout), which null alone doesn't tell from "nothing changed".
  */
-async function summarize(start, end, { noFetch = false, info = null } = {}) {
+async function summarize(start, end, /** @type {{ noFetch?: boolean, info?: { failed?: boolean } | null }} */ { noFetch = false, info = null } = {}) {
   if (!start || !end || start.root !== end.root || start.tree === end.tree) return null;
   const files = await changedFiles(start.root, start.tree, end.tree, { noFetch });
   if (!files) { if (info) info.failed = true; return null; }
@@ -275,7 +282,7 @@ function scope(summary, mine, others = []) {
 }
 
 /** Checks the renderer's word before any of it reaches git. -> error string | null */
-function checkRef({ root, before, after, file, paths } = {}) {
+function checkRef(/** @type {{ root?: unknown, before?: any, after?: any, file?: unknown, paths?: unknown }} */ { root, before, after, file, paths } = {}) {
   if (typeof root !== 'string' || !path.isAbsolute(root) || root.length > 400) return 'Not a project folder.';
   if (!TREE.test(before || '') || !TREE.test(after || '')) return 'Not a snapshot.';
   const badFile = f => typeof f !== 'string' || !f || f.length > 1000 || f.includes('\0') || path.isAbsolute(f) || f.split(/[\\/]/).includes('..');
@@ -406,7 +413,7 @@ async function prunePins(root, keep = MAX_PINNED) {
  * refused until `force`: the caller asks first.
  *   -> { ok: true, restored } | { ok: false, error, changedSince? }
  */
-async function restoreTo({ root: dir, to, from, paths } = {}, { force = false } = {}) {
+async function restoreTo(/** @type {{ root?: any, to?: any, from?: any, paths?: any }} */ { root: dir, to, from, paths } = {}, { force = false } = {}) {
   const bad = checkRef({ root: dir, before: to, after: from, paths });
   if (bad) return { ok: false, error: bad };
   const root = await rootOf(dir);
@@ -455,7 +462,7 @@ function splitHunks(patch) {
  * one hunk, and taking it back is the whole turn's Undo.
  *   -> { ok: true, to: the turn's new "after" tree } | { ok: false, error, changedSince? }
  */
-async function undoHunk(ref, { hunk, header } = {}) {
+async function undoHunk(ref, /** @type {{ hunk?: any, header?: unknown }} */ { hunk, header } = {}) {
   const bad = checkRef(ref);
   if (bad) return { ok: false, error: bad };
   if (!ref.file) return { ok: false, error: 'Not a file in this change.' };

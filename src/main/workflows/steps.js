@@ -8,7 +8,21 @@ const mcpServers = require('../mcpservers');
 const mcpClient = require('../mcpclient');
 const { clean } = require('./util');
 
-class Steps {
+// Object at run time: only the methods are copied (util.js mixin). The cast lets
+// tsc see what the service gives them.
+const Base = /** @type {new () => {
+  deps: any,
+  active: Map<string, any>,
+  asks: Map<string, any>,
+  tabRuns: Map<string, string>,
+  toolReads: Map<string, Promise<any>>,
+  byName(name: string): any,
+  launch(wf: any, trigger: any, inputs: any, opts?: any): any,
+  pushView(): void,
+  resolveInputs(wf: any, raw: any): any,
+}} */ (/** @type {unknown} */ (Object));
+
+class Steps extends Base {
   effectsFor(run) {
     const d = this.deps;
     return {
@@ -124,7 +138,7 @@ class Steps {
     // conversation) of a run still going, never the one it's sharing.
     const idle = id => this.tabRuns.has(id) && !m.isBusy(id) && !m.tabs.get(id)?.session.pending?.size;
     const shared = new Set([...this.active.values()].map(r => r.tabId).filter(Boolean));
-    const spare = [...m.tabs.keys()].find(id => idle(id) && !this.active.has(this.tabRuns.get(id)))
+    const spare = [...m.tabs.keys()].find(id => idle(id) && !this.active.has(this.tabRuns.get(id) ?? ''))
       || [...m.tabs.keys()].find(id => idle(id) && !shared.has(id));
     if (!spare) throw new Error(`All ${this.deps.maxTabs} conversations are open. Close one so the workflow can start Claude.`);
     this.deps.closeTab(spare);
