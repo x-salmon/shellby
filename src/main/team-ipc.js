@@ -296,7 +296,7 @@ function register(deps) {
     if (c.error) return done({ ok: false, error: c.error });
     const hook = typeof key === 'string' ? c.pack.hooks.find(h => tp.hookKey(h) === key) : null;
     if (!hook) return done({ ok: false, error: "That hook isn't in the team pack any more." });
-    if (!HOOK_SCOPES.includes(scope)) return done({ ok: false, error: 'Pick where to add it.' });
+    if (!(typeof scope === 'string' && HOOK_SCOPES.includes(scope))) return done({ ok: false, error: 'Pick where to add it.' });
     const { about: _a, ...plain } = hook;
     const r = await deps.saveHook({ scope, hook: plain });
     if (r.ok) deps.stat('team-hook-added');
@@ -308,7 +308,7 @@ function register(deps) {
     if (c.error) return done({ ok: false, error: c.error });
     const rule = typeof key === 'string' ? c.pack.rules.find(r => tp.ruleKey(r) === key) : null;
     if (!rule) return done({ ok: false, error: "That rule isn't in the team pack any more." });
-    if (!RULE_SCOPES.includes(scope)) return done({ ok: false, error: 'Pick where to add it.' });
+    if (!(typeof scope === 'string' && RULE_SCOPES.includes(scope))) return done({ ok: false, error: 'Pick where to add it.' });
     const r = await deps.saveRule({ scope, list: rule.list, rule: rule.rule });
     if (r.ok) deps.stat('team-rule-added');
     return done({ ok: !!r.ok, cancelled: !!r.cancelled, error: r.ok || r.cancelled ? null : r.error });
@@ -347,7 +347,7 @@ function register(deps) {
     if (c.error) return done({ ok: false, error: c.error });
     const server = isStr(name) ? c.pack.mcpServers.find(s => s.name === name) : null;
     if (!server) return done({ ok: false, error: "That MCP server isn't in the team pack any more." });
-    const filled = tp.mcpInput(server, valuesFor({ [name]: values }, name));
+    const filled = tp.mcpInput(server, valuesFor({ [/** @type {string} */ (name)]: values }, name));
     if (filled.error) return done({ ok: false, error: filled.error, missing: filled.missing });
     const blanks = [...server.env, ...server.headers];
     const response = await deps.confirm({
@@ -359,7 +359,7 @@ function register(deps) {
       buttons: [{ label: 'Add it', style: server.transport === 'stdio' ? 'danger' : 'primary' }, { label: 'Cancel' }], defaultId: 1, cancelId: 1,
     });
     if (response !== 0) return done({ ok: false, cancelled: true });
-    const r = await addMcp(server, valuesFor({ [name]: values }, name));
+    const r = await addMcp(server, valuesFor({ [/** @type {string} */ (name)]: values }, name));
     if (r.ok) deps.stat('team-mcp-added');
     return done(r);
   }, [obj({ name: NAME, values: opt(obj()) })]);
