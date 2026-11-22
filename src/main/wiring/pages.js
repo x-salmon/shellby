@@ -17,6 +17,7 @@ const crypto = require('crypto');
 const os = require('os');
 const path = require('path');
 const { app } = require('electron');
+const { fromWindow } = require('../asking');
 const { createStore } = require('../pages/store');
 const format = require('../pages/format');
 const checks = require('../pages/checks');
@@ -194,7 +195,7 @@ function wirePages(d) {
 
   /** The shelf's miniature, from where the page sits in the panel as it closes (rect in CSS px). */
   async function thumb(id, rect) {
-    const wc = d.panel?.webContents;
+    const wc = fromWindow(d.panel)?.webContents;
     if (!wc || !pages().known(id) || format.isDraftId(id)) return { ok: false };
     const z = wc.getZoomFactor?.() || 1;
     const r = { x: Math.round(rect.x * z), y: Math.round(rect.y * z), width: Math.round(rect.width * z), height: Math.round(rect.height * z) };
@@ -216,7 +217,7 @@ function wirePages(d) {
    * -> { ok, picture, preview } | { ok: false }
    */
   async function shot(id, o) {
-    const wc = d.panel?.webContents;
+    const wc = fromWindow(d.panel)?.webContents;
     if (!wc || !pages().known(id)) return { ok: false };
     const picks = pointing.cleanPicks(o?.picks);
     const bounds = pointing.cleanRect(o?.bounds);

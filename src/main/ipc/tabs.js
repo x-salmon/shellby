@@ -116,17 +116,18 @@ function registerTabsIpc(ipcMain, d) {
   // so, as with openTabs (wiring/sessions.js), the split stays as it was.
   ipcMain.on('panes:layout', (e, layout) => {
     if (/** @type {{ isQuitting?: boolean }} */ (app).isQuitting) return;
-    if (d.popoutTabOf(e.sender)) return; // a conversation in its own window has no grid
-    const clean = panes.clean(layout, [...d.manager.tabs.keys()]);
+    // A conversation's own window has its panes too, never saved: only its tabs' order is kept.
+    const out = !!d.isPopout?.(e.sender);
+    const clean = panes.clean(layout, out ? d.popoutTabs(e.sender) : [...d.manager.tabs.keys()]);
     if (clean) d.manager.setOrder(panes.tabIds(clean.grid));
+    if (out) return;
     const keep = clean && panes.count(clean.grid) > 1 ? clean : null;
     if (JSON.stringify(keep) === JSON.stringify(d.config.get('paneLayout') ?? null)) return;
     d.config.set({ paneLayout: keep });
   }, [obj({ grid: list(Array.isArray, 16), sizes: opt(obj()) })]);
   // The layouts you saved by name (shapes only, no conversations): the list
   // as it stands, after saving `list` if one is given. Cleaned on the way in.
-  ipcMain.handle('panes:shapes', (e, list) => {
-    if (d.popoutTabOf(e.sender)) return [];
+  ipcMain.handle('panes:shapes', (_e, list) => {
     if (list !== undefined) {
       const keep = panes.cleanShapes(list);
       if (JSON.stringify(keep) !== JSON.stringify(d.config.get('paneShapes') ?? [])) d.config.set({ paneShapes: keep });
@@ -140,12 +141,19 @@ function registerTabsIpc(ipcMain, d) {
     d.setCarry(tabId, carry);
     return { ok: d.popOut(tabId, { x, y }) };
   }, [obj({ tabId: ID, x: opt(num()), y: opt(num()), carry: opt(obj()) })]);
-  // Its window's own ×: back into the panel, with whatever was typed there.
+  // One conversation back into the panel, with whatever was typed there.
   ipcMain.on('tab:pop-in', (e, { tabId, carry } = {}) => {
-    if (!d.isStr(tabId) || d.popoutTabOf(e.sender) !== tabId) return;
+    if (!d.isStr(tabId) || !d.popoutTabs(e.sender).includes(tabId)) return;
     d.setCarry(tabId, carry);
     d.popIn(tabId);
   }, [obj({ tabId: ID, carry: opt(obj()) })]);
+  // Its window's own ×: every conversation in it, each with whatever was typed there.
+  // front: the one that was up. Any it doesn't name come back too.
+  ipcMain.on('popout:home', (e, { front, carries = [] } = {}) => {
+    const own = new Set(d.popoutTabs(e.sender));
+    for (const c of carries) if (own.has(c.tabId)) d.setCarry(c.tabId, c.carry);
+    d.closeHome(e.sender, front);
+  }, [obj({ front: opt(ID), carries: opt(list(obj({ tabId: ID, carry: opt(obj()) }), 200)) })]);
   // The review inbox (review-inbox.js): you've looked at its latest changes, or want them back in the list.
   // after: the changes you looked at. Newer ones that landed meanwhile stay unreviewed.
   ipcMain.handle('tab:reviewed', (_e, { tabId, reviewed = true, after = null } = {}) =>

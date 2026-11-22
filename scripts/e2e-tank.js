@@ -197,8 +197,8 @@ async function quit(app, ms = 20000) {
     await panel.ev("SB.setView('tank')");
     await until("(document.getElementById('tkLife')?.textContent || '').includes('sandcastle keep')", 'his favourite on the Tank tab');
     check(true, 'the Tank tab names his favourite');
-    const junk = await panel.ev('shellby.tankLived(["x"]).then(r => r.favourite)');
-    check(junk === 1, 'a junk report changes nothing');
+    const junk = await panel.ev('shellby.tankLived(["x"]).then(() => "taken", () => shellby.getTank().then(v => v.favourite))');
+    check(junk === 1, 'a junk report is refused and changes nothing');
 
     console.log('the porthole');
     await panel.ev("SB.views.tank.render(); SB.setView('health')");

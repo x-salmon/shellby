@@ -4,6 +4,7 @@
 // Kept out of main.js, which only wires it up.
 const { BrowserWindow, app, ipcMain, screen } = require('electron');
 const path = require('path');
+const { askingWindow } = require('../asking');
 const { attachContextMenu } = require('../context-menu');
 const { sendToBottom } = require('../desktop/desktop-layer');
 const native = require('../desktop/native-windows');
@@ -75,11 +76,7 @@ function wirePanel(d) {
     panel.on('hide', () => throttle(true));
     panel.on('minimize', () => throttle(true));
     panel.on('resized', () => {
-      if (Date.now() - roomyAt < ROOMY.settleMs) return; // it was us, not you
-      if (panel.isMaximized()) return; // the size to come back to is the one before
-      // Resizing it yourself while it's made room keeps your size: there's nothing to put back,
-      // and the panel stops asking for room.
-      if (roomyFrom) { roomyFrom = null; d.send(panel, 'panel:roomy-lost'); }
+      if (!resizedByYou(panel)) return;
       const [width, height] = panel.getSize();
       d.config.set({ panelSize: { width, height } });
     });
@@ -87,32 +84,49 @@ function wirePanel(d) {
 
   // ---- making room
 
-  let roomyFrom = null; // { from: its bounds before, set: the bounds it grew to, right, low }
-  let roomyAt = 0;
+  // Each window's own (the panel, and conversations out in theirs): what it grew from,
+  // { from: its bounds before, set: the bounds it grew to, right, low }, and when.
+  /** @type {WeakMap<object, { grown: any, at: number }>} */
+  const rooms = new WeakMap();
+  function roomOf(win) {
+    const room = rooms.get(win) || { grown: null, at: 0 };
+    rooms.set(win, room);
+    return room;
+  }
 
-  function setPanelRoomy(on) {
-    const { panel } = d;
+  // Resizing it yourself while it's made room keeps your size: there's nothing to
+  // put back, and it stops asking for room. -> by you?
+  function resizedByYou(win) {
+    const room = roomOf(win);
+    if (Date.now() - room.at < ROOMY.settleMs) return false; // it was us, not you
+    if (win.isMaximized()) return false; // the size to come back to is the one before
+    if (room.grown) { room.grown = null; d.send(win, 'panel:roomy-lost'); }
+    return true;
+  }
+
+  function setPanelRoomy(on, panel = d.panel) {
     if (!panel || panel.isDestroyed()) return { ok: false, roomy: false };
+    const room = roomOf(panel);
     if (!on) {
-      if (roomyFrom) {
-        const { from, set } = roomyFrom;
+      if (room.grown) {
+        const { from, set } = room.grown;
         const c = panel.getBounds();
         // Where it was, unless it's been moved (or put back beside the crab) since: then its
         // size, keeping the corner it grew from where it is now.
-        const back = c.x === set.x && c.y === set.y ? from : shrunkBounds(roomyFrom, c, screen.getDisplayMatching(c).workArea);
-        roomyAt = Date.now();
+        const back = c.x === set.x && c.y === set.y ? from : shrunkBounds(room.grown, c, screen.getDisplayMatching(c).workArea);
+        room.at = Date.now();
         panel.setBounds(back);
-        roomyFrom = null;
+        room.grown = null;
         return { ok: true, roomy: false, size: { width: back.width, height: back.height } }; // what the page waits to be
       }
       return { ok: true, roomy: false };
     }
-    if (roomyFrom) return { ok: true, roomy: true };
+    if (room.grown) return { ok: true, roomy: true };
     const b = panel.getBounds();
     const grown = grownBounds(b, screen.getDisplayMatching(b).workArea);
     if (!grown) return { ok: true, roomy: false };
-    roomyFrom = { from: b, ...grown };
-    roomyAt = Date.now();
+    room.grown = { from: b, ...grown };
+    room.at = Date.now();
     panel.setBounds(grown.set);
     return { ok: true, roomy: true };
   }
@@ -123,15 +137,15 @@ function wirePanel(d) {
   // (the renderer has already scaled by its zoom). It's the panes' size now, so
   // Make room has nothing to put back: the map hears it's lost its room, as
   // when you resize it yourself.
-  function fitPanel(want) {
-    const { panel } = d;
+  function fitPanel(want, panel = d.panel) {
     if (!panel || panel.isDestroyed() || panel.isMaximized()) return { ok: false, grew: false };
     const b = panel.getBounds();
     const w = { width: Math.max(b.width, Math.ceil(want.width)), height: Math.max(b.height, Math.ceil(want.height)) };
     const grown = grownBounds(b, screen.getDisplayMatching(b).workArea, w);
     if (!grown) return { ok: true, grew: false };
-    if (roomyFrom) { roomyFrom = null; d.send(panel, 'panel:roomy-lost'); }
-    roomyAt = Date.now(); // ours, not yours: the resized handler won't save it as panelSize
+    const room = roomOf(panel);
+    if (room.grown) { room.grown = null; d.send(panel, 'panel:roomy-lost'); }
+    room.at = Date.now(); // ours, not yours: the resized handler won't save it as panelSize
     panel.setBounds(grown.set);
     return { ok: true, grew: true };
   }
@@ -158,6 +172,9 @@ function wirePanel(d) {
   function showPanel({ focusInput = true, tabId = null } = {}) {
     // A conversation in its own window is shown there instead (wiring/popouts.js).
     if (tabId && d.isPoppedOut(tabId)) return d.showPopout(tabId);
+    // Asked for in such a window (a screen to open, mostly): it opens there (window-routes.js).
+    const asker = tabId ? null : askingWindow();
+    if (asker) return d.showWindow(asker);
     const { panel } = d;
     if (openBehind || (Date.now() - reachedAt > REACHED_MS && gameInFront())) {
       if (!panel.isVisible()) { if (!panel.isMaximized()) placePanel(); panel.showInactive(); sendToBottom(panel); }
@@ -193,7 +210,7 @@ function wirePanel(d) {
     else showPanel();
   }
 
-  return { createPanel, fitPanel, gameInFront, reachedForShellby, setPanelRoomy, showPanel, togglePanel };
+  return { createPanel, fitPanel, gameInFront, reachedForShellby, resizedByYou, setPanelRoomy, showPanel, togglePanel };
 }
 
 module.exports = { wirePanel, grownBounds, shrunkBounds, ROOMY };

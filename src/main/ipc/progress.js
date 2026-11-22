@@ -5,6 +5,7 @@
 const { dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { fromWindow } = require('../asking');
 const confirm = require('../confirm');
 const { either, ID, list, obj, opt, PATH, str, text } = require('../ipc-args');
 const recap = require('../recap');
@@ -228,7 +229,7 @@ function registerProgressIpc(ipcMain, d) {
     return d.timeTracker.addTime({ key: timeKey(e.key), day: DAY.test(e.day) ? e.day : null, minutes: Number(e.minutes) || 0, note: typeof e.note === 'string' ? e.note.slice(0, 400) : undefined });
   }, [opt(obj())]);
   ipcMain.handle('time:add-folder', async () => {
-    const r = await dialog.showOpenDialog(d.panel, { title: 'Which project folder should Shellby keep time for?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), { title: 'Which project folder should Shellby keep time for?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
     if (r.canceled || !r.filePaths[0] || !d.isFolder(r.filePaths[0])) return { ok: false, canceled: true };
     return d.timeTracker.addFolder(r.filePaths[0]);
   });

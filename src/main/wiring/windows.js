@@ -394,6 +394,7 @@ function wireWindows(d) {
     const key = JSON.stringify([panelCalm, crabCalm]);
     if (key === calmSent) return;
     calmSent = key;
+    d.calmPopouts?.();
     d.send(d.panel, 'panel:calm', panelCalm);
     d.send(d.critter, 'critter:calm', crabCalm);
     if (critterReady) veil(d.critter, crabCalm.hide, { lower: sendToBottom }); // until then, ready-to-show decides

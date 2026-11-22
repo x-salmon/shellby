@@ -573,6 +573,7 @@ interface ShellbyPanelExtras {
   overlayOpen: any;
   paneEls: any;
   paneStripOf: any;
+  popIn: any;
   popOut: any;
   refreshJump: any;
   refreshPaneHeads: any;

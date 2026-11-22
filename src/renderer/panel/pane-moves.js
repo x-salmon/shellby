@@ -65,7 +65,7 @@
   // one. ('new' stands in for a new conversation while the room is measured:
   // an id in no pane, so place treats it as a tab coming from off screen.)
   SB.splitPane = async () => {
-    if (SB.solo || !state.activeTab || !(await SB.chatShowing())) return;
+    if (!state.activeTab || !(await SB.chatShowing())) return;
     SB.unzoom();
     const here = P.paneWith(state.grid, state.activeTab);
     const take = here && here.tabs.length > 1 ? state.activeTab : null;
@@ -91,7 +91,7 @@
   // the chat is shown and settled first, as for Split. -> moved?
   SB.paneDir = key => DIRS[key] || null;
   SB.movePane = async (tabId, dir) => {
-    if (SB.solo || !(await SB.chatShowing())) return false;
+    if (!(await SB.chatShowing())) return false;
     const to = P.moveToward(state.grid, tabId, dir);
     if (to) return SB.placeTab(tabId, to.target, to.zone); // which toasts when the room's not there
     // At the left or right edge with something to leave behind (other tabs in
@@ -112,7 +112,7 @@
   // nothing. For tab-strip.js's drag.
   SB.dropAt = (x, y, dragId) => {
     const w = window.innerWidth, ht = window.innerHeight;
-    if (x < -OUT || y < -OUT || x > w + OUT || y > ht + OUT) return SB.solo ? null : { kind: 'out' };
+    if (x < -OUT || y < -OUT || x > w + OUT || y > ht + OUT) return { kind: 'out' };
     x = Math.min(Math.max(x, 0), w - 1);
     y = Math.min(Math.max(y, 0), ht - 1);
     if (y < $('tabstrip').getBoundingClientRect().bottom) return { kind: 'strip' }; // hidden while split: a zero rect

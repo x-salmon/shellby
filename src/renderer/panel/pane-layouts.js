@@ -37,7 +37,7 @@
   }
   // -> zoomed now?
   SB.toggleZoom = () => {
-    if (SB.solo || state.view !== 'chat') return false;
+    if (state.view !== 'chat') return false;
     if (state.zoomPane) { unzoom(); return false; }
     if (SB.paneEls.size < 2) { SB.toast('Zoom is for side by side: split first (Ctrl+\\).'); return false; }
     state.zoomPane = focusedPane();
@@ -60,7 +60,7 @@
   state.paneShapes = [];
   const loadShapes = list => { state.paneShapes = Array.isArray(list) ? list : []; };
   // Once they're in, the conversation on screen may be in a project with one of its own.
-  if (!SB.solo) api.paneShapes?.().then(list => { loadShapes(list); lastProject = null; SB.offerProjectLayout(); }, () => {});
+  api.paneShapes?.().then(list => { loadShapes(list); lastProject = null; SB.offerProjectLayout(); }, () => {});
 
   // How a shape reads in a list: "3 columns, 4 panes".
   SB.shapeSummary = shape => {
@@ -70,7 +70,7 @@
 
   // The split as it is now, under `name` (a layout already by that name is replaced).
   SB.saveLayout = async (name) => {
-    if (SB.solo || P.count(state.grid) < 2) return SB.toast('Split first: a layout is two panes or more.');
+    if (P.count(state.grid) < 2) return SB.toast('Split first: a layout is two panes or more.');
     const taken = new Set(state.paneShapes.map(s => s.name.toLowerCase()));
     let n = state.paneShapes.length + 1;
     while (!name && taken.has(`layout ${n}`)) n++;
@@ -111,7 +111,7 @@
   // The split as it is now, as the project's own layout, replacing the one it had.
   SB.saveProjectLayout = async () => {
     const tab = SB.activeTab();
-    if (SB.solo || !tab || P.count(state.grid) < 2) return SB.toast('Split first: a layout is two panes or more.');
+    if (!tab || P.count(state.grid) < 2) return SB.toast('Split first: a layout is two panes or more.');
     const project = SB.projectOf(tab);
     const name = SB.projectName(tab).slice(0, 40);
     const shape = { ...P.shapeOf(state.grid, state.paneSizes, name), project };
@@ -127,7 +127,7 @@
   const offered = new Set();
   SB.offerProjectLayout = () => {
     const tab = SB.activeTab();
-    if (SB.solo || !tab || state.view !== 'chat') return;
+    if (!tab || state.view !== 'chat') return;
     const key = SB.projectOf(tab);
     if (key === lastProject) return;
     lastProject = key;
@@ -143,7 +143,7 @@
   // A project's own layout: its conversations open now take the first panes,
   // one each (the one you're in first), and new ones open in its folder.
   SB.useLayout = async (shape) => {
-    if (SB.solo || !shape || !(await SB.chatShowing())) return false;
+    if (!shape || !(await SB.chatShowing())) return false;
     unzoom();
     const here = SB.activeTab();
     const lead = shape.project
