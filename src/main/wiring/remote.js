@@ -54,7 +54,7 @@ function wireRemote(d) {
   // A terminal on the other computer: Windows Terminal (or PowerShell, through
   // cmd's start so it gets a window) running ssh -t with one of ssh.js's
   // scripts. Its prompts are its own: a terminal can ask for a passphrase itself.
-  function openTerminal({ host, script, extra = [] }) {
+  function openTerminal(/** @type {{ host: string, script: string, extra?: string[] }} */ { host, script, extra = [] }) {
     if (!ssh.isHost(host)) return Promise.resolve({ ok: false, error: 'Which computer?' });
     const line = ssh.sshArgs(host, script, { tty: true, extra }).map(handoff.psQuote).join(' ');
     const options = { cwd: os.homedir(), detached: true, stdio: 'ignore', windowsHide: false };
@@ -62,7 +62,7 @@ function wireRemote(d) {
     return handoff.launch(plans, spawn);
   }
 
-  function run(file, args, { input = null, env = null, timeout = 30000 } = {}) {
+  function run(file, args, /** @type {{ input?: string | null, env?: NodeJS.ProcessEnv | null, timeout?: number }} */ { input = null, env = null, timeout = 30000 } = {}) {
     return new Promise(resolve => {
       let child;
       try {

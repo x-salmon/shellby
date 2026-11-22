@@ -82,14 +82,14 @@
   }
 
   function showCode(v) {
-    clearInterval(codeTimer);
+    if (codeTimer) clearInterval(codeTimer);
     codeTimer = null;
     $('pocketCode').hidden = !v.code;
     if (!v.code) return;
     $('pocketCodeText').textContent = v.code.text;
     const tick = () => {
       if (Date.now() > v.code.expiresAt) {
-        clearInterval(codeTimer);
+        if (codeTimer) clearInterval(codeTimer);
         $('pocketCode').hidden = true;
         $('pocketPair').textContent = 'Pair a phone';
         return;

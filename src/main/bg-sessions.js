@@ -58,7 +58,7 @@ const stateLabel = state => STATES[state] || (state ? state[0].toUpperCase() + s
  * that now needs you, or has finished. A session seen for the first time
  * already in that state says nothing (you knew, or it's from before Shellby
  * started); the first listing of all is only a baseline (prev null).
- * @returns {{ kind: 'needs'|'finished', session: object }[]}
+ * @returns {{ kind: 'needs'|'finished', session: ReturnType<typeof parseAgents>[number] }[]}
  */
 function newsBetween(prev, next) {
   if (!prev) return [];

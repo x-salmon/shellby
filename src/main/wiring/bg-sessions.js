@@ -19,7 +19,9 @@ const LOG_CHARS = 20000;
  */
 function wireBgSessions(d) {
   const ask = spec => confirm.ask(d.panel, { ...d.dialogLook(), ...spec });
+  /** @type {ReturnType<typeof bg.parseAgents> | null} */
   let list = null;        // the last listing (null until the first)
+  /** @type {Promise<ReturnType<typeof bg.parseAgents>> | null} */
   let listing = null;     // the listing in flight, shared by everyone who asks meanwhile
 
   const usable = () => !d.CAPTURE && !d.config.get('crabOnly') && !!d.claudeStatus?.installed && !!d.claudeExe?.();

@@ -32,6 +32,7 @@
   };
 
   // sel: the button to put the keyboard back on once the row is drawn again.
+  /** @param {string | null} [sel] */
   async function act(id, what, fn, sel = null) {
     if (busy.has(id)) return null;
     busy.set(id, what);

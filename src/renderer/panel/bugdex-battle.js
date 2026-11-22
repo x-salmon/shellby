@@ -28,7 +28,11 @@
   const JAR = { palette: { j: '#bfe9ff', c: '#b07a4a', h: '#ffffff', g: '#7fb8d6' }, pixels: ['..cccc..', '..cccc..', '.j....j.', 'jh.....j', 'jh.....j', 'j......j', 'j......j', 'jg....gj', '.jjjjjj.'] };
 
   let battles = [];
-  let scene = null;   // the open battle screen: { id, el, parts, shown, queue, playing, last }
+  /** @typedef {{ fx?: string, line: string, hp: number, seq: number, at: number }} BattleMove */
+  /** @typedef {{ id: string, b: NonNullable<ReturnType<typeof SB.battleOf>>, parts: Record<string, HTMLElement>, shown: number, queue: BattleMove[], playing: boolean, ready: boolean, back: HTMLElement | null, hp: number, log: unknown[], gen: number, idleN: number, idling: boolean, idleAnims: Animation[], quietSince: number, idleTimer: number }} BattleScene */
+  /** @type {BattleScene | null} */
+  let scene = null;   // the open battle screen: { id, b, parts, shown, queue, playing, ready, back, hp, log, … }
+  /** @type {string | null} */
   let chipFor = null; // the battle the chip is showing
   let chipSeq = 0;
 
@@ -93,13 +97,15 @@
     const b = SB.battleOf(id);
     if (!b) return;
     if (scene) close({ quiet: true });
-    const back = document.activeElement;
+    const back = /** @type {HTMLElement | null} */ (document.activeElement);
     const parts = build(b);
     document.body.append(parts.overlay);
     // Not ready until the intro has played: moves that come in meanwhile wait for it.
-    scene = { id, b, parts, shown: 0, queue: [], playing: false, ready: false, back, hp: b.max, log: [] };
     // Between moves they fill the gap (fidget); gen tells a filler a real move has cut it off.
-    Object.assign(scene, { gen: 0, idleN: 0, idling: false, idleAnims: [], quietSince: Date.now(), idleTimer: setInterval(IDLE.tick, IDLE_TICK_MS) });
+    scene = {
+      id, b, parts, shown: 0, queue: [], playing: false, ready: false, back, hp: b.max, log: [],
+      gen: 0, idleN: 0, idling: false, idleAnims: [], quietSince: Date.now(), idleTimer: setInterval(IDLE.tick, IDLE_TICK_MS),
+    };
     parts.close.focus({ preventScroll: true });
     intro(b);
   }
@@ -177,7 +183,7 @@
 
   // ------------------------------------------------------------ playing it out
   async function intro(b) {
-    const s = scene;
+    const s = /** @type {BattleScene} */ (scene); // openBattle just made it
     const { parts } = s;
     FX.renderParty(b);
     const rank = b.league || (b.boss ? 'boss' : null);
@@ -221,7 +227,7 @@
   }
 
   async function warning(rank) {
-    const { parts } = scene;
+    const { parts } = /** @type {BattleScene} */ (scene);
     const stripe = h('div', { class: `bb-warning ${rank}` }, h('span', { text: rank === 'champion' ? '★ CHAMPION ★' : rank === 'elite' ? 'THE DEEP FOUR' : '!! HABITAT BOSS !!' }));
     parts.fx.append(stripe);
     FX.shake(6, 500);
@@ -242,7 +248,7 @@
   }
 
   async function run() {
-    const s = scene;
+    const s = /** @type {BattleScene} */ (scene); // feed() checked it
     s.playing = true;
     while (scene === s && s.queue.length) {
       const m = s.queue.shift();
@@ -263,7 +269,7 @@
   }
 
   async function play(m, b) {
-    const p = scene.parts;
+    const p = /** @type {BattleScene} */ (scene).parts;
     switch (m.fx) {
       case 'appear': return;
       case 'ko': {
@@ -304,7 +310,7 @@
   }
 
   /** Type a line into the box; `from`: carry on from that many characters already shown. */
-  async function say(line, { before = null, log = true, from = 0, hold = LINE_HOLD_MS } = {}) {
+  async function say(line, /** @type {{ before?: (() => unknown) | null, log?: boolean, from?: number, hold?: number }} */ { before = null, log = true, from = 0, hold = LINE_HOLD_MS } = {}) {
     const s = scene;
     if (!s) return;
     if (before) await before();
@@ -327,7 +333,7 @@
     if (!scene || !line) return;
     const log = scene.parts.log;
     log.append(h('li', { text: line }));
-    while (log.children.length > MAX_LOG) log.firstChild.remove();
+    while (log.children.length > MAX_LOG) /** @type {ChildNode} */ (log.firstChild).remove();
   }
 
   // ------------------------------------------------------------ HP
@@ -353,7 +359,7 @@
   // Out cold, it's collected the Shellby way: a specimen jar lowered on a line,
   // it drifts up into it, the cork goes on, and the jar comes to rest on the rock.
   async function catchIt(b, m) {
-    const p = scene.parts;
+    const p = /** @type {BattleScene} */ (scene).parts;
     const jar = h('div', { class: 'bb-jar' }, SB.Sprite.grid(JAR.pixels, JAR.palette, { px: 4 }));
     // Where it stood (its own box: the art itself is floating belly-up).
     const stood = FX.centre(p.foe);

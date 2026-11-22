@@ -28,7 +28,9 @@
 // "no job", and callers fall back to what they did before.
 const os = require('os');
 
+/** @type {any} */ // FFI module, untyped
 let koffi = null;
+// @ts-ignore koffi's types aren't in the program (jsconfig's noResolve)
 try { koffi = require('koffi'); } catch { /* no job objects: callers fall back to taskkill */ }
 
 const PROCESS_TERMINATE = 0x1;
@@ -65,6 +67,7 @@ const KEEP = new Set([
 const live = new Set();
 let givingWay = false; // a game is up: every live job is held back (giveWay)
 
+/** @type {any} */ // koffi function handles
 let api = null;
 function load() {
   if (api || !koffi || process.platform !== 'win32') return api;
@@ -92,7 +95,7 @@ function exeName(a, h) {
   const buf = new Uint16Array(1024);
   const size = [1024];
   if (!a.QueryFullProcessImageNameW(h, 0, buf, size)) return '';
-  return String.fromCharCode(...buf.slice(0, size[0])).split('\\').pop().toLowerCase();
+  return (String.fromCharCode(...buf.slice(0, size[0])).split('\\').pop() ?? '').toLowerCase();
 }
 
 /**

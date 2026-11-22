@@ -18,6 +18,16 @@ const KINDS = ['skills', 'agents', 'commands'];
 const PRIORITY = { plugin: 0, user: 1, project: 2 };
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
+/**
+ * @typedef {{ kind: string, name: string, description: string, source: string, path: string | null, listChars?: number, bodyChars?: number, status?: string,
+ *   hides?: Array<{ source: string, path: string | null }>, id?: string, enabled?: boolean, version?: string, tests?: unknown }} ToolItem
+ * @typedef {{ skills: ToolItem[], agents: ToolItem[], commands: ToolItem[], mcp: ToolItem[], mods: ToolItem[], scannedAt: number, builtins?: ReturnType<typeof builtinCommands> }} Toolbox
+ * @typedef {{ skills: ToolItem[], agents: ToolItem[], commands: ToolItem[] }} Found
+ * @typedef {ReturnType<typeof parseFrontmatter> & { bodyChars: number }} Meta
+ * @typedef {{ mtimeMs: number, size: number, meta: Meta }} MetaEntry
+ * @typedef {{ skills?: unknown, agents?: unknown, commands?: unknown, slash_commands?: unknown, mcp_servers?: unknown, plugins?: Array<{ name: string, path: string }> }} InitEvent
+ */
+
 // ---- frontmatter
 
 // Minimal YAML frontmatter reader: top-level `key: value` scalars only.
@@ -114,12 +124,13 @@ function cleanDesc(d) {
 // when the skill, command or agent is called. cache ({ prev, next } Maps keyed by
 // path) skips re-reading a file whose size and time haven't changed: with a few
 // dozen plugins that's hundreds of files, and the scan runs on the main process.
+/** @param {string} file @param {{ prev: Map<string, MetaEntry>, next: Map<string, MetaEntry> } | null} [cache] @returns {Meta | null} */
 function readMeta(file, cache = null) {
   try {
     const st = fs.statSync(file);
     if (!st.isFile() || st.size > MAX_FILE) return null;
     const hit = cache?.prev.get(file);
-    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) {
+    if (cache && hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) {
       cache.next.set(file, hit);
       return hit.meta;
     }
@@ -159,7 +170,9 @@ function tool(kind, name, meta, source, file) {
 }
 
 // Items from one root (<home>/.claude, <cwd>/.claude or a plugin dir).
+/** @param {string} root @param {string} source @param {string} prefix @param {{ prev: Map<string, MetaEntry>, next: Map<string, MetaEntry> } | null} cache @returns {Found} */
 function scanRoot(root, source, prefix, cache) {
+  /** @type {Found} */
   const found = { skills: [], agents: [], commands: [] };
   const named = n => (prefix ? `${prefix}:${n}` : n);
   for (const e of readdir(path.join(root, 'skills'))) {
@@ -202,6 +215,7 @@ function isInside(file, dir) {
 // pluginCache: a Map of plugin dir -> what was found there. A plugin's cached
 // version is written once when it's installed, so a poll can reuse it; the
 // caller clears it for a real rescan.
+/** @param {{ home?: string, cwd?: string | null, plugins?: Array<{ name: string, path: string }>, metaCache?: Map<string, MetaEntry> | null, pluginCache?: Map<string, Found> | null }} [opts] */
 function scanToolbox({ home, cwd, plugins = [], metaCache = null, pluginCache = null } = {}) {
   const cache = metaCache instanceof Map ? { prev: metaCache, next: new Map() } : null;
   const plugCache = pluginCache instanceof Map ? pluginCache : null;
@@ -226,9 +240,10 @@ function scanToolbox({ home, cwd, plugins = [], metaCache = null, pluginCache = 
       // clears pluginCache still finds them unchanged.
       for (const k of KINDS) for (const t of found[k]) { const hit = cache.prev.get(t.path); if (hit) cache.next.set(t.path, hit); }
     } else if (!found) {
-      found = scanRoot(r.dir, r.source, r.prefix, cache);
+      const fresh = scanRoot(r.dir, r.source, r.prefix, cache);
+      found = fresh;
       // An empty dir may be an install still being written: look again next time.
-      if (plugin && KINDS.some(k => found[k].length)) plugCache.set(rootKey, found);
+      if (plugin && KINDS.some(k => fresh[k].length)) plugCache.set(rootKey, fresh);
     }
     for (const k of KINDS) {
       for (const t of found[k]) {
@@ -241,8 +256,9 @@ function scanToolbox({ home, cwd, plugins = [], metaCache = null, pluginCache = 
     }
   }
   if (cache) {
-    metaCache.clear();
-    for (const [k, v] of cache.next) metaCache.set(k, v);
+    // cache.prev is metaCache itself.
+    cache.prev.clear();
+    for (const [k, v] of cache.next) cache.prev.set(k, v);
   }
   if (plugCache) {
     const live = new Set(roots.filter(r => r.rank === PRIORITY.plugin).map(r => `${r.prefix}=${r.dir}`));
@@ -267,9 +283,11 @@ const cliTool = (kind, name, description = '') => ({
 // init: a conversation's init event, plus `commands` ([{ name, description }]):
 // its latest commands_changed list, which is where commands a mod registers
 // once the session has started show up.
+/** @param {Toolbox | null | undefined} toolbox @param {InitEvent | null | undefined} init @returns {Toolbox} */
 function mergeInit(toolbox, init) {
-  const tb = toolbox || {};
+  const tb = /** @type {Partial<Toolbox>} */ (toolbox || {});
   const copy = k => (Array.isArray(tb[k]) ? tb[k].map(t => ({ ...t })) : []);
+  /** @type {Toolbox} */
   const out = { skills: copy('skills'), agents: copy('agents'), commands: copy('commands'), mcp: [], mods: copy('mods'), scannedAt: tb.scannedAt || Date.now() };
   // Claude Code's own, for the menu: the catalogue, less what your own
   // commands and skills are called (yours win), less what the CLI dropped.
@@ -334,6 +352,9 @@ class ToolboxWatcher extends EventEmitter {
    * skill written while Shellby was closed is still news when it starts.
    */
   /**
+   * @param {{ home?: string, getCwd?: () => string | null | undefined, getPlugins?: () => Array<{ name: string, path: string }>, getInstalled?: () => unknown[], getSettings?: () => unknown[],
+   *   debounceMs?: number, pollMs?: number, fsImpl?: typeof fs, seenFile?: string | null, log?: { warn?: (msg: string) => void } | null, whenStill?: ((key: string, fn: () => void) => void) | null }} [opts]
+   *
    * getInstalled: () => marketplace plugins as the Skill Shop last listed them
    * ({ id, marketplace, dir, enabled, scope }), for the mods among them.
    * getSettings: () => [user, project, local] Claude Code settings objects, for
@@ -349,24 +370,34 @@ class ToolboxWatcher extends EventEmitter {
     this.getPlugins = typeof getPlugins === 'function' ? getPlugins : () => [];
     this.getInstalled = typeof getInstalled === 'function' ? getInstalled : () => [];
     this.getSettings = typeof getSettings === 'function' ? getSettings : () => [];
+    /** @type {unknown[] | null} */
     this.commands = null;   // the last commands_changed list, which is where mods' commands show up
     this.debounceMs = debounceMs;
     this.pollMs = pollMs;
     this.fs = fsImpl;
     this.log = log;
+    /** @type {fs.FSWatcher[]} */
     this.watchers = [];
     this.watchKey = '';
+    /** @type {NodeJS.Timeout | null} */
     this.debounce = null;
+    /** @type {NodeJS.Timeout | null} */
     this.poll = null;
+    /** @type {Toolbox | null} */
     this.scan = null;       // last raw scanToolbox result
+    /** @type {InitEvent | null} */
     this.init = null;       // last CLI init event
+    /** @type {Toolbox | null} */
     this.merged = null;     // scan + init
+    /** @type {string | null} */
     this.sig = null;
     this.seenFile = seenFile;
     const saved = loadSeen(seenFile);
     this.seen = new Set(saved || []);  // every item key ever scanned: a trick is only "learned" once
     this.restored = saved !== null;    // a first launch has nothing to compare with, so it announces nothing
+    /** @type {Map<string, MetaEntry>} */
     this.metaCache = new Map();
+    /** @type {Map<string, Found>} */
     this.pluginCache = new Map();
     this.pluginKey = '';
     this.started = false;
@@ -397,8 +428,8 @@ class ToolboxWatcher extends EventEmitter {
 
   stop() {
     this.started = false;
-    clearTimeout(this.debounce);
-    clearInterval(this.poll);
+    if (this.debounce) clearTimeout(this.debounce);
+    if (this.poll) clearInterval(this.poll);
     this.debounce = this.poll = null;
     this.closeWatchers();
   }
@@ -406,7 +437,7 @@ class ToolboxWatcher extends EventEmitter {
   // Asked for (the Rescan button, an install): read plugin dirs again too,
   // unless it's for a change to your own files ({ plugins: false }).
   rescan({ plugins = true } = {}) {
-    clearTimeout(this.debounce);
+    if (this.debounce) clearTimeout(this.debounce);
     this.debounce = null;
     if (plugins) this.pluginCache.clear();
     this.refresh(false);
@@ -439,6 +470,7 @@ class ToolboxWatcher extends EventEmitter {
   // ---- internals
 
   plugins() {
+    /** @type {Array<{ name: string, path: string }> | null} */
     let p = null;
     try { p = this.getPlugins(); } catch {}
     if (Array.isArray(p) && p.length) return p;
@@ -460,6 +492,7 @@ class ToolboxWatcher extends EventEmitter {
   }
 
   refresh(initial) {
+    /** @type {string | null | undefined} */
     let cwd = null;
     try { cwd = this.getCwd(); } catch {}
     const plugins = this.plugins();
@@ -576,7 +609,7 @@ class ToolboxWatcher extends EventEmitter {
 
   schedule() {
     if (!this.started) return;
-    clearTimeout(this.debounce);
+    if (this.debounce) clearTimeout(this.debounce);
     this.debounce = setTimeout(() => {
       this.debounce = null;
       this.whenStill('toolbox-change', () => { if (this.started) this.refresh(false); });

@@ -28,6 +28,7 @@ const PS_QUOTES = /['‘’‚‛]/g;
 // ultraReview: Claude Code's cloud review of the branch (/code-review ultra),
 // which asks in its own launch dialog before it starts, and is billed apart.
 const TERMINAL_PROMPTS = Object.freeze({ ultraReview: '/code-review ultra' });
+/** @type {Set<string>} */
 const ALLOWED_PROMPTS = new Set(Object.values(TERMINAL_PROMPTS));
 
 // Claude Code's own ways between this PC and its cloud sessions, which it runs
@@ -46,7 +47,7 @@ const PLAIN_ARG = /^[\w:/.-]{1,300}$/;
  * value: what the cloud session starts on, or a pull request's address (none:
  * Claude Code's own list). -> { ok: true, args } | { ok: false, error }
  */
-function cloudArgs(kind, value = null) {
+function cloudArgs(/** @type {string | undefined} */ kind, /** @type {unknown} */ value = null) {
   if (kind === 'teleport') return { ok: true, args: ['--teleport'] };
   if (kind === 'cloud' || kind === 'ultraplan') {
     // One line, and no double quotes: Windows PowerShell 5.1 splits a native argument at an inner one.
@@ -89,7 +90,7 @@ const psQuote = s => `'${String(s).replace(PS_QUOTES, m => m + m)}'`;
  * has one that's still there, otherwise its folder. exists(dir) is injected.
  * -> path | null
  */
-function terminalCwd({ cwd, worktree = null } = {}, exists = () => true) {
+function terminalCwd(/** @type {{ cwd?: string | null, worktree?: { cwd?: string, path?: string } | null }} */ { cwd, worktree = null } = {}, /** @type {(dir: string | null | undefined) => boolean} */ exists = () => true) {
   const candidates = [worktree?.cwd, worktree?.path, cwd];
   return candidates.find(c => safePath(c) && exists(c)) || null;
 }
@@ -101,7 +102,7 @@ function terminalCwd({ cwd, worktree = null } = {}, exists = () => true) {
  * our own environment, because a Windows Terminal that is already open starts
  * new tabs with its own environment, not ours.
  */
-function resumeScript({ exe, cwd, sessionId, prompt = null, args = null, scrub = [] }) {
+function resumeScript(/** @type {{ exe: string, cwd: string, sessionId?: string | null, prompt?: string | null, args?: string[] | null, scrub?: string[] }} */ { exe, cwd, sessionId, prompt = null, args = null, scrub = [] }) {
   const drop = ['SHELLBY_OWNED', ...scrub].filter(v => ENV_NAME.test(v));
   return [
     ...[...new Set(drop)].map(v => `Remove-Item -LiteralPath 'Env:${v}' -ErrorAction SilentlyContinue`),
@@ -139,7 +140,7 @@ const startable = p => safePath(p) && !CMD_SPECIAL.test(p);
  * one in its name is left to the script.
  *   -> [{ shell, file, args, options }]
  */
-function scriptPlans({ script, options, dir = null, wt = null, powershell = null, cmd = null }) {
+function scriptPlans(/** @type {{ script: string, options: object, dir?: string | null, wt?: string | null, powershell?: string | null, cmd?: string | null }} */ { script, options, dir = null, wt = null, powershell = null, cmd = null }) {
   const psArgs = ['-NoLogo', '-NoExit', '-EncodedCommand', encodeScript(script)];
   const plans = [];
   if (safePath(wt) && safePath(powershell)) {
@@ -156,7 +157,7 @@ function scriptPlans({ script, options, dir = null, wt = null, powershell = null
  * window, already scrubbed (claude/cli.js terminalEnv).
  *   -> { ok: true, plans: [{ shell, file, args, options }] } | { ok: false, error }
  */
-function launchPlans({ exe, cwd, sessionId, prompt = null, cloud = null, scrub = [], env = undefined, wt = null, powershell = null, cmd = null }) {
+function launchPlans(/** @type {{ exe: string, cwd: string, sessionId?: string | null, prompt?: string | null, cloud?: { kind?: string, value?: string | null } | null, scrub?: string[], env?: NodeJS.ProcessEnv, wt?: string | null, powershell?: string | null, cmd?: string | null }} */ { exe, cwd, sessionId, prompt = null, cloud = null, scrub = [], env = undefined, wt = null, powershell = null, cmd = null }) {
   if (prompt !== null && !ALLOWED_PROMPTS.has(prompt)) return { ok: false, error: "Shellby won't start a terminal with that." };
   // cloud: { kind, value } for cloudArgs, checked again here, where the line is made.
   const made = cloud ? cloudArgs(cloud.kind, cloud.value) : null;
@@ -215,7 +216,7 @@ const normDir = d => String(d || '').replace(/[\\/]+$/, '').replace(/\//g, '\\')
  * one in this folder heard from most recently (the one running the command),
  * or else one a level or more above it. sessions: external.js summary rows.
  */
-function externalFor(sessions, { id = null, cwd = null } = {}) {
+function externalFor(sessions, /** @type {{ id?: string | null, cwd?: string | null }} */ { id = null, cwd = null } = {}) {
   const list = (Array.isArray(sessions) ? sessions : []).filter(s => isSessionId(s?.id));
   if (id) return list.find(s => s.id === id) || null;
   const here = normDir(cwd);
@@ -232,7 +233,7 @@ function externalFor(sessions, { id = null, cwd = null } = {}) {
  * necessarily still open and mid-turn: the reply tells you to /exit.
  *   -> { ok: true, warning? } | { ok: false, error, confirm? }
  */
-function bringInCheck(session, { force = false, fromInside = false } = {}) {
+function bringInCheck(session, /** @type {{ force?: boolean, fromInside?: boolean }} */ { force = false, fromInside = false } = {}) {
   if (!session) return { ok: false, error: "Shellby has lost track of that session. If it's still open, say something in it and try again." };
   if (!isSessionId(session.id)) return { ok: false, error: "That session's id doesn't look like Claude Code's, so Shellby can't pick it up." };
   if (!safePath(session.cwd)) return { ok: false, error: "Shellby doesn't know which folder that session is in." };

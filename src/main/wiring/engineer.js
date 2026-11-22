@@ -512,7 +512,7 @@ function wireEngineer(d, opts = {}) {
       const refs = [...(spike.refs || [])].reverse();
       let files = 0;
       for (const ref of refs) {
-        const r = await changes.undo(ref).catch(e => ({ ok: false, error: e.message }));
+        const r = await changes.undo(ref).catch(e => ({ ok: false, restored: 0, error: e.message }));
         if (!r.ok) {
           publishSpike(tab, { ...spike, phase: 'failed', restored: { ok: false, files, error: r.error || "Couldn't put the files back." } });
           return;

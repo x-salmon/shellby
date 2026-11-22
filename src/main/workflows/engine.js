@@ -22,7 +22,13 @@ const DEFAULT_CHOICES = ['Continue', 'Stop'];
 const rereadable = step => (step.type === 'file' && step.action === 'read') || (step.type === 'http' && (step.method === 'GET' || step.method === 'HEAD'));
 
 class StopRun extends Error {
-  constructor(status, message) { super(message || ''); this.status = status; }
+  constructor(status, message) {
+    super(message || '');
+    this.status = status;
+    this.recorded = false;
+    /** @type {string | null} */
+    this.choice = null; // an ask step's answer, when that's what stopped it
+  }
 }
 class StepFailed extends Error {}
 
@@ -81,8 +87,16 @@ class Engine {
    * secrets: { NAME: value }. onChange(record): persist/push (called often; throttle there).
    * budget: { executions } shared with the workflows this run calls.
    */
+  /** @param {{ workflow: any, record: any, effects: any, secrets?: Record<string, string>, onChange?: (record: any) => void, now?: () => number, depth?: number, budget?: { executions: number } }} opts */
   constructor({ workflow, record, effects, secrets = {}, onChange = () => {}, now = () => Date.now(), depth = 0, budget = { executions: 0 } }) {
-    Object.assign(this, { workflow, record, effects, secrets, onChange, now, depth, budget });
+    this.workflow = workflow;
+    this.record = record;
+    this.effects = effects;
+    this.secrets = secrets;
+    this.onChange = onChange;
+    this.now = now;
+    this.depth = depth;
+    this.budget = budget;
     this.controller = new AbortController();
     this.redact = redactor(Object.values(secrets));
     this.recorded = 0;
@@ -591,7 +605,9 @@ function renderRequest(step, ctx) {
   // With a written-out host, the values can't have moved it somewhere else.
   const prefix = !leadingValue && /^https?:\/\/[^/?#{]+/i.exec(step.url)?.[0];
   if (prefix) {
-    let want = null, host;
+    /** @type {string | null} */
+    let want = null;
+    let host;
     try { want = new URL(prefix).host; } catch { /* a host that's partly a value: checked as encoded above */ }
     try { host = new URL(url).host; } catch { throw new StepFailed('That address isn\'t valid once its values are filled in.'); }
     if (want && host !== want) throw new StepFailed('A value changed which site the request goes to.');

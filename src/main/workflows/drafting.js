@@ -4,8 +4,19 @@
 const { validateWorkflow } = require('./schema');
 const draft = require('./draft');
 
-class Drafting {
-  async callDraft(prompt, { schema = draft.SCHEMA, parse = draft.parse } = {}) {
+// Object at run time: only the methods are copied (util.js mixin). The cast lets
+// tsc see what the service gives them.
+const Base = /** @type {new () => {
+  deps: any,
+  workflows: any[],
+  store: InstanceType<typeof import('./store').RunStore>,
+  now(): number,
+  get(id: string): any,
+  mcpServerList(cwd: string | null): any[],
+}} */ (/** @type {unknown} */ (Object));
+
+class Drafting extends Base {
+  async callDraft(prompt, /** @type {{ schema?: object, parse?: (stdout: string) => any }} */ { schema = draft.SCHEMA, parse = draft.parse } = {}) {
     const res = await this.deps.runClaude(draft.args(schema), draft.DRAFT_TIMEOUT_MS, { input: prompt, lean: true, local: 'workflows' });
     if (res.timedOut) return { ok: false, error: 'Claude took too long. Try again.' };
     if (!res.stdout?.trim()) {
@@ -81,7 +92,7 @@ class Drafting {
    * `runId` is the test run that just finished: its details are read here, and
    * only if it's a run of this same saved workflow. Nothing is saved or run here.
    */
-  async chat({ workflow, messages, runId } = {}) {
+  async chat(/** @type {{ workflow?: any, messages?: unknown, runId?: unknown }} */ { workflow, messages, runId } = {}) {
     const turns = draft.checkTurns(messages);
     if (!turns.ok) return turns;
     const base = workflow && typeof workflow === 'object' && !Array.isArray(workflow) ? workflow : {};

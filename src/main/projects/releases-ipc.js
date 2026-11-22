@@ -94,7 +94,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
     try { return await fn(); } finally { busy.delete(k); }
   }
 
-  ipcMain.handle('releases:get', (_e, { root } = {}) => {
+  ipcMain.handle('releases:get', (_e, /** @type {{ root?: unknown }} */ { root } = {}) => {
     const r = known(root);
     return r ? view(r) : no;
   }, [opt(obj())]);
@@ -126,7 +126,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
     });
   }, [opt(obj())]);
 
-  ipcMain.handle('releases:push', (_e, { root: given, tag } = {}) => {
+  ipcMain.handle('releases:push', (_e, /** @type {{ root?: unknown, tag?: unknown }} */ { root: given, tag } = {}) => {
     const root = known(given);
     if (!root) return no;
     const t = R.parseTag(str(tag, 80));
@@ -139,7 +139,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
   }, [obj({ root: PATH, tag: nonEmpty({ max: 300 }) })]);
 
   // "Push them first": the branch alone, so CI checks it before a release ships it.
-  ipcMain.handle('releases:pushBranch', (_e, { root: given } = {}) => {
+  ipcMain.handle('releases:pushBranch', (_e, /** @type {{ root?: unknown }} */ { root: given } = {}) => {
     const root = known(given);
     if (!root) return no;
     return once(root, async () => {
@@ -150,7 +150,7 @@ function registerReleasesIpc(ipcMain, d, { git = worktrees.git } = {}) {
   }, [opt(obj())]);
 
   // "Write it with Claude": the ask for a new conversation's box. You read it and send it.
-  ipcMain.handle('releases:polish', async (_e, { root: given, version } = {}) => {
+  ipcMain.handle('releases:polish', async (_e, /** @type {{ root?: unknown, version?: unknown }} */ { root: given, version } = {}) => {
     const root = known(given);
     if (!root) return no;
     const state = await rg.readRelease(root, { git });

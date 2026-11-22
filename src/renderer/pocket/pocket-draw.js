@@ -122,7 +122,7 @@
     for (const b of L.markdown(text)) {
       if (b.t === 'li' || b.t === 'oli') {
         const tag = b.t === 'li' ? 'ul' : 'ol';
-        if (!list || list.tagName.toLowerCase() !== tag) { list = h(tag); box.append(list); }
+        if (!list || list.tagName.toLowerCase() !== tag) { list = /** @type {HTMLElement} */ (h(tag)); box.append(list); }
         list.append(h('li', {}, runs(b.runs)));
         continue;
       }

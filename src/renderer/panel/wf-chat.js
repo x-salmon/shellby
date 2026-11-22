@@ -204,13 +204,14 @@
 
     async function checkRun(id) {
       if (s.run?.id !== id || !host.alive()) return unwatch();
+      /** @type {{ id: string, status: string, error?: string } | null} */
       let rec = null;
       try { rec = await host.getRun(id); } catch { /* the updates still come */ }
       if (rec && s.run?.id === rec.id && ENDED.has(rec.status)) onRun({ id: rec.id, status: rec.status, error: rec.error });
     }
 
     function unwatch() {
-      clearInterval(s.poll);
+      if (s.poll) clearInterval(s.poll);
       s.poll = null;
     }
 

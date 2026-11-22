@@ -24,6 +24,17 @@ function sessionIn(sessions, path) {
 }
 
 /**
+ * @typedef {{ key: string, repo: string, number: number, title: string, url: string, forge?: string, ref?: string, author?: string | null, updatedAt?: number | null, draft?: boolean,
+ *   state?: string, reviewComments?: number, talk?: { unread: number, people?: string[], lastAt: number | null, verdict: string | null } | null }} InboxPr
+ * @typedef {{ enabled?: boolean, githubEnabled?: boolean, error?: string | null, lastPollAt?: number | null, reviewsTotal?: number, reviews?: InboxPr[], prs?: InboxPr[],
+ *   gitlab?: { enabled?: boolean, error?: string | null, lastPollAt?: number | null } }} CiView
+ * @typedef {{ project: string, root: string,
+ *   read: { branches?: Array<{ name: string, at: number | null, merged?: boolean, gone?: boolean, only?: number | null }>, copies?: Array<{ path: string, branch: string, at: number | null, merged: boolean, only: number }> } | null,
+ *   git: { copyList?: Array<{ path: string, changed?: number }> } | null }} InboxRepo
+ * @typedef {{ id?: unknown, title?: string, cwd?: string, updatedAt?: number, worktree?: { path?: string } | null }} InboxSession
+ */
+
+/**
  * input: {
  *   now
  *   ci:        ciView(): prs with talk, reviews, reviewsTotal, error, enabled,
@@ -33,8 +44,11 @@ function sessionIn(sessions, path) {
  *   open:      [folder] every open tab works in: a copy one of them is in isn't abandoned
  *   dismissed: Set of ids
  * }
+ * @param {{ now?: number, ci?: CiView | null, repos?: InboxRepo[], sessions?: InboxSession[], open?: string[], dismissed?: Set<string> }} [input]
  */
-function build({ now = Date.now(), ci = null, repos = [], sessions = [], open = [], dismissed = new Set() } = {}) {
+function build({ now = Date.now(), ci: ciView = null, repos = [], sessions = [], open = [], dismissed = new Set() } = {}) {
+  // Everything below that reads `ci` sits behind `on`, which is false when there is none.
+  const ci = /** @type {CiView} */ (ciView || {});
   const on = !!ci?.enabled;
   const githubOn = on && (ci.githubEnabled ?? true);
   const gitlabOn = on && !!ci.gitlab?.enabled;
@@ -44,7 +58,7 @@ function build({ now = Date.now(), ci = null, repos = [], sessions = [], open = 
     key: r.key, repo: r.repo, number: r.number, title: r.title, url: r.url, ...named(r),
     author: r.author || null, updatedAt: r.updatedAt || null, draft: !!r.draft,
   })) : [];
-  const talk = on ? (ci.prs || []).filter(p => p.talk?.unread > 0).map(p => ({
+  const talk = on ? (ci.prs || []).filter(/** @param {InboxPr} p @returns {p is InboxPr & { talk: NonNullable<InboxPr['talk']> }} */ p => (p.talk?.unread || 0) > 0).map(p => ({
     key: p.key, repo: p.repo, number: p.number, title: p.title, url: p.url, state: p.state, ...named(p),
     unread: p.talk.unread, people: p.talk.people || [], lastAt: p.talk.lastAt, verdict: p.talk.verdict,
     // GitLab says which threads are still open; GitHub's count includes resolved ones, so it isn't used.
@@ -82,7 +96,7 @@ function build({ now = Date.now(), ci = null, repos = [], sessions = [], open = 
 
   const out = {
     github: { enabled: githubOn, error: githubOn ? ci.error || null : null, lastPollAt: on ? ci.lastPollAt || null : null },
-    gitlab: { enabled: gitlabOn, error: gitlabOn ? ci.gitlab.error || null : null, lastPollAt: gitlabOn ? ci.gitlab.lastPollAt || null : null },
+    gitlab: { enabled: gitlabOn, error: gitlabOn ? ci.gitlab?.error || null : null, lastPollAt: gitlabOn ? ci.gitlab?.lastPollAt || null : null },
     reviews: reviews.slice(0, MAX_EACH),
     reviewsMore: on ? Math.max(0, (ci.reviewsTotal || 0) - reviews.length) : 0,
     talk: talk.slice(0, MAX_EACH),

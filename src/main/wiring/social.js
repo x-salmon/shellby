@@ -30,7 +30,7 @@ function wireSocial(d) {
     };
   }
   // notice: a line the panel shows as a toast (a swap declined).
-  const push = (notice = null) => { d.send(d.panel, 'social', { ...socialView(), notice }); d.life?.changed?.(); };
+  const push = (/** @type {string | null} */ notice = null) => { d.send(d.panel, 'social', { ...socialView(), notice }); d.life?.changed?.(); };
   // What's on your card changed (spares, eggs): publish it.
   const republish = () => d.friends?.republish?.().catch(() => {});
 
@@ -77,7 +77,8 @@ function wireSocial(d) {
   async function swapAnswer(sid, yes) {
     const r = swaps.answer(swapState(), finds(), sid, !!yes, now());
     if (!r.ok) return r;
-    const sent = await send(r.letter, r.letter.to);
+    const letter = /** @type {NonNullable<typeof r.letter>} */ (r.letter); // an accepted answer always has its letter
+    const sent = await send(letter, letter.to);
     if (!sent.ok) return sent; // nothing moved: try again
     d.config.set({ swaps: r.swaps, finds: r.finds });
     if (r.done) swapDone(r.done);
@@ -88,7 +89,8 @@ function wireSocial(d) {
 
   // A swap went through, on your side: the find arrives, and it counts.
   function swapDone(done) {
-    const got = gifts.findById(done.got.id);
+    // swaps.js only keeps ids that are finds, so both lookups hold.
+    const got = /** @type {NonNullable<ReturnType<typeof gifts.findById>>} */ (gifts.findById(done.got.id));
     const twice = d.eventBoosts?.().swaps || 1; // Pen Pal Week: swaps count double toward the trophies
     for (let i = 0; i < twice; i++) d.stat('swap-made');
     if (done.completed?.length) d.stat('swap-set');
@@ -96,10 +98,10 @@ function wireSocial(d) {
     d.awardXp('swap', { label: `Swapped with @${done.with}` });
     d.life?.remember?.('first-swap', { login: done.with });
     const set = done.completed?.length ? gifts.SETS.find(s => s.id === done.completed[0]) : null;
-    const look = done.got.shiny ? gifts.sparkly(got) : got;
+    const look = done.got.shiny ? /** @type {NonNullable<ReturnType<typeof gifts.sparkly>>} */ (gifts.sparkly(got)) : got;
     d.send(d.panel, 'life:moment', {
       eyebrow: set ? 'Swap: set complete!' : 'Swap done', icon: '🤝', title: `${done.got.shiny ? '✨ ' : ''}${got.name}`,
-      text: set ? `From @${done.with}. That finishes ${set.name}!` : `From @${done.with}, for your ${gifts.findById(done.gave.id).name.toLowerCase()}.`,
+      text: set ? `From @${done.with}. That finishes ${set.name}!` : `From @${done.with}, for your ${/** @type {NonNullable<ReturnType<typeof gifts.findById>>} */ (gifts.findById(done.gave.id)).name.toLowerCase()}.`,
       rewards: [{ name: got.name, pixels: look.pixels, palette: look.palette, kind: 'find' }],
     });
     d.sayText(set ? 'set complete!!' : `a swap from @${done.with}!`.slice(0, 40), 'found', 6000);
@@ -164,14 +166,16 @@ function wireSocial(d) {
     const sent = await send(r.letter, code.from);
     if (!sent.ok) return sent;
     let shelf = d.config.get('finds');
-    if (r.gift && gifts.findById(r.gift) && !gifts.findById(r.gift).special) shelf = gifts.receive(shelf, r.gift, false, now()).state;
+    const gift = r.gift ? gifts.findById(r.gift) : null;
+    if (r.gift && gift && !gift.special) shelf = gifts.receive(shelf, r.gift, false, now()).state;
     d.config.set({ eggs: r.state, finds: shelf });
     d.stat('hatched-from-egg');
     d.awardXp('hatch', { label: `Hatched from @${code.from}'s egg` });
     d.life?.remember?.('egg-hatched', { from: code.from });
-    hatchMoment(r.baby, { from: code.from, gift: r.gift });
+    const baby = /** @type {NonNullable<typeof r.baby>} */ (r.baby); // a hatch that went through has its baby
+    hatchMoment(baby, { from: code.from, gift: r.gift });
     push();
-    return { ok: true, baby: { name: r.baby.name }, view: socialView() };
+    return { ok: true, baby: { name: baby.name }, view: socialView() };
   }
 
   function onHatchLetter(l) {
@@ -189,7 +193,7 @@ function wireSocial(d) {
     republish();
   }
 
-  function hatchMoment(baby, { from = null, by = null, gift = null }) {
+  function hatchMoment(baby, /** @type {{ from?: string | null, by?: string | null, gift?: string | null }} */ { from = null, by = null, gift = null }) {
     d.send(d.critter, 'critter:burst', d.outfit().confetti);
     d.sayText(by ? `@${by} hatched ${baby.name}!` : `hi ${baby.name.toLowerCase()}!`, 'found', 8000);
     d.send(d.panel, 'social:hatched', { name: baby.name, pixels: baby.pixels, palette: baby.palette, by, from, gift: gift ? gifts.findById(gift)?.name || null : null });
@@ -215,7 +219,7 @@ function wireSocial(d) {
   function babyBuddy() {
     const s = eggState();
     const b = s.follower && s.clutch.find(x => x.id === s.follower);
-    return b ? { id: `egg-${b.id}`, name: eggs.hatchling(b.id).name, ghost: false, ...eggs.hatchling(b.id) } : null;
+    return b ? { id: `egg-${b.id}`, ghost: false, ...eggs.hatchling(b.id) } : null;
   }
 
   // ---------------------------------------------------------------- letters

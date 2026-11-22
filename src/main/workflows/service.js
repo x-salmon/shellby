@@ -31,7 +31,12 @@ function listensFor(wf) {
   return t ? describeTrigger(t) : null;
 }
 
-class WorkflowService {
+/** @typedef {InstanceType<typeof Approvals> & InstanceType<typeof RunQueue> & InstanceType<typeof Steps> & InstanceType<typeof Drafting>} ServiceParts */
+// Object at run time: the parts join the prototype at the end of this file.
+// The cast only lets the class (and tsc) see their methods on `this`.
+const Base = /** @type {new () => ServiceParts} */ (/** @type {unknown} */ (Object));
+
+class WorkflowService extends Base {
   /**
    * deps: {
    *   config, dataDir, home, manager, maxTabs,
@@ -49,6 +54,7 @@ class WorkflowService {
    * }
    */
   constructor(deps) {
+    super();
     this.deps = deps;
     this.now = deps.now || (() => Date.now());
     this.store = new RunStore({ dir: path.join(deps.dataDir, 'runs'), log: m => deps.log.warn(m) });

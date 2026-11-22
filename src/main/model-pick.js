@@ -61,7 +61,7 @@ function classOf(text, files = 0) {
  * 'context' (the conversation is past MAX_SWITCH_CONTEXT).
  * model: what the tab runs on now ('' is Claude Code's default); defaultModel: Settings' pick for new ones.
  * @param {{ text?: string, files?: number, model?: string, defaultModel?: string, enabled?: boolean, always?: Record<string, string> | null, ultracode?: boolean, merged?: boolean, local?: boolean, contextTokens?: number }} [o]
- * @returns {{ ask: true, cls: SmallClass } | { auto: string, cls: SmallClass, ask?: undefined } | { ask: false, why: string }}
+ * @returns {{ ask: true, cls: SmallClass, auto?: undefined } | { auto: string, cls: SmallClass, ask?: undefined } | { ask: false, why: string, auto?: undefined, cls?: undefined }}
  */
 function suggest({ text = '', files = 0, model = '', defaultModel = '', enabled = true, always = {}, ultracode = false, merged = false, local = false, contextTokens = 0 } = {}) {
   if (!enabled) return { ask: false, why: 'off' };

@@ -53,12 +53,13 @@ const linked = file => isLink(path.dirname(file)) || isLink(file);
 
 // Names in a folder of the repo, never through a link. (kind: 'file' ending in
 // ext, or 'dir' holding `inside`.)
+/** @param {string} dir @param {{ ext?: string | null, inside?: string | null }} [opts] */
 function namesIn(dir, { ext = null, inside = null } = {}) {
   if (isLink(dir)) return [];
   let list;
   try { list = fs.readdirSync(dir, { withFileTypes: true }); } catch { return []; }
   return list
-    .filter(e => (ext ? e.isFile() && e.name.toLowerCase().endsWith(ext) : e.isDirectory() && exists(path.join(dir, e.name, inside))))
+    .filter(e => (ext ? e.isFile() && e.name.toLowerCase().endsWith(ext) : e.isDirectory() && exists(path.join(dir, e.name, /** @type {string} */ (inside)))))
     .map(e => (ext ? e.name.slice(0, -ext.length) : e.name))
     .sort((a, b) => a.localeCompare(b))
     .slice(0, MAX_LISTED);
@@ -290,24 +291,24 @@ function register(deps) {
   }, [NAME]);
 
   // By what it is, not where it was in the list: the file may have changed since the panel drew it.
-  ipcMain.handle('team:add-hook', async (_e, { key, scope } = {}) => {
+  ipcMain.handle('team:add-hook', async (_e, /** @type {{ key?: unknown, scope?: unknown }} */ { key, scope } = {}) => {
     const c = current();
     if (c.error) return done({ ok: false, error: c.error });
     const hook = typeof key === 'string' ? c.pack.hooks.find(h => tp.hookKey(h) === key) : null;
     if (!hook) return done({ ok: false, error: "That hook isn't in the team pack any more." });
-    if (!HOOK_SCOPES.includes(scope)) return done({ ok: false, error: 'Pick where to add it.' });
+    if (!(typeof scope === 'string' && HOOK_SCOPES.includes(scope))) return done({ ok: false, error: 'Pick where to add it.' });
     const { about: _a, ...plain } = hook;
     const r = await deps.saveHook({ scope, hook: plain });
     if (r.ok) deps.stat('team-hook-added');
     return done({ ok: !!r.ok, cancelled: !!r.cancelled, error: r.ok || r.cancelled ? null : r.error });
   }, [obj({ key: KEY, scope: oneOf(...HOOK_SCOPES) })]);
 
-  ipcMain.handle('team:add-rule', async (_e, { key, scope } = {}) => {
+  ipcMain.handle('team:add-rule', async (_e, /** @type {{ key?: unknown, scope?: unknown }} */ { key, scope } = {}) => {
     const c = current();
     if (c.error) return done({ ok: false, error: c.error });
     const rule = typeof key === 'string' ? c.pack.rules.find(r => tp.ruleKey(r) === key) : null;
     if (!rule) return done({ ok: false, error: "That rule isn't in the team pack any more." });
-    if (!RULE_SCOPES.includes(scope)) return done({ ok: false, error: 'Pick where to add it.' });
+    if (!(typeof scope === 'string' && RULE_SCOPES.includes(scope))) return done({ ok: false, error: 'Pick where to add it.' });
     const r = await deps.saveRule({ scope, list: rule.list, rule: rule.rule });
     if (r.ok) deps.stat('team-rule-added');
     return done({ ok: !!r.ok, cancelled: !!r.cancelled, error: r.ok || r.cancelled ? null : r.error });
@@ -341,12 +342,12 @@ function register(deps) {
     return v && typeof v === 'object' ? { env: v.env, headers: v.headers } : {};
   };
 
-  ipcMain.handle('team:add-mcp', async (_e, { name, values } = {}) => {
+  ipcMain.handle('team:add-mcp', async (_e, /** @type {{ name?: unknown, values?: unknown }} */ { name, values } = {}) => {
     const c = current();
     if (c.error) return done({ ok: false, error: c.error });
     const server = isStr(name) ? c.pack.mcpServers.find(s => s.name === name) : null;
     if (!server) return done({ ok: false, error: "That MCP server isn't in the team pack any more." });
-    const filled = tp.mcpInput(server, valuesFor({ [name]: values }, name));
+    const filled = tp.mcpInput(server, valuesFor({ [/** @type {string} */ (name)]: values }, name));
     if (filled.error) return done({ ok: false, error: filled.error, missing: filled.missing });
     const blanks = [...server.env, ...server.headers];
     const response = await deps.confirm({
@@ -358,13 +359,13 @@ function register(deps) {
       buttons: [{ label: 'Add it', style: server.transport === 'stdio' ? 'danger' : 'primary' }, { label: 'Cancel' }], defaultId: 1, cancelId: 1,
     });
     if (response !== 0) return done({ ok: false, cancelled: true });
-    const r = await addMcp(server, valuesFor({ [name]: values }, name));
+    const r = await addMcp(server, valuesFor({ [/** @type {string} */ (name)]: values }, name));
     if (r.ok) deps.stat('team-mcp-added');
     return done(r);
   }, [obj({ name: NAME, values: opt(obj()) })]);
 
   // Everything waiting, after one window that shows every part of it.
-  ipcMain.handle('team:setup-all', async (_e, { values } = {}) => {
+  ipcMain.handle('team:setup-all', async (_e, /** @type {{ values?: unknown }} */ { values } = {}) => {
     const c = current();
     if (c.error) return done({ ok: false, error: c.error });
     const v = view();

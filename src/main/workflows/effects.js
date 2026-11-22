@@ -13,7 +13,7 @@ const abortError = () => Object.assign(new Error('Stopped.'), { name: 'AbortErro
 
 /** Abortable sleep. setTimeout caps out at ~24.8 days; waits are at most 7. */
 function sleep(ms, signal) {
-  return new Promise((resolve, reject) => {
+  return new Promise((/** @type {(v?: unknown) => void} */ resolve, reject) => {
     if (signal?.aborted) { reject(abortError()); return; }
     const t = setTimeout(() => { signal?.removeEventListener('abort', onAbort); resolve(); }, Math.max(0, ms));
     function onAbort() { clearTimeout(t); reject(abortError()); }
@@ -47,7 +47,7 @@ async function readFile(p, signal) {
 // records), Claude Code's setup (hooks, settings, skills), what Windows starts
 // at sign-in, PowerShell profiles and git hooks. Each is a way to turn one
 // written file into code that runs later. `extra` adds the profile folder.
-function forbiddenWrite(file, { home = require('os').homedir(), extra = [] } = {}) {
+function forbiddenWrite(file, /** @type {{ home?: string, extra?: string[] }} */ { home = require('os').homedir(), extra = [] } = {}) {
   const f = path.resolve(file).toLowerCase();
   const under = dir => { const d = path.resolve(dir).toLowerCase(); return f === d || f.startsWith(d + path.sep); };
   const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
@@ -63,7 +63,7 @@ function forbiddenWrite(file, { home = require('os').homedir(), extra = [] } = {
   return f.split(/[\\/]/).some((part, i, all) => part === '.git' && all[i + 1] === 'hooks');
 }
 
-async function writeFile(p, content, { append = false, signal, forbidden = [] } = {}) {
+async function writeFile(p, content, /** @type {{ append?: boolean, signal?: AbortSignal, forbidden?: string[] }} */ { append = false, signal, forbidden = [] } = {}) {
   const file = safePath(p);
   if (forbiddenWrite(file, { extra: forbidden })) throw new Error(`Workflows can't write to ${file}: it's somewhere a file could run as code later.`);
   const dir = path.dirname(file);
@@ -180,11 +180,12 @@ function claudeTurn(manager, tabId, prompt, userItem, signal) {
   return new Promise((resolve, reject) => {
     const texts = [];
     let settled = false;
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let grace = null;
     const finish = value => {
       if (settled) return;
       settled = true;
-      clearTimeout(grace);
+      if (grace) clearTimeout(grace);
       if (turns.get(tabId) === finish) turns.delete(tabId);
       manager.off('item', onItem);
       signal?.removeEventListener('abort', onAbort);
@@ -207,8 +208,9 @@ function claudeTurn(manager, tabId, prompt, userItem, signal) {
     // Stop interrupts the turn; if no result comes back (the process is stuck), it ends anyway.
     function onAbort() {
       manager.interrupt(tabId);
-      grace = setTimeout(() => finish({ ok: false, tabId, reply: '', text: '', error: 'Stopped.' }), STOP_GRACE_MS);
-      grace.unref?.();
+      const t = setTimeout(() => finish({ ok: false, tabId, reply: '', text: '', error: 'Stopped.' }), STOP_GRACE_MS);
+      t.unref?.();
+      grace = t;
     }
     if (signal?.aborted) { turns.delete(tabId); reject(abortError()); return; }
     if (!manager.tabs?.has?.(tabId) && manager.tabs) { finish({ ok: false, tabId, reply: '', text: '', error: 'Its conversation was closed.' }); return; }

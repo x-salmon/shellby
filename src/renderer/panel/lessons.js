@@ -83,7 +83,7 @@
       note.textContent = wordedBy;
       add.disabled = false;
     }
-    const later = () => { clearTimeout(timer); add.disabled = true; timer = setTimeout(preview, PREVIEW_DELAY_MS); };
+    const later = () => { if (timer) clearTimeout(timer); add.disabled = true; timer = setTimeout(preview, PREVIEW_DELAY_MS); };
 
     input.addEventListener('input', () => { rule = input.value.replace(/\s+/g, ' ').trim(); wordedBy = ''; later(); });
     input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); }); // one line in the file

@@ -19,6 +19,7 @@ const SESSION_ID = /^[\w-]{8,64}$/;
 
 /** d: what main shares (main.js `shared`). */
 function wireJournal(d) {
+  /** @type {InstanceType<typeof JournalStore> | null} */
   let store = null;
   const pending = new Map(); // sessionId -> { cwd, root, strict, timer }: settling
   const queued = new Map();  // sessionId -> { cwd, root, strict }: due, waiting for a free slot
@@ -147,7 +148,7 @@ function wireJournal(d) {
   /** Quitting: whatever was still settling or waiting is written on the next start instead. */
   function savePending() {
     if (!d.config) return;
-    const jobs = new Map([...queued, ...rerun, ...[...pending].map(([id, p]) => [id, p])]);
+    const jobs = new Map([...queued, ...rerun, ...pending]);
     for (const p of pending.values()) clearTimeout(p.timer);
     pending.clear();
     queued.clear();
@@ -214,18 +215,19 @@ function wireJournal(d) {
     if (!fromPanel && !books().read(root).notes.length) {
       return { ok: false, error: "Shellby has no notes for this project yet, so it won't start a journal from a pin. Pins can be added on the project's page in Shellby." };
     }
-    let result = null;
+    let result = /** @type {ReturnType<typeof journal.pin> | null} */ (null);
     books().update(root, path.basename(root), book => {
       result = journal.pin(book, { kind, text, by: fromPanel ? 'you' : 'claude' }, Date.now());
       return result.book;
     });
     if (result?.error) return { ok: false, error: result.error };
     d.send(d.panel, 'projects:changed');
-    return { ok: true, id: result.id };
+    return { ok: true, id: result?.id };
   }
 
   // The last pin or note taken off, for the page's Undo: { root, pin } | { root, note }.
   // Held here, so Undo puts back exactly what was there, never what the page sends.
+  /** @type {{ root: string, pin?: { id?: string } | null, note?: { sessionId?: string } | null } | null} */
   let lastRemoved = null;
 
   /** Take a pin or a session's note off a project's page. root: a folder the page was shown. */
@@ -246,7 +248,7 @@ function wireJournal(d) {
     const u = lastRemoved;
     const same = u && found && u.root === found.root && (pinId ? u.pin?.id === pinId : !!sessionId && u.note?.sessionId === sessionId);
     if (!same) return { ok: false, error: 'That can’t be put back any more.' };
-    let result = null;
+    let result = /** @type {ReturnType<typeof journal.putBack> | null} */ (null);
     books().update(found.root, path.basename(found.root), book => {
       result = journal.putBack(book, { pin: u.pin, note: u.note });
       return result.book;

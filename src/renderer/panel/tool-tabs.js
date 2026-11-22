@@ -91,7 +91,7 @@
     return {
       el, draw,
       title: () => { const s = serverOf(toolId); return s ? nameOf(s) : 'Server log'; },
-      destroy: () => { clearTimeout(timer); el.remove(); },
+      destroy: () => { if (timer) clearTimeout(timer); el.remove(); },
     };
   }
 

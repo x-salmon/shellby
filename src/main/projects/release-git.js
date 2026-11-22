@@ -24,6 +24,8 @@ const MAX_FILES_NAMED = 5;
 const READ_MS = 15000;
 const PUSH_MS = 2 * 60 * 1000;
 const SHA_RE = /^[0-9a-f]{40}$/;
+/** @typedef {{ ok: boolean, out: string, error?: string }} GitOut */
+/** @typedef {(cwd: string, args: string[], opts?: { timeout?: number, env?: NodeJS.ProcessEnv }) => Promise<GitOut>} GitFn */
 const BRANCH_RE = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;
 const REMOTE_RE = /^(?!-)[\w.-]{1,100}$/;
 const CHANGELOG_RE = /^(changelog|changes|history)\.md$/i;
@@ -110,8 +112,10 @@ async function defaultBranchOf(root, remote, git) {
  * -> { ok: true, head, branch, defaultBranch, onDefault, last, total, truncated, groups,
  *      file, lock, changelog, next, draft, changes, upstream, unpushedTag }
  *  | { ok: false, error }
+ * @param {string} root
+ * @param {{ git: GitFn, now?: () => number }} deps
  */
-async function readRelease(root, { git, now = Date.now } = {}) {
+async function readRelease(root, { git, now = Date.now }) {
   const headR = await git(root, ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}'], { timeout: READ_MS });
   const head = headR.ok ? headR.out.trim() : '';
   if (!SHA_RE.test(head)) return fail('This repository has no commits yet.');
@@ -144,6 +148,7 @@ async function readRelease(root, { git, now = Date.now } = {}) {
   const groups = R.groupCommits(commits);
 
   // Upstream: how far this branch is ahead of / behind its remote, as last fetched.
+  /** @type {{ name: string, behind: number, ahead: number } | null} */
   let upstream = null;
   const upName = upR.ok ? upR.out.trim() : '';
   if (upName && BRANCH_RE.test(upName)) {
@@ -152,6 +157,7 @@ async function readRelease(root, { git, now = Date.now } = {}) {
     upstream = { name: upName, behind: behind || 0, ahead: ahead || 0 };
   }
   // A release tagged here whose commit the remote doesn't have yet: it still has to be pushed.
+  /** @type {string | null} */
   let unpushedTag = null;
   if (last && upstream) {
     const pushed = await git(root, ['merge-base', '--is-ancestor', `refs/tags/${last.tag}^{commit}`, '@{upstream}'], { timeout: READ_MS });
@@ -346,6 +352,9 @@ async function pushRelease(root, { tag }, deps) {
  * Push the branch, with a release tag on it when given. Without one, it's the
  * card's "Push them first": CI checks the commits before a release ships them.
  * -> as pushRelease
+ * @param {string} root
+ * @param {{ tag?: string | null }} opts
+ * @param {{ git: GitFn, env?: () => NodeJS.ProcessEnv, gate?: ((root: string, opts: { rev: string, remote: string }) => Promise<{ ok: boolean, error?: string, cancelled?: boolean, secrets?: unknown } | null>) | null }} deps
  */
 async function pushBranch(root, { tag = null } = {}, { git, env = () => ({}), gate = null }) {
   const [branchR, tagR, upR] = await Promise.all([
@@ -356,7 +365,7 @@ async function pushBranch(root, { tag = null } = {}, { git, env = () => ({}), ga
   const branch = branchR.ok ? branchR.out.trim() : '';
   if (!BRANCH_RE.test(branch)) return fail('This clone isn\'t on a branch.');
   if (tag) {
-    if (!tagR.ok) return fail(`There's no tag called ${tag} here.`);
+    if (!tagR?.ok) return fail(`There's no tag called ${tag} here.`);
     const onBranch = await git(root, ['merge-base', '--is-ancestor', tagR.out.trim(), 'HEAD'], { timeout: READ_MS });
     if (!onBranch.ok) return fail(`${tag} isn't on ${branch}.`);
   }
@@ -371,7 +380,8 @@ async function pushBranch(root, { tag = null } = {}, { git, env = () => ({}), ga
   // The secret scan (secret-gate.js) over every commit of the branch this remote
   // hasn't got, not just the release's: the tag is on the branch, so that's all of it.
   const stopped = gate ? await gate(root, { rev: `refs/heads/${branch}`, remote }) : null;
-  if (stopped) return stopped;
+  // A gate that answers at all has stopped the push.
+  if (stopped) return /** @type {{ ok: false, error: string, cancelled?: boolean, secrets?: unknown }} */ (stopped);
   const refs = [`refs/heads/${branch}:refs/heads/${dest}`, ...(tag ? [`refs/tags/${tag}:refs/tags/${tag}`] : [])];
   const push = await git(root, [...NO_HOOKS, 'push', '--atomic', '--quiet', remote, ...refs],
     { timeout: PUSH_MS, env: env() || {} });

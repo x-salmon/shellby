@@ -95,10 +95,11 @@ function wirePainter(d) {
 
   // ------------------------------------------------------------ on the desk
 
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let previewTimer = null;
   /** The crab wears this drawing for a minute, then his own skin again. null ends it now. */
   function previewSkin(raw) {
-    clearTimeout(previewTimer);
+    if (previewTimer) clearTimeout(previewTimer);
     if (!raw) { d.deskPreview = null; d.broadcastSkin(); return { ok: true, until: 0 }; }
     const { skin, errors } = validateSkin(raw, 'preview');
     if (!skin) return { ok: false, error: errors[0] };
@@ -122,7 +123,8 @@ function wirePainter(d) {
   // (wrap.packFile), at most a pack's 512 KB. Refuses an id a built-in pack has,
   // and writing over a pack the Painter didn't make.
   // -> { ok, pack, text, dest } to write with installOwnPack | { ok: false, error }
-  function ownPackFile(raw, { replace = false } = {}) {
+  /** @returns {{ ok: true, pack: NonNullable<ReturnType<typeof wrap.packFile>['pack']>, text: string, dest: string } | { ok: false, error: string }} */
+  function ownPackFile(raw, /** @type {{ replace?: boolean }} */ { replace = false } = {}) {
     const file = wrap.packFile(raw);
     if (!file.pack) return { ok: false, error: `It has a problem: ${file.error}` };
     const pack = file.pack;
@@ -198,6 +200,7 @@ function wirePainter(d) {
 
   // ------------------------------------------------------------ pack wishes
 
+  /** @type {ReturnType<typeof painter.fetchWishes> | null} */
   let wishesInFlight = null;
   /** Up to three open pack wishes of a kind, newest first (cached a day; none when offline). */
   async function wishes(kind) {
@@ -223,7 +226,7 @@ function wirePainter(d) {
       // Warnings you can call on purpose are the Painter's to ask about; what blocks, blocks here too.
       const block = G.checks(G.fromSkin(raw), raw).find(c => c.level === 'block');
       if (block) return { error: block.text };
-      const { source: _s, ...clean } = skin;
+      const { source: _s, ...clean } = /** @type {typeof skin & { source?: string }} */ (skin);
       return { item: { ...clean, ...(raw.anchors ? { anchors: raw.anchors } : {}), author: raw.author || '' }, name: skin.name };
     }
     const field = CATALOG_FIELD[kind];
@@ -248,7 +251,7 @@ function wirePainter(d) {
    * opts: { contest: 'YYYY-MM' to enter it, wish: the pack wish's number }.
    * -> confirmAndPublishPack's answer, plus { packId, version, commented, contestUrl }
    */
-  async function share(kind, id, { contest = null, wish = null } = {}) {
+  async function share(kind, id, /** @type {{ contest?: string | null, wish?: number | null }} */ { contest = null, wish = null } = {}) {
     if (!d.github?.can('publish')) return { ok: false, needsGitHub: true, error: 'Sign in to GitHub and turn on "Publish Wardrobe packs" in Settings → GitHub to share from here.' };
     const got = shareable(kind, id);
     if (got.error) return { ok: false, error: got.error };
@@ -263,16 +266,18 @@ function wirePainter(d) {
       const whose = /^[\w-]{1,39}$/.test(by) ? ` (@${by}’s)` : '';
       return { ok: false, taken: true, error: `The gallery already has a “${packId}” that isn’t yours${whose}. Rename yours (Save as with another name) and share that.` };
     }
-    const pack = wrap.wrapItem(kind, got.item, { login, prev, contest });
-    const file = pack ? ownPackFile(pack, { replace: true }) : { ok: false, error: 'That name can’t be a pack id.' };
+    const made = wrap.wrapItem(kind, got.item, { login, prev, contest });
+    const file = made ? ownPackFile(made, { replace: true }) : { ok: /** @type {false} */ (false), error: 'That name can’t be a pack id.' };
     if (!file.ok) return file;
-    const number = Number.isInteger(wish) && wish > 0 ? wish : null;
+    const pack = /** @type {NonNullable<typeof made>} */ (made); // a file only comes from a wrap
+    const number = typeof wish === 'number' && Number.isInteger(wish) && wish > 0 ? wish : null;
     const r = await d.confirmAndPublishPack(packId, { forLine: wrap.wishLine(number), pack: file.pack, update: prev ? prev.version : null });
     if (!r.ok) return { ...r, packId };
     // Yours now, on this PC too. The pull request is open whatever happens here.
     const installed = installOwnPack(file);
     if (!installed.ok) d.log?.warn('shared, but could not install the wrap', installed.error);
     d.config.set({ painterShares: { ...shares(), [packId]: { kind, id, version: pack.version, url: r.url, at: Date.now(), listed: false, ...(pack.contest ? { contest: pack.contest } : {}) } } });
+    /** @type {string | null} */
     let contestUrl = null;
     if (pack.contest) {
       contestUrl = wrap.contestEntryUrl({ name: got.name, packId, month: pack.contest, prUrl: r.url });

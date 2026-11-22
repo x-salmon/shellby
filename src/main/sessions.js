@@ -30,10 +30,41 @@ const AGENT_NAME = /^[\w][\w:.-]{0,119}$/;
 const cleanAgent = v => (typeof v === 'string' && AGENT_NAME.test(v) ? v : '');
 const canPause = t => onClaude(t) && !!t.session.requestPause && !t.localTarget && !t.routineId && !t.workflowRunId;
 
+/**
+ * What main hands the manager (wiring/sessions.js); the constructor has what each is for.
+ * @typedef {object} ManagerDeps
+ * @property {() => string | null} getExe
+ * @property {any} history
+ * @property {() => string} getMode
+ * @property {() => string} getModel
+ * @property {() => string} [getEffort]
+ * @property {() => boolean} [getEffortPick]
+ * @property {() => string} [getOutputStyle]
+ * @property {() => string} [getFallbackModel]
+ * @property {() => boolean} [getChrome]
+ * @property {(flag: string) => boolean} [supports]
+ * @property {string[]} [argsPrefix]
+ * @property {() => Record<string, string>} [getEnv]
+ * @property {Function | null} [prepareTurn]
+ * @property {Function} [compose]
+ * @property {Function | null} [windowShare]
+ * @property {() => { note: string, tools?: unknown[] } | null} [getSelfAware]
+ * @property {Function | null} [onTool]
+ * @property {Function | null} [decorate]
+ * @property {(cwd: string) => any} [getRemote]
+ * @property {Function | null} [savePictures]
+ * @property {(cwd?: string) => any} [getLocalTarget]
+ * @property {() => any} [getLocalServer]
+ * @property {Function | null} [warmLocal]
+ * @property {Function | null} [makeHarness]
+ * @property {() => Record<string, object> | null} [getConnectorServers]
+ * @property {Function | null} [engineerDefault]
+ */
+
 /** @typedef {typeof items & typeof turns & typeof choices} ManagerMixins */
 // EventEmitter at run time: the mixins join the prototype at the end of this
 // file. The cast only lets the class (and tsc) see their methods on `this`.
-const Base = /** @type {new () => EventEmitter & ManagerMixins} */ (/** @type {unknown} */ (EventEmitter));
+const Base = /** @type {new () => EventEmitter & ManagerMixins & Required<ManagerDeps>} */ (/** @type {unknown} */ (EventEmitter));
 
 class SessionManager extends Base {
   // prepareTurn(tab): an optional promise each turn waits for before Claude
@@ -52,9 +83,11 @@ class SessionManager extends Base {
   // getFallbackModel() and getChrome() are Settings' (session/ has what they do);
   // supports(flag): whether the installed Claude Code takes one of session/args.js OPTIONAL_FLAGS.
   // makeHarness(id, { cwd, mode, resumeId }) -> a session for another agent's CLI (harness/), or null when none can run.
+  /** @param {ManagerDeps} deps */
   constructor({ getExe, history, getMode, getModel, getEffort = () => '', getEffortPick = () => false, getOutputStyle = () => '', getFallbackModel = () => '', getChrome = () => false, supports = () => true, argsPrefix = [], getEnv = () => ({}), prepareTurn = null, compose = text => text, windowShare = null, getSelfAware = () => null, onTool = null, decorate = null, getRemote = () => null, savePictures = null, getLocalTarget = () => null, getLocalServer = () => null, warmLocal = null, makeHarness = null, getConnectorServers = () => null, engineerDefault = null }) {
     super();
     Object.assign(this, { makeHarness, getExe, history, getMode, getModel, getEffort, getEffortPick, getOutputStyle, getFallbackModel, getChrome, supports, argsPrefix, getEnv, prepareTurn, compose, windowShare, getSelfAware, onTool, decorate, getRemote, savePictures, getLocalTarget, getLocalServer, warmLocal, getConnectorServers, engineerDefault });
+    /** @type {Map<string, any>} */
     this.tabs = new Map();
   }
 
@@ -63,6 +96,7 @@ class SessionManager extends Base {
   // fixed for the life of its process.
   // agent: one of your agents to run the conversation (--agent), kept in History.
   // harness: the CLI it runs on (harness/registry.js), Claude Code unless another is picked; kept in History, never changed.
+  /** @param {{ tabId: string, cwd: string, historyEntry?: any, mode?: string | null, routineId?: string | null, workflowRunId?: string | null, title?: string | null, allowedTools?: string[], mcpConfig?: object | null, agent?: string | null, harness?: string | null }} what */
   open({ tabId, cwd, historyEntry = null, mode = null, routineId = null, workflowRunId = null, title = null, allowedTools = [], mcpConfig = null, agent = null, harness = null }) {
     if (!TAB_ID.test(tabId || '')) throw new Error('bad tab id');
     if (this.tabs.has(tabId)) return this.tabs.get(tabId);
@@ -70,7 +104,7 @@ class SessionManager extends Base {
     const runsOn = harnesses.cleanHarness(historyEntry?.harness ?? harness);
     const other = runsOn !== harnesses.CLAUDE;
     // Never carried on by another agent than the one it began on.
-    if (other && !this.makeHarness) throw new Error(`${harnesses.byId(runsOn).name} conversations aren't available here.`);
+    if (other && !this.makeHarness) throw new Error(`${harnesses.byId(runsOn)?.name} conversations aren't available here.`);
     const exe = other ? null : this.getExe();
     // A folder on another computer needs Claude Code there, not here.
     if (!other && !exe && !this.getRemote(historyEntry?.cwd || cwd)) throw new Error('Claude Code is not installed.');
@@ -79,10 +113,11 @@ class SessionManager extends Base {
     // keeps what it began on, a new one takes Settings' choice now. Never moved
     // later, so a local conversation is never carried on at Anthropic.
     const localTarget = other ? null : historyEntry ? localAgent.cleanTarget(historyEntry.local) : this.getLocalTarget(cwd);
+    /** @type {any} */ // the mixins put more on it as it goes
     let tab = null; // the tools are only ever called once it exists
     // Its own effort, kept in History: you chose it, or Shellby picked it.
     const ownEffort = ['you', 'picked'].includes(historyEntry?.effortBy) && (historyEntry.effort === '' || EFFORTS.includes(historyEntry.effort)) ? historyEntry.effort : null;
-    const session = other ? this.makeHarness(runsOn, { cwd: historyEntry?.cwd || cwd, mode: mode || this.getMode(), resumeId: historyEntry?.claudeSessionId || null }) : new ClaudeSession({
+    const session = other ? /** @type {Function} */ (this.makeHarness)(runsOn, { cwd: historyEntry?.cwd || cwd, mode: mode || this.getMode(), resumeId: historyEntry?.claudeSessionId || null }) : new ClaudeSession({
       remote: () => this.getRemote(session.cwd), // only ever called once it exists
       // Asked again at each start: Claude Code may move while the tab is open
       // (session/). The path found now stands in should it go missing, so
@@ -112,7 +147,7 @@ class SessionManager extends Base {
       // The connectors gateway (connectors/), but never on a local model: nothing of a local conversation leaves this PC.
       extraMcp: () => ((tab ? tab.localTarget : localTarget) ? null : this.getConnectorServers?.() || null),
       systemNote: aware?.note || null,
-      mcp: aware?.tools && this.onTool ? { tools: aware.tools, call: (name, args) => this.onTool(tab, name, args) } : null,
+      mcp: aware?.tools && this.onTool ? { tools: aware.tools, call: (name, args) => this.onTool?.(tab, name, args) } : null,
     });
     tab = {
       id: tabId, session, routineId,
@@ -321,7 +356,7 @@ class SessionManager extends Base {
     const proc = this.tabs.get(tabId)?.session.proc;
     this.close(tabId);
     if (!proc || proc.exitCode !== null) return Promise.resolve();
-    return new Promise(resolve => {
+    return new Promise(/** @param {(v?: unknown) => void} resolve */ resolve => {
       const timer = setTimeout(resolve, timeoutMs);
       proc.once('close', () => { clearTimeout(timer); resolve(); });
     });

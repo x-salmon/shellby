@@ -171,7 +171,7 @@
 
   // Looking at the shelf counts as seeing what's new on it, after a moment to notice.
   function noticeFinds() {
-    clearTimeout(seenTimer);
+    if (seenTimer) clearTimeout(seenTimer);
     if (!life()?.finds.unseen.length) return;
     seenTimer = setTimeout(() => { if (state.view === 'finds') api.findsSeen(); }, 2500);
   }

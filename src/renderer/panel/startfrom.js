@@ -47,7 +47,7 @@
   }
 
   function closeSheet() {
-    clearTimeout(noteTimer);
+    if (noteTimer) clearTimeout(noteTimer);
     $('sfSheet').hidden = true;
     const from = open?.from;
     open = null;
@@ -142,7 +142,7 @@
   $('sfNote').addEventListener('input', () => {
     pending = true;
     syncSend();
-    clearTimeout(noteTimer);
+    if (noteTimer) clearTimeout(noteTimer);
     noteTimer = setTimeout(() => refresh(), 250);
   });
   $('sfAck').addEventListener('change', syncSend);

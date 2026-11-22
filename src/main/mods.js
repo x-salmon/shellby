@@ -125,6 +125,7 @@ const SCOPES = ['user', 'project', 'local'];
  */
 function enabledWhere(id, settings = [], fallback = true) {
   let on = fallback;
+  /** @type {string | null} */
   let from = null;
   settings.forEach((s, i) => {
     const v = isObj(s) && isObj(s.enabledPlugins) && Object.hasOwn(s.enabledPlugins, id) ? s.enabledPlugins[id] : undefined;
@@ -159,7 +160,12 @@ const modItem = (mod, fields) => ({
  * setBy: the settings scope that turned it on or off ('project', 'local'…), or null.
  * problem: why Shellby won't switch it (its folder and name disagree), or null.
  */
+/**
+ * @param {{ home?: string, installed?: Array<{ id?: unknown, dir?: unknown, marketplace?: unknown, enabled?: unknown, scope?: unknown }>, loaded?: Array<{ path?: unknown, source?: unknown }>, settings?: unknown[] }} [opts]
+ * @param {typeof fs} [fsImpl]
+ */
 function scanMods({ home, installed = [], loaded = [], settings = [] } = {}, fsImpl = fs) {
+  /** @type {Array<ReturnType<typeof modItem>>} */
   const out = [];
   const have = p => out.some(m => samePath(m.path, p));
   const add = item => { if (out.length < MAX_MODS && !have(item.path)) out.push(item); };
@@ -168,7 +174,7 @@ function scanMods({ home, installed = [], loaded = [], settings = [] } = {}, fsI
   let entries;
   try { entries = skills ? fsImpl.readdirSync(skills, { withFileTypes: true }) : []; } catch { entries = []; }
   for (const e of entries) {
-    const dir = path.join(skills, e.name);
+    const dir = path.join(/** @type {string} */ (skills), e.name); // entries is empty without skills
     if (!(e.isDirectory() || (e.isSymbolicLink() && isDir(dir, fsImpl)))) continue;
     const mod = readMod(dir, fsImpl);
     if (!mod) continue;
@@ -309,6 +315,7 @@ function powers({ hooks = [], calls = [] } = {}) {
 // ---- `claude plugin test`
 
 /** The end of a test run's output, as lines a panel can show, and how it went. */
+/** @param {{ ok?: boolean, stdout?: string, stderr?: string }} [result] */
 function summarizeTest({ ok, stdout = '', stderr = '' } = {}) {
   const text = `${stdout || ''}\n${stderr || ''}`.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').replace(/\r/g, '');
   const lines = text.split('\n').map(l => l.replace(/\s+$/, '')).filter(l => l.trim());

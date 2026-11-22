@@ -113,7 +113,8 @@ function wireSessions(d) {
       // A new conversation's local model (local/agent.js), never for a folder on another computer: it keeps it for good (sessions.js).
       getLocalTarget: cwd => (d.remoteService?.placeOf(cwd) ? null : localAgent.agentTarget(d.config.get('localModel'))),
       // The local server a conversation can be put on from the model chip (sessions.js setTabLocal), the same rule.
-      getLocalServer: cwd => (d.remoteService?.placeOf(cwd) ? null : d.config.get('localModel')?.url || null),
+      // (its typedef in sessions.js gives getLocalServer no parameter, though it is called with the folder)
+      getLocalServer: /** @type {() => any} */ (/** @type {unknown} */ ((/** @type {string} */ cwd) => (d.remoteService?.placeOf(cwd) ? null : d.config.get('localModel')?.url || null))),
       // A local conversation's quick model, loaded as it starts so its titles and checks don't push the main one out.
       warmLocal: target => { require('../local/ollama').keepLoaded(target).catch(() => {}); },
       getFallbackModel: () => d.config.get('fallbackModel') || '',
@@ -318,13 +319,14 @@ function wireSessions(d) {
     // config.set rewrites settings.json in full: the list goes there only when it's different.
     // Quitting closes every tab on the way out (wiring/quit.js): that's not you
     // closing them, so the list stays as it was and they come back next start.
+    /** @type {string | null} */
     let openTabsSaved = null;
     let openIds = new Set();
     d.manager.on('tabs', summary => {
       d.sendTabs(summary); // the panel and any popped-out windows (wiring/popouts.js)
       d.clashTabsChanged?.(); // a copy opened or closed: look for clashes again (wiring/clashes.js)
       const saved = summary.filter(t => t.saved && !t.routineId && !t.workflowRunId).map(t => t.id);
-      if (!d.CAPTURE && !app.isQuitting && !d.restoringTabs) {
+      if (!d.CAPTURE && !(/** @type {{ isQuitting?: boolean }} */ (app)).isQuitting && !d.restoringTabs) {
         openTabsSaved ??= JSON.stringify(d.config.get('openTabs') || []);
         const json = JSON.stringify(saved);
         if (json !== openTabsSaved) { openTabsSaved = json; d.config.set({ openTabs: saved }); }
@@ -385,7 +387,7 @@ function wireSessions(d) {
       if (snap) d.bugdex?.treeSeen(snap.root, snap.tree); // the code before: a later "fix" back to it is an undo
       if (snap && !late) turnStarts.set(tab.id, { ...snap, turnId });
     });
-    return Promise.race([taken, new Promise(r => setTimeout(() => { late = true; r(); }, SNAPSHOT_WAIT_MS))]);
+    return Promise.race([taken, new Promise(r => setTimeout(() => { late = true; r(undefined); }, SNAPSHOT_WAIT_MS))]);
   }
 
   // A tab closed mid-turn never reaches endTurn: its snapshot of the folder went
@@ -542,6 +544,7 @@ function wireSessions(d) {
   // Code directly (usage/index.js: no message is sent, so it costs nothing) when the
   // panel comes up, after the PC wakes and at startup, at most every couple of
   // minutes. Not counted against a tab: no turn of Shellby's spent it.
+  /** @type {Promise<void> | null} */
   let usageProbe = null;
   function refreshUsage() {
     refreshOtherUsage();

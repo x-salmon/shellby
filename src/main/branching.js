@@ -294,7 +294,7 @@ function register(deps) {
   const related = (a, b) => branch.family(history.list(), a).some(e => e.id === b);
 
   // What this try has that the other doesn't, file by file, as of right now.
-  ipcMain.handle('branch:compare', async (_e, { tabId, otherId } = {}) => {
+  ipcMain.handle('branch:compare', async (_e, /** @type {{ tabId?: unknown, otherId?: unknown }} */ { tabId, otherId } = {}) => {
     if (!isStr(tabId) || !isStr(otherId) || tabId === otherId) return { ok: false, error: 'Pick another try to compare with.' };
     if (!related(tabId, otherId)) return { ok: false, error: 'Those two are not tries at the same thing.' };
     const [mine, theirs] = [folderOf(tabId), folderOf(otherId)];
@@ -337,7 +337,7 @@ function register(deps) {
   }
 
   // One file's diff from the last comparison: only ever trees main worked out itself.
-  ipcMain.handle('branch:compare-diff', async (_e, { tabId, otherId, file } = {}) => {
+  ipcMain.handle('branch:compare-diff', async (_e, /** @type {{ tabId?: unknown, otherId?: unknown, file?: unknown }} */ { tabId, otherId, file } = {}) => {
     const c = isStr(tabId) && isStr(otherId) ? compared.get(`${tabId}>${otherId}`) : null;
     if (!c) return { error: 'Compare them again: that comparison has gone.' };
     if (!isStr(file) || !c.files.has(file)) return { error: 'Not a file in this comparison.' };
@@ -347,7 +347,7 @@ function register(deps) {
   // One file from the other try, as the last comparison saw it, into this
   // one: the best of both without keeping either whole. Never over a change
   // made here since that comparison.
-  ipcMain.handle('branch:take', async (_e, { tabId, otherId, file } = {}) => {
+  ipcMain.handle('branch:take', async (_e, /** @type {{ tabId?: unknown, otherId?: unknown, file?: unknown }} */ { tabId, otherId, file } = {}) => {
     const c = isStr(tabId) && isStr(otherId) ? compared.get(`${tabId}>${otherId}`) : null;
     if (!c) return { ok: false, error: 'Compare them again: that comparison has gone.' };
     if (!isStr(file) || !c.files.has(file)) return { ok: false, error: 'Not a file in this comparison.' };

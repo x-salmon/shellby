@@ -23,6 +23,9 @@ const lifecycle = require('../bugdex/lifecycle');
 const { judge } = require('../bugdex/cheats');
 const battle = require('../bugdex/battle');
 const { speciesById } = require('../bugdex/species');
+
+/** An encounter's species: encounters are only made from the book's own table, so it is always known. */
+const speciesOf = id => /** @type {NonNullable<ReturnType<typeof speciesById>>} */ (speciesById(id));
 const { projectOf } = require('../gitinfo');
 const { activeSeasons } = require('../wardrobe/seasons');
 const { normalizeXp } = require('../progression/xp');
@@ -80,10 +83,11 @@ function wireBugdex(d) {
   /** The folder's git tree now, or null (not a repo, or slower than SNAPSHOT_WAIT_MS). */
   function snapshotWithin(dir) {
     let late = false;
+    /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
     const taken = changes.snapshot(dir).catch(() => null).then(s => (late ? null : s));
     const slow = new Promise(r => { timer = setTimeout(() => { late = true; r(null); }, d.SNAPSHOT_WAIT_MS); });
-    return Promise.race([taken, slow]).finally(() => clearTimeout(timer));
+    return Promise.race([taken, slow]).finally(() => { if (timer) clearTimeout(timer); });
   }
 
   const ringPush = (map, id, row, max) => { map.set(id, [...(map.get(id) || []), row].slice(-max)); bound(map); };
@@ -139,7 +143,7 @@ function wireBugdex(d) {
    * Open an encounter, or refresh one that failed again.
    *   again: { kind (detect.js commandKind), failed } — what failed again, for its battle
    */
-  async function spot(enc, again = null) {
+  async function spot(enc, /** @type {{ kind?: string, failed?: number | null } | null} */ again = null) {
     const now = Date.now();
     const r = bugdex.spot(state(), enc, now, { device: device() });
     save(r.state);
@@ -187,7 +191,7 @@ function wireBugdex(d) {
    * Jar it: the book, the rewards and the moment.
    *   e: the encounter (or { species, fp, project, name, firstAt })
    */
-  function catchIt(e, { remedy = false, quiet = false, move = null } = {}) {
+  function catchIt(e, /** @type {{ remedy?: boolean, quiet?: boolean, move?: string | null }} */ { remedy = false, quiet = false, move = null } = {}) {
     const now = Date.now();
     const sp = speciesById(e.species);
     const boosts = d.eventBoosts?.() || null;
@@ -217,7 +221,7 @@ function wireBugdex(d) {
   function maybeEventBug(e, r, { party, now }) {
     const a = d.activeEvent?.();
     if (!a) return;
-    const sp = speciesById(e.species);
+    const sp = speciesOf(e.species);
     const ctx = { hour: new Date(now).getHours(), habitat: sp.habitat, forms: r.forms, party, trimmed: e.trimmed === true, todayCount: r.state.today };
     if (!events.bugComesAlong(a.ev.id, ctx)) return;
     // Its own fingerprint, from the catch that brought it: the same fix can't bring it twice.
@@ -245,7 +249,7 @@ function wireBugdex(d) {
     const caught = [];
     for (const e of cands) {
       if (!e.failTree || r.fps.includes(e.fp)) continue;
-      const sp = speciesById(e.species);
+      const sp = speciesOf(e.species);
       const same = e.failTree === end.tree;
       // A fix that isn't code: the species' own remedies, or a cleared cache, which
       // makes whatever it was a Cache Ghoul (reveal).
@@ -283,7 +287,7 @@ function wireBugdex(d) {
       caught.push({ e: { ...e, trimmed: removed > added, fix: { files, patch, judged: verdict, counts: { before: e.passed, after: r.passed } } }, remedy }); // fix: for the report (bugdex-nests.js)
     }
     // One pass, one moment: the rarest is the catch, the rest come along quietly.
-    caught.sort((a, b) => RARITY_ORDER[speciesById(b.e.species).rarity] - RARITY_ORDER[speciesById(a.e.species).rarity]);
+    caught.sort((a, b) => RARITY_ORDER[speciesOf(b.e.species).rarity] - RARITY_ORDER[speciesOf(a.e.species).rarity]);
     caught.forEach(({ e, remedy }, i) => catchIt(reveal(e, remedy), { remedy, quiet: i > 0, move: r.kind }));
   }
 
@@ -292,7 +296,7 @@ function wireBugdex(d) {
   function reveal(e, remedy) {
     if (!remedy) return e;
     const kinds = remediesSince(e.project, e.firstAt);
-    const own = kinds.filter(k => speciesById(e.species).remedies?.includes(k));
+    const own = kinds.filter(k => speciesOf(e.species).remedies?.includes(k));
     if ((e.species === 'port-squatter' || e.species === 'clingy-barnacle') && own.includes('kill')) return { ...e, species: 'zombie-process' };
     // Only when nothing of its own fixed it: a cleared cache did.
     if (!own.length && kinds.includes('cache')) return { ...e, species: 'cache-ghoul' };

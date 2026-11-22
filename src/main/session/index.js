@@ -6,6 +6,7 @@
 // (accounting.js) and its helpers (crew.js).
 const { spawn, execFile } = require('child_process');
 const os = require('os');
+const path = require('path');
 const { TASKKILL } = require('../system32'); // by full path: Claude runs in project folders
 const readline = require('readline');
 const { EventEmitter } = require('events');
@@ -35,6 +36,10 @@ const { crew, TALK_MS } = require('./crew');
 const { ultra } = require('./ultra');
 const { pause } = require('./pause');
 
+// Started when there's no Claude Code to start: nothing's there, so it fails the usual way
+// (ENOENT, "can't find Claude Code"). Absolute, so it's never looked up in a project's folder.
+const NO_CLAUDE = path.join(__dirname, 'no-claude-code.exe');
+
 // How often the reply's words as they're written reach the panel, at most.
 const PARTIAL_MS = 50;
 // How long a closed stdin waits for the CLI to go before it's killed.
@@ -57,7 +62,7 @@ function noteUnknown(event) {
 /**
  * What a ClaudeSession is made with (the constructor's comment says what each is).
  * @typedef {object} SessionOptions
- * @property {string | (() => string)} exe
+ * @property {string | (() => string | null)} exe
  * @property {string} cwd
  * @property {string} mode
  * @property {string} [model]
@@ -76,6 +81,7 @@ function noteUnknown(event) {
  * @property {{ tokens?: number, window?: number } | null} [context]
  * @property {string[]} [allowedTools]
  * @property {{ mcpServers?: Record<string, unknown> } | null} [mcpConfig]
+ * @property {() => Record<string, object> | null} [extraMcp]
  * @property {string | null} [systemNote]
  * @property {{ tools: unknown[], call: Function } | null} [mcp]
  * @property {() => { exe: string, host: string, dir: string, env: Record<string, string>, extra?: string[], argsPrefix?: string[] } | null} [remote]
@@ -241,7 +247,8 @@ class ClaudeSession extends Base {
     // SHELLBY_CRAB_TOOLS: the crab's tools are served from here, so the plugin's
     // MCP server leaves its copies of them out of every request.
     const crabEnv = this.mcp ? { SHELLBY_CRAB_TOOLS: '1' } : {};
-    const exe = this.exePath();
+    // None: opened on another computer that's since been removed, with no Claude Code here.
+    const exe = this.exePath() || NO_CLAUDE;
     const proc = remote
       // Only Shellby's own markers go over: your GitHub token and the rest of
       // this PC's environment stay here.

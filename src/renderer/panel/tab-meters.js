@@ -189,8 +189,8 @@
     const set = (el, win, name, pace = null) => {
       if (!win) { el.hidden = true; return; }
       el.hidden = false;
-      el.querySelector('.meter-fill').style.transform = `scaleX(${Math.min(100, win.pct) / 100})`;
-      el.querySelector('.meter-num').textContent = `${win.pct}%`;
+      /** @type {HTMLElement} */ (el.querySelector('.meter-fill')).style.transform = `scaleX(${Math.min(100, win.pct) / 100})`;
+      /** @type {Element} */ (el.querySelector('.meter-num')).textContent = `${win.pct}%`;
       // On pace to fill before it resets is as worth a glance as nearly full (forecast.js).
       el.classList.toggle('warn', (win.pct >= 70 || !!pace?.warn) && win.pct < 90);
       el.classList.toggle('hot', win.pct >= 90);

@@ -9,7 +9,9 @@ const processJob = require('../process-job');
 
 /** d: what main shares (main.js `shared`). Registers app's quit events at once. */
 function wireQuit(d) {
-  app.on('window-all-closed', e => e.preventDefault());
+  // Electron passes an Event here at runtime, though its typings give the listener no arguments.
+  const keepRunning = /** @type {() => void} */ (/** @type {unknown} */ ((/** @type {Electron.Event} */ e) => e.preventDefault()));
+  app.on('window-all-closed', keepRunning);
   app.on('will-quit', () => {
     d.typing?.stop(); // lets go of the keyboard (keystrokes.js)
     require('../local/pull').cancel(); // a model download stops with him; Ollama resumes it next time
@@ -53,7 +55,7 @@ function wireQuit(d) {
   // waits for: one mid-task would carry on editing with no window to show it.
   // Workflows freeze first: a run cut off by quitting is resumable, not failed.
   app.on('before-quit', () => {
-    app.isQuitting = true;
+    /** @type {{ isQuitting?: boolean }} */ (app).isQuitting = true;
     d.journal.savePending();
     d.remote?.shutdown(); // no task from the phone starts while he's on his way out
     d.presence?.stop();   // Discord clears his activity as the pipe closes

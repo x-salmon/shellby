@@ -29,7 +29,7 @@ const SECRETS = [
 ];
 
 class Log {
-  constructor(dir, { home = null, max = LINES_KEPT, maxBytes = MAX_BYTES, now = () => new Date() } = {}) {
+  constructor(dir, /** @type {{ home?: string | null, max?: number, maxBytes?: number, now?: () => Date }} */ { home = null, max = LINES_KEPT, maxBytes = MAX_BYTES, now = () => new Date() } = {}) {
     this.dir = dir;
     this.file = dir ? path.join(dir, 'shellby.log') : null;
     this.home = home;

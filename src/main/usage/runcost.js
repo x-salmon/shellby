@@ -43,7 +43,7 @@ const fanout = text => typeof text === 'string' && text.length > 0 && FANOUT_RE.
  * rows: the per-turn ledger; key: the workflow's id for kind 'workflow';
  * ratio: ledger.js ratioOf, so rows with only a weight can be turned into percent.
  * @param {any[]} rows
- * @param {{ kind: string, key?: string | null, ratio?: number | null, now?: number }} q
+ * @param {{ kind?: string, key?: string | null, ratio?: number | null, now?: number }} q
  * @returns {number[]}
  */
 function runsOf(rows, { kind, key = null, ratio = null, now = Date.now() }) {
@@ -70,10 +70,10 @@ function runsOf(rows, { kind, key = null, ratio = null, now = Date.now() }) {
  * no runs to go by, 'default': the rough guess in DEFAULTS. Null for a kind
  * that isn't one.
  * @param {any[]} rows
- * @param {{ kind: string, key?: string | null, ratio?: number | null, now?: number }} q
+ * @param {{ kind?: string, key?: string | null, ratio?: number | null, now?: number }} q
  */
 function estimateRun(rows, q) {
-  if (!KINDS.includes(q?.kind)) return null;
+  if (!KINDS.includes(/** @type {string} */ (q?.kind))) return null;
   const runs = runsOf(rows, q).slice(-RECENT);
   if (!runs.length) {
     const [low, high] = DEFAULTS[q.kind];

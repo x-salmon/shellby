@@ -7,6 +7,38 @@
    (permission cards and questions), feed-changes.js (what a turn changed) and
    feed-lanes.js (helper lanes). The words are feed-logic.js's. */
 'use strict';
+/**
+ * What the feed's other files reach on the Tab their methods are copied onto.
+ * @typedef {{
+ *   id: string, cwd: string, busy: boolean, outcome: string | null, inTerminal?: number | null,
+ *   el: HTMLElement, tools: Map<string, HTMLElement>, asks: Map<string, HTMLElement>,
+ *   lanes: Map<string, { setAsking(on: boolean): void }>, isActive: boolean,
+ *   stepUndos?: Map<string, StepUndo[]>,
+ *   stepEnds?: Map<string, string>,
+ *   append(el: Element, parent?: string): Element, setStatus(text: string): void,
+ *   changeRow(f: unknown, ref: unknown, read?: (file: string) => Promise<unknown>): HTMLElement,
+ * }} FeedTab
+ */
+/** @typedef {{ toolId: string, btn: HTMLButtonElement, el: HTMLElement, done: boolean, disarm: (() => void) | null }} StepUndo */
+/**
+ * The methods feed-*.js add to Tab (SB.extendTab), as render() calls them.
+ * @typedef {{
+ *   renderLane(item: unknown, replay?: boolean): unknown, renderMessage(item: unknown, replay?: boolean): unknown,
+ *   renderFindings(item: unknown, replay?: boolean): unknown, renderPlanning(item: unknown): unknown,
+ *   renderTool(item: unknown, replay?: boolean): unknown, renderToolResult(item: unknown): unknown,
+ *   renderTask(item: unknown, replay?: boolean): unknown, renderAsk(item: unknown, replay?: boolean): unknown,
+ *   markDecision(item: unknown): unknown, foldSavers(): unknown, renderResult(item: unknown, replay?: boolean): unknown,
+ *   offerLocal?(item: unknown, replay?: boolean): unknown, renderChanges(item: unknown): unknown,
+ *   markUndone(item: unknown): unknown, renderSuggestion(item: unknown, replay?: boolean): unknown,
+ *   renderHandOff(item: unknown): unknown, renderHandoff(item: unknown, replay?: boolean): unknown,
+ *   renderReadNudge(item: unknown): unknown, renderCutOff(item: unknown, replay?: boolean): unknown,
+ *   renderBranched(item: unknown): unknown, renderBranchedOff(item: unknown): unknown,
+ *   showStepUndos?(item: unknown): unknown, renderStepPoint?(item: unknown): unknown,
+ *   markStepUndone?(item: unknown): unknown, renderShell(item: unknown, replay?: boolean): unknown,
+ *   troubleBlock(trouble: unknown, text: unknown): Element, renderUser(item: unknown, replay?: boolean): unknown,
+ *   dropCutOff(): unknown, noteTurn?(item: unknown): unknown,
+ * }} FeedMixins
+ */
 (function () {
   const { h, api, state } = SB;
   const F = window.ShellbyFeedLogic;
@@ -45,6 +77,10 @@
   }
 
   class Tab {
+    /** @type {string} */ id;
+    /** @type {string} */ cwd;
+    /** @type {string[] | undefined} */ shuffled;
+
     constructor(id, { title = 'New task', cwd = '', saved = false, routineId = null } = {}) {
       Object.assign(this, { id, title, cwd, saved, routineId });
       this.busy = false;
@@ -213,6 +249,7 @@
     }
 
     // ------------------------------------------------------------ items
+    /** @this {Tab & FeedMixins} */
     render(item, { replay = false } = {}) {
       SB.trailTake?.(this, item, replay); // where he's been in the files (trail.js)
       SB.filesTake?.(this, item, replay); // and lit up in All files (files-dock.js)
@@ -451,6 +488,7 @@
     }
 
     // Rewind: the feed starts over from what's left of the transcript.
+    /** @this {Tab & FeedMixins} */
     reset(items) {
       this.wipe();
       for (const item of items) this.render(item, { replay: true });
@@ -468,7 +506,7 @@
   // this copies its methods (and getters) across, so they behave as if written here.
   SB.extendTab = (part) => {
     for (const name of Object.getOwnPropertyNames(part.prototype)) {
-      if (name !== 'constructor') Object.defineProperty(Tab.prototype, name, Object.getOwnPropertyDescriptor(part.prototype, name));
+      if (name !== 'constructor') Object.defineProperty(Tab.prototype, name, /** @type {PropertyDescriptor} */ (Object.getOwnPropertyDescriptor(part.prototype, name)));
     }
   };
 

@@ -36,8 +36,14 @@ function ago(at, now) {
 
 // ------------------------------------------------------------------ which project
 
-/** The clone root `dir` is in, deepest first, across every project. -> { project, root } | null */
+/**
+ * The clone root `dir` is in, deepest first, across every project. -> { project, root } | null
+ * @template {{ local?: Array<{ root: string }> }} P
+ * @param {P[]} projects
+ * @param {string} dir
+ */
 function byFolder(projects, dir) {
+  /** @type {{ project: P, root: string } | null} */
   let best = null;
   for (const p of projects) {
     for (const c of p.local || []) {

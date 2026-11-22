@@ -227,7 +227,7 @@ function replaceHook(settings, at, hook) {
  * Read a settings file, apply change(settings) and write it back, keeping a
  * one-time backup beside it (the same one the status line uses). `expect` is
  * { at, fp }: the hook the panel was looking at must still be there, unchanged.
- * @param {{ at: any, fp: string } | null} [expect]
+ * @param {{ at: any, fp?: string } | null} [expect]
  */
 function changeHooks(named, change, expect = null) {
   // Through a symlinked settings file to the real one, rather than replacing the link.

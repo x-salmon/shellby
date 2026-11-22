@@ -42,7 +42,7 @@
     if (!u) {
       text.textContent = v.molts ? `Every unlock is his. ★ marks from here.` : 'Every title, shell, badge and perk is his!';
       text.title = '';
-      bar.firstChild.style.transform = 'scaleX(1)';
+      /** @type {HTMLElement} */ (bar.firstChild).style.transform = 'scaleX(1)';
       bar.setAttribute('aria-valuenow', '100');
     } else {
       const lead = u.unlocks[0];
@@ -51,7 +51,7 @@
       text.title = `Level ${u.level}:\n${unlockTip(u.unlocks)}`;
       text.setAttribute('aria-label', `Next unlock at level ${u.level}, ${fmt(u.xpToGo)} XP to go: ${u.unlocks.map(x => x.name).join(', ')}`);
       const p = Math.max(0, Math.min(1, u.progress ?? 0));
-      bar.firstChild.style.transform = `scaleX(${p.toFixed(3)})`;
+      /** @type {HTMLElement} */ (bar.firstChild).style.transform = `scaleX(${p.toFixed(3)})`;
       bar.setAttribute('aria-valuenow', String(Math.round(p * 100)));
     }
     const molt = /** @type {HTMLElement} */ (root.querySelector('.lv-molt-btn'));
