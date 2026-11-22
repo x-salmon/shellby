@@ -7,6 +7,7 @@
 //   npm run release:cut -- [X.Y.Z] "Title"   cut it (the version defaults to the suggested one)
 //   npm run release:cut -- --dry-run         say what it would write, change nothing
 //   --wait      wait for CI on the pushed branch to finish (stops at the first red job)
+//   --hotfix    cut within a week of the last release (it fixes something broken)
 //   --skip-ci   cut without CI's word (GitHub unreachable); the release runs every check itself
 //   --no-credits  leave src/community/credits.json as it is (normally it gains the
 //               authors of merged pull requests since the last tag and the gallery's
@@ -26,6 +27,11 @@ const { git } = require('../src/main/worktrees');
 const guard = require('./release-guard');
 
 const ROOT = path.join(__dirname, '..');
+// A release a week. Five in two days (0.99.3 to 0.100.2) reads as unstable to
+// someone deciding whether to install, and asks everyone to restart each time.
+const PACE_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const CREDITS = 'src/community/credits.json';
 
 /** argv -> { version, title, dryRun, wait, skipCi }. Pure. */
@@ -66,12 +72,31 @@ async function creditsFile(tag, { dryRun = false, skip = false } = {}) {
   return [{ name: CREDITS, text: credits.toText(g.credits, existing.note) }];
 }
 
+/** What stops a cut this soon after the last one, or null. lastMs: when the last release was tagged (NaN when there's none). Pure. */
+function paceGate(lastMs, now, hotfix) {
+  if (hotfix || !Number.isFinite(lastMs)) return null;
+  const days = (now - lastMs) / DAY_MS;
+  if (days >= PACE_DAYS) return null;
+  const ago = days < 1 ? 'less than a day' : Math.floor(days) === 1 ? '1 day' : `${Math.floor(days)} days`;
+  const left = Math.ceil(PACE_DAYS - days);
+  return `The last release was ${ago} ago, and releases go out weekly. Wait ${left} more day${left === 1 ? '' : 's'}, or cut with --hotfix if it fixes something broken.`;
+}
+
+/** When a tag was made, in ms; NaN when it can't be told. */
+async function taggedAt(tag) {
+  if (!tag) return NaN;
+  const r = await git(ROOT, ['for-each-ref', '--format=%(creatordate:unix)', `refs/tags/${tag}`]);
+  return r.ok && r.out.trim() ? Number(r.out.trim()) * 1000 : NaN;
+}
+
 async function main(argv) {
   const { version: asked, title, dryRun, wait, skipCi } = parseArgs(argv);
   const state = await rg.readRelease(ROOT, { git });
   if (!state.ok) throw new Error(state.error);
   const blocked = rg.blocker(state);
   if (blocked && !dryRun) throw new Error(blocked);
+  const early = paceGate(await taggedAt(state.last?.tag), Date.now(), argv.includes('--hotfix'));
+  if (early && !dryRun) throw new Error(early);
   if (!dryRun && !skipCi) {
     const ci = state.upstream && !state.upstream.ahead
       ? await guard.waitForCi(state.head, { wait }).catch(e => ({ state: 'unknown', problem: `${e.message} Cut with --skip-ci to go without it.` }))
@@ -84,6 +109,7 @@ async function main(argv) {
   console.log(`${version} (${state.next.bump}: ${state.next.why}), from ${from} since ${state.last?.tag || 'the start'}.\n`);
   if (state.changelog.hasEntry && version === state.next.suggested) console.log(`${state.changelog.name} already has an entry for ${version}; it goes in as it is.\n`);
   else console.log(`${R.entryText({ style: state.changelog.style, version, title, date: state.draft.date, notes: state.draft.notes })}`);
+  if (dryRun && early) console.log(`For real, it would stop here: ${early}`);
   if (dryRun && blocked) console.log(`For real, it would stop here: ${blocked}`);
   if (!dryRun && !title && state.changelog.style === 'titled') throw new Error('Give the release a title: npm run release:cut -- X.Y.Z "Title"');
 
@@ -103,4 +129,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, ciGate };
+module.exports = { parseArgs, ciGate, paceGate };

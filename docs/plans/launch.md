@@ -47,7 +47,7 @@ why first.
 
 ## Part 2: Show HN
 
-Post once the session fixes are shipped and the winget package is live, Tuesday to
+Post once the session fixes are shipped (don't wait for winget's review), Tuesday to
 Thursday, about 8 to 10am US Eastern. Stay in the thread for the first three hours and
 answer every comment. Swap the headline for what users said in question 1 if it beats
 this one.
@@ -65,7 +65,7 @@ this one.
 > every day, so I'm sharing it.
 >
 > It drives the official `claude` CLI you've already signed in to, over the same
-> stream-json protocol the Agent SDK uses, so it runs on your Pro or Max plan with
+> stream-json protocol the Agent SDK uses, signed in however you already are, with
 > your existing skills, hooks, MCP servers and CLAUDE.md. What it adds is the stuff I
 > kept scripting around the CLI:
 >
@@ -92,8 +92,9 @@ this one.
   side-by-side, not from memory: install it, run the same three tasks in both, and
   write down what each does that the other doesn't. Put the result in
   `docs/WHY-SHELLBY.md` before posting. This is the comment most likely to come first.
-- *"Is this allowed with a Pro/Max plan?"* It automates the CLI you installed and
-  signed in to yourself; your use falls under Anthropic's terms. Link the FAQ.
+- *"Is this allowed with a Pro/Max plan?"* It runs the unmodified CLI you installed
+  and signed in to yourself. Link "Is it allowed?" in WHY-SHELLBY.md, which quotes
+  Anthropic's terms, and recheck them the day before. An API key works too.
 - *"Electron for a desk pet?"* Link the idle-cost numbers in DEVELOPMENT.md.
 - *"Mac/Linux?"* Honest answer and a rough date, or "tell me if you'd use it".
 

@@ -38,7 +38,7 @@ function manifest({ version, hash }) {
   const download = `${REPO}/releases/download/v$version/${setupName('$version')}`;
   return {
     version,
-    description: 'A Windows desktop app for Claude Code, on your own Claude plan, with a pixel hermit crab who does the work.',
+    description: 'Run Claude Code in parallel on Windows, undo anything, and watch it happen.',
     homepage: SITE,
     license: 'GPL-3.0-only',
     notes: 'Shellby runs tasks through Claude Code: npm install -g @anthropic-ai/claude-code, then claude auth login. Scoop keeps him up to date (scoop update shellby).',

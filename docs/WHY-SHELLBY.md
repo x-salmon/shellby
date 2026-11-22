@@ -1,13 +1,13 @@
 # Why Shellby, if you already use Claude Code?
 
-> **Same Claude. Less babysitting.**
+> **Run Claude Code in parallel on Windows. Undo anything. Watch it happen.**
 > Shellby isn't a smarter Claude. It's everything you'd otherwise build *around* Claude Code yourself, already built, plus a crab.
 
 **[⬇ Download for Windows](https://github.com/x-salmon/shellby/releases/latest)** · [Back to the README](../README.md)
 
 ## The 10-second version
 
-- 🧠 **It's the real `claude`.** The official CLI you installed and signed in to, on your own Pro or Max plan. No model of its own, no fork.
+- 🧠 **It's the real `claude`.** The official CLI you installed and signed in to, unmodified. No model of its own, no fork.
 - 🔁 **Nothing to migrate.** Your skills, agents, hooks, MCP servers, `CLAUDE.md` files and permission rules carry over, and anything you set up in Shellby works in your terminal too.
 - 🛠️ **The difference is the tooling.** Parallel work, undo, review, scheduling and alerts, so you don't have to script them yourself.
 
@@ -50,7 +50,7 @@
 
 ## ⏰ Let it run while you're away
 
-- **Use your limit the moment it resets.** Queue heavy work on **Routines**. It starts at the reset (or tonight, at 1am), keeps the PC awake, picks up after the next reset if it runs out, and tells your phone.
+- **Carry on after a limit.** Queue heavy work on **Routines**. It starts at the reset (or tonight, at 1am), keeps the PC awake, picks up after the next reset if it runs out, and tells your phone.
   <br><sub>Instead of: setting an alarm, or a scheduled task wrapping <code>claude -p</code>.</sub>
 - **Put the small jobs on a schedule.** A routine is one instruction on a clock: "every weekday at 8:30, list what changed in my Documents". Each run opens in its own tab, and you get a notification if it needs you.
   <br><sub>Instead of: Task Scheduler, a <code>.bat</code> file, and checking a log the next morning.</sub>
@@ -114,13 +114,26 @@ It works the other way too. `shellby do "write tests for src/app.js"` starts a t
 <details>
 <summary><b>Does it use my plan or an API key?</b></summary>
 
-Your plan. Shellby never sees your Claude sign-in. If `ANTHROPIC_API_KEY` or another provider is set on your PC, Settings warns that Claude Code may bill that instead, and **Always use my Claude plan** leaves them out.
+Whichever you sign in with.
+
+- **Your Claude account:** you sign in through Anthropic's own flow, in your browser. Shellby never sees, stores or passes on that sign-in; Claude Code keeps it.
+- **An Anthropic API key,** billed per token: choose it on the first screen or in **Settings → Claude → Use my API key instead**. Windows encrypts it, it stays on this PC, and only Claude Code's own process gets it.
+- **Another provider** (Bedrock, Vertex, Foundry) set on your PC is left to Claude Code.
+
+If `ANTHROPIC_API_KEY` or another provider is set on your PC, Settings warns that Claude Code may bill that instead of your plan, and **Always use my Claude plan** leaves them out.
 </details>
 
 <details>
 <summary><b>Is it allowed?</b></summary>
 
-Shellby automates the official Claude Code CLI you installed and signed in to yourself, and your use falls under [Anthropic's terms](https://www.anthropic.com/legal/consumer-terms). It's an independent project, not affiliated with or endorsed by Anthropic.
+We believe so, but Anthropic hasn't reviewed or approved Shellby, and the terms are between you and them. Checked on 22 November 2026:
+
+- [Anthropic's Claude Code page](https://code.claude.com/docs/en/legal-and-compliance) says its limits on developers don't prevent you signing in to the unmodified Claude Code with your own subscription. That's what Shellby runs.
+- The same page doesn't let developers offer Claude.ai login in their own apps, route requests through plan credentials on users' behalf, or handle Claude.ai sign-ins. Shellby starts Claude Code's own sign-in and holds none of it.
+- Plan limits assume "ordinary, individual usage". Queues and routines spend your own limits, never go past them, and the spending guard can keep a share back. **Keep warm** only runs when you press it, for at most 3 hours.
+- `claude -p` and the Agent SDK [count against your plan today](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan). Anthropic announced separate billing for them in 2026, then paused it. If that changes, an API key works in Shellby already.
+
+Shellby is an independent project, not affiliated with or endorsed by Anthropic.
 </details>
 
 <details>

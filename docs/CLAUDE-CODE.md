@@ -1,6 +1,6 @@
 # Shellby and Claude Code
 
-Everything Shellby does with Claude Code, on your own Claude Pro or Max plan. Back to the [README](../README.md). Already using Claude Code in a terminal or editor? [Why Shellby](WHY-SHELLBY.md) compares the two.
+Everything Shellby does with Claude Code, signed in with your own Claude plan or API key. Back to the [README](../README.md). Already using Claude Code in a terminal or editor? [Why Shellby](WHY-SHELLBY.md) compares the two.
 
 <table>
 <tr>

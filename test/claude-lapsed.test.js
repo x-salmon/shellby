@@ -44,6 +44,15 @@ test('a real sign-out clears it, and an API key is never marked', () => {
   assert.deepEqual(signInLapsed(key), key);
 });
 
+test('switching to an API key after a sign-in lapsed isn\'t held signed out, and the plan still is', () => {
+  const { status } = setup();
+  signInLapsed(status);
+  const key = { ...status, authMethod: 'api_key' };
+  assert.deepEqual(applyLapsed(key), key);
+  assert.equal(applyLapsed(status).lapsed, true, 'back on the plan, the dead sign-in is still dead');
+  applyLapsed({ ...status, loggedIn: false }); // clears it for the tests after
+});
+
 // Claude Code reads its sign-in once, as it starts: a process from before the
 // current sign-in (an account switch) failing says nothing about this one.
 test('a process older than the sign-in failing leaves it signed in', () => {

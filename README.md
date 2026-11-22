@@ -4,59 +4,69 @@
 
 [![Latest release](https://img.shields.io/github/v/release/x-salmon/shellby?label=release&color=ff7a5c)](https://github.com/x-salmon/shellby/releases/latest) ![Windows 10 and 11](https://img.shields.io/badge/Windows-10%20%7C%2011-7fd6c2) [![Downloads](https://img.shields.io/github/downloads/x-salmon/shellby/total?color=7fd6c2)](https://github.com/x-salmon/shellby/releases) [![GPL-3.0 license](https://img.shields.io/github/license/x-salmon/shellby?color=b3a892)](LICENSE) [![Works with Claude Code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/x-salmon/shellby/badges/cli-compat.json)](https://github.com/x-salmon/shellby/actions/workflows/cli-compat.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/x-salmon/shellby/badge)](https://scorecard.dev/viewer/?uri=github.com/x-salmon/shellby)
 
-## Same Claude Code. Less babysitting.
+## Run Claude Code in parallel on Windows.<br>Undo anything. Watch it happen.
 
-Run several Claude Code tasks at once, each on its own branch. Undo any turn. Queue work for when your limit resets.<br>
-On the **Pro or Max plan you already pay for**, on Windows 10 and 11. No API keys, no per-token billing.<br>
-**And a pixel hermit crab who scuttles off to do it.**
+Every task gets its own branch, any turn can be undone, and a pixel hermit crab shows you what they're all doing.<br>
+**Free and open source**, for Windows 10 and 11.
 
 ### [⬇ Download for Windows](https://github.com/x-salmon/shellby/releases/latest)
 
-[Why Shellby, if you have Claude Code?](docs/WHY-SHELLBY.md) · [Website](https://getshellby.com/) · [What's new](#whats-new) · [Security](SECURITY.md)
+<sub>Windows may say it "protected your PC": click **More info**, check the publisher is **Jacob Barford**, then **Run anyway**. [Why →](docs/INSTALL.md#windows-protected-your-pc)</sub>
+
+[Why Shellby, if you have Claude Code?](docs/WHY-SHELLBY.md) · [Everything he can do](docs/FEATURES.md) · [Website](https://getshellby.com/) · [Changelog](CHANGELOG.md)
 
 <br>
 
 <img src="docs/img/shellby-demo.gif" width="860" alt="Shellby demo: typing a task, Shellby saying 'claws out', three helper crabs scuttling out to work in parallel lanes while he says 'all claws in', walking home, 'nailed it', then a trophy unlocking and Shellby wearing a party hat">
 
-**1.** Tell him what you want &nbsp;→&nbsp; **2.** Helper crabs work on it side by side &nbsp;→&nbsp; **3.** He brings it home, and you both level up
-
-<sub>([MP4 version](docs/img/shellby-demo.mp4) · [at full screen](docs/img/shellby-demo-wide.gif), [MP4](docs/img/shellby-demo-wide.mp4))</sub>
-
 </div>
 
-- 🌿 **Several tasks at once, each on its own branch.** Every tab works in its own copy of your repo, so two tasks never touch each other's files. **Bring it home** merges one back (never with a force-push, and nothing is merged if it would clash), or **Ship it** opens a pull request.
-- ↩️ **Undo any turn.** Puts back every file the turn changed, or just one step of it, including what a script or `npm install` did.
-- 🌙 **Work that starts when your limit resets.** Queue heavy tasks for the reset or for tonight. They run one after another with the PC kept awake, and a task that runs out partway carries on after the next reset.
-- 🖥️ **Every PC and every agent.** See and answer every PC running Shellby from the one in front of you, and run a conversation on Gemini CLI, OpenCode, Codex or a local model as well as Claude Code.
+- 🌿 **Run it in parallel.** Every tab works in its own copy of your repo, on its own branch, so two tasks never touch each other's files. **Bring it home** merges one back, never with a force-push, and not at all if it would clash. **Ship it** opens a pull request.
+- ↩️ **Undo anything.** Puts back every file a turn changed, or just one step of it, including what a script or `npm install` did.
+- 🦀 **Watch it happen.** Every subagent walks out as a helper crab. He raises a claw when he needs you, and the permission card can reach your phone.
 
-<sub>[Everything else he can do →](#everything-he-can-do)</sub>
+<img src="docs/img/screenshot-panes.png" alt="Four Claude conversations in a 2x2 grid: fixing a login bug, writing tests, reviewing a PR and updating the README">
 
-**Already use Claude Code?**
+**It's the real `claude`.** Shellby runs the official Claude Code you installed and signed in to, unmodified. Your skills, agents, hooks, MCP servers, `CLAUDE.md` files and permission rules carry over, and you can go back to the terminal any time.
 
-- 🧠 **It's the real `claude`.** The official CLI you installed and signed in to. No model of its own, no fork.
-- 🔁 **Nothing to migrate.** Your skills, agents, hooks, MCP servers, `CLAUDE.md` files and permission rules carry over, and anything you set up in Shellby works in your terminal too.
-- 🛠️ **The difference is the tooling** you'd otherwise script yourself: the three above, plus review, alerts and workflows. **[Why Shellby, if you have Claude Code →](docs/WHY-SHELLBY.md)**
+**There's a lot more** when you want it: reviewing a whole branch, queued and scheduled work, dev servers and projects, your other PCs, Codex, Gemini CLI and local models, and a desk pet with a wardrobe. [Everything he can do →](docs/FEATURES.md)
 
-**What can it do to my repo without asking?** Only what you've allowed: the default **Ask first** mode asks before every edit and command your own rules don't already permit, and the fenced-off Autonomous mode is never on unless you pick it. Work in a copy only comes home when you say so. [Permission modes →](#permission-modes)
+## Install
 
-**Before you install**
+1. [Download the installer](https://github.com/x-salmon/shellby/releases/latest) (`Shellby-Setup-x.y.z.exe`) and run it, or use Scoop:
+   ```powershell
+   scoop bucket add shellby https://github.com/x-salmon/shellby
+   scoop install shellby/shellby
+   ```
+2. Pick **Claude Code + crab**. If Claude Code isn't on your PC, he installs it with Anthropic's own installer.
+3. Sign in with your Claude account, or use an Anthropic API key.
+
+He updates himself. Other ways to install, checking a download and updating are in [Installing Shellby](docs/INSTALL.md).
+
+## Questions
 
 <details>
-<summary><b>Does it use extra tokens?</b></summary>
+<summary><b>What does it cost?</b></summary>
 
-No. Your tasks go through your own `claude`, so they count against your Pro or Max plan just as they would in a terminal. Shellby only makes a Claude Code call of its own when you turn on a feature that needs one (**Keep warm**, or reading Linear or Jira issues for a project), and each turn shows its tokens and its share of your 5-hour window.
+Shellby is free. Claude Code is billed the way you set it up: your Claude plan's usage, or your Anthropic API key per token. Shellby resells nothing and never sees your Claude sign-in. Each turn shows what it used. [How your sign-in works →](docs/WHY-SHELLBY.md#questions-developers-ask)
+</details>
+
+<details>
+<summary><b>What can it do to my repo without asking?</b></summary>
+
+Only what you've allowed. **Ask first** is the default and asks before every edit and command your own rules don't already permit. Work in a copy only comes home when you say so.
 </details>
 
 <details>
 <summary><b>Does it send my code anywhere?</b></summary>
 
-Only to Anthropic, through Claude Code, the same as in your terminal. Shellby has no accounts of its own and no telemetry. Its only server is a public one that gives sponsors' crabs a signed badge. Sync and crash reports are off until you say yes. The [privacy policy](PRIVACY.md) lists every connection, and [SECURITY.md](SECURITY.md) covers how to report a problem.
+Only to Anthropic, through Claude Code, the same as in your terminal (or to another agent, if you run a conversation on one). Shellby has no accounts of its own and no telemetry. Its only server is a public one that gives sponsors' crabs a signed badge. Sync and crash reports are off until you say yes. The [privacy policy](PRIVACY.md) lists every connection, and [SECURITY.md](SECURITY.md) covers how to report a problem.
 </details>
 
 <details>
-<summary><b>Do I need to open a terminal?</b></summary>
+<summary><b>Can I turn the crab down, or have only the crab?</b></summary>
 
-No. If Claude Code isn't on your PC, the first screen offers to install it with Anthropic's official installer, then opens the sign-in in your browser.
+Both. **Work mode** keeps him quiet and puts the tools first. **Just the crab** needs no Claude and no account.
 </details>
 
 <details>
@@ -64,297 +74,6 @@ No. If Claude Code isn't on your PC, the first screen offers to install it with 
 
 Yes. The uninstaller asks whether to delete your data (`%APPDATA%\Shellby` and `%LOCALAPPDATA%\Shellby`) as well. Claude Code and your `~/.claude` settings belong to Claude Code, so they stay.
 </details>
-
----
-
-## Get started
-
-1. **[Download the installer](https://github.com/x-salmon/shellby/releases/latest)** (`Shellby-Setup-x.y.z.exe`) and run it on Windows 10 or 11.
-2. Pick **Claude Code + crab** (uses your Claude Pro or Max plan), **Work mode** (the same tools, first on the bar, and a quiet crab), **Claude Code on another computer** (over ssh), or **Just the crab**: no Claude, no account, still a desk pet who talks, plays and dresses up.
-3. He moves onto your desktop. Click him to open the panel.
-
-Windows may show a SmartScreen warning the first time; [Install](#install) explains it, along with the Claude Code setup.
-
-## Everything he can do
-
-Already use Claude Code on this PC? The tool screens are on the bar from the start: **History**, **Projects**, **Notes**, **Health**, the **Toolbox** and **Automate**. New to it, you start with just him, a chat box and **First steps**: open a project, give Claude a task, see what he changed, and say hi to the crab. Each step ticks itself off when you really do it, and any of them can be skipped. The tool screens open as he works: History, Projects and Notes after his first task, Health and the Toolbox after his third, Automate after his fifth. The game side (Finds, the Bugdex, Us and the Tank on his screen, the Sticker Book on Outfits, the Crew over the Toolbox's Agents, a project's Reef and Review mastery) waits until First steps are done or he reaches level 3, then opens as tasks earn it, each with a "new" on its door. Can't wait? **More → Show every screen**, or **Settings → System → Screens → Show everything now**, puts them all out, and [Work mode](docs/DESKTOP.md#work-mode) starts with every one of them. If you used Shellby before First steps existed, nothing changes for you.
-
-| | |
-|---|---|
-| ⚡ **[Gets things done](#-he-gets-things-done-with-claude-code)** | Helper crabs, tabs on their own branches, undo any turn, review a whole branch, the cost of a big run before it starts |
-| 🖥️ **[Every PC, every agent](#️-every-pc-and-every-agent)** | Your PCs in one table, Gemini CLI, OpenCode and Codex conversations, a local model that spends none of your plan |
-| 🗂️ **[Runs your dev day](#️-he-runs-your-dev-day)** | Every repo and dev server, crash help, flaky tests, time per project |
-| 🌊 **[Gets out more](#-he-gets-out-more)** | Your terminal, your phone, CI on your pull requests, your stream and GitHub |
-| 🔒 **[Keeps you in control](#-you-stay-in-control)** | Permission cards, five modes, a spending guard, nothing leaves your PC |
-| 🦀 **[And a crab who does the work](#-and-a-crab-who-does-the-work)** | How you see Claude working, plus a desk pet, outfits and PC health if you want them |
-
-## ⚡ He gets things done with Claude Code
-
-<table>
-<tr>
-<td width="50%"><img src="docs/img/screenshot-crew.png" alt="Three helper agents in crew lanes; one asks to run a script it wrote"></td>
-<td width="50%"><img src="docs/img/screenshot-lean.png" alt="Toolbox → Lean: every new conversation carries about 24k tokens; plugins priced, with two marked idle"></td>
-</tr>
-<tr>
-<td align="center"><sub>Helpers work in parallel, each in its own lane</sub></td>
-<td align="center"><sub>Lean Shell shows what every conversation carries</sub></td>
-</tr>
-</table>
-
-**Work in parallel**
-
-<img src="docs/img/screenshot-panes.png" alt="Four Claude conversations in a 2x2 grid: fixing a login bug, writing tests, reviewing a PR and updating the README">
-<p align="center"><sub>Drag a tab into the chat to split it: up to twelve conversations side by side, or pop one out into its own window</sub></p>
-
-- **Helper crabs:** every subagent gets a lane in the panel and a crab on your desktop, and each kind levels up into a named crew member.
-- **Tabs on their own branches:** with copies on (**Settings → Code → Copies of a project**), each one works in its own copy of the repo. **Bring it home** merges it back, never with a force-push.
-- **Up to twelve side by side,** or branch from any turn to **try it another way**.
-
-**Keep your code safe**
-- **Undo any turn,** or any step within one, including what a script or `npm install` did.
-- **Run checks** stamps your test results on a turn, with before and after pictures.
-- **Comment on the diff,** line by line, and send all your comments back as one follow-up.
-- **Review a whole branch** in the file viewer: comment on any line, see the words that changed inside a line, tick files as viewed, hide whitespace-only changes, and <kbd>Ctrl</kbd>+<kbd>F</kbd> / <kbd>Ctrl</kbd>+<kbd>G</kbd> to find and jump.
-- **Engineer mode:** Claude weighs the options and puts its decision on a card before it builds anything. Approve it, pick another option, send it back, ask a critic, or have Claude try it out first (every change put back). Your files stay untouched until you approve, then only the files it named are changed. Shellby checks the result itself: the diff against the plan, and the test plan's commands, run by Shellby. Each decision is written into `docs/decisions` for whoever comes next.
-- **Learns from your corrections:** correct Claude the same way twice and he offers to add it to `CLAUDE.md` as a rule.
-
-**See what it costs**
-- Every turn shows its tokens and its share of your 5-hour window, and **Lean Shell** shows what each new conversation carries before you type, plus the files, commands and hooks that keep filling it. [What it covers](docs/CLAUDE-CODE.md#lean-shell-more-out-of-your-plan)
-- **Spend less on helpers and small asks:** run the helpers Claude sends out on Sonnet, start a quick question on Sonnet, and get a word before a cold cache or a pile of screenshots makes a message expensive.
-- **Messages typed close together go as one turn:** three quick Enters become one message, and messages that pile up behind a running turn go together when it ends. Every turn saved is usage kept.
-- **The cost of a big run before it starts:** with Ultracode on, or a message that asks for several helpers, the box says what runs like it have taken of your 5-hour window and offers to run it after the reset instead. Routines wait for the reset by themselves when the window is nearly full.
-- **Switch models mid-conversation** from the model chip or with `/model`, like in the terminal.
-- **Keep warm while you're away:** press the mug in the tab strip before lunch. Each conversation of 200k tokens or more gets one tiny message just before its cache's hour runs out, so your first message back reads the conversation from the cache instead of writing it all again. It turns itself off when you're back, or after 3 hours.
-
-**Work your way**
-- <kbd>Ctrl</kbd>+<kbd>K</kbd> for everything, every slash command, and push-to-talk.
-- **All files** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>): the whole project beside the chat, each file with its git mark, lit up as Claude reads, writes and commits. Click a file and it goes along with your messages, so "this" means that file.
-- A **Toolbox** for your skills, agents, MCP servers and hooks.
-- Hand a conversation to the terminal and back, or run Claude Code on another computer over ssh.
-- **Conversations that work together:** Claude can read the other conversations open in the project and hand one of them, or a new one, a brief. You see the brief as a card first, and nothing is sent until you say so.
-
-**[Everything he does with Claude Code →](docs/CLAUDE-CODE.md)** · **[Already use Claude Code in a terminal or editor? Here's what he adds →](docs/WHY-SHELLBY.md)**
-
-## 🖥️ Every PC and every agent
-
-<table>
-<tr>
-<td width="50%"><img src="docs/img/screenshot-pcs.png" alt="Your PCs: Desk PC, Build box, Laptop and Den PC, with how many tasks each is working on, one waiting on you on the laptop, CPU load and the agents each can run"></td>
-<td width="50%"><img src="docs/img/screenshot-agents.png" alt="A conversation run by Gemini CLI: a note that Gemini CLI runs it with its own model, tools and sign-in, then it reads the CHANGELOG and edits the README"></td>
-</tr>
-<tr>
-<td align="center"><sub>Every PC you run Shellby on, and what's waiting on you there</sub></td>
-<td align="center"><sub>A conversation on Gemini CLI, in a tab like any other</sub></td>
-</tr>
-</table>
-
-- **Your PCs** (<kbd>Ctrl</kbd>+<kbd>K</kbd> → Your PCs): this PC and every other one you run Shellby on, each with what it's doing, what's waiting on you, its load and heat, memory, disk, power and the agents it can run. Add a PC with the code it shows under **On your phone**, then start a task on it here, under that PC's own rules.
-- **Answer your other PCs from this one:** allow, always allow or deny a prompt, pick an answer to a question, or read a plan to its end and approve it. Open any of their conversations to watch it live and reply.
-- **Conversations on Gemini CLI, OpenCode or Codex:** <kbd>Ctrl</kbd>+<kbd>K</kbd> → New conversation in… gives you a tab like any other, with the reply as it's written, each tool it runs, its plan as the to-do list and its permission prompts as cards, using that agent's own model and sign-in.
-- **A local model on this PC:** point Settings → Claude → Local model at Ollama or LM Studio (or let Claude set one up for you). It can write Shellby's small drafts, answer a question Claude declines, or run whole conversations with every Claude Code tool, spending nothing from your plan and sending nothing away.
-
-<img src="docs/img/screenshot-pcs-wide.png" alt="Your PCs at full screen: four PCs in one table with working, waiting on you, CPU, GPU, memory, disk, power, agents and projects, and the picked PC's conversations, facts and a New conversation button below">
-<p align="center"><sub>Your PCs at full screen: the full table, and the picked PC's conversations beside its facts</sub></p>
-
-<p align="center"><img src="docs/img/screenshot-local-model.png" width="460" alt="Settings → Local model: drafts go to qwen3:8b on 127.0.0.1 first, with a switch and a model for each job it writes: learned rules, routine, hook and workflow drafts, and writing up your day"></p>
-<p align="center"><sub>The local model, and the jobs it does before Claude</sub></p>
-
-**[Your PCs and other agents →](docs/HUB.md)**
-
-## 🗂️ He runs your dev day
-
-<table>
-<tr>
-<td width="50%"><img src="docs/img/screenshot-projects.png" alt="The Projects page: five repos, one with a dev server up on :5173 and one down"></td>
-<td width="50%"><img src="docs/img/screenshot-devserver.png" alt="A crashed dev server: npm run dev crashed 3 minutes ago, exit code 1, with the error lines marked in red"></td>
-</tr>
-<tr>
-<td align="center"><sub>Every repo you work in, and its dev servers</sub></td>
-<td align="center"><sub>A crash, with what to send Claude a click away</sub></td>
-</tr>
-</table>
-
-- **Projects:** the repos you work in, here and on GitHub, with their branches and unpushed work. **Start** a dev server and a `:5173` pill sits by the crab.
-- **When a server crashes** he holds up a red sign. The card marks the error lines and shows exactly what would go to Claude, and nothing is sent until you say so.
-- **Point at it:** a running dev server's card opens your site in a Shellby window. Click the part you want changed (<kbd>Shift</kbd>+click for up to five), say what should change, and it goes to Claude in that project with a picture of it. <kbd>F2</kbd> points again, and in a draft page what you point at goes to the conversation building it.
-
-<img src="docs/img/screenshot-point.png" alt="Pointing at a dev server's page: a tide-forecast site with its See today's tides button and a Moss Landing station card outlined and numbered 1 and 2, and under them a box reading Match the button to the cards' teal, with Send to Claude">
-<p align="center"><sub>Point at the parts you want changed and say how</sub></p>
-- **Start from where the work is:** **Fix this build** on a red pull request sends Claude the failing step's log, **Address the review** quotes the comments still open (a new review comment offers it on its notification), and **Next up** ranks what to work on in each project (your tasks, your notes, its GitHub issues and milestones, the TODOs in its code), each with **Do this**: a conversation in a copy on its own branch, the prompt waiting for you to send.
-- **Notes for later:** jot an idea on a project's Notes, or ask Claude to note it from the chat. **Plan**, **Build** or **Ask** turns one into a conversation, Plan and Build in a copy of their own. Pick a note to read Claude's answer beside it, and **Plan Claude's version** when it said to do it differently.
-- **Time on each project:** hours worked out from what he already sees, a month at a time on a calendar where you fix any day's hours and timesheet lines, clients and rates, a PDF or CSV timesheet, and a day at a time to Toggl, Clockify or Harvest when you send it. Off until you turn it on.
-- **Flaky tests** caught and fixed for real, **dependencies** checked weekly with a pull request to bump them, and **Is it safe to leave?** before you lock up or shut down.
-- **He knows your limits:** when you'll hit your 5-hour window, and a message held for after the reset goes by itself.
-- **Run it when my limit resets:** queue heavy tasks ("refactor X", "write tests for Y") on the Routines page, for when the window resets or for tonight. They start by themselves, overnight too, one after another, with the PC kept awake. Each result goes to your phone, and a task that runs out of usage partway carries on after the next reset.
-- **Workflows and routines:** a schedule, a red build, a release or a file landing in a folder starts a list of steps: Claude, commands, web requests, a question for you. [Workflows](docs/WORKFLOWS.md).
-- **Your MCP servers in them:** tick the servers a step may use and Claude files the Linear issue or posts to Slack without stopping to ask, or call one tool directly with no Claude turn at all. Pair it with [n8n](docs/N8N.md) for everything else.
-
-<img src="docs/img/screenshot-time-wide.png" alt="History → Time at full screen: a month on a calendar, each day darker the longer you worked, 54 hours and $5,640 billable this month, and the picked day open beside it with a line per project and Write up the day">
-<p align="center"><sub>Time at full screen: a month of hours, and any day open beside it to fix or write up</sub></p>
-
-<img src="docs/img/screenshot-projects-wide.png" alt="Projects at full screen: the repo list on the left and 3d-rack open beside it, with Next up, Pulse, Health, Helpers, a standup report and its dev server side by side">
-<p align="center"><sub>Projects at full screen: the list on the left, the one you pick beside it with its cards side by side</sub></p>
-
-**[Projects, time, tests and dependencies →](docs/PROJECTS.md)**
-
-## 🌊 He gets out more
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-```powershell
-shellby do "tidy my Downloads"
-shellby do @review
-shellby say "all green"
-shellby status
-shellby time last-week
-```
-
-**From any terminal,** and Claude can drive him too, through the plugin's MCP server: have him say what a skill is up to, or celebrate when a release lands. It can't start tasks of its own.
-
-</td>
-<td width="50%" valign="top">
-
-<img src="docs/img/screenshot-away.png" alt="Settings → Alerts → Tell me when I'm away: ntfy selected, a QR code to scan with your phone, and a topic Shellby picked">
-
-</td>
-</tr>
-</table>
-
-- **📱 Your phone:** a permission prompt, a finished run or a red build can reach it. ntfy is one QR scan, and Telegram finds your chat by itself. Answer Allow or Deny from it if you like.
-- **🦀 Shellby on your phone:** the whole thing as an app on your phone, served by your own PC over [Tailscale](https://tailscale.com): every conversation live, Allow and Deny, new tasks, diffs, Undo and Bring it home, with notifications that open the right card. No account of ours, no server in the middle. **[Shellby on your phone →](docs/PHONE.md)**
-- **🎥 On stream:** an OBS browser source on a transparent background. **💡 On your desk:** OpenRGB lighting that follows his mood. **🎛️ On a Stream Deck:** Allow, Deny, Stop, Bring it home and Ready to review as hardware keys, each showing what's waiting. **🎮 On Discord:** his level and what he's up to on your profile.
-- **✅ CI on your pull requests:** a ✗ sign when a build goes red, a dance when it's fixed, and **Fix this build** to hand Claude the failing log.
-- **Sync and visiting crabs,** with an optional GitHub sign-in that only asks for what you turn on.
-
-**[Phone, stream, lights and GitHub →](docs/CONNECTIONS.md)**
-
-## 🔒 You stay in control
-
-- **Permission cards:** **Allow**, **Always allow** or **Deny**, with <kbd>Y</kbd> / <kbd>A</kbd> / <kbd>N</kbd>. The card warns you when a command runs a script Claude wrote, or an edit touches Claude Code's own setup.
-- **Five permission modes,** from Ask first to a fenced-off Autonomous. See [Permission modes](#permission-modes).
-- **Spending guard:** routines and workflows stop before they use the share of your 5-hour window you keep for yourself.
-- **Your plan, your PC:** no API keys, no telemetry, and your history stays on your PC.
-
----
-
-## 🦀 And a crab who does the work
-
-<p align="center"><img src="docs/img/lineup-life.png" width="860" alt="Five Shellbys: one saying 'fingers crossed', one in a focus helmet with 18 minutes left, one holding up a red CI sign, one sweating at 83 degrees, and one asleep in his shell"></p>
-
-He's how you see the work without opening anything. He scuttles while Claude works, raises a claw when it needs you, sends a helper crab out for every subagent, holds up a red sign when a build breaks or a dev server crashes, and says *"all green!"* when the tests pass. He lives on the wallpaper layer, behind every window, and there's nothing to look after.
-
-The rest is there if you want it, and none of it needs Claude or an account:
-
-- **A desk pet with a life of his own:** a voice and a temperament (chipper, fussy, cocky or sleepy), little scenes when nothing's happening, finds he digs up, hide and seek and fetch, a bond that grows, a tank to decorate, and a beach with a sandcastle for every project you ship. [On your desktop →](docs/DESKTOP.md) · [His tank →](docs/TANK.md)
-- **Dress him up:** 175 accessories, 45 effects and 19 crabs, 148 trophies and 99 levels, a sticker for every repo you ship, and the [Bugdex](docs/BUGDEX.md), where every kind of bug Claude fixes is a creature he scoops into a jar. More from other people in the **[community gallery](https://getshellby.com/community/)**. [Outfits, trophies and stickers →](docs/WARDROBE.md)
-- **He watches your PC:** he sweats when the GPU runs hot, gets dizzy when memory's full and overstuffs his shell when a drive fills up, with live vitals, what's hogging it, what starts with Windows and the developer clutter you can clear. A warning says what's behind it ("Running hot because of Cyberpunk2077"), how it got there and what would help. [How Health works →](docs/HEALTH.md)
-- **Things to try:** throw him at a title bar and he rides the window, fling him at the edge of the screen and he climbs it, rub the mouse over him to pet him. Pals, typing along and pranks stay off until you turn them on. [All of it →](docs/DESKTOP.md)
-
-<img src="docs/img/screenshot-health-wide.png" alt="Health at full screen: Running hot because of Cyberpunk2077 in large type, then how it got there (88% of the GPU, 83°C against an 80°C line, for under a minute), what would help (close it, see everything running, move your line), what's hogging the GPU, and the vitals in a column beside it">
-<p align="center"><sub>Health at full screen: the verdict, how it got there and what would help, with the vitals beside it</sub></p>
-
-**Work mode** keeps him to himself: your tools lead the bar, he only speaks up about the work, and the climbing, pals, pranks and confetti take the day off. Turning it off puts every setting back as it was. [Work mode →](docs/DESKTOP.md#work-mode)
-
-<p align="center"><img src="docs/img/beach-card.png" width="700" alt="A pixel beach at night: fourteen sandcastles of different sizes with flags and lit windows, finds washed up along a line of seaweed, plots with buckets and spades, and Shellby by the newest castle"></p>
-
-## What's new
-
-<table>
-<tr>
-<td width="33%" valign="top">
-
-**🖥️ Your PCs** · 0.99.1<br>
-<sub>One table for every PC you run Shellby on: what each is doing, what's waiting on you, its load and heat. Start tasks on them and answer their prompts from here. [See](CHANGELOG.md#0991-task-board-and-hub)</sub>
-
-</td>
-<td width="33%" valign="top">
-
-**🔌 Gemini CLI, OpenCode and Codex** · 0.99.1<br>
-<sub>A conversation on another agent's CLI is a tab like any other: its reply as it's written, its tools, its plan and its permission cards. [See](CHANGELOG.md#0991-task-board-and-hub)</sub>
-
-</td>
-<td width="33%" valign="top">
-
-**🌡️ Health that says why** · 0.99.1<br>
-<sub>"Running hot because of Cyberpunk2077", how it got there and what would help, in large type beside the vitals on a wide screen. [See](CHANGELOG.md#0991-task-board-and-hub)</sub>
-
-</td>
-</tr>
-<tr>
-<td width="33%" valign="top">
-
-**📦 Fewer turns, fewer surprises** · 0.99<br>
-<sub>Messages typed close together go as one turn, routines wait for the reset when your window is nearly full, and a big run says what it will cost first. [See](CHANGELOG.md#0990-pages)</sub>
-
-</td>
-<td width="33%" valign="top">
-
-**🏠 A local model** · 0.97–0.98<br>
-<sub>Ollama or LM Studio writes drafts, answers what Claude declines, or runs whole conversations with every tool, spending none of your plan. [See](CHANGELOG.md#0981-local-coding-agent)</sub>
-
-</td>
-<td width="33%" valign="top">
-
-**👉 Point at it** · 0.99.2<br>
-<sub>Open your dev server's site in Shellby, click the parts you want changed, say what should change, and it goes to Claude with a picture. [See](CHANGELOG.md#0992-point-at-it)</sub>
-
-</td>
-</tr>
-</table>
-
-<sub>And before that: reviewing a whole branch, dev servers he finds, answers from your notifications, your phone doing more, a leaner Claude, the Crab Painter, Shellby on your phone, switching models mid-conversation, Wrapped naming your best reef, all files beside the chat, keep warm, Ultracode, the Logbook and levels to 99, reef health, Claude Code installed for you, a Council that reads your project first, Shellby Wrapped, background sessions, combining tries, the file viewer, the trail, marks past 99, twelve panes, code in colour, the Outline and Problems, <code>/debug</code>, routines that follow you, the Council, undo to here, every conversation at a glance, seventeen new bugs, a glow-up, tools in bulk, helpers that report back, one-click modes, Search Settings, bug battles, other computers over ssh, his tank, Next up, the Bugdex, mods, <code>/tries</code>, MCP servers in workflows, the weekly crab card, Lean Shell, projects and dev servers, the flaky test detective, prompt snippets and time on each project. Everything is in the [changelog](CHANGELOG.md).</sub>
-
-## Install
-
-**Just the crab:** download **Shellby-Setup-x.y.z.exe** (or the portable build) from [Releases](https://github.com/x-salmon/shellby/releases/latest), run it, and pick **Just the crab**. That's it: Health, the Wardrobe, his voice, trophies and crab cards, no account. You can add Claude Code later from Settings.
-
-**Crab + Claude Code:**
-
-1. **Install Claude Code** with Anthropic's installer (the one Shellby's first screen runs for you if you skip this) and sign in with your Claude account (Pro or Max):
-   ```powershell
-   irm https://claude.ai/install.ps1 | iex
-   claude auth login
-   ```
-   `npm install -g @anthropic-ai/claude-code` works too.
-2. Download **Shellby-Setup-x.y.z.exe** (or the portable build) from [Releases](https://github.com/x-salmon/shellby/releases/latest) and run it.
-3. Shellby walks you through a two-step check (CLI found ✓, signed in with a Claude account ✓) and asks how much freedom he gets.
-
-**From a package manager:** instead of downloading the installer,
-
-```powershell
-scoop bucket add shellby https://github.com/x-salmon/shellby
-scoop install shellby/shellby
-```
-
-or `winget install x-salmon.Shellby`, once Microsoft's review of the package finishes. Scoop keeps him up to date with `scoop update shellby` (the in-app updater stands aside); a winget install updates itself like the regular installer.
-
-> **"Windows protected your PC"?** That's Microsoft SmartScreen. It warns about any app that few people have downloaded yet, even a signed one. Shellby is signed by **Jacob Barford** (see [Code signing policy](#code-signing-policy)), and the warning fades as more people install it.
->
-> - **To install anyway:** click **More info → Run anyway**. The publisher shown should be Jacob Barford.
-> - **To check you got the real file:** every release is built by [GitHub Actions](https://github.com/x-salmon/shellby/actions/workflows/release.yml) from the tagged commit, and each one lists SHA-256 checksums in `SHA256SUMS.txt`. Compare them with `Get-FileHash .\Shellby-Setup-x.y.z.exe`, check its signed build provenance with `gh attestation verify .\Shellby-Setup-x.y.z.exe -R x-salmon/shellby`, or build from source (below).
-
-**Updating:** the installed version updates itself. He checks GitHub Releases, downloads in the background, and puts a dot on the ⚙ gear when an update is ready. Click **Restart and update** in **Settings → System → About**, or **Update to x.y.z and restart** in the tray menu, or just quit and it installs on the way out. Your settings live in `%APPDATA%\Shellby`, so they carry over. The portable build can't update itself: download the new `Shellby-Portable-x.y.z.exe` from [Releases](https://github.com/x-salmon/shellby/releases/latest) and replace the old one.
-
-**Keeping Claude Code current:** Claude Code checks for its own updates only in an interactive terminal session, and the sessions Shellby starts aren't interactive, so a copy that only ever runs under Shellby would stay on the version you installed. Once a day Shellby asks the npm registry which version is newest and, if yours is older, says so once and puts an **Update** button in **Settings → System → About**, beside Shellby's own. It runs Claude Code's own `claude update`. Pick **Update it for me** there and he does it himself, only while no conversation is running; **Leave it to me** and he never asks the registry.
-
-**Requirements:** Windows 10 or 11 (x64). For the Claude side: Claude Code 2.1+ and a Claude Pro or Max plan.
-
-## How it works
-
-```mermaid
-flowchart LR
-    C["🦀 Critter window<br/><sub>desktop layer, click / drag / drop</sub>"] -- click --> P["Panel<br/><sub>chat, approvals, settings</sub>"]
-    P <-- "IPC (preload bridge)" --> M["Electron main"]
-    M -- "stdin: user turns,<br/>permission answers, interrupt, mode" --> CLI["claude -p<br/>stream-json"]
-    CLI -- "stdout: events,<br/>can_use_tool requests, usage" --> M
-    CLI --> S[("Your Claude<br/>subscription")]
-    T["⌨️ shellby CLI ·<br/>🔌 plugin hooks + MCP"] -- "127.0.0.1" --> M
-    M -. "OBS overlay · OpenRGB ·<br/>phone notifications" .-> O["Out in the world"]
-```
-
-Shellby doesn't talk to any AI API itself. Each conversation is one long-lived, official Claude Code process that you signed in to yourself, driven over the same stream-json host protocol the Claude Agent SDK uses. Shellby never sees your Claude sign-in, and usage counts against your plan's normal limits, exactly as if you'd typed the task into a terminal. The protocol, billing safety and how he stays on the desktop layer are in [DEVELOPMENT.md](docs/DEVELOPMENT.md#how-shellby-drives-claude-code).
 
 ## Permission modes
 
@@ -368,64 +87,27 @@ Shellby doesn't talk to any AI API itself. Each conversation is one long-lived, 
 
 Your own Claude Code allow/deny rules in `~/.claude/settings.json` still apply in every mode.
 
-## Build from source
+## How it works
 
-With Node 22 or newer: `git clone`, `npm install`, `npm run setup`, `npm start`. The full setup, every test and maintenance script, and a map of the code are in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Every image in this README is rendered from the real app: `npm run screenshots`, `npm run reel`, `npm run tricks` and `python scripts/make-banners.py`.
-
-## Privacy
-
-Everything stays on your PC. Conversation history lives in `%APPDATA%\Shellby\sessions`, and Shellby has no telemetry and no servers of its own, bar one for public sponsors (below). The [privacy policy](PRIVACY.md) lists every connection he makes and what goes over it. In short:
-
-- Claude Code talking to Anthropic, and the updater checking GitHub Releases.
-- GitHub, only if you sign in: your profile, the sync gist, pack pull requests, the CI status of your pull requests, with Visiting crabs on, your public calling card and your friends' cards, with Profile card on, the public gist holding your profile card picture, and with Built with Shellby on, the public `shellby-badge` repository holding his picture and the badge at the bottom of pull requests your tabs open.
-- Phone notifications, only if you turn them on, straight to the service you picked (ntfy, Pushover, Telegram, Discord, Slack or your own endpoint).
-- Shellby on your phone, only if you turn it on: your PC serves the app to your own phone over your tailnet, and its notifications go encrypted through your phone's push service (Apple's, Google's, Mozilla's or Microsoft's), which can't read them.
-- The npm registry once a day, to say when a newer Claude Code is out (**Leave it to me** in **Settings → System → About** stops it).
-- The community gallery once a day, for its news of contests, winners and events, and while you're signed in to GitHub, its list of packs, to see whether you've earned a trophy for making Shellby. Nothing about you goes with either (**Community news** in **Settings → Games** stops both). While you're signed in, GitHub is also asked once a day whether you sponsor Shellby, for the 🏮 Patron trophy. If you sponsor publicly, your GitHub username goes to getshellby.com for a signed proof that lets friends' crabs show your lantern.
-- Crash reports to Sentry, only when you say so: he asks first, and **Settings → System → About → Crash reports** changes it.
-- Things you ask for: ssh to the computers you add under **Other computers**, community packs, plugins and MCP servers, `git` fetches and pushes, workflow web requests, and the weekly dependency check (npm, pnpm, Yarn, pip-audit, cargo-audit and Go's, whichever your projects use).
-- Things that never leave your PC: the time tracker (it reads the title of the window in front to tell which project you're in, keeps only the project, the day and the minutes, and never syncs them; a day goes to Toggl, Clockify or Harvest only when you send it), push-to-talk audio (Windows' offline speech recognizer hears it, and the microphone is only open while you hold the shortcut), your PC's health readings, OpenRGB, the OBS overlay, the Stream Deck keys (behind a token only the plugin has), the phone app's port (Tailscale is what reaches it, for your login only), the port the `shellby` command and the plugin use, and Claude Code's own metrics (lines, accepted edits and commits, never prompts), which the conversations Shellby starts send to Shellby instead of anywhere else — all on `127.0.0.1`.
-
-See [SECURITY.md](SECURITY.md) for the renderer sandboxing details.
+Each conversation is one long-lived, official Claude Code process, driven over the same stream-json protocol the Claude Agent SDK uses. Shellby's own code doesn't call Anthropic's API. [The diagram](docs/FEATURES.md#how-it-works) · [How Shellby drives Claude Code](docs/DEVELOPMENT.md#how-shellby-drives-claude-code)
 
 ## Code signing policy
 
-Releases are signed with [Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/), under the maintainer's verified name, **Jacob Barford**. Releases before the first signed one were unsigned.
-
-Only Shellby's own files are signed, and only when GitHub Actions builds them from a tagged commit in this repository ([release workflow](.github/workflows/release.yml)). The signing key stays in Microsoft's hardware and is never on a PC. Before publishing, the workflow checks that every exe is validly signed by the expected publisher. Before building, it checks that the publisher will match the last release's, so installed copies keep updating. How it works: [docs/SIGNING.md](docs/SIGNING.md).
-
-- **Committers and reviewers:** [x-salmon](https://github.com/x-salmon). Pull requests from anyone else are reviewed before they're merged.
-- **Release and signing:** [x-salmon](https://github.com/x-salmon)
-
-Everyone in these roles uses two-factor authentication on GitHub and Azure.
-
-**Privacy:** see the [privacy policy](PRIVACY.md) for everything Shellby sends over the network, and when. It has no telemetry.
+Releases are signed with [Azure Artifact Signing](https://learn.microsoft.com/azure/artifact-signing/) as **Jacob Barford**, only when GitHub Actions builds them from a tagged commit here. Committer, reviewer and release approver: [x-salmon](https://github.com/x-salmon). [The whole policy →](docs/INSTALL.md#code-signing-policy) · [Privacy policy](PRIVACY.md)
 
 ## Contributing
 
-Skins, packs, bug reports and PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), then `npm install`, `npm run setup` and `npm run dev:crab` gets you a dev crab that needs no Claude account.
+Skins, packs, bug reports and PRs are welcome: [CONTRIBUTING.md](CONTRIBUTING.md), or pick a [good first issue](https://github.com/x-salmon/shellby/labels/good%20first%20issue). `npm install`, `npm run setup` and `npm run dev:crab` gets you a dev crab that needs no Claude account ([building from source](docs/DEVELOPMENT.md)). Questions and show-and-tell go in [Discussions](https://github.com/x-salmon/shellby/discussions), the [community gallery](https://getshellby.com/community/) has what other people made, and everyone follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-- **First time?** Pick a [good first issue](https://github.com/x-salmon/shellby/labels/good%20first%20issue) or a [pack wish](https://github.com/x-salmon/shellby/labels/pack%20wish).
-- **Made a pack?** Share it in the [community gallery](https://getshellby.com/community/) ([how](docs/ADDONS.md#publishing-to-the-community-gallery)).
-- **Questions or show-and-tell:** [Discussions](https://github.com/x-salmon/shellby/discussions).
-- **The monthly crab contest, community news and credits:** [docs/COMMUNITY.md](docs/COMMUNITY.md). Winning skins ship in Shellby for everyone, and everyone who makes something is on the **Made by** list.
-- **Reviewing security?** Start with the [threat model](docs/THREAT-MODEL.md).
-
-Shellby is free and made in spare time. If he saves you some, you can [sponsor him on GitHub](https://github.com/sponsors/x-salmon): every tier has its own reward in Shellby. 🦐 Krill ($3 a month) lights an anglerfish lantern over his head, 🪼 Lanternfish ($7) adds glowing plankton that circle him, 🐚 Pearl Diver ($15) a clam for his tank that opens on a shining pearl, and 🐋 Leviathan ($40) turns him into **The Abyss**, a deep-sea crab lit from within. Give once instead and 🍾 Message in a Bottle ($10) or 💰 Sunken Treasure ($50, with a sunken galleon) are yours to keep.
-
-Everyone here follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+Shellby is free and made in spare time. If he saves you some, you can [sponsor him on GitHub](https://github.com/sponsors/x-salmon).
 
 ## License
 
-Shellby is free software under the [GPL-3.0](LICENSE). Read him, change him, share him, build on him. The one condition: if you hand out a changed version, it stays open under the same licence, so fixes find their way back to everyone instead of disappearing into a closed-source app.
-
-The name **Shellby** and the crab as a mascot aren't part of that licence. Fork the code all you want — just give your crab its own name, so nobody downloads yours thinking it's this one. [TRADEMARK.md](TRADEMARK.md) spells out what's reserved and what's fair game.
-
-Contributors keep their copyright and grant x-salmon the right to also license their work commercially ([why](CONTRIBUTING.md#licensing-your-contribution)), so there may one day be paid extras alongside the free crab. The app in this repository stays GPL-3.0 and free.
+[GPL-3.0](LICENSE): share him, change him, build on him, and keep changed versions open. The name **Shellby** and the crab aren't part of that licence, so give a fork its own ([TRADEMARK.md](TRADEMARK.md)). Contributions may also be licensed commercially ([why](CONTRIBUTING.md#licensing-your-contribution)); the app here stays GPL-3.0 and free.
 
 ## Disclaimer
 
-Shellby is an independent open-source project. It is **not affiliated with, endorsed by, or sponsored by Anthropic**. "Claude" and "Claude Code" are trademarks of Anthropic, PBC. Shellby only automates the official Claude Code CLI you install and sign in to yourself, and your use of it is subject to [Anthropic's terms](https://www.anthropic.com/legal/consumer-terms).
+Shellby is an independent open-source project. It is **not affiliated with, endorsed by, or sponsored by Anthropic**. "Claude" and "Claude Code" are trademarks of Anthropic, PBC. Shellby runs the official, unmodified Claude Code you install and sign in to yourself, and your use of it is subject to [Anthropic's terms](https://www.anthropic.com/legal/consumer-terms).
 
 Shellby acts on your real files with your real permissions. Read what you approve, and keep backups.
 

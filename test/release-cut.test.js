@@ -2,7 +2,7 @@
 // release-git.js's cutRelease, tested in projects-release-git.test.js.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseArgs, ciGate } = require('../scripts/release-cut');
+const { parseArgs, ciGate, paceGate } = require('../scripts/release-cut');
 
 test('a version first, then the title in as many words as you typed', () => {
   assert.deepEqual(parseArgs(['0.72.0', 'Change', 'notes']), { version: '0.72.0', title: 'Change notes', dryRun: false, wait: false, skipCi: false });
@@ -30,4 +30,14 @@ test('a release is cut only once CI has passed on what it releases', () => {
   assert.match(ciGate(pushed, { state: 'failed', problem: 'e2e (2/6) failed on aaaaaaa.' }), /e2e \(2\/6\) failed/);
   assert.match(ciGate(pushed, { state: 'missing', problem: "CI hasn't run on aaaaaaa." }), /hasn't run.*--wait/s);
   assert.match(ciGate({ ...pushed, upstream: null }, null), /no upstream/i);
+});
+
+test('a release within a week of the last one needs --hotfix', () => {
+  const day = 24 * 60 * 60 * 1000;
+  const now = 100 * day;
+  assert.equal(paceGate(now - 7 * day, now, false), null);
+  assert.equal(paceGate(NaN, now, false), null, 'no release yet');
+  assert.match(paceGate(now - 0.5 * day, now, false), /less than a day ago.*Wait 7 more days.*--hotfix/);
+  assert.match(paceGate(now - 6 * day, now, false), /6 days ago.*Wait 1 more day,/);
+  assert.equal(paceGate(now - day, now, true), null);
 });

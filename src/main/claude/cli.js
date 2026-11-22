@@ -75,7 +75,9 @@ function accountChanged(known, now) {
 
 /** A fresh status, still signed out while the lapsed sign-in's credentials haven't changed. */
 function applyLapsed(status) {
-  if (!lapsed) return status;
+  // Signed in some other way now (an API key): the dead plan sign-in isn't in use,
+  // but is remembered, in case billing goes back to the plan.
+  if (!lapsed || (status.loggedIn && status.authMethod && status.authMethod !== 'claude.ai')) return status;
   if (!status.loggedIn || mtimeOf(lapsed.file) !== lapsed.mtimeMs) { lapsed = null; return status; }
   return { ...status, loggedIn: false, lapsed: true };
 }
@@ -275,13 +277,16 @@ async function checkStatus({ configured = null } = {}) {
   const auth = await run(exe, ['auth', 'status', '--json']);
   let info = {};
   try { info = JSON.parse(auth.stdout); } catch { /* not logged in or old CLI */ }
+  // With a key saved and chosen, the key is what signs Claude Code in, whatever
+  // plan sign-in is saved beside it.
+  const keyed = useApiKey && !planOnly && !!readApiKey();
   const status = applyLapsed({
     installed: true, exe, version,
     // What this version takes, for the flags Shellby only passes when it can (session/args.js OPTIONAL_FLAGS).
     flags: help.ok ? helpFlags(help.stdout) : null,
     picked: !!configured && exe === configured, // Settings shows where it came from
     loggedIn: !!info.loggedIn,
-    authMethod: info.authMethod || null,
+    authMethod: keyed ? 'api_key' : info.authMethod || null,
     subscriptionType: info.subscriptionType || null,
     email: info.email || null,
     configDir: info.configDirectory || null,
@@ -291,11 +296,11 @@ async function checkStatus({ configured = null } = {}) {
   });
   // With a key chosen, the key is what Claude Code bills, signed in or not.
   if (status.apiKeyBilling) {
-    if (!readApiKey()) status.warning = 'Billing is set to your API key, but no key is saved, so conversations use your Claude plan. Add a key in Settings.';
+    if (!keyed) status.warning = 'Billing is set to your API key, but no key is saved, so conversations use your Claude plan. Add a key in Settings.';
   } else if (status.billingEnv.length) {
     status.warning = `${status.billingEnv.join(', ')} ${status.billingEnv.length > 1 ? 'are' : 'is'} set on this PC, so Claude Code may bill that instead of your Claude plan. Turn on "Always use my Claude plan" in Settings to ignore ${status.billingEnv.length > 1 ? 'them' : 'it'}.`;
   } else if (status.loggedIn && status.authMethod && status.authMethod !== 'claude.ai') {
-    status.warning = `Claude Code is signed in with "${status.authMethod}", which bills per token. Sign in with your Claude account to use your subscription.`;
+    status.warning = `Claude Code is signed in with "${status.authMethod}", which bills per token. To use a Claude plan instead, sign in with your Claude account.`;
   }
   return status;
 }
