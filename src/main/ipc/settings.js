@@ -187,7 +187,7 @@ function registerSettingsIpc(ipcMain, d) {
     if ('climb' in allowed && !CLIMB_SETTINGS.includes(/** @type {string} */ (allowed.climb))) delete allowed.climb;
     if ('mischief' in allowed && !mischief.LEVELS.includes(/** @type {string} */ (allowed.mischief))) delete allowed.mischief;
     if ('mischiefPranks' in allowed) allowed.mischiefPranks = mischief.prankSet(allowed.mischiefPranks);
-    if ('colony' in allowed) allowed.colony = Number.isInteger(allowed.colony) ? Math.max(0, Math.min(COLONY_MAX, allowed.colony)) : d.config.get('colony');
+    if ('colony' in allowed) allowed.colony = Number.isInteger(allowed.colony) ? Math.max(0, Math.min(COLONY_MAX, /** @type {number} */ (allowed.colony))) : d.config.get('colony');
     // The only edit the panel makes to this list is taking an app back off it.
     if ('perchIgnore' in allowed) {
       const was = new Set(d.config.get('perchIgnore') || []);

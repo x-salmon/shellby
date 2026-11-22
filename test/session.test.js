@@ -42,6 +42,17 @@ test('runs a turn, captures the session id and reports busy state', async () => 
   s.close();
 });
 
+test('with no Claude Code to start, it says so instead of throwing', async () => {
+  // Opened on another computer, which was removed since, on a PC without Claude Code.
+  const { s } = makeSession({ exe: () => null });
+  const said = waitFor(s, i => i.kind === 'error');
+  const idle = new Promise(resolve => { s.on('busy', b => { if (!b) resolve(); }); });
+  assert.doesNotThrow(() => s.send('hello'));
+  const item = await said;
+  assert.match(item.text, /Claude Code/);
+  await idle; // and the turn is over
+});
+
 test('stamps when a turn starts, for the running clock, and clears it after', async () => {
   const { s } = makeSession();
   assert.equal(s.busySince, null);
