@@ -62,21 +62,23 @@
     keyInput.value = ''; // it goes to main once, to be sealed, and nothing hands it back
     keySave.disabled = true;
     try {
-      const hadKey = (await api.apiKeyView()).saved;
-      const r = await api.saveApiKey(value);
-      if (!r.ok) return SB.toast(r.error || "Couldn't save the key.", { ms: 6000 });
-      state.apiKey = r.key;
+      // Billing is asked about first: saying no leaves a key saved earlier as it was.
+      const wasOn = !!state.settings.apiKeyBilling;
       state.settings = (await api.setSettings({ apiKeyBilling: true })).settings;
-      if (!state.settings.apiKeyBilling) { // cancelled in the confirm window: leave nothing behind
-        if (!hadKey) state.apiKey = (await api.clearApiKey()).key;
-        return;
+      if (!state.settings.apiKeyBilling) return SB.toast('Nothing saved. You can still sign in with your Claude account.');
+      let r;
+      try { r = await api.saveApiKey(value); } catch { r = { ok: false }; }
+      if (!r.ok) {
+        if (!wasOn) state.settings = (await api.setSettings({ apiKeyBilling: false })).settings;
+        return SB.toast(r.error || "Couldn't save the key.", { ms: 6000 });
       }
+      state.apiKey = r.key;
       state.status = await api.claudeStatus();
       keyOpen = false;
       renderOnboarding();
       SB.toast('Conversations will bill your API key. Settings → Claude changes it.', { ms: 5000 });
     } catch {
-      SB.toast("Couldn't save the key.", { ms: 6000 });
+      SB.toast('Something went wrong. Settings → Claude shows what Shellby will bill.', { ms: 6000 });
     } finally { keySave.disabled = false; }
   }
   const signedInAs = s => (s.apiKeyBilling && s.authMethod === 'api_key'

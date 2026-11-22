@@ -133,6 +133,12 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
       await savePng(send, path.join(SHOTS, '0-api-key.png'));
       check(!!(await saveKey('Cancel')), 'saving one asks about billing first');
       check(await until("shellby.apiKeyView().then(k => !k.saved)") && await ev("!SB.state.settings.apiKeyBilling"), 'Cancel keeps no key and stays on the plan');
+      const bad = key.replace('sk-ant-', 'sk-proj-');
+      await signedOut();
+      await ev("SB.$('onboardKeyForm').hidden && SB.$('onboardKeyBtn').click()");
+      await ev(`SB.$('onboardKeyInput').value = ${JSON.stringify(bad)}; SB.$('onboardKeyForm').requestSubmit()`);
+      await answerDialog(PORT, { press: 'Use my API key' });
+      check(await until("!SB.$('onboardKeyForm').querySelector('button').disabled && !SB.state.settings.apiKeyBilling && shellby.apiKeyView().then(k => !k.saved)"), 'something that is not a key is refused, and billing goes back');
       check(!!(await saveKey('Use my API key')), 'and asks again');
       check(await until("!SB.$('letsGoBtn').disabled && SB.state.settings.apiKeyBilling === true && shellby.apiKeyView().then(k => k.saved)"), "saying yes saves it, bills it and readies Let's go");
       await ev("shellby.setSettings({ apiKeyBilling: false }).then(r => { SB.state.settings = r.settings; return shellby.clearApiKey(); }).then(() => true)");
