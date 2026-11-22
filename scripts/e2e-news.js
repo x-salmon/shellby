@@ -16,6 +16,7 @@ const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
 const news = require('../src/main/news');
+const { listenOpen } = require('./lib/open-port');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9471;
@@ -34,7 +35,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(FEED);
   });
-  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  await listenOpen(server);
   const feedUrl = `http://127.0.0.1:${server.address().port}/feed/news.json`;
   const profile = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')));
   const shots = process.argv[2] || null;

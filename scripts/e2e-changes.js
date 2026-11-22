@@ -13,6 +13,7 @@ const os = require('os');
 const path = require('path');
 const { panelBooted } = require('./lib/boot');
 const { answerDialog } = require('./lib/dialog');
+const { listenOpen } = require('./lib/open-port');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9371;
@@ -57,8 +58,7 @@ const ntfy = http.createServer((req, res) => {
 (async () => {
   let fails = 0;
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
-  await new Promise(r => ntfy.listen(0, '127.0.0.1', r));
-  const ntfyPort = ntfy.address().port;
+  const ntfyPort = await listenOpen(ntfy);
   const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47991' },

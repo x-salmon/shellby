@@ -121,19 +121,15 @@ function repeatOf(args) {
 }
 const MAX_REPEAT = 20;
 
-// Each check gets ports the OS says are free (E2E_CDP_PORT, E2E_HOOK_PORT,
-// E2E_SPARE_PORT), so two runs at once (two worktrees, two agents) never meet
+// Each check gets free ports fetch can reach (E2E_CDP_PORT, E2E_HOOK_PORT,
+// E2E_SPARE_PORT; lib/open-port.js), so two runs at once (two worktrees, two agents) never meet
 // on a check's fixed port. A check run by hand falls back to its own.
 const PORT_ENVS = ['E2E_CDP_PORT', 'E2E_HOOK_PORT', 'E2E_SPARE_PORT'];
-const FREE_PORTS_JS = `const net = require('net');
-const n = ${PORT_ENVS.length};
-const servers = Array.from({ length: n }, () => net.createServer());
-Promise.all(servers.map(s => new Promise((ok, no) => { s.once('error', no); s.listen(0, '127.0.0.1', ok); })))
-  .then(() => { console.log(servers.map(s => s.address().port).join(' ')); servers.forEach(s => s.close()); });`;
+const OPEN_PORT_JS = path.join(__dirname, 'lib', 'open-port.js');
 
 /** Distinct free ports, one per PORT_ENVS name, as env. {} when they can't be had (the checks' own ports then). */
 function freePortEnv() {
-  const r = spawnSync(process.execPath, ['-e', FREE_PORTS_JS], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
+  const r = spawnSync(process.execPath, [OPEN_PORT_JS, String(PORT_ENVS.length)], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
   const ports = String(r.stdout || '').trim().split(/\s+/).map(Number);
   if (ports.length !== PORT_ENVS.length || !ports.every(p => Number.isInteger(p) && p > 0)) return {};
   return Object.fromEntries(PORT_ENVS.map((k, i) => [k, String(ports[i])]));

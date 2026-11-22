@@ -29,6 +29,7 @@ const { savePng } = require('./lib/shot');
 const { answerDialog } = require('./lib/dialog');
 const { startMockGitHub } = require('../test/fixtures/mock-github');
 const { POSES } = require('../src/main/work-pose');
+const { listenOpen } = require('./lib/open-port');
 
 const PORT = Number(process.env.E2E_CDP_PORT) || 9412;
 const HOOK = Number(process.env.E2E_HOOK_PORT) || 48112;
@@ -105,7 +106,7 @@ function startGallery() {
     if (req.url.startsWith('/index.json')) { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ format: 1, packs: state.packs })); return; }
     res.writeHead(404); res.end();
   });
-  return new Promise(r => server.listen(0, '127.0.0.1', () => r({ state, base: `http://127.0.0.1:${server.address().port}/`, close: () => new Promise(c => server.close(c)) })));
+  return listenOpen(server).then(port => ({ state, base: `http://127.0.0.1:${port}/`, close: () => new Promise(c => server.close(c)) }));
 }
 
 const apps = [];

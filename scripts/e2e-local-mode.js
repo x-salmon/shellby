@@ -17,6 +17,7 @@ const path = require('path');
 const { panelBooted } = require('./lib/boot');
 const { savePng } = require('./lib/shot');
 const { PRESETS } = require('../src/main/local/presets');
+const { listenOpen } = require('./lib/open-port');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9489;
@@ -54,7 +55,7 @@ function ollama() {
       res.end('{}');
     });
   });
-  return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve({ server, models, asked, url: `http://127.0.0.1:${server.address().port}` })));
+  return listenOpen(server).then(port => ({ server, models, asked, url: `http://127.0.0.1:${port}` }));
 }
 
 (async () => {

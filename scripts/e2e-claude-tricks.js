@@ -11,6 +11,7 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
+const { listenOpen } = require('./lib/open-port');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9367;
@@ -43,7 +44,7 @@ const CHANGELOG = `# Changelog
     res.writeHead(200, { 'content-type': 'text/plain' });
     res.end(CHANGELOG);
   });
-  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  await listenOpen(server);
   const url = `http://127.0.0.1:${server.address().port}/CHANGELOG.md`;
 
   const launch = settings => {
