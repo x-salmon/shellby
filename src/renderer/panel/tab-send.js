@@ -113,6 +113,7 @@
   // model this turn runs on, and why ({ model, modelBy, modelCls }), if one does.
   /** @param {any} tab @param {string} text @param {any[]} attachments @param {string} turnId @param {{ model: string, modelBy: string, modelCls: string | null }} [onModel] */
   function markSent(tab, text, attachments, turnId, onModel = undefined) {
+    SB.takeHeldTabs?.(); // a list held for pacing (boot.js) is from before this turn: landing after, it would say he's idle
     tab.render({ kind: 'user', text, attachments, turnId, ...(onModel || {}) });
     tab.busy = true;
     tab.busySince = Date.now();

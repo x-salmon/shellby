@@ -81,6 +81,7 @@
     if (tab.busy) return SB.toast('Let him finish first.');
     const r = await api.freshTab(tab.id);
     if (!r?.ok) return SB.toast(r?.error || "Couldn't start fresh.");
+    SB.takeHeldTabs?.(); // as markSent does (tab-send.js)
     tab.render({ kind: 'user', text: r.text });
     tab.busy = true;
     tab.busySince = Date.now();

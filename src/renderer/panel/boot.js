@@ -59,6 +59,7 @@
   const syncTabsSoon = window.ShellbyLatest.latest(summaries => SB.syncTabs(summaries));
   api.onTabs(syncTabsSoon.offer);
   SB.dropHeldTabs = syncTabsSoon.cancel;
+  SB.takeHeldTabs = syncTabsSoon.flush;
   api.onTabOpened(({ tabId, entry, items, background, busy = true, draft = '', attachments = [] }) => {
     if (state.popped.has(tabId)) return; // in another window (tab-panes.js)
     const tab = SB.ensureTab({ id: tabId, title: entry?.title || 'Routine', cwd: entry?.cwd, saved: true, routineId: entry?.routineId, busy, inTerminal: entry?.inTerminal || null });
