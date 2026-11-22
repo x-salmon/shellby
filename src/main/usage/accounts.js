@@ -12,6 +12,8 @@
 // computer while this PC itself isn't signed in (Claude Code only over there:
 // that computer's plan is the only one you use).
 
+const limits = require('../limits');
+
 /** @param {unknown} a @param {unknown} b */
 const sameEmail = (a, b) => typeof a === 'string' && typeof b === 'string' && a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -33,7 +35,8 @@ const hostKey = host => String(host).toLowerCase();
 /**
  * A reading for another account, merged into the per-computer map (a new map).
  * A window the event doesn't mention keeps its last value, so a bare
- * "allowed" event never empties the meter.
+ * "allowed" event never empties the meter. The status doesn't: an old "rejected"
+ * must not outlive a reading that no longer says so (limitOf).
  */
 function withReading(byHost, account, item, now) {
   const map = byHost && typeof byHost === 'object' ? byHost : {};
@@ -42,7 +45,7 @@ function withReading(byHost, account, item, now) {
     ...map,
     [hostKey(account.host)]: {
       host: account.host, email: account.email, plan: account.plan,
-      status: item.status ?? prev.status ?? null,
+      status: item.status ?? null,
       fiveHour: item.fiveHour || prev.fiveHour || null,
       sevenDay: item.sevenDay || prev.sevenDay || null,
       at: now,
@@ -60,16 +63,38 @@ function readingFor(byHost, account) {
 }
 
 /**
- * What the panel needs: every computer that's on another account, with its
- * last reading when there is one. computers: remoteComputers; byHost: withReading's map.
+ * The limit a kept reading says its account is at: { window, resetsAt }, or null
+ * once that has reset. Judged as of when it was taken: a 5-hour window that has
+ * rolled over since doesn't make the weekly one the reason it was rejected.
  */
-function othersView(computers, byHost, local) {
+function limitOf(reading, now) {
+  const hit = reading ? limits.limitFrom(reading, reading.at ?? now) : null;
+  return hit && hit.resetsAt > now ? hit : null;
+}
+
+/** When "after the reset" is for a kept reading: its limit's reset, else the 5-hour window's. Null when not known. */
+function resetOf(reading, now) {
+  const hit = limitOf(reading, now);
+  if (hit) return hit.resetsAt;
+  const r = reading?.fiveHour?.resetsAt;
+  return Number.isFinite(r) && r > now ? r : null;
+}
+
+/**
+ * What the panel needs: every computer that's on another account, with its
+ * last reading when there is one, and the limit it's at. computers: remoteComputers; byHost: withReading's map.
+ */
+function othersView(computers, byHost, local, now = Date.now()) {
   return (computers || [])
     .map(c => accountFor({ place: { host: c?.alias }, computer: c, local }))
     .filter(Boolean)
     .map(a => {
       const r = readingFor(byHost, a);
-      return { host: a.host, email: a.email, plan: a.plan, status: r?.status || null, fiveHour: r?.fiveHour || null, sevenDay: r?.sevenDay || null, at: r?.at || null };
+      const hit = limitOf(r, now);
+      return {
+        host: a.host, email: a.email, plan: a.plan, status: r?.status || null, fiveHour: r?.fiveHour || null, sevenDay: r?.sevenDay || null, at: r?.at || null,
+        limit: hit ? { ...hit, name: limits.windowName(hit.window) } : null,
+      };
     });
 }
 
@@ -87,4 +112,4 @@ function usageStale(reading, local) {
   return !sameEmail(reading.account, local.email);
 }
 
-module.exports = { accountFor, withReading, readingFor, othersView, hostKey, usageStale, sameEmail };
+module.exports = { accountFor, withReading, readingFor, limitOf, resetOf, othersView, hostKey, usageStale, sameEmail };

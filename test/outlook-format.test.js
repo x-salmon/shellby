@@ -72,3 +72,22 @@ test('queueHeldText counts one and many', () => {
   assert.equal(W.queueHeldText(1, '3:00 pm'), 'Your queued message goes at 3:00 pm, once your usage resets.');
   assert.equal(W.queueHeldText(3, '3:00 pm'), '3 queued messages go at 3:00 pm, once your usage resets.');
 });
+
+test("forAccount: another account's limit and reset, never this PC's", () => {
+  const own = { pace: { pct: 9 }, warning: { text: 'At this pace…', resetsAt: 50 }, limit: null, resetAt: null, held: [{ id: 'h1' }] };
+  const clock = at => `t${at}`;
+  const full = { host: 'devbox', limit: { window: 'fiveHour', name: '5-hour', resetsAt: 100 }, fiveHour: { pct: 100, resetsAt: 100 } };
+
+  assert.equal(W.forAccount(own, null, 10, clock), own, 'your own plan: as it is');
+  const there = W.forAccount(own, full, 10, clock);
+  assert.equal(there.resetAt, 100);
+  assert.equal(there.resetText, 't100');
+  assert.equal(there.warning, null);
+  assert.deepEqual(there.held, own.held);
+  assert.equal(W.noteFor(there).text, "You're at your 5-hour limit on devbox until t100.");
+  assert.equal(W.holdRefusal('hello', there.resetAt), null);
+
+  const later = W.forAccount({ ...own, resetAt: 999, limit: { name: '5-hour', at: 'x', resetsAt: 999 } }, full, 101, clock);
+  assert.deepEqual([later.limit, later.resetAt], [null, null], "it has reset, and this PC's limit isn't its");
+  assert.equal(W.forAccount(own, { host: 'devbox', limit: null, fiveHour: { pct: 40, resetsAt: 100 } }, 10, clock).resetAt, 100);
+});

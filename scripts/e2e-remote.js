@@ -14,7 +14,8 @@
 //   - a conversation in it runs over there: the file it writes lands in the
 //     remote home, not in the stand-in folder on this PC;
 //   - signed in there to another Claude account, its plan usage shows in its
-//     tab, marked as that account's, and never moves your own meter.
+//     tab, marked as that account's, and never moves your own meter;
+//   - at that account's limit, a message there is held until its reset.
 //   node scripts/e2e-remote.js [screenshot-folder]
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -168,6 +169,17 @@ function otherComputer() {
     check(/Your own plan, on this PC/.test(menu) && !/Your own plan, on this PC5-hour 25%/.test(menu), `your own plan is shown apart, without homebox's turn: ${menu}`);
     await ev('SB.closeMenus()');
     await shot('other-account-usage');
+
+    // 7. Send after the reset, there: homebox's account is at its limit, and this PC
+    // has no 5-hour window running, so the reset is homebox's.
+    await ev("SB.$('input').value = 'limit 3600'; SB.send()");
+    check(await until("/You're at your 5-hour limit on homebox until/.test(SB.$('outlook').textContent)"), `the banner says whose limit it is: ${await ev("SB.$('outlook').textContent")}`);
+    check(await until('!SB.activeTab().busy', 20000), 'that turn finished');
+    check(await ev('!SB.state.outlook.limit'), "this PC's plan isn't at a limit");
+    await ev(`(i => { i.value = 'carry on over there'; i.dispatchEvent(new Event('input')); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, shiftKey: true, bubbles: true })); })(SB.$('input'))`);
+    check(await until("[...document.querySelectorAll('#queued .queue-item.held .queue-text')].some(b => b.textContent === 'carry on over there')"), 'Ctrl+Shift+Enter holds the message');
+    check(await ev("Math.abs(SB.state.outlook.held[0].at - SB.outlookHere().limit.resetsAt) <= 5 * 60000"), "until homebox's reset");
+    await shot('held-for-other-account');
   } catch (e) {
     check(false, e.stack || e.message);
   } finally {

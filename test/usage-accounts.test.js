@@ -63,3 +63,36 @@ test('with no reading, signed out, or no email to go by, nothing is stale', () =
   assert.equal(A.usageStale({ account: 'old@example.com' }, { loggedIn: true, email: '' }), false, 'an API key sign-in');
   assert.equal(A.usageStale({ account: 'old@example.com' }, undefined), false, 'status not known yet');
 });
+
+test("another account's limit and reset come from its own reading, until they pass", () => {
+  const now = 1_790_000_000_000;
+  const H = 3600e3;
+  const full = { status: 'rejected', fiveHour: { pct: 100, resetsAt: now + 2 * H }, sevenDay: { pct: 58, resetsAt: now + 20 * H }, at: now };
+  assert.deepEqual(A.limitOf(full, now), { window: 'fiveHour', resetsAt: now + 2 * H });
+  assert.equal(A.resetOf(full, now), now + 2 * H);
+  assert.equal(A.limitOf(full, now + 3 * H), null, "reset since: the week isn't what it was rejected for");
+  assert.equal(A.resetOf(full, now + 3 * H), null);
+
+  const week = { ...full, sevenDay: { pct: 100, resetsAt: now + 20 * H } };
+  assert.equal(A.resetOf(week, now), now + 20 * H, 'both full: the later one holds it');
+
+  const room = { status: 'allowed', fiveHour: { pct: 40, resetsAt: now + H }, sevenDay: null, at: now };
+  assert.equal(A.limitOf(room, now), null);
+  assert.equal(A.resetOf(room, now), now + H);
+  assert.equal(A.limitOf(null, now), null);
+  assert.equal(A.resetOf(null, now), null);
+});
+
+test('an old "rejected" does not outlive a reading that shows room again', () => {
+  const now = 1_790_000_000_000;
+  const acct = { host: 'devbox', email: 'work@corp.com', plan: 'max' };
+  const win = pct => ({ pct, resetsAt: now + 3600e3 });
+  const full = A.withReading({}, acct, { status: 'rejected', fiveHour: win(100), sevenDay: win(58) }, now);
+  const probed = A.withReading(full, acct, { status: null, fiveHour: win(3), sevenDay: win(58) }, now + 1);
+  assert.equal(A.limitOf(A.readingFor(probed, acct), now + 2), null);
+
+  const local = { loggedIn: true, email: 'me@example.com' };
+  const view = byHost => A.othersView([computer('work@corp.com')], byHost, local, now + 2)[0].limit;
+  assert.equal(view(full).name, '5-hour');
+  assert.equal(view(probed), null);
+});

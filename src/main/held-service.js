@@ -31,7 +31,9 @@ const pause = ms => new Promise(r => setTimeout(r, ms));
  *   log, send, notify, showPanel, tellChannel, wake, openTab, sendToTab, noteRecap (away-service.js),
  *   currentCwd, isFolder, isStr, dialogLook, confirm ({ ask }), randomUUID,
  *   powerSaveBlocker (Electron's), worktreeHome, adoptPhoneTab (wiring/phone-tasks.js),
- *   from usage/service.js: limitWait, resetTarget, clockTime, sendOutlook,
+ *   remoteService: optional getter (remote/service.js)
+ *   from usage/service.js: limitWait, resetTarget and usageReading (each for the folder the work runs in:
+ *   one on another computer may spend another account's plan), clockTime, sendOutlook,
  *   from routines/service.js: routines, routinesView, runRoutine, makeRoomForRoutine,
  *   workflows (getter, the WorkflowService: a held workflow run goes through its runManual)
  */
@@ -43,6 +45,16 @@ function createHeldQueue(d) {
   let keepAwakeId = null;
 
   const heldList = () => held.normalize(d.config.get('held'), Date.now());
+
+  // The folder a held item runs in, which says whose plan it spends and whose
+  // reset it waits for (usage/service.js). Null: this PC's.
+  function cwdOf(h) {
+    if (h.kind === 'message') return d.manager?.tabs.get(h.tabId)?.session?.cwd || h.cwd || null;
+    if (h.kind === 'routine') return d.routines().find(r => r.id === h.routineId)?.cwd || d.currentCwd();
+    if (h.kind === 'task') return h.cwd || d.currentCwd();
+    return null;
+  }
+  const limitFor = h => d.limitWait(cwdOf(h));
 
   function saveHeld(list) {
     d.config.set({ held: list });
@@ -86,14 +98,15 @@ function createHeldQueue(d) {
 
   /** Hold a message or a routine run for after the reset. raw: { kind, ... } from held.js. */
   function holdForReset(raw) {
-    const reset = d.resetTarget();
+    const cwd = cwdOf(raw);
+    const reset = d.resetTarget(cwd);
     // A task says when: at the reset, or tonight (queue-when.js). A window seen
     // before and since run out means you're on a fresh one already.
     const when = queueWhen.startAt({
       when: raw.kind === 'task' ? raw.when : 'reset',
       resetAt: reset ? reset + d.graceMs : null,
-      limited: !!d.limitWait(),
-      sawWindow: raw.kind === 'task' && !!d.config.get('lastUsage')?.fiveHour,
+      limited: !!d.limitWait(cwd),
+      sawWindow: raw.kind === 'task' && !!d.usageReading(cwd)?.fiveHour,
     }, Date.now());
     if (when.error) return { ok: false, error: when.error, ...(when.idle ? { idle: true } : {}) };
     const res = held.hold(heldList(), { ...raw, at: when.at }, Date.now());
@@ -144,9 +157,9 @@ function createHeldQueue(d) {
   // After a held message goes, wait to hear how the window looks (a usage
   // reading, or the limit) before the next: if the reset wasn't the one that
   // mattered (the weekly window is full too), the rest mustn't all go and fail.
-  async function heardSince(t) {
+  async function heardSince(t, cwd) {
     for (let waited = 0; waited < HELD_SETTLE_MS; waited += HELD_SETTLE_STEP_MS) {
-      if (!d.config || d.limitWait() || (d.config.get('lastUsage')?.at || 0) > t) return;
+      if (!d.config || d.limitWait(cwd) || (d.usageReading(cwd)?.at || 0) > t) return;
       await pause(HELD_SETTLE_STEP_MS);
     }
   }
@@ -155,21 +168,31 @@ function createHeldQueue(d) {
   // expected, or the weekly window): wait for that reset instead.
   async function releaseHeld() {
     if (releasing || !d.config) return;
-    const ready = held.due(heldList(), Date.now());
-    if (!ready.length) return scheduleHeld();
-    const w = d.limitWait();
-    if (w) return saveHeld(held.defer(heldList(), ready.map(h => h.id), w.resetsAt + d.graceMs));
+    const due = held.due(heldList(), Date.now());
+    if (!due.length) return scheduleHeld();
+    // Each waits for its own plan: another account's limit doesn't hold up yours, nor yours its.
+    /** @type {typeof due} */
+    const ready = [];
+    let waiting = heldList();
+    for (const h of due) {
+      const w = limitFor(h);
+      if (w) waiting = held.defer(waiting, [h.id], w.resetsAt + d.graceMs);
+      else ready.push(h);
+    }
+    if (ready.length < due.length) saveHeld(waiting);
+    if (!ready.length) return;
     releasing = true;
     const went = [];
     try {
       for (const [i, h] of ready.entries()) {
         if (i) {
-          if (went.length && went[went.length - 1].kind === 'message') await heardSince(went[went.length - 1].sentAt);
+          const last = went[went.length - 1];
+          if (last?.kind === 'message') await heardSince(last.sentAt, cwdOf(last));
           await pause(HELD_STAGGER_MS);
         }
         if (!d.config) return; // quitting
         if (!heldList().some(x => x.id === h.id)) continue; // cancelled in the meantime
-        if (d.limitWait()) break; // limited again: the next pass moves the rest to that reset
+        if (limitFor(h)) continue; // limited again: the next pass moves it to that reset
         let outcome;
         try {
           // A task is waited on until it finishes, so heavy ones go one at a
@@ -280,11 +303,11 @@ function createHeldQueue(d) {
     if (!d.config) return 'resume';
     // The limit arrives as a usage reading, separately from the result: an
     // error might be the window running dry before that reading is in.
-    if (!end.ok && !end.interrupted && !d.limitWait()) await heardSince(Date.now());
+    if (!end.ok && !end.interrupted && !d.limitWait(cwd)) await heardSince(Date.now(), cwd);
     if (!d.config) return 'resume';
     // Limited now: it most likely ran dry partway. It stays queued and carries
     // on after this reset; if it had in fact finished, the next turn says so.
-    const w = d.limitWait();
+    const w = d.limitWait(cwd);
     if (w && !end.interrupted) {
       tell('paused', { resumeAt: w.resetsAt + d.graceMs, seconds: end.seconds });
       return 'resume';

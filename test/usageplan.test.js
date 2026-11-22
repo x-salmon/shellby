@@ -13,6 +13,7 @@ function fakeShared(settings = {}) {
     config: { get: k => data[k], set: patch => Object.assign(data, patch) },
     manager: { tabs },
     currentCwd: () => 'C:\\code\\shellby',
+    usageService: { usageReading: () => data.lastUsage },
     projectKeyOf: dir => ({ project: dir.split('\\').pop(), pk: dir.toLowerCase() }),
     spendSource: tab => ({ kind: tab.routineId ? 'routine' : 'tab', project: 'shellby', pk: 'c:\\code\\shellby' }),
   };

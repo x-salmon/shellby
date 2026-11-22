@@ -10,6 +10,7 @@ const guard = require('../guard');
 const limits = require('../limits');
 const spend = require('../spend');
 const turncost = require('../turncost');
+const accounts = require('./accounts');
 
 const SPEND_SAVE_MS = 5000;        // calls come in bursts; one write when they settle
 const OUTLOOK_TICK_MS = 60 * 1000; // a forecast goes stale with no new readings
@@ -29,7 +30,8 @@ const sameReset = (a, b) => Number.isFinite(a) && Number.isFinite(b) && Math.abs
  *   markActive (he's just been busy), routines (the saved list), heldViews
  *   (held-service.js), log, every (main's cleared-on-quit interval),
  *   powerMonitor (Electron's), sendEveryWindow (optional: the panel and every
- *   popped-out conversation, wiring/popouts.js)
+ *   popped-out conversation, wiring/popouts.js), accountOfCwd (optional: the other
+ *   Claude account a folder on another computer spends, wiring/sessions.js)
  */
 function createUsage(d) {
   // ---- the limit: when your plan's limit is reached Shellby naps until it
@@ -37,7 +39,21 @@ function createUsage(d) {
 
   /** @type {NodeJS.Timeout | null} */
   let limitTimer = null;
-  const limitWait = () => (limits.status(d.config?.get('limitWait'), Date.now()) === 'waiting' ? limits.normalize(d.config.get('limitWait')) : null);
+  const ownLimit = () => (limits.status(d.config?.get('limitWait'), Date.now()) === 'waiting' ? limits.normalize(d.config.get('limitWait')) : null);
+
+  // Work in a folder on a computer signed in to another Claude account spends
+  // that plan, with its own limit and reset (accounts.js). No folder: your own plan.
+  /** @param {string | null} [cwd] */
+  const otherAccount = cwd => (cwd && d.config ? d.accountOfCwd?.(cwd) || null : null);
+
+  /** The last reading of the plan a folder spends, or null. @param {string | null} [cwd] */
+  function usageReading(cwd = null) {
+    const other = otherAccount(cwd);
+    return (other ? accounts.readingFor(d.config.get('usageByHost'), other) : d.config?.get('lastUsage')) || null;
+  }
+
+  /** The limit the plan a folder spends is held at, or null. @param {string | null} [cwd] */
+  const limitWait = (cwd = null) => (otherAccount(cwd) ? accounts.limitOf(usageReading(cwd), Date.now()) : ownLimit());
 
   function onUsage(u) {
     const hit = limits.limitFrom(u, Date.now());
@@ -179,8 +195,11 @@ function createUsage(d) {
   let lastOutlook = '';
 
   // When "after the reset" is: the limit you're held at, else the 5-hour window's
-  // next reset as last reported. null until Claude Code has said.
-  function resetTarget(now = Date.now()) {
+  // next reset as last reported. null until Claude Code has said. cwd: for work
+  // in that folder, which may spend another account's plan.
+  /** @param {string | null} [cwd] */
+  function resetTarget(cwd = null, now = Date.now()) {
+    if (otherAccount(cwd)) return accounts.resetOf(usageReading(cwd), now);
     const w = limitWait();
     if (w) return w.resetsAt;
     const r = d.config.get('lastUsage')?.fiveHour?.resetsAt;
@@ -195,7 +214,7 @@ function createUsage(d) {
     const now = Date.now();
     const o = forecast.outlook(d.recapLog, now);
     const w = limitWait();
-    const resetAt = resetTarget(now);
+    const resetAt = resetTarget(null, now);
     const warn = !!o?.warn && d.config.get('forecast') !== false && !w;
     return {
       pace: o ? { pct: o.pct, perHour: o.perHour, hitAt: o.hitAt, hitText: clockTime(o.hitAt), resetsAt: o.resetsAt, warn } : null,
@@ -281,7 +300,6 @@ function createUsage(d) {
     const settings = guardSettings();
     if (!settings.on) return;
     const now = Date.now();
-    const usage = d.config.get('lastUsage');
     /** @type {number | null} */
     let idleMs = null;
     for (const [tabId, tab] of d.manager.tabs) {
@@ -290,7 +308,7 @@ function createUsage(d) {
       const kind = run.kind || (tab.session.mode === 'autonomous' ? 'autonomous' : null);
       if (!kind) continue;
       if (kind === 'autonomous' && idleMs === null) idleMs = idleForGuard();
-      const v = guard.verdict({ ...run, kind }, settings, { usage, now, idleMs: idleMs ?? 0 });
+      const v = guard.verdict({ ...run, kind }, settings, { usage: usageReading(tab.session.cwd), now, idleMs: idleMs ?? 0 });
       if (!v) continue;
       run.stopped = v;
       d.log.info('Spending guard stopped a run', `${tab.title}: ${v.reason}${v.pct ? ` at ${v.pct}%` : ''}`);
@@ -312,7 +330,7 @@ function createUsage(d) {
   return {
     armGuard, checkGuards, checkLimit, clockTime, forecastNow, guardSettings, limitWait, onSpend, onUsage,
     outlookView, projectKeyOf, recordSpend, refreshOutlook, resetTarget, saveSpend, scheduleLimit, sendOutlook, spendSource,
-    stop, tabCost, usageBreakdown, watchGuards, watchOutlook, windowShare,
+    stop, tabCost, usageBreakdown, usageReading, watchGuards, watchOutlook, windowShare,
   };
 }
 

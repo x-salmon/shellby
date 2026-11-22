@@ -36,7 +36,7 @@ const lastLines = s => String(s).trim().split('\n').slice(-3).join(' ');
  *   log, send, notify, showPanel, sayText, wake, openTab, currentCwd, stat,
  *   dialogLook, confirm ({ ask }), runClaudeOnce, knownProjects, isFolder,
  *   randomUUID,
- *   from usage/service.js: limitWait, guardSettings, clockTime, forecastNow,
+ *   from usage/service.js: limitWait, usageReading, guardSettings, clockTime, forecastNow,
  *   from held-service.js: heldList, holdForReset, saveHeld, scheduleHeld, syncKeepAwake, queueTabs
  */
 function createRoutines(d) {
@@ -168,9 +168,10 @@ function createRoutines(d) {
   // the nearly-full part (pace.js); the limit itself still holds it.
   function runOrHoldRoutine(r, reason) {
     const now = Date.now();
-    const w = d.limitWait();
+    const cwd = r.cwd || d.currentCwd(); // on another computer it may spend another account's plan
+    const w = d.limitWait(cwd);
     const settings = d.guardSettings();
-    const near = w ? null : pace.waitFor(r, { usage: d.config.get('lastUsage'), outlook: d.forecastNow?.() || null, settings, now, runMs: settings.maxMinutes * 60 * 1000 });
+    const near = w ? null : pace.waitFor(r, { usage: d.usageReading(cwd), outlook: d.forecastNow?.() || null, settings, now, runMs: settings.maxMinutes * 60 * 1000 });
     if (!w && !near) {
       dropAutoHold(r.id);
       return runRoutine(r, { reason });

@@ -287,8 +287,8 @@ function wirePhoneTasks(d) {
   // At the limit, or past the share of the window you keep for yourself: it
   // waits for the reset like a task you queued (spending guard, guard.js).
   function holdIt(prompt, project) {
-    const w = d.usageService.limitWait();
-    const usage = d.config.get('lastUsage');
+    const w = d.usageService.limitWait(project.path);
+    const usage = d.usageService.usageReading(project.path);
     const saving = !w && guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), usage, Date.now());
     if (!w && !saving) return false;
     const res = d.holdForReset({ kind: 'task', prompt, cwd: project.path, mode: pt.MODE, fromPhone: true });

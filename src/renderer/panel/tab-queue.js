@@ -94,7 +94,7 @@
     SB.renderOutlook?.();
     SB.renderReview?.();
     if (box.hidden) { box.replaceChildren(); return; }
-    const limited = !!state.outlook?.limit;
+    const limited = !!SB.outlookHere?.()?.limit;
     box.replaceChildren(...[
       tab.queuePaused && q.length ? h('div', { class: 'queue-paused' },
         h('span', { text: limited ? "Paused: you're at your usage limit." : 'Paused: the last turn ended with an error.' }),

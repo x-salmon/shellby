@@ -79,7 +79,7 @@ function wired({ tailscale = fakeTailscale(), tabs = [], items = {} } = {}) {
     startTaskInCopy: async (...a) => { rec.push(['startTaskInCopy', ...a]); manager.tabs.set('new1', tabOf('new1')); return { ok: true, tabId: 'new1' }; },
     startTask: note('startTask'),
     holdForReset: (...a) => { rec.push(['holdForReset', ...a]); return { ok: true, atText: '14:20' }; },
-    usageService: { limitWait: () => null },
+    usageService: { limitWait: () => null, usageReading: () => null },
     sendOutlook() {},
     sendToTab: (tabId, text) => { rec.push(['sendToTab', tabId, text]); return { ok: true, tabId, turnId: 'u9', item: { kind: 'user', text, turnId: 'u9' } }; },
     undoChanges: async ref => { rec.push(['undoChanges', ref]); return { ok: true, restored: 2 }; },

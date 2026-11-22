@@ -51,6 +51,7 @@ function wireServices(d) {
     markActive: () => { d.lastActivity = Date.now(); },
     routines: () => routineService.routines(),
     heldViews: () => heldService.heldViews(),
+    accountOfCwd: cwd => d.accountOfCwd?.(cwd) || null,
   });
   const heldService = createHeldQueue({
     log, send, showPanel, isFolder, isStr, randomUUID, confirm, powerSaveBlocker, CAPTURE, graceMs: HELD_GRACE_MS,
@@ -71,7 +72,8 @@ function wireServices(d) {
     get adoptPhoneTab() { return d.adoptPhoneTab; },
     get workflows() { return d.workflows; },
     worktreeHome: () => d.worktreeHome(),
-    limitWait: usageService.limitWait, resetTarget: usageService.resetTarget,
+    get remoteService() { return d.remoteService; },
+    limitWait: usageService.limitWait, resetTarget: usageService.resetTarget, usageReading: usageService.usageReading,
     clockTime: usageService.clockTime, sendOutlook: usageService.sendOutlook,
     routines: () => routineService.routines(),
     routinesView: () => routineService.routinesView(),
@@ -96,7 +98,7 @@ function wireServices(d) {
     get dialogLook() { return d.dialogLook; },
     get runClaudeOnce() { return d.runClaudeOnce; },
     get knownProjects() { return d.knownProjects; },
-    limitWait: usageService.limitWait, guardSettings: usageService.guardSettings, clockTime: usageService.clockTime, forecastNow: usageService.forecastNow,
+    limitWait: usageService.limitWait, usageReading: usageService.usageReading, guardSettings: usageService.guardSettings, clockTime: usageService.clockTime, forecastNow: usageService.forecastNow,
     heldList: heldService.heldList, holdForReset: heldService.holdForReset, saveHeld: heldService.saveHeld, scheduleHeld: heldService.scheduleHeld,
     syncKeepAwake: heldService.syncKeepAwake, queueTabs: heldService.queueTabs,
   });

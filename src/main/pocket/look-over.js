@@ -24,7 +24,7 @@ function createLookOver(d, { projects, claimStart, adopt, pushView }) {
     if (!dir) return no("That project isn't one Shellby knows. Pick one from the list.");
     const repo = await repoOf(dir).catch(() => null);
     if (!repo) return no("That folder isn't a git repository, so there are no changes to look over.");
-    if (d.usageService?.limitWait()) return no("You're at your usage limit. Ask again after the reset.");
+    if (d.usageService?.limitWait(dir)) return no("You're at your usage limit. Ask again after the reset.");
     const gate = claimStart();
     if (!gate.ok) return no(gate.reply);
     const r = d.startTask(reviewPrompt(repo.name), `Look over ${repo.name}`, { mode: 'ask', cwd: repo.root });

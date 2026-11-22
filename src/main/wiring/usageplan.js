@@ -106,9 +106,9 @@ function wireUsagePlan(d) {
   /**
    * What a run like this usually costs, before it starts (usage/runcost.js):
    * kind 'ultracode', 'workflow' (with its id) or 'fanout' (a turn asking for
-   * several helpers). -> the view the panel shows, words included, or null.
+   * several helpers), in cwd's plan. -> the view the panel shows, words included, or null.
    */
-  function estimateRunFor({ kind, workflowId = null } = {}) {
+  function estimateRunFor({ kind, workflowId = null, cwd = null } = {}) {
     const now = Date.now();
     const all = rows();
     const wf = kind === 'workflow' ? d.workflows?.get(workflowId) : null;
@@ -116,7 +116,7 @@ function wireUsagePlan(d) {
     const est = runcost.estimateRun(all, { kind, key: wf?.id || null, ratio: usageLedger.ratioOf(all), now });
     if (!est) return null;
     const settings = guard.settingsOf(k => d.config.get(k));
-    const advice = usageLedger.advise(est, d.config.get('lastUsage'), settings, now);
+    const advice = usageLedger.advise(est, d.usageService.usageReading(cwd), settings, now);
     return runcost.view(est, advice, { name: wf?.name || null, resetText: advice.resetsAt ? clockTime(advice.resetsAt) : null, guardOn: settings.on });
   }
 
@@ -159,7 +159,8 @@ function wireUsagePlan(d) {
     const category = usageLedger.classify(text);
     const est = usageLedger.estimate(rows(), { pk: src.pk, category, model, now });
     const settings = guard.settingsOf(k => d.config.get(k));
-    const advice = usageLedger.advise(est, d.config.get('lastUsage'), settings, now);
+    const cwd = tab ? tab.session?.cwd : d.currentCwd(); // whose plan it spends
+    const advice = usageLedger.advise(est, d.usageService.usageReading(cwd), settings, now);
     const kind = tab?.routineId ? 'routine' : tab?.workflowRunId ? 'workflow' : 'tab';
     const runKind = ultracode ? 'ultracode' : runcost.fanout(text) ? 'fanout' : null;
     return {
@@ -169,7 +170,7 @@ function wireUsagePlan(d) {
       cold: tab && kind === 'tab' ? coldResend({ cache: tab.session?.cache, tokens: tab.session?.context?.tokens, text, now }) : null,
       suggest: tab && kind === 'tab' && !tab.session?.proc && !tab.session?.sessionId && !tab.ownModel
         ? usageLedger.modelSuggestion(rows(), { pk: src.pk, category, model, now }) : null,
-      run: runKind && kind === 'tab' ? estimateRunFor({ kind: runKind }) : null,
+      run: runKind && kind === 'tab' ? estimateRunFor({ kind: runKind, cwd }) : null,
     };
   }
 
