@@ -1,6 +1,6 @@
 # Developing Shellby
 
-How to build Shellby, how he drives Claude Code, the test and maintenance scripts, and a map of the code. For the contribution guidelines, see [CONTRIBUTING.md](../CONTRIBUTING.md); for the short version with a diagram, see [How it works](../README.md#how-it-works).
+How to build Shellby, how he drives Claude Code, the test and maintenance scripts, and a map of the code. For the contribution guidelines, see [CONTRIBUTING.md](../CONTRIBUTING.md); for the short version with a diagram, see [How it works](FEATURES.md#how-it-works).
 
 ## How Shellby drives Claude Code
 

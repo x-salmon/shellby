@@ -39,6 +39,7 @@ body:
       label: Is Claude Code set up?
       options:
         - Yes, signed in on a Pro or Max plan
+        - Yes, with an API key
         - Installed, but not signed in
         - Not installed — I'm running just the crab
         - Not sure

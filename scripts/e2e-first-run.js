@@ -4,7 +4,8 @@
 // CDP, driven by the fake Claude CLI (test/fixtures/fake-claude.js):
 //   1. A brand-new profile meets the welcome screen; Let's go lands on the chat
 //      with First steps (hello already done), a short bar, and words on what
-//      a screen is for
+//      a screen is for. Signed out, an API key signs in instead: Cancel in the
+//      confirm window keeps nothing, saying yes bills it
 //   2. × puts First steps away and Settings → General → Screens brings them back
 //   3. Each step is done by the real thing: a folder chosen, a task sent, his
 //      changes opened, Outfits visited. Two finished tasks earn Finds and
@@ -19,6 +20,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { savePng } = require('./lib/shot');
+const { answerDialog } = require('./lib/dialog');
 const { STEPS } = require('../src/main/first-run');
 const { ROOMS } = require('../src/main/rooms');
 
@@ -115,6 +117,25 @@ const visible = sel => `(el => !!el && getComputedStyle(el).display !== 'none' &
       check(await until("SB.state.view === 'onboarding'"), 'a brand-new profile starts on the welcome screen');
       await ev("document.querySelector('#onboardPaths [data-path=\"claude\"]').click()");
       check(await until("!SB.$('letsGoBtn').disabled"), "Let's go is ready once the (fake) Claude Code is found and signed in");
+      // Signed out (as the panel sees it), with an API key instead of a plan.
+      const key = `sk-ant-api03-${'e'.repeat(40)}`;
+      const signedOut = () => ev("SB.state.status = { installed: true, version: '2.1.330', loggedIn: false }; SB.views.onboarding.render()");
+      const saveKey = async press => {
+        await signedOut();
+        if (await ev("SB.$('onboardKeyForm').hidden")) await ev("SB.$('onboardKeyBtn').click()");
+        await ev(`SB.$('onboardKeyInput').value = ${JSON.stringify(key)}; SB.$('onboardKeyForm').requestSubmit()`);
+        return answerDialog(PORT, { press });
+      };
+      await signedOut();
+      check(await ev("SB.$('letsGoBtn').disabled && SB.$('onboardKeyForm').hidden"), "signed out, Let's go waits and the key box is put away");
+      await ev("SB.$('onboardKeyBtn').click()");
+      check(await ev("!SB.$('onboardKeyForm').hidden && document.activeElement.id === 'onboardKeyInput'"), 'Use an API key opens the box, ready to type in');
+      await savePng(send, path.join(SHOTS, '0-api-key.png'));
+      check(!!(await saveKey('Cancel')), 'saving one asks about billing first');
+      check(await until("shellby.apiKeyView().then(k => !k.saved)") && await ev("!SB.state.settings.apiKeyBilling"), 'Cancel keeps no key and stays on the plan');
+      check(!!(await saveKey('Use my API key')), 'and asks again');
+      check(await until("!SB.$('letsGoBtn').disabled && SB.state.settings.apiKeyBilling === true && shellby.apiKeyView().then(k => k.saved)"), "saying yes saves it, bills it and readies Let's go");
+      await ev("shellby.setSettings({ apiKeyBilling: false }).then(r => { SB.state.settings = r.settings; return shellby.clearApiKey(); }).then(() => true)");
       await ev("SB.$('letsGoBtn').click()");
       check(await until("SB.state.view === 'chat' && !!SB.activeTab()"), "Let's go lands on the chat");
       check(await until(visible(CARD)), 'First steps sit on the start screen');
