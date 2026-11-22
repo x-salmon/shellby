@@ -10,8 +10,8 @@ const SBCore = {
   MiniShell: window.ShellbyMiniShell,
   shortcuts: window.ShellbyShortcuts, // every shortcut, for the handlers, the palette and the cheat sheet
   panes: window.ShellbyPanes,         // conversations side by side (shared/panes.js)
-  // Set in a popped-out conversation's window: the one tab it shows. That
-  // window is this same page with the chat alone (main's wiring/popouts.js).
+  // Set in a popped-out conversation's window: that window's id. It's this same
+  // page, whole, with its own tabs and panes (main's wiring/popouts.js).
   solo: new URLSearchParams(location.search).get('popout'),
   // From the page's first script until boot.js has opened its first screen (setView, below).
   starting: !new URLSearchParams(location.search).get('popout'),
@@ -28,7 +28,7 @@ const SBCore = {
     grid: /** @type {any[]} */ ([]),                   // the tabs on screen, as columns of ids (see shared/panes.js)
     paneSizes: /** @type {Record<string, number> | null} */ (null), // the panes' sizes: weights by tab id (shared/panes.js)
     panesSaved: false,    // a split layout is in config (tab-panes.js savePanes), so one pane has to clear it
-    popped: /** @type {Set<string>} */ (new Set()),   // tabs out in windows of their own (main's 'tabs' says which)
+    popped: /** @type {Set<string>} */ (new Set()),   // tabs in other windows than this one (main's 'tabs' says which)
     clashes: /** @type {any[]} */ ([]),                // copies that changed the same files (clashes.js; src/main/worktrees/clash.js has the shape)
   },
 };
@@ -533,9 +533,8 @@ SB.setView = target => {
   // A screen asked for while the panel starts (you, Ctrl+K, main): its start opens it at the end
   // instead of the chat (boot.js). The chat itself is what the start goes to anyway.
   if (SB.starting && view !== 'chat') SB.askedWhileStarting = view;
-  // Just-the-crab mode has no chat: Health is home. A popped-out window has nothing but.
+  // Just-the-crab mode has no chat: Health is home.
   if (view === 'chat' && s.settings.crabOnly) view = 'health';
-  if (SB.solo) view = 'chat';
   if (view !== 'onboarding') SB.views.onboarding?.leave?.(); // gives back what first run borrowed
   if (view !== 'pcs') SB.views.pcs?.leave?.(); // stops watching a conversation on another PC (pcs.js)
   s.view = view;

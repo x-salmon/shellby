@@ -37,9 +37,6 @@
    */
 
   const dock = $('filesDock');
-  // A conversation's own window has no All files: main sends viewer:stale to the panel only, so a
-  // tree there would never look again. Its tab hides, and Ctrl+Shift+F shows the Trail.
-  if (SB.solo) { $('drawerTabFiles').hidden = true; return; }
   const branchEl = h('div', { class: 'ft-branch' });
   const filterEl = h('input', { class: 'field ft-filter', type: 'search', placeholder: 'Search files', 'aria-label': 'Search files', spellcheck: 'false' });
   const pinsEl = h('div', { class: 'ft-pins', 'aria-hidden': 'true' });
@@ -414,7 +411,7 @@
   // In the full viewer: at its diff when it has changes, else the whole file. Ctrl: your editor.
   function openFile(rel, { ctrl = false } = {}) {
     const at = /** @type {Dock} */ (me);
-    if (ctrl || SB.solo || !SB.viewer) return SB.openFile(fullPath(at.root, rel), { tabId: at.tabId });
+    if (ctrl || !SB.viewer) return SB.openFile(fullPath(at.root, rel), { tabId: at.tabId });
     if (at.place) return SB.viewer.openPlace(at.req, at.place, { file: rel });
     SB.viewer.openTab(at.tabId, { file: rel });
   }

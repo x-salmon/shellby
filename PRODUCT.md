@@ -5,10 +5,12 @@
 product
 
 ## Users
-Windows developers who use Claude Code on their own Pro or Max plan and keep Shellby, a pixel hermit crab, on their desktop. They open his panel to hand Claude Code a job, run several at once, review and bring work home, or check on a project. Sessions are short and glanceable. A smaller group just wants the desk pet, and that still works with no account.
+Windows developers who use Claude Code and keep Shellby, a pixel hermit crab, on their desktop. They open his panel to hand Claude Code a job, run several at once, review and bring work home, or check on a project. Sessions are short and glanceable. A smaller group just wants the desk pet, and that still works with no account.
 
 ## Product Purpose
-Shellby is a desktop app for Claude Code on the user's own plan: parallel work on its own branches, undo, review, scheduling and alerts, so they don't script any of it themselves. The crab is how that work shows: a helper crab for every subagent, a pose for what Claude is doing, a celebration when it lands. He has a life of his own too (he talks, plays, digs up finds and dresses up), but nothing to look after. Success is the user trusting Shellby with real work, and feeling that the crab is *theirs*.
+The pitch, word for word everywhere: **Run Claude Code in parallel on Windows. Undo anything. Watch it happen.** The crab is what people share and the tools are why they stay, so he's in every picture and the game side (Bugdex, tank, battles) is never in the pitch. Billing is never the headline either: it's Anthropic's to change.
+
+Shellby is a desktop app for Claude Code, on the user's own sign-in: parallel work on its own branches, undo, review, scheduling and alerts, so they don't script any of it themselves. The crab is how that work shows: a helper crab for every subagent, a pose for what Claude is doing, a celebration when it lands. He has a life of his own too (he talks, plays, digs up finds and dresses up), but nothing to look after. Success is the user trusting Shellby with real work, and feeling that the crab is *theirs*.
 
 ## Brand Personality
 Warm, playful, quietly crafted. A tidepool at night seen through a terminal: deep ink-teal water, sea-glass, coral. Pixel art is the native medium for Shellby himself; the UI around him stays calm and legible so he can be the star. Copy is plain, friendly, specific, British-leaning, never cutesy-babyish.

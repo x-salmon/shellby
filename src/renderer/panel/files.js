@@ -38,9 +38,8 @@
     const feed = /** @type {HTMLElement | null} */ (a.closest('.feed'));
     const tabId = feed?.dataset.tab || state.activeTab;
     const line = Number(a.dataset.line) || null;
-    // Ctrl: your editor, as a click used to be. Shift: its folder. A popped-out window has only its
-    // chat, and a link outside a conversation (Workflows' runs, say) has no folder to show it in.
-    if (e.ctrlKey || e.shiftKey || SB.solo || !SB.viewer || !feed) return SB.openFile(a.dataset.path, { line, reveal: e.shiftKey, tabId });
+    // Ctrl: your editor, as a click used to be. Shift: its folder. A link outside a conversation (Workflows' runs, say) has no folder to show it in.
+    if (e.ctrlKey || e.shiftKey || !SB.viewer || !feed) return SB.openFile(a.dataset.path, { line, reveal: e.shiftKey, tabId });
     SB.viewer.openLink(tabId, a.dataset.path, line);
   });
 

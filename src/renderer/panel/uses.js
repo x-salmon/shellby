@@ -19,7 +19,7 @@
     if (typeof SB.VIEW_ALIAS[target] === 'function') return setView(target);
     const was = state.view;
     setView(target);
-    if (state.view !== was && !SB.solo) api.featureUsed(state.view);
+    if (state.view !== was) api.featureUsed(state.view);
   };
 
   // A screen's way in: its button on the bar, its tab on his screen (Home's own

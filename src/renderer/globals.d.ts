@@ -372,9 +372,11 @@ interface ShellbyPanelExtras {
   heldChips: any;
   holdIfBig: any;
   holdQueue: any;
+  outlookHere: any;
   refreshEstimate: any;
   renderOutlook: any;
   resetEstimate: any;
+  syncAccountLimit: any;
   // pages-bridge.js
   pageFrames: any;
   // pages-host.js
@@ -549,6 +551,7 @@ interface ShellbyPanelExtras {
   repoItems: any;
   ultraReview: any;
   // tab-meters.js
+  accountHere: any;
   applyOtherUsage: any;
   applyUsage: any;
   compactTab: any;
@@ -573,6 +576,7 @@ interface ShellbyPanelExtras {
   overlayOpen: any;
   paneEls: any;
   paneStripOf: any;
+  popIn: any;
   popOut: any;
   refreshJump: any;
   refreshPaneHeads: any;

@@ -108,13 +108,13 @@
     const buttons = [
       fixed && act('Restart', () => serverAction('restartServer', s.id), 'btn primary slim-btn'),
       L.isUp(s) && s.url && act('Open', () => api.openServer(s.id), 'btn slim-btn'),
-      L.isUp(s) && s.url && s.kind === 'server' && !SB.solo && act('Point at it', () => pointAt(s.id)),
+      L.isUp(s) && s.url && s.kind === 'server' && act('Point at it', () => pointAt(s.id)),
       isLive(s) && s.kind === 'server' && act('Restart', () => serverAction('restartServer', s.id)),
       isLive(s) && act('Stop', () => serverAction('stopServer', s.id)),
       crashed && !fixed && s.kind === 'server' && act('Restart', () => serverAction('restartServer', s.id)),
       crashed && act('Dismiss', () => serverAction('dismissServer', s.id)),
       act(open ? 'Hide log' : 'Log', () => toggleLog(s.id)),
-      !SB.solo && act('Show beside the chat', () => SB.tools.openServer(s.id)),
+      act('Show beside the chat', () => SB.tools.openServer(s.id)),
     ].filter(Boolean);
     const card = h('li', { class: `pj-card ${s.status}`, id: `srv-card-${s.id}` },
       h('div', { class: 'pj-card-head' },

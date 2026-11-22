@@ -1,6 +1,6 @@
 // One conversation = one long-lived `claude -p` process speaking stream-json on
 // stdin/stdout. Permission prompts, interrupts and mode switches go over the same
-// control protocol the Claude Agent SDK uses, so no API key is ever involved.
+// control protocol the Claude Agent SDK uses, signed in however you signed Claude Code in.
 // The class keeps the process's life and what it says; the rest is mixed in:
 // how it's launched (args.js), answering it (control.js), what it costs
 // (accounting.js) and its helpers (crew.js).

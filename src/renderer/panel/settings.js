@@ -232,7 +232,9 @@
   $('autonomousNo').addEventListener('click', () => { $('autonomousConfirm').hidden = true; });
   // Changed on another PC, and brought over by a sync.
   api.onSettings(s => {
+    const was = SB.modeNow?.();
     state.settings = s;
+    if (SB.modeNow?.() !== was) SB.applyCrabOnly(); // Work mode, or just the crab, from another window
     SB.applyMode(s.mode);
     SB.syncJustSaw?.();
     SB.refreshUsage?.(); // a computer checked again may now be on another account

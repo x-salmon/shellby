@@ -146,8 +146,8 @@ function createPocketActions(d, { settings, save, devices, saveDevices, vapidKey
     const gate = claimStart(now);
     if (!gate.ok) return no(gate.reply);
     // At the limit, or past what you keep for yourself: it waits for the reset. Not on a local model, which spends none of it.
-    const w = d.usageService?.limitWait();
-    if (!onPc && (w || guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), d.config.get('lastUsage'), now))) {
+    const w = d.usageService?.limitWait(target.key);
+    if (!onPc && (w || guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), d.usageService?.usageReading(target.key), now))) {
       const held = d.holdForReset({ kind: 'task', prompt, cwd: target.key, mode: runAs, fromPhone: true, ...(on ? { model: on } : {}) });
       if (!held.ok) return no(`Couldn't queue it: ${held.error}`);
       d.sendOutlook?.();

@@ -3,6 +3,7 @@
 const { app, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { fromWindow } = require('../asking');
 const snippets = require('../snippets');
 
 /** d: what main shares (main.js `shared`). */
@@ -61,7 +62,7 @@ function wireSnippets(d) {
   async function exportSnippets() {
     const list = snippetList();
     if (!list.length) return { ok: false, error: 'There are no snippets to export.' };
-    const r = await dialog.showSaveDialog(d.panel, {
+    const r = await dialog.showSaveDialog(fromWindow(d.panel), {
       title: 'Export your snippets',
       defaultPath: path.join(app.getPath('documents'), 'shellby-snippets.json'),
       filters: [{ name: 'Shellby snippets', extensions: ['json'] }],
@@ -73,7 +74,7 @@ function wireSnippets(d) {
 
   /** Toolbox > Snippets > Import: someone's export, or your own from another PC. */
   async function importSnippets() {
-    const r = await dialog.showOpenDialog(d.panel, {
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), {
       title: 'Import snippets', properties: ['openFile'],
       filters: [{ name: 'Shellby snippets', extensions: ['json'] }, { name: 'All files', extensions: ['*'] }],
     });

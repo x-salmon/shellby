@@ -35,6 +35,7 @@ class FakeBrowserWindow extends EventEmitter {
     wc.sent = [];
     wc.send = (channel, payload) => wc.sent.push({ channel, payload });
     wc.setWindowOpenHandler = fn => { wc.openHandler = fn; };
+    wc.session = { addWordToSpellCheckerDictionary: () => {} };
     this.webContents = wc;
     FakeBrowserWindow.all.push(this);
   }
@@ -49,6 +50,9 @@ class FakeBrowserWindow extends EventEmitter {
   show() { this.visible = true; }
   moveTop() { this.onTop = true; }
   focus() { this.focused = true; }
+  isFocused() { return !!this.focused; }
+  getPosition() { return [this.bounds.x, this.bounds.y]; }
+  destroy() { this.close(); }
   close() { if (this.destroyed) return; this.destroyed = true; this.emit('closed'); }
 }
 FakeBrowserWindow.all = [];

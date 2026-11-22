@@ -8,7 +8,7 @@ Why bother: SmartScreen's "Windows protected your PC" dialog is triggered by
 the tag a *browser* attaches to a downloaded file. `winget` fetches installers with its
 own HTTP client and usually doesn't set it, so that dialog typically never appears for
 a `winget install` — while `winget` still verifies the SHA-256 pinned in the manifest.
-It does not change the UAC "Unknown publisher" line; only code signing does that
+The publisher line comes from code signing
 (see [../../docs/SIGNING.md](../../docs/SIGNING.md)).
 
 ## First submission
@@ -29,15 +29,19 @@ Two things only you can do, both in the browser:
 2. Add it as the repo secret **`WINGET_TOKEN`** (Settings → Secrets and variables →
    Actions).
 
-Then run the **Submit to winget** workflow from the Actions tab, with version `0.66.0`.
+Then run the **Submit to winget** workflow from the Actions tab, with version `0.100.5`.
 It opens the PR against `microsoft/winget-pkgs` for you, creating the fork if needed.
 
 A first-time package gets reviewed by a human moderator, which can take a few days.
-Automated validation runs the installer in a sandbox first. Leave the PR open while it
-waits: the first try (0.18.0, [#445454](https://github.com/microsoft/winget-pkgs/pull/445454))
-passed validation and was closed before a moderator got to it, so nothing was published.
-Releases tagged while it waits don't reach winget (`wingetcreate update` has nothing to
-update yet); the first one after the merge does.
+Automated validation runs the installer in a sandbox first. Watch the PR and answer the
+bots: two tries have been closed unmerged. 0.18.0
+([#445454](https://github.com/microsoft/winget-pkgs/pull/445454)) was closed before a
+moderator got to it. 0.66.0 ([#446825](https://github.com/microsoft/winget-pkgs/pull/446825))
+was closed as stale on 16 November 2026, after winget-pkgs deprecated manifest schema 1.6.0
+and nobody updated it. Before submitting, check the [schema versions](https://github.com/microsoft/winget-pkgs/blob/master/doc/manifest/README.md)
+and make these files match the newest. If a bot asks for a change, fix the fork's branch
+within a week. Releases tagged while it waits don't reach winget (`wingetcreate update`
+has nothing to update yet); the first one after the merge does.
 
 Nothing needs installing locally — the workflow runs on a GitHub runner, which matters
 because `wingetcreate` requires the .NET 9 runtime.
@@ -45,12 +49,12 @@ because `wingetcreate` requires the .NET 9 runtime.
 ### Doing it by hand instead
 
 ```powershell
-winget validate --manifest packaging\winget\0.66.0
-winget install  --manifest packaging\winget\0.66.0   # optional local test
+winget validate --manifest packaging\winget\0.100.5
+winget install  --manifest packaging\winget\0.100.5   # optional local test
 ```
 
 Then fork `microsoft/winget-pkgs`, copy this version folder to
-`manifests/x/x-salmon/Shellby/0.66.0/` in the fork, and open a PR.
+`manifests/x/x-salmon/Shellby/0.100.5/` in the fork, and open a PR.
 
 ## Automatic updates after that
 

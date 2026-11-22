@@ -2,6 +2,7 @@
 // change has to confirm first. Kept out of main.js, which only wires it up.
 const { dialog } = require('electron');
 const fs = require('fs');
+const { fromWindow } = require('../asking');
 const attach = require('../attachments');
 const { TIMEOUTS_MIN } = require('../checks');
 const { setApiKeyBilling, setPlanOnly } = require('../claude/cli');
@@ -124,7 +125,7 @@ function registerSettingsIpc(ipcMain, d) {
     if (Object.keys(allowed).length) d.send(d.panel, 'github:error', `Synced from your other PC: ${syncPrefs.describe(Object.keys(allowed))}.`);
   };
 
-  ipcMain.handle('settings:set', async (_e, patch = {}) => {
+  ipcMain.handle('settings:set', async (e, patch = {}) => {
     /** @type {{ [key: string]: unknown, localModel?: unknown, pushToTalk?: unknown, apiKeyBilling?: unknown }} */
     const allowed = {};
     for (const k of ['mode', 'hotkey', 'skin', 'critterScale', 'crewSide', 'openAtLogin', 'notifications', 'model', 'onboarded', 'firstTour', 'autonomousAcknowledged', 'showCrew', 'crabOnly', 'claudeElsewhere', 'workMode', 'wander', 'onTop', 'perch', 'perchIgnore', 'climb', 'mischief', 'mischiefPranks', 'colony', 'chatter', 'sounds', 'soundFx', 'ambient', 'soundVolume', 'worktrees', 'clashWarnings', 'recap', 'forecast', 'leaveGuard', 'effort', 'effortPick', 'outputStyle', 'fallbackModel', 'helperModel', 'claudeInChrome', 'claudeTelemetry', 'planOnly', 'apiKeyBilling', 'localModel', 'idleCompact', 'pushToTalk', 'flakyTests', 'surprises', 'rewardCards', 'tideEvents', 'signCommits', 'catchBugs', 'bugBattles', 'bugFollower', 'shareBugdex', 'checkEachTurn', 'checkTimeoutMin', 'turnShots', 'spendGuard', 'spendReserve', 'spendMaxMinutes', 'holdBigTasks', 'crashReports', 'selfAware', 'suggestions', 'engineerRecords', 'engineerChecksFirst', 'taskBoard', 'handoffAsk', 'editor', 'claudeTricks', 'askedBefore', 'attachWhatISaw', 'plainCards', 'sshAgent', 'keybindings', 'communityNews', 'shareWrapped', 'mergeSends', 'modelSuggest', 'modelAlways', 'pagesSync']) {
@@ -236,6 +237,7 @@ function registerSettingsIpc(ipcMain, d) {
     d.config.set(allowed);
     applied(allowed, asked, before, { taste: true });
     if (allowed.onboarded && !before.onboarded) d.firstRunStep?.('welcome'); // through the welcome screen: First steps' hello (first-run.js)
+    d.sendOtherWindows?.(e.sender, 'settings', d.panelSettings()); // a conversation's own window, or the panel behind it
     return { settings: d.panelSettings(), hotkeyError, pushToTalkError };
   }, [opt(obj())]);
   // Settings' Find models: what the local server (Ollama, LM Studio) has. Only addresses on this PC are asked.
@@ -329,7 +331,7 @@ function registerSettingsIpc(ipcMain, d) {
   ipcMain.handle('local:answer-instead', (_e, question) => localModel.answerInstead(question, { settings: () => d.config.get('localModel') }), [text(20000)]);
 
   ipcMain.handle('folder:pick', async () => {
-    const r = await dialog.showOpenDialog(d.panel, { title: 'Where should Shellby work?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), { title: 'Where should Shellby work?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
     return r.canceled || !r.filePaths[0] ? null : d.setFolder(r.filePaths[0]);
   });
   // Only one of your recent folders (the menu's list): a new one comes through
@@ -342,7 +344,7 @@ function registerSettingsIpc(ipcMain, d) {
     return recent && fs.existsSync(recent) ? d.setFolder(recent) : null;
   }, [opt(text(32_767))]);
   ipcMain.handle('folder:pick-any', async () => {
-    const r = await dialog.showOpenDialog(d.panel, { title: 'Choose a folder', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), { title: 'Choose a folder', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
     return r.canceled ? null : r.filePaths[0] || null;
   });
 }

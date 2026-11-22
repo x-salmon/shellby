@@ -160,6 +160,7 @@
     const paths = [tab?.cwd || state.cwd, tab?.worktree?.originalCwd];
     return window.ShellbyRemoteLogic?.accountUsageFor(state.settings?.otherUsage, folders, paths, tab?.remoteHost) || null;
   };
+  SB.accountHere = otherHere; // the banner's reset is this plan's too (outlook.js)
   const hasWindows = u => !!(u && (u.fiveHour || u.sevenDay));
 
   SB.applyUsage = (u) => {
@@ -172,6 +173,7 @@
   SB.applyOtherUsage = (list) => {
     if (state.settings) state.settings.otherUsage = Array.isArray(list) ? list : [];
     drawUsage();
+    SB.syncAccountLimit?.();
   };
 
   function drawUsage() {

@@ -231,8 +231,6 @@
       if (replay) return this.append(h('div', { class: 'meta suggest-note', text: `Shellby suggested: ${item.title.replace(/\?$/, '')}` }));
       const tabId = this.id;
       const cwd = this.cwd;
-      /** @type {HTMLElement} */
-      let card; // set below, before any button can fire
       const close = verdict => {
         card.classList.add('decided');
         card.append(h('div', { class: 'ask-verdict allow', text: `→ ${verdict}` }));
@@ -268,7 +266,8 @@
             h('div', { class: 'suggest-draft' }, h('b', { text: item.draft.name }), h('span', { text: ` · ${item.draft.when}` })),
             h('p', { class: 'ask-desc', text: item.draft.prompt }))
         : null;
-      card = h('div', { class: 'ask suggest', role: 'group', 'aria-label': `Suggestion: ${item.title}` },
+      /** @type {HTMLElement} */
+      const card = h('div', { class: 'ask suggest', role: 'group', 'aria-label': `Suggestion: ${item.title}` },
         h('div', { class: 'ask-head' },
           h('span', { class: 'ask-crab' }, SB.sprite()),
           h('div', {},
@@ -286,8 +285,6 @@
     // Nothing goes until the user says so; Claude waits on the answer.
     /** @this {AskCards & FeedTab} */
     renderHandOff(item) {
-      /** @type {HTMLElement} */
-      let card; // set below, before any button can fire
       const answer = async yes => {
         if (!card || card.classList.contains('decided')) return;
         const r = await api.decideHandOff(item.id, yes).catch(() => null);
@@ -299,7 +296,8 @@
       const dirty = item.dirty > 0
         ? h('p', { class: 'ask-desc', text: `This conversation has ${item.dirty} uncommitted ${item.dirty === 1 ? 'change' : 'changes'}, which ${item.isNew ? 'the new one' : 'the other one'} won't see unless they're committed.` })
         : null;
-      card = h('div', { class: 'ask suggest handoff', role: 'group', 'aria-label': `Hand off to ${to}` },
+      /** @type {HTMLElement} */
+      const card = h('div', { class: 'ask suggest handoff', role: 'group', 'aria-label': `Hand off to ${to}` },
         h('div', { class: 'ask-head' },
           h('span', { class: 'ask-crab' }, SB.sprite()),
           h('div', {},

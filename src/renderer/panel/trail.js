@@ -67,7 +67,7 @@
   let landedEl = null;      // the feed's step lit by the replay
   const closed = new Map(); // tab id -> folder keys closed
   const tests = new Map();  // tab id -> { sig, map } (ipc trail:tests)
-  let shows = !SB.solo && SB.pref(TAB_KEY) !== 'trail' ? 'files' : 'trail'; // the tab up when the drawer is open: All files unless the Trail was left up (a conversation's own window has none)
+  let shows = SB.pref(TAB_KEY) !== 'trail' ? 'files' : 'trail'; // the tab up when the drawer is open: All files unless the Trail was left up
   const tabs = new Map(); // the drawer's other tabs: name -> { show({ focus }), hide() } (files-dock.js)
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -191,7 +191,7 @@
 
   // Ctrl+Shift+E and Ctrl+Shift+F: the drawer on that tab, or closed when that tab is already up.
   SB.toggleDrawer = (name, { focus = false } = {}) => {
-    if (name !== 'trail' && !tabs.has(name)) name = 'trail'; // a tab this window has none of (All files in solo)
+    if (name !== 'trail' && !tabs.has(name)) name = 'trail';
     if (open && shows === name) return SB.toggleTrail(false);
     if (open) return showTab(name, { focus });
     shows = name;
@@ -209,7 +209,7 @@
     if (short <= 0) return;
     const zoom = api.zoomFactor?.() || 1;
     const want = { width: Math.round(window.innerWidth * zoom) + Math.ceil(short * zoom), height: Math.round(window.innerHeight * zoom) };
-    if (SB.solo || want.width > window.screen.availWidth - SCREEN_GAP) { document.body.classList.add('trail-over'); return; }
+    if (want.width > window.screen.availWidth - SCREEN_GAP) { document.body.classList.add('trail-over'); return; }
     const r = await api.fitPanel(want);
     if (!r?.ok) document.body.classList.add('trail-over');
   }
@@ -577,10 +577,10 @@
   }
 
   // In the file viewer, as a file link opens (files.js); Ctrl opens your editor, Shift shows it in
-  // its folder. A conversation's own window has no viewer: the editor, as before.
+  // its folder.
   function openIt(node, { ctrl = false, shift = false } = {}) {
     if (!node?.path) return;
-    if (ctrl || shift || SB.solo || !SB.viewer) return SB.openFile(node.path, { tabId, reveal: shift });
+    if (ctrl || shift || !SB.viewer) return SB.openFile(node.path, { tabId, reveal: shift });
     SB.viewer.openLink(tabId, node.path);
   }
 

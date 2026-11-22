@@ -29,11 +29,26 @@
   const W = window.ShellbyOutlookFormat;
   const heldFor = tab => W.heldFor(state.outlook, tab.id);
 
+  // The outlook for the conversation on screen: one on a computer signed in to
+  // another Claude account has that plan's limit and reset (tab-meters.js).
+  const clock = t => new Date(t).toLocaleString([], { weekday: new Date(t).toDateString() === new Date().toDateString() ? undefined : 'short', hour: 'numeric', minute: '2-digit' });
+  const outlookHere = () => W.forAccount(state.outlook, SB.accountHere?.() || null, Date.now(), clock);
+  SB.outlookHere = outlookHere;
+
+  // Another account's limit comes with its readings and passes on its own: the
+  // banner and the paused queue follow it, redrawn only when it changed.
+  const limitKey = o => `${o?.limit?.resetsAt || ''}|${o?.resetAt || ''}`;
+  let shownLimit = '';
+  SB.syncAccountLimit = () => { if (limitKey(outlookHere()) !== shownLimit) SB.renderQueue?.(); };
+  setInterval(() => { if (!document.hidden) SB.syncAccountLimit(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) SB.syncAccountLimit(); });
+
   // ------------------------------------------------------------ banner
 
   function renderOutlook() {
     const box = $('outlook');
-    const o = state.outlook;
+    const o = outlookHere();
+    shownLimit = limitKey(o);
     const tab = SB.activeTab();
     const big = liveEstimate();
     renderCostHint(big);
@@ -76,7 +91,8 @@
   // Whether there's anything to send after the reset changes as you type, and so
   // does what it usually costs.
   input.addEventListener('input', () => {
-    if (state.outlook?.warning || state.outlook?.limit || state.estimate) renderOutlook();
+    const o = outlookHere();
+    if (o?.warning || o?.limit || state.estimate) renderOutlook();
     scheduleEstimate();
   });
 
@@ -346,7 +362,7 @@
     const attachments = [...tab.attachments];
     if (!text && !attachments.length) return;
     // Not before the reset time is known, and never a ! command (composer.js runs those now).
-    const refusal = W.holdRefusal(text, state.outlook?.resetAt);
+    const refusal = W.holdRefusal(text, outlookHere()?.resetAt);
     if (refusal) return SB.toast(refusal.text, refusal.ms ? { ms: refusal.ms } : undefined);
     // Ultracode on: the held message goes out by itself later, so it gets the word now
     // (and the first one in a conversation asks first, as sending does: ultracode.js).

@@ -181,3 +181,47 @@ test('the spending guard leaves a run you typed yourself alone', t => {
 
   assert.deepEqual(calls.interrupted, []);
 });
+
+test("a folder on another account's computer has that plan's limit and reset, not this PC's", t => {
+  t.mock.timers.enable({ apis: ['Date'], now: NOW });
+  const account = { host: 'devbox', email: 'work@corp.com', plan: 'max' };
+  const { usage, config } = setup({
+    d: { accountOfCwd: cwd => (cwd === 'C:\\anchors\\devbox' ? account : null) },
+    data: {
+      // No 5-hour window running here, as when all your work is over there.
+      lastUsage: { fiveHour: null, sevenDay: { pct: 51, resetsAt: NOW + 70 * H } },
+      usageByHost: { devbox: { ...account, status: 'rejected', fiveHour: { pct: 100, resetsAt: NOW + 4 * H }, sevenDay: { pct: 58, resetsAt: NOW + 18 * H }, at: NOW } },
+    },
+  });
+
+  assert.equal(usage.resetTarget('C:\\anchors\\devbox'), NOW + 4 * H);
+  assert.deepEqual(usage.limitWait('C:\\anchors\\devbox'), { window: 'fiveHour', resetsAt: NOW + 4 * H });
+  assert.equal(usage.resetTarget('C:\\code'), null);
+  assert.equal(usage.limitWait('C:\\code'), null);
+  assert.equal(usage.limitWait(), null);
+
+  config.data.limitWait = { window: 'sevenDay', resetsAt: NOW + 70 * H };
+  assert.equal(usage.resetTarget('C:\\anchors\\devbox'), NOW + 4 * H, "this PC's limit doesn't move it");
+  assert.equal(usage.resetTarget('C:\\code'), NOW + 70 * H);
+});
+
+test("the spending guard judges a run by the plan it spends", t => {
+  t.mock.timers.enable({ apis: ['Date'], now: NOW });
+  const account = { host: 'devbox', email: 'work@corp.com', plan: 'max' };
+  const run = (id, cwd) => ({ id, title: id, turnFrom: { routine: { reason: 'scheduled' } }, session: { mode: 'ask', cwd } });
+  const tabs = new Map([['here', run('here', 'C:\\code')], ['there', run('there', 'C:\\anchors\\devbox')]]);
+  const manager = { tabs, isBusy: () => true, interrupt: id => calls.interrupted.push(id) };
+  const { usage, calls } = setup({
+    manager,
+    d: { accountOfCwd: cwd => (cwd === 'C:\\anchors\\devbox' ? account : null) },
+    data: {
+      lastUsage: { fiveHour: { pct: 95, resetsAt: NOW + H } },
+      usageByHost: { devbox: { ...account, status: 'allowed', fiveHour: { pct: 5, resetsAt: NOW + H }, sevenDay: null, at: NOW } },
+    },
+  });
+
+  for (const tab of tabs.values()) usage.armGuard(tab);
+  usage.checkGuards();
+
+  assert.deepEqual(calls.interrupted, ['here']);
+});

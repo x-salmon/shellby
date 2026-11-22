@@ -67,7 +67,7 @@ function wireLogbook(d) {
     if (timer || d.CAPTURE) return;
     timer = setTimeout(() => {
       timer = null;
-      if (!d.panel || d.panel.isDestroyed?.() || !d.panel.isVisible?.()) return;
+      if (!d.panel || d.panel.isDestroyed?.() || !(d.panel.isVisible?.() || d.anyWindowOpen?.())) return;
       d.gameHub?.push('logbook', view());
     }, REFRESH_MS);
     timer.unref?.();

@@ -1,3 +1,4 @@
+const { askedBy } = require('./asking');
 const { matches } = require('./ipc-args');
 
 // Who may call which channel. Every handler is registered through this, so a
@@ -30,10 +31,10 @@ const { matches } = require('./ipc-args');
 /**
  * @param {import('./ipc-guard').GuardedIpc} ipcMain
  * @param {(channel: string, sender: any) => boolean} allow
- * @param {{ onRefused?: (channel: string, sender?: any) => void, onFailed?: (channel: string, err: unknown, info: { answered: boolean }) => void }} [hooks]
+ * @param {{ onRefused?: (channel: string, sender?: any) => void, onFailed?: (channel: string, err: unknown, info: { answered: boolean }) => void, windowOf?: (sender: any) => any }} [hooks]  windowOf: the conversation's own window asking, or null (asking.js)
  * @returns {GuardedIpc}
  */
-function guardIpc(ipcMain, allow, { onRefused = () => {}, onFailed = () => {} } = {}) {
+function guardIpc(ipcMain, allow, { onRefused = () => {}, onFailed = () => {}, windowOf = () => null } = {}) {
   const refusedOnce = new Set();
   const refuse = (channel, e) => {
     if (refusedOnce.has(channel)) return;
@@ -49,7 +50,7 @@ function guardIpc(ipcMain, allow, { onRefused = () => {}, onFailed = () => {} } 
         if (!allow(channel, e.sender)) { refuse(channel, e); throw new Error('Not allowed from this window.'); }
         if (schema && !matches(schema, args)) { refuse(channel, e); throw new Error("That request wasn't one Shellby accepts."); }
         try {
-          return await fn(e, ...args);
+          return await askedBy(windowOf(e.sender), () => fn(e, ...args));
         } catch (err) {
           failed(channel, err, true);
           throw err;
@@ -61,7 +62,7 @@ function guardIpc(ipcMain, allow, { onRefused = () => {}, onFailed = () => {} } 
         if (!allow(channel, e.sender)) { refuse(channel, e); return; }
         if (schema && !matches(schema, args)) { refuse(channel, e); return; }
         try {
-          const out = fn(e, ...args);
+          const out = askedBy(windowOf(e.sender), () => fn(e, ...args));
           if (out && typeof out.then === 'function') out.then(null, err => failed(channel, err, false));
         } catch (err) {
           failed(channel, err, false);

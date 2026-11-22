@@ -137,7 +137,7 @@
   // Beside the focused pane, growing the window if it needs to (as Split does).
   async function openServer(serverId) {
     const toolId = `server:${serverId}`;
-    if (SB.solo || !P.isTool(toolId)) return false;
+    if (!P.isTool(toolId)) return false;
     servers = (await api.getServers().catch(() => null))?.servers || servers;
     SB.setView('chat');
     SB.unzoom();
@@ -157,7 +157,7 @@
   /** A page beside the focused conversation, as Split does for a server's log. */
   async function openPage(pageId) {
     const toolId = `page:${pageId}`;
-    if (SB.solo || !P.isTool(toolId)) return false;
+    if (!P.isTool(toolId)) return false;
     if (P.paneWith(state.grid, toolId)) { SB.setView('chat'); return true; }
     SB.setView('chat');
     SB.unzoom();
@@ -183,6 +183,7 @@
       for (const [tab, id] of waiting) if (id === ev.id || id === ev.draft) waiting.delete(tab);
     }
     if (ev?.kind !== 'draft' || !ev.tab) return;
+    if (state.popped.has(ev.tab)) return; // its own window opens it
     if (state.activeTab === ev.tab || SB.isShown?.(ev.tab)) openPage(ev.id);
     else waiting.set(ev.tab, ev.id);
   });
@@ -214,7 +215,7 @@
     for (const t of mounted.values()) t.draw();
     if (mounted.size) SB.renderTabStrip(); // the chips' names
   });
-  if (!SB.solo) api.getServers().then(v => { servers = v?.servers || []; for (const t of mounted.values()) t.draw(); }, () => {});
+  api.getServers().then(v => { servers = v?.servers || []; for (const t of mounted.values()) t.draw(); }, () => {});
 
   SB.tools = {
     elOf,

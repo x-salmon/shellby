@@ -149,7 +149,7 @@ function registerNativeIpc(ipcMain, d) {
     const e = ultraWords.expect(model);
     // What past runs here have cost, when there are any (usage/runcost.js); the rough dollar guess either way.
     let past;
-    try { past = d.usagePlan?.estimateRunFor({ kind: 'ultracode' }); } catch { past = null; }
+    try { past = d.usagePlan?.estimateRunFor({ kind: 'ultracode', cwd: tab.session.cwd }); } catch { past = null; }
     const response = await confirm.ask(d.panel, {
       ...d.dialogLook(), icon: '🦀',
       title: 'Send this with Ultracode?',

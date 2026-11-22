@@ -183,7 +183,7 @@ function wireTaskBoard(d) {
     if (!board.isReady(state, task)) return 'No helper yet: it needs other tasks done first. Post it again with start once they are, or claim it then.';
     const gate = helpers.helperGate({ starts: helperStarts, open: helperTabs.size + helpersStarting, now });
     if (!gate.ok) return gate.reason || 'No helper right now. The task stays on the board.';
-    if (d.usageService?.limitWait()) return 'No helper: the usage window is at its limit. The task stays on the board.';
+    if (d.usageService?.limitWait(project.root)) return 'No helper: the usage window is at its limit. The task stays on the board.';
     // A workflow's or routine's conversation runs with the tools it was given; a helper would get the usual
     // set, so neither may start one. They can still post the task for a conversation to pick up.
     if (tab.workflowRunId || tab.routineId) return "No helper: a workflow's or routine's conversation can't start one. The task stays on the board.";

@@ -593,7 +593,7 @@ function wireSessions(d) {
     refreshUsage();
   }
 
-  return { SNAPSHOT_WAIT_MS, beginTurn, openTouch: touchOf, createManager, currentCwd, endTurn, otherUsage, refreshUsage, syncUsageAccount, toolPicture, turnEnds, turnStarts, watchUsage };
+  return { SNAPSHOT_WAIT_MS, accountOfCwd, beginTurn, openTouch: touchOf, createManager, currentCwd, endTurn, otherUsage, refreshUsage, syncUsageAccount, toolPicture, turnEnds, turnStarts, watchUsage };
 }
 
 module.exports = { wireSessions };

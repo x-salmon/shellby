@@ -1,6 +1,6 @@
 # Developing Shellby
 
-How to build Shellby, how he drives Claude Code, the test and maintenance scripts, and a map of the code. For the contribution guidelines, see [CONTRIBUTING.md](../CONTRIBUTING.md); for the short version with a diagram, see [How it works](../README.md#how-it-works).
+How to build Shellby, how he drives Claude Code, the test and maintenance scripts, and a map of the code. For the contribution guidelines, see [CONTRIBUTING.md](../CONTRIBUTING.md); for the short version with a diagram, see [How it works](FEATURES.md#how-it-works).
 
 ## How Shellby drives Claude Code
 
@@ -481,7 +481,8 @@ src/main/        Electron main process
     wardrobe.js      the Wardrobe at boot, its unlocks, the first-run credit from history
     services.js      usage, held work, routines, away, stickers and copies (their *-service.js files)
     quit.js          what quitting stops, in order
-    popouts.js       a conversation in a window of its own, and handing it back to the panel
+    popouts.js       conversations in windows of their own, and handing them back to the panel
+    window-routes.js which of those windows hear what main says to the panel (../asking.js: which one asked)
     notes.js         Notes: Plan, Build and Ask open a task in the right folder and mode
     native.js        the crab noticing what Claude Code does by itself: to-dos ticked off, a background command done, a memory, a skill's first use
   ipc/             the panel's and crab's IPC handlers, one module per area: `registerXIpc(ipcMain, shared)`;

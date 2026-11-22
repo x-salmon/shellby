@@ -115,6 +115,7 @@ class HealthService {
   stop() { this.monitor.stop(); }
 
   panelOpen() {
+    if (this.deps.windowOpen) return this.deps.windowOpen(); // the panel, or a conversation's own window
     const panel = this.deps.getPanel();
     return !!panel && !panel.isDestroyed() && panel.isVisible();
   }
@@ -124,7 +125,7 @@ class HealthService {
 
   toPanel(channel, payload) {
     const panel = this.deps.getPanel();
-    if (panel && !panel.isDestroyed() && panel.isVisible()) this.deps.send(panel, channel, payload);
+    if (panel && !panel.isDestroyed() && this.panelOpen()) this.deps.send(panel, channel, payload);
   }
 
   view() {

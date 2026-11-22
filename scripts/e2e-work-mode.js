@@ -57,7 +57,8 @@ async function connect(url) {
     }
     const panel = await connect(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     await panelBooted(panel.ev);
-    const bar = () => panel.ev("[...document.querySelectorAll('.dock [data-view-btn]')].map(b => b.dataset.viewBtn)");
+    // Your PCs stays hidden until another PC has joined (panel/pcs.js).
+    const bar = () => panel.ev("[...document.querySelectorAll('.dock [data-view-btn]')].filter(b => !b.hidden).map(b => b.dataset.viewBtn)");
 
     // 1. Three paths; Work mode needs Claude Code, so its steps show.
     check(await panel.ev('document.body.dataset.view') === 'onboarding', 'new user sees onboarding');
@@ -76,7 +77,7 @@ async function connect(url) {
     const order = await bar();
     check(JSON.stringify(order) === JSON.stringify(require('../src/main/workmode').DOCK), `the bar leads with the tools (${order})`);
     check(await panel.ev("document.querySelector('.dock [data-view-btn=chat]').title") === 'Chat (Ctrl+1)', 'Ctrl+1 is the chat');
-    check(await panel.ev("[...document.querySelectorAll('.dock [data-view-btn]')].every(b => getComputedStyle(b).display !== 'none')"), 'every tool is on the bar from the start');
+    check(await panel.ev("[...document.querySelectorAll('.dock [data-view-btn]')].filter(b => !b.hidden).every(b => getComputedStyle(b).display !== 'none')"), 'every tool is on the bar from the start');
     check(await panel.ev("/^Show me around a project/.test(SB.activeTab().empty.querySelector('.suggestion')?.textContent.slice(1) || '')"), 'the first task leads with Show me around');
     await panel.shot('2-chat');
 

@@ -36,6 +36,7 @@ test('planLabel names the plan, falls back to the sign-in method, and asks to si
   assert.equal(T.planLabel({ loggedIn: true, subscriptionType: 'max' }), 'Max plan');
   assert.equal(T.planLabel({ loggedIn: true, authMethod: 'console' }), 'console');
   assert.equal(T.planLabel({ loggedIn: true }), 'claude.ai');
+  assert.equal(T.planLabel({ loggedIn: true, apiKeyBilling: true, authMethod: 'api_key', subscriptionType: 'max' }), 'Your API key, billed per token');
   assert.equal(T.planLabel({ loggedIn: false, subscriptionType: 'pro' }), 'Sign in with your Claude account to give Shellby tasks.');
 });
 

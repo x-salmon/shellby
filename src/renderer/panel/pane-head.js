@@ -51,7 +51,7 @@
   // the two trade places (panes.swap). The drop preview covers the pane it
   // would trade with.
   function dragHead(e, paneId) {
-    if (e.button !== 0 || SB.solo || P.count(state.grid) < 2 || e.target.closest('.tab, button')) return;
+    if (e.button !== 0 || P.count(state.grid) < 2 || e.target.closest('.tab, button')) return;
     const head = e.currentTarget;
     const x0 = e.clientX, y0 = e.clientY;
     let moved = false, done = false;

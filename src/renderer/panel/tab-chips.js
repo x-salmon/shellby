@@ -18,8 +18,6 @@
 
   SB.chooseMode = async (mode, { quiet = false } = {}) => {
     if (mode === 'autonomous' && !state.settings.autonomousAcknowledged) {
-      // A popped-out window has no Settings to confirm it in.
-      if (SB.solo) return SB.toast('Turn Autonomous on from Settings in the main panel first.');
       SB.setView('settings');
       SB.showSettingsTab('claude');
       $('autonomousConfirm').hidden = false;
@@ -92,7 +90,7 @@
       $('branchLabel').textContent = 'other tries';
       $('branchChip').title = 'There are other tries at this: compare them, or keep one';
     } else {
-      showBranch(tab && !SB.solo ? plainBranch(tab) : null);
+      showBranch(tab ? plainBranch(tab) : null);
     }
     SB.refreshUsage?.(); // a folder on another computer may be another account's plan (tab-meters.js)
   }
@@ -116,7 +114,7 @@
     $('settingsFolder').textContent = SB.remotePlace(r.cwd) || r.cwd;
     // A blank tab moves to the new folder; a conversation in progress keeps its own.
     const tab = SB.activeTab();
-    if (SB.isBlankTab(tab) && !SB.solo) {
+    if (SB.isBlankTab(tab)) {
       // The new one opens beside it first: a pane holding only the blank tab
       // would close with it, and the new tab land in the pane next door.
       const fresh = await SB.newTab({ reuse: false });
@@ -127,7 +125,7 @@
       SB.toast(`Now working in ${SB.remotePlace(r.cwd) || SB.basename(r.cwd)}`);
     } else {
       applyFolderLabel(tab?.cwd || r.cwd);
-      SB.toast(`New conversations will start in ${SB.remotePlace(r.cwd) || SB.basename(r.cwd)}`, SB.solo ? {} : { action: 'Open one', onAction: () => SB.newTab() });
+      SB.toast(`New conversations will start in ${SB.remotePlace(r.cwd) || SB.basename(r.cwd)}`, { action: 'Open one', onAction: () => SB.newTab() });
     }
   };
 

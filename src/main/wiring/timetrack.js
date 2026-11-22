@@ -3,6 +3,7 @@
 // Kept out of main.js, which only wires it up.
 const { BrowserWindow, Notification, app, clipboard, dialog, nativeImage, net, powerMonitor, safeStorage, shell } = require('electron');
 const path = require('path');
+const { fromWindow } = require('../asking');
 const attach = require('../attachments');
 const beach = require('../beach');
 const confirm = require('../confirm');
@@ -82,7 +83,7 @@ function wireTimetrack(d) {
         return s ? localModel.modelFor(s, 'timesheet') : null;
       },
       electron: { dialog, BrowserWindow, clipboard, shell, app },
-      panel: () => d.panel,
+      panel: () => fromWindow(d.panel), // the parent of its save dialog
     });
     if (start) d.timeTracker.start();
     // Sending days to Toggl, Clockify or Harvest (timetrack/timesync.js). The token is
@@ -400,7 +401,13 @@ function wireTimetrack(d) {
   }
 
   function openTab({ tabId = d.randomUUID(), cwd = d.currentCwd(), historyEntry = null, mode = null, routineId = null, workflowRunId = null, title = null, allowedTools = [], mcpConfig = null, agent = null, harness = null } = {}) {
-    return d.manager.open({ tabId, cwd, historyEntry, mode, routineId, workflowRunId, title, allowedTools, mcpConfig, agent, harness });
+    const placed = d.placeNewTab?.(tabId); // in the conversation's own window that asked for it (wiring/popouts.js)
+    try {
+      return d.manager.open({ tabId, cwd, historyEntry, mode, routineId, workflowRunId, title, allowedTools, mcpConfig, agent, harness });
+    } catch (err) {
+      if (placed) d.unplaceTab(tabId);
+      throw err;
+    }
   }
 
   // A task started by Shellby himself (e.g. "look into why the GPU is hot"): opens
@@ -484,6 +491,7 @@ function wireTimetrack(d) {
         d.workflows?.event('health', { title, body });
       },
       getPanel: () => d.panel,
+      windowOpen: () => d.anyWindowOpen(),
       confirm: spec => confirm.ask(d.panel, { ...d.dialogLook(), ...spec }),
       selfPids: () => app.getAppMetrics().map(m => m.pid),
       // His own CPU and memory in Health; screenshot runs leave it out, so the

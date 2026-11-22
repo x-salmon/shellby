@@ -88,8 +88,8 @@ contextBridge.exposeInMainWorld('shellby', {
   moveTab: (tabId, beforeId) => ipcRenderer.invoke('tab:reorder', { tabId, beforeId }),
   // a conversation in a window of its own (x/y: where it was dropped, in screen pixels)
   popOutTab: (tabId, /** @type {{ x?: number, y?: number, carry?: any }} */ { x, y, carry } = {}) => ipcRenderer.invoke('tab:pop-out', { tabId, x, y, carry }),
-  popInTab: (tabId, carry) => ipcRenderer.send('tab:pop-in', { tabId, carry }),
-  popoutBootstrap: invoke('popout:bootstrap'),
+  popInTab: (tabId, carry) => ipcRenderer.send('tab:pop-in', { tabId, carry }), popoutHome: (/** @type {string | undefined} */ front, /** @type {{ tabId: string, carry: any }[]} */ carries) => ipcRenderer.send('popout:home', { front, carries }), // the window's own ×
+  popoutBootstrap: invoke('popout:bootstrap'), onPopoutClosing: on('popout:closing'), // closed from the taskbar, say
   seenTab: fire('tab:seen'),
   shownTab: fire('tab:shown'), savePaneLayout: fire('panes:layout'), // the Stream Deck follows the shown tab; the split view, for the next start
   paneShapes: (list) => ipcRenderer.invoke('panes:shapes', list), // the layouts you saved by name: read them, or (a list) save them

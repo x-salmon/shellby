@@ -6,6 +6,7 @@
 // presses and these messages, and hands the messages here.
 const { dialog, safeStorage } = require('electron');
 const path = require('path');
+const { fromWindow } = require('../asking');
 const attach = require('../attachments');
 const channels = require('../channels');
 const confirm = require('../confirm');
@@ -178,7 +179,7 @@ function wirePhoneTasks(d) {
   }
 
   async function pickPhoneTasksFolder() {
-    const r = await dialog.showOpenDialog(d.panel, { title: 'Where should tasks from your phone go?', defaultPath: settings().folder || d.currentCwd(), properties: ['openDirectory'] });
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), { title: 'Where should tasks from your phone go?', defaultPath: settings().folder || d.currentCwd(), properties: ['openDirectory'] });
     const dir = r.canceled ? null : r.filePaths[0];
     if (!dir) return phoneTasksView();
     if (!attach.isLocalPath(dir) || !d.isFolder(dir)) return { ...phoneTasksView(), error: 'That needs to be a folder on this PC.' };
@@ -287,8 +288,8 @@ function wirePhoneTasks(d) {
   // At the limit, or past the share of the window you keep for yourself: it
   // waits for the reset like a task you queued (spending guard, guard.js).
   function holdIt(prompt, project) {
-    const w = d.usageService.limitWait();
-    const usage = d.config.get('lastUsage');
+    const w = d.usageService.limitWait(project.path);
+    const usage = d.usageService.usageReading(project.path);
     const saving = !w && guard.holdBeforeStart(guard.settingsOf(k => d.config.get(k)), usage, Date.now());
     if (!w && !saving) return false;
     const res = d.holdForReset({ kind: 'task', prompt, cwd: project.path, mode: pt.MODE, fromPhone: true });

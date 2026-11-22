@@ -37,6 +37,7 @@ function setup(over = {}) {
     powerSaveBlocker: { start: what => { calls.blocker.push(['start', what]); return 7; }, stop: id => calls.blocker.push(['stop', id]) },
     limitWait: () => over.limit || null,
     resetTarget: () => (over.resetAt === undefined ? NOW + H : over.resetAt),
+    usageReading: () => data.lastUsage || null,
     clockTime: t => `at ${t}`,
     sendOutlook: () => { calls.outlook++; },
     routines: () => over.routines || [],
@@ -185,4 +186,36 @@ test('a queued task here still needs Claude Code on this PC', async t => {
   await q.releaseHeld();
   assert.deepEqual(opened, []);
   assert.match(calls.notify.at(-1).body, /isn't set up and signed in/);
+});
+
+const REMOTE = 'C:\\anchors\\devbox';
+
+test('a message for a conversation on another account waits for that plan\'s reset', t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: NOW });
+  const tabs = { 'tab-1': { session: { busy: false, cwd: REMOTE } } };
+  const { q } = setup({ tabs, d: { resetTarget: cwd => (cwd === REMOTE ? NOW + 4 * H : null) } });
+
+  const res = q.holdForReset({ kind: 'message', tabId: 'tab-1', cwd: REMOTE, text: 'carry on' });
+
+  assert.equal(res.ok, true);
+  assert.equal(res.at, NOW + 4 * H + GRACE);
+});
+
+test("this PC's limit doesn't hold up another account's message, nor the other way round", async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: NOW });
+  const tabs = { here: { session: { busy: false, cwd: 'C:\\code' } }, there: { session: { busy: false, cwd: REMOTE } } };
+  const message = (id, tabId) => ({ id, kind: 'message', tabId, text: 'carry on', at: NOW - 1, createdAt: NOW - H });
+  const limit = { window: 'fiveHour', resetsAt: NOW + 2 * H };
+  for (const [limited, goes] of [['C:\\code', 'there'], [REMOTE, 'here']]) {
+    const { q, data, calls } = setup({
+      tabs, data: { held: [message('h1', 'here'), message('h2', 'there')] },
+      d: { limitWait: cwd => (cwd === limited ? limit : null) },
+    });
+
+    await q.releaseHeld();
+
+    assert.deepEqual(calls.sent.map(s => s.tabId), [goes]);
+    assert.equal(data.held.length, 1);
+    assert.equal(data.held[0].at, limit.resetsAt + GRACE);
+  }
 });

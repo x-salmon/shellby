@@ -2,6 +2,7 @@
 // (playtime.js), the homes he moves into, and his XP.
 // Kept out of main.js, which only wires it up.
 const { app, dialog, shell } = require('electron');
+const { fromWindow } = require('../asking');
 const { openSafe } = require('../safe-open');
 const { ID, PATH, list, obj, oneOf, opt, str } = require('../ipc-args');
 const os = require('os');
@@ -60,7 +61,7 @@ function registerLifeIpc(ipcMain, d) {
     projects: () => d.projects,
     devServers: () => d.devServers,
     pickFolder: async ({ title, defaultPath }) => {
-      const r = await dialog.showOpenDialog(d.panel, { title, defaultPath: defaultPath || os.homedir(), properties: ['openDirectory'] });
+      const r = await dialog.showOpenDialog(fromWindow(d.panel), { title, defaultPath: defaultPath || os.homedir(), properties: ['openDirectory'] });
       return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
     },
     toPanel: (channel, payload) => d.send(d.panel, channel, payload),

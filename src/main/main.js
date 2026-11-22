@@ -190,7 +190,8 @@ const shared = {
   isFolder: d => { try { return fs.statSync(d).isDirectory(); } catch { return false; } }, // missing or unreadable: not a folder
   send(win, channel, payload) {
     shared.tapReward?.(channel, payload); // what a turn earned, for its card in Chat (wiring/turn-rewards.js)
-    if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
+    // The panel's alone, or every window's with conversations out in their own (wiring/popouts.js).
+    for (const [to, what] of shared.routes?.(win, channel, payload) || [[win, payload]]) if (to && !to.isDestroyed()) to.webContents.send(channel, what);
   },
   statusFile: () => (ISOLATED ? path.join(app.getPath('userData'), 'shellby-status.txt') : statusLine.STATUS_FILE),
   claudeSettings: () => (ISOLATED ? path.join(app.getPath('userData'), 'claude-settings.json') : statusLine.settingsPath()),

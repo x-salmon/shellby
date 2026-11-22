@@ -2,7 +2,7 @@
   "name": "shellby",
   "productName": "Shellby",
   "version": "0.100.5",
-  "description": "A Windows desktop app for Claude Code: parallel tasks on their own branches, undo for any turn and routines, on your own Claude Pro or Max plan. With a pixel hermit crab who does the work.",
+  "description": "Run Claude Code in parallel on Windows, undo anything, and watch it happen.",
   "main": "src/main/main.js",
   "author": "x-salmon",
   "license": "GPL-3.0-only",

@@ -101,8 +101,6 @@
     renderPlanAsk(item, replay) {
       const tabId = this.id;
       const notes = [];            // [{ quote, note, line }]
-      /** @type {HTMLElement & { notesSent?: number }} */
-      let card; // set below, before any note or button can fire
       const decide = async (decision, message) => {
         const ok = await api.answerPermission(tabId, item.requestId, decision, message);
         if (!ok) { SB.toast('That plan already expired.'); return; }
@@ -178,7 +176,8 @@
         if (!open) card.scrollIntoView({ block: 'nearest' });
       });
 
-      card = h('div', { class: 'ask plan-card', role: 'group', 'aria-label': "Claude's plan" },
+      /** @type {HTMLElement & { notesSent?: number }} */
+      const card = h('div', { class: 'ask plan-card', role: 'group', 'aria-label': "Claude's plan" },
         h('div', { class: 'ask-head' },
           h('span', { class: 'ask-crab' }, SB.sprite()),
           h('div', {},

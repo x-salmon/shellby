@@ -46,6 +46,7 @@ function setup(over = {}) {
     isFolder: () => true,
     randomUUID: () => `tab-${++ids}`,
     limitWait: () => over.limit || null,
+    usageReading: () => data.lastUsage || null,
     guardSettings: () => over.guard || { on: true, reserve: 25, maxMinutes: 60 },
     forecastNow: () => over.outlook || null,
     clockTime: t => `at ${t}`,

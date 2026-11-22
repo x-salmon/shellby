@@ -208,19 +208,6 @@ body.resizing-panes .feed { pointer-events: none; }
 .usage:not([hidden]) ~ .pop-btn, .pop-btn + .pop-btn { margin-left: -8px; }
 .pop-btn svg { width: 15px; height: 15px; }
 
-/* ================================================================ a popped-out conversation
-   The panel page with the chat alone (SB.solo): no strip, dock or screens, and
-   the conversation's title in the title bar. */
-.win-title { display: none; }
-body.solo { --dock-h: 0px; }
-body.solo .win-title {
-  display: block; flex: 1 1 auto; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--sand-dim);
-}
-body.solo .brand { pointer-events: none; }
-body.solo .brand-name, body.solo .brand-level,
-body.solo .tabstrip, body.solo .dock, body.solo .usage, body.solo .pop-btn,
-body.solo #paletteBtn, body.solo #settingsBtn, body.solo .win-btns .sep { display: none; }
 .tab-add, .tab-files, .tab-warm {
   flex: none; width: 28px; height: 28px; margin-bottom: 2px; border: 0; border-radius: var(--r-sm);
   background: none; color: var(--sand-dim); display: grid; place-items: center;

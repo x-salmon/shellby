@@ -76,7 +76,6 @@
     </button>
     <!-- the nameplate: "Lv" (CSS), the level, its marks, and ten XP cells (xp.js). Its text is only the level and marks. -->
     <button type="button" class="brand-level" id="brandLevel" hidden><span class="lv-num" id="brandLevelNum"></span><span class="lv-mark" id="brandLevelMark"></span><span class="lv-cells" id="brandXp" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>
-    <span class="win-title" id="winTitle"></span>
     <button class="mode-chip" id="modeChip" type="button" aria-haspopup="menu" title="Permission mode (Shift+Tab in the message box cycles it)" aria-keyshortcuts="Shift+Tab">
       <span class="mode-dot"></span><span id="modeLabel">Ask</span>
       <svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
@@ -787,7 +786,7 @@
       <div class="hl-claude-crab" aria-hidden="true">⚡</div>
       <div>
         <b>Give Shellby a brain</b>
-        <p>With Claude Code, "Ask Shellby why" actually finds what's heating your GPU or filling your drive, and he can tidy folders, write scripts and send out helper crabs for you. Uses your Claude Pro or Max plan.</p>
+        <p>With Claude Code, "Ask Shellby why" actually finds what's heating your GPU or filling your drive, and he can tidy folders, write scripts and send out helper crabs for you. Uses your own Claude account.</p>
         <button type="button" class="btn slim-btn" data-claude-setup>Set up Claude Code</button>
       </div>
     </section>
@@ -3012,7 +3011,7 @@
       <button type="button" class="path" data-path="claude">
         <span class="path-icon" aria-hidden="true">⚡</span>
         <span class="path-title">Claude Code + crab</span>
-        <span class="path-sub">Give me tasks and I'll do them on your PC with helper crabs, using your Claude Pro or Max plan. Plus everything the crab does below.</span>
+        <span class="path-sub">Give me tasks and I'll do them on your PC with helper crabs, on your own Claude account. Plus everything the crab does below.</span>
       </button>
       <button type="button" class="path" data-path="work">
         <span class="path-icon" aria-hidden="true">🛠️</span>
@@ -3288,7 +3287,7 @@
         <li><b>Does the chores.</b> Tidies folders, renames files, writes and runs scripts, with your OK first.</li>
         <li><b>Sends out helper crabs</b> to work in parallel, and learns new tricks as he goes.</li>
       </ul>
-      <p class="muted small">Needs Claude Code and a Claude Pro or Max plan. No API keys, nothing billed per use.</p>
+      <p class="muted small">Needs Claude Code and your own sign-in: a Claude plan, or an Anthropic API key.</p>
       <div class="row wrap end">
         <button type="button" class="btn ghost" id="upsellLater">Not now</button>
         <button type="button" class="btn primary" data-claude-setup>Set up Claude Code</button>
