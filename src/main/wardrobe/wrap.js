@@ -72,7 +72,7 @@ function itemFields(kind, item) {
  *           contest: 'YYYY-MM' to enter that month's crab contest }
  * -> the pack JSON, or null for a kind this doesn't wrap.
  */
-function wrapItem(kind, item, { login = '', prev = null, contest = null } = {}) {
+function wrapItem(kind, item, /** @type {{ login?: string, prev?: { version?: string } | null, contest?: string | null }} */ { login = '', prev = null, contest = null } = {}) {
   const k = KINDS[kind];
   const id = packIdFor(kind, item?.id);
   if (!k || !id) return null;

@@ -173,7 +173,7 @@
   $('shopRefresh').addEventListener('click', () => load({ refresh: true }));
   $('shopSearch').addEventListener('input', render);
   $('shopMarket').addEventListener('change', render);
-  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#shopTabs [data-filter]')).forEach(b => b.addEventListener('click', () => { filter = b.dataset.filter; render(); }));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#shopTabs [data-filter]')).forEach(b => b.addEventListener('click', () => { filter = /** @type {string} */ (b.dataset.filter); render(); }));
   $('shopAddForm').addEventListener('submit', e => {
     e.preventDefault();
     const v = $('shopAddInput').value.trim();

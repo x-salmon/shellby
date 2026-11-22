@@ -190,7 +190,7 @@
     markDecision(item) {
       const tab = /** @type {any} */ (this);
       const card = tab.asks.get(item.requestId);
-      if (!card || card.classList.contains('decided')) return;
+      if (card.classList.contains('decided')) return;
       card.classList.add('decided');
       if (card.classList.contains('plan-card')) tab.markPlanDecision(card, item);
       else if (card.classList.contains('question')) {
@@ -226,11 +226,13 @@
     // A Shellby feature Claude offered (src/main/selfaware.js). Nothing has
     // happened yet: the button does it, or the card is ignored. Cards from an
     // earlier session replay as a one-line note, not as something to answer.
+    /** @this {AskCards & FeedTab} */
     renderSuggestion(item, replay) {
       if (replay) return this.append(h('div', { class: 'meta suggest-note', text: `Shellby suggested: ${item.title.replace(/\?$/, '')}` }));
       const tabId = this.id;
       const cwd = this.cwd;
-      let card = null;
+      /** @type {HTMLElement} */
+      let card; // set below, before any button can fire
       const close = verdict => {
         card.classList.add('decided');
         card.append(h('div', { class: 'ask-verdict allow', text: `→ ${verdict}` }));
@@ -282,10 +284,12 @@
 
     // A conversation asking to hand work to another one (wiring/chatlink.js hand_off).
     // Nothing goes until the user says so; Claude waits on the answer.
+    /** @this {AskCards & FeedTab} */
     renderHandOff(item) {
-      let card = null;
+      /** @type {HTMLElement} */
+      let card; // set below, before any button can fire
       const answer = async yes => {
-        if (card.classList.contains('decided')) return;
+        if (!card || card.classList.contains('decided')) return;
         const r = await api.decideHandOff(item.id, yes).catch(() => null);
         card.classList.add('decided');
         const verdict = !r?.ok ? (r?.error || "Couldn't answer that.") : yes ? 'Approved' : 'Kept here';
@@ -310,10 +314,12 @@
       this.append(card);
     }
 
+    /** @this {AskCards & FeedTab} */
     cancelOpenAsks() {
       for (const [requestId, card] of this.asks) if (!card.classList.contains('decided')) this.markDecision({ requestId, decision: 'cancelled' });
     }
 
+    /** @this {AskCards & FeedTab} */
     openAsk() {
       return [...this.asks.values()].reverse().find(c => !c.classList.contains('decided')) || null;
     }

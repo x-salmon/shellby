@@ -147,26 +147,49 @@ function whyNot(e, host) {
   return `Couldn't check ${host}: ${clip(e?.message, 120) || 'glab failed'}`;
 }
 
+/** @returns {WatcherState} */
 const EMPTY = () => ({ prs: [], reviews: [], reviewsTotal: 0, lastPollAt: null, error: null, hosts: [] });
 
+/** @typedef {InstanceType<typeof import('./glab')['GlabApi']>} GlabApi */
+/** @typedef {Error & { signedOut?: boolean, missing?: boolean }} HostError */
+/** @typedef {NonNullable<ReturnType<typeof parseMr>>} Mr */
+/** @typedef {Mr & { state?: string, failing?: string[], pipelineId?: number | null, pipelineProject?: number, reviewComments?: number, talk?: ReturnType<typeof comments.summarize> | null }} Pr */
+/** @typedef {{ updatedAt: number, list: ReturnType<typeof talkOf>, open: number, verdict: string | null }} Cached */
+/** @typedef {{ host: string, login: string | null, error: string | null, missing: boolean }} HostState */
+/** @typedef {{ host: string, error: HostError, login?: undefined, prs?: undefined, reviews?: undefined, reviewsTotal?: undefined }} HostFailed */
+/** @typedef {{ host: string, error?: undefined, login: string, prs: Pr[], reviews: Mr[], reviewsTotal: number }} HostRead */
+/** @typedef {{ prs: Pr[], reviews: Mr[], reviewsTotal: number, lastPollAt: number | null, error: string | null, hosts: HostState[] }} WatcherState */
+
 class GitLabWatcher extends EventEmitter {
+  /** @type {(host: string) => GlabApi} */ api;
+  /** @type {() => string[] | Promise<string[]>} */ hosts;
+  /** @type {() => number} */ now;
+
   /**
    * api(host): a GlabApi (or a stand-in). hosts(): the GitLab hosts to look at
    * (gitlab.com, ones you listed, ones your clones point at), or a promise of them.
    * seen: { load, save } for config.gitlabSeen.
+   * @param {{ api: (host: string) => GlabApi, hosts: () => string[] | Promise<string[]>, now?: () => number, seen?: { load: () => unknown, save: (seen: Record<string, number>) => void } | null }} opts
    */
   constructor({ api, hosts, now = () => Date.now(), seen = null }) {
     super();
     Object.assign(this, { api, hosts, now });
     this.seenStore = seen || { load: () => null, save: () => {} };
     this.seen = normalizeSeen(this.seenStore.load());
+    /** @type {Map<string, Cached>} */
     this.talk = new Map(); // key -> { updatedAt, list, open, verdict }
+    /** @type {NodeJS.Timeout | null} */
     this.timer = null;
+    /** @type {NodeJS.Timeout | null} */
     this.first = null;
+    /** @type {Promise<ReturnType<GitLabWatcher['view']>> | null} */
     this.polling = null;
     this.epoch = 0;
+    /** @type {ReturnType<typeof transitions>['memory'] | null} */
     this.memory = null;
+    /** @type {Map<string, string>} */
     this.logins = new Map(); // host -> username
+    /** @type {WatcherState} */
     this.state = EMPTY();
   }
 
@@ -180,7 +203,8 @@ class GitLabWatcher extends EventEmitter {
 
   stop() {
     this.epoch++;
-    clearInterval(this.timer); clearTimeout(this.first);
+    if (this.timer) clearInterval(this.timer);
+    if (this.first) clearTimeout(this.first);
     this.timer = null; this.first = null;
     this.memory = null;
     this.talk.clear();
@@ -192,7 +216,7 @@ class GitLabWatcher extends EventEmitter {
     return {
       ...this.state,
       failing: this.state.prs.filter(p => p.state === 'failing').length,
-      unread: this.state.prs.filter(p => p.talk?.unread > 0).length,
+      unread: this.state.prs.filter(p => (p.talk?.unread || 0) > 0).length,
     };
   }
 
@@ -212,6 +236,7 @@ class GitLabWatcher extends EventEmitter {
     return true;
   }
 
+  /** @param {Cached} cached @param {string} host @param {string | null} [key] */
   summary(cached, host, key = null) {
     const me = this.loginOn(host);
     const s = comments.summarize(cached.list, me, this.seen[key] || 0);
@@ -224,9 +249,10 @@ class GitLabWatcher extends EventEmitter {
     this.polling = (async () => {
       try {
         const hosts = [...new Set((await this.hosts()) || [])];
+        /** @type {Array<HostRead | HostFailed>} */
         const results = await Promise.all(hosts.map(host => this.pollHost(host).then(r => ({ host, ...r }), e => ({ host, error: e }))));
         if (epoch !== this.epoch) return this.view();
-        const ok = results.filter(r => !r.error);
+        const ok = results.filter(/** @param {HostRead | HostFailed} r @returns {r is HostRead} */ r => !r.error);
         // One host you aren't signed in to (gitlab.com, when your work is on your own) is no error while another answers.
         const shown = ok.length ? results.filter(r => r.error && !r.error.signedOut && !r.error.missing) : results.filter(r => r.error);
         const error = shown.length ? whyNot(shown[0].error, shown[0].host) : null;
@@ -295,7 +321,7 @@ class GitLabWatcher extends EventEmitter {
       gl.get(`merge_requests?scope=created_by_me&state=opened&order_by=updated_at&per_page=${MAX_MRS}`),
       gl.get(`merge_requests?scope=all&state=opened&reviewer_id=${userId}&order_by=updated_at&per_page=${MAX_REVIEWS}`),
     ]);
-    const list = (raw, max) => (Array.isArray(raw) ? raw : []).map(m => parseMr(m, host)).filter(Boolean).slice(0, max);
+    const list = (raw, max) => (Array.isArray(raw) ? raw : []).map(m => parseMr(m, host)).filter(/** @param {Mr | null} m @returns {m is Mr} */ m => !!m).slice(0, max);
     const checked = await each(list(mine, MAX_MRS), mr => this.check(gl, mr));
     const prs = await each(checked, mr => this.withTalk(gl, mr, username));
     const reviews = list(asked, MAX_REVIEWS).filter(r => r.author?.toLowerCase() !== username.toLowerCase());

@@ -10,6 +10,7 @@
     // One block per turn in a git project: every file it touched, each one's
     // diff on a click, and Undo to put them back. The diffs are read from git
     // when you open them, not carried around in the transcript.
+    /** @this {TurnChanges & FeedTab} */
     renderChanges(item) {
       if (!Array.isArray(item.files) || !item.files.length) return;
       const ref = { root: item.root, before: item.before, after: item.after };
@@ -31,8 +32,9 @@
       SB.firstRunNudge?.('result', () => { el.open = true; el.scrollIntoView({ block: 'nearest' }); });
 
       // Two presses, so a stray click can't take a turn's work back.
+      /** @type {number | null} */
       let armed = null;
-      const disarm = () => { clearTimeout(armed); armed = null; undo.textContent = 'Undo'; undo.classList.remove('deny'); };
+      const disarm = () => { if (armed) clearTimeout(armed); armed = null; undo.textContent = 'Undo'; undo.classList.remove('deny'); };
       undo.addEventListener('click', async () => {
         if (!armed) {
           undo.textContent = `Undo ${files}?`;
@@ -56,6 +58,7 @@
     }
 
     // The files, flat, or in the steps the turn wrote them in (src/main/change-story.js).
+    /** @this {TurnChanges & FeedTab} */
     changeList(item, ref) {
       const steps = F.storySteps(item);
       if (!steps) return h('ul', { class: 'chg-files' }, item.files.map(f => this.changeRow(f, ref)));
@@ -69,6 +72,7 @@
 
     // read: how to fetch one file's diff (a turn's, unless a comparison says otherwise).
     // A turn's own diff takes line comments (line-comments-ui.js); a comparison's doesn't.
+    /** @this {TurnChanges & FeedTab} */
     changeRow(f, ref, read = file => api.changesDiff({ tabId: this.id, ...ref, file })) {
       const reviewable = !!ref && !!SB.reviewDiff;
       const diff = h('div', { class: 'chg-diff', hidden: true });
@@ -103,6 +107,7 @@
     // "Quiz me": three questions on what this turn changed (src/main/quiz.js). Main
     // keeps the answers, so each pick asks it whether that was right. Not kept in
     // the transcript: it's there until the panel reloads.
+    /** @this {TurnChanges & FeedTab} */
     addQuiz(el, ref) {
       const start = h('button', { class: 'btn ghost slim-btn', type: 'button', title: 'Claude writes three questions on what this change does. Uses a little of your plan.' }, 'Quiz me');
       el.querySelector('.chg-actions').append(start);
@@ -126,6 +131,7 @@
       });
     }
 
+    /** @this {TurnChanges & FeedTab} */
     quizQuestion(q, i, ref, result, total) {
       const why = h('p', { class: 'small quiz-why', hidden: true, 'aria-live': 'polite' });
       const choices = q.choices.map(text => h('button', { class: 'quiz-choice', type: 'button', text }));
@@ -154,16 +160,20 @@
     // A step that changed files and has a checkpoint before it (main's
     // step-undo.js) gets a button on its row. Hidden until the turn has ended
     // (its 'checkpoint' item): while it runs, the files are still moving.
+    /** @this {TurnChanges & FeedTab} */
     renderStepPoint(item) {
       const el = this.tools.get(item.toolId);
       if (!el) return;
       const btn = h('button', { class: 'step-undo', type: 'button', hidden: true, title: 'Puts the files back the way they were just before this step. Later steps of this turn go too; the conversation stays.' }, 'Undo to here');
+      /** @type {StepUndo} */
       const step = { toolId: item.toolId, btn, el, done: false, disarm: null };
+      /** @type {number | null} */
       let armed = null;
       // Armed: this step's pin goes coral and the steps that would go with it fade.
       const later = () => { const all = this.stepUndos?.get(item.turnId) || []; return all.slice(all.indexOf(step)); };
       const disarm = () => {
-        clearTimeout(armed); armed = null; btn.textContent = 'Undo to here'; btn.classList.remove('deny');
+        if (armed) clearTimeout(armed);
+        armed = null; btn.textContent = 'Undo to here'; btn.classList.remove('deny');
         el.classList.remove('step-armed');
         for (const s of later().slice(1)) s.el.classList.remove('step-doomed');
       };
@@ -192,9 +202,10 @@
       el.querySelector('summary')?.append(btn);
       this.stepUndos ??= new Map();
       if (!this.stepUndos.has(item.turnId)) this.stepUndos.set(item.turnId, []);
-      this.stepUndos.get(item.turnId).push(step);
+      /** @type {StepUndo[]} */ (this.stepUndos.get(item.turnId)).push(step);
     }
 
+    /** @this {TurnChanges & FeedTab} */
     showStepUndos(cp) {
       if (!cp?.turnId) return;
       this.stepEnds ??= new Map();
@@ -203,6 +214,7 @@
     }
 
     // That step and every later one of the turn are undone.
+    /** @this {TurnChanges & FeedTab} */
     markStepUndone(item) {
       const steps = this.stepUndos?.get(item.turnId) || [];
       const at = steps.findIndex(s => s.toolId === item.toolId);
@@ -216,14 +228,16 @@
       });
     }
 
+    /** @this {TurnChanges & FeedTab} */
     markUndone(item) {
       // The whole turn went back: its steps have nothing left to undo.
       const turnId = this.stepEnds?.get(item.after);
       for (const s of (turnId && this.stepUndos?.get(turnId)) || []) { s.done = true; s.btn.hidden = true; s.el.classList.remove('step-point'); }
-      const el = [...this.el.querySelectorAll('details.changes')].find(d => d.dataset.after === item.after);
+      const blocks = /** @type {NodeListOf<HTMLElement & { undoButton?: HTMLButtonElement, undoNote?: HTMLElement }>} */ (this.el.querySelectorAll('details.changes'));
+      const el = [...blocks].find(d => d.dataset.after === item.after);
       if (!el || el.classList.contains('undone')) return;
       el.classList.add('undone');
-      el.querySelector('.chg-title').textContent += ' · undone';
+      /** @type {Element} */ (el.querySelector('.chg-title')).textContent += ' · undone';
       if (el.undoButton) { el.undoButton.disabled = true; el.undoButton.textContent = 'Undone'; }
       if (el.undoNote) el.undoNote.textContent = 'These files are back the way they were before this turn.';
     }

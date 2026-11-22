@@ -129,7 +129,7 @@
   let foundAsk = 0;
 
   function scheduleFound() {
-    clearTimeout(foundTimer);
+    if (foundTimer) clearTimeout(foundTimer);
     foundTimer = setTimeout(searchFound, FOUND_DELAY_MS);
   }
 

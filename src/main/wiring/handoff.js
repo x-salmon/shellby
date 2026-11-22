@@ -144,7 +144,7 @@ function wireHandoff(d) {
   }
 
   /** "Bring it into Shellby", on a session in Settings → Claude Code everywhere. */
-  function bringIn({ id, force = false } = {}) {
+  function bringIn(/** @type {{ id?: string, force?: boolean }} */ { id, force = false } = {}) {
     if (!handoff.isSessionId(id)) return { ok: false, error: "That session's id doesn't look like Claude Code's, so Shellby can't pick it up." };
     const session = d.external?.known(id) || null;
     const check = handoff.bringInCheck(session, { force: force === true });
@@ -203,7 +203,7 @@ function wireHandoff(d) {
     ultraplan: 'with /ultraplan. Claude Code asks there before the cloud session starts, and the plan comes back there to edit and approve.',
     pr: 'with claude --from-pr. Pick the pull request there.',
   };
-  async function openCloud({ kind, value = null, tabId = null } = {}) {
+  async function openCloud(/** @type {{ kind?: string, value?: string | null, tabId?: string | null }} */ { kind, value = null, tabId = null } = {}) {
     const tab = tabId ? d.manager.tabs.get(tabId) : null;
     const cwd = handoff.terminalCwd({ cwd: tab?.session?.cwd || d.currentCwd(), worktree: tab?.worktree || null }, isDir);
     if (!cwd) return { ok: false, error: "That conversation's folder isn't there any more." };

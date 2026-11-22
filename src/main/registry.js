@@ -277,10 +277,10 @@ async function fetchRegistryNews({ baseUrl = REGISTRY_URL, url = null, fetchImpl
  * { id, version, name, by, contest, winner } as far as the index says. `by` (the GitHub login
  * of the PR that added it), `contest` ('YYYY-MM') and `winner` are optional,
  * and only kept when they're well formed. Never throws.
- * @returns {Promise<{ ok: boolean, packs?: [{ id, version, name, by, contest, winner }], errors: string[] }>}
+ * @returns {Promise<{ ok: true, packs: { id: string, version: string, name: string, by: string | null, contest: string | null, winner: boolean }[], errors: string[] } | { ok: false, errors: string[] }>}
  */
 async function fetchRegistryIndex({ baseUrl = REGISTRY_URL, fetchImpl = globalThis.fetch, timeoutMs = 15000 } = {}) {
-  const fail = msg => ({ ok: false, errors: [msg] });
+  const fail = (/** @type {string} */ msg) => ({ ok: /** @type {false} */ (false), errors: [msg] });
   const base = normalizeBase(baseUrl);
   if (!base || typeof fetchImpl !== 'function') return fail('The Shellby community registry is unavailable.');
   try {

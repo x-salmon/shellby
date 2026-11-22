@@ -16,7 +16,9 @@ const SAVE_DELAY_MS = 5000;   // turns end in bursts (a workflow's steps); one w
 
 /** d: what main shares (main.js `shared`). */
 function wireUsagePlan(d) {
+  /** @type {ReturnType<typeof usageLedger.normalize> | null} */
   let ledger = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let saveTimer = null;
   // tabId -> the turn being measured: { turnId, startedAt, category, size, weight, rise, sawUsage }
   const open = new Map();
@@ -108,7 +110,7 @@ function wireUsagePlan(d) {
    * kind 'ultracode', 'workflow' (with its id) or 'fanout' (a turn asking for
    * several helpers). -> the view the panel shows, words included, or null.
    */
-  function estimateRunFor({ kind, workflowId = null } = {}) {
+  function estimateRunFor(/** @type {{ kind?: string, workflowId?: string | null }} */ { kind, workflowId = null } = {}) {
     const now = Date.now();
     const all = rows();
     const wf = kind === 'workflow' ? d.workflows?.get(workflowId) : null;
@@ -121,14 +123,14 @@ function wireUsagePlan(d) {
   }
 
   function save() {
-    clearTimeout(saveTimer);
+    if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
     if (ledger && d.config) d.config.set({ turnCosts: ledger });
   }
 
   /** Clear all history: the ledger goes with it. */
   function clear() {
-    clearTimeout(saveTimer);
+    if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
     ledger = [];
     open.clear();

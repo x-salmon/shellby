@@ -30,7 +30,7 @@
 
   const VIEW_KEY = 'shellby.pocket.view';
   const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  const standalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+  const standalone = () => window.matchMedia?.('(display-mode: standalone)').matches || /** @type {{ standalone?: boolean }} */ (navigator).standalone === true;
   const ios = L.isIos(navigator.userAgent, navigator.maxTouchPoints);
 
   const S = {
@@ -41,10 +41,13 @@
     partial: new Map(),      // tabId -> the reply as it's typed
     answering: new Map(),    // requestId -> 'allow' | 'deny' while it's on its way
     outcomes: new Map(),     // tabId -> standing last seen, for the celebration
+    /** @type {{ until: number, title: string } | null} */
     celebrate: null,         // { until, title }
     away: null,              // what happened while the phone was away (pocket-find.js), until dismissed
     findQuery: '',
+    /** @type {{ el: HTMLElement, title?: string, tabId?: string, update?: () => void, leave?: () => void, feed?: () => void } | null} */
     screen: null,
+    /** @type {{ update?: () => void } | null} */
     sheet: null,
     installSkipped: false,
   };
@@ -53,8 +56,8 @@
     try { return JSON.parse(N.store.get(VIEW_KEY) || 'null'); } catch { return null; }
   }
 
-  const app = document.getElementById('app');
-  const toasts = document.getElementById('toasts');
+  const app = /** @type {HTMLElement} */ (document.getElementById('app'));
+  const toasts = /** @type {HTMLElement} */ (document.getElementById('toasts'));
   const sheetRoot = document.getElementById('sheets');
   const announcer = document.getElementById('announce');
 
@@ -103,7 +106,7 @@
     return b;
   }
 
-  async function act(name, body, { okText = null, failText = null, timeoutMs } = {}) {
+  async function act(name, body, /** @type {{ okText?: string | null, failText?: string | null, timeoutMs?: number }} */ { okText = null, failText = null, timeoutMs } = {}) {
     const r = await N.post(name, body, timeoutMs ? { timeoutMs } : undefined);
     if (r.unpaired) { unpaired('This phone was forgotten on your PC.'); return r; }
     if (r.ok) { if (okText) toast(okText, { tone: 'ok' }); buzz(8); } else toast(r.error || failText || 'That didn’t work.', { tone: 'warn', ms: 4800 });
@@ -249,6 +252,7 @@
     }
     // Redrawn only when the connection, the rights or the quiet hours change: the
     // notification card asks the browser each time.
+    /** @type {string | null} */
     let was = null;
     const maybe = () => {
       el.replaceChild(topbar(), el.firstChild);
@@ -423,6 +427,7 @@
     } catch { /* nothing to tidy */ }
   }
 
+  /** @type {{ start(): void, stop(): void, dispose(): void, watch(tabId: string | null, pageId?: string | null): void } | null} */
   let stream = null;
   function start() {
     stream?.dispose();
@@ -442,7 +447,7 @@
       items({ tabId, items }) {
         S.feeds.set(tabId, { items: items || [], loaded: true });
         S.partial.delete(tabId);
-        if (S.screen?.tabId === tabId) S.screen.feed();
+        if (S.screen?.tabId === tabId) S.screen?.feed?.();
       },
       item({ tabId, item }) {
         const feed = S.feeds.get(tabId) || { items: [], loaded: true };
@@ -453,7 +458,7 @@
           feed.items = L.keepItem(feed.items, item, 600);
         }
         S.feeds.set(tabId, feed);
-        if (S.screen?.tabId === tabId) S.screen.feed();
+        if (S.screen?.tabId === tabId) S.screen?.feed?.();
         Later.heard(tabId, item);
       },
       page: Pages.onPageEvent, pages: Pages.onShelfEvent,
@@ -469,12 +474,12 @@
     });
     if (S.view) D.setSkin(S.view.skin);
     mount();
-    stream.start();
+    /** @type {NonNullable<typeof stream>} */ (stream).start(); // assigned above
   }
 
   // The working clocks tick without a message from the PC.
   setInterval(() => {
-    for (const el of document.querySelectorAll('[data-since]')) el.textContent = L.duration((Date.now() - Number(el.dataset.since)) / 1000);
+    for (const el of document.querySelectorAll('[data-since]')) el.textContent = L.duration((Date.now() - Number(/** @type {HTMLElement} */ (el).dataset.since)) / 1000);
   }, 1000);
 
   // An iPhone moves the whole page up to make room for the keyboard, and can

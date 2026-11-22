@@ -198,7 +198,7 @@
   // here, with the pictures it carries. Should this turn have ended meanwhile,
   // drain sends it at once, with anything waiting in the merge window.
   api.onTabQueue(/** @param {{ tabId?: string, text?: string, files?: string[] }} [m] */ ({ tabId, text, files } = {}) => {
-    const tab = state.tabs.get(tabId);
+    const tab = state.tabs.get(/** @type {string} */ (tabId));
     const pictures = Array.isArray(files) ? files.filter(f => typeof f === 'string' && f) : [];
     if (!tab || typeof text !== 'string' || (!text && !pictures.length)) return;
     tab.queue.push(queueItem(text, pictures));

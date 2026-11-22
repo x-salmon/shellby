@@ -15,7 +15,13 @@ const { TASKKILL } = require('../system32');
 // Names Windows won't make a folder with, whatever follows the dot.
 const RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i;
 
-/** Where a clone of `repo` into `parent` goes, or { error }. Pure apart from the existence checks. */
+/**
+ * Where a clone of `repo` into `parent` goes, or { error }. Pure apart from the existence checks.
+ * @param {string} repo
+ * @param {string} parent
+ * @param {{ exists?: (p: string) => boolean, isDir?: (p: string) => boolean }} [opts]
+ * @returns {{ error: string, repo?: undefined, dest?: undefined, url?: undefined } | { error?: undefined, repo: string, url: string | null, dest: string }}
+ */
 function target(repo, parent, { exists = p => fs.existsSync(p), isDir = p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } } } = {}) {
   const r = checkRepo(repo);
   if (!r) return { error: "That isn't a GitHub repository name." };
@@ -42,31 +48,36 @@ function parseProgress(line) {
 /**
  * Clone. -> Promise<{ ok: true, root } | { ok: false, error, cancelled? }>. Never rejects.
  * env: extra environment (the GitHub sign-in's credential helper, for private repos).
+ * @param {string} repo
+ * @param {string} parent
+ * @param {{ env?: NodeJS.ProcessEnv, onProgress?: (p: { phase: string, percent: number }) => void, signal?: AbortSignal | null, spawnImpl?: typeof spawn, killTree?: ((pid: number) => void) | null, removeDir?: ((dir: string) => Promise<unknown>) | null }} [opts]
  * onProgress({ phase, percent }); signal: an AbortSignal that cancels it.
  */
 function clone(repo, parent, { env = {}, onProgress = () => {}, signal = null, spawnImpl = spawn, killTree = null, removeDir = null } = {}) {
   const t = target(repo, parent);
   if (t.error) return Promise.resolve({ ok: false, error: t.error });
+  // An error is never empty, so past it the target has its folder and URL.
+  const { dest, url } = /** @type {{ dest: string, url: string | null }} */ (t);
   const remove = removeDir || (dir => fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 3 }).catch(() => {}));
   // Claim the folder first, without recursive: this fails if anything got
   // there since target() looked (a folder, a file, a junction), so cleanup can
   // only ever remove the empty folder made here and what git put in it.
   try {
-    fs.mkdirSync(t.dest);
+    fs.mkdirSync(dest);
   } catch (e) {
-    return Promise.resolve({ ok: false, error: e.code === 'EEXIST' ? `${t.dest} already exists. Choose another folder, or add that one instead.` : `Couldn't make ${t.dest}: ${e.message}` });
+    return Promise.resolve({ ok: false, error: e.code === 'EEXIST' ? `${dest} already exists. Choose another folder, or add that one instead.` : `Couldn't make ${dest}: ${e.message}` });
   }
   return new Promise(resolve => {
     let child;
     try {
-      child = spawnImpl('git', cloneArgs(t.url, t.dest), {
+      child = spawnImpl('git', cloneArgs(url, dest), {
         windowsHide: true,
         stdio: ['ignore', 'ignore', 'pipe'],
         // No prompts: a private repo without access fails instead of waiting on a password nobody can type.
         env: { ...process.env, ...env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' },
       });
     } catch (e) {
-      remove(t.dest).then(() => resolve({ ok: false, error: e.message }));
+      remove(dest).then(() => resolve({ ok: false, error: e.message }));
       return;
     }
     let tail = '';
@@ -85,9 +96,9 @@ function clone(repo, parent, { env = {}, onProgress = () => {}, signal = null, s
     child.on('error', e => { tail += `\n${e.message}`; });
     child.on('close', async code => {
       signal?.removeEventListener('abort', onAbort);
-      if (code === 0 && !cancelled) { resolve({ ok: true, root: t.dest }); return; }
+      if (code === 0 && !cancelled) { resolve({ ok: true, root: dest }); return; }
       // The folder was made just for this clone (above), so whatever is in it is ours.
-      await remove(t.dest);
+      await remove(dest);
       if (cancelled) { resolve({ ok: false, cancelled: true, error: 'Clone cancelled.' }); return; }
       resolve({ ok: false, error: cloneError(tail) });
     });

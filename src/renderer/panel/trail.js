@@ -414,8 +414,8 @@
   function place(el, key, fresh) {
     const row = rowOf(key);
     if (!row) return;
-    const name = row.querySelector('.tr-name');
-    const marks = row.querySelector('.tr-marks');
+    const name = /** @type {HTMLElement} */ (row.querySelector('.tr-name'));
+    const marks = /** @type {HTMLElement | null} */ (row.querySelector('.tr-marks'));
     const size = el.classList.contains('helper') ? 26 : 36;
     const others = [...crabsEl.querySelectorAll('.tr-crab')].filter(c => c !== el && c.dataset.key === key).length;
     const end = marks ? marks.offsetLeft - size - 4 : row.offsetWidth - size;
@@ -534,7 +534,7 @@
     drawer.classList.add('playing');
   }
   function stopPlay() {
-    clearInterval(playTimer);
+    if (playTimer) clearInterval(playTimer);
     playTimer = null;
     drawer.classList.remove('playing');
   }

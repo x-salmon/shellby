@@ -110,7 +110,7 @@ function normalizeRow(r) {
 
 /** Whatever was saved, as rows oldest first, within the last 60 days and the cap. */
 function normalize(raw, now) {
-  return (Array.isArray(raw) ? raw : []).map(normalizeRow).filter(r => r && now - r.at < KEEP_MS)
+  return (Array.isArray(raw) ? raw : []).map(normalizeRow).filter(/** @type {(r: Row | null) => r is Row} */ (r => !!r && now - r.at < KEEP_MS))
     .sort((/** @type {Row} */ a, /** @type {Row} */ b) => a.at - b.at).slice(-MAX_ROWS);
 }
 

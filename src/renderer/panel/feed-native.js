@@ -30,6 +30,7 @@
   class NativeFeed {
     // One agent writing to another: who to, and what it said. The reply comes
     // back in that helper's own lane, which picks up again (feed-lanes.js reopen).
+    /** @this {NativeFeed & FeedTab} */
     renderMessage(item, replay) {
       const m = item.message;
       const from = senderOf(this, item);
@@ -53,6 +54,7 @@
     // the code a link, and Fix this, which puts a prompt in the box (nothing is
     // sent until you press Enter). Add as comment makes one a line comment waiting
     // on its line (line-comments-ui.js), to send back with your own.
+    /** @this {NativeFeed & FeedTab} */
     renderFindings(item, replay) {
       const { list, level } = item.findings;
       const comment = async (fs, btn) => {
@@ -95,10 +97,12 @@
     // Claude's plan (ExitPlanMode), to read before anything changes. Any line of
     // it can take a note; notes go back together as the reason it wasn't
     // approved yet (feed-logic.js planNotesMessage), and Claude revises it.
+    /** @this {NativeFeed & FeedTab} */
     renderPlanAsk(item, replay) {
       const tabId = this.id;
       const notes = [];            // [{ quote, note, line }]
-      let card = null;
+      /** @type {HTMLElement & { notesSent?: number }} */
+      let card; // set below, before any note or button can fire
       const decide = async (decision, message) => {
         const ok = await api.answerPermission(tabId, item.requestId, decision, message);
         if (!ok) { SB.toast('That plan already expired.'); return; }
@@ -210,6 +214,7 @@
     }
 
     // Claude switched itself to planning (EnterPlanMode): nothing changes until a plan is approved.
+    /** @this {NativeFeed & FeedTab} */
     renderPlanning() {
       this.append(h('div', { class: 'home-mark plan-mark' },
         h('span', { class: 'chg-icon', 'aria-hidden': 'true', text: '🗺️' }),
@@ -257,8 +262,8 @@
 
   // The first time Claude uses a skill in Shellby (main's wiring/native.js): the
   // row says so, and a toast for when you weren't looking.
-  api.onSkillFirst?.(({ tabId, name } = {}) => {
-    const tab = state.tabs.get(tabId);
+  api.onSkillFirst?.((/** @type {{ tabId?: string, name?: string }} */ { tabId, name } = {}) => {
+    const tab = state.tabs.get(/** @type {string} */ (tabId));
     const row = tab && [...tab.el.querySelectorAll('.skill-use')].reverse().find(el => el.dataset.skill === name);
     row?.querySelector('summary')?.append(h('span', { class: 'first-badge', text: 'first time' }));
     SB.toast(`✦ First time Claude reached for /${name} here.`, { ms: 5000, action: 'What is it?', onAction: () => SB.showToolbox('skill') });

@@ -20,6 +20,22 @@
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fullPath = (root, rel) => `${root}\\${rel.replace(/\//g, '\\')}`; // as the viewer's openInEditor builds it
 
+  /** @typedef {{ path: string, status: string, added?: number, removed?: number }} DockFile */
+  /** @typedef {{ path: string, name: string, dir: boolean, children: DockNode[] }} DockNode */
+  /** @typedef {{ kind: string, label: string, branch: string }} DockPlace */
+  /**
+   * What's shown (fresh() below). While there's no tree it is only { tabId, cwd, note }, and every
+   * reader checks note (draw) or id (load, call) before it goes further.
+   * @typedef {{
+   *   tabId: string | null, cwd: string | null, req: { tabId: string }, place: DockPlace | null, home: string,
+   *   id: string, root: string, git: boolean, branch: string | null, upstream: string | null, ahead: number, behind: number,
+   *   entries: string[], files: DockFile[], byKey: Map<string, DockFile>, marks: Map<string, string>, sums: Map<string, unknown>,
+   *   tree: DockNode | null, paths: Map<string, string>, untracked: string, open: Set<string>, filter: string,
+   *   activeKey: string | null, rows: Array<{ node: DockNode, depth: number }>, error: string | null, gone: boolean,
+   *   read: boolean, note: string | null, reopening: Promise<unknown> | null,
+   * }} Dock
+   */
+
   const dock = $('filesDock');
   // A conversation's own window has no All files: main sends viewer:stale to the panel only, so a
   // tree there would never look again. Its tab hides, and Ctrl+Shift+F shows the Trail.
@@ -48,6 +64,7 @@
   dock.replaceChildren(branchEl, filterEl, treeEl, footEl);
 
   let shown = false;         // the drawer is open on this tab
+  /** @type {Dock | null} */
   let me = null;             // what's shown (fresh() below), or { tabId, cwd, note } while there's no tree
   let follow = SB.pref(FOLLOW_KEY) !== '0';
   let followed = null;       // the newest lit row already scrolled to
@@ -58,6 +75,15 @@
   const opens = new Map();   // a conversation's id -> the folders open in its tree, while Shellby runs
   followBox.checked = follow;
 
+  /**
+   * @param {string | null} tabId
+   * @param {string | null} cwd
+   * @param {{ tabId: string }} req
+   * @param {{ id: string, root: string, git: boolean, branch: string | null }} r
+   * @param {DockPlace | null} [place]
+   * @param {string | null} [home]
+   * @returns {Dock}
+   */
   function fresh(tabId, cwd, req, r, place = null, home = null) {
     if (!opens.has(tabId)) opens.set(tabId, new Set());
     return {
@@ -91,15 +117,15 @@
   // quiet: a catch-up (the tab shown again) lights nothing; activating the conversation already shown
   // reads as any nudge would, so a commit's flash isn't swallowed.
   async function ensure(quiet = true) {
-    const tab = state.tabs.get(state.activeTab) || null;
+    const tab = state.tabs.get(/** @type {string} */ (state.activeTab)) || null;
     const cwd = tab?.cwd || null;
     // A folder found gone is opened afresh (it may be back), not read again through its old handle.
     if (me && tab && me.tabId === tab.id && me.cwd === cwd && (me.root || me.note) && !me.gone) return me.root ? load({ tree: true, quiet }) : draw();
     if (me?.id) api.viewerClose(me.id);
     Object.assign(flash, F.create());
     clearTimeout(darkTimer);
-    if (!tab || !cwd) { me = { tabId: tab?.id || null, cwd, note: tab ? 'This conversation has no folder yet.' : 'No conversation open.' }; return draw(); }
-    const at = me = { tabId: tab.id, cwd, note: 'Opening…' };
+    if (!tab || !cwd) { me = /** @type {Dock} */ ({ tabId: tab?.id || null, cwd, note: tab ? 'This conversation has no folder yet.' : 'No conversation open.' }); return draw(); }
+    const at = me = /** @type {Dock} */ ({ tabId: tab.id, cwd, note: 'Opening…' });
     draw();
     const req = { tabId: tab.id };
     const r = await api.viewerOpen(req).catch(() => null);
@@ -112,7 +138,7 @@
   // The marks (and, when asked or a new untracked folder turned up, the tree) read again. quiet: a
   // first look or a catch-up, which lights nothing.
   async function load({ tree = false, quiet = false } = {}) {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     if (!at?.id) return;
     lastRead = Date.now();
     const [st, tr] = await Promise.all([
@@ -170,7 +196,7 @@
   // Main's nudge: something in the folder may have changed. One read at most every REFRESH_MS,
   // and none while hidden: showing the tab reads again anyway.
   // With another screen up (the viewer, Settings), it notes the nudge and reads when the chat is back.
-  api.onViewerStale(({ ids } = {}) => {
+  api.onViewerStale((/** @type {{ ids?: string[] }} */ { ids } = {}) => {
     if (!shown || timer || !me?.id || !ids?.includes(me.id)) return;
     if (state.view !== 'chat') { missed = true; return; }
     timer = setTimeout(() => { timer = 0; if (live()) load(); else missed = true; }, Math.max(0, REFRESH_MS - (Date.now() - lastRead)));
@@ -192,7 +218,7 @@
 
   function draw() {
     if (!shown) return;
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     const note = !at ? 'No conversation open.' : at.gone ? 'This folder is gone.' : at.note;
     filterEl.hidden = footEl.hidden = !!note;
     if (note) {
@@ -208,7 +234,7 @@
 
   // The branch, ahead and behind its upstream, and the repo's totals; a button that opens the menu.
   function drawBranch() {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     if (!at.git) return setBranch([nogitEl]);
     const ab = at.upstream ? [at.ahead ? `↑${at.ahead}` : '', at.behind ? `↓${at.behind}` : ''].filter(Boolean).join(' ') : '';
     nameEl.textContent = at.branch || 'detached';
@@ -233,7 +259,7 @@
   }
 
   function drawRows() {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     const list = V.visibleRows(treeOf(at), at.open, at.filter);
     at.rows = list.slice(0, F.ROW_CAP);
     const picked = F.keyOf(pickedRel(at)) || null;
@@ -270,7 +296,7 @@
   }
 
   function drawFoot() {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     const rel = pickedRel(at);
     pickedEl.textContent = rel;
     pickedEl.title = rel ? `Goes with your next message: ${rel}` : '';
@@ -278,7 +304,7 @@
   }
 
   function markActive() {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     const i = at.rows.findIndex(r => F.keyOf(r.node.path) === at.activeKey);
     for (const el of rowsEl.querySelectorAll('.ft-row')) el.setAttribute('aria-selected', String(Number(el.dataset.i) === i));
     treeEl.setAttribute('aria-activedescendant', i >= 0 ? `ft-${i}` : '');
@@ -290,7 +316,7 @@
     if (!follow || reduced() || !flash.newest) return;
     const k = F.keyOf(flash.newest);
     if (followed === k) return;
-    const i = me.rows.findIndex(r => F.keyOf(r.node.path) === k);
+    const i = /** @type {Dock} */ (me).rows.findIndex(r => F.keyOf(r.node.path) === k);
     if (i < 0) return;
     followed = k;
     rowsEl.querySelector(`#ft-${i}`)?.scrollIntoView({ block: 'nearest' });
@@ -340,7 +366,7 @@
 
   // Something lit: open its folders, keep the newest in view, and go dark when the burst is over.
   function lit() {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     if (!at?.root) return;
     treeOf(at);
     for (const { rel } of flash.lit.values()) {
@@ -367,38 +393,40 @@
 
   // ------------------------------------------------------------ doing things
 
-  const isOpen = node => me.open.has(node.path) || !!me.filter;
+  const isOpen = node => /** @type {Dock} */ (me).open.has(node.path) || !!(/** @type {Dock} */ (me).filter);
 
   function toggle(node) {
-    if (me.open.has(node.path)) me.open.delete(node.path); else me.open.add(node.path);
+    const at = /** @type {Dock} */ (me);
+    if (at.open.has(node.path)) at.open.delete(node.path); else at.open.add(node.path);
     F.touch(flash, node.path);
-    me.activeKey = F.keyOf(node.path);
+    at.activeKey = F.keyOf(node.path);
     drawRows();
   }
 
   // A click picks a file to go with your next message (files-select.js). Not in a worktree picked
   // from the menu: the pick belongs to the conversation's own folder.
   function pick(node) {
-    const tab = state.tabs.get(me.tabId);
-    if (tab && !me.place) SB.setTreePick?.(tab, { rel: node.path });
+    const at = /** @type {Dock} */ (me);
+    const tab = state.tabs.get(/** @type {string} */ (at.tabId));
+    if (tab && !at.place) SB.setTreePick?.(tab, { rel: node.path });
   }
 
   // In the full viewer: at its diff when it has changes, else the whole file. Ctrl: your editor.
   function openFile(rel, { ctrl = false } = {}) {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     if (ctrl || SB.solo || !SB.viewer) return SB.openFile(fullPath(at.root, rel), { tabId: at.tabId });
     if (at.place) return SB.viewer.openPlace(at.req, at.place, { file: rel });
     SB.viewer.openTab(at.tabId, { file: rel });
   }
 
   function copyPath(rel, full) {
-    api.copyText(full ? fullPath(me.root, rel) : rel);
+    api.copyText(full ? fullPath(/** @type {Dock} */ (me).root, rel) : rel);
     SB.toast(full ? 'Copied its full path.' : 'Copied its path.', { ms: 2000 });
   }
 
   // The branch row's menu: the viewer's own (its rows, main's keys), with picks of its own.
   async function openPlaces() {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     const menu = $('filesMenu');
     if (!at?.git || !whereBtn.isConnected) return;
     if (!menu.hidden) return SB.closeMenus({ refocus: true });
@@ -420,14 +448,14 @@
     const r = await api.viewerOpen(at.req).catch(() => null);
     if (me !== at) { if (r?.ok) api.viewerClose(r.id); return; }
     Object.assign(flash, F.create());
-    if (!r?.ok) { me = { tabId: at.tabId, cwd: at.cwd, note: r?.error || "Couldn't open that folder." }; return draw(); }
+    if (!r?.ok) { me = /** @type {Dock} */ ({ tabId: at.tabId, cwd: at.cwd, note: r?.error || "Couldn't open that folder." }); return draw(); }
     SB.toast(`${at.place.label || 'That worktree'} is gone. Showing this conversation's folder again.`);
     me = fresh(at.tabId, at.cwd, at.req, r, null, at.home);
     await load({ tree: true, quiet: true });
   }
 
   async function pickPlace(p) {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     const r = await api.viewerSwitch(at.id, p.key).catch(() => null);
     if (me !== at) { if (r?.ok) api.viewerClose(r.id); return; }
     if (!r?.ok) return SB.toast(r?.gone || r?.expired ? 'That worktree or branch is gone.' : r?.error || "Couldn't open that.");
@@ -443,8 +471,8 @@
   // @path in the box (files-select.js): its row comes into view and takes the keyboard, unpicked.
   SB.filesReveal = (p) => {
     const at = me;
-    const tab = at?.root && state.tabs.get(at.tabId);
-    if (!shown || !tab) return;
+    const tab = at?.root && state.tabs.get(/** @type {string} */ (at.tabId));
+    if (!shown || !tab || !at) return;
     const rel = F.relOf(p, at.root, tab.cwd) || F.relOf(p, at.root, at.root);
     const path = rel && treeOf(at) && at.paths.get(F.keyOf(rel));
     if (!path) return;
@@ -462,7 +490,7 @@
   rowsEl.addEventListener('click', (e) => {
     const r = rowOf(e.target);
     if (!r) return;
-    me.activeKey = F.keyOf(r.node.path);
+    /** @type {Dock} */ (me).activeKey = F.keyOf(r.node.path); // rows only exist while a tree is shown
     if (r.node.dir) return toggle(r.node);
     markActive();
     pick(r.node);
@@ -480,7 +508,7 @@
   treeEl.addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(() => { scrollFrame = 0; pinRows(); }); });
 
   treeEl.addEventListener('keydown', (e) => {
-    const at = me;
+    const at = /** @type {Dock} */ (me);
     if (!at?.rows?.length) return;
     let i = Math.max(0, at.rows.findIndex(r => F.keyOf(r.node.path) === at.activeKey));
     const r = at.rows[i];
@@ -503,7 +531,7 @@
   treeEl.addEventListener('focus', () => { if (me?.rows?.length && !me.activeKey) { me.activeKey = F.keyOf(me.rows[0].node.path); markActive(); } });
 
   filterEl.addEventListener('input', () => { if (!me?.root) return; me.filter = filterEl.value; drawRows(); });
-  unpickBtn.addEventListener('click', () => SB.setTreePick?.(state.tabs.get(me?.tabId), null));
+  unpickBtn.addEventListener('click', () => SB.setTreePick?.(state.tabs.get(/** @type {string} */ (me?.tabId)), null));
   followBox.addEventListener('change', () => {
     follow = followBox.checked;
     try { window.localStorage.setItem(FOLLOW_KEY, follow ? '1' : '0'); } catch { /* lasts this session */ }

@@ -12,6 +12,8 @@
   // ------------------------------------------------------------ the pick menu (@ files, Ctrl+R history)
 
   // mode: null | 'files' | 'history'. One menu serves both, since they never overlap.
+  /** @typedef {{ ctx?: boolean, glyph: string, label: string, sub: string, dir?: boolean, path: string, mention: string }} PickFile */
+  /** @type {{ mode: 'files' | 'history' | null, items: Array<PickFile | string>, index: number, start: number, query: string, original: string, seq: number }} */
   const pick = { mode: null, items: [], index: 0, start: 0, query: '', original: '', seq: 0 };
 
   function renderPick() {
@@ -26,14 +28,18 @@
     const head = pick.mode === 'history'
       ? h('div', { class: 'pick-head', text: `Search what you've sent${pick.query ? `: "${pick.query}"` : ''} · Enter to use · ${SB.shortcuts.primary('searchSent')} for older` })
       : null;
-    menu.replaceChildren(...[head, ...pick.items.map((it, i) => h('button', {
-      type: 'button', role: 'option', class: `slash-item pick-item${it.ctx ? ' pick-ctx' : ''}${i === pick.index ? ' on' : ''}`, 'aria-selected': String(i === pick.index),
+    menu.replaceChildren(...[head, ...pick.items.map((it, i) => {
+      const file = /** @type {PickFile} */ (it); // by mode: a file or context entry, or a sent message
+      const sent = /** @type {string} */ (it);
+      return h('button', {
+      type: 'button', role: 'option', class: `slash-item pick-item${file.ctx ? ' pick-ctx' : ''}${i === pick.index ? ' on' : ''}`, 'aria-selected': String(i === pick.index),
       onmousedown: e => { e.preventDefault(); choose(i); },
-    }, pick.mode === 'files' && it.ctx
-      ? [h('span', { class: 'pick-glyph', text: it.glyph }), h('span', { class: 'slash-name', text: it.label }), h('span', { class: 'slash-desc', text: it.sub })]
+    }, pick.mode === 'files' && file.ctx
+      ? [h('span', { class: 'pick-glyph', text: file.glyph }), h('span', { class: 'slash-name', text: file.label }), h('span', { class: 'slash-desc', text: file.sub })]
       : pick.mode === 'files'
-      ? [h('span', { class: 'pick-glyph', text: it.dir ? '▸' : '·' }), h('span', { class: 'slash-name', text: it.path }), h('span')]
-      : [h('span', { class: 'pick-glyph', text: it.startsWith('!') ? '!' : '›' }), h('span', { class: 'pick-text', text: it.replace(/\s+/g, ' ').slice(0, 200) }), h('span')]))].filter(Boolean));
+      ? [h('span', { class: 'pick-glyph', text: file.dir ? '▸' : '·' }), h('span', { class: 'slash-name', text: file.path }), h('span')]
+      : [h('span', { class: 'pick-glyph', text: sent.startsWith('!') ? '!' : '›' }), h('span', { class: 'pick-text', text: sent.replace(/\s+/g, ' ').slice(0, 200) }), h('span')]);
+    })].filter(Boolean));
     menu.querySelector('.on')?.scrollIntoView({ block: 'nearest' });
   }
 
@@ -47,19 +53,20 @@
   function choose(i) {
     const it = pick.items[i];
     if (it == null) return;
+    const file = /** @type {PickFile} */ (it); // in files mode
     if (pick.mode === 'history') {
-      input.value = it;
+      input.value = /** @type {string} */ (it);
       SB.hidePick();
-    } else if (it.ctx) {
-      attachContext(it);
+    } else if (file.ctx) {
+      attachContext(file);
     } else {
       const caret = input.selectionStart;
-      const text = it.dir ? it.mention : `${it.mention} `;
+      const text = file.dir ? file.mention : `${file.mention} `;
       input.value = input.value.slice(0, pick.start) + text + input.value.slice(caret);
       const at = pick.start + text.length;
       input.setSelectionRange(at, at);
       SB.hidePick();
-      if (it.dir) mentionCheck(); // keep going inside the folder
+      if (file.dir) mentionCheck(); // keep going inside the folder
     }
     SB.autosize();
     input.focus();
@@ -122,6 +129,7 @@
   // quoted one with spaces in it.
   const MENTION = /(?:^|\s)@("[^"]*|[^\s"]*)$/;
 
+  /** @type {number | null} */
   let mentionTimer = null;
   function mentionCheck() {
     const tab = SB.activeTab();
@@ -130,7 +138,7 @@
     if (!m || !tab) { if (pick.mode === 'files') SB.hidePick(); return; }
     const query = m[1].replace(/^"/, '');
     pick.start = before.length - m[1].length - 1;
-    clearTimeout(mentionTimer);
+    if (mentionTimer) clearTimeout(mentionTimer);
     const seq = ++pick.seq;
     mentionTimer = setTimeout(async () => {
       const [ctx, files] = await Promise.all([

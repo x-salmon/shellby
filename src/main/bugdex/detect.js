@@ -492,7 +492,7 @@ function fingerprintsIn(output, { cmd = '', live = /** @type {Set<string> | null
  *      fps (on a pass: bugs it still prints), passed, failed, conflictFiles,
  *      remedy, flee, resolve, fairPush, hookedCommit, passFlags }
  */
-function read({ cmd, output, isError, background = false, complete = true, live = null }) {
+function read(/** @type {{ cmd: string, output: string, isError?: boolean, background?: boolean, complete?: boolean, live?: Set<string> | null }} */ { cmd, output, isError, background = false, complete = true, live = null }) {
   const outcome = outcomeOf({ cmd, output, isError, background, complete });
   if (!outcome) return null;
   // Scratch code failing is Claude's slip, not your bug: it's never even seen.

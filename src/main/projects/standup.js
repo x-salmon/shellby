@@ -61,7 +61,8 @@ function readCommit(subject) {
   if (!s || NOISE.test(s)) return null;
   const rel = RELEASE.exec(s);
   if (rel) {
-    const version = s.match(/^v?\d+\.\d+\.\d+(?:[-+][\w.]+)?/)[0].replace(/^v/i, '');
+    // RELEASE begins with this same pattern, so it matches.
+    const version = /** @type {RegExpMatchArray} */ (s.match(/^v?\d+\.\d+\.\d+(?:[-+][\w.]+)?/))[0].replace(/^v/i, '');
     return { kind: 'release', text: rel[1] ? `Released ${version}: ${rel[1]}` : `Released ${version}` };
   }
   const conv = CONVENTIONAL.exec(s);
@@ -112,6 +113,9 @@ function tasksByDay(weeklyState, names) {
  *   commits:  [{ at, subject }] your commits in the window, from every clone
  *   sessions: [{ title, createdAt, updatedAt, done, routineId }] conversations in it
  *   time:     timeByDay(); tasks: tasksByDay()
+ * @param {{ name?: string } | null | undefined} detail
+ * @param {{ commits?: Array<{ at: number, subject: string }>, sessions?: Array<{ title?: string, createdAt?: number, updatedAt?: number, done?: boolean, routineId?: unknown }>,
+ *   time?: ReturnType<typeof timeByDay>, tasks?: ReturnType<typeof tasksByDay> }} [input]
  */
 function inputFrom(detail, { commits = [], sessions = [], time = {}, tasks = {} } = {}) {
   const seen = new Set();

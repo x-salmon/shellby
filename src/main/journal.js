@@ -146,7 +146,7 @@ function filesOf(entries, cwd) {
  * entries: parseLines() of its .jsonl. git: { branch, dirty, commits: [subject] }
  * read in its folder when the note is written.
  */
-function noteFrom(entries, { sessionId, cwd = null, git = null } = {}) {
+function noteFrom(entries, /** @type {{ sessionId?: string, cwd?: string | null, git?: { branch?: string, dirty?: number | null, commits?: string[] } | null }} */ { sessionId, cwd = null, git = null } = {}) {
   const list = Array.isArray(entries) ? entries.filter(e => !e?.isSidechain) : [];
   const prompts = list.map(promptOf).filter(Boolean);
   if (!prompts.length) return null;
@@ -235,7 +235,7 @@ function withPin(pins, p) {
  * 'claude', the MCP `journal` tool): a decision, a next step, a blocker.
  * -> { book, id } | { book, error }
  */
-function pin(book, { kind = 'note', text, by = 'you' } = {}, now) {
+function pin(book, /** @type {{ kind?: string, text?: string, by?: string }} */ { kind = 'note', text, by = 'you' } = {}, now) {
   const b = normalize(book);
   const t = clip(text, MAX_PIN_TEXT);
   if (!t) return { book: b, error: 'A pin needs some text.' };
@@ -257,7 +257,7 @@ const forget = (book, sessionId) => { const b = normalize(book); return { ...b, 
  * where it was, by its date. One that's back already changes nothing.
  * -> { book } | { book, error } (no room: every pin is yours now).
  */
-function putBack(book, { pin: p = null, note = null } = {}) {
+function putBack(book, /** @type {{ pin?: { id?: string } | null, note?: { sessionId?: string } | null }} */ { pin: p = null, note = null } = {}) {
   const b = normalize(book);
   if (note) return { book: record(b, normalize({ notes: [note] }).notes[0]) };
   const [clean] = normalize({ pins: [p] }).pins;
@@ -303,7 +303,7 @@ function fullNote(n, now) {
  * reply: the newest notes in full, a few more a line each, then your pins.
  * -> string, or '' when there's nothing in it.
  */
-function brief(book, { name = null, now }) {
+function brief(book, /** @type {{ name?: string | null, now: number }} */ { name = null, now }) {
   const b = normalize(book);
   if (!b.notes.length && !b.pins.length) return '';
   // Pins first in the budget: they were left on purpose, so the notes are what get cut.

@@ -10,6 +10,7 @@
     // ------------------------------------------------------------ to a terminal and back (handoff.js)
     // Off to a terminal: Pick it up here sits on the note while it's out there
     // (in a replay, only if it still is). Coming back takes the button away.
+    /** @this {FeedNotes & FeedTab} */
     renderHandoff(item, replay) {
       if (item.to === 'terminal') {
         const shell = F.shellName(item.shell);
@@ -31,6 +32,7 @@
     // ------------------------------------------------------------ cut off mid-turn (history.takeCutOff)
     // Carry on sits on the note while the conversation is still unfinished (in a
     // replay, only if it is); sending anything here takes it away.
+    /** @this {FeedNotes & FeedTab} */
     renderCutOff(item, replay) {
       const go = !replay || this.outcome === 'cut'
         ? h('button', { class: 'btn slim-btn cutoff-go', type: 'button', onclick: async e => {
@@ -43,10 +45,12 @@
         h('span', { text: F.cutOffLine(item) }), go));
     }
 
+    /** @this {FeedNotes & FeedTab} */
     dropCutOff() { for (const b of this.el.querySelectorAll('.cutoff-go')) b.remove(); }
 
     // ------------------------------------------------------------ branches (branching.js)
     // Where this conversation came from, at the top of a branch.
+    /** @this {FeedNotes & FeedTab} */
     renderBranched(item) {
       const { where, files } = F.branchedFrom(item);
       this.append(h('div', { class: 'home-mark branch-mark' },
@@ -57,6 +61,7 @@
     }
 
     // In the original: where a branch of it went.
+    /** @this {FeedNotes & FeedTab} */
     renderBranchedOff(item) {
       const where = F.branchedOffWhere(item);
       // It has other tries now: the branch chip shows, to compare with them or keep one (tab-git.js).
@@ -69,6 +74,7 @@
 
     // Two tries side by side: what this one has that the other doesn't, now.
     // Not kept in the transcript; compare again for a fresh look.
+    /** @this {FeedNotes & FeedTab} */
     renderCompare(other, r) {
       const head = F.compareHead(other.title, r);
       const how = (title, o) => (o ? h('p', { class: 'small cmp-try' }, h('b', { text: title }), ` ${F.tryLine(o, SB.duration)}`, o.said ? h('span', { class: 'muted', text: ` · “${o.said}”` }) : null) : null);
@@ -90,8 +96,8 @@
       };
       const row = f => {
         const li = this.changeRow(f, null, file => api.compareDiff(this.id, other.id, file));
-        const toggle = li.firstChild;
-        if (f.who) toggle.querySelector('.chg-path').after(h('span', { class: `cmp-who who-${f.who}`, text: F.whoWord(f.who) }));
+        const toggle = /** @type {HTMLElement} */ (li.firstChild);
+        if (f.who) toggle.querySelector('.chg-path')?.after(h('span', { class: `cmp-who who-${f.who}`, text: F.whoWord(f.who) }));
         li.prepend(h('div', { class: 'cmp-row' }, toggle, take(f)));
         return li;
       };
@@ -119,6 +125,7 @@
     }
 
     // ------------------------------------------------------------ ! commands you ran yourself
+    /** @this {FeedNotes & FeedTab} */
     renderShell(item, replay) {
       const el = h('details', { class: `tool shell-run ${item.code ? 'err' : 'ok'}`, open: !replay && String(item.output || '').split('\n').length <= 12 },
         h('summary', {},
@@ -135,6 +142,7 @@
     // Not kept in the transcript, and Claude never sees it: × puts it away.
     // ask(question, history) -> { ok, answer } | { ok: false, error }. Each answer
     // opens a reply box; a follow-up carries the thread so far (btw.js prompt()).
+    /** @this {FeedNotes & FeedTab} */
     renderBtw(question, ask) {
       const turns = []; // [{ q, a }] answered so far
       const thread = h('div', { class: 'btw-thread' });
@@ -184,6 +192,7 @@
     }
 
     // Shown while a ! command runs; its result replaces it. null clears it.
+    /** @this {FeedNotes & FeedTab} */
     renderShellPending(command) {
       if (!command) { this.shellPending?.remove(); this.shellPending = null; return; }
       this.stuck = true;

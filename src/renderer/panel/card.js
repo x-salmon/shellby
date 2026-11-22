@@ -115,7 +115,7 @@
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
-    const ctx = canvas.getContext('2d');
+    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d')); // a fresh canvas always has one
     ctx.imageSmoothingEnabled = false;
     return { canvas, ctx, w, h };
   }
@@ -152,6 +152,7 @@
     const [, , vw, vh] = (svg.getAttribute('viewBox') || '0 0 22 13').split(' ').map(Number);
     const w = Math.ceil(vw), h = Math.ceil(vh);
     const { x0, crabX } = P.framing(v, cropW, w);
+    /** @type {{ img: HTMLImageElement, w: number, h: number, x: number, flip: boolean } | null} */
     let crab = null;
     try {
       crab = { img: await svgImage(svg, w, h), w, h, x: crabX, flip: false };
@@ -198,6 +199,7 @@
   // SQUARE_TANK): his decorated tank (or plain sand) with the crab as dressed
   // now, his effect around him, and up to five stickers ({ art: { palette,
   // pixels } }) on the glass. Returns how many pieces of decor are in the picture.
+  /** @param {{ x: number, y: number, w: number, h: number }} [tank] */
   async function drawTank(ctx, glassStickers, tank = TANK) {
     const v = await decorated();
     ctx.save();
@@ -390,8 +392,12 @@
 
   const sheet = $('cardSheet');
   const HINT_MS = 10000;
+  /** @typedef {{ kind: string, draw: (size: string) => Promise<{ canvas: HTMLCanvasElement, data: unknown }>, title: string, alt: string, post: (data: unknown) => string, buttons: string, sizes?: string[], size?: string, clip?: (size: string) => Promise<{ bytes: Uint8Array, ext: string, blob: Blob }> }} CardSpec */
+  /** @type {{ url: string, bytes: Uint8Array, post: string, alt: string, name: string, path: string, copied: boolean, discord: boolean } | null} */
   let last = null;
+  /** @type {number | null} */
   let hintTimer = null;
+  /** @type {{ spec: CardSpec & { sizes: string[] }, size: string } | null} */
   let showing = null; // what the sheet shows: { spec, size }, so the size switch can draw it again
 
   // The size you last picked for a kind of card (this PC's own), Wide until you pick.
@@ -406,7 +412,7 @@
   function renderSizes() {
     const sizes = showing?.spec.sizes || ['wide'];
     $('cardSizes').hidden = sizes.length < 2;
-    for (const b of document.querySelectorAll('#cardSizes [data-size]')) {
+    for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#cardSizes [data-size]'))) {
       b.hidden = !sizes.includes(b.dataset.size);
       b.setAttribute('aria-checked', String(b.dataset.size === showing?.size));
     }
@@ -431,7 +437,7 @@
     const { kind, draw, title, alt, post, buttons } = spec;
     const sizes = spec.sizes?.length ? spec.sizes.filter(s => SIZES[s]) : ['wide'];
     const size = sizes.includes(spec.size) ? spec.size : pickedSize(kind, sizes);
-    const btns = document.querySelectorAll(`${buttons}, #cardSizes button`);
+    const btns = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(`${buttons}, #cardSizes button`));
     btns.forEach(b => { b.disabled = true; });
     try {
       const { canvas, data } = await draw(size);
@@ -465,7 +471,7 @@
     if (!showing || size === showing.size || !showing.spec.sizes.includes(size)) return;
     rememberSize(showing.spec.kind, size);
     await present({ ...showing.spec, size }, { again: true });
-    document.querySelector(`#cardSizes [data-size="${size}"]`)?.focus();
+    /** @type {HTMLElement | null} */ (document.querySelector(`#cardSizes [data-size="${size}"]`))?.focus();
   }
 
   // kind 'tank': the same card from the Tank's 📸, saved as his tank card (the "Share the tank" quest).
@@ -479,6 +485,7 @@
   // ---- a moment that moves: its clip in the preview, saved beside the card
   const box = sheet.querySelector('.card-box');
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** @type {{ url: string, path: string, name: string } | null} */
   let clip = null; // { url, path, name } while the sheet shows the clip
 
   async function makeClip() {
@@ -506,7 +513,8 @@
   // its first frame and a play button. It can't be pasted, so Show file leads.
   function showClip() {
     const v = $('cardVideo'), still = reduced();
-    v.src = clip.url;
+    const shown = /** @type {NonNullable<typeof clip>} */ (clip); // set by makeClip just before
+    v.src = shown.url;
     v.controls = still;
     v.autoplay = !still;
     v.setAttribute('aria-label', `A clip: ${last?.alt || 'the card, moving'}`);
@@ -514,7 +522,7 @@
     $('cardImg').hidden = true;
     if (!still) v.play().catch(() => {});
     $('cardLead').textContent = 'Saved as';
-    $('cardPath').textContent = clip.name;
+    $('cardPath').textContent = shown.name;
     $('cardTail').textContent = "A clip can't go on the clipboard: Show file, then drag it into your post.";
     box.classList.add('clipping');
     $('cardCopy').hidden = true;
@@ -546,13 +554,13 @@
     sheet.hidden = true;
     showPicture();
     showing = null;
-    clearTimeout(hintTimer);
+    if (hintTimer) clearTimeout(hintTimer);
   }
 
   // The line under the buttons: how to get the picture into a post. `now`, for
   // ten seconds after a post opened in the browser: the one thing left to do.
   function hint(now) {
-    clearTimeout(hintTimer);
+    if (hintTimer) clearTimeout(hintTimer);
     const el = $('cardHint');
     el.classList.toggle('now', !!now);
     el.textContent = now || (clip
@@ -565,8 +573,9 @@
 
   // Before a post opens: the card on the clipboard, copied again if the first copy didn't take.
   async function readyToPaste() {
-    if (!last.copied) last.copied = !!(await api.copyCard(last.bytes))?.ok;
-    return last.copied;
+    const card = /** @type {NonNullable<typeof last>} */ (last); // postOn checked
+    if (!card.copied) card.copied = !!(await api.copyCard(card.bytes))?.ok;
+    return card.copied;
   }
 
   async function postOn(url) {
@@ -610,7 +619,7 @@
     } finally { btn.disabled = false; }
   });
   $('cardReveal').addEventListener('click', () => api.revealCard(clip ? clip.path : last?.path));
-  $('cardSizes').addEventListener('click', e => { const b = e.target.closest('[data-size]'); if (b) switchSize(b.dataset.size); });
+  $('cardSizes').addEventListener('click', e => { const b = /** @type {HTMLElement | null} */ (e.target)?.closest('[data-size]'); if (b) switchSize(b.dataset.size); });
   $('cardClip').addEventListener('click', makeClip);
   // A moment card's post already ends with the link (moment-card.js postFor); the others get it here.
   const withLink = text => (text.split(/\s+/).some(word => word === REPO) ? text : `${text} ${REPO}`);

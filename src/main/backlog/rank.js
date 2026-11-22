@@ -195,7 +195,7 @@ const issueItem = (issue, s, tier) => ({
  *   errors: new production errors from Sentry (backlog/sentry.js errorOf).
  * -> { items: [{ id, kind, tier, title, reason, reasons, ... }], milestone }
  */
-function rank({ tasks = [], notes = [], ideas = [], issues = /** @type {any[] | null} */ (null), complete = true, milestones = [], todos = [], tickets = [], errors = [], repo = null, login = null, now = Date.now() } = {}) {
+function rank({ tasks = /** @type {ReturnType<typeof import('./tasks').parse>['items']} */ ([]), notes = /** @type {{ id: string, text: string, from?: string }[]} */ ([]), ideas = [], issues = /** @type {any[] | null} */ (null), complete = true, milestones = [], todos = [], tickets = [], errors = [], repo = null, login = null, now = Date.now() } = {}) {
   const known = Array.isArray(issues);
   const nearest = nearestMilestone(milestones);
   const byNumber = new Map();

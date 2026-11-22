@@ -176,17 +176,17 @@ function registerProjectsIpc(ipcMain, d) {
     return !!r;
   }, [str({ max: 2000 })]);
   // The project's to-do list. The key must be one the page was shown (addTodo checks).
-  ipcMain.handle('projects:todo-add', (_e, { key, text } = {}) => (isStr(key) && typeof text === 'string'
+  ipcMain.handle('projects:todo-add', (_e, /** @type {{ key?: unknown, text?: unknown }} */ { key, text } = {}) => (isStr(key) && typeof text === 'string'
     ? P()?.addTodo(key, text, 'you') ?? { ok: false } : { ok: false }), [obj({ key: KEY, text: text(10_000) })]);
-  ipcMain.handle('projects:todo-done', (_e, { key, id } = {}) => (isStr(key) && isTodoId(id)
+  ipcMain.handle('projects:todo-done', (_e, /** @type {{ key?: unknown, id?: unknown }} */ { key, id } = {}) => (isStr(key) && isTodoId(id)
     ? P()?.finishTodo(key, id) ?? { ok: false } : { ok: false }), [obj({ key: KEY, id: str({ max: 100 }) })]);
   // The handoff notes on a project's page: pin a line of your own, or take one off.
-  ipcMain.handle('projects:journal-pin', (_e, { root, kind, text } = {}) => {
+  ipcMain.handle('projects:journal-pin', (_e, /** @type {{ root?: unknown, kind?: unknown, text?: unknown }} */ { root, kind, text } = {}) => {
     const known = P()?.knowsRoot(root);
     if (!known || typeof text !== 'string') return { ok: false, error: 'Unknown project folder.' };
     return d.journal()?.pinFor(known, { kind, text }, { fromPanel: true }) ?? { ok: false };
   }, [obj({ root: PATH, kind: opt(str({ max: 40 })), text: text(10_000) })]);
-  ipcMain.handle('projects:journal-remove', (_e, { root, pinId, sessionId } = {}) => {
+  ipcMain.handle('projects:journal-remove', (_e, /** @type {{ root?: unknown, pinId?: unknown, sessionId?: unknown }} */ { root, pinId, sessionId } = {}) => {
     const known = P()?.knowsRoot(root);
     if (!known) return { ok: false };
     const id = v => (typeof v === 'string' && /^[\w-]{1,64}$/.test(v) ? v : null);
@@ -194,7 +194,7 @@ function registerProjectsIpc(ipcMain, d) {
     return d.journal()?.remove(known, { pinId: id(pinId), sessionId: id(sessionId) }) ?? { ok: false };
   }, [JOURNAL_REF]);
   // ...and Undo: the one just taken off goes back (main kept it; the page only names it).
-  ipcMain.handle('projects:journal-restore', (_e, { root, pinId, sessionId } = {}) => {
+  ipcMain.handle('projects:journal-restore', (_e, /** @type {{ root?: unknown, pinId?: unknown, sessionId?: unknown }} */ { root, pinId, sessionId } = {}) => {
     const known = P()?.knowsRoot(root);
     if (!known) return { ok: false };
     const id = v => (typeof v === 'string' && /^[\w-]{1,64}$/.test(v) ? v : null);
@@ -209,7 +209,7 @@ function registerProjectsIpc(ipcMain, d) {
   // ---------------------------------------------------------------- servers
 
   ipcMain.handle('servers:get', () => S()?.view() ?? null);
-  ipcMain.handle('servers:start', (_e, { root, script } = {}) => {
+  ipcMain.handle('servers:start', (_e, /** @type {{ root?: unknown, script?: unknown }} */ { root, script } = {}) => {
     const known = P()?.knowsRoot(root);
     if (!known) return { ok: false, error: 'Unknown project folder.' };
     // The name goes into toasts and the prompt, so it's the listed project's, never the panel's.
@@ -220,10 +220,10 @@ function registerProjectsIpc(ipcMain, d) {
   ipcMain.handle('servers:dismiss', (_e, id) => (isId(id) ? S().dismiss(id) : { ok: false }), [SRV]);
   ipcMain.handle('servers:seen', (_e, id) => { if (isId(id)) S()?.markSeen(id); return true; }, [SRV]);
   ipcMain.handle('servers:log', (_e, id) => (isId(id) ? S().log(id) : null), [SRV]);
-  ipcMain.handle('servers:fix-draft', (_e, { id, note } = {}) => (isId(id) ? S().fixDraft(id, typeof note === 'string' ? note : '') : null), [obj({ id: SRV })]);
+  ipcMain.handle('servers:fix-draft', (_e, /** @type {{ id?: unknown, note?: unknown }} */ { id, note } = {}) => (isId(id) ? S().fixDraft(id, typeof note === 'string' ? note : '') : null), [obj({ id: SRV })]);
   // The only way a server's output reaches Claude: you pressed Send on its card.
   // hash: the draft the card showed; a prompt that has changed since isn't sent.
-  ipcMain.handle('servers:fix-send', (_e, { id, note, hash } = {}) => (isId(id) && typeof hash === 'string'
+  ipcMain.handle('servers:fix-send', (_e, /** @type {{ id?: unknown, note?: unknown, hash?: unknown }} */ { id, note, hash } = {}) => (isId(id) && typeof hash === 'string'
     ? S().sendFix(id, typeof note === 'string' ? note : '', hash) : { ok: false }), [obj({ id: SRV, hash: str({ max: 300 }) })]);
   ipcMain.handle('servers:open', (_e, id) => {
     const s = isId(id) ? S()?.view().servers.find(x => x.id === id) : null;
@@ -257,7 +257,7 @@ function registerProjectsIpc(ipcMain, d) {
 
   // "Stop it": the program the card named, if it's still the same one, after
   // Shellby's own window has asked. Then the server starts again.
-  ipcMain.handle('servers:port-stop', async (_e, { id, pid } = {}) => {
+  ipcMain.handle('servers:port-stop', async (_e, /** @type {{ id?: unknown, pid?: unknown }} */ { id, pid } = {}) => {
     const look = isId(id) ? portLooks.get(id) : null;
     const h = look?.holders.find(x => x.pid === pid && x.canStop);
     if (!h) return { ok: false, error: "Look again: that program isn't the one holding the port any more." };
@@ -286,7 +286,7 @@ function registerProjectsIpc(ipcMain, d) {
 
   // "Use :5174": the free port the card offered, remembered for this script.
   // port null: back to the usual one.
-  ipcMain.handle('servers:use-port', (_e, { id, port } = {}) => {
+  ipcMain.handle('servers:use-port', (_e, /** @type {{ id?: unknown, port?: unknown }} */ { id, port } = {}) => {
     if (!isId(id)) return { ok: false };
     if (port === null) return S().usePort(id, null);
     const look = portLooks.get(id);

@@ -51,6 +51,8 @@ function normalize(raw) {
   };
 }
 
+/** @typedef {Awaited<ReturnType<typeof local.readRepos>>} LocalRepos */
+
 class Projects extends EventEmitter {
   /**
    * deps: {
@@ -77,6 +79,7 @@ class Projects extends EventEmitter {
     this.run = deps.run || leaving.git;
     this.state = normalize(deps.config.get('projects'));
     this.repoCache = new RepoCache({ now: this.now });
+    /** @type {{ at: number, repos: LocalRepos, loading: Promise<LocalRepos> | null }} */
     this.localCache = { at: 0, repos: [], loading: null };
     this.listed = new Map(); // caseKey(root) -> root, of every clone in the last list
     this.keys = new Set(); // every project key in the last list: the only ones a to-do can go on
@@ -358,6 +361,9 @@ class Projects extends EventEmitter {
    * commits only here needs `confirmed`: the tip it asked about (main asks
    * first). Looked at again just before, so a commit made since isn't lost.
    * -> { ok, needsConfirm?, only?, error? }
+   * @param {string} root
+   * @param {string} name
+   * @param {{ confirmed?: string | null }} [opts]
    */
   async deleteBranch(root, name, { confirmed = null } = {}) {
     const found = this.listedBranch(root, name);
@@ -391,6 +397,8 @@ class Projects extends EventEmitter {
    * dependencies) goes at once; one with work needs `confirmed`, the counts
    * the question showed: more than that since, and it asks again. Never one
    * an open tab is working in.
+   * @param {{ path?: string, root?: string, branch?: string }} p
+   * @param {{ confirmed?: { changed?: number, only?: number, ignoredTotal?: number } | null }} [opts]
    */
   async removeCopy(p, { confirmed = null } = {}) {
     const found = this.listedCopy(p);
@@ -466,6 +474,8 @@ class Projects extends EventEmitter {
    * One project's page: its clones with uncommitted / unpushed work and
    * Shellby's copies, read fresh; its insights; and its recent conversations.
    * listed: that project from a list() just made, so it isn't listed twice.
+   * @param {string} key
+   * @param {{ listed?: Awaited<ReturnType<Projects['list']>>['projects'][number] | null }} [opts]
    */
   async detail(key, { listed = null } = {}) {
     const found = listed?.key === key ? listed : (await this.list({ readGit: false })).projects.find(x => x.key === key);

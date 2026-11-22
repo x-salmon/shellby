@@ -62,12 +62,20 @@ function parseTag(tag) {
   return m ? { tag: m[0], prefix: m[1], version: m[2] } : null;
 }
 
+/** @typedef {NonNullable<ReturnType<typeof parseTag>>} Tag */
+
+/**
+ * @param {Tag | null} t
+ * @returns {t is Tag}
+ */
+const isTag = t => !!t;
+
 /** The highest version tag in a list of tag names, or null. Pre-releases count. */
 function latestTag(tags) {
   return (Array.isArray(tags) ? tags : [])
     .map(parseTag)
-    .filter(Boolean)
-    .reduce((best, t) => (!best || compareVersions(t.version, best.version) > 0 ? t : best), null);
+    .filter(isTag)
+    .reduce((/** @type {Tag | null} */ best, t) => (!best || compareVersions(t.version, best.version) > 0 ? t : best), null);
 }
 
 /** The version after `version` for a 'major' | 'minor' | 'patch' bump. A pre-release finishes as itself. */
@@ -111,16 +119,19 @@ function parseCommit(subject, body = '') {
  * in GROUPS order, empty groups left out.
  */
 function groupCommits(commits) {
+  /** @type {Map<string, Array<Record<string, unknown>>>} */
   const byGroup = new Map(GROUPS.map(g => [g.id, []]));
+  // Every group id is a key above, and parseCommit's group is one of them.
+  const of = id => /** @type {Array<Record<string, unknown>>} */ (byGroup.get(id));
   for (const c of Array.isArray(commits) ? commits : []) {
     if (!c || typeof c.subject !== 'string') continue;
     const p = parseCommit(c.subject, c.body);
-    byGroup.get(p.group).push({
+    of(p.group).push({
       sha: c.sha, short: String(c.sha || '').slice(0, 7), text: p.text, scope: p.scope, type: p.type,
       breaking: p.breaking, author: c.author || null, at: c.at || null,
     });
   }
-  return GROUPS.filter(g => byGroup.get(g.id).length).map(g => ({ id: g.id, label: g.label, user: g.user, commits: byGroup.get(g.id) }));
+  return GROUPS.filter(g => of(g.id).length).map(g => ({ id: g.id, label: g.label, user: g.user, commits: of(g.id) }));
 }
 
 /**
@@ -142,6 +153,7 @@ function suggestBump(groups, version) {
  * package.json was already bumped past it (a release prepared but never
  * tagged), when it's that one. First release: package.json's, else 0.1.0.
  */
+/** @param {{ tagVersion?: string | null, fileVersion?: string | null, bump?: string }} opts */
 function nextVersions({ tagVersion = null, fileVersion = null, bump = 'patch' }) {
   const base = tagVersion || null;
   const choices = base ? {
@@ -236,18 +248,21 @@ const BUMP_RANK = { patch: 0, minor: 1, major: 2 };
  * "Changed". Blank lines go, so each section is one list. Pure.
  */
 function parseNotes(notes) {
+  /** @type {Map<string, string[]>} */
   const known = new Map(GROUPS.filter(g => g.user).map(g => [g.id, []]));
+  /** @type {Map<string, { name: string, lines: string[] }>} */
   const own = new Map();
   for (const note of Array.isArray(notes) ? notes : []) {
-    let into = known.get('other');
+    // 'other' is a user group, so it's in known.
+    let into = /** @type {string[]} */ (known.get('other'));
     for (const raw of String(note?.text || '').replace(/\r\n/g, '\n').split('\n')) {
       if (/^#\s/.test(raw)) continue; // a note's own title: the release has its own
       const h = /^#{2,4}\s+(.+?)\s*$/.exec(raw);
       if (h) {
         const key = h[1].toLowerCase();
         const id = NOTE_HEADINGS.get(key);
-        if (id) into = known.get(id);
-        else { if (!own.has(key)) own.set(key, { name: h[1], lines: [] }); into = own.get(key).lines; }
+        if (id) into = /** @type {string[]} */ (known.get(id));
+        else { if (!own.has(key)) own.set(key, { name: h[1], lines: [] }); into = /** @type {{ lines: string[] }} */ (own.get(key)).lines; }
         continue;
       }
       if (raw.trim()) into.push(raw.trimEnd());

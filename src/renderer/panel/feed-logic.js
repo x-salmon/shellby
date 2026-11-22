@@ -63,12 +63,13 @@
   /**
    * The busy line while Claude Code tries a failed API request again.
    * { attempt, max, delayMs, status } from the api_retry event, any of them null.
-   * @param {{ attempt?: number | null, max?: number | null, delayMs?: number | null, status?: number | null }} [retry]
    */
-  function retryLine({ attempt, max, delayMs, status } = {}) {
-    const why = status === 429 ? 'Rate limited' : status === 529 || (status >= 500 && status < 600) ? 'The API is busy' : 'A request failed';
+  function retryLine(/** @type {{ attempt?: number | null, max?: number | null, delayMs?: number | null, status?: number | null }} */ { attempt, max, delayMs, status } = {}) {
+    const code = status ?? 0;
+    const why = code === 429 ? 'Rate limited' : code === 529 || (code >= 500 && code < 600) ? 'The API is busy' : 'A request failed';
     const which = attempt ? ` (attempt ${attempt}${max ? ` of ${max}` : ''})` : '';
-    const wait = delayMs >= 1000 ? ` in ${Math.round(delayMs / 1000)} s` : '';
+    const ms = delayMs ?? 0;
+    const wait = ms >= 1000 ? ` in ${Math.round(ms / 1000)} s` : '';
     return `${why}, trying again${wait}${which}…`;
   }
 

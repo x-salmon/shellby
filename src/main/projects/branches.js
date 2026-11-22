@@ -82,6 +82,8 @@ async function weigh(root, name, landing, run) {
  * One repository's stale branches and its copies' branches.
  * isCopy(path): is this worktree one of Shellby's copies?
  * -> { ok, main: 'main' | null, branches: [...stale()], copies: [{ path, branch, at, merged, only }] }
+ * @param {string} root
+ * @param {{ run: (args: string[]) => Promise<string | null>, now?: number, isCopy?: (path: string) => boolean }} opts
  */
 async function read(root, { run, now = Date.now(), isCopy = () => false }) {
   const out = await run(['-C', root, 'for-each-ref', '--sort=committerdate',
@@ -106,7 +108,14 @@ async function read(root, { run, now = Date.now(), isCopy = () => false }) {
   return { ok: true, main, branches: stale(weighed, now), copies };
 }
 
-/** Still safe to delete without asking? Looked at again right before: -> { ok, merged, only, checkedOut, at, sha } */
+/**
+ * Still safe to delete without asking? Looked at again right before: -> { ok, merged, only, checkedOut, at, sha }
+ * @param {string} root
+ * @param {string} name
+ * @param {(args: string[]) => Promise<string | null>} run
+ * @returns {Promise<{ ok: false, gone?: boolean, merged?: undefined, only?: undefined, checkedOut?: undefined, at?: undefined, sha?: undefined }
+ *   | { ok: boolean, gone?: undefined, merged: boolean, only: number, checkedOut: boolean, at: number | null, sha: string }>}
+ */
 async function recheck(root, name, run) {
   if (!REF.test(name || '')) return { ok: false };
   const refs = parseRefs(await run(['-C', root, 'for-each-ref', '--format=%(refname:short)%00%(committerdate:unix)%00%00%00%(worktreepath)%00%(objectname)', `refs/heads/${name}`]));

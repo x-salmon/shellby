@@ -71,6 +71,7 @@ function launchPlan(def, env, find = findCommand) {
 
 // ---------------------------------------------------------------- stdio
 
+/** @param {Record<string, any>} def @param {{ cwd?: string, env?: NodeJS.ProcessEnv, spawnImpl?: typeof spawn, find?: typeof findCommand }} [opts] */
 function stdioSession(def, { cwd, env, spawnImpl = spawn, find } = {}) {
   const fullEnv = { ...env, ...expandEnv(isObj(def.env) ? def.env : {}, env) };
   const plan = launchPlan(expandEnv(def, env), fullEnv, find);
@@ -80,6 +81,7 @@ function stdioSession(def, { cwd, env, spawnImpl = spawn, find } = {}) {
   const job = child.pid ? processJob.adopt(child.pid) : null;
   const pending = new Map();
   let stderr = '';
+  /** @type {Error | null} */
   let closed = null;
   let nextId = 1;
 
@@ -169,6 +171,7 @@ function sseMessages(text) {
  * is all that's needed (the answer in an event stream the server keeps open),
  * and reading stops there.
  */
+/** @param {Response} res @param {(text: string) => boolean} [enough] */
 async function readCapped(res, enough = () => false) {
   if (!res.body?.getReader) return (await res.text()).slice(0, MAX_BODY);
   const reader = res.body.getReader();
@@ -185,13 +188,16 @@ async function readCapped(res, enough = () => false) {
   return text;
 }
 
+/** @param {Record<string, any>} def @param {{ env?: NodeJS.ProcessEnv, fetchImpl?: typeof fetch, signal?: AbortSignal }} [opts] */
 function httpSession(def, { env, fetchImpl = fetch, signal } = {}) {
   const d = expandEnv(def, env);
   let url;
   try { url = new URL(String(d.url || '')); } catch { throw new McpError('This server\'s address isn\'t a URL.'); }
   if (!/^https?:$/.test(url.protocol)) throw new McpError('This server\'s address must start with https:// (or http://).');
   const base = { ...(isObj(d.headers) ? d.headers : {}) };
+  /** @type {string | null} */
   let session = null;
+  /** @type {string | null} */
   let protocol = null;
   let nextId = 1;
 
@@ -242,6 +248,7 @@ function httpSession(def, { env, fetchImpl = fetch, signal } = {}) {
  * Start (or reach) the server, initialize, run fn(session), and always shut it
  * down. opts: { cwd, env, timeoutMs, signal, spawnImpl, fetchImpl, find }.
  */
+/** @param {Record<string, any>} def @param {(s: any) => Promise<any>} fn @param {{ cwd?: string, env?: NodeJS.ProcessEnv, timeoutMs?: number, signal?: AbortSignal, spawnImpl?: typeof spawn, fetchImpl?: typeof fetch, find?: typeof findCommand }} [opts] */
 async function withServer(def, fn, opts = {}) {
   const transport = transportOf(def);
   if (transport === 'sse') throw new McpError('This server uses the older SSE connection, which Shellby can\'t call directly. A Claude step can use it.');
@@ -249,8 +256,11 @@ async function withServer(def, fn, opts = {}) {
   if (opts.signal?.aborted) throw abortError();
   const controller = new AbortController();
   const env = opts.env || process.env;
+  /** @type {ReturnType<typeof stdioSession> | ReturnType<typeof httpSession> | null} */
   let s = null;
+  /** @type {NodeJS.Timeout | undefined} */
   let timer;
+  /** @type {(() => void) | null} */
   let onAbort = null;
   // Settle first, then abort: the first reason given is the one that counts.
   const deadline = new Promise((_, reject) => {
@@ -271,7 +281,7 @@ async function withServer(def, fn, opts = {}) {
     return await Promise.race([work, deadline]);
   } finally {
     clearTimeout(timer);
-    opts.signal?.removeEventListener('abort', onAbort);
+    if (onAbort) opts.signal?.removeEventListener('abort', onAbort);
     // The call's own result or error is what the caller needs; a failed shutdown
     // mustn't replace it (process-job still ends the tree with Shellby).
     try { s?.close(); } catch { /* see above */ }

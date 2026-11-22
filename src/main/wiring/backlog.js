@@ -36,6 +36,8 @@ const MAX_LINKS = 100;      // per project
 const MAX_LISTED = 200;     // items the panel gets
 const MAX_TEXT_ITEMS = 15;  // in `shellby next` and the MCP tool
 
+/** @typedef {{ root?: string | null, repo?: string | null }} ProjectRef */
+
 const lower = s => String(s || '').toLowerCase();
 const firstLine = s => String(s || '').trim().split('\n').filter(Boolean).pop() || '';
 /** d: what main shares (main.js `shared`). */
@@ -52,19 +54,22 @@ function wireBacklog(d) {
 
   // ---- which project
 
-  /** A project the panel named -> { ok, root, repo, name, key } | { ok: false, error }. */
-  async function resolve({ root, repo } = {}) {
+  /**
+   * A project the panel named -> { ok, root, repo, name, key } | { ok: false, error }.
+   * @returns {Promise<{ ok: true, root: string | null, repo: string | null, name: string, key: string } | { ok: false, error: string }>}
+   */
+  async function resolve(/** @type {ProjectRef} */ { root, repo } = {}) {
     if (!d.projects) return { ok: false, error: 'Shellby is still starting up. Try again in a moment.' };
     if (typeof root === 'string' && root) {
       const known = path.isAbsolute(root) ? d.projects.knowsRoot(root) : null;
       if (!known || !fs.existsSync(known)) return { ok: false, error: "That folder isn't on the Projects page." };
       const remote = await d.projects.repoOf(known);
-      const p = { ok: true, root: known, repo: remote, name: d.projects.nameFor(known) };
-      return { ...p, key: keyOf(p) };
+      const p = { root: known, repo: remote, name: d.projects.nameFor(known) };
+      return { ok: true, ...p, key: keyOf(p) };
     }
     if (typeof repo === 'string' && d.projects.knowsRepo(repo)) {
-      const p = { ok: true, root: null, repo, name: repo.split('/')[1] };
-      return { ...p, key: keyOf(p) };
+      const p = { root: null, repo, name: repo.split('/')[1] };
+      return { ok: true, ...p, key: keyOf(p) };
     }
     return { ok: false, error: "That project isn't on the Projects page." };
   }
@@ -200,6 +205,7 @@ function wireBacklog(d) {
       issuesFor(p.repo, fresh),
       d.sentryFor ? d.sentryFor(p, { fresh }).catch(() => ({ state: 'none' })) : { state: 'none' },
     ]);
+    /** @type {ReturnType<typeof tasks.parse>} */
     const parsed = read?.ok ? tasks.parse(read.text) : { items: [], done: 0, more: 0 };
     const projectKey = d.projects?.keyFor?.(p) || null;
     const ranked = rank({
@@ -225,13 +231,14 @@ function wireBacklog(d) {
    * The Next up card for a project. -> { ok, items, milestone, milestones, github,
    * tasks, looseEnds, done, hidden, helpers, cloned, project, repo } | { ok: false, error }
    */
-  async function view({ root, repo, fresh = false } = {}) {
+  async function view(/** @type {ProjectRef & { fresh?: boolean }} */ { root, repo, fresh = false } = {}) {
     const p = await resolve({ root, repo });
     if (!p.ok) return p;
     const b = await build(p, { fresh, kick: true });
     const links = linksFor(p.key);
-    const tasksFile = p.root
-      ? (b.read.ok ? { exists: b.read.exists, ...(b.read.exists ? await tasksGit(p.root) : { ignored: false, uncommitted: false }) } : { error: b.read.error })
+    const read = p.root ? b.read : null; // read from the checkout whenever there is one
+    const tasksFile = p.root && read
+      ? (read.ok ? { exists: read.exists, ...(read.exists ? await tasksGit(p.root) : { ignored: false, uncommitted: false }) } : { error: read.error })
       : null;
     return {
       ok: true,
@@ -255,13 +262,13 @@ function wireBacklog(d) {
 
   // ---- editing tasks
 
-  const OPS = new Set(['add', 'tick', 'rename', 'remove', 'move']);
+  const OPS = new Set(/** @type {(string | undefined)[]} */ (['add', 'tick', 'rename', 'remove', 'move']));
 
   /**
    * One edit to tasks.md. add: { title, to? }. tick/remove: { id, line }.
    * rename: { id, line, title }. move: { id, line, to }. -> { ok } | { ok: false, error, stale? }
    */
-  async function editTask({ root, op, id, line, title, to } = {}) {
+  async function editTask(/** @type {{ root?: string | null, op?: string, id?: string, line?: number, title?: string, to?: string }} */ { root, op, id, line, title, to } = {}) {
     if (!OPS.has(op)) return { ok: false, error: 'That isn\'t something Shellby can do to a task.' };
     const p = await resolve({ root });
     if (!p.ok) return p;
@@ -298,7 +305,7 @@ function wireBacklog(d) {
   };
 
   /** "Add to my tasks" on an issue: `- [ ] #42` (or `- [ ] ENG-123`) in ## Next, so you can put it where you want it. */
-  async function addIssueTask({ root, id } = {}) {
+  async function addIssueTask(/** @type {{ root?: string | null, id?: string }} */ { root, id } = {}) {
     const p = await resolve({ root });
     if (!p.ok) return p;
     const item = lists.get(p.key)?.items.find(i => i.id === id && (i.kind === 'issue' || i.kind === 'ticket'));
@@ -318,7 +325,7 @@ function wireBacklog(d) {
    */
   const starting = new Set(); // `${key}\n${id}` while its copy is being made: a second click waits its turn
 
-  async function doThis({ root, repo, id } = {}) {
+  async function doThis(/** @type {ProjectRef & { id?: string }} */ { root, repo, id } = {}) {
     if (!claudeReady()) return { ok: false, needsClaude: true, error: 'That needs Claude Code: set it up first.' };
     const p = await resolve({ root, repo });
     if (!p.ok) return p;
@@ -339,6 +346,7 @@ function wireBacklog(d) {
     if (link) return { ok: false, doing: true, tabId: link.tabId, error: 'There\'s a conversation on that already.' };
 
     let res;
+    /** @type {string | null} */
     let warn = null;
     if (item.kind === 'issue') {
       if (!p.root) return { ok: false, needsClone: true, repo: p.repo, error: 'Clone it first, so Claude has somewhere to work.' };
@@ -411,7 +419,7 @@ function wireBacklog(d) {
   }
 
   /** "Open conversation": the tab if it's open, else back from History. */
-  function openDoing({ root, repo, id } = {}) {
+  function openDoing(/** @type {ProjectRef & { id?: string }} */ { root, repo, id } = {}) {
     return resolve({ root, repo }).then(p => {
       if (!p.ok) return p;
       const link = linksFor(p.key)[id];
@@ -421,7 +429,7 @@ function wireBacklog(d) {
   }
 
   /** "Open file" on a loose end: its project's window at the line. */
-  async function openTodo({ root, id } = {}) {
+  async function openTodo(/** @type {{ root?: string | null, id?: string }} */ { root, id } = {}) {
     const p = await resolve({ root });
     if (!p.ok || !p.root) return p.ok ? { ok: false, error: 'Clone it first.' } : p;
     const t = lists.get(p.key)?.items.find(i => i.id === id && i.kind === 'todo')?.todo;
@@ -436,7 +444,7 @@ function wireBacklog(d) {
   }
 
   /** "Open on GitHub" for an issue the list showed. */
-  async function openIssue({ root, repo, id } = {}) {
+  async function openIssue(/** @type {ProjectRef & { id?: string }} */ { root, repo, id } = {}) {
     const p = await resolve({ root, repo });
     if (!p.ok) return p;
     const issue = lists.get(p.key)?.items.find(i => i.id === id && i.issue)?.issue;
@@ -447,7 +455,7 @@ function wireBacklog(d) {
 
   // ---- hiding
 
-  async function hide({ root, repo, id, show = false } = {}) {
+  async function hide(/** @type {ProjectRef & { id?: string, show?: boolean }} */ { root, repo, id, show = false } = {}) {
     const p = await resolve({ root, repo });
     if (!p.ok) return p;
     const all = hiddenAll();
@@ -464,7 +472,7 @@ function wireBacklog(d) {
   // ---- Sentry (wiring/sentry.js): connecting, and which Sentry project this is
 
   /** op: connect { token, url } | link { org, slug } (slug null: not a Sentry project) | unlink | snooze | disconnect. */
-  async function sentryOp({ root, op, token, url, org, slug } = {}) {
+  async function sentryOp(/** @type {{ root?: string | null, op?: string, token?: string, url?: string, org?: string, slug?: string | null }} */ { root, op, token, url, org, slug } = {}) {
     if (!d.sentryConnect) return { ok: false, error: 'Sentry isn\'t ready yet.' };
     if (op === 'disconnect') return d.sentryDisconnect();
     if (op === 'connect') return d.sentryConnect({ token, url });
@@ -561,7 +569,7 @@ function wireBacklog(d) {
   }
 
   /** "Commit tasks.md": only that file, never pushed. */
-  async function commitTasks({ root } = {}) {
+  async function commitTasks(/** @type {{ root?: string | null }} */ { root } = {}) {
     const p = await resolve({ root });
     if (!p.ok) return p;
     if (!p.root) return { ok: false, error: 'Clone it first.' };
@@ -582,7 +590,7 @@ function wireBacklog(d) {
   // ---- Hand it to the Issue helper (Phase 3)
 
   /** Start one workflow with an Issue trigger for this issue, without it asking again (event: picked). */
-  async function handToWorkflow({ root, repo, id, workflowId } = {}) {
+  async function handToWorkflow(/** @type {ProjectRef & { id?: string, workflowId?: string }} */ { root, repo, id, workflowId } = {}) {
     if (d.config.get('crabOnly') || !d.workflows) return { ok: false, error: 'Workflows are off: Shellby is in just-the-crab mode.' };
     const p = await resolve({ root, repo });
     if (!p.ok) return p;

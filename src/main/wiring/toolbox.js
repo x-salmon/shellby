@@ -99,7 +99,7 @@ function wireToolbox(d) {
   // Hooks run programs on their own in every session, so each change is asked in
   // the isolated confirm window, never decided by the panel. The panel names a
   // scope (user / project / local), never a path; `at`+`fp` pin the hook it saw.
-  async function confirmAndChangeHook({ scope, at, fp, hook: input } = {}, remove = false) {
+  async function confirmAndChangeHook(/** @type {{ scope?: string, at?: string, fp?: string, hook?: object }} */ { scope, at, fp, hook: input } = {}, remove = false) {
     const fail = error => ({ ok: false, error, setup: setupView() });
     if (hookAsking) return fail('Answer the open question about a hook first.');
     const target = claudeSetup.settingsFiles(setupWhere()).find(f => f.scope === scope);
@@ -176,7 +176,7 @@ function wireToolbox(d) {
     });
   }
 
-  async function pauseHook({ scope, at, fp } = {}) {
+  async function pauseHook(/** @type {{ scope?: string, at?: string, fp?: string }} */ { scope, at, fp } = {}) {
     const fail = error => ({ ok: false, error, setup: setupView() });
     const changed = () => ({ ...fail('That hook changed on disk since this list was made. Rescan and try again.'), conflict: true });
     if (hookAsking) return fail('Answer the open question about a hook first.');
@@ -255,10 +255,10 @@ function wireToolbox(d) {
   const testedCommands = new Set();
   let testRunning = false;
 
-  async function testHook({ hook: input, payload } = {}) {
+  async function testHook(/** @type {{ hook?: object, payload?: unknown }} */ { hook: input, payload } = {}) {
     const v = claudeSetup.validateHook(input);
     if (v.error) return { ok: false, error: v.error };
-    const hook = v.hook;
+    const hook = /** @type {NonNullable<typeof v.hook>} */ (v.hook); // no error means a hook
     const cwd = setupCwd();
     let body;
     if (payload === undefined || payload === null || payload === '') body = hookTest.samplePayload(hook, cwd);

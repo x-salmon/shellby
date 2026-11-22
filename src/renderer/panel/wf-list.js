@@ -230,7 +230,7 @@
             h('span', { class: 'switch' })))),
       last?.waiting ? waitingBox(last) : null,
       runFormFor === w.id ? runForm(w) : null,
-      estimateFor?.id === w.id ? estimateBox(w, estimateFor) : null);
+      estimateFor && estimateFor.id === w.id ? estimateBox(w, estimateFor) : null);
   }
 
   // Run, with what a run usually costs on it ("Run · ~3% of your window"); amber when it

@@ -23,10 +23,11 @@ function makeBattles({ d, on, state, names }) {
   // ---- bug battles: Claude's work on what's loose, as a fight (bugdex/battle.js)
 
   const battleMeta = new Map();      // encounter id -> { tabId, project, source }: kept past the catch
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let battleTimer = null;
 
   /** Its battle, started if there isn't one yet (after a restart they start afresh). */
-  function battleOf(e, now = Date.now(), failed = null) {
+  function battleOf(e, now = Date.now(), /** @type {number | null} */ failed = null) {
     const id = lifecycle.encId(e);
     battleMeta.set(id, { tabId: e.tabId || battleMeta.get(id)?.tabId || null, project: e.name || names.get(e.project) || '', source: e.source });
     if (battles.has(id)) return battles.get(id);
@@ -77,7 +78,7 @@ function makeBattles({ d, on, state, names }) {
     }
     const tabs = new Set(d.manager ? [...d.manager.tabs.keys()] : []);
     return [...battles.values()].map(b => {
-      const sp = speciesById(b.species);
+      const sp = /** @type {NonNullable<ReturnType<typeof speciesById>>} */ (speciesById(b.species)); // a battle only starts for a known species
       const meta = battleMeta.get(b.id) || {};
       const h = HABITATS.find(x => x.id === sp.habitat);
       const boss = bossOf(sp.id);
@@ -103,7 +104,7 @@ function makeBattles({ d, on, state, names }) {
 
   /** The battle's ending: the fix's finishing blow, the jar, and the crew who helped get it on their record. */
   function endBattle(e, r, now, move) {
-    const sp = speciesById(e.species);
+    const sp = /** @type {NonNullable<ReturnType<typeof speciesById>>} */ (speciesById(e.species)); // caught, so a known species
     const was = battles.get(lifecycle.encId(e));
     // A squatter that was a zombie all along: the battle was with what it looked like.
     const reveal = was && was.species !== sp.id ? sp.name : null;

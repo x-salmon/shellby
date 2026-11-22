@@ -175,8 +175,8 @@
   function debounce(fn, ms) {
     /** @type {ReturnType<typeof setTimeout> | null} */
     let timer = null;
-    const call = () => { clearTimeout(timer); timer = setTimeout(fn, ms); };
-    call.cancel = () => clearTimeout(timer);
+    const call = () => { if (timer) clearTimeout(timer); timer = setTimeout(fn, ms); };
+    call.cancel = () => { if (timer) clearTimeout(timer); };
     return call;
   }
 

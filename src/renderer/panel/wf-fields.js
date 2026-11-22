@@ -27,7 +27,7 @@
     /** @type {HTMLElement | null} */
     let hintEl = null;
     if (hint) {
-      hintEl = h('p', { class: 'field-hint', id: uid('hint'), text: hint });
+      hintEl = /** @type {HTMLElement} */ (h('p', { class: 'field-hint', id: uid('hint'), text: hint }));
       control.setAttribute('aria-describedby', hintEl.id);
     }
     const err = slot(at, control);
