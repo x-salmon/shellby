@@ -41,6 +41,7 @@ function wireProjects(d) {
       has: (dir, file) => { try { return fs.statSync(path.join(dir, file)).isFile(); } catch { return false; } },
       // The start of a file (is yarn.lock Yarn 1's or Yarn 2+'s?).
       peek: (dir, file) => {
+        /** @type {number | null} */
         let fd = null;
         try {
           fd = fs.openSync(path.join(dir, file), 'r');
@@ -144,6 +145,7 @@ function wireProjects(d) {
 
   // Point at your dev server (devpoint.js): its own window; what you pick goes
   // to the panel, which sends it into a conversation in that project.
+  /** @type {ReturnType<typeof createDevPoint> | null} */
   let devPoint = null;
   function pointAtServer(serverId) {
     const s = d.devServers?.servers.get(serverId);
@@ -216,7 +218,7 @@ function wireProjects(d) {
   // attachments(worktree): the files that go with the prompt, as a message sent
   // from the box would carry them (attachments.js), once the copy is known (tries).
   // model: a model of its own (models.js), set before its first message.
-  async function startTaskInCopy(dir, title, promptFor, { mode = null, start = 'HEAD', copy = null, draft = false, attachments = null, model = null, local = null } = {}) {
+  async function startTaskInCopy(dir, title, promptFor, /** @type {{ mode?: string | null, start?: string, copy?: import('../worktrees').Worktree | null, draft?: boolean, attachments?: ((w: import('../worktrees').Worktree) => string[]) | null, model?: string | null, local?: string | null }} */ { mode = null, start = 'HEAD', copy = null, draft = false, attachments = null, model = null, local = null } = {}) {
     if (d.config.get('crabOnly') || !d.claudeStatus?.installed || !d.claudeStatus?.loggedIn) return { ok: false, needsClaude: true, error: 'That needs Claude Code: set it up first.' };
     let w = copy;
     let aside = {}; // your checkout's finished branch, left for main (worktrees.create)

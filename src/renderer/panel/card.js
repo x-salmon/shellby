@@ -413,7 +413,7 @@
     const sizes = showing?.spec.sizes || ['wide'];
     $('cardSizes').hidden = sizes.length < 2;
     for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('#cardSizes [data-size]'))) {
-      b.hidden = !sizes.includes(b.dataset.size);
+      b.hidden = !sizes.includes(/** @type {string} */ (b.dataset.size));
       b.setAttribute('aria-checked', String(b.dataset.size === showing?.size));
     }
     $('cardClip').hidden = !showing?.spec.clip;
@@ -592,7 +592,7 @@
     hint(copied ? 'Your card is on the clipboard: press Ctrl+V in the post.' : "Couldn't copy it: Show file, then drag it into your post.");
   }
 
-  document.querySelectorAll('[data-share-card]').forEach(b => b.addEventListener('click', () => share({ kind: b.dataset.kind })));
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-share-card]')).forEach(b => b.addEventListener('click', () => share({ kind: b.dataset.kind })));
   $('cardClose').addEventListener('click', close);
   sheet.addEventListener('click', e => { if (e.target === sheet) close(); });
   sheet.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
@@ -619,7 +619,7 @@
     } finally { btn.disabled = false; }
   });
   $('cardReveal').addEventListener('click', () => api.revealCard(clip ? clip.path : last?.path));
-  $('cardSizes').addEventListener('click', e => { const b = /** @type {HTMLElement | null} */ (e.target)?.closest('[data-size]'); if (b) switchSize(b.dataset.size); });
+  $('cardSizes').addEventListener('click', e => { const b = /** @type {HTMLElement | null} */ (e.target.closest('[data-size]')); if (b) switchSize(b.dataset.size); });
   $('cardClip').addEventListener('click', makeClip);
   // A moment card's post already ends with the link (moment-card.js postFor); the others get it here.
   const withLink = text => (text.split(/\s+/).some(word => word === REPO) ? text : `${text} ${REPO}`);

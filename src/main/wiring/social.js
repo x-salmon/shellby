@@ -30,7 +30,7 @@ function wireSocial(d) {
     };
   }
   // notice: a line the panel shows as a toast (a swap declined).
-  const push = (notice = null) => { d.send(d.panel, 'social', { ...socialView(), notice }); d.life?.changed?.(); };
+  const push = (/** @type {string | null} */ notice = null) => { d.send(d.panel, 'social', { ...socialView(), notice }); d.life?.changed?.(); };
   // What's on your card changed (spares, eggs): publish it.
   const republish = () => d.friends?.republish?.().catch(() => {});
 
@@ -77,7 +77,8 @@ function wireSocial(d) {
   async function swapAnswer(sid, yes) {
     const r = swaps.answer(swapState(), finds(), sid, !!yes, now());
     if (!r.ok) return r;
-    const sent = await send(r.letter, r.letter.to);
+    const letter = /** @type {NonNullable<typeof r.letter>} */ (r.letter); // an accepted answer always has its letter
+    const sent = await send(letter, letter.to);
     if (!sent.ok) return sent; // nothing moved: try again
     d.config.set({ swaps: r.swaps, finds: r.finds });
     if (r.done) swapDone(r.done);
@@ -88,7 +89,8 @@ function wireSocial(d) {
 
   // A swap went through, on your side: the find arrives, and it counts.
   function swapDone(done) {
-    const got = gifts.findById(done.got.id);
+    // swaps.js only keeps ids that are finds, so both lookups hold.
+    const got = /** @type {NonNullable<ReturnType<typeof gifts.findById>>} */ (gifts.findById(done.got.id));
     const twice = d.eventBoosts?.().swaps || 1; // Pen Pal Week: swaps count double toward the trophies
     for (let i = 0; i < twice; i++) d.stat('swap-made');
     if (done.completed?.length) d.stat('swap-set');
@@ -96,7 +98,7 @@ function wireSocial(d) {
     d.awardXp('swap', { label: `Swapped with @${done.with}` });
     d.life?.remember?.('first-swap', { login: done.with });
     const set = done.completed?.length ? gifts.SETS.find(s => s.id === done.completed[0]) : null;
-    const look = done.got.shiny ? gifts.sparkly(got) : got;
+    const look = done.got.shiny ? /** @type {NonNullable<ReturnType<typeof gifts.sparkly>>} */ (gifts.sparkly(got)) : got;
     d.send(d.panel, 'life:moment', {
       eyebrow: set ? 'Swap: set complete!' : 'Swap done', icon: '🤝', title: `${done.got.shiny ? '✨ ' : ''}${got.name}`,
       text: set ? `From @${done.with}. That finishes ${set.name}!` : `From @${done.with}, for your ${gifts.findById(done.gave.id).name.toLowerCase()}.`,

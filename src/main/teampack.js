@@ -281,6 +281,8 @@ function quoteArg(a) {
  * One of your servers (Claude Code's definition, mcpservers.resolveServer),
  * ready for the pack: its command or URL, and only the *names* of its
  * environment variables and headers. -> { ok, server, blanks } | { ok: false, error }
+ * @returns {{ ok: false, error: string, server?: undefined, blanks?: undefined }
+ *   | { ok: true, error?: undefined, server: NonNullable<ReturnType<typeof checkMcp>['server']>, blanks: string[] }}
  */
 function portableMcp(name, def) {
   if (!isObj(def)) return { ok: false, error: `"${name}" can't be shared from here.` };

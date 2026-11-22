@@ -53,12 +53,13 @@ const linked = file => isLink(path.dirname(file)) || isLink(file);
 
 // Names in a folder of the repo, never through a link. (kind: 'file' ending in
 // ext, or 'dir' holding `inside`.)
+/** @param {string} dir @param {{ ext?: string | null, inside?: string | null }} [opts] */
 function namesIn(dir, { ext = null, inside = null } = {}) {
   if (isLink(dir)) return [];
   let list;
   try { list = fs.readdirSync(dir, { withFileTypes: true }); } catch { return []; }
   return list
-    .filter(e => (ext ? e.isFile() && e.name.toLowerCase().endsWith(ext) : e.isDirectory() && exists(path.join(dir, e.name, inside))))
+    .filter(e => (ext ? e.isFile() && e.name.toLowerCase().endsWith(ext) : e.isDirectory() && exists(path.join(dir, e.name, /** @type {string} */ (inside)))))
     .map(e => (ext ? e.name.slice(0, -ext.length) : e.name))
     .sort((a, b) => a.localeCompare(b))
     .slice(0, MAX_LISTED);
@@ -290,7 +291,7 @@ function register(deps) {
   }, [NAME]);
 
   // By what it is, not where it was in the list: the file may have changed since the panel drew it.
-  ipcMain.handle('team:add-hook', async (_e, { key, scope } = {}) => {
+  ipcMain.handle('team:add-hook', async (_e, /** @type {{ key?: unknown, scope?: unknown }} */ { key, scope } = {}) => {
     const c = current();
     if (c.error) return done({ ok: false, error: c.error });
     const hook = typeof key === 'string' ? c.pack.hooks.find(h => tp.hookKey(h) === key) : null;
@@ -302,7 +303,7 @@ function register(deps) {
     return done({ ok: !!r.ok, cancelled: !!r.cancelled, error: r.ok || r.cancelled ? null : r.error });
   }, [obj({ key: KEY, scope: oneOf(...HOOK_SCOPES) })]);
 
-  ipcMain.handle('team:add-rule', async (_e, { key, scope } = {}) => {
+  ipcMain.handle('team:add-rule', async (_e, /** @type {{ key?: unknown, scope?: unknown }} */ { key, scope } = {}) => {
     const c = current();
     if (c.error) return done({ ok: false, error: c.error });
     const rule = typeof key === 'string' ? c.pack.rules.find(r => tp.ruleKey(r) === key) : null;
@@ -341,7 +342,7 @@ function register(deps) {
     return v && typeof v === 'object' ? { env: v.env, headers: v.headers } : {};
   };
 
-  ipcMain.handle('team:add-mcp', async (_e, { name, values } = {}) => {
+  ipcMain.handle('team:add-mcp', async (_e, /** @type {{ name?: unknown, values?: unknown }} */ { name, values } = {}) => {
     const c = current();
     if (c.error) return done({ ok: false, error: c.error });
     const server = isStr(name) ? c.pack.mcpServers.find(s => s.name === name) : null;
@@ -364,7 +365,7 @@ function register(deps) {
   }, [obj({ name: NAME, values: opt(obj()) })]);
 
   // Everything waiting, after one window that shows every part of it.
-  ipcMain.handle('team:setup-all', async (_e, { values } = {}) => {
+  ipcMain.handle('team:setup-all', async (_e, /** @type {{ values?: unknown }} */ { values } = {}) => {
     const c = current();
     if (c.error) return done({ ok: false, error: c.error });
     const v = view();

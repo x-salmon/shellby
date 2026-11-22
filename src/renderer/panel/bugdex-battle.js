@@ -28,7 +28,10 @@
   const JAR = { palette: { j: '#bfe9ff', c: '#b07a4a', h: '#ffffff', g: '#7fb8d6' }, pixels: ['..cccc..', '..cccc..', '.j....j.', 'jh.....j', 'jh.....j', 'j......j', 'j......j', 'jg....gj', '.jjjjjj.'] };
 
   let battles = [];
-  let scene = null;   // the open battle screen: { id, el, parts, shown, queue, playing, last }
+  /** @typedef {{ id: string, b: NonNullable<ReturnType<typeof SB.battleOf>>, parts: Record<string, HTMLElement>, shown: number, queue: unknown[], playing: boolean, ready: boolean, back: Element | null, hp: number, log: unknown[], gen: number, idleN: number, idling: boolean, idleAnims: Animation[], quietSince: number, idleTimer: number }} BattleScene */
+  /** @type {BattleScene | null} */
+  let scene = null;   // the open battle screen: { id, b, parts, shown, queue, playing, ready, back, hp, log, … }
+  /** @type {string | null} */
   let chipFor = null; // the battle the chip is showing
   let chipSeq = 0;
 

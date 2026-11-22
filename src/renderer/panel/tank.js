@@ -18,15 +18,23 @@
   const TANK_SHARE = 0.5;    // of the tab's height, the most the tank takes
 
   const view = $('tankView'), stage = $('tkStage'), canvas = $('tkCanvas'), hits = $('tkHits');
-  const ctx = canvas.getContext('2d');
+  const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
 
-  let v = null;              // the tank, from main
+  /** @typedef {{ layout: { size: string, style?: { light?: string }, placed: Array<{ uid: number }> }, size: { cap: number }, sizes: Array<{ id: string, cap: number, unlocked?: boolean }>, tray: Array<{ ref: string, layer?: string, category?: string, isNew?: boolean, locked?: boolean, kind?: string }>, focusX?: number, news: unknown[] }} TankView */
+  /** @type {TankView} */
+  let v = /** @type {TankView} */ (/** @type {unknown} */ (null)); // the tank, from main; every reader checks it's arrived (!v) or runs once it has
+  /** @type {string | null} */
   let shelf = null;          // the tray's open category
   let K = 3, u = 3;          // device px and css px per art pixel
-  let crab = null, crabKey = null;
+  /** @type {{ img: HTMLImageElement, w: number, h: number } | null} */
+  let crab = null;
+  /** @type {string | null} */
+  let crabKey = null;
+  /** @type {{ x: number, dir: number, target: number | null, rest: number, step: number, hopUntil: number, act: { uid: number, x: number, kind: string, start: number, ms: number } | null, news: number[], moving: { start: number, crabIn: number } | null }} */
   const walker = { x: 30, dir: 1, target: null, rest: 0, step: 0, hopUntil: 0, act: null, news: [], moving: null };
   // His life in it (tank-life.js): his favourite, sets on display, and what he's
   // done since main last heard (sent now and then, never every frame).
+  /** @type {{ favourite: number | null, sets: unknown[] }} */
   let life = { favourite: null, sets: [] };
   const lived = { uses: {}, napped: false, n: 0 };
   const LIVED_FLUSH = 6;     // activities before main hears about them (or when you leave the tab)
@@ -224,19 +232,20 @@
     const sc = scene();
     ctx.setTransform(K, 0, 0, K, 0, 0);
     ctx.clearRect(0, 0, sc.world.w, sc.world.h);
+    /** @type {Record<string, unknown> | null} */
     let ghost = null;
     const drag = E.drag();
     if (drag?.kind === 'new' && drag.over) {
-      const it = trayItem(drag.ref);
+      const it = /** @type {NonNullable<ReturnType<typeof trayItem>>} */ (trayItem(drag.ref)); // a piece being dragged in is in the tray
       ghost = { ...it, uid: 0, x: drag.x, row: drag.row, y: P.baseline(sc.world, it.layer, drag.row), flip: false };
     }
     const c = crabArt(now, still);
     P.paint(ctx, movingScene(sc, now), { t: still ? 0 : now / 1000, still, crab: c, ghost, gauges: SB.tankGauges?.current() || null });
     if (c?.z) snooze(c, now);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    const crabBtn = hits.querySelector('.tk-hit-crab');
-    if (crabBtn && crab) {
-      const a = crabArt(now, still);
+    const crabBtn = /** @type {HTMLElement | null} */ (hits.querySelector('.tk-hit-crab'));
+    const a = crabArt(now, still);
+    if (crabBtn && crab && a) {
       crabBtn.style.left = `${a.x * u}px`;
       crabBtn.style.top = `${(sc.world.crabY - crab.h + 1) * u}px`;
     }
@@ -392,7 +401,7 @@
   // ------------------------------------------------------------ data in
 
   function badge() {
-    document.querySelectorAll('.tk-badge').forEach(el => { el.hidden = !v?.news.length; });
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.tk-badge')).forEach(el => { el.hidden = !v?.news.length; });
   }
 
   // ------------------------------------------------------------ on your calling card (tank-share.js)
@@ -458,6 +467,7 @@
 
   // A milestone piece just earned (docs/TANK.md#milestones): "Put it in the tank" opens
   // the tray on the Milestones shelf with that piece picked out.
+  /** @type {string | null} */
   let pendingPiece = null;
   function showPiece() {
     const ref = pendingPiece;
@@ -465,7 +475,7 @@
     if (!v?.tray.some(t => t.ref === ref && !t.locked)) return;
     shelf = 'milestone';
     if (editing()) renderTray(); else E.start();
-    const btn = $('tkItems').querySelector(`[data-ref="${CSS.escape(ref)}"]`);
+    const btn = $('tkItems').querySelector(`[data-ref="${CSS.escape(/** @type {string} */ (ref))}"]`);
     btn?.classList.add('tk-flash');
     btn?.focus();
   }
