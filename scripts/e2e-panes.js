@@ -870,7 +870,8 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
       check(await pop.until(`SB.solo === '${A}' && SB.state.tabs.has('${A}')`), 'the window knows its one conversation');
       check(await pop.until(`[...SB.state.tabs.get('${A}').el.querySelectorAll('.msg.assistant')].some(m => m.textContent.includes('echo: hello from A'))`), 'with what was said in it');
       check(await pop.ev("document.getElementById('input').value === 'half a thought'"), 'and what was typed but not sent');
-      check(await pop.ev("document.body.classList.contains('solo') && getComputedStyle(document.getElementById('tabstrip')).display === 'none'"), 'just the chat: no strip');
+      const seen = id => pop.ev(`!!document.getElementById('${id}')?.getClientRects().length`);
+      for (const id of ['tabstrip', 'newTabBtn', 'dock', 'paletteBtn', 'settingsBtn', 'trailBtn', 'splitBtn']) check(await seen(id), `a whole window: #${id} is there`);
       check(await pop.ev(`document.title`) !== 'Shellby', `named for its conversation (${await pop.ev('document.title')})`);
       await pop.shot('popout');
 
@@ -879,11 +880,53 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
       check(await pop.until(`[...SB.state.tabs.get('${A}').el.querySelectorAll('.msg.assistant')].some(m => m.textContent.includes('echo: hello from its own window'))`), 'a message sent there is answered there');
       await pop.until(`!SB.state.tabs.get('${A}').busy`);
       check(!(await ev(`SB.state.tabs.has('${A}')`)), 'and the panel never grew a copy');
-      // No All files in a window of its own: Ctrl+Shift+F opens the Trail there, and closes it again.
+      // The usage meter, from what that turn reported.
+      check(await pop.until("!!document.getElementById('usage').getClientRects().length && /\\d/.test(document.getElementById('meter5h').textContent)"), 'the usage meter shows there');
+      // All files, as in the panel.
       await pop.ev("SB.toggleDrawer('files')");
-      check(await pop.until("!document.getElementById('trail').hidden && document.getElementById('drawerTabTrail').getAttribute('aria-selected') === 'true'"), 'Ctrl+Shift+F in its own window opens the Trail');
+      check(await pop.until("!document.getElementById('trail').hidden && document.getElementById('drawerTabFiles').getAttribute('aria-selected') === 'true'"), 'Ctrl+Shift+F in its own window opens All files');
       await pop.ev("SB.toggleDrawer('files')");
       check(await pop.until("document.getElementById('trail').hidden"), 'and a second press closes it');
+      // Its screens open there, the panel staying as it was.
+      for (const view of ['pages', 'settings', 'history']) {
+        await pop.ev(`SB.setView('${view}')`);
+        check(await pop.until(`SB.state.view === '${view}' && !!document.querySelector('.view-${view}')?.getClientRects().length`), `${view} opens in its own window`);
+      }
+      check(await ev("SB.state.view === 'chat'"), 'and not in the panel');
+      await pop.ev("SB.setView('chat')");
+      // A change in one window reaches the other.
+      await pop.ev("SB.chooseMode('plan')");
+      check(await until("document.body.dataset.mode === 'plan'"), 'the mode picked there is the panel\'s too');
+      await pop.ev("SB.chooseMode('ask')");
+      check(await until("document.body.dataset.mode === 'ask'"), 'and back');
+      // A page Claude makes there opens beside it there.
+      await pop.ev(`SB.send(${JSON.stringify(`mcp create_page ${JSON.stringify({ name: 'Own window', files: { 'index.html': '<!doctype html><script src="shellby.js"></script><p>hi</p>' } })}`)})`);
+      check(await pop.until("!!document.querySelector('.pg-host.pane iframe.pg-frame')"), 'a page made there opens beside it');
+      check(!(await ev("!!document.querySelector('.pg-host.pane')")), 'and not in the panel');
+      await pop.shot('popout-page');
+      await pop.ev("SB.panes.toolIds(SB.state.grid).forEach(id => SB.tools.close(id))");
+      await pop.until(`!SB.state.tabs.get('${A}').busy`);
+      // A new conversation opens in that window, and answers there.
+      await pop.ev("document.getElementById('newTabBtn').click()");
+      check(await pop.until(`SB.state.tabs.size === 2 && SB.state.activeTab !== '${A}'`), 'New conversation opens a second tab there');
+      const E = await pop.ev('SB.state.activeTab');
+      await pop.ev("SB.send('hello from a second tab')");
+      check(await pop.until(`[...SB.state.tabs.get('${E}').el.querySelectorAll('.msg.assistant')].some(m => m.textContent.includes('echo: hello from a second tab'))`), 'and answers there');
+      check(!(await ev(`SB.state.tabs.has('${E}')`)), 'the panel never has it');
+      await pop.until(`!SB.state.tabs.get('${E}').busy`);
+      // Asked for in the panel, it comes forward where it is.
+      await ev(`SB.openHistory('${E}')`);
+      check(!(await ev(`SB.state.tabs.has('${E}')`)), 'opening it from the panel\'s History leaves it there');
+      // Split there, at its own room.
+      await pop.ev('SB.splitPane()');
+      check(await pop.until('SB.panes.count(SB.state.grid) === 2'), 'Split works there');
+      await pop.shot('popout-split');
+      // One alone back into the panel: the window keeps the other.
+      await pop.ev(`SB.popIn('${E}')`);
+      check(await until(`SB.state.tabs.has('${E}')`), 'Back into the panel takes one conversation back');
+      check(await pop.until(`!SB.state.tabs.has('${E}') && SB.state.tabs.has('${A}')`), 'and the window keeps the other');
+      await ev(`SB.closeTab('${E}')`);
+      await ev(`SB.activate('${B}')`);
 
       // Its ×: back in the panel, with the box as it was left.
       await pop.ev(`document.getElementById('input').value = 'typed in the window'`);

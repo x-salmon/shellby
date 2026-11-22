@@ -1,6 +1,7 @@
 // Projects and what runs in them: the weekly dependency watch (depwatch/index.js),
 // the Projects page and dev servers, and workflows (the Automate page).
 // Kept out of main.js, which only wires it up.
+const { askingWindow } = require('../asking');
 const { ID, PATH, list, obj, opt, str, text } = require('../ipc-args');
 const { app, clipboard, safeStorage, BrowserWindow, Menu, session } = require('electron');
 const { openSafe } = require('../safe-open');
@@ -145,15 +146,22 @@ function wireProjects(d) {
   // Point at your dev server (devpoint.js): its own window; what you pick goes
   // to the panel, which sends it into a conversation in that project.
   let devPoint = null;
+  let pointFrom = null; // the window that asked: what you pick goes back to it
   function pointAtServer(serverId) {
     const s = d.devServers?.servers.get(serverId);
     if (!s?.url || !s.root || s.status !== 'up') return { ok: false, error: "That dev server isn't up." };
+    pointFrom = askingWindow();
     if (!devPoint) {
       devPoint = createDevPoint({
         electron: { BrowserWindow, Menu, session },
         picturesDir: path.join(app.getPath('userData'), 'point-pictures'),
         openExternal: url => openSafe(url),
-        onPicked: picked => { d.showPanel({ focusInput: false }); d.send(d.panel, 'devpoint:picked', picked); },
+        onPicked: picked => {
+          const own = pointFrom && !pointFrom.isDestroyed() ? pointFrom : null;
+          if (own) d.showWindow(own); else d.showPanel({ focusInput: false });
+          const to = own || d.panel;
+          d.send(to, 'devpoint:picked', picked);
+        },
         log: d.log,
       });
     }

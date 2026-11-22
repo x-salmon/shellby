@@ -1,6 +1,7 @@
 // The panel itself: opening and closing it, Claude Code's sign-in and status,
 // pictures and files for the composer (attachments.js), and updates.
 // Kept out of main.js, which only wires it up.
+const { fromWindow } = require('../asking');
 const { ID, obj, opt, PATH, text } = require('../ipc-args');
 const { BrowserWindow, app, dialog, nativeImage } = require('electron');
 const { execFile } = require('child_process');
@@ -32,7 +33,7 @@ function registerPanelIpc(ipcMain, d) {
   // A picture Claude wrote or edited, big enough to see on its step in the chat.
   ipcMain.handle('pictures:file', (_e, file) => (d.isStr(file) ? attach.thumbnail(file, { nativeImage, edge: attach.PREVIEW_EDGE }) : null), [opt(text(32_767))]);
   ipcMain.handle('attach:pick', async () => {
-    const r = await dialog.showOpenDialog(d.panel, {
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), {
       title: 'Attach files', properties: ['openFile', 'multiSelections'],
       filters: [{ name: 'All files', extensions: ['*'] }, { name: 'Pictures', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }],
     });
@@ -40,7 +41,8 @@ function registerPanelIpc(ipcMain, d) {
   });
 
   // ---- panel lifecycle
-  ipcMain.on('panel:hide', () => d.panel.hide());
+  // A conversation's own window isn't put away, so it's minimized.
+  ipcMain.on('panel:hide', e => { const own = d.popoutWindow?.(e.sender); if (own) own.minimize(); else d.panel.hide(); });
   // These two come from the panel or a popped-out conversation (wiring/popouts.js): they act on whichever asked.
   ipcMain.on('panel:minimize', e => BrowserWindow.fromWebContents(e.sender)?.minimize());
   ipcMain.on('window:maximize', e => {
@@ -48,14 +50,15 @@ function registerPanelIpc(ipcMain, d) {
     if (!win || win === d.critter) return;
     if (win.isMaximized()) win.unmaximize(); else win.maximize();
   });
-  ipcMain.handle('panel:roomy', (_e, on) => d.setPanelRoomy(on === true), [opt(v => typeof v === 'boolean')]);
+  ipcMain.handle('panel:roomy', (e, on) => d.setPanelRoomy(on === true, d.popoutWindow?.(e.sender) || d.panel), [opt(v => typeof v === 'boolean')]);
   // Room for more panes: grow the panel to { width, height } DIP (wiring/panel.js fitPanel).
-  // The panel's alone: a popped-out conversation shares the bridge but has no panes to fit.
+  // The window that asked: the panel, or a conversation's own.
   ipcMain.handle('panel:fit', (e, want) => {
-    if (!d.panel || e.sender !== d.panel.webContents) return { ok: false, grew: false };
+    const win = d.popoutWindow?.(e.sender) || d.panel;
+    if (!win || e.sender !== win.webContents) return { ok: false, grew: false };
     const n = x => typeof x === 'number' && Number.isFinite(x) && x > 0 && x < 20000;
     if (!want || !n(want.width) || !n(want.height)) return { ok: false, grew: false };
-    return d.fitPanel({ width: want.width, height: want.height });
+    return d.fitPanel({ width: want.width, height: want.height }, win);
   }, [opt(obj())]);
 
   ipcMain.handle('app:bootstrap', async () => {
@@ -126,13 +129,17 @@ function registerPanelIpc(ipcMain, d) {
     };
   }
 
-  // A popped-out window: the panel's view, and its one conversation as it stands,
+  // A popped-out window: the panel's view, and its conversations as they stand,
   // with whatever was typed but not sent in the panel (wiring/popouts.js).
   ipcMain.handle('popout:bootstrap', e => {
-    const tabId = d.popoutTabOf(e.sender);
-    const tab = tabId && d.manager.summary.find(t => t.id === tabId);
-    if (!tab) return null;
-    return { ...panelView(), tab, items: d.history.load(tabId), carry: d.takeCarry(tabId) };
+    const own = new Set(d.popoutTabs(e.sender));
+    const tabs = d.manager.summary.filter(t => own.has(t.id));
+    if (!tabs.length) return null;
+    return {
+      ...panelView(), tabs,
+      tabItems: Object.fromEntries(tabs.map(t => [t.id, d.history.load(t.id)])),
+      carries: Object.fromEntries(tabs.map(t => [t.id, d.takeCarry(t.id)])),
+    };
   });
   // FAKE_CLI here too, like the bootstrap and startup paths: without it, a dev or
   // e2e run driving the fake CLI had its faked status replaced by a real check the
@@ -268,7 +275,7 @@ function registerPanelIpc(ipcMain, d) {
   // it really is Claude Code before the path is kept, so a wrong pick is
   // answered here rather than becoming a task that won't start.
   ipcMain.handle('claude:locate', async () => {
-    const r = await dialog.showOpenDialog(d.panel, {
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), {
       title: 'Where is Claude Code?',
       defaultPath: d.claudePath() || path.join(os.homedir(), '.local', 'bin'),
       properties: ['openFile'],
@@ -335,7 +342,7 @@ function registerPanelIpc(ipcMain, d) {
     if (!exe) return { ok: false, error: 'Claude Code not found.', status: d.claudeStatus };
     const busy = d.manager?.aggregate?.busy || 0;
     if (busy) {
-      const r = await dialog.showMessageBox(d.panel, {
+      const r = await dialog.showMessageBox(fromWindow(d.panel), {
         type: 'warning', buttons: [thenSignIn ? 'Switch anyway' : 'Sign out anyway', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true,
         message: `${busy === 1 ? 'A task is' : `${busy} tasks are`} still running.`,
         detail: 'Signing out of Claude Code can stop it partway. Let it finish first if you can.',
@@ -392,7 +399,7 @@ function registerPanelIpc(ipcMain, d) {
     if (!d.claudeUpdates) return { ok: false, error: 'Not available in this run.' };
     const busy = d.manager?.aggregate?.busy || 0;
     if (busy) {
-      const r = await dialog.showMessageBox(d.panel, {
+      const r = await dialog.showMessageBox(fromWindow(d.panel), {
         type: 'warning', buttons: ['Update anyway', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true,
         message: `${busy === 1 ? 'A task is' : `${busy} tasks are`} still running.`,
         detail: 'They carry on with the version they started with; new conversations get the update. Let them finish first if you can.',

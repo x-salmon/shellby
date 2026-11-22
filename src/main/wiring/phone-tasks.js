@@ -6,6 +6,7 @@
 // presses and these messages, and hands the messages here.
 const { dialog, safeStorage } = require('electron');
 const path = require('path');
+const { fromWindow } = require('../asking');
 const attach = require('../attachments');
 const channels = require('../channels');
 const confirm = require('../confirm');
@@ -178,7 +179,7 @@ function wirePhoneTasks(d) {
   }
 
   async function pickPhoneTasksFolder() {
-    const r = await dialog.showOpenDialog(d.panel, { title: 'Where should tasks from your phone go?', defaultPath: settings().folder || d.currentCwd(), properties: ['openDirectory'] });
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), { title: 'Where should tasks from your phone go?', defaultPath: settings().folder || d.currentCwd(), properties: ['openDirectory'] });
     const dir = r.canceled ? null : r.filePaths[0];
     if (!dir) return phoneTasksView();
     if (!attach.isLocalPath(dir) || !d.isFolder(dir)) return { ...phoneTasksView(), error: 'That needs to be a folder on this PC.' };

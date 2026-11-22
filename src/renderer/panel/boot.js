@@ -3,15 +3,18 @@
 (function () {
   const { api, state, $ } = SB;
 
-  // In a popped-out window, × puts the conversation back in the panel.
+  // In a popped-out window, × puts its conversations back in the panel.
   $('closeBtn').addEventListener('click', () => {
-    if (!SB.solo) return api.hide();
-    const tab = SB.activeTab();
-    if (tab) tab.draft = $('input').value;
-    api.popInTab(SB.solo, tab ? SB.carryOf(tab) : null);
+    if (SB.solo) goHome(); else api.hide();
   });
+  function goHome() {
+    const front = SB.activeTab();
+    if (front) front.draft = $('input').value;
+    api.popoutHome(front?.id, [...state.tabs.values()].map(t => ({ tabId: t.id, carry: SB.carryOf(t) })));
+  }
+  if (SB.solo) api.onPopoutClosing(goHome);
   $('minBtn').addEventListener('click', () => api.minimize());
-  if (SB.solo) $('closeBtn').title = 'Back into the panel';
+  if (SB.solo) { $('closeBtn').title = 'Back into the panel'; $('closeBtn').setAttribute('aria-label', 'Back into the panel'); }
 
   SB.renderCrabs = () => {
     for (const id of ['brandCrab', 'dockCrab']) $(id).replaceChildren(SB.sprite());
@@ -57,7 +60,7 @@
   api.onTabs(syncTabsSoon.offer);
   SB.dropHeldTabs = syncTabsSoon.cancel;
   api.onTabOpened(({ tabId, entry, items, background, busy = true, draft = '', attachments = [] }) => {
-    if (state.popped.has(tabId)) return; // out in a window of its own (tab-panes.js)
+    if (state.popped.has(tabId)) return; // in another window (tab-panes.js)
     const tab = SB.ensureTab({ id: tabId, title: entry?.title || 'Routine', cwd: entry?.cwd, saved: true, routineId: entry?.routineId, busy, inTerminal: entry?.inTerminal || null });
     for (const item of items || []) tab.render(item, { replay: true });
     // A branch from before a message opens with it back in the box (branching.js).
@@ -197,28 +200,26 @@
     });
   }
 
-  // A popped-out window: one conversation, picked up as it stands, nothing else.
+  // A popped-out window: its conversations, picked up as they stand.
   async function initSolo() {
     const b = await api.popoutBootstrap();
     if (!b) return; // its conversation closed on the way; main closes the window
     adopt(b);
-    SB.applyMode(state.settings.mode);
-    SB.syncJustSaw?.();
-    SB.applyEffort?.();
+    dress(b);
     SB.renderCrabs();
-    const tab = SB.ensureTab(b.tab);
-    for (const item of b.items) tab.render(item, { replay: true });
-    SB.takeCarry(tab, b.carry);
-    SB.activate(tab.id);
+    for (const s of b.tabs) {
+      const tab = SB.ensureTab(s);
+      for (const item of b.tabItems[s.id] || []) tab.render(item, { replay: true });
+      SB.takeCarry(tab, b.carries[s.id]);
+    }
+    SB.activate(b.tabs[b.tabs.length - 1].id);
     SB.setView('chat');
   }
 
-  (async function init() {
-    if (SB.solo) return initSolo();
-    const b = await api.bootstrap();
-    adopt(b);
+  // What's around the conversations: the meters, the chips and the screens' own state.
+  function dress(b) {
     if (b.outlook) SB.applyOutlook(b.outlook);
-    SB.renderUpdates(); // an update downloaded before the panel opened is waiting on the gear
+    SB.renderUpdates(); // an update downloaded before this window opened is waiting on the gear
     SB.loadEditors(); // what file links open in (Settings → Editor, the palette)
     $('settingsFolder').textContent = SB.remotePlace(b.cwd) || b.cwd;
     SB.applyMode(state.settings.mode);
@@ -229,6 +230,13 @@
     if (b.homes) SB.applyHomes(b.homes);
     if (b.stickers) SB.applyStickers(b.stickers);
     if (b.wardrobe) SB.applyWardrobe(b.wardrobe);
+  }
+
+  (async function init() {
+    if (SB.solo) return initSolo();
+    const b = await api.bootstrap();
+    adopt(b);
+    dress(b);
     if (b.welcomeTrophies?.length) {
       const names = b.welcomeTrophies.map(t => `${t.icon} ${t.name}`).join(', ');
       setTimeout(() => SB.toast(`Welcome to the Wardrobe! Your history already earned: ${names}`, { action: 'Try it on', ms: 8000, onAction: () => SB.setView('wardrobe') }), 1200);

@@ -22,7 +22,7 @@ function setup(open = ['a', 'b', 'c']) {
   registerTabsIpc(ipcMain, {
     config, isStr: s => typeof s === 'string',
     manager: { tabs: new Map(open.map(id => [id, {}])), setOrder: ids => { orders.push(ids); return true; } },
-    popoutTabOf: wc => (wc === popout ? 'p1' : null),
+    isPopout: wc => wc === popout, popoutTabs: wc => (wc === popout ? ['b', 'c'] : []),
   });
   const save = (sender, layout) => ons.get('panes:layout')({ sender }, layout);
   const shapes = (sender, list) => handles.get('panes:shapes')({ sender }, list);
@@ -47,13 +47,14 @@ test('the same layout again writes nothing', () => {
   assert.equal(config.sets.length, n);
 });
 
-test('junk saves as no layout and sets no order; a popped-out window can\'t save one', () => {
+test('junk saves as no layout and sets no order; a popped-out window saves its tabs\' order and no layout', () => {
   const { panel, popout, config, save, orders } = setup();
   save(panel, 'nope');
   assert.equal(config.get('paneLayout') ?? null, null);
-  save(popout, { grid: [['x'], ['y']] });
-  assert.equal(config.get('paneLayout') ?? null, null);
   assert.deepEqual(orders, []);
+  save(popout, { grid: [['c'], ['a'], ['b']] });
+  assert.equal(config.get('paneLayout') ?? null, null);
+  assert.deepEqual(orders, [['c', 'b']], 'of its own conversations only');
 });
 
 test('back to one pane clears the saved layout, and a layout that is not one is dropped', () => {
@@ -110,14 +111,13 @@ test('ids an object already has (__proto__, constructor) never reach the saved s
   });
 });
 
-test('layouts saved by name: cleaned, kept, and never from a pop-out', async () => {
+test('layouts saved by name: cleaned, kept, and the same from a pop-out', async () => {
   const { panel, popout, config, shapes } = setup();
   assert.deepEqual(await shapes(panel), [], 'none yet');
   const two = { name: 'Two', cols: [{ w: 1, rows: [1] }, { w: 2, rows: [1] }] };
   await assert.rejects(shapes(panel, [two, { name: 'junk' }]), /wasn't one Shellby accepts/, 'a shape with no columns');
   assert.deepEqual(await shapes(panel, [two, { ...two, name: 'two' }]), [two]);
   assert.deepEqual(config.get('paneShapes'), [two]);
-  assert.deepEqual(await shapes(popout, []), [], 'a pop-out gets nothing');
-  assert.deepEqual(config.get('paneShapes'), [two], 'and saves nothing');
+  assert.deepEqual(await shapes(popout), [two], 'a pop-out has them too');
   assert.deepEqual(await shapes(panel, []), []);
 });

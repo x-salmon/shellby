@@ -5,6 +5,7 @@
 // renderer/shared/pixel-grid.js (the checks, the same ones the panel shows).
 // Kept out of main.js, which only wires it up.
 const { app, dialog } = require('electron');
+const { fromWindow } = require('../asking');
 const { openSafe } = require('../safe-open');
 const fs = require('fs');
 const path = require('path');
@@ -330,7 +331,7 @@ function wirePainter(d) {
     if (got.error) return { ok: false, error: got.error };
     const pack = wrap.wrapItem(kind, got.item, { login: d.github?.view().login || '' });
     if (!pack) return { ok: false, error: 'That name can’t be a pack id.' };
-    const r = await dialog.showSaveDialog(d.panel, {
+    const r = await dialog.showSaveDialog(fromWindow(d.panel), {
       title: 'Save the pack', defaultPath: path.join(app.getPath('documents'), `${pack.id}.json`),
       filters: [{ name: 'Shellby pack', extensions: ['json'] }],
     });

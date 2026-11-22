@@ -65,12 +65,14 @@ function attachContextMenu(win, ipcMain) {
     open = contextTemplate(params, wc);
     if (open.length) win.webContents.send('text-menu', { x: params.x, y: params.y, source: params.menuSourceType, items: toWire(open) });
   });
-  ipcMain.on('text-menu:pick', (e, index) => {
+  const pick = (e, index) => {
     if (e.sender !== wc) return;
     const item = Number.isInteger(index) ? open[index] : null;
     open = [];
     runItem(item, wc);
-  });
+  };
+  ipcMain.on('text-menu:pick', pick);
+  return () => ipcMain.removeListener('text-menu:pick', pick); // for a window that closes (wiring/popouts.js)
 }
 
 module.exports = { contextTemplate, attachContextMenu, teachKnownWords, runItem, toWire, KNOWN_WORDS, MAX_SUGGESTIONS };

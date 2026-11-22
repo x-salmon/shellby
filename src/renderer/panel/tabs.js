@@ -148,9 +148,10 @@
   };
 
   SB.syncTabs = (summaries) => {
-    // A popped-out conversation belongs to its own window, and that window to it alone (tab-panes.js).
-    state.popped = new Set(summaries.filter(s => s.popped).map(s => s.id));
-    summaries = summaries.filter(s => (SB.solo ? s.id === SB.solo : !s.popped));
+    // A popped-out conversation belongs to the window it's out in; the panel has the rest (tab-panes.js).
+    const here = s => (SB.solo ? s.win === SB.solo : !s.popped);
+    state.popped = new Set(summaries.filter(s => !here(s)).map(s => s.id));
+    summaries = summaries.filter(here);
     const ids = new Set(summaries.map(s => s.id));
     for (const s of summaries) SB.ensureTab(s);
     // A tab created locally may not be in this snapshot yet; only drop tabs the
@@ -241,7 +242,7 @@
     await api.closeTab(tabId);
     SB.renderTabStrip();
     if (tab.saved) noteClosed(tabId);
-    if (tab.saved && !quiet) SB.toast(`Closed. It is still in History${SB.solo ? '' : `, and ${SB.shortcuts.primary('reopenTab')} brings it back`}.`);
+    if (tab.saved && !quiet) SB.toast(`Closed. It is still in History, and ${SB.shortcuts.primary('reopenTab')} brings it back.`);
   };
 
   // Ctrl+Shift+T: the conversations you closed, newest first, as a browser
@@ -305,9 +306,7 @@
     const tab = SB.activeTab();
     const K = SB.shortcuts;
     if (K.matches(e, 'closeTab')) { e.preventDefault(); if (tab) SB.closeTabSafely(tab.id); return; }
-    if (K.matches(e, 'reopenTab')) { e.preventDefault(); if (!SB.solo) SB.reopenClosed(); return; }
-    // A popped-out window has its one conversation: no strip to add to, split or walk along.
-    if (SB.solo && ['newTab', 'splitPane', 'zoomPane', 'swapPane', 'focusPane', 'movePane', 'moveTab', 'nextTab', 'prevTab'].some(id => K.matches(e, id))) { e.preventDefault(); return; }
+    if (K.matches(e, 'reopenTab')) { e.preventDefault(); SB.reopenClosed(); return; }
     if (K.matches(e, 'newTab')) { e.preventDefault(); SB.newTab(); return; }
     if (K.matches(e, 'splitPane')) { e.preventDefault(); SB.splitPane(); return; }
     if (K.matches(e, 'zoomPane')) {

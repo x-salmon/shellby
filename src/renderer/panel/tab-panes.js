@@ -185,13 +185,12 @@
   SB.applyPaneSizes = applySizes;
 
   // The layout, for the next start: a moment after it settles, only while
-  // split, never from a popped-out window. Back to one pane it goes once more,
+  // split (main keeps a popped-out window's order, and not its split). Back to one pane it goes once more,
   // at once (now) when a split closes down: main stores no layout for one
   // pane, so one pane writes nothing and starts as it always has, but takes
   // that pane's order (ipc/tabs.js panes:layout).
   let saveTimer = null;
   SB.savePanes = ({ now = false } = {}) => {
-    if (SB.solo) return;
     const split = P.count(state.grid) > 1;
     if (!split && !state.panesSaved && !now) return;
     clearTimeout(saveTimer);
@@ -353,8 +352,8 @@
     // Which pane you're typing to, when there's more than one it could be.
     const tab = SB.activeTab();
     input.placeholder = split && tab ? `Give "${SB.shownTitle(tab).slice(0, 40)}" a task…` : PLACEHOLDER;
-    // A popped-out window is named for its conversation, on the taskbar too.
-    if (SB.solo && tab) document.title = $('winTitle').textContent = SB.shownTitle(tab);
+    // A popped-out window is named on the taskbar for the conversation you're in.
+    if (SB.solo && tab) document.title = SB.shownTitle(tab);
   };
 
   // ------------------------------------------------------------ what needs you
@@ -364,7 +363,7 @@
   // Alt+J, or a zoomed pane's "needs you": the next conversation asking for
   // your OK, after the one you're in, in pane order. -> went?
   SB.goToNeeds = () => {
-    const ids = SB.solo ? [] : P.tabIds(state.grid);
+    const ids = P.tabIds(state.grid);
     const at = ids.indexOf(state.activeTab);
     const next = [...ids.slice(at + 1), ...ids.slice(0, Math.max(0, at))].find(asking);
     if (!next) { SB.toast('Nothing is waiting on you.'); return false; }
@@ -426,13 +425,22 @@
   // `at`: where it was dropped, in screen pixels, so the window opens there.
   SB.popOut = async (tabId, at = {}) => {
     const tab = state.tabs.get(tabId);
-    if (!tab || SB.solo) return;
+    if (!tab) return;
+    if (SB.solo && state.tabs.size < 2) return SB.toast('This conversation is already in a window of its own.');
     if (tab.isActive) tab.draft = input.value;
     const r = await api.popOutTab(tabId, { ...at, carry: SB.carryOf(tab) });
     if (!r?.ok) return SB.toast(r?.error || "Couldn't open that in its own window.");
     state.popped.add(tabId);
     SB.forgetTab(tabId);
     SB.renderTabStrip();
+  };
+
+  // From its own window back into the panel, with what's typed.
+  SB.popIn = (tabId) => {
+    const tab = state.tabs.get(tabId);
+    if (!tab || !SB.solo) return;
+    if (tab.isActive) tab.draft = input.value;
+    api.popInTab(tabId, SB.carryOf(tab)); // main's next list of tabs takes it from here
   };
 
   // The pane that takes over from `id` if it closes: above, else below, else

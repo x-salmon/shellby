@@ -205,11 +205,19 @@
     SB.openMenu($('tabMenu'), anchor, () => [
       h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { SB.closeMenus(); SB.renameTab(tabId); } },
         h('span', { class: 'mi-check', text: '✎' }), h('span', { class: 'mi-title', text: 'Rename  (F2)' })),
+      windowItem(tabId),
       handoffItem(tabId),
       safeItem(tabId),
       h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { SB.closeMenus(); SB.closeTab(tabId); } },
         h('span', { class: 'mi-check', text: '×' }), h('span', { class: 'mi-title', text: `Close  (${SB.shortcuts.primary('closeTab')})` })),
     ].filter(Boolean));
+  }
+
+  // Out into a window of its own, and from one back into the panel (tab-panes.js).
+  function windowItem(tabId) {
+    const item = (mark, text, run) => h('button', { class: 'menu-item', role: 'menuitem', onclick: () => { SB.closeMenus(); run(tabId); } },
+      h('span', { class: 'mi-check', text: mark }), h('span', { class: 'mi-title', text }));
+    return SB.solo ? item('↙', 'Back into the panel', SB.popIn) : item('↗', 'Open in its own window', SB.popOut);
   }
 
   // ------------------------------------------------------------ to a terminal and back (handoff.js)
@@ -306,7 +314,7 @@
   const SLOP = 5;             // px of movement before a click becomes a drag
 
   function dragStart(e, tabId) {
-    if (e.button !== 0 || e.target.closest('button') || SB.solo) return;
+    if (e.button !== 0 || e.target.closest('button')) return;
     drag = { id: tabId, startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY, moved: false, drop: null };
     window.addEventListener('pointermove', dragMove);
     window.addEventListener('pointerup', dragEnd);

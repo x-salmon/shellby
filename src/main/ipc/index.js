@@ -3,6 +3,7 @@
 // parity and team packs register themselves, given what they use.
 // Kept out of main.js, which only calls it.
 const { app, clipboard, dialog, shell } = require('electron');
+const { fromWindow } = require('../asking');
 const { openSafe } = require('../safe-open');
 const fs = require('fs');
 const os = require('os');
@@ -79,6 +80,7 @@ function registerIpc(electronIpcMain, d) {
     isFloor: wc => !!d.floor?.isFloor(wc),
     isNote: wc => !!d.pranks?.isNote(wc),
   })), {
+    windowOf: wc => d.popoutWindow?.(wc) || null, // what it asks for is answered there (asking.js)
     onRefused: channel => d.log.warn('IPC refused', channel),
     // An invoke's caller gets the error and says so in the panel; here is where its details are kept.
     // A send has no caller: it's a snag, as an uncaught exception was before, now with its channel.
@@ -127,11 +129,11 @@ function registerIpc(electronIpcMain, d) {
     unpin: (kind, name) => config.set({ pinnedTools: (config.get('pinnedTools') || []).filter(p => !(p?.kind === kind && p?.name === name)) }),
     parkDir: path.join(app.getPath('userData'), 'parked-tools'),
     saveFile: async ({ title, name }) => {
-      const r = await dialog.showSaveDialog(d.panel, { title, defaultPath: path.join(app.getPath('documents'), name), filters: [{ name: 'Shellby tools', extensions: ['json'] }] });
+      const r = await dialog.showSaveDialog(fromWindow(d.panel), { title, defaultPath: path.join(app.getPath('documents'), name), filters: [{ name: 'Shellby tools', extensions: ['json'] }] });
       return r.canceled ? null : r.filePath || null;
     },
     openFile: async ({ title }) => {
-      const r = await dialog.showOpenDialog(d.panel, { title, properties: ['openFile'], filters: [{ name: 'Shellby tools', extensions: ['json'] }, { name: 'All files', extensions: ['*'] }] });
+      const r = await dialog.showOpenDialog(fromWindow(d.panel), { title, properties: ['openFile'], filters: [{ name: 'Shellby tools', extensions: ['json'] }, { name: 'All files', extensions: ['*'] }] });
       return r.canceled ? null : r.filePaths?.[0] || null;
     },
   }).register(ipcMain);
@@ -154,7 +156,7 @@ function registerIpc(electronIpcMain, d) {
   }).register(ipcMain);
   d.parityIpc = parity.register({
     ipcMain, manager: d.manager, history: d.history, config, confirm, dialog, clipboard, app,
-    panel: () => d.panel, dialogLook: d.dialogLook, changeRef: d.changeRef, setupWhere: d.setupWhere, setupView: d.setupView, currentCwd: d.currentCwd,
+    panel: () => fromWindow(d.panel), dialogLook: d.dialogLook, changeRef: d.changeRef, setupWhere: d.setupWhere, setupView: d.setupView, currentCwd: d.currentCwd,
     toolbox: () => d.toolbox, lastInit: () => d.lastInit, stat: d.stat, correctionFromTurns: d.correctionFromTurns, noteCorrection: d.noteCorrection,
     noteUndone: n => d.noteWeek('undone', null, n),
     turnEnding: tabId => d.turnEnds.get(tabId) || Promise.resolve(),
@@ -177,10 +179,10 @@ function registerIpc(electronIpcMain, d) {
   registerHistoryIpc(ipcMain, {
     history: d.history, manager: d.manager, openTab: d.openTab, log,
     search: d.historySearch,
-    isPoppedOut: id => d.isPoppedOut(id), showPopout: id => d.showPopout(id),
+    showElsewhere: id => d.showElsewhere(id),
     onCleared: () => d.usagePlan.clear(), // what each turn cost goes with the conversations
     confirmClear: async (count, openCount) => {
-      const r = await dialog.showMessageBox(d.panel, {
+      const r = await dialog.showMessageBox(fromWindow(d.panel), {
         type: 'warning', buttons: ['Clear all history', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true,
         ...clearQuestion(count, openCount),
       });
@@ -203,7 +205,7 @@ function registerIpc(electronIpcMain, d) {
     },
     clearBackground: () => { d.external?.clearBackground(); return d.externalView(); },
     pickPackFile: async () => {
-      const r = await dialog.showOpenDialog(d.panel, { title: 'Install a Shellby wardrobe pack', filters: [{ name: 'Shellby pack', extensions: ['json'] }], properties: ['openFile'] });
+      const r = await dialog.showOpenDialog(fromWindow(d.panel), { title: 'Install a Shellby wardrobe pack', filters: [{ name: 'Shellby pack', extensions: ['json'] }], properties: ['openFile'] });
       return r.canceled ? null : r.filePaths[0] || null;
     },
     openPath: p => shell.openPath(p),
@@ -230,7 +232,7 @@ function registerIpc(electronIpcMain, d) {
   d.tankGauges = registerTankGaugesIpc(ipcMain, {
     config,
     toPanel: (channel, payload) => {
-      if (d.panel && !d.panel.isDestroyed() && d.panel.isVisible()) d.send(d.panel, channel, payload);
+      if (d.panel && !d.panel.isDestroyed() && (d.panel.isVisible() || d.anyWindowOpen?.())) d.send(d.panel, channel, payload);
       else d.tapReward?.(channel, payload); // a find made while the panel is hidden still goes on the turn's card
     },
     health: () => d.health,

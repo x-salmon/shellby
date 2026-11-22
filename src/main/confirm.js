@@ -6,6 +6,7 @@
 // compromised panel can't approve an install or turn on Autonomous by itself.
 const { BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
+const { fromWindow } = require('./asking');
 
 const WIDTH = 440;
 const open = new Map(); // webContents.id -> { win, finish }
@@ -61,7 +62,8 @@ function ask(parent, spec) {
   const cancelId = spec.cancelId ?? spec.buttons.length - 1;
   if (waiting >= MAX_WAITING) return Promise.resolve(cancelId);
   waiting++;
-  const turn = queue.then(() => show(parent, spec));
+  const over = fromWindow(parent); // the window that asked (asking.js)
+  const turn = queue.then(() => show(over, spec));
   queue = turn.catch(() => {}).finally(() => { waiting--; });
   return turn;
 }

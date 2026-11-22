@@ -8,6 +8,7 @@
 //
 // The panel names a project by a root the Projects page listed (knowsRoot),
 // never a folder of its own.
+const { fromWindow } = require('../asking');
 const { obj, opt, PATH, text: textCheck } = require('../ipc-args');
 const tools = require('../projects/tools');
 const worktrees = require('../worktrees');
@@ -26,7 +27,7 @@ function registerProjectToolsIpc(ipcMain, d, {
   readRepo = dir => local.readRepo(dir),
   pickFolder = async () => {
     const { dialog } = require('electron');
-    const r = await dialog.showOpenDialog(d.panel, { title: 'Which project should Shellby show you around?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
+    const r = await dialog.showOpenDialog(fromWindow(d.panel), { title: 'Which project should Shellby show you around?', defaultPath: d.currentCwd(), properties: ['openDirectory'] });
     return r.canceled ? null : r.filePaths[0] || null;
   },
 } = {}) {

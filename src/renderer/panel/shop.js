@@ -189,7 +189,7 @@
       pane.hidden = !on;
       if (!on) return;
       if (was) { render(); return; }
-      if (!SB.solo) api.featureUsed('shop');
+      api.featureUsed('shop');
       load();
     },
   };
