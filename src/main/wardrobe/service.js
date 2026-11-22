@@ -20,6 +20,7 @@ const DEFAULTS = {
   collected: [],         // seasonal item keys collected while their season was on
   newItems: [],          // item keys the user hasn't looked at yet
   seasonOverrides: {},   // seasonId -> window key; user changed the look during that window
+  seasonTweak: null,     // { window, outfit }: that look with your changes, shown only in that window; `outfit` stays your own
   seasonalAuto: true,
   crewOutfits: true,
   unlockAll: false,
@@ -64,6 +65,9 @@ class Wardrobe extends EventEmitter {
     const perks = this.patron();
     d.unlocked = d.unlocked.filter(id => allowsAchievement(perks, id));
     d.seasonOverrides = raw.seasonOverrides && typeof raw.seasonOverrides === 'object' ? { ...raw.seasonOverrides } : {};
+    const tweak = raw.seasonTweak;
+    d.seasonTweak = typeof tweak?.window === 'string' && tweak.outfit && typeof tweak.outfit === 'object'
+      ? { window: tweak.window, outfit: { ...EMPTY_OUTFIT, ...tweak.outfit } } : null;
     d.voice = typeof raw.voice === 'string' ? raw.voice : null;
     d.unlockAll = raw.unlockAll === true && !!this.canUnlockAll();
     return d;
@@ -189,12 +193,25 @@ class Wardrobe extends EventEmitter {
     return d.seasonOverrides[season.id] === windowKey(season, this.now()) ? null : season;
   }
 
-  effectiveOutfit(d = this.data) {
-    const season = this.seasonalActive(d);
-    return this.clean(season ? { ...EMPTY_OUTFIT, ...season.outfit } : d.outfit, d);
+  // The season's look with your changes to it, while that season's window lasts.
+  tweakActive(d = this.data) {
+    const season = featuredSeason(this.now(), this.where());
+    if (!season || !d.seasonalAuto || this.seasonalActive(d)) return null;
+    return d.seasonTweak?.window === windowKey(season, this.now()) ? d.seasonTweak : null;
   }
 
-  setOutfit(patch) {
+  effectiveOutfit(d = this.data) {
+    const season = this.seasonalActive(d);
+    if (season) return this.clean({ ...EMPTY_OUTFIT, ...season.outfit }, d);
+    return this.clean(this.tweakActive(d)?.outfit ?? d.outfit, d);
+  }
+
+  /**
+   * Change what he's wearing. Over a season's look the change belongs to that
+   * season, and your own outfit is back untouched when it ends.
+   * whole: the patch replaces the look (a code, Randomize), so it's your own outfit.
+   */
+  setOutfit(patch, { whole = false } = {}) {
     const d = this.data;
     const next = { ...this.effectiveOutfit(d) };
     for (const [slot, key] of Object.entries(patch || {})) {
@@ -203,10 +220,14 @@ class Wardrobe extends EventEmitter {
       next[slot] = key ?? null;
     }
     const season = featuredSeason(this.now(), this.where());
+    const overSeason = !whole && !!(this.seasonalActive(d) || this.tweakActive(d));
     const seasonOverrides = { ...d.seasonOverrides };
     if (season && d.seasonalAuto) seasonOverrides[season.id] = windowKey(season, this.now());
     const touched = Object.values(patch || {}).filter(Boolean);
-    this.save({ outfit: next, seasonOverrides, newItems: d.newItems.filter(k => !touched.includes(k)) });
+    const look = overSeason
+      ? { seasonTweak: { window: windowKey(season, this.now()), outfit: next } }
+      : { outfit: next, ...(this.tweakActive(d) ? { seasonTweak: null } : {}) };
+    this.save({ ...look, seasonOverrides, newItems: d.newItems.filter(k => !touched.includes(k)) });
     this.emit('changed');
     return { ok: true };
   }
@@ -260,7 +281,7 @@ class Wardrobe extends EventEmitter {
       if (f.slot === 'skin') skin = f.key; else patch[f.slot] = f.key;
       worn.push(f);
     }
-    const r = this.setOutfit(patch);
+    const r = this.setOutfit(patch, { whole: true });
     if (!r.ok) return r;
     return { ok: true, worn, skipped, missing: p.missing, skin };
   }
@@ -271,7 +292,7 @@ class Wardrobe extends EventEmitter {
     const d = this.data;
     const seasonOverrides = { ...d.seasonOverrides };
     delete seasonOverrides[season.id];
-    this.save({ seasonOverrides, seasonalAuto: true });
+    this.save({ seasonOverrides, seasonalAuto: true, seasonTweak: null });
     this.emit('changed');
     return { ok: true };
   }
@@ -286,7 +307,7 @@ class Wardrobe extends EventEmitter {
         : [...this.catalog.accessories.values()].filter(a => a.slot === slot && this.isUnlocked(a, d));
       patch[slot] = pick(pool);
     }
-    return this.setOutfit(patch);
+    return this.setOutfit(patch, { whole: true });
   }
 
   setOptions(opts = {}) {

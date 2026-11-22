@@ -76,7 +76,55 @@ test('seasonal look takes over, respects a change you make, and returns next yea
   clock.now = d(2027, 10, 3);
   assert.equal(w.effectiveOutfit().hat, 'witch-hat');     // new year, new season
   w.setOptions({ seasonalAuto: false });
-  assert.equal(w.effectiveOutfit().hat, 'beanie');
+  assert.equal(w.effectiveOutfit().hat, null);            // your own outfit, which the change never touched
+});
+
+test("a change to a season's look leaves your own outfit alone", () => {
+  const { w, clock } = make(d(2026, 6, 10)); // before summer: no season on
+  w.setOutfit({ face: 'sunglasses' });
+  const own = w.effectiveOutfit();
+  clock.now = d(2026, 10, 5);
+  w.setOutfit({ hat: 'beanie' });
+  w.setOutfit({ face: 'sunglasses' }); // a second change builds on the first
+  assert.deepEqual([w.effectiveOutfit().hat, w.effectiveOutfit().face, w.effectiveOutfit().held], ['beanie', 'sunglasses', 'pumpkin-pail']);
+  assert.deepEqual(w.data.outfit, own);
+  clock.now = d(2026, 11, 10);
+  assert.equal(w.effectiveOutfit().hat, 'garrison-cap'); // another season's look, not the tweak
+  clock.now = d(2027, 2, 1);
+  assert.deepEqual(w.effectiveOutfit(), own);
+});
+
+test('a season you already opted out of still changes your own outfit', () => {
+  const { w } = make(d(2026, 10, 5));
+  w.save({ seasonOverrides: { halloween: 'halloween@2026' } });
+  w.setOutfit({ hat: 'beanie' });
+  assert.equal(w.data.outfit.hat, 'beanie');
+  assert.equal(w.data.seasonTweak, null);
+});
+
+test('a whole look (a code, Randomize) becomes your own outfit, season or not', () => {
+  const { w, clock } = make(d(2026, 10, 5));
+  w.setOutfit({ hat: 'beanie' });
+  w.randomize(() => 0.99);
+  const look = w.effectiveOutfit();
+  assert.ok(Object.values(look).some(Boolean));
+  assert.deepEqual(w.data.outfit, look);
+  assert.equal(w.data.seasonTweak, null);
+  const code = w.outfitCode('classic');
+  w.wearSeason();
+  assert.equal(w.effectiveOutfit().hat, 'witch-hat');
+  assert.equal(w.wearCode(code).ok, true);
+  assert.deepEqual(w.data.outfit, look);
+  clock.now = d(2027, 2, 1);
+  assert.deepEqual(w.effectiveOutfit(), w.clean(look));
+});
+
+test('malformed season tweaks in settings are ignored', () => {
+  const { w } = make(d(2026, 10, 5));
+  for (const bad of ['x', { window: 3, outfit: {} }, { window: 'halloween@2026', outfit: null }]) {
+    w.config.set({ wardrobe: { seasonTweak: bad } });
+    assert.equal(w.data.seasonTweak, null);
+  }
 });
 
 test('wearSeason puts the season look back on after an override', () => {
