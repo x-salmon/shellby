@@ -63,13 +63,14 @@
     keySave.disabled = true;
     try {
       // Billing is asked about first: saying no leaves a key saved earlier as it was.
-      const wasOn = !!state.settings.apiKeyBilling;
+      const { apiKeyBilling: wasOn, planOnly: wasPlanOnly } = state.settings;
       state.settings = (await api.setSettings({ apiKeyBilling: true })).settings;
       if (!state.settings.apiKeyBilling) return SB.toast('Nothing saved. You can still sign in with your Claude account.');
       let r;
       try { r = await api.saveApiKey(value); } catch { r = { ok: false }; }
       if (!r.ok) {
-        if (!wasOn) state.settings = (await api.setSettings({ apiKeyBilling: false })).settings;
+        // Choosing the key turned "Always use my Claude plan" off (ipc/settings.js): back to whichever it was.
+        if (!wasOn) state.settings = (await api.setSettings(wasPlanOnly ? { planOnly: true } : { apiKeyBilling: false })).settings;
         return SB.toast(r.error || "Couldn't save the key.", { ms: 6000 });
       }
       state.apiKey = r.key;
