@@ -142,11 +142,21 @@ async function windows() {
       for (let i = 0; i < ms / 140; i++) { if (saved().voice?.said?.[key]) return true; await wait(140); }
       return false;
     };
-    // He only ever says one thing at a time, so a musing while we wait can take
-    // the turn. Try a few times rather than assume the first one gets through.
+    // He only ever says one thing at a time, and an idle musing (only ever while
+    // he's idle) starts the 12 s gap again. So the message goes the moment the gap
+    // after his last line is over: from then on he's working, and has no musings.
+    const GAP_MS = 12000;
+    const gapOver = async () => {
+      for (let i = 0; i < 300; i++) {
+        const last = Number(saved().voice?.lastSpokeAt) || 0;
+        if (Date.now() - last >= GAP_MS + 500) return;
+        await wait(100);
+      }
+    };
     let remarked = false;
     for (let attempt = 0; attempt < 3 && !remarked; attempt++) {
-      await wait(13000);
+      await wait(GAP_MS + 500);
+      await gapOver();
       await panel.ev("SB.send('run npm test')");
       remarked = (await spoke('tests', 9000)) || !!saved().voice?.said?.passed;
     }
