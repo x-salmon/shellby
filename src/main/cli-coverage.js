@@ -49,7 +49,7 @@ const FLAGS = Object.freeze({
   '--desktop': skip('Opens the Claude Desktop app instead: the opposite of what Shellby is for.'),
   '--disable-slash-commands': skip('Skills stay on.'),
   '--disallowedTools': use('backlog/trackers.js'),
-  '--effort': use('session/args.js'),
+  '--effort': use('session/args.js, btw.js'),
   '--environment': skip('Cloud sessions go through --cloud and claude.ai\'s own environments.'),
   '--exclude-dynamic-system-prompt-sections': skip('A prompt-caching tweak for SDK hosts with many identical runs.'),
   '--fallback-model': use('session/args.js'),

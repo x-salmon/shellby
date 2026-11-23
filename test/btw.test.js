@@ -24,6 +24,11 @@ test('args: a rewound conversation forks from where its next message would', () 
   assert.ok(btw.args({ sessionId: 'abc', resumeAt: 'u-7' }).includes('--resume-session-at=u-7'));
 });
 
+test('args: a side question is quick whatever effort your settings ask for', () => {
+  assert.equal(valueOf(btw.args({}), '--effort'), btw.EFFORT);
+  assert.equal(valueOf(btw.args({ sessionId: 'abc' }), '--effort'), 'low');
+});
+
 test('args: before the first message there is nothing to resume', () => {
   const a = btw.args({});
   for (const f of ['--resume', '--fork-session', '--model']) assert.ok(!a.includes(f), f);

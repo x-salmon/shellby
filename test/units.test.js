@@ -117,6 +117,14 @@ test('skipSettings leaves your settings out of a draft, unless they are how you 
   assert.deepEqual(skipSettings(home), [], 'a key helper signs you in');
   write('settings.local.json', '{ "env": { "ANTHROPIC_BASE_URL": "https://proxy" } }');
   assert.deepEqual(skipSettings(home), [], 'env can route Claude Code elsewhere');
+  for (const name of ['CLAUDE_CODE_USE_BEDROCK', 'AWS_PROFILE', 'HTTPS_PROXY', 'NODE_EXTRA_CA_CERTS', 'anthropic_api_key']) {
+    write('settings.local.json', JSON.stringify({ env: { [name]: 'x' } }));
+    assert.deepEqual(skipSettings(home), [], `${name} is part of signing in or reaching the service`);
+  }
+  write('settings.local.json', '{ "env": { "ECC_HOOK_PROFILE": "lean", "ENABLE_CLAUDEAI_MCP_SERVERS": "false" } }');
+  assert.deepEqual(skipSettings(home), SKIP, 'env for hooks and tools has nothing to do with signing in');
+  write('settings.local.json', '{ "env": "odd" }');
+  assert.deepEqual(skipSettings(home), [], "an env that isn't a list of variables: can't tell, so keep them");
   write('settings.local.json', '{ not json');
   assert.deepEqual(skipSettings(home), [], "can't tell, so keep them");
 });
