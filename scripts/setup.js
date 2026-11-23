@@ -25,7 +25,7 @@ function fail(message) {
 
 const major = Number(process.versions.node.split('.')[0]);
 if (major < MIN_NODE) fail(`Shellby needs Node ${MIN_NODE} or newer (this is ${process.versions.node}).`);
-if (process.platform !== 'win32') fail('Shellby runs on Windows only. npm test works elsewhere, but the app does not.');
+if (process.platform !== 'win32' && process.platform !== 'darwin') fail('Shellby runs on Windows and macOS. npm test works elsewhere, but the app does not.');
 if (!fs.existsSync(path.join(ROOT, 'node_modules', 'electron'))) fail('Run npm install first.');
 
 step('Electron binary', () => {

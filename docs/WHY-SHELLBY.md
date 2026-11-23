@@ -1,9 +1,9 @@
 # Why Shellby, if you already use Claude Code?
 
-> **Run Claude Code in parallel on Windows. Undo anything. Watch it happen.**
+> **Run Claude Code in parallel on Windows and Mac. Undo anything. Watch it happen.**
 > Shellby isn't a smarter Claude. It's everything you'd otherwise build *around* Claude Code yourself, already built, plus a crab.
 
-**[⬇ Download for Windows](https://github.com/x-salmon/shellby/releases/latest)** · [Back to the README](../README.md)
+**[⬇ Download for Windows or Mac](https://github.com/x-salmon/shellby/releases/latest)** · [Back to the README](../README.md)
 
 ## The 10-second version
 
@@ -103,7 +103,7 @@ It works the other way too. `shellby do "write tests for src/app.js"` starts a t
 
 | If… | Because… |
 |---|---|
-| 🍎 You're on **macOS or Linux** | Shellby is Windows 10 and 11 only. |
+| 🐧 You're on **Linux** | Shellby runs on Windows 10 and 11 and macOS 12 and later. |
 | 📝 You want **diffs inline in your editor** | The official IDE extensions show changes in the file you're editing. Shellby's diff view is great for reviewing a whole turn, but it isn't your editor. |
 | 🖥️ It's **headless**: CI, a server, SSH | `claude -p` is the right tool there. |
 | 🚀 You want **every new feature on day one** | Shellby drives the CLI, so new features reach the terminal first. Now and then a CLI change needs a Shellby update to catch up; a [nightly check](DEVELOPMENT.md#keeping-up-with-claude-code) against the newest release catches those early. |
@@ -157,6 +157,6 @@ All of it, under the GPL-3.0. Start with [How Shellby drives Claude Code](DEVELO
 ---
 
 <p align="center">
-  <b><a href="https://github.com/x-salmon/shellby/releases/latest">⬇ Download Shellby for Windows</a></b><br>
+  <b><a href="https://github.com/x-salmon/shellby/releases/latest">⬇ Download Shellby for Windows or Mac</a></b><br>
   <sub><a href="CLAUDE-CODE.md">Everything he does with Claude Code</a> · <a href="../README.md">Back to the README</a></sub>
 </p>
