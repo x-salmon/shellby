@@ -56,8 +56,7 @@
   }
 
   $('connectorsPreset').addEventListener('change', pickPreset);
-  $('connectorsSite').addEventListener('click', e => {
-    e.preventDefault();
+  $('connectorsSite').addEventListener('click', () => {
     const site = presetOf(/** @type {HTMLSelectElement} */ ($('connectorsPreset')).value)?.site;
     if (site) api.openExternal(site);
   });
