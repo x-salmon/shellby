@@ -86,6 +86,8 @@
       this.busy = false;
       this.busySince = null;      // when the running turn started (main's clock, or ours until it reports)
       this.autoRetried = null;    // the last blocked step Try again's countdown sent by itself (retryCountdown)
+      /** @type {null | (() => void)} */
+      this.deniedCheck = null;    // a block that ended out of sight, checked when the tab comes on screen (deniedStrip)
       this.pending = 0;
       this.crew = 0;
       this.outcome = null;
