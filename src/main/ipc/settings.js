@@ -57,8 +57,8 @@ function registerSettingsIpc(ipcMain, d) {
     if (allowed.pushToTalk === false) { d.ptt?.reset(); d.showListening(false); d.dictation?.stop(); }
     // Asked to hush, he stops mid-line rather than finishing it.
     if (changed('chatter') && !voice.hasHabits(eff.chatter)) { d.said = null; d.refreshCritter(); }
-    // In or out of Work mode: his look and the bars follow.
-    if (workSwitched) d.refreshCritter();
+    // In or out of Work mode: his look and the bars follow, and he leaves the desktop or comes back.
+    if (workSwitched) { d.refreshCritter(); d.recalm?.(); }
     if (['sounds', 'soundFx', 'ambient', 'soundVolume'].some(k => k in allowed)) {
       d.refreshCritter(); // the new mix goes with his state
       // Switching a sound on, or changing the volume, plays a taste of it
