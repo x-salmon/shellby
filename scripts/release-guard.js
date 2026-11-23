@@ -114,7 +114,7 @@ function checkCiRuns(runs, sha, jobs = []) {
   if (!newest) return { state: 'missing', problem: `CI hasn't run on ${short}. Push it to main, and tag it once CI is green.` };
   const where = newest.html_url ? ` (${newest.html_url})` : '';
   if (newest.status !== 'completed') {
-    const red = (jobs || []).filter(j => j?.status === 'completed' && RED.has(j.conclusion));
+    const red = (jobs || []).filter(j => j?.status === 'completed' && RED.has(j.conclusion) && !REPORT_ONLY.test(String(j.name)));
     if (red.length) {
       return { state: 'failed', conclusion: red[0].conclusion, problem: `${red.map(j => j.name).join(', ')} failed on ${short}${where}, so the release would fail the same way. Fix main first; the fix ships as the next version.` };
     }
@@ -132,6 +132,9 @@ function checkCiRuns(runs, sha, jobs = []) {
 // The conclusions that mean the tests themselves failed, not that the run was
 // cut short (cancelled, skipped): only these stop a tag that's already pushed.
 const RED = new Set(['failure', 'timed_out']);
+// Jobs that only report (continue-on-error in ci.yml): the Mac's UI checks, until
+// they're green there. Their red never decides a release; the run's own result already leaves them out.
+const REPORT_ONLY = /^e2e on macOS /;
 
 // What `release:cut` writes in a release commit: the version, the CHANGELOG, and
 // the change notes it gathered (and removed), and the credits it added to.

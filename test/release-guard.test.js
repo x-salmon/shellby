@@ -171,3 +171,10 @@ test("unsigned and SignPath releases don't pin a publisher, so anything may foll
   assert.equal(g.checkPublisherContinuity('SignPath Foundation', 'Jo Doe', false), null);
   assert.equal(g.checkPublisherContinuity('SignPath Foundation', null, false), null);
 });
+
+test('a red job that only reports (the Mac UI checks) never holds a release', () => {
+  const runs = [{ head_sha: 'abc1234', status: 'in_progress', conclusion: null, created_at: '2026-11-23T00:00:00Z' }];
+  const jobs = [{ name: 'e2e on macOS (3/3)', status: 'completed', conclusion: 'failure' }, { name: 'test', status: 'completed', conclusion: 'success' }];
+  assert.equal(g.checkCiRuns(runs, 'abc1234', jobs).state, 'running');
+  assert.equal(g.checkCiRuns(runs, 'abc1234', [{ name: 'e2e (3/6)', status: 'completed', conclusion: 'failure' }]).state, 'failed');
+});
