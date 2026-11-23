@@ -86,6 +86,9 @@ jobs:
 
   release:
     needs: mac
+    # Windows goes out whether or not the Mac build made it; the guard then
+    # doesn't ask for the Mac files (MAC_BUILT below), and the run is still red.
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     permissions:
       contents: write # the draft release and its uploads
@@ -318,6 +321,8 @@ jobs:
       # installer, portable, blockmap, checksums, provenance and a latest.yml for this
       # version, and that the tag hasn't moved while this run was building.
       - name: Check the draft before publishing
+        env:
+          MAC_BUILT: ${{ needs.mac.result == 'success' }}
         run: node scripts/release-guard.js verify
       - name: Publish release
         shell: bash

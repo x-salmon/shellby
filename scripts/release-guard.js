@@ -60,8 +60,11 @@ function checkExistingRelease(release, tag) {
   return `Release ${tag} is already published, so electron-builder would skip its uploads. To rebuild it, delete the release (the tag can stay) and re-run.`;
 }
 
-/** The files a release needs for download and for auto-update. */
-function requiredAssets(version) {
+/**
+ * The files a release needs for download and for auto-update. mac: whether the
+ * Mac build made it (release.yml's mac job): a failed one doesn't hold Windows back.
+ */
+function requiredAssets(version, { mac = true } = {}) {
   return [
     'latest.yml',
     `Shellby-Setup-${version}.exe`,
@@ -70,18 +73,20 @@ function requiredAssets(version) {
     'SHA256SUMS.txt',
     `Shellby-${version}.intoto.jsonl`,
     // The Mac's (release.yml's mac job): what macOS updates from, and the downloads.
-    'latest-mac.yml',
-    `Shellby-${version}-arm64.dmg`,
-    `Shellby-${version}-x64.dmg`,
-    `Shellby-${version}-arm64.zip`,
-    `Shellby-${version}-x64.zip`,
+    ...(mac ? [
+      'latest-mac.yml',
+      `Shellby-${version}-arm64.dmg`,
+      `Shellby-${version}-x64.dmg`,
+      `Shellby-${version}-arm64.zip`,
+      `Shellby-${version}-x64.zip`,
+    ] : []),
   ];
 }
 
 /** Before publishing: every required file is attached. */
-function checkAssets(names, version) {
+function checkAssets(names, version, { mac = true } = {}) {
   const have = new Set(names || []);
-  const missing = requiredAssets(version).filter(n => !have.has(n));
+  const missing = requiredAssets(version, { mac }).filter(n => !have.has(n));
   return missing.length ? `The draft release is missing ${missing.join(', ')}. Not publishing.` : null;
 }
 
@@ -405,7 +410,7 @@ async function main(step, args) {
     if (!release) problems.push(`There's no release ${tag} to publish.`);
     else if (!release.isDraft) problems.push(`Release ${tag} was published by something else mid-run. Not touching it.`);
     else {
-      const assetProblem = checkAssets(release.assets.map(a => a.name), version);
+      const assetProblem = checkAssets(release.assets.map(a => a.name), version, { mac: process.env.MAC_BUILT !== 'false' });
       problems.push(assetProblem || checkLatestYml(run('gh', ['release', 'download', tag, '--pattern', 'latest.yml', '--output', '-']), version));
     }
   } else {

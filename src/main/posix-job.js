@@ -64,9 +64,9 @@ function grow(seen, root, rows, self = process.pid, ever = seen) {
   groups.delete(self);
   for (const [pid, started] of seen) if (rows.get(pid)?.started === started) out.set(pid, started);
   const top = rows.get(root);
-  if (top && !ever.has(root) && root !== self) out.set(root, top.started); // the first look
+  if (top && !ever.has(root) && !seen.has(root) && root !== self) out.set(root, top.started); // the first look
   // Someone else's process at a number one of ours had: not ours, and nor is its group.
-  const reusedAt = pid => { const r = rows.get(pid); return !!r && ever.has(pid) && ever.get(pid) !== r.started; };
+  const reusedAt = pid => { const r = rows.get(pid); const known = ever.get(pid) ?? seen.get(pid); return !!r && known !== undefined && known !== r.started; };
   for (let added = true; added;) {
     added = false;
     for (const r of rows.values()) {
@@ -128,7 +128,9 @@ function createJobs({ list = listSync, listLater = listAsync, kill = killPid, po
       if (!rows.size) return; // ps failed: what was known stands
       for (const job of open) {
         job.seen = grow(job.seen, job.handle, rows, self, job.ever);
-        for (const [pid, started] of job.seen) if (job.ever.size < MAX_EVER) job.ever.set(pid, started);
+        // The living always; the dead only up to MAX_EVER, so a long task can't grow it without end.
+        for (const [pid, started] of job.seen) job.ever.set(pid, started);
+        if (job.ever.size > MAX_EVER) for (const pid of job.ever.keys()) { if (job.ever.size <= MAX_EVER) break; if (!job.seen.has(pid)) job.ever.delete(pid); }
         job.names = new Map([...job.seen.keys()].map(pid => [pid, path.posix.basename(rows.get(pid)?.comm || '')]));
       }
     });
