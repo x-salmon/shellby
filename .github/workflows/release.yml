@@ -80,7 +80,7 @@ jobs:
         shell: bash
         run: |
           cd dist
-          shasum -a 256 Shellby-*.dmg Shellby-*-mac.zip Shellby-*-arm64.zip Shellby-*-x64.zip 2>/dev/null | sort -u > SHA256SUMS-mac.txt
+          shasum -a 256 Shellby-*-arm64.dmg Shellby-*-x64.dmg Shellby-*-arm64.zip Shellby-*-x64.zip > SHA256SUMS-mac.txt
           cat SHA256SUMS-mac.txt
           gh release upload "$GITHUB_REF_NAME" SHA256SUMS-mac.txt --clobber
 
