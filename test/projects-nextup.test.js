@@ -4,6 +4,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+
+// Full paths on both platforms: a drive-letter folder on Windows, /code on a Mac.
+const abs = (...p) => path.resolve(path.sep, ...p);
 const { nextUp, context, commandOf, MAX_CHORES } = require('../src/main/projects/nextup');
 const {
   findProject, notAProject, projectsText, nextUpText, everywhereText, pickServer, serverLogText,
@@ -14,9 +17,9 @@ const NOW = Date.parse('2026-10-04T12:00:00');
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
-const ROOT = path.resolve('C:\\code\\site');
-const CLONE = path.resolve('C:\\code\\site-two');
-const NESTED = path.resolve('C:\\code\\site\\packages\\inner');
+const ROOT = abs('code', 'site');
+const CLONE = abs('code', 'site-two');
+const NESTED = abs('code', 'site', 'packages', 'inner');
 const project = (extra = {}) => ({
   key: 'github:me/site', name: 'site', github: { repo: 'me/site' },
   local: [{ root: ROOT, branch: 'main', main: true, servers: [] }], insights: {}, sessions: [], ...extra,
@@ -155,8 +158,8 @@ test('context says where you left off and how long it has been quiet', () => {
 // ------------------------------------------------------------------ which project
 
 const site = project();
-const web = project({ key: 'github:me/web', name: 'web', github: { repo: 'me/web' }, local: [{ root: path.resolve('C:\\code\\web') }] });
-const localOnly = project({ key: 'local:c:\\code\\notes', name: 'notes', github: null, local: [{ root: path.resolve('C:\\code\\notes') }] });
+const web = project({ key: 'github:me/web', name: 'web', github: { repo: 'me/web' }, local: [{ root: abs('code', 'web') }] });
+const localOnly = project({ key: 'local:c:\\code\\notes', name: 'notes', github: null, local: [{ root: abs('code', 'notes') }] });
 const listed = [site, web, localOnly];
 
 test('findProject by key, owner/name and name', () => {
@@ -169,7 +172,7 @@ test('findProject by key, owner/name and name', () => {
 test('findProject by an absolute folder: the clone root, or anywhere inside it', () => {
   assert.equal(findProject(listed, { query: ROOT }).project, site);
   assert.equal(findProject(listed, { query: NESTED }).project, site);
-  assert.equal(findProject(listed, { query: path.resolve('C:\\code\\site-two') }).error.includes("isn't in any project"), true, 'a sibling folder with the same prefix is not inside');
+  assert.equal(findProject(listed, { query: abs('code', 'site-two') }).error.includes("isn't in any project"), true, 'a sibling folder with the same prefix is not inside');
 });
 
 test('the deepest clone root wins when clones are nested', () => {
@@ -181,7 +184,7 @@ test('the deepest clone root wins when clones are nested', () => {
 
 test('findProject with no query uses the folder the question came from', () => {
   assert.equal(findProject(listed, { cwd: path.join(ROOT, 'src') }).project, site);
-  assert.deepEqual(findProject(listed, { cwd: path.resolve('C:\\elsewhere') }), { none: true });
+  assert.deepEqual(findProject(listed, { cwd: abs('elsewhere') }), { none: true });
   assert.deepEqual(findProject(listed, {}), { none: true });
   assert.deepEqual(findProject(listed), { none: true });
   assert.deepEqual(findProject([], { cwd: ROOT }), { none: true });
@@ -201,18 +204,18 @@ test('an unknown name suggests near ones', () => {
 });
 
 test('an absolute folder that is in no project is an error that says to add it', () => {
-  const r = findProject(listed, { query: path.resolve('C:\\nowhere') });
+  const r = findProject(listed, { query: abs('nowhere') });
   assert.match(r.error, /isn't in any project on Shellby's Projects page\. Add it there first\./);
 });
 
 test('two projects with the same name are ambiguous, and the error names each', () => {
   const a = project({ key: 'github:a/app', name: 'app', github: { repo: 'a/app' } });
   const b = project({ key: 'github:b/app', name: 'app', github: { repo: 'b/app' } });
-  const c = project({ key: 'local:c:\\code\\app', name: 'app', github: null, local: [{ root: path.resolve('C:\\code\\app') }] });
+  const c = project({ key: 'local:c:\\code\\app', name: 'app', github: null, local: [{ root: abs('code', 'app') }] });
   const r = findProject([a, b, c], { query: 'app' });
   assert.equal(r.project, undefined);
   assert.match(r.error, /Several projects are called app: a\/app, b\/app, /);
-  assert.ok(r.error.includes(path.resolve('C:\\code\\app')));
+  assert.ok(r.error.includes(abs('code', 'app')));
   assert.equal(findProject([a, b, c], { query: 'b/app' }).project, b, 'owner/name settles it');
   assert.equal(findProject([a, b, c], { query: 'github:a/app' }).project, a, 'so does the key');
 });
@@ -264,7 +267,7 @@ test('projectsText lists a line per project with what needs doing', () => {
   const lines = text.split('\n');
   assert.equal(lines[0], "2 projects on Shellby's Projects page, most recently worked on first (2 with something to do):");
   assert.equal(lines[1], `- site (me/site): ${ROOT} on main · 2 clones · server up :5173 · 2 PRs failing CI · 1 vulnerability · 3 unpushed`);
-  assert.equal(lines[2], `- web (me/web): ${path.resolve('C:\\code\\web')} · 2 to-dos`);
+  assert.equal(lines[2], `- web (me/web): ${abs('code', 'web')} · 2 to-dos`);
   assert.equal(lines.at(-1), 'Ask next_up about one for what to do there.');
   assert.match(projectsText([web], { via: 'cli' }), /shellby next <name>$/);
 });

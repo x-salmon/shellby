@@ -1,5 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const client = require('../src/main/mcpclient');
@@ -16,7 +17,8 @@ test('a stdio server is started, called and shut down', async () => {
   assert.equal(r.json.id, 'ISS-1');
   // ${VAR} in the server's env is filled in, and it starts in the step's folder.
   assert.equal(r.json.env, 'tok-123');
-  assert.equal(path.resolve(r.json.cwd).toLowerCase(), path.resolve(cwd).toLowerCase());
+  // A Mac's temp folder is a symlink (/var is /private/var), and the server reports the real one.
+  assert.equal(fs.realpathSync.native(r.json.cwd).toLowerCase(), fs.realpathSync.native(cwd).toLowerCase());
 });
 
 test('tools are listed across pages', async () => {

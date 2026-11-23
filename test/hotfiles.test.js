@@ -5,7 +5,10 @@ const os = require('os');
 const path = require('path');
 const hf = require('../src/main/usage/hotfiles');
 
-const CWD = 'C:\\work\\shop';
+// A root that is absolute on both platforms ('C:\work\shop' on Windows, '/work/shop' on a Mac).
+const CWD = path.resolve(path.sep, 'work', 'shop');
+const at = (...p) => path.join(CWD, ...p);
+const FOLDER = hf.folderOf(CWD);
 
 const line = (cwd, uses) => JSON.stringify({
   type: 'assistant', cwd, timestamp: new Date().toISOString(),
@@ -14,28 +17,30 @@ const line = (cwd, uses) => JSON.stringify({
 
 test("Claude Code's folder for a working directory", () => {
   assert.equal(hf.folderOf('C:\\Users\\jacob\\Documents\\GitHub\\shellby'), 'C--Users-jacob-Documents-GitHub-shellby');
+  assert.equal(hf.folderOf('/Users/jacob/Documents/GitHub/shellby'), '-Users-jacob-Documents-GitHub-shellby');
 });
 
 test('the project folder, its Claude Code worktrees and Shellby copies of the repo count; others do not', () => {
-  assert.ok(hf.isProjectFolder('C--work-shop', CWD));
-  assert.ok(hf.isProjectFolder('c--work-shop', CWD), 'drive letters come in either case');
-  assert.ok(hf.isProjectFolder('C--work-shop--claude-worktrees-fix-it', CWD));
+  assert.ok(hf.isProjectFolder(FOLDER, CWD));
+  assert.ok(hf.isProjectFolder(FOLDER.toLowerCase(), CWD), 'a drive letter comes in either case');
+  assert.ok(hf.isProjectFolder(`${FOLDER}--claude-worktrees-fix-it`, CWD));
   assert.ok(hf.isProjectFolder('C--Users-j-AppData-Roaming-Shellby-worktrees-53e7b1-shop', CWD));
-  assert.ok(!hf.isProjectFolder('C--work-shopping', CWD));
+  assert.ok(hf.isProjectFolder('-Users-j-Library-Application-Support-Shellby-worktrees-53e7b1-shop', CWD));
+  assert.ok(!hf.isProjectFolder(`${FOLDER}ping`, CWD));
   assert.ok(!hf.isProjectFolder('C--Users-j-AppData-Roaming-Shellby-worktrees-53e7b1-shopping', CWD));
 });
 
 test('a path inside the project reads relative to it; one outside is left out', () => {
-  assert.equal(hf.relativeTo('C:\\work\\shop\\src\\a.js', CWD), 'src/a.js');
-  assert.equal(hf.relativeTo('C:\\Users\\j\\.claude\\CLAUDE.md', CWD), null);
+  assert.equal(hf.relativeTo(at('src', 'a.js'), CWD), 'src/a.js');
+  assert.equal(hf.relativeTo(path.resolve(path.sep, 'home', 'j', '.claude', 'CLAUDE.md'), CWD), null);
   assert.equal(hf.relativeTo(null, CWD), null);
   assert.equal(hf.relativeTo('src/../../x.js', CWD), null, 'a relative path that climbs out');
   assert.equal(hf.relativeTo('..notes.md', CWD), '..notes.md', 'a name that only starts with dots');
-  assert.equal(hf.relativeTo('C:\\work\\shop\\a\nb.js', CWD), null, 'control characters would end up in a prompt');
+  assert.equal(hf.relativeTo(at('a\nb.js'), CWD), null, 'control characters would end up in a prompt');
 });
 
 test('reads and edits from file tools in a transcript line, and nothing from other lines', () => {
-  const l = line(CWD, [['Read', { file_path: 'C:\\work\\shop\\a.js' }], ['Edit', { file_path: 'C:\\work\\shop\\b.js' }], ['NotebookEdit', { notebook_path: 'C:\\work\\shop\\n.ipynb' }], ['Bash', { command: 'ls' }]]);
+  const l = line(CWD, [['Read', { file_path: at('a.js') }], ['Edit', { file_path: at('b.js') }], ['NotebookEdit', { notebook_path: at('n.ipynb') }], ['Bash', { command: 'ls' }]]);
   assert.deepEqual(hf.touchesIn(l), [{ rel: 'a.js', kind: 'read' }, { rel: 'b.js', kind: 'edit' }, { rel: 'n.ipynb', kind: 'edit' }]);
   assert.equal(hf.touchesIn(line(CWD, [['Bash', { command: 'cat a.js' }]])), null);
   assert.equal(hf.touchesIn('{"type":"tool_use","name":"Read" broken'), null);
@@ -43,15 +48,16 @@ test('reads and edits from file tools in a transcript line, and nothing from oth
 });
 
 test('paths go by where the session started, not where Claude cd-ed to', () => {
-  const l = line('C:\\work\\shop\\src', [['Read', { file_path: 'C:\\work\\shop\\README.md' }], ['Read', { file_path: 'C:\\work\\shop\\src\\a.js' }]]);
+  const l = line(at('src'), [['Read', { file_path: at('README.md') }], ['Read', { file_path: at('src', 'a.js') }]]);
   assert.deepEqual(hf.touchesIn(l, CWD).map(t => t.rel), ['README.md', 'src/a.js']);
   assert.equal(hf.rootIn(JSON.stringify({ type: 'user', cwd: CWD })), CWD);
   assert.equal(hf.rootIn('{"type":"summary"}'), null);
 });
 
 test("a subagent's transcript belongs to the conversation that ran it", () => {
-  assert.equal(hf.sessionOf('C:\\p\\abc\\subagents\\agent-1.jsonl'), 'C:\\p\\abc');
-  assert.equal(hf.sessionOf('C:\\p\\abc.jsonl'), 'C:\\p\\abc');
+  const abc = path.resolve(path.sep, 'p', 'abc');
+  assert.equal(hf.sessionOf(path.join(abc, 'subagents', 'agent-1.jsonl')), abc);
+  assert.equal(hf.sessionOf(`${abc}.jsonl`), abc);
 });
 
 test('the tally counts each conversation once per file, and only habits make the list', () => {

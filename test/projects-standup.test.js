@@ -4,13 +4,19 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+
+// Full paths on both platforms: a drive-letter folder on Windows, /code on a Mac.
+const abs = (...p) => path.resolve(path.sep, ...p);
+// Folders match whatever their case on Windows only (merge.js caseKey).
+const lower = s => (process.platform === 'win32' ? s.toLowerCase() : s);
+const upper = s => (process.platform === 'win32' ? s.toUpperCase() : s);
 const s = require('../src/main/projects/standup');
 const { sessionsIn } = require('../src/main/projects/insights');
 const { Projects } = require('../src/main/projects/service');
 
 const at = (day, hh = 12) => new Date(`${day}T${String(hh).padStart(2, '0')}:00:00`).getTime();
 const MONDAY = at('2026-10-05', 12);
-const ROOT = path.resolve('C:\\code\\site');
+const ROOT = abs('code', 'site');
 
 const detail = (extra = {}) => ({ key: 'github:me/site', name: 'site', local: [{ root: ROOT, servers: [] }], insights: {}, ...extra });
 const input = (sources = {}, d = detail()) => s.inputFrom(d, sources);
@@ -186,7 +192,7 @@ test('control and invisible characters in a commit message are gone', () => {
 // ------------------------------------------------------------------ the sources
 
 test("time by day: tracked plus what you added, and the day's note, for any clone's case", () => {
-  const key = ROOT.toLowerCase();
+  const key = lower(ROOT);
   const state = {
     projects: { [key]: { name: 'site' }, 'c:\\code\\other': { name: 'other' } },
     days: { '2026-10-02': { [key]: 3600, 'c:\\code\\other': 999 } },
@@ -194,7 +200,7 @@ test("time by day: tracked plus what you added, and the day's note, for any clon
     notes: { '2026-10-02': { [key]: 'Demo prep' } },
   };
   const w = s.windowOf('standup', MONDAY);
-  assert.deepEqual(s.timeByDay(state, [ROOT.toUpperCase()], w), { '2026-10-02': { seconds: 4200, notes: ['Demo prep'] } });
+  assert.deepEqual(s.timeByDay(state, [upper(ROOT)], w), { '2026-10-02': { seconds: 4200, notes: ['Demo prep'] } });
   assert.deepEqual(s.timeByDay({ ...state, projects: { [key]: { name: 'site', ignored: true } } }, [ROOT], w), {});
   assert.deepEqual(s.timeByDay(null, [ROOT], w), {});
 });
@@ -234,7 +240,7 @@ test('report() gathers commits, conversations, time and tasks, and words them bo
   const { svc, asked } = service({
     commits: [{ at: at('2026-10-02', 10), subject: 'feat: ruler' }],
     sessions: [{ id: 's1', title: 'Ruler ticks', cwd: ROOT, createdAt: at('2026-10-02'), updatedAt: at('2026-10-02'), done: true }],
-    time: { projects: { [ROOT.toLowerCase()]: { name: 'site' } }, days: { '2026-10-02': { [ROOT.toLowerCase()]: 5400 } } },
+    time: { projects: { [lower(ROOT)]: { name: 'site' } }, days: { '2026-10-02': { [lower(ROOT)]: 5400 } } },
     weekly: { days: { '2026-10-02': { work: { site: 4 } } } },
   });
   const r = await svc.report('github:me/site', 'standup');

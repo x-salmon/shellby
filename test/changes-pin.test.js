@@ -43,7 +43,7 @@ test('pin: a turn survives gc --prune=now and still undoes', async () => {
 
     const summary = await summarize(start, end);
     const back = await undo({ root: r.dir, before: summary.before, after: summary.after });
-    assert.equal(back.ok, true);
+    assert.equal(back.ok, true, back.error);
     assert.equal(fs.readFileSync(path.join(r.dir, 'a.txt'), 'utf8'), 'one\n');
     assert.equal(fs.existsSync(path.join(r.dir, 'new.txt')), false);
   } finally { r.done(); }

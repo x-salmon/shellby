@@ -70,7 +70,7 @@ test('saveSpend with nothing spent writes nothing', () => {
 test('a routine tab is counted under its routine, by the routine name', () => {
   const { usage } = setup({ routines: [{ id: 'r1', name: 'Morning briefing' }] });
 
-  const s = usage.spendSource({ id: 't1', routineId: 'r1', title: '⟳ old name', session: { cwd: 'C:\\code\\app' } });
+  const s = usage.spendSource({ id: 't1', routineId: 'r1', title: '⟳ old name', session: { cwd: require('path').join(require('path').sep, 'code', 'app') } });
 
   assert.equal(s.key, 'r:r1');
   assert.equal(s.kind, 'routine');

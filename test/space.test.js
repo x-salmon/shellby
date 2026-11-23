@@ -109,7 +109,7 @@ test('parseTasklist ignores the header and malformed rows', () => {
 
 // ------------------------------------------------------------------ locations
 
-test('cache and disk-image locations are absolute and come off the environment', () => {
+test('cache and disk-image locations are absolute and come off the environment', { skip: process.platform !== 'win32' && 'Windows-only: AppData caches and WSL disks (Developer clutter is hidden on a Mac)' }, () => {
   const env = { LOCALAPPDATA: 'C:\\Users\\x\\AppData\\Local', APPDATA: 'C:\\Users\\x\\AppData\\Roaming' };
   const caches = cacheLocations(env, 'C:\\Users\\x');
   const npm = caches.find(c => c.name === 'npm');

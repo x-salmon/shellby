@@ -254,7 +254,8 @@ test('a picked file is named to Claude only when it is a file inside the folder'
     fs.writeFileSync(path.join(s.wt, 'app', '[id]', 'page.tsx'), 'x\n');
     assert.equal(await selectedNote(s.wt, 'a.txt'), '[Shellby: the user has the file "a.txt" selected in the file tree; "this" or "it" may mean it.]');
     assert.match(await selectedNote(s.wt, 'app/[id]/page.tsx'), /has the file "app\/\[id\]\/page\.tsx" selected/, 'brackets in a name are fine');
-    assert.match(await selectedNote(s.wt, 'app\\[id]\\page.tsx'), /"app\/\[id\]\/page\.tsx"/, 'either slash');
+    // A backslash is a separator on Windows only; on a Mac it's a letter in a name.
+    if (process.platform === 'win32') assert.match(await selectedNote(s.wt, 'app\\[id]\\page.tsx'), /"app\/\[id\]\/page\.tsx"/, 'either slash');
     assert.equal(await selectedNote(s.wt, 'missing.txt'), null, 'gone since it was picked');
     assert.equal(await selectedNote(s.wt, 'app'), null, 'a folder');
     assert.equal(await selectedNote(s.wt, '../proj/a.txt'), null, 'never out of the folder');

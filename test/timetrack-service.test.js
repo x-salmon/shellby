@@ -2,9 +2,14 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { TimeTracker } = require('../src/main/timetrack/service');
 const tt = require('../src/main/timetrack');
+const path = require('path');
+const { caseKey } = require('../src/main/projects/merge');
 
-const SHELLBY = 'c:\\users\\jacob\\documents\\github\\shellby';
-const RACK = 'c:\\users\\jacob\\documents\\github\\3d-rack';
+// Keys are folders as merge.js caseKey writes them: lower case on Windows only.
+const GITHUB = path.resolve(path.sep, 'Users', 'jacob', 'Documents', 'GitHub');
+const SHELLBY = caseKey(path.join(GITHUB, 'shellby'));
+const RACK = caseKey(path.join(GITHUB, '3d-rack'));
+const RACK_SRC = path.join(GITHUB, '3d-rack', 'src');
 
 // A tracker with everything it reaches for faked; `world` is what it sees.
 function make(world = {}, saved = { timeTracking: { enabled: true } }) {
@@ -97,17 +102,17 @@ test('a project you stopped tracking is never timed, not even through Claude', (
 });
 
 test('a folder git could not place is asked about again later', async () => {
-  const answers = [null, { root: 'C:\\Users\\jacob\\Documents\\GitHub\\3d-rack', name: '3d-rack' }];
+  const answers = [null, { root: path.join(GITHUB, '3d-rack'), name: '3d-rack' }];
   const { t } = make();
   t.deps.resolve = async () => answers.shift();
-  assert.equal(t.keyOf('C:\\Users\\jacob\\Documents\\GitHub\\3d-rack\\src'), null);
+  assert.equal(t.keyOf(RACK_SRC), null);
   await new Promise(r => setImmediate(r));
-  assert.equal(t.keyOf('C:\\Users\\jacob\\Documents\\GitHub\\3d-rack\\src'), null, 'a miss is remembered for a while');
+  assert.equal(t.keyOf(RACK_SRC), null, 'a miss is remembered for a while');
   const later = t.now() + 2 * 60 * 1000;
   t.now = () => later;
-  assert.equal(t.keyOf('C:\\Users\\jacob\\Documents\\GitHub\\3d-rack\\src'), null);
+  assert.equal(t.keyOf(RACK_SRC), null);
   await new Promise(r => setImmediate(r));
-  assert.equal(t.keyOf('C:\\Users\\jacob\\Documents\\GitHub\\3d-rack\\src'), RACK);
+  assert.equal(t.keyOf(RACK_SRC), RACK);
 });
 
 test('writes to settings every couple of minutes and on stop, not every tick', () => {

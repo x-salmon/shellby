@@ -113,7 +113,13 @@ test('agent: the keys it holds', () => {
   assert.deepEqual(keys.map(k => [k.fingerprint, k.comment, k.type]), [['SHA256:7Xkzn99VfIB+QJYVw/Fpts', 'razer', 'ED25519'], ['SHA256:abc', 'me@pc', 'RSA']]);
 });
 
-test("agent: turning it on is one fixed, elevated command; Windows' No changes nothing", async () => {
+test("agent: a Mac's ssh agent is already there, so turning it on asks nothing", { skip: process.platform !== 'darwin' && 'macOS only' }, async () => {
+  const agent = agentMod.createAgent({ run: async () => { throw new Error('nothing to run'); }, home: tmp('shellby-home-') });
+  assert.deepEqual(await agent.enable(), { ok: true });
+  assert.deepEqual(await agent.service(), { installed: true, state: 'running', startType: 'auto' });
+});
+
+test("agent: turning it on is one fixed, elevated command; Windows' No changes nothing", { skip: process.platform !== 'win32' && 'Windows-only: the ssh-agent service and its elevated prompt' }, async () => {
   const script = agentMod.enableScript();
   assert.match(script, /-Verb RunAs/);
   assert.match(script, /sc\.exe config ssh-agent start= auto && .*sc\.exe start ssh-agent/);
@@ -137,7 +143,8 @@ test('agent: unlocking a key asks through Shellby, and says what went wrong', as
   const seen = [];
   const agent = agentMod.createAgent({ run: async (file, args, opts) => { seen.push({ file, args, opts }); return reply; }, home: 'C:\\home', askEnv: async () => ({ SSH_ASKPASS: 'x' }) });
   assert.deepEqual(await agent.add('sandbox_key'), { ok: true });
-  assert.equal(seen[0].args[0], path.join('C:\\home', '.ssh', 'sandbox_key'));
+  assert.equal(seen[0].args.at(-1), path.join('C:\\home', '.ssh', 'sandbox_key'));
+  if (process.platform === 'darwin') assert.equal(seen[0].args[0], '--apple-use-keychain', 'the passphrase goes in the keychain too');
   assert.equal(seen[0].opts.env.SSH_ASKPASS, 'x');
   reply = { code: 1, stdout: '', stderr: 'Error connecting to agent: No such file or directory' };
   assert.match((await agent.add('sandbox_key')).error, /isn't running/);

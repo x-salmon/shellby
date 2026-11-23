@@ -8,7 +8,9 @@
 // Node ("%_prog%" "%dp0%\node_modules\...\cli.js" %*). That one is started
 // directly: the .exe as it is, the script with node.exe.
 //
-// A plain .exe on PATH (aider's, a standalone opencode) is used as it is.
+// A plain .exe on PATH (aider's, a standalone opencode) is used as it is. On a
+// Mac there are no shims: npm links the command into a folder on PATH, and
+// that file runs as it is.
 //
 // Pure apart from the injected fs: test/harness-launch.test.js.
 const path = require('path');
@@ -35,9 +37,9 @@ function resolveShim(text, dir) {
 }
 
 /** The folders on PATH, then npm's global one (where `npm i -g` puts shims even when PATH lacks it). */
-function searchDirs(env) {
+function searchDirs(env, platform = process.platform) {
   const list = String(env.PATH || env.Path || '').split(path.delimiter).filter(Boolean);
-  if (env.APPDATA) list.push(path.join(env.APPDATA, 'npm'));
+  if (platform === 'win32' && env.APPDATA) list.push(path.join(env.APPDATA, 'npm'));
   return [...new Set(list)];
 }
 
@@ -46,11 +48,17 @@ function searchDirs(env) {
  * spawn(file, [...prefix, ...args]). node: the node.exe to run scripts with.
  * -> null when it isn't installed (or only as something Shellby won't run).
  * @param {string} name   'gemini', 'opencode', 'codex-acp', 'aider'
- * @param {{ env: Record<string, string | undefined>, exists: (p: string) => boolean, read: (p: string) => string, node?: string | null }} o
+ * @param {{ env: Record<string, string | undefined>, exists: (p: string) => boolean, read: (p: string) => string, node?: string | null, platform?: NodeJS.Platform }} o
  */
-function findCommand(name, { env, exists, read, node = null }) {
+function findCommand(name, { env, exists, read, node = null, platform = process.platform }) {
   if (!/^[a-z][a-z0-9-]{0,40}$/.test(name)) return null;
-  for (const dir of searchDirs(env)) {
+  const mac = platform !== 'win32';
+  for (const dir of searchDirs(env, platform)) {
+    if (mac) {
+      const bin = path.join(dir, name);
+      if (exists(bin)) return { file: bin, prefix: [] };
+      continue;
+    }
     const exe = path.join(dir, `${name}.exe`);
     if (exists(exe)) return { file: exe, prefix: [] };
     const cmd = path.join(dir, `${name}.cmd`);

@@ -115,7 +115,14 @@ async function snapshot(dir, /** @type {{ skipped?: string } | null} */ info = n
   const tmp = path.join(os.tmpdir(), `shellby-index-${crypto.randomBytes(6).toString('hex')}`);
   try {
     // A fresh repo has no index yet; an empty temp one is the same thing.
-    try { await fs.promises.copyFile(realIndex, tmp); } catch (e) { if (e.code !== 'ENOENT') throw e; }
+    try {
+      await fs.promises.copyFile(realIndex, tmp);
+      // Keep the index's own time: git reads an edit made in the same second as the index as "maybe
+      // unchanged" (racy-git) only against that time, and a fresh copy would hide it on a git that
+      // stores whole seconds (a Mac's).
+      const st = await fs.promises.stat(realIndex);
+      await fs.promises.utimes(tmp, st.atime, st.mtime).catch(() => { /* the copy keeps its own time */ });
+    } catch (e) { if (e.code !== 'ENOENT') throw e; }
     const env = { GIT_INDEX_FILE: tmp };
     const pre = hooks ? [] : noHooks();
     // No pathspec: since git 2.0 add -u covers the whole tree, and on an empty index (a repo with

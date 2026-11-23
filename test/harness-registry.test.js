@@ -24,7 +24,16 @@ test('a saved harness id is one of ours, else Claude', () => {
   assert.equal(reg.cleanHarness('claude'), 'claude');
 });
 
-test('installed is read from PATH and npm\'s folder', () => {
+test('on a Mac installed is read from PATH', () => {
+  const dir = path.join(path.sep, 'opt', 'homebrew', 'bin');
+  const files = new Set([path.join(dir, 'opencode')]);
+  const o = { env: { PATH: dir }, exists: p => files.has(p), read: () => '', platform: 'darwin' };
+  assert.deepEqual(reg.listHarnesses(o).map(h => [h.id, h.installed]), [['gemini', false], ['opencode', true], ['codex', false]]);
+  assert.deepEqual(reg.commandFor('opencode', o), { file: path.join(dir, 'opencode'), prefix: [] });
+  assert.equal(reg.commandFor('nope', o), null);
+});
+
+test('installed is read from PATH and npm\'s folder', { skip: process.platform !== 'win32' && 'Windows-only: npm\'s folder in %APPDATA%' }, () => {
   const npm = 'C:\\Users\\me\\AppData\\Roaming\\npm';
   const files = new Set([path.join(npm, 'opencode.exe').toLowerCase()]);
   const o = { env: { PATH: '', APPDATA: 'C:\\Users\\me\\AppData\\Roaming' }, exists: p => files.has(p.toLowerCase()), read: () => '' };

@@ -10,7 +10,15 @@ const path = require('path');
 const E = require('../src/main/editor');
 const { snapshot } = require('../src/main/changes');
 
-test('editorCandidates tries the usual install folders first, then PATH', () => {
+// An absolute path on this OS: C:\<parts> on Windows, /<parts> on a Mac.
+const abs = (...parts) => path.resolve(path.sep, ...parts);
+const WIN = process.platform === 'win32';
+const WIN_ONLY = !WIN && 'Windows-only: cmd.exe, code.cmd and drive-letter paths';
+// The two sides open() handed the editor: read off cmd's line on Windows, off the argument list on a Mac.
+const diffSides = call => (WIN ? call.args[3].match(/--diff "([^"]+)" "([^"]+)"/).slice(1) : call.args.slice(1));
+const CODE = abs('VS Code', 'bin', WIN ? 'code.cmd' : 'code');
+
+test('editorCandidates tries the usual install folders first, then PATH', { skip: WIN_ONLY }, () => {
   const env = { PATH: 'C:\\Tools;relative\\bin;"C:\\Quoted Dir";C:\\Gone', LOCALAPPDATA: 'C:\\Users\\me\\AppData\\Local', ProgramFiles: 'C:\\Program Files' };
   const list = E.editorCandidates(env, dir => dir !== 'C:\\Gone');
   const user = path.join('C:\\Users\\me\\AppData\\Local', 'Programs', 'Microsoft VS Code', 'bin', 'code.cmd');
@@ -25,14 +33,34 @@ test('editorCandidates tries the usual install folders first, then PATH', () => 
   assert.ok(list.some(p => /cursor\.cmd$/.test(p)));
 });
 
-test('findEditor prefers an installed VS Code over a code.cmd on PATH', () => {
+test('editorCandidates on a Mac tries the Applications folders first, then PATH folders that exist', () => {
+  const env = { HOME: '/Users/me', PATH: '/opt/bin:relative/bin:/gone:/usr/local/bin' };
+  const list = E.editorCandidates(env, dir => dir !== '/gone', 'darwin');
+  const app = '/Contents/Resources/app/bin/code';
+  assert.equal(list[0], `/Applications/Visual Studio Code.app${app}`);
+  assert.ok(list.indexOf('/Users/me/Applications/Visual Studio Code.app' + app) > list.indexOf('/Applications/Cursor.app/Contents/Resources/app/bin/cursor'));
+  assert.ok(list.indexOf('/usr/local/bin/code') > list.indexOf('/Users/me/Applications/Cursor.app/Contents/Resources/app/bin/cursor'));
+  assert.ok(list.includes('/opt/bin/code-insiders'));
+  assert.ok(!list.some(p => p.startsWith('relative') || p.startsWith('/gone')), 'a relative or missing PATH entry is never searched');
+  assert.equal(new Set(list).size, list.length);
+});
+
+test('findEditor on a Mac takes the first launcher that exists', { skip: process.platform !== 'darwin' && 'Mac-only: findEditor reads this OS' }, () => {
+  const env = { HOME: '/Users/me', PATH: '/planted' };
+  const installed = '/Users/me/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code';
+  const exists = p => p === installed || p === '/planted/code';
+  assert.equal(E.findEditor(env, exists, () => true), installed);
+  assert.equal(E.findEditor(env, () => false, () => true), null);
+});
+
+test('findEditor prefers an installed VS Code over a code.cmd on PATH', { skip: WIN_ONLY }, () => {
   const env = { PATH: 'C:\\Planted', LOCALAPPDATA: 'C:\\L' };
   const installed = path.join('C:\\L', 'Programs', 'Microsoft VS Code', 'bin', 'code.cmd');
   const exists = p => p === installed || p === path.join('C:\\Planted', 'code.cmd');
   assert.equal(E.findEditor(env, exists, () => true), installed);
 });
 
-test('findEditor picks the first that exists, and never one with characters cmd would read', () => {
+test('findEditor picks the first that exists, and never one with characters cmd would read', { skip: WIN_ONLY }, () => {
   const env = { PATH: 'C:\\100%;C:\\ok', LOCALAPPDATA: 'C:\\L' };
   const exists = p => p.startsWith('C:\\100%') || p === path.join('C:\\ok', 'code.cmd');
   assert.equal(E.findEditor(env, exists, () => true), path.join('C:\\ok', 'code.cmd'));
@@ -72,10 +100,10 @@ test('safeName keeps letters, digits, dot, dash and underscore only', () => {
 });
 
 test('diffCommandLine quotes each path and refuses any it cannot quote safely', () => {
-  const code = 'C:\\VS Code\\bin\\code.cmd';
-  assert.equal(E.diffCommandLine(code, 'C:\\t\\before-a.js', 'C:\\t\\after-a.js'), '""C:\\VS Code\\bin\\code.cmd" --diff "C:\\t\\before-a.js" "C:\\t\\after-a.js""');
-  for (const bad of ['C:\\t\\%PATH%.js', 'C:\\t\\a"&calc&".js', 'C:\\t\\!x!.js', 'C:\\t\\a^b.js', 'relative.js', 'C:\\t\\a\nb.js', null]) {
-    assert.equal(E.diffCommandLine(code, 'C:\\t\\before-a.js', bad), null, String(bad));
+  const before = abs('t', 'before-a.js');
+  assert.equal(E.diffCommandLine(CODE, before, abs('t', 'after-a.js')), `""${CODE}" --diff "${before}" "${abs('t', 'after-a.js')}""`);
+  for (const bad of [abs('t', '%PATH%.js'), abs('t', 'a"&calc&".js'), abs('t', '!x!.js'), abs('t', 'a^b.js'), 'relative.js', abs('t', 'a\nb.js'), null]) {
+    assert.equal(E.diffCommandLine(CODE, before, bad), null, String(bad));
   }
 });
 
@@ -116,21 +144,25 @@ test('open writes both sides and diffs against the real file when it is unchange
     const end = await snapshot(r.dir);
     const s = fakeSpawn();
     const ref = { root: start.root, before: start.tree, after: end.tree, file: 'a.txt', status: 'M' };
-    const out = await E.open(ref, { spawnImpl: s.impl, tmp, editor: 'C:\\VS\\code.cmd' });
+    const out = await E.open(ref, { spawnImpl: s.impl, tmp, editor: CODE });
     assert.deepEqual(out, { ok: true, live: true });
-    const line = s.calls[0].args[3];
-    assert.match(s.calls[0].exe, /cmd\.exe$/i);
-    assert.deepEqual(s.calls[0].args.slice(0, 3), ['/d', '/s', '/c']);
-    const [, left, right] = line.match(/--diff "([^"]+)" "([^"]+)"/);
+    if (WIN) {
+      assert.match(s.calls[0].exe, /cmd\.exe$/i);
+      assert.deepEqual(s.calls[0].args.slice(0, 3), ['/d', '/s', '/c']);
+    } else {
+      assert.equal(s.calls[0].exe, CODE, 'a Mac starts the launcher itself, no shell');
+      assert.equal(s.calls[0].args[0], '--diff');
+    }
+    const [left, right] = diffSides(s.calls[0]);
     assert.equal(fs.readFileSync(left, 'utf8'), 'one\n');
     assert.equal(path.basename(left), 'before-a.txt');
     assert.equal(right.toLowerCase(), path.join(start.root, 'a.txt').toLowerCase());
 
     // Changed again since: both sides are copies, and the project is left alone.
     fs.writeFileSync(path.join(r.dir, 'a.txt'), 'something else\n');
-    const again = await E.open(ref, { spawnImpl: s.impl, tmp, editor: 'C:\\VS\\code.cmd' });
+    const again = await E.open(ref, { spawnImpl: s.impl, tmp, editor: CODE });
     assert.deepEqual(again, { ok: true, live: false });
-    const [, , copy] = s.calls[1].args[3].match(/--diff "([^"]+)" "([^"]+)"/);
+    const copy = diffSides(s.calls[1])[1];
     assert.equal(path.basename(copy), 'after-a.txt');
     assert.equal(fs.readFileSync(copy, 'utf8'), 'one\ntwo\n');
   } finally { r.done(); fs.rmSync(tmp, { recursive: true, force: true }); }
@@ -145,8 +177,8 @@ test('open treats an added file as empty before, and says when VS Code is missin
     const end = await snapshot(r.dir);
     const s = fakeSpawn();
     const ref = { root: start.root, before: start.tree, after: end.tree, file: 'new.txt', status: 'A' };
-    assert.equal((await E.open(ref, { spawnImpl: s.impl, tmp, editor: 'C:\\VS\\code.cmd' })).ok, true);
-    const [, left] = s.calls[0].args[3].match(/--diff "([^"]+)"/);
+    assert.equal((await E.open(ref, { spawnImpl: s.impl, tmp, editor: CODE })).ok, true);
+    const [left] = diffSides(s.calls[0]);
     assert.equal(fs.readFileSync(left, 'utf8'), '');
     const missing = await E.open(ref, { spawnImpl: s.impl, tmp, editor: null });
     assert.equal(missing.ok, false);
@@ -159,26 +191,27 @@ test('open refuses a ref that is not a snapshot or names a path outside the proj
   const s = fakeSpawn();
   const base = { root: path.resolve(os.tmpdir()), before: 'a'.repeat(40), after: 'b'.repeat(40) };
   for (const file of ['../x', 'C:\\Windows\\win.ini', undefined]) {
-    const r = await E.open({ ...base, file }, { spawnImpl: s.impl, editor: 'C:\\VS\\code.cmd' });
+    const r = await E.open({ ...base, file }, { spawnImpl: s.impl, editor: CODE });
     assert.equal(r.ok, false, String(file));
   }
-  assert.equal((await E.open({ ...base, before: 'HEAD', file: 'a' }, { spawnImpl: s.impl, editor: 'C:\\VS\\code.cmd' })).ok, false);
+  assert.equal((await E.open({ ...base, before: 'HEAD', file: 'a' }, { spawnImpl: s.impl, editor: CODE })).ok, false);
   assert.equal(s.calls.length, 0);
 });
 
 // ---- folders (a mod's, from the Toolbox)
 
 test('folderCommandLine quotes the editor and the folder for cmd', () => {
-  assert.equal(E.folderCommandLine('C:\\VS Code\\bin\\code.cmd', 'C:\\Users\\me\\.claude\\skills\\tidy'), '""C:\\VS Code\\bin\\code.cmd" "C:\\Users\\me\\.claude\\skills\\tidy""');
+  const dir = abs('Users', 'me', '.claude', 'skills', 'tidy');
+  assert.equal(E.folderCommandLine(CODE, dir), `""${CODE}" "${dir}""`);
 });
 
 test('folderCommandLine refuses relative paths and characters cmd would act on', () => {
-  const code = 'C:\\VS\\code.cmd';
-  assert.equal(E.folderCommandLine(code, 'relative\\dir'), null);
-  assert.equal(E.folderCommandLine('code.cmd', 'C:\\x'), null);
-  for (const bad of ['C:\\a"b', 'C:\\a%PATH%', 'C:\\a!b', 'C:\\a^b', 'C:\\a\nb', 'C:\\a\0b']) {
+  const code = CODE;
+  assert.equal(E.folderCommandLine(code, 'relative/dir'), null);
+  assert.equal(E.folderCommandLine('code.cmd', abs('x')), null);
+  for (const bad of [abs('a"b'), abs('a%PATH%'), abs('a!b'), abs('a^b'), abs('a\nb'), abs('a\0b')]) {
     assert.equal(E.folderCommandLine(code, bad), null, JSON.stringify(bad));
-    assert.equal(E.folderCommandLine(bad, 'C:\\x'), null, JSON.stringify(bad));
+    assert.equal(E.folderCommandLine(bad, abs('x')), null, JSON.stringify(bad));
   }
   assert.equal(E.folderCommandLine(code, undefined), null);
 });
@@ -187,20 +220,25 @@ test('openFolder starts the editor on the folder, detached, from that folder', (
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-editor-folder-'));
   try {
     const s = fakeSpawn();
-    assert.deepEqual(E.openFolder(dir, { spawnImpl: s.impl, editor: 'C:\\VS\\code.cmd', env: { PATH: 'x' } }), { ok: true });
+    assert.deepEqual(E.openFolder(dir, { spawnImpl: s.impl, editor: CODE, env: { PATH: 'x' } }), { ok: true });
     assert.equal(s.calls.length, 1);
-    assert.match(s.calls[0].exe, /cmd\.exe$/i);
-    assert.deepEqual(s.calls[0].args.slice(0, 3), ['/d', '/s', '/c']);
-    assert.equal(s.calls[0].args[3], `""C:\\VS\\code.cmd" "${dir}""`);
+    if (WIN) {
+      assert.match(s.calls[0].exe, /cmd\.exe$/i);
+      assert.deepEqual(s.calls[0].args.slice(0, 3), ['/d', '/s', '/c']);
+      assert.equal(s.calls[0].args[3], `""${CODE}" "${dir}""`);
+      assert.equal(s.calls[0].opts.windowsHide, true);
+    } else {
+      assert.equal(s.calls[0].exe, CODE, 'a Mac starts the launcher itself, no shell');
+      assert.deepEqual(s.calls[0].args, [dir]);
+    }
     assert.equal(s.calls[0].opts.cwd, dir);
     assert.equal(s.calls[0].opts.detached, true);
-    assert.equal(s.calls[0].opts.windowsHide, true);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('openFolder says so when the folder is gone, and starts nothing', () => {
   const s = fakeSpawn();
-  const r = E.openFolder(path.join(os.tmpdir(), 'shellby-no-such-folder-xyz'), { spawnImpl: s.impl, editor: 'C:\\VS\\code.cmd' });
+  const r = E.openFolder(path.join(os.tmpdir(), 'shellby-no-such-folder-xyz'), { spawnImpl: s.impl, editor: CODE });
   assert.equal(r.ok, false);
   assert.match(r.error, /isn't there/);
   assert.equal(s.calls.length, 0);
@@ -216,7 +254,7 @@ test('openFolder reports notFound when there is no editor, and refuses a path cm
     assert.match(none.error, /VS Code/);
     const unsafe = path.join(dir, 'a%b');
     fs.mkdirSync(unsafe);
-    const r = E.openFolder(unsafe, { spawnImpl: s.impl, editor: 'C:\\VS\\code.cmd' });
+    const r = E.openFolder(unsafe, { spawnImpl: s.impl, editor: CODE });
     assert.equal(r.ok, false);
     assert.equal(s.calls.length, 0);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
@@ -225,7 +263,7 @@ test('openFolder reports notFound when there is no editor, and refuses a path cm
 test('openFolder turns a failed start into an error instead of throwing', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-editor-folder-'));
   try {
-    const r = E.openFolder(dir, { spawnImpl: () => { throw new Error('spawn denied'); }, editor: 'C:\\VS\\code.cmd' });
+    const r = E.openFolder(dir, { spawnImpl: () => { throw new Error('spawn denied'); }, editor: CODE });
     assert.equal(r.ok, false);
     assert.match(r.error, /spawn denied/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }

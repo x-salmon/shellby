@@ -166,7 +166,13 @@ test('cloud, teleport and from-pr each make a fixed, checked command line', () =
   assert.equal(handoff.cloudArgs('rm').ok, false);
 });
 
-test("a cloud session's own words reach PowerShell quoted, and never cmd", () => {
+test("a cloud session's own words reach a Mac's Terminal as one quoted word", { skip: process.platform === 'win32' && 'macOS only' }, () => {
+  const r = handoff.launchPlans({ exe: '/opt/homebrew/bin/claude', cwd: '/Users/me/app', cloud: { kind: 'cloud', value: "it's & | done" } });
+  assert.ok(r.ok);
+  assert.ok(r.mac.includes("exec '/opt/homebrew/bin/claude' '--cloud' 'it'\\''s & | done'"), r.mac);
+});
+
+test("a cloud session's own words reach PowerShell quoted, and never cmd", { skip: process.platform !== 'win32' && 'Windows-only: PowerShell and cmd command lines' }, () => {
   const base = { exe: 'C:\\Claude\\claude.exe', cwd: 'C:\\code\\app', powershell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', cmd: 'C:\\Windows\\System32\\cmd.exe' };
   const cloud = handoff.launchPlans({ ...base, cloud: { kind: 'cloud', value: "it's & | done" } });
   assert.ok(cloud.ok);
@@ -178,7 +184,7 @@ test("a cloud session's own words reach PowerShell quoted, and never cmd", () =>
   assert.equal(handoff.launchPlans({ ...base, cloud: { kind: 'pr', value: 'nope' } }).ok, false);
 });
 
-test('/ultraplan starts an interactive session on the command, its words checked like a cloud description, and never through cmd', () => {
+test('/ultraplan words are checked like a cloud description', () => {
   assert.deepEqual(handoff.cloudArgs('ultraplan', 'move auth to "sessions"\nthen tidy'), { ok: true, args: ["/ultraplan move auth to 'sessions' then tidy"] });
   assert.match(handoff.cloudArgs('ultraplan', '  ').error, /\/ultraplan <what to plan>/);
   assert.equal(handoff.cloudArgs('ultraplan', 'x'.repeat(2001)).ok, false);
@@ -186,6 +192,9 @@ test('/ultraplan starts an interactive session on the command, its words checked
   assert.equal(handoff.cloudArgs('ultraplan', 'tidy C:\\code\\app\\').args[0], '/ultraplan tidy C:\\code\\app', 'no backslash left to swallow the closing quote');
   assert.equal(handoff.cloudArgs('cloud', 'fix it \\\\').args[1], 'fix it');
   assert.equal(handoff.cloudArgs('cloud', '\\').ok, false);
+});
+
+test('/ultraplan starts an interactive session on the command through PowerShell, never cmd', { skip: process.platform !== 'win32' && 'Windows-only: PowerShell and cmd command lines' }, () => {
   const base = { exe: 'C:\\Claude\\claude.exe', cwd: 'C:\\code\\app', powershell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', cmd: 'C:\\Windows\\System32\\cmd.exe' };
   const r = handoff.launchPlans({ ...base, cloud: { kind: 'ultraplan', value: 'x' } });
   assert.ok(r.ok);

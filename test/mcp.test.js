@@ -299,12 +299,12 @@ test('ackReply reads back what happened', () => {
 const ROUTINE = { name: 'Friday tidy', prompt: 'Sort my Downloads by type. Delete nothing.', schedule: { type: 'weekly', time: '17:00', days: [5] } };
 
 test('add_routine turns into a validated, enabled routine', () => {
-  const r = parseRequest({ action: 'add_routine', args: { ...ROUTINE, folder: 'C:/Users/me/Downloads', mode: 'acceptEdits', catchUp: false } });
+  const r = parseRequest({ action: 'add_routine', args: { ...ROUTINE, folder: DOWNLOADS, mode: 'acceptEdits', catchUp: false } });
   assert.equal(r.ok, true, r.error);
   const { routine } = r.intent;
   assert.equal(routine.name, 'Friday tidy');
   assert.equal(routine.mode, 'acceptEdits');
-  assert.equal(routine.cwd, 'C:/Users/me/Downloads');
+  assert.equal(routine.cwd, DOWNLOADS);
   assert.equal(routine.enabled, true);
   assert.equal(routine.catchUp, false);
   assert.deepEqual(routine.schedule, { type: 'weekly', time: '17:00', days: [5] });
@@ -620,7 +620,8 @@ test('the plugin declares the MCP server so Claude Code starts it', () => {
 // ------------------------------------------------------------------ the Projects tools
 
 const askProject = (action, args = {}) => parseRequest({ action, args });
-const HERE = path.resolve('C:\\code\\site');
+const HERE = path.resolve(path.sep, 'code', 'site');
+const DOWNLOADS = path.resolve(path.sep, 'Users', 'me', 'Downloads');
 
 test('the project actions are known to the app', () => {
   for (const a of ['projects', 'next_up', 'server_log', 'add_task', 'finish_task']) assert.ok(ACTIONS.includes(a), a);
@@ -656,10 +657,10 @@ test('the cwd must be an absolute local folder, plain text, and short', () => {
   assert.equal(cwd({ cwd: `${HERE}\u0000` }), '');
   assert.equal(cwd({ cwd: `${HERE}\u001b[31m` }), '');
   assert.equal(cwd({ cwd: `${HERE}\u202E` }), '');
-  assert.equal(cwd({ cwd: `C:\\${'a'.repeat(400)}` }), '');
+  assert.equal(cwd({ cwd: `${path.sep}${'a'.repeat(400)}` }), '');
   assert.equal(cwd({ cwd: 42 }), '');
   assert.equal(cwd({ cwd: '' }), '');
-  assert.equal(cwd({ cwd: 'C:\\code\\site\\..\\web' }), path.resolve('C:\\code\\web'), 'it is made canonical');
+  assert.equal(cwd({ cwd: `${HERE}${path.sep}..${path.sep}web` }), path.resolve(HERE, '..', 'web'), 'it is made canonical');
   // The check keeps no state from the last call.
   assert.equal(cwd({ cwd: `${HERE}\u0000` }), '');
   assert.equal(cwd({ cwd: `${HERE}\u0000` }), '');

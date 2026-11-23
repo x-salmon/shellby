@@ -97,7 +97,7 @@ test('folder watch: a burst of matching new files becomes one start', async () =
 });
 
 test('every template is a valid workflow', () => {
-  for (const t of templates({ home: 'C:\\Users\\me' })) {
+  for (const t of templates({ home: path.resolve(path.sep, 'Users', 'me') })) {
     const r = validateWorkflow(t.workflow);
     assert.equal(r.ok, true, `${t.key}: ${JSON.stringify(r.errors)}`);
   }

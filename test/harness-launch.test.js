@@ -41,7 +41,7 @@ test('a shim that runs a script names the script, not node.exe', () => {
   assert.deepEqual(resolveShim(SCRIPT_SHIM, NPM), { kind: 'script', file: path.join(NPM, 'node_modules\\@google\\gemini-cli\\bundle\\gemini.js') });
 });
 
-test("a shim can't point outside its own folder, and anything else isn't a shim", () => {
+test("a shim can't point outside its own folder, and anything else isn't a shim", { skip: process.platform !== 'win32' && 'Windows-only: npm .cmd shims and .exe files' }, () => {
   assert.equal(resolveShim('"%dp0%\\..\\..\\Windows\\evil.exe" %*', NPM), null);
   assert.equal(resolveShim('echo hello', NPM), null);
   assert.equal(resolveShim('', NPM), null);
@@ -52,7 +52,7 @@ function fakeFs(files) {
   return { exists: p => set.has(p.toLowerCase()), read: p => set.get(p.toLowerCase()) };
 }
 
-test('finds a script CLI through its shim and runs it with node from PATH', () => {
+test('finds a script CLI through its shim and runs it with node from PATH', { skip: process.platform !== 'win32' && 'Windows-only: npm .cmd shims and .exe files' }, () => {
   const fs = fakeFs({
     [path.join(NPM, 'gemini.cmd')]: SCRIPT_SHIM,
     [path.join(NPM, 'node_modules\\@google\\gemini-cli\\bundle\\gemini.js')]: '',
@@ -62,7 +62,7 @@ test('finds a script CLI through its shim and runs it with node from PATH', () =
   assert.deepEqual(r, { file: 'C:\\Program Files\\nodejs\\node.exe', prefix: [path.join(NPM, 'node_modules\\@google\\gemini-cli\\bundle\\gemini.js')] });
 });
 
-test('a plain .exe on PATH wins, and nothing is found for a missing CLI or an odd name', () => {
+test('a plain .exe on PATH wins, and nothing is found for a missing CLI or an odd name', { skip: process.platform !== 'win32' && 'Windows-only: npm .cmd shims and .exe files' }, () => {
   const fs = fakeFs({ 'C:\\Users\\me\\.local\\bin\\aider.exe': '' });
   const env = { PATH: 'C:\\Users\\me\\.local\\bin' };
   assert.deepEqual(findCommand('aider', { env, ...fs }), { file: 'C:\\Users\\me\\.local\\bin\\aider.exe', prefix: [] });
@@ -71,7 +71,19 @@ test('a plain .exe on PATH wins, and nothing is found for a missing CLI or an od
   assert.equal(findCommand('a & calc', { env, ...fs }), null);
 });
 
-test("a script shim whose target is gone, or with no node anywhere, isn't found", () => {
+// A Mac has no shims: the command npm linked into a PATH folder runs as it is.
+test('on a Mac a command on PATH is found by its plain name, and an npm folder from APPDATA is not searched', () => {
+  const dir = path.join(path.sep, 'opt', 'homebrew', 'bin');
+  const bin = path.join(dir, 'gemini');
+  const fs = fakeFs({ [bin]: '', [path.join(path.sep, 'x', 'npm', 'opencode')]: '' });
+  const env = { PATH: `${path.join(path.sep, 'usr', 'bin')}${path.delimiter}${dir}`, APPDATA: path.join(path.sep, 'x') };
+  assert.deepEqual(findCommand('gemini', { env, platform: 'darwin', ...fs }), { file: bin, prefix: [] });
+  assert.equal(findCommand('opencode', { env, platform: 'darwin', ...fs }), null);
+  assert.equal(findCommand('..x', { env, platform: 'darwin', ...fs }), null);
+  assert.equal(findCommand('a & calc', { env, platform: 'darwin', ...fs }), null);
+});
+
+test("a script shim whose target is gone, or with no node anywhere, isn't found", { skip: process.platform !== 'win32' && 'Windows-only: npm .cmd shims and .exe files' }, () => {
   const env = { PATH: '', APPDATA: 'C:\\Users\\me\\AppData\\Roaming' };
   assert.equal(findCommand('gemini', { env, ...fakeFs({ [path.join(NPM, 'gemini.cmd')]: SCRIPT_SHIM }) }), null);
   assert.equal(findCommand('gemini', { env, ...fakeFs({ [path.join(NPM, 'gemini.cmd')]: SCRIPT_SHIM, [path.join(NPM, 'node_modules\\@google\\gemini-cli\\bundle\\gemini.js')]: '' }) }), null);

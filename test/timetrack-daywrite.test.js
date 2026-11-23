@@ -5,10 +5,13 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const dw = require('../src/main/timetrack/daywrite');
 const tt = require('../src/main/timetrack');
+const path = require('path');
+const { caseKey } = require('../src/main/projects/merge');
 const { TimeTracker } = require('../src/main/timetrack/service');
 
-const SHELLBY = 'c:\\users\\me\\code\\shellby';
-const BOOKING = 'c:\\users\\me\\code\\booking-app';
+// Keys are folders as merge.js caseKey writes them: lower case on Windows only.
+const SHELLBY = caseKey(path.resolve(path.sep, 'Users', 'me', 'code', 'shellby'));
+const BOOKING = caseKey(path.resolve(path.sep, 'Users', 'me', 'code', 'booking-app'));
 const DAY = '2026-11-12';
 const at = (h, m = 0) => new Date(2026, 10, 12, h, m).getTime();
 
@@ -40,6 +43,7 @@ test('input names projects and clients but never a folder, and marks commits and
   assert.match(text, /\[c1\] "Calendar sync": bookings should show up/);
   assert.match(text, /Thursday, November 12, 2026/);
   assert.doesNotMatch(text, /c:\\users|booking-app\\/i, 'no paths leave the PC');
+  assert.ok(!text.includes(BOOKING) && !text.includes(SHELLBY), 'no folders leave the PC');
 });
 
 test('input stops adding projects once it is full', () => {

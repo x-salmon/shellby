@@ -78,7 +78,7 @@ function parseTarget(raw, cwd) {
     col = m[2] ? Number(m[2]) || null : null;
     s = s.slice(0, m.index);
   }
-  if (/^~[\\/]/.test(s)) s = path.join(process.env.USERPROFILE || '', s.slice(2));
+  if (/^~[\\/]/.test(s)) s = path.join(process.env.USERPROFILE || process.env.HOME || '', s.slice(2));
   if (!path.isAbsolute(s)) {
     if (typeof cwd !== 'string' || !path.isAbsolute(cwd)) return null;
     s = path.join(cwd, s);

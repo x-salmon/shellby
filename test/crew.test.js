@@ -174,6 +174,9 @@ test('sending to a conversation you marked done puts it back on the list', async
   }
 });
 
+// The session lets go of its process on 'close', which on a Mac can come well after 'exit'.
+const exited = proc => new Promise(r => proc.once('close', r));
+
 test('a tab left quiet gives its process back, and its next message resumes the conversation', async () => {
   const history = new History(tmp());
   const mgr = new SessionManager({ getExe: () => process.execPath, argsPrefix: [FAKE], history, getMode: () => 'ask', getModel: () => '' });
@@ -189,7 +192,7 @@ test('a tab left quiet gives its process back, and its next message resumes the 
 
     assert.deepEqual(mgr.stopIdle(30 * 60 * 1000), [], 'not after a moment');
     assert.deepEqual(mgr.stopIdle(30 * 60 * 1000, Date.now() + 31 * 60 * 1000), ['quiet']);
-    await new Promise(r => (proc.exitCode !== null ? r() : proc.once('exit', r)));
+    await exited(proc);
     assert.equal(tab.session.proc, null);
     assert.equal(mgr.tabs.has('quiet'), true, 'the tab itself stays open');
 
@@ -232,7 +235,7 @@ test('a quiet tab keeps its process while it waits on you or runs something in t
 // Claude Code reads its sign-in once, as it starts: after a sign-out or switch,
 // every open conversation needs a new process, or each one fails "Not logged in"
 // until Shellby restarts.
-const exited = proc => new Promise(r => (proc.exitCode !== null ? r() : proc.once('exit', r)));
+
 
 test('a new sign-in stops every free local conversation\'s process now, and the rest once they\'re free', async () => {
   const mgr = new SessionManager({ getExe: () => process.execPath, argsPrefix: [FAKE], history: new History(tmp()), getMode: () => 'ask', getModel: () => '' });

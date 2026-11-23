@@ -3,6 +3,9 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+// Full paths on both platforms.
+const APP = path.resolve(path.sep, 'code', 'app');
+const CODE = path.resolve(path.sep, 'code');
 const journal = require('../src/main/journal');
 const { JournalStore } = require('../src/main/journal-store');
 const { parseRequest } = require('../src/main/crabtools');
@@ -11,7 +14,7 @@ const { toAction } = require('../claude-plugin/mcp/server');
 const NOW = 1_790_000_000_000;
 const MIN = 60 * 1000;
 const H = 60 * MIN;
-const CWD = 'C:\\code\\app';
+const CWD = APP;
 const at = ms => new Date(ms).toISOString();
 
 const prompt = (text, t) => ({ type: 'user', timestamp: at(t), message: { role: 'user', content: text } });
@@ -303,23 +306,23 @@ test('the store keeps one book per project and finds it from a folder inside', (
 // ---- Claude Code's way in (MCP), checked on both sides
 
 test('the MCP journal tool reads by default and pins when asked', () => {
-  assert.deepEqual(toAction('journal', { folder: 'C:\\code\\app' }), { action: 'journal', args: { folder: 'C:\\code\\app' } });
-  assert.deepEqual(toAction('journal', { folder: 'C:\\code\\app', pin: { kind: 'decision', text: 'Use LF' } }),
-    { action: 'journal', args: { folder: 'C:\\code\\app', pin: { kind: 'decision', text: 'Use LF' } } });
+  assert.deepEqual(toAction('journal', { folder: APP }), { action: 'journal', args: { folder: APP } });
+  assert.deepEqual(toAction('journal', { folder: APP, pin: { kind: 'decision', text: 'Use LF' } }),
+    { action: 'journal', args: { folder: APP, pin: { kind: 'decision', text: 'Use LF' } } });
   assert.equal(toAction('journal', {}).action, 'journal', 'no folder: where Claude Code started');
   assert.ok(toAction('journal', { folder: 'relative\\path' }).error);
-  assert.ok(toAction('journal', { folder: 'C:\\code', pin: { text: '' } }).error);
-  assert.ok(toAction('journal', { folder: 'C:\\code', pin: { kind: 'evil', text: 'x' } }).error);
+  assert.ok(toAction('journal', { folder: CODE, pin: { text: '' } }).error);
+  assert.ok(toAction('journal', { folder: CODE, pin: { kind: 'evil', text: 'x' } }).error);
 });
 
 test('the app takes only a local folder and a bounded pin', () => {
-  assert.deepEqual(parseRequest({ action: 'journal', args: { folder: 'C:\\code\\app' } }), { ok: true, intent: { action: 'journal', folder: 'C:\\code\\app', pin: null } });
+  assert.deepEqual(parseRequest({ action: 'journal', args: { folder: APP } }), { ok: true, intent: { action: 'journal', folder: APP, pin: null } });
   for (const folder of ['\\\\host\\share\\x', 'relative', '', 'C:\\a\u0007b', 42]) {
     assert.equal(parseRequest({ action: 'journal', args: { folder } }).ok, false, `refuses ${JSON.stringify(folder)}`);
   }
-  const r = parseRequest({ action: 'journal', args: { folder: 'C:\\code', pin: { kind: 'nope', text: `a\u202eb ${'z'.repeat(400)}` } } });
+  const r = parseRequest({ action: 'journal', args: { folder: CODE, pin: { kind: 'nope', text: `a\u202eb ${'z'.repeat(400)}` } } });
   assert.equal(r.intent.pin.kind, 'note');
   assert.equal(r.intent.pin.text.length, journal.MAX_PIN_TEXT);
   assert.ok(!r.intent.pin.text.includes('\u202e'), 'no bidi overrides');
-  assert.equal(parseRequest({ action: 'journal', args: { folder: 'C:\\code', pin: { text: ' ' } } }).ok, false);
+  assert.equal(parseRequest({ action: 'journal', args: { folder: CODE, pin: { text: ' ' } } }).ok, false);
 });

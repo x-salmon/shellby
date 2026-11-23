@@ -19,6 +19,12 @@ const ID = '0b7c3f9e-2a41-4d6b-9f00-1c2d3e4f5a6b';
 const EXE = 'C:\\Users\\me\\.local\\bin\\claude.exe';
 const CWD = 'C:\\code\\my app';
 const SYS = { wt: 'C:\\Users\\me\\AppData\\Local\\Microsoft\\WindowsApps\\wt.exe', powershell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', cmd: 'C:\\Windows\\System32\\cmd.exe' };
+const WIN = process.platform === 'win32';
+// The command lines below are Windows Terminal, PowerShell and cmd; a Mac's terminal is handoff-mac.js (mac.test.js).
+const WIN_ONLY = { skip: !WIN && 'Windows-only: Windows Terminal, PowerShell and cmd command lines' };
+// A local folder in the platform's own shape.
+const P = (...parts) => (WIN ? `C:\\${parts.join('\\')}` : `/${parts.join('/')}`);
+const APP = P('code', 'app');
 const decode = b64 => Buffer.from(b64, 'base64').toString('utf16le');
 // The start plans carry their whole line as one verbatim string, so go by words.
 const scriptOf = plan => {
@@ -43,13 +49,15 @@ test('psQuote doubles every kind of single quote PowerShell honours', () => {
 });
 
 test('terminalCwd prefers a copy of the repo that is still there, then the folder', () => {
-  const there = new Set(['C:\\wt\\copy\\src', 'C:\\code\\app']);
+  const copy = P('wt', 'copy', 'src');
+  const there = new Set([copy, APP]);
   const exists = p => there.has(p);
-  assert.equal(handoff.terminalCwd({ cwd: 'C:\\code\\app', worktree: { cwd: 'C:\\wt\\copy\\src', path: 'C:\\wt\\copy' } }, exists), 'C:\\wt\\copy\\src');
-  assert.equal(handoff.terminalCwd({ cwd: 'C:\\code\\app', worktree: { cwd: 'C:\\gone', path: 'C:\\gone' } }, exists), 'C:\\code\\app', 'a tidied-away copy falls back');
-  assert.equal(handoff.terminalCwd({ cwd: 'C:\\nowhere' }, exists), null);
-  assert.equal(handoff.terminalCwd({ cwd: 'relative\\dir' }), null, 'never a relative path');
-  assert.equal(handoff.terminalCwd({ cwd: 'C:\\code\nrm' }), null, 'never a control character');
+  assert.equal(handoff.terminalCwd({ cwd: APP, worktree: { cwd: copy, path: P('wt', 'copy') } }, exists), copy);
+  assert.equal(handoff.terminalCwd({ cwd: APP, worktree: { cwd: P('gone'), path: P('gone') } }, exists), APP, 'a tidied-away copy falls back');
+  assert.equal(handoff.terminalCwd({ cwd: P('nowhere') }, exists), null);
+  assert.equal(handoff.terminalCwd({ cwd: 'relative/dir' }), null, 'never a relative path');
+  assert.equal(handoff.terminalCwd({ cwd: `${P('code')}\nrm` }), null, 'never a control character');
+  assert.equal(handoff.terminalCwd({ cwd: '//evil/share/app' }), null, 'never another machine');
   assert.equal(handoff.terminalCwd({ cwd: '\\\\evil\\share\\app' }), null, 'never another machine');
   assert.equal(handoff.terminalCwd({ cwd: '\\\\?\\C:\\app' }), null, 'never a device path');
 });
@@ -64,7 +72,7 @@ test('a hook naming a network share gets no folder kept, so it can never be brou
 
 // ---------------------------------------------------------------- the command line
 
-test('launchPlans: Windows Terminal first, then PowerShell, then cmd', () => {
+test('launchPlans: Windows Terminal first, then PowerShell, then cmd', WIN_ONLY, () => {
   const r = handoff.launchPlans({ exe: EXE, cwd: CWD, sessionId: ID, ...SYS });
   assert.equal(r.ok, true);
   assert.deepEqual(r.plans.map(p => p.shell), ['wt', 'powershell', 'cmd']);
@@ -85,7 +93,7 @@ test('launchPlans: Windows Terminal first, then PowerShell, then cmd', () => {
   }
 });
 
-test('scriptPlans: any script gets a window: wt, else PowerShell through start, never spawned bare', () => {
+test('scriptPlans: any script gets a window: wt, else PowerShell through start, never spawned bare', WIN_ONLY, () => {
   const options = { cwd: 'C:\\Users\\me', detached: true, stdio: 'ignore', windowsHide: false };
   const script = "& 'C:\\Windows\\System32\\OpenSSH\\ssh.exe' '-t' 'box' 'claude auth login'";
   const [wt, ps, ...rest] = handoff.scriptPlans({ script, options, ...SYS });
@@ -100,7 +108,7 @@ test('scriptPlans: any script gets a window: wt, else PowerShell through start, 
   assert.deepEqual(handoff.scriptPlans({ script, options, dir: 'C:\\a;b', ...SYS })[0].args.slice(0, 3), ['-w', 'new', SYS.powershell], 'a ; in the folder stays off wt\'s line');
 });
 
-test('windowsTerminal finds the app alias that existsSync calls missing', () => {
+test('windowsTerminal finds the app alias that existsSync calls missing', WIN_ONLY, () => {
   const { windowsTerminal } = require('../src/main/system32');
   const env = { LOCALAPPDATA: 'C:\\Users\\me\\AppData\\Local' };
   assert.equal(windowsTerminal(env, () => ({})), SYS.wt);
@@ -108,7 +116,7 @@ test('windowsTerminal finds the app alias that existsSync calls missing', () => 
   assert.equal(windowsTerminal({}, () => ({})), null);
 });
 
-test('the script resumes in the folder, with the CLI and id as literals', () => {
+test('the script resumes in the folder, with the CLI and id as literals', WIN_ONLY, () => {
   const { plans } = handoff.launchPlans({ exe: EXE, cwd: CWD, sessionId: ID, ...SYS });
   const script = scriptOf(plans[1]);
   assert.equal(scriptOf(plans[0]), script, 'Windows Terminal runs the same script');
@@ -117,7 +125,7 @@ test('the script resumes in the folder, with the CLI and id as literals', () => 
   assert.match(script, /Remove-Item -LiteralPath 'Env:SHELLBY_OWNED'/, 'the terminal session is outside Shellby: the plugin reports it');
 });
 
-test('"Always use my Claude plan" drops the billing variables inside the window too', () => {
+test('"Always use my Claude plan" drops the billing variables inside the window too', WIN_ONLY, () => {
   const on = scriptOf(handoff.launchPlans({ exe: EXE, cwd: CWD, sessionId: ID, scrub: billingScrub(true), ...SYS }).plans[1]);
   for (const k of BILLING_ENV) assert.match(on, new RegExp(`'Env:${k}'`));
   const off = scriptOf(handoff.launchPlans({ exe: EXE, cwd: CWD, sessionId: ID, scrub: billingScrub(false), ...SYS }).plans[1]);
@@ -126,7 +134,7 @@ test('"Always use my Claude plan" drops the billing variables inside the window 
   assert.doesNotMatch(odd, /calc/, 'a variable name is never anything but a name');
 });
 
-test('a hostile folder name stays a folder name', () => {
+test('a hostile folder name stays a folder name', WIN_ONLY, () => {
   const cwd = "C:\\x'; Start-Process calc; '\u2019 & echo %PATH% ;wt";
   const r = handoff.launchPlans({ exe: EXE, cwd, sessionId: ID, ...SYS });
   assert.equal(r.ok, true);
@@ -139,14 +147,23 @@ test('a hostile folder name stays a folder name', () => {
   }
 });
 
-test('cmd is skipped when the CLI path has cmd syntax in it', () => {
+test('cmd is skipped when the CLI path has cmd syntax in it', WIN_ONLY, () => {
   const r = handoff.launchPlans({ exe: 'C:\\tools & more\\claude.exe', cwd: CWD, sessionId: ID, ...SYS });
   assert.deepEqual(r.plans.map(p => p.shell), ['wt', 'powershell']);
 });
 
-test('no Windows Terminal: PowerShell is first', () => {
+test('no Windows Terminal: PowerShell is first', WIN_ONLY, () => {
   const r = handoff.launchPlans({ exe: EXE, cwd: CWD, sessionId: ID, ...SYS, wt: null });
   assert.deepEqual(r.plans.map(p => p.shell), ['powershell', 'cmd']);
+});
+
+test('launchPlans on a Mac hands back a script for Terminal, not a list of programs', { skip: WIN && 'macOS only' }, () => {
+  const r = handoff.launchPlans({ exe: '/opt/homebrew/bin/claude', cwd: '/Users/me/my app', sessionId: ID });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.plans, []);
+  assert.match(r.mac, /cd -- '\/Users\/me\/my app'/);
+  assert.match(r.mac, new RegExp(`exec '/opt/homebrew/bin/claude' '--resume' '${ID}'`));
+  assert.equal(handoff.launchPlans({ exe: 'claude', cwd: '/Users/me', sessionId: ID }).ok, false);
 });
 
 test('launchPlans refuses a bad id, CLI or folder', () => {
@@ -156,7 +173,7 @@ test('launchPlans refuses a bad id, CLI or folder', () => {
   assert.equal(handoff.launchPlans({ exe: EXE, cwd: CWD, sessionId: ID }).ok, false, 'no terminal at all');
 });
 
-test('launch falls through to the next terminal when one will not start', async () => {
+test('launch falls through to the next terminal when one will not start', WIN_ONLY, async () => {
   const tried = [];
   const fake = (file) => {
     tried.push(file);
@@ -194,13 +211,13 @@ test('continueCheck: not mid-turn, not before the first message, not just rewoun
 
 // ---------------------------------------------------------------- the other way
 
-const row = over => ({ id: ID, cwd: 'C:\\code\\app', project: 'app', state: 'idle', client: 'Windows Terminal', lastAt: 1, ...over });
+const row = over => ({ id: ID, cwd: APP, project: 'app', state: 'idle', client: 'Windows Terminal', lastAt: 1, ...over });
 
 test('bringInCheck asks first while the terminal is open, and refuses mid-turn', () => {
   const open = handoff.bringInCheck(row({ live: true }));
   assert.equal(open.ok, false);
   assert.equal(open.confirm, true);
-  assert.match(open.error, /still open in Windows Terminal, in C:\\code\\app\. Type \/exit there first/);
+  assert.ok(open.error.includes(`still open in Windows Terminal, in ${APP}. Type /exit there first`), open.error);
   assert.deepEqual(handoff.bringInCheck(row({ live: true }), { force: true }), { ok: true });
   assert.deepEqual(handoff.bringInCheck(row({ live: false })), { ok: true }, 'closed: nothing to ask');
   const busy = handoff.bringInCheck(row({ live: true, state: 'working' }), { force: true });

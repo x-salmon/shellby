@@ -110,11 +110,14 @@ test('one from another PC starts Claude afresh with a recap; one you last worked
 });
 
 test('a folder from another PC: its own path, else the same place in your clone, else home', () => {
-  const where = whereFrom([{ root: 'D:\\code\\app', remote: 'Me/App' }], { exists: p => p.startsWith('D:\\code\\app'), home: 'C:\\Users\\me' });
-  assert.deepEqual(hs.place({ cwd: 'D:\\code\\app\\web' }, where), { cwd: 'D:\\code\\app\\web', moved: false });
-  assert.deepEqual(hs.place({ cwd: 'E:\\x\\app\\web', repo: 'me/app', rel: 'web' }, where), { cwd: path.join('D:\\code\\app', 'web'), moved: false });
-  assert.deepEqual(hs.place({ cwd: 'E:\\other' }, where), { cwd: 'C:\\Users\\me', moved: true });
-  assert.deepEqual(where.placeOf('D:\\code\\app\\web\\src'), { repo: 'me/app', rel: 'web/src' });
+  const abs = (...p) => path.resolve(path.sep, ...p);
+  const app = abs('code', 'app');
+  const home = abs('Users', 'me');
+  const where = whereFrom([{ root: app, remote: 'Me/App' }], { exists: p => p.startsWith(app), home });
+  assert.deepEqual(hs.place({ cwd: path.join(app, 'web') }, where), { cwd: path.join(app, 'web'), moved: false });
+  assert.deepEqual(hs.place({ cwd: 'E:\\x\\app\\web', repo: 'me/app', rel: 'web' }, where), { cwd: path.join(app, 'web'), moved: false });
+  assert.deepEqual(hs.place({ cwd: 'E:\\other' }, where), { cwd: home, moved: true });
+  assert.deepEqual(where.placeOf(path.join(app, 'web', 'src')), { repo: 'me/app', rel: 'web/src' });
 });
 
 test('the recap keeps the newest messages and says where it came from', () => {

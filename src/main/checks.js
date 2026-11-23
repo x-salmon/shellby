@@ -45,8 +45,11 @@ const FIXED = Object.freeze({
 });
 // A Python project's own virtualenv, where its pytest lives: these paths
 // (relative to the folder, fixed here), first one that exists wins. bin\ is
-// the POSIX layout (MSYS2 and Cygwin pythons make those on Windows too).
-const VENV_PYTHONS = Object.freeze(['.venv\\Scripts\\python.exe', '.venv\\bin\\python.exe', 'venv\\Scripts\\python.exe', 'venv\\bin\\python.exe']);
+// the POSIX layout (MSYS2 and Cygwin pythons make those on Windows too). On a
+// Mac it's bin/python, with forward slashes for /bin/sh.
+const VENV_PYTHONS = Object.freeze(process.platform === 'win32'
+  ? ['.venv\\Scripts\\python.exe', '.venv\\bin\\python.exe', 'venv\\Scripts\\python.exe', 'venv\\bin\\python.exe']
+  : ['.venv/bin/python', 'venv/bin/python']);
 const pytestWith = python => `${python} -m pytest -q`;
 const VENV_PYTEST = Object.freeze(VENV_PYTHONS.map(pytestWith));
 const SCRIPT_CMD_RE = /^(npm|pnpm|yarn|bun) run [A-Za-z0-9][A-Za-z0-9:._-]{0,63}$/;

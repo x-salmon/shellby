@@ -163,7 +163,7 @@ function wireHub(d) {
   }
 
   async function pairAndKeep(origin, code, name) {
-    const r = await pair({ origin, code, name: `${thisName()} (Shellby hub)` });
+    const r = await pair({ origin, code, name: `${thisName().slice(0, 64)} (Shellby hub)` });
     if (!r.ok) return r;
     const sealed = safeStorage.encryptString(r.token).toString('base64');
     const added = peers.add(list(), { origin, name, token: sealed, now: Date.now() });

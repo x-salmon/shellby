@@ -6,14 +6,17 @@ const path = require('path');
 
 const tp = require('../src/main/teampack');
 
-const ROOT = 'C:\\code\\acme';
+// Absolute on both platforms: C:\code\acme on Windows, /code/acme on a Mac.
+const ROOT = path.resolve(path.sep, 'code', 'acme');
+const HOME = path.resolve(path.sep, 'Users', 'me');
+const SEP = path.sep;
 const pack = (extra = {}) => JSON.stringify({ kind: tp.KIND, version: 1, name: 'Acme', ...extra });
 const parsed = (extra) => { const r = tp.parse(pack(extra)); assert.ok(r.ok, r.error); return r; };
 
 const WF = {
   name: 'Nightly tests', description: 'Runs the tests', cwd: ROOT, concurrency: 'skip', inputs: [],
   when: [{ type: 'webhook', token: 'a'.repeat(40) }],
-  steps: [{ id: 'run', type: 'run', command: 'npm test', cwd: `${ROOT}\\web` }],
+  steps: [{ id: 'run', type: 'run', command: 'npm test', cwd: `${ROOT}${SEP}web` }],
   id: 'wf-1', createdAt: 1, updatedAt: 2, enabled: true,
 };
 
@@ -21,27 +24,27 @@ const WF = {
 
 test('locate finds the pack at the repo root, from a folder inside it', () => {
   const files = new Set([path.join(ROOT, '.git'), path.join(ROOT, '.shellby', 'team.json')]);
-  const r = tp.locate(path.join(ROOT, 'src', 'app'), { home: 'C:\\Users\\me', exists: f => files.has(f) });
+  const r = tp.locate(path.join(ROOT, 'src', 'app'), { home: HOME, exists: f => files.has(f) });
   assert.deepEqual(r, { root: ROOT, file: path.join(ROOT, '.shellby', 'team.json'), hasPack: true });
 });
 
 test('locate looks for the pack at the repo root only', () => {
   const nested = new Set([path.join(ROOT, '.git'), path.join(ROOT, 'vendor', 'x', '.shellby', 'team.json')]);
-  assert.equal(tp.locate(path.join(ROOT, 'vendor', 'x'), { home: 'C:\\Users\\me', exists: f => nested.has(f) }).hasPack, false);
+  assert.equal(tp.locate(path.join(ROOT, 'vendor', 'x'), { home: HOME, exists: f => nested.has(f) }).hasPack, false);
 });
 
 test('locate stops at the repo: a pack above the .git is not this repo\'s', () => {
-  const files = new Set([path.join(ROOT, '.git'), path.join('C:\\code', '.shellby', 'team.json')]);
-  const r = tp.locate(ROOT, { home: 'C:\\Users\\me', exists: f => files.has(f) });
+  const files = new Set([path.join(ROOT, '.git'), path.join(path.dirname(ROOT), '.shellby', 'team.json')]);
+  const r = tp.locate(ROOT, { home: HOME, exists: f => files.has(f) });
   assert.equal(r.hasPack, false);
   assert.equal(r.root, ROOT);
 });
 
 test('locate never treats the home folder or a drive root as a project', () => {
-  const home = 'C:\\Users\\me';
+  const home = HOME;
   const files = new Set([path.join(home, '.shellby', 'team.json'), path.join(home, '.git')]);
   assert.equal(tp.locate(path.join(home, 'Downloads'), { home, exists: f => files.has(f) }), null);
-  assert.equal(tp.locate('C:\\', { home, exists: () => true }), null);
+  assert.equal(tp.locate(path.parse(ROOT).root, { home, exists: () => true }), null);
   assert.equal(tp.locate('', { home, exists: () => true }), null);
 });
 
@@ -81,10 +84,10 @@ test('parse caps each list', () => {
 // ------------------------------------------------------------ {repo}
 
 test('portable writes the repo folder as {repo}, whatever the case or slashes', () => {
-  const wf = { ...WF, steps: [{ id: 'run', type: 'run', command: 'node C:/CODE/acme/tools/x.js', cwd: `${ROOT}\\web` }] };
+  const wf = { ...WF, steps: [{ id: 'run', type: 'run', command: `node ${ROOT.toUpperCase().replace(/\\/g, '/')}/tools/x.js`, cwd: `${ROOT}${SEP}web` }] };
   const p = tp.portable(wf, ROOT);
   assert.equal(p.workflow.cwd, '{repo}');
-  assert.equal(p.workflow.steps[0].cwd, '{repo}\\web');
+  assert.equal(p.workflow.steps[0].cwd, `{repo}${SEP}web`);
   assert.equal(p.workflow.steps[0].command, 'node {repo}/tools/x.js');
   assert.deepEqual(p.outside, []);
   for (const k of ['id', 'createdAt', 'updatedAt', 'enabled']) assert.equal(p.workflow[k], undefined, k);
@@ -101,7 +104,7 @@ test('portable leaves a lookalike folder alone and lists paths outside the repo'
 test('localize puts this clone\'s folder back', () => {
   const back = tp.localize(tp.portable(WF, ROOT).workflow, 'D:\\work\\acme');
   assert.equal(back.cwd, 'D:\\work\\acme');
-  assert.equal(back.steps[0].cwd, 'D:\\work\\acme\\web');
+  assert.equal(back.steps[0].cwd, `D:\\work\\acme${SEP}web`);
 });
 
 // ------------------------------------------------------------ snippets and status
@@ -159,7 +162,7 @@ test('build writes a file parse reads back the same', () => {
   }, ROOT);
   assert.ok(r.ok, r.error);
   assert.ok(r.text.endsWith('\n'));
-  assert.ok(!r.text.includes('acme\\\\web'), 'no full repo path in the file');
+  assert.ok(!r.text.includes(JSON.stringify(ROOT).slice(1, -1)), 'no full repo path in the file');
   assert.ok(r.notes.some(n => /web hook/.test(n)));
   const back = tp.parse(r.text);
   assert.ok(back.ok);

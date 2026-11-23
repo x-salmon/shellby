@@ -8,6 +8,9 @@ const os = require('os');
 const path = require('path');
 const C = require('../src/main/checks');
 
+// An absolute path on this OS: C:\<parts> on Windows, /<parts> on a Mac.
+const abs = (...parts) => path.resolve(path.sep, ...parts);
+
 const pkg = scripts => JSON.stringify({ name: 'x', scripts });
 
 // ---- picking commands
@@ -66,25 +69,33 @@ test("detect runs pytest with the project's own virtualenv when it has one", () 
     fs.writeFileSync(path.join(dir, 'pytest.ini'), '[pytest]\n');
     assert.deepEqual(C.detect(dir), ['python -m pytest -q'], 'no venv: the python on PATH');
     // A venv folder with no python in it doesn't count.
-    fs.mkdirSync(path.join(dir, 'venv', 'Scripts'), { recursive: true });
+    const win = process.platform === 'win32';
+    const bin = win ? 'Scripts' : 'bin';
+    const exe = win ? 'python.exe' : 'python';
+    const rel = (venv, folder) => (win ? `${venv}\\${folder}\\${exe}` : `${venv}/${folder}/${exe}`);
+    fs.mkdirSync(path.join(dir, 'venv', bin), { recursive: true });
     assert.deepEqual(C.detect(dir), ['python -m pytest -q']);
-    fs.writeFileSync(path.join(dir, 'venv', 'Scripts', 'python.exe'), '');
-    assert.deepEqual(C.detect(dir), ['venv\\Scripts\\python.exe -m pytest -q']);
+    fs.writeFileSync(path.join(dir, 'venv', bin, exe), '');
+    assert.deepEqual(C.detect(dir), [`${rel('venv', bin)} -m pytest -q`]);
     fs.mkdirSync(path.join(dir, '.venv', 'bin'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.venv', 'bin', 'python.exe'), '');
-    assert.deepEqual(C.detect(dir), ['.venv\\bin\\python.exe -m pytest -q'], '.venv beats venv');
-    fs.mkdirSync(path.join(dir, '.venv', 'Scripts'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.venv', 'Scripts', 'python.exe'), '');
-    assert.deepEqual(C.detect(dir), ['.venv\\Scripts\\python.exe -m pytest -q']);
+    fs.writeFileSync(path.join(dir, '.venv', 'bin', exe), '');
+    assert.deepEqual(C.detect(dir), [`${rel('.venv', 'bin')} -m pytest -q`], '.venv beats venv');
+    if (win) {
+      fs.mkdirSync(path.join(dir, '.venv', 'Scripts'), { recursive: true });
+      fs.writeFileSync(path.join(dir, '.venv', 'Scripts', 'python.exe'), '');
+      assert.deepEqual(C.detect(dir), ['.venv\\Scripts\\python.exe -m pytest -q']);
+    }
     for (const cmd of C.detect(dir)) assert.equal(C.isSafeCommand(cmd), true);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('pickCommands only takes a virtualenv python it knows the path of', () => {
   assert.deepEqual(C.pickCommands({ files: ['pytest.ini'], venvPython: 'evil.exe & calc' }), ['python -m pytest -q']);
-  assert.deepEqual(C.pickCommands({ files: ['pytest.ini'], venvPython: 'venv\\Scripts\\python.exe' }), ['venv\\Scripts\\python.exe -m pytest -q']);
+  const [mine] = C.VENV_PYTHONS;
+  assert.deepEqual(C.pickCommands({ files: ['pytest.ini'], venvPython: mine }), [`${mine} -m pytest -q`]);
   for (const py of C.VENV_PYTHONS) assert.equal(C.isSafeCommand(`${py} -m pytest -q`), true, py);
   assert.equal(C.isSafeCommand('other\\Scripts\\python.exe -m pytest -q'), false);
+  assert.equal(C.isSafeCommand('other/bin/python -m pytest -q'), false);
 });
 
 test("pytest missing from the python that ran it reads as needing its virtualenv, and doesn't block bringing home", () => {
@@ -243,22 +254,24 @@ function checksEnvSample() {
 
 test('trustOf remembers a yes or a no per project, case-insensitively', () => {
   let store = {};
-  assert.equal(C.trustOf(store, 'C:\\code\\site'), null);
-  store = C.withTrust(store, 'C:\\code\\site', true);
-  store = C.withTrust(store, 'C:\\code\\other', false);
-  assert.equal(C.trustOf(store, 'c:\\Code\\Site'), true);
-  assert.equal(C.trustOf(store, 'C:\\code\\other'), false);
+  const site = abs('code', 'site');
+  const other = abs('code', 'other');
+  assert.equal(C.trustOf(store, site), null);
+  store = C.withTrust(store, site, true);
+  store = C.withTrust(store, other, false);
+  assert.equal(C.trustOf(store, abs('Code', 'Site')), true);
+  assert.equal(C.trustOf(store, other), false);
   assert.equal(C.trustOf(store, 'relative'), null);
-  assert.equal(C.trustOf(null, 'C:\\code\\site'), null);
-  assert.equal(C.trustOf({ 'c:\\x': 'yes' }, 'C:\\x'), null);
+  assert.equal(C.trustOf(null, site), null);
+  assert.equal(C.trustOf({ [abs('x').toLowerCase()]: 'yes' }, abs('x')), null);
 });
 
 test('withTrust keeps the newest answers when the list is full', () => {
   let store = {};
-  for (let i = 0; i < 250; i++) store = C.withTrust(store, `C:\\p${i}`, true);
+  for (let i = 0; i < 250; i++) store = C.withTrust(store, abs(`p${i}`), true);
   assert.equal(Object.keys(store).length, 200);
-  assert.equal(C.trustOf(store, 'C:\\p249'), true);
-  assert.equal(C.trustOf(store, 'C:\\p0'), null);
+  assert.equal(C.trustOf(store, abs('p249')), true);
+  assert.equal(C.trustOf(store, abs('p0')), null);
 });
 
 // ---- running
@@ -279,17 +292,22 @@ function fakeSpawn({ code = 0, out = '', hang = false } = {}) {
 
 test('runCommand runs cmd.exe with the fixed line, no AutoRun, and the project folder kept off the exe search', async () => {
   const s = fakeSpawn({ code: 0, out: 'ok\n' });
-  const r = await C.runCommand('npm run test', 'C:\\proj', { spawnImpl: s.impl }).promise;
+  const r = await C.runCommand('npm run test', abs('proj'), { spawnImpl: s.impl }).promise;
   assert.equal(r.exitCode, 0);
   assert.equal(r.output, 'ok\n');
   const { exe, args, opts } = s.calls[0];
-  assert.match(exe, /cmd\.exe$/i);
-  assert.deepEqual(args, ['/d', '/s', '/c', '"npm run test"']);
-  assert.equal(opts.cwd, 'C:\\proj');
+  if (process.platform === 'win32') {
+    assert.match(exe, /cmd\.exe$/i);
+    assert.deepEqual(args, ['/d', '/s', '/c', '"npm run test"']);
+    assert.equal(opts.windowsVerbatimArguments, true);
+  } else {
+    assert.equal(exe, '/bin/sh', 'a Mac runs the fixed line in the plain shell');
+    assert.deepEqual(args, ['-c', 'npm run test']);
+  }
+  assert.equal(opts.cwd, abs('proj'));
   assert.equal(opts.env.NoDefaultCurrentDirectoryInExePath, '1');
   assert.equal(opts.env.CI, '1');
   assert.equal(Object.keys(opts.env).some(k => /ANTHROPIC|TOKEN/i.test(k)), false);
-  assert.equal(opts.windowsVerbatimArguments, true);
 });
 
 test('runCommand refuses a command it did not build, without spawning anything', async () => {

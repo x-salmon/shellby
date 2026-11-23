@@ -43,9 +43,12 @@ async function readFile(p, signal) {
   return fs.promises.readFile(file, 'utf8');
 }
 
+const SHELL_PROFILES = new Set(['.zshrc', '.zprofile', '.zshenv', '.zlogin', '.bashrc', '.bash_profile', '.profile']);
+
 // Places a workflow may not write to: Shellby's own data (settings, run
 // records), Claude Code's setup (hooks, settings, skills), what Windows starts
-// at sign-in, PowerShell profiles and git hooks. Each is a way to turn one
+// at sign-in (launchd agents on a Mac), shell and PowerShell profiles and git
+// hooks. Each is a way to turn one
 // written file into code that runs later. `extra` adds the profile folder.
 function forbiddenWrite(file, /** @type {{ home?: string, extra?: string[] }} */ { home = require('os').homedir(), extra = [] } = {}) {
   const f = path.resolve(file).toLowerCase();
@@ -58,8 +61,12 @@ function forbiddenWrite(file, /** @type {{ home?: string, extra?: string[] }} */
     path.join(process.env.ProgramData || 'C:\\ProgramData', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'StartUp'),
     path.join(home, 'Documents', 'WindowsPowerShell'),
     path.join(home, 'Documents', 'PowerShell'),
+    // On a Mac: what launchd starts at sign-in.
+    path.join(home, 'Library', 'LaunchAgents'),
   ];
   if (dirs.some(under)) return true;
+  // And the shell profiles, which run in every terminal.
+  if (SHELL_PROFILES.has(path.basename(f)) && path.dirname(f) === path.resolve(home).toLowerCase()) return true;
   return f.split(/[\\/]/).some((part, i, all) => part === '.git' && all[i + 1] === 'hooks');
 }
 

@@ -62,7 +62,7 @@ test('replay keys are step ids: a step added before a failure doesn\'t take anot
 
 test('a long read is kept whole for later steps, and secrets are blanked for them too', async () => {
   const big = 'x'.repeat(60000);
-  const w = wf([{ id: 'r', type: 'file', action: 'read', path: 'C:\\in.txt' }, { id: 'k', type: 'http', url: 'https://a.com' }, { type: 'claude', prompt: '{{ r.text | length }} {{ k.body }}', mode: 'plan' }]);
+  const w = wf([{ id: 'r', type: 'file', action: 'read', path: path.resolve(path.sep, 'in.txt') }, { id: 'k', type: 'http', url: 'https://a.com' }, { type: 'claude', prompt: '{{ r.text | length }} {{ k.body }}', mode: 'plan' }]);
   let prompt = '';
   const r = await new Engine({ workflow: w, record: rec(), secrets: { KEY: 'sk-secret-123' }, effects: fakeFx({ readFile: async () => big, http: async () => ({ status: 200, body: 'echo sk-secret-123' }), claude: async a => { prompt = a.prompt; return { ok: true, reply: '', tabId: 't' }; } }) }).run();
   assert.equal(r.steps.r.output.text.length, 60000);
@@ -114,11 +114,17 @@ test('the confirm window names a called workflow, and header values', () => {
 });
 
 test('effects: no writes to places that run code later; no calls to Shellby\'s own port', async () => {
-  const home = 'C:\\Users\\me';
-  for (const bad of ['C:\\Users\\me\\.claude\\settings.json', 'C:\\code\\app\\.git\\hooks\\pre-commit', 'C:\\Users\\me\\Documents\\WindowsPowerShell\\profile.ps1', 'C:\\data\\shellby\\settings.json']) {
-    assert.equal(effects.forbiddenWrite(bad, { home, extra: ['C:\\data\\shellby'] }), true, bad);
-  }
-  assert.equal(effects.forbiddenWrite('C:\\Users\\me\\notes.md', { home }), false);
+  const at = (...p) => path.resolve(path.sep, ...p);
+  const home = at('Users', 'me');
+  const data = at('data', 'shellby');
+  const bads = [
+    path.join(home, '.claude', 'settings.json'), at('code', 'app', '.git', 'hooks', 'pre-commit'),
+    path.join(home, 'Documents', 'WindowsPowerShell', 'profile.ps1'), path.join(data, 'settings.json'),
+    path.join(home, 'Library', 'LaunchAgents', 'x.plist'), path.join(home, '.zshrc'), path.join(home, '.bash_profile'),
+  ];
+  for (const bad of bads) assert.equal(effects.forbiddenWrite(bad, { home, extra: [data] }), true, bad);
+  assert.equal(effects.forbiddenWrite(path.join(home, 'notes.md'), { home }), false);
+  assert.equal(effects.forbiddenWrite(path.join(home, 'projects', '.zshrc'), { home }), false, 'only the profile in the home folder');
   const fetchImpl = async () => ({ status: 200, headers: { get: () => null }, text: async () => '' });
   await assert.rejects(effects.http({ method: 'POST', url: 'http://127.0.0.1:47913/v1/flow', fetchImpl, blockedPorts: [47913] }), /own local port/);
   await assert.rejects(effects.http({ method: 'POST', url: 'http://localhost:47913/v1/crab', fetchImpl, blockedPorts: [47913] }), /own local port/);

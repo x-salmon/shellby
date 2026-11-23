@@ -5,7 +5,16 @@ const path = require('path');
 const I = require('../src/main/claude/install');
 const { POWERSHELL } = require('../src/main/system32');
 
-test('runs Anthropic’s own installer through PowerShell by its full path', () => {
+test('on a Mac the installer is downloaded whole, then run by bash', () => {
+  const { exe, args } = I.installCommand('darwin');
+  assert.equal(exe, '/bin/bash');
+  assert.ok(path.isAbsolute(exe));
+  assert.equal(args[0], '-c');
+  assert.ok(args[1].includes(`curl -fsSL ${I.INSTALLER_SH_URL}`) && args[1].startsWith('set -e;'), 'a dropped connection runs nothing');
+  assert.equal(I.INSTALLER_SH_URL, 'https://claude.ai/install.sh');
+});
+
+test('runs Anthropic’s own installer through PowerShell by its full path', { skip: process.platform !== 'win32' && 'Windows-only: PowerShell' }, () => {
   const { exe, args } = I.installCommand();
   assert.equal(exe, POWERSHELL);
   assert.ok(path.isAbsolute(exe), 'never a bare name a project folder could shadow');

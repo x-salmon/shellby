@@ -4,6 +4,7 @@
 // command, and the hundredth task in an hour.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('path');
 const pt = require('../src/main/channels/phone-tasks');
 const channels = require('../src/main/channels');
 
@@ -160,7 +161,7 @@ test('an ambiguous or unknown project asks instead of guessing', () => {
   const none = pt.parseCommand('in nowhere: fix it', { projects: PROJECTS });
   assert.equal(none.kind, 'reply');
   assert.match(none.reply, /doesn't know a project called "nowhere"/);
-  const twins = pt.matchProject('app', [{ name: 'app', path: 'C:\\a\\app' }, { name: 'app', path: 'C:\\b\\app' }]);
+  const twins = pt.matchProject('app', [{ name: 'app', path: path.join(path.sep, 'a', 'app') }, { name: 'app', path: path.join(path.sep, 'b', 'app') }]);
   assert.deepEqual(twins, { ambiguous: ['app in a', 'app in b'] });
   assert.match(pt.parseCommand('in shellby:', { projects: PROJECTS }).reply, /Say what/);
 });

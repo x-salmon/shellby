@@ -3,13 +3,19 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+
+// Full paths on both platforms: a drive-letter folder on Windows, /code on a Mac.
+const abs = (...p) => path.resolve(path.sep, ...p);
+// Folders match whatever their case on Windows only (merge.js caseKey).
+const lower = s => (process.platform === 'win32' ? s.toLowerCase() : s);
+const upper = s => (process.platform === 'win32' ? s.toUpperCase() : s);
 const { insightsFor, withInsights, sessionsFor, inside, WEIGHT } = require('../src/main/projects/insights');
 const { caseKey } = require('../src/main/projects/merge');
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.parse('2026-10-04T12:00:00');
-const ROOT = path.resolve('C:\\code\\Site');
-const OTHER = path.resolve('C:\\code\\other');
+const ROOT = abs('code', 'Site');
+const OTHER = abs('code', 'other');
 const project = (extra = {}) => ({ key: 'github:me/site', name: 'site', github: null, local: [{ root: ROOT, branch: 'main', main: true }], lastWorkedAt: 0, ...extra });
 
 test('nothing known: no reasons, nothing needs you', () => {
@@ -23,11 +29,11 @@ test('nothing known: no reasons, nothing needs you', () => {
 });
 
 test('each source is joined by folder, whatever its case, and never from another project', () => {
-  const lowered = ROOT.toLowerCase();
+  const lowered = lower(ROOT);
   const i = insightsFor(project(), {
     now: NOW,
     deps: [{ key: lowered, ok: true, outdatedTotal: 3, vulnTotal: 0, at: NOW }, { key: OTHER, ok: true, outdatedTotal: 9, vulnTotal: 9 }],
-    flaky: [{ key: 'abc', root: ROOT.toUpperCase(), id: 't', label: 't', week: 2, total: 2, status: 'watching' }, { key: 'x', root: OTHER, id: 'u', week: 5, status: 'watching' }],
+    flaky: [{ key: 'abc', root: upper(ROOT), id: 't', label: 't', week: 2, total: 2, status: 'watching' }, { key: 'x', root: OTHER, id: 'u', week: 5, status: 'watching' }],
     stickers: [{ root: lowered, tierName: 'Gold', ships: 12, marks: [{ icon: '🧼', name: 'Fresh' }] }],
     servers: [{ root: ROOT, status: 'crashed' }, { root: OTHER, status: 'crashed' }],
   });
@@ -104,9 +110,9 @@ test('time: only while tracking is on, the week day by day, summed across clones
   const time = {
     days,
     projects: [
-      { key: ROOT.toLowerCase(), seconds: 3600, days: [{ day: '2026-09-28', seconds: 3600 }] },
+      { key: lower(ROOT), seconds: 3600, days: [{ day: '2026-09-28', seconds: 3600 }] },
       { key: OTHER, seconds: 600, days: [{ day: '2026-09-29', seconds: 600 }] },
-      { key: path.resolve('C:\\elsewhere'), seconds: 9999, days: [{ day: '2026-09-29', seconds: 9999 }] },
+      { key: abs('elsewhere'), seconds: 9999, days: [{ day: '2026-09-29', seconds: 9999 }] },
     ],
   };
   const i = insightsFor(project({ local: [{ root: ROOT }, { root: OTHER }] }), { now: NOW, time });
@@ -130,13 +136,13 @@ test('withInsights keeps the order and adds insights to each', () => {
 
 test('inside: the folder itself or below it, never a sibling that shares a prefix', () => {
   assert.equal(inside(ROOT, ROOT), true);
-  assert.equal(inside(path.join(ROOT, 'src'), ROOT.toUpperCase()), true);
+  assert.equal(inside(path.join(ROOT, 'src'), upper(ROOT)), true);
   assert.equal(inside(`${ROOT}-old`, ROOT), false);
   assert.equal(inside(null, ROOT), false);
 });
 
 test('sessionsFor: in a clone or one of Shellby\'s copies, newest first, five at most', () => {
-  const copy = path.resolve('C:\\Users\\me\\AppData\\Roaming\\Shellby\\worktrees\\ab12\\site');
+  const copy = abs('Users', 'me', 'AppData', 'Roaming', 'Shellby', 'worktrees', 'ab12', 'site');
   const sessions = [
     { id: 'a', title: 'Old', cwd: ROOT, updatedAt: 1 },
     { id: 'b', title: 'In a copy', cwd: copy, updatedAt: 5, done: true },

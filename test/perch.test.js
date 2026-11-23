@@ -241,8 +241,8 @@ test('riding: a hard yank flings him off with the window\'s speed', () => {
 test('riding: the bar shrinking under him sends him scrambling; vanishing under him, falling', () => {
   const r = rig();
   r.step(2);
-  // Resized from the right so his spot is now among the caption buttons.
-  r.set({ frame: { x: 400, y: 300, width: 420, height: 600 } });
+  // Resized from the right so his spot is past the end of the bar (a Mac's buttons are narrower, so it takes a smaller window).
+  r.set({ frame: { x: 400, y: 300, width: process.platform === 'darwin' ? 300 : 420, height: 600 } });
   r.step(40);
   assert.ok(r.out.events.includes('scramble'));
   const l = perch.ledgeOf(r.read.frame, WA, GEO);

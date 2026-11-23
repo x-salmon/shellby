@@ -3,6 +3,9 @@ const assert = require('node:assert/strict');
 const os = require('os');
 const path = require('path');
 
+// A full path on both platforms.
+const abs = (...p) => path.resolve(path.sep, ...p);
+
 const {
   Marketplace, SUGGESTED, parseCatalog, parseMarketplaces, parseListing, isGithubRepo, parseDetails, parseResultLine, normalizeSource, runsCode, sourceUrl,
 } = require('../src/main/marketplace');
@@ -103,14 +106,15 @@ test('marketplaces: names only from well-formed entries', () => {
 });
 
 test('marketplaces: local clones are only trusted under the plugins folder', () => {
-  const root = 'C:\\Users\\me\\.claude\\plugins';
+  const root = abs('Users', 'me', '.claude', 'plugins');
+  const inRoot = abs('Users', 'me', '.claude', 'plugins', 'marketplaces', 'm');
   const dirOf = loc => parseMarketplaces([{ name: 'm', installLocation: loc }], { pluginsRoot: root })[0].dir;
-  assert.equal(dirOf('C:\\Users\\me\\.claude\\plugins\\marketplaces\\m'), 'C:\\Users\\me\\.claude\\plugins\\marketplaces\\m');
+  assert.equal(dirOf(inRoot), inRoot);
   assert.equal(dirOf('\\\\attacker\\share\\m'), null, 'UNC');
-  assert.equal(dirOf('C:\\Windows\\System32'), null);
-  assert.equal(dirOf('C:\\Users\\me\\.claude\\plugins\\..\\..\\secrets'), null);
+  assert.equal(dirOf(abs('Windows', 'System32')), null);
+  assert.equal(dirOf(`${root}${path.sep}..${path.sep}..${path.sep}secrets`), null);
   assert.equal(dirOf('relative\\m'), null);
-  assert.equal(parseMarketplaces([{ name: 'm', installLocation: 'C:\\Users\\me\\.claude\\plugins\\x' }])[0].dir, null, 'no root, no reads');
+  assert.equal(parseMarketplaces([{ name: 'm', installLocation: path.join(root, 'x') }])[0].dir, null, 'no root, no reads');
 });
 
 test('listings: installed plugins get descriptions from their marketplace catalog', async () => {
@@ -120,11 +124,11 @@ test('listings: installed plugins get descriptions from their marketplace catalo
   const { run } = fakeRun(listAnswers({
     'plugin list --available': { ok: true, stdout: JSON.stringify({ installed: CATALOG.installed, available: [] }) },
     'plugin marketplace list': { ok: true, stdout: JSON.stringify([
-      { name: 'claude-plugins-official', repo: 'anthropics/claude-plugins-official', installLocation: 'C:\\mk\\official' },
-      { name: 'elsewhere', installLocation: 'D:\\other\\m' },
+      { name: 'claude-plugins-official', repo: 'anthropics/claude-plugins-official', installLocation: abs('mk', 'official') },
+      { name: 'elsewhere', installLocation: abs('other', 'm') },
     ]) },
   }));
-  const m = new Marketplace({ run, pluginsRoot: 'C:\\mk', readJson: f => { reads.push(f); return listing; } });
+  const m = new Marketplace({ run, pluginsRoot: abs('mk'), readJson: f => { reads.push(f); return listing; } });
   const r = await m.list();
   const fd = r.plugins.find(p => p.name === 'frontend-design');
   assert.equal(fd.description, 'Listed desc');

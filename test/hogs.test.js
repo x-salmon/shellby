@@ -8,6 +8,8 @@ const { parseApproved, parseStartup, describeLocation, approvalScope, switchFor,
 const { HealthService } = require('../src/main/health/service');
 
 const MB = 1024 ** 2;
+// What a protected process is told: "Windows needs that one...", or macOS's on a Mac.
+const NEEDS = new RegExp(`${process.platform === 'darwin' ? 'macOS' : 'Windows'} needs`);
 
 // ------------------------------------------------------------------ processes
 
@@ -86,10 +88,10 @@ test('the mood decides what to sort by', () => {
 });
 
 test('Windows itself and Shellby are protected from End task', () => {
-  assert.match(protectedReason({ pid: 600, name: 'csrss' }, []), /Windows needs/);
-  assert.match(protectedReason({ pid: 600, name: 'Memory Compression' }, []), /Windows needs/);
-  assert.match(protectedReason({ pid: 600, name: 'explorer' }, []), /Windows needs/);
-  assert.match(protectedReason({ pid: 600, name: 'StartMenuExperienceHost' }, []), /Windows needs/);
+  assert.match(protectedReason({ pid: 600, name: 'csrss' }, []), NEEDS);
+  assert.match(protectedReason({ pid: 600, name: 'Memory Compression' }, []), NEEDS);
+  assert.match(protectedReason({ pid: 600, name: 'explorer' }, []), NEEDS);
+  assert.match(protectedReason({ pid: 600, name: 'StartMenuExperienceHost' }, []), NEEDS);
   assert.match(protectedReason({ pid: 600, name: 'Shellby' }, [], 'shellby'), /Shellby himself/);
   // Any of his own processes, by PID, and his executable by name (electron in dev).
   assert.match(protectedReason({ pid: 600, name: 'whatever' }, [600]), /Shellby himself/);
@@ -307,7 +309,7 @@ test('hogs() lists the top processes and marks the protected ones', async () => 
   assert.equal(r.metric, 'gpu');
   assert.deepEqual(r.procs.map(p => p.name), ['game', 'chrome', 'csrss']);
   assert.equal(r.procs[0].locked, null);
-  assert.match(r.procs[2].locked, /Windows/);
+  assert.match(r.procs[2].locked, NEEDS);
 });
 
 test('hogs() reports a failed read instead of an empty list', async () => {
@@ -357,7 +359,7 @@ test('endTask refuses protected processes without asking', async () => {
   await svc.hogs('gpu');
   const r = await svc.endTask(2000);
   assert.equal(r.ok, false);
-  assert.match(r.error, /Windows needs/);
+  assert.match(r.error, NEEDS);
   assert.equal(asked.length, 0);
   assert.deepEqual(p.ended, []);
 });
@@ -572,7 +574,7 @@ test('hogs() returns app groups with ownership, and keeps their PIDs in main', a
   assert.equal('pids' in py, false, 'the panel never sees group PIDs');
   assert.equal(r.total, SWARM.length);
   assert.equal(r.procs.find(p => p.pid === 5001).owned, true);
-  assert.match(r.groups.find(g => g.name === 'csrss').locked, /Windows needs/);
+  assert.match(r.groups.find(g => g.name === 'csrss').locked, NEEDS);
 });
 
 test('endGroup asks once, then ends every process still running under that name', async () => {
@@ -600,7 +602,7 @@ test('endGroup: cancel, protected names, unknown names and Shellby himself', asy
 
   const { svc, asked } = service({ processes: p, selfPids: () => [1000] });
   await svc.hogs('cpu');
-  assert.match((await svc.endGroup('csrss')).error, /Windows needs/);
+  assert.match((await svc.endGroup('csrss')).error, NEEDS);
   assert.match((await svc.endGroup('nope')).error, /no longer in the list/);
   assert.match((await svc.endGroup('game')).error, /Shellby himself/);
   assert.equal((await svc.endGroup(42)).ok, false);

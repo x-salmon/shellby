@@ -12,30 +12,36 @@ const { matchEvent } = require('../src/main/workflows/triggers');
 
 // ------------------------------------------------------------------ editor
 
+// An absolute path on this OS: C:\<parts> on Windows, /<parts> on a Mac.
+const abs = (...parts) => path.resolve(path.sep, ...parts);
+const CODE = abs('code.cmd');
+const DIR = abs('p');
+const FILE = abs('p', 'a.js');
+
 test('fileCommandLine builds the command cmd runs for code <folder> -g <file>:<line>', () => {
-  assert.equal(fileCommandLine('C:\\code.cmd', 'C:\\p', 'C:\\p\\a.js', 4), '""C:\\code.cmd" "C:\\p" -g "C:\\p\\a.js:4""');
+  assert.equal(fileCommandLine(CODE, DIR, FILE, 4), `""${CODE}" "${DIR}" -g "${FILE}:4""`);
 });
 
 test('fileCommandLine refuses a relative path anywhere', () => {
-  assert.equal(fileCommandLine('code.cmd', 'C:\\p', 'C:\\p\\a.js', 4), null);
-  assert.equal(fileCommandLine('C:\\code.cmd', 'p', 'C:\\p\\a.js', 4), null);
-  assert.equal(fileCommandLine('C:\\code.cmd', 'C:\\p', 'a.js', 4), null);
-  assert.equal(fileCommandLine(null, 'C:\\p', 'C:\\p\\a.js', 4), null);
+  assert.equal(fileCommandLine('code.cmd', DIR, FILE, 4), null);
+  assert.equal(fileCommandLine(CODE, 'p', FILE, 4), null);
+  assert.equal(fileCommandLine(CODE, DIR, 'a.js', 4), null);
+  assert.equal(fileCommandLine(null, DIR, FILE, 4), null);
 });
 
 test('fileCommandLine refuses characters cmd would act on', () => {
   for (const bad of ['"', '%', '!', '^', '\n']) {
-    assert.equal(fileCommandLine('C:\\code.cmd', 'C:\\p', `C:\\p\\a${bad}.js`, 4), null, JSON.stringify(bad));
-    assert.equal(fileCommandLine('C:\\code.cmd', `C:\\p${bad}`, 'C:\\p\\a.js', 4), null, JSON.stringify(bad));
-    assert.equal(fileCommandLine(`C:\\co${bad}de.cmd`, 'C:\\p', 'C:\\p\\a.js', 4), null, JSON.stringify(bad));
+    assert.equal(fileCommandLine(CODE, DIR, abs('p', `a${bad}.js`), 4), null, JSON.stringify(bad));
+    assert.equal(fileCommandLine(CODE, `${DIR}${bad}`, FILE, 4), null, JSON.stringify(bad));
+    assert.equal(fileCommandLine(abs(`co${bad}de.cmd`), DIR, FILE, 4), null, JSON.stringify(bad));
   }
 });
 
 test('fileCommandLine refuses a line that is not a whole number from 1', () => {
   for (const line of [0, -3, 1.5, '4', NaN, undefined, null]) {
-    assert.equal(fileCommandLine('C:\\code.cmd', 'C:\\p', 'C:\\p\\a.js', line), null, String(line));
+    assert.equal(fileCommandLine(CODE, DIR, FILE, line), null, String(line));
   }
-  assert.ok(fileCommandLine('C:\\code.cmd', 'C:\\p', 'C:\\p\\a.js', 1));
+  assert.ok(fileCommandLine(CODE, DIR, FILE, 1));
 });
 
 // ------------------------------------------------------------------ ipc

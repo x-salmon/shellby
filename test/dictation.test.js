@@ -53,9 +53,13 @@ test('parseLine reads the helper and shrugs at noise', () => {
 });
 
 test('friendlyError says what to do about it', () => {
-  assert.match(friendlyError('no-recognizer'), /Time & Language/);
-  assert.match(friendlyError('No audio input is supplied to this recognizer.'), /microphone/i);
-  assert.match(friendlyError('whatever'), /stopped working/);
+  assert.match(friendlyError('no-recognizer', 'win32'), /Time & Language/);
+  assert.match(friendlyError('No audio input is supplied to this recognizer.', 'win32'), /microphone/i);
+  assert.match(friendlyError('whatever', 'win32'), /stopped working/);
+  assert.match(friendlyError('no-recognizer', 'darwin'), /System Settings/);
+  assert.match(friendlyError('not-allowed', 'darwin'), /Privacy & Security/);
+  assert.match(friendlyError('no-microphone', 'darwin'), /Sound › Input/);
+  assert.match(friendlyError('whatever', 'darwin'), /stopped working/);
 });
 
 test('the helper script reads the mic, or a recording for tests', () => {

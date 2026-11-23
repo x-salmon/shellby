@@ -4,6 +4,7 @@
 // arrived too late to start says so, once.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('path');
 const { installFakeElectron } = require('./helpers/fake-ipc');
 
 const electron = installFakeElectron();
@@ -14,7 +15,7 @@ const { wireChannels } = require('../src/main/wiring/channels');
 const { wirePhoneTasks } = require('../src/main/wiring/phone-tasks');
 
 const CHAT = '123456';
-const FOLDER = 'C:\\Users\\me\\code\\shellby';
+const FOLDER = path.resolve(path.sep, 'Users', 'me', 'code', 'shellby');
 
 function fakeConfig(initial = {}) {
   const store = { ...initial };

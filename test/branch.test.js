@@ -184,39 +184,45 @@ test("branchSlug keeps the original's branch name", () => {
 
 // ------------------------------------------------------------ the fence
 
-const ORIGINAL = 'C:\\Users\\me\\proj';
-const COPY = 'C:\\Users\\me\\AppData\\Roaming\\Shellby\\worktrees\\abc123\\proj';
+// The same folders a person has on either OS: C:\Users\me\proj, or /Users/me/proj on a Mac.
+const WIN = process.platform === 'win32';
+const abs = (...parts) => path.resolve(path.sep, ...parts);
+const ORIGINAL = WIN ? 'C:\\Users\\me\\proj' : abs('Users', 'me', 'proj');
+const COPY = WIN ? 'C:\\Users\\me\\AppData\\Roaming\\Shellby\\worktrees\\abc123\\proj' : abs('Users', 'me', 'Library', 'Shellby', 'worktrees', 'abc123', 'proj');
+const HOME = path.dirname(ORIGINAL);
+const slashed = p => p.replace(/\\/g, '/');
 const fence = makeFence([ORIGINAL], COPY);
 
 test("the fence keeps edits out of the original's folder", () => {
   assert.match(fenceDenies(fence, 'Edit', { file_path: path.join(ORIGINAL, 'src', 'a.js') }), /own copy at .*abc123/);
-  assert.ok(fenceDenies(fence, 'Write', { file_path: 'c:/users/me/PROJ/new.txt' }), 'any case, any slash');
+  assert.ok(fenceDenies(fence, 'Write', { file_path: `${slashed(ORIGINAL).toLowerCase().replace('/proj', '/PROJ')}/new.txt` }), 'any case, any slash');
   assert.ok(fenceDenies(fence, 'NotebookEdit', { notebook_path: path.join(ORIGINAL, 'n.ipynb') }));
   assert.equal(fenceDenies(fence, 'Edit', { file_path: path.join(COPY, 'src', 'a.js') }), null, 'its own copy is fine');
-  assert.equal(fenceDenies(fence, 'Edit', { file_path: 'C:\\Users\\me\\project\\a.js' }), null, 'a folder that only starts the same is not the original');
+  assert.equal(fenceDenies(fence, 'Edit', { file_path: `${ORIGINAL}ect${path.sep}a.js` }), null, 'a folder that only starts the same is not the original');
   assert.equal(fenceDenies(fence, 'Edit', { file_path: 'relative.js' }), null);
   assert.equal(fenceDenies(fence, 'Read', { file_path: path.join(ORIGINAL, 'a.js') }), null);
 });
 
 test('the fence stops commands that would change the original, however they spell it', () => {
-  assert.ok(fenceDenies(fence, 'Bash', { command: 'cd C:\\Users\\me\\proj && npm install' }));
-  assert.ok(fenceDenies(fence, 'Bash', { command: 'rm -rf /c/Users/me/proj/dist' }));
-  assert.ok(fenceDenies(fence, 'PowerShell', { command: 'Remove-Item "C:/Users/me/proj/x.txt"' }));
-  assert.ok(fenceDenies(fence, 'Bash', { command: 'cp a.txt C:\\Users\\me\\proj' }), 'the folder itself, at the end');
-  assert.ok(fenceDenies(fence, 'PowerShell', { command: 'Set-Location C:\\Users\\me\\proj; git commit -am x' }), 'whatever runs after moving into it');
-  assert.equal(fenceDenies(fence, 'Bash', { command: 'cd C:\\Users\\me\\proj && git status' }), null, 'looking there is still fine');
-  assert.equal(fenceDenies(fence, 'Bash', { command: `cd C:\\Users\\me\\proj; cd ${COPY} && npm install` }), null, 'and moving back out ends it');
+  assert.ok(fenceDenies(fence, 'Bash', { command: `cd ${ORIGINAL} && npm install` }));
+  assert.ok(fenceDenies(fence, 'Bash', { command: `rm -rf ${slashed(ORIGINAL)}/dist` }));
+  if (WIN) assert.ok(fenceDenies(fence, 'Bash', { command: 'rm -rf /c/Users/me/proj/dist' }), 'Git Bash spells the drive /c/');
+  assert.ok(fenceDenies(fence, 'PowerShell', { command: `Remove-Item "${slashed(ORIGINAL)}/x.txt"` }));
+  assert.ok(fenceDenies(fence, 'Bash', { command: `cp a.txt ${ORIGINAL}` }), 'the folder itself, at the end');
+  assert.ok(fenceDenies(fence, 'PowerShell', { command: `Set-Location ${ORIGINAL}; git commit -am x` }), 'whatever runs after moving into it');
+  assert.equal(fenceDenies(fence, 'Bash', { command: `cd ${ORIGINAL} && git status` }), null, 'looking there is still fine');
+  assert.equal(fenceDenies(fence, 'Bash', { command: `cd ${ORIGINAL}; cd ${COPY} && npm install` }), null, 'and moving back out ends it');
 });
 
 test('the fence lets commands only look at the original, and ignores lookalikes', () => {
-  assert.equal(fenceDenies(fence, 'Bash', { command: 'cat C:\\Users\\me\\proj\\a.js' }), null, 'comparing with the original is fair');
-  assert.equal(fenceDenies(fence, 'Bash', { command: 'git -C C:/Users/me/proj diff' }), null);
-  assert.equal(fenceDenies(fence, 'Bash', { command: 'npm test --prefix C:\\Users\\me\\project' }), null);
+  assert.equal(fenceDenies(fence, 'Bash', { command: `cat ${path.join(ORIGINAL, 'a.js')}` }), null, 'comparing with the original is fair');
+  assert.equal(fenceDenies(fence, 'Bash', { command: `git -C ${slashed(ORIGINAL)} diff` }), null);
+  assert.equal(fenceDenies(fence, 'Bash', { command: `npm test --prefix ${ORIGINAL}ect` }), null);
   assert.equal(fenceDenies(fence, 'Bash', { command: 'npm test' }), null);
 });
 
 test('makeFence never fences a branch in with itself', () => {
-  assert.equal(makeFence(['C:\\Users\\me\\AppData'], COPY), null, 'a folder that holds the copy');
+  assert.equal(makeFence([path.resolve(COPY, '..', '..')], COPY), null, 'a folder that holds the copy');
   assert.equal(makeFence([COPY], COPY), null);
   assert.equal(makeFence([], COPY), null);
   assert.equal(makeFence([ORIGINAL], null), null);
@@ -257,13 +263,15 @@ test("the fence lets files be copied from the original into the branch's copy, n
 });
 
 test('the fence knows the other ways a script spells the folder', () => {
-  const home = path.join('C:\\', 'Users', 'me');
-  const s = spellings(ORIGINAL, home);
-  const forms = [String.raw`c:\users\me\proj`, 'c:/users/me/proj', '/c/users/me/proj', '/mnt/c/users/me/proj', String.raw`c:\\users\\me\\proj`,
+  const s = spellings(ORIGINAL, HOME);
+  const back = ORIGINAL.toLowerCase();
+  const forms = [back, slashed(back), back.replace(/\\/g, '\\\\'),
     '~/proj', String.raw`~\proj`, '$home/proj', String.raw`%userprofile%\proj`, String.raw`$env:userprofile\proj`];
+  if (WIN) forms.push('/c/users/me/proj', '/mnt/c/users/me/proj');
   for (const form of forms) assert.ok(s.includes(form), form);
-  assert.ok(!spellings(path.join('D:\\', 'elsewhere'), home).some(x => x.startsWith('~')), 'only folders under home get ~ forms');
-  const script = String.raw`node -e "require('fs').writeFileSync('C:\\Users\\me\\proj\\x', 1)"`;
+  assert.ok(!spellings(abs('elsewhere'), HOME).some(x => x.startsWith('~')), 'only folders under home get ~ forms');
+  const doubled = ORIGINAL.replace(/\\/g, '\\\\');
+  const script = `node -e "require('fs').writeFileSync('${doubled}${WIN ? '\\\\' : '/'}x', 1)"`;
   assert.ok(fenceDenies(fence, 'Bash', { command: script }), 'doubled backslashes in a script string');
 });
 

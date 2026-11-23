@@ -31,7 +31,7 @@ test('finds the installer\'s folder with its tray app', () => {
   assert.deepEqual(findInstall({ LOCALAPPDATA: LOCAL }, p => files.includes(p)), { app: files[1], server: files[0] });
 });
 
-test('finds ollama.exe on PATH, ignoring relative entries', () => {
+test('finds ollama.exe on PATH, ignoring relative entries', { skip: process.platform !== 'win32' && 'Windows-only: ollama.exe and taskkill' }, () => {
   const exe = path.join('D:\\tools\\ollama', SERVER_EXE);
   const seen = [];
   const found = findInstall({ PATH: ['.\\bin', 'D:\\tools\\ollama'].join(path.delimiter) }, p => { seen.push(p); return p === exe; });
@@ -74,13 +74,13 @@ test('start gives up when the port never answers', async () => {
   assert.match(r.error, /didn't answer/);
 });
 
-test('stop ends the tray app and leaves ollama.exe alone when that was enough', async () => {
+test('stop ends the tray app and leaves ollama.exe alone when that was enough', { skip: process.platform !== 'win32' && 'Windows-only: ollama.exe and taskkill' }, async () => {
   const { ollama, state } = rig({ running: true });
   assert.deepEqual(await ollama.stop(), { ok: true, running: false });
   assert.deepEqual(state.killed, [APP_EXE]);
 });
 
-test('stop ends a server started without the tray app', async () => {
+test('stop ends a server started without the tray app', { skip: process.platform !== 'win32' && 'Windows-only: ollama.exe and taskkill' }, async () => {
   const { ollama, state } = rig({ running: true, killStops: [SERVER_EXE] });
   assert.deepEqual(await ollama.stop(), { ok: true, running: false });
   assert.deepEqual(state.killed, [APP_EXE, SERVER_EXE]);

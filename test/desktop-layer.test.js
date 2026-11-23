@@ -84,6 +84,8 @@ Object.assign(native, {
   ownerOf: h => owners.get(h) || 0,
   float: h => { owners.set(h, 0); calls.push(['float', h]); return true; },
 });
+// A Mac has no SetWindowPos: desktop-layer.js asks native-mac's restack for the same "insert after" codes.
+if (process.platform === 'darwin') native.restack = (h, after) => { calls.push(['pos', h, after]); return true; };
 
 function fakeWindow(hwnd) {
   let top = false;

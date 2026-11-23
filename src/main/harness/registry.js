@@ -60,11 +60,11 @@ function cleanHarness(id) {
 /**
  * How to start a harness's CLI on this PC, or null when it isn't installed.
  * @param {string} id
- * @param {{ env?: Record<string, string | undefined>, exists?: (p: string) => boolean, read?: (p: string) => string }} [o]
+ * @param {{ env?: Record<string, string | undefined>, exists?: (p: string) => boolean, read?: (p: string) => string, platform?: NodeJS.Platform }} [o]
  */
-function commandFor(id, { env = process.env, exists = p => fs.existsSync(p), read = p => fs.readFileSync(p, 'utf8') } = {}) {
+function commandFor(id, { env = process.env, exists = p => fs.existsSync(p), read = p => fs.readFileSync(p, 'utf8'), platform = process.platform } = {}) {
   const h = byId(id);
-  return h ? findCommand(h.command, { env, exists, read }) : null;
+  return h ? findCommand(h.command, { env, exists, read, platform }) : null;
 }
 
 /** Every harness, with whether it's installed here: for the panel's picker. Claude's own install is checked elsewhere. */

@@ -36,7 +36,8 @@ const MAX_SESSIONS = 64;                 // nobody runs more; a flood of fake id
 const MAX_CONNECTIONS = 16;
 const MAX_ENDED = 16;                    // sessions just closed, still bringable into Shellby
 const MAX_CWD = 400;
-const LOCAL_DIR = /^[A-Za-z]:[\\/][^\u0000-\u001f\u007f]*$/;
+// A drive path, or (on a Mac) one from the root. Never \\host\share or //host.
+const LOCAL_DIR = /^(?:[A-Za-z]:[\\/]|\/(?!\/))[^\u0000-\u001f\u007f]*$/;
 const ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 
 // While listening, Shellby leaves a marker the plugin's hook checks first, so
@@ -44,7 +45,7 @@ const ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 const markerPath = port => path.join(os.tmpdir(), `shellby-hooks-${port}`);
 
 const clip = (s, n) => String(s ?? '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, n);
-const projectOf = cwd => clip(path.basename(String(cwd || '').replace(/[\\/]+$/, '')) || 'Claude Code', 60);
+const projectOf = cwd => clip(String(cwd || '').replace(/[\\/]+$/, '').replace(/^.*[\\/]/, '') || 'Claude Code', 60);
 
 // Just the program a backgrounded command runs ('node', 'npm'), never its
 // arguments: enough to say what is still going, nothing carrying a path, a flag

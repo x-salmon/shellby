@@ -10,7 +10,6 @@
 // free in between. Nothing here reads a file synchronously.
 // See test/history-search.test.js.
 const fs = require('fs');
-const path = require('path');
 const { rankSimilar } = require('./similar');
 
 const SEARCHED = new Set(['user', 'text', 'result']);
@@ -130,7 +129,8 @@ function snippet(text, low, terms, around = SNIPPET_AROUND) {
   return { text: `${lead}${body}${end < text.length ? '…' : ''}`, marks: merged };
 }
 
-const projectOf = cwd => path.basename(String(cwd || '').replace(/[\\/]+$/, '')) || '';
+// By hand: a conversation from another PC has the other system's slashes.
+const projectOf = cwd => String(cwd || '').replace(/[\\/]+$/, '').replace(/^.*[\\/]/, '');
 const pcOf = entry => entry.elsewhere || '';
 
 /**

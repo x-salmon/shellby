@@ -39,24 +39,27 @@ test('localOrigin accepts only a dev server on this PC', () => {
   }
 });
 
+// A folder on this OS: C:\<parts> on Windows, /<parts> on a Mac.
+const dir = (...parts) => path.resolve(path.sep, ...parts);
+
 test('pickServer finds the running server for the tab folder, the deepest first', () => {
   const servers = [
-    { id: 'a', kind: 'server', status: 'up', root: 'C:\\code\\site', url: 'http://localhost:3000/' },
-    { id: 'b', kind: 'server', status: 'up', root: 'C:\\code\\site\\docs', url: 'http://localhost:4000/' },
-    { id: 'c', kind: 'server', status: 'crashed', root: 'C:\\code\\other', url: 'http://localhost:5000/' },
-    { id: 'd', kind: 'install', status: 'up', root: 'C:\\code\\inst', url: 'http://localhost:6000/' },
+    { id: 'a', kind: 'server', status: 'up', root: dir('code', 'site'), url: 'http://localhost:3000/' },
+    { id: 'b', kind: 'server', status: 'up', root: dir('code', 'site', 'docs'), url: 'http://localhost:4000/' },
+    { id: 'c', kind: 'server', status: 'crashed', root: dir('code', 'other'), url: 'http://localhost:5000/' },
+    { id: 'd', kind: 'install', status: 'up', root: dir('code', 'inst'), url: 'http://localhost:6000/' },
   ];
-  assert.equal(S.pickServer(servers, 'C:\\code\\site')?.id, 'a');
-  assert.equal(S.pickServer(servers, 'c:\\Code\\Site\\src')?.id, 'a');
-  assert.equal(S.pickServer(servers, 'C:\\code\\site\\docs\\guide')?.id, 'b');
-  assert.equal(S.pickServer(servers, 'C:\\code\\other'), null);
-  assert.equal(S.pickServer(servers, 'C:\\code\\inst'), null);
-  assert.equal(S.pickServer(servers, 'C:\\code\\sitemap'), null);
+  assert.equal(S.pickServer(servers, dir('code', 'site'))?.id, 'a');
+  assert.equal(S.pickServer(servers, dir('Code', 'Site', 'src'))?.id, 'a');
+  assert.equal(S.pickServer(servers, dir('code', 'site', 'docs', 'guide'))?.id, 'b');
+  assert.equal(S.pickServer(servers, dir('code', 'other')), null);
+  assert.equal(S.pickServer(servers, dir('code', 'inst')), null);
+  assert.equal(S.pickServer(servers, dir('code', 'sitemap')), null);
   assert.equal(S.pickServer(servers, ''), null);
 });
 
 test('pickServer ignores a server whose url is not local', () => {
-  assert.equal(S.pickServer([{ kind: 'server', status: 'up', root: 'C:\\p', url: 'https://example.com/' }], 'C:\\p'), null);
+  assert.equal(S.pickServer([{ kind: 'server', status: 'up', root: dir('p'), url: 'https://example.com/' }], dir('p')), null);
 });
 
 test('requestAllowed keeps the hidden page to its own origin and public https', () => {

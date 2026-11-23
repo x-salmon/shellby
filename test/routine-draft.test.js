@@ -1,7 +1,11 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('path');
 
 const { draftArgs, checkDescription, parseDraft, MAX_DESCRIPTION } = require('../src/main/routines/draft');
+
+// A full path on both platforms.
+const abs = (...p) => path.resolve(path.sep, ...p);
 
 const reply = (structured, extra = {}) => JSON.stringify({ type: 'result', is_error: false, structured_output: structured, ...extra });
 const good = {
@@ -61,9 +65,9 @@ test('parseDraft never passes through an id, enabled or Autonomous', () => {
 });
 
 test('parseDraft keeps a folder only when folderOk says so', () => {
-  const withFolder = reply({ ...good, folder: 'C:\\Users\\me\\Documents' });
+  const withFolder = reply({ ...good, folder: abs('Users', 'me', 'Documents') });
   assert.equal(parseDraft(withFolder).draft.cwd, null);
-  assert.equal(parseDraft(withFolder, { folderOk: () => true }).draft.cwd, 'C:\\Users\\me\\Documents');
+  assert.equal(parseDraft(withFolder, { folderOk: () => true }).draft.cwd, abs('Users', 'me', 'Documents'));
   assert.equal(parseDraft(reply({ ...good, folder: 'relative\\path' }), { folderOk: () => true }).ok, false);
 });
 
@@ -128,7 +132,7 @@ test('checkChange normalises the fields and checks the folder', () => {
     routine: { name: 'Morning briefing', prompt: 'List what changed.', schedule: { type: 'daily', time: '08:30' }, mode: 'plan', cwd: null, model: '', catchUp: false },
   });
   assert.match(checkChange({ ...change, folder: 'D:\\nope' }, {}).errors.join(' '), /doesn't exist/);
-  assert.equal(checkChange({ ...change, folder: 'D:\\yes' }, {}, { folderOk: () => true }).routine.cwd, 'D:\\yes');
+  assert.equal(checkChange({ ...change, folder: abs('yes') }, {}, { folderOk: () => true }).routine.cwd, abs('yes'));
   assert.equal(checkChange({ ...change, schedule: { type: 'weekly', time: '09:00', days: [] } }, {}).ok, false);
 });
 

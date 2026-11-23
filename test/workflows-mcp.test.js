@@ -49,7 +49,7 @@ test('the prompt of a Claude step with servers is part of what was approved, eve
 
 test('an MCP tool step\'s folder is written out, never a value from the run', () => {
   assert.match(problems({ steps: [{ type: 'mcp', server: 's', tool: 't', cwd: '{{ inputs.folder }}' }], inputs: [{ name: 'folder' }] }), /written out/);
-  assert.equal(ok({ steps: [{ type: 'mcp', server: 's', tool: 't', cwd: 'C:\\work' }] }).steps[0].cwd, 'C:\\work');
+  assert.equal(ok({ steps: [{ type: 'mcp', server: 's', tool: 't', cwd: path.resolve(path.sep, 'work') }] }).steps[0].cwd, path.resolve(path.sep, 'work'));
 });
 
 test('an MCP tool step names a server, a tool and JSON arguments', () => {

@@ -109,8 +109,14 @@ test('a server outlives the process that started it', { skip }, async () => {
 });
 
 test('the command line ends with the exit marker, the command untouched', () => {
-  const line = runner.commandLine('npm run dev', 'C:\\Windows\\System32\\cmd.exe');
+  const line = runner.commandLine('npm run dev', 'C:\\Windows\\System32\\cmd.exe', 'win32');
   assert.equal(line, '"C:\\Windows\\System32\\cmd.exe" /d /s /c "npm run dev & echo(& call echo [shellby-exit %^errorlevel%]"');
+});
+
+test('on a Mac the command runs in a subshell, then the exit marker is printed whatever it did', () => {
+  const line = runner.commandLine('npm run dev', '/unused', 'darwin');
+  assert.equal(line, `( npm run dev\n); printf '\\n[shellby-exit %s]\\n' "$?"`);
+  assert.match(line, /\[shellby-exit %s\]/);
 });
 
 test('start hands cmd the log, the project and a clean environment', () => {
@@ -126,7 +132,7 @@ test('start hands cmd the log, the project and a clean environment', () => {
   assert.equal(got.env.BROWSER, 'none');
   assert.equal(got.env.EXTRA, '1');
   assert.ok(!('ELECTRON_RUN_AS_NODE' in got.env), 'nothing asks for Shellby as Node');
-  assert.match(got.commandLine, /\/c "npm run dev & /);
+  assert.match(got.commandLine, process.platform === 'win32' ? /\/c "npm run dev & / : /^\( npm run dev\n\); printf /);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -157,7 +163,7 @@ test('a reused pid is not the server, and an unconfirmed one is not either', () 
   assert.equal(runner.isAlive(0, 1000, info), false);
 });
 
-test('a detached stop runs taskkill on its own and does not wait', async () => {
+test('a detached stop runs taskkill on its own and does not wait', { skip: process.platform !== 'win32' && 'Windows-only: taskkill (a Mac ends the tree directly, tested in posix-job.test.js)' }, async () => {
   const calls = [];
   const spawnImpl = (cmd, args, opts) => { calls.push({ cmd, args, opts }); return { unref: () => calls.push('unref') }; };
   await runner.stop(1234, { detached: true, spawnImpl });

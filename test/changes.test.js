@@ -41,7 +41,8 @@ test('checkRef refuses anything that is not a snapshot of a project', () => {
   assert.ok(checkRef({ ...ok, before: 'HEAD' }), 'a ref name is not a tree id');
   assert.ok(checkRef({ ...ok, after: '--output=x' }));
   assert.ok(checkRef({ ...ok, file: '../../etc/passwd' }));
-  assert.ok(checkRef({ ...ok, file: 'C:\\Windows\\x' }));
+  assert.ok(checkRef({ ...ok, file: path.resolve(path.sep, 'Windows', 'x') }), 'an absolute path');
+  assert.ok(checkRef({ ...ok, file: '/etc/passwd' }));
   assert.equal(checkRef({ ...ok, file: 'src/a.js' }), null);
 });
 
@@ -211,7 +212,11 @@ test("an edit named by another path to the folder (8.3 short name, junction) sti
     const touch = newTouch();
     noteTool(touch, { kind: 'tool', name: 'Write', filePath: path.join(link, 'mine.txt') });
     assert.deepEqual(scope(s, touch).files.map(f => f.path), ['mine.txt']);
-  } finally { fs.rmdirSync(link); r.done(); }
+  } finally {
+    // A junction goes with rmdir; on a Mac it's a symlink, which only unlink removes.
+    if (process.platform === 'win32') fs.rmdirSync(link); else fs.unlinkSync(link);
+    r.done();
+  }
 });
 
 test('a turn with a shell keeps the folder diff, minus what overlapping conversations edited', async () => {

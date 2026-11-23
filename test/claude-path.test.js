@@ -9,18 +9,20 @@ const path = require('path');
 
 const { findClaude, verifyClaude, candidatePaths, currentClaude, claudeMoved } = require('../src/main/claude/cli');
 
+// The CLI's file name: claude.exe on Windows, claude on a Mac.
+const CLAUDE = process.platform === 'win32' ? 'claude.exe' : 'claude';
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
 
 test('a configured path is tried before the usual places', () => {
   const dir = tmp();
-  const picked = path.join(dir, 'claude.exe');
+  const picked = path.join(dir, CLAUDE);
   fs.writeFileSync(picked, '');
   // Somewhere the normal search would also find one.
   const onPath = tmp();
-  fs.writeFileSync(path.join(onPath, 'claude.exe'), '');
+  fs.writeFileSync(path.join(onPath, CLAUDE), '');
 
   assert.equal(findClaude({ PATH: onPath }, picked), picked);
-  assert.equal(findClaude({ PATH: onPath }), path.join(onPath, 'claude.exe'), 'and is ignored when not set');
+  assert.equal(findClaude({ PATH: onPath }), path.join(onPath, CLAUDE), 'and is ignored when not set');
 });
 
 test('the environment variable still wins, for dev and e2e runs', () => {
@@ -35,7 +37,7 @@ test('the environment variable still wins, for dev and e2e runs', () => {
 
 test('a configured path that has gone away falls back to the search', () => {
   const onPath = tmp();
-  const real = path.join(onPath, 'claude.exe');
+  const real = path.join(onPath, CLAUDE);
   fs.writeFileSync(real, '');
   // Uninstalled, moved, or an unplugged drive.
   assert.equal(findClaude({ PATH: onPath }, 'Z:\\gone\\claude.exe'), real);
@@ -77,16 +79,16 @@ test('verify rejects a folder, a missing file and nothing at all', async () => {
 // while it's still there; otherwise the search runs again, then and there.
 test('a found path is kept while it is still there', () => {
   const dir = tmp();
-  const found = path.join(dir, 'claude.exe');
+  const found = path.join(dir, CLAUDE);
   fs.writeFileSync(found, '');
   const onPath = tmp();
-  fs.writeFileSync(path.join(onPath, 'claude.exe'), '');
+  fs.writeFileSync(path.join(onPath, CLAUDE), '');
   assert.equal(currentClaude(found, { PATH: onPath }), found, 'not swapped for another the search would find');
 });
 
 test('a found path that has gone away gives way to a fresh search', () => {
   const onPath = tmp();
-  const real = path.join(onPath, 'claude.exe');
+  const real = path.join(onPath, CLAUDE);
   fs.writeFileSync(real, '');
   assert.equal(currentClaude('Z:\\removed\\claude.exe', { PATH: onPath }), real);
   assert.equal(currentClaude(null, { PATH: onPath }), real, 'nothing found yet: the search runs');

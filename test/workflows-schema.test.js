@@ -1,6 +1,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('path');
 const { validateWorkflow, capabilities, riskSignature, describeTrigger, walkSteps } = require('../src/main/workflows/schema');
+
+// A full path on either platform: C:\code on Windows, /code on a Mac.
+const abs = (...p) => path.resolve(path.sep, ...p);
 
 const base = (over = {}) => ({ name: 'Test', steps: [{ type: 'tell', text: 'hi' }], ...over });
 const ok = (input, opts) => {
@@ -41,7 +45,7 @@ test('triggers are checked and described', () => {
     { type: 'schedule', schedule: { type: 'minutes', every: 15 } },
     { type: 'ci', on: 'failed', repo: 'x-salmon/shellby' },
     { type: 'webhook' },
-    { type: 'folder', path: 'C:\\Users\\me\\Downloads', pattern: '*.pdf' },
+    { type: 'folder', path: abs('Users', 'me', 'Downloads'), pattern: '*.pdf' },
     { type: 'flaky', project: 'shellby' },
   ] }));
   assert.equal(describeTrigger(wf.when[5]), 'When a test flakes in shellby');
@@ -65,14 +69,14 @@ test('every step type validates its own fields', () => {
     inputs: [{ name: 'target', label: 'Target' }],
     steps: [
       { id: 'look', type: 'claude', prompt: 'Look at {{ inputs.target }}', mode: 'plan', output: { files: 'list', fixable: { type: 'boolean', description: 'can it be fixed' } } },
-      { type: 'run', command: 'npm test', cwd: 'C:\\code', allowFail: true, retry: { times: 2, delaySec: 5 }, timeoutMin: 5 },
+      { type: 'run', command: 'npm test', cwd: abs('code'), allowFail: true, retry: { times: 2, delaySec: 5 }, timeoutMin: 5 },
       { type: 'http', method: 'post', url: 'https://example.com/hook', headers: { Authorization: 'Bearer {{ secrets.TOKEN }}' }, body: { a: 1 } },
-      { type: 'ask', question: 'Go on?', choices: ['Ship', 'Wait'], path: 'C:\\plan.md' },
+      { type: 'ask', question: 'Go on?', choices: ['Ship', 'Wait'], path: abs('plan.md') },
       { type: 'set', values: { total: '{{ look.files | length }}', list: [1, 2] } },
       { type: 'if', test: 'look.fixable', then: [{ type: 'tell', to: 'phone', text: 'fixable' }], else: [{ type: 'stop', status: 'error', message: 'no' }] },
       { type: 'each', over: '{{ look.files }}', as: 'file', steps: [{ type: 'tell', text: '{{ file }} #{{ loop.number }}' }] },
       { type: 'wait', minutes: 2 },
-      { type: 'file', action: 'append', path: 'C:\\log.txt', content: '{{ now }}' },
+      { type: 'file', action: 'append', path: abs('log.txt'), content: '{{ now }}' },
       { type: 'workflow', name: 'Other', inputs: { x: '{{ vars.total }}' } },
     ],
   }));
@@ -82,7 +86,7 @@ test('every step type validates its own fields', () => {
   assert.equal(http.method, 'POST');
   assert.equal(http.body, '{"a":1}');
   assert.deepEqual(ask.choices, ['Ship', 'Wait']);
-  assert.equal(ask.path, 'C:\\plan.md');
+  assert.equal(ask.path, abs('plan.md'));
   assert.ok(errs(base({ steps: [{ type: 'ask', question: 'Edited?', path: 'plan.md' }] })).some(e => e.path === 'steps[0].path'));
   assert.equal(set.values.list, '[1,2]');
   assert.equal(ifs.then.length, 1);
@@ -107,7 +111,7 @@ test('secrets only go into commands and requests', () => {
   for (const step of [
     { type: 'claude', prompt: 'use {{ secrets.GH }}' },
     { type: 'tell', text: '{{ secrets.GH }}' },
-    { type: 'file', action: 'write', path: 'C:\\x.txt', content: '{{ secrets.GH }}' },
+    { type: 'file', action: 'write', path: abs('x.txt'), content: '{{ secrets.GH }}' },
     { type: 'if', test: 'secrets.GH == "x"', then: [{ type: 'tell', text: 'x' }] },
   ]) assert.ok(errs(base({ steps: [step] })).some(e => /Secrets/.test(e.message)), step.type);
   assert.ok(errs(base({ steps: [{ type: 'run', command: '{{ secrets.lower }}' }] })).some(e => /capitals/.test(e.message)));
@@ -134,15 +138,15 @@ test('capabilities and the risk signature describe what runs unasked', () => {
   const quiet = ok(base({ steps: [{ type: 'claude', prompt: 'look', mode: 'plan' }, { type: 'tell', text: 'x' }] }));
   assert.deepEqual(capabilities(quiet), []);
   assert.equal(riskSignature(quiet), '');
-  const loud = ok(base({ cwd: 'C:\\code', steps: [
+  const loud = ok(base({ cwd: abs('code'), steps: [
     { type: 'claude', prompt: 'fix', mode: 'acceptEdits' },
     { type: 'run', command: 'npm publish' },
     { type: 'http', url: 'https://api.example.com/x' },
-    { type: 'file', action: 'write', path: 'C:\\out.txt', content: 'x' },
+    { type: 'file', action: 'write', path: abs('out.txt'), content: 'x' },
   ] }));
   const caps = capabilities(loud);
   assert.equal(caps.length, 4);
-  assert.match(caps[0], /Auto-edit mode in C:\\code/);
+  assert.ok(caps[0].includes(`Auto-edit mode in ${abs('code')}`), caps[0]);
   assert.match(caps[1], /npm publish/);
   assert.match(caps[2], /api\.example\.com/);
   const renamed = ok({ ...loud, name: 'Renamed', steps: loud.steps.map(s => ({ ...s, label: 'new label' })) });
