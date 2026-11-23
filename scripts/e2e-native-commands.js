@@ -1,10 +1,10 @@
-// ci: Claude Code's own commands done here: /tasks, /workflows, /loops, /wellbeing, /chrome, /mobile, /context's bar, /insights, /subtask, schedules
+// ci: Claude Code's own commands done here: /tasks, /workflows, /daemon, /wellbeing, /chrome, /mobile, /context's bar, /insights, /subtask, schedules
 // End-to-end check of Claude Code's commands that Shellby now does itself
 // instead of sending you to a terminal, against the dev app over CDP with the
 // fake CLI (test/fixtures/fake-claude.js):
 //   1. /tasks: says nothing runs, then, with a command in the background, goes to the tray
 //   2. /workflows, /autofix-pr, /ultraplan and /subtask on their own say what they need
-//   3. /loops and /daemon open Routines, /wellbeing Time, /chrome its setting
+//   3. /daemon opens Routines, /wellbeing Time, /chrome its setting
 //   4. /mobile: a QR code in a sheet that Escape closes
 //   5. /context: a bar of what fills the window, biggest first, the table folded under it
 //   6. /insights: the report's button (not pressed: it would open your browser)
@@ -100,8 +100,6 @@ async function connect(url) {
     check(!(await ev("[...SB.activeTab().el.querySelectorAll('.msg.user')].some(m => /^\\/(workflows|autofix-pr|ultraplan|subtask)/.test(m.textContent))")), 'none of them reached Claude');
 
     // ---- 3. screens
-    await typed('/loops');
-    check(await until("SB.state.view === 'routines'"), '/loops opens Routines');
     await typed('/daemon');
     check(await until("SB.state.view === 'routines'"), '/daemon opens Routines');
     await typed('/wellbeing');

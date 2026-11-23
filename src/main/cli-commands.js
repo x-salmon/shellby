@@ -13,7 +13,7 @@
 // hidden: Claude Code has it but never lists it (internal or renamed), so the
 // menu leaves it out. It's still here so the drift check knows it.
 //
-// The list is Claude Code 2.1.295's (test/fixtures/cli-commands.json is the
+// The list is Claude Code 2.1.330's (test/fixtures/cli-commands.json is the
 // recorded copy). `npm run commands:check` diffs it against the installed CLI.
 
 const CLI = 'cli';
@@ -23,6 +23,7 @@ const PANEL = 'It opens a panel in the terminal.';
 
 /** @type {Array<{ name: string, description: string, handling: string, reason?: string, aliases?: string[], hidden?: boolean }>} */
 const CATALOGUE = [
+  { name: 'access', handling: TERMINAL, reason: PANEL, description: 'The verification programs your account is in.' },
   { name: 'add-dir', handling: CLI, description: 'Add another folder Claude can work in.' },
   { name: 'advisor', handling: CLI, description: 'Let Claude ask a stronger model at key moments.' },
   { name: 'agents', handling: SHELLBY, description: 'Your helper agents, in the Toolbox.', hidden: true },
@@ -75,10 +76,11 @@ const CATALOGUE = [
   { name: 'list-agents', handling: CLI, aliases: ['peers'], description: 'List the agents and sessions you can message.' },
   { name: 'login', handling: SHELLBY, description: 'Sign in, or switch Claude accounts.' },
   { name: 'logout', handling: SHELLBY, description: 'Sign out of your Claude account.' },
-  { name: 'loops', handling: SHELLBY, description: 'Prompts that run on a schedule (Routines).' },
   { name: 'mcp', handling: SHELLBY, description: 'MCP servers, in the Toolbox.' },
   { name: 'memory', handling: SHELLBY, description: 'Your CLAUDE.md memory files, in the Toolbox.' },
   { name: 'mobile', handling: SHELLBY, aliases: ['ios', 'android'], description: 'Get the Claude mobile app: a QR code to scan.' },
+  // A prompt for the Artifact tool, which Claude Code doesn't offer in print mode (see artifacts).
+  { name: 'motion', handling: TERMINAL, reason: "It makes an artifact, and the tool for that isn't offered to Shellby's conversations.", description: 'Make an animation artifact from a brief.' },
   { name: 'model', handling: SHELLBY, description: 'Pick the model.' },
   { name: 'output-style', handling: SHELLBY, description: 'How Claude writes its replies.' },
   { name: 'passes', handling: TERMINAL, reason: PANEL, description: 'Share a free week of Claude Code with friends.' },
@@ -89,6 +91,7 @@ const CATALOGUE = [
   { name: 'powerup', handling: TERMINAL, reason: 'Its lessons run in the terminal.', description: 'Learn Claude Code features in quick lessons.' },
   { name: 'privacy-settings', handling: TERMINAL, reason: PANEL, description: 'View and change your privacy settings.' },
   { name: 'pro-trial-expired', handling: TERMINAL, reason: PANEL, description: 'Options once the Pro trial ends.', hidden: true },
+  { name: 'project', handling: CLI, description: "Set the claude.ai Project this session's usage counts toward." },
   { name: 'radio', handling: TERMINAL, reason: 'It plays in the terminal.', description: 'Listen to Claude FM lo-fi radio.' },
   { name: 'rate-limit-options', handling: TERMINAL, reason: PANEL, description: 'Usage limit and upgrade options.', hidden: true },
   { name: 'recap', handling: CLI, description: 'A one-line recap of the session.' },
@@ -124,6 +127,7 @@ const CATALOGUE = [
   { name: 'upgrade', handling: CLI, description: 'Upgrade your plan for higher limits.' },
   { name: 'usage', handling: SHELLBY, aliases: ['cost', 'stats'], description: 'Plan usage, cost and limits.' },
   { name: 'usage-credits', handling: CLI, description: 'Set up usage credits for when you hit a limit.' },
+  { name: 'use-case', handling: TERMINAL, reason: PANEL, description: 'Choose the Life Sciences use case for your requests.' },
   { name: 'version', handling: CLI, description: 'The Claude Code version this session runs.' },
   { name: 'voice', handling: TERMINAL, reason: 'It listens through the terminal.', description: 'Turn voice mode on or off.' },
   { name: 'web-setup', handling: TERMINAL, reason: PANEL, description: 'Set up cloud sessions with your GitHub account.' },
