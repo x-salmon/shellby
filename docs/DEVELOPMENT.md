@@ -54,7 +54,7 @@ Crash reports go to Sentry only from builds with a DSN: `DSN` in `src/main/crash
 | Script | What it does |
 |---|---|
 | `npm start` | Run in development |
-| `npm run setup` | From a fresh clone to a dev crab: checks for Node 22+ on Windows, fetches Electron if npm skipped it, and builds panel.html. Safe to run again |
+| `npm run setup` | From a fresh clone to a dev crab: checks for Node 22+ on Windows or macOS, fetches Electron if npm skipped it, and builds panel.html. Safe to run again |
 | `npm run dev:crab` | A dev Shellby beside your installed one: its own profile (`%TEMP%\shellby-dev-crab`, or `SHELLBY_DEV_PROFILE`), the fake CLI, its own hook port and the dev hooks (`SHELLBY_MOTION_TEST`). `--fresh` empties the profile, `--real` uses the real Claude CLI, `--poses` walks him through every work pose (work-pose.js) and habit (voice.js `BITS`) and closes, `--loop` keeps going; with `SHELLBY_SHOTS=<folder>` it saves a PNG of each |
 | `npm test` | Unit and integration tests (Node's built-in runner; a fake Claude CLI stands in for the real one). Four files at a time: the suite starts thousands of git and node processes, Windows (with antivirus watching) starts only about 30 a second however many ask, and Node's default of one file per core starved the git-heavy files past their 120 s on a many-core PC |
 | `npm run coverage` | The unit tests with Node's own coverage: the percent of the `src/` files they load, against the floor in `scripts/coverage-floor.json`. CI runs it as a job of its own. The floor only moves up; the e2e checks cover the renderer and aren't counted |

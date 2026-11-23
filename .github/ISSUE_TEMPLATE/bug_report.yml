@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Shellby can fill most of this in for you: **right-click him → Report a problem**.
-        That opens a draft issue with his version, your Windows build and the tail of
+        That opens a draft issue with his version, your Windows or macOS version and the tail of
         his log, with your home folder shortened to `~` and anything token-shaped cut.
         Nothing is sent until you press submit, so do skim it first.
   - type: textarea

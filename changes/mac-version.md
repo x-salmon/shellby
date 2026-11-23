@@ -1,2 +1,0 @@
-### New
-- **Shellby on a Mac.** The crab, the panel, conversations, copies, routines, workflows, the phone and your other computers now run on macOS 12 and later, on Apple silicon and Intel. He lives on your desktop under your windows, climbs onto them, and follows you across Spaces. Cmd does what Ctrl does, push-to-talk uses Apple's own recognizer on your Mac, "Continue in terminal" opens Terminal, and the `shellby` command goes on your PATH.

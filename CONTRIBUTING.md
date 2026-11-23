@@ -4,7 +4,7 @@ Thanks for helping the crab! Skins, fixes, and features are all welcome.
 
 ## Setup
 
-You need Windows and Node 22 or newer (`npm run setup` checks).
+You need Windows or macOS and Node 22 or newer (`npm run setup` checks). On a Mac, the dictation helper also needs Xcode's command line tools (`xcode-select --install`); [docs/MAC.md](docs/MAC.md) says how the Mac version is built.
 
 ```powershell
 npm install
