@@ -105,7 +105,8 @@ function checkLatestYml(text, version) {
  * newer red one doesn't.
  *   runs: the API's workflow_runs ({ head_sha, status, conclusion, created_at, html_url })
  *   jobs: the newest run's jobs ({ name, status, conclusion }), when it's still
- *   going: one red job already decides it, without waiting out the rest.
+ *   going: one red job already decides it, without waiting out the rest, and
+ *   every gating job green does too, without waiting for report-only ones.
  *   -> { state: 'green' | 'running' | 'missing' | 'failed', problem: string | null }
  */
 function checkCiRuns(runs, sha, jobs = []) {
@@ -118,6 +119,7 @@ function checkCiRuns(runs, sha, jobs = []) {
     if (red.length) {
       return { state: 'failed', conclusion: red[0].conclusion, problem: `${red.map(j => j.name).join(', ')} failed on ${short}${where}, so the release would fail the same way. Fix main first; the fix ships as the next version.` };
     }
+    if (gatingJobsPassed(jobs)) return { state: 'green', conclusion: 'success', problem: null };
     return { state: 'running', problem: `CI is still running on ${short}${where}. Tag it once it's green, or run with --wait.` };
   }
   if (newest.conclusion !== 'success') {
@@ -135,6 +137,18 @@ const RED = new Set(['failure', 'timed_out']);
 // Jobs that only report (continue-on-error in ci.yml): the Mac's UI checks, until
 // they're green there. Their red never decides a release; the run's own result already leaves them out.
 const REPORT_ONLY = /^e2e on macOS /;
+// A job that passed, or that its `if:` skipped.
+const PASSED = new Set(['success', 'skipped']);
+
+/**
+ * Whether every job that decides a release has passed, while report-only ones
+ * may still be going. 0.102.1 sat 30 minutes behind the Mac's UI checks after
+ * every Windows job was green. No gating jobs at all proves nothing.
+ */
+function gatingJobsPassed(jobs) {
+  const gating = (jobs || []).filter(j => j && !REPORT_ONLY.test(String(j.name)));
+  return gating.length > 0 && gating.every(j => j.status === 'completed' && PASSED.has(j.conclusion));
+}
 
 // What `release:cut` writes in a release commit: the version, the CHANGELOG, and
 // the change notes it gathered (and removed), and the credits it added to.

@@ -80,6 +80,21 @@ test('a run still going is red as soon as one of its jobs fails', () => {
   assert.equal(g.checkCiRuns(going, SHA, [job('e2e (2/6)', 'completed', 'cancelled')]).state, 'running', 'a cancelled job alone proves nothing yet');
 });
 
+// 0.102.1: every Windows job was green, and the wait sat out the Mac's UI checks for 30 minutes.
+test('a run still going is green once only report-only jobs are left', () => {
+  const job = (name, status, conclusion) => ({ name, status, conclusion });
+  const going = [run(SHA, 'in_progress', null)];
+  const done = [job('test', 'completed', 'success'), job('e2e (1/6)', 'completed', 'success'), job('mac', 'completed', 'skipped')];
+  const green = g.checkCiRuns(going, SHA, [...done, job('e2e on macOS (1/3)', 'in_progress', null)]);
+  assert.equal(green.state, 'green');
+  assert.equal(green.problem, null);
+  assert.equal(g.checkCiRuns(going, SHA, [...done, job('e2e on macOS (2/3)', 'completed', 'failure')]).state, 'green', 'a red report-only job never decides it');
+  assert.equal(g.checkCiRuns(going, SHA, [...done, job('mac', 'completed', 'cancelled')]).state, 'running', 'a cancelled gating job is not a pass');
+  assert.equal(g.checkCiRuns(going, SHA, [...done, job('perf', 'queued', null)]).state, 'running', 'a gating job not started yet');
+  assert.equal(g.checkCiRuns(going, SHA, [job('e2e on macOS (1/3)', 'in_progress', null)]).state, 'running', 'report-only jobs alone prove nothing');
+  assert.equal(g.checkCiRuns(going, SHA).state, 'running', 'no jobs fetched');
+});
+
 // The release commit (version, CHANGELOG, change notes) is tested by its parent's CI.
 test('a commit that only cuts a release counts its parent CI', () => {
   const f = (filename, status = 'modified', extra = {}) => ({ filename, status, ...extra });
@@ -174,7 +189,7 @@ test("unsigned and SignPath releases don't pin a publisher, so anything may foll
 
 test('a red job that only reports (the Mac UI checks) never holds a release', () => {
   const runs = [{ head_sha: 'abc1234', status: 'in_progress', conclusion: null, created_at: '2026-11-23T00:00:00Z' }];
-  const jobs = [{ name: 'e2e on macOS (3/3)', status: 'completed', conclusion: 'failure' }, { name: 'test', status: 'completed', conclusion: 'success' }];
+  const jobs = [{ name: 'e2e on macOS (3/3)', status: 'completed', conclusion: 'failure' }, { name: 'test', status: 'completed', conclusion: 'success' }, { name: 'e2e (1/6)', status: 'in_progress', conclusion: null }];
   assert.equal(g.checkCiRuns(runs, 'abc1234', jobs).state, 'running');
   assert.equal(g.checkCiRuns(runs, 'abc1234', [{ name: 'e2e (3/6)', status: 'completed', conclusion: 'failure' }]).state, 'failed');
 });
