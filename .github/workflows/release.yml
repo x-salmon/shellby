@@ -231,7 +231,7 @@ jobs:
         if: ${{ env.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
         # Pinned to a commit, not the tag: this action gets the API token and
         # hands back the files we publish, so a moved tag mustn't change it.
-        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3.0
+        uses: signpath/github-action-submit-signing-request@a2c5b60d9c75f073142b653c354b632eedce097b # v3.2
         timeout-minutes: 70
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
