@@ -356,14 +356,24 @@ function wireCrabApi(d) {
   // Mac's shell), ~/.bash_profile only if it's already there.
   const profiles = () => [path.join(os.homedir(), '.zprofile'), path.join(os.homedir(), '.bash_profile')]
     .filter((f, i) => i === 0 || fs.existsSync(f));
-  const readText = f => { try { return fs.readFileSync(f, 'utf8'); } catch { return ''; } };
+  /** A profile's text: '' when there's none, and a throw for any other trouble, so it's never overwritten blind. */
+  const readText = f => {
+    try { return fs.readFileSync(f, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return ''; throw e; }
+  };
+  function writeText(f, text) {
+    let mode = 0o644;
+    try { mode = fs.statSync(f).mode & 0o777; } catch { /* new: the usual */ }
+    const tmp = `${f}.shellby-${process.pid}`;
+    fs.writeFileSync(tmp, text, { mode });
+    fs.renameSync(tmp, fs.existsSync(f) ? fs.realpathSync(f) : f); // through a link, to the file it points at
+  }
 
   function editProfiles(change) {
     try {
       for (const f of profiles()) {
         const before = readText(f);
         const after = change(before);
-        if (after !== before) fs.writeFileSync(f, after);
+        if (after !== before) writeText(f, after);
       }
       return true;
     } catch (e) {

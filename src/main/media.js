@@ -99,6 +99,7 @@ function macScript(pollMs = POLL_MS, parentPid = process.pid) {
   return `
 ObjC.import('Foundation');
 ObjC.import('unistd');
+ObjC.import('stdlib');
 const out = $.NSFileHandle.fileHandleWithStandardOutput;
 const say = s => out.writeData($(s + '\\n').dataUsingEncoding($.NSUTF8StringEncoding));
 const PLAYING = 4, PAUSED = 5;

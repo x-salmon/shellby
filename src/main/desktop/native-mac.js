@@ -222,7 +222,16 @@ function stopFollowing(self) {
 
 /** Is `self` still drawn just above `owner`? (Something of yours may sit between: not him.) */
 function above(self, owner) {
-  const order = onScreen().map(w => w.id);
+  // Only the numbers, front to back: four times a second, so nothing else is read.
+  const order = safe(a => {
+    const list = a.list(ON_SCREEN_ONLY | EXCLUDE_DESKTOP, 0);
+    if (!list) return [];
+    try {
+      const ids = [];
+      for (let i = 0, n = a.count(list); i < n; i++) ids.push(num(a, a.at(list, i), a.keys.number));
+      return ids;
+    } finally { a.release(list); }
+  }, []);
   const s = order.indexOf(self), o = order.indexOf(owner);
   return s !== -1 && o !== -1 && s < o;
 }
@@ -319,9 +328,9 @@ const procCache = new Map();
 function psOf(pid) {
   const hit = procCache.get(pid);
   if (hit && Date.now() - hit.at < INFO_TTL_MS) return hit;
-  const r = spawnSync('/bin/ps', ['-o', 'lstart=,comm=', '-p', String(pid)], { encoding: 'utf8', timeout: 3000, env: { LC_ALL: 'C' } });
+  const r = spawnSync('/bin/ps', ['-o', 'lstart=,comm=', '-p', String(pid)], { encoding: 'utf8', timeout: 3000, env: { LC_ALL: 'C', TZ: 'UTC' } });
   const m = /^\s*(\w{3}\s+\w{3}\s+\d+\s+[\d:]+\s+\d{4})\s+(.*)$/.exec(String(r.stdout || '').trim());
-  const createdAt = m ? Date.parse(m[1].replace(/^\w{3}\s+/, '')) || null : null;
+  const createdAt = m ? Date.parse(`${m[1].replace(/^\w{3}\s+/, '')} UTC`) || null : null; // ps ran with TZ=UTC
   const entry = { at: Date.now(), info: { alive: !!m, createdAt }, comm: m ? m[2].trim() : '' };
   if (procCache.size > 200) procCache.clear();
   procCache.set(pid, entry);

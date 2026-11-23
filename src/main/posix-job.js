@@ -15,8 +15,9 @@ const PS = '/bin/ps';
 // lstart: to the second, and what tells a reused pid from the one we knew.
 const PS_ARGS = ['-axo', 'pid=,ppid=,pgid=,lstart=,comm='];
 /** @type {{ encoding: 'utf8', maxBuffer: number, timeout: number, env: NodeJS.ProcessEnv }} */
-const PS_OPTS = { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: 5000, env: { LC_ALL: 'C' } };
+const PS_OPTS = { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: 5000, env: { LC_ALL: 'C', TZ: 'UTC' } };
 const POLL_MS = 3000;
+const MAX_EVER = 5000;   // start times kept per job: plenty for any real task
 const ROW = /^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\w{3}\s+\w{3}\s+\d+\s+[\d:]+\s+\d{4})\s+(.*)$/;
 
 // Apps that are yours even when Claude was the first to open them (process-job.js KEEP).
@@ -29,7 +30,7 @@ const KEEP_APPS = new Set([
 /** @typedef {{ handle: number }} Handle
  * What process-job.js hands around; the rest is this file's.
  */
-/** @typedef {{ handle: number, seen: Map<number, string>, names: Map<number, string>, outlives: boolean }} Job */
+/** @typedef {{ handle: number, seen: Map<number, string>, ever: Map<number, string>, names: Map<number, string>, outlives: boolean }} Job */
 
 /** `ps` output -> Map pid -> Row. @returns {Map<number, Row>} */
 function parsePs(text) {
@@ -50,27 +51,28 @@ const isYours = comm => KEEP_APPS.has(appOf(comm));
 /**
  * The members of a job now. seen: pid -> start time, as of the last look; root:
  * the pid adopted. -> a new seen, holding what's still running. Never `self`.
+ * ever: every member's start time since the job began, dead ones too (seen is
+ * only the living), so a number someone else has now is never taken for ours.
  * @param {Map<number, string>} seen @param {number} root @param {Map<number, Row>} rows @param {number} [self]
+ * @param {Map<number, string>} [ever]
  * @returns {Map<number, string>}
  */
-function grow(seen, root, rows, self = process.pid) {
+function grow(seen, root, rows, self = process.pid, ever = seen) {
   const out = new Map();
   // A group outlives its leader, and its number isn't given out while it does.
   const groups = new Set([root, ...seen.keys()]);
   groups.delete(self);
   for (const [pid, started] of seen) if (rows.get(pid)?.started === started) out.set(pid, started);
   const top = rows.get(root);
-  if (top && !seen.size && root !== self) out.set(root, top.started); // the first look
+  if (top && !ever.has(root) && root !== self) out.set(root, top.started); // the first look
+  // Someone else's process at a number one of ours had: not ours, and nor is its group.
+  const reusedAt = pid => { const r = rows.get(pid); return !!r && ever.has(pid) && ever.get(pid) !== r.started; };
   for (let added = true; added;) {
     added = false;
     for (const r of rows.values()) {
       if (out.has(r.pid) || r.pid === self || r.pid <= 1) continue;
       const child = out.has(r.ppid);
-      // Someone else's process at a dead member's number leads that group: not ours by it.
-      const reused = seen.has(r.pid) && seen.get(r.pid) !== r.started;
-      const leader = rows.get(r.pgid);
-      const groupReused = !!leader && seen.has(r.pgid) && seen.get(r.pgid) !== leader.started;
-      if (!child && (reused || groupReused || !groups.has(r.pgid))) continue;
+      if (!child && (reusedAt(r.pid) || reusedAt(r.pgid) || !groups.has(r.pgid))) continue;
       out.set(r.pid, r.started);
       groups.add(r.pid);
       added = true;
@@ -125,7 +127,8 @@ function createJobs({ list = listSync, listLater = listAsync, kill = killPid, po
       looking = false;
       if (!rows.size) return; // ps failed: what was known stands
       for (const job of open) {
-        job.seen = grow(job.seen, job.handle, rows, self);
+        job.seen = grow(job.seen, job.handle, rows, self, job.ever);
+        for (const [pid, started] of job.seen) if (job.ever.size < MAX_EVER) job.ever.set(pid, started);
         job.names = new Map([...job.seen.keys()].map(pid => [pid, path.posix.basename(rows.get(pid)?.comm || '')]));
       }
     });
@@ -144,7 +147,7 @@ function createJobs({ list = listSync, listLater = listAsync, kill = killPid, po
   /** @param {number | undefined} pid @param {{ outlives?: boolean }} [opts] @returns {Job | null} */
   function adopt(pid, { outlives = false } = {}) {
     if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 1 || pid === self) return null;
-    const job = { handle: pid, seen: new Map(), names: new Map(), outlives };
+    const job = { handle: pid, seen: new Map(), ever: new Map(), names: new Map(), outlives };
     open.add(job);
     watch();
     look();
@@ -157,7 +160,7 @@ function createJobs({ list = listSync, listLater = listAsync, kill = killPid, po
     const now = rows || list();
     /** @type {string[]} */ const ended = [];
     /** @type {string[]} */ const kept = [];
-    for (const pid of grow(job.seen, job.handle, now, self).keys()) {
+    for (const pid of grow(job.seen, job.handle, now, self, job.ever).keys()) {
       const comm = now.get(pid)?.comm || '';
       const name = path.posix.basename(comm) || String(pid);
       if (isYours(comm)) kept.push(name);

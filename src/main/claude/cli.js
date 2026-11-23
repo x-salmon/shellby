@@ -48,9 +48,13 @@ function keychainTime(text) {
   const m = /"mdat"<timedate>=0x[0-9A-F]+\s+"(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)Z/.exec(String(text || ''));
   return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : 0;
 }
-function keychainStamp() {
-  const r = require('child_process').spawnSync('/usr/bin/security', ['find-generic-password', '-s', KEYCHAIN_ITEM], { encoding: 'utf8', timeout: 3000 });
-  return keychainTime(r.stdout);
+const KEYCHAIN_TTL_MS = 15000;
+let keychainSeen = { at: 0, ms: 0 };
+function keychainStamp(now = Date.now()) {
+  if (now - keychainSeen.at < KEYCHAIN_TTL_MS) return keychainSeen.ms;
+  const r = require('child_process').spawnSync('/usr/bin/security', ['find-generic-password', '-s', KEYCHAIN_ITEM], { encoding: 'utf8', timeout: 2000, killSignal: 'SIGKILL' });
+  keychainSeen = { at: now, ms: keychainTime(r.stdout) };
+  return keychainSeen.ms;
 }
 const mtimeOf = f => fileTime(f) || (process.platform === 'darwin' ? keychainStamp() : 0);
 const credentialsFile = configDir => path.join(configDir || path.join(require('os').homedir(), '.claude'), '.credentials.json');

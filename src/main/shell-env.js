@@ -4,10 +4,13 @@
 // Shellby asks your login shell for its PATH once, as he starts, and adds
 // what's missing. Windows apps get the user's PATH already: nothing to do.
 //
-// mergePath and pick are pure (test/shell-env.test.js).
+// mergePath and pick are pure (test/mac.test.js).
 'use strict';
 
 const { spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { userShell } = require('./shells');
 
 const TIMEOUT_MS = 4000;
@@ -46,12 +49,20 @@ function mergePath(current, fromShell, usual = USUAL) {
 function adoptShellPath({ env = process.env, platform = process.platform, run = spawnSync } = {}) {
   if (platform !== 'darwin') return false;
   let fromShell = '';
+  // Into a file, not a pipe: an agent a profile starts (ssh-agent, gpg-agent)
+  // would hold a pipe open, and the wait would outlast the timeout. SIGKILL:
+  // an interactive bash ignores SIGTERM.
+  let dir = '';
   try {
-    const r = run(userShell(env), ['-ilc', `printf '%s%s%s' '${START}' "$PATH" '${END}'`], {
-      encoding: 'utf8', timeout: TIMEOUT_MS, env: { ...env, SHELLBY_PATH_PROBE: '1' }, stdio: ['ignore', 'pipe', 'ignore'],
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-path-'));
+    const file = path.join(dir, 'path');
+    run(userShell(env), ['-ilc', `printf '%s%s%s' '${START}' "$PATH" '${END}' > "$SHELLBY_PATH_FILE"`], {
+      timeout: TIMEOUT_MS, killSignal: 'SIGKILL', stdio: 'ignore', env: { ...env, SHELLBY_PATH_PROBE: '1', SHELLBY_PATH_FILE: file },
     });
-    fromShell = pick(r.stdout);
-  } catch { /* the usual folders still go on */ }
+    fromShell = pick(fs.readFileSync(file, 'utf8'));
+  } catch { /* the usual folders still go on */ } finally {
+    if (dir) fs.rmSync(dir, { recursive: true, force: true });
+  }
   env.PATH = mergePath(env.PATH, fromShell);
   return !!fromShell;
 }

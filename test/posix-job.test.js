@@ -128,3 +128,12 @@ test('a swept job really ends a grandchild that lost its parent', { skip: proces
   await new Promise(r => setTimeout(r, 300));
   assert.ok(!listSync().has(orphan), 'and the sweep ends it');
 });
+
+test('a dead root\'s number, now someone else\'s, is never swept, nor is that one\'s group', () => {
+  const ever = new Map([[100, T], [101, T]]);
+  const seen = new Map([[101, T]]);
+  const now = rows(row(SELF, 1), row(101, 1, 100), row(100, 1, 100, LATER, '/Applications/Other.app/x'), row(300, 100, 100, LATER));
+  assert.deepEqual(pids(grow(seen, 100, now, SELF, ever)), [101]);
+  // And the same at the first look after it died: never re-adopted.
+  assert.deepEqual(pids(grow(new Map(), 100, rows(row(SELF, 1), row(100, 1, 100, LATER)), SELF, ever)), []);
+});
