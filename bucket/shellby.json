@@ -1,13 +1,13 @@
 {
-    "version": "0.100.5",
+    "version": "0.101.0",
     "description": "Run Claude Code in parallel on Windows, undo anything, and watch it happen.",
     "homepage": "https://getshellby.com/",
     "license": "GPL-3.0-only",
     "notes": "Shellby runs tasks through Claude Code: npm install -g @anthropic-ai/claude-code, then claude auth login. Scoop keeps him up to date (scoop update shellby).",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/x-salmon/shellby/releases/download/v0.100.5/Shellby-Setup-0.100.5.exe#/dl.7z",
-            "hash": "d46f4edc365b40b2ef279f85c1a14a984c83bd4e4d93da94a26dd82a18c7391a"
+            "url": "https://github.com/x-salmon/shellby/releases/download/v0.101.0/Shellby-Setup-0.101.0.exe#/dl.7z",
+            "hash": "0ac21c6cd299dc08ea5eda5b7c149efb84fd97710781d2f4734357cca9255591"
         }
     },
     "installer": {
