@@ -89,7 +89,6 @@
     'autofix-pr': autofix,
     chrome: setting('chromeToggle', 'claude'),
     daemon: () => SB.setView('routines'),
-    loops: () => SB.setView('routines'),
     mobile: () => SB.showMobileQr?.(),
     subtask,
     tasks,
