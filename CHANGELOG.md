@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.102.1: Readable links
+
+### Fixed
+- **Get an address is readable.** The link beside the gateway picker under Settings → Claude → Connectors was dark blue on the dark panel; it's now the panel's own link colour, and reachable with Tab.
+- /btw answers again, in a few seconds, instead of "Claude took too long". When your Claude Code settings set any environment variables, every side question loaded all your hooks, plugins and effort level, and at extra-high effort it ran past two minutes. Now only variables that sign you in or reach the service keep your settings, and a side question always thinks at low effort. Drafts and rule wording are quicker for the same reason.
+
+### Changed
+- Notices in the panel are Shellby saying it now: a speech bubble from the crab, sitting just above the box you type in, so they never cover your tabs. In a split it sits over the pane you're typing in. He carries how it's going: a count of what's waiting on his corner, a ring that spins while a job runs, a raised claw when it needs you and a slump when something failed. Long messages show in full and the buttons drop below them, and a trophy card that lands at the same time sits above it.
+
 ## 0.102.0: Shellby on a Mac
 
 ### New
