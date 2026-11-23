@@ -59,7 +59,7 @@ test('a PC pairs with the code it shows, and only a sealed token is kept', async
   assert.match(JSON.parse(calls[0].init.body).name, /\(Shellby hub\)$/);
   await new Promise(r => setTimeout(r, 30));
   const v = hub.hubView();
-  assert.deepEqual(v.rows.map(r => [r.name, r.state]), [[require('os').hostname(), 'online'], ['Travel laptop', 'online']]);
+  assert.deepEqual(v.rows.map(r => [r.name, r.state]), [[require('os').hostname().slice(0, 40), 'online'], ['Travel laptop', 'online']]);
   assert.equal(v.rows[1].working, 1);
   assert.equal(v.rows[1].os, 'Windows 11');
   assert.deepEqual(v.usage, { pct: 42 });

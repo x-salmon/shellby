@@ -241,8 +241,16 @@ test('riding: a hard yank flings him off with the window\'s speed', () => {
 test('riding: the bar shrinking under him sends him scrambling; vanishing under him, falling', () => {
   const r = rig();
   r.step(2);
-  // Resized from the right so his spot is past the end of the bar (a Mac's buttons are narrower, so it takes a smaller window).
-  r.set({ frame: { x: 400, y: 300, width: process.platform === 'darwin' ? 300 : 420, height: 600 } });
+  // Resized from the right so his spot is past the end of the bar, but a bar is
+  // still there: the widest such window (the buttons sit on a different side on a Mac).
+  const at = r.state.offset + 400;
+  let width = 0;
+  for (let w = 800; w >= 200 && !width; w -= 10) {
+    const l = perch.ledgeOf({ x: 400, y: 300, width: w, height: 600 }, WA, GEO);
+    if (l && l.x2 < at - 20) width = w;
+  }
+  assert.ok(width, 'a window narrow enough exists');
+  r.set({ frame: { x: 400, y: 300, width, height: 600 } });
   r.step(40);
   assert.ok(r.out.events.includes('scramble'));
   const l = perch.ledgeOf(r.read.frame, WA, GEO);

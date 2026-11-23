@@ -426,7 +426,7 @@ test('Continue in terminal refuses mid-turn and before the first message, withou
   assert.equal((await h.continueInTerminal('gone')).ok, false);
 });
 
-test('launchPlans can start a fresh session on the ultra review, and on nothing else', () => {
+test('launchPlans can start a fresh session on the ultra review, and on nothing else', { skip: process.platform !== 'win32' && 'Windows-only: PowerShell and cmd plans' }, () => {
   const r = handoff.launchPlans({ exe: EXE, cwd: CWD, prompt: handoff.TERMINAL_PROMPTS.ultraReview, ...SYS });
   assert.equal(r.ok, true);
   const script = scriptOf(r.plans.find(p => p.shell === 'powershell'));

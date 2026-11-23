@@ -267,3 +267,17 @@ test('files that land during a run are handled once it has finished', async () =
   svc.onFolder(svc.get(workflow.id), svc.folderBacklog.get(workflow.id) || []);
   await until(() => svc.listRuns(workflow.id).length === 2);
 });
+
+test('a workflow can\'t reach a startup file by another name, or through a link', t => {
+  const home = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-fw-')));
+  t.after(() => fs.rmSync(home, { recursive: true, force: true }));
+  for (const p of [['.bash_login'], ['.zlogout'], ['.ssh', 'rc'], ['.config', 'fish', 'config.fish'], ['.config', 'autostart', 'x.desktop']]) {
+    assert.equal(effects.forbiddenWrite(path.join(home, ...p), { home }), true, p.join('/'));
+  }
+  const zdot = path.join(home, 'zdot');
+  assert.equal(effects.forbiddenWrite(path.join(zdot, '.zshrc'), { home, env: { ZDOTDIR: zdot } }), true, 'ZDOTDIR');
+  fs.mkdirSync(path.join(home, '.claude'));
+  const link = path.join(home, 'innocent');
+  try { fs.symlinkSync(path.join(home, '.claude'), link, 'junction'); } catch { return t.skip('no links here'); }
+  assert.equal(effects.forbiddenWrite(path.join(link, 'settings.json'), { home }), true, 'through a link');
+});

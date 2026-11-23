@@ -43,30 +43,59 @@ async function readFile(p, signal) {
   return fs.promises.readFile(file, 'utf8');
 }
 
-const SHELL_PROFILES = new Set(['.zshrc', '.zprofile', '.zshenv', '.zlogin', '.bashrc', '.bash_profile', '.profile']);
+// Files a shell runs as it starts or ends: in your home folder, or ZDOTDIR's.
+const SHELL_PROFILES = new Set([
+  '.zshrc', '.zprofile', '.zshenv', '.zlogin', '.zlogout',
+  '.bashrc', '.bash_profile', '.bash_login', '.bash_logout', '.profile',
+]);
+
+/**
+ * The path with links followed as far as it exists: the nearest folder that's
+ * there, resolved, then the rest. A link in the home folder can't take a write
+ * somewhere the list below would refuse.
+ */
+function realish(file) {
+  let dir = path.resolve(file);
+  const rest = [];
+  for (;;) {
+    try { return path.join(fs.realpathSync.native(dir), ...rest); } catch { /* not there: one up */ }
+    const up = path.dirname(dir);
+    if (up === dir) return path.resolve(file);
+    rest.unshift(path.basename(dir));
+    dir = up;
+  }
+}
 
 // Places a workflow may not write to: Shellby's own data (settings, run
-// records), Claude Code's setup (hooks, settings, skills), what Windows starts
-// at sign-in (launchd agents on a Mac), shell and PowerShell profiles and git
-// hooks. Each is a way to turn one
-// written file into code that runs later. `extra` adds the profile folder.
-function forbiddenWrite(file, /** @type {{ home?: string, extra?: string[] }} */ { home = require('os').homedir(), extra = [] } = {}) {
-  const f = path.resolve(file).toLowerCase();
+// records), Claude Code's setup (hooks, settings, skills), what starts at
+// sign-in (the Startup folder, launchd agents, autostart), shell and PowerShell
+// profiles, ssh's own files and git hooks. Each is a way to turn one written
+// file into code that runs later. `extra` adds the profile folder. Checked as
+// given and with links followed.
+function forbiddenWrite(file, /** @type {{ home?: string, extra?: string[], env?: NodeJS.ProcessEnv }} */ { home = require('os').homedir(), extra = [], env = process.env } = {}) {
+  return [path.resolve(file), realish(file)].some(p => refused(p, { home, extra, env }));
+}
+
+function refused(file, /** @type {{ home: string, extra: string[], env: NodeJS.ProcessEnv }} */ { home, extra, env }) {
+  const f = file.toLowerCase();
   const under = dir => { const d = path.resolve(dir).toLowerCase(); return f === d || f.startsWith(d + path.sep); };
-  const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+  const appData = env.APPDATA || path.join(home, 'AppData', 'Roaming');
   const dirs = [
     ...extra,
     path.join(home, '.claude'),
     path.join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup'),
-    path.join(process.env.ProgramData || 'C:\\ProgramData', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'StartUp'),
+    path.join(env.ProgramData || 'C:\\ProgramData', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'StartUp'),
     path.join(home, 'Documents', 'WindowsPowerShell'),
     path.join(home, 'Documents', 'PowerShell'),
-    // On a Mac: what launchd starts at sign-in.
+    // On a Mac (and Linux): what starts at sign-in, fish's own setup, and ssh's (rc runs on every login).
     path.join(home, 'Library', 'LaunchAgents'),
+    path.join(home, '.config', 'autostart'),
+    path.join(home, '.config', 'fish'),
+    path.join(home, '.ssh'),
   ];
   if (dirs.some(under)) return true;
-  // And the shell profiles, which run in every terminal.
-  if (SHELL_PROFILES.has(path.basename(f)) && path.dirname(f) === path.resolve(home).toLowerCase()) return true;
+  const profileHomes = [home, env.ZDOTDIR].filter(Boolean).map(d => path.resolve(/** @type {string} */ (d)).toLowerCase());
+  if (SHELL_PROFILES.has(path.basename(f)) && profileHomes.includes(path.dirname(f))) return true;
   return f.split(/[\\/]/).some((part, i, all) => part === '.git' && all[i + 1] === 'hooks');
 }
 
