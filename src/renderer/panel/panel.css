@@ -1200,64 +1200,130 @@ select.field option { background: var(--reef); }
 .onboarding-modes { border-top: 0; }
 
 /* ================================================================ toast */
-/* Under the header, clear of the newest message and the box you type in (a
-   trophy card lands down there too). Lit from above in its accent: sea-glass,
-   amber for tone 'urgent', red for 'danger' (core.js SB.toast). */
+/* Shellby says it: a speech bubble from the crab, docked at the bottom just
+   above the box you type in and over that box's pane (core.js placeToast sets
+   --toast-bottom, --toast-left and --toast-width; with no box on screen it sits
+   above the dock). Down here it never covers the tabs. The bubble's edge says
+   the tone: sea-glass, amber for 'urgent', red for 'danger' (core.js SB.toast),
+   and the words always say it too. */
 .toast {
-  position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 60;
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 14px; border-radius: 99px; max-width: 86%; overflow: hidden;
   --toast-accent: var(--glass);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--toast-accent) 11%, var(--reef)), var(--reef) 70%);
-  border: 1px solid color-mix(in srgb, var(--toast-accent) 40%, var(--line));
-  color: var(--sand); font-size: var(--fs-12-5); font-weight: 600;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25);
-  animation: toast .3s var(--ease-spring);
+  --toast-edge: color-mix(in srgb, var(--toast-accent) 55%, var(--line));
+  position: absolute; z-index: 60;
+  left: var(--toast-left, 12px);
+  bottom: var(--toast-bottom, calc(var(--dock-h) + 12px));
+  width: var(--toast-width, min(640px, calc(100% - 24px)));
+  display: flex; align-items: flex-end; gap: 8px;
+  color: var(--sand); text-align: left;
+  /* The bubble is only as wide as its words: the room beside a short one is
+     the chat's, so only the crab and the bubble take the pointer. */
+  pointer-events: none;
+  animation: toast-in .32s var(--ease-spring);
 }
+.toast > * { pointer-events: auto; }
 .toast.urgent { --toast-accent: var(--amber); }
 .toast.danger { --toast-accent: var(--danger); }
-@keyframes toast { from { opacity: 0; transform: translate(-50%, -10px) scale(.95); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+/* Always in the page so screen readers hear it; empty means nothing showing. */
+.toast:empty { opacity: 0; animation: none; }
 
-/* The stack: what waits behind a toast with a button peeks out under it, a
-   card per waiting one (two at most), and a line names the next (core.js
-   renderToastStack). The cards are shadows, so the toast's own overflow (which
-   keeps the water line inside its corners) doesn't clip them. Each is a fill
-   over a 1px-larger outline. */
-.toast { transition: box-shadow .2s var(--ease-out); }
-.toast[data-waiting] { flex-wrap: wrap; row-gap: 8px; }
-/* Wrapping lets items wrap before they shrink: from zero the message only
-   takes the room the buttons leave, so they stay on its row. */
-.toast[data-waiting] > :first-child { flex: 1 1 0; }
-.toast[data-waiting="1"] {
-  box-shadow: 0 10px 0 -5px var(--reef-2), 0 10px 0 -4px var(--line),
-    0 18px 36px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25);
+/* The crab saying it, and what he carries: a count of what waits behind this
+   one (data-waiting), a ring that spins while a job runs. */
+.toast-who {
+  position: relative; flex: none; width: 44px; height: 40px;
+  display: grid; place-items: center;
+  background: var(--reef-2); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .45);
 }
-.toast[data-waiting="2"] {
-  box-shadow: 0 10px 0 -5px var(--reef-2), 0 10px 0 -4px var(--line),
-    0 20px 0 -10px var(--reef-3), 0 20px 0 -9px var(--line),
-    0 26px 36px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .25);
+.toast-who svg { width: 30px; height: auto; display: block; }
+.toast-who[data-waiting]::after {
+  content: attr(data-waiting);
+  position: absolute; top: -7px; right: -7px;
+  min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box;
+  border: 2px solid var(--ink); border-radius: 99px;
+  background: var(--glass); color: var(--ink);
+  font: 700 var(--fs-11)/14px var(--font-body); text-align: center;
 }
+.toast.working .toast-who::before {
+  content: ""; position: absolute; inset: -4px; border-radius: 12px;
+  border: 2px solid transparent; border-top-color: var(--toast-accent); border-right-color: var(--toast-accent);
+  animation: toast-spin 1s linear infinite;
+}
+@keyframes toast-spin { to { transform: rotate(360deg); } }
+/* Urgent: he raises a claw for you. Failed: his claws drop and his colour drains. */
+.toast-who .part-claw { transition: transform .25s var(--ease-spring); transform-origin: 0% 50%; }
+.toast.urgent .toast-who .part-claw { transform: rotate(-35deg) translate(1px, -2px); }
+.toast.danger .toast-who .part-claw { transform: rotate(22deg) translateY(1px); }
+.toast.danger .toast-who svg { filter: saturate(.4) brightness(.85); }
+
+/* The tail, pointing at him. */
+.toast-tail {
+  flex: none; align-self: flex-end; width: 8px; height: 10px; margin: 0 -10px 8px -2px;
+  background: var(--toast-edge); clip-path: polygon(100% 0, 0 100%, 100% 100%);
+}
+
+/* The bubble: as wide as its words need, up to the room there is. Its own
+   overflow keeps the water line inside its corners. */
+.toast-bubble {
+  position: relative; flex: 0 1 auto; min-width: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 10px 38px 11px 14px; /* right: room for the ✕ */
+  background: var(--reef-2);
+  border: 2px solid var(--toast-edge); border-radius: 14px 14px 14px 4px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .5), 0 0 0 1px rgba(0, 0, 0, .25);
+  font-size: var(--fs-13); font-weight: 500; line-height: 1.45;
+  overflow: hidden;
+}
+/* Words first: a short line shares its row with the buttons, a long one takes
+   the bubble and they drop below. Up to six lines show; more scroll in place. */
+.toast-bubble > :first-child {
+  flex: 1 1 auto; min-width: 0; max-width: 100%;
+  max-height: 8.7em; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: anywhere;
+}
+/* A toast with a headline: the title in his pixel voice and the tone's colour. */
+.toast-body { display: flex; flex-direction: column; gap: 2px; }
+.toast-title { font: 400 var(--fs-15)/1.25 var(--font-pixel); color: var(--toast-accent); }
+.toast-text { color: var(--sand); }
+.toast-note { margin-top: 2px; font-size: var(--fs-12); color: var(--sand-faint); }
+
+/* The buttons: the first is coral like .btn.primary, a second sits back in reef. */
+.toast-acts { flex: 0 1 auto; margin-left: auto; max-width: 100%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.toast-action {
+  max-width: 100%; padding: 5px 12px;
+  border: 1px solid var(--coral); border-radius: var(--r-sm);
+  background: var(--coral); color: #1a0d09; box-shadow: 0 2px 0 var(--coral-deep);
+  font-size: var(--fs-12); font-weight: 700; line-height: 1.3;
+}
+.toast-action:hover { background: #ff8e74; border-color: #ff8e74; }
+.toast-action:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--coral-deep); }
+.toast-action ~ .toast-action { background: var(--reef-3); border-color: var(--line); color: var(--sand); box-shadow: none; }
+.toast-action ~ .toast-action:hover { border-color: var(--glass); background: var(--reef-3); }
+/* The ✕ never moves: pinned to the corner, however the bubble changes size. */
+.toast-close {
+  position: absolute; top: 7px; right: 7px; width: 24px; height: 24px;
+  display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 99px; background: none; color: var(--sand-faint);
+}
+.toast-close:hover, .toast-close:focus-visible { color: var(--sand); background: rgba(127, 214, 194, .12); }
+.toast-close svg { width: 14px; height: 14px; }
+
+/* What waits behind it: the next one named on a line of its own (the count is
+   on the crab). Answering the front one brings the next forward. */
 .toast-next {
   flex-basis: 100%; padding-top: 7px; border-top: 1px solid var(--line-soft);
   font-size: var(--fs-11); font-weight: 500; color: var(--sand-faint);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .toast-next b { font-weight: 700; color: var(--sand-dim); }
-/* Answering the front one brings the next forward out of the stack. */
-.toast.promoted > :first-child { animation: toast-promote .32s var(--ease-spring); }
+.toast.promoted .toast-bubble > :first-child { animation: toast-promote .32s var(--ease-spring); }
 @keyframes toast-promote { from { opacity: 0; transform: translateY(8px) scale(.96); } }
 
-/* A job (SB.toast.job): a spinner while it works, a tick once it's done.
-   A failure says so with its colour (tone 'danger'). A result with a title
-   shows its title instead of either (.toast-body is a column). */
-.toast.working > span:first-child:not(.toast-body)::before,
-.toast.finished > span:first-child:not(.toast-body)::before {
-  content: ""; display: inline-block; vertical-align: -2px; margin-right: 8px;
-  width: 10px; height: 10px; box-sizing: border-box;
+/* A job's result (SB.toast.job) gets a tick before it; a failure says so with
+   its colour (tone 'danger'). A result with a title shows that instead. */
+.toast.finished .toast-bubble > span:first-child:not(.toast-body)::before {
+  content: ""; display: inline-block; width: 6px; height: 11px; margin: 0 10px 0 2px; vertical-align: -1px;
+  box-sizing: border-box; border: solid var(--toast-accent); border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
-.toast.working > span:first-child:not(.toast-body)::before { border: 2px solid color-mix(in srgb, var(--toast-accent) 30%, transparent); border-top-color: var(--toast-accent); border-radius: 50%; animation: toast-spin .8s linear infinite; }
-.toast.finished > span:first-child:not(.toast-body)::before { width: 6px; height: 11px; margin: 0 10px 0 2px; vertical-align: -1px; border: solid var(--toast-accent); border-width: 0 2px 2px 0; transform: rotate(45deg); }
-@keyframes toast-spin { to { transform: rotate(360deg); } }
 
 /* The time left drains along the bottom, and stops while you're on it. */
 .toast-water { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--toast-accent); transform-origin: left; visibility: hidden; }
@@ -1266,7 +1332,7 @@ select.field option { background: var(--reef); }
 @keyframes toast-water { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) {
   .toast-water { display: none; }
-  .toast.working > span:first-child:not(.toast-body)::before { animation-duration: 2.4s; }
+  .toast.working .toast-who::before { animation-duration: 3s; }
 }
 
 /* shared sprite animations */

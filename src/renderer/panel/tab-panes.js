@@ -214,6 +214,7 @@
       SB.hidePick?.();
       if (into) into.replaceChildren(box); else home.append(box);
       if (hadFocus) input.focus();
+      SB.placeToast?.(); // a toast that's up follows the box (toast.js)
     }
     for (const [id, p] of panes) {
       if (p.slot === into) continue;

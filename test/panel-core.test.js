@@ -1,14 +1,16 @@
 // The panel's shared helpers (src/renderer/panel/core.js): plural, the stored
-// preferences and the menu item. core.js is a browser script, so it runs here in
-// a vm with just enough of a page to load: elements that record what they're
-// given, and nothing that draws.
+// preferences, the menu item, and the toast (toast.js, which loads after it).
+// They're browser scripts, so they run here in a vm with just enough of a page
+// to load: elements that record what they're given, and nothing that draws.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const CORE = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'panel', 'core.js'), 'utf8');
+const panelSrc = name => fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer', 'panel', name), 'utf8');
+const CORE = panelSrc('core.js');
+const TOAST = panelSrc('toast.js');
 
 function classSet() {
   const on = new Set();
@@ -65,6 +67,7 @@ function loadCore({ storage, search = '' } = {}) {
     setTimeout: globalThis.setTimeout, clearTimeout: globalThis.clearTimeout, Date: globalThis.Date,
   });
   vm.runInContext(CORE, context, { filename: 'core.js' });
+  vm.runInContext(TOAST, context, { filename: 'toast.js' });
   return { SB: window.SB, document };
 }
 
@@ -129,8 +132,12 @@ test('menuItem takes (title, onPick) and (title, sub, onPick, options)', () => {
 
 // ------------------------------------------------------------------ toasts
 
-const toastText = t => (t.children[0] ? t.children[0].textContent : '');
-const toastButtons = t => t.children.filter(c => c.className === 'toast-action');
+// The slot holds the crab, the tail and the bubble; the bubble holds the words
+// first, then the buttons (in .toast-acts), the ✕, the water and the next line.
+const part = (t, name) => t.children.find(c => c.className === name);
+const bubble = t => part(t, 'toast-bubble');
+const toastText = t => bubble(t)?.children[0]?.textContent ?? '';
+const toastButtons = t => (bubble(t) && part(bubble(t), 'toast-acts')?.children) || [];
 
 function withClock(fn) {
   return t => {
@@ -197,7 +204,7 @@ test('clicking elsewhere lets your own next toast through', withClock(({ SB, doc
   assert.equal(toastText(slot), 'Copied.');
 }));
 
-const toastClose = t => t.children.find(c => c.className === 'toast-close');
+const toastClose = t => part(bubble(t), 'toast-close');
 
 test('every toast has a ✕ that clears it and whatever waited behind it', withClock(({ SB, slot, tick }) => {
   SB.toast('Copied.');
@@ -217,6 +224,29 @@ test('every toast has a ✕ that clears it and whatever waited behind it', withC
   assert.equal(toastText(slot), 'Copied.', 'the next toast shows straight away');
 }));
 
+test('Shellby says it: the crab, a tail pointing at him, then the bubble', withClock(({ SB, slot }) => {
+  SB.toast('Update 0.101.0 is ready.', { action: 'Restart and update', onAction() {} });
+  assert.deepEqual(slot.children.map(c => c.className), ['toast-who', 'toast-tail', 'toast-bubble']);
+  assert.equal(part(slot, 'toast-who').attrs['aria-hidden'], 'true', 'the status region reads only the words');
+  assert.equal(part(slot, 'toast-tail').attrs['aria-hidden'], 'true');
+  assert.deepEqual(bubble(slot).children.map(c => c.className),
+    [undefined, 'toast-acts', 'toast-close', 'toast-water'], 'words first, then the buttons, the ✕ and the water');
+}));
+
+test('a toast with nothing to press has no row for buttons', withClock(({ SB, slot }) => {
+  SB.toast('Sentry is connected.');
+  assert.equal(part(bubble(slot), 'toast-acts'), undefined);
+  assert.equal(toastButtons(slot).length, 0);
+}));
+
+test('a toast with no box on screen leaves where it sits to the stylesheet', withClock(({ SB, slot }) => {
+  const set = {};
+  slot.style.setProperty = (k, v) => { set[k] = v; };
+  SB.toast('Copied.');
+  assert.equal(set['--toast-bottom'], '', 'above the dock, by panel.css');
+  assert.equal(set['--toast-left'], '');
+}));
+
 test('Escape on a toast dismisses it', withClock(({ SB, slot }) => {
   SB.toast('It clashes with main.', { ms: 12000, action: 'Ask him to sort it out', onAction() {} });
   let stopped = false;
@@ -229,7 +259,7 @@ test('Escape on a toast dismisses it', withClock(({ SB, slot }) => {
 
 // The fake elements keep no textContent for mixed children: put it together.
 const words = n => n.text ?? n.textContent ?? n.children.map(words).join('');
-const toastNext = t => t.children.find(c => c.className === 'toast-next');
+const toastNext = t => bubble(t) && part(bubble(t), 'toast-next');
 const toastNextLine = t => { const n = toastNext(t); return n && { textContent: words(n) }; };
 const ask = (SB, msg, ms = 12000) => SB.toast(msg, { ms, action: 'Allow', onAction() {} });
 
@@ -239,22 +269,24 @@ test('a toast with nothing behind it has no stack', withClock(({ SB, slot }) => 
   assert.equal(toastNextLine(slot), undefined);
 }));
 
-test('what waits behind a button toast peeks out under it and is named', withClock(({ SB, slot }) => {
+test('what waits behind a button toast is counted on the crab and named', withClock(({ SB, slot }) => {
   ask(SB, 'Run npm run e2e:ci?');
   SB.toast('rack-builder finished its task.', { ms: 5000 });
   assert.equal(slot.dataset.waiting, '1');
+  assert.equal(part(slot, 'toast-who').dataset.waiting, '1', 'the count he carries');
   assert.equal(toastText(slot), 'Run npm run e2e:ci?', 'the front one stays first');
   assert.equal(toastNextLine(slot).textContent, 'Next: rack-builder finished its task.');
 }));
 
-test('the stack draws two cards at most and counts the rest', withClock(({ SB, slot }) => {
+test('the crab counts every one waiting, and one line names the next', withClock(({ SB, slot }) => {
   ask(SB, 'Run npm run e2e:ci?');
   SB.toast('Tests passed.', { ms: 5000 });
   SB.toast('Pushed 2 commits.', { ms: 5000 });
   SB.toast('Routine finished.', { ms: 5000 });
-  assert.equal(slot.dataset.waiting, '2');
+  assert.equal(slot.dataset.waiting, '3');
+  assert.equal(part(slot, 'toast-who').dataset.waiting, '3');
   assert.equal(toastNextLine(slot).textContent, 'Next: Tests passed. and 2 more');
-  assert.equal(slot.children.filter(c => c.className === 'toast-next').length, 1, 'one line, however many come in');
+  assert.equal(bubble(slot).children.filter(c => c.className === 'toast-next').length, 1, 'one line, however many come in');
 }));
 
 test('the next line names a waiting toast by its title when it has one', withClock(({ SB, slot }) => {

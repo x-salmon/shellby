@@ -212,7 +212,6 @@ interface ShellbyPanelExtras {
   shortPath: any;
   sprite: any;
   tildify: any;
-  toast: any;
   untilTime: any;
   VIEW_ALIAS: any;
   views: any;
@@ -687,6 +686,9 @@ interface ShellbyPanelExtras {
   timeDay: any;
   // time-month.js
   timeMonth: any;
+  // toast.js
+  placeToast: any;
+  toast: any;
   // together.js
   applyLife: any;
   play: any;
