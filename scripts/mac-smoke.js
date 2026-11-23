@@ -19,7 +19,9 @@ if (!fs.existsSync(exe)) { console.error(`no app binary at ${exe}`); process.exi
 
 // The packaged app keeps its profile in Application Support; a temp HOME keeps this run's apart.
 const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-smoke-')));
-const logDir = path.join(home, 'Library', 'Application Support', 'Shellby', 'logs');
+// Electron on a Mac finds the home folder through the system, not $HOME, so the
+// profile may be in either. CI's runner is fresh: a log in the real one is this run's.
+const logDirs = [home, os.homedir()].map(h => path.join(h, 'Library', 'Application Support', 'Shellby', 'logs'));
 const child = spawn(exe, [], {
   env: { ...process.env, HOME: home, SHELLBY_E2E: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
@@ -29,9 +31,9 @@ child.stdout.on('data', d => { output += d; });
 child.stderr.on('data', d => { output += d; });
 
 function logText() {
-  try {
-    return fs.readdirSync(logDir).map(f => fs.readFileSync(path.join(logDir, f), 'utf8')).join('\n');
-  } catch { return ''; }
+  return logDirs.flatMap(dir => {
+    try { return fs.readdirSync(dir).map(f => fs.readFileSync(path.join(dir, f), 'utf8')); } catch { return []; }
+  }).join('\n');
 }
 
 const started = Date.now();
