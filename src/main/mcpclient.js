@@ -11,11 +11,12 @@
 // Everything is bounded: one deadline for the whole exchange, a cap on what's
 // read, and the server's whole process tree ends with the call
 // (process-job.js), so nothing is left running.
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const { CMD, TASKKILL } = require('./system32');
+const { CMD } = require('./system32');
+const { killTree, OWN_GROUP } = require('./proc-tree');
 const processJob = require('./process-job');
 const { expandEnv, transportOf } = require('./mcpservers');
 
@@ -76,7 +77,7 @@ function stdioSession(def, { cwd, env, spawnImpl = spawn, find } = {}) {
   const fullEnv = { ...env, ...expandEnv(isObj(def.env) ? def.env : {}, env) };
   const plan = launchPlan(expandEnv(def, env), fullEnv, find);
   const child = spawnImpl(plan.file, plan.args, {
-    cwd, env: fullEnv, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], windowsVerbatimArguments: plan.verbatim,
+    cwd, env: fullEnv, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], windowsVerbatimArguments: plan.verbatim, ...OWN_GROUP,
   });
   const job = child.pid ? processJob.adopt(child.pid) : null;
   const pending = new Map();
@@ -114,8 +115,8 @@ function stdioSession(def, { cwd, env, spawnImpl = spawn, find } = {}) {
     rl.close();
     try { child.stdin.end(); } catch { /* already destroyed: the server is gone, which is the point */ }
     if (processJob.sweep(job)) return;
-    // taskkill fails only when the tree has already exited; nothing to report.
-    if (child.pid && child.exitCode === null) execFile(TASKKILL, ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => {});
+    // This fails fails only when the tree has already exited; nothing to report.
+    if (child.pid && child.exitCode === null) killTree(child.pid);
   }
 
   return {

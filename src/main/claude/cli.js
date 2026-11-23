@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
-const { TASKKILL } = require('../system32');
+const { killTree } = require('../proc-tree');
 const processJob = require('../process-job');
 
 // Env vars that would route the CLI to API-key billing or another provider.
@@ -147,11 +147,18 @@ const billingScrub = (onlyPlan = planOnly, keyMode = useApiKey) => (onlyPlan || 
 /**
  * @param {NodeJS.ProcessEnv} [env]
  * @param {string | null} [configured]
+ * @param {string} [platform]
  */
-function candidatePaths(env = process.env, configured = null) {
+function candidatePaths(env = process.env, configured = null, platform = process.platform) {
   const list = [];
   if (env.SHELLBY_CLAUDE_PATH) list.push(env.SHELLBY_CLAUDE_PATH);
   if (typeof configured === 'string' && configured) list.push(configured);
+  if (platform !== 'win32') {
+    const dirs = String(env.PATH || '').split(':').filter(dir => dir.startsWith('/'));
+    if (env.HOME) list.push(path.posix.join(env.HOME, '.local', 'bin', 'claude'), path.posix.join(env.HOME, '.claude', 'local', 'claude'));
+    // Homebrew on Apple silicon and on Intel: an app opened from Finder has neither on PATH.
+    return [...list, ...[...dirs, '/opt/homebrew/bin', '/usr/local/bin'].map(dir => path.posix.join(dir, 'claude'))];
+  }
   if (env.APPDATA) list.push(path.join(env.APPDATA, 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'));
   if (env.USERPROFILE) list.push(path.join(env.USERPROFILE, '.local', 'bin', 'claude.exe'));
   if (env.LOCALAPPDATA) list.push(path.join(env.LOCALAPPDATA, 'Programs', 'claude', 'claude.exe'));
@@ -252,11 +259,7 @@ function run(exe, args, timeout = 15000, { cwd, input = null, env = claudeEnv() 
     const timer = setTimeout(() => {
       timedOut = true;
       if (processJob.sweep(job)) return;
-      if (process.platform === 'win32' && child.pid) {
-        execFile(TASKKILL, ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => {});
-      } else {
-        child.kill('SIGKILL');
-      }
+      killTree(child.pid);
     }, timeout);
   });
 }

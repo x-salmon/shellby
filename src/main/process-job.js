@@ -26,7 +26,11 @@
 //
 // Best effort throughout: no koffi, not Windows, or a call that fails all mean
 // "no job", and callers fall back to what they did before.
+//
+// On macOS a job is posix-job.js's, behind the same functions; giving way to a
+// game stays Windows' own.
 const os = require('os');
+const posix = process.platform === 'win32' ? null : require('./posix-job').createJobs();
 
 /** @type {any} */ // FFI module, untyped
 let koffi = null;
@@ -280,4 +284,8 @@ function sweepAll() {
 
 const available = () => !!load();
 
-module.exports = { adopt, sweep, sweepAll, members, namedMembers, ownedPids, available, giveWay, givingWay: givingWayNow, shareOf, KEEP, GAME_CPU_PERCENT, MIN_JOB_PERCENT };
+// Typed as Windows' (posix-job.js takes the same calls).
+/** @type {{ adopt: typeof adopt, sweep: typeof sweep, sweepAll: typeof sweepAll, members: typeof members, namedMembers: typeof namedMembers, ownedPids: typeof ownedPids }} */
+const impl = posix ? /** @type {any} */ (posix) : { adopt, sweep, sweepAll, members, namedMembers, ownedPids };
+
+module.exports = { ...impl, available, giveWay, givingWay: givingWayNow, shareOf, KEEP, GAME_CPU_PERCENT, MIN_JOB_PERCENT };

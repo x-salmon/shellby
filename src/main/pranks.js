@@ -132,7 +132,7 @@ function createPranks(d) {
         const u = (Date.now() - began) / mischief.PINCH.holdMs;
         if (u >= 1) return letGo(false);
         held = mischief.tugPoint(start, d.clawPoint() || start, u);
-        const phys = d.screen.dipToScreenPoint(held);
+        const phys = require('./desktop/units').toScreenPoint(d.screen, held);
         d.native.setCursor(phys.x, phys.y);
       }, FRAME_MS);
     });

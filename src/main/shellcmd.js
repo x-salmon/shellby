@@ -3,15 +3,17 @@
 // with your next message, so it knows what you ran and what came back
 // without spending a turn on it.
 //
-// It runs in PowerShell (Windows PowerShell 5.1, always present) in the
+// It runs in PowerShell (Windows PowerShell 5.1, always present), or your own
+// shell on a Mac, in the
 // conversation's working folder, with your own account's rights: it's you
 // typing a command, not Claude. Bounded in time and output, and the whole
 // process tree goes if it runs over.
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const { StringDecoder } = require('string_decoder');
 // By full path: the working folder is the project, and a powershell.exe in a
 // cloned repository would otherwise run instead.
-const { POWERSHELL, TASKKILL } = require('./system32');
+const { typedPlan } = require('./shells');
+const { killTree: endTree } = require('./proc-tree');
 
 const TIMEOUT_MS = 2 * 60 * 1000;
 const MAX_OUTPUT = 30000;        // kept, shown and sent to Claude
@@ -49,8 +51,8 @@ function run(cwd, command, { timeoutMs = TIMEOUT_MS, signal = null, env = null, 
     let child;
     try {
       // UTF-8 output, so non-ASCII file names and messages come back intact.
-      child = spawn(POWERSHELL, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command',
-        `[Console]::OutputEncoding=[Text.Encoding]::UTF8; $ProgressPreference='SilentlyContinue'; ${cmd}`], {
+      const plan = typedPlan(cmd);
+      child = spawn(plan.file, plan.args, {
         cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], ...(env ? { env: { ...process.env, ...env } } : {}),
       });
     } catch (e) {
@@ -59,7 +61,7 @@ function run(cwd, command, { timeoutMs = TIMEOUT_MS, signal = null, env = null, 
     }
     child.stdout.on('data', keeper());
     child.stderr.on('data', keeper());
-    const killTree = () => execFile(TASKKILL, ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => {});
+    const killTree = () => endTree(child.pid);
     const timer = setTimeout(() => {
       timedOut = true;
       killTree();

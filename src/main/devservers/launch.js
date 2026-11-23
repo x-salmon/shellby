@@ -11,7 +11,13 @@
 // file, and it leaves any job Shellby is in. This used to be a small Node
 // script run by Shellby's own exe as Node (ELECTRON_RUN_AS_NODE), but the
 // packaged app now turns that off (the runAsNode fuse, package.json).
+//
+// On macOS there's no console to hide: a shell at the head of its own session
+// (node's `detached`) outlives Shellby as it is (launchPosix).
 'use strict';
+
+const fs = require('fs');
+const { spawn } = require('child_process');
 
 /**
  * The bit of koffi used here. Its own types aren't in the program (jsconfig's
@@ -97,6 +103,7 @@ const wide = s => { const b = new Uint16Array(s.length + 1); for (let i = 0; i <
  * @returns {{ pid: number } | null}
  */
 function launch({ app, commandLine, cwd, env, logFile }) {
+  if (process.platform !== 'win32') return launchPosix({ commandLine, cwd, env, logFile });
   const a = load();
   if (!a || commandLine.length >= MAX_COMMAND_LINE) return null;
   const sa = { nLength: a.saSize, lpSecurityDescriptor: null, bInheritHandle: 1 };
@@ -129,4 +136,25 @@ function launch({ app, commandLine, cwd, env, logFile }) {
   }
 }
 
-module.exports = { launch, envBlock, available: () => !!load() };
+/**
+ * The same on macOS: /bin/sh, in its own session, its output appended to the log.
+ * @param {{ commandLine: string, cwd: string, env: Record<string, string | undefined>, logFile: string }} what
+ * @returns {{ pid: number } | null}
+ */
+function launchPosix({ commandLine, cwd, env, logFile }) {
+  let log = INVALID_HANDLE;
+  try {
+    log = fs.openSync(logFile, 'a');
+    const child = spawn('/bin/sh', ['-c', commandLine], { cwd, env, detached: true, stdio: ['ignore', log, log] });
+    child.on('error', e => console.warn('[shellby] dev server launch failed:', e.message));
+    child.unref();
+    return child.pid ? { pid: child.pid } : null;
+  } catch (e) {
+    console.warn('[shellby] dev server launch failed:', e.message);
+    return null;
+  } finally {
+    if (log !== INVALID_HANDLE) fs.closeSync(log); // the child has its own
+  }
+}
+
+module.exports = { launch, envBlock, available: () => process.platform !== 'win32' || !!load() };

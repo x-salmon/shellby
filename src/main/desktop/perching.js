@@ -12,6 +12,7 @@
 const perch = require('./perch');
 const native = require('./native-windows');
 const { DESKTOP_CLASSES } = require('./desktop-layer');
+const units = require('./units');
 
 const READ_IDLE_MS = 90;        // a still window is read ~11×/s; a moving one every frame
 const LEAN_EVERY_MS = 70;       // how often his lean is sent to the renderer while riding
@@ -61,7 +62,7 @@ function createPerching(d) {
 
   function toDip(r) {
     if (!r) return null;
-    const rect = d.screen.screenToDipRect(null, { x: r.left, y: r.top, width: r.right - r.left, height: r.bottom - r.top });
+    const rect = units.toDipRect(d.screen, r);
     return { rect, workArea: d.screen.getDisplayMatching(rect).workArea };
   }
 
@@ -544,7 +545,7 @@ function createPerching(d) {
     allowed: allowed(), busy: busy(), box: d.box(), geo: d.geo(),
     display: (() => {
       const disp = d.screen.getDisplayMatching(d.critter().getBounds());
-      return { dip: disp.bounds, phys: d.screen.dipToScreenRect(null, disp.bounds) };
+      return { dip: disp.bounds, phys: units.toScreenRect(d.screen, disp.bounds) };
     })(),
     windows: candidates().map(w => ({ hwnd: w.hwnd, exe: w.exe, ok: w.ok, frame: w.frame })),
     segments: segments().map(s => ({ ...s, sameScreen: sameScreen(s) })),

@@ -13,8 +13,10 @@ const { releaseVelocity, planStroll } = require('./motion');
 
 // The walkable part of a title bar: clear of the min/max/close buttons and the
 // app icon, so he never sits on something you're about to click.
-const CAPTION_RIGHT = 140;
-const CAPTION_LEFT = 30;
+// A Mac's buttons are on the left instead.
+const MAC = process.platform === 'darwin';
+const CAPTION_RIGHT = MAC ? 24 : 140;
+const CAPTION_LEFT = MAC ? 84 : 30;
 const MIN_FRAME_W = 320;
 const MIN_FRAME_H = 160;
 const MIN_LEDGE = 60;   // anything shorter isn't worth climbing onto

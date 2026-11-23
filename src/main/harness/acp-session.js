@@ -17,7 +17,7 @@
 //
 // deps are injected (spawn, kill) so test/harness-session.test.js runs it
 // against a fake agent.
-const { spawn: realSpawn, execFile } = require('child_process');
+const { spawn: realSpawn } = require('child_process');
 const fs = require('fs');
 const readline = require('readline');
 const { EventEmitter } = require('events');
@@ -26,7 +26,7 @@ const { toItems } = require('../stream');
 const { troubleOf } = require('../trouble');
 const { annotatePermission, selfConfigTarget } = require('../safety');
 const { plainPermission } = require('../plain-words');
-const { TASKKILL } = require('../system32');
+const { killTree } = require('../proc-tree');
 const { createPeer } = require('./rpc');
 const acp = require('./acp-translate');
 const todos = require('../../renderer/shared/todos');
@@ -69,7 +69,7 @@ class AcpSession extends EventEmitter {
     // caps (its initialize's mcpCapabilities) -> ACP mcpServers: the connectors gateway (connectors/).
     this.mcpServersFor = o.mcpServers || (() => []);
     this.spawnFn = o.spawn || realSpawn;
-    this.killFn = o.kill || (proc => execFile(TASKKILL, ['/PID', String(proc.pid), '/T', '/F'], { windowsHide: true }, () => {}));
+    this.killFn = o.kill || (proc => killTree(proc.pid));
 
     // What the manager and the panel read, as ClaudeSession has them.
     this.busy = false;

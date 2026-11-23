@@ -1,5 +1,6 @@
 // Keeps the critter on the desktop layer: above the wallpaper and icons, below
-// every app, and still visible after Win+D ("Show desktop").
+// every app, and still visible after Win+D ("Show desktop"). On a Mac the desktop
+// layer is the window level just under the apps' (desktop/native-mac.js).
 //
 // Technique: make the critter an *owned* window of the shell's desktop host
 // (the Progman/WorkerW window that contains SHELLDLL_DefView). Owned windows
@@ -22,6 +23,7 @@ let onTop = () => false; // set by setOnTop: true while he should be above your 
 const lifted = new WeakSet(); // windows pin() has made topmost
 
 function restack(win, after) {
+  if (process.platform === 'darwin') return native.restack(native.hwndOf(win), after);
   const a = native.load();
   if (!a) return false;
   try { return a.SetWindowPos(native.hwndOf(win), after, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE); } catch { return false; /* best effort */ }
@@ -100,6 +102,7 @@ function keepOnDesktop(win, { watchdogMs = 15000, isAway = () => false } = {}) {
   }
   console.log(`[shellby] desktop pin: ${pin(win) ? 'ok' : 'failed'}`);
   try {
+    if (process.platform !== 'win32') throw new Error('no Explorer to restart');
     const msg = a.RegisterWindowMessageW('TaskbarCreated');
     win.hookWindowMessage(msg, () => setTimeout(() => { if (!away()) pin(win); }, 1500));
   } catch { /* hookWindowMessage unavailable */ }

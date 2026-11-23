@@ -5,7 +5,7 @@
 // it. Same arguments and callback as execFile; on a timeout the error has
 // killed: true and signal 'SIGTERM', as execFile's would.
 const { execFile } = require('child_process');
-const { TASKKILL } = require('./system32');
+const proc = require('./proc-tree');
 
 /**
  * @param {string} file
@@ -32,15 +32,13 @@ function execFileTree(file, args, opts, cb, { execFileImpl = execFile, killTree 
   if (timeout > 0) {
     timer = setTimeout(() => {
       timedOut = true;
-      if (process.platform === 'win32' && child?.pid) killTree(child.pid);
+      if (child?.pid) killTree(child.pid);
       else child?.kill?.();
     }, timeout);
   }
   return child;
 }
 
-function defaultKillTree(pid) {
-  execFile(TASKKILL, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => { /* gone already */ });
-}
+function defaultKillTree(pid) { proc.killTree(pid); }
 
 module.exports = { execFileTree };

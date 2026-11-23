@@ -4,10 +4,10 @@
 // The class keeps the process's life and what it says; the rest is mixed in:
 // how it's launched (args.js), answering it (control.js), what it costs
 // (accounting.js) and its helpers (crew.js).
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
-const { TASKKILL } = require('../system32'); // by full path: Claude runs in project folders
+const { killTree, OWN_GROUP } = require('../proc-tree');
 const readline = require('readline');
 const { EventEmitter } = require('events');
 const { randomUUID } = require('crypto');
@@ -256,7 +256,7 @@ class ClaudeSession extends Base {
         cwd: os.homedir(), env: { ...process.env, ...remote.env }, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
       })
       : spawn(exe, [...this.argsPrefix, ...this.buildArgs()], {
-        cwd: this.cwd, env: { ...claudeEnv(), ...crabEnv, ...this.extraEnv() }, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: this.cwd, env: { ...claudeEnv(), ...crabEnv, ...this.extraEnv() }, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], ...OWN_GROUP,
       });
     this.proc = proc;
     this.procStartedAt = Date.now(); // a sign-in newer than this is one the process never read (claude/cli.js signInLapsed)
@@ -697,7 +697,7 @@ class ClaudeSession extends Base {
     // parent. Ended here and now, so it holds while Shellby quits.
     if (processJob.sweep(this.job)) return;
     // No job: /T takes down the tree as far as it's still connected.
-    execFile(TASKKILL, ['/PID', String(this.proc.pid), '/T', '/F'], { windowsHide: true }, () => {});
+    killTree(this.proc.pid);
   }
 
   close() {

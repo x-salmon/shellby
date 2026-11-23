@@ -7,10 +7,10 @@
 // cancelled removes the folder it made, and only that folder.
 const fs = require('fs');
 const path = require('path');
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const { cloneUrl, checkRepo } = require('./remote');
 const { okDir } = require('../leaving');
-const { TASKKILL } = require('../system32');
+const { killTree: endTree } = require('../proc-tree');
 
 // Names Windows won't make a folder with, whatever follows the dot.
 const RESERVED = /^(con|prn|aux|nul|com\d|lpt\d)(\..*)?$/i;
@@ -90,7 +90,7 @@ function clone(repo, parent, { env = {}, onProgress = () => {}, signal = null, s
         if (p) onProgress(p);
       }
     });
-    const kill = killTree || (pid => execFile(TASKKILL, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {}));
+    const kill = killTree || endTree;
     const onAbort = () => { cancelled = true; if (child.pid) kill(child.pid); };
     if (signal?.aborted) onAbort(); else signal?.addEventListener('abort', onAbort, { once: true });
     child.on('error', e => { tail += `\n${e.message}`; });

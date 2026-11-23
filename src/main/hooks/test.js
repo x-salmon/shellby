@@ -7,7 +7,7 @@
 // main.js asks in the confirm window before anything here runs.
 const fs = require('fs');
 const path = require('path');
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const { HOOK_EVENTS } = require('../claude/setup');
 const { RECIPES } = require('./recipes');
 
@@ -126,11 +126,7 @@ function findBash(env = process.env, exists = fs.existsSync) {
 }
 
 function killTree(child) {
-  if (!child.pid) return;
-  if (process.platform === 'win32') {
-    const { TASKKILL } = require('../system32');
-    execFile(TASKKILL, ['/T', '/F', '/PID', String(child.pid)], { windowsHide: true }, () => {});
-  } else child.kill('SIGKILL');
+  require('../proc-tree').killTree(child.pid);
 }
 
 /**

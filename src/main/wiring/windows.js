@@ -11,6 +11,7 @@ const { createBeat, createFrontReader, signature } = require('../desktop/front-p
 const focus = require('../focus');
 const { CritterMotion, wanders } = require('../desktop/motion');
 const native = require('../desktop/native-windows');
+const units = require('../desktop/units');
 const { isTestRun, watchesDesktop } = require('../test-desktop');
 const { createPerching } = require('../desktop/perching');
 const { clampToDisplays } = require('../desktop/placement');
@@ -413,7 +414,7 @@ function wireWindows(d) {
   function frontFrame(info) {
     if (!info || !info.visible || info.minimized || info.cloaked || !info.frame) return null;
     const f = info.frame;
-    return screen.screenToDipRect(null, { x: f.left, y: f.top, width: f.right - f.left, height: f.bottom - f.top });
+    return units.toDipRect(screen, f);
   }
   function panelCovered(info) {
     const p = d.panel;

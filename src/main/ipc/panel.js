@@ -14,7 +14,7 @@ const practice = require('../practice');
 const { models } = require('../models');
 const processJob = require('../process-job');
 const snippets = require('../snippets');
-const { TASKKILL } = require('../system32');
+const { killTree } = require('../proc-tree');
 
 /**
  * @param {import('../ipc-guard').GuardedIpc} ipcMain  main's, behind ipc-guard.js
@@ -247,7 +247,7 @@ function registerPanelIpc(ipcMain, d) {
     login = null;
     clearTimeout(timer);
     if (processJob.sweep(job)) return;
-    if (child.pid && child.exitCode === null) execFile(TASKKILL, ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => {});
+    if (child.pid && child.exitCode === null) killTree(child.pid);
   }
   app.on('will-quit', endClaudeLogin);
   function startClaudeLogin() {
@@ -280,7 +280,7 @@ function registerPanelIpc(ipcMain, d) {
       defaultPath: d.claudePath() || path.join(os.homedir(), '.local', 'bin'),
       properties: ['openFile'],
       // .exe only: a .cmd or .bat can't be started without a shell, which Shellby never uses.
-      filters: [{ name: 'Claude Code', extensions: ['exe'] }, { name: 'Any file', extensions: ['*'] }],
+      filters: process.platform === 'win32' ? [{ name: 'Claude Code', extensions: ['exe'] }, { name: 'Any file', extensions: ['*'] }] : [],
       buttonLabel: 'Use this',
     });
     if (r.canceled || !r.filePaths[0]) return { ok: false, cancelled: true, status: d.claudeStatus };

@@ -14,9 +14,10 @@
 // the server.
 const fs = require('fs');
 const path = require('path');
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const { StringDecoder } = require('string_decoder');
-const { CMD, TASKKILL } = require('../system32');
+const { CMD } = require('../system32');
+const { killTree } = require('../proc-tree');
 const native = require('./launch');
 const processJob = require('../process-job');
 
@@ -40,7 +41,9 @@ const START_SLACK_MS = 3000;           // how far a pid's start time may be from
  * keeps cmd from expanding it while it reads the line. /d: no AutoRun
  * commands. /s /c "…": the command exactly as given.
  */
-function commandLine(command, cmd = CMD) {
+function commandLine(command, cmd = CMD, platform = process.platform) {
+  // A subshell, so a command that ends with `exit` still gets its marker written.
+  if (platform !== 'win32') return `( ${command}\n); printf '\\n[shellby-exit %s]\\n' "$?"`;
   return `"${cmd}" /d /s /c "${command} & echo(& call echo [shellby-exit %^errorlevel%]"`;
 }
 
@@ -105,18 +108,13 @@ function isAlive(pid, createdAt, info, { trustBare = false } = {}) {
  * detached: fire taskkill off on its own and don't wait. For quitting: a
  * child of Shellby's is ended with it, and could be cut off mid-tree.
  */
-function stop(pid, { execFileImpl = execFile, spawnImpl = spawn, detached = false } = {}) {
+function stop(pid, { execFileImpl = undefined, spawnImpl = spawn, detached = false } = {}) {
   return new Promise(/** @param {(value?: void) => void} resolve */ resolve => {
     if (!Number.isInteger(pid) || pid <= 0) return resolve();
     const job = jobs.get(pid);
     jobs.delete(pid);
     processJob.sweep(job); // synchronous: holds even while Shellby quits
-    const args = ['/PID', String(pid), '/T', '/F'];
-    if (detached) {
-      try { spawnImpl(TASKKILL, args, { detached: true, windowsHide: true, stdio: 'ignore' }).unref(); } catch { /* best effort */ }
-      return resolve();
-    }
-    execFileImpl(TASKKILL, args, { windowsHide: true, timeout: 10000 }, () => resolve());
+    killTree(pid, { execFileImpl, spawnImpl, detached }).then(resolve);
   });
 }
 

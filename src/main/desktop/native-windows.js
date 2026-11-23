@@ -397,7 +397,8 @@ function regQwords(path, names) {
   }, null);
 }
 
-module.exports = {
+// macOS has its own, behind the same names (native-mac.js).
+module.exports = process.platform === 'darwin' ? require('./native-mac') : {
   regQwords,
   load, available, hwndOf, topLevelWindows, describe, quick, foreground, frontWindow, isWindow, keyDown, mouseDown, setCursor, isVisible, ownerOf,
   QUNS, notificationState, desktopHost, ownBy, ownByDesktop, raiseAbove, float, focus, minimize, restore, close, move, dpiAware,

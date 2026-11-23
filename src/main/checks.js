@@ -14,10 +14,11 @@
 //
 // The pickers and the verdict are pure; detect() reads a few files and run()
 // spawns, and neither throws.
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { CMD, TASKKILL } = require('./system32');
+const { killTree } = require('./proc-tree');
+const { shellPlan } = require('./shells');
 const scripts = require('./devservers/scripts');
 const { hasTests } = require('./depwatch');
 const flaky = require('./flaky');
@@ -339,8 +340,8 @@ function checkEnv(env = process.env) {
 
 /**
  * Run one checked command in a folder. -> { promise, cancel }.
- * cmd.exe runs it (npm is npm.cmd), with the command fixed and checked; /d: no
- * AutoRun. NoDefaultCurrentDirectoryInExePath: the project's own npm.cmd or
+ * The plain shell runs it (shells.js: npm is npm.cmd on Windows), with the
+ * command fixed and checked. NoDefaultCurrentDirectoryInExePath: the project's own npm.cmd or
  * node.exe never stands in for the real one. CI=1 keeps a watch-mode runner
  * from waiting forever. A timeout or cancel ends the whole tree (taskkill /T).
  */
@@ -358,8 +359,9 @@ function runCommand(cmd, cwd, { timeoutMs = DEFAULT_TIMEOUT_MIN * 60000, spawnIm
   const timer = setTimeout(() => { if (child?.pid) killImpl(child.pid); done({ timedOut: true, output: out.slice(-MAX_OUTPUT) }); }, timeoutMs);
   if (!isSafeCommand(cmd)) { done({ error: 'Not a check Shellby knows how to run.' }); return { promise, cancel: () => {} }; }
   try {
-    child = spawnImpl(CMD, ['/d', '/s', '/c', `"${cmd}"`], {
-      cwd, windowsHide: true, windowsVerbatimArguments: true, stdio: ['ignore', 'pipe', 'pipe'],
+    const plan = shellPlan(cmd);
+    child = spawnImpl(plan.file, plan.args, {
+      cwd, windowsHide: true, windowsVerbatimArguments: plan.verbatim, stdio: ['ignore', 'pipe', 'pipe'],
       env: checkEnv(process.env),
     });
     child.stdout?.on('data', take);
@@ -373,11 +375,6 @@ function runCommand(cmd, cwd, { timeoutMs = DEFAULT_TIMEOUT_MIN * 60000, spawnIm
     promise,
     cancel: () => { if (ended) return; if (child?.pid) killImpl(child.pid); done({ cancelled: true, output: out.slice(-MAX_OUTPUT) }); },
   };
-}
-
-function killTree(pid) {
-  if (!Number.isInteger(pid) || pid <= 0) return;
-  try { execFile(TASKKILL, ['/PID', String(pid), '/T', '/F'], { windowsHide: true, timeout: 10000 }, () => {}); } catch { /* gone already */ }
 }
 
 /**

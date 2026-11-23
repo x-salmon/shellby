@@ -5,10 +5,11 @@
 // (`get_usage`); no message is sent, so it costs nothing against the limit.
 //
 // get_usage is marked experimental by Claude Code: any surprise reads as null.
-const { spawn, execFile } = require('child_process');
+const { spawn } = require('child_process');
 const readline = require('readline');
 const { randomUUID } = require('crypto');
 const { claudeEnv } = require('../claude/cli');
+const { killTree } = require('../proc-tree');
 
 const TIMEOUT_MS = 30_000;
 // claude's arguments for the probe; on another computer they go into ssh's script (remote/service.js).
@@ -51,7 +52,7 @@ function probe({ exe, argsPrefix = [], cwd, timeout = TIMEOUT_MS, args = [...arg
       resolve(value);
       try { proc.stdin.end(); } catch { /* ignore */ }
       if (proc.exitCode === null && proc.pid) {
-        execFile('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { windowsHide: true }, () => {});
+        killTree(proc.pid);
       }
     };
     const timer = setTimeout(() => finish(null), timeout);
