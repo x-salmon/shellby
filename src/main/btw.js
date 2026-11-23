@@ -15,6 +15,9 @@ const MAX_QUESTION = 4000;
 const TIMEOUT_MS = 120000;
 const MAX_TURNS = 8;
 const MAX_TURN_TEXT = 4000;
+// A side question wants a quick answer, not the conversation's effort: at a
+// settings file's xhigh one ran past TIMEOUT_MS with an essay.
+const EFFORT = 'low';
 
 const NOTE = [
   'The user is asking a quick side question with /btw while this conversation carries on separately.',
@@ -33,7 +36,7 @@ const NOTE = [
  * --mcp-config and --tools "" leave Claude no tools at all.
  */
 function args({ sessionId = null, resumeAt = null, model = null, lean = [] } = {}) {
-  const a = ['-p', '--output-format', 'json', '--tools', '', '--strict-mcp-config', '--no-session-persistence', '--append-system-prompt', NOTE];
+  const a = ['-p', '--output-format', 'json', '--tools', '', '--strict-mcp-config', '--no-session-persistence', '--effort', EFFORT, '--append-system-prompt', NOTE];
   if (model) a.push('--model', model);
   if (sessionId) {
     a.push('--resume', sessionId, '--fork-session');
@@ -107,4 +110,4 @@ async function ask({ question, history, sessionId, resumeAt, model, cwd, lean },
   return parse(res.stdout);
 }
 
-module.exports = { args, parse, ask, remoteCommand, cleanQuestion, cleanHistory, prompt, NOTE, MAX_QUESTION, MAX_TURNS, TIMEOUT_MS };
+module.exports = { args, parse, ask, remoteCommand, cleanQuestion, cleanHistory, prompt, NOTE, EFFORT, MAX_QUESTION, MAX_TURNS, TIMEOUT_MS };

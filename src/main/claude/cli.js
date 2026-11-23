@@ -135,13 +135,26 @@ function terminalEnv(base = process.env, { onlyPlan = planOnly, keyMode = useApi
 }
 
 // Settings that change how Claude Code signs in or which service it calls.
-const SIGN_IN_SETTINGS = ['apiKeyHelper', 'env', 'awsAuthRefresh', 'awsCredentialExport', 'forceLoginMethod', 'forceLoginOrgUUID'];
+const SIGN_IN_SETTINGS = ['apiKeyHelper', 'awsAuthRefresh', 'awsCredentialExport', 'forceLoginMethod', 'forceLoginOrgUUID'];
+// Variables in a settings file's env that sign in, pick the service or reach
+// it (a proxy, a company certificate). Any other env (a hook's profile, a
+// tool's switch) doesn't need the settings kept. Generous on purpose: a
+// CLAUDE_CODE_ that's harmless only costs a slower call.
+const SIGN_IN_ENV = /^(ANTHROPIC_|CLAUDE_CODE_|CLAUDE_CONFIG_DIR$|AWS_|CLOUD_ML_|GOOGLE_|VERTEX_|AZURE_|NODE_EXTRA_CA_CERTS$|NODE_TLS_|SSL_CERT_)|PROXY$/i;
+
+/** Whether a settings file's env changes how Claude Code signs in or reaches the service. */
+function envSignsIn(env) {
+  if (env === undefined) return false;
+  if (!env || typeof env !== 'object' || Array.isArray(env)) return true; // can't tell
+  return Object.keys(env).some(k => SIGN_IN_ENV.test(k));
+}
 
 /**
  * Extra arguments for a tool-less `claude -p` that needs nothing of yours (a
- * draft, a rule's wording). --setting-sources '' leaves out your settings, and
- * with them your hooks and plugins: thousands of tokens on every call. Not when
- * those settings files are where you sign in, or can't be read.
+ * draft, a rule's wording, a /btw side question). --setting-sources '' leaves
+ * out your settings, and with them your hooks, plugins and effort: thousands
+ * of tokens and a minute or more on every call. Not when those settings files
+ * are where you sign in, or can't be read.
  */
 function skipSettings(home) {
   for (const name of ['settings.json', 'settings.local.json']) {
@@ -152,7 +165,7 @@ function skipSettings(home) {
     }
     let s;
     try { s = JSON.parse(text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text); } catch { return []; }
-    if (s && typeof s === 'object' && SIGN_IN_SETTINGS.some(k => Object.hasOwn(s, k))) return [];
+    if (s && typeof s === 'object' && (SIGN_IN_SETTINGS.some(k => Object.hasOwn(s, k)) || envSignsIn(s.env))) return [];
   }
   return ['--setting-sources', ''];
 }
