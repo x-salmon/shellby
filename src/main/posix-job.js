@@ -128,9 +128,9 @@ function createJobs({ list = listSync, listLater = listAsync, kill = killPid, po
       if (!rows.size) return; // ps failed: what was known stands
       for (const job of open) {
         job.seen = grow(job.seen, job.handle, rows, self, job.ever);
-        // The living always; the dead only up to MAX_EVER, so a long task can't grow it without end.
+        // The living and the root always (its number is always one of the job's groups); other dead ones up to MAX_EVER.
         for (const [pid, started] of job.seen) job.ever.set(pid, started);
-        if (job.ever.size > MAX_EVER) for (const pid of job.ever.keys()) { if (job.ever.size <= MAX_EVER) break; if (!job.seen.has(pid)) job.ever.delete(pid); }
+        if (job.ever.size > MAX_EVER) for (const pid of job.ever.keys()) { if (job.ever.size <= MAX_EVER) break; if (!job.seen.has(pid) && pid !== job.handle) job.ever.delete(pid); }
         job.names = new Map([...job.seen.keys()].map(pid => [pid, path.posix.basename(rows.get(pid)?.comm || '')]));
       }
     });
