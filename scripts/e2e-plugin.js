@@ -29,7 +29,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
   // 2. A dev Shellby listening on the test port.
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${CDP}`],
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${CDP}`],
     { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_HOOK_PORT: String(HOOK_PORT) } });
   try {
     let list = [];

@@ -82,7 +82,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
   }
   // The same profile both times: the restart below has to find the layout it saved.
   const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
-  const launch = () => spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const launch = () => spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     // SHELLBY_E2E, as e2e:ci sets it, run alone too: the windows let a person's mouse through (src/main/test-desktop.js).
     env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47960', SHELLBY_E2E: '1' },

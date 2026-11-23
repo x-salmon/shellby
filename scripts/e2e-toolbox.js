@@ -32,7 +32,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   fs.mkdirSync(path.join(home, '.claude', 'skills', 'e2e-mine'), { recursive: true });
   fs.writeFileSync(path.join(home, '.claude', 'skills', 'e2e-mine', 'SKILL.md'), '---\nname: e2e-mine\ndescription: One of yours\n---\n\nBody.\n');
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, cwd: project }));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, USERPROFILE: home, HOME: home, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') },
   });

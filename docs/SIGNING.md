@@ -128,3 +128,24 @@ Manifests and submission steps are in [../packaging/winget](../packaging/winget)
 
 This doesn't help people who download from the Releases page, and it doesn't touch the
 UAC "Unknown publisher" line.
+
+## Mac: Developer ID
+
+A Mac build that isn't signed and notarized opens only after you allow it in
+System Settings › Privacy & Security, and macOS won't install its updates. The
+release's `mac` job signs and notarizes when these repository secrets are set,
+and builds unsigned with a warning otherwise:
+
+| Secret | What it is |
+|---|---|
+| `MAC_CERTIFICATE_P12` | The **Developer ID Application** certificate and its key, exported from Keychain Access as a .p12, base64 encoded |
+| `MAC_CERTIFICATE_PASSWORD` | The password the .p12 was exported with |
+| `APPLE_ID` | The Apple Account email of the developer account |
+| `APPLE_APP_SPECIFIC_PASSWORD` | An app-specific password for it (account.apple.com › Sign-In and Security) |
+| `APPLE_TEAM_ID` | The team's ID (developer.apple.com › Membership) |
+
+It needs an [Apple Developer Program](https://developer.apple.com/programs/)
+membership ($99 a year). The certificate lasts five years. The hardened
+runtime's exceptions are in `packaging/mac/entitlements.plist`, and the reasons
+macOS shows when it asks for the microphone, speech recognition and Music are in
+`package.json` (`build.mac.extendInfo`).

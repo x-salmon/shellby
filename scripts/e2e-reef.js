@@ -52,7 +52,7 @@ function makeRepo() {
   const id = projectId(null, repo);
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ onboarded: true, projects: { added: [repo] } }));
 
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: String(HOOK) },
   });

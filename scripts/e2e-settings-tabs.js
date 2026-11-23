@@ -26,7 +26,7 @@ function newProfile(extra) {
 }
 
 async function launch(profile) {
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`],
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`],
     { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile } });
   let list = [];
   for (let i = 0; i < 40 && !list.some(t => t.url.endsWith('panel.html')); i++) {

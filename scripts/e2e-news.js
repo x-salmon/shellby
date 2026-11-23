@@ -43,7 +43,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   let app = null;
 
   const launch = async () => {
-    app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+    app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
       stdio: 'ignore',
       env: {
         ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: profile, SHELLBY_TODAY: DAY, SHELLBY_NEWS_URL: feedUrl,

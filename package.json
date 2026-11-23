@@ -2,7 +2,7 @@
   "name": "shellby",
   "productName": "Shellby",
   "version": "0.101.0",
-  "description": "Run Claude Code in parallel on Windows, undo anything, and watch it happen.",
+  "description": "Run Claude Code in parallel on Windows and macOS, undo anything, and watch it happen.",
   "main": "src/main/main.js",
   "author": "x-salmon",
   "license": "GPL-3.0-only",
@@ -16,6 +16,7 @@
     "desktop-pet",
     "electron",
     "windows",
+    "macos",
     "ai-agent"
   ],
   "private": true,
@@ -44,6 +45,7 @@
     "reel:wide": "electron . --capture-screenshots --reel --wide && python scripts/make-reel.py",
     "tricks": "node scripts/record-tricks.js",
     "dist": "electron-builder --win",
+    "dist:mac": "bash packaging/mac/build-ear.sh && electron-builder --mac",
     "release": "electron-builder --win --publish always",
     "release:cut": "node scripts/release-cut.js",
     "contest:tally": "node scripts/contest-tally.js",
@@ -134,6 +136,48 @@
     },
     "portable": {
       "artifactName": "Shellby-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "packaging/mac/entitlements.plist",
+      "entitlementsInherit": "packaging/mac/entitlements.plist",
+      "notarize": false,
+      "minimumSystemVersion": "12.0",
+      "darkModeSupport": true,
+      "extraResources": [
+        {
+          "from": "build/mac/shellby-ear",
+          "to": "shellby-ear"
+        }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Shellby listens while you hold the hotkey, so you can say a task instead of typing it. The audio stays on this Mac.",
+        "NSSpeechRecognitionUsageDescription": "Shellby turns what you say into text on this Mac, for push-to-talk dictation.",
+        "NSAppleEventsUsageDescription": "Shellby reads what Music or Spotify is playing, so he can bob along. Nothing is changed."
+      },
+      "artifactName": "Shellby-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "artifactName": "Shellby-${version}-${arch}.${ext}",
+      "writeUpdateInfo": false
     },
     "publish": [
       {

@@ -139,6 +139,31 @@ function settingChangeArgs() {
   return ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')];
 }
 
+// ------------------------------------------------------------------ a Mac's PATH
+//
+// A Mac's PATH comes from your shell's profile, so the folder goes on it with
+// one line of Shellby's own in ~/.zprofile (and ~/.bash_profile, if you have
+// one), marked so taking it off removes exactly that line and nothing else.
+
+const PROFILE_MARK = '# added by Shellby: the shellby command';
+const shQuoted = s => `'${String(s).replace(/'/g, `'\\''`)}'`;
+
+/** Does this profile already put the folder on PATH (Shellby's line)? */
+const profileHas = text => String(text ?? '').split('\n').some(l => l.endsWith(PROFILE_MARK));
+
+/** The profile with Shellby's line added at the end (unchanged if it's there). */
+function profileWith(text, dir) {
+  const current = String(text ?? '');
+  if (profileHas(current)) return current;
+  const line = `export PATH="$PATH":${shQuoted(dir)}  ${PROFILE_MARK}`;
+  return `${current}${current && !current.endsWith('\n') ? '\n' : ''}${line}\n`;
+}
+
+/** The profile without Shellby's line, everything else exactly as it was. */
+function profileWithout(text) {
+  return String(text ?? '').split('\n').filter(l => !l.endsWith(PROFILE_MARK)).join('\n');
+}
+
 /** Where the command lives, given Electron's app.getPath('userData') neighbours. */
 const binDir = localAppData => require('path').join(localAppData, 'Shellby', BIN_DIR_NAME);
 const tokenPath = userData => require('path').join(userData, TOKEN_FILE);
@@ -198,5 +223,6 @@ function parseFlowRequest(body) {
 module.exports = {
   newToken, tokenMatches, cmdShim, shShim, ps1Shim,
   isOnPath, pathWith, pathWithout, normalizeEntry, binDir, tokenPath, crabTokenPath, parseTaskRequest, terminalMode, parseFlowRequest, settingChangeArgs,
+  profileHas, profileWith, profileWithout, PROFILE_MARK,
   BIN_DIR_NAME, TOKEN_FILE, CRAB_TOKEN_FILE,
 };

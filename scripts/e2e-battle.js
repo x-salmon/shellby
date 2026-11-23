@@ -47,7 +47,7 @@ fs.writeFileSync(path.join(base, 'userdata', 'settings.json'), JSON.stringify({ 
   // and the fillers' typing took 35 s on a dev PC to what CI does in a few, and
   // the checks timed out there only. SHOTS plays it all out at full length.
   const motion = SHOTS ? '--force-prefers-no-reduced-motion' : '--force-prefers-reduced-motion';
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`, motion], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`, motion], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: path.join(base, 'userdata'), CLAUDE_CONFIG_DIR: claudeConfig, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47995', SHELLBY_MOTION_TEST: '1' },
   });

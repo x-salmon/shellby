@@ -9,6 +9,7 @@ const os = require('os');
 const path = require('path');
 const handoff = require('../handoff');
 const { createAgent, SSH } = require('../remote/agent');
+const { launchMac, sshScript } = require('../handoff-mac');
 const { createAskpass } = require('../remote/askpass');
 const { createRemoteService } = require('../remote/service');
 const worktrees = require('../worktrees');
@@ -56,6 +57,7 @@ function wireRemote(d) {
   // scripts. Its prompts are its own: a terminal can ask for a passphrase itself.
   function openTerminal(/** @type {{ host: string, script: string, extra?: string[] }} */ { host, script, extra = [] }) {
     if (!ssh.isHost(host)) return Promise.resolve({ ok: false, error: 'Which computer?' });
+    if (process.platform === 'darwin') return launchMac(sshScript(SSH, ssh.sshArgs(host, script, { tty: true, extra })), { spawn });
     const line = ssh.sshArgs(host, script, { tty: true, extra }).map(handoff.psQuote).join(' ');
     const options = { cwd: os.homedir(), detached: true, stdio: 'ignore', windowsHide: false };
     const plans = handoff.scriptPlans({ script: `& ${handoff.psQuote(SSH)} ${line}`, options, wt: windowsTerminal(), powershell: POWERSHELL, cmd: CMD });

@@ -23,6 +23,9 @@ const PROTECTED = new Set([
   'winlogon', 'services', 'lsass', 'lsaiso', 'svchost', 'dwm', 'fontdrvhost', 'sihost', 'ctfmon',
   'audiodg', 'spoolsv', 'explorer', 'msmpeng', 'nissrv', 'securityhealthservice', 'wudfhost', 'shellby',
   'lsm', 'wmiprvse', 'taskhostw', 'startmenuexperiencehost', 'shellexperiencehost', 'searchhost', 'textinputhost',
+  // macOS's own
+  'kernel_task', 'launchd', 'windowserver', 'loginwindow', 'dock', 'finder', 'systemuiserver', 'controlcenter',
+  'coreaudiod', 'mds', 'mds_stores', 'mdworker', 'cfprefsd', 'distnoted', 'opendirectoryd', 'securityd', 'trustd', 'syslogd',
 ]);
 
 // ------------------------------------------------------------------ parsers
@@ -76,6 +79,24 @@ function parseProcesses(text, cores = os.cpus().length) {
       mem: Number.isFinite(mem) && mem > 0 ? mem : 0,
       gpu: hasGpu ? gpu.get(pid) ?? 0 : null,
     });
+  }
+  return out;
+}
+
+/**
+ * `ps -axo pid=,pcpu=,rss=,comm=` on a Mac -> the same list. pcpu is per core,
+ * like Windows' counter; rss is in KB. A Mac has no per-process GPU reading.
+ */
+function parsePsProcesses(text, cores = os.cpus().length) {
+  const n = Math.max(1, Number(cores) || 1);
+  const out = [];
+  for (const line of String(text || '').split('\n')) {
+    const m = /^\s*(\d+)\s+([\d.]+)\s+(\d+)\s+(.+)$/.exec(line);
+    if (!m) continue;
+    const pid = Number(m[1]);
+    const name = cleanName(path.posix.basename(m[4].trim()));
+    if (pid <= 1 || !name) continue;
+    out.push({ pid, name, cpu: Math.min(100, Math.round((Number(m[2]) / n) * 10) / 10), mem: Number(m[3]) * 1024, gpu: null });
   }
   return out;
 }
@@ -177,7 +198,7 @@ const SELF_NAME = path.basename(process.execPath, '.exe').toLowerCase();
 function protectedReason(proc, selfPids = [process.pid, process.ppid], selfName = SELF_NAME) {
   if (!proc) return 'That process is gone.';
   if (selfPids.includes(proc.pid) || proc.name.toLowerCase() === selfName) return "That's Shellby himself.";
-  if (PROTECTED.has(proc.name.toLowerCase())) return 'Windows needs that one to keep running.';
+  if (PROTECTED.has(proc.name.toLowerCase())) return `${process.platform === 'darwin' ? 'macOS' : 'Windows'} needs that one to keep running.`;
   return null;
 }
 
@@ -228,6 +249,10 @@ const PROCESS_SCRIPT = [
 function createProcessReader({ platform = process.platform } = {}) {
   return {
     async read() {
+      if (platform === 'darwin') {
+        const out = await run('/bin/ps', ['-axo', 'pid=,pcpu=,rss=,comm='], READ_TIMEOUT_MS);
+        return out ? parsePsProcesses(out) : null;
+      }
       if (platform !== 'win32') return null;
       // Absolute path: never pick up a powershell.exe from PATH or the working dir.
       const ps = path.join(system32(), 'WindowsPowerShell', 'v1.0', 'powershell.exe');
@@ -235,11 +260,19 @@ function createProcessReader({ platform = process.platform } = {}) {
       return out ? parseProcesses(out) : null;
     },
     async nameOf(pid) {
+      if (platform === 'darwin') {
+        const out = await run('/bin/ps', ['-o', 'comm=', '-p', String(pid)], 4000);
+        return out == null ? undefined : cleanName(path.posix.basename(out.trim())) || null;
+      }
       const out = await run(path.join(system32(), 'tasklist.exe'), ['/FI', `PID eq ${pid}`, '/NH', '/FO', 'CSV'], 4000);
       return out == null ? undefined : parseTasklistName(out, pid);
     },
     /** Every running process's name in one call: Map(pid -> name), or undefined. */
     async names() {
+      if (platform === 'darwin') {
+        const out = await run('/bin/ps', ['-axo', 'pid=,pcpu=,rss=,comm='], 6000);
+        return out == null ? undefined : new Map(parsePsProcesses(out).map(p => [p.pid, p.name]));
+      }
       const out = await run(path.join(system32(), 'tasklist.exe'), ['/NH', '/FO', 'CSV'], 6000);
       return out == null ? undefined : parseTasklistNames(out);
     },
@@ -249,7 +282,7 @@ function createProcessReader({ platform = process.platform } = {}) {
         return { ok: true };
       } catch (err) {
         if (err.code === 'ESRCH') return { ok: true };  // closed on its own in the meantime
-        if (err.code === 'EPERM') return { ok: false, error: "Windows wouldn't let Shellby end that one. It's probably running as administrator." };
+        if (err.code === 'EPERM') return { ok: false, error: platform === 'darwin' ? "macOS wouldn't let Shellby end that one. It belongs to the system or another user." : "Windows wouldn't let Shellby end that one. It's probably running as administrator." };
         return { ok: false, error: err.message };
       }
     },
@@ -257,6 +290,6 @@ function createProcessReader({ platform = process.platform } = {}) {
 }
 
 module.exports = {
-  parseGpuEngines, parseProcesses, topBy, groupByName, metricFor, protectedReason, parseTasklistName, parseTasklistNames,
+  parseGpuEngines, parseProcesses, parsePsProcesses, topBy, groupByName, metricFor, protectedReason, parseTasklistName, parseTasklistNames,
   processesPrompt, createProcessReader, METRICS, TOP_N, PROMPT_MAX_APPS,
 };

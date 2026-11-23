@@ -16,7 +16,76 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The Mac downloads (a DMG and a zip for each of Apple silicon and Intel) and
+  # latest-mac.yml, which installed Macs update from. First, onto the draft the
+  # Windows job then finishes and publishes: it waits for this one, so a release
+  # never goes out without its Mac files.
+  #
+  # Signed and notarized when the Apple secrets are set (docs/SIGNING.md);
+  # otherwise unsigned, with a warning, and macOS asks people to allow it in
+  # System Settings the first time.
+  mac:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CSC_LINK: ${{ secrets.MAC_CERTIFICATE_P12 }}
+      CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check the tag matches package.json
+        shell: bash
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "::error::Tag $GITHUB_REF_NAME isn't v$v"; exit 1; }
+      - run: npm ci
+      # npm installs koffi's native part for this runner's chip only: the Intel
+      # build needs the other one beside it.
+      - name: Add koffi for Intel Macs
+        shell: bash
+        run: |
+          v="$(node -p "require('./node_modules/koffi/package.json').version")"
+          npm pack "@koromix/koffi-darwin-x64@$v" --silent
+          mkdir -p node_modules/@koromix/koffi-darwin-x64
+          tar -xzf koromix-koffi-darwin-x64-*.tgz -C node_modules/@koromix/koffi-darwin-x64 --strip-components=1
+          rm koromix-koffi-darwin-x64-*.tgz
+      - run: bash packaging/mac/build-ear.sh
+      - name: Create draft release
+        shell: bash
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || \
+            gh release create "$GITHUB_REF_NAME" --draft --title "Shellby ${GITHUB_REF_NAME#v}" --notes-file .github/release-notes.md
+      - name: Build and upload
+        shell: bash
+        run: |
+          args=()
+          if [ -n "$CSC_LINK" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            echo "Signing and notarizing with the Developer ID certificate"
+            args=(-c.mac.notarize=true)
+          else
+            echo "::warning::No Apple Developer ID configured; the Mac build is unsigned (see docs/SIGNING.md)."
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            args=(-c.mac.identity=null)
+          fi
+          npx electron-builder --mac --publish always "${args[@]}"
+      - name: Upload Mac checksums
+        shell: bash
+        run: |
+          cd dist
+          shasum -a 256 Shellby-*.dmg Shellby-*-mac.zip Shellby-*-arm64.zip Shellby-*-x64.zip 2>/dev/null | sort -u > SHA256SUMS-mac.txt
+          cat SHA256SUMS-mac.txt
+          gh release upload "$GITHUB_REF_NAME" SHA256SUMS-mac.txt --clobber
+
   release:
+    needs: mac
     runs-on: windows-latest
     permissions:
       contents: write # the draft release and its uploads

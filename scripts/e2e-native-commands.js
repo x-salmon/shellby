@@ -46,7 +46,7 @@ async function connect(url) {
   fs.mkdirSync(data, { recursive: true });
   fs.mkdirSync(claudeConfig, { recursive: true }); // the fake CLI writes only into a config folder that's there, under temp
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ tideEvents: false }));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: data, CLAUDE_CONFIG_DIR: claudeConfig,

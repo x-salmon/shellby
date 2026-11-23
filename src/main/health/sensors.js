@@ -313,6 +313,11 @@ function createSensors({ platform = process.platform } = {}) {
     },
 
     async readDisks(now = Date.now()) {
+      // A Mac's one volume that matters: the one macOS and your files are on.
+      if (platform === 'darwin') {
+        const s = await fs.promises.statfs('/').catch(() => null);
+        return s ? [{ id: '/', label: 'Macintosh HD', total: s.blocks * s.bsize, free: s.bavail * s.bsize }] : null;
+      }
       if (platform !== 'win32') return null;
       // The drive list rarely changes; refresh it every 15 minutes.
       if (!drives || now - drivesAt > 15 * 60 * 1000) {

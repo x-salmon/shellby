@@ -13,10 +13,12 @@ const os = require('os');
 const path = require('path');
 const { SYSTEM32, POWERSHELL, CMD } = require('../system32');
 
-const OPENSSH = path.join(SYSTEM32, 'OpenSSH');
-const SSH = path.join(OPENSSH, 'ssh.exe');
-const SSH_ADD = path.join(OPENSSH, 'ssh-add.exe');
-const SSH_KEYGEN = path.join(OPENSSH, 'ssh-keygen.exe');
+// A Mac has OpenSSH built in, and an agent macOS runs for you (keys can live in the keychain).
+const MAC = process.platform === 'darwin';
+const OPENSSH = MAC ? '/usr/bin' : path.join(SYSTEM32, 'OpenSSH');
+const SSH = path.join(OPENSSH, MAC ? 'ssh' : 'ssh.exe');
+const SSH_ADD = path.join(OPENSSH, MAC ? 'ssh-add' : 'ssh-add.exe');
+const SSH_KEYGEN = path.join(OPENSSH, MAC ? 'ssh-keygen' : 'ssh-keygen.exe');
 const SC = path.join(SYSTEM32, 'sc.exe');
 // What UAC's "No" comes back as.
 const CANCELLED = 1223;
@@ -66,12 +68,14 @@ function createAgent({ run, home = os.homedir(), askEnv = async () => ({}) }) {
   const keyPath = name => (KEY_NAME.test(name) && !name.endsWith('.pub') ? path.join(sshDir, name) : null);
 
   async function service() {
+    if (MAC) return { installed: true, state: 'running', startType: 'auto' }; // launchd starts it on demand
     const [q, c] = await Promise.all([run(SC, ['query', 'ssh-agent']), run(SC, ['qc', 'ssh-agent'])]);
     return parseService(q.stdout, c.stdout);
   }
 
   /** One Windows prompt, then the service is on and set to start with Windows. -> { ok, cancelled?, error? } */
   async function enable() {
+    if (MAC) return { ok: true };
     const r = await run(POWERSHELL, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encode(enableScript())], { timeout: 120000 });
     if (r.code === CANCELLED) return { ok: false, cancelled: true, error: 'Windows asked, and it was turned down. Nothing changed.' };
     const s = await service();
@@ -113,10 +117,11 @@ function createAgent({ run, home = os.homedir(), askEnv = async () => ({}) }) {
   async function add(name) {
     const file = keyPath(name);
     if (!file) return { ok: false, error: 'Which key?' };
-    const r = await run(SSH_ADD, [file], { env: await askEnv(), timeout: 600000 });
+    // On a Mac the passphrase goes in the keychain too, so it's never asked for again.
+    const r = await run(SSH_ADD, MAC ? ['--apple-use-keychain', file] : [file], { env: await askEnv(), timeout: 600000 });
     if (r.code === 0) return { ok: true };
     const said = `${r.stderr}${r.stdout}`;
-    if (/agent/i.test(said) && /connect|communicat/i.test(said)) return { ok: false, error: "Windows' ssh agent isn't running." };
+    if (/agent/i.test(said) && /connect|communicat/i.test(said)) return { ok: false, error: MAC ? "The ssh agent isn't running." : "Windows' ssh agent isn't running." };
     if (/bad passphrase|incorrect passphrase/i.test(said)) return { ok: false, error: "That passphrase didn't unlock the key." };
     return { ok: false, cancelled: true, error: 'The key was left locked.' };
   }

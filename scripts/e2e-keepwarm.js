@@ -12,7 +12,7 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const ELECTRON = require('electron') /* its binary, on any platform */;
 const PORT = Number(process.env.E2E_CDP_PORT) || 9441;
 const HOUR = 60 * 60 * 1000;
 const wait = ms => new Promise(r => setTimeout(r, ms));

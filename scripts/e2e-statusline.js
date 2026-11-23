@@ -28,7 +28,7 @@ const plain = s => s.replace(/\x1b\[[0-9;]*m/g, '');
   const settingsFile = path.join(profile, 'claude-settings.json');
   fs.writeFileSync(settingsFile, JSON.stringify({ theme: 'dark' }, null, 2));
   const read = () => (fs.existsSync(statusFile) ? plain(fs.readFileSync(statusFile, 'utf8')) : '');
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: String(HOOK), SHELLBY_FAKE_HEALTH: 'calm' },
   });

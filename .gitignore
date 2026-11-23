@@ -35,3 +35,6 @@ docs/packs/
 # local agent tooling (not part of Shellby)
 .claude/
 .claude-flow/
+
+# The Mac dictation helper, built by packaging/mac/build-ear.sh
+build/

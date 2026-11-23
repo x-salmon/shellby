@@ -11,7 +11,7 @@ const fs = require('fs');
 
 const ROOT = path.join(__dirname, '..');
 const MIN_NODE = 22;
-const electron = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const electron = require('electron') /* its binary, on any platform */;
 
 function step(name, fn) {
   process.stdout.write(`- ${name}... `);

@@ -37,7 +37,22 @@ const SUBPROCESS_SCRUB = 'CLAUDE_CODE_SUBPROCESS_ENV_SCRUB';
 // and Settings offers Sign in.
 /** @type {{ file: string, mtimeMs: number } | null} */
 let lapsed = null;
-const mtimeOf = f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
+const fileTime = f => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
+
+// On a Mac, Claude Code keeps its sign-in in the keychain, not that file: the
+// item's own "last changed" stands in for the file's. Read without -g, so the
+// secret itself is never asked for and macOS never prompts.
+const KEYCHAIN_ITEM = 'Claude Code-credentials';
+/** `security find-generic-password` attributes -> ms since 1970, or 0. Pure. */
+function keychainTime(text) {
+  const m = /"mdat"<timedate>=0x[0-9A-F]+\s+"(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)Z/.exec(String(text || ''));
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : 0;
+}
+function keychainStamp() {
+  const r = require('child_process').spawnSync('/usr/bin/security', ['find-generic-password', '-s', KEYCHAIN_ITEM], { encoding: 'utf8', timeout: 3000 });
+  return keychainTime(r.stdout);
+}
+const mtimeOf = f => fileTime(f) || (process.platform === 'darwin' ? keychainStamp() : 0);
 const credentialsFile = configDir => path.join(configDir || path.join(require('os').homedir(), '.claude'), '.credentials.json');
 
 /**
@@ -316,4 +331,4 @@ async function checkStatus({ configured = null } = {}) {
  */
 const signInStamp = configDir => mtimeOf(credentialsFile(configDir));
 
-module.exports = { findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, signInStamp, accountOf, accountChanged, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings,candidatePaths, run, BILLING_ENV };
+module.exports = { keychainTime, findClaude, currentClaude, claudeMoved, verifyClaude, checkStatus, helpFlags, signInLapsed, signInStamp, accountOf, accountChanged, applyLapsed, claudeEnv, terminalEnv, billingScrub, billingEnv, setPlanOnly, setApiKeyBilling, skipSettings,candidatePaths, run, BILLING_ENV };

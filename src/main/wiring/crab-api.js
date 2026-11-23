@@ -237,8 +237,10 @@ function wireCrabApi(d) {
   const cliTokenPath = () => clipath.tokenPath(app.getPath('userData'));
   // An isolated dev/test run keeps its copy of the command inside its own profile:
   // e2e-integrations installs and removes it, and must not delete the real one.
+  // A Mac's: ~/Library/Application Support/Shellby/bin.
   const cliBinDir = () => clipath.binDir(d.ISOLATED ? app.getPath('userData')
-    : process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'));
+    : process.platform === 'darwin' ? app.getPath('appData')
+      : process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'));
 
   function cliSettings() {
     const raw = d.config.get('cli');
@@ -305,7 +307,7 @@ function wireCrabApi(d) {
       fs.copyFileSync(path.join(__dirname, '..', '..', 'cli', 'shellby.js'), path.join(dir, 'shellby.js'));
       fs.writeFileSync(path.join(dir, 'cli-version.json'), JSON.stringify({ version: app.getVersion() }));
       fs.writeFileSync(path.join(dir, 'shellby.cmd'), clipath.cmdShim());
-      fs.writeFileSync(path.join(dir, 'shellby'), clipath.shShim());
+      fs.writeFileSync(path.join(dir, 'shellby'), clipath.shShim(), { mode: 0o755 });
       fs.writeFileSync(path.join(dir, 'shellby.ps1'), clipath.ps1Shim());
       if (!readCliToken()) fs.writeFileSync(cliTokenPath(), clipath.newToken(), { mode: 0o600 });
       const onPath = await addToUserPath(dir);
@@ -350,17 +352,41 @@ function wireCrabApi(d) {
     return !!r.ok;
   }
 
+  // A Mac's shell profiles that get the line: ~/.zprofile always (zsh is the
+  // Mac's shell), ~/.bash_profile only if it's already there.
+  const profiles = () => [path.join(os.homedir(), '.zprofile'), path.join(os.homedir(), '.bash_profile')]
+    .filter((f, i) => i === 0 || fs.existsSync(f));
+  const readText = f => { try { return fs.readFileSync(f, 'utf8'); } catch { return ''; } };
+
+  function editProfiles(change) {
+    try {
+      for (const f of profiles()) {
+        const before = readText(f);
+        const after = change(before);
+        if (after !== before) fs.writeFileSync(f, after);
+      }
+      return true;
+    } catch (e) {
+      d.log.warn("couldn't change your shell profile", e?.message);
+      return false;
+    }
+  }
+
   async function addToUserPath(dir) {
     // A dev or test run has its own profile; it must not edit the PATH the real
     // installed Shellby (and the person using this PC) depends on.
-    if (process.platform !== 'win32' || d.ISOLATED) return false;
+    if (d.ISOLATED) return false;
+    if (process.platform === 'darwin') return editProfiles(t => clipath.profileWith(t, dir));
+    if (process.platform !== 'win32') return false;
     const current = await userPath();
     if (clipath.isOnPath(current, dir)) return true;
     return setUserPath(clipath.pathWith(current, dir));
   }
 
   async function removeFromUserPath(dir) {
-    if (process.platform !== 'win32' || d.ISOLATED) return false;
+    if (d.ISOLATED) return false;
+    if (process.platform === 'darwin') return editProfiles(clipath.profileWithout);
+    if (process.platform !== 'win32') return false;
     const current = await userPath();
     if (!clipath.isOnPath(current, dir)) return true;
     return setUserPath(clipath.pathWithout(current, dir));
@@ -368,7 +394,7 @@ function wireCrabApi(d) {
 
   function cliView() {
     // The command reaches him over the sessions port; with that off it can't.
-    return { ...cliSettings(), dir: cliBinDir(), available: process.platform === 'win32', listening: !!d.config.get('externalSessions') };
+    return { ...cliSettings(), dir: cliBinDir(), available: process.platform === 'win32' || process.platform === 'darwin', listening: !!d.config.get('externalSessions') };
   }
 
   return { cliBinDir, cliView, createCrabApi, crabTool, getSelfAware, installCli, removeCli, sayText };

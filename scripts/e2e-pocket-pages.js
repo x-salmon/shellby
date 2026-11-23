@@ -28,7 +28,7 @@ const { panelBooted } = require('./lib/boot');
 const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
-const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const ELECTRON = require('electron') /* its binary, on any platform */;
 const PORT = Number(process.env.E2E_CDP_PORT) || 9397;
 const HOOK = Number(process.env.E2E_HOOK_PORT) || 47997;
 const POCKET = Number(process.env.E2E_SPARE_PORT) || 47998;

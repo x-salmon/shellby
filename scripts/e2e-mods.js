@@ -111,7 +111,7 @@ async function target(suffix, tries = 40) {
   const real = findClaude(process.env, '');
   if (!real) { console.log('SKIP  Claude Code is not installed here, and this run needs the real CLI'); return; }
   const blocked = skillsDirBlocked(real);
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, PATH: `${path.dirname(real)}${path.delimiter}${process.env.PATH || ''}`, USERPROFILE: home, HOME: home, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') },
   });

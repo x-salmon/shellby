@@ -40,7 +40,7 @@ function repo(base, name, pack) {
     rules: [{ list: 'deny', rule: 'Bash(git push --force:*)' }],
   });
   const other = repo(work, 'other', null);
-  const exe = process.env.SHELLBY_ELECTRON || path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+  const exe = process.env.SHELLBY_ELECTRON || require('electron') /* its binary, on any platform */;
   const app = spawn(exe, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: String(HOOK), SHELLBY_FAKE_HEALTH: 'calm' },

@@ -12,7 +12,7 @@ const { answerDialog } = require('./lib/dialog');
 
 const PORT = Number(process.env.E2E_CDP_PORT) || 9336;
 const ROOT = path.join(__dirname, '..');
-const electron = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const electron = require('electron') /* its binary, on any platform */;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 async function list() {

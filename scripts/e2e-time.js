@@ -56,7 +56,7 @@ async function cdp(url) {
   fs.mkdirSync(sessions);
   fs.writeFileSync(path.join(sessions, 'index.json'), JSON.stringify([{ id: 'e2e-day', title: 'Merge queue badge', cwd: ROOT, mode: 'default', claudeSessionId: null, createdAt: asked, updatedAt: asked + 60000 }]));
   fs.writeFileSync(path.join(sessions, 'e2e-day.jsonl'), `${JSON.stringify({ t: asked, kind: 'user', text: 'Add a badge to the merge queue tab' })}\n${JSON.stringify({ t: asked + 30000, kind: 'text', text: 'Done.' })}\n`);
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [`--inspect=${INSPECT}`, ROOT, `--remote-debugging-port=${PORT}`],
+  const app = spawn(require('electron') /* its binary, on any platform */, [`--inspect=${INSPECT}`, ROOT, `--remote-debugging-port=${PORT}`],
     // The fake CLI writes the day up, as it answers every other draft in e2e.
     { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') } });
   let fails = 0;

@@ -8,6 +8,7 @@ const handoff = require('../handoff');
 const worktrees = require('../worktrees');
 const { terminalEnv, billingScrub } = require('../claude/cli');
 const { POWERSHELL, CMD, windowsTerminal } = require('../system32');
+const { launchMac } = require('../handoff-mac');
 
 const isDir = p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 
@@ -26,6 +27,11 @@ function wireHandoff(d) {
     return null;
   }
 
+  // A Mac's plan is a script for Terminal (handoff-mac.js); Windows' a list of ways to try.
+  /** @type {(r: any) => Promise<any>} */
+  const start = r => (r.mac ? launchMac(r.mac, { spawn }) : handoff.launch(r.plans, spawn));
+
+  /** @returns {Promise<any>} { ok, shell } or { ok: false, error } */
   async function openTerminal({ cwd, sessionId }) {
     const exe = claudeExe();
     if (!exe) return { ok: false, error: 'Claude Code is not installed.' };
@@ -35,7 +41,7 @@ function wireHandoff(d) {
       exe, cwd, sessionId, scrub: billingScrub(), env: terminalEnv(),
       wt: windowsTerminal(), powershell: POWERSHELL, cmd: CMD,
     });
-    return r.ok ? handoff.launch(r.plans, spawn) : r;
+    return r.ok ? start(r) : r;
   }
 
   // A note in the conversation itself: in an open tab it's shown and kept, in a
@@ -188,7 +194,7 @@ function wireHandoff(d) {
       exe, cwd, prompt: handoff.TERMINAL_PROMPTS.ultraReview, scrub: billingScrub(), env: terminalEnv(),
       wt: windowsTerminal(), powershell: POWERSHELL, cmd: CMD,
     });
-    const started = r.ok ? await handoff.launch(r.plans, spawn) : r;
+    const started = r.ok ? await start(r) : r;
     if (!started.ok) return started;
     return { ok: true, shell: started.shell, text: `Opened ${handoff.SHELL_NAMES[started.shell] || 'a terminal'} with /code-review ultra. Claude Code asks there before it starts.` };
   }
@@ -215,7 +221,7 @@ function wireHandoff(d) {
       exe, cwd, cloud: { kind, value }, scrub: billingScrub(), env: terminalEnv(),
       wt: windowsTerminal(), powershell: POWERSHELL, cmd: CMD,
     });
-    const started = r.ok ? await handoff.launch(r.plans, spawn) : r;
+    const started = r.ok ? await start(r) : r;
     if (!started.ok) return started;
     return { ok: true, shell: started.shell, text: `Opened ${handoff.SHELL_NAMES[started.shell] || 'a terminal'} ${CLOUD_SAYS[kind]}` };
   }

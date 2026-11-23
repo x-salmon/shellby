@@ -70,17 +70,19 @@ function cloudArgs(/** @type {string | undefined} */ kind, /** @type {unknown} *
 }
 
 // The names the panel uses for each way of opening one.
-const SHELL_NAMES = { wt: 'Windows Terminal', powershell: 'PowerShell', cmd: 'Command Prompt' };
+const SHELL_NAMES = { wt: 'Windows Terminal', powershell: 'PowerShell', cmd: 'Command Prompt', terminal: 'Terminal' };
 
 /** Is this a Claude Code session id? (A UUID; anything else is refused.) */
 const isSessionId = s => typeof s === 'string' && SESSION_ID.test(s);
 
 // A drive letter: never a UNC or device path (\\host\share, \\?\), which a hook
 // on the local port could name to make Shellby reach out to another machine.
-const LOCAL_DRIVE = /^[A-Za-z]:[\\/]/;
+// On a Mac, a path from the root (never a // network one).
+const IS_WINDOWS = process.platform === 'win32';
+const LOCAL_DRIVE = IS_WINDOWS ? /^[A-Za-z]:[\\/]/ : /^\/(?!\/)/;
 
-/** A full local Windows path with nothing odd in it: no control characters, not absurdly long. */
-const safePath = p => typeof p === 'string' && p.length > 2 && p.length < MAX_PATH && !CONTROL.test(p) && LOCAL_DRIVE.test(p) && path.win32.isAbsolute(p);
+/** A full local path with nothing odd in it: no control characters, not absurdly long. */
+const safePath = p => typeof p === 'string' && p.length > 2 && p.length < MAX_PATH && !CONTROL.test(p) && LOCAL_DRIVE.test(p) && (IS_WINDOWS ? path.win32.isAbsolute(p) : path.posix.isAbsolute(p));
 
 /** A PowerShell single-quoted literal: nothing inside it is ever expanded or run. */
 const psQuote = s => `'${String(s).replace(PS_QUOTES, m => m + m)}'`;
@@ -166,6 +168,11 @@ function launchPlans(/** @type {{ exe: string, cwd: string, sessionId?: string |
   if (prompt === null && !args && !isSessionId(sessionId)) return { ok: false, error: "That conversation's id doesn't look like Claude Code's, so Shellby won't put it on a command line." };
   if (!safePath(exe)) return { ok: false, error: 'Shellby can’t find Claude Code to run in the terminal.' };
   if (!safePath(cwd)) return { ok: false, error: "That conversation's folder has a name Shellby can't safely open a terminal in." };
+  // A Mac's Terminal, with the same arguments: handoff-mac.js.
+  if (!IS_WINDOWS) {
+    const cli = args || (prompt ? [prompt] : ['--resume', /** @type {string} */ (sessionId)]);
+    return { ok: true, mac: require('./handoff-mac').terminalScript({ exe, cwd, args: cli, scrub }), plans: [] };
+  }
   const options = { cwd, env, detached: true, stdio: 'ignore', windowsHide: false };
   const script = resumeScript({ exe, cwd, sessionId, prompt, args, scrub });
   const plans = scriptPlans({ script, options, dir: cwd, wt, powershell, cmd });

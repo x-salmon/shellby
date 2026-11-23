@@ -7,6 +7,9 @@
 // Recognition). It runs on this PC: no account, no API key, no service, and
 // the audio never leaves the machine.
 //
+// On a Mac it's Apple's recognizer, on the Mac only, in a small helper of
+// Shellby's own (packaging/mac/ear) that speaks the same lines.
+//
 // Node can't reach it, so one PowerShell holds the engine, warm, and takes
 // "start"/"stop" lines on stdin. Kept warm because starting it costs ~0.5 s,
 // which is the first few words of whatever you say. A small C# class does the
@@ -17,6 +20,7 @@
 // release (holdKeyOf), and the tap-or-hold decision (PushToTalk), which gets its
 // clock and its key reader handed in.
 const { spawn } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
 
@@ -71,12 +75,29 @@ function parseLine(line) {
 }
 
 /** What the helper's failures mean to a person. */
-function friendlyError(code) {
+function friendlyError(code, platform = process.platform) {
   const c = String(code ?? '');
+  if (platform === 'darwin') return macError(c);
   if (c === 'no-recognizer') return 'Windows has no speech recognizer installed. Add a speech language in Windows Settings › Time & Language › Speech.';
   if (/audio input|audio device|microphone/i.test(c)) return 'No microphone found, or Windows is keeping desktop apps off it (Windows Settings › Privacy › Microphone).';
   if (c === 'unavailable') return 'Windows speech recognition isn\'t available on this PC.';
   return 'Windows speech recognition stopped working. Try again in a moment.';
+}
+
+function macError(c) {
+  if (c === 'no-recognizer') return 'This Mac can\'t recognise speech on its own for your language. Pick another in System Settings › General › Language & Region.';
+  if (c === 'not-allowed') return 'Shellby isn\'t allowed the microphone or speech recognition. Turn both on for Shellby in System Settings › Privacy & Security.';
+  if (c === 'no-microphone' || /audio|microphone/i.test(c)) return 'No microphone found. Check System Settings › Sound › Input.';
+  if (c === 'unavailable') return 'Dictation isn\'t available on this Mac.';
+  return 'Speech recognition stopped working. Try again in a moment.';
+}
+
+/**
+ * The Mac helper, where the packaged app keeps it (or a dev build's). -> path | null
+ * @param {{ resources?: string, root?: string, exists?: (p: string) => boolean }} [opts]
+ */
+function macEar({ resources = process.resourcesPath, root = path.join(__dirname, '..', '..'), exists = fs.existsSync } = {}) {
+  return [resources && path.join(resources, 'shellby-ear'), path.join(root, 'build', 'mac', 'shellby-ear')].find(p => p && exists(p)) || null;
 }
 
 /**
@@ -237,7 +258,7 @@ class Dictation extends EventEmitter {
     this.waiters = [];
   }
 
-  get available() { return this.platform === 'win32'; }
+  get available() { return this.platform === 'win32' || (this.platform === 'darwin' && !!macEar()); }
   get listening() { return !!this.session && !this.session.stopping; }
   /** A session is open: listening, or waiting for its last words. */
   get busy() { return !!this.session; }
@@ -267,12 +288,11 @@ class Dictation extends EventEmitter {
   spawnChild() {
     if (this.child) return;
     if (!this.available) return this.fail('unavailable');
-    const ps = path.join(this.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-    // -EncodedCommand: never on disk, so no execution policy and no quoting (as in media.js).
-    const encoded = Buffer.from(helperScript({ wav: this.wav }), 'utf16le').toString('base64');
+    const plan = this.helperPlan();
+    if (!plan) return this.fail('unavailable');
     let child;
     try {
-      child = this.spawnImpl(ps, ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
+      child = this.spawnImpl(plan.file, plan.args, {
         windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
@@ -301,8 +321,20 @@ class Dictation extends EventEmitter {
     });
   }
 
+  /** The helper to start: { file, args }, or null when there's none. */
+  helperPlan() {
+    if (this.platform === 'darwin') {
+      const ear = macEar();
+      return ear ? { file: ear, args: this.wav ? ['--wav', this.wav] : [] } : null;
+    }
+    const ps = path.join(this.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    // -EncodedCommand: never on disk, so no execution policy and no quoting (as in media.js).
+    const encoded = Buffer.from(helperScript({ wav: this.wav }), 'utf16le').toString('base64');
+    return { file: ps, args: ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded] };
+  }
+
   fail(code) {
-    this.lastError = friendlyError(code);
+    this.lastError = friendlyError(code, this.platform);
     if (this.session) this.session.error = this.lastError;
     this.endSession();
     const child = this.child;
@@ -382,7 +414,7 @@ class Dictation extends EventEmitter {
       this.endSession();
     } else if (type === 'error') {
       if (id == null) return this.fail(text);   // the engine itself couldn't start
-      if (mine) { this.lastError = s.error = friendlyError(text); this.emit('error', this.lastError); }
+      if (mine) { this.lastError = s.error = friendlyError(text, this.platform); this.emit('error', this.lastError); }
     }
   }
 
@@ -484,6 +516,6 @@ class PushToTalk {
 }
 
 module.exports = {
-  Dictation, PushToTalk, holdKeyOf, joinHeard, parseLine, friendlyError, helperScript,
+  Dictation, PushToTalk, holdKeyOf, joinHeard, parseLine, friendlyError, helperScript, macEar,
   HOLD_MS, POLL_MS, MAX_HOLD_MS,
 };

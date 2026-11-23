@@ -38,7 +38,7 @@ async function connect(url) {
 }
 
 function launch(data, extra = {}) {
-  return spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  return spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: data,

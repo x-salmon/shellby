@@ -32,6 +32,52 @@ jobs:
       # runtime dependency fails the build.
       - run: npm audit --omit=dev --audit-level=high
 
+  # The Mac version: the unit tests on macOS (the parts that only a Mac can run,
+  # like posix-job's real sweep, run here and skip on Windows), the dictation
+  # helper compiled, and the app packaged as it ships, unsigned. lint and the
+  # typecheck read the same files on any platform, so the Windows job's count.
+  mac:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: bash packaging/mac/build-ear.sh
+      # --dir: the .app alone, no DMG. Unsigned: CI has no Apple identity.
+      - run: npx electron-builder --mac dir --arm64 -c.mac.identity=null
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # The packaged app starts, and his main process gets as far as the log line.
+      - name: The packaged app starts
+        run: node scripts/mac-smoke.js dist/mac-arm64/Shellby.app
+
+  # The UI checks on a Mac. Until the whole suite passes there, a red shard here
+  # says what's left rather than blocking a merge: continue-on-error comes off
+  # once it's green (docs/MAC.md).
+  e2e-mac:
+    name: e2e on macOS (${{ matrix.shard }}/3)
+    runs-on: macos-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      - run: npm run e2e:ci -- --shard=${{ matrix.shard }}/3
+
   # How much of src/ the unit tests run, against scripts/coverage-floor.json. Its
   # own job: measuring slows the tests, and a timeout caused by that shouldn't
   # turn the real unit-test job red.

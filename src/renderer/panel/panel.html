@@ -727,7 +727,7 @@
       </div>
     </section>
 
-    <section class="hl-block">
+    <section class="hl-block win-only">
       <h3 class="hl-h">Starts with Windows</h3>
       <p class="hl-startup-sum" id="hlStartupSum">Reading the startup list…</p>
       <ul class="hl-startup" id="hlStartup"></ul>
@@ -737,7 +737,7 @@
       <p class="hl-fine">Switching one off works like Task Manager: the app stays installed and you can switch it back on here. Entries for everyone need an administrator, so those stay locked. The task Shellby starts only reports back.</p>
     </section>
 
-    <details class="hl-block hl-fold" id="hlSensorsFold">
+    <details class="hl-block hl-fold win-only" id="hlSensorsFold">
       <summary><span class="hl-h">Sensors</span><span class="hl-fold-sum" id="hlSensorsSum"></span></summary>
       <ul class="hl-sources" id="hlSources"></ul>
       <div class="hl-setup" id="hlSetup" hidden>
@@ -2621,7 +2621,7 @@
 
     <div class="settings-panel" role="tabpanel" id="setPanel-apps" data-tab="apps" aria-labelledby="setTab-apps" hidden>
       <p class="small muted settings-lede">Each of these is off until you turn it on, and says what it reads and where anything goes.</p>
-      <details class="setting-group setting-fold" id="rgbGroup" data-nav="Desk lighting" data-fold-on="rgbBody">
+      <details class="setting-group setting-fold win-only" id="rgbGroup" data-nav="Desk lighting" data-fold-on="rgbBody">
         <summary><h3>Desk lighting</h3><span class="fold-state"></span></summary>
         <p class="small muted ext-lede">Put his mood on your keyboard and fans through <a data-href="https://openrgb.org" href="#">OpenRGB</a>: coral while he works, amber when he needs you, red when a build goes red, and orange running to red-hot when something overheats. Shellby can install it for you and starts it in the tray whenever the lighting is on.</p>
         <label class="toggle"><input type="checkbox" id="rgbEnabled"><span class="switch"></span>Follow his mood with my lighting</label>
@@ -2899,8 +2899,8 @@
         <h3>System</h3>
         <label class="toggle"><input type="checkbox" id="loginToggle"><span class="switch"></span>Start with Windows</label>
         <p class="muted small" id="loginNote" hidden>Available in the installed app.</p>
-        <label class="toggle"><input type="checkbox" id="leaveGuardToggle"><span class="switch"></span>Hold up a shutdown or sign-out while work is unpushed, uncommitted, or Claude is mid-task</label>
-        <p class="muted small">Windows shows why, with "Shut down anyway". To check before you lock, use "Lock the PC" or "Is it safe to leave?" in his menu.</p>
+        <label class="toggle win-only"><input type="checkbox" id="leaveGuardToggle"><span class="switch"></span>Hold up a shutdown or sign-out while work is unpushed, uncommitted, or Claude is mid-task</label>
+        <p class="muted small win-only">Windows shows why, with "Shut down anyway". To check before you lock, use "Lock the PC" or "Is it safe to leave?" in his menu.</p>
       </section>
 
       <section class="setting-group" data-nav="Shortcut">
@@ -3365,6 +3365,7 @@
   <div class="drop-hint" id="dropHint" aria-hidden="true" hidden></div>
   <p class="sr-only" id="announcer" role="status" aria-live="polite"></p>
 
+<script src="../shared/mac-ui.js"></script>
 <script src="../shared/framecap.js"></script>
 <script src="../shared/latest.js"></script>
 <script src="../shared/sprite.js"></script>

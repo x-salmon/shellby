@@ -257,8 +257,17 @@ function wireTray(d) {
 
   function createTray() {
     const img = nativeImage.createFromPath(path.join(d.ROOT, 'assets', 'tray.png'));
-    d.tray = new Tray(img.isEmpty() ? nativeImage.createFromPath(d.ICON).resize({ width: 16, height: 16 }) : img);
+    const icon = img.isEmpty() ? nativeImage.createFromPath(d.ICON).resize({ width: 16, height: 16 }) : img;
+    // The Mac's menu bar is 22 points tall: a bigger image would be cut off.
+    d.tray = new Tray(process.platform === 'darwin' ? icon.resize({ height: 18 }) : icon);
     d.tray.setToolTip('Shellby');
+    if (process.platform === 'darwin') {
+      d.tray.on('click', () => {
+        d.reachedForShellby();
+        buildMenu().then(menu => d.tray.popUpContextMenu(menu)).catch(e => d.log.warn("couldn't open the tray menu", e?.message));
+      });
+      return;
+    }
     d.tray.on('click', () => { d.reachedForShellby(); d.showPanel(); });
     d.tray.on('right-click', () => {
       d.reachedForShellby(); // its menu's items open the panel too
@@ -353,7 +362,7 @@ function wireTray(d) {
 
   return {
     askForIdea, askToSend, buildMenu, createTray, drainCrashQueue, reportProblem, reportUncleanExit, suggestIdea,
-    setupUpdates, updateView, panelBooted,
+    setupUpdates, updateView, panelBooted, quit,
   };
 }
 

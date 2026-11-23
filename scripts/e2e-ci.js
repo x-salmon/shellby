@@ -177,8 +177,10 @@ const MAX_WAIT_MS = 20000; // ...but never hang on someone else's Electron
 function settle() {
   const deadline = Date.now() + MAX_WAIT_MS;
   while (Date.now() < deadline) {
-    const r = spawnSync('tasklist', ['/FI', 'IMAGENAME eq electron.exe', '/NH'], { encoding: 'utf8' });
-    if (!/electron\.exe/i.test(r.stdout || '')) break;
+    const r = process.platform === 'win32'
+      ? spawnSync('tasklist', ['/FI', 'IMAGENAME eq electron.exe', '/NH'], { encoding: 'utf8' })
+      : spawnSync('/usr/bin/pgrep', ['-x', 'Electron'], { encoding: 'utf8' });
+    if (!/electron\.exe|^\d+/im.test(r.stdout || '')) break;
     sleep(1000);
   }
   sleep(SETTLE_MS);

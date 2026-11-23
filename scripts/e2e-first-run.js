@@ -59,7 +59,7 @@ async function run(name, settings, body) {
   const data = path.join(base, `data-${name}`);
   fs.mkdirSync(data);
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ sounds: false, wander: false, ...settings }));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: HOOK_PORT, CLAUDE_CONFIG_DIR: path.join(base, `claude-${name}`) },
   });

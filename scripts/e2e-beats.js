@@ -41,7 +41,7 @@ async function connect(url, dir) {
   let fails = 0;
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-beats-data-'));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`, '--force-prefers-no-reduced-motion'], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`, '--force-prefers-no-reduced-motion'], {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: data, SHELLBY_MOTION_TEST: '1',

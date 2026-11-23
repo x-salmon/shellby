@@ -11,7 +11,7 @@ const path = require('path');
 const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
-const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const ELECTRON = require('electron') /* its binary, on any platform */;
 const PACK = process.argv[2] || 'tiny-hats';
 const LINK = `shellby://install?pack=${PACK}`;
 const wait = ms => new Promise(r => setTimeout(r, ms));

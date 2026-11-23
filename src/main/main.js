@@ -2,6 +2,8 @@ const { app, ipcMain: electronIpcMain, screen, session: electronSession, powerMo
 // e2e runs only: every window off screen, never focused over your app. First, so every
 // module that takes BrowserWindow from require('electron') gets the one that does it.
 if (require('./test-desktop').keepsOffScreen(process.env, app.isPackaged)) require('./offscreen-windows').keepOffScreen(require('electron'));
+// A Mac app opened from Finder has launchd's bare PATH: take your shell's, before anything looks for a program.
+if (app.isPackaged) require('./shell-env').adoptShellPath();
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -413,6 +415,8 @@ const { createClaudeUpdates } = share(wireClaudeUpdates(shared));
 const { refreshModels } = share(wireModels(shared)); // newer models the installed Claude Code knows (wiring/models.js)
 const { noteClaudeVersion } = share(wireClaudeTricks(shared)); // what Claude Code learned since the version he saw last
 const { createTray, drainCrashQueue, reportUncleanExit, setupUpdates } = share(wireTray(shared));
+// The menu bar, the Dock and shellby:// links on a Mac; nothing elsewhere.
+require('./mac-app').wire(shared, { ...require('electron'), onLink: url => { const link = findDeepLink([url]); if (link) onDeepLink(link); } });
 const { watchClashes } = share(wireClashes(shared));
 share({ usagePlan: wireUsagePlan(shared) });
 share({ readNudge: wireReadNudge(shared) }); // a card under a repeated big read, with the Lean tab's one-tap fix

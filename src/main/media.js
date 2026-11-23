@@ -6,6 +6,10 @@
 // tab, a media player, anything. No account, no API key, nothing leaves the PC,
 // and nobody has to install a thing.
 //
+// On a Mac there's no shared session to read, so it asks Music and Spotify
+// themselves, and only while they're already open (macScript): never launching
+// one. macOS asks you once whether Shellby may.
+//
 // Windows only exposes this through WinRT, which Node can't call, so one
 // long-lived PowerShell does the asking and prints a line whenever the track
 // changes. One process that sleeps, rather than one spawned every few seconds:
@@ -80,6 +84,44 @@ while ($true) {
   }
   if ($line -ne $last) { $last = $line; Write-Output $line }
   Start-Sleep -Milliseconds ${Math.max(500, pollMs | 0)}
+}
+`;
+}
+
+/**
+ * The Mac's watcher: JavaScript for Automation, one osascript that sleeps
+ * between looks, printing the same lines as the Windows one. It asks an app
+ * only when it's running (asking one that isn't would open it), and ends with
+ * Shellby, as that one does.
+ */
+function macScript(pollMs = POLL_MS, parentPid = process.pid) {
+  const parent = Math.max(0, parentPid | 0);
+  return `
+ObjC.import('Foundation');
+ObjC.import('unistd');
+const out = $.NSFileHandle.fileHandleWithStandardOutput;
+const say = s => out.writeData($(s + '\\n').dataUsingEncoding($.NSUTF8StringEncoding));
+const PLAYING = 4, PAUSED = 5;
+const players = [['Spotify', 'com.spotify.client'], ['Music', 'com.apple.Music']];
+function look() {
+  for (const [name, id] of players) {
+    try {
+      if (!Application(id).running()) continue;
+      const app = Application(id);
+      const state = String(app.playerState());
+      if (state !== 'playing' && state !== 'paused') continue;
+      const t = app.currentTrack;
+      return JSON.stringify({ title: String(t.name() || ''), artist: String(t.artist() || ''), app: name, status: state === 'playing' ? PLAYING : PAUSED });
+    } catch (e) { /* closing, or not allowed: nothing playing there */ }
+  }
+  return 'null';
+}
+let last = '';
+while (true) {
+  ${parent ? `if ($.getppid() !== ${parent}) $.exit(0);` : ''}
+  const line = look();
+  if (line !== last) { last = line; say(line); }
+  delay(${Math.max(500, pollMs | 0) / 1000});
 }
 `;
 }
@@ -172,7 +214,7 @@ class MediaWatcher extends EventEmitter {
     this.buffer = '';
   }
 
-  get available() { return this.platform === 'win32'; }
+  get available() { return this.platform === 'win32' || this.platform === 'darwin'; }
 
   start() {
     if (this.child || !this.available) {
@@ -183,9 +225,12 @@ class MediaWatcher extends EventEmitter {
     // -EncodedCommand: the script never touches the disk, so it is not subject
     // to the execution policy, and nothing has to be quoted for cmd.
     const encoded = Buffer.from(watcherScript(this.pollMs), 'utf16le').toString('base64');
+    const plan = this.platform === 'darwin'
+      ? { file: '/usr/bin/osascript', args: ['-l', 'JavaScript', '-e', macScript(this.pollMs)] }
+      : { file: ps, args: ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded] };
     let child;
     try {
-      child = this.spawnImpl(ps, ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
+      child = this.spawnImpl(plan.file, plan.args, {
         windowsHide: true,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
@@ -198,7 +243,8 @@ class MediaWatcher extends EventEmitter {
     child.stdout?.setEncoding('utf8');
     child.stdout?.on('data', chunk => this.onData(chunk));
     // Anything on stderr means WinRT is not answering (an old Windows, a locked
-    // down box). One quiet note, then stop trying.
+    // down box). One quiet note, then stop trying. osascript only writes there
+    // when it can't run at all.
     child.stderr?.on('data', () => this.setStatus('unavailable'));
     child.on('error', () => { this.child = null; this.setStatus('unavailable'); });
     child.on('exit', () => {
@@ -251,4 +297,4 @@ class MediaWatcher extends EventEmitter {
   }
 }
 
-module.exports = { MediaWatcher, parseNowPlaying, appName, trackRemark, sameTrack, watcherScript, STATUS, POLL_MS };
+module.exports = { MediaWatcher, parseNowPlaying, appName, trackRemark, sameTrack, watcherScript, macScript, STATUS, POLL_MS };

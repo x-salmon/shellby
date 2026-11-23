@@ -22,7 +22,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const agentsLog = path.join(tmp, 'agents.log');
   const session = state => [{ id: 'abcdef12', cwd: tmp, kind: 'background', startedAt: Date.now() - 60000, sessionId: '378070a6-752d-4d65-84e3-81c3bd78c0e3', name: 'Tidy the tests', state }];
   fs.writeFileSync(agents, JSON.stringify(session('working')));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: path.join(tmp, 'data'), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47964',

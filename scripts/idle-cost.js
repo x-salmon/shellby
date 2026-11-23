@@ -61,7 +61,7 @@ function gpuBusy(byPid, seconds) {
   // renderer and compositor awake, which showed up as 80% of a core and sent an
   // earlier version of this script chasing animations that were never the cost.
   // A fresh profile opens the panel for onboarding, which is the state measured.
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT], {
     stdio: 'ignore',
     // A dev run opens the panel behind your windows (main.js openBehind), and an
     // unfocused panel is calm: without SHELLBY_FOREGROUND, "in front" measured the calm panel.

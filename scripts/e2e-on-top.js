@@ -58,7 +58,7 @@ function above(a, b) {
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
   // Staying put (no strolls or perches) so nothing but the setting moves him.
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ onboarded: true, crabOnly: true, onTop: true, wander: false, chatter: 'quiet' }));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_MOTION_TEST: '1', SHELLBY_COVER_POLL: '1' },
   });

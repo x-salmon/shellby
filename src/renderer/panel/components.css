@@ -970,3 +970,6 @@ button.rq-title:hover, button.rq-title:focus-visible { color: var(--glass); text
 }
 .tb-btn:hover:not(:disabled) { border-color: var(--glass); }
 .tb-btn.quiet { color: var(--sand-faint); }
+
+/* What a Mac doesn't have (shared/mac-ui.js puts .mac on the body). */
+.mac .win-only { display: none !important; }

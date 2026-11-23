@@ -43,6 +43,7 @@ interface Window {
   ShellbyHealthLogic: any;
   ShellbyLatest: any;
   ShellbyLineComments: any;
+  ShellbyMacUi: any;
   ShellbyMarkdown: any;
   ShellbyMermaid: any;
   ShellbyMeterLogic: any;

@@ -39,7 +39,7 @@ const { summarize, evaluate, formatTable, resultFile, verdict, retryPhases } = r
 const BUDGETS = require('./perf-budgets');
 
 const ROOT = path.join(__dirname, '..');
-const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const ELECTRON = require('electron') /* its binary, on any platform */;
 const FAKE_CLAUDE = path.join(ROOT, 'test', 'fixtures', 'fake-claude.js');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9395;
 const SCRIPTED_DELAY_MS = 100;   // "wait 100 …": the fake CLI's own pause before it answers

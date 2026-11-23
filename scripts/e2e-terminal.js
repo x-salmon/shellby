@@ -92,7 +92,7 @@ function cli(cwd, ...args) {
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, crabOnly: false, externalSessions: true, projects: { added: [repo] } }));
   const name = path.basename(repo);
 
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`],
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`],
     { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_HOOK_PORT: String(HOOK_PORT) } });
   let fails = 0;
   const check = (ok, label, detail = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${!ok && detail ? `\n      ${String(detail).replace(/\n/g, '\n      ')}` : ''}`); if (!ok) fails++; };

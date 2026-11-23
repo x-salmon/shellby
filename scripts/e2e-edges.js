@@ -45,7 +45,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({
     onboarded: true, crabOnly: true, perch: 'off', climb: 'sometimes', mischief: 'gremlin', colony: 3, chatter: 'chatty', critterPos,
   }));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_MOTION_TEST: '1' },
   });

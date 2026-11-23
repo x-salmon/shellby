@@ -61,7 +61,7 @@ async function openNotepad(at) {
   const [hx, hy] = (process.env.SHELLBY_E2E_HOME || '').split(',').map(Number);
   const critterPos = Number.isFinite(hx) && Number.isFinite(hy) ? { x: hx, y: hy } : null;
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ onboarded: true, crabOnly: true, perch: 'sometimes', chatter: 'chatty', critterPos }));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_MOTION_TEST: '1' },
   });

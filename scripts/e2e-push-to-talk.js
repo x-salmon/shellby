@@ -67,7 +67,7 @@ async function windows() {
   execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
     `Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.SetOutputToWaveFile('${wav.replace(/'/g, "''")}'); $s.Speak('Fix the typo in the read me file.'); $s.Dispose()`]);
 
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: data,

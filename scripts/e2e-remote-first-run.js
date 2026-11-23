@@ -47,7 +47,7 @@ function otherComputer() {
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
   const remoteHome = otherComputer();
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: FAKE_CLAUDE, SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47986', SHELLBY_E2E: '1',

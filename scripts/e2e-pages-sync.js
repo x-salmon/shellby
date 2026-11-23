@@ -74,7 +74,7 @@ async function connect(url) {
 
   /** Open Shellby on one "PC", signed in to the mock GitHub with sync on. */
   async function open(dir, { signIn }) {
-    app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+    app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
       stdio: 'ignore',
       env: {
         ...env, SHELLBY_USER_DATA: dir, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47998',

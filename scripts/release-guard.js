@@ -69,6 +69,12 @@ function requiredAssets(version) {
     `Shellby-Portable-${version}.exe`,
     'SHA256SUMS.txt',
     `Shellby-${version}.intoto.jsonl`,
+    // The Mac's (release.yml's mac job): what macOS updates from, and the downloads.
+    'latest-mac.yml',
+    `Shellby-${version}-arm64.dmg`,
+    `Shellby-${version}-x64.dmg`,
+    `Shellby-${version}-arm64.zip`,
+    `Shellby-${version}-x64.zip`,
   ];
 }
 

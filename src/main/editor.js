@@ -11,6 +11,9 @@
 // own), and every path on that line is one Shellby made or checked for
 // characters cmd would read as anything but a path. The pickers are pure;
 // open() never throws.
+//
+// On a Mac the launcher is a shell script inside the app (Contents/Resources/
+// app/bin/code), started directly with its arguments as a list: no shell reads them.
 const { execFile, spawn } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -19,13 +22,22 @@ const path = require('path');
 const { CMD } = require('./system32');
 const { checkRef } = require('./changes');
 
+const MAC = process.platform === 'darwin';
 const TEMP_NAME = 'shellby-vsdiff';
+const NOT_FOUND = MAC
+  ? "Shellby couldn't find VS Code on this Mac. Put it in your Applications folder, then try again."
+  : "Shellby couldn't find VS Code on this PC. Install it (or tick \"Add to PATH\" when you do), then try again.";
 const MAX_BLOB = 50 * 1024 * 1024;
 const MAX_TEMP_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_NAME = 80;
 // Characters that mean something to cmd.exe even inside quotes (or that a
 // Windows path can't hold anyway): such a path is never put on a command line.
 const UNSAFE_PATH_RE = /["%!^\r\n\0]/;
+
+// The Mac apps, where Applications keeps them, and their launchers inside.
+const MAC_APPS = [
+  ['Visual Studio Code.app', 'code'], ['Visual Studio Code - Insiders.app', 'code-insiders'], ['Cursor.app', 'cursor'],
+];
 
 const isDir = p => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
 const isFile = p => { try { return fs.statSync(p).isFile(); } catch { return false; } };
@@ -35,8 +47,18 @@ const isFile = p => { try { return fs.statSync(p).isFile(); } catch { return fal
  * the order to try: the usual install folders first, then PATH, whose entries
  * count only when they're absolute folders that exist. Pure but for dirExists.
  */
-function editorCandidates(env = process.env, dirExists = isDir) {
+function editorCandidates(env = process.env, dirExists = isDir, platform = process.platform) {
   const out = [];
+  if (platform === 'darwin') {
+    const home = env.HOME || '';
+    for (const base of ['/Applications', home && path.posix.join(home, 'Applications')].filter(Boolean)) {
+      for (const [app, bin] of MAC_APPS) out.push(path.posix.join(base, app, 'Contents', 'Resources', 'app', 'bin', bin));
+    }
+    for (const dir of String(env.PATH || '').split(':').filter(d => d.startsWith('/') && dirExists(d))) {
+      for (const [, bin] of MAC_APPS) out.push(path.posix.join(dir, bin));
+    }
+    return [...new Set(out)];
+  }
   const add = p => { if (p && path.isAbsolute(p) && !out.some(o => o.toLowerCase() === p.toLowerCase())) out.push(p); };
   const local = env.LOCALAPPDATA;
   const pf = [env.ProgramFiles, env['ProgramFiles(x86)']].filter(p => typeof p === 'string');
@@ -105,14 +127,16 @@ function folderCommandLine(editor, dir) {
 function openFolder(dir, { env = process.env, spawnImpl = spawn, editor = undefined } = {}) {
   if (!isDir(dir)) return { ok: false, error: "That folder isn't there any more." };
   const code = editor === undefined ? findEditor(env) : editor;
-  if (!code) return { ok: false, notFound: true, error: "Shellby couldn't find VS Code on this PC. Install it (or tick \"Add to PATH\" when you do), then try again." };
+  if (!code) return { ok: false, notFound: true, error: NOT_FOUND };
   const line = folderCommandLine(code, dir);
   if (!line) return { ok: false, error: 'That path has characters Shellby won\'t hand to the command line.' };
   try {
-    const child = spawnImpl(CMD, ['/d', '/s', '/c', line], {
-      cwd: dir, windowsHide: true, windowsVerbatimArguments: true, detached: true, stdio: 'ignore',
-      env: { ...env, NoDefaultCurrentDirectoryInExePath: '1', ELECTRON_RUN_AS_NODE: undefined },
-    });
+    const child = MAC
+      ? spawnImpl(code, [dir], { cwd: dir, detached: true, stdio: 'ignore', env: { ...env, ELECTRON_RUN_AS_NODE: undefined } })
+      : spawnImpl(CMD, ['/d', '/s', '/c', line], {
+        cwd: dir, windowsHide: true, windowsVerbatimArguments: true, detached: true, stdio: 'ignore',
+        env: { ...env, NoDefaultCurrentDirectoryInExePath: '1', ELECTRON_RUN_AS_NODE: undefined },
+      });
     child.on?.('error', () => {});
     child.unref?.();
   } catch (e) {
@@ -137,14 +161,16 @@ function fileCommandLine(editor, dir, file, line) {
 function openFileAt(dir, file, line, { env = process.env, spawnImpl = spawn, editor = undefined } = {}) {
   if (!isDir(dir) || !isFile(file)) return { ok: false, error: "That file isn't there any more." };
   const code = editor === undefined ? findEditor(env) : editor;
-  if (!code) return { ok: false, notFound: true, error: "Shellby couldn't find VS Code on this PC. Install it (or tick \"Add to PATH\" when you do), then try again." };
+  if (!code) return { ok: false, notFound: true, error: NOT_FOUND };
   const cmd = fileCommandLine(code, dir, file, line);
   if (!cmd) return { ok: false, error: 'That path has characters Shellby won\'t hand to the command line.' };
   try {
-    const child = spawnImpl(CMD, ['/d', '/s', '/c', cmd], {
-      cwd: dir, windowsHide: true, windowsVerbatimArguments: true, detached: true, stdio: 'ignore',
-      env: { ...env, NoDefaultCurrentDirectoryInExePath: '1', ELECTRON_RUN_AS_NODE: undefined },
-    });
+    const child = MAC
+      ? spawnImpl(code, [dir, '-g', `${file}:${line}`], { cwd: dir, detached: true, stdio: 'ignore', env: { ...env, ELECTRON_RUN_AS_NODE: undefined } })
+      : spawnImpl(CMD, ['/d', '/s', '/c', cmd], {
+        cwd: dir, windowsHide: true, windowsVerbatimArguments: true, detached: true, stdio: 'ignore',
+        env: { ...env, NoDefaultCurrentDirectoryInExePath: '1', ELECTRON_RUN_AS_NODE: undefined },
+      });
     child.on?.('error', () => {});
     child.unref?.();
   } catch (e) {
@@ -184,7 +210,7 @@ async function open(ref, { env = process.env, spawnImpl = spawn, tmp = os.tmpdir
   const bad = checkRef(ref);
   if (bad || !ref.file) return { ok: false, error: bad || 'Not a file in this change.' };
   const code = editor === undefined ? findEditor(env) : editor;
-  if (!code) return { ok: false, notFound: true, error: "Shellby couldn't find VS Code on this PC. Install it (or tick \"Add to PATH\" when you do), then try again." };
+  if (!code) return { ok: false, notFound: true, error: NOT_FOUND };
   const base = path.join(tmp, TEMP_NAME);
   tidyTemp(base);
   const [before, after] = await Promise.all([
@@ -209,10 +235,12 @@ async function open(ref, { env = process.env, spawnImpl = spawn, tmp = os.tmpdir
   const line = diffCommandLine(code, left, right);
   if (!line) return { ok: false, error: 'That path has characters Shellby won\'t hand to the command line.' };
   try {
-    const child = spawnImpl(CMD, ['/d', '/s', '/c', line], {
-      cwd: dir, windowsHide: true, windowsVerbatimArguments: true, detached: true, stdio: 'ignore',
-      env: { ...env, NoDefaultCurrentDirectoryInExePath: '1', ELECTRON_RUN_AS_NODE: undefined },
-    });
+    const child = MAC
+      ? spawnImpl(code, ['--diff', left, right], { cwd: dir, detached: true, stdio: 'ignore', env: { ...env, ELECTRON_RUN_AS_NODE: undefined } })
+      : spawnImpl(CMD, ['/d', '/s', '/c', line], {
+        cwd: dir, windowsHide: true, windowsVerbatimArguments: true, detached: true, stdio: 'ignore',
+        env: { ...env, NoDefaultCurrentDirectoryInExePath: '1', ELECTRON_RUN_AS_NODE: undefined },
+      });
     child.on?.('error', () => {});
     child.unref?.();
   } catch (e) {

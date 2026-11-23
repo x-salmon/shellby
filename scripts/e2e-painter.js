@@ -34,7 +34,7 @@ const { listenOpen } = require('./lib/open-port');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9412;
 const HOOK = Number(process.env.E2E_HOOK_PORT) || 48112;
 const ROOT = path.join(__dirname, '..');
-const electron = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const electron = require('electron') /* its binary, on any platform */;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const PAINT = '#1a7a4c'; // a colour classic doesn't have, to find him by on the desktop
 const SEND_MS = 15000;    // a CDP call that takes longer than this is a window that went away

@@ -21,7 +21,7 @@ const { BITS } = require('../src/main/voice');
 const { savePng } = require('./lib/shot');
 
 const ROOT = path.join(__dirname, '..');
-const electron = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const electron = require('electron') /* its binary, on any platform */;
 const args = new Set(process.argv.slice(2));
 const PORT = Number(process.env.E2E_CDP_PORT) || 9390;
 const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47990;

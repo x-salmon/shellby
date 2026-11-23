@@ -18,6 +18,7 @@ const { clampToDisplays } = require('../desktop/placement');
 const { createPranks } = require('../pranks');
 const processJob = require('../process-job');
 const voice = require('../voice');
+const { everySpace } = require('../mac-app');
 
 /** d: what main shares (main.js `shared`). */
 function wireWindows(d) {
@@ -182,6 +183,7 @@ function wireWindows(d) {
           title: 'Shellby’s floor', icon: d.ICON, webPreferences: { ...webPreferences, preload: d.FLOOR_PRELOAD },
         });
         secureWindow(w);
+        everySpace(w);
         w.loadFile(path.join(d.RENDERER, 'floor', 'floor.html'));
         return w;
       },
@@ -332,6 +334,7 @@ function wireWindows(d) {
       title: 'Shellby', icon: d.ICON, webPreferences: { ...webPreferences, preload: d.CRITTER_PRELOAD },
     });
     secureWindow(d.critter);
+    everySpace(d.critter);
     setOnTop(onTopNow);
     d.critter.loadFile(path.join(d.RENDERER, 'critter', 'critter.html'));
     d.critter.once('ready-to-show', () => {

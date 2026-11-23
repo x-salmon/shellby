@@ -98,7 +98,7 @@ const untilTrue = async (fn, ms = 12000) => { const end = Date.now() + ms; while
   git('add', '.');
   git('commit', '-qm', 'first');
 
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: data, SHELLBY_HOOK_PORT: String(HOOK), SHELLBY_POCKET_PORT: String(POCKET),

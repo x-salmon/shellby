@@ -46,7 +46,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ onboarded: true, xp: { total, lastDay: today }, wardrobe: { unlocked }, quests: { done: { 'ninety-nine': Date.now() } } }));
   const first = tierShell(1);
 
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`, '--force-prefers-no-reduced-motion'], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`, '--force-prefers-no-reduced-motion'], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: String(HOOK) },
   });

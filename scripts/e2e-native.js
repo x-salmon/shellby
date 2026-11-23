@@ -48,7 +48,7 @@ async function connect(url) {
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify({ tideEvents: false, chatter: 'quiet' }));
   // Claude Code's own folder, for its memories: under temp, so the fake CLI writes into it.
   const config = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-native-cfg-')));
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`], {
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: {
       ...process.env, SHELLBY_E2E: '1', SHELLBY_USER_DATA: data, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'),

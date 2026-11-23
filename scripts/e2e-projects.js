@@ -51,7 +51,7 @@ async function cdp(url) {
   execFileSync('git', ['init', '-q', '-b', 'main', other], { windowsHide: true });
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, crabOnly: false, projects: { added: [repo, other] } }));
 
-  const app = spawn(path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe'), [ROOT, `--remote-debugging-port=${PORT}`],
+  const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`],
     { stdio: 'ignore', env: { ...process.env, SHELLBY_USER_DATA: profile } });
   let fails = 0;
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
