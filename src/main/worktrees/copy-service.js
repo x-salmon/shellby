@@ -144,7 +144,8 @@ function createCopies(d) {
     await session.stop();
     if (!await carry(session.sessionId, from, w.cwd)) {
       await worktrees.remove(w, { force: true });
-      return stayHere("Claude Code's record of this conversation couldn't be carried into the copy");
+      return stayHere("Claude Code's record of this conversation couldn't be carried into the copy",
+        `transcript ${session.sessionId || '(no session id)'}.jsonl not carried from ${from} to ${w.cwd}`);
     }
     tab.worktree = w;
     session.cwd = w.cwd;

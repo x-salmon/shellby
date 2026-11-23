@@ -9,12 +9,16 @@ const path = require('path');
  * resumes it from that folder. Copying it across lets the same conversation
  * carry on in the copy. Async, since the folder of subagent transcripts beside
  * it can be large, and this runs as a conversation moves. -> Promise<true | false>
+ * Looked for under `from` first, then wherever Claude Code wrote it (findSession):
+ * a conversation resumed from another folder keeps its record under that one.
  */
 const projectDirName = dir => path.resolve(dir).replace(/[^a-zA-Z0-9]/g, '-');
 const SESSION_ID = /^[\w-]{8,64}$/;
 async function carryTranscript({ configDir, sessionId, from, to }) {
   if (!SESSION_ID.test(sessionId || '')) return false;
-  const where = sessionPaths({ configDir, file: path.join(configDir, 'projects', projectDirName(from), `${sessionId}.jsonl`), to });
+  const found = findSession({ configDir, sessionId, prefer: [from] });
+  if (!found) return false;
+  const where = sessionPaths({ configDir, file: found, to });
   if (!where) return false;
   const { id, file, src, dst } = where;
   const there = p => fs.promises.access(p).then(() => true, () => false);
