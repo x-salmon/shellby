@@ -49,20 +49,25 @@
       const acts = h('span', { class: 'denied-acts' }, tryBtn, fine);
       const strip = h('div', { class: 'turn-denied', role: 'note' },
         h('span', { class: 'denied-text', text: F.denialsLine(denials) }), acts);
-      // Your rules are read for the project on screen, so only this tab's own can be checked.
-      if (tab.isActive) tab.findBlockingRule(denials).then(found => {
-        if (!strip.isConnected) return;
-        // Nothing of yours blocked it, so it may well go through now: count down to trying again.
-        if (!found) return tab.retryCountdown(strip, tryBtn, fine, retry, F.retryPrompt(denials));
-        // Every one a rule blocked: trying again would just be refused again.
-        if (found.all) tryBtn.remove();
-        acts.prepend(h('button', { class: 'btn slim-btn', type: 'button', title: found.rule.rule, onclick: () => SB.showRule?.(found.rule) }, 'Show rule'));
-      });
+      // Your rules are read for the project on screen, so only this tab's own can be checked:
+      // a turn that ends out of sight is checked when you come to it (SB.activate, tabs.js).
+      const check = () => {
+        if (tab.deniedCheck === check) tab.deniedCheck = null;
+        tab.findBlockingRule(denials).then(found => {
+          if (!strip.isConnected) return;
+          // Nothing of yours blocked it, so it may well go through now: count down to trying again.
+          if (!found) return tab.retryCountdown(strip, tryBtn, fine, retry, F.retryPrompt(denials));
+          // Every one a rule blocked: trying again would just be refused again.
+          if (found.all) tryBtn.remove();
+          acts.prepend(h('button', { class: 'btn slim-btn', type: 'button', title: found.rule.rule, onclick: () => SB.showRule?.(found.rule) }, 'Show rule'));
+        });
+      };
+      if (tab.isActive) check(); else tab.deniedCheck = check;
       return strip;
     }
 
-    // Try again fills with coral and presses itself (RETRY_COUNTDOWN_MS). Hover, focus or a
-    // hidden panel holds it; Cancel restores the quiet line; busy or another tab stops it.
+    // Try again fills with coral and presses itself (RETRY_COUNTDOWN_MS). Hover, focus, a
+    // hidden panel or another tab holds it; Cancel restores the quiet line; busy stops it.
     // The same block twice running is a hook that means it: no second countdown (a loop).
     retryCountdown(strip, tryBtn, fine, retry, prompt) {
       const tab = /** @type {any} */ (this);
@@ -83,8 +88,8 @@
         const now = performance.now();
         const step = now - last; last = now;
         if (!strip.isConnected) return clearInterval(timer);
-        if (tab.busy || !tab.isActive) return stop();
-        const held = document.hidden || strip.matches(':hover, :focus-within');
+        if (tab.busy) return stop();
+        const held = document.hidden || !tab.isActive || strip.matches(':hover, :focus-within');
         strip.classList.toggle('held', held);
         if (held) return;
         left -= step;

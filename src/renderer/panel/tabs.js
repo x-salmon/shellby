@@ -107,6 +107,7 @@
     if (prev !== tab) SB.find.refresh(); // an open Ctrl+F searches the conversation you switched to
     if (state.view !== 'chat') SB.setView('chat'); else if (!SB.find.isOpen) input.focus();
     SB.tools?.shown(tabId); // a draft made while it was out of sight opens beside it (tool-tabs.js)
+    tab.deniedCheck?.(); // a block that ended out of sight: its rule check and Try again's countdown (feed-result.js)
   };
 
   // state.tabs' order is the order the strip shows. Reordered in place, never

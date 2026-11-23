@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.102.0: Shellby on a Mac
+
+### New
+- **Shellby on a Mac.** The crab, the panel, conversations, copies, routines, workflows, the phone and your other computers now run on macOS 12 and later, on Apple silicon and Intel. He lives on your desktop under your windows, climbs onto them, and follows you across Spaces. Cmd does what Ctrl does, push-to-talk uses Apple's own recognizer on your Mac, "Continue in terminal" opens Terminal, and the `shellby` command goes on your PATH.
+
+### Fixed
+- **A conversation picked up from another folder moves into its own copy again.** Shellby used to look for Claude Code's record of it only under the folder the tab was in, missed it, and left the conversation working in your checkout. It now finds the record wherever Claude Code wrote it, and when a move still fails, Copy details says which conversation and folders it was.
+- **Try again counts down in every conversation.** A blocked step's Try again only counted down if that conversation was on screen when the turn ended, and switching tabs stopped it for good. Now it starts when you come to the conversation, and waits while you're in another tab.
+
 ## 0.101.0: Engineer mode
 
 ### New

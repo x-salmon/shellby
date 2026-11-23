@@ -514,6 +514,26 @@ test('the conversation is carried into the copy\'s project folder so it can be r
   } finally { fs.rmSync(config, { recursive: true, force: true }); }
 });
 
+test('a conversation recorded under another folder is still carried into the copy', async () => {
+  const config = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-cfg-'));
+  try {
+    const started = path.resolve('/work/Other Repo');
+    const from = path.resolve('/work/My Repo');
+    const to = path.resolve('/copies/def456/My Repo');
+    const src = path.join(config, 'projects', worktrees.projectDirName(started));
+    fs.mkdirSync(path.join(src, 'sess-0002', 'subagents'), { recursive: true });
+    fs.writeFileSync(path.join(src, 'sess-0002.jsonl'), '{"y":2}\n');
+    fs.writeFileSync(path.join(src, 'sess-0002', 'subagents', 'b.jsonl'), '{}\n');
+
+    assert.equal(await worktrees.carryTranscript({ configDir: config, sessionId: 'sess-0002', from, to }), true);
+
+    const dst = path.join(config, 'projects', worktrees.projectDirName(to));
+    assert.equal(fs.readFileSync(path.join(dst, 'sess-0002.jsonl'), 'utf8'), '{"y":2}\n');
+    assert.ok(fs.existsSync(path.join(dst, 'sess-0002', 'subagents', 'b.jsonl')));
+    assert.ok(fs.existsSync(path.join(src, 'sess-0002.jsonl')), 'the original stays');
+  } finally { fs.rmSync(config, { recursive: true, force: true }); }
+});
+
 // ---- sending it to GitHub: a bare repo in the temp folder stands in for origin.
 
 function withRemote(t) {
