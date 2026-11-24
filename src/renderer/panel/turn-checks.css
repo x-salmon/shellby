@@ -112,14 +112,17 @@
 .eng-head { display: flex; align-items: baseline; gap: 8px; font-weight: 600; color: var(--sand); }
 .eng-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .eng-card.phase-proposed .eng-status { color: var(--amber); }
-.eng-goal, .eng-why { margin: 6px 0 0; color: var(--sand); white-space: pre-wrap; }
+.eng-goal, .eng-why { margin: 6px 0 0; color: var(--sand); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Prose keeps a readable measure when the panel runs full screen. */
+.eng-goal, .eng-why, .eng-card .eng-list, .eng-step-list { max-width: 110ch; }
 .eng-goal b, .eng-why b, .eng-your-note b { color: var(--sand-faint); font-weight: 600; }
 .eng-label { margin: 0 0 2px; font-size: var(--fs-11); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--sand-faint); }
 .eng-block, .eng-outcome { margin-top: 8px; }
 .eng-list { margin: 0; padding-left: 16px; }
 .eng-list li + li { margin-top: 1px; }
-.eng-options { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 5px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
-.eng-option { padding: 6px 8px 7px; border: 1px solid var(--line-soft); border-radius: var(--r-sm); background: var(--reef); }
+.eng-options { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 5px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.eng-option { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px 8px 7px; border: 1px solid var(--line-soft); border-radius: var(--r-sm); background: var(--reef); }
+.eng-option > * { margin-top: 0; }
 .eng-option.chosen { border-color: color-mix(in srgb, var(--glass) 55%, var(--line-soft)); }
 .eng-option-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
 .eng-option-name { font-weight: 600; color: var(--sand); }
@@ -130,7 +133,8 @@
 .eng-tradeoffs { list-style: none; margin: 4px 0 0; padding: 0; }
 .eng-tradeoffs .pro span { color: var(--glass); font-weight: 700; }
 .eng-tradeoffs .con span { color: var(--coral); font-weight: 700; }
-.eng-pick { margin-top: 5px; }
+/* Pinned to the card's foot so every option's button lines up; a long option name wraps inside it. */
+.eng-option > .eng-pick { margin-top: auto; align-self: flex-start; max-width: 100%; height: auto; min-height: 28px; padding-block: 4px; white-space: normal; text-align: left; overflow-wrap: anywhere; }
 .eng-weighed { margin-top: 7px; }
 .eng-weighed > summary { cursor: pointer; color: var(--sand-faint); }
 .eng-weighed > summary:focus-visible { outline: 2px solid var(--glass); outline-offset: 2px; }
