@@ -141,3 +141,14 @@ test('no check launches the app on a port the runner did not give it', () => {
   }
   assert.deepEqual(offenders, [], 'use Number(process.env.E2E_CDP_PORT) || N, E2E_HOOK_PORT or E2E_SPARE_PORT');
 });
+
+test('a failed check is annotated with its last lines, escaped for a workflow command', () => {
+  const { failureAnnotation } = require('../scripts/e2e-ci');
+  const out = [...Array.from({ length: 40 }, (_, i) => `line ${i}`), '', 'FAIL: 100% wrong\r'].join('\n');
+  const a = failureAnnotation('e2e-queue: x', out);
+  assert.match(a, /^::error title=e2e e2e-queue {2}x failed::/);
+  assert.ok(!a.includes('\n') && !a.includes('\r'), 'one line');
+  assert.ok(a.endsWith('FAIL: 100%25 wrong'), a.slice(-40));
+  assert.ok(!a.includes('line 14%0A') && a.includes('line 16%0A'), 'only the last lines');
+  assert.match(failureAnnotation('e2e-b', ''), /::\(no output\)$/);
+});
