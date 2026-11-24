@@ -8,6 +8,7 @@
 //     actions and their keys, focus landing back in the box, Ctrl+W asking first
 //   node scripts/ui-regressions.js
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -229,7 +230,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     console.error('failed:', e.message);
     fails++;
   } finally {
-    spawn('taskkill', ['/PID', String(app.pid), '/T', '/F']);
+    endApp(app.pid);
     setTimeout(() => process.exit(fails ? 1 : 0), 600);
   }
 })();

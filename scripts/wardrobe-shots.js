@@ -2,6 +2,7 @@
 // desktop critter wearing the current outfit. Reports renderer errors.
 //   node scripts/wardrobe-shots.js
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -65,7 +66,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   } catch (e) {
     console.error('failed:', e.message);
   } finally {
-    spawn('taskkill', ['/PID', String(app.pid), '/T', '/F']);
+    endApp(app.pid);
     setTimeout(() => process.exit(0), 600);
   }
 })();

@@ -6,6 +6,7 @@
 // Restores your permission mode and deletes its test conversations afterwards.
 //   node scripts/e2e-ui.js
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
@@ -135,7 +136,7 @@ async function cdp(wsUrl) {
       }
     } catch { /* best effort */ }
     for (const f of [fileA, fileB]) fs.rmSync(f, { force: true });
-    spawn('taskkill', ['/PID', String(app.pid), '/T', '/F']);
+    endApp(app.pid);
     setTimeout(() => process.exit(ok ? 0 : 1), 800);
   }
 })();

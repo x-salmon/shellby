@@ -65,10 +65,33 @@ function readVram(env = process.env) {
   });
 }
 
-/** This PC's memory, GPU and free disk where models go. */
-async function hardware(env = process.env) {
-  const [vramGb, free] = await Promise.all([readVram(env), freeBytes(env)]);
-  return { vramGb, ramGb: Math.round(os.totalmem() / GB), freeGb: free == null ? null : Math.floor(free / GB) };
+// Apple silicon's GPU shares the Mac's memory, and macOS lets it have about
+// two thirds of it: what Ollama can put on the GPU there.
+const UNIFIED_GPU_SHARE = 2 / 3;
+
+/** SHELLBY_FAKE_HARDWARE='{"ramGb":16,"vramGb":null}': a machine for checks that mustn't depend on the runner's. */
+function fakeHardware(env) {
+  if (!env.SHELLBY_FAKE_HARDWARE) return null;
+  try {
+    const h = JSON.parse(env.SHELLBY_FAKE_HARDWARE);
+    const gb = v => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
+    const ramGb = gb(h?.ramGb);
+    return ramGb == null ? null : { ramGb, vramGb: gb(h.vramGb), freeGb: gb(h.freeGb) };
+  } catch { return null; }
+}
+
+/**
+ * This PC's memory, GPU and free disk where models go.
+ * @param {any} [env] @param {{ platform?: string, arch?: string, totalmem?: number }} [machine]
+ */
+async function hardware(env = process.env, { platform = process.platform, arch = process.arch, totalmem = os.totalmem() } = {}) {
+  const fake = fakeHardware(env);
+  if (fake) return fake;
+  const ramGb = Math.round(totalmem / GB);
+  const unified = platform === 'darwin' && arch === 'arm64';
+  const [vram, free] = await Promise.all([unified ? null : readVram(env), freeBytes(env)]);
+  const vramGb = unified ? Math.floor(ramGb * UNIFIED_GPU_SHARE) : vram;
+  return { vramGb, ramGb, freeGb: free == null ? null : Math.floor(free / GB) };
 }
 
 /**

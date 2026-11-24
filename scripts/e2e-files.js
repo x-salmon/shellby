@@ -15,6 +15,7 @@
 // No account, no network beyond this PC.
 //   node scripts/e2e-files.js [--shots <dir>]
 const { spawn, execFileSync } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -269,7 +270,7 @@ fs.mkdirSync(claudeConfig);
     fails++;
   } finally {
     try { process.kill(app.pid); } catch { /* gone */ }
-    try { execFileSync('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { /* gone */ }
+    endApp(app.pid);
     await wait(800);
     try { fs.rmSync(base, { recursive: true, force: true }); } catch { /* the OS still holds a file; temp gets it */ }
     console.log(fails ? `\n${fails} check(s) failed` : '\nall All files checks passed');

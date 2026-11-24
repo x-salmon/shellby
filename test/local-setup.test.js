@@ -77,3 +77,33 @@ test('status: too old, empty, ready, and LM Studio', async () => {
   assert.deepStrictEqual(ready.models, ['qwen3:4b']);
   assert.strictEqual((await status({ hw, env, fetchFn: fakeFetch({ 'http://127.0.0.1:1234/v1/models': { data: [] } }) })).state, 'lmstudio');
 });
+
+test('on Apple silicon two thirds of the shared memory counts as the GPU, so a 32 GB Mac gets a coder', async () => {
+  const { hardware } = require('../src/main/local/setup');
+  const GB = 1024 ** 3;
+  const h = await hardware(noOllamaEnv(), { platform: 'darwin', arch: 'arm64', totalmem: 32 * GB });
+  assert.strictEqual(h.ramGb, 32);
+  assert.strictEqual(h.vramGb, 21);
+  assert.strictEqual(recommend(h).main, 'qwen3-coder:30b');
+  const small = await hardware(noOllamaEnv(), { platform: 'darwin', arch: 'arm64', totalmem: 8 * GB });
+  assert.strictEqual(recommend(small).main, '', 'an 8 GB Mac is for small drafts');
+});
+
+const env0 = () => fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'sb-nogpu-')));
+
+test('an Intel Mac has no shared GPU memory to count', async () => {
+  const { hardware } = require('../src/main/local/setup');
+  const env = { ...noOllamaEnv(), SystemRoot: env0(), ProgramFiles: env0() }; // no nvidia-smi to find
+  const h = await hardware(env, { platform: 'darwin', arch: 'x64', totalmem: 16 * 1024 ** 3 });
+  assert.strictEqual(h.vramGb, null);
+});
+
+test('SHELLBY_FAKE_HARDWARE stands in for the machine, and is ignored when malformed', async () => {
+  const { hardware } = require('../src/main/local/setup');
+  const env = { ...noOllamaEnv(), SHELLBY_FAKE_HARDWARE: '{"ramGb":16,"vramGb":null}' };
+  assert.deepStrictEqual(await hardware(env), { ramGb: 16, vramGb: null, freeGb: null });
+  for (const bad of ['nope', '{"vramGb":8}', '{"ramGb":-1}']) {
+    const h = await hardware({ ...noOllamaEnv(), SHELLBY_FAKE_HARDWARE: bad }, { platform: 'linux', arch: 'x64', totalmem: 8 * 1024 ** 3 });
+    assert.strictEqual(h.ramGb, 8, bad);
+  }
+});

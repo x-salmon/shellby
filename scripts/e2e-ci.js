@@ -144,13 +144,16 @@ function reap(rootPid, sinceMs) {
 
 // A failing check's last lines, as a GitHub error annotation. Annotations are
 // readable without signing in (the job's log isn't), so a red shard says why.
-const ANNOTATION_LINES = 25;
+const ANNOTATION_FAILS = 15; // its FAIL lines first, wherever they were
+const ANNOTATION_LINES = 15; // then how it ended
 const ANNOTATION_CHARS = 4000;
 
-/** `::error` workflow command for a failed check: its output's last lines, escaped. */
+/** `::error` workflow command for a failed check: its FAIL lines and last lines, escaped. */
 function failureAnnotation(name, output) {
   const lines = String(output || '').split(/\r?\n/).map(l => l.trimEnd()).filter(Boolean);
-  const tail = lines.slice(-ANNOTATION_LINES).join('\n').slice(-ANNOTATION_CHARS);
+  const end = lines.slice(-ANNOTATION_LINES);
+  const fails = lines.slice(0, -ANNOTATION_LINES).filter(l => /^\s*FAIL\s/.test(l)).slice(0, ANNOTATION_FAILS);
+  const tail = [...fails, ...(fails.length ? ['...'] : []), ...end].join('\n').slice(-ANNOTATION_CHARS);
   const esc = s => s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
   const title = name.replace(/[,:%\r\n]/g, ' ');
   return `::error title=e2e ${title} failed::${esc(tail || '(no output)')}`;

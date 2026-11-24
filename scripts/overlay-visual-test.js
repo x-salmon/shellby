@@ -4,6 +4,7 @@
 // paints a transparent window on top).
 //   node scripts/overlay-visual-test.js
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -90,6 +91,6 @@ $f.Close()
     console.error('failed:', e.message);
   } finally {
     critter?.close();
-    setTimeout(() => { try { cover?.kill(); } catch { /* gone */ } spawn('taskkill', ['/PID', String(app.pid), '/T', '/F']); process.exit(0); }, 800);
+    setTimeout(() => { try { cover?.kill(); } catch { /* gone */ } endApp(app.pid); process.exit(0); }, 800);
   }
 })();

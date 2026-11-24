@@ -149,6 +149,8 @@ test('a failed check is annotated with its last lines, escaped for a workflow co
   assert.match(a, /^::error title=e2e e2e-queue {2}x failed::/);
   assert.ok(!a.includes('\n') && !a.includes('\r'), 'one line');
   assert.ok(a.endsWith('FAIL: 100%25 wrong'), a.slice(-40));
-  assert.ok(!a.includes('line 14%0A') && a.includes('line 16%0A'), 'only the last lines');
+  assert.ok(!a.includes('line 24%0A') && a.includes('line 26%0A'), 'only the last lines');
+  const early = failureAnnotation('e2e-c', ['FAIL  early one', ...Array.from({ length: 30 }, (_, i) => `PASS ${i}`)].join('\n'));
+  assert.ok(early.includes('::FAIL  early one%0A...%0APASS 15'), 'an early FAIL leads, before the tail');
   assert.match(failureAnnotation('e2e-b', ''), /::\(no output\)$/);
 });

@@ -7,7 +7,8 @@
 // the workflow builder. The editor's chat and its test runs are
 // e2e-routine-chat.js.
 //   node scripts/e2e-routines.js
-const { spawn, execFileSync } = require('child_process');
+const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -89,7 +90,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     fails++;
   } finally {
     // The whole tree: Electron's helpers and any fake sessions.
-    try { execFileSync('taskkill', ['/pid', String(app.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { app.kill(); }
+    endApp(app.pid);
   }
   console.log(fails ? `\n${fails} FAILED` : '\nall passed');
   process.exit(fails ? 1 : 0);

@@ -113,7 +113,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const before = (await users()).length;
     await type('first thought');
     check(await ev("!!document.querySelector('#queued .queue-merging') && /Send now/.test(document.querySelector('#queued .queue-merging button')?.textContent || '')"), 'a chip says it is waiting a moment, with Send now');
-    check(/Ctrl\+Enter sends now/.test(await ev("document.getElementById('sendHint').textContent")), 'the hint says Ctrl+Enter sends now');
+    // ⌘ on a Mac (shared/mac-ui.js)
+    check(/(Ctrl\+|⌘)Enter sends now/.test(await ev("document.getElementById('sendHint').textContent")), 'the hint says Ctrl+Enter sends now');
     check(!(await ev('SB.activeTab().busy')) && await ev("SB.$('input').value === ''"), 'nothing has gone yet, and the box is clear');
     await type('second thought');
     check(await ev('SB.activeTab().queue.length') === 2, 'the second joins it');
