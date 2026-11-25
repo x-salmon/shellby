@@ -211,18 +211,25 @@ const run = (name, attempt) => {
   const tmp = scratchTmp('shellby-e2e-');
   const env = { ...process.env, ...freePortEnv(), ...tmp.env, SHELLBY_E2E: '1' }; // SHELLBY_E2E: see src/main/test-desktop.js
   // On CI the output is caught (then printed) so a failure can be annotated;
-  // run by hand it streams as it comes.
+  // run by hand it streams as it comes. Caught in a file, not a pipe: Node
+  // writes a file at once but a pipe later on macOS, so a check killed at the
+  // timeout kept nothing of what it said.
   const onCi = !!process.env.GITHUB_ACTIONS;
+  const outFile = path.join(tmp.dir, 'check-output.txt');
+  const outFd = onCi ? fs.openSync(outFile, 'w') : null;
   const r = spawnSync(process.execPath, [script], onCi
-    ? { stdio: ['inherit', 'pipe', 'pipe'], encoding: 'utf8', maxBuffer: CI_OUTPUT_MAX, timeout: TIMEOUT_MS, env }
+    ? { stdio: ['inherit', outFd, outFd], timeout: TIMEOUT_MS, env }
     : { stdio: 'inherit', timeout: TIMEOUT_MS, env });
-  if (onCi) { process.stdout.write(r.stdout || ''); process.stderr.write(r.stderr || ''); }
+  let output = '';
+  if (outFd !== null) {
+    fs.closeSync(outFd);
+    try { output = fs.readFileSync(outFile, 'utf8').slice(-CI_OUTPUT_MAX); } catch { /* nothing written */ }
+    process.stdout.write(output);
+  }
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   const ok = !r.error && r.status === 0;
   const why = r.error ? r.error.message : r.status === null ? `killed (${r.signal})` : `exit ${r.status}`;
-  // How it ended goes last: a check killed at the timeout on a Mac loses what it
-  // printed (its pipe writes are async), so that may be all there is to say.
-  if (onCi && !ok) console.log(failureAnnotation(`${name}${attempt > 1 ? ` (attempt ${attempt})` : ''}`, `${r.stdout || ''}\n${r.stderr || ''}\n[${why} after ${secs}s]`));
+  if (onCi && !ok) console.log(failureAnnotation(`${name}${attempt > 1 ? ` (attempt ${attempt})` : ''}`, `${output}\n[${why} after ${secs}s]`));
   console.log(`\n--- ${name}: ${ok ? 'PASS' : 'FAIL'} in ${secs}s`);
   const left = reap(r.pid, started);
   if (left) console.log(`--- ${name} left ${left} process${left === 1 ? '' : 'es'} running; stopped them`);

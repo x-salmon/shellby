@@ -145,7 +145,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev("shellby.setSettings({ mergeSends: false }).then(r => { SB.state.settings = r.settings; })");
     await type('no waiting');
     check(await ev("SB.activeTab().queue.length === 0 && !document.querySelector('#queued .queue-merging')"), 'with the setting off, nothing waits');
-    check(await until('SB.activeTab().busy'), '...it just goes');
+    // Busy, or (a quick turn) already done: either way it went, unmerged and unqueued.
+    check(await until("SB.activeTab().busy || [...document.querySelectorAll('.msg.user')].at(-1)?.textContent.includes('no waiting')"), '...it just goes');
     await ev("shellby.setSettings({ mergeSends: true }).then(r => { SB.state.settings = r.settings; })");
   } catch (e) {
     check(false, e.message);
