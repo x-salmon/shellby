@@ -456,8 +456,12 @@ function shellScan(parts) {
   const inDouble = [];
   const result = problem => ({ problem, inDouble });
   if (parts.every(p => typeof p === 'string')) return result(null);
+  // Matched as written ($'...' needs its quote) and with quotes and escapes taken
+  // out, as sh takes them out: "declare" and de\clare are declare.
   const literal = parts.filter(p => typeof p === 'string').join(' ');
-  if (SH_REFUSED.some(re => re.test(literal))) return result(SH_REFUSED_MSG);
+  const bare = literal.replace(/[\\'"]/g, '');
+  if (SH_REFUSED.some(re => re.test(literal) || re.test(bare))) return result(SH_REFUSED_MSG);
+  let brackets = 0; // unquoted [ not yet closed: a subscript (arithmetic) or a glob
   let single = false, double = false, braces = 0;
   let prev = ''; // the last character before this point ('' at the start, or right after a value)
   let wordStart = true; // is the next character the start of a word, as sh splits them?
@@ -466,6 +470,8 @@ function shellScan(parts) {
     if (typeof part !== 'string') {
       if (single) return result('A {{ value }} inside \'single quotes\' stays as text. Put it in "double quotes", or on its own.');
       if (braces > 0) return result('A {{ value }} inside ${ } is read as more than text by sh. Put it on its own, or in "double quotes".');
+      // a["{{ v }}"]=1: bash takes the quotes off and does the subscript's arithmetic.
+      if (brackets > 0) return result('A {{ value }} inside [ ] can be read as arithmetic by sh, which runs what is in it. Put it on its own, or in "double quotes" outside the brackets.');
       const next = typeof parts[k + 1] === 'string' ? parts[k + 1][0] || '' : '';
       if (double ? prev === '[' : (prev && !SH_BEFORE.test(prev)) || (next && !SH_AFTER.test(next))) return result(SH_WORD_MSG);
       inDouble.push(double);
@@ -488,6 +494,9 @@ function shellScan(parts) {
       }
       if (c === '$' && part[i + 1] === '{') { braces++; i++; prev = '{'; wordStart = false; continue; }
       if (c === '}' && braces > 0) braces--;
+      // An unquoted [ opens a subscript or a glob, unless it's the [ command (a word of its own).
+      else if (c === '[' && !double && !(wordStart && /\s/.test(part[i + 1] ?? ''))) brackets++;
+      else if (c === ']' && !double && brackets > 0) brackets--;
       else if (c === '"') double = !double;
       else if (c === "'" && !double) single = true;
       // A new word starts only after an unquoted, unescaped metacharacter.

@@ -129,7 +129,7 @@ test('sh refuses a value where it could read it as code, or where a scanner coul
   for (const t of ['echo $[ {{ v }} + 1 ]', 'declare -i n={{ v }}', 'typeset -i n={{ v }}', 'f() { local -i n={{ v }}; }; f']) {
     assert.match(expr.shellProblem(t), /can't share a command/, t);
   }
-  for (const t of ['a[{{ v }}]=1', 'echo x{{ v }}', 'echo {{ v }}x', 'echo "a[{{ v }}]"', 'echo {{ v }}#c']) {
+  for (const t of ['echo x{{ v }}', 'echo {{ v }}x', 'echo "a[{{ v }}]"', 'echo {{ v }}#c']) {
     assert.match(expr.shellProblem(t), /word of its own/, t);
   }
   assert.match(expr.shellProblem('echo hi # {{ v }}'), /comment/);
@@ -143,6 +143,14 @@ test('sh refuses a value where it could read it as code, or where a scanner coul
   assert.match(expr.shellProblem('echo "{{ v }}'), /quote or \$\{ open/);
   assert.match(expr.shellProblem("echo {{ v }} 'oops"), /quote or \$\{ open/);
   assert.equal(expr.renderShell('# "\necho {{ v }}', { v: 'x' }).command, '# "\necho "${SHELLBY_VALUE_1}"');
+  for (const t of ['a[{{ v }}]=1', 'a["{{ v }}"]=1', 'a[ "{{ v }}" ]=1', 'a[x"{{ v }}"]=1', 'echo ${#a["{{ v }}"]}']) {
+    assert.ok(expr.shellProblem(t), `a subscript, quoted or not: ${t}`);
+  }
+  for (const t of ['"declare" -i n={{ v }}', 'de\\clare -i n={{ v }}', "'let' n={{ v }}"]) {
+    assert.match(expr.shellProblem(t), /can't share a command/, `a quoted keyword is the keyword: ${t}`);
+  }
+  assert.equal(expr.shellProblem('[ -n "{{ v }}" ] && echo yes'), null, 'the [ command is not a subscript');
+  assert.equal(expr.shellProblem('ls [ab]* && echo {{ v }}'), null, 'a closed glob is fine');
   assert.match(expr.shellProblem("echo '{{ v }}'"), /single quotes/);
   assert.match(expr.shellProblem('echo ${x:{{ v }}}'), /inside \$\{ \}/);
   assert.equal(expr.shellProblem('echo ${HOME}/{{ v }} "${HOME} {{ v }}"'), null, 'a closed ${ } is fine');
