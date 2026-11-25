@@ -431,12 +431,18 @@ function renderShell(text, ctx) {
   return { command, env };
 }
 
-// Where sh could read a value as more than one word of text: arithmetic (bash
-// evaluates a[$(cmd)] in it), [[ ]], let and eval, and the nestings ($( ),
-// backticks, $'...', here-docs) that a quote scanner can't follow. A command
-// with a {{ value }} may not have any of them; it goes in a step of its own.
-const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /\[\[/, /<</, /\$'/, /\$"/, /(?:^|[\s;&|(])(?:let|eval)(?=\s)/];
-const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), [[ ]], $'...', a here-doc, let or eval: sh could read the value as code there. Put that part in a step of its own.";
+// Where bash (a Mac's /bin/sh) evaluates arithmetic, which runs a[$(cmd)]:
+// $(( )), (( )), $[ ], [[ ]], let, and integer variables (declare -i and its
+// kin); and the nestings ($( ), backticks, $'...', $"...", here-docs) that a
+// quote scanner can't follow. A command with a {{ value }} may have none of them.
+const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /\$\[/, /\[\[/, /<</, /\$'/, /\$"/,
+  /(?:^|[\s;&|(])(?:let|eval|declare|typeset|local|readonly)(?=\s)/];
+const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), $[ ], [[ ]], $'...', a here-doc, let, eval, declare, typeset, local or readonly: sh could read the value as code there. Put that part in a step of its own.";
+const SH_WORD_MSG = 'On a Mac, a {{ value }} must be a word of its own or sit inside "double quotes", so sh reads it as text.';
+// Outside quotes, what may stand either side of a value: an allowlist, so a
+// subscript (a[{{ v }}]) or anything else sh treats specially is refused.
+const SH_BEFORE = /[\s;&|=:,/]/;
+const SH_AFTER = /[\s;&|)/.:,]/;
 
 /**
  * Each value must stand as its own word or sit inside plain "double quotes".
@@ -451,18 +457,31 @@ function shellScan(parts) {
   const literal = parts.filter(p => typeof p === 'string').join(' ');
   if (SH_REFUSED.some(re => re.test(literal))) return result(SH_REFUSED_MSG);
   let single = false, double = false, braces = 0;
-  for (const part of parts) {
+  let prev = ''; // the last character before this point ('' at the start, or right after a value)
+  for (let k = 0; k < parts.length; k++) {
+    const part = parts[k];
     if (typeof part !== 'string') {
       if (single) return result('A {{ value }} inside \'single quotes\' stays as text. Put it in "double quotes", or on its own.');
       if (braces > 0) return result('A {{ value }} inside ${ } is read as more than text by sh. Put it on its own, or in "double quotes".');
+      const next = typeof parts[k + 1] === 'string' ? parts[k + 1][0] || '' : '';
+      if (double ? prev === '[' : (prev && !SH_BEFORE.test(prev)) || (next && !SH_AFTER.test(next))) return result(SH_WORD_MSG);
       inDouble.push(double);
+      prev = '';
       continue;
     }
     for (let i = 0; i < part.length; i++) {
       const c = part[i];
+      prev = c;
       if (single) { if (c === "'") single = false; continue; }
-      if (c === '\\') { i++; continue; }
-      if (c === '$' && part[i + 1] === '{') { braces++; i++; continue; }
+      if (c === '\\') { i++; prev = part[i] ?? ''; continue; }
+      // A comment, outside quotes at the start of a word: to the end of the line.
+      // (Straight after a value, k > 0 and i === 0, it's mid-word: not a comment.)
+      if (!double && c === '#' && (i === 0 ? k === 0 : /[\s;&|]/.test(part[i - 1]))) {
+        const nl = part.indexOf('\n', i);
+        if (nl < 0) return result('On a Mac, a {{ value }} after a # comment is never run. Take it out of the comment.');
+        i = nl; prev = '\n'; continue;
+      }
+      if (c === '$' && part[i + 1] === '{') { braces++; i++; prev = '{'; continue; }
       if (c === '}' && braces > 0) { braces--; continue; }
       if (c === '"') double = !double;
       else if (c === "'" && !double) single = true;

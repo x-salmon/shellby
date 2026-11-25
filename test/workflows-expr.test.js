@@ -114,7 +114,8 @@ test('on a Mac, sh gets values the same way: quoted on their own, bare inside ".
   assert.equal(r.command, 'git checkout "${SHELLBY_VALUE_1}" && echo "on ${SHELLBY_VALUE_2}.txt"');
   assert.deepEqual(Object.values(r.env), [SH_EVIL, SH_EVIL]);
   assert.equal(r.command.includes('rm -rf'), false);
-  assert.equal(expr.renderShell('echo \\"{{ a }}', { a: 'v' }).command, 'echo \\""${SHELLBY_VALUE_1}"', 'an escaped quote opens nothing');
+  assert.match(expr.shellProblem('echo \\"{{ a }}'), /word of its own/, 'an escaped quote opens nothing, and is no word boundary');
+  assert.equal(expr.renderShell('cp {{ a }} /tmp/{{ a }}.bak --to={{ a }}', { a: 'v' }).command, 'cp "${SHELLBY_VALUE_1}" /tmp/"${SHELLBY_VALUE_2}".bak --to="${SHELLBY_VALUE_3}"');
   assert.deepEqual(expr.renderShell('ls', {}), { command: 'ls', env: {} });
 });
 
@@ -125,6 +126,15 @@ test('sh refuses a value where it could read it as code, or where a scanner coul
     assert.match(expr.shellProblem(t), /can't share a command/, t);
     assert.throws(() => expr.renderShell(t, v), /can't share a command/, t);
   }
+  for (const t of ['echo $[ {{ v }} + 1 ]', 'declare -i n={{ v }}', 'typeset -i n={{ v }}', 'f() { local -i n={{ v }}; }; f']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, t);
+  }
+  for (const t of ['a[{{ v }}]=1', 'echo x{{ v }}', 'echo {{ v }}x', 'echo "a[{{ v }}]"', 'echo {{ v }}#c']) {
+    assert.match(expr.shellProblem(t), /word of its own/, t);
+  }
+  assert.match(expr.shellProblem('echo hi # {{ v }}'), /comment/);
+  assert.equal(expr.shellProblem('# "\necho {{ v }}'), null, 'a quote in a comment opens nothing');
+  assert.equal(expr.renderShell('# "\necho {{ v }}', { v: 'x' }).command, '# "\necho "${SHELLBY_VALUE_1}"');
   assert.match(expr.shellProblem("echo '{{ v }}'"), /single quotes/);
   assert.match(expr.shellProblem('echo ${x:{{ v }}}'), /inside \$\{ \}/);
   assert.equal(expr.shellProblem('echo ${HOME}/{{ v }} "${HOME} {{ v }}"'), null, 'a closed ${ } is fine');
