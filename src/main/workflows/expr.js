@@ -431,13 +431,17 @@ function renderShell(text, ctx) {
   return { command, env };
 }
 
-// Where bash (a Mac's /bin/sh) evaluates arithmetic, which runs a[$(cmd)]:
-// $(( )), (( )), $[ ], [[ ]], let, and integer variables (declare -i and its
-// kin); and the nestings ($( ), backticks, $'...', $"...", here-docs) that a
-// quote scanner can't follow. A command with a {{ value }} may have none of them.
-const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /\$\[/, /\[\[/, /<</, /\$'/, /\$"/,
+// A command with a {{ value }} keeps to the part of sh a scanner can follow
+// exactly: words, '...', "..." and \. So none of what nests or evaluates:
+// $( ), backticks, (( )), here-docs, $'...', $"...", any { } (${ }, brace
+// groups) or [ ] (subscripts and $[ ] do arithmetic, which runs a[$(cmd)]),
+// and no let, eval or integer variables (declare -i and its kin). The [ and ]
+// of the test command, words of their own, are the one exception.
+const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /<</, /\$'/, /\$"/, /[{}]/,
   /(?:^|[\s;&|(])(?:let|eval|declare|typeset|local|readonly)(?=\s)/];
-const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), $[ ], [[ ]], $'...', a here-doc, let, eval, declare, typeset, local or readonly: sh could read the value as code there. Put that part in a step of its own.";
+const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), { }, [ ], $'...', a here-doc, let, eval, declare, typeset, local or readonly: sh could read the value as code there. Write $HOME rather than ${HOME}, or put that part in a step of its own.";
+/** Any [ or ] that isn't the test command's own word. @param {string} s */
+const strayBracket = s => /[[\]]/.test(s.replace(/(^|[\s;&|])\[(?=\s)/g, '$1').replace(/(\s)\](?=$|[\s;&|])/g, '$1'));
 const SH_WORD_MSG = 'On a Mac, a {{ value }} must be a word of its own or sit inside "double quotes", so sh reads it as text.';
 // Outside quotes, what may stand either side of a value: an allowlist, so a
 // subscript (a[{{ v }}]) or anything else sh treats specially is refused.
@@ -460,20 +464,17 @@ function shellScan(parts) {
   // out, as sh takes them out: "declare" and de\clare are declare.
   const literal = parts.filter(p => typeof p === 'string').join(' ');
   const bare = literal.replace(/[\\'"]/g, '');
-  if (SH_REFUSED.some(re => re.test(literal) || re.test(bare))) return result(SH_REFUSED_MSG);
-  let brackets = 0; // unquoted [ not yet closed: a subscript (arithmetic) or a glob
-  let single = false, double = false, braces = 0;
+  if (SH_REFUSED.some(re => re.test(literal) || re.test(bare)) || strayBracket(literal)) return result(SH_REFUSED_MSG);
+  // What's left is words, quotes and escapes, which this follows exactly.
+  let single = false, double = false;
   let prev = ''; // the last character before this point ('' at the start, or right after a value)
   let wordStart = true; // is the next character the start of a word, as sh splits them?
   for (let k = 0; k < parts.length; k++) {
     const part = parts[k];
     if (typeof part !== 'string') {
       if (single) return result('A {{ value }} inside \'single quotes\' stays as text. Put it in "double quotes", or on its own.');
-      if (braces > 0) return result('A {{ value }} inside ${ } is read as more than text by sh. Put it on its own, or in "double quotes".');
-      // a["{{ v }}"]=1: bash takes the quotes off and does the subscript's arithmetic.
-      if (brackets > 0) return result('A {{ value }} inside [ ] can be read as arithmetic by sh, which runs what is in it. Put it on its own, or in "double quotes" outside the brackets.');
       const next = typeof parts[k + 1] === 'string' ? parts[k + 1][0] || '' : '';
-      if (double ? prev === '[' : (prev && !SH_BEFORE.test(prev)) || (next && !SH_AFTER.test(next))) return result(SH_WORD_MSG);
+      if (!double && ((prev && !SH_BEFORE.test(prev)) || (next && !SH_AFTER.test(next)))) return result(SH_WORD_MSG);
       inDouble.push(double);
       prev = '';
       wordStart = false; // what follows a value is the same word
@@ -485,26 +486,16 @@ function shellScan(parts) {
       if (single) { if (c === "'") single = false; wordStart = false; continue; }
       // An escaped character is plain text, never a boundary: "a\ #b" is one word.
       if (c === '\\') { i++; prev = part[i] ?? ''; wordStart = false; continue; }
-      // A comment: an unquoted # at the start of a word, outside ${ } (where # is
-      // an operator, ${x#pat}). To the end of the line.
-      if (c === '#' && wordStart && !double && braces === 0) {
-        const nl = part.indexOf('\n', i);
-        if (nl < 0) return result('On a Mac, a {{ value }} after a # comment is never run. Take it out of the comment.');
-        i = nl; prev = '\n'; wordStart = true; continue;
-      }
-      if (c === '$' && part[i + 1] === '{') { braces++; i++; prev = '{'; wordStart = false; continue; }
-      if (c === '}' && braces > 0) braces--;
-      // An unquoted [ opens a subscript or a glob, unless it's the [ command (a word of its own).
-      else if (c === '[' && !double && !(wordStart && /\s/.test(part[i + 1] ?? ''))) brackets++;
-      else if (c === ']' && !double && brackets > 0) brackets--;
-      else if (c === '"') double = !double;
+      // A # that could start a comment: refused, not skipped. Mid-word it's text.
+      if (c === '#' && wordStart && !double) return result('On a Mac, a command with a {{ value }} can\'t have a # comment. Take the comment out.');
+      if (c === '"') double = !double;
       else if (c === "'" && !double) single = true;
       // A new word starts only after an unquoted, unescaped metacharacter.
-      wordStart = !double && !single && braces === 0 && SH_META.test(c);
+      wordStart = !double && !single && SH_META.test(c);
     }
   }
-  // Unbalanced quotes or ${ at the end: sh would read it differently, or not at all.
-  if (single || double || braces) return result('On a Mac, this command leaves a quote or ${ open, so sh would read it differently. Close it.');
+  // An open quote at the end: sh would read it differently, or not at all.
+  if (single || double) return result('On a Mac, this command leaves a quote open, so sh would read it differently. Close it.');
   return result(null);
 }
 
