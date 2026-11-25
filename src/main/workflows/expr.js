@@ -439,8 +439,12 @@ function renderShell(text, ctx) {
 // of the test command, words of their own, are the one exception.
 // (A backslash-newline too: sh deletes it, joining what's either side.)
 const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /<</, /\$'/, /\$"/, /[{}]/, /\\\r?\n/,
-  /(?:^|[\s;&|(])(?:let|eval|declare|typeset|local|readonly)(?=\s)/];
-const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), { }, [ ], $'...', a here-doc, a \\ at a line's end, let, eval, declare, typeset, local or readonly: sh could read the value as code there. Write $HOME rather than ${HOME}, or put that part in a step of its own.";
+  // bash's builtins that take a variable's name (a name with a subscript runs
+  // its arithmetic: printf -v 'a[$(cmd)]') or read their argument as code.
+  /(?:^|[\s;&|(])(?:let|eval|declare|typeset|local|readonly|export|unset|read|readarray|mapfile|getopts|trap|source|fc|bind|complete|compgen|enable|alias|coproc|select|function|builtin|command|exec|\.)(?=\s|$)/,
+  /(?:^|[\s;&|(])printf(?=\s)[^;&|\n]*\s-v/,
+  /(?:^|[\s;&|(])(?:test|\[)\s+(?:!\s+)?-[vR](?=\s)/];
+const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), { }, [ ], $'...', a here-doc, a \\ at a line's end, or a builtin that takes a variable's name or code (let, eval, declare, export, unset, read, printf -v, trap, source and the like): sh could read the value as code there. Write $HOME rather than ${HOME}, or put that part in a step of its own.";
 /** Any [ or ] that isn't the test command's own word. @param {string} s */
 const strayBracket = s => /[[\]]/.test(s.replace(/(^|[\s;&|])\[(?=\s)/g, '$1').replace(/(\s)\](?=$|[\s;&|])/g, '$1'));
 const SH_WORD_MSG = 'On a Mac, a {{ value }} must be a word of its own or sit inside "double quotes", so sh reads it as text.';

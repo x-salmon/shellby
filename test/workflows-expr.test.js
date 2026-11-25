@@ -141,6 +141,13 @@ test('sh refuses a value where it could read it as code, or where a scanner coul
   for (const t of ['echo \\\n#"\necho {{ v }}"', 'de\\\nclare -i n={{ v }}', 'echo "a\\\nb" {{ v }}', 'echo \\\r\n{{ v }}']) {
     assert.match(expr.shellProblem(t), /can't share a command/, JSON.stringify(t));
   }
+  // Builtins that take a name (a subscript in it runs) or code.
+  for (const t of ['printf -v {{ v }} x', 'printf %s -v {{ v }}', 'read {{ v }} < f', 'unset {{ v }}', 'export {{ v }}=1', '[ -v {{ v }} ]', 'test ! -v {{ v }}',
+    'mapfile -t {{ v }} < f', 'getopts ab {{ v }}', 'trap {{ v }} EXIT', 'source {{ v }}', '. {{ v }}', 'builtin printf -v {{ v }} x', 'command read {{ v }}', 'fc -e {{ v }}']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, t);
+  }
+  assert.equal(expr.shellProblem('printf "%s\\n" {{ v }}'), null, 'printf without -v is fine');
+  assert.equal(expr.shellProblem('git commit -m "{{ v }}" && npm run build'), null, 'ordinary commands are fine');
   for (const t of ['"declare" -i n={{ v }}', 'de\\clare -i n={{ v }}', "'let' n={{ v }}"]) {
     assert.match(expr.shellProblem(t), /can't share a command/, `a quoted keyword is the keyword: ${t}`);
   }
