@@ -134,6 +134,10 @@ test('sh refuses a value where it could read it as code, or where a scanner coul
   }
   assert.match(expr.shellProblem('echo hi # {{ v }}'), /comment/);
   assert.equal(expr.shellProblem('# "\necho {{ v }}'), null, 'a quote in a comment opens nothing');
+  for (const t of ['(true)#"\necho {{ v }}', 'echo x >#"\necho {{ v }}', 'true;#"\necho {{ v }}']) {
+    assert.equal(expr.renderShell(t, { v: 'x' }).command.endsWith('echo "${SHELLBY_VALUE_1}"'), true, `a comment after an operator: ${JSON.stringify(t)}`);
+  }
+  assert.equal(expr.shellProblem('echo a#"b {{ v }}"'), null, 'a # inside a word is no comment: the quote it opens counts');
   assert.equal(expr.renderShell('# "\necho {{ v }}', { v: 'x' }).command, '# "\necho "${SHELLBY_VALUE_1}"');
   assert.match(expr.shellProblem("echo '{{ v }}'"), /single quotes/);
   assert.match(expr.shellProblem('echo ${x:{{ v }}}'), /inside \$\{ \}/);

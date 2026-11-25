@@ -443,6 +443,8 @@ const SH_WORD_MSG = 'On a Mac, a {{ value }} must be a word of its own or sit in
 // subscript (a[{{ v }}]) or anything else sh treats specially is refused.
 const SH_BEFORE = /[\s;&|=:,/]/;
 const SH_AFTER = /[\s;&|)/.:,]/;
+// sh's metacharacters: a word starts after any of them, and a # there starts a comment.
+const SH_META = /[\s;&|()<>]/;
 
 /**
  * Each value must stand as its own word or sit inside plain "double quotes".
@@ -476,7 +478,7 @@ function shellScan(parts) {
       if (c === '\\') { i++; prev = part[i] ?? ''; continue; }
       // A comment, outside quotes at the start of a word: to the end of the line.
       // (Straight after a value, k > 0 and i === 0, it's mid-word: not a comment.)
-      if (!double && c === '#' && (i === 0 ? k === 0 : /[\s;&|]/.test(part[i - 1]))) {
+      if (!double && c === '#' && (i === 0 ? k === 0 : SH_META.test(part[i - 1]))) {
         const nl = part.indexOf('\n', i);
         if (nl < 0) return result('On a Mac, a {{ value }} after a # comment is never run. Take it out of the comment.');
         i = nl; prev = '\n'; continue;
