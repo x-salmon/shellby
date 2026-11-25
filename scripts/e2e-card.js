@@ -106,7 +106,7 @@ const ihdr = buf => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
     check(await ev("!document.getElementById('cardDiscord').hidden"), 'Post to Discord is offered (a Discord webhook is set up)');
     check(/alt text/.test(await ev("document.getElementById('cardHint').textContent")), 'the hint says X and Bluesky take the alt text');
     await ev("document.getElementById('cardAlt').click()");
-    check(/^Alt text copied/.test(await ev("document.getElementById('cardHint').textContent")), 'Copy alt text says so');
+    check(await until("/^Alt text copied/.test(document.getElementById('cardHint').textContent)", 3000), `Copy alt text says so (${await ev("document.getElementById('cardHint').textContent")})`);
 
     await wait(600);
     const trophy = await ev("(SB.state.wardrobe.achievements.find(a => a.id === 'show-off') || {}).done");

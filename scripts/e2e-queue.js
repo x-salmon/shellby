@@ -135,7 +135,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await type('plain words');
     await type('/compact');
     check(await until('SB.activeTab().busy'), 'the plain message goes at once');
-    check(await ev("SB.activeTab().queue.length === 1 && SB.activeTab().queue[0].text === '/compact'"), 'the command waits behind it');
+    check(await until("SB.activeTab().queue.length === 1 && SB.activeTab().queue[0].text === '/compact'", 3000), `the command waits behind it (${await ev('JSON.stringify(SB.activeTab().queue.map(q => q.text))')})`);
     check(await until(`!SB.activeTab().busy && SB.activeTab().queue.length === 0 && document.querySelectorAll('.msg.user').length === ${n + 2}`, 15000), 'then goes in a turn of its own');
     const twoTurns = (await users()).slice(-2);
     check(JSON.stringify(twoTurns) === JSON.stringify(['plain words', '/compact']), `two turns: ${twoTurns.join(' | ')}`);

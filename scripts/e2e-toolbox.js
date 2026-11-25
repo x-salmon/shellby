@@ -44,6 +44,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       try { list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); } catch { /* starting */ }
       await wait(500);
     }
+    console.log(`(targets: ${list.map(t => path.basename(t.url)).join(', ') || 'none'})`);
     const ws = new WebSocket(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     await new Promise(r => { ws.onopen = r; });
     let id = 0; const p = new Map();
@@ -54,6 +55,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const pick = (sel, value) => ev(`(s => { s.value = ${JSON.stringify(value)}; s.dispatchEvent(new Event('change')); })(document.querySelector('${sel}'))`);
     const rows = () => ev("document.querySelectorAll('#toolList .tool-row').length");
     await panelBooted(ev);
+    console.log('(the panel is up)');
 
     const out = process.argv[2] || path.join(os.tmpdir(), 'shellby-toolbox.png');
     // Screenshots are for a person to look at, not something checked, so one that
