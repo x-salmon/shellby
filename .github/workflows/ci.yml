@@ -56,14 +56,12 @@ jobs:
       - name: The packaged app starts
         run: node scripts/mac-smoke.js dist/mac-arm64/Shellby.app
 
-  # The UI checks on a Mac. Until the whole suite passes there, a red shard here
-  # says what's left rather than blocking a merge: continue-on-error comes off
-  # once it's green (docs/MAC.md).
+  # The UI checks on a Mac: the whole suite, as on Windows, and a red shard
+  # blocks a merge the same way (docs/MAC.md).
   e2e-mac:
     name: e2e on macOS (${{ matrix.shard }}/3)
     runs-on: macos-latest
     timeout-minutes: 45
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:

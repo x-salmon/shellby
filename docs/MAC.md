@@ -11,6 +11,7 @@ Windows-only piece was carried over, and what's still left.
 | Ending what Claude started | Job objects (`process-job.js`) | `posix-job.js`: a `ps` look every 3 s while a task runs remembers its processes by pid and start time, so an orphaned MCP server is still found and a reused pid is never taken for it. Same calls, so nothing above it changed. |
 | Ending a process tree | `taskkill /T` | `proc-tree.js` `killTree`, both platforms |
 | Shells | cmd, PowerShell | `shells.js`: `/bin/sh` for commands Shellby makes, your own zsh or bash for `!` commands |
+| Workflow run steps | PowerShell, values as `${env:…}` | `/bin/dash` (`shellcmd.js` `posix`), values as `"${…}"` through the environment. A command with a `{{ value }}` keeps to plain words and quotes (`expr.js` `shellScan`): bash reads too many places as arithmetic, which runs `a[$(cmd)]` |
 | Finding Claude Code | `%APPDATA%`, `.local\bin` | `~/.local/bin`, `~/.claude/local`, Homebrew, then PATH |
 | PATH | The user's | An app opened from Finder gets launchd's bare PATH, so `shell-env.js` reads your login shell's once at start |
 | Sign-in watch | `.credentials.json`'s time | The Keychain item's change time (`security`, never the secret) |
@@ -58,8 +59,8 @@ npm run dist:mac                      # both, then a DMG and zip for each archit
 
 - **mac** (in CI): the unit tests on macOS, the dictation helper compiled, the app
   packaged, and `scripts/mac-smoke.js` checking the packaged app starts.
-- **e2e-mac**: the whole UI suite on macOS, in three shards. It has
-  `continue-on-error` until it's green there; take that off once it is.
+- **e2e-mac**: the whole UI suite on macOS, in three shards. A red shard blocks
+  a merge and a release, as on Windows.
 - **Release**: the `mac` job builds and uploads the DMGs, zips and
   `latest-mac.yml` to the draft before the Windows job publishes, and
   `release-guard.js` won't publish without them. Signed and notarized once the
