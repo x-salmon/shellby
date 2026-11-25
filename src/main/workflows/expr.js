@@ -417,27 +417,64 @@ function renderPowerShell(text, ctx) {
 function renderShell(text, ctx) {
   const parsed = parseTemplate(text);
   if (!parsed.ok) throw new Error(parsed.error);
+  const scan = shellScan(parsed.parts);
+  if (scan.problem) throw new Error(scan.problem);
   const env = {};
   let n = 0;
   let command = '';
-  let single = false, double = false;
   for (const part of parsed.parts) {
-    if (typeof part === 'string') {
-      command += part;
-      for (let i = 0; i < part.length; i++) {
-        const c = part[i];
-        if (single) { if (c === "'") single = false; continue; }
-        if (c === '\\') { i++; continue; }
-        if (c === '"') double = !double;
-        else if (c === "'" && !double) single = true;
-      }
-      continue;
-    }
+    if (typeof part === 'string') { command += part; continue; }
     const name = `${ENV_PREFIX}${++n}`;
     env[name] = toText(evalPart(part, ctx)).replace(/\u0000/g, '').slice(0, MAX_ENV_VALUE);
-    command += double ? `\${${name}}` : `"\${${name}}"`;
+    command += scan.inDouble[n - 1] ? `\${${name}}` : `"\${${name}}"`;
   }
   return { command, env };
+}
+
+// Where sh could read a value as more than one word of text: arithmetic (bash
+// evaluates a[$(cmd)] in it), [[ ]], let and eval, and the nestings ($( ),
+// backticks, $'...', here-docs) that a quote scanner can't follow. A command
+// with a {{ value }} may not have any of them; it goes in a step of its own.
+const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /\[\[/, /<</, /\$'/, /\$"/, /(?:^|[\s;&|(])(?:let|eval)(?=\s)/];
+const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), [[ ]], $'...', a here-doc, let or eval: sh could read the value as code there. Put that part in a step of its own.";
+
+/**
+ * Each value must stand as its own word or sit inside plain "double quotes".
+ * -> { problem: why not, or null; inDouble: per value, whether it's inside "..." }
+ * @param {any[]} parts parseTemplate's
+ */
+function shellScan(parts) {
+  /** @type {boolean[]} */
+  const inDouble = [];
+  const result = problem => ({ problem, inDouble });
+  if (parts.every(p => typeof p === 'string')) return result(null);
+  const literal = parts.filter(p => typeof p === 'string').join(' ');
+  if (SH_REFUSED.some(re => re.test(literal))) return result(SH_REFUSED_MSG);
+  let single = false, double = false, braces = 0;
+  for (const part of parts) {
+    if (typeof part !== 'string') {
+      if (single) return result('A {{ value }} inside \'single quotes\' stays as text. Put it in "double quotes", or on its own.');
+      if (braces > 0) return result('A {{ value }} inside ${ } is read as more than text by sh. Put it on its own, or in "double quotes".');
+      inDouble.push(double);
+      continue;
+    }
+    for (let i = 0; i < part.length; i++) {
+      const c = part[i];
+      if (single) { if (c === "'") single = false; continue; }
+      if (c === '\\') { i++; continue; }
+      if (c === '$' && part[i + 1] === '{') { braces++; i++; continue; }
+      if (c === '}' && braces > 0) { braces--; continue; }
+      if (c === '"') double = !double;
+      else if (c === "'" && !double) single = true;
+    }
+  }
+  return result(null);
+}
+
+/** Why sh can't take this template safely, or null: the editor's lint on a Mac. */
+function shellProblem(text) {
+  const parsed = parseTemplate(text);
+  return parsed.ok ? shellScan(parsed.parts).problem : parsed.error;
 }
 
 /**
@@ -465,7 +502,7 @@ function valuesInSingleQuotes(text) {
 }
 
 module.exports = {
-  renderPowerShell, renderShell, valuesInSingleQuotes,
+  renderPowerShell, renderShell, shellProblem, valuesInSingleQuotes,
   ROOTS, FILTERS,
   parsePath, getPath, lookup, toText, truthy,
   parseTemplate, render, resolve, templateRefs, hasTemplate,

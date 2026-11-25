@@ -110,12 +110,26 @@ test('commands get values as environment variables, never as their text', () => 
 
 const SH_EVIL = "x'; rm -rf ~; $(touch pwned) `touch pwned` * \"";
 test('on a Mac, sh gets values the same way: quoted on their own, bare inside "..."', () => {
-  const r = expr.renderShell('git checkout {{ trigger.repo }} && echo "on {{ trigger.repo }}.txt" \'{{ trigger.repo }}\'', { trigger: { repo: SH_EVIL } });
-  assert.equal(r.command, 'git checkout "${SHELLBY_VALUE_1}" && echo "on ${SHELLBY_VALUE_2}.txt" \'"${SHELLBY_VALUE_3}"\'');
-  assert.deepEqual(Object.values(r.env), [SH_EVIL, SH_EVIL, SH_EVIL]);
+  const r = expr.renderShell('git checkout {{ trigger.repo }} && echo "on {{ trigger.repo }}.txt"', { trigger: { repo: SH_EVIL } });
+  assert.equal(r.command, 'git checkout "${SHELLBY_VALUE_1}" && echo "on ${SHELLBY_VALUE_2}.txt"');
+  assert.deepEqual(Object.values(r.env), [SH_EVIL, SH_EVIL]);
   assert.equal(r.command.includes('rm -rf'), false);
   assert.equal(expr.renderShell('echo \\"{{ a }}', { a: 'v' }).command, 'echo \\""${SHELLBY_VALUE_1}"', 'an escaped quote opens nothing');
   assert.deepEqual(expr.renderShell('ls', {}), { command: 'ls', env: {} });
+});
+
+test('sh refuses a value where it could read it as code, or where a scanner could lose track of the quotes', () => {
+  const v = { v: 'a[$(touch pwned)]' };
+  for (const t of ['echo $(( {{ v }} + 1 ))', '(( n = {{ v }} ))', '[[ {{ v }} -gt 1 ]]', 'let n={{ v }}', 'eval echo {{ v }}',
+    'echo "$(echo "{{ v }}")"', 'echo `echo {{ v }}`', "echo $'it\\'s {{ v }}'", 'cat <<EOF\n{{ v }}\nEOF', 'cd $(pwd) && echo {{ v }}']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, t);
+    assert.throws(() => expr.renderShell(t, v), /can't share a command/, t);
+  }
+  assert.match(expr.shellProblem("echo '{{ v }}'"), /single quotes/);
+  assert.match(expr.shellProblem('echo ${x:{{ v }}}'), /inside \$\{ \}/);
+  assert.equal(expr.shellProblem('echo ${HOME}/{{ v }} "${HOME} {{ v }}"'), null, 'a closed ${ } is fine');
+  assert.equal(expr.shellProblem('git log --oneline'), null, 'no value, nothing to refuse');
+  assert.equal(expr.shellProblem('echo $(( 1 + 2 ))'), null, 'no value, nothing to refuse');
 });
 
 test('sh reads each value as one word of text, and runs none of it', { skip: process.platform === 'win32' && 'needs /bin/sh' }, () => {
