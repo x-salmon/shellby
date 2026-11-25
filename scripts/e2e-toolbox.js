@@ -19,6 +19,7 @@ const SKILLS = 200;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
+  console.log(`(starting: CDP on ${PORT})`);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
   const project = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-toolbox-project-'));
   for (let i = 0; i < SKILLS; i++) {
@@ -41,12 +42,14 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   try {
     let list = [];
     for (let i = 0; i < 40 && !list.some(t => t.url.endsWith('panel.html')); i++) {
-      try { list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); } catch { /* starting */ }
+      // Bounded: a port that takes the connection and never answers would hold this forever.
+      try { list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`, { signal: AbortSignal.timeout(3000) })).json(); } catch { /* starting */ }
       await wait(500);
     }
     console.log(`(targets: ${list.map(t => path.basename(t.url)).join(', ') || 'none'})`);
     const ws = new WebSocket(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await new Promise(r => { ws.onopen = r; });
+    const opened = await Promise.race([new Promise(r => { ws.onopen = () => r(true); }), wait(15000).then(() => false)]);
+    if (!opened) throw new Error("the panel's DevTools socket never opened");
     let id = 0; const p = new Map();
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
     const call = (method, params = {}) => new Promise(r => { const i = ++id; p.set(i, m => r(m.result)); ws.send(JSON.stringify({ id: i, method, params })); });
