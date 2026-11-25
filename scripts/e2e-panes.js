@@ -14,6 +14,8 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9398;
+// CDP's modifier for the key a person holds for a shortcut: Cmd (4) on a Mac, Ctrl (2) elsewhere.
+const CMD = process.platform === 'darwin' ? 4 : 2;
 const SHOT_TIMEOUT_MS = 10000;   // an unpainted window never answers captureScreenshot
 const CDP_TIMEOUT_MS = 30000;    // the longest any one call to the page may take
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -127,7 +129,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev(`SB.activate('${D}')`);
     await ev("SB.setView('settings')");
     await wait(300);
-    for (const type of ['keyDown', 'keyUp']) await panel.send('Input.dispatchKeyEvent', { type, key: '\\', code: 'Backslash', windowsVirtualKeyCode: 220, modifiers: 2 });
+    for (const type of ['keyDown', 'keyUp']) await panel.send('Input.dispatchKeyEvent', { type, key: '\\', code: 'Backslash', windowsVirtualKeyCode: 220, modifiers: CMD });
     check(await until('SB.state.grid.length === 2'), 'Ctrl+\\ from Settings splits');
     check(await ev("SB.state.view === 'chat'"), 'and shows the chat');
     await wait(300);

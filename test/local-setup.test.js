@@ -81,7 +81,7 @@ test('status: too old, empty, ready, and LM Studio', async () => {
 test('on Apple silicon two thirds of the shared memory counts as the GPU, so a 32 GB Mac gets a coder', async () => {
   const { hardware } = require('../src/main/local/setup');
   const GB = 1024 ** 3;
-  const h = await hardware(noOllamaEnv(), { platform: 'darwin', arch: 'arm64', totalmem: 32 * GB });
+  const h = { ...await hardware(noOllamaEnv(), { platform: 'darwin', arch: 'arm64', totalmem: 32 * GB }), freeGb: null }; // whatever this disk has free
   assert.strictEqual(h.ramGb, 32);
   assert.strictEqual(h.vramGb, 21);
   assert.strictEqual(recommend(h).main, 'qwen3-coder:30b');
