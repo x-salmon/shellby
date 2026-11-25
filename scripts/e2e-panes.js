@@ -147,7 +147,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
 
     // Two columns need 2 x 286 + 6 px of chat; a 460 px panel can't hold that, so it must have grown.
     const grownTo = await ev('window.innerWidth');
-    check(startWidth >= 700 || grownTo > startWidth, `the panel grew to fit two panes (${startWidth} -> ${grownTo})`);
+    check(startWidth >= 700 || grownTo > startWidth, `the panel grew to fit two panes (${startWidth} -> ${grownTo}; ${await ev('JSON.stringify({ x: screenX, sw: screen.availWidth, sl: screen.availLeft, grid: SB.state.grid.length, focus: document.hasFocus() })')})`);
     check(grownTo <= Math.max(startWidth, 2 * 286 + 6 + chromeW + 2), `and no wider than they need (${grownTo})`);
     check(await ev(`[...document.querySelectorAll('.pane')].every(p => p.getBoundingClientRect().width >= ${280 - 1})`), 'no pane narrower than 280 px');
     // The left pane shows A from here on. The box moving to another pane leaves

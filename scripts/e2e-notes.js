@@ -152,7 +152,7 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     let entry = await last();
     check(entry.title === 'Ask: export to STL', `the tab says what it is (${entry.title})`);
     check(entry.mode === 'ask', `Ask runs in Ask-first mode whatever mode you are in (${entry.mode})`);
-    check(entry.cwd.toLowerCase() === key, 'in the project folder');
+    check((process.platform === 'win32' ? entry.cwd.toLowerCase() : entry.cwd) === key, `in the project folder (${entry.cwd})`);
     const said = await ev("SB.activeTab().el.textContent");
     check(said.includes('"Do it", "Do it differently" or "Skip it"') && said.includes('Read only'), 'the prompt asks for a verdict and changes nothing');
 
