@@ -246,16 +246,25 @@ function registerSettingsIpc(ipcMain, d) {
   ipcMain.handle('local:detect', () => localModel.detect());
   // Local mode's presets (local/presets.js): fill every picker from what the server has, and say what's missing.
   // Shared with the crab's menu (wiring/tray.js localModeMenu), which then tells the panel.
+  // Only the newest apply writes: two at once (a finished download re-applying
+  // while you pick another) each wait on the server's list, and the older one
+  // landing last would undo the newer.
+  let presetSeq = 0;
   d.applyLocalPreset = async name => {
-    const lm = localModel.cleanSettings(d.config.get('localModel'));
-    if (!lm) return { ok: false, error: 'Set a server address first.' };
+    const mine = ++presetSeq;
     /** @type {any[]} */
     let installed = [];
     if (name !== 'off' && name !== 'custom') {
-      const r = await localModel.listModels(lm.url);
+      const url = localModel.cleanSettings(d.config.get('localModel'))?.url;
+      if (!url) return { ok: false, error: 'Set a server address first.' };
+      const r = await localModel.listModels(url);
+      if (mine !== presetSeq) return { ok: false, stale: true, error: 'Another pick came after this one.' };
       if (!r.ok && !/no models/.test(r.error || '')) return { ok: false, error: r.error };
       installed = (r.ok && r.models) || [];
     }
+    // Read after the wait, so what changed meanwhile isn't written over.
+    const lm = localModel.cleanSettings(d.config.get('localModel'));
+    if (!lm) return { ok: false, error: 'Set a server address first.' };
     const { settings, missing } = localPresets.applyPreset(lm, name, installed);
     d.config.set({ localModel: localModel.cleanSettings(settings) });
     return { ok: true, settings: d.panelSettings(), missing };
