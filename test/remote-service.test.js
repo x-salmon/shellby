@@ -45,7 +45,7 @@ test('askpass: only a request with the token is asked, and the answer goes back'
   const dir = tmp('shellby-askpass-');
   const asked = [];
   const answers = ['open sesame', null, 'two\nlines'];
-  const ap = createAskpass({ dir, ask: async q => { asked.push(q); return answers.shift(); }, compiler: null });
+  const ap = createAskpass({ dir, ask: async q => { asked.push(q); return answers.shift(); }, compiler: null, platform: 'win32' });
   // Already built (this test is about the server): the helper's source and a stand-in exe.
   fs.writeFileSync(path.join(dir, 'shellby-askpass.cs'), require('../src/main/remote/askpass').SOURCE);
   fs.writeFileSync(path.join(dir, 'shellby-askpass.exe'), '');
@@ -68,7 +68,7 @@ test('askpass: only a request with the token is asked, and the answer goes back'
 });
 
 test('askpass: no helper to build with, no askpass (and it says why)', async () => {
-  const ap = createAskpass({ dir: tmp('shellby-askpass-'), ask: async () => null, compiler: null });
+  const ap = createAskpass({ dir: tmp('shellby-askpass-'), ask: async () => null, compiler: null, platform: 'win32' });
   await assert.rejects(ap.env(), /C# compiler/);
 });
 
@@ -92,6 +92,31 @@ test('askpass: the built helper passes any prompt through as text, and runs none
     assert.ok(!fs.existsSync(canary), 'nothing in the prompt ran');
     // Without the token from Shellby's environment it gets nothing.
     const bare = await new Promise(resolve => execFile(env.SSH_ASKPASS, ['x'], { env: { ...process.env, SHELLBY_ASKPASS_TOKEN: '' }, windowsHide: true }, err => resolve(err?.code)));
+    assert.equal(bare, 1);
+  } finally {
+    ap.close();
+  }
+});
+
+// The Mac's helper, a sh script over curl: the same hostile prompt, as text.
+test('askpass on a Mac: the script passes any prompt through as text, and runs none of it', { skip: process.platform !== 'darwin' && 'needs macOS' }, async () => {
+  const dir = tmp('shellby-askpass-');
+  const canary = path.join(dir, 'ran.txt');
+  const hostile = `Code" $(touch ${canary}) \`touch ${canary}\`; touch ${canary} % '$HOME'`;
+  const asked = [];
+  const ap = createAskpass({ dir, ask: async q => { asked.push(q.prompt); return "p@ss w%rd \"&|$(x)'"; }, platform: 'darwin' });
+  try {
+    const env = await ap.env();
+    assert.equal(env.SSH_ASKPASS, path.join(dir, 'shellby-askpass.sh'));
+    assert.equal(fs.statSync(env.SSH_ASKPASS).mode & 0o777, 0o700, 'only you can run or change it');
+    const r = await new Promise(resolve => {
+      execFile(env.SSH_ASKPASS, [hostile], { env: { ...process.env, ...env }, timeout: 30000 }, (err, stdout) => resolve({ code: err ? err.code : 0, stdout }));
+    });
+    assert.equal(r.code, 0);
+    assert.equal(r.stdout, "p@ss w%rd \"&|$(x)'\n", 'the answer comes back exactly');
+    assert.deepEqual(asked, [hostile], 'the prompt arrives exactly');
+    assert.ok(!fs.existsSync(canary), 'nothing in the prompt ran');
+    const bare = await new Promise(resolve => execFile(env.SSH_ASKPASS, ['x'], { env: { ...process.env, SHELLBY_ASKPASS_TOKEN: '' } }, err => resolve(err?.code)));
     assert.equal(bare, 1);
   } finally {
     ap.close();
