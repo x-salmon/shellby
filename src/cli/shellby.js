@@ -116,6 +116,8 @@ function readToken(file = 'cli-token') {
     process.env.APPDATA && path.join(process.env.APPDATA, 'Shellby'),
     process.env.XDG_CONFIG_HOME && path.join(process.env.XDG_CONFIG_HOME, 'Shellby'),
     path.join(os.homedir(), 'AppData', 'Roaming', 'Shellby'),
+    // Where Electron keeps the app's data on a Mac.
+    path.join(os.homedir(), 'Library', 'Application Support', 'Shellby'),
     path.join(os.homedir(), '.config', 'Shellby'),
   ].filter(Boolean);
   for (const d of dirs) {

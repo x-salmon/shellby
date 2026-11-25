@@ -584,3 +584,15 @@ test('watcher: a seen file from before mods existed treats the mods already inst
   w.stop();
   assert.deepEqual(learned, []);
 });
+
+test('your own come from CLAUDE_CONFIG_DIR when it is set, as Claude Code reads them', () => {
+  const home = tmp();
+  const config = tmp();
+  fs.mkdirSync(path.join(home, '.claude', 'skills', 'at-home'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', 'skills', 'at-home', 'SKILL.md'), '---\nname: at-home\ndescription: x\n---\n');
+  fs.mkdirSync(path.join(config, 'skills', 'in-config'), { recursive: true });
+  fs.writeFileSync(path.join(config, 'skills', 'in-config', 'SKILL.md'), '---\nname: in-config\ndescription: x\n---\n');
+  const mine = tb => tb.skills.filter(s => s.source === 'user').map(s => s.name);
+  assert.deepEqual(mine(scanToolbox({ home, userDir: config })), ['in-config']);
+  assert.deepEqual(mine(scanToolbox({ home })), ['at-home'], 'unset: ~/.claude');
+});

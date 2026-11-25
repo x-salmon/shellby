@@ -215,8 +215,8 @@ function isInside(file, dir) {
 // pluginCache: a Map of plugin dir -> what was found there. A plugin's cached
 // version is written once when it's installed, so a poll can reuse it; the
 // caller clears it for a real rescan.
-/** @param {{ home?: string, cwd?: string | null, plugins?: Array<{ name: string, path: string }>, metaCache?: Map<string, MetaEntry> | null, pluginCache?: Map<string, Found> | null }} [opts] */
-function scanToolbox({ home, cwd, plugins = [], metaCache = null, pluginCache = null } = {}) {
+/** @param {{ home?: string, userDir?: string | null, cwd?: string | null, plugins?: Array<{ name: string, path: string }>, metaCache?: Map<string, MetaEntry> | null, pluginCache?: Map<string, Found> | null }} [opts] */
+function scanToolbox({ home, userDir = null, cwd, plugins = [], metaCache = null, pluginCache = null } = {}) {
   const cache = metaCache instanceof Map ? { prev: metaCache, next: new Map() } : null;
   const plugCache = pluginCache instanceof Map ? pluginCache : null;
   const roots = [];
@@ -225,7 +225,9 @@ function scanToolbox({ home, cwd, plugins = [], metaCache = null, pluginCache = 
       roots.push({ dir: p.path, source: `plugin:${p.name}`, prefix: p.name, rank: PRIORITY.plugin });
     }
   }
-  if (home) roots.push({ dir: path.join(home, '.claude'), source: 'user', prefix: '', rank: PRIORITY.user });
+  // Yours: CLAUDE_CONFIG_DIR when it's set (as Claude Code reads it), else ~/.claude.
+  const mine = userDir || (home ? path.join(home, '.claude') : null);
+  if (mine) roots.push({ dir: mine, source: 'user', prefix: '', rank: PRIORITY.user });
   if (cwd && !(home && samePath(cwd, home))) {
     roots.push({ dir: path.join(cwd, '.claude'), source: 'project', prefix: '', rank: PRIORITY.project });
   }
@@ -352,7 +354,7 @@ class ToolboxWatcher extends EventEmitter {
    * skill written while Shellby was closed is still news when it starts.
    */
   /**
-   * @param {{ home?: string, getCwd?: () => string | null | undefined, getPlugins?: () => Array<{ name: string, path: string }>, getInstalled?: () => unknown[], getSettings?: () => unknown[],
+   * @param {{ home?: string, userDir?: string | null, getCwd?: () => string | null | undefined, getPlugins?: () => Array<{ name: string, path: string }>, getInstalled?: () => unknown[], getSettings?: () => unknown[],
    *   debounceMs?: number, pollMs?: number, fsImpl?: typeof fs, seenFile?: string | null, log?: { warn?: (msg: string) => void } | null, whenStill?: ((key: string, fn: () => void) => void) | null }} [opts]
    *
    * getInstalled: () => marketplace plugins as the Skill Shop last listed them
@@ -362,9 +364,10 @@ class ToolboxWatcher extends EventEmitter {
    * whenStill: (key, fn) => runs fn now, or once the crab stops walking
    * (desktop/still.js): a scan is 20-50 ms of the main process, a stop mid-stride.
    */
-  constructor({ home, getCwd, getPlugins, getInstalled, getSettings, debounceMs = 800, pollMs = 60000, fsImpl = fs, seenFile = null, log = null, whenStill = null } = {}) {
+  constructor({ home, userDir = null, getCwd, getPlugins, getInstalled, getSettings, debounceMs = 800, pollMs = 60000, fsImpl = fs, seenFile = null, log = null, whenStill = null } = {}) {
     super();
     this.home = home;
+    this.userDir = userDir || (home ? path.join(home, '.claude') : null);
     this.whenStill = typeof whenStill === 'function' ? whenStill : (_key, fn) => fn();
     this.getCwd = typeof getCwd === 'function' ? getCwd : () => null;
     this.getPlugins = typeof getPlugins === 'function' ? getPlugins : () => [];
@@ -498,7 +501,7 @@ class ToolboxWatcher extends EventEmitter {
     const plugins = this.plugins();
     const prevPlugins = this.pluginKey;
     let scan;
-    try { scan = scanToolbox({ home: this.home, cwd, plugins, metaCache: this.metaCache, pluginCache: this.pluginCache }); } catch { return; }
+    try { scan = scanToolbox({ home: this.home, userDir: this.userDir, cwd, plugins, metaCache: this.metaCache, pluginCache: this.pluginCache }); } catch { return; }
     scan.mods = this.scanMods();
     const prev = this.scan;
     this.scan = scan;
@@ -568,7 +571,7 @@ class ToolboxWatcher extends EventEmitter {
 
   watchDirs(cwd) {
     const roots = [];
-    if (this.home) roots.push(path.join(this.home, '.claude'));
+    if (this.userDir) roots.push(this.userDir);
     if (cwd && !(this.home && samePath(cwd, this.home))) roots.push(path.join(cwd, '.claude'));
     const dirs = [];
     for (const r of roots) {

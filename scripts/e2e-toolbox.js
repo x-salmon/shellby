@@ -35,7 +35,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, cwd: project }));
   const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: ['ignore', 'ignore', 'pipe'], // its stderr, to say why when it never comes up
-    env: { ...process.env, USERPROFILE: home, HOME: home, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') },
+    // Yours via CLAUDE_CONFIG_DIR. HOME stays real on a Mac: an empty one has no
+    // Keychain, and the app's first safeStorage call waits on it with no window up.
+    env: { ...process.env, CLAUDE_CONFIG_DIR: path.join(home, '.claude'), ...(process.platform === 'win32' ? { USERPROFILE: home, HOME: home } : {}), SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') },
   });
   let appErr = '';
   app.stderr.on('data', d => { appErr = (appErr + d).slice(-3000); });

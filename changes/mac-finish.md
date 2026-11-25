@@ -7,6 +7,8 @@
 - On a Mac, a workflow's run steps get their values. Every {{ value }} came out empty there.
 - On a Mac, "Alt text" on the share card stays as words instead of turning into ⌥.
 - Split and Show beside the chat work when the panel is already as tall as the screen allows (a small display, or the Dock on a Mac). They said there was no room.
+- On a Mac, the `shellby` command reaches the running app (it looked for its token only where Windows and Linux keep it), so `shellby next` and the rest work there.
+- The Toolbox lists your own skills, agents and commands from CLAUDE_CONFIG_DIR when it's set, as Claude Code does, rather than always from ~/.claude.
 
 ### Changed
 
