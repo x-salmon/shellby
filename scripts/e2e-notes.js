@@ -63,7 +63,8 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
 
     // ---- 1. it opens on the project you're working in
     await open();
-    check(await scope() === key, 'Notes opens on the project you are working in');
+    const opened0 = await scope();
+    check(opened0 === key, `Notes opens on the project you are working in (${JSON.stringify(opened0)}, want ${JSON.stringify(key)})`);
     check(await ev("document.querySelector('#notesScope option:checked').textContent.includes('· here')"), 'and the list picker says it is the one here');
     check(await ev("document.querySelector('#noteList .note-empty') !== null"), 'an empty project says so');
 

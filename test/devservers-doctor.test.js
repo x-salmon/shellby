@@ -149,10 +149,24 @@ test('who has a port: names from Windows, and whether to offer Stop', async () =
     ? '  TCP    [::]:3000    [::]:0    LISTENING    900\n'
     : '  TCP    0.0.0.0:3000    0.0.0.0:0    LISTENING    4242\n');
   const names = { 4242: 'node.exe', 900: 'svchost.exe' };
-  const holders = await io.whoHasPort(3000, { run, info: () => ({ alive: true, createdAt: 123 }), image: pid => ({ name: names[pid] }) });
+  const holders = await io.whoHasPort(3000, { run, platform: 'win32', info: () => ({ alive: true, createdAt: 123 }), image: pid => ({ name: names[pid] }) });
   assert.deepEqual(holders, [
     { pid: 4242, name: 'node.exe', createdAt: 123, canStop: true },
     { pid: 900, name: 'svchost.exe', createdAt: 123, canStop: false },
   ]);
   assert.deepEqual(await io.whoHasPort('3000', { run }), []);
+});
+
+test('who has a port on a Mac: the listeners lsof names, AirPlay Receiver never offered as Stop', async () => {
+  const asked = [];
+  const run = (exe, args, _opts, cb) => { asked.push([exe, ...args].join(' ')); cb(null, ['p4242', 'p512', ''].join('\n')); };
+  const names = { 4242: 'node', 512: 'controlcenter' };
+  const holders = await io.whoHasPort(5000, { run, platform: 'darwin', info: () => ({ alive: true, createdAt: 7 }), image: pid => ({ name: names[pid] }) });
+  assert.deepEqual(asked, ['/usr/sbin/lsof -nP -iTCP:5000 -sTCP:LISTEN -Fp']);
+  assert.deepEqual(holders, [
+    { pid: 4242, name: 'node', createdAt: 7, canStop: true },
+    { pid: 512, name: 'controlcenter', createdAt: 7, canStop: false },
+  ]);
+  const none = (_e, _a, _o, cb) => cb(Object.assign(new Error('exit 1'), { code: 1 }), '');
+  assert.deepEqual(await io.whoHasPort(5000, { run: none, platform: 'darwin' }), [], 'lsof finding nobody is nobody');
 });

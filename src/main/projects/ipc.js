@@ -269,7 +269,7 @@ function registerProjectsIpc(ipcMain, d) {
     const yes = await d.ask({
       icon: '🔌', danger: true,
       title: `Stop ${name}?`,
-      message: `${name} (process ${h.pid}) is using port ${look.port}. Stopping it ends it and anything it started, the way Task Manager's End task does.`,
+      message: `${name} (process ${h.pid}) is using port ${look.port}. Stopping it ends it and anything it started, the way ${process.platform === 'darwin' ? "Activity Monitor's Force Quit" : "Task Manager's End task"} does.`,
       note: "Anything unsaved in it is lost. If you don't know what it is, use another port instead.",
       buttons: [{ label: `Stop ${name}`, style: 'danger' }, { label: 'Leave it' }], defaultId: 1, cancelId: 1,
     });

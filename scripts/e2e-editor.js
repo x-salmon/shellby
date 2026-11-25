@@ -23,7 +23,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const shots = process.argv[2];
   if (shots) fs.mkdirSync(shots, { recursive: true });
 
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-editor-work-'));
+  const work = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-editor-work-'))); // a Mac's /var is /private/var, which Claude reports
   fs.writeFileSync(path.join(work, 'notes.txt'), 'first line\nsecond line\nthird line\n');
 
   const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
@@ -58,7 +58,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     check(await until(`!!${card}?.querySelector('.ediff')`), 'the edit card shows a diff');
     check(await ev(`${card}.querySelector('.er.del .et')?.textContent === 'first line' && ${card}.querySelector('.er.add .et')?.textContent === 'changed in turn 1'`), 'removed and added lines are the real ones');
     check(await ev(`${card}.querySelector('.er.del .en')?.textContent === '1'`), 'with line numbers from the file');
-    check(await ev(`${card}.querySelector('.ask-file .file-link')?.textContent === 'notes.txt'`), 'the file is a link, relative to the folder');
+    check(await ev(`${card}.querySelector('.ask-file .file-link')?.textContent === 'notes.txt'`), `the file is a link, relative to the folder (${await ev(`${card}.querySelector('.ask-file .file-link')?.textContent`)})`);
     check(await ev(`/line 1/.test(${card}.querySelector('.ask-line')?.textContent || '') && /\\+1/.test(${card}.querySelector('.dstat')?.textContent || '')`), 'line and +/- counts in the header');
     await shot('1-edit-card');
     await ev(`${card}.querySelector('.btn.allow').click()`);

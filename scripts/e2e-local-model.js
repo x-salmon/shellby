@@ -129,7 +129,7 @@ function modelServer() {
     // an address off this PC is refused
     await setUrl('http://192.168.1.50:11434');
     check(await until("document.getElementById('localModelUrl').value !== 'http://192.168.1.50:11434'"), 'an address off this PC is put back');
-    check(/on this PC/.test(await status()), `...with a reason ("${await status()}")`);
+    check(/on this (PC|Mac)/.test(await status()), `...with a reason ("${await status()}")`);
     check((await saved()).url === fake.url, '...and the saved address is unchanged');
     // ...and so is one on this PC with a path of its own: requests only ever go to /v1/...
     await setUrl(`${fake.url}/admin`);
@@ -154,7 +154,7 @@ function modelServer() {
     // what it writes first: a row per job, and the tally of what it saved
     await until("document.getElementById('localModelGroup')?.offsetParent !== null");
     check(await until("!document.getElementById('localModelMore').disabled && document.querySelectorAll('#localModelJobList .local-job').length === " + JOBS.length), 'Settings lists the jobs it writes first');
-    check(await until("/2 drafts written on this PC/.test(document.getElementById('localModelTallyText').textContent)"), `the tally counts both routine drafts ("${await ev("document.getElementById('localModelTallyText').textContent")}")`);
+    check(await until("/2 drafts written on this (PC|Mac)/.test(document.getElementById('localModelTallyText').textContent)"), `the tally counts both routine drafts ("${await ev("document.getElementById('localModelTallyText').textContent")}")`);
     // Try it: one plain question, answered by the stand-in
     await ev("document.getElementById('localModelQuestion').value = 'hello?'; document.getElementById('localModelAsk').click()");
     check(await until(`document.getElementById('localModelAnswer').textContent.startsWith(${JSON.stringify(MODELS[0])})`), `Try it shows the local model's answer ("${await ev("document.getElementById('localModelAnswer').textContent")}")`);

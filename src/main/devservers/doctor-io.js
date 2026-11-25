@@ -10,6 +10,7 @@ const { SYSTEM32 } = require('../system32');
 const doctor = require('./doctor');
 
 const NETSTAT = path.join(SYSTEM32, 'NETSTAT.EXE');
+const LSOF = '/usr/sbin/lsof'; // macOS's, by full path: PATH isn't trusted
 const MAX_ENV_BYTES = 64 * 1024;
 const NODE_TTL_MS = 60 * 1000;
 const FREE_TRIES = 40;
@@ -32,18 +33,25 @@ function readSmall(root, name, max = MAX_ENV_BYTES) {
  *   info?: (pid: number) => { alive: boolean, createdAt: number | null } | null,
  *   image?: (pid: number) => { name: string, full?: string } | null,
  *   run?: typeof execFile,
+ *   platform?: string,
  * }} [opts]
  */
-function whoHasPort(port, { info, image, run = execFile } = {}) {
+function whoHasPort(port, { info, image, run = execFile, platform = process.platform } = {}) {
   return new Promise(resolve => {
     if (!Number.isInteger(port) || port < 1 || port > 65535) return resolve([]);
+    const done = pids => resolve(pids.slice(0, 5).map(pid => {
+      const name = image?.(pid)?.name || '';
+      return { pid, name, createdAt: info?.(pid)?.createdAt || null, canStop: doctor.canStop(pid, name) };
+    }));
+    if (platform === 'darwin') {
+      // lsof exits 1 when nothing listens there: no answer, so no one.
+      run(LSOF, ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN', '-Fp'], { timeout: 8000, maxBuffer: 1024 * 1024 }, (err, out) =>
+        done(doctor.lsofListeners(err ? '' : out)));
+      return;
+    }
     run(NETSTAT, ['-ano', '-p', 'TCP'], { windowsHide: true, timeout: 8000, maxBuffer: 8 * 1024 * 1024 }, (err4, out4) => {
       run(NETSTAT, ['-ano', '-p', 'TCPv6'], { windowsHide: true, timeout: 8000, maxBuffer: 8 * 1024 * 1024 }, (err6, out6) => {
-        const pids = [...new Set([...doctor.listenersOn(err4 ? '' : out4, port), ...doctor.listenersOn(err6 ? '' : out6, port)])];
-        resolve(pids.slice(0, 5).map(pid => {
-          const name = image?.(pid)?.name || '';
-          return { pid, name, createdAt: info?.(pid)?.createdAt || null, canStop: doctor.canStop(pid, name) };
-        }));
+        done([...new Set([...doctor.listenersOn(err4 ? '' : out4, port), ...doctor.listenersOn(err6 ? '' : out6, port)])]);
       });
     });
   });

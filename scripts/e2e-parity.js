@@ -103,14 +103,16 @@ function makeRepo() {
 
     // 5. ! runs a command yourself (asked once, in the confirm window); the output
     // goes to Claude with the next message.
-    await type('!Write-Output parity-check');
+    // The user's own shell: PowerShell on Windows, zsh or bash on a Mac (shells.js).
+    const SHELL_CMD = process.platform === 'win32' ? 'Write-Output parity-check' : 'echo parity-check';
+    await type(`!${SHELL_CMD}`);
     const asked = await answerDialog(PORT, { press: 'Let ! run commands' });
     check(!!asked, 'the first ! command asks first');
     if (asked) check(asked.focused === 'Cancel', '...with Cancel as the default');
     check(await until("[...SB.activeTab().el.querySelectorAll('.shell-run:not(.pending) .t-result')].some(e => e.textContent.includes('parity-check'))", 20000), '! command output shows in the conversation');
     await type('hello again');
     await idle();
-    check((await lastReply()).includes('<bash-input>Write-Output parity-check</bash-input>'), 'Claude got the command and its output with the next message');
+    check((await lastReply()).includes(`<bash-input>${SHELL_CMD}</bash-input>`), 'Claude got the command and its output with the next message');
     await type('!!important, not a command');
     await idle();
     check((await lastReply()).startsWith('echo: !important, not a command'), '!! sends Claude a message starting with !');

@@ -65,9 +65,9 @@ async function connect(url) {
     check(await until("SB.state.view === 'pcs' && document.getElementById('paletteSheet').hidden", 3000), 'Enter on it opens Your PCs and closes the palette');
     check(await until("document.querySelectorAll('#pcsRoster tbody tr').length === 1", 5000), 'the roster opens with this PC on it');
     const row = await ev("document.querySelector('#pcsRoster tbody tr').textContent");
-    check(/this PC, the hub/.test(row), `it is marked as this PC (${row.slice(0, 80)})`);
-    check(/Windows (10|11)/.test(row), 'with its Windows');
-    check(await until("/Only this PC so far/.test(document.getElementById('pcsSummary').textContent)", 2000), 'and says only this PC is on it so far');
+    check(/this (PC|Mac), the hub/.test(row), `it is marked as this PC (${row.slice(0, 80)})`);
+    check(/Windows (10|11)|macOS/.test(row), 'with its Windows (macOS on a Mac)');
+    check(await until("/Only this (PC|Mac) so far/.test(document.getElementById('pcsSummary').textContent)", 2000), 'and says only this PC is on it so far');
 
     // ---- 2. this PC's facts in the detail
     const facts = await ev("document.getElementById('pcsDetail').textContent");

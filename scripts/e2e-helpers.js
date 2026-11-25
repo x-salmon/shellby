@@ -132,14 +132,15 @@ function makeRepo(held) {
     check(fs.readFileSync(path.join(r.repo, '.env'), 'utf8') === 'SHELLBY_E2E_ONLY_KEY=\n', 'as a copy of the example');
 
     // ---- the port is taken
+    const NODE_NAME = process.platform === 'win32' ? 'node.exe' : 'node'; // as the system names the program
     await ev("[...document.querySelectorAll('#pjDetailScreen .pj-script button')].find(b => b.textContent === 'Start').click()");
     check(await until("!!document.querySelector('#pjDetailScreen .pj-card.crashed')", 30000), `the server crashes: :${heldPort} is held`);
     const portText = "document.querySelector('#pjDetailScreen .pj-port')?.textContent || ''";
-    check(await until(`/Port ${heldPort} was already taken, by node\\.exe \\(process ${process.pid}\\)/.test(${portText})`, 15000), `the card names who has the port (${await ev(portText)})`);
+    check(await until(`/Port ${heldPort} was already taken, by node(\\.exe)? \\(process ${process.pid}\\)/.test(${portText})`, 15000), `the card names who has the port (${await ev(portText)})`);
     const useBtn = "[...document.querySelectorAll('#pjDetailScreen .pj-port button')].find(b => /^Use :\\d+ instead$/.test(b.textContent))";
     const offered = Number((await ev(`${useBtn}?.textContent`) || '').replace(/\D/g, ''));
     check(offered > heldPort, `a free port is offered (:${offered})`);
-    check(await ev(`[...document.querySelectorAll('#pjDetailScreen .pj-port button')].some(b => b.textContent === 'Stop node.exe')`), 'and Stop node.exe');
+    check(await ev(`[...document.querySelectorAll('#pjDetailScreen .pj-port button')].some(b => b.textContent === ${JSON.stringify(`Stop ${NODE_NAME}`)})`), `and Stop ${NODE_NAME}`);
     check((await ev("shellby.serverUsePort({ id: 'srv-aaaaaaaa', port: 1 })"))?.ok === false, 'a port the card never offered is refused');
     await shot('port-taken', '#pjDetailScreen .pj-card');
     await ev(`${useBtn}.click()`);

@@ -84,11 +84,26 @@ function listenersOn(netstatText, port) {
   return [...pids];
 }
 
-// Programs Windows can't do without, or that hold far more than a port:
-// never offered as something to stop.
+/**
+ * macOS: `lsof -nP -iTCP:<port> -sTCP:LISTEN -Fp`'s text -> the pids. Asked
+ * for listeners on that port only, so each `p<pid>` line is one.
+ */
+function lsofListeners(lsofText) {
+  const pids = new Set();
+  for (const raw of String(lsofText || '').split(/\r?\n/)) {
+    const m = /^p(\d+)$/.exec(raw.trim());
+    if (m && Number(m[1]) > 0) pids.add(Number(m[1]));
+  }
+  return [...pids];
+}
+
+// Programs the system can't do without, or that hold far more than a port:
+// never offered as something to stop. Windows', then macOS's (ControlCenter is
+// AirPlay Receiver, the usual holder of :5000 and :7000 on a Mac).
 const NEVER_STOP = new Set([
   'system', 'system idle process', 'svchost.exe', 'lsass.exe', 'services.exe', 'wininit.exe', 'winlogon.exe', 'csrss.exe',
   'smss.exe', 'explorer.exe', 'dwm.exe', 'spoolsv.exe', 'searchindexer.exe', 'msmpeng.exe', 'shellby.exe', 'electron.exe',
+  'launchd', 'kernel_task', 'windowserver', 'controlcenter', 'rapportd', 'sharingd', 'mdnsresponder', 'shellby', 'electron',
 ]);
 
 /** May "Stop it" be offered for this program? name: its lower-case exe ("node.exe"). */
@@ -267,6 +282,6 @@ function notes({ env = null, node = null } = {}) {
 }
 
 module.exports = {
-  portInUse, portArgs, listenersOn, canStop, envKeys, missingEnv, nodeWanted, parseRange, satisfies, notes,
+  portInUse, portArgs, listenersOn, lsofListeners, canStop, envKeys, missingEnv, nodeWanted, parseRange, satisfies, notes,
   EXAMPLE_FILES, ENV_FILES, PORT_FLAG,
 };
