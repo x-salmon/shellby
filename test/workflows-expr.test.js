@@ -137,6 +137,10 @@ test('sh refuses a value where it could read it as code, or where a scanner coul
     'a[${x]}"{{ v }}"]=1', 'echo "a[{{ v }}]"', 'ls [ab]* && echo {{ v }}', 'echo ${x:{{ v }}}', 'echo ${HOME}/{{ v }}', '{ echo {{ v }}; }']) {
     assert.match(expr.shellProblem(t), /can't share a command/, t);
   }
+  // sh deletes a backslash-newline: "echo \<nl>#..." is a comment, de\<nl>clare is declare.
+  for (const t of ['echo \\\n#"\necho {{ v }}"', 'de\\\nclare -i n={{ v }}', 'echo "a\\\nb" {{ v }}', 'echo \\\r\n{{ v }}']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, JSON.stringify(t));
+  }
   for (const t of ['"declare" -i n={{ v }}', 'de\\clare -i n={{ v }}', "'let' n={{ v }}"]) {
     assert.match(expr.shellProblem(t), /can't share a command/, `a quoted keyword is the keyword: ${t}`);
   }

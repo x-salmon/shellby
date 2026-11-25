@@ -437,9 +437,10 @@ function renderShell(text, ctx) {
 // groups) or [ ] (subscripts and $[ ] do arithmetic, which runs a[$(cmd)]),
 // and no let, eval or integer variables (declare -i and its kin). The [ and ]
 // of the test command, words of their own, are the one exception.
-const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /<</, /\$'/, /\$"/, /[{}]/,
+// (A backslash-newline too: sh deletes it, joining what's either side.)
+const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /<</, /\$'/, /\$"/, /[{}]/, /\\\r?\n/,
   /(?:^|[\s;&|(])(?:let|eval|declare|typeset|local|readonly)(?=\s)/];
-const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), { }, [ ], $'...', a here-doc, let, eval, declare, typeset, local or readonly: sh could read the value as code there. Write $HOME rather than ${HOME}, or put that part in a step of its own.";
+const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), { }, [ ], $'...', a here-doc, a \\ at a line's end, let, eval, declare, typeset, local or readonly: sh could read the value as code there. Write $HOME rather than ${HOME}, or put that part in a step of its own.";
 /** Any [ or ] that isn't the test command's own word. @param {string} s */
 const strayBracket = s => /[[\]]/.test(s.replace(/(^|[\s;&|])\[(?=\s)/g, '$1').replace(/(\s)\](?=$|[\s;&|])/g, '$1'));
 const SH_WORD_MSG = 'On a Mac, a {{ value }} must be a word of its own or sit inside "double quotes", so sh reads it as text.';
