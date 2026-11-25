@@ -108,6 +108,30 @@ test('commands get values as environment variables, never as their text', () => 
   assert.equal(expr.renderPowerShell('{{ trigger.list | join "," }}', { trigger: { list: ['a', 'b'] } }).env.SHELLBY_VALUE_1, 'a,b');
 });
 
+const SH_EVIL = "x'; rm -rf ~; $(touch pwned) `touch pwned` * \"";
+test('on a Mac, sh gets values the same way: quoted on their own, bare inside "..."', () => {
+  const r = expr.renderShell('git checkout {{ trigger.repo }} && echo "on {{ trigger.repo }}.txt" \'{{ trigger.repo }}\'', { trigger: { repo: SH_EVIL } });
+  assert.equal(r.command, 'git checkout "${SHELLBY_VALUE_1}" && echo "on ${SHELLBY_VALUE_2}.txt" \'"${SHELLBY_VALUE_3}"\'');
+  assert.deepEqual(Object.values(r.env), [SH_EVIL, SH_EVIL, SH_EVIL]);
+  assert.equal(r.command.includes('rm -rf'), false);
+  assert.equal(expr.renderShell('echo \\"{{ a }}', { a: 'v' }).command, 'echo \\""${SHELLBY_VALUE_1}"', 'an escaped quote opens nothing');
+  assert.deepEqual(expr.renderShell('ls', {}), { command: 'ls', env: {} });
+});
+
+test('sh reads each value as one word of text, and runs none of it', { skip: process.platform === 'win32' && 'needs /bin/sh' }, () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { spawnSync } = require('child_process');
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'sb-sh-')));
+  try {
+    const r = expr.renderShell("printf '[%s]' {{ v }} \"<{{ v }}>\"", { v: SH_EVIL });
+    const out = spawnSync('/bin/sh', ['-c', r.command], { cwd: dir, env: { ...process.env, ...r.env }, encoding: 'utf8' });
+    assert.equal(out.stdout, `[${SH_EVIL}][<${SH_EVIL}>]`);
+    assert.ok(!fs.existsSync(path.join(dir, 'pwned')), 'nothing in the value ran');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('a value inside single quotes is caught on save', () => {
   assert.equal(expr.valuesInSingleQuotes("echo '{{ x }}'"), true);
   assert.equal(expr.valuesInSingleQuotes('echo "{{ x }}"'), false);

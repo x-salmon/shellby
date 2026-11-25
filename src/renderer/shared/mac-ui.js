@@ -14,8 +14,9 @@
 (function (root) {
   const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform || navigator.userAgent || '');
 
+  // A lone "Alt" is the key only when it doesn't start "Alt text" (an image's description).
   /** @type {[RegExp, string][]} */
-  const GLYPHS = [[/\bCtrl\+/g, '⌘'], [/\bAlt\+/g, '⌥'], [/\bShift\+/g, '⇧'], [/\bCtrl\b/g, '⌘'], [/\bAlt\b/g, '⌥']];
+  const GLYPHS = [[/\bCtrl\+/g, '⌘'], [/\bAlt\+/g, '⌥'], [/\bShift\+/g, '⇧'], [/\bCtrl\b/g, '⌘'], [/\bAlt\b(?! [Tt]ext)/g, '⌥']];
 
   // Most specific first: "Windows' ssh agent" before "Windows".
   /** @type {[RegExp, string][]} */

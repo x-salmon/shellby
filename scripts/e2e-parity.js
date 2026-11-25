@@ -112,7 +112,7 @@ function makeRepo() {
     check(await until("[...SB.activeTab().el.querySelectorAll('.shell-run:not(.pending) .t-result')].some(e => e.textContent.includes('parity-check'))", 20000), '! command output shows in the conversation');
     await type('hello again');
     await idle();
-    check((await lastReply()).includes(`<bash-input>${SHELL_CMD}</bash-input>`), 'Claude got the command and its output with the next message');
+    check((await lastReply()).includes(`<bash-input>${SHELL_CMD}</bash-input>`), `Claude got the command and its output with the next message (${(await lastReply()).slice(0, 160)})`);
     await type('!!important, not a command');
     await idle();
     check((await lastReply()).startsWith('echo: !important, not a command'), '!! sends Claude a message starting with !');

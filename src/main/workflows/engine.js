@@ -365,8 +365,9 @@ class Engine {
       }
 
       case 'run': {
-        // Values reach the command as environment variables, never as its text.
-        const { command, env } = expr.renderPowerShell(step.command, ctx);
+        // Values reach the command as environment variables, never as its text:
+        // PowerShell's way on Windows, /bin/sh's on a Mac (shells.js).
+        const { command, env } = (process.platform === 'win32' ? expr.renderPowerShell : expr.renderShell)(step.command, ctx);
         const timeoutMs = (step.timeoutMin || 10) * 60000;
         const r = await fx.run({ command, env, cwd: this.folder(step, ctx), timeoutMs, signal });
         const ok = r.code === 0 && !r.timedOut;

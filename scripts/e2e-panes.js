@@ -129,7 +129,10 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev(`SB.activate('${D}')`);
     await ev("SB.setView('settings')");
     await wait(300);
-    for (const type of ['keyDown', 'keyUp']) await panel.send('Input.dispatchKeyEvent', { type, key: '\\', code: 'Backslash', windowsVirtualKeyCode: 220, modifiers: CMD });
+    // macOS takes a Cmd press sent through CDP as a menu key equivalent before the page
+    // sees it, so on a Mac the press is the one mac-ui.js hands the page: Ctrl+\.
+    if (process.platform === 'darwin') await ev("document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: '\\\\', code: 'Backslash', ctrlKey: true, bubbles: true, cancelable: true }))");
+    else for (const type of ['keyDown', 'keyUp']) await panel.send('Input.dispatchKeyEvent', { type, key: '\\', code: 'Backslash', windowsVirtualKeyCode: 220, modifiers: CMD });
     check(await until('SB.state.grid.length === 2'), 'Ctrl+\\ from Settings splits');
     check(await ev("SB.state.view === 'chat'"), 'and shows the chat');
     await wait(300);

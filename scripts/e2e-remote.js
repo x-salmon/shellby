@@ -166,7 +166,7 @@ function otherComputer() {
     await ev("SB.$('usage').click()");
     check(await until("!SB.$('usageMenu').hidden"), 'its menu opens');
     const menu = await ev("SB.$('usageMenu').textContent");
-    check(/Your own plan, on this PC/.test(menu) && !/Your own plan, on this PC5-hour 25%/.test(menu), `your own plan is shown apart, without homebox's turn: ${menu}`);
+    check(/Your own plan, on this (PC|Mac)/.test(menu) && !/Your own plan, on this (PC|Mac)5-hour 25%/.test(menu), `your own plan is shown apart, without homebox's turn: ${menu}`);
     await ev('SB.closeMenus()');
     await shot('other-account-usage');
 

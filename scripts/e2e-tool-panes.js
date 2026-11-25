@@ -82,7 +82,9 @@ async function connect(target) {
     check(await until(`(async () => { await SB.pj.showServer(${JSON.stringify(id)}); return !!document.getElementById('srv-card-${id}'); })()`), 'its card is on the project page');
     await ev(`[...document.getElementById('srv-card-${id}').querySelectorAll('button')].find(b => b.textContent === 'Show beside the chat').click()`);
     const tool = "document.querySelector('.pane.tool')";
-    check(await until(`SB.state.view === 'chat' && !!${tool}`), 'Show beside the chat opens its log in a pane of its own');
+    const opened = await until(`SB.state.view === 'chat' && !!${tool}`);
+    const seen = opened ? '' : ` (${await ev(`JSON.stringify({ view: SB.state.view, panes: document.querySelectorAll('.pane').length, buttons: [...(document.getElementById('srv-card-${id}')?.querySelectorAll('button') || [])].map(b => b.textContent), w: innerWidth, sw: screen.availWidth, x: screenX })`)})`;
+    check(opened, `Show beside the chat opens its log in a pane of its own${seen}`);
     check(await ev(`SB.panes.count(SB.state.grid) === 2 && SB.panes.tabIds(SB.state.grid).length === SB.state.tabs.size`), 'and no conversation thinks it is one');
     check(await ev(`${tool}.querySelector('.tool-chip')?.textContent === 'npm run dev'`), "its strip names the server's script", await ev(`${tool}.querySelector('.tool-chip')?.textContent`));
     check(await until(`${tool}.querySelector('.tp-log')?.textContent.includes('ready in')`), 'it shows what the server printed');

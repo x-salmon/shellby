@@ -407,6 +407,40 @@ function renderPowerShell(text, ctx) {
 }
 
 /**
+ * The same for /bin/sh (a Mac's run steps, shells.js). A value is
+ * "${SHELLBY_VALUE_n}": sh expands a variable once and never reads what's in
+ * it as code, and the quotes keep it one word, unsplit and unglobbed. Inside
+ * "..." it's the bare ${...}, already quoted. (PowerShell's ${env:X} is
+ * substring expansion of $env in sh, so every value came out empty.)
+ *   -> { command, env: { SHELLBY_VALUE_1: text, ... } }
+ */
+function renderShell(text, ctx) {
+  const parsed = parseTemplate(text);
+  if (!parsed.ok) throw new Error(parsed.error);
+  const env = {};
+  let n = 0;
+  let command = '';
+  let single = false, double = false;
+  for (const part of parsed.parts) {
+    if (typeof part === 'string') {
+      command += part;
+      for (let i = 0; i < part.length; i++) {
+        const c = part[i];
+        if (single) { if (c === "'") single = false; continue; }
+        if (c === '\\') { i++; continue; }
+        if (c === '"') double = !double;
+        else if (c === "'" && !double) single = true;
+      }
+      continue;
+    }
+    const name = `${ENV_PREFIX}${++n}`;
+    env[name] = toText(evalPart(part, ctx)).replace(/\u0000/g, '').slice(0, MAX_ENV_VALUE);
+    command += double ? `\${${name}}` : `"\${${name}}"`;
+  }
+  return { command, env };
+}
+
+/**
  * Is any {{ }} inside a single-quoted PowerShell string, where it would stay
  * as the literal text "$env:..."? A lint for the editor only: getting this
  * wrong costs a confusing message, never safety (the value is never in the command).
@@ -431,7 +465,7 @@ function valuesInSingleQuotes(text) {
 }
 
 module.exports = {
-  renderPowerShell, valuesInSingleQuotes,
+  renderPowerShell, renderShell, valuesInSingleQuotes,
   ROOTS, FILTERS,
   parsePath, getPath, lookup, toText, truthy,
   parseTemplate, render, resolve, templateRefs, hasTemplate,

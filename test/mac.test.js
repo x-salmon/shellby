@@ -32,6 +32,7 @@ test('the Mac menu has Edit (so Cmd+C works) and quits through Shellby', () => {
 test('keys read the Mac way only on a Mac', () => {
   assert.equal(keyText('Ctrl+Shift+D', true), '⌘⇧D');
   assert.equal(keyText('Ctrl+Alt+Enter or Alt+J', true), '⌘⌥Enter or ⌥J');
+  assert.equal(keyText('Alt text copied: hold Alt and click', true), 'Alt text copied: hold ⌥ and click', 'alt text is words, not a key');
   assert.equal(keyText('Press Ctrl+K to jump', true), 'Press ⌘K to jump');
   assert.equal(keyText('Ctrl+K', false), 'Ctrl+K');
   assert.equal(keyText('Control panel', true), 'Control panel');
