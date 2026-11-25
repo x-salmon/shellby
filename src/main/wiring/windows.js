@@ -18,6 +18,7 @@ const { clampToDisplays } = require('../desktop/placement');
 const { createPranks } = require('../pranks');
 const processJob = require('../process-job');
 const voice = require('../voice');
+const workmode = require('../workmode');
 const { everySpace } = require('../mac-app');
 
 /** d: what main shares (main.js `shared`). */
@@ -387,7 +388,9 @@ function wireWindows(d) {
   let calmSent = '';
   let critterReady = false;
   function crabCalmNow() {
-    const locked = d.calmReason === 'locked';
+    // Work mode keeps him off the desktop altogether (workmode.js behaviour):
+    // hidden as he is under a game, and silent as on a locked screen.
+    const locked = d.calmReason === 'locked' || workmode.behaviourOf(d.config).hidden;
     // Covered or alone, he stops animating but can still be heard; locked, he goes quiet too.
     return { calm: locked || hidden.crab || hidden.away, locked, hide: !d.CAPTURE && (locked || hidden.underGame) };
   }
@@ -532,7 +535,7 @@ function wireWindows(d) {
   }
 
   return {
-    applyLayer, createCritter, createMischief, createMotion, crabCalm: crabCalmNow, crewExtra, crewRight, critterBaseSize,
+    applyLayer, createCritter, createMischief, createMotion, crabCalm: crabCalmNow, recalm: sendCalm, crewExtra, crewRight, critterBaseSize,
     critterGeo, helperWidth, motionBox, placeCritter, px, resetCritterPos, secureWindow, selfLeft,
     setReducedMotion, settleCritter, syncLayer, wanders: wandersNow, watchIdleCost, webPreferences, workAreas,
   };

@@ -53,7 +53,14 @@ function makeRepo() {
     const key = async (k, opts = {}) => ev(`SB.$('input').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true, ...${JSON.stringify(opts)} }))`);
     const type = async text => { await setBox(text); await key('Enter'); };
     // Not idle while a typed message still waits out the merge window (queue-turns.js).
-    const idle = () => until('!SB.activeTab().busy && !SB.activeTab().queue.length', 15000);
+    // Type, then wait for the reply to it. Not busy and nothing queued isn't enough:
+    // a message typed while idle waits a moment before it goes, and in that gap the
+    // tab is neither, with the previous reply still the last one.
+    const replyTo = async text => {
+      const n = await ev("SB.activeTab().el.querySelectorAll('.msg.assistant').length");
+      await type(text);
+      return until(`SB.activeTab().el.querySelectorAll('.msg.assistant').length > ${n} && !SB.activeTab().busy && !SB.activeTab().queue.length`, 20000);
+    };
     const users = () => ev("JSON.stringify([...SB.activeTab().el.querySelectorAll('.msg.user')].map(e => e.textContent.trim()))").then(JSON.parse);
     const lastReply = () => ev("[...SB.activeTab().el.querySelectorAll('.msg.assistant')].at(-1)?.textContent || ''");
     const file = name => fs.readFileSync(path.join(repo, name), 'utf8').trim();
@@ -67,10 +74,8 @@ function makeRepo() {
     await wait(800);
 
     // 1. Two turns that each change a file.
-    await type('edit a.txt first');
-    await idle();
-    await type('edit a.txt second');
-    await idle();
+    await replyTo('edit a.txt first');
+    await replyTo('edit a.txt second');
     check(await until("SB.activeTab().el.querySelectorAll('.changes').length === 2"), 'each turn shows what it changed');
     check(file('a.txt') === 'second', 'the file has the second turn\'s text');
     check(await ev("SB.activeTab().el.querySelectorAll('.msg.user .msg-rewind').length") === 2, 'each message has a way back');
@@ -88,8 +93,7 @@ function makeRepo() {
     check(await ev("!!SB.activeTab().el.querySelector('.home-mark')?.textContent.includes('Rewound')"), 'the transcript marks the rewind');
 
     // 3. The next message resumes Claude Code only that far, as a fork.
-    await type('args');
-    await idle();
+    await replyTo('args');
     const args = await lastReply();
     check(/--resume-session-at=uuid-/.test(args) && args.includes('--fork-session'), 'Claude Code resumes up to the kept turn, as a fork');
 
@@ -103,16 +107,16 @@ function makeRepo() {
 
     // 5. ! runs a command yourself (asked once, in the confirm window); the output
     // goes to Claude with the next message.
-    await type('!Write-Output parity-check');
+    // The user's own shell: PowerShell on Windows, zsh or bash on a Mac (shells.js).
+    const SHELL_CMD = process.platform === 'win32' ? 'Write-Output parity-check' : 'echo parity-check';
+    await type(`!${SHELL_CMD}`);
     const asked = await answerDialog(PORT, { press: 'Let ! run commands' });
     check(!!asked, 'the first ! command asks first');
     if (asked) check(asked.focused === 'Cancel', '...with Cancel as the default');
     check(await until("[...SB.activeTab().el.querySelectorAll('.shell-run:not(.pending) .t-result')].some(e => e.textContent.includes('parity-check'))", 20000), '! command output shows in the conversation');
-    await type('hello again');
-    await idle();
-    check((await lastReply()).includes('<bash-input>Write-Output parity-check</bash-input>'), 'Claude got the command and its output with the next message');
-    await type('!!important, not a command');
-    await idle();
+    await replyTo('hello again');
+    check((await lastReply()).includes(`<bash-input>${SHELL_CMD}</bash-input>`), `Claude got the command and its output with the next message (${(await lastReply()).slice(0, 160)})`);
+    await replyTo('!!important, not a command');
     check((await lastReply()).startsWith('echo: !important, not a command'), '!! sends Claude a message starting with !');
     check((await users()).at(-1) === '!important, not a command', '...and shows it with one !');
 
@@ -148,8 +152,7 @@ function makeRepo() {
     await ev("[...SB.$('effortMenu').querySelectorAll('.menu-item')].find(b => b.textContent.startsWith('High')).click()");
     check(await until("SB.activeTab().effort === 'high' && SB.$('effortLabel').textContent === 'high'"), 'picking High sets it for this conversation and shows it');
     check(await ev("SB.$('effortChip').dataset.level === String(SB.EFFORTS.findIndex(x => x.id === 'high'))"), 'the effort dial points at High');
-    await type('effort');
-    await idle();
+    await replyTo('effort');
     check((await lastReply()).includes('effort:high'), 'the running conversation thinks at the new effort');
     await type('/effort low');
     check(await until("SB.activeTab().effort === 'low'"), '/effort low works too');

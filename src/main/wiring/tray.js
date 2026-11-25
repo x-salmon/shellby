@@ -241,6 +241,7 @@ function wireTray(d) {
     const pick = async name => {
       const r = await d.applyLocalPreset(name).catch(() => null);
       if (r?.ok) d.send(d.panel, 'settings', r.settings);
+      if (r?.stale) return; // a newer pick is on its way
       if (!r?.ok || r.missing?.length) { d.showPanel({ focusInput: false }); d.send(d.panel, 'panel:view', 'settings'); }
     };
     return { label: 'Local mode', submenu: localPresets.PRESET_NAMES.map(name => ({

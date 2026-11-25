@@ -5,6 +5,7 @@
 // fake signed-in view, so no account and no network are involved.
 //   node scripts/e2e-github-workflows.js
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs'), os = require('os'), path = require('path');
 const ROOT = path.join(__dirname, '..'), PORT = Number(process.env.E2E_CDP_PORT) || 9387;
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -67,7 +68,7 @@ const view = ({ claude, workflows }) => JSON.stringify({
     check(/secrets/.test(s.note), 'and keeps the secrets warning in front of you');
   } catch (e) {
     check(false, e.message);
-  } finally { spawn('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' }); }
+  } finally { endApp(app.pid); }
   await wait(700);
   console.log(fails ? `${fails} FAILED` : 'all passed');
   process.exit(fails ? 1 : 0);

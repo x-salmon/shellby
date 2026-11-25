@@ -8,6 +8,7 @@
 //     actions and their keys, focus landing back in the box, Ctrl+W asking first
 //   node scripts/ui-regressions.js
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -204,7 +205,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       close: [...document.querySelectorAll('#paletteList .pal-item')].find(li => /Close this conversation/.test(li.textContent))?.querySelector('kbd')?.textContent,
     })`));
     check(pal.group === 'This conversation', `Ctrl+K on the chat starts with this conversation's actions (${pal.group})`);
-    check(pal.close === 'Ctrl+W', `and shows an action's shortcut (${pal.close})`);
+    check(pal.close === (process.platform === 'darwin' ? '⌘W' : 'Ctrl+W'),`and shows an action's shortcut (${pal.close})`);
     await panel.ev("(() => { const i = document.getElementById('paletteInput'); i.value = 'keyboard shortcuts'; i.dispatchEvent(new Event('input')); })()");
     await press('Enter');
     await wait(250);
@@ -229,7 +230,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     console.error('failed:', e.message);
     fails++;
   } finally {
-    spawn('taskkill', ['/PID', String(app.pid), '/T', '/F']);
+    endApp(app.pid);
     setTimeout(() => process.exit(fails ? 1 : 0), 600);
   }
 })();

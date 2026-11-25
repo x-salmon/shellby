@@ -407,6 +407,111 @@ function renderPowerShell(text, ctx) {
 }
 
 /**
+ * The same for /bin/sh (a Mac's run steps, shells.js). A value is
+ * "${SHELLBY_VALUE_n}": sh expands a variable once and never reads what's in
+ * it as code, and the quotes keep it one word, unsplit and unglobbed. Inside
+ * "..." it's the bare ${...}, already quoted. (PowerShell's ${env:X} is
+ * substring expansion of $env in sh, so every value came out empty.)
+ *   -> { command, env: { SHELLBY_VALUE_1: text, ... } }
+ */
+function renderShell(text, ctx) {
+  const parsed = parseTemplate(text);
+  if (!parsed.ok) throw new Error(parsed.error);
+  const scan = shellScan(parsed.parts);
+  if (scan.problem) throw new Error(scan.problem);
+  const env = {};
+  let n = 0;
+  let command = '';
+  for (const part of parsed.parts) {
+    if (typeof part === 'string') { command += part; continue; }
+    const name = `${ENV_PREFIX}${++n}`;
+    env[name] = toText(evalPart(part, ctx)).replace(/\u0000/g, '').slice(0, MAX_ENV_VALUE);
+    command += scan.inDouble[n - 1] ? `\${${name}}` : `"\${${name}}"`;
+  }
+  return { command, env };
+}
+
+// A command with a {{ value }} keeps to the part of sh a scanner can follow
+// exactly: words, '...', "..." and \. So none of what nests or evaluates:
+// $( ), backticks, (( )), here-docs, $'...', $"...", any { } (${ }, brace
+// groups) or [ ] (subscripts and $[ ] do arithmetic, which runs a[$(cmd)]),
+// and no let, eval or integer variables (declare -i and its kin). The [ and ]
+// of the test command, words of their own, are the one exception.
+// (A backslash-newline too: sh deletes it, joining what's either side.)
+const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /<</, /\$'/, /\$"/, /[{}]/, /\\\r?\n/,
+  // bash's builtins that take a variable's name (a name with a subscript runs
+  // its arithmetic: printf -v 'a[$(cmd)]') or read their argument as code.
+  // A word ends at any metacharacter (SH_META), not only a space: read<f is read.
+  /(?:^|[\s;&|()<>])(?:let|eval|declare|typeset|local|readonly|export|unset|read|readarray|mapfile|getopts|trap|source|fc|bind|complete|compgen|enable|alias|coproc|select|function|builtin|command|exec|\.)(?=[\s;&|()<>]|$)/,
+  /(?:^|[\s;&|()<>])printf(?=[\s;&|()<>]|$)/,
+  /(?:^|[\s;&|()<>])(?:test|\[)(?=[\s;&|()<>]|$)[^;&|\n]*\s-[vR](?=[\s;&|()<>]|$)/];
+const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), { }, [ ], $'...', a here-doc, a \\ at a line's end, or a builtin that takes a variable's name or code (let, eval, declare, export, unset, read, printf -v, trap, source and the like): sh could read the value as code there. Write $HOME rather than ${HOME}, or put that part in a step of its own.";
+/** Any [ or ] that isn't the test command's own word. @param {string} s */
+const strayBracket = s => /[[\]]/.test(s.replace(/(^|[\s;&|])\[(?=\s)/g, '$1').replace(/(\s)\](?=$|[\s;&|])/g, '$1'));
+const SH_WORD_MSG = 'On a Mac, a {{ value }} must be a word of its own or sit inside "double quotes", so sh reads it as text.';
+// Outside quotes, what may stand either side of a value: an allowlist, so a
+// subscript (a[{{ v }}]) or anything else sh treats specially is refused.
+const SH_BEFORE = /[\s;&|=:,/]/;
+const SH_AFTER = /[\s;&|)/.:,]/;
+// sh's metacharacters: a word starts after any of them, and a # there starts a comment.
+const SH_META = /[\s;&|()<>]/;
+
+/**
+ * Each value must stand as its own word or sit inside plain "double quotes".
+ * -> { problem: why not, or null; inDouble: per value, whether it's inside "..." }
+ * @param {any[]} parts parseTemplate's
+ */
+function shellScan(parts) {
+  /** @type {boolean[]} */
+  const inDouble = [];
+  const result = problem => ({ problem, inDouble });
+  if (parts.every(p => typeof p === 'string')) return result(null);
+  // Matched as written ($'...' needs its quote) and with quotes and escapes taken
+  // out, as sh takes them out: "declare" and de\clare are declare.
+  const literal = parts.filter(p => typeof p === 'string').join(' ');
+  const bare = literal.replace(/[\\'"]/g, '');
+  if (SH_REFUSED.some(re => re.test(literal) || re.test(bare)) || strayBracket(literal)) return result(SH_REFUSED_MSG);
+  // What's left is words, quotes and escapes, which this follows exactly.
+  let single = false, double = false;
+  let prev = ''; // the last character before this point ('' at the start, or right after a value)
+  let wordStart = true; // is the next character the start of a word, as sh splits them?
+  for (let k = 0; k < parts.length; k++) {
+    const part = parts[k];
+    if (typeof part !== 'string') {
+      if (single) return result('A {{ value }} inside \'single quotes\' stays as text. Put it in "double quotes", or on its own.');
+      const next = typeof parts[k + 1] === 'string' ? parts[k + 1][0] || '' : '';
+      if (!double && ((prev && !SH_BEFORE.test(prev)) || (next && !SH_AFTER.test(next)))) return result(SH_WORD_MSG);
+      inDouble.push(double);
+      prev = '';
+      wordStart = false; // what follows a value is the same word
+      continue;
+    }
+    for (let i = 0; i < part.length; i++) {
+      const c = part[i];
+      prev = c;
+      if (single) { if (c === "'") single = false; wordStart = false; continue; }
+      // An escaped character is plain text, never a boundary: "a\ #b" is one word.
+      if (c === '\\') { i++; prev = part[i] ?? ''; wordStart = false; continue; }
+      // A # that could start a comment: refused, not skipped. Mid-word it's text.
+      if (c === '#' && wordStart && !double) return result('On a Mac, a command with a {{ value }} can\'t have a # comment. Take the comment out.');
+      if (c === '"') double = !double;
+      else if (c === "'" && !double) single = true;
+      // A new word starts only after an unquoted, unescaped metacharacter.
+      wordStart = !double && !single && SH_META.test(c);
+    }
+  }
+  // An open quote at the end: sh would read it differently, or not at all.
+  if (single || double) return result('On a Mac, this command leaves a quote open, so sh would read it differently. Close it.');
+  return result(null);
+}
+
+/** Why sh can't take this template safely, or null: the editor's lint on a Mac. */
+function shellProblem(text) {
+  const parsed = parseTemplate(text);
+  return parsed.ok ? shellScan(parsed.parts).problem : parsed.error;
+}
+
+/**
  * Is any {{ }} inside a single-quoted PowerShell string, where it would stay
  * as the literal text "$env:..."? A lint for the editor only: getting this
  * wrong costs a confusing message, never safety (the value is never in the command).
@@ -431,7 +536,7 @@ function valuesInSingleQuotes(text) {
 }
 
 module.exports = {
-  renderPowerShell, valuesInSingleQuotes,
+  renderPowerShell, renderShell, shellProblem, valuesInSingleQuotes,
   ROOTS, FILTERS,
   parsePath, getPath, lookup, toText, truthy,
   parseTemplate, render, resolve, templateRefs, hasTemplate,

@@ -85,12 +85,13 @@ test('overrides read from disk are tolerated and limited to Work mode\'s own key
 
 test('behaviour: needs rest, drop-ins wait for an invite, a small beat instead of confetti, tools first', () => {
   const on = workmode.behaviour({ workMode: true });
-  assert.deepEqual(on, { on: true, dropIns: false, confetti: false, petToasts: false, dock: workmode.DOCK });
+  assert.deepEqual(on, { on: true, dropIns: false, confetti: false, petToasts: false, dock: workmode.DOCK, hidden: true });
   assert.deepEqual(workmode.DOCK.slice(0, 8), ['chat', 'projects', 'notes', 'history', 'toolbox', 'workflows', 'pages', 'health']);
   assert.equal(workmode.DOCK.at(-1), 'wardrobe', "Shellby's own screens are still on the bar");
   const off = workmode.behaviour({});
-  assert.deepEqual(off, { on: false, dropIns: true, confetti: true, petToasts: true, dock: null });
+  assert.deepEqual(off, { on: false, dropIns: true, confetti: true, petToasts: true, dock: null, hidden: false });
   assert.equal(workmode.behaviourOf({ get: k => ({ workMode: true })[k] }).on, true);
+  assert.equal(workmode.behaviour({ workMode: true, crabOnly: true }).hidden, false, 'just the crab always shows him');
   assert.equal(workmode.behaviourOf(undefined).on, false);
 });
 

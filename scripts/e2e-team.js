@@ -5,7 +5,8 @@
 // there), and Make a team pack writes the file in a repo that has none.
 //   node scripts/e2e-team.js [screenshot.png]
 // SHELLBY_ELECTRON points at an electron.exe when this checkout has none (a worktree).
-const { spawn, spawnSync } = require('child_process');
+const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -96,7 +97,7 @@ function repo(base, name, pack) {
     fails++;
   } finally {
     // The whole tree: Electron leaves GPU and utility processes behind otherwise.
-    spawnSync('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' });
+    endApp(app.pid);
     await wait(500);
     for (const d of [profile, work]) { try { fs.rmSync(d, { recursive: true, force: true }); } catch { /* still locked */ } }
   }

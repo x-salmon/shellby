@@ -5,6 +5,7 @@
 // Isolated profiles (SHELLBY_USER_DATA): your real Shellby is untouched.
 //   node scripts/e2e-registry.js [pack-id]
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -91,7 +92,7 @@ async function verify(panel, label) {
     console.error('failed:', e.message);
     fails++;
   } finally {
-    for (const p of procs) spawn('taskkill', ['/PID', String(p.pid), '/T', '/F']);
+    for (const p of procs) endApp(p.pid);
     setTimeout(() => { for (const d of profiles) fs.rmSync(d, { recursive: true, force: true }); process.exit(fails ? 1 : 0); }, 1500);
   }
 })();

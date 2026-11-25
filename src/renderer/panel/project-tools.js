@@ -13,8 +13,13 @@
   const forms = new Map(); // root -> what you'd typed in the bisect form, so a redraw keeps it
   const tagsFor = new Map(); // root -> [{ name, date }]
 
-  function openTab(tabId) {
+  // The conversation main just made reaches the panel by its own message, which
+  // can come after main's answer: wait a moment for it (opened from history it
+  // would come without the prompt waiting in its box).
+  const TAB_WAIT_MS = 3000;
+  async function openTab(tabId) {
     SB.setView('chat');
+    for (const end = Date.now() + TAB_WAIT_MS; !state.tabs.has(tabId) && Date.now() < end;) await new Promise(r => setTimeout(r, 50));
     if (state.tabs.has(tabId)) SB.activate(tabId); else SB.openHistory(tabId);
   }
 

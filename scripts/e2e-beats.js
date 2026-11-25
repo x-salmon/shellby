@@ -44,7 +44,7 @@ async function connect(url, dir) {
   const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`, '--force-prefers-no-reduced-motion'], {
     stdio: 'ignore',
     env: {
-      ...process.env, SHELLBY_USER_DATA: data, SHELLBY_MOTION_TEST: '1',
+      ...process.env, SHELLBY_USER_DATA: data, SHELLBY_MOTION_TEST: '1', SHELLBY_FAKE_HEALTH: 'calm', // a busy runner's real memory would make him dizzy, which holds off a nap
       SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: String(HOOK),
     },
   });

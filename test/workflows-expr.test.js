@@ -108,6 +108,81 @@ test('commands get values as environment variables, never as their text', () => 
   assert.equal(expr.renderPowerShell('{{ trigger.list | join "," }}', { trigger: { list: ['a', 'b'] } }).env.SHELLBY_VALUE_1, 'a,b');
 });
 
+const SH_EVIL = "x'; rm -rf ~; $(touch pwned) `touch pwned` * \"";
+test('on a Mac, sh gets values the same way: quoted on their own, bare inside "..."', () => {
+  const r = expr.renderShell('git checkout {{ trigger.repo }} && echo "on {{ trigger.repo }}.txt"', { trigger: { repo: SH_EVIL } });
+  assert.equal(r.command, 'git checkout "${SHELLBY_VALUE_1}" && echo "on ${SHELLBY_VALUE_2}.txt"');
+  assert.deepEqual(Object.values(r.env), [SH_EVIL, SH_EVIL]);
+  assert.equal(r.command.includes('rm -rf'), false);
+  assert.match(expr.shellProblem('echo \\"{{ a }}'), /word of its own/, 'an escaped quote opens nothing, and is no word boundary');
+  assert.equal(expr.renderShell('cp {{ a }} /tmp/{{ a }}.bak --to={{ a }}', { a: 'v' }).command, 'cp "${SHELLBY_VALUE_1}" /tmp/"${SHELLBY_VALUE_2}".bak --to="${SHELLBY_VALUE_3}"');
+  assert.deepEqual(expr.renderShell('ls', {}), { command: 'ls', env: {} });
+});
+
+test('sh refuses a value where it could read it as code, or where a scanner could lose track of the quotes', () => {
+  const v = { v: 'a[$(touch pwned)]' };
+  for (const t of ['echo $(( {{ v }} + 1 ))', '(( n = {{ v }} ))', '[[ {{ v }} -gt 1 ]]', 'let n={{ v }}', 'eval echo {{ v }}',
+    'echo "$(echo "{{ v }}")"', 'echo `echo {{ v }}`', "echo $'it\\'s {{ v }}'", 'cat <<EOF\n{{ v }}\nEOF', 'cd $(pwd) && echo {{ v }}']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, t);
+    assert.throws(() => expr.renderShell(t, v), /can't share a command/, t);
+  }
+  for (const t of ['echo $[ {{ v }} + 1 ]', 'declare -i n={{ v }}', 'typeset -i n={{ v }}', 'f() { local -i n={{ v }}; }; f']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, t);
+  }
+  for (const t of ['echo x{{ v }}', 'echo {{ v }}x', 'echo {{ v }}#c', 'echo \\"{{ v }}']) {
+    assert.match(expr.shellProblem(t), /word of its own/, t);
+  }
+  // Every [ ] and { } is refused (subscripts, $[ ], ${ }, brace groups), quoted or not, but the test command's.
+  for (const t of ['a[{{ v }}]=1', 'a["{{ v }}"]=1', 'a[ "{{ v }}" ]=1', 'a[x"{{ v }}"]=1', 'echo ${#a["{{ v }}"]}',
+    'a[${x]}"{{ v }}"]=1', 'echo "a[{{ v }}]"', 'ls [ab]* && echo {{ v }}', 'echo ${x:{{ v }}}', 'echo ${HOME}/{{ v }}', '{ echo {{ v }}; }']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, t);
+  }
+  // sh deletes a backslash-newline: "echo \<nl>#..." is a comment, de\<nl>clare is declare.
+  for (const t of ['echo \\\n#"\necho {{ v }}"', 'de\\\nclare -i n={{ v }}', 'echo "a\\\nb" {{ v }}', 'echo \\\r\n{{ v }}']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, JSON.stringify(t));
+  }
+  // Builtins that take a name (a subscript in it runs) or code.
+  for (const t of ['printf -v {{ v }} x', 'printf %s -v {{ v }}', 'read {{ v }} < f', 'unset {{ v }}', 'export {{ v }}=1', '[ -v {{ v }} ]', 'test ! -v {{ v }}',
+    'mapfile -t {{ v }} < f', 'getopts ab {{ v }}', 'trap {{ v }} EXIT', 'source {{ v }}', '. {{ v }}', 'builtin printf -v {{ v }} x', 'command read {{ v }}', 'fc -e {{ v }}']) {
+    assert.match(expr.shellProblem(t), /can't share a command/, t);
+  }
+  assert.match(expr.shellProblem('printf "%s" {{ v }}'), /can't share a command/, 'printf at all: a value could become its -v');
+  assert.match(expr.shellProblem('read<f {{ v }}'), /can't share a command/, 'a word ends at a metacharacter too');
+  assert.equal(expr.shellProblem('git commit -m "{{ v }}" && npm run build'), null, 'ordinary commands are fine');
+  for (const t of ['"declare" -i n={{ v }}', 'de\\clare -i n={{ v }}', "'let' n={{ v }}"]) {
+    assert.match(expr.shellProblem(t), /can't share a command/, `a quoted keyword is the keyword: ${t}`);
+  }
+  // A # that could start a comment is refused; mid-word, or escaped before, it's text.
+  for (const t of ['echo hi # {{ v }}', '# "\necho {{ v }}', '(true)#"\necho {{ v }}', 'true;#"\necho {{ v }}', 'echo x >#"\necho {{ v }}']) {
+    assert.match(expr.shellProblem(t), /# comment/, JSON.stringify(t));
+  }
+  assert.equal(expr.shellProblem('echo a#"b {{ v }}"'), null, 'a # inside a word is no comment: the quote it opens counts');
+  assert.equal(expr.renderShell('echo a\\ #"b {{ v }}"', { v: 'x' }).command, 'echo a\\ #"b ${SHELLBY_VALUE_1}"', 'an escaped space is no boundary');
+  assert.match(expr.shellProblem('echo "{{ v }}'), /quote open/);
+  assert.match(expr.shellProblem("echo {{ v }} 'oops"), /quote open/);
+  assert.equal(expr.shellProblem('[ -n "{{ v }}" ] && echo yes'), null, 'the [ command is not a subscript');
+  assert.equal(expr.shellProblem('echo $HOME/{{ v }} "$HOME {{ v }}"'), null, 'a plain $NAME is fine');
+  assert.match(expr.shellProblem("echo '{{ v }}'"), /single quotes/);
+  assert.equal(expr.shellProblem('git log --oneline'), null, 'no value, nothing to refuse');
+  assert.equal(expr.shellProblem('echo $(( 1 + 2 ))'), null, 'no value, nothing to refuse');
+});
+
+test('sh reads each value as one word of text, and runs none of it', { skip: process.platform === 'win32' && 'needs /bin/sh' }, () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { spawnSync } = require('child_process');
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'sb-sh-')));
+  try {
+    const r = expr.renderShell('echo {{ v }} "<{{ v }}>"', { v: SH_EVIL });
+    // The shell a workflow's run step gets on a Mac (shellcmd.js POSIX_SH).
+    const sh = fs.existsSync('/bin/dash') ? '/bin/dash' : '/bin/sh';
+    const out = spawnSync(sh, ['-c', r.command], { cwd: dir, env: { ...process.env, ...r.env }, encoding: 'utf8' });
+    assert.equal(out.stdout, `${SH_EVIL} <${SH_EVIL}>\n`);
+    assert.ok(!fs.existsSync(path.join(dir, 'pwned')), 'nothing in the value ran');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('a value inside single quotes is caught on save', () => {
   assert.equal(expr.valuesInSingleQuotes("echo '{{ x }}'"), true);
   assert.equal(expr.valuesInSingleQuotes('echo "{{ x }}"'), false);

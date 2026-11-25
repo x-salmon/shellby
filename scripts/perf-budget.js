@@ -31,6 +31,7 @@
 // Wall clocks: the script's Date.now() and the renderers' performance.timeOrigin
 // are both the system clock, so spawn-to-mark times line up across processes.
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -99,7 +100,7 @@ function launch(profile, { cdp = false, foreground = false } = {}) {
 async function stop(child) {
   if (!child || child.exitCode != null) return;
   const gone = new Promise(r => child.once('exit', r));
-  spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+  endApp(child.pid);
   await Promise.race([gone, wait(10000)]);
   await wait(1500); // the profile, the port and the GPU cache, as e2e-ci.js settles
 }

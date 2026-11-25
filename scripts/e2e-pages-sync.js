@@ -180,7 +180,7 @@ async function connect(url) {
     await panel.ev("SB.openPage('print-queue')");
     check(await until("!!document.querySelector('#pgOpen .pg-cards .pg-arrival') && !!document.querySelector('#pgOpen iframe.pg-frame')"), 'PC A: the sheet sits above the page, which still runs');
     await shot('4-new-version-waits');
-    await panel.ev("[...document.querySelectorAll('#pgOpen .pg-arrival button')].find(b => b.textContent === 'Not on this PC').click()");
+    await panel.ev("[...document.querySelectorAll('#pgOpen .pg-arrival button')].find(b => /^Not on this (PC|Mac)$/.test(b.textContent)).click()");
     check(await until("shellby.pages.view('print-queue').then(v => v.version === 1 && v.arrived?.quiet === true && !document.querySelector('#pgOpen .pg-arrival'))"), 'PC A: Not on this PC keeps version 1 and goes quiet');
     await panel.ev("document.querySelector('#pgOpen .pg-more').click()");
     await panel.ev("[...document.querySelectorAll('#pagesMenu .menu-item')].find(b => /History/.test(b.textContent))?.click()");
@@ -191,7 +191,7 @@ async function connect(url) {
     await panel.ev("[...document.querySelectorAll('#pagesMenu .menu-item')].find(b => /Where it goes/.test(b.textContent))?.click()");
     check(await until("!document.getElementById('pgWhereSheet').hidden && document.querySelectorAll('#pgWhereBody .pg-opt').length === 4"), 'PC A: Where it goes offers the page and its data');
     await shot('6-where-it-goes');
-    await panel.ev("[...document.querySelectorAll('#pgWhereBody .pg-opt')].find(b => /This PC only/.test(b.textContent)).click()");
+    await panel.ev("[...document.querySelectorAll('#pgWhereBody .pg-opt')].find(b => /This (PC|Mac) only/.test(b.textContent)).click()");
     check(await until("shellby.pages.view('print-queue').then(v => v.sync.where === 'here')"), 'PC A: This PC only');
     await panel.ev("document.getElementById('pgWhereDone').click()");
     check(await sync(), 'PC A: synced');

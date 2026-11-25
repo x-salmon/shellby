@@ -9,11 +9,18 @@
 // typing a command, not Claude. Bounded in time and output, and the whole
 // process tree goes if it runs over.
 const { spawn } = require('child_process');
+const fs = require('fs');
 const { StringDecoder } = require('string_decoder');
 // By full path: the working folder is the project, and a powershell.exe in a
 // cloned repository would otherwise run instead.
 const { typedPlan } = require('./shells');
 const { killTree: endTree } = require('./proc-tree');
+
+// A workflow's run steps on a Mac (posix: true): dash, never your own zsh or
+// bash. Its values come in as variables, and dash has none of bash's places
+// that read a variable's text as code (arrays, subscripts' arithmetic, printf
+// -v, declare -i). macOS has shipped it since 10.15; /bin/sh before that.
+const POSIX_SH = ['/bin/dash', '/bin/sh'].find(f => { try { return fs.statSync(f).isFile(); } catch { return false; } }) || '/bin/sh';
 
 const TIMEOUT_MS = 2 * 60 * 1000;
 const MAX_OUTPUT = 30000;        // kept, shown and sent to Claude
@@ -29,9 +36,9 @@ const MAX_COMMAND = 4000;
 /**
  * @param {string} cwd
  * @param {string} command
- * @param {{ timeoutMs?: number, signal?: AbortSignal | null, env?: Record<string, string> | null, maxCommand?: number | null }} [opts]
+ * @param {{ timeoutMs?: number, signal?: AbortSignal | null, env?: Record<string, string> | null, maxCommand?: number | null, posix?: boolean }} [opts]
  */
-function run(cwd, command, { timeoutMs = TIMEOUT_MS, signal = null, env = null, maxCommand = null } = {}) {
+function run(cwd, command, { timeoutMs = TIMEOUT_MS, signal = null, env = null, maxCommand = null, posix = false } = {}) {
   const started = Date.now();
   if (maxCommand && String(command || '').length > maxCommand) return Promise.resolve({ command: String(command).slice(0, 200), output: `The command is too long (over ${maxCommand} characters).`, code: -1, timedOut: false, ms: 0 });
   const cmd = String(command || '').slice(0, maxCommand || MAX_COMMAND);
@@ -51,7 +58,7 @@ function run(cwd, command, { timeoutMs = TIMEOUT_MS, signal = null, env = null, 
     let child;
     try {
       // UTF-8 output, so non-ASCII file names and messages come back intact.
-      const plan = typedPlan(cmd);
+      const plan = posix && process.platform !== 'win32' ? { file: POSIX_SH, args: ['-c', cmd] } : typedPlan(cmd);
       child = spawn(plan.file, plan.args, {
         cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], ...(env ? { env: { ...process.env, ...env } } : {}),
       });

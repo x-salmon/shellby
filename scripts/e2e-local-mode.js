@@ -66,7 +66,8 @@ function ollama() {
   fs.writeFileSync(path.join(userData, 'settings.json'), JSON.stringify({ onboarded: true, notifications: false, localModel: { on: false, url: fake.url, model: '' } }));
   const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
-    env: { ...process.env, SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47995' },
+    // The machine the recommendations below expect (16 GB, no GPU), whatever the runner has.
+    env: { ...process.env, SHELLBY_FAKE_HARDWARE: JSON.stringify({ ramGb: 16, vramGb: null }), SHELLBY_USER_DATA: userData, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47995' },
   });
   try {
     let list = [];
@@ -93,7 +94,7 @@ function ollama() {
     // Running, nothing installed: the setup card, with a recommendation for this PC
     check(await until("!document.getElementById('localSetupCard').hidden", 15000), 'with Ollama running and no models, the setup card shows');
     check(/Now a model/.test(await text('localSetupTitle')), `...asking for a model ("${await text('localSetupTitle')}")`);
-    check(/For this PC:/.test(await text('localSetupText')) && (await text('localSetupText')).includes(QUICK), `...recommending ${QUICK} among others ("${await text('localSetupText')}")`);
+    check(/For this (PC|Mac):/.test(await text('localSetupText')) && (await text('localSetupText')).includes(QUICK), `...recommending ${QUICK} among others ("${await text('localSetupText')}")`);
     check(await ev("document.querySelector('#localPreset [data-preset=\"custom\"]').getAttribute('aria-checked') === 'true'"), 'settings saved before presets read as Custom');
     await shot('local-mode-setup.png');
 

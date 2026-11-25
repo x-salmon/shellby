@@ -3,6 +3,7 @@
 // mode (the mode chip's label changes width). Reports any overflow.
 //   node scripts/titlebar-fit.js
 const { spawn } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -58,7 +59,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     console.error('failed:', e.message);
     fails++;
   } finally {
-    spawn('taskkill', ['/PID', String(app.pid), '/T', '/F']);
+    endApp(app.pid);
     setTimeout(() => process.exit(fails ? 1 : 0), 600);
   }
 })();

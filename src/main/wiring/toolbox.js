@@ -25,6 +25,8 @@ function wireToolbox(d) {
   function createToolbox() {
     d.toolbox = new ToolboxWatcher({
       home: os.homedir(),
+      // Your own skills and agents live where Claude Code reads them: CLAUDE_CONFIG_DIR, if set.
+      userDir: process.env.CLAUDE_CONFIG_DIR || null,
       getCwd: d.currentCwd,
       getPlugins: () => [],
       // Mods: marketplace plugins as the shop last listed them, and the settings

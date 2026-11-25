@@ -142,8 +142,25 @@ function reap(rootPid, sinceMs) {
   return String(r.stdout || '').split(/\s+/).filter(s => /^\d+$/.test(s)).length;
 }
 
+// A failing check's last lines, as a GitHub error annotation. Annotations are
+// readable without signing in (the job's log isn't), so a red shard says why.
+const ANNOTATION_FAILS = 15; // its FAIL lines first, wherever they were
+const ANNOTATION_LINES = 15; // then how it ended
+const ANNOTATION_CHARS = 4000;
+
+/** `::error` workflow command for a failed check: its FAIL lines and last lines, escaped. */
+function failureAnnotation(name, output) {
+  const lines = String(output || '').split(/\r?\n/).map(l => l.trimEnd()).filter(Boolean);
+  const end = lines.slice(-ANNOTATION_LINES);
+  const fails = lines.slice(0, -ANNOTATION_LINES).filter(l => /^\s*FAIL\s/.test(l)).slice(0, ANNOTATION_FAILS);
+  const tail = [...fails, ...(fails.length ? ['...'] : []), ...end].join('\n').slice(-ANNOTATION_CHARS);
+  const esc = s => s.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+  const title = name.replace(/[,:%\r\n]/g, ' ');
+  return `::error title=e2e ${title} failed::${esc(tail || '(no output)')}`;
+}
+
 if (require.main !== module) {
-  module.exports = { SUITE, PORT_ENVS, discover, pick, balance, reap, reapScript, verdict, repeatOf, freePortEnv };
+  module.exports = { SUITE, PORT_ENVS, discover, pick, balance, reap, reapScript, verdict, repeatOf, freePortEnv, failureAnnotation };
   return;
 }
 
@@ -170,6 +187,7 @@ const sleep = ms => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 
 
 const SETTLE_MS = 2000;   // after the last Electron goes
 const MAX_WAIT_MS = 20000; // ...but never hang on someone else's Electron
+const CI_OUTPUT_MAX = 64 * 1024 * 1024; // a check's caught output on CI, well past any real one
 
 // Wait for the Electrons to actually be gone rather than guessing at a duration.
 // Capped, because another window on the machine (a dev run, another session's
@@ -192,14 +210,31 @@ const run = (name, attempt) => {
   const started = Date.now();
   const tmp = scratchTmp('shellby-e2e-');
   const env = { ...process.env, ...freePortEnv(), ...tmp.env, SHELLBY_E2E: '1' }; // SHELLBY_E2E: see src/main/test-desktop.js
-  const r = spawnSync(process.execPath, [script], { stdio: 'inherit', timeout: TIMEOUT_MS, env });
+  // On CI the output is caught (then printed) so a failure can be annotated;
+  // run by hand it streams as it comes. Caught in a file, not a pipe: Node
+  // writes a file at once but a pipe later on macOS, so a check killed at the
+  // timeout kept nothing of what it said.
+  const onCi = !!process.env.GITHUB_ACTIONS;
+  const outFile = path.join(tmp.dir, 'check-output.txt');
+  const outFd = onCi ? fs.openSync(outFile, 'w') : null;
+  const r = spawnSync(process.execPath, [script], onCi
+    ? { stdio: ['inherit', outFd, outFd], timeout: TIMEOUT_MS, env }
+    : { stdio: 'inherit', timeout: TIMEOUT_MS, env });
+  let output = '';
+  if (outFd !== null) {
+    fs.closeSync(outFd);
+    try { output = fs.readFileSync(outFile, 'utf8').slice(-CI_OUTPUT_MAX); } catch { /* nothing written */ }
+    process.stdout.write(output);
+  }
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   const ok = !r.error && r.status === 0;
+  const why = r.error ? r.error.message : r.status === null ? `killed (${r.signal})` : `exit ${r.status}`;
+  if (onCi && !ok) console.log(failureAnnotation(`${name}${attempt > 1 ? ` (attempt ${attempt})` : ''}`, `${output}\n[${why} after ${secs}s]`));
   console.log(`\n--- ${name}: ${ok ? 'PASS' : 'FAIL'} in ${secs}s`);
   const left = reap(r.pid, started);
   if (left) console.log(`--- ${name} left ${left} process${left === 1 ? '' : 'es'} running; stopped them`);
   tmp.remove(); // after the reap: a leftover Electron holds files in it
-  return { ok, secs, why: r.error ? r.error.message : r.status === null ? `killed (${r.signal})` : `exit ${r.status}` };
+  return { ok, secs, why };
 };
 
 /**

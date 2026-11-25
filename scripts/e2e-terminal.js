@@ -154,7 +154,7 @@ function cli(cwd, ...args) {
     check(add.code === 0 && add.out.includes('as number 3'), '`shellby next add` from a subfolder', add.out || add.err);
     const done = cli(repo, 'next', 'done', '1');
     check(done.code === 0 && done.out.includes('Ticked off') && done.out.includes('write the release notes'), '`shellby next done 1` ticks off the first', done.out || done.err);
-    check(await until("[...document.querySelectorAll('.bl-card .bl-row')].filter(r => r.querySelector('.bl-tag.task')).length === 2 && ![...document.querySelectorAll('.bl-card .bl-row')].filter(r => r.querySelector('.bl-tag.task')).some(r => r.querySelector('.pj-h-text b')?.textContent.includes('release notes'))"), 'and the page follows');
+    check(await until("[...document.querySelectorAll('.bl-card .bl-row')].filter(r => r.querySelector('.bl-tag.task')).length === 2 && ![...document.querySelectorAll('.bl-card .bl-row')].filter(r => r.querySelector('.bl-tag.task')).some(r => r.querySelector('.pj-h-text b')?.textContent.includes('release notes'))", 25000), `and the page follows (${await ev("JSON.stringify([...document.querySelectorAll('.bl-card .bl-row')].map(r => r.textContent.trim().slice(0, 50)))")}; repo file: ${JSON.stringify((() => { try { return fs.readFileSync(path.join(repo, '.shellby', 'tasks.md'), 'utf8').slice(0, 300); } catch (e) { return e.code; } })())})`);
     const tagged = await ev("[...document.querySelectorAll('.bl-card .bl-row')].filter(r => r.querySelector('.bl-tag.task')).find(r => r.textContent.includes('bump the deps'))?.querySelector('.bl-from')?.textContent");
     check(tagged === 'from the terminal', 'a to-do from the command line says so', tagged);
     if (SHOT) {

@@ -453,6 +453,16 @@
     return box;
   }
 
+  // A project's to-dos changed (Claude's add_task, `shellby next` in a terminal): every
+  // card showing looks again. The page itself can't tell: an add and a tick-off
+  // between two reloads leave the same count, so it keeps the old rows.
+  api.onProjectsChanged(() => {
+    for (const [cardKey, c] of live) {
+      if (!c.box.isConnected) { live.delete(cardKey); continue; }
+      c.load(false);
+    }
+  });
+
   // A Linear or Jira read finished in the background: that project's card, if it's showing, looks again.
   api.onBacklogChanged(o => {
     const k = o?.root ? keyOf({ root: o.root }) : o?.repo ? keyOf({ repo: o.repo }) : null;

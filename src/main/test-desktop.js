@@ -48,10 +48,12 @@ function watchesDesktop(env = process.env, isPackaged = false) {
 /**
  * Should every window live off screen, shown inactive, with focus kept in Shellby's
  * books (offscreen-windows.js)? Only in an e2e run (SHELLBY_E2E=1) that doesn't watch
- * the desktop: a dev run with the fake CLI is one you click in.
+ * the desktop: a dev run with the fake CLI is one you click in. Windows only: macOS
+ * pulls a window back until a sliver of it shows, so it would sit at the screen's
+ * edge with Shellby thinking it hangs off it (no room to split a pane).
  */
-function keepsOffScreen(env = process.env, isPackaged = false) {
-  return isTestRun(env, isPackaged) && env.SHELLBY_E2E === '1' && env.SHELLBY_COVER_POLL !== '1';
+function keepsOffScreen(env = process.env, isPackaged = false, platform = process.platform) {
+  return platform === 'win32' && isTestRun(env, isPackaged) && env.SHELLBY_E2E === '1' && env.SHELLBY_COVER_POLL !== '1';
 }
 
 module.exports = { keepPainting, watchesDesktop, keepsOffScreen, isTestRun, SWITCHES };

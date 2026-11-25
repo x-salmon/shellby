@@ -1,6 +1,6 @@
-// Work mode: the tools up front and a quiet crab. The mirror image of just the
-// crab: for developers who want Claude Code, Projects and the rest, with
-// Shellby keeping himself to himself on the wallpaper.
+// Work mode: the tools up front and no crab on the desktop. The mirror image of
+// just the crab: for developers who want Claude Code, Projects and the rest,
+// with Shellby hidden until they leave it (the panel and tray stay).
 //
 // Pure: one place decides what Work mode changes, so config.js, the settings
 // IPC and the panel all agree. See test/workmode.test.js.
@@ -79,10 +79,12 @@ function write(settings, patch) {
  *   confetti:   bursts on the desktop; off, a celebration is just his little hop
  *   petToasts:  Windows notifications for trophies, level-ups and stickers
  *   dock:       the bottom bar's order, or null for the usual one
+ *   hidden:     he's off the desktop altogether, and silent (wiring/windows.js);
+ *               the tray and the panel are how you reach Shellby
  */
 function behaviour(settings) {
   const on = isOn(settings);
-  return { on, dropIns: !on, confetti: !on, petToasts: !on, dock: on ? DOCK : null };
+  return { on, dropIns: !on, confetti: !on, petToasts: !on, dock: on ? DOCK : null, hidden: on };
 }
 
 /** behaviour() for anything holding a config (or a stand-in with get). */

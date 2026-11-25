@@ -7,7 +7,7 @@
 //   CPU temp      LibreHardwareMonitor's local web server (Options > Remote Web Server),
 //                 because Windows exposes no CPU temperature to normal programs
 //   CPU load      os.cpus() time deltas
-//   RAM           os.totalmem / os.freemem (free = "available" on Windows)
+//   RAM           os.totalmem / os.freemem (free = "available" on Windows); vm_stat on a Mac (mac-memory.js)
 //   Disks         drive list from CIM (cached), free space from fs.statfs
 const fs = require('fs');
 const os = require('os');
@@ -266,6 +266,8 @@ function findNvidiaSmi(env = process.env) {
  */
 function createSensors({ platform = process.platform } = {}) {
   const nvidiaSmi = platform === 'win32' ? findNvidiaSmi() : null;
+  // A Mac counts memory in use as Activity Monitor does (mac-memory.js).
+  const macMemory = platform === 'darwin' ? require('./mac-memory').createMacMemory() : null;
   let lastCpus = os.cpus();
   let lhmPort = LHM_DEFAULT_PORT;
   let hwinfoPort = require('./hwinfo').DEFAULT_PORT;
@@ -308,8 +310,10 @@ function createSensors({ platform = process.platform } = {}) {
 
     readMemory() {
       const total = os.totalmem();
-      const free = os.freemem();
-      return total > 0 ? { total, used: total - free, pct: (100 * (total - free)) / total } : null;
+      if (!(total > 0)) return null;
+      const macUsed = macMemory?.();
+      const used = macUsed != null ? Math.min(total, macUsed) : total - os.freemem();
+      return { total, used, pct: (100 * used) / total };
     },
 
     async readDisks(now = Date.now()) {

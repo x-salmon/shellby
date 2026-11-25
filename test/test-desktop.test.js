@@ -40,13 +40,14 @@ test('a run measuring his real cost gets the real desktop, fake CLI or not', () 
 });
 
 test('only an e2e run keeps its windows off screen, and not one about what covers the crab', () => {
-  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1' }, false), true);
-  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1', SHELLBY_FAKE_CLAUDE: 'fake.js' }, false), true);
+  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1' }, false, 'win32'), true);
+  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1', SHELLBY_FAKE_CLAUDE: 'fake.js' }, false, 'win32'), true);
   // A dev run with the fake CLI or motion test is one you click in.
-  assert.equal(keepsOffScreen({ SHELLBY_FAKE_CLAUDE: 'fake.js' }, false), false);
-  assert.equal(keepsOffScreen({ SHELLBY_MOTION_TEST: '1' }, false), false);
-  assert.equal(keepsOffScreen({}, false), false);
-  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1' }, true), false);
-  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1', SHELLBY_REAL_DESKTOP: '1' }, false), false);
-  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1', SHELLBY_COVER_POLL: '1' }, false), false); // e2e-on-top
+  assert.equal(keepsOffScreen({ SHELLBY_FAKE_CLAUDE: 'fake.js' }, false, 'win32'), false);
+  assert.equal(keepsOffScreen({ SHELLBY_MOTION_TEST: '1' }, false, 'win32'), false);
+  assert.equal(keepsOffScreen({}, false, 'win32'), false);
+  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1' }, true, 'win32'), false);
+  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1', SHELLBY_REAL_DESKTOP: '1' }, false, 'win32'), false);
+  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1', SHELLBY_COVER_POLL: '1' }, false, 'win32'), false); // e2e-on-top
+  assert.equal(keepsOffScreen({ SHELLBY_E2E: '1' }, false, 'darwin'), false, 'a Mac keeps a sliver of every window on screen');
 });

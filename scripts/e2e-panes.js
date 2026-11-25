@@ -14,6 +14,8 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9398;
+// CDP's modifier for the key a person holds for a shortcut: Cmd (4) on a Mac, Ctrl (2) elsewhere.
+const CMD = process.platform === 'darwin' ? 4 : 2;
 const SHOT_TIMEOUT_MS = 10000;   // an unpainted window never answers captureScreenshot
 const CDP_TIMEOUT_MS = 30000;    // the longest any one call to the page may take
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -127,7 +129,10 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
     await ev(`SB.activate('${D}')`);
     await ev("SB.setView('settings')");
     await wait(300);
-    for (const type of ['keyDown', 'keyUp']) await panel.send('Input.dispatchKeyEvent', { type, key: '\\', code: 'Backslash', windowsVirtualKeyCode: 220, modifiers: 2 });
+    // macOS takes a Cmd press sent through CDP as a menu key equivalent before the page
+    // sees it, so on a Mac the press is the one mac-ui.js hands the page: Ctrl+\.
+    if (process.platform === 'darwin') await ev("document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: '\\\\', code: 'Backslash', ctrlKey: true, bubbles: true, cancelable: true }))");
+    else for (const type of ['keyDown', 'keyUp']) await panel.send('Input.dispatchKeyEvent', { type, key: '\\', code: 'Backslash', windowsVirtualKeyCode: 220, modifiers: CMD });
     check(await until('SB.state.grid.length === 2'), 'Ctrl+\\ from Settings splits');
     check(await ev("SB.state.view === 'chat'"), 'and shows the chat');
     await wait(300);
@@ -145,7 +150,7 @@ const targets = async () => { try { return await (await fetch(`http://127.0.0.1:
 
     // Two columns need 2 x 286 + 6 px of chat; a 460 px panel can't hold that, so it must have grown.
     const grownTo = await ev('window.innerWidth');
-    check(startWidth >= 700 || grownTo > startWidth, `the panel grew to fit two panes (${startWidth} -> ${grownTo})`);
+    check(startWidth >= 700 || grownTo > startWidth, `the panel grew to fit two panes (${startWidth} -> ${grownTo}; ${await ev('JSON.stringify({ x: screenX, sw: screen.availWidth, sh: screen.availHeight, ih: innerHeight, grid: SB.state.grid.length })')})`);
     check(grownTo <= Math.max(startWidth, 2 * 286 + 6 + chromeW + 2), `and no wider than they need (${grownTo})`);
     check(await ev(`[...document.querySelectorAll('.pane')].every(p => p.getBoundingClientRect().width >= ${280 - 1})`), 'no pane narrower than 280 px');
     // The left pane shows A from here on. The box moving to another pane leaves

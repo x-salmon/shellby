@@ -105,7 +105,8 @@ function checkLatestYml(text, version) {
  * newer red one doesn't.
  *   runs: the API's workflow_runs ({ head_sha, status, conclusion, created_at, html_url })
  *   jobs: the newest run's jobs ({ name, status, conclusion }), when it's still
- *   going: one red job already decides it, without waiting out the rest.
+ *   going: one red job already decides it, without waiting out the rest, and
+ *   every job green does too, while the run itself finishes up.
  *   -> { state: 'green' | 'running' | 'missing' | 'failed', problem: string | null }
  */
 function checkCiRuns(runs, sha, jobs = []) {
@@ -114,10 +115,11 @@ function checkCiRuns(runs, sha, jobs = []) {
   if (!newest) return { state: 'missing', problem: `CI hasn't run on ${short}. Push it to main, and tag it once CI is green.` };
   const where = newest.html_url ? ` (${newest.html_url})` : '';
   if (newest.status !== 'completed') {
-    const red = (jobs || []).filter(j => j?.status === 'completed' && RED.has(j.conclusion) && !REPORT_ONLY.test(String(j.name)));
+    const red = (jobs || []).filter(j => j?.status === 'completed' && RED.has(j.conclusion));
     if (red.length) {
       return { state: 'failed', conclusion: red[0].conclusion, problem: `${red.map(j => j.name).join(', ')} failed on ${short}${where}, so the release would fail the same way. Fix main first; the fix ships as the next version.` };
     }
+    if (gatingJobsPassed(jobs)) return { state: 'green', conclusion: 'success', problem: null };
     return { state: 'running', problem: `CI is still running on ${short}${where}. Tag it once it's green, or run with --wait.` };
   }
   if (newest.conclusion !== 'success') {
@@ -132,9 +134,18 @@ function checkCiRuns(runs, sha, jobs = []) {
 // The conclusions that mean the tests themselves failed, not that the run was
 // cut short (cancelled, skipped): only these stop a tag that's already pushed.
 const RED = new Set(['failure', 'timed_out']);
-// Jobs that only report (continue-on-error in ci.yml): the Mac's UI checks, until
-// they're green there. Their red never decides a release; the run's own result already leaves them out.
-const REPORT_ONLY = /^e2e on macOS /;
+// A job that passed, or that its `if:` skipped.
+const PASSED = new Set(['success', 'skipped']);
+
+/**
+ * Whether every job has passed, the run's own result aside (it can still be
+ * finishing up). Every job decides a release, the Mac's UI checks included. No
+ * jobs at all proves nothing.
+ */
+function gatingJobsPassed(jobs) {
+  const gating = (jobs || []).filter(Boolean);
+  return gating.length > 0 && gating.every(j => j.status === 'completed' && PASSED.has(j.conclusion));
+}
 
 // What `release:cut` writes in a release commit: the version, the CHANGELOG, and
 // the change notes it gathered (and removed), and the credits it added to.

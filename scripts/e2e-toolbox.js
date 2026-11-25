@@ -19,6 +19,7 @@ const SKILLS = 200;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
+  console.log(`(starting: CDP on ${PORT})`);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-'));
   const project = fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-toolbox-project-'));
   for (let i = 0; i < SKILLS; i++) {
@@ -33,19 +34,28 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   fs.writeFileSync(path.join(home, '.claude', 'skills', 'e2e-mine', 'SKILL.md'), '---\nname: e2e-mine\ndescription: One of yours\n---\n\nBody.\n');
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, cwd: project }));
   const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
-    stdio: 'ignore',
-    env: { ...process.env, USERPROFILE: home, HOME: home, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') },
+    stdio: ['ignore', 'ignore', 'pipe'], // its stderr, to say why when it never comes up
+    // Yours via CLAUDE_CONFIG_DIR. HOME stays real on a Mac: an empty one has no
+    // Keychain, and the app's first safeStorage call waits on it with no window up.
+    env: { ...process.env, CLAUDE_CONFIG_DIR: path.join(home, '.claude'), ...(process.platform === 'win32' ? { USERPROFILE: home, HOME: home } : {}), SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') },
   });
+  let appErr = '';
+  app.stderr.on('data', d => { appErr = (appErr + d).slice(-3000); });
+  app.on('exit', (code, sig) => { appErr += ` (the app exited: ${code ?? sig})`; });
   let fails = 0;
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
   try {
     let list = [];
     for (let i = 0; i < 40 && !list.some(t => t.url.endsWith('panel.html')); i++) {
-      try { list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json(); } catch { /* starting */ }
+      // Bounded: a port that takes the connection and never answers would hold this forever.
+      try { list = await (await fetch(`http://127.0.0.1:${PORT}/json/list`, { signal: AbortSignal.timeout(3000) })).json(); } catch { /* starting */ }
       await wait(500);
     }
+    console.log(`(targets: ${list.map(t => path.basename(t.url)).join(', ') || 'none'})`);
+    if (!list.length) console.log(`(the app said: ${appErr.trim().split(/\r?\n/).slice(-15).join(' | ') || 'nothing'})`);
     const ws = new WebSocket(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
-    await new Promise(r => { ws.onopen = r; });
+    const opened = await Promise.race([new Promise(r => { ws.onopen = () => r(true); }), wait(15000).then(() => false)]);
+    if (!opened) throw new Error("the panel's DevTools socket never opened");
     let id = 0; const p = new Map();
     ws.onmessage = e => { const m = JSON.parse(e.data); p.get(m.id)?.(m); };
     const call = (method, params = {}) => new Promise(r => { const i = ++id; p.set(i, m => r(m.result)); ws.send(JSON.stringify({ id: i, method, params })); });
@@ -54,6 +64,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const pick = (sel, value) => ev(`(s => { s.value = ${JSON.stringify(value)}; s.dispatchEvent(new Event('change')); })(document.querySelector('${sel}'))`);
     const rows = () => ev("document.querySelectorAll('#toolList .tool-row').length");
     await panelBooted(ev);
+    console.log('(the panel is up)');
 
     const out = process.argv[2] || path.join(os.tmpdir(), 'shellby-toolbox.png');
     // Screenshots are for a person to look at, not something checked, so one that

@@ -103,7 +103,9 @@ const LAST = Object.keys(AREAS).at(-1);
       await panel.ev(`document.getElementById('setTab-${area}').click()`);
       await wait(300);
       const got = await shown(panel);
-      check(JSON.stringify(got) === JSON.stringify(navs), `${area} shows ${navs.join(', ')} (got ${JSON.stringify(got)})`);
+      // Desk lighting (OpenRGB) is Windows-only, hidden on a Mac (docs/MAC.md).
+      const want = process.platform === 'win32' ? navs : navs.filter(n => n !== 'Desk lighting');
+      check(JSON.stringify(got) === JSON.stringify(want), `${area} shows ${want.join(', ')} (got ${JSON.stringify(got)})`);
       await shot(panel, `area-${area}`);
     }
     check(await panel.ev("[...document.querySelectorAll('#settingsRail [role=tab] .rail-ico svg')].length") === Object.keys(AREAS).length, 'every area on the rail has its icon');

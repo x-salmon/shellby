@@ -15,7 +15,7 @@ npm test            # node:test, a fake Claude CLI stands in for the real one
 npm run e2e:ci      # the real app over CDP; `npm run e2e:ci -- queue voice` runs only those
 ```
 
-CI runs all four on `windows-latest`, and on `macos-latest`: the unit tests, the packaged app starting (`mac`) and the UI checks, which only report there for now (`e2e-mac`). How each Windows piece works on a Mac is in [docs/MAC.md](docs/MAC.md); Windows-only code goes behind `process.platform`, and a unit test of Windows-only behaviour skips elsewhere. `npm test` needs no Electron binary, but the
+CI runs all four on `windows-latest`, and on `macos-latest`: the unit tests, the packaged app starting (`mac`) and the UI checks (`e2e-mac`), which gate merges and releases as on Windows. How each Windows piece works on a Mac is in [docs/MAC.md](docs/MAC.md); Windows-only code goes behind `process.platform`, and a unit test of Windows-only behaviour skips elsewhere. `npm test` needs no Electron binary, but the
 e2e scripts do: run `node node_modules/electron/install.js` first.
 
 ## Working in a copy (worktree)

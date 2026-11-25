@@ -61,7 +61,7 @@ const DEFAULTS = {
   reopenAfterUpdate: false, // "Update and restart" was pressed: { version, at }; that version opens the panel when it boots (updates.js)
   crabOnly: false,
   claudeElsewhere: false, // Claude Code only on another computer, over ssh: first run asks for one there, not here (onboarding.js)
-  workMode: false,   // the tools up front and a quiet crab, laid over your own settings (see workmode.js)
+  workMode: false,   // the tools up front and no crab on the desktop, laid over your own settings (see workmode.js)
   workOverrides: {}, // what you changed while in Work mode; it wins over Work mode's own (workmode.js write)
   wander: true,      // idle strolls near his spot (see desktop/motion.js)
   wanderChosen: false, // you set wander yourself: with Windows' animation effects off, only that strolls (desktop/motion.js wanders)

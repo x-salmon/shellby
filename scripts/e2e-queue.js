@@ -113,7 +113,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const before = (await users()).length;
     await type('first thought');
     check(await ev("!!document.querySelector('#queued .queue-merging') && /Send now/.test(document.querySelector('#queued .queue-merging button')?.textContent || '')"), 'a chip says it is waiting a moment, with Send now');
-    check(/Ctrl\+Enter sends now/.test(await ev("document.getElementById('sendHint').textContent")), 'the hint says Ctrl+Enter sends now');
+    // ⌘ on a Mac (shared/mac-ui.js)
+    check(/(Ctrl\+|⌘)Enter sends now/.test(await ev("document.getElementById('sendHint').textContent")), 'the hint says Ctrl+Enter sends now');
     check(!(await ev('SB.activeTab().busy')) && await ev("SB.$('input').value === ''"), 'nothing has gone yet, and the box is clear');
     await type('second thought');
     check(await ev('SB.activeTab().queue.length') === 2, 'the second joins it');
@@ -134,7 +135,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await type('plain words');
     await type('/compact');
     check(await until('SB.activeTab().busy'), 'the plain message goes at once');
-    check(await ev("SB.activeTab().queue.length === 1 && SB.activeTab().queue[0].text === '/compact'"), 'the command waits behind it');
+    // Waiting behind it, or (a quick turn) already gone in a turn of its own: never merged into it.
+    check(await until(`(SB.activeTab().queue.length === 1 && SB.activeTab().queue[0].text === '/compact') || [...document.querySelectorAll('.msg.user')].length === ${n + 2}`, 3000), `the command waits behind it (${await ev('JSON.stringify(SB.activeTab().queue.map(q => q.text))')})`);
     check(await until(`!SB.activeTab().busy && SB.activeTab().queue.length === 0 && document.querySelectorAll('.msg.user').length === ${n + 2}`, 15000), 'then goes in a turn of its own');
     const twoTurns = (await users()).slice(-2);
     check(JSON.stringify(twoTurns) === JSON.stringify(['plain words', '/compact']), `two turns: ${twoTurns.join(' | ')}`);
@@ -143,7 +145,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev("shellby.setSettings({ mergeSends: false }).then(r => { SB.state.settings = r.settings; })");
     await type('no waiting');
     check(await ev("SB.activeTab().queue.length === 0 && !document.querySelector('#queued .queue-merging')"), 'with the setting off, nothing waits');
-    check(await until('SB.activeTab().busy'), '...it just goes');
+    // Busy, or (a quick turn) already done: either way it went, unmerged and unqueued.
+    check(await until("SB.activeTab().busy || [...document.querySelectorAll('.msg.user')].at(-1)?.textContent.includes('no waiting')"), '...it just goes');
     await ev("shellby.setSettings({ mergeSends: true }).then(r => { SB.state.settings = r.settings; })");
   } catch (e) {
     check(false, e.message);

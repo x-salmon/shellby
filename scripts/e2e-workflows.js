@@ -20,6 +20,8 @@ const { answerDialog } = require('./lib/dialog');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.E2E_CDP_PORT) || 9361;
+// A run step goes to the shell Shellby makes commands in: PowerShell on Windows, /bin/sh on a Mac (shells.js).
+const SAY = process.platform === 'win32' ? 'Write-Output' : 'echo';
 const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 47997;
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -126,15 +128,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const risky = {
       name: 'Run it', cwd: work, inputs: [{ name: 'who', default: 'there' }],
       steps: [
-        { id: 'cmd', type: 'run', command: 'Write-Output "hi {{ inputs.who }}"' },
+        { id: 'cmd', type: 'run', command: `${SAY} "hi {{ inputs.who }}"` },
         { id: 'draft', type: 'file', action: 'write', path: plan, content: 'draft' },
         { id: 'q', type: 'ask', question: 'Carry on?', path: '{{ draft.path }}' },
-        { type: 'run', command: 'Write-Output after' },
+        { type: 'run', command: `${SAY} after` },
       ],
     };
     const pendingNo = ev(`shellby.saveWorkflow(${JSON.stringify(risky)}).then(r => JSON.stringify(r))`);
     const shown = await answer(1);
-    check(shown !== null && /Write-Output/.test(shown), 'the confirmation window shows the command');
+    check(shown !== null && shown.includes(SAY), 'the confirmation window shows the command');
     check(JSON.parse(await pendingNo).ok === false, 'saying no saves nothing');
     const pendingYes = ev(`shellby.saveWorkflow(${JSON.stringify(risky)}).then(r => JSON.stringify(r))`);
     await answer(0);

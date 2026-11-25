@@ -56,6 +56,24 @@ static class ShellbyAskpass {
 }
 `;
 
+// The Mac's helper: the same request through macOS's own curl. The prompt is
+// only ever "$1", quoted, so the shell never reads it as syntax, and the token
+// reaches curl on fd 3, never in its command line (which ps shows anyone).
+const MAC_SOURCE = `#!/bin/sh
+# Shellby's ssh askpass helper (src/main/remote/askpass.js). Written from that file.
+case "$SHELLBY_ASKPASS_PORT" in ''|*[!0-9]*) exit 1;; esac
+[ -n "$SHELLBY_ASKPASS_TOKEN" ] || exit 1
+reply=$(printf '%s' "$1" | /usr/bin/curl -sf --noproxy '*' -H @/dev/fd/3 -H 'Content-Type: text/plain; charset=utf-8' --data-binary @- "http://127.0.0.1:$SHELLBY_ASKPASS_PORT/ask" 3<<EOF
+X-Shellby-Token: $SHELLBY_ASKPASS_TOKEN
+EOF
+) || exit 1
+case "$reply" in
+  "1
+"*) printf '%s\\n' "\${reply#??}"; exit 0;;
+esac
+exit 1
+`;
+
 /** The C# compiler that comes with Windows (.NET Framework 4), 64-bit first. */
 function findCompiler(root = process.env.SystemRoot || 'C:\\Windows', exists = fs.existsSync) {
   return ['Framework64', 'Framework']
@@ -77,11 +95,12 @@ function kindOf(prompt) {
  * ask({ prompt, kind }) -> Promise<string | null>: null when you cancelled.
  * compiler: csc.exe (findCompiler), injectable for tests.
  * -> { env(): Promise<object>, close() }
- * @param {{ dir: string, ask: (q: { prompt: string, kind: string }) => Promise<string | null>, log?: (msg: string) => void, compiler?: string | null }} opts
+ * @param {{ dir: string, ask: (q: { prompt: string, kind: string }) => Promise<string | null>, log?: (msg: string) => void, compiler?: string | null, platform?: string }} opts
  */
-function createAskpass({ dir, ask, log = () => {}, compiler = findCompiler() }) {
+function createAskpass({ dir, ask, log = () => {}, compiler = findCompiler(), platform = process.platform }) {
   const token = crypto.randomBytes(24).toString('hex');
-  const exe = path.join(dir, 'shellby-askpass.exe');
+  const mac = platform === 'darwin';
+  const exe = path.join(dir, mac ? 'shellby-askpass.sh' : 'shellby-askpass.exe');
   const src = path.join(dir, 'shellby-askpass.cs');
   /** @type {import('http').Server | null} */
   let server = null;
@@ -91,6 +110,12 @@ function createAskpass({ dir, ask, log = () => {}, compiler = findCompiler() }) 
   // Built once, and again only when the source above changes.
   async function buildHelper() {
     fs.mkdirSync(dir, { recursive: true });
+    if (mac) {
+      // Written fresh each run: nothing to compile, and never one someone else left.
+      try { fs.rmSync(exe, { force: true }); } catch { /* written over below */ }
+      fs.writeFileSync(exe, MAC_SOURCE, { mode: 0o700 });
+      return;
+    }
     let same = false;
     try { same = fs.readFileSync(src, 'utf8') === SOURCE && fs.existsSync(exe); } catch { /* not built yet */ }
     if (same) return;
@@ -162,4 +187,4 @@ function createAskpass({ dir, ask, log = () => {}, compiler = findCompiler() }) 
   return { env, close };
 }
 
-module.exports = { createAskpass, kindOf, findCompiler, SOURCE };
+module.exports = { createAskpass, kindOf, findCompiler, SOURCE, MAC_SOURCE };

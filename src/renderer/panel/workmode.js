@@ -1,4 +1,4 @@
-/* Shellby panel — Work mode: the tools up front and a quiet crab. The bar
+/* Shellby panel — Work mode: the tools up front and no crab on the desktop. The bar
    leads with Chat, Projects, History, Toolbox, Automate and Health; Shellby's
    own screens move to the end of it and stay in Ctrl+K. What it changes about
    him is decided in main (src/main/workmode.js), which sends the bar's order
@@ -53,14 +53,14 @@
     SB.applyCrabOnly();
     SB.refreshEmptyStates();
     SB.setView('chat');
-    SB.toast("Work mode it is. He's on your desktop, keeping quiet unless something needs you.", { ms: 6000 });
+    SB.toast("Work mode it is. He's off your desktop until you leave it; find him in the tray.", { ms: 6000 });
   };
 
   // The three modes, and the one switch between them: his right-click menu and
   // the tray (panel:mode), Ctrl+K and Settings all come through here.
   SB.APP_MODES = [
     { id: 'claude', icon: '💬', title: 'Claude Code', sub: 'Your tasks, and a lively crab' },
-    { id: 'work', icon: '🛠️', title: 'Work mode', sub: 'The tools up front, and a quiet crab' },
+    { id: 'work', icon: '🛠️', title: 'Work mode', sub: 'The tools up front, no crab on the desktop' },
     { id: 'crab', icon: '🦀', title: 'Just the crab', sub: 'Health, the Wardrobe and trophies, no Claude' },
   ];
   const needsSetup = () => {

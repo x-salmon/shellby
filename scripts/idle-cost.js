@@ -20,6 +20,7 @@
 // Treat it as a budget: run it before and after anything that touches the
 // critter's animation, the panel's timers or the health monitor's interval.
 const { spawn, execFileSync } = require('child_process');
+const { endApp } = require('./lib/end-app');
 const { sampleTree: sample, perProcess } = require('./process-tree');
 const fs = require('fs');
 const os = require('os');
@@ -108,8 +109,8 @@ function gpuBusy(byPid, seconds) {
     }
     console.log('');
   } finally {
-    spawn('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' });
-    if (thief) spawn('taskkill', ['/PID', String(thief.pid), '/T', '/F'], { stdio: 'ignore' });
+    endApp(app.pid);
+    if (thief) endApp(thief.pid);
   }
   await wait(800);
   process.exit(0);

@@ -28,7 +28,7 @@ class Steps extends Base {
     return {
       claude: args => this.claudeStep(run, args),
       mcp: args => this.mcpStep(args),
-      run: ({ command, env, cwd, timeoutMs, signal }) => d.runCommand(cwd || d.currentCwd(), command, { timeoutMs, signal, env, maxCommand: 12000 }),
+      run: ({ command, env, cwd, timeoutMs, signal }) => d.runCommand(cwd || d.currentCwd(), command, { timeoutMs, signal, env, maxCommand: 12000, posix: true }),
       http: args => fx.http({ ...args, fetchImpl: d.fetchImpl || fetch, blockedPorts: [d.webhookPort()].filter(Boolean) }),
       ask: args => this.askStep(run, args),
       tell: args => this.tellStep(run, args),

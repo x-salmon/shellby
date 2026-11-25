@@ -63,8 +63,8 @@ function make(over = {}) {
     showWorkflows: () => {},
     toPanel: (c, p) => calls.panel.push([c, p]),
     runCommand: async (cwd, raw, { env = {} } = {}) => {
-      // What PowerShell would run, with ${env:…} filled in.
-      const command = raw.replace(/\$\{env:(\w+)\}/g, (_, n) => env[n] ?? '');
+      // What the shell would run, with PowerShell's ${env:…} or sh's "${…}" (a Mac) filled in.
+      const command = raw.replace(/\$\{env:(\w+)\}|"\$\{(SHELLBY_VALUE_\d+)\}"|\$\{(SHELLBY_VALUE_\d+)\}/g, (_, a, b, c) => env[a || b || c] ?? '');
       calls.commands.push({ cwd, command, raw });
       return over.command ? over.command(command) : { output: 'done', code: 0 };
     },

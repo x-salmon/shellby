@@ -80,7 +80,7 @@
       h('ol', { class: 'eng-step-list' }, v.steps.map((s, i) => {
         const p = done.get(i + 1);
         return h('li', { class: `eng-step${p ? (p.followed ? ' done' : ' drifted') : ''}` },
-          h('span', { class: 'eng-step-mark', 'aria-hidden': 'true', text: p ? (p.followed ? '✓' : '↷') : '·' }),
+          h('span', { class: 'eng-step-mark', 'aria-hidden': 'true', text: p ? (p.followed ? '✓' : '↷') : '' }),
           h('span', {}, s, p ? h('span', { class: 'eng-step-note', text: ` — ${p.summary}` }) : null));
       })));
   }

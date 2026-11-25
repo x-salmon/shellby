@@ -27,7 +27,7 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
   execFileSync('git', ['init', '-q', repo]);
   // Plan and Build work in a copy, which needs a commit to start from.
   execFileSync('git', ['-C', repo, '-c', 'user.name=e2e', '-c', 'user.email=e2e@example.com', 'commit', '-q', '--allow-empty', '-m', 'start']);
-  const key = repo.toLowerCase();
+  const key = process.platform === 'win32' ? repo.toLowerCase() : repo; // a project's key is lower case on Windows only
   const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
     stdio: 'ignore',
     env: { ...process.env, SHELLBY_USER_DATA: fs.mkdtempSync(path.join(os.tmpdir(), 'shellby-test-')), SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js'), SHELLBY_HOOK_PORT: process.env.E2E_HOOK_PORT || '47981' },
@@ -63,7 +63,8 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
 
     // ---- 1. it opens on the project you're working in
     await open();
-    check(await scope() === key, 'Notes opens on the project you are working in');
+    const opened0 = await scope();
+    check(opened0 === key, `Notes opens on the project you are working in (${JSON.stringify(opened0)}, want ${JSON.stringify(key)})`);
     check(await ev("document.querySelector('#notesScope option:checked').textContent.includes('· here')"), 'and the list picker says it is the one here');
     check(await ev("document.querySelector('#noteList .note-empty') !== null"), 'an empty project says so');
 
@@ -151,7 +152,7 @@ const until = async fn => { for (let i = 0; i < 100; i++) { if (await fn()) retu
     let entry = await last();
     check(entry.title === 'Ask: export to STL', `the tab says what it is (${entry.title})`);
     check(entry.mode === 'ask', `Ask runs in Ask-first mode whatever mode you are in (${entry.mode})`);
-    check(entry.cwd.toLowerCase() === key, 'in the project folder');
+    check((process.platform === 'win32' ? entry.cwd.toLowerCase() : entry.cwd) === key, `in the project folder (${entry.cwd})`);
     const said = await ev("SB.activeTab().el.textContent");
     check(said.includes('"Do it", "Do it differently" or "Skip it"') && said.includes('Read only'), 'the prompt asks for a verdict and changes nothing');
 

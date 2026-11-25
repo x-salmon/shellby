@@ -303,6 +303,8 @@ function checkStep(s, at, depth, ctx) {
     case 'run': {
       step.command = text(s, 'command', at, err, { max: LIMITS.command, what: 'the command' });
       if (step.command && expr.valuesInSingleQuotes(step.command)) err(`${at}.command`, 'A {{ value }} inside \'single quotes\' stays as text. Put it in "double quotes", or on its own.');
+      // A Mac runs it with /bin/sh, which takes fewer places for a value (expr.js shellScan).
+      else if (step.command && process.platform === 'darwin') { const why = expr.shellProblem(step.command); if (why) err(`${at}.command`, why); }
       if (s.cwd) { const c = absPath(s.cwd); if (c === null) err(`${at}.cwd`, 'Folder must be a full path'); else if (c) step.cwd = c; }
       if (s.allowFail === true) step.allowFail = true;
       break;
