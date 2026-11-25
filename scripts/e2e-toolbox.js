@@ -34,9 +34,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   fs.writeFileSync(path.join(home, '.claude', 'skills', 'e2e-mine', 'SKILL.md'), '---\nname: e2e-mine\ndescription: One of yours\n---\n\nBody.\n');
   fs.writeFileSync(path.join(profile, 'settings.json'), JSON.stringify({ onboarded: true, cwd: project }));
   const app = spawn(require('electron') /* its binary, on any platform */, [ROOT, `--remote-debugging-port=${PORT}`], {
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'], // its stderr, to say why when it never comes up
     env: { ...process.env, USERPROFILE: home, HOME: home, SHELLBY_USER_DATA: profile, SHELLBY_FAKE_CLAUDE: path.join(ROOT, 'test', 'fixtures', 'fake-claude.js') },
   });
+  let appErr = '';
+  app.stderr.on('data', d => { appErr = (appErr + d).slice(-3000); });
+  app.on('exit', (code, sig) => { appErr += ` (the app exited: ${code ?? sig})`; });
   let fails = 0;
   const check = (ok, label) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`); if (!ok) fails++; };
   try {
@@ -47,6 +50,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       await wait(500);
     }
     console.log(`(targets: ${list.map(t => path.basename(t.url)).join(', ') || 'none'})`);
+    if (!list.length) console.log(`(the app said: ${appErr.trim().split(/\r?\n/).slice(-15).join(' | ') || 'nothing'})`);
     const ws = new WebSocket(list.find(t => t.url.endsWith('panel.html')).webSocketDebuggerUrl);
     const opened = await Promise.race([new Promise(r => { ws.onopen = () => r(true); }), wait(15000).then(() => false)]);
     if (!opened) throw new Error("the panel's DevTools socket never opened");
