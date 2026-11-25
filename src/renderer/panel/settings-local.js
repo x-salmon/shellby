@@ -191,10 +191,15 @@
       b.tabIndex = on ? 0 : -1;
     }
   }
+  // Only the latest pick lands: a download finishing re-applies the preset, and
+  // its answer coming back after a pick you made since would undo that pick.
+  let presetSeq = 0;
   async function pickPreset(name, again = false) {
     if (name === current().preset && !again) return;
+    const mine = ++presetSeq;
     say(name === 'off' ? 'Turning local models off…' : 'Picking models…');
     const r = await api.localPreset(name);
+    if (mine !== presetSeq) return;
     if (!r?.ok) { say(r?.error || 'Couldn\'t switch.'); return; }
     state.settings = r.settings;
     renderLocalModel();

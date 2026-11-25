@@ -9,6 +9,9 @@
 - Split and Show beside the chat work when the panel is already as tall as the screen allows (a small display, or the Dock on a Mac). They said there was no room.
 - On a Mac, the `shellby` command reaches the running app (it looked for its token only where Windows and Linux keep it), so `shellby next` and the rest work there.
 - The Toolbox lists your own skills, agents and commands from CLAUDE_CONFIG_DIR when it's set, as Claude Code does, rather than always from ~/.claude.
+- A project's Next up list shows to-dos added or ticked off from a terminal or by Claude straight away. An add and a tick-off close together could leave it showing the old list.
+- Picking a Local mode preset while a model finishes downloading keeps your pick, rather than the download's re-pick undoing it.
+- Helpers like Check the docs open their conversation with the prompt waiting in the box every time. On a busy machine it sometimes opened empty.
 
 ### Changed
 

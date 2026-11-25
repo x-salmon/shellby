@@ -82,8 +82,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     for (let i = 0; i < 20 && await ev('SB.activeTab().distanceFromEnd() > 2'); i++) await wait(100);
     check(await ev(`SB.activeTab().distanceFromEnd() <= 2 && ${jump}.hidden`), '↓ goes to the latest, and puts itself away');
     await ev('SB.activeTab().el.scrollTop = 0');
-    await wait(200);
-    check(await ev(`!${jump}.hidden && !${jump}.classList.contains('fresh')`), 'scrolled up with nothing new, the ↓ shows without a dot');
+    // Waited for, not a fixed pause: the scroll event lands later on a slow runner.
+    let upShown = false;
+    for (let i = 0; i < 30 && !upShown; i++) { upShown = await ev(`!${jump}.hidden`); if (!upShown) await wait(100); }
+    check(upShown && await ev(`!${jump}.classList.contains('fresh')`), 'scrolled up with nothing new, the ↓ shows without a dot');
 
     // 5. The feed shrinking by more than 40px in the very frame a new message lands (the bar,
     // chips and a warning at once, or a slow machine batching them): the scroll event that
