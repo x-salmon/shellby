@@ -248,9 +248,10 @@ async function openPhone(url) {
     await ev("shellby.pages.write('print-queue', { set: { askme: 1 } })");
     check(await untilTrue(() => phone.ev("document.querySelector('.pg-ask .pg-quote')?.textContent === 'Why do these fail?'")), 'the page’s ask is the phone’s own sheet with the prompt in full');
     check(await phone.ev("[...document.querySelectorAll('.pg-modes .proj')].map(b => b.textContent + (b.getAttribute('aria-checked') === 'true' ? '*' : '')).join(',')") === 'Ask first,Plan only*', 'Ask first or Plan only, the page’s pick marked, no Autonomous');
-    await savePng(phone.send, path.join(SHOTS, '3-phone-ask-sheet.png'));
     const askBtn = "[...document.querySelectorAll('.pg-ask button')].find(b => b.textContent.trim() === 'Ask Claude')";
+    // Before the screenshot: a slow one outlasts the moment it sleeps for.
     check(await phone.ev(`${askBtn}.disabled`), 'Ask Claude is asleep as the sheet opens, so a tap the page timed lands on nothing');
+    await savePng(phone.send, path.join(SHOTS, '3-phone-ask-sheet.png'));
     check(await untilTrue(() => phone.ev(`!${askBtn}.disabled`), 3000), 'and wakes a moment later');
     await phone.ev(`${askBtn}.click(); true`);
     // The mode it started in is the one History wrote at its first message: a page's conversation keeps

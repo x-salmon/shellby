@@ -219,12 +219,15 @@ const run = (name, attempt) => {
   if (onCi) { process.stdout.write(r.stdout || ''); process.stderr.write(r.stderr || ''); }
   const secs = ((Date.now() - started) / 1000).toFixed(1);
   const ok = !r.error && r.status === 0;
-  if (onCi && !ok) console.log(failureAnnotation(`${name}${attempt > 1 ? ` (attempt ${attempt})` : ''}`, `${r.stdout || ''}\n${r.stderr || ''}`));
+  const why = r.error ? r.error.message : r.status === null ? `killed (${r.signal})` : `exit ${r.status}`;
+  // How it ended goes last: a check killed at the timeout on a Mac loses what it
+  // printed (its pipe writes are async), so that may be all there is to say.
+  if (onCi && !ok) console.log(failureAnnotation(`${name}${attempt > 1 ? ` (attempt ${attempt})` : ''}`, `${r.stdout || ''}\n${r.stderr || ''}\n[${why} after ${secs}s]`));
   console.log(`\n--- ${name}: ${ok ? 'PASS' : 'FAIL'} in ${secs}s`);
   const left = reap(r.pid, started);
   if (left) console.log(`--- ${name} left ${left} process${left === 1 ? '' : 'es'} running; stopped them`);
   tmp.remove(); // after the reap: a leftover Electron holds files in it
-  return { ok, secs, why: r.error ? r.error.message : r.status === null ? `killed (${r.signal})` : `exit ${r.status}` };
+  return { ok, secs, why };
 };
 
 /**

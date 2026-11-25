@@ -6,3 +6,4 @@
 - On a Mac, ssh to another computer asks for your key's passphrase or password in Shellby, as on Windows. Before, it couldn't ask at all.
 - On a Mac, a workflow's run steps get their values. Every {{ value }} came out empty there.
 - On a Mac, "Alt text" on the share card stays as words instead of turning into ⌥.
+- Split and Show beside the chat work when the panel is already as tall as the screen allows (a small display, or the Dock on a Mac). They said there was no room.

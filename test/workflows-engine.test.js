@@ -35,8 +35,8 @@ function fx(over = {}) {
 }
 
 const runIt = async (workflow, effects, rec = record(), opts = {}) => new Engine({ workflow, record: rec, effects, ...opts }).run();
-// What PowerShell would run: ${env:NAME} expanded from the variables passed alongside.
-const shell = ({ command, env = {} }) => command.replace(/\$\{env:(\w+)\}/g, (_, n) => env[n] ?? '');
+// What the shell would run: PowerShell's ${env:NAME}, or sh's "${NAME}" (a Mac), expanded from the variables passed alongside.
+const shell = ({ command, env = {} }) => command.replace(/\$\{env:(\w+)\}|"\$\{(SHELLBY_VALUE_\d+)\}"|\$\{(SHELLBY_VALUE_\d+)\}/g, (_, a, b, c) => env[a || b || c] ?? '');
 
 test('steps run in order and pass data along', async () => {
   const w = wf([

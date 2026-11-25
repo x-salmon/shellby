@@ -56,7 +56,10 @@
       width: Math.round(window.innerWidth * zoom) + Math.ceil(Math.max(0, need.width - avail.width) * zoom),
       height: Math.round(window.innerHeight * zoom) + Math.ceil(Math.max(0, need.height - avail.height) * zoom),
     };
-    if (want.width > window.screen.availWidth - SCREEN_GAP || want.height > window.screen.availHeight - SCREEN_GAP) return { ok: false };
+    // Only an axis that has to grow can run out of screen: a window already as
+    // tall as the screen (a small display, the Dock) can still grow wider.
+    const growsW = need.width > avail.width, growsH = need.height > avail.height;
+    if ((growsW && want.width > window.screen.availWidth - SCREEN_GAP) || (growsH && want.height > window.screen.availHeight - SCREEN_GAP)) return { ok: false };
     return { ok: true, want, space };
   };
 
