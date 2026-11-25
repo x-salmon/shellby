@@ -460,6 +460,7 @@ function shellScan(parts) {
   if (SH_REFUSED.some(re => re.test(literal))) return result(SH_REFUSED_MSG);
   let single = false, double = false, braces = 0;
   let prev = ''; // the last character before this point ('' at the start, or right after a value)
+  let wordStart = true; // is the next character the start of a word, as sh splits them?
   for (let k = 0; k < parts.length; k++) {
     const part = parts[k];
     if (typeof part !== 'string') {
@@ -469,26 +470,32 @@ function shellScan(parts) {
       if (double ? prev === '[' : (prev && !SH_BEFORE.test(prev)) || (next && !SH_AFTER.test(next))) return result(SH_WORD_MSG);
       inDouble.push(double);
       prev = '';
+      wordStart = false; // what follows a value is the same word
       continue;
     }
     for (let i = 0; i < part.length; i++) {
       const c = part[i];
       prev = c;
-      if (single) { if (c === "'") single = false; continue; }
-      if (c === '\\') { i++; prev = part[i] ?? ''; continue; }
-      // A comment, outside quotes at the start of a word: to the end of the line.
-      // (Straight after a value, k > 0 and i === 0, it's mid-word: not a comment.)
-      if (!double && c === '#' && (i === 0 ? k === 0 : SH_META.test(part[i - 1]))) {
+      if (single) { if (c === "'") single = false; wordStart = false; continue; }
+      // An escaped character is plain text, never a boundary: "a\ #b" is one word.
+      if (c === '\\') { i++; prev = part[i] ?? ''; wordStart = false; continue; }
+      // A comment: an unquoted # at the start of a word, outside ${ } (where # is
+      // an operator, ${x#pat}). To the end of the line.
+      if (c === '#' && wordStart && !double && braces === 0) {
         const nl = part.indexOf('\n', i);
         if (nl < 0) return result('On a Mac, a {{ value }} after a # comment is never run. Take it out of the comment.');
-        i = nl; prev = '\n'; continue;
+        i = nl; prev = '\n'; wordStart = true; continue;
       }
-      if (c === '$' && part[i + 1] === '{') { braces++; i++; prev = '{'; continue; }
-      if (c === '}' && braces > 0) { braces--; continue; }
-      if (c === '"') double = !double;
+      if (c === '$' && part[i + 1] === '{') { braces++; i++; prev = '{'; wordStart = false; continue; }
+      if (c === '}' && braces > 0) braces--;
+      else if (c === '"') double = !double;
       else if (c === "'" && !double) single = true;
+      // A new word starts only after an unquoted, unescaped metacharacter.
+      wordStart = !double && !single && braces === 0 && SH_META.test(c);
     }
   }
+  // Unbalanced quotes or ${ at the end: sh would read it differently, or not at all.
+  if (single || double || braces) return result('On a Mac, this command leaves a quote or ${ open, so sh would read it differently. Close it.');
   return result(null);
 }
 
