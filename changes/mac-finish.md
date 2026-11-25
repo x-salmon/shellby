@@ -7,3 +7,7 @@
 - On a Mac, a workflow's run steps get their values. Every {{ value }} came out empty there.
 - On a Mac, "Alt text" on the share card stays as words instead of turning into ⌥.
 - Split and Show beside the chat work when the panel is already as tall as the screen allows (a small display, or the Dock on a Mac). They said there was no room.
+
+### Changed
+
+- On a Mac, a workflow's run steps run in dash rather than your own shell, and a command with a {{ value }} keeps to plain words and quotes ($HOME rather than ${HOME}, no [ ] or { }, no builtins that take a variable's name). The editor says what to change, so a value from a trigger can never run as code.

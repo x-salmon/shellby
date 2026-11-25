@@ -146,7 +146,8 @@ test('sh refuses a value where it could read it as code, or where a scanner coul
     'mapfile -t {{ v }} < f', 'getopts ab {{ v }}', 'trap {{ v }} EXIT', 'source {{ v }}', '. {{ v }}', 'builtin printf -v {{ v }} x', 'command read {{ v }}', 'fc -e {{ v }}']) {
     assert.match(expr.shellProblem(t), /can't share a command/, t);
   }
-  assert.equal(expr.shellProblem('printf "%s\\n" {{ v }}'), null, 'printf without -v is fine');
+  assert.match(expr.shellProblem('printf "%s" {{ v }}'), /can't share a command/, 'printf at all: a value could become its -v');
+  assert.match(expr.shellProblem('read<f {{ v }}'), /can't share a command/, 'a word ends at a metacharacter too');
   assert.equal(expr.shellProblem('git commit -m "{{ v }}" && npm run build'), null, 'ordinary commands are fine');
   for (const t of ['"declare" -i n={{ v }}', 'de\\clare -i n={{ v }}', "'let' n={{ v }}"]) {
     assert.match(expr.shellProblem(t), /can't share a command/, `a quoted keyword is the keyword: ${t}`);
@@ -173,9 +174,11 @@ test('sh reads each value as one word of text, and runs none of it', { skip: pro
   const { spawnSync } = require('child_process');
   const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'sb-sh-')));
   try {
-    const r = expr.renderShell("printf '(%s)' {{ v }} \"<{{ v }}>\"", { v: SH_EVIL });
-    const out = spawnSync('/bin/sh', ['-c', r.command], { cwd: dir, env: { ...process.env, ...r.env }, encoding: 'utf8' });
-    assert.equal(out.stdout, `(${SH_EVIL})(<${SH_EVIL}>)`);
+    const r = expr.renderShell('echo {{ v }} "<{{ v }}>"', { v: SH_EVIL });
+    // The shell a workflow's run step gets on a Mac (shellcmd.js POSIX_SH).
+    const sh = fs.existsSync('/bin/dash') ? '/bin/dash' : '/bin/sh';
+    const out = spawnSync(sh, ['-c', r.command], { cwd: dir, env: { ...process.env, ...r.env }, encoding: 'utf8' });
+    assert.equal(out.stdout, `${SH_EVIL} <${SH_EVIL}>\n`);
     assert.ok(!fs.existsSync(path.join(dir, 'pwned')), 'nothing in the value ran');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

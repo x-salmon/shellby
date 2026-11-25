@@ -441,9 +441,10 @@ function renderShell(text, ctx) {
 const SH_REFUSED = [/\$\(/, /`/, /\(\(/, /<</, /\$'/, /\$"/, /[{}]/, /\\\r?\n/,
   // bash's builtins that take a variable's name (a name with a subscript runs
   // its arithmetic: printf -v 'a[$(cmd)]') or read their argument as code.
-  /(?:^|[\s;&|(])(?:let|eval|declare|typeset|local|readonly|export|unset|read|readarray|mapfile|getopts|trap|source|fc|bind|complete|compgen|enable|alias|coproc|select|function|builtin|command|exec|\.)(?=\s|$)/,
-  /(?:^|[\s;&|(])printf(?=\s)[^;&|\n]*\s-v/,
-  /(?:^|[\s;&|(])(?:test|\[)\s+(?:!\s+)?-[vR](?=\s)/];
+  // A word ends at any metacharacter (SH_META), not only a space: read<f is read.
+  /(?:^|[\s;&|()<>])(?:let|eval|declare|typeset|local|readonly|export|unset|read|readarray|mapfile|getopts|trap|source|fc|bind|complete|compgen|enable|alias|coproc|select|function|builtin|command|exec|\.)(?=[\s;&|()<>]|$)/,
+  /(?:^|[\s;&|()<>])printf(?=[\s;&|()<>]|$)/,
+  /(?:^|[\s;&|()<>])(?:test|\[)(?=[\s;&|()<>]|$)[^;&|\n]*\s-[vR](?=[\s;&|()<>]|$)/];
 const SH_REFUSED_MSG = "On a Mac, a {{ value }} can't share a command with $( ), backticks, (( )), { }, [ ], $'...', a here-doc, a \\ at a line's end, or a builtin that takes a variable's name or code (let, eval, declare, export, unset, read, printf -v, trap, source and the like): sh could read the value as code there. Write $HOME rather than ${HOME}, or put that part in a step of its own.";
 /** Any [ or ] that isn't the test command's own word. @param {string} s */
 const strayBracket = s => /[[\]]/.test(s.replace(/(^|[\s;&|])\[(?=\s)/g, '$1').replace(/(\s)\](?=$|[\s;&|])/g, '$1'));
